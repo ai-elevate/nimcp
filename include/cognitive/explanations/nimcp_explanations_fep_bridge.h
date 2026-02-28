@@ -131,8 +131,8 @@ int explanations_fep_extract_causal_chain(explanations_fep_bridge_t* bridge);
 int explanations_fep_test_counterfactual(explanations_fep_bridge_t* bridge);
 
 int explanations_fep_bridge_update(explanations_fep_bridge_t* bridge, uint64_t delta_ms);
-int explanations_fep_bridge_get_state(const explanations_fep_bridge_t* bridge, explanations_fep_state_t* state);
-int explanations_fep_bridge_get_stats(const explanations_fep_bridge_t* bridge, explanations_fep_stats_t* stats);
+int explanations_fep_bridge_get_state(explanations_fep_bridge_t* bridge, explanations_fep_state_t* state);
+int explanations_fep_bridge_get_stats(explanations_fep_bridge_t* bridge, explanations_fep_stats_t* stats);
 
 int explanations_fep_bridge_connect_bio_async(explanations_fep_bridge_t* bridge);
 int explanations_fep_bridge_disconnect_bio_async(explanations_fep_bridge_t* bridge);

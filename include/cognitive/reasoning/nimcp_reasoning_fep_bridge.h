@@ -203,8 +203,8 @@ int reasoning_fep_apply_explanation_reduction(reasoning_fep_bridge_t* bridge);
 
 int reasoning_fep_bridge_update(reasoning_fep_bridge_t* bridge, uint64_t delta_ms);
 
-int reasoning_fep_bridge_get_state(const reasoning_fep_bridge_t* bridge, reasoning_fep_state_t* state);
-int reasoning_fep_bridge_get_stats(const reasoning_fep_bridge_t* bridge, reasoning_fep_stats_t* stats);
+int reasoning_fep_bridge_get_state(reasoning_fep_bridge_t* bridge, reasoning_fep_state_t* state);
+int reasoning_fep_bridge_get_stats(reasoning_fep_bridge_t* bridge, reasoning_fep_stats_t* stats);
 
 int reasoning_fep_bridge_connect_bio_async(reasoning_fep_bridge_t* bridge);
 int reasoning_fep_bridge_disconnect_bio_async(reasoning_fep_bridge_t* bridge);

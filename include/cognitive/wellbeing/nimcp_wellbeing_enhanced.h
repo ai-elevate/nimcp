@@ -1271,7 +1271,7 @@ float enhanced_wellbeing_get_resource_distress(
  * @param system Enhanced wellbeing system
  * @return Current wellbeing [0-1]
  */
-float enhanced_wellbeing_get_score(const enhanced_wellbeing_system_t* system);
+float enhanced_wellbeing_get_score(enhanced_wellbeing_system_t* system);
 
 /**
  * @brief Get current distress score

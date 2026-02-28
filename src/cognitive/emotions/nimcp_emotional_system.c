@@ -583,7 +583,7 @@ void emotion_system_destroy(emotional_system_t* system) {
 // State Query API Implementation
 //=============================================================================
 
-bool emotion_system_get_state(const emotional_system_t* system, emotion_state_t* state) {
+bool emotion_system_get_state(emotional_system_t* system, emotion_state_t* state) {
     if (!system || !state) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_state: required parameter is NULL (system, state)");
         return false;
@@ -602,7 +602,7 @@ bool emotion_system_get_state(const emotional_system_t* system, emotion_state_t*
     return true;
 }
 
-bool emotion_system_get_tag(const emotional_system_t* system, emotional_tag_t* tag) {
+bool emotion_system_get_tag(emotional_system_t* system, emotional_tag_t* tag) {
     if (!system || !tag) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_tag: required parameter is NULL (system, tag)");
         return false;
@@ -623,7 +623,7 @@ bool emotion_system_get_tag(const emotional_system_t* system, emotional_tag_t* t
     return true;
 }
 
-bool emotion_system_is_active(const emotional_system_t* system, uint32_t emotion_id,
+bool emotion_system_is_active(emotional_system_t* system, uint32_t emotion_id,
                               float threshold) {
     if (!system) {
         return false;
@@ -1007,7 +1007,7 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
 // Integration API Implementation
 //=============================================================================
 
-float emotion_system_get_salience_boost(const emotional_system_t* system) {
+float emotion_system_get_salience_boost(emotional_system_t* system) {
     if (!system) {
         return 1.0F;  // No boost if NULL
     }
@@ -1028,7 +1028,7 @@ float emotion_system_get_salience_boost(const emotional_system_t* system) {
     return result;
 }
 
-float emotion_system_get_memory_priority(const emotional_system_t* system) {
+float emotion_system_get_memory_priority(emotional_system_t* system) {
     if (!system) {
         return 0.0F;
     }
@@ -1052,7 +1052,7 @@ float emotion_system_get_memory_priority(const emotional_system_t* system) {
     return result;
 }
 
-float emotion_system_get_mental_health_impact(const emotional_system_t* system) {
+float emotion_system_get_mental_health_impact(emotional_system_t* system) {
     if (!system) {
         return 0.0F;
     }
@@ -1095,7 +1095,7 @@ float emotion_system_get_mental_health_impact(const emotional_system_t* system) 
 // Statistics API Implementation
 //=============================================================================
 
-bool emotion_system_get_stats(const emotional_system_t* system, emotion_stats_t* stats) {
+bool emotion_system_get_stats(emotional_system_t* system, emotion_stats_t* stats) {
     if (!system || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_stats: required parameter is NULL (system, stats)");
         return false;

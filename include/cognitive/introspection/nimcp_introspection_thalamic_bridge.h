@@ -80,7 +80,7 @@ int introspection_thalamic_route_reflection(
     float clarity, float urgency);
 
 int introspection_thalamic_set_attention(introspection_thalamic_bridge_t* bridge, float attention);
-int introspection_thalamic_get_attention(const introspection_thalamic_bridge_t* bridge, float* attention);
+int introspection_thalamic_get_attention(introspection_thalamic_bridge_t* bridge, float* attention);
 int introspection_thalamic_bridge_get_stats(
     const introspection_thalamic_bridge_t* bridge,
     introspection_thalamic_stats_t* stats);

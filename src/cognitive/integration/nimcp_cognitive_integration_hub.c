@@ -101,7 +101,7 @@ static module_entry_t* find_module_unlocked(cognitive_integration_hub_t hub, uin
  */
 static module_entry_t* find_empty_slot_unlocked(cognitive_integration_hub_t hub) {
     if (!hub || !hub->modules) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_empty_slot_unlocked: required parameter is NULL (hub, hub->modules)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: required parameter is NULL (hub, hub->modules)");
         return NULL;
     }
 

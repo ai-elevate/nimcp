@@ -336,7 +336,6 @@ attention_wm_bridge_t* attention_wm_bridge_create(
 void attention_wm_bridge_destroy(attention_wm_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "attention_wm");
     }
 
     // Free items array

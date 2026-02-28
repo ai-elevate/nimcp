@@ -193,7 +193,7 @@ int surprise_fep_modulate_precision(surprise_fep_bridge_t* bridge);
  * @brief Get current precision boost multiplier
  * @return Precision multiplier, 1.0f on error
  */
-float surprise_fep_get_precision_boost(const surprise_fep_bridge_t* bridge);
+float surprise_fep_get_precision_boost(surprise_fep_bridge_t* bridge);
 
 /* ============================================================================
  * Update API

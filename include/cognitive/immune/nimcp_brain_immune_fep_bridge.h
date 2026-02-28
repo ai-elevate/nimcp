@@ -318,7 +318,7 @@ int brain_immune_fep_apply_to_fep(brain_immune_fep_bridge_t* bridge);
  * @param bridge FEP bridge
  * @return Precision modulation factor (0-3)
  */
-float brain_immune_fep_get_precision_modulation(const brain_immune_fep_bridge_t* bridge);
+float brain_immune_fep_get_precision_modulation(brain_immune_fep_bridge_t* bridge);
 
 /**
  * @brief Get current prediction error from inflammation
@@ -326,7 +326,7 @@ float brain_immune_fep_get_precision_modulation(const brain_immune_fep_bridge_t*
  * @param bridge FEP bridge
  * @return Prediction error magnitude (0-10)
  */
-float brain_immune_fep_get_prediction_error(const brain_immune_fep_bridge_t* bridge);
+float brain_immune_fep_get_prediction_error(brain_immune_fep_bridge_t* bridge);
 
 /**
  * @brief Get FEP threat assessment

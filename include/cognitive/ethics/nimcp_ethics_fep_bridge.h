@@ -92,8 +92,8 @@ int ethics_fep_constrain_policy(ethics_fep_bridge_t* bridge, bool is_ethical);
 int ethics_fep_predict_harm(ethics_fep_bridge_t* bridge, float* harm_score);
 
 int ethics_fep_bridge_update(ethics_fep_bridge_t* bridge, uint64_t delta_ms);
-int ethics_fep_bridge_get_state(const ethics_fep_bridge_t* bridge, ethics_fep_state_t* state);
-int ethics_fep_bridge_get_stats(const ethics_fep_bridge_t* bridge, ethics_fep_stats_t* stats);
+int ethics_fep_bridge_get_state(ethics_fep_bridge_t* bridge, ethics_fep_state_t* state);
+int ethics_fep_bridge_get_stats(ethics_fep_bridge_t* bridge, ethics_fep_stats_t* stats);
 
 int ethics_fep_bridge_connect_bio_async(ethics_fep_bridge_t* bridge);
 int ethics_fep_bridge_disconnect_bio_async(ethics_fep_bridge_t* bridge);

@@ -518,7 +518,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
  * Getter API
  * ============================================================================ */
 
-float wm_substrate_get_capacity_factor(const wm_substrate_bridge_t* bridge)
+float wm_substrate_get_capacity_factor(wm_substrate_bridge_t* bridge)
 {
     /* Guard: Validate bridge */
     if (!bridge) {
@@ -537,7 +537,7 @@ float wm_substrate_get_capacity_factor(const wm_substrate_bridge_t* bridge)
     return result;
 }
 
-float wm_substrate_get_decay_mod(const wm_substrate_bridge_t* bridge)
+float wm_substrate_get_decay_mod(wm_substrate_bridge_t* bridge)
 {
     /* Guard: Validate bridge */
     if (!bridge) {
@@ -556,7 +556,7 @@ float wm_substrate_get_decay_mod(const wm_substrate_bridge_t* bridge)
     return result;
 }
 
-float wm_substrate_get_refresh_efficiency(const wm_substrate_bridge_t* bridge)
+float wm_substrate_get_refresh_efficiency(wm_substrate_bridge_t* bridge)
 {
     /* Guard: Validate bridge */
     if (!bridge) {
@@ -575,7 +575,7 @@ float wm_substrate_get_refresh_efficiency(const wm_substrate_bridge_t* bridge)
     return result;
 }
 
-float wm_substrate_get_encoding_strength(const wm_substrate_bridge_t* bridge)
+float wm_substrate_get_encoding_strength(wm_substrate_bridge_t* bridge)
 {
     /* Guard: Validate bridge */
     if (!bridge) {
@@ -620,7 +620,7 @@ int wm_substrate_get_effects(
     return 0;
 }
 
-bool wm_substrate_is_impaired(const wm_substrate_bridge_t* bridge)
+bool wm_substrate_is_impaired(wm_substrate_bridge_t* bridge)
 {
     /* Guard: Validate bridge */
     if (!bridge) {

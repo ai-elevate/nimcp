@@ -524,7 +524,7 @@ int mirror_hypo_update(mirror_hypo_bridge_t* bridge, uint64_t current_time);
  * @param stats Output statistics
  * @return 0 on success, -1 on error
  */
-int mirror_hypo_get_stats(const mirror_hypo_bridge_t* bridge, mirror_hypo_stats_t* stats);
+int mirror_hypo_get_stats(mirror_hypo_bridge_t* bridge, mirror_hypo_stats_t* stats);
 
 /**
  * @brief Get current bridge state
@@ -536,7 +536,7 @@ int mirror_hypo_get_stats(const mirror_hypo_bridge_t* bridge, mirror_hypo_stats_
  * @param state Output state
  * @return 0 on success, -1 on error
  */
-int mirror_hypo_get_state(const mirror_hypo_bridge_t* bridge, mirror_hypo_state_t* state);
+int mirror_hypo_get_state(mirror_hypo_bridge_t* bridge, mirror_hypo_state_t* state);
 
 /**
  * @brief Get current hypothalamus effect type

@@ -57,7 +57,7 @@ int free_energy_thalamic_bridge_reset(free_energy_thalamic_bridge_t* bridge);
 int free_energy_thalamic_route_prediction_error(free_energy_thalamic_bridge_t* bridge, const free_energy_thalamic_signal_t* signal);
 int free_energy_thalamic_route_model_update(free_energy_thalamic_bridge_t* bridge, const void* model, float importance);
 int free_energy_thalamic_set_attention(free_energy_thalamic_bridge_t* bridge, float attention);
-int free_energy_thalamic_get_attention(const free_energy_thalamic_bridge_t* bridge, float* attention);
+int free_energy_thalamic_get_attention(free_energy_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t errors_routed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_precision;
 } free_energy_thalamic_stats_t;
 
-int free_energy_thalamic_bridge_get_stats(const free_energy_thalamic_bridge_t* bridge, free_energy_thalamic_stats_t* stats);
+int free_energy_thalamic_bridge_get_stats(free_energy_thalamic_bridge_t* bridge, free_energy_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

@@ -564,7 +564,7 @@ int omni_ai_clear_policies(omni_active_inference_t* ai) {
     return NIMCP_SUCCESS;
 }
 
-int omni_ai_get_policy(const omni_active_inference_t* ai,
+int omni_ai_get_policy(omni_active_inference_t* ai,
                         uint32_t index,
                         omni_ai_policy_t* policy) {
     /* Phase 8: Heartbeat at operation start */
@@ -1028,7 +1028,7 @@ int omni_ai_select_action_omni(omni_active_inference_t* ai,
     return NIMCP_SUCCESS;
 }
 
-float omni_ai_get_policy_efe(const omni_active_inference_t* ai,
+float omni_ai_get_policy_efe(omni_active_inference_t* ai,
                               uint32_t policy_index,
                               omni_ai_direction_t direction) {
     if (!ai || policy_index >= ai->num_policies) return FLT_MAX;
@@ -1217,7 +1217,7 @@ bool omni_ai_is_bio_async_connected(const omni_active_inference_t* ai) {
  * Query API
  * ============================================================================ */
 
-int omni_ai_get_stats(const omni_active_inference_t* ai,
+int omni_ai_get_stats(omni_active_inference_t* ai,
                        omni_ai_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     omni_active_inference_heartbeat("omni_active__omni_ai_get_stats", 0.0f);
@@ -1248,7 +1248,7 @@ int omni_ai_reset_stats(omni_active_inference_t* ai) {
     return NIMCP_SUCCESS;
 }
 
-int omni_ai_get_best_policy(const omni_active_inference_t* ai) {
+int omni_ai_get_best_policy(omni_active_inference_t* ai) {
     if (!ai || ai->num_policies == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_ai_get_best_policy: ai is NULL");
         return -1;

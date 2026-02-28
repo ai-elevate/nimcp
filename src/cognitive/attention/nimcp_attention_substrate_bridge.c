@@ -509,7 +509,7 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
  * Query API
  * ============================================================================ */
 
-float attention_substrate_get_focus_capacity(const attention_substrate_bridge_t* bridge)
+float attention_substrate_get_focus_capacity(attention_substrate_bridge_t* bridge)
 {
     if (!bridge) {
         return -1.0f;
@@ -524,7 +524,7 @@ float attention_substrate_get_focus_capacity(const attention_substrate_bridge_t*
     return result;
 }
 
-float attention_substrate_get_shifting_efficiency(const attention_substrate_bridge_t* bridge)
+float attention_substrate_get_shifting_efficiency(attention_substrate_bridge_t* bridge)
 {
     if (!bridge) {
         return -1.0f;
@@ -538,7 +538,7 @@ float attention_substrate_get_shifting_efficiency(const attention_substrate_brid
     return result;
 }
 
-float attention_substrate_get_filter_strength(const attention_substrate_bridge_t* bridge)
+float attention_substrate_get_filter_strength(attention_substrate_bridge_t* bridge)
 {
     if (!bridge) {
         return -1.0f;
@@ -552,7 +552,7 @@ float attention_substrate_get_filter_strength(const attention_substrate_bridge_t
     return result;
 }
 
-float attention_substrate_get_vigilance(const attention_substrate_bridge_t* bridge)
+float attention_substrate_get_vigilance(attention_substrate_bridge_t* bridge)
 {
     if (!bridge) {
         return -1.0f;
@@ -584,7 +584,7 @@ int attention_substrate_get_effects(
     return 0;
 }
 
-bool attention_substrate_is_impaired(const attention_substrate_bridge_t* bridge)
+bool attention_substrate_is_impaired(attention_substrate_bridge_t* bridge)
 {
     if (!bridge) {
         return false;

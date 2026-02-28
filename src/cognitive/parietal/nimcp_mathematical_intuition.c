@@ -1396,7 +1396,7 @@ int math_intuition_set_fatigue(math_intuition_t* mi, float level) {
  * STATISTICS API
  * ============================================================================ */
 
-int math_intuition_get_stats(const math_intuition_t* mi, math_intuition_stats_t* stats) {
+int math_intuition_get_stats(math_intuition_t* mi, math_intuition_stats_t* stats) {
     if (!mi) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_intuition_get_stats: mi is NULL");
         return -1;

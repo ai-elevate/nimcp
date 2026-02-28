@@ -109,7 +109,7 @@ int analysis_thalamic_request_depth(
 
 /* Attention API */
 int analysis_thalamic_set_attention(analysis_thalamic_bridge_t* bridge, float attention);
-int analysis_thalamic_get_attention(const analysis_thalamic_bridge_t* bridge, float* attention);
+int analysis_thalamic_get_attention(analysis_thalamic_bridge_t* bridge, float* attention);
 
 /* Statistics API */
 int analysis_thalamic_bridge_get_stats(

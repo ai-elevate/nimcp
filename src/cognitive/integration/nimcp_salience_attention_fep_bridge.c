@@ -571,7 +571,7 @@ int sa_fep_bridge_unregister(sa_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool sa_fep_bridge_is_registered(const sa_fep_bridge_t* bridge) {
+bool sa_fep_bridge_is_registered(sa_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -587,7 +587,7 @@ bool sa_fep_bridge_is_registered(const sa_fep_bridge_t* bridge) {
     return registered;
 }
 
-uint32_t sa_fep_bridge_get_id(const sa_fep_bridge_t* bridge) {
+uint32_t sa_fep_bridge_get_id(sa_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -912,7 +912,7 @@ int sa_fep_bridge_reset_stats(sa_fep_bridge_t* bridge) {
     return 0;
 }
 
-float sa_fep_bridge_get_free_energy(const sa_fep_bridge_t* bridge) {
+float sa_fep_bridge_get_free_energy(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -926,7 +926,7 @@ float sa_fep_bridge_get_free_energy(const sa_fep_bridge_t* bridge) {
     return fe;
 }
 
-float sa_fep_bridge_get_salience_error(const sa_fep_bridge_t* bridge) {
+float sa_fep_bridge_get_salience_error(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -940,7 +940,7 @@ float sa_fep_bridge_get_salience_error(const sa_fep_bridge_t* bridge) {
     return se;
 }
 
-float sa_fep_bridge_get_prediction_error(const sa_fep_bridge_t* bridge) {
+float sa_fep_bridge_get_prediction_error(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -954,7 +954,7 @@ float sa_fep_bridge_get_prediction_error(const sa_fep_bridge_t* bridge) {
     return pe;
 }
 
-float sa_fep_bridge_get_attention_efficiency(const sa_fep_bridge_t* bridge) {
+float sa_fep_bridge_get_attention_efficiency(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -972,7 +972,7 @@ float sa_fep_bridge_get_attention_efficiency(const sa_fep_bridge_t* bridge) {
  * STATE QUERY FUNCTIONS
  *===========================================================================*/
 
-sa_fep_state_t sa_fep_bridge_get_state(const sa_fep_bridge_t* bridge) {
+sa_fep_state_t sa_fep_bridge_get_state(sa_fep_bridge_t* bridge) {
     if (!bridge) return SA_FEP_STATE_ERROR;
 
     /* Phase 8: Heartbeat at operation start */
@@ -986,7 +986,7 @@ sa_fep_state_t sa_fep_bridge_get_state(const sa_fep_bridge_t* bridge) {
     return state;
 }
 
-bool sa_fep_bridge_is_degraded(const sa_fep_bridge_t* bridge) {
+bool sa_fep_bridge_is_degraded(sa_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -1002,7 +1002,7 @@ bool sa_fep_bridge_is_degraded(const sa_fep_bridge_t* bridge) {
     return degraded;
 }
 
-bool sa_fep_bridge_is_efficient(const sa_fep_bridge_t* bridge) {
+bool sa_fep_bridge_is_efficient(sa_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }

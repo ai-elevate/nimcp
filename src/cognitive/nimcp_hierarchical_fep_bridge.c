@@ -177,7 +177,7 @@ int hierarchical_fep_bridge_update(hierarchical_fep_bridge_t* bridge) {
     return 0;
 }
 
-int hierarchical_fep_bridge_get_state(const hierarchical_fep_bridge_t* bridge,
+int hierarchical_fep_bridge_get_state(hierarchical_fep_bridge_t* bridge,
                                        hierarchical_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     hierarchical_fep_bridge_heartbeat("hierarchical_get_state", 0.0f);
@@ -190,7 +190,7 @@ int hierarchical_fep_bridge_get_state(const hierarchical_fep_bridge_t* bridge,
     return 0;
 }
 
-int hierarchical_fep_bridge_get_stats(const hierarchical_fep_bridge_t* bridge,
+int hierarchical_fep_bridge_get_stats(hierarchical_fep_bridge_t* bridge,
                                        hierarchical_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     hierarchical_fep_bridge_heartbeat("hierarchical_get_stats", 0.0f);

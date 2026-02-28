@@ -1294,7 +1294,7 @@ nimcp_multi_unit_auction_t nimcp_multi_unit_create(
     const nimcp_multi_unit_config_t* config
 ) {
     if (!config || config->total_units == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_multi_unit_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_multi_unit_create: config is NULL or total_units is 0");
         return NULL;
     }
 

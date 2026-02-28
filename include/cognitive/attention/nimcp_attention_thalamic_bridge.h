@@ -112,7 +112,7 @@ int attention_thalamic_activate_filter(
 
 /* Attention API */
 int attention_thalamic_set_attention(attention_thalamic_bridge_t* bridge, float attention);
-int attention_thalamic_get_attention(const attention_thalamic_bridge_t* bridge, float* attention);
+int attention_thalamic_get_attention(attention_thalamic_bridge_t* bridge, float* attention);
 
 /* Statistics API */
 int attention_thalamic_bridge_get_stats(

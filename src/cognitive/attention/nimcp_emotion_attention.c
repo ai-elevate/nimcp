@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -82,7 +82,7 @@ struct emotion_attention_system {
     /* Sleep state integration */
     sleep_state_t current_sleep_state;  /**< Current sleep/wake state for modulation */
 
-    pthread_rwlock_t lock;
+    nimcp_rwlock_t lock;
     bool initialized;
 };
 
@@ -200,7 +200,7 @@ static void on_emotion_tensor_update(void* context, const void* msg_data, size_t
         return;
     }
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
 
     /* WHAT: Get medulla arousal baseline if available */
     /* WHY:  Medulla provides physiological arousal (stress, alertness) */
@@ -241,7 +241,7 @@ static void on_emotion_tensor_update(void* context, const void* msg_data, size_t
     system->stats.avg_attention_width =
         alpha * system->current_attention_width + (1.0F - alpha) * system->stats.avg_attention_width;
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     EA_LOG_DEBUG("Emotion update: arousal=%.3f valence=%.3f width=%.3f",
                  msg->arousal, msg->valence, system->current_attention_width);
@@ -325,7 +325,7 @@ emotion_attention_system_t* emotion_attention_create(
     system->stats.avg_attention_width = 0.5F;
 
     /* WHAT: Initialize lock */
-    if (pthread_rwlock_init(&system->lock, NULL) != 0) {
+    if (nimcp_rwlock_init(&system->lock) != NIMCP_SUCCESS) {
         EA_LOG_ERROR("Failed to initialize rwlock");
         nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_attention_create: validation failed");
@@ -382,9 +382,9 @@ bool emotion_attention_connect_brain(emotion_attention_system_t* system, void* b
     emotion_attention_heartbeat("emotion_atte_connect_brain", 0.0f);
 
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
     system->brain_ref = brain;
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     EA_LOG_INFO("Connected to brain for medulla integration");
     return true;
@@ -414,7 +414,7 @@ void emotion_attention_destroy(emotion_attention_system_t* system) {
         system->priority_encoder = NULL;
     }
 
-    pthread_rwlock_destroy(&system->lock);
+    nimcp_rwlock_destroy(&system->lock);
     nimcp_free(system);
 
     EA_LOG_INFO("Emotion-attention system destroyed");
@@ -434,7 +434,7 @@ bool emotion_attention_modulate(emotion_attention_system_t* system) {
     emotion_attention_heartbeat("emotion_atte_modulate", 0.0f);
 
 
-    pthread_rwlock_rdlock(&system->lock);
+    nimcp_rwlock_rdlock(&system->lock);
 
     /* WHAT: Get sleep-modulated capacity and vigilance factors */
     float sleep_capacity = attention_sleep_capacity_for_state(system->current_sleep_state);
@@ -452,7 +452,7 @@ bool emotion_attention_modulate(emotion_attention_system_t* system) {
         __atomic_fetch_add(&((emotion_attention_system_t*)system)->stats.emotional_gating_events, 1, __ATOMIC_RELAXED);
     }
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     EA_LOG_DEBUG("Applied emotion+sleep modulation: gate=%.3f width=%.3f capacity=%.3f vigilance=%.3f",
                  (0.5F + (system->current_arousal * 0.5F)) * sleep_vigilance,
@@ -480,7 +480,7 @@ float emotion_attention_compute_salience(
     if (base_salience < 0.0F) base_salience = 0.0F;
     if (base_salience > 1.0F) base_salience = 1.0F;
 
-    pthread_rwlock_rdlock(&system->lock);
+    nimcp_rwlock_rdlock(&system->lock);
 
     float modulated_salience = base_salience;
 
@@ -496,7 +496,7 @@ float emotion_attention_compute_salience(
         }
     }
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     /* Guard: Clamp output */
     if (modulated_salience > 1.0F) {
@@ -515,9 +515,9 @@ float emotion_attention_get_width(const emotion_attention_system_t* system) {
     emotion_attention_heartbeat("emotion_atte_get_width", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     float width = system->current_attention_width;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return width;
 }
@@ -554,9 +554,9 @@ bool emotion_attention_set_sleep_state(emotion_attention_system_t* system, sleep
     emotion_attention_heartbeat("emotion_atte_set_sleep_state", 0.0f);
 
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
     system->current_sleep_state = state;
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     EA_LOG_DEBUG("Attention sleep state changed to %d", state);
     return true;
@@ -581,9 +581,9 @@ sleep_state_t emotion_attention_get_sleep_state(const emotion_attention_system_t
     emotion_attention_heartbeat("emotion_atte_get_sleep_state", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     sleep_state_t state = system->current_sleep_state;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return state;
 }
@@ -605,9 +605,9 @@ bool emotion_attention_get_stats(
     emotion_attention_heartbeat("emotion_atte_get_stats", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     *stats = system->stats;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return true;
 }
@@ -621,11 +621,11 @@ void emotion_attention_reset_stats(emotion_attention_system_t* system) {
     emotion_attention_heartbeat("emotion_atte_reset_stats", 0.0f);
 
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
     memset(&system->stats, 0, sizeof(emotion_attention_stats_t));
     system->stats.current_attention_width = system->current_attention_width;
     system->stats.avg_attention_width = system->current_attention_width;
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     EA_LOG_INFO("Statistics reset");
 }
@@ -822,7 +822,7 @@ bool emotion_attention_set_pe_config(
         return false;
     }
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
 
     /* WHAT: Destroy existing encoders if present */
     /* WHY:  Reconfiguration requires new encoder instances */
@@ -842,7 +842,7 @@ bool emotion_attention_set_pe_config(
         system->temporal_encoder = create_temporal_encoder(max_sequence, embedding_dim);
         if (!system->temporal_encoder) {
             EA_LOG_ERROR("Failed to create temporal encoder");
-            pthread_rwlock_unlock(&system->lock);
+            nimcp_rwlock_unlock(&system->lock);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_set_pe_config: system->temporal_encoder is NULL");
             return false;
         }
@@ -860,7 +860,7 @@ bool emotion_attention_set_pe_config(
                 nimcp_pos_encoder_destroy(system->temporal_encoder);
                 system->temporal_encoder = NULL;
             }
-            pthread_rwlock_unlock(&system->lock);
+            nimcp_rwlock_unlock(&system->lock);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_attention_set_pe_config: validation failed");
             return false;
         }
@@ -872,7 +872,7 @@ bool emotion_attention_set_pe_config(
     system->config.max_temporal_sequence = max_sequence;
     system->config.emotion_embedding_dim = embedding_dim;
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     EA_LOG_INFO("PE config updated: temporal=%d priority=%d max_seq=%u dim=%u",
                 enable_temporal, enable_priority, max_sequence, embedding_dim);
@@ -909,12 +909,12 @@ bool emotion_attention_encode_temporal(
         return false;
     }
 
-    pthread_rwlock_rdlock(&system->lock);
+    nimcp_rwlock_rdlock(&system->lock);
 
     /* Guard: Check temporal encoder enabled */
     if (!system->temporal_encoder) {
         EA_LOG_ERROR("Temporal encoder not initialized");
-        pthread_rwlock_unlock(&system->lock);
+        nimcp_rwlock_unlock(&system->lock);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_encode_temporal: system->temporal_encoder is NULL");
         return false;
     }
@@ -923,7 +923,7 @@ bool emotion_attention_encode_temporal(
     if (seq_length > system->config.max_temporal_sequence) {
         EA_LOG_ERROR("Sequence length %u exceeds max %u",
                      seq_length, system->config.max_temporal_sequence);
-        pthread_rwlock_unlock(&system->lock);
+        nimcp_rwlock_unlock(&system->lock);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_attention_encode_temporal: validation failed");
         return false;
     }
@@ -940,7 +940,7 @@ bool emotion_attention_encode_temporal(
         true  /* additive: output = input + PE */
     );
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     if (result != NIMCP_POS_SUCCESS) {
         EA_LOG_ERROR("Failed to apply temporal encoding: error %d", result);
@@ -974,12 +974,12 @@ bool emotion_attention_get_priority_embedding(
     emotion_attention_heartbeat("emotion_atte_get_priority_embeddi", 0.0f);
 
 
-    pthread_rwlock_rdlock(&system->lock);
+    nimcp_rwlock_rdlock(&system->lock);
 
     /* Guard: Check priority encoder enabled */
     if (!system->priority_encoder) {
         EA_LOG_ERROR("Priority encoder not initialized");
-        pthread_rwlock_unlock(&system->lock);
+        nimcp_rwlock_unlock(&system->lock);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_get_priority_embedding: system->priority_encoder is NULL");
         return false;
     }
@@ -988,7 +988,7 @@ bool emotion_attention_get_priority_embedding(
     if (priority_rank >= system->config.max_temporal_sequence) {
         EA_LOG_ERROR("Priority rank %u exceeds max %u",
                      priority_rank, system->config.max_temporal_sequence);
-        pthread_rwlock_unlock(&system->lock);
+        nimcp_rwlock_unlock(&system->lock);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_attention_get_priority_embedding: capacity exceeded");
         return false;
     }
@@ -1003,7 +1003,7 @@ bool emotion_attention_get_priority_embedding(
         output
     );
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     if (result != NIMCP_POS_SUCCESS) {
         EA_LOG_ERROR("Failed to get priority embedding: error %d", result);

@@ -104,7 +104,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create_with_config(
     /* Allocate hypergraph */
     hg = (nimcp_hypergraph_t*)nimcp_calloc(1, sizeof(nimcp_hypergraph_t));
     if (!hg) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate hypergraph");
         return NULL;
     }
@@ -121,7 +121,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create_with_config(
     hg->vertices = (nimcp_hypervertex_t*)nimcp_calloc(
         hg->vertex_capacity, sizeof(nimcp_hypervertex_t));
     if (!hg->vertices) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate hypergraph vertices");
         nimcp_free(hg);
         return NULL;
@@ -132,7 +132,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create_with_config(
     hg->edges = (nimcp_hyperedge_t*)nimcp_calloc(
         hg->edge_capacity, sizeof(nimcp_hyperedge_t));
     if (!hg->edges) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate hypergraph edges");
         nimcp_free(hg->vertices);
         nimcp_free(hg);
@@ -145,7 +145,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create_with_config(
         hg->incidence_table = (incidence_entry_t**)nimcp_calloc(
             hg->incidence_hash_size, sizeof(incidence_entry_t*));
         if (!hg->incidence_table) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                 "Failed to allocate hypergraph incidence table");
             nimcp_free(hg->edges);
             nimcp_free(hg->vertices);
@@ -1143,9 +1143,9 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_extend_edge(
             if (hg->thread_safe) {
                 nimcp_mutex_unlock(hg->mutex);
             }
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                 "nimcp_hypergraph_extend_edge: failed to grow vertices array");
-            return NIMCP_ERROR_MEMORY;
+            return NIMCP_ERROR_NO_MEMORY;
         }
         edge->vertices = new_vertices;
         edge->vertex_capacity = new_cap;
@@ -1914,9 +1914,9 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_connected_components(
     uint32_t current_component = 0;
     uint32_t* stack = (uint32_t*)nimcp_malloc(hg->vertex_count * sizeof(uint32_t));
     if (!stack) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "nimcp_hypergraph_connected_components: failed to allocate stack");
-        return NIMCP_ERROR_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     for (uint32_t start = 0; start < hg->vertex_count; start++) {
@@ -2143,9 +2143,9 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_query_result_init(
     if (max_vertices > 0) {
         result->vertex_ids = (uint32_t*)nimcp_calloc(max_vertices, sizeof(uint32_t));
         if (!result->vertex_ids) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                 "nimcp_hypergraph_query_result_init: failed to allocate vertex_ids");
-            return NIMCP_ERROR_MEMORY;
+            return NIMCP_ERROR_NO_MEMORY;
         }
     }
 
@@ -2153,9 +2153,9 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_query_result_init(
         result->edge_ids = (uint32_t*)nimcp_calloc(max_edges, sizeof(uint32_t));
         if (!result->edge_ids) {
             if (result->vertex_ids) nimcp_free(result->vertex_ids);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                 "nimcp_hypergraph_query_result_init: failed to allocate edge_ids");
-            return NIMCP_ERROR_MEMORY;
+            return NIMCP_ERROR_NO_MEMORY;
         }
     }
 

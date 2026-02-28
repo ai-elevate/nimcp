@@ -399,7 +399,7 @@ int omni_logic_apply_to_omni(omni_logic_bridge_t* bridge);
  * @param direction Output direction
  * @return NIMCP_SUCCESS on success
  */
-int omni_logic_get_direction(const omni_logic_bridge_t* bridge,
+int omni_logic_get_direction(omni_logic_bridge_t* bridge,
                               omni_infer_direction_t* direction);
 
 /**
@@ -421,7 +421,7 @@ int omni_logic_set_condition(omni_logic_bridge_t* bridge,
  * @param conditions Output conditions
  * @return NIMCP_SUCCESS on success
  */
-int omni_logic_get_conditions(const omni_logic_bridge_t* bridge,
+int omni_logic_get_conditions(omni_logic_bridge_t* bridge,
                                omni_logic_conditions_t* conditions);
 
 /**
@@ -501,7 +501,7 @@ int omni_logic_evaluate_rule(omni_logic_bridge_t* bridge,
  * @param effects Output effects
  * @return NIMCP_SUCCESS on success
  */
-int omni_logic_get_omni_effects(const omni_logic_bridge_t* bridge,
+int omni_logic_get_omni_effects(omni_logic_bridge_t* bridge,
                                  omni_to_logic_effects_t* effects);
 
 /**
@@ -511,7 +511,7 @@ int omni_logic_get_omni_effects(const omni_logic_bridge_t* bridge,
  * @param effects Output effects
  * @return NIMCP_SUCCESS on success
  */
-int omni_logic_get_logic_effects(const omni_logic_bridge_t* bridge,
+int omni_logic_get_logic_effects(omni_logic_bridge_t* bridge,
                                   logic_to_omni_effects_t* effects);
 
 /**
@@ -521,7 +521,7 @@ int omni_logic_get_logic_effects(const omni_logic_bridge_t* bridge,
  * @param stats Output statistics
  * @return NIMCP_SUCCESS on success
  */
-int omni_logic_get_stats(const omni_logic_bridge_t* bridge,
+int omni_logic_get_stats(omni_logic_bridge_t* bridge,
                           omni_logic_stats_t* stats);
 
 /**

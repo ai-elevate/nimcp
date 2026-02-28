@@ -57,7 +57,7 @@ int empathetic_response_thalamic_bridge_reset(empathetic_response_thalamic_bridg
 int empathetic_response_thalamic_route_recognition(empathetic_response_thalamic_bridge_t* bridge, const empathetic_thalamic_signal_t* signal);
 int empathetic_response_thalamic_route_response(empathetic_response_thalamic_bridge_t* bridge, const void* response, float intensity);
 int empathetic_response_thalamic_set_attention(empathetic_response_thalamic_bridge_t* bridge, float attention);
-int empathetic_response_thalamic_get_attention(const empathetic_response_thalamic_bridge_t* bridge, float* attention);
+int empathetic_response_thalamic_get_attention(empathetic_response_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t recognitions_routed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_distress_level;
 } empathetic_response_thalamic_stats_t;
 
-int empathetic_response_thalamic_bridge_get_stats(const empathetic_response_thalamic_bridge_t* bridge, empathetic_response_thalamic_stats_t* stats);
+int empathetic_response_thalamic_bridge_get_stats(empathetic_response_thalamic_bridge_t* bridge, empathetic_response_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

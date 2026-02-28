@@ -57,7 +57,7 @@ int salience_thalamic_bridge_reset(salience_thalamic_bridge_t* bridge);
 int salience_thalamic_route_detection(salience_thalamic_bridge_t* bridge, const salience_thalamic_signal_t* signal);
 int salience_thalamic_route_priority(salience_thalamic_bridge_t* bridge, const void* stimulus, float priority);
 int salience_thalamic_set_attention(salience_thalamic_bridge_t* bridge, float attention);
-int salience_thalamic_get_attention(const salience_thalamic_bridge_t* bridge, float* attention);
+int salience_thalamic_get_attention(salience_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t detections_routed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_salience_value;
 } salience_thalamic_stats_t;
 
-int salience_thalamic_bridge_get_stats(const salience_thalamic_bridge_t* bridge, salience_thalamic_stats_t* stats);
+int salience_thalamic_bridge_get_stats(salience_thalamic_bridge_t* bridge, salience_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

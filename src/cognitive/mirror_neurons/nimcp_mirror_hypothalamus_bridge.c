@@ -719,7 +719,7 @@ int mirror_hypo_update(mirror_hypo_bridge_t* bridge, uint64_t current_time) {
     return 0;
 }
 
-int mirror_hypo_get_stats(const mirror_hypo_bridge_t* bridge, mirror_hypo_stats_t* stats) {
+int mirror_hypo_get_stats(mirror_hypo_bridge_t* bridge, mirror_hypo_stats_t* stats) {
     /* WHAT: Retrieve statistics
      * WHY:  Monitor bridge health
      * HOW:  Copy accumulated metrics */
@@ -739,7 +739,7 @@ int mirror_hypo_get_stats(const mirror_hypo_bridge_t* bridge, mirror_hypo_stats_
     return 0;
 }
 
-int mirror_hypo_get_state(const mirror_hypo_bridge_t* bridge, mirror_hypo_state_t* state) {
+int mirror_hypo_get_state(mirror_hypo_bridge_t* bridge, mirror_hypo_state_t* state) {
     /* WHAT: Retrieve current state
      * WHY:  Query modulation effects
      * HOW:  Copy state struct */

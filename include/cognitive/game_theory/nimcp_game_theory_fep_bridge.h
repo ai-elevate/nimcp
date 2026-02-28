@@ -354,7 +354,7 @@ int gt_fep_bridge_unregister(gt_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if registered with orchestrator
  */
-bool gt_fep_bridge_is_registered(const gt_fep_bridge_t* bridge);
+bool gt_fep_bridge_is_registered(gt_fep_bridge_t* bridge);
 
 /**
  * @brief Get the FEP bridge ID assigned by orchestrator
@@ -362,7 +362,7 @@ bool gt_fep_bridge_is_registered(const gt_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Bridge ID, or 0 if not registered
  */
-uint32_t gt_fep_bridge_get_id(const gt_fep_bridge_t* bridge);
+uint32_t gt_fep_bridge_get_id(gt_fep_bridge_t* bridge);
 
 /*=============================================================================
  * FEP UPDATE CALLBACK (Internal - used by FEP orchestrator)
@@ -503,7 +503,7 @@ int gt_fep_bridge_reset_stats(gt_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current free energy, -1.0f on error
  */
-float gt_fep_bridge_get_free_energy(const gt_fep_bridge_t* bridge);
+float gt_fep_bridge_get_free_energy(gt_fep_bridge_t* bridge);
 
 /**
  * @brief Get current strategy uncertainty
@@ -511,7 +511,7 @@ float gt_fep_bridge_get_free_energy(const gt_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Strategy uncertainty [0, 1], -1.0f on error
  */
-float gt_fep_bridge_get_strategy_uncertainty(const gt_fep_bridge_t* bridge);
+float gt_fep_bridge_get_strategy_uncertainty(gt_fep_bridge_t* bridge);
 
 /**
  * @brief Get current prediction error
@@ -519,7 +519,7 @@ float gt_fep_bridge_get_strategy_uncertainty(const gt_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current prediction error, -1.0f on error
  */
-float gt_fep_bridge_get_prediction_error(const gt_fep_bridge_t* bridge);
+float gt_fep_bridge_get_prediction_error(gt_fep_bridge_t* bridge);
 
 /*=============================================================================
  * STATE QUERY FUNCTIONS
@@ -531,7 +531,7 @@ float gt_fep_bridge_get_prediction_error(const gt_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current state
  */
-gt_fep_state_t gt_fep_bridge_get_state(const gt_fep_bridge_t* bridge);
+gt_fep_state_t gt_fep_bridge_get_state(gt_fep_bridge_t* bridge);
 
 /**
  * @brief Check if in degraded mode
@@ -539,7 +539,7 @@ gt_fep_state_t gt_fep_bridge_get_state(const gt_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if free energy is above threshold
  */
-bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge);
+bool gt_fep_bridge_is_degraded(gt_fep_bridge_t* bridge);
 
 /**
  * @brief Check if at Nash equilibrium
@@ -547,7 +547,7 @@ bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if currently at Nash equilibrium
  */
-bool gt_fep_bridge_is_at_nash(const gt_fep_bridge_t* bridge);
+bool gt_fep_bridge_is_at_nash(gt_fep_bridge_t* bridge);
 
 /**
  * @brief Get state name as string

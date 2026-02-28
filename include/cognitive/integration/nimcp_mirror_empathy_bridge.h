@@ -359,7 +359,7 @@ int mirror_empathy_bridge_unregister_from_hub(mirror_empathy_bridge_t* bridge);
  * @param bridge Mirror-empathy bridge
  * @return true if registered, false otherwise
  */
-bool mirror_empathy_bridge_is_registered(const mirror_empathy_bridge_t* bridge);
+bool mirror_empathy_bridge_is_registered(mirror_empathy_bridge_t* bridge);
 
 /* ============================================================================
  * Event Publication API

@@ -563,7 +563,7 @@ int pa_fep_bridge_unregister(pa_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool pa_fep_bridge_is_registered(const pa_fep_bridge_t* bridge) {
+bool pa_fep_bridge_is_registered(pa_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -579,7 +579,7 @@ bool pa_fep_bridge_is_registered(const pa_fep_bridge_t* bridge) {
     return registered;
 }
 
-uint32_t pa_fep_bridge_get_id(const pa_fep_bridge_t* bridge) {
+uint32_t pa_fep_bridge_get_id(pa_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -871,7 +871,7 @@ int pa_fep_bridge_reset_stats(pa_fep_bridge_t* bridge) {
     return 0;
 }
 
-float pa_fep_bridge_get_free_energy(const pa_fep_bridge_t* bridge) {
+float pa_fep_bridge_get_free_energy(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -885,7 +885,7 @@ float pa_fep_bridge_get_free_energy(const pa_fep_bridge_t* bridge) {
     return fe;
 }
 
-float pa_fep_bridge_get_prediction_accuracy(const pa_fep_bridge_t* bridge) {
+float pa_fep_bridge_get_prediction_accuracy(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -899,7 +899,7 @@ float pa_fep_bridge_get_prediction_accuracy(const pa_fep_bridge_t* bridge) {
     return pa;
 }
 
-float pa_fep_bridge_get_prediction_error(const pa_fep_bridge_t* bridge) {
+float pa_fep_bridge_get_prediction_error(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -913,7 +913,7 @@ float pa_fep_bridge_get_prediction_error(const pa_fep_bridge_t* bridge) {
     return pe;
 }
 
-float pa_fep_bridge_get_attention_precision(const pa_fep_bridge_t* bridge) {
+float pa_fep_bridge_get_attention_precision(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -931,7 +931,7 @@ float pa_fep_bridge_get_attention_precision(const pa_fep_bridge_t* bridge) {
  * STATE QUERY FUNCTIONS
  *===========================================================================*/
 
-pa_fep_state_t pa_fep_bridge_get_state(const pa_fep_bridge_t* bridge) {
+pa_fep_state_t pa_fep_bridge_get_state(pa_fep_bridge_t* bridge) {
     if (!bridge) return PA_FEP_STATE_ERROR;
 
     /* Phase 8: Heartbeat at operation start */
@@ -945,7 +945,7 @@ pa_fep_state_t pa_fep_bridge_get_state(const pa_fep_bridge_t* bridge) {
     return state;
 }
 
-bool pa_fep_bridge_is_degraded(const pa_fep_bridge_t* bridge) {
+bool pa_fep_bridge_is_degraded(pa_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -961,7 +961,7 @@ bool pa_fep_bridge_is_degraded(const pa_fep_bridge_t* bridge) {
     return degraded;
 }
 
-bool pa_fep_bridge_is_high_precision(const pa_fep_bridge_t* bridge) {
+bool pa_fep_bridge_is_high_precision(pa_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }

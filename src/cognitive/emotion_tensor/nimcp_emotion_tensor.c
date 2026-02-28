@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
+/* pthread.h no longer needed -- using nimcp_rwlock_t from utils/thread/nimcp_thread.h */
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
@@ -51,7 +51,7 @@ struct emotion_tensor_system {
     emotion_tensor_t tensor;
     emotion_tensor_config_t config;
     emotion_interaction_matrix_t interactions;
-    pthread_rwlock_t lock;
+    nimcp_rwlock_t lock;
     bool initialized;
 };
 
@@ -1193,6 +1193,10 @@ void emotion_tensor_set_instance_health_agent(void* ctx, nimcp_health_agent_t* a
 
 /* ============================================================================
  * Training Stubs (Phase 8 Utility Integration)
+ *
+ * Stub: training integration planned — these are intentional no-ops that
+ * provide heartbeat signaling only. Full training hooks will wire into the
+ * training-immune bridge when per-module gradient propagation is implemented.
  * ============================================================================ */
 
 int emotion_tensor_training_begin(void* ctx) {

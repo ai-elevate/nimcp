@@ -571,7 +571,7 @@ int parietal_fep_bridge_unregister(parietal_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool parietal_fep_bridge_is_registered(const parietal_fep_bridge_t* bridge) {
+bool parietal_fep_bridge_is_registered(parietal_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -587,7 +587,7 @@ bool parietal_fep_bridge_is_registered(const parietal_fep_bridge_t* bridge) {
     return registered;
 }
 
-uint32_t parietal_fep_bridge_get_id(const parietal_fep_bridge_t* bridge) {
+uint32_t parietal_fep_bridge_get_id(parietal_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -819,7 +819,7 @@ int parietal_fep_bridge_reset_stats(parietal_fep_bridge_t* bridge) {
  * ACCESSORS
  *===========================================================================*/
 
-float parietal_fep_bridge_get_free_energy_contribution(const parietal_fep_bridge_t* bridge) {
+float parietal_fep_bridge_get_free_energy_contribution(parietal_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -833,7 +833,7 @@ float parietal_fep_bridge_get_free_energy_contribution(const parietal_fep_bridge
     return fe;
 }
 
-float parietal_fep_bridge_get_spatial_uncertainty(const parietal_fep_bridge_t* bridge) {
+float parietal_fep_bridge_get_spatial_uncertainty(parietal_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -847,7 +847,7 @@ float parietal_fep_bridge_get_spatial_uncertainty(const parietal_fep_bridge_t* b
     return uncertainty;
 }
 
-float parietal_fep_bridge_get_body_schema_error(const parietal_fep_bridge_t* bridge) {
+float parietal_fep_bridge_get_body_schema_error(parietal_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -861,7 +861,7 @@ float parietal_fep_bridge_get_body_schema_error(const parietal_fep_bridge_t* bri
     return error;
 }
 
-float parietal_fep_bridge_get_prediction_error(const parietal_fep_bridge_t* bridge) {
+float parietal_fep_bridge_get_prediction_error(parietal_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -875,7 +875,7 @@ float parietal_fep_bridge_get_prediction_error(const parietal_fep_bridge_t* brid
     return pe;
 }
 
-parietal_fep_state_t parietal_fep_bridge_get_state(const parietal_fep_bridge_t* bridge) {
+parietal_fep_state_t parietal_fep_bridge_get_state(parietal_fep_bridge_t* bridge) {
     if (!bridge) return PARIETAL_FEP_STATE_ERROR;
 
     /* Phase 8: Heartbeat at operation start */
@@ -889,7 +889,7 @@ parietal_fep_state_t parietal_fep_bridge_get_state(const parietal_fep_bridge_t* 
     return state;
 }
 
-bool parietal_fep_bridge_is_degraded(const parietal_fep_bridge_t* bridge) {
+bool parietal_fep_bridge_is_degraded(parietal_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }

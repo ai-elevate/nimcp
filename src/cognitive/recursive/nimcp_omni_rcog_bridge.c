@@ -343,7 +343,7 @@ int omni_rcog_apply_to_omni(omni_rcog_bridge_t* bridge) {
  * Decomposition API
  * ============================================================================ */
 
-int omni_rcog_get_strategy(const omni_rcog_bridge_t* bridge,
+int omni_rcog_get_strategy(omni_rcog_bridge_t* bridge,
                             omni_decomp_strategy_t* strategy) {
     /* Phase 8: Heartbeat at operation start */
     omni_rcog_bridge_heartbeat("omni_rcog_br_omni_rcog_get_strate", 0.0f);
@@ -381,7 +381,7 @@ bool omni_rcog_needs_backward(const omni_rcog_bridge_t* bridge) {
  * Query API
  * ============================================================================ */
 
-int omni_rcog_get_omni_effects(const omni_rcog_bridge_t* bridge,
+int omni_rcog_get_omni_effects(omni_rcog_bridge_t* bridge,
                                 omni_to_rcog_effects_t* effects) {
     /* Phase 8: Heartbeat at operation start */
     omni_rcog_bridge_heartbeat("omni_rcog_br_omni_rcog_get_omni_e", 0.0f);
@@ -394,7 +394,7 @@ int omni_rcog_get_omni_effects(const omni_rcog_bridge_t* bridge,
     return NIMCP_SUCCESS;
 }
 
-int omni_rcog_get_rcog_effects(const omni_rcog_bridge_t* bridge,
+int omni_rcog_get_rcog_effects(omni_rcog_bridge_t* bridge,
                                 rcog_to_omni_effects_t* effects) {
     /* Phase 8: Heartbeat at operation start */
     omni_rcog_bridge_heartbeat("omni_rcog_br_omni_rcog_get_rcog_e", 0.0f);
@@ -407,7 +407,7 @@ int omni_rcog_get_rcog_effects(const omni_rcog_bridge_t* bridge,
     return NIMCP_SUCCESS;
 }
 
-int omni_rcog_get_stats(const omni_rcog_bridge_t* bridge,
+int omni_rcog_get_stats(omni_rcog_bridge_t* bridge,
                          omni_rcog_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     omni_rcog_bridge_heartbeat("omni_rcog_br_omni_rcog_get_stats", 0.0f);

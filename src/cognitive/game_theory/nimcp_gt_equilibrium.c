@@ -146,7 +146,7 @@ nimcp_equilibrium_config_t nimcp_equilibrium_default_config(
 
 nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* config) {
     if (!config || config->num_players == 0 || config->num_players > NIMCP_GT_MAX_PLAYERS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_equilibrium_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_equilibrium_create: config is NULL or num_players invalid");
         return NULL;
     }
 

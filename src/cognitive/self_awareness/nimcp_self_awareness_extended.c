@@ -782,6 +782,10 @@ void self_awareness_extended_set_instance_health_agent(void* instance, nimcp_hea
 
 /* ============================================================================
  * Phase 8: Training stubs
+ *
+ * Stub: training integration planned — these are intentional no-ops that
+ * provide heartbeat signaling only. Full training hooks will wire into the
+ * training-immune bridge when per-module gradient propagation is implemented.
  * ============================================================================ */
 int self_awareness_extended_training_begin(void* instance) {
     if (!instance) {

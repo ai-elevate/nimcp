@@ -1121,6 +1121,10 @@ void tom_snn_bridge_set_instance_health_agent(void* instance, nimcp_health_agent
 
 /* ============================================================================
  * Phase 8: Training stubs
+ *
+ * Stub: training integration planned — these are intentional no-ops that
+ * provide heartbeat signaling only. Full training hooks will wire into the
+ * training-immune bridge when per-module gradient propagation is implemented.
  * ============================================================================ */
 int tom_snn_bridge_training_begin(void* instance) {
     if (!instance) {

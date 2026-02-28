@@ -365,7 +365,7 @@ int omni_logic_apply_to_omni(omni_logic_bridge_t* bridge) {
  * Inference Direction API
  * ============================================================================ */
 
-int omni_logic_get_direction(const omni_logic_bridge_t* bridge,
+int omni_logic_get_direction(omni_logic_bridge_t* bridge,
                               omni_infer_direction_t* direction) {
     /* Phase 8: Heartbeat at operation start */
     omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_get_direc", 0.0f);
@@ -422,7 +422,7 @@ int omni_logic_set_condition(omni_logic_bridge_t* bridge,
     return NIMCP_SUCCESS;
 }
 
-int omni_logic_get_conditions(const omni_logic_bridge_t* bridge,
+int omni_logic_get_conditions(omni_logic_bridge_t* bridge,
                                omni_logic_conditions_t* conditions) {
     /* Phase 8: Heartbeat at operation start */
     omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_get_condi", 0.0f);
@@ -598,7 +598,7 @@ int omni_logic_evaluate_rule(omni_logic_bridge_t* bridge,
  * Query API
  * ============================================================================ */
 
-int omni_logic_get_omni_effects(const omni_logic_bridge_t* bridge,
+int omni_logic_get_omni_effects(omni_logic_bridge_t* bridge,
                                  omni_to_logic_effects_t* effects) {
     /* Phase 8: Heartbeat at operation start */
     omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_get_omni_", 0.0f);
@@ -611,7 +611,7 @@ int omni_logic_get_omni_effects(const omni_logic_bridge_t* bridge,
     return NIMCP_SUCCESS;
 }
 
-int omni_logic_get_logic_effects(const omni_logic_bridge_t* bridge,
+int omni_logic_get_logic_effects(omni_logic_bridge_t* bridge,
                                   logic_to_omni_effects_t* effects) {
     /* Phase 8: Heartbeat at operation start */
     omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_get_logic", 0.0f);
@@ -624,7 +624,7 @@ int omni_logic_get_logic_effects(const omni_logic_bridge_t* bridge,
     return NIMCP_SUCCESS;
 }
 
-int omni_logic_get_stats(const omni_logic_bridge_t* bridge,
+int omni_logic_get_stats(omni_logic_bridge_t* bridge,
                           omni_logic_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_get_stats", 0.0f);

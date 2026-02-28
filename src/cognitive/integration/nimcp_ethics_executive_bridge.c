@@ -282,7 +282,6 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
 void ethics_executive_bridge_destroy(ethics_executive_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "ethics_executive");
     }
 
     /* Destroy mutex */

@@ -1094,7 +1094,7 @@ int chemistry_set_sleep_deprivation(chemistry_t* chem, float level) {
  * STATISTICS API
  * ============================================================================ */
 
-int chemistry_get_stats(const chemistry_t* chem, chemistry_stats_t* stats) {
+int chemistry_get_stats(chemistry_t* chem, chemistry_stats_t* stats) {
     if (!chem || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_get_stats: required parameter is NULL (chem, stats)");
         return -1;

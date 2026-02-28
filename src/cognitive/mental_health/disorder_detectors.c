@@ -2,6 +2,10 @@
  * @file disorder_detectors.c
  * @brief Mental Health Disorder Detection Algorithms
  * @phase Phase 10.5
+ * @deprecated This file is DEAD CODE as of 2026-02-28. The detector functions
+ *             have been inlined into nimcp_mental_health.c. This file is neither
+ *             compiled standalone (not in CMakeLists.txt) nor #included by
+ *             nimcp_mental_health.c. Retained for reference only.
  *
  * WHAT: 9 disorder detection functions with clinical-inspired algorithms
  * WHY:  Early detection prevents escalation of harmful behaviors
@@ -13,8 +17,8 @@
  * 3. Apply confidence adjustments (data sufficiency)
  * 4. Clamp to [0.0, 1.0] range
  *
- * @note This file is #included by nimcp_mental_health.c (not compiled standalone)
- * @note Bio-async, logging, and unified memory provided by parent file
+ * @note This file was formerly #included by nimcp_mental_health.c (not compiled standalone)
+ * @note Bio-async, logging, and unified memory were provided by parent file
  */
 
 // Includes provided by nimcp_mental_health.c:

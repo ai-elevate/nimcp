@@ -105,7 +105,7 @@ NIMCP_API energy_consistency_checker_t* energy_consistency_create(
     checker = (energy_consistency_checker_t*)nimcp_calloc(
         1, sizeof(energy_consistency_checker_t));
     if (!checker) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate energy consistency checker");
         return NULL;
     }
@@ -402,9 +402,9 @@ NIMCP_API nimcp_error_t energy_consistency_check_proof(
         if (visited) nimcp_free(visited);
         if (in_stack) nimcp_free(in_stack);
         nimcp_mutex_unlock(checker->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate proof validation arrays");
-        return NIMCP_ERROR_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     /* Check each proof step */
@@ -897,9 +897,9 @@ NIMCP_API nimcp_error_t energy_consistency_result_init(
         result->violations = (consistency_violation_t*)nimcp_calloc(
             max_violations, sizeof(consistency_violation_t));
         if (!result->violations) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                 "energy_consistency_result_init: failed to allocate violations array");
-            return NIMCP_ERROR_MEMORY;
+            return NIMCP_ERROR_NO_MEMORY;
         }
         result->violation_capacity = max_violations;
     }

@@ -88,8 +88,8 @@ int knowledge_fep_update_knowledge(knowledge_fep_bridge_t* bridge, float predict
 int knowledge_fep_apply_semantic_priors(knowledge_fep_bridge_t* bridge);
 
 int knowledge_fep_bridge_update(knowledge_fep_bridge_t* bridge, uint64_t delta_ms);
-int knowledge_fep_bridge_get_state(const knowledge_fep_bridge_t* bridge, knowledge_fep_state_t* state);
-int knowledge_fep_bridge_get_stats(const knowledge_fep_bridge_t* bridge, knowledge_fep_stats_t* stats);
+int knowledge_fep_bridge_get_state(knowledge_fep_bridge_t* bridge, knowledge_fep_state_t* state);
+int knowledge_fep_bridge_get_stats(knowledge_fep_bridge_t* bridge, knowledge_fep_stats_t* stats);
 
 int knowledge_fep_bridge_connect_bio_async(knowledge_fep_bridge_t* bridge);
 int knowledge_fep_bridge_disconnect_bio_async(knowledge_fep_bridge_t* bridge);

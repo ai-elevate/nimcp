@@ -172,7 +172,7 @@ int personality_fep_bridge_update(personality_fep_bridge_t* bridge) {
     return 0;
 }
 
-int personality_fep_bridge_get_state(const personality_fep_bridge_t* bridge,
+int personality_fep_bridge_get_state(personality_fep_bridge_t* bridge,
                                       personality_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     personality_fep_bridge_heartbeat("personality__get_state", 0.0f);
@@ -185,7 +185,7 @@ int personality_fep_bridge_get_state(const personality_fep_bridge_t* bridge,
     return 0;
 }
 
-int personality_fep_bridge_get_stats(const personality_fep_bridge_t* bridge,
+int personality_fep_bridge_get_stats(personality_fep_bridge_t* bridge,
                                       personality_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     personality_fep_bridge_heartbeat("personality__get_stats", 0.0f);

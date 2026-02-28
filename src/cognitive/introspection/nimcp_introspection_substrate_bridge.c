@@ -675,7 +675,7 @@ int introspection_substrate_get_effects(
     return NIMCP_SUCCESS;
 }
 
-bool introspection_substrate_is_impaired(const introspection_substrate_bridge_t* bridge) {
+bool introspection_substrate_is_impaired(introspection_substrate_bridge_t* bridge) {
     /* Guard: validate bridge pointer */
     if (!bridge) {
         return false;

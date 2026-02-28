@@ -409,7 +409,7 @@ int analysis_fep_bridge_update(analysis_fep_bridge_t* bridge, uint64_t delta_ms)
  * WHY:  External monitoring of integration status
  * HOW:  Copy state with mutex protection
  */
-int analysis_fep_bridge_get_state(const analysis_fep_bridge_t* bridge, analysis_fep_state_t* state) {
+int analysis_fep_bridge_get_state(analysis_fep_bridge_t* bridge, analysis_fep_state_t* state) {
     if (!bridge || !state) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_get_state: bridge or state is NULL");
         return -1;
@@ -431,7 +431,7 @@ int analysis_fep_bridge_get_state(const analysis_fep_bridge_t* bridge, analysis_
  * WHY:  Performance monitoring and debugging
  * HOW:  Copy stats with mutex protection
  */
-int analysis_fep_bridge_get_stats(const analysis_fep_bridge_t* bridge, analysis_fep_stats_t* stats) {
+int analysis_fep_bridge_get_stats(analysis_fep_bridge_t* bridge, analysis_fep_stats_t* stats) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_get_stats: bridge or stats is NULL");
         return -1;

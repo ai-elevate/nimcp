@@ -201,7 +201,7 @@ int introspection_fep_bridge_update(introspection_fep_bridge_t* bridge, uint64_t
     return 0;
 }
 
-int introspection_fep_bridge_get_state(const introspection_fep_bridge_t* bridge, introspection_fep_state_t* state) {
+int introspection_fep_bridge_get_state(introspection_fep_bridge_t* bridge, introspection_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     introspection_fep_bridge_heartbeat("introspectio_get_state", 0.0f);
 
@@ -213,7 +213,7 @@ int introspection_fep_bridge_get_state(const introspection_fep_bridge_t* bridge,
     return 0;
 }
 
-int introspection_fep_bridge_get_stats(const introspection_fep_bridge_t* bridge, introspection_fep_stats_t* stats) {
+int introspection_fep_bridge_get_stats(introspection_fep_bridge_t* bridge, introspection_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     introspection_fep_bridge_heartbeat("introspectio_get_stats", 0.0f);
 

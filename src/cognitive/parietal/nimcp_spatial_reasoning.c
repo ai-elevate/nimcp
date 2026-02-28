@@ -1270,7 +1270,7 @@ int spatial_set_fatigue(spatial_reasoning_t* sr, float level) {
  * STATISTICS API
  * ============================================================================ */
 
-int spatial_get_stats(const spatial_reasoning_t* sr, spatial_stats_t* stats) {
+int spatial_get_stats(spatial_reasoning_t* sr, spatial_stats_t* stats) {
     if (!sr) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_get_stats: sr is NULL");
         return -1;

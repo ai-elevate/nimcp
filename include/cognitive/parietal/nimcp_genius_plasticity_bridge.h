@@ -657,7 +657,7 @@ int genius_plasticity_send_heartbeat(genius_plasticity_bridge_t* bridge);
  * @return Last heartbeat timestamp in microseconds, 0 on error
  */
 uint64_t genius_plasticity_get_last_heartbeat(
-    const genius_plasticity_bridge_t* bridge
+    genius_plasticity_bridge_t* bridge
 );
 
 /**

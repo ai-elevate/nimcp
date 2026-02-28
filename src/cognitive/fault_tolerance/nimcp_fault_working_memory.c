@@ -79,6 +79,9 @@ struct fault_working_memory {
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    // Health agent (per-instance)
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
@@ -764,9 +767,9 @@ int fault_working_memory_query_self_knowledge(kg_reader_t* kg) {
  * ============================================================================ */
 
 void fault_working_memory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
-    if (instance) {
-        (void)agent;
-        g_fault_working_memory_health_agent = agent;
+    fault_working_memory_t* self = (fault_working_memory_t*)instance;
+    if (self) {
+        self->health_agent = agent;
     }
 }
 

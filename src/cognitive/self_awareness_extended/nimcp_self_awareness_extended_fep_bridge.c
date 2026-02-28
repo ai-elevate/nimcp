@@ -195,7 +195,7 @@ int self_awareness_extended_fep_bridge_update(self_awareness_extended_fep_bridge
     return 0;
 }
 
-int self_awareness_extended_fep_bridge_get_state(const self_awareness_extended_fep_bridge_t* bridge, self_awareness_extended_fep_state_t* state) {
+int self_awareness_extended_fep_bridge_get_state(self_awareness_extended_fep_bridge_t* bridge, self_awareness_extended_fep_state_t* state) {
     NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -203,7 +203,7 @@ int self_awareness_extended_fep_bridge_get_state(const self_awareness_extended_f
     return 0;
 }
 
-int self_awareness_extended_fep_bridge_get_stats(const self_awareness_extended_fep_bridge_t* bridge, self_awareness_extended_fep_stats_t* stats) {
+int self_awareness_extended_fep_bridge_get_stats(self_awareness_extended_fep_bridge_t* bridge, self_awareness_extended_fep_stats_t* stats) {
     NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;

@@ -202,7 +202,7 @@ int emotion_tensor_thalamic_set_attention(emotion_tensor_thalamic_bridge_t* brid
     return 0;
 }
 
-int emotion_tensor_thalamic_get_attention(const emotion_tensor_thalamic_bridge_t* bridge, float* attention) {
+int emotion_tensor_thalamic_get_attention(emotion_tensor_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
@@ -217,7 +217,7 @@ int emotion_tensor_thalamic_get_attention(const emotion_tensor_thalamic_bridge_t
     return 0;
 }
 
-int emotion_tensor_thalamic_bridge_get_stats(const emotion_tensor_thalamic_bridge_t* bridge, emotion_tensor_thalamic_stats_t* stats) {
+int emotion_tensor_thalamic_bridge_get_stats(emotion_tensor_thalamic_bridge_t* bridge, emotion_tensor_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
@@ -284,6 +284,10 @@ void emotion_tensor_thalamic_bridge_set_instance_health_agent(emotion_tensor_tha
 
 /* ============================================================================
  * Training Stubs (Phase 8 Utility Integration)
+ *
+ * Stub: training integration planned — these are intentional no-ops that
+ * provide heartbeat signaling only. Full training hooks will wire into the
+ * training-immune bridge when per-module gradient propagation is implemented.
  * ============================================================================ */
 
 int emotion_tensor_thalamic_bridge_training_begin(emotion_tensor_thalamic_bridge_t* bridge) {

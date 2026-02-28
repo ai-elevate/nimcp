@@ -97,7 +97,7 @@ reasoning_curiosity_t* reasoning_curiosity_create_custom(
     event_bus_t bus, curiosity_engine_t curiosity, const reasoning_curiosity_config_t* config
 ) {
     if (!bus || !curiosity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_curiosity_create_custom: required parameter is NULL (bus, curiosity)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_create_custom: required parameter is NULL (bus, curiosity)");
         return NULL;
     }
     

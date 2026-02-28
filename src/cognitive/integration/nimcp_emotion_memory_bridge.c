@@ -304,7 +304,6 @@ emotion_memory_bridge_t* emotion_memory_bridge_create(
 void emotion_memory_bridge_destroy(emotion_memory_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "emotion_memory");
     }
 
     /* Destroy mutex */

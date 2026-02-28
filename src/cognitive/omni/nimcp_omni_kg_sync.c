@@ -652,7 +652,7 @@ int omni_kg_get_predictors_for(const omni_kg_sync_t* sync,
     return (int)count;
 }
 
-brain_kg_node_id_t omni_kg_get_node_by_name(const omni_kg_sync_t* sync,
+brain_kg_node_id_t omni_kg_get_node_by_name(omni_kg_sync_t* sync,
                                              const char* name) {
     if (!sync || !name) return BRAIN_KG_INVALID_NODE;
 
@@ -670,7 +670,7 @@ brain_kg_node_id_t omni_kg_get_node_by_name(const omni_kg_sync_t* sync,
     return result;
 }
 
-omni_kg_capability_t omni_kg_get_capabilities(const omni_kg_sync_t* sync,
+omni_kg_capability_t omni_kg_get_capabilities(omni_kg_sync_t* sync,
                                                brain_kg_node_id_t node) {
     if (!sync) return OMNI_KG_CAP_NONE;
 
@@ -773,7 +773,7 @@ int omni_kg_sync_capabilities(omni_kg_sync_t* sync) {
     return NIMCP_SUCCESS;
 }
 
-int omni_kg_get_sync_stats(const omni_kg_sync_t* sync,
+int omni_kg_get_sync_stats(omni_kg_sync_t* sync,
                             omni_kg_sync_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_get_sync_sta", 0.0f);

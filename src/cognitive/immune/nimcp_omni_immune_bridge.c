@@ -420,7 +420,7 @@ int omni_immune_apply_to_omni(omni_immune_bridge_t* bridge) {
  * Query API
  * ============================================================================ */
 
-int omni_immune_get_omni_effects(const omni_immune_bridge_t* bridge,
+int omni_immune_get_omni_effects(omni_immune_bridge_t* bridge,
                                   omni_to_immune_effects_t* effects) {
     /* Phase 8: Heartbeat at operation start */
     omni_immune_bridge_heartbeat("omni_immune__omni_immune_get_omni", 0.0f);
@@ -433,7 +433,7 @@ int omni_immune_get_omni_effects(const omni_immune_bridge_t* bridge,
     return NIMCP_SUCCESS;
 }
 
-int omni_immune_get_immune_effects(const omni_immune_bridge_t* bridge,
+int omni_immune_get_immune_effects(omni_immune_bridge_t* bridge,
                                     immune_to_omni_effects_t* effects) {
     /* Phase 8: Heartbeat at operation start */
     omni_immune_bridge_heartbeat("omni_immune__omni_immune_get_immu", 0.0f);
@@ -446,7 +446,7 @@ int omni_immune_get_immune_effects(const omni_immune_bridge_t* bridge,
     return NIMCP_SUCCESS;
 }
 
-int omni_immune_get_stats(const omni_immune_bridge_t* bridge,
+int omni_immune_get_stats(omni_immune_bridge_t* bridge,
                            omni_immune_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     omni_immune_bridge_heartbeat("omni_immune__omni_immune_get_stat", 0.0f);

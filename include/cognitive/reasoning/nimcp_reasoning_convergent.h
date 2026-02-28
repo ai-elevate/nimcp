@@ -273,7 +273,7 @@ float reasoning_accumulator_apply_modulation(evidence_accumulator_t* acc);
  * @param acc Evidence accumulator
  * @return true if converged
  */
-bool reasoning_accumulator_is_converged(const evidence_accumulator_t* acc);
+bool reasoning_accumulator_is_converged(evidence_accumulator_t* acc);
 
 #ifdef __cplusplus
 }

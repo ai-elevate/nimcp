@@ -57,7 +57,7 @@ int emotion_tensor_thalamic_bridge_reset(emotion_tensor_thalamic_bridge_t* bridg
 int emotion_tensor_thalamic_route_update(emotion_tensor_thalamic_bridge_t* bridge, const emotion_tensor_thalamic_signal_t* signal);
 int emotion_tensor_thalamic_route_blend(emotion_tensor_thalamic_bridge_t* bridge, const void* tensor, float blend_weight);
 int emotion_tensor_thalamic_set_attention(emotion_tensor_thalamic_bridge_t* bridge, float attention);
-int emotion_tensor_thalamic_get_attention(const emotion_tensor_thalamic_bridge_t* bridge, float* attention);
+int emotion_tensor_thalamic_get_attention(emotion_tensor_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t updates_routed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_arousal_level;
 } emotion_tensor_thalamic_stats_t;
 
-int emotion_tensor_thalamic_bridge_get_stats(const emotion_tensor_thalamic_bridge_t* bridge, emotion_tensor_thalamic_stats_t* stats);
+int emotion_tensor_thalamic_bridge_get_stats(emotion_tensor_thalamic_bridge_t* bridge, emotion_tensor_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

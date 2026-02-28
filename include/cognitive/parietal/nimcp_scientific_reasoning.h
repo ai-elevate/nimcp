@@ -603,7 +603,7 @@ int scientific_set_sleep_deprivation(
  * @return 0 on success
  */
 int scientific_get_stats(
-    const scientific_reasoning_t* sr,
+    scientific_reasoning_t* sr,
     scientific_stats_t* stats
 );
 

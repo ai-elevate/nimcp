@@ -247,7 +247,7 @@ int predictive_immune_thalamic_set_attention(predictive_immune_thalamic_bridge_t
     return 0;
 }
 
-int predictive_immune_thalamic_get_attention(const predictive_immune_thalamic_bridge_t* bridge, float* attention) {
+int predictive_immune_thalamic_get_attention(predictive_immune_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
@@ -262,7 +262,7 @@ int predictive_immune_thalamic_get_attention(const predictive_immune_thalamic_br
     return 0;
 }
 
-int predictive_immune_thalamic_bridge_get_stats(const predictive_immune_thalamic_bridge_t* bridge, predictive_immune_thalamic_stats_t* stats) {
+int predictive_immune_thalamic_bridge_get_stats(predictive_immune_thalamic_bridge_t* bridge, predictive_immune_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;

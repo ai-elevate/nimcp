@@ -7,7 +7,7 @@
 // Query Functions
 //=============================================================================
 
-bool global_workspace_has_broadcast(const global_workspace_t* workspace) {
+bool global_workspace_has_broadcast(global_workspace_t* workspace) {
     if (workspace == NULL) {
         return false;
     }
@@ -70,7 +70,7 @@ float global_workspace_get_broadcast_strength(
 }
 
 
-uint32_t global_workspace_get_subscriber_count(const global_workspace_t* workspace) {
+uint32_t global_workspace_get_subscriber_count(global_workspace_t* workspace) {
     if (workspace == NULL) return 0;
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_get_subscriber_count", 0.0f);
@@ -87,7 +87,7 @@ uint32_t global_workspace_get_subscriber_count(const global_workspace_t* workspa
 }
 
 
-uint32_t global_workspace_get_competitor_count(const global_workspace_t* workspace) {
+uint32_t global_workspace_get_competitor_count(global_workspace_t* workspace) {
     if (workspace == NULL) return 0;
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_get_competitor_count", 0.0f);
@@ -289,7 +289,7 @@ bool global_workspace_set_ignition_threshold(
 }
 
 
-float global_workspace_get_ignition_threshold(const global_workspace_t* workspace) {
+float global_workspace_get_ignition_threshold(global_workspace_t* workspace) {
     if (workspace == NULL) return 0.0F;
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_get_ignition_thresho", 0.0f);

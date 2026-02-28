@@ -377,7 +377,7 @@ void working_memory_clear(working_memory_t* wm);
  * @param wm Working memory instance (non-NULL)
  * @return Number of items [0, capacity]
  */
-uint32_t working_memory_get_size(const working_memory_t* wm);
+uint32_t working_memory_get_size(working_memory_t* wm);
 
 /**
  * @brief Get current number of items (alias for get_size)
@@ -405,7 +405,7 @@ uint32_t working_memory_get_count(const working_memory_t* wm);
  * @param wm Working memory instance (non-NULL)
  * @return Utilization [0.0, 1.0] where 1.0 = full
  */
-float working_memory_get_utilization(const working_memory_t* wm);
+float working_memory_get_utilization(working_memory_t* wm);
 
 /**
  * @brief Get maximum capacity of working memory
@@ -419,7 +419,7 @@ float working_memory_get_utilization(const working_memory_t* wm);
  * @param wm Working memory instance (non-NULL)
  * @return Capacity (typically 7)
  */
-uint32_t working_memory_get_capacity(const working_memory_t* wm);
+uint32_t working_memory_get_capacity(working_memory_t* wm);
 
 //=============================================================================
 // Salience & Attention
@@ -794,7 +794,7 @@ int working_memory_find_lowest_salience(
  * @param wm Working memory instance (non-NULL)
  * @return true if current_size == capacity
  */
-bool working_memory_is_full(const working_memory_t* wm);
+bool working_memory_is_full(working_memory_t* wm);
 
 /**
  * @brief Check if working memory is empty
@@ -848,7 +848,7 @@ bool working_memory_set_sleep_state(working_memory_t* wm, sleep_state_t state);
  * @param wm Working memory instance (non-NULL)
  * @return Current sleep state, or SLEEP_STATE_AWAKE if NULL
  */
-sleep_state_t working_memory_get_sleep_state(const working_memory_t* wm);
+sleep_state_t working_memory_get_sleep_state(working_memory_t* wm);
 
 //=============================================================================
 // Positional Encoding Functions

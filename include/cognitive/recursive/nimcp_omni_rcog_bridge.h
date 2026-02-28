@@ -307,7 +307,7 @@ int omni_rcog_apply_to_omni(omni_rcog_bridge_t* bridge);
  * @param strategy Output strategy
  * @return NIMCP_SUCCESS on success
  */
-int omni_rcog_get_strategy(const omni_rcog_bridge_t* bridge,
+int omni_rcog_get_strategy(omni_rcog_bridge_t* bridge,
                             omni_decomp_strategy_t* strategy);
 
 /**
@@ -333,19 +333,19 @@ bool omni_rcog_needs_backward(const omni_rcog_bridge_t* bridge);
 /**
  * @brief Get omni-to-rcog effects
  */
-int omni_rcog_get_omni_effects(const omni_rcog_bridge_t* bridge,
+int omni_rcog_get_omni_effects(omni_rcog_bridge_t* bridge,
                                 omni_to_rcog_effects_t* effects);
 
 /**
  * @brief Get rcog-to-omni effects
  */
-int omni_rcog_get_rcog_effects(const omni_rcog_bridge_t* bridge,
+int omni_rcog_get_rcog_effects(omni_rcog_bridge_t* bridge,
                                 rcog_to_omni_effects_t* effects);
 
 /**
  * @brief Get statistics
  */
-int omni_rcog_get_stats(const omni_rcog_bridge_t* bridge,
+int omni_rcog_get_stats(omni_rcog_bridge_t* bridge,
                          omni_rcog_stats_t* stats);
 
 /**

@@ -208,8 +208,8 @@ int social_bond_fep_update_model_from_betrayal(social_bond_fep_bridge_t* bridge)
  * ============================================================================ */
 
 int social_bond_fep_bridge_update(social_bond_fep_bridge_t* bridge, uint64_t delta_ms);
-int social_bond_fep_bridge_get_state(const social_bond_fep_bridge_t* bridge, social_bond_fep_state_t* state);
-int social_bond_fep_bridge_get_stats(const social_bond_fep_bridge_t* bridge, social_bond_fep_stats_t* stats);
+int social_bond_fep_bridge_get_state(social_bond_fep_bridge_t* bridge, social_bond_fep_state_t* state);
+int social_bond_fep_bridge_get_stats(social_bond_fep_bridge_t* bridge, social_bond_fep_stats_t* stats);
 
 /* ============================================================================
  * Bio-async Integration API

@@ -1572,7 +1572,7 @@ int enhanced_wellbeing_update_free_energy(enhanced_wellbeing_system_t* system) {
  * WHY:  Simple query for wellbeing level
  * HOW:  Thread-safe read
  */
-float enhanced_wellbeing_get_score(const enhanced_wellbeing_system_t* system) {
+float enhanced_wellbeing_get_score(enhanced_wellbeing_system_t* system) {
     if (!system) return 0.0f;
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);

@@ -2177,7 +2177,7 @@ int parietal_lobe_quantum_vqe(parietal_lobe_t* parietal,
  * STATISTICS API
  * ============================================================================ */
 
-int parietal_get_stats(const parietal_lobe_t* parietal, parietal_stats_t* stats) {
+int parietal_get_stats(parietal_lobe_t* parietal, parietal_stats_t* stats) {
     if (!parietal) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_get_stats: parietal is NULL");
         return -1;

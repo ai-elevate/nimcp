@@ -341,13 +341,13 @@ int surprise_amplifier_update(surprise_amplifier_t* amp, float dt_seconds);
  * ============================================================================ */
 
 /** @brief Get current surprise level [0-1], -1.0f on error */
-float surprise_amplifier_get_current_level(const surprise_amplifier_t* amp);
+float surprise_amplifier_get_current_level(surprise_amplifier_t* amp);
 
 /** @brief Check if amplifier is in refractory period */
-bool surprise_amplifier_is_in_refractory(const surprise_amplifier_t* amp);
+bool surprise_amplifier_is_in_refractory(surprise_amplifier_t* amp);
 
 /** @brief Get the most recent surprise event */
-int surprise_amplifier_get_last_event(const surprise_amplifier_t* amp,
+int surprise_amplifier_get_last_event(surprise_amplifier_t* amp,
                                        surprise_event_t* event_out);
 
 /** @brief Get recent event history */

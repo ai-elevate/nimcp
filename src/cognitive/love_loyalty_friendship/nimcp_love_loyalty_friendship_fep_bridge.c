@@ -244,7 +244,7 @@ int social_bond_fep_bridge_update(social_bond_fep_bridge_t* bridge, uint64_t del
     return 0;
 }
 
-int social_bond_fep_bridge_get_state(const social_bond_fep_bridge_t* bridge, social_bond_fep_state_t* state) {
+int social_bond_fep_bridge_get_state(social_bond_fep_bridge_t* bridge, social_bond_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
 
@@ -256,7 +256,7 @@ int social_bond_fep_bridge_get_state(const social_bond_fep_bridge_t* bridge, soc
     return 0;
 }
 
-int social_bond_fep_bridge_get_stats(const social_bond_fep_bridge_t* bridge, social_bond_fep_stats_t* stats) {
+int social_bond_fep_bridge_get_stats(social_bond_fep_bridge_t* bridge, social_bond_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
 

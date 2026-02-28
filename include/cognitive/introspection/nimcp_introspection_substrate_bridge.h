@@ -410,7 +410,7 @@ int introspection_substrate_get_effects(
  * BIOLOGICAL BASIS: Severe ATP depletion causes loss of metacognitive insight,
  *                   diminished self-awareness, and impaired introspective access.
  */
-bool introspection_substrate_is_impaired(const introspection_substrate_bridge_t* bridge);
+bool introspection_substrate_is_impaired(introspection_substrate_bridge_t* bridge);
 
 /**
  * Get bridge statistics

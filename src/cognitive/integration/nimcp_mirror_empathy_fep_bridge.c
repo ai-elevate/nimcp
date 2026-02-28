@@ -555,7 +555,7 @@ int me_fep_bridge_unregister(me_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool me_fep_bridge_is_registered(const me_fep_bridge_t* bridge) {
+bool me_fep_bridge_is_registered(me_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -571,7 +571,7 @@ bool me_fep_bridge_is_registered(const me_fep_bridge_t* bridge) {
     return registered;
 }
 
-uint32_t me_fep_bridge_get_id(const me_fep_bridge_t* bridge) {
+uint32_t me_fep_bridge_get_id(me_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -851,7 +851,7 @@ int me_fep_bridge_reset_stats(me_fep_bridge_t* bridge) {
     return 0;
 }
 
-float me_fep_bridge_get_free_energy(const me_fep_bridge_t* bridge) {
+float me_fep_bridge_get_free_energy(me_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -865,7 +865,7 @@ float me_fep_bridge_get_free_energy(const me_fep_bridge_t* bridge) {
     return fe;
 }
 
-float me_fep_bridge_get_mirroring_error(const me_fep_bridge_t* bridge) {
+float me_fep_bridge_get_mirroring_error(me_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -879,7 +879,7 @@ float me_fep_bridge_get_mirroring_error(const me_fep_bridge_t* bridge) {
     return me;
 }
 
-float me_fep_bridge_get_prediction_error(const me_fep_bridge_t* bridge) {
+float me_fep_bridge_get_prediction_error(me_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -897,7 +897,7 @@ float me_fep_bridge_get_prediction_error(const me_fep_bridge_t* bridge) {
  * STATE QUERY FUNCTIONS
  *===========================================================================*/
 
-me_fep_state_t me_fep_bridge_get_state(const me_fep_bridge_t* bridge) {
+me_fep_state_t me_fep_bridge_get_state(me_fep_bridge_t* bridge) {
     if (!bridge) return ME_FEP_STATE_ERROR;
 
     /* Phase 8: Heartbeat at operation start */
@@ -911,7 +911,7 @@ me_fep_state_t me_fep_bridge_get_state(const me_fep_bridge_t* bridge) {
     return state;
 }
 
-bool me_fep_bridge_is_degraded(const me_fep_bridge_t* bridge) {
+bool me_fep_bridge_is_degraded(me_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -927,7 +927,7 @@ bool me_fep_bridge_is_degraded(const me_fep_bridge_t* bridge) {
     return degraded;
 }
 
-bool me_fep_bridge_is_high_resonance(const me_fep_bridge_t* bridge) {
+bool me_fep_bridge_is_high_resonance(me_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }

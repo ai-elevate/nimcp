@@ -285,7 +285,7 @@ int executive_fep_bridge_update(executive_fep_bridge_t* bridge, uint64_t delta_m
     return 0;
 }
 
-int executive_fep_bridge_get_state(const executive_fep_bridge_t* bridge, executive_fep_state_t* state) {
+int executive_fep_bridge_get_state(executive_fep_bridge_t* bridge, executive_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     executive_fep_bridge_heartbeat("executive_fe_get_state", 0.0f);
 
@@ -297,7 +297,7 @@ int executive_fep_bridge_get_state(const executive_fep_bridge_t* bridge, executi
     return 0;
 }
 
-int executive_fep_bridge_get_stats(const executive_fep_bridge_t* bridge, executive_fep_stats_t* stats) {
+int executive_fep_bridge_get_stats(executive_fep_bridge_t* bridge, executive_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     executive_fep_bridge_heartbeat("executive_fe_get_stats", 0.0f);
 

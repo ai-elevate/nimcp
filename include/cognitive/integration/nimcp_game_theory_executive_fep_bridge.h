@@ -388,7 +388,7 @@ int gt_exec_fep_bridge_unregister(gt_exec_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if registered with orchestrator
  */
-bool gt_exec_fep_bridge_is_registered(const gt_exec_fep_bridge_t* bridge);
+bool gt_exec_fep_bridge_is_registered(gt_exec_fep_bridge_t* bridge);
 
 /**
  * @brief Get the FEP bridge ID assigned by orchestrator
@@ -396,7 +396,7 @@ bool gt_exec_fep_bridge_is_registered(const gt_exec_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Bridge ID, or 0 if not registered
  */
-uint32_t gt_exec_fep_bridge_get_id(const gt_exec_fep_bridge_t* bridge);
+uint32_t gt_exec_fep_bridge_get_id(gt_exec_fep_bridge_t* bridge);
 
 /*=============================================================================
  * FEP UPDATE CALLBACK (Internal - used by FEP orchestrator)
@@ -555,7 +555,7 @@ int gt_exec_fep_bridge_reset_stats(gt_exec_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current free energy, -1.0f on error
  */
-float gt_exec_fep_bridge_get_free_energy(const gt_exec_fep_bridge_t* bridge);
+float gt_exec_fep_bridge_get_free_energy(gt_exec_fep_bridge_t* bridge);
 
 /**
  * @brief Get current decision quality
@@ -563,7 +563,7 @@ float gt_exec_fep_bridge_get_free_energy(const gt_exec_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Decision quality [0, 1], -1.0f on error
  */
-float gt_exec_fep_bridge_get_decision_quality(const gt_exec_fep_bridge_t* bridge);
+float gt_exec_fep_bridge_get_decision_quality(gt_exec_fep_bridge_t* bridge);
 
 /**
  * @brief Get current prediction error
@@ -571,7 +571,7 @@ float gt_exec_fep_bridge_get_decision_quality(const gt_exec_fep_bridge_t* bridge
  * @param bridge Bridge handle
  * @return Current prediction error, -1.0f on error
  */
-float gt_exec_fep_bridge_get_prediction_error(const gt_exec_fep_bridge_t* bridge);
+float gt_exec_fep_bridge_get_prediction_error(gt_exec_fep_bridge_t* bridge);
 
 /**
  * @brief Get current executive alignment
@@ -579,7 +579,7 @@ float gt_exec_fep_bridge_get_prediction_error(const gt_exec_fep_bridge_t* bridge
  * @param bridge Bridge handle
  * @return Executive alignment [0, 1], -1.0f on error
  */
-float gt_exec_fep_bridge_get_executive_alignment(const gt_exec_fep_bridge_t* bridge);
+float gt_exec_fep_bridge_get_executive_alignment(gt_exec_fep_bridge_t* bridge);
 
 /*=============================================================================
  * STATE QUERY FUNCTIONS
@@ -591,7 +591,7 @@ float gt_exec_fep_bridge_get_executive_alignment(const gt_exec_fep_bridge_t* bri
  * @param bridge Bridge handle
  * @return Current state
  */
-gt_exec_fep_state_t gt_exec_fep_bridge_get_state(const gt_exec_fep_bridge_t* bridge);
+gt_exec_fep_state_t gt_exec_fep_bridge_get_state(gt_exec_fep_bridge_t* bridge);
 
 /**
  * @brief Check if in degraded mode
@@ -599,7 +599,7 @@ gt_exec_fep_state_t gt_exec_fep_bridge_get_state(const gt_exec_fep_bridge_t* bri
  * @param bridge Bridge handle
  * @return true if free energy is above threshold
  */
-bool gt_exec_fep_bridge_is_degraded(const gt_exec_fep_bridge_t* bridge);
+bool gt_exec_fep_bridge_is_degraded(gt_exec_fep_bridge_t* bridge);
 
 /**
  * @brief Check if executive is aligned with strategy
@@ -607,7 +607,7 @@ bool gt_exec_fep_bridge_is_degraded(const gt_exec_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if currently aligned
  */
-bool gt_exec_fep_bridge_is_exec_aligned(const gt_exec_fep_bridge_t* bridge);
+bool gt_exec_fep_bridge_is_exec_aligned(gt_exec_fep_bridge_t* bridge);
 
 /**
  * @brief Get state name as string

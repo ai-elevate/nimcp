@@ -874,7 +874,7 @@ float fep_sleep_get_pressure(const fep_sleep_system_t* sys) {
     return sys->pressure.sleep_pressure;
 }
 
-int fep_sleep_get_pressure_state(const fep_sleep_system_t* sys, fep_sleep_pressure_t* pressure) {
+int fep_sleep_get_pressure_state(fep_sleep_system_t* sys, fep_sleep_pressure_t* pressure) {
     if (!sys || !pressure) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_get_pressure_state: required parameter is NULL (sys, pressure)");
         return -1;

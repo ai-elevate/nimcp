@@ -169,7 +169,7 @@ bool working_memory_get_total_salience(
  * @param wm Working memory instance (non-NULL)
  * @return Current item count, or 0 on error
  */
-uint32_t working_memory_get_size(const working_memory_t* wm) {
+uint32_t working_memory_get_size(working_memory_t* wm) {
     // Guard: NULL working memory
     if (!wm) {
         return 0;
@@ -207,7 +207,7 @@ uint32_t working_memory_get_count(const working_memory_t* wm) {
  *
  * COMPLEXITY: O(1)
  */
-float working_memory_get_utilization(const working_memory_t* wm) {
+float working_memory_get_utilization(working_memory_t* wm) {
     // Guard: NULL working memory
     if (!wm) {
         return 0.0F;
@@ -239,7 +239,7 @@ float working_memory_get_utilization(const working_memory_t* wm) {
  * @param wm Working memory instance (non-NULL)
  * @return Maximum capacity, or 0 on error
  */
-uint32_t working_memory_get_capacity(const working_memory_t* wm) {
+uint32_t working_memory_get_capacity(working_memory_t* wm) {
     // Guard: NULL working memory
     if (!wm) {
         return 0;
@@ -266,7 +266,7 @@ uint32_t working_memory_get_capacity(const working_memory_t* wm) {
  * @param wm Working memory instance (non-NULL)
  * @return true if full, false otherwise
  */
-bool working_memory_is_full(const working_memory_t* wm) {
+bool working_memory_is_full(working_memory_t* wm) {
     // Guard: NULL working memory
     if (!wm) {
         return false;
@@ -626,7 +626,7 @@ bool working_memory_set_sleep_state(working_memory_t* wm, sleep_state_t state)
  * @param wm Working memory instance (non-NULL)
  * @return Current sleep state, or SLEEP_STATE_AWAKE if NULL
  */
-sleep_state_t working_memory_get_sleep_state(const working_memory_t* wm)
+sleep_state_t working_memory_get_sleep_state(working_memory_t* wm)
 {
     if (!wm) {
         return SLEEP_STATE_AWAKE;

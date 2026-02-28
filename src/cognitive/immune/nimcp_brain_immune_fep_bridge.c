@@ -422,7 +422,7 @@ int brain_immune_fep_apply_to_fep(brain_immune_fep_bridge_t* bridge) {
  * Query API
  * ============================================================================ */
 
-float brain_immune_fep_get_precision_modulation(const brain_immune_fep_bridge_t* bridge) {
+float brain_immune_fep_get_precision_modulation(brain_immune_fep_bridge_t* bridge) {
     if (!bridge) return 1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -436,7 +436,7 @@ float brain_immune_fep_get_precision_modulation(const brain_immune_fep_bridge_t*
     return precision;
 }
 
-float brain_immune_fep_get_prediction_error(const brain_immune_fep_bridge_t* bridge) {
+float brain_immune_fep_get_prediction_error(brain_immune_fep_bridge_t* bridge) {
     if (!bridge) return 0.0f;
 
     /* Phase 8: Heartbeat at operation start */

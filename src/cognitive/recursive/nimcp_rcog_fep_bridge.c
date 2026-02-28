@@ -614,7 +614,7 @@ int rcog_fep_bridge_unregister(rcog_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool rcog_fep_bridge_is_registered(const rcog_fep_bridge_t* bridge) {
+bool rcog_fep_bridge_is_registered(rcog_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -630,7 +630,7 @@ bool rcog_fep_bridge_is_registered(const rcog_fep_bridge_t* bridge) {
     return registered;
 }
 
-uint32_t rcog_fep_bridge_get_id(const rcog_fep_bridge_t* bridge) {
+uint32_t rcog_fep_bridge_get_id(rcog_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -779,7 +779,7 @@ int rcog_fep_bridge_reset_stats(rcog_fep_bridge_t* bridge) {
     return 0;
 }
 
-float rcog_fep_bridge_get_free_energy(const rcog_fep_bridge_t* bridge) {
+float rcog_fep_bridge_get_free_energy(rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -793,7 +793,7 @@ float rcog_fep_bridge_get_free_energy(const rcog_fep_bridge_t* bridge) {
     return fe;
 }
 
-float rcog_fep_bridge_get_prediction_error(const rcog_fep_bridge_t* bridge) {
+float rcog_fep_bridge_get_prediction_error(rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -807,7 +807,7 @@ float rcog_fep_bridge_get_prediction_error(const rcog_fep_bridge_t* bridge) {
     return pe;
 }
 
-rcog_fep_state_t rcog_fep_bridge_get_state(const rcog_fep_bridge_t* bridge) {
+rcog_fep_state_t rcog_fep_bridge_get_state(rcog_fep_bridge_t* bridge) {
     if (!bridge) return RCOG_FEP_STATE_ERROR;
 
     /* Phase 8: Heartbeat at operation start */
@@ -825,7 +825,7 @@ rcog_fep_state_t rcog_fep_bridge_get_state(const rcog_fep_bridge_t* bridge) {
  * STATE QUERY FUNCTIONS
  *===========================================================================*/
 
-bool rcog_fep_bridge_is_degraded(const rcog_fep_bridge_t* bridge) {
+bool rcog_fep_bridge_is_degraded(rcog_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -841,7 +841,7 @@ bool rcog_fep_bridge_is_degraded(const rcog_fep_bridge_t* bridge) {
     return degraded;
 }
 
-bool rcog_fep_bridge_is_converging(const rcog_fep_bridge_t* bridge) {
+bool rcog_fep_bridge_is_converging(rcog_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -857,7 +857,7 @@ bool rcog_fep_bridge_is_converging(const rcog_fep_bridge_t* bridge) {
     return converging;
 }
 
-float rcog_fep_bridge_get_normalized_depth(const rcog_fep_bridge_t* bridge) {
+float rcog_fep_bridge_get_normalized_depth(rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -871,7 +871,7 @@ float rcog_fep_bridge_get_normalized_depth(const rcog_fep_bridge_t* bridge) {
     return depth;
 }
 
-float rcog_fep_bridge_get_decomp_success_rate(const rcog_fep_bridge_t* bridge) {
+float rcog_fep_bridge_get_decomp_success_rate(rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */

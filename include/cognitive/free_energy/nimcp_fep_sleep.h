@@ -505,7 +505,7 @@ float fep_sleep_get_pressure(const fep_sleep_system_t* sys);
  * @param pressure Output pressure state
  * @return 0 on success
  */
-int fep_sleep_get_pressure_state(const fep_sleep_system_t* sys, fep_sleep_pressure_t* pressure);
+int fep_sleep_get_pressure_state(fep_sleep_system_t* sys, fep_sleep_pressure_t* pressure);
 
 /**
  * @brief Check if sleep is recommended based on FEP state

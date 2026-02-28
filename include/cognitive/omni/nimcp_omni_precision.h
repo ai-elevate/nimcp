@@ -428,7 +428,7 @@ float omni_precision_get(const omni_precision_ctx_t* ctx,
  * @param module_id Module ID
  * @return Aggregate precision value
  */
-float omni_precision_get_aggregate(const omni_precision_ctx_t* ctx,
+float omni_precision_get_aggregate(omni_precision_ctx_t* ctx,
                                     uint16_t module_id);
 
 /**
@@ -438,7 +438,7 @@ float omni_precision_get_aggregate(const omni_precision_ctx_t* ctx,
  * @param module_id Module ID
  * @return Confidence value [0, 1]
  */
-float omni_precision_get_confidence(const omni_precision_ctx_t* ctx,
+float omni_precision_get_confidence(omni_precision_ctx_t* ctx,
                                      uint16_t module_id);
 
 /**
@@ -460,7 +460,7 @@ int omni_precision_get_all_channels(const omni_precision_ctx_t* ctx,
  * @param stats Output statistics
  * @return NIMCP_SUCCESS on success
  */
-int omni_precision_get_stats(const omni_precision_ctx_t* ctx,
+int omni_precision_get_stats(omni_precision_ctx_t* ctx,
                               omni_precision_stats_t* stats);
 
 /**

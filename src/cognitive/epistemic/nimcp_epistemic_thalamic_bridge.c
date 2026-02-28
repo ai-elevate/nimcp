@@ -291,7 +291,7 @@ int epistemic_thalamic_set_attention(epistemic_thalamic_bridge_t* bridge, float 
     return 0;
 }
 
-int epistemic_thalamic_get_attention(const epistemic_thalamic_bridge_t* bridge, float* attention) {
+int epistemic_thalamic_get_attention(epistemic_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;

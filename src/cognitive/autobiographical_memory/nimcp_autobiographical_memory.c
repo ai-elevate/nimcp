@@ -529,7 +529,7 @@ bool autobio_retrieve(autobiographical_memory_t system,
 
     // Guard: NULL checks
     if (!system || !out_memory || memory_id == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_retrieve: required parameter is NULL (system, out_memory)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_retrieve: required parameter is NULL (system, out_memory)");
         return false;
     }
 
@@ -676,7 +676,7 @@ bool autobio_mark_core(autobiographical_memory_t system,
 {
     // Guard: NULL checks
     if (!system || memory_id == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_mark_core: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_mark_core: system is NULL");
         return false;
     }
 
@@ -721,7 +721,7 @@ bool autobio_update_importance(autobiographical_memory_t system,
 {
     // Guard: NULL checks and bounds
     if (!system || memory_id == 0 || new_importance < 0.0F || new_importance > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_update_importance: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_update_importance: system is NULL or params out of range");
         return false;
     }
 
@@ -940,7 +940,7 @@ bool autobio_generate_timeline_summary(autobiographical_memory_t system,
 int autobio_encode_memory_to_snn(autobiographical_memory_t system, uint64_t memory_id)
 {
     if (!system || memory_id == 0 || !system->bridges_enabled || !system->snn_bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_encode_memory_to_snn: required parameter is NULL (system, system->bridges_enabled, system->snn_bridge)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_encode_memory_to_snn: required parameter is NULL (system, system->bridges_enabled, system->snn_bridge)");
         return -1;
     }
 
@@ -1037,7 +1037,7 @@ int autobio_apply_consolidation_plasticity(autobiographical_memory_t system,
                                             float emotional_boost)
 {
     if (!system || memory_id == 0 || !system->bridges_enabled || !system->plasticity_bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_apply_consolidation_plasticity: required parameter is NULL (system, system->bridges_enabled, system->plasticity_bridge)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_apply_consolidation_plasticity: required parameter is NULL (system, system->bridges_enabled, system->plasticity_bridge)");
         return -1;
     }
 

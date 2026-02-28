@@ -555,7 +555,7 @@ int gt_fep_bridge_unregister(gt_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool gt_fep_bridge_is_registered(const gt_fep_bridge_t* bridge) {
+bool gt_fep_bridge_is_registered(gt_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -571,7 +571,7 @@ bool gt_fep_bridge_is_registered(const gt_fep_bridge_t* bridge) {
     return registered;
 }
 
-uint32_t gt_fep_bridge_get_id(const gt_fep_bridge_t* bridge) {
+uint32_t gt_fep_bridge_get_id(gt_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -849,7 +849,7 @@ int gt_fep_bridge_reset_stats(gt_fep_bridge_t* bridge) {
     return 0;
 }
 
-float gt_fep_bridge_get_free_energy(const gt_fep_bridge_t* bridge) {
+float gt_fep_bridge_get_free_energy(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -863,7 +863,7 @@ float gt_fep_bridge_get_free_energy(const gt_fep_bridge_t* bridge) {
     return fe;
 }
 
-float gt_fep_bridge_get_strategy_uncertainty(const gt_fep_bridge_t* bridge) {
+float gt_fep_bridge_get_strategy_uncertainty(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -877,7 +877,7 @@ float gt_fep_bridge_get_strategy_uncertainty(const gt_fep_bridge_t* bridge) {
     return su;
 }
 
-float gt_fep_bridge_get_prediction_error(const gt_fep_bridge_t* bridge) {
+float gt_fep_bridge_get_prediction_error(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -895,7 +895,7 @@ float gt_fep_bridge_get_prediction_error(const gt_fep_bridge_t* bridge) {
  * STATE QUERY FUNCTIONS
  *===========================================================================*/
 
-gt_fep_state_t gt_fep_bridge_get_state(const gt_fep_bridge_t* bridge) {
+gt_fep_state_t gt_fep_bridge_get_state(gt_fep_bridge_t* bridge) {
     if (!bridge) return GT_FEP_STATE_ERROR;
 
     /* Phase 8: Heartbeat at operation start */
@@ -909,7 +909,7 @@ gt_fep_state_t gt_fep_bridge_get_state(const gt_fep_bridge_t* bridge) {
     return state;
 }
 
-bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge) {
+bool gt_fep_bridge_is_degraded(gt_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -925,7 +925,7 @@ bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge) {
     return degraded;
 }
 
-bool gt_fep_bridge_is_at_nash(const gt_fep_bridge_t* bridge) {
+bool gt_fep_bridge_is_at_nash(gt_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }

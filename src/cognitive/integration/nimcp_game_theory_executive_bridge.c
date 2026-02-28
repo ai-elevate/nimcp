@@ -447,7 +447,6 @@ game_theory_executive_bridge_t* game_theory_executive_bridge_create(
 void game_theory_executive_bridge_destroy(game_theory_executive_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "game_theory_executive");
     }
 
     /* Disconnect from hub if connected */

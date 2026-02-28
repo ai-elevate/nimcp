@@ -357,7 +357,7 @@ int social_fep_bridge_unregister(social_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if registered with orchestrator
  */
-bool social_fep_bridge_is_registered(const social_fep_bridge_t* bridge);
+bool social_fep_bridge_is_registered(social_fep_bridge_t* bridge);
 
 /**
  * @brief Get the FEP bridge ID assigned by orchestrator
@@ -365,7 +365,7 @@ bool social_fep_bridge_is_registered(const social_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Bridge ID, or 0 if not registered
  */
-uint32_t social_fep_bridge_get_id(const social_fep_bridge_t* bridge);
+uint32_t social_fep_bridge_get_id(social_fep_bridge_t* bridge);
 
 /*=============================================================================
  * FEP UPDATE FUNCTIONS
@@ -470,7 +470,7 @@ int social_fep_bridge_reset_stats(social_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current free energy, -1.0f on error
  */
-float social_fep_bridge_get_free_energy_contribution(const social_fep_bridge_t* bridge);
+float social_fep_bridge_get_free_energy_contribution(social_fep_bridge_t* bridge);
 
 /**
  * @brief Get current social prediction error
@@ -478,7 +478,7 @@ float social_fep_bridge_get_free_energy_contribution(const social_fep_bridge_t* 
  * @param bridge Bridge handle
  * @return Current social prediction error [0, 1], -1.0f on error
  */
-float social_fep_bridge_get_social_prediction_error(const social_fep_bridge_t* bridge);
+float social_fep_bridge_get_social_prediction_error(social_fep_bridge_t* bridge);
 
 /**
  * @brief Get current relationship uncertainty
@@ -486,7 +486,7 @@ float social_fep_bridge_get_social_prediction_error(const social_fep_bridge_t* b
  * @param bridge Bridge handle
  * @return Current relationship uncertainty [0, 1], -1.0f on error
  */
-float social_fep_bridge_get_relationship_uncertainty(const social_fep_bridge_t* bridge);
+float social_fep_bridge_get_relationship_uncertainty(social_fep_bridge_t* bridge);
 
 /*=============================================================================
  * STATE QUERY FUNCTIONS
@@ -498,7 +498,7 @@ float social_fep_bridge_get_relationship_uncertainty(const social_fep_bridge_t* 
  * @param bridge Bridge handle
  * @return Current state
  */
-social_fep_state_t social_fep_bridge_get_state(const social_fep_bridge_t* bridge);
+social_fep_state_t social_fep_bridge_get_state(social_fep_bridge_t* bridge);
 
 /**
  * @brief Check if in degraded mode
@@ -506,7 +506,7 @@ social_fep_state_t social_fep_bridge_get_state(const social_fep_bridge_t* bridge
  * @param bridge Bridge handle
  * @return true if free energy is above threshold
  */
-bool social_fep_bridge_is_degraded(const social_fep_bridge_t* bridge);
+bool social_fep_bridge_is_degraded(social_fep_bridge_t* bridge);
 
 /**
  * @brief Get state name as string

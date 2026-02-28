@@ -696,7 +696,7 @@ float omni_precision_get(const omni_precision_ctx_t* ctx,
     return result;
 }
 
-float omni_precision_get_aggregate(const omni_precision_ctx_t* ctx,
+float omni_precision_get_aggregate(omni_precision_ctx_t* ctx,
                                     uint16_t module_id) {
     if (!ctx) return OMNI_PRECISION_DEFAULT;
 
@@ -713,7 +713,7 @@ float omni_precision_get_aggregate(const omni_precision_ctx_t* ctx,
     return result;
 }
 
-float omni_precision_get_confidence(const omni_precision_ctx_t* ctx,
+float omni_precision_get_confidence(omni_precision_ctx_t* ctx,
                                      uint16_t module_id) {
     if (!ctx) return 0.5f;
 
@@ -763,7 +763,7 @@ int omni_precision_get_all_channels(const omni_precision_ctx_t* ctx,
     return NIMCP_SUCCESS;
 }
 
-int omni_precision_get_stats(const omni_precision_ctx_t* ctx,
+int omni_precision_get_stats(omni_precision_ctx_t* ctx,
                               omni_precision_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     omni_precision_heartbeat("omni_precisi_get_stats", 0.0f);

@@ -54,7 +54,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <math.h>
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -138,7 +138,7 @@ struct entangle_graph_struct {
     entangle_stats_t stats;                  /**< Operational statistics */
 
     /* Thread safety */
-    pthread_rwlock_t rwlock;                 /**< Read-write lock */
+    nimcp_rwlock_t rwlock;                   /**< Read-write lock */
     bool rwlock_initialized;                 /**< Lock initialization flag */
 };
 
@@ -217,7 +217,7 @@ static inline size_t next_power_of_2(size_t n) {
  */
 static inline void read_lock(entangle_graph_t graph) {
     if (graph && graph->rwlock_initialized) {
-        pthread_rwlock_rdlock(&graph->rwlock);
+        nimcp_rwlock_rdlock(&graph->rwlock);
     }
 }
 
@@ -226,7 +226,7 @@ static inline void read_lock(entangle_graph_t graph) {
  */
 static inline void read_unlock(entangle_graph_t graph) {
     if (graph && graph->rwlock_initialized) {
-        pthread_rwlock_unlock(&graph->rwlock);
+        nimcp_rwlock_unlock(&graph->rwlock);
     }
 }
 
@@ -235,7 +235,7 @@ static inline void read_unlock(entangle_graph_t graph) {
  */
 static inline void write_lock(entangle_graph_t graph) {
     if (graph && graph->rwlock_initialized) {
-        pthread_rwlock_wrlock(&graph->rwlock);
+        nimcp_rwlock_wrlock(&graph->rwlock);
     }
 }
 
@@ -244,7 +244,7 @@ static inline void write_lock(entangle_graph_t graph) {
  */
 static inline void write_unlock(entangle_graph_t graph) {
     if (graph && graph->rwlock_initialized) {
-        pthread_rwlock_unlock(&graph->rwlock);
+        nimcp_rwlock_unlock(&graph->rwlock);
     }
 }
 
@@ -582,7 +582,7 @@ entangle_graph_t entangle_graph_create(const entangle_config_t* config) {
     }
 
     /* Initialize read-write lock */
-    if (pthread_rwlock_init(&graph->rwlock, NULL) != 0) {
+    if (nimcp_rwlock_init(&graph->rwlock) != NIMCP_SUCCESS) {
         set_error("Failed to initialize rwlock");
         nimcp_free(graph->edge_table);
         nimcp_free(graph->node_table);
@@ -654,7 +654,7 @@ void entangle_graph_destroy(entangle_graph_t graph) {
 
     /* Destroy lock */
     if (graph->rwlock_initialized) {
-        pthread_rwlock_destroy(&graph->rwlock);
+        nimcp_rwlock_destroy(&graph->rwlock);
     }
 
     nimcp_free(graph);

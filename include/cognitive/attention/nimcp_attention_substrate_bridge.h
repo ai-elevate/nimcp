@@ -263,7 +263,7 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge);
  *
  * BIOLOGICAL: High-ATP states support sustained focus, low-ATP impairs it
  */
-float attention_substrate_get_focus_capacity(const attention_substrate_bridge_t* bridge);
+float attention_substrate_get_focus_capacity(attention_substrate_bridge_t* bridge);
 
 /**
  * Get current shifting efficiency
@@ -276,7 +276,7 @@ float attention_substrate_get_focus_capacity(const attention_substrate_bridge_t*
  *
  * BIOLOGICAL: Temperature-sensitive, fever impairs rapid attention shifts
  */
-float attention_substrate_get_shifting_efficiency(const attention_substrate_bridge_t* bridge);
+float attention_substrate_get_shifting_efficiency(attention_substrate_bridge_t* bridge);
 
 /**
  * Get current filter strength
@@ -289,7 +289,7 @@ float attention_substrate_get_shifting_efficiency(const attention_substrate_brid
  *
  * BIOLOGICAL: Metabolic stress reduces top-down filtering, increases distractibility
  */
-float attention_substrate_get_filter_strength(const attention_substrate_bridge_t* bridge);
+float attention_substrate_get_filter_strength(attention_substrate_bridge_t* bridge);
 
 /**
  * Get current vigilance factor
@@ -302,7 +302,7 @@ float attention_substrate_get_filter_strength(const attention_substrate_bridge_t
  *
  * BIOLOGICAL: Fatigue and metabolic depletion cause vigilance decrement
  */
-float attention_substrate_get_vigilance(const attention_substrate_bridge_t* bridge);
+float attention_substrate_get_vigilance(attention_substrate_bridge_t* bridge);
 
 /**
  * Get all attention substrate effects
@@ -330,7 +330,7 @@ int attention_substrate_get_effects(
  *
  * BIOLOGICAL: Severe ATP depletion or hyperthermia critically impairs attention
  */
-bool attention_substrate_is_impaired(const attention_substrate_bridge_t* bridge);
+bool attention_substrate_is_impaired(attention_substrate_bridge_t* bridge);
 
 /**
  * Get bridge statistics

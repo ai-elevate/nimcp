@@ -224,7 +224,7 @@ int symbolic_logic_fep_bridge_update(symbolic_logic_fep_bridge_t* bridge, uint64
     return 0;
 }
 
-int symbolic_logic_fep_bridge_get_state(const symbolic_logic_fep_bridge_t* bridge, symbolic_logic_fep_state_t* state) {
+int symbolic_logic_fep_bridge_get_state(symbolic_logic_fep_bridge_t* bridge, symbolic_logic_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_get_state", 0.0f);
 
@@ -236,7 +236,7 @@ int symbolic_logic_fep_bridge_get_state(const symbolic_logic_fep_bridge_t* bridg
     return 0;
 }
 
-int symbolic_logic_fep_bridge_get_stats(const symbolic_logic_fep_bridge_t* bridge, symbolic_logic_fep_stats_t* stats) {
+int symbolic_logic_fep_bridge_get_stats(symbolic_logic_fep_bridge_t* bridge, symbolic_logic_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_get_stats", 0.0f);
 

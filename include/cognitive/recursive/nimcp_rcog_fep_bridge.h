@@ -349,7 +349,7 @@ int rcog_fep_bridge_unregister(rcog_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if registered with orchestrator
  */
-bool rcog_fep_bridge_is_registered(const rcog_fep_bridge_t* bridge);
+bool rcog_fep_bridge_is_registered(rcog_fep_bridge_t* bridge);
 
 /**
  * @brief Get the FEP bridge ID assigned by orchestrator
@@ -357,7 +357,7 @@ bool rcog_fep_bridge_is_registered(const rcog_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Bridge ID, or 0 if not registered
  */
-uint32_t rcog_fep_bridge_get_id(const rcog_fep_bridge_t* bridge);
+uint32_t rcog_fep_bridge_get_id(rcog_fep_bridge_t* bridge);
 
 /*=============================================================================
  * FEP UPDATE CALLBACK (Internal - used by FEP orchestrator)
@@ -434,7 +434,7 @@ int rcog_fep_bridge_reset_stats(rcog_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current free energy, -1.0f on error
  */
-float rcog_fep_bridge_get_free_energy(const rcog_fep_bridge_t* bridge);
+float rcog_fep_bridge_get_free_energy(rcog_fep_bridge_t* bridge);
 
 /**
  * @brief Get current prediction error
@@ -442,7 +442,7 @@ float rcog_fep_bridge_get_free_energy(const rcog_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current prediction error, -1.0f on error
  */
-float rcog_fep_bridge_get_prediction_error(const rcog_fep_bridge_t* bridge);
+float rcog_fep_bridge_get_prediction_error(rcog_fep_bridge_t* bridge);
 
 /**
  * @brief Get current bridge state
@@ -450,7 +450,7 @@ float rcog_fep_bridge_get_prediction_error(const rcog_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current state
  */
-rcog_fep_state_t rcog_fep_bridge_get_state(const rcog_fep_bridge_t* bridge);
+rcog_fep_state_t rcog_fep_bridge_get_state(rcog_fep_bridge_t* bridge);
 
 /*=============================================================================
  * STATE QUERY FUNCTIONS
@@ -462,7 +462,7 @@ rcog_fep_state_t rcog_fep_bridge_get_state(const rcog_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if free energy is above threshold
  */
-bool rcog_fep_bridge_is_degraded(const rcog_fep_bridge_t* bridge);
+bool rcog_fep_bridge_is_degraded(rcog_fep_bridge_t* bridge);
 
 /**
  * @brief Check if answer is converging
@@ -470,7 +470,7 @@ bool rcog_fep_bridge_is_degraded(const rcog_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if refinement is making progress
  */
-bool rcog_fep_bridge_is_converging(const rcog_fep_bridge_t* bridge);
+bool rcog_fep_bridge_is_converging(rcog_fep_bridge_t* bridge);
 
 /**
  * @brief Get normalized recursion depth
@@ -478,7 +478,7 @@ bool rcog_fep_bridge_is_converging(const rcog_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Normalized depth [0, 1], -1.0f on error
  */
-float rcog_fep_bridge_get_normalized_depth(const rcog_fep_bridge_t* bridge);
+float rcog_fep_bridge_get_normalized_depth(rcog_fep_bridge_t* bridge);
 
 /**
  * @brief Get decomposition success rate
@@ -486,7 +486,7 @@ float rcog_fep_bridge_get_normalized_depth(const rcog_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Success rate [0, 1], -1.0f on error
  */
-float rcog_fep_bridge_get_decomp_success_rate(const rcog_fep_bridge_t* bridge);
+float rcog_fep_bridge_get_decomp_success_rate(rcog_fep_bridge_t* bridge);
 
 /*=============================================================================
  * CALLBACK REGISTRATION

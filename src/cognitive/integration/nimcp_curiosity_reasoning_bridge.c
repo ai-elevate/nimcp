@@ -227,7 +227,6 @@ curiosity_reasoning_bridge_t* curiosity_reasoning_bridge_create(
 void curiosity_reasoning_bridge_destroy(curiosity_reasoning_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "curiosity_reasoning");
     }
 
     /* Destroy mutex */

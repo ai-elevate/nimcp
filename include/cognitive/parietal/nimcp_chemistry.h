@@ -597,7 +597,7 @@ int chemistry_set_sleep_deprivation(chemistry_t* chem, float level);
  * @param stats Output statistics
  * @return 0 on success
  */
-int chemistry_get_stats(const chemistry_t* chem, chemistry_stats_t* stats);
+int chemistry_get_stats(chemistry_t* chem, chemistry_stats_t* stats);
 
 /**
  * @brief Reset statistics

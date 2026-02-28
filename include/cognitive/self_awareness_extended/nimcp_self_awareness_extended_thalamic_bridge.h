@@ -68,8 +68,8 @@ int self_awareness_ext_thalamic_route_metacognition(self_awareness_ext_thalamic_
 int self_awareness_ext_thalamic_route_temporal(self_awareness_ext_thalamic_bridge_t* bridge, float relevance, float span);
 int self_awareness_ext_thalamic_route_signal(self_awareness_ext_thalamic_bridge_t* bridge, const self_awareness_ext_thalamic_signal_t* signal);
 int self_awareness_ext_thalamic_set_attention(self_awareness_ext_thalamic_bridge_t* bridge, float attention);
-int self_awareness_ext_thalamic_get_attention(const self_awareness_ext_thalamic_bridge_t* bridge, float* attention);
-int self_awareness_ext_thalamic_bridge_get_stats(const self_awareness_ext_thalamic_bridge_t* bridge, self_awareness_ext_thalamic_stats_t* stats);
+int self_awareness_ext_thalamic_get_attention(self_awareness_ext_thalamic_bridge_t* bridge, float* attention);
+int self_awareness_ext_thalamic_bridge_get_stats(self_awareness_ext_thalamic_bridge_t* bridge, self_awareness_ext_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

@@ -84,7 +84,7 @@ int executive_thalamic_route_switch(
     float cost, float urgency);
 
 int executive_thalamic_set_attention(executive_thalamic_bridge_t* bridge, float attention);
-int executive_thalamic_get_attention(const executive_thalamic_bridge_t* bridge, float* attention);
+int executive_thalamic_get_attention(executive_thalamic_bridge_t* bridge, float* attention);
 int executive_thalamic_bridge_get_stats(
     const executive_thalamic_bridge_t* bridge,
     executive_thalamic_stats_t* stats);

@@ -77,7 +77,7 @@ int explanations_thalamic_route_causal(
     float complexity, float urgency);
 
 int explanations_thalamic_set_attention(explanations_thalamic_bridge_t* bridge, float attention);
-int explanations_thalamic_get_attention(const explanations_thalamic_bridge_t* bridge, float* attention);
+int explanations_thalamic_get_attention(explanations_thalamic_bridge_t* bridge, float* attention);
 int explanations_thalamic_bridge_get_stats(
     const explanations_thalamic_bridge_t* bridge,
     explanations_thalamic_stats_t* stats);

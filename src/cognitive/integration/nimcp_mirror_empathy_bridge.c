@@ -558,7 +558,6 @@ mirror_empathy_bridge_t* mirror_empathy_bridge_create(
 void mirror_empathy_bridge_destroy(mirror_empathy_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mirror_empathy");
     }
 
     /* Unregister from hub if registered */
@@ -729,7 +728,7 @@ int mirror_empathy_bridge_unregister_from_hub(mirror_empathy_bridge_t* bridge) {
     return 0;
 }
 
-bool mirror_empathy_bridge_is_registered(const mirror_empathy_bridge_t* bridge) {
+bool mirror_empathy_bridge_is_registered(mirror_empathy_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
         return false;
     }

@@ -738,7 +738,7 @@ int software_eng_set_sleep_deprivation(software_eng_t* se, float level);
  * @param stats Output statistics
  * @return 0 on success
  */
-int software_eng_get_stats(const software_eng_t* se, software_eng_stats_t* stats);
+int software_eng_get_stats(software_eng_t* se, software_eng_stats_t* stats);
 
 /**
  * @brief Reset statistics

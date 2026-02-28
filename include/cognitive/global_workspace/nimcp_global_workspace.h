@@ -774,7 +774,7 @@ bool global_workspace_unsubscribe(
  *   }
  * @endcode
  */
-bool global_workspace_has_broadcast(const global_workspace_t* workspace);
+bool global_workspace_has_broadcast(global_workspace_t* workspace);
 
 /**
  * @brief Get current broadcast source module
@@ -819,7 +819,7 @@ float global_workspace_get_broadcast_strength(
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes
  */
-uint32_t global_workspace_get_subscriber_count(const global_workspace_t* workspace);
+uint32_t global_workspace_get_subscriber_count(global_workspace_t* workspace);
 
 /**
  * @brief Get number of current competitors
@@ -830,7 +830,7 @@ uint32_t global_workspace_get_subscriber_count(const global_workspace_t* workspa
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes
  */
-uint32_t global_workspace_get_competitor_count(const global_workspace_t* workspace);
+uint32_t global_workspace_get_competitor_count(global_workspace_t* workspace);
 
 /**
  * @brief Check if module is currently competing
@@ -1062,7 +1062,7 @@ bool global_workspace_set_ignition_threshold(
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes
  */
-float global_workspace_get_ignition_threshold(const global_workspace_t* workspace);
+float global_workspace_get_ignition_threshold(global_workspace_t* workspace);
 
 /**
  * @brief Set module priority (for PRIORITY_BASED strategy)

@@ -553,7 +553,7 @@ int spatial_set_fatigue(
  * @return 0 on success
  */
 int spatial_get_stats(
-    const spatial_reasoning_t* sr,
+    spatial_reasoning_t* sr,
     spatial_stats_t* stats
 );
 

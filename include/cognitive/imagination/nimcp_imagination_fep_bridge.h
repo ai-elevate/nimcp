@@ -303,7 +303,7 @@ int imagination_fep_bridge_unregister(imagination_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if registered with orchestrator
  */
-bool imagination_fep_bridge_is_registered(const imagination_fep_bridge_t* bridge);
+bool imagination_fep_bridge_is_registered(imagination_fep_bridge_t* bridge);
 
 /**
  * @brief Get the FEP bridge ID assigned by orchestrator
@@ -311,7 +311,7 @@ bool imagination_fep_bridge_is_registered(const imagination_fep_bridge_t* bridge
  * @param bridge Bridge handle
  * @return Bridge ID, or 0 if not registered
  */
-uint32_t imagination_fep_bridge_get_id(const imagination_fep_bridge_t* bridge);
+uint32_t imagination_fep_bridge_get_id(imagination_fep_bridge_t* bridge);
 
 /*=============================================================================
  * FEP UPDATE CALLBACK (Internal - used by FEP orchestrator)
@@ -413,7 +413,7 @@ int imagination_fep_bridge_reset_stats(imagination_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current free energy, -1.0f on error
  */
-float imagination_fep_bridge_get_free_energy(const imagination_fep_bridge_t* bridge);
+float imagination_fep_bridge_get_free_energy(imagination_fep_bridge_t* bridge);
 
 /**
  * @brief Get current simulation divergence
@@ -455,7 +455,7 @@ imagination_fep_state_t imagination_fep_bridge_get_state(
  * @param bridge Bridge handle
  * @return true if free energy is above threshold
  */
-bool imagination_fep_bridge_is_degraded(const imagination_fep_bridge_t* bridge);
+bool imagination_fep_bridge_is_degraded(imagination_fep_bridge_t* bridge);
 
 /*=============================================================================
  * CALLBACK REGISTRATION

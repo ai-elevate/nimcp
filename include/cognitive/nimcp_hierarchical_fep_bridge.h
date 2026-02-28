@@ -94,9 +94,9 @@ int hierarchical_fep_bridge_connect_hierarchical(hierarchical_fep_bridge_t* brid
                                                   hierarchical_brain_t hbrain);
 int hierarchical_fep_bridge_disconnect(hierarchical_fep_bridge_t* bridge);
 int hierarchical_fep_bridge_update(hierarchical_fep_bridge_t* bridge);
-int hierarchical_fep_bridge_get_state(const hierarchical_fep_bridge_t* bridge,
+int hierarchical_fep_bridge_get_state(hierarchical_fep_bridge_t* bridge,
                                        hierarchical_fep_state_t* state);
-int hierarchical_fep_bridge_get_stats(const hierarchical_fep_bridge_t* bridge,
+int hierarchical_fep_bridge_get_stats(hierarchical_fep_bridge_t* bridge,
                                        hierarchical_fep_stats_t* stats);
 int hierarchical_fep_bridge_connect_bio_async(hierarchical_fep_bridge_t* bridge);
 int hierarchical_fep_bridge_disconnect_bio_async(hierarchical_fep_bridge_t* bridge);

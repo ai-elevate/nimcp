@@ -6568,6 +6568,19 @@ unit_security_bbb_helpers/fast:
 .PHONY : unit_security_bbb_helpers/fast
 
 #=============================================================================
+# Target rules for targets named regression_test_backprop_kernel_compat
+
+# Build rule for target.
+regression_test_backprop_kernel_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_test_backprop_kernel_compat
+.PHONY : regression_test_backprop_kernel_compat
+
+# fast build rule for target.
+regression_test_backprop_kernel_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_backprop_kernel_compat.dir/build.make test/CMakeFiles/regression_test_backprop_kernel_compat.dir/build
+.PHONY : regression_test_backprop_kernel_compat/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_brain_pipeline
 
 # Build rule for target.
@@ -8778,6 +8791,19 @@ e2e_test_training_integration/fast:
 .PHONY : e2e_test_training_integration/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_athena_training_pipeline
+
+# Build rule for target.
+e2e_test_athena_training_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_athena_training_pipeline
+.PHONY : e2e_test_athena_training_pipeline
+
+# fast build rule for target.
+e2e_test_athena_training_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_athena_training_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_athena_training_pipeline.dir/build
+.PHONY : e2e_test_athena_training_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
 
 # Build rule for target.
@@ -9244,6 +9270,19 @@ e2e_test_training_pipeline: cmake_check_build_system
 e2e_test_training_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/training/CMakeFiles/e2e_test_training_pipeline.dir/build.make test/e2e/training/CMakeFiles/e2e_test_training_pipeline.dir/build
 .PHONY : e2e_test_training_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_snn_backprop
+
+# Build rule for target.
+e2e_test_snn_backprop: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_snn_backprop
+.PHONY : e2e_test_snn_backprop
+
+# fast build rule for target.
+e2e_test_snn_backprop/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/training/CMakeFiles/e2e_test_snn_backprop.dir/build.make test/e2e/training/CMakeFiles/e2e_test_snn_backprop.dir/build
+.PHONY : e2e_test_snn_backprop/fast
 
 #=============================================================================
 # Target rules for targets named test_lgss_e2e
@@ -12301,6 +12340,84 @@ unit_middleware_training_test_training_integration_fixes/fast:
 .PHONY : unit_middleware_training_test_training_integration_fixes/fast
 
 #=============================================================================
+# Target rules for targets named unit_middleware_training_test_brain_training_bio_async
+
+# Build rule for target.
+unit_middleware_training_test_brain_training_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_training_test_brain_training_bio_async
+.PHONY : unit_middleware_training_test_brain_training_bio_async
+
+# fast build rule for target.
+unit_middleware_training_test_brain_training_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_brain_training_bio_async.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_brain_training_bio_async.dir/build
+.PHONY : unit_middleware_training_test_brain_training_bio_async/fast
+
+#=============================================================================
+# Target rules for targets named unit_middleware_training_test_event_driven_plasticity_bio_async
+
+# Build rule for target.
+unit_middleware_training_test_event_driven_plasticity_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_training_test_event_driven_plasticity_bio_async
+.PHONY : unit_middleware_training_test_event_driven_plasticity_bio_async
+
+# fast build rule for target.
+unit_middleware_training_test_event_driven_plasticity_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_event_driven_plasticity_bio_async.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_event_driven_plasticity_bio_async.dir/build
+.PHONY : unit_middleware_training_test_event_driven_plasticity_bio_async/fast
+
+#=============================================================================
+# Target rules for targets named unit_middleware_training_test_learning_signal_adapter
+
+# Build rule for target.
+unit_middleware_training_test_learning_signal_adapter: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_training_test_learning_signal_adapter
+.PHONY : unit_middleware_training_test_learning_signal_adapter
+
+# fast build rule for target.
+unit_middleware_training_test_learning_signal_adapter/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_learning_signal_adapter.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_learning_signal_adapter.dir/build
+.PHONY : unit_middleware_training_test_learning_signal_adapter/fast
+
+#=============================================================================
+# Target rules for targets named unit_middleware_training_test_optimizer_bio_async
+
+# Build rule for target.
+unit_middleware_training_test_optimizer_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_training_test_optimizer_bio_async
+.PHONY : unit_middleware_training_test_optimizer_bio_async
+
+# fast build rule for target.
+unit_middleware_training_test_optimizer_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_optimizer_bio_async.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_optimizer_bio_async.dir/build
+.PHONY : unit_middleware_training_test_optimizer_bio_async/fast
+
+#=============================================================================
+# Target rules for targets named unit_middleware_training_test_training_event_manager
+
+# Build rule for target.
+unit_middleware_training_test_training_event_manager: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_training_test_training_event_manager
+.PHONY : unit_middleware_training_test_training_event_manager
+
+# fast build rule for target.
+unit_middleware_training_test_training_event_manager/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_event_manager.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_event_manager.dir/build
+.PHONY : unit_middleware_training_test_training_event_manager/fast
+
+#=============================================================================
+# Target rules for targets named unit_middleware_training_test_weight_update_router
+
+# Build rule for target.
+unit_middleware_training_test_weight_update_router: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_training_test_weight_update_router
+.PHONY : unit_middleware_training_test_weight_update_router
+
+# fast build rule for target.
+unit_middleware_training_test_weight_update_router/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_weight_update_router.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_weight_update_router.dir/build
+.PHONY : unit_middleware_training_test_weight_update_router/fast
+
+#=============================================================================
 # Target rules for targets named integration_middleware_middleware_test_middleware_subsystems_integration
 
 # Build rule for target.
@@ -12689,6 +12806,45 @@ integration_middleware_training_test_cortical_plasticity_integration: cmake_chec
 integration_middleware_training_test_cortical_plasticity_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_plasticity_integration.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_plasticity_integration.dir/build
 .PHONY : integration_middleware_training_test_cortical_plasticity_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_edp_bio_async
+
+# Build rule for target.
+integration_middleware_training_test_edp_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_edp_bio_async
+.PHONY : integration_middleware_training_test_edp_bio_async
+
+# fast build rule for target.
+integration_middleware_training_test_edp_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_edp_bio_async.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_edp_bio_async.dir/build
+.PHONY : integration_middleware_training_test_edp_bio_async/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_adapters_bio_async
+
+# Build rule for target.
+integration_middleware_training_test_adapters_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_adapters_bio_async
+.PHONY : integration_middleware_training_test_adapters_bio_async
+
+# fast build rule for target.
+integration_middleware_training_test_adapters_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_adapters_bio_async.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_adapters_bio_async.dir/build
+.PHONY : integration_middleware_training_test_adapters_bio_async/fast
+
+#=============================================================================
+# Target rules for targets named integration_middleware_training_test_pipeline_bio_async
+
+# Build rule for target.
+integration_middleware_training_test_pipeline_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_middleware_training_test_pipeline_bio_async
+.PHONY : integration_middleware_training_test_pipeline_bio_async
+
+# fast build rule for target.
+integration_middleware_training_test_pipeline_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_pipeline_bio_async.dir/build.make test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_pipeline_bio_async.dir/build
+.PHONY : integration_middleware_training_test_pipeline_bio_async/fast
 
 #=============================================================================
 # Target rules for targets named regression_middleware_test_signal_filter_regression
@@ -13157,6 +13313,32 @@ regression_middleware_training_test_cortical_training_bridge_regression: cmake_c
 regression_middleware_training_test_cortical_training_bridge_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_cortical_training_bridge_regression.dir/build.make test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_cortical_training_bridge_regression.dir/build
 .PHONY : regression_middleware_training_test_cortical_training_bridge_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_middleware_training_test_edp_bio_async_regression
+
+# Build rule for target.
+regression_middleware_training_test_edp_bio_async_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_middleware_training_test_edp_bio_async_regression
+.PHONY : regression_middleware_training_test_edp_bio_async_regression
+
+# fast build rule for target.
+regression_middleware_training_test_edp_bio_async_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_edp_bio_async_regression.dir/build.make test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_edp_bio_async_regression.dir/build
+.PHONY : regression_middleware_training_test_edp_bio_async_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_middleware_training_test_adapters_bio_async_regression
+
+# Build rule for target.
+regression_middleware_training_test_adapters_bio_async_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_middleware_training_test_adapters_bio_async_regression
+.PHONY : regression_middleware_training_test_adapters_bio_async_regression
+
+# fast build rule for target.
+regression_middleware_training_test_adapters_bio_async_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_adapters_bio_async_regression.dir/build.make test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_adapters_bio_async_regression.dir/build
+.PHONY : regression_middleware_training_test_adapters_bio_async_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_middleware_controller
@@ -32191,6 +32373,19 @@ unit_plasticity_hybrid_learning/fast:
 .PHONY : unit_plasticity_hybrid_learning/fast
 
 #=============================================================================
+# Target rules for targets named test_backprop_grad_clip
+
+# Build rule for target.
+test_backprop_grad_clip: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_backprop_grad_clip
+.PHONY : test_backprop_grad_clip
+
+# fast build rule for target.
+test_backprop_grad_clip/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/test_backprop_grad_clip.dir/build.make test/unit/plasticity/CMakeFiles/test_backprop_grad_clip.dir/build
+.PHONY : test_backprop_grad_clip/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_attention_test_attention_pe
 
 # Build rule for target.
@@ -36117,6 +36312,19 @@ integration_gpu_test_gpu_cpu_fallback_integration/fast:
 .PHONY : integration_gpu_test_gpu_cpu_fallback_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_test_backprop_grad_clip
+
+# Build rule for target.
+integration_test_backprop_grad_clip: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_backprop_grad_clip
+.PHONY : integration_test_backprop_grad_clip
+
+# fast build rule for target.
+integration_test_backprop_grad_clip/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_test_backprop_grad_clip.dir/build.make test/integration/CMakeFiles/integration_test_backprop_grad_clip.dir/build
+.PHONY : integration_test_backprop_grad_clip/fast
+
+#=============================================================================
 # Target rules for targets named integration_test_kg_module_wiring
 
 # Build rule for target.
@@ -38327,6 +38535,123 @@ regression_training_pipeline_test/fast:
 .PHONY : regression_training_pipeline_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_training_cnn_backprop_test
+
+# Build rule for target.
+regression_training_cnn_backprop_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_cnn_backprop_test
+.PHONY : regression_training_cnn_backprop_test
+
+# fast build rule for target.
+regression_training_cnn_backprop_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_cnn_backprop_test.dir/build.make test/regression/training/CMakeFiles/regression_training_cnn_backprop_test.dir/build
+.PHONY : regression_training_cnn_backprop_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_cnn_cortex_bridge_test
+
+# Build rule for target.
+regression_training_cnn_cortex_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_cnn_cortex_bridge_test
+.PHONY : regression_training_cnn_cortex_bridge_test
+
+# fast build rule for target.
+regression_training_cnn_cortex_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_cnn_cortex_bridge_test.dir/build.make test/regression/training/CMakeFiles/regression_training_cnn_cortex_bridge_test.dir/build
+.PHONY : regression_training_cnn_cortex_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_nas_test
+
+# Build rule for target.
+regression_training_nas_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_nas_test
+.PHONY : regression_training_nas_test
+
+# fast build rule for target.
+regression_training_nas_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_nas_test.dir/build.make test/regression/training/CMakeFiles/regression_training_nas_test.dir/build
+.PHONY : regression_training_nas_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_snn_backprop_test
+
+# Build rule for target.
+regression_training_snn_backprop_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_snn_backprop_test
+.PHONY : regression_training_snn_backprop_test
+
+# fast build rule for target.
+regression_training_snn_backprop_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_snn_backprop_test.dir/build.make test/regression/training/CMakeFiles/regression_training_snn_backprop_test.dir/build
+.PHONY : regression_training_snn_backprop_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_snn_backprop_stubs_test
+
+# Build rule for target.
+regression_training_snn_backprop_stubs_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_snn_backprop_stubs_test
+.PHONY : regression_training_snn_backprop_stubs_test
+
+# fast build rule for target.
+regression_training_snn_backprop_stubs_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_snn_backprop_stubs_test.dir/build.make test/regression/training/CMakeFiles/regression_training_snn_backprop_stubs_test.dir/build
+.PHONY : regression_training_snn_backprop_stubs_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_portia_test
+
+# Build rule for target.
+regression_training_portia_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_portia_test
+.PHONY : regression_training_portia_test
+
+# fast build rule for target.
+regression_training_portia_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_portia_test.dir/build.make test/regression/training/CMakeFiles/regression_training_portia_test.dir/build
+.PHONY : regression_training_portia_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_stability_test
+
+# Build rule for target.
+regression_training_stability_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_stability_test
+.PHONY : regression_training_stability_test
+
+# fast build rule for target.
+regression_training_stability_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_stability_test.dir/build.make test/regression/training/CMakeFiles/regression_training_stability_test.dir/build
+.PHONY : regression_training_stability_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_symbolic_logic_hub_test
+
+# Build rule for target.
+regression_training_symbolic_logic_hub_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_symbolic_logic_hub_test
+.PHONY : regression_training_symbolic_logic_hub_test
+
+# fast build rule for target.
+regression_training_symbolic_logic_hub_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_symbolic_logic_hub_test.dir/build.make test/regression/training/CMakeFiles/regression_training_symbolic_logic_hub_test.dir/build
+.PHONY : regression_training_symbolic_logic_hub_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_dispatch_test
+
+# Build rule for target.
+regression_training_dispatch_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_dispatch_test
+.PHONY : regression_training_dispatch_test
+
+# fast build rule for target.
+regression_training_dispatch_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_dispatch_test.dir/build.make test/regression/training/CMakeFiles/regression_training_dispatch_test.dir/build
+.PHONY : regression_training_dispatch_test/fast
+
+#=============================================================================
 # Target rules for targets named unit_training_test_cnn_backprop
 
 # Build rule for target.
@@ -38429,6 +38754,45 @@ unit_training_test_adv_gs: cmake_check_build_system
 unit_training_test_adv_gs/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_adv_gs.dir/build.make test/unit/training/CMakeFiles/unit_training_test_adv_gs.dir/build
 .PHONY : unit_training_test_adv_gs/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_test_quantization_ternary
+
+# Build rule for target.
+unit_training_test_quantization_ternary: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_quantization_ternary
+.PHONY : unit_training_test_quantization_ternary
+
+# fast build rule for target.
+unit_training_test_quantization_ternary/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_quantization_ternary.dir/build.make test/unit/training/CMakeFiles/unit_training_test_quantization_ternary.dir/build
+.PHONY : unit_training_test_quantization_ternary/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_test_snn_backprop_stubs
+
+# Build rule for target.
+unit_training_test_snn_backprop_stubs: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_snn_backprop_stubs
+.PHONY : unit_training_test_snn_backprop_stubs
+
+# fast build rule for target.
+unit_training_test_snn_backprop_stubs/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_snn_backprop_stubs.dir/build.make test/unit/training/CMakeFiles/unit_training_test_snn_backprop_stubs.dir/build
+.PHONY : unit_training_test_snn_backprop_stubs/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_test_training_dispatch
+
+# Build rule for target.
+unit_training_test_training_dispatch: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_training_dispatch
+.PHONY : unit_training_test_training_dispatch
+
+# fast build rule for target.
+unit_training_test_training_dispatch/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_training_dispatch.dir/build.make test/unit/training/CMakeFiles/unit_training_test_training_dispatch.dir/build
+.PHONY : unit_training_test_training_dispatch/fast
 
 #=============================================================================
 # Target rules for targets named unit_test_training_integration_hub
@@ -38598,6 +38962,19 @@ integration_training_bio_modulation: cmake_check_build_system
 integration_training_bio_modulation/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/training/CMakeFiles/integration_training_bio_modulation.dir/build.make test/integration/training/CMakeFiles/integration_training_bio_modulation.dir/build
 .PHONY : integration_training_bio_modulation/fast
+
+#=============================================================================
+# Target rules for targets named integration_training_snn_backprop
+
+# Build rule for target.
+integration_training_snn_backprop: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_training_snn_backprop
+.PHONY : integration_training_snn_backprop
+
+# fast build rule for target.
+integration_training_snn_backprop/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/training/CMakeFiles/integration_training_snn_backprop.dir/build.make test/integration/training/CMakeFiles/integration_training_snn_backprop.dir/build
+.PHONY : integration_training_snn_backprop/fast
 
 #=============================================================================
 # Target rules for targets named integration_training_exception
@@ -41245,6 +41622,7 @@ help:
 	@echo "... e2e_statistics_test_timeseries_e2e"
 	@echo "... e2e_test_amygdala_pipeline"
 	@echo "... e2e_test_asymmetric_swarm"
+	@echo "... e2e_test_athena_training_pipeline"
 	@echo "... e2e_test_attention_snn_plasticity_pipeline"
 	@echo "... e2e_test_auditory_pipeline"
 	@echo "... e2e_test_basal_ganglia_pipeline"
@@ -41403,6 +41781,7 @@ help:
 	@echo "... e2e_test_server_swarm_pipeline"
 	@echo "... e2e_test_signal_exception_pipeline"
 	@echo "... e2e_test_sleep_bridge_pipeline"
+	@echo "... e2e_test_snn_backprop"
 	@echo "... e2e_test_snn_bridge_pipeline"
 	@echo "... e2e_test_snn_pipeline"
 	@echo "... e2e_test_somatosensory_pipeline"
@@ -41802,6 +42181,7 @@ help:
 	@echo "... integration_middleware_test_executive_integration"
 	@echo "... integration_middleware_test_shannon_flow"
 	@echo "... integration_middleware_test_signal_filter_integration"
+	@echo "... integration_middleware_training_test_adapters_bio_async"
 	@echo "... integration_middleware_training_test_brain_training_integration"
 	@echo "... integration_middleware_training_test_cognitive_training_bridge_integration"
 	@echo "... integration_middleware_training_test_cortical_cognitive_integration"
@@ -41809,6 +42189,7 @@ help:
 	@echo "... integration_middleware_training_test_cortical_logic_integration"
 	@echo "... integration_middleware_training_test_cortical_plasticity_integration"
 	@echo "... integration_middleware_training_test_cortical_training_integration"
+	@echo "... integration_middleware_training_test_edp_bio_async"
 	@echo "... integration_middleware_training_test_event_driven_plasticity_integration"
 	@echo "... integration_middleware_training_test_loss_functions_integration"
 	@echo "... integration_middleware_training_test_optimizers_integration"
@@ -41817,6 +42198,7 @@ help:
 	@echo "... integration_middleware_training_test_perception_logic_integration"
 	@echo "... integration_middleware_training_test_perception_plasticity_integration"
 	@echo "... integration_middleware_training_test_perception_training_integration"
+	@echo "... integration_middleware_training_test_pipeline_bio_async"
 	@echo "... integration_middleware_training_test_plasticity_bridge_integration"
 	@echo "... integration_middleware_training_test_security_registration_integration"
 	@echo "... integration_middleware_training_test_training_async_pipeline"
@@ -41961,6 +42343,7 @@ help:
 	@echo "... integration_ternary_test_neuralnet_ternary_integration"
 	@echo "... integration_ternary_test_sparse_ternary_integration"
 	@echo "... integration_ternary_test_training_ternary_integration"
+	@echo "... integration_test_backprop_grad_clip"
 	@echo "... integration_test_brain_state_manager"
 	@echo "... integration_test_kg_module_wiring"
 	@echo "... integration_thalamic"
@@ -41972,6 +42355,7 @@ help:
 	@echo "... integration_training_dispatch"
 	@echo "... integration_training_exception"
 	@echo "... integration_training_multi_network"
+	@echo "... integration_training_snn_backprop"
 	@echo "... integration_training_symbolic_logic_hub"
 	@echo "... integration_training_test_cnn_backprop_integration"
 	@echo "... integration_training_test_cnn_cortex_integration"
@@ -42345,8 +42729,10 @@ help:
 	@echo "... regression_middleware_test_brain_integration_regression"
 	@echo "... regression_middleware_test_executive_regression"
 	@echo "... regression_middleware_test_signal_filter_regression"
+	@echo "... regression_middleware_training_test_adapters_bio_async_regression"
 	@echo "... regression_middleware_training_test_cognitive_training_bridge_regression"
 	@echo "... regression_middleware_training_test_cortical_training_bridge_regression"
+	@echo "... regression_middleware_training_test_edp_bio_async_regression"
 	@echo "... regression_middleware_training_test_event_driven_plasticity_regression"
 	@echo "... regression_middleware_training_test_loss_functions_regression"
 	@echo "... regression_middleware_training_test_optimizers_regression"
@@ -42501,6 +42887,7 @@ help:
 	@echo "... regression_subthalamic_test"
 	@echo "... regression_swarm_bridges"
 	@echo "... regression_symbolic_logic_reasoning_test"
+	@echo "... regression_test_backprop_kernel_compat"
 	@echo "... regression_test_brain_state_manager"
 	@echo "... regression_test_kg_module_wiring"
 	@echo "... regression_thalamic_immune_bridge_test"
@@ -42508,8 +42895,17 @@ help:
 	@echo "... regression_thalamus_test"
 	@echo "... regression_thread_safety_test_callback_wrapper_mutex"
 	@echo "... regression_thread_safety_test_thread_local_error_buffer"
+	@echo "... regression_training_cnn_backprop_test"
+	@echo "... regression_training_cnn_cortex_bridge_test"
+	@echo "... regression_training_dispatch_test"
 	@echo "... regression_training_integration_test"
+	@echo "... regression_training_nas_test"
 	@echo "... regression_training_pipeline_test"
+	@echo "... regression_training_portia_test"
+	@echo "... regression_training_snn_backprop_stubs_test"
+	@echo "... regression_training_snn_backprop_test"
+	@echo "... regression_training_stability_test"
+	@echo "... regression_training_symbolic_logic_hub_test"
 	@echo "... regression_utils_containers_test_queue_regression"
 	@echo "... regression_utils_encoding_pe_stability"
 	@echo "... regression_utils_exception_test_exception_regression"
@@ -42572,6 +42968,7 @@ help:
 	@echo "... test_attention_bioasync"
 	@echo "... test_autobiographical_fep_bridge_integration"
 	@echo "... test_backprop_activation_reconstruction"
+	@echo "... test_backprop_grad_clip"
 	@echo "... test_backward_chaining"
 	@echo "... test_basal_ganglia_pipeline_e2e"
 	@echo "... test_basal_ganglia_thalamus_e2e"
@@ -43734,13 +44131,17 @@ help:
 	@echo "... unit_middleware_routing_signal_wrapper"
 	@echo "... unit_middleware_routing_thalamic_immune_integration"
 	@echo "... unit_middleware_routing_thalamic_router"
+	@echo "... unit_middleware_training_test_brain_training_bio_async"
 	@echo "... unit_middleware_training_test_cognitive_training_bridge"
 	@echo "... unit_middleware_training_test_cortical_training_bridge"
 	@echo "... unit_middleware_training_test_event_driven_plasticity"
+	@echo "... unit_middleware_training_test_event_driven_plasticity_bio_async"
 	@echo "... unit_middleware_training_test_gradient_manager"
+	@echo "... unit_middleware_training_test_learning_signal_adapter"
 	@echo "... unit_middleware_training_test_loss_functions"
 	@echo "... unit_middleware_training_test_lr_scheduler"
 	@echo "... unit_middleware_training_test_occipital_training_bridge"
+	@echo "... unit_middleware_training_test_optimizer_bio_async"
 	@echo "... unit_middleware_training_test_optimizers"
 	@echo "... unit_middleware_training_test_perception_training_bridge"
 	@echo "... unit_middleware_training_test_plasticity_bridge"
@@ -43752,9 +44153,11 @@ help:
 	@echo "... unit_middleware_training_test_training_causal_model"
 	@echo "... unit_middleware_training_test_training_convergent_decision"
 	@echo "... unit_middleware_training_test_training_diagnosis"
+	@echo "... unit_middleware_training_test_training_event_manager"
 	@echo "... unit_middleware_training_test_training_integration_fixes"
 	@echo "... unit_middleware_training_test_training_logic_bridge"
 	@echo "... unit_middleware_training_test_training_module"
+	@echo "... unit_middleware_training_test_weight_update_router"
 	@echo "... unit_networking_distributed_test_distributed_cognition_refactored"
 	@echo "... unit_networking_events_test_events"
 	@echo "... unit_networking_events_test_spike_event_real"
@@ -44029,6 +44432,9 @@ help:
 	@echo "... unit_training_test_cnn_cortex_bridge"
 	@echo "... unit_training_test_kd_qat"
 	@echo "... unit_training_test_meta_hpo"
+	@echo "... unit_training_test_quantization_ternary"
+	@echo "... unit_training_test_snn_backprop_stubs"
+	@echo "... unit_training_test_training_dispatch"
 	@echo "... unit_utils_algorithms_test_centrality"
 	@echo "... unit_utils_algorithms_test_community_detection"
 	@echo "... unit_utils_algorithms_test_graph_metrics"

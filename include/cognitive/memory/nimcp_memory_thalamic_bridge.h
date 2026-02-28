@@ -81,7 +81,7 @@ int memory_thalamic_route_retrieve(
     float salience, float urgency);
 
 int memory_thalamic_set_attention(memory_thalamic_bridge_t* bridge, float attention);
-int memory_thalamic_get_attention(const memory_thalamic_bridge_t* bridge, float* attention);
+int memory_thalamic_get_attention(memory_thalamic_bridge_t* bridge, float* attention);
 int memory_thalamic_bridge_get_stats(
     const memory_thalamic_bridge_t* bridge,
     memory_thalamic_stats_t* stats);

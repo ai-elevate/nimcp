@@ -116,8 +116,8 @@ int emotion_fep_apply_emotion_learning_modulation(emotion_fep_bridge_t* bridge);
 
 int emotion_fep_bridge_update(emotion_fep_bridge_t* bridge, uint64_t delta_ms);
 
-int emotion_fep_bridge_get_state(const emotion_fep_bridge_t* bridge, emotion_fep_state_t* state);
-int emotion_fep_bridge_get_stats(const emotion_fep_bridge_t* bridge, emotion_fep_stats_t* stats);
+int emotion_fep_bridge_get_state(emotion_fep_bridge_t* bridge, emotion_fep_state_t* state);
+int emotion_fep_bridge_get_stats(emotion_fep_bridge_t* bridge, emotion_fep_stats_t* stats);
 
 int emotion_fep_bridge_connect_bio_async(emotion_fep_bridge_t* bridge);
 int emotion_fep_bridge_disconnect_bio_async(emotion_fep_bridge_t* bridge);

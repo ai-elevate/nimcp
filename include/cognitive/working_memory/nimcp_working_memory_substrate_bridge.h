@@ -373,7 +373,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge);
  * - 0.57: Reduced capacity (4 items)
  * - 0.29: Minimal capacity (2 items)
  */
-float wm_substrate_get_capacity_factor(const wm_substrate_bridge_t* bridge);
+float wm_substrate_get_capacity_factor(wm_substrate_bridge_t* bridge);
 
 /**
  * Get current decay rate multiplier
@@ -390,7 +390,7 @@ float wm_substrate_get_capacity_factor(const wm_substrate_bridge_t* bridge);
  * - 1.5: Faster decay (fever)
  * - 0.7: Slower decay (hypothermia)
  */
-float wm_substrate_get_decay_mod(const wm_substrate_bridge_t* bridge);
+float wm_substrate_get_decay_mod(wm_substrate_bridge_t* bridge);
 
 /**
  * Get current refresh efficiency
@@ -407,7 +407,7 @@ float wm_substrate_get_decay_mod(const wm_substrate_bridge_t* bridge);
  * - 0.5: Half effectiveness (moderate deficit)
  * - 0.0: No refresh possible (critical state)
  */
-float wm_substrate_get_refresh_efficiency(const wm_substrate_bridge_t* bridge);
+float wm_substrate_get_refresh_efficiency(wm_substrate_bridge_t* bridge);
 
 /**
  * Get current encoding strength
@@ -424,7 +424,7 @@ float wm_substrate_get_refresh_efficiency(const wm_substrate_bridge_t* bridge);
  * - 0.5: Weakened encoding (moderate deficit)
  * - 0.0: Failed encoding (critical state)
  */
-float wm_substrate_get_encoding_strength(const wm_substrate_bridge_t* bridge);
+float wm_substrate_get_encoding_strength(wm_substrate_bridge_t* bridge);
 
 /**
  * Get all substrate effects
@@ -461,7 +461,7 @@ int wm_substrate_get_effects(
  * - Capacity reduced to 2 items or fewer
  * - Encoding likely to fail
  */
-bool wm_substrate_is_impaired(const wm_substrate_bridge_t* bridge);
+bool wm_substrate_is_impaired(wm_substrate_bridge_t* bridge);
 
 /**
  * Get bridge statistics

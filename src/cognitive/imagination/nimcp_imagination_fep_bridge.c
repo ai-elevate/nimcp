@@ -531,7 +531,7 @@ int imagination_fep_bridge_unregister(imagination_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool imagination_fep_bridge_is_registered(const imagination_fep_bridge_t* bridge) {
+bool imagination_fep_bridge_is_registered(imagination_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -547,7 +547,7 @@ bool imagination_fep_bridge_is_registered(const imagination_fep_bridge_t* bridge
     return registered;
 }
 
-uint32_t imagination_fep_bridge_get_id(const imagination_fep_bridge_t* bridge) {
+uint32_t imagination_fep_bridge_get_id(imagination_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -750,7 +750,7 @@ int imagination_fep_bridge_reset_stats(imagination_fep_bridge_t* bridge) {
  * ACCESSORS
  *===========================================================================*/
 
-float imagination_fep_bridge_get_free_energy(const imagination_fep_bridge_t* bridge) {
+float imagination_fep_bridge_get_free_energy(imagination_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -812,7 +812,7 @@ imagination_fep_state_t imagination_fep_bridge_get_state(
     return state;
 }
 
-bool imagination_fep_bridge_is_degraded(const imagination_fep_bridge_t* bridge) {
+bool imagination_fep_bridge_is_degraded(imagination_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }

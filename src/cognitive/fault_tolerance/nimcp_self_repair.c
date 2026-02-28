@@ -1503,9 +1503,9 @@ bool self_repair_has_health_agent(const self_repair_coordinator_t* coordinator) 
  * ============================================================================ */
 
 void self_repair_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
-    if (instance) {
-        (void)agent;
-        g_self_repair_health_agent = agent;
+    self_repair_coordinator_t* self = (self_repair_coordinator_t*)instance;
+    if (self) {
+        self->health_agent = (struct health_agent*)agent;
     }
 }
 

@@ -209,7 +209,7 @@ int explanations_fep_bridge_update(explanations_fep_bridge_t* bridge, uint64_t d
     return 0;
 }
 
-int explanations_fep_bridge_get_state(const explanations_fep_bridge_t* bridge, explanations_fep_state_t* state) {
+int explanations_fep_bridge_get_state(explanations_fep_bridge_t* bridge, explanations_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     explanations_fep_bridge_heartbeat("explanations_get_state", 0.0f);
 
@@ -221,7 +221,7 @@ int explanations_fep_bridge_get_state(const explanations_fep_bridge_t* bridge, e
     return 0;
 }
 
-int explanations_fep_bridge_get_stats(const explanations_fep_bridge_t* bridge, explanations_fep_stats_t* stats) {
+int explanations_fep_bridge_get_stats(explanations_fep_bridge_t* bridge, explanations_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     explanations_fep_bridge_heartbeat("explanations_get_stats", 0.0f);
 

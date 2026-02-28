@@ -420,7 +420,6 @@ rcog_hub_bridge_t* rcog_hub_bridge_create(
 void rcog_hub_bridge_destroy(rcog_hub_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "rcog_hub");
     }
 
     /* Disconnect from hub if connected */
@@ -619,7 +618,7 @@ int rcog_hub_bridge_set_engine(
     return 0;
 }
 
-bool rcog_hub_bridge_is_connected(const rcog_hub_bridge_t* bridge) {
+bool rcog_hub_bridge_is_connected(rcog_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
         return false;
     }

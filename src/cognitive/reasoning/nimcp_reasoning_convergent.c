@@ -309,7 +309,7 @@ float reasoning_accumulator_apply_modulation(evidence_accumulator_t* acc)
     return net;
 }
 
-bool reasoning_accumulator_is_converged(const evidence_accumulator_t* acc)
+bool reasoning_accumulator_is_converged(evidence_accumulator_t* acc)
 {
     if (!acc) return false;
     // Lock mutex to avoid data race with concurrent writers

@@ -215,7 +215,7 @@ int self_awareness_ext_thalamic_set_attention(self_awareness_ext_thalamic_bridge
     return 0;
 }
 
-int self_awareness_ext_thalamic_get_attention(const self_awareness_ext_thalamic_bridge_t* bridge, float* attention) {
+int self_awareness_ext_thalamic_get_attention(self_awareness_ext_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
@@ -226,7 +226,7 @@ int self_awareness_ext_thalamic_get_attention(const self_awareness_ext_thalamic_
     return 0;
 }
 
-int self_awareness_ext_thalamic_bridge_get_stats(const self_awareness_ext_thalamic_bridge_t* bridge, self_awareness_ext_thalamic_stats_t* stats) {
+int self_awareness_ext_thalamic_bridge_get_stats(self_awareness_ext_thalamic_bridge_t* bridge, self_awareness_ext_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;

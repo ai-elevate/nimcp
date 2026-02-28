@@ -163,7 +163,7 @@ int shadow_emotions_fep_bridge_update(shadow_emotions_fep_bridge_t* bridge, uint
     return 0;
 }
 
-int shadow_emotions_fep_bridge_get_state(const shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_state_t* state) {
+int shadow_emotions_fep_bridge_get_state(shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_state_t* state) {
     NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -171,7 +171,7 @@ int shadow_emotions_fep_bridge_get_state(const shadow_emotions_fep_bridge_t* bri
     return 0;
 }
 
-int shadow_emotions_fep_bridge_get_stats(const shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_stats_t* stats) {
+int shadow_emotions_fep_bridge_get_stats(shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_stats_t* stats) {
     NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;

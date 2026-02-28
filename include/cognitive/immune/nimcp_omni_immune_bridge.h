@@ -349,7 +349,7 @@ int omni_immune_apply_to_omni(omni_immune_bridge_t* bridge);
  * @param effects Output effects
  * @return NIMCP_SUCCESS on success
  */
-int omni_immune_get_omni_effects(const omni_immune_bridge_t* bridge,
+int omni_immune_get_omni_effects(omni_immune_bridge_t* bridge,
                                   omni_to_immune_effects_t* effects);
 
 /**
@@ -359,7 +359,7 @@ int omni_immune_get_omni_effects(const omni_immune_bridge_t* bridge,
  * @param effects Output effects
  * @return NIMCP_SUCCESS on success
  */
-int omni_immune_get_immune_effects(const omni_immune_bridge_t* bridge,
+int omni_immune_get_immune_effects(omni_immune_bridge_t* bridge,
                                     immune_to_omni_effects_t* effects);
 
 /**
@@ -369,7 +369,7 @@ int omni_immune_get_immune_effects(const omni_immune_bridge_t* bridge,
  * @param stats Output statistics
  * @return NIMCP_SUCCESS on success
  */
-int omni_immune_get_stats(const omni_immune_bridge_t* bridge,
+int omni_immune_get_stats(omni_immune_bridge_t* bridge,
                            omni_immune_stats_t* stats);
 
 /**

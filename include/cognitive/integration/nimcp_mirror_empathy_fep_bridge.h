@@ -355,7 +355,7 @@ int me_fep_bridge_unregister(me_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if registered with orchestrator
  */
-bool me_fep_bridge_is_registered(const me_fep_bridge_t* bridge);
+bool me_fep_bridge_is_registered(me_fep_bridge_t* bridge);
 
 /**
  * @brief Get the FEP bridge ID assigned by orchestrator
@@ -363,7 +363,7 @@ bool me_fep_bridge_is_registered(const me_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Bridge ID, or 0 if not registered
  */
-uint32_t me_fep_bridge_get_id(const me_fep_bridge_t* bridge);
+uint32_t me_fep_bridge_get_id(me_fep_bridge_t* bridge);
 
 /*=============================================================================
  * FEP UPDATE CALLBACK (Internal - used by FEP orchestrator)
@@ -504,7 +504,7 @@ int me_fep_bridge_reset_stats(me_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current free energy, -1.0f on error
  */
-float me_fep_bridge_get_free_energy(const me_fep_bridge_t* bridge);
+float me_fep_bridge_get_free_energy(me_fep_bridge_t* bridge);
 
 /**
  * @brief Get current mirroring error
@@ -512,7 +512,7 @@ float me_fep_bridge_get_free_energy(const me_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Mirroring error [0, 1], -1.0f on error
  */
-float me_fep_bridge_get_mirroring_error(const me_fep_bridge_t* bridge);
+float me_fep_bridge_get_mirroring_error(me_fep_bridge_t* bridge);
 
 /**
  * @brief Get current prediction error
@@ -520,7 +520,7 @@ float me_fep_bridge_get_mirroring_error(const me_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current prediction error, -1.0f on error
  */
-float me_fep_bridge_get_prediction_error(const me_fep_bridge_t* bridge);
+float me_fep_bridge_get_prediction_error(me_fep_bridge_t* bridge);
 
 /*=============================================================================
  * STATE QUERY FUNCTIONS
@@ -532,7 +532,7 @@ float me_fep_bridge_get_prediction_error(const me_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current state
  */
-me_fep_state_t me_fep_bridge_get_state(const me_fep_bridge_t* bridge);
+me_fep_state_t me_fep_bridge_get_state(me_fep_bridge_t* bridge);
 
 /**
  * @brief Check if in degraded mode
@@ -540,7 +540,7 @@ me_fep_state_t me_fep_bridge_get_state(const me_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if free energy is above threshold
  */
-bool me_fep_bridge_is_degraded(const me_fep_bridge_t* bridge);
+bool me_fep_bridge_is_degraded(me_fep_bridge_t* bridge);
 
 /**
  * @brief Check if in high resonance state
@@ -548,7 +548,7 @@ bool me_fep_bridge_is_degraded(const me_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if currently in high resonance state
  */
-bool me_fep_bridge_is_high_resonance(const me_fep_bridge_t* bridge);
+bool me_fep_bridge_is_high_resonance(me_fep_bridge_t* bridge);
 
 /**
  * @brief Get state name as string

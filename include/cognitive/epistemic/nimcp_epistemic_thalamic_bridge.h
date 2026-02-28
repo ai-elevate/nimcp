@@ -80,7 +80,7 @@ int epistemic_thalamic_route_inquiry(
     float expected_gain, float urgency);
 
 int epistemic_thalamic_set_attention(epistemic_thalamic_bridge_t* bridge, float attention);
-int epistemic_thalamic_get_attention(const epistemic_thalamic_bridge_t* bridge, float* attention);
+int epistemic_thalamic_get_attention(epistemic_thalamic_bridge_t* bridge, float* attention);
 int epistemic_thalamic_bridge_get_stats(
     const epistemic_thalamic_bridge_t* bridge,
     epistemic_thalamic_stats_t* stats);

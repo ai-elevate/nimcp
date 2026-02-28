@@ -299,7 +299,7 @@ int logic_sleep_get_effects(
  * @param bridge Logic-sleep bridge
  * @return Inference capacity factor [0-1]
  */
-float logic_sleep_get_inference_capacity(const logic_sleep_bridge_t* bridge);
+float logic_sleep_get_inference_capacity(logic_sleep_bridge_t* bridge);
 
 /**
  * @brief Check if logic is offline
@@ -311,7 +311,7 @@ float logic_sleep_get_inference_capacity(const logic_sleep_bridge_t* bridge);
  * @param bridge Logic-sleep bridge
  * @return true if logic is offline (deep sleep)
  */
-bool logic_sleep_is_offline(const logic_sleep_bridge_t* bridge);
+bool logic_sleep_is_offline(logic_sleep_bridge_t* bridge);
 
 /**
  * @brief Check if in consolidation mode
@@ -323,7 +323,7 @@ bool logic_sleep_is_offline(const logic_sleep_bridge_t* bridge);
  * @param bridge Logic-sleep bridge
  * @return true if in NREM consolidation mode
  */
-bool logic_sleep_is_consolidation_mode(const logic_sleep_bridge_t* bridge);
+bool logic_sleep_is_consolidation_mode(logic_sleep_bridge_t* bridge);
 
 /* ============================================================================
  * Sleep State Mapping Functions

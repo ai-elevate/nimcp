@@ -275,7 +275,7 @@ int jepa_fep_bridge_unregister(jepa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if registered with orchestrator
  */
-bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge);
+bool jepa_fep_bridge_is_registered(jepa_fep_bridge_t* bridge);
 
 /**
  * @brief Get the FEP bridge ID assigned by orchestrator
@@ -283,7 +283,7 @@ bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Bridge ID, or 0 if not registered
  */
-uint32_t jepa_fep_bridge_get_id(const jepa_fep_bridge_t* bridge);
+uint32_t jepa_fep_bridge_get_id(jepa_fep_bridge_t* bridge);
 
 /*=============================================================================
  * FEP UPDATE CALLBACK (Internal - used by FEP orchestrator)
@@ -368,7 +368,7 @@ int jepa_fep_bridge_reset_stats(jepa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current free energy contribution, -1.0f on error
  */
-float jepa_fep_bridge_get_free_energy_contribution(const jepa_fep_bridge_t* bridge);
+float jepa_fep_bridge_get_free_energy_contribution(jepa_fep_bridge_t* bridge);
 
 /**
  * @brief Get current embedding prediction error
@@ -376,7 +376,7 @@ float jepa_fep_bridge_get_free_energy_contribution(const jepa_fep_bridge_t* brid
  * @param bridge Bridge handle
  * @return Current embedding prediction error, -1.0f on error
  */
-float jepa_fep_bridge_get_embedding_prediction_error(const jepa_fep_bridge_t* bridge);
+float jepa_fep_bridge_get_embedding_prediction_error(jepa_fep_bridge_t* bridge);
 
 /**
  * @brief Get current representation quality
@@ -388,7 +388,7 @@ float jepa_fep_bridge_get_embedding_prediction_error(const jepa_fep_bridge_t* br
  * @param bridge Bridge handle
  * @return Representation quality [0,1], -1.0f on error
  */
-float jepa_fep_bridge_get_representation_quality(const jepa_fep_bridge_t* bridge);
+float jepa_fep_bridge_get_representation_quality(jepa_fep_bridge_t* bridge);
 
 /**
  * @brief Get current bridge state
@@ -396,7 +396,7 @@ float jepa_fep_bridge_get_representation_quality(const jepa_fep_bridge_t* bridge
  * @param bridge Bridge handle
  * @return Current state
  */
-jepa_fep_state_t jepa_fep_bridge_get_state(const jepa_fep_bridge_t* bridge);
+jepa_fep_state_t jepa_fep_bridge_get_state(jepa_fep_bridge_t* bridge);
 
 /**
  * @brief Check if in degraded mode
@@ -404,7 +404,7 @@ jepa_fep_state_t jepa_fep_bridge_get_state(const jepa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if free energy is above threshold
  */
-bool jepa_fep_bridge_is_degraded(const jepa_fep_bridge_t* bridge);
+bool jepa_fep_bridge_is_degraded(jepa_fep_bridge_t* bridge);
 
 /*=============================================================================
  * INPUT FUNCTIONS

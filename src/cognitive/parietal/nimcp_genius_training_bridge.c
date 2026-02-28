@@ -1208,7 +1208,7 @@ int genius_training_send_heartbeat(genius_training_bridge_t* bridge) {
     return 0;
 }
 
-uint64_t genius_training_get_last_heartbeat(const genius_training_bridge_t* bridge) {
+uint64_t genius_training_get_last_heartbeat(genius_training_bridge_t* bridge) {
     if (!bridge) return 0;
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);

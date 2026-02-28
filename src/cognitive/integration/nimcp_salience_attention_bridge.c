@@ -505,7 +505,6 @@ salience_attention_bridge_t* salience_attention_bridge_create(
 void salience_attention_bridge_destroy(salience_attention_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "salience_attention");
     }
 
     /* Unregister from hub if registered */

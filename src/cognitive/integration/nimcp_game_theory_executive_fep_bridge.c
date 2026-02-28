@@ -558,7 +558,7 @@ int gt_exec_fep_bridge_unregister(gt_exec_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool gt_exec_fep_bridge_is_registered(const gt_exec_fep_bridge_t* bridge) {
+bool gt_exec_fep_bridge_is_registered(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -574,7 +574,7 @@ bool gt_exec_fep_bridge_is_registered(const gt_exec_fep_bridge_t* bridge) {
     return registered;
 }
 
-uint32_t gt_exec_fep_bridge_get_id(const gt_exec_fep_bridge_t* bridge) {
+uint32_t gt_exec_fep_bridge_get_id(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -898,7 +898,7 @@ int gt_exec_fep_bridge_reset_stats(gt_exec_fep_bridge_t* bridge) {
     return 0;
 }
 
-float gt_exec_fep_bridge_get_free_energy(const gt_exec_fep_bridge_t* bridge) {
+float gt_exec_fep_bridge_get_free_energy(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -912,7 +912,7 @@ float gt_exec_fep_bridge_get_free_energy(const gt_exec_fep_bridge_t* bridge) {
     return fe;
 }
 
-float gt_exec_fep_bridge_get_decision_quality(const gt_exec_fep_bridge_t* bridge) {
+float gt_exec_fep_bridge_get_decision_quality(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -926,7 +926,7 @@ float gt_exec_fep_bridge_get_decision_quality(const gt_exec_fep_bridge_t* bridge
     return dq;
 }
 
-float gt_exec_fep_bridge_get_prediction_error(const gt_exec_fep_bridge_t* bridge) {
+float gt_exec_fep_bridge_get_prediction_error(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -940,7 +940,7 @@ float gt_exec_fep_bridge_get_prediction_error(const gt_exec_fep_bridge_t* bridge
     return pe;
 }
 
-float gt_exec_fep_bridge_get_executive_alignment(const gt_exec_fep_bridge_t* bridge) {
+float gt_exec_fep_bridge_get_executive_alignment(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -958,7 +958,7 @@ float gt_exec_fep_bridge_get_executive_alignment(const gt_exec_fep_bridge_t* bri
  * STATE QUERY FUNCTIONS
  *===========================================================================*/
 
-gt_exec_fep_state_t gt_exec_fep_bridge_get_state(const gt_exec_fep_bridge_t* bridge) {
+gt_exec_fep_state_t gt_exec_fep_bridge_get_state(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return GT_EXEC_FEP_STATE_ERROR;
 
     /* Phase 8: Heartbeat at operation start */
@@ -972,7 +972,7 @@ gt_exec_fep_state_t gt_exec_fep_bridge_get_state(const gt_exec_fep_bridge_t* bri
     return state;
 }
 
-bool gt_exec_fep_bridge_is_degraded(const gt_exec_fep_bridge_t* bridge) {
+bool gt_exec_fep_bridge_is_degraded(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -988,7 +988,7 @@ bool gt_exec_fep_bridge_is_degraded(const gt_exec_fep_bridge_t* bridge) {
     return degraded;
 }
 
-bool gt_exec_fep_bridge_is_exec_aligned(const gt_exec_fep_bridge_t* bridge) {
+bool gt_exec_fep_bridge_is_exec_aligned(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }

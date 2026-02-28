@@ -186,7 +186,7 @@ int bias_fep_bridge_update(bias_fep_bridge_t* bridge, uint64_t delta_ms) {
     return 0;
 }
 
-int bias_fep_bridge_get_state(const bias_fep_bridge_t* bridge, bias_fep_state_t* state) {
+int bias_fep_bridge_get_state(bias_fep_bridge_t* bridge, bias_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     bias_fep_bridge_heartbeat("bias_fep_bri_get_state", 0.0f);
 
@@ -198,7 +198,7 @@ int bias_fep_bridge_get_state(const bias_fep_bridge_t* bridge, bias_fep_state_t*
     return 0;
 }
 
-int bias_fep_bridge_get_stats(const bias_fep_bridge_t* bridge, bias_fep_stats_t* stats) {
+int bias_fep_bridge_get_stats(bias_fep_bridge_t* bridge, bias_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     bias_fep_bridge_heartbeat("bias_fep_bri_get_stats", 0.0f);
 
@@ -243,7 +243,7 @@ int bias_fep_bridge_disconnect_bio_async(bias_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool bias_fep_bridge_is_bio_async_connected(const bias_fep_bridge_t* bridge) {
+bool bias_fep_bridge_is_bio_async_connected(bias_fep_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     bias_fep_bridge_heartbeat("bias_fep_bri_is_bio_async_connect", 0.0f);
 

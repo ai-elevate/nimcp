@@ -276,7 +276,6 @@ gw_cognitive_bridge_t* gw_cognitive_bridge_create(
 void gw_cognitive_bridge_destroy(gw_cognitive_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "gw_cognitive");
     }
 
     /* Free current content data if allocated */

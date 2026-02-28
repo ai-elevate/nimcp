@@ -402,6 +402,10 @@ void grief_thalamic_bridge_set_instance_health_agent(grief_thalamic_bridge_t* br
 
 /* ============================================================================
  * Training Stubs (Phase 8 Utility Integration)
+ *
+ * Stub: training integration planned — these are intentional no-ops that
+ * provide heartbeat signaling only. Full training hooks will wire into the
+ * training-immune bridge when per-module gradient propagation is implemented.
  * ============================================================================ */
 
 int grief_thalamic_bridge_training_begin(grief_thalamic_bridge_t* bridge) {

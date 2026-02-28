@@ -966,7 +966,7 @@ int genius_snn_send_heartbeat(genius_snn_bridge_t* bridge) {
     return 0;
 }
 
-uint64_t genius_snn_get_last_heartbeat(const genius_snn_bridge_t* bridge) {
+uint64_t genius_snn_get_last_heartbeat(genius_snn_bridge_t* bridge) {
     if (!bridge) return 0;
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);

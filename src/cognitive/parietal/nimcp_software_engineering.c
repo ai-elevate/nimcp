@@ -1079,7 +1079,7 @@ int software_eng_set_sleep_deprivation(software_eng_t* se, float level) {
  * STATISTICS API
  * ============================================================================ */
 
-int software_eng_get_stats(const software_eng_t* se, software_eng_stats_t* stats) {
+int software_eng_get_stats(software_eng_t* se, software_eng_stats_t* stats) {
     if (!se || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_get_stats: required parameter is NULL (se, stats)");
         return -1;

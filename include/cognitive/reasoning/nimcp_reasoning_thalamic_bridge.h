@@ -83,7 +83,7 @@ int reasoning_thalamic_route_conclusion(
     float confidence, float urgency);
 
 int reasoning_thalamic_set_attention(reasoning_thalamic_bridge_t* bridge, float attention);
-int reasoning_thalamic_get_attention(const reasoning_thalamic_bridge_t* bridge, float* attention);
+int reasoning_thalamic_get_attention(reasoning_thalamic_bridge_t* bridge, float* attention);
 int reasoning_thalamic_bridge_get_stats(
     const reasoning_thalamic_bridge_t* bridge,
     reasoning_thalamic_stats_t* stats);

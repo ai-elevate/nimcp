@@ -452,7 +452,7 @@ int logic_sleep_get_effects(
  * WHY:  Quick access to most critical parameter
  * HOW:  Thread-safe read
  */
-float logic_sleep_get_inference_capacity(const logic_sleep_bridge_t* bridge)
+float logic_sleep_get_inference_capacity(logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
     if (!bridge) return 1.0f;
@@ -473,7 +473,7 @@ float logic_sleep_get_inference_capacity(const logic_sleep_bridge_t* bridge)
  * WHY:  Allow logic module to skip processing during deep sleep
  * HOW:  Thread-safe read of offline flag
  */
-bool logic_sleep_is_offline(const logic_sleep_bridge_t* bridge)
+bool logic_sleep_is_offline(logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
     if (!bridge) {
@@ -496,7 +496,7 @@ bool logic_sleep_is_offline(const logic_sleep_bridge_t* bridge)
  * WHY:  Signal NREM consolidation to logic system
  * HOW:  Thread-safe read of consolidation flag
  */
-bool logic_sleep_is_consolidation_mode(const logic_sleep_bridge_t* bridge)
+bool logic_sleep_is_consolidation_mode(logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
     if (!bridge) {

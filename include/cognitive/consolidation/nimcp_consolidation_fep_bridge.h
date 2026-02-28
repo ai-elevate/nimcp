@@ -170,9 +170,9 @@ void consolidation_fep_bridge_destroy(consolidation_fep_bridge_t* bridge);
 int consolidation_fep_bridge_connect_fep(consolidation_fep_bridge_t* bridge, fep_system_t* fep);
 int consolidation_fep_bridge_disconnect(consolidation_fep_bridge_t* bridge);
 int consolidation_fep_bridge_update(consolidation_fep_bridge_t* bridge);
-int consolidation_fep_bridge_get_state(const consolidation_fep_bridge_t* bridge,
+int consolidation_fep_bridge_get_state(consolidation_fep_bridge_t* bridge,
                                         consolidation_fep_state_t* state);
-int consolidation_fep_bridge_get_stats(const consolidation_fep_bridge_t* bridge,
+int consolidation_fep_bridge_get_stats(consolidation_fep_bridge_t* bridge,
                                         consolidation_fep_stats_t* stats);
 int consolidation_fep_bridge_connect_bio_async(consolidation_fep_bridge_t* bridge);
 int consolidation_fep_bridge_disconnect_bio_async(consolidation_fep_bridge_t* bridge);

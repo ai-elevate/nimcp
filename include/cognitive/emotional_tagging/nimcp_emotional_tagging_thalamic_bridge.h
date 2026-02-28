@@ -76,7 +76,7 @@ int emotional_tagging_thalamic_apply_tag(
     float intensity, float valence);
 
 int emotional_tagging_thalamic_set_attention(emotional_tagging_thalamic_bridge_t* bridge, float attention);
-int emotional_tagging_thalamic_get_attention(const emotional_tagging_thalamic_bridge_t* bridge, float* attention);
+int emotional_tagging_thalamic_get_attention(emotional_tagging_thalamic_bridge_t* bridge, float* attention);
 int emotional_tagging_thalamic_bridge_get_stats(
     const emotional_tagging_thalamic_bridge_t* bridge,
     emotional_tagging_thalamic_stats_t* stats);

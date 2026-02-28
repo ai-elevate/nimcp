@@ -135,7 +135,7 @@ int consolidation_fep_bridge_update(consolidation_fep_bridge_t* bridge) {
     return 0;
 }
 
-int consolidation_fep_bridge_get_state(const consolidation_fep_bridge_t* bridge,
+int consolidation_fep_bridge_get_state(consolidation_fep_bridge_t* bridge,
                                         consolidation_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     consolidation_fep_bridge_heartbeat("consolidatio_get_state", 0.0f);
@@ -148,7 +148,7 @@ int consolidation_fep_bridge_get_state(const consolidation_fep_bridge_t* bridge,
     return 0;
 }
 
-int consolidation_fep_bridge_get_stats(const consolidation_fep_bridge_t* bridge,
+int consolidation_fep_bridge_get_stats(consolidation_fep_bridge_t* bridge,
                                         consolidation_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     consolidation_fep_bridge_heartbeat("consolidatio_get_stats", 0.0f);

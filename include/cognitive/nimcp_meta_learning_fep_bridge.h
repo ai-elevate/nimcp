@@ -94,9 +94,9 @@ int meta_learning_fep_bridge_connect_meta_learning(meta_learning_fep_bridge_t* b
                                                     meta_learner_t meta);
 int meta_learning_fep_bridge_disconnect(meta_learning_fep_bridge_t* bridge);
 int meta_learning_fep_bridge_update(meta_learning_fep_bridge_t* bridge);
-int meta_learning_fep_bridge_get_state(const meta_learning_fep_bridge_t* bridge,
+int meta_learning_fep_bridge_get_state(meta_learning_fep_bridge_t* bridge,
                                         meta_learning_fep_state_t* state);
-int meta_learning_fep_bridge_get_stats(const meta_learning_fep_bridge_t* bridge,
+int meta_learning_fep_bridge_get_stats(meta_learning_fep_bridge_t* bridge,
                                         meta_learning_fep_stats_t* stats);
 int meta_learning_fep_bridge_connect_bio_async(meta_learning_fep_bridge_t* bridge);
 int meta_learning_fep_bridge_disconnect_bio_async(meta_learning_fep_bridge_t* bridge);

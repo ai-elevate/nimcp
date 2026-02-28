@@ -283,7 +283,7 @@ creative_orchestrator_state_t creative_orchestrator_get_state(
  * @param out Output statistics
  * @return 0 on success, -1 on error
  */
-int creative_orchestrator_get_stats(const creative_orchestrator_t* orch,
+int creative_orchestrator_get_stats(creative_orchestrator_t* orch,
                                      creative_orchestrator_stats_t* out);
 
 /**

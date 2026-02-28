@@ -487,7 +487,7 @@ int jepa_fep_bridge_unregister(jepa_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge) {
+bool jepa_fep_bridge_is_registered(jepa_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -503,7 +503,7 @@ bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge) {
     return registered;
 }
 
-uint32_t jepa_fep_bridge_get_id(const jepa_fep_bridge_t* bridge) {
+uint32_t jepa_fep_bridge_get_id(jepa_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_get_id: bridge is NULL");
         return 0;
@@ -672,7 +672,7 @@ int jepa_fep_bridge_reset_stats(jepa_fep_bridge_t* bridge) {
     return 0;
 }
 
-float jepa_fep_bridge_get_free_energy_contribution(const jepa_fep_bridge_t* bridge) {
+float jepa_fep_bridge_get_free_energy_contribution(jepa_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_get_free_energy_contribution: bridge is NULL");
         return -1.0f;
@@ -689,7 +689,7 @@ float jepa_fep_bridge_get_free_energy_contribution(const jepa_fep_bridge_t* brid
     return fe;
 }
 
-float jepa_fep_bridge_get_embedding_prediction_error(const jepa_fep_bridge_t* bridge) {
+float jepa_fep_bridge_get_embedding_prediction_error(jepa_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_get_embedding_prediction_error: bridge is NULL");
         return -1.0f;
@@ -706,7 +706,7 @@ float jepa_fep_bridge_get_embedding_prediction_error(const jepa_fep_bridge_t* br
     return error;
 }
 
-float jepa_fep_bridge_get_representation_quality(const jepa_fep_bridge_t* bridge) {
+float jepa_fep_bridge_get_representation_quality(jepa_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_get_representation_quality: bridge is NULL");
         return -1.0f;
@@ -723,7 +723,7 @@ float jepa_fep_bridge_get_representation_quality(const jepa_fep_bridge_t* bridge
     return quality;
 }
 
-jepa_fep_state_t jepa_fep_bridge_get_state(const jepa_fep_bridge_t* bridge) {
+jepa_fep_state_t jepa_fep_bridge_get_state(jepa_fep_bridge_t* bridge) {
     if (!bridge) return JEPA_FEP_STATE_ERROR;
 
     /* Phase 8: Heartbeat at operation start */
@@ -737,7 +737,7 @@ jepa_fep_state_t jepa_fep_bridge_get_state(const jepa_fep_bridge_t* bridge) {
     return state;
 }
 
-bool jepa_fep_bridge_is_degraded(const jepa_fep_bridge_t* bridge) {
+bool jepa_fep_bridge_is_degraded(jepa_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }

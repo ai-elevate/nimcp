@@ -136,8 +136,8 @@ int symbolic_logic_fep_validate_beliefs_by_proof(symbolic_logic_fep_bridge_t* br
 int symbolic_logic_fep_trigger_revision_from_contradiction(symbolic_logic_fep_bridge_t* bridge);
 
 int symbolic_logic_fep_bridge_update(symbolic_logic_fep_bridge_t* bridge, uint64_t delta_ms);
-int symbolic_logic_fep_bridge_get_state(const symbolic_logic_fep_bridge_t* bridge, symbolic_logic_fep_state_t* state);
-int symbolic_logic_fep_bridge_get_stats(const symbolic_logic_fep_bridge_t* bridge, symbolic_logic_fep_stats_t* stats);
+int symbolic_logic_fep_bridge_get_state(symbolic_logic_fep_bridge_t* bridge, symbolic_logic_fep_state_t* state);
+int symbolic_logic_fep_bridge_get_stats(symbolic_logic_fep_bridge_t* bridge, symbolic_logic_fep_stats_t* stats);
 
 int symbolic_logic_fep_bridge_connect_bio_async(symbolic_logic_fep_bridge_t* bridge);
 int symbolic_logic_fep_bridge_disconnect_bio_async(symbolic_logic_fep_bridge_t* bridge);

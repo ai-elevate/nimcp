@@ -374,6 +374,10 @@ void grief_substrate_bridge_set_instance_health_agent(grief_substrate_bridge_t* 
 
 /* ============================================================================
  * Training Stubs (Phase 8 Utility Integration)
+ *
+ * Stub: training integration planned — these are intentional no-ops that
+ * provide heartbeat signaling only. Full training hooks will wire into the
+ * training-immune bridge when per-module gradient propagation is implemented.
  * ============================================================================ */
 
 int grief_substrate_bridge_training_begin(grief_substrate_bridge_t* bridge) {

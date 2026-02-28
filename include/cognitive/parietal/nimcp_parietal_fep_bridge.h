@@ -342,7 +342,7 @@ int parietal_fep_bridge_unregister(parietal_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if registered with orchestrator
  */
-bool parietal_fep_bridge_is_registered(const parietal_fep_bridge_t* bridge);
+bool parietal_fep_bridge_is_registered(parietal_fep_bridge_t* bridge);
 
 /**
  * @brief Get the FEP bridge ID assigned by orchestrator
@@ -350,7 +350,7 @@ bool parietal_fep_bridge_is_registered(const parietal_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Bridge ID, or 0 if not registered
  */
-uint32_t parietal_fep_bridge_get_id(const parietal_fep_bridge_t* bridge);
+uint32_t parietal_fep_bridge_get_id(parietal_fep_bridge_t* bridge);
 
 /*=============================================================================
  * FEP UPDATE CALLBACK (Internal - used by FEP orchestrator)
@@ -459,7 +459,7 @@ int parietal_fep_bridge_reset_stats(parietal_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current free energy, -1.0f on error
  */
-float parietal_fep_bridge_get_free_energy_contribution(const parietal_fep_bridge_t* bridge);
+float parietal_fep_bridge_get_free_energy_contribution(parietal_fep_bridge_t* bridge);
 
 /**
  * @brief Get current spatial uncertainty
@@ -467,7 +467,7 @@ float parietal_fep_bridge_get_free_energy_contribution(const parietal_fep_bridge
  * @param bridge Bridge handle
  * @return Spatial uncertainty [0, 1], -1.0f on error
  */
-float parietal_fep_bridge_get_spatial_uncertainty(const parietal_fep_bridge_t* bridge);
+float parietal_fep_bridge_get_spatial_uncertainty(parietal_fep_bridge_t* bridge);
 
 /**
  * @brief Get current body schema error
@@ -475,7 +475,7 @@ float parietal_fep_bridge_get_spatial_uncertainty(const parietal_fep_bridge_t* b
  * @param bridge Bridge handle
  * @return Body schema error [0, 1], -1.0f on error
  */
-float parietal_fep_bridge_get_body_schema_error(const parietal_fep_bridge_t* bridge);
+float parietal_fep_bridge_get_body_schema_error(parietal_fep_bridge_t* bridge);
 
 /**
  * @brief Get current prediction error
@@ -483,7 +483,7 @@ float parietal_fep_bridge_get_body_schema_error(const parietal_fep_bridge_t* bri
  * @param bridge Bridge handle
  * @return Current prediction error, -1.0f on error
  */
-float parietal_fep_bridge_get_prediction_error(const parietal_fep_bridge_t* bridge);
+float parietal_fep_bridge_get_prediction_error(parietal_fep_bridge_t* bridge);
 
 /**
  * @brief Get current bridge state
@@ -491,7 +491,7 @@ float parietal_fep_bridge_get_prediction_error(const parietal_fep_bridge_t* brid
  * @param bridge Bridge handle
  * @return Current state
  */
-parietal_fep_state_t parietal_fep_bridge_get_state(const parietal_fep_bridge_t* bridge);
+parietal_fep_state_t parietal_fep_bridge_get_state(parietal_fep_bridge_t* bridge);
 
 /**
  * @brief Check if in degraded mode
@@ -499,7 +499,7 @@ parietal_fep_state_t parietal_fep_bridge_get_state(const parietal_fep_bridge_t* 
  * @param bridge Bridge handle
  * @return true if free energy is above threshold
  */
-bool parietal_fep_bridge_is_degraded(const parietal_fep_bridge_t* bridge);
+bool parietal_fep_bridge_is_degraded(parietal_fep_bridge_t* bridge);
 
 /*=============================================================================
  * CALLBACK REGISTRATION

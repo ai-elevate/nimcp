@@ -57,7 +57,7 @@ int consolidation_thalamic_bridge_reset(consolidation_thalamic_bridge_t* bridge)
 int consolidation_thalamic_route_encode(consolidation_thalamic_bridge_t* bridge, const consolidation_thalamic_signal_t* signal);
 int consolidation_thalamic_route_replay(consolidation_thalamic_bridge_t* bridge, const void* memory, float importance);
 int consolidation_thalamic_set_attention(consolidation_thalamic_bridge_t* bridge, float attention);
-int consolidation_thalamic_get_attention(const consolidation_thalamic_bridge_t* bridge, float* attention);
+int consolidation_thalamic_get_attention(consolidation_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t encodes_routed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_memory_salience;
 } consolidation_thalamic_stats_t;
 
-int consolidation_thalamic_bridge_get_stats(const consolidation_thalamic_bridge_t* bridge, consolidation_thalamic_stats_t* stats);
+int consolidation_thalamic_bridge_get_stats(consolidation_thalamic_bridge_t* bridge, consolidation_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

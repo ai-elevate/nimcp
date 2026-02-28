@@ -127,7 +127,7 @@ creative_orchestrator_state_t creative_orchestrator_get_state(
     return orch->state;
 }
 
-int creative_orchestrator_get_stats(const creative_orchestrator_t* orch,
+int creative_orchestrator_get_stats(creative_orchestrator_t* orch,
                                      creative_orchestrator_stats_t* out) {
     if (!orch || !out) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_orchestrator_get_stats: required parameter is NULL (orch, out)");

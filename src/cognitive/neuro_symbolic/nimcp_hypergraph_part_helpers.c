@@ -28,7 +28,7 @@ static nimcp_error_t add_incidence(nimcp_hypergraph_t* hg, uint32_t vertex_id,
     incidence_entry_t* entry = (incidence_entry_t*)nimcp_malloc(
         sizeof(incidence_entry_t));
     if (!entry) {
-        return NIMCP_ERROR_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     entry->vertex_id = vertex_id;
@@ -75,7 +75,7 @@ static nimcp_error_t grow_vertices(nimcp_hypergraph_t* hg)
     nimcp_hypervertex_t* new_vertices = (nimcp_hypervertex_t*)nimcp_realloc(
         hg->vertices, new_capacity * sizeof(nimcp_hypervertex_t));
     if (!new_vertices) {
-        return NIMCP_ERROR_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     hg->vertices = new_vertices;
@@ -95,7 +95,7 @@ static nimcp_error_t grow_edges(nimcp_hypergraph_t* hg)
     nimcp_hyperedge_t* new_edges = (nimcp_hyperedge_t*)nimcp_realloc(
         hg->edges, new_capacity * sizeof(nimcp_hyperedge_t));
     if (!new_edges) {
-        return NIMCP_ERROR_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     hg->edges = new_edges;

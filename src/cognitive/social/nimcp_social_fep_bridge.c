@@ -647,7 +647,7 @@ int social_fep_bridge_unregister(social_fep_bridge_t* bridge) {
     return 0;
 }
 
-bool social_fep_bridge_is_registered(const social_fep_bridge_t* bridge) {
+bool social_fep_bridge_is_registered(social_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
@@ -659,7 +659,7 @@ bool social_fep_bridge_is_registered(const social_fep_bridge_t* bridge) {
     return registered;
 }
 
-uint32_t social_fep_bridge_get_id(const social_fep_bridge_t* bridge) {
+uint32_t social_fep_bridge_get_id(social_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
     nimcp_mutex_lock(((social_fep_bridge_t*)bridge)->base.mutex);
@@ -839,7 +839,7 @@ int social_fep_bridge_reset_stats(social_fep_bridge_t* bridge) {
  * FREE ENERGY ACCESSORS
  *===========================================================================*/
 
-float social_fep_bridge_get_free_energy_contribution(const social_fep_bridge_t* bridge) {
+float social_fep_bridge_get_free_energy_contribution(social_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     nimcp_mutex_lock(((social_fep_bridge_t*)bridge)->base.mutex);
@@ -849,7 +849,7 @@ float social_fep_bridge_get_free_energy_contribution(const social_fep_bridge_t* 
     return fe;
 }
 
-float social_fep_bridge_get_social_prediction_error(const social_fep_bridge_t* bridge) {
+float social_fep_bridge_get_social_prediction_error(social_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     nimcp_mutex_lock(((social_fep_bridge_t*)bridge)->base.mutex);
@@ -859,7 +859,7 @@ float social_fep_bridge_get_social_prediction_error(const social_fep_bridge_t* b
     return pe;
 }
 
-float social_fep_bridge_get_relationship_uncertainty(const social_fep_bridge_t* bridge) {
+float social_fep_bridge_get_relationship_uncertainty(social_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
     nimcp_mutex_lock(((social_fep_bridge_t*)bridge)->base.mutex);
@@ -873,7 +873,7 @@ float social_fep_bridge_get_relationship_uncertainty(const social_fep_bridge_t* 
  * STATE QUERY FUNCTIONS
  *===========================================================================*/
 
-social_fep_state_t social_fep_bridge_get_state(const social_fep_bridge_t* bridge) {
+social_fep_state_t social_fep_bridge_get_state(social_fep_bridge_t* bridge) {
     if (!bridge) return SOCIAL_FEP_STATE_ERROR;
 
     nimcp_mutex_lock(((social_fep_bridge_t*)bridge)->base.mutex);
@@ -883,7 +883,7 @@ social_fep_state_t social_fep_bridge_get_state(const social_fep_bridge_t* bridge
     return state;
 }
 
-bool social_fep_bridge_is_degraded(const social_fep_bridge_t* bridge) {
+bool social_fep_bridge_is_degraded(social_fep_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }

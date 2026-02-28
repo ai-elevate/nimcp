@@ -257,9 +257,9 @@ int wellbeing_fep_bridge_update(wellbeing_fep_bridge_t* bridge);
  * State/Stats API
  * ============================================================================ */
 
-int wellbeing_fep_bridge_get_state(const wellbeing_fep_bridge_t* bridge,
+int wellbeing_fep_bridge_get_state(wellbeing_fep_bridge_t* bridge,
                                     wellbeing_fep_state_t* state);
-int wellbeing_fep_bridge_get_stats(const wellbeing_fep_bridge_t* bridge,
+int wellbeing_fep_bridge_get_stats(wellbeing_fep_bridge_t* bridge,
                                     wellbeing_fep_stats_t* stats);
 
 /* ============================================================================

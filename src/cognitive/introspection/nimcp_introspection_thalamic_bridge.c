@@ -280,7 +280,7 @@ int introspection_thalamic_set_attention(introspection_thalamic_bridge_t* bridge
     return 0;
 }
 
-int introspection_thalamic_get_attention(const introspection_thalamic_bridge_t* bridge, float* attention) {
+int introspection_thalamic_get_attention(introspection_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;

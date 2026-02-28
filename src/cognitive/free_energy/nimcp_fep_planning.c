@@ -46,7 +46,7 @@ static float compute_ucb(const mcts_node_t* node, uint32_t parent_visits, float 
 /* Allocate new MCTS node */
 static mcts_node_t* alloc_node(fep_planning_system_t* sys) {
     if (!sys || sys->num_nodes >= sys->max_nodes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "alloc_node: sys is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "alloc_node: sys is NULL or node capacity exceeded");
         return NULL;
     }
 

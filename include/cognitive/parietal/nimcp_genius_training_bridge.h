@@ -756,7 +756,7 @@ int genius_training_send_heartbeat(genius_training_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Last heartbeat timestamp in microseconds, 0 on error
  */
-uint64_t genius_training_get_last_heartbeat(const genius_training_bridge_t* bridge);
+uint64_t genius_training_get_last_heartbeat(genius_training_bridge_t* bridge);
 
 /**
  * @brief Check if heartbeat is stale

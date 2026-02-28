@@ -363,13 +363,13 @@ int omni_kg_get_predictors_for(const omni_kg_sync_t* sync,
 /**
  * @brief Get module node ID by name
  */
-brain_kg_node_id_t omni_kg_get_node_by_name(const omni_kg_sync_t* sync,
+brain_kg_node_id_t omni_kg_get_node_by_name(omni_kg_sync_t* sync,
                                              const char* name);
 
 /**
  * @brief Get module capabilities
  */
-omni_kg_capability_t omni_kg_get_capabilities(const omni_kg_sync_t* sync,
+omni_kg_capability_t omni_kg_get_capabilities(omni_kg_sync_t* sync,
                                                brain_kg_node_id_t node);
 
 /* ============================================================================
@@ -394,7 +394,7 @@ int omni_kg_sync_capabilities(omni_kg_sync_t* sync);
 /**
  * @brief Get sync statistics
  */
-int omni_kg_get_sync_stats(const omni_kg_sync_t* sync,
+int omni_kg_get_sync_stats(omni_kg_sync_t* sync,
                             omni_kg_sync_stats_t* stats);
 
 /**

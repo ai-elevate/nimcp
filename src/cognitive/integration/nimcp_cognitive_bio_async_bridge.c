@@ -394,7 +394,6 @@ cognitive_bio_bridge_t* cognitive_bio_bridge_create_default(void) {
 void cognitive_bio_bridge_destroy(cognitive_bio_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "cognitive_bio_async");
     }
 
     /* Disconnect first */
@@ -1432,6 +1431,7 @@ int cognitive_bio_bridge_create_phase_sync(
     }
 
     /* Placeholder - in full implementation would create phase sync */
+    NIMCP_LOGGING_DEBUG("cognitive_bio_bridge_create_phase_sync called (stub, count=%zu, band=%u)", count, (unsigned)band);
     (void)count;
     (void)band;
     *sync = NULL;
@@ -1734,6 +1734,7 @@ int cognitive_bio_async_bridge_training_begin(cognitive_bio_bridge_t* bridge) {
         return -1;
     }
     cognitive_bio_async_bridge_heartbeat_instance(bridge->health_agent, "cognitive_bio_async_bridge_training_begin", 0.0f);
+    NIMCP_LOGGING_DEBUG("cognitive_bio_async_bridge_training_begin called");
     return 0;
 }
 
@@ -1744,6 +1745,7 @@ int cognitive_bio_async_bridge_training_end(cognitive_bio_bridge_t* bridge) {
         return -1;
     }
     cognitive_bio_async_bridge_heartbeat_instance(bridge->health_agent, "cognitive_bio_async_bridge_training_end", 1.0f);
+    NIMCP_LOGGING_DEBUG("cognitive_bio_async_bridge_training_end called");
     return 0;
 }
 
@@ -1756,5 +1758,6 @@ int cognitive_bio_async_bridge_training_step(cognitive_bio_bridge_t* bridge, flo
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     cognitive_bio_async_bridge_heartbeat_instance(bridge->health_agent, "cognitive_bio_async_bridge_training_step", progress);
+    NIMCP_LOGGING_DEBUG("cognitive_bio_async_bridge_training_step called (progress=%.3f)", progress);
     return 0;
 }

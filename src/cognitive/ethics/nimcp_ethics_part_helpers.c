@@ -143,7 +143,7 @@ static empathy_network_t create_empathy_network(void)
 static bool allocate_policy_storage(ethics_engine_t engine)
 {
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_policy_storage: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "allocate_policy_storage: engine is NULL");
         return false;
     }
 
@@ -157,7 +157,7 @@ static bool allocate_policy_storage(ethics_engine_t engine)
 static bool allocate_violation_storage(ethics_engine_t engine)
 {
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_violation_storage: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "allocate_violation_storage: engine is NULL");
         return false;
     }
 
@@ -333,7 +333,7 @@ static float calculate_final_score(float golden_rule_score, float policy_score)
 static bool expand_violations_array(ethics_engine_t engine)
 {
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "expand_violations_array: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "expand_violations_array: engine is NULL");
         return false;
     }
 

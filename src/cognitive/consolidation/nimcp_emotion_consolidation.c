@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -69,7 +69,7 @@ struct emotion_consolidation_system {
     bio_module_context_t bio_ctx;
     bool bio_async_registered;
 
-    pthread_rwlock_t lock;
+    nimcp_rwlock_t lock;
     bool initialized;
 };
 
@@ -138,7 +138,7 @@ static void on_emotion_tensor_update(void* context, const void* msg_data, size_t
         return;
     }
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
 
     /* WHAT: Update cached emotion state */
     system->current_arousal = msg->arousal;
@@ -169,7 +169,7 @@ static void on_emotion_tensor_update(void* context, const void* msg_data, size_t
     system->stats.avg_emotional_boost =
         alpha * system->current_boost + (1.0f - alpha) * system->stats.avg_emotional_boost;
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     EC_LOG_DEBUG("Emotion update: arousal=%.3f valence=%.3f boost=%.3f",
                  msg->arousal, msg->valence, system->current_boost);
@@ -245,7 +245,7 @@ emotion_consolidation_system_t* emotion_consolidation_create(
     system->stats.avg_emotional_boost = 1.0f;
 
     /* WHAT: Initialize lock */
-    if (pthread_rwlock_init(&system->lock, NULL) != 0) {
+    if (nimcp_rwlock_init(&system->lock) != NIMCP_SUCCESS) {
         EC_LOG_ERROR("Failed to initialize rwlock");
         nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_consolidation_create: validation failed");
@@ -273,7 +273,7 @@ void emotion_consolidation_destroy(emotion_consolidation_system_t* system) {
         emotion_consolidation_unregister_bio_async(system);
     }
 
-    pthread_rwlock_destroy(&system->lock);
+    nimcp_rwlock_destroy(&system->lock);
     nimcp_free(system);
 
     EC_LOG_INFO("Emotion-consolidation system destroyed");
@@ -296,7 +296,7 @@ bool emotion_consolidation_tag_memory(
     emotion_consolidation_heartbeat("emotion_cons_tag_memory", 0.0f);
 
 
-    pthread_rwlock_rdlock(&system->lock);
+    nimcp_rwlock_rdlock(&system->lock);
 
     /* WHAT: Snapshot current emotion state */
     tag->arousal = system->current_arousal;
@@ -311,13 +311,13 @@ bool emotion_consolidation_tag_memory(
 
     tag->encoding_timestamp_ms = nimcp_time_monotonic_ms();
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     /* WHAT: Update statistics */
     if (tag->is_emotionally_tagged) {
-        pthread_rwlock_wrlock(&system->lock);
+        nimcp_rwlock_wrlock(&system->lock);
         system->stats.emotional_memories_tagged++;
-        pthread_rwlock_unlock(&system->lock);
+        nimcp_rwlock_unlock(&system->lock);
     }
 
     EC_LOG_DEBUG("Tagged memory: arousal=%.3f valence=%.3f emotional=%d",
@@ -348,7 +348,7 @@ float emotion_consolidation_compute_strength(
         return base_strength;
     }
 
-    pthread_rwlock_rdlock(&system->lock);
+    nimcp_rwlock_rdlock(&system->lock);
 
     /* WHAT: Compute emotional boost for this memory */
     float boost = compute_consolidation_boost(
@@ -362,7 +362,7 @@ float emotion_consolidation_compute_strength(
     /* Update statistics */
     ((emotion_consolidation_system_t*)system)->stats.emotional_boosts_applied++;
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     /* Guard: Clamp output */
     if (modulated_strength > 1.0f) {
@@ -410,9 +410,9 @@ float emotion_consolidation_get_boost(const emotion_consolidation_system_t* syst
     emotion_consolidation_heartbeat("emotion_cons_get_boost", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     float boost = system->current_boost;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return boost;
 }
@@ -439,7 +439,7 @@ float emotion_consolidation_modulate_decay(
         return base_decay;
     }
 
-    pthread_rwlock_rdlock(&system->lock);
+    nimcp_rwlock_rdlock(&system->lock);
 
     /* WHAT: Slow decay for emotional memories */
     /* WHY:  Emotional memories persist longer (survival advantage) */
@@ -448,7 +448,7 @@ float emotion_consolidation_modulate_decay(
 
     float modulated_decay = base_decay * inhibition;
 
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     /* Guard: Clamp output */
     if (modulated_decay < 0.0f) {
@@ -475,9 +475,9 @@ bool emotion_consolidation_get_stats(
     emotion_consolidation_heartbeat("emotion_cons_get_stats", 0.0f);
 
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_rdlock((nimcp_rwlock_t*)&system->lock);
     *stats = system->stats;
-    pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
+    nimcp_rwlock_unlock((nimcp_rwlock_t*)&system->lock);
 
     return true;
 }
@@ -491,11 +491,11 @@ void emotion_consolidation_reset_stats(emotion_consolidation_system_t* system) {
     emotion_consolidation_heartbeat("emotion_cons_reset_stats", 0.0f);
 
 
-    pthread_rwlock_wrlock(&system->lock);
+    nimcp_rwlock_wrlock(&system->lock);
     memset(&system->stats, 0, sizeof(emotion_consolidation_stats_t));
     system->stats.current_consolidation_boost = system->current_boost;
     system->stats.avg_emotional_boost = system->current_boost;
-    pthread_rwlock_unlock(&system->lock);
+    nimcp_rwlock_unlock(&system->lock);
 
     EC_LOG_INFO("Statistics reset");
 }

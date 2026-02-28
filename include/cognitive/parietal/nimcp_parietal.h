@@ -1184,7 +1184,7 @@ int parietal_lobe_quantum_vqe(
  * @return 0 on success
  */
 int parietal_get_stats(
-    const parietal_lobe_t* parietal,
+    parietal_lobe_t* parietal,
     parietal_stats_t* stats
 );
 

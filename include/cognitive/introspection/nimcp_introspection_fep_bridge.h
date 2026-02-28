@@ -96,8 +96,8 @@ int introspection_fep_monitor_uncertainty(introspection_fep_bridge_t* bridge);
 int introspection_fep_meta_learn(introspection_fep_bridge_t* bridge, float prediction_error);
 
 int introspection_fep_bridge_update(introspection_fep_bridge_t* bridge, uint64_t delta_ms);
-int introspection_fep_bridge_get_state(const introspection_fep_bridge_t* bridge, introspection_fep_state_t* state);
-int introspection_fep_bridge_get_stats(const introspection_fep_bridge_t* bridge, introspection_fep_stats_t* stats);
+int introspection_fep_bridge_get_state(introspection_fep_bridge_t* bridge, introspection_fep_state_t* state);
+int introspection_fep_bridge_get_stats(introspection_fep_bridge_t* bridge, introspection_fep_stats_t* stats);
 
 int introspection_fep_bridge_connect_bio_async(introspection_fep_bridge_t* bridge);
 int introspection_fep_bridge_disconnect_bio_async(introspection_fep_bridge_t* bridge);

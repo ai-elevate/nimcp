@@ -115,7 +115,7 @@ NIMCP_API quantum_mcts_t* quantum_mcts_create(
 
     qmcts = (quantum_mcts_t*)nimcp_calloc(1, sizeof(quantum_mcts_t));
     if (!qmcts) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate Quantum MCTS system");
         return NULL;
     }
@@ -132,7 +132,7 @@ NIMCP_API quantum_mcts_t* quantum_mcts_create(
     qmcts->nodes = (qmcts_node_t*)nimcp_calloc(
         qmcts->node_capacity, sizeof(qmcts_node_t));
     if (!qmcts->nodes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate QMCTS nodes");
         nimcp_free(qmcts);
         return NULL;
@@ -417,9 +417,9 @@ NIMCP_API nimcp_error_t quantum_mcts_plan(
     qmcts->root_id = create_node(qmcts, 0, state, state_dim, -1);
     if (qmcts->root_id == UINT32_MAX) {
         nimcp_mutex_unlock(qmcts->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "quantum_mcts_plan: failed to create root node");
-        return NIMCP_ERROR_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     /* Store current state */
@@ -523,9 +523,9 @@ NIMCP_API nimcp_error_t quantum_mcts_select_action(
     /* Allocate minimal plan storage */
     plan.actions = (int*)nimcp_malloc(sizeof(int));
     if (!plan.actions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "quantum_mcts_select_action: failed to allocate plan.actions");
-        return NIMCP_ERROR_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
     plan.num_actions = 1;
 
@@ -769,9 +769,9 @@ NIMCP_API nimcp_error_t quantum_mcts_estimate_value(
 
     float* amplitudes = (float*)nimcp_calloc(num_states, sizeof(float));
     if (!amplitudes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "quantum_mcts_estimate_value: failed to allocate amplitudes");
-        return NIMCP_ERROR_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     /* Convert state to amplitude distribution */
@@ -1064,9 +1064,9 @@ NIMCP_API nimcp_error_t quantum_mcts_plan_init(
 
     plan->actions = (int*)nimcp_calloc(max_actions, sizeof(int));
     if (!plan->actions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "quantum_mcts_plan_init: failed to allocate actions array");
-        return NIMCP_ERROR_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     plan->step_values = (float*)nimcp_calloc(max_actions, sizeof(float));
@@ -1329,9 +1329,9 @@ static nimcp_error_t expand_node(quantum_mcts_t* qmcts, uint32_t node_id)
     /* Allocate children array */
     node->children = (uint32_t*)nimcp_calloc(num_actions, sizeof(uint32_t));
     if (!node->children) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "expand_node: failed to allocate children array");
-        return NIMCP_ERROR_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
     node->children_capacity = num_actions;
 

@@ -384,7 +384,7 @@ int surprise_fep_modulate_precision(surprise_fep_bridge_t* bridge) {
     return 0;
 }
 
-float surprise_fep_get_precision_boost(const surprise_fep_bridge_t* bridge) {
+float surprise_fep_get_precision_boost(surprise_fep_bridge_t* bridge) {
     if (!bridge) return 1.0f;
     return bridge->effects.current_precision_boost;
 }

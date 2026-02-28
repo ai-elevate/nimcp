@@ -98,6 +98,9 @@ struct recovery_executive_internal {
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    // Health agent (per-instance)
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
@@ -1333,9 +1336,9 @@ int recovery_executive_query_self_knowledge(kg_reader_t* kg) {
  * ============================================================================ */
 
 void recovery_executive_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
-    if (instance) {
-        (void)agent;
-        g_recovery_executive_health_agent = agent;
+    recovery_executive_t* self = (recovery_executive_t*)instance;
+    if (self) {
+        self->health_agent = agent;
     }
 }
 

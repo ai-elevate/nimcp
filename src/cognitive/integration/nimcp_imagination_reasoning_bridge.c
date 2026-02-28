@@ -524,7 +524,6 @@ imagination_reasoning_bridge_t* imagination_reasoning_bridge_create(
 void imagination_reasoning_bridge_destroy(imagination_reasoning_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "imagination_reasoning");
     }
 
     /* Disconnect if still connected */

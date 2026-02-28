@@ -68,8 +68,8 @@ int predictive_immune_thalamic_route_interoception(predictive_immune_thalamic_br
 int predictive_immune_thalamic_route_cytokine(predictive_immune_thalamic_bridge_t* bridge, float level, float importance);
 int predictive_immune_thalamic_route_signal(predictive_immune_thalamic_bridge_t* bridge, const predictive_immune_thalamic_signal_t* signal);
 int predictive_immune_thalamic_set_attention(predictive_immune_thalamic_bridge_t* bridge, float attention);
-int predictive_immune_thalamic_get_attention(const predictive_immune_thalamic_bridge_t* bridge, float* attention);
-int predictive_immune_thalamic_bridge_get_stats(const predictive_immune_thalamic_bridge_t* bridge, predictive_immune_thalamic_stats_t* stats);
+int predictive_immune_thalamic_get_attention(predictive_immune_thalamic_bridge_t* bridge, float* attention);
+int predictive_immune_thalamic_bridge_get_stats(predictive_immune_thalamic_bridge_t* bridge, predictive_immune_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

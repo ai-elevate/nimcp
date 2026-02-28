@@ -230,7 +230,7 @@ int reasoning_fep_bridge_update(reasoning_fep_bridge_t* bridge, uint64_t delta_m
     return 0;
 }
 
-int reasoning_fep_bridge_get_state(const reasoning_fep_bridge_t* bridge, reasoning_fep_state_t* state) {
+int reasoning_fep_bridge_get_state(reasoning_fep_bridge_t* bridge, reasoning_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     reasoning_fep_bridge_heartbeat("reasoning_fe_get_state", 0.0f);
 
@@ -242,7 +242,7 @@ int reasoning_fep_bridge_get_state(const reasoning_fep_bridge_t* bridge, reasoni
     return 0;
 }
 
-int reasoning_fep_bridge_get_stats(const reasoning_fep_bridge_t* bridge, reasoning_fep_stats_t* stats) {
+int reasoning_fep_bridge_get_stats(reasoning_fep_bridge_t* bridge, reasoning_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     reasoning_fep_bridge_heartbeat("reasoning_fe_get_stats", 0.0f);
 

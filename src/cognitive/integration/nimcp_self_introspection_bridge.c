@@ -371,7 +371,6 @@ self_introspection_bridge_t* self_introspection_bridge_create(
 void self_introspection_bridge_destroy(self_introspection_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "self_introspection");
     }
 
     /* Free any result data in queries */

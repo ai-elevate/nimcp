@@ -57,7 +57,7 @@ int shadow_thalamic_bridge_reset(shadow_thalamic_bridge_t* bridge);
 int shadow_thalamic_route_emergence(shadow_thalamic_bridge_t* bridge, const shadow_thalamic_signal_t* signal);
 int shadow_thalamic_route_integration(shadow_thalamic_bridge_t* bridge, const void* content, float readiness);
 int shadow_thalamic_set_attention(shadow_thalamic_bridge_t* bridge, float attention);
-int shadow_thalamic_get_attention(const shadow_thalamic_bridge_t* bridge, float* attention);
+int shadow_thalamic_get_attention(shadow_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t emergences_routed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_emergence_strength;
 } shadow_thalamic_stats_t;
 
-int shadow_thalamic_bridge_get_stats(const shadow_thalamic_bridge_t* bridge, shadow_thalamic_stats_t* stats);
+int shadow_thalamic_bridge_get_stats(shadow_thalamic_bridge_t* bridge, shadow_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

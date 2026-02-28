@@ -81,7 +81,7 @@ int emotion_thalamic_route_regulation(
     float effort, float urgency);
 
 int emotion_thalamic_set_attention(emotion_thalamic_bridge_t* bridge, float attention);
-int emotion_thalamic_get_attention(const emotion_thalamic_bridge_t* bridge, float* attention);
+int emotion_thalamic_get_attention(emotion_thalamic_bridge_t* bridge, float* attention);
 int emotion_thalamic_bridge_get_stats(
     const emotion_thalamic_bridge_t* bridge,
     emotion_thalamic_stats_t* stats);

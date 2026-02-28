@@ -979,7 +979,7 @@ int surprise_amplifier_update(surprise_amplifier_t* amp, float dt_seconds) {
  * Query API
  * ============================================================================ */
 
-float surprise_amplifier_get_current_level(const surprise_amplifier_t* amp) {
+float surprise_amplifier_get_current_level(surprise_amplifier_t* amp) {
     if (!amp) return -1.0f;
 
     /* Note: single float read is effectively atomic, but use mutex for consistency */
@@ -990,7 +990,7 @@ float surprise_amplifier_get_current_level(const surprise_amplifier_t* amp) {
     return level;
 }
 
-bool surprise_amplifier_is_in_refractory(const surprise_amplifier_t* amp) {
+bool surprise_amplifier_is_in_refractory(surprise_amplifier_t* amp) {
     if (!amp) {
         return false;
     }
@@ -1004,7 +1004,7 @@ bool surprise_amplifier_is_in_refractory(const surprise_amplifier_t* amp) {
     return refractory;
 }
 
-int surprise_amplifier_get_last_event(const surprise_amplifier_t* amp,
+int surprise_amplifier_get_last_event(surprise_amplifier_t* amp,
                                        surprise_event_t* event_out) {
     NIMCP_CHECK_THROW_IMMUNE(amp != NULL,
                              NIMCP_SURPRISE_ERROR_NULL_POINTER,

@@ -115,8 +115,8 @@ int memory_fep_apply_trace_persistence(memory_fep_bridge_t* bridge);
 
 int memory_fep_bridge_update(memory_fep_bridge_t* bridge, uint64_t delta_ms);
 
-int memory_fep_bridge_get_state(const memory_fep_bridge_t* bridge, memory_fep_state_t* state);
-int memory_fep_bridge_get_stats(const memory_fep_bridge_t* bridge, memory_fep_stats_t* stats);
+int memory_fep_bridge_get_state(memory_fep_bridge_t* bridge, memory_fep_state_t* state);
+int memory_fep_bridge_get_stats(memory_fep_bridge_t* bridge, memory_fep_stats_t* stats);
 
 int memory_fep_bridge_connect_bio_async(memory_fep_bridge_t* bridge);
 int memory_fep_bridge_disconnect_bio_async(memory_fep_bridge_t* bridge);

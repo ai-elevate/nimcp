@@ -2,6 +2,12 @@
  * @file interventions.c
  * @brief Mental Health Intervention System
  * @phase Phase 10.5
+ * @deprecated This file is DEAD CODE as of 2026-02-28. The intervention logic
+ *             has been inlined into nimcp_mental_health.c. This file is neither
+ *             compiled standalone (not in CMakeLists.txt) nor #included by
+ *             nimcp_mental_health.c. Retained for reference only.
+ *             NOTE: A stale BRIDGE_BOILERPLATE was injected into the comment
+ *             block below, making this file un-compilable even if re-included.
  *
  * WHAT: Automated interventions to correct mental health disorders
  * WHY:  Early intervention prevents escalation to harmful behaviors
@@ -14,7 +20,7 @@
  * - QUARANTINE: Restrict to safe operations only (severe sociopathy/psychopathy)
  * - SHUTDOWN: Graceful shutdown (critical, configurable)
  *
- * @note This file is #included by nimcp_mental_health.c (not compiled standalone)
+ * @note This file was formerly #included by nimcp_mental_health.c (not compiled standalone)
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"

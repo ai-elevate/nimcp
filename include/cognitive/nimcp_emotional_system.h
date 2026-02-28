@@ -188,7 +188,7 @@ void emotion_system_destroy(emotional_system_t* system);
  * COMPLEXITY: O(1)
  * THREAD_SAFETY: Thread-safe (read lock)
  */
-bool emotion_system_get_state(const emotional_system_t* system, emotion_state_t* state);
+bool emotion_system_get_state(emotional_system_t* system, emotion_state_t* state);
 
 /**
  * @brief Get emotional tag for current state
@@ -204,7 +204,7 @@ bool emotion_system_get_state(const emotional_system_t* system, emotion_state_t*
  * COMPLEXITY: O(1)
  * THREAD_SAFETY: Thread-safe (read lock)
  */
-bool emotion_system_get_tag(const emotional_system_t* system, emotional_tag_t* tag);
+bool emotion_system_get_tag(emotional_system_t* system, emotional_tag_t* tag);
 
 /**
  * @brief Check if specific emotion is active
@@ -221,7 +221,7 @@ bool emotion_system_get_tag(const emotional_system_t* system, emotional_tag_t* t
  * COMPLEXITY: O(1)
  * THREAD_SAFETY: Thread-safe (read lock)
  */
-bool emotion_system_is_active(const emotional_system_t* system, uint32_t emotion_id, float threshold);
+bool emotion_system_is_active(emotional_system_t* system, uint32_t emotion_id, float threshold);
 
 //=============================================================================
 // Update API
@@ -352,7 +352,7 @@ bool emotion_system_auto_regulate(emotional_system_t* system);
  * COMPLEXITY: O(1)
  * THREAD_SAFETY: Thread-safe (read lock)
  */
-float emotion_system_get_salience_boost(const emotional_system_t* system);
+float emotion_system_get_salience_boost(emotional_system_t* system);
 
 /**
  * @brief Get memory consolidation priority
@@ -367,7 +367,7 @@ float emotion_system_get_salience_boost(const emotional_system_t* system);
  * COMPLEXITY: O(1)
  * THREAD_SAFETY: Thread-safe (read lock)
  */
-float emotion_system_get_memory_priority(const emotional_system_t* system);
+float emotion_system_get_memory_priority(emotional_system_t* system);
 
 /**
  * @brief Get mental health impact score
@@ -382,7 +382,7 @@ float emotion_system_get_memory_priority(const emotional_system_t* system);
  * COMPLEXITY: O(1)
  * THREAD_SAFETY: Thread-safe (read lock)
  */
-float emotion_system_get_mental_health_impact(const emotional_system_t* system);
+float emotion_system_get_mental_health_impact(emotional_system_t* system);
 
 //=============================================================================
 // Statistics API
@@ -415,7 +415,7 @@ typedef struct {
  * COMPLEXITY: O(1)
  * THREAD_SAFETY: Thread-safe (read lock)
  */
-bool emotion_system_get_stats(const emotional_system_t* system, emotion_stats_t* stats);
+bool emotion_system_get_stats(emotional_system_t* system, emotion_stats_t* stats);
 
 #ifdef __cplusplus
 }

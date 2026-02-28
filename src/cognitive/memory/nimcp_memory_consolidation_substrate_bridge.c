@@ -335,7 +335,7 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(
 ) {
     if (!config || !consolidation || !substrate) {
         NIMCP_LOGGING_ERROR("Cannot create bridge with NULL parameters");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_substrate_bridge_create: required parameter is NULL (config, consolidation, substrate)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_bridge_create: required parameter is NULL (config, consolidation, substrate)");
         return NULL;
     }
 

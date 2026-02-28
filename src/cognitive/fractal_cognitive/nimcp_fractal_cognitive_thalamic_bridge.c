@@ -200,7 +200,7 @@ int fractal_cognitive_thalamic_set_attention(fractal_cognitive_thalamic_bridge_t
     return 0;
 }
 
-int fractal_cognitive_thalamic_get_attention(const fractal_cognitive_thalamic_bridge_t* bridge, float* attention) {
+int fractal_cognitive_thalamic_get_attention(fractal_cognitive_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fractal_cognitive_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
@@ -215,7 +215,7 @@ int fractal_cognitive_thalamic_get_attention(const fractal_cognitive_thalamic_br
     return 0;
 }
 
-int fractal_cognitive_thalamic_bridge_get_stats(const fractal_cognitive_thalamic_bridge_t* bridge, fractal_cognitive_thalamic_stats_t* stats) {
+int fractal_cognitive_thalamic_bridge_get_stats(fractal_cognitive_thalamic_bridge_t* bridge, fractal_cognitive_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fractal_cognitive_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;

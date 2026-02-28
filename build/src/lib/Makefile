@@ -32873,6 +32873,30 @@ __/gpu/ternary/nimcp_ternary_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/ternary/nimcp_ternary_kernels.cu.s
 .PHONY : __/gpu/ternary/nimcp_ternary_kernels.cu.s
 
+__/gpu/training/nimcp_activation_checkpoint.o: __/gpu/training/nimcp_activation_checkpoint.cu.o
+.PHONY : __/gpu/training/nimcp_activation_checkpoint.o
+
+# target to build an object file
+__/gpu/training/nimcp_activation_checkpoint.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_activation_checkpoint.cu.o
+.PHONY : __/gpu/training/nimcp_activation_checkpoint.cu.o
+
+__/gpu/training/nimcp_activation_checkpoint.i: __/gpu/training/nimcp_activation_checkpoint.cu.i
+.PHONY : __/gpu/training/nimcp_activation_checkpoint.i
+
+# target to preprocess a source file
+__/gpu/training/nimcp_activation_checkpoint.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_activation_checkpoint.cu.i
+.PHONY : __/gpu/training/nimcp_activation_checkpoint.cu.i
+
+__/gpu/training/nimcp_activation_checkpoint.s: __/gpu/training/nimcp_activation_checkpoint.cu.s
+.PHONY : __/gpu/training/nimcp_activation_checkpoint.s
+
+# target to generate assembly for a file
+__/gpu/training/nimcp_activation_checkpoint.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_activation_checkpoint.cu.s
+.PHONY : __/gpu/training/nimcp_activation_checkpoint.cu.s
+
 __/gpu/training/nimcp_backprop_kernels.o: __/gpu/training/nimcp_backprop_kernels.cu.o
 .PHONY : __/gpu/training/nimcp_backprop_kernels.o
 
@@ -32896,6 +32920,30 @@ __/gpu/training/nimcp_backprop_kernels.s: __/gpu/training/nimcp_backprop_kernels
 __/gpu/training/nimcp_backprop_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_backprop_kernels.cu.s
 .PHONY : __/gpu/training/nimcp_backprop_kernels.cu.s
+
+__/gpu/training/nimcp_gradient_checkpoint.o: __/gpu/training/nimcp_gradient_checkpoint.cu.o
+.PHONY : __/gpu/training/nimcp_gradient_checkpoint.o
+
+# target to build an object file
+__/gpu/training/nimcp_gradient_checkpoint.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_gradient_checkpoint.cu.o
+.PHONY : __/gpu/training/nimcp_gradient_checkpoint.cu.o
+
+__/gpu/training/nimcp_gradient_checkpoint.i: __/gpu/training/nimcp_gradient_checkpoint.cu.i
+.PHONY : __/gpu/training/nimcp_gradient_checkpoint.i
+
+# target to preprocess a source file
+__/gpu/training/nimcp_gradient_checkpoint.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_gradient_checkpoint.cu.i
+.PHONY : __/gpu/training/nimcp_gradient_checkpoint.cu.i
+
+__/gpu/training/nimcp_gradient_checkpoint.s: __/gpu/training/nimcp_gradient_checkpoint.cu.s
+.PHONY : __/gpu/training/nimcp_gradient_checkpoint.s
+
+# target to generate assembly for a file
+__/gpu/training/nimcp_gradient_checkpoint.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_gradient_checkpoint.cu.s
+.PHONY : __/gpu/training/nimcp_gradient_checkpoint.cu.s
 
 __/gpu/training/nimcp_gradient_kernels.o: __/gpu/training/nimcp_gradient_kernels.cu.o
 .PHONY : __/gpu/training/nimcp_gradient_kernels.o
@@ -37001,30 +37049,6 @@ __/middleware/training/nimcp_brain_training_integration.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_brain_training_integration.c.s
 .PHONY : __/middleware/training/nimcp_brain_training_integration.c.s
 
-__/middleware/training/nimcp_loss_functions.o: __/middleware/training/nimcp_loss_functions.c.o
-.PHONY : __/middleware/training/nimcp_loss_functions.o
-
-# target to build an object file
-__/middleware/training/nimcp_loss_functions.c.o:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_loss_functions.c.o
-.PHONY : __/middleware/training/nimcp_loss_functions.c.o
-
-__/middleware/training/nimcp_loss_functions.i: __/middleware/training/nimcp_loss_functions.c.i
-.PHONY : __/middleware/training/nimcp_loss_functions.i
-
-# target to preprocess a source file
-__/middleware/training/nimcp_loss_functions.c.i:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_loss_functions.c.i
-.PHONY : __/middleware/training/nimcp_loss_functions.c.i
-
-__/middleware/training/nimcp_loss_functions.s: __/middleware/training/nimcp_loss_functions.c.s
-.PHONY : __/middleware/training/nimcp_loss_functions.s
-
-# target to generate assembly for a file
-__/middleware/training/nimcp_loss_functions.c.s:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_loss_functions.c.s
-.PHONY : __/middleware/training/nimcp_loss_functions.c.s
-
 __/middleware/training/nimcp_occipital_training_bridge.o: __/middleware/training/nimcp_occipital_training_bridge.c.o
 .PHONY : __/middleware/training/nimcp_occipital_training_bridge.o
 
@@ -37073,54 +37097,6 @@ __/middleware/training/nimcp_omni_training_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_omni_training_bridge.c.s
 .PHONY : __/middleware/training/nimcp_omni_training_bridge.c.s
 
-__/middleware/training/nimcp_optimizers.o: __/middleware/training/nimcp_optimizers.c.o
-.PHONY : __/middleware/training/nimcp_optimizers.o
-
-# target to build an object file
-__/middleware/training/nimcp_optimizers.c.o:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_optimizers.c.o
-.PHONY : __/middleware/training/nimcp_optimizers.c.o
-
-__/middleware/training/nimcp_optimizers.i: __/middleware/training/nimcp_optimizers.c.i
-.PHONY : __/middleware/training/nimcp_optimizers.i
-
-# target to preprocess a source file
-__/middleware/training/nimcp_optimizers.c.i:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_optimizers.c.i
-.PHONY : __/middleware/training/nimcp_optimizers.c.i
-
-__/middleware/training/nimcp_optimizers.s: __/middleware/training/nimcp_optimizers.c.s
-.PHONY : __/middleware/training/nimcp_optimizers.s
-
-# target to generate assembly for a file
-__/middleware/training/nimcp_optimizers.c.s:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_optimizers.c.s
-.PHONY : __/middleware/training/nimcp_optimizers.c.s
-
-__/middleware/training/nimcp_training_adapters.o: __/middleware/training/nimcp_training_adapters.c.o
-.PHONY : __/middleware/training/nimcp_training_adapters.o
-
-# target to build an object file
-__/middleware/training/nimcp_training_adapters.c.o:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_adapters.c.o
-.PHONY : __/middleware/training/nimcp_training_adapters.c.o
-
-__/middleware/training/nimcp_training_adapters.i: __/middleware/training/nimcp_training_adapters.c.i
-.PHONY : __/middleware/training/nimcp_training_adapters.i
-
-# target to preprocess a source file
-__/middleware/training/nimcp_training_adapters.c.i:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_adapters.c.i
-.PHONY : __/middleware/training/nimcp_training_adapters.c.i
-
-__/middleware/training/nimcp_training_adapters.s: __/middleware/training/nimcp_training_adapters.c.s
-.PHONY : __/middleware/training/nimcp_training_adapters.s
-
-# target to generate assembly for a file
-__/middleware/training/nimcp_training_adapters.c.s:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_adapters.c.s
-.PHONY : __/middleware/training/nimcp_training_adapters.c.s
-
 __/middleware/training/nimcp_training_causal_model.o: __/middleware/training/nimcp_training_causal_model.c.o
 .PHONY : __/middleware/training/nimcp_training_causal_model.o
 
@@ -37144,30 +37120,6 @@ __/middleware/training/nimcp_training_causal_model.s: __/middleware/training/nim
 __/middleware/training/nimcp_training_causal_model.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_causal_model.c.s
 .PHONY : __/middleware/training/nimcp_training_causal_model.c.s
-
-__/middleware/training/nimcp_training_diagnosis.o: __/middleware/training/nimcp_training_diagnosis.c.o
-.PHONY : __/middleware/training/nimcp_training_diagnosis.o
-
-# target to build an object file
-__/middleware/training/nimcp_training_diagnosis.c.o:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_diagnosis.c.o
-.PHONY : __/middleware/training/nimcp_training_diagnosis.c.o
-
-__/middleware/training/nimcp_training_diagnosis.i: __/middleware/training/nimcp_training_diagnosis.c.i
-.PHONY : __/middleware/training/nimcp_training_diagnosis.i
-
-# target to preprocess a source file
-__/middleware/training/nimcp_training_diagnosis.c.i:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_diagnosis.c.i
-.PHONY : __/middleware/training/nimcp_training_diagnosis.c.i
-
-__/middleware/training/nimcp_training_diagnosis.s: __/middleware/training/nimcp_training_diagnosis.c.s
-.PHONY : __/middleware/training/nimcp_training_diagnosis.s
-
-# target to generate assembly for a file
-__/middleware/training/nimcp_training_diagnosis.c.s:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_diagnosis.c.s
-.PHONY : __/middleware/training/nimcp_training_diagnosis.c.s
 
 __/middleware/training/nimcp_training_module.o: __/middleware/training/nimcp_training_module.c.o
 .PHONY : __/middleware/training/nimcp_training_module.o
@@ -38872,6 +38824,30 @@ __/plasticity/adaptive/nimcp_adaptive_fep_bridge.s: __/plasticity/adaptive/nimcp
 __/plasticity/adaptive/nimcp_adaptive_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/adaptive/nimcp_adaptive_fep_bridge.c.s
 .PHONY : __/plasticity/adaptive/nimcp_adaptive_fep_bridge.c.s
+
+__/plasticity/adaptive/nimcp_backprop_kernel.o: __/plasticity/adaptive/nimcp_backprop_kernel.c.o
+.PHONY : __/plasticity/adaptive/nimcp_backprop_kernel.o
+
+# target to build an object file
+__/plasticity/adaptive/nimcp_backprop_kernel.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/adaptive/nimcp_backprop_kernel.c.o
+.PHONY : __/plasticity/adaptive/nimcp_backprop_kernel.c.o
+
+__/plasticity/adaptive/nimcp_backprop_kernel.i: __/plasticity/adaptive/nimcp_backprop_kernel.c.i
+.PHONY : __/plasticity/adaptive/nimcp_backprop_kernel.i
+
+# target to preprocess a source file
+__/plasticity/adaptive/nimcp_backprop_kernel.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/adaptive/nimcp_backprop_kernel.c.i
+.PHONY : __/plasticity/adaptive/nimcp_backprop_kernel.c.i
+
+__/plasticity/adaptive/nimcp_backprop_kernel.s: __/plasticity/adaptive/nimcp_backprop_kernel.c.s
+.PHONY : __/plasticity/adaptive/nimcp_backprop_kernel.s
+
+# target to generate assembly for a file
+__/plasticity/adaptive/nimcp_backprop_kernel.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/adaptive/nimcp_backprop_kernel.c.s
+.PHONY : __/plasticity/adaptive/nimcp_backprop_kernel.c.s
 
 __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.o: __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.c.o
 .PHONY : __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.o
@@ -46769,6 +46745,30 @@ __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.s
 .PHONY : __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.c.s
 
+__/training/integration/nimcp_training_bio_async_bridge.o: __/training/integration/nimcp_training_bio_async_bridge.c.o
+.PHONY : __/training/integration/nimcp_training_bio_async_bridge.o
+
+# target to build an object file
+__/training/integration/nimcp_training_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/integration/nimcp_training_bio_async_bridge.c.o
+.PHONY : __/training/integration/nimcp_training_bio_async_bridge.c.o
+
+__/training/integration/nimcp_training_bio_async_bridge.i: __/training/integration/nimcp_training_bio_async_bridge.c.i
+.PHONY : __/training/integration/nimcp_training_bio_async_bridge.i
+
+# target to preprocess a source file
+__/training/integration/nimcp_training_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/integration/nimcp_training_bio_async_bridge.c.i
+.PHONY : __/training/integration/nimcp_training_bio_async_bridge.c.i
+
+__/training/integration/nimcp_training_bio_async_bridge.s: __/training/integration/nimcp_training_bio_async_bridge.c.s
+.PHONY : __/training/integration/nimcp_training_bio_async_bridge.s
+
+# target to generate assembly for a file
+__/training/integration/nimcp_training_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/integration/nimcp_training_bio_async_bridge.c.s
+.PHONY : __/training/integration/nimcp_training_bio_async_bridge.c.s
+
 __/training/integration/nimcp_training_integration_hub.o: __/training/integration/nimcp_training_integration_hub.c.o
 .PHONY : __/training/integration/nimcp_training_integration_hub.o
 
@@ -46961,6 +46961,30 @@ __/training/nimcp_continual_learning.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_continual_learning.c.s
 .PHONY : __/training/nimcp_continual_learning.c.s
 
+__/training/nimcp_curriculum_learning.o: __/training/nimcp_curriculum_learning.c.o
+.PHONY : __/training/nimcp_curriculum_learning.o
+
+# target to build an object file
+__/training/nimcp_curriculum_learning.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_curriculum_learning.c.o
+.PHONY : __/training/nimcp_curriculum_learning.c.o
+
+__/training/nimcp_curriculum_learning.i: __/training/nimcp_curriculum_learning.c.i
+.PHONY : __/training/nimcp_curriculum_learning.i
+
+# target to preprocess a source file
+__/training/nimcp_curriculum_learning.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_curriculum_learning.c.i
+.PHONY : __/training/nimcp_curriculum_learning.c.i
+
+__/training/nimcp_curriculum_learning.s: __/training/nimcp_curriculum_learning.c.s
+.PHONY : __/training/nimcp_curriculum_learning.s
+
+# target to generate assembly for a file
+__/training/nimcp_curriculum_learning.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_curriculum_learning.c.s
+.PHONY : __/training/nimcp_curriculum_learning.c.s
+
 __/training/nimcp_distributed_training.o: __/training/nimcp_distributed_training.c.o
 .PHONY : __/training/nimcp_distributed_training.o
 
@@ -47152,6 +47176,54 @@ __/training/nimcp_quantization_aware.s: __/training/nimcp_quantization_aware.c.s
 __/training/nimcp_quantization_aware.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_quantization_aware.c.s
 .PHONY : __/training/nimcp_quantization_aware.c.s
+
+__/training/nimcp_snn_backprop.o: __/training/nimcp_snn_backprop.c.o
+.PHONY : __/training/nimcp_snn_backprop.o
+
+# target to build an object file
+__/training/nimcp_snn_backprop.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_snn_backprop.c.o
+.PHONY : __/training/nimcp_snn_backprop.c.o
+
+__/training/nimcp_snn_backprop.i: __/training/nimcp_snn_backprop.c.i
+.PHONY : __/training/nimcp_snn_backprop.i
+
+# target to preprocess a source file
+__/training/nimcp_snn_backprop.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_snn_backprop.c.i
+.PHONY : __/training/nimcp_snn_backprop.c.i
+
+__/training/nimcp_snn_backprop.s: __/training/nimcp_snn_backprop.c.s
+.PHONY : __/training/nimcp_snn_backprop.s
+
+# target to generate assembly for a file
+__/training/nimcp_snn_backprop.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_snn_backprop.c.s
+.PHONY : __/training/nimcp_snn_backprop.c.s
+
+__/training/nimcp_training_data_pipeline.o: __/training/nimcp_training_data_pipeline.c.o
+.PHONY : __/training/nimcp_training_data_pipeline.o
+
+# target to build an object file
+__/training/nimcp_training_data_pipeline.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_training_data_pipeline.c.o
+.PHONY : __/training/nimcp_training_data_pipeline.c.o
+
+__/training/nimcp_training_data_pipeline.i: __/training/nimcp_training_data_pipeline.c.i
+.PHONY : __/training/nimcp_training_data_pipeline.i
+
+# target to preprocess a source file
+__/training/nimcp_training_data_pipeline.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_training_data_pipeline.c.i
+.PHONY : __/training/nimcp_training_data_pipeline.c.i
+
+__/training/nimcp_training_data_pipeline.s: __/training/nimcp_training_data_pipeline.c.s
+.PHONY : __/training/nimcp_training_data_pipeline.s
+
+# target to generate assembly for a file
+__/training/nimcp_training_data_pipeline.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_training_data_pipeline.c.s
+.PHONY : __/training/nimcp_training_data_pipeline.c.s
 
 __/training/nimcp_training_dispatch.o: __/training/nimcp_training_dispatch.c.o
 .PHONY : __/training/nimcp_training_dispatch.o
@@ -55165,9 +55237,15 @@ help:
 	@echo "... __/gpu/ternary/nimcp_ternary_kernels.o"
 	@echo "... __/gpu/ternary/nimcp_ternary_kernels.i"
 	@echo "... __/gpu/ternary/nimcp_ternary_kernels.s"
+	@echo "... __/gpu/training/nimcp_activation_checkpoint.o"
+	@echo "... __/gpu/training/nimcp_activation_checkpoint.i"
+	@echo "... __/gpu/training/nimcp_activation_checkpoint.s"
 	@echo "... __/gpu/training/nimcp_backprop_kernels.o"
 	@echo "... __/gpu/training/nimcp_backprop_kernels.i"
 	@echo "... __/gpu/training/nimcp_backprop_kernels.s"
+	@echo "... __/gpu/training/nimcp_gradient_checkpoint.o"
+	@echo "... __/gpu/training/nimcp_gradient_checkpoint.i"
+	@echo "... __/gpu/training/nimcp_gradient_checkpoint.s"
 	@echo "... __/gpu/training/nimcp_gradient_kernels.o"
 	@echo "... __/gpu/training/nimcp_gradient_kernels.i"
 	@echo "... __/gpu/training/nimcp_gradient_kernels.s"
@@ -55681,27 +55759,15 @@ help:
 	@echo "... __/middleware/training/nimcp_brain_training_integration.o"
 	@echo "... __/middleware/training/nimcp_brain_training_integration.i"
 	@echo "... __/middleware/training/nimcp_brain_training_integration.s"
-	@echo "... __/middleware/training/nimcp_loss_functions.o"
-	@echo "... __/middleware/training/nimcp_loss_functions.i"
-	@echo "... __/middleware/training/nimcp_loss_functions.s"
 	@echo "... __/middleware/training/nimcp_occipital_training_bridge.o"
 	@echo "... __/middleware/training/nimcp_occipital_training_bridge.i"
 	@echo "... __/middleware/training/nimcp_occipital_training_bridge.s"
 	@echo "... __/middleware/training/nimcp_omni_training_bridge.o"
 	@echo "... __/middleware/training/nimcp_omni_training_bridge.i"
 	@echo "... __/middleware/training/nimcp_omni_training_bridge.s"
-	@echo "... __/middleware/training/nimcp_optimizers.o"
-	@echo "... __/middleware/training/nimcp_optimizers.i"
-	@echo "... __/middleware/training/nimcp_optimizers.s"
-	@echo "... __/middleware/training/nimcp_training_adapters.o"
-	@echo "... __/middleware/training/nimcp_training_adapters.i"
-	@echo "... __/middleware/training/nimcp_training_adapters.s"
 	@echo "... __/middleware/training/nimcp_training_causal_model.o"
 	@echo "... __/middleware/training/nimcp_training_causal_model.i"
 	@echo "... __/middleware/training/nimcp_training_causal_model.s"
-	@echo "... __/middleware/training/nimcp_training_diagnosis.o"
-	@echo "... __/middleware/training/nimcp_training_diagnosis.i"
-	@echo "... __/middleware/training/nimcp_training_diagnosis.s"
 	@echo "... __/middleware/training/nimcp_training_module.o"
 	@echo "... __/middleware/training/nimcp_training_module.i"
 	@echo "... __/middleware/training/nimcp_training_module.s"
@@ -55915,6 +55981,9 @@ help:
 	@echo "... __/plasticity/adaptive/nimcp_adaptive_fep_bridge.o"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive_fep_bridge.i"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive_fep_bridge.s"
+	@echo "... __/plasticity/adaptive/nimcp_backprop_kernel.o"
+	@echo "... __/plasticity/adaptive/nimcp_backprop_kernel.i"
+	@echo "... __/plasticity/adaptive/nimcp_backprop_kernel.s"
 	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.o"
 	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.i"
 	@echo "... __/plasticity/astrocyte/nimcp_astrocyte_immune_bridge.s"
@@ -56902,6 +56971,9 @@ help:
 	@echo "... __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.o"
 	@echo "... __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.i"
 	@echo "... __/swarm/sleep/nimcp_swarm_signal_sleep_bridge.s"
+	@echo "... __/training/integration/nimcp_training_bio_async_bridge.o"
+	@echo "... __/training/integration/nimcp_training_bio_async_bridge.i"
+	@echo "... __/training/integration/nimcp_training_bio_async_bridge.s"
 	@echo "... __/training/integration/nimcp_training_integration_hub.o"
 	@echo "... __/training/integration/nimcp_training_integration_hub.i"
 	@echo "... __/training/integration/nimcp_training_integration_hub.s"
@@ -56926,6 +56998,9 @@ help:
 	@echo "... __/training/nimcp_continual_learning.o"
 	@echo "... __/training/nimcp_continual_learning.i"
 	@echo "... __/training/nimcp_continual_learning.s"
+	@echo "... __/training/nimcp_curriculum_learning.o"
+	@echo "... __/training/nimcp_curriculum_learning.i"
+	@echo "... __/training/nimcp_curriculum_learning.s"
 	@echo "... __/training/nimcp_distributed_training.o"
 	@echo "... __/training/nimcp_distributed_training.i"
 	@echo "... __/training/nimcp_distributed_training.s"
@@ -56950,6 +57025,12 @@ help:
 	@echo "... __/training/nimcp_quantization_aware.o"
 	@echo "... __/training/nimcp_quantization_aware.i"
 	@echo "... __/training/nimcp_quantization_aware.s"
+	@echo "... __/training/nimcp_snn_backprop.o"
+	@echo "... __/training/nimcp_snn_backprop.i"
+	@echo "... __/training/nimcp_snn_backprop.s"
+	@echo "... __/training/nimcp_training_data_pipeline.o"
+	@echo "... __/training/nimcp_training_data_pipeline.i"
+	@echo "... __/training/nimcp_training_data_pipeline.s"
 	@echo "... __/training/nimcp_training_dispatch.o"
 	@echo "... __/training/nimcp_training_dispatch.i"
 	@echo "... __/training/nimcp_training_dispatch.s"

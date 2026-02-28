@@ -177,7 +177,7 @@ static bool expand_engram_array(engram_system_t* system) {
     // HOW:  Allocate new array, copy, free old (handles both unified and direct memory)
 
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "expand_engram_array: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "expand_engram_array: system is NULL");
         return false;
     }
 

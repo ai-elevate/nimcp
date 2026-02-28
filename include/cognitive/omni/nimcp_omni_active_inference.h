@@ -377,7 +377,7 @@ int omni_ai_clear_policies(omni_active_inference_t* ai);
 /**
  * @brief Get policy by index
  */
-int omni_ai_get_policy(const omni_active_inference_t* ai,
+int omni_ai_get_policy(omni_active_inference_t* ai,
                         uint32_t index,
                         omni_ai_policy_t* policy);
 
@@ -507,7 +507,7 @@ int omni_ai_select_action_omni(omni_active_inference_t* ai,
 /**
  * @brief Get EFE for specific policy
  */
-float omni_ai_get_policy_efe(const omni_active_inference_t* ai,
+float omni_ai_get_policy_efe(omni_active_inference_t* ai,
                               uint32_t policy_index,
                               omni_ai_direction_t direction);
 
@@ -559,7 +559,7 @@ bool omni_ai_is_bio_async_connected(const omni_active_inference_t* ai);
 /**
  * @brief Get statistics
  */
-int omni_ai_get_stats(const omni_active_inference_t* ai,
+int omni_ai_get_stats(omni_active_inference_t* ai,
                        omni_ai_stats_t* stats);
 
 /**
@@ -570,7 +570,7 @@ int omni_ai_reset_stats(omni_active_inference_t* ai);
 /**
  * @brief Get best policy index
  */
-int omni_ai_get_best_policy(const omni_active_inference_t* ai);
+int omni_ai_get_best_policy(omni_active_inference_t* ai);
 
 /**
  * @brief Get policy probabilities

@@ -478,7 +478,6 @@ predictive_attention_bridge_t* predictive_attention_bridge_create(
 void predictive_attention_bridge_destroy(predictive_attention_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "predictive_attention");
     }
 
     /* Disconnect from hub if connected */

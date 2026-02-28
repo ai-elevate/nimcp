@@ -57,7 +57,7 @@ int fractal_cognitive_thalamic_bridge_reset(fractal_cognitive_thalamic_bridge_t*
 int fractal_cognitive_thalamic_route_scale(fractal_cognitive_thalamic_bridge_t* bridge, const fractal_cognitive_thalamic_signal_t* signal);
 int fractal_cognitive_thalamic_route_integration(fractal_cognitive_thalamic_bridge_t* bridge, const void* scales, uint32_t num_scales);
 int fractal_cognitive_thalamic_set_attention(fractal_cognitive_thalamic_bridge_t* bridge, float attention);
-int fractal_cognitive_thalamic_get_attention(const fractal_cognitive_thalamic_bridge_t* bridge, float* attention);
+int fractal_cognitive_thalamic_get_attention(fractal_cognitive_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t scales_routed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_complexity;
 } fractal_cognitive_thalamic_stats_t;
 
-int fractal_cognitive_thalamic_bridge_get_stats(const fractal_cognitive_thalamic_bridge_t* bridge, fractal_cognitive_thalamic_stats_t* stats);
+int fractal_cognitive_thalamic_bridge_get_stats(fractal_cognitive_thalamic_bridge_t* bridge, fractal_cognitive_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

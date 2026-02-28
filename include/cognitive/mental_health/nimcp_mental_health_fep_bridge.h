@@ -119,8 +119,8 @@ int mental_health_fep_apply_lr_intervention(mental_health_fep_bridge_t* bridge);
 
 int mental_health_fep_bridge_update(mental_health_fep_bridge_t* bridge, uint64_t delta_ms);
 
-int mental_health_fep_bridge_get_state(const mental_health_fep_bridge_t* bridge, mental_health_fep_state_t* state);
-int mental_health_fep_bridge_get_stats(const mental_health_fep_bridge_t* bridge, mental_health_fep_stats_t* stats);
+int mental_health_fep_bridge_get_state(mental_health_fep_bridge_t* bridge, mental_health_fep_state_t* state);
+int mental_health_fep_bridge_get_stats(mental_health_fep_bridge_t* bridge, mental_health_fep_stats_t* stats);
 
 int mental_health_fep_bridge_connect_bio_async(mental_health_fep_bridge_t* bridge);
 int mental_health_fep_bridge_disconnect_bio_async(mental_health_fep_bridge_t* bridge);

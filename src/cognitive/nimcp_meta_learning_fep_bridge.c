@@ -138,7 +138,7 @@ int meta_learning_fep_bridge_update(meta_learning_fep_bridge_t* bridge) {
     return 0;
 }
 
-int meta_learning_fep_bridge_get_state(const meta_learning_fep_bridge_t* bridge,
+int meta_learning_fep_bridge_get_state(meta_learning_fep_bridge_t* bridge,
                                         meta_learning_fep_state_t* state) {
     if (!bridge || !state) return -1;
     /* Phase 8: Heartbeat at operation start */
@@ -151,7 +151,7 @@ int meta_learning_fep_bridge_get_state(const meta_learning_fep_bridge_t* bridge,
     return 0;
 }
 
-int meta_learning_fep_bridge_get_stats(const meta_learning_fep_bridge_t* bridge,
+int meta_learning_fep_bridge_get_stats(meta_learning_fep_bridge_t* bridge,
                                         meta_learning_fep_stats_t* stats) {
     if (!bridge || !stats) return -1;
     /* Phase 8: Heartbeat at operation start */

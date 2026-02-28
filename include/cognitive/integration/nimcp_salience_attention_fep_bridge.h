@@ -355,7 +355,7 @@ int sa_fep_bridge_unregister(sa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if registered with orchestrator
  */
-bool sa_fep_bridge_is_registered(const sa_fep_bridge_t* bridge);
+bool sa_fep_bridge_is_registered(sa_fep_bridge_t* bridge);
 
 /**
  * @brief Get the FEP bridge ID assigned by orchestrator
@@ -363,7 +363,7 @@ bool sa_fep_bridge_is_registered(const sa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Bridge ID, or 0 if not registered
  */
-uint32_t sa_fep_bridge_get_id(const sa_fep_bridge_t* bridge);
+uint32_t sa_fep_bridge_get_id(sa_fep_bridge_t* bridge);
 
 /*=============================================================================
  * FEP UPDATE CALLBACK (Internal - used by FEP orchestrator)
@@ -520,7 +520,7 @@ int sa_fep_bridge_reset_stats(sa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current free energy, -1.0f on error
  */
-float sa_fep_bridge_get_free_energy(const sa_fep_bridge_t* bridge);
+float sa_fep_bridge_get_free_energy(sa_fep_bridge_t* bridge);
 
 /**
  * @brief Get current salience prediction error
@@ -528,7 +528,7 @@ float sa_fep_bridge_get_free_energy(const sa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Salience prediction error [0, 1], -1.0f on error
  */
-float sa_fep_bridge_get_salience_error(const sa_fep_bridge_t* bridge);
+float sa_fep_bridge_get_salience_error(sa_fep_bridge_t* bridge);
 
 /**
  * @brief Get current prediction error
@@ -536,7 +536,7 @@ float sa_fep_bridge_get_salience_error(const sa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current prediction error, -1.0f on error
  */
-float sa_fep_bridge_get_prediction_error(const sa_fep_bridge_t* bridge);
+float sa_fep_bridge_get_prediction_error(sa_fep_bridge_t* bridge);
 
 /**
  * @brief Get current attention efficiency
@@ -544,7 +544,7 @@ float sa_fep_bridge_get_prediction_error(const sa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Attention efficiency [0, 1], -1.0f on error
  */
-float sa_fep_bridge_get_attention_efficiency(const sa_fep_bridge_t* bridge);
+float sa_fep_bridge_get_attention_efficiency(sa_fep_bridge_t* bridge);
 
 /*=============================================================================
  * STATE QUERY FUNCTIONS
@@ -556,7 +556,7 @@ float sa_fep_bridge_get_attention_efficiency(const sa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current state
  */
-sa_fep_state_t sa_fep_bridge_get_state(const sa_fep_bridge_t* bridge);
+sa_fep_state_t sa_fep_bridge_get_state(sa_fep_bridge_t* bridge);
 
 /**
  * @brief Check if in degraded mode
@@ -564,7 +564,7 @@ sa_fep_state_t sa_fep_bridge_get_state(const sa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if free energy is above threshold
  */
-bool sa_fep_bridge_is_degraded(const sa_fep_bridge_t* bridge);
+bool sa_fep_bridge_is_degraded(sa_fep_bridge_t* bridge);
 
 /**
  * @brief Check if attention is efficiently allocated
@@ -572,7 +572,7 @@ bool sa_fep_bridge_is_degraded(const sa_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if attention efficiency is above threshold
  */
-bool sa_fep_bridge_is_efficient(const sa_fep_bridge_t* bridge);
+bool sa_fep_bridge_is_efficient(sa_fep_bridge_t* bridge);
 
 /**
  * @brief Get state name as string

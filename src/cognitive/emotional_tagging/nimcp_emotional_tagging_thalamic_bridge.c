@@ -214,7 +214,7 @@ int emotional_tagging_thalamic_set_attention(emotional_tagging_thalamic_bridge_t
     return 0;
 }
 
-int emotional_tagging_thalamic_get_attention(const emotional_tagging_thalamic_bridge_t* bridge, float* attention) {
+int emotional_tagging_thalamic_get_attention(emotional_tagging_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;

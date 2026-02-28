@@ -235,7 +235,7 @@ int emotion_fep_bridge_update(emotion_fep_bridge_t* bridge, uint64_t delta_ms) {
     return 0;
 }
 
-int emotion_fep_bridge_get_state(const emotion_fep_bridge_t* bridge, emotion_fep_state_t* state) {
+int emotion_fep_bridge_get_state(emotion_fep_bridge_t* bridge, emotion_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     emotion_fep_bridge_heartbeat("emotion_fep__get_state", 0.0f);
 
@@ -247,7 +247,7 @@ int emotion_fep_bridge_get_state(const emotion_fep_bridge_t* bridge, emotion_fep
     return 0;
 }
 
-int emotion_fep_bridge_get_stats(const emotion_fep_bridge_t* bridge, emotion_fep_stats_t* stats) {
+int emotion_fep_bridge_get_stats(emotion_fep_bridge_t* bridge, emotion_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     emotion_fep_bridge_heartbeat("emotion_fep__get_stats", 0.0f);
 

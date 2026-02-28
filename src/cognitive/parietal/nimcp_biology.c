@@ -1086,7 +1086,7 @@ int biology_set_sleep_deprivation(biology_t* bio, float level) {
  * STATISTICS API
  * ============================================================================ */
 
-int biology_get_stats(const biology_t* bio, biology_stats_t* stats) {
+int biology_get_stats(biology_t* bio, biology_stats_t* stats) {
     if (!bio || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_get_stats: required parameter is NULL (bio, stats)");
         return -1;

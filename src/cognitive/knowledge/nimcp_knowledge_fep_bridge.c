@@ -189,7 +189,7 @@ int knowledge_fep_bridge_update(knowledge_fep_bridge_t* bridge, uint64_t delta_m
     return 0;
 }
 
-int knowledge_fep_bridge_get_state(const knowledge_fep_bridge_t* bridge, knowledge_fep_state_t* state) {
+int knowledge_fep_bridge_get_state(knowledge_fep_bridge_t* bridge, knowledge_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     knowledge_fep_bridge_heartbeat("knowledge_fe_get_state", 0.0f);
 
@@ -201,7 +201,7 @@ int knowledge_fep_bridge_get_state(const knowledge_fep_bridge_t* bridge, knowled
     return 0;
 }
 
-int knowledge_fep_bridge_get_stats(const knowledge_fep_bridge_t* bridge, knowledge_fep_stats_t* stats) {
+int knowledge_fep_bridge_get_stats(knowledge_fep_bridge_t* bridge, knowledge_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     knowledge_fep_bridge_heartbeat("knowledge_fe_get_stats", 0.0f);
 

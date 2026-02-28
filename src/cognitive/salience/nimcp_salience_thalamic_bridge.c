@@ -294,7 +294,7 @@ int salience_thalamic_set_attention(salience_thalamic_bridge_t* bridge, float at
     return 0;
 }
 
-int salience_thalamic_get_attention(const salience_thalamic_bridge_t* bridge, float* attention) {
+int salience_thalamic_get_attention(salience_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
@@ -309,7 +309,7 @@ int salience_thalamic_get_attention(const salience_thalamic_bridge_t* bridge, fl
     return 0;
 }
 
-int salience_thalamic_bridge_get_stats(const salience_thalamic_bridge_t* bridge, salience_thalamic_stats_t* stats) {
+int salience_thalamic_bridge_get_stats(salience_thalamic_bridge_t* bridge, salience_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;

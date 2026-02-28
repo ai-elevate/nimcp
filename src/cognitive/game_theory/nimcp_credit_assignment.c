@@ -110,7 +110,7 @@ nimcp_credit_config_t nimcp_credit_default_config(uint32_t num_players) {
 
 nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
     if (!config || config->num_players == 0 || config->num_players > NIMCP_GT_MAX_PLAYERS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_credit_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_credit_create: config is NULL or num_players invalid");
         return NULL;
     }
 
@@ -669,7 +669,7 @@ bool nimcp_credit_is_in_core(
     void* user_data
 ) {
     if (!system || !allocation || !value_fn) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_credit_is_in_core: required parameter is NULL (system, allocation, value_fn)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_credit_is_in_core: required parameter is NULL (system, allocation, value_fn)");
         return false;
     }
 

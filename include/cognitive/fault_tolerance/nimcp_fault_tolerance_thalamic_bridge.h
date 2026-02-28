@@ -57,7 +57,7 @@ int fault_tolerance_thalamic_bridge_reset(fault_tolerance_thalamic_bridge_t* bri
 int fault_tolerance_thalamic_route_detection(fault_tolerance_thalamic_bridge_t* bridge, const fault_tolerance_thalamic_signal_t* signal);
 int fault_tolerance_thalamic_route_recovery(fault_tolerance_thalamic_bridge_t* bridge, const void* recovery_plan, float priority);
 int fault_tolerance_thalamic_set_attention(fault_tolerance_thalamic_bridge_t* bridge, float attention);
-int fault_tolerance_thalamic_get_attention(const fault_tolerance_thalamic_bridge_t* bridge, float* attention);
+int fault_tolerance_thalamic_get_attention(fault_tolerance_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t detections_routed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_severity;
 } fault_tolerance_thalamic_stats_t;
 
-int fault_tolerance_thalamic_bridge_get_stats(const fault_tolerance_thalamic_bridge_t* bridge, fault_tolerance_thalamic_stats_t* stats);
+int fault_tolerance_thalamic_bridge_get_stats(fault_tolerance_thalamic_bridge_t* bridge, fault_tolerance_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

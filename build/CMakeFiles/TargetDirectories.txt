@@ -595,6 +595,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_security_bbb_input_gate.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_security_bbb_memory_boundary.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_security_bbb_helpers.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/regression_test_backprop_kernel_compat.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/rebuild_cache.dir
@@ -772,6 +773,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_hypo_reasoning_bridge.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_mesh_reasoning_bridge.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_training_integration.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_athena_training_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/rebuild_cache.dir
@@ -878,6 +880,7 @@
 /home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/e2e_test_training_validation.dir
 /home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/e2e_test_training_dispatch.dir
 /home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/e2e_test_training_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/e2e_test_snn_backprop.dir
 /home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/rebuild_cache.dir
@@ -1407,6 +1410,12 @@
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_causal_model.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_diagnosis.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_integration_fixes.dir
+/home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_brain_training_bio_async.dir
+/home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_event_driven_plasticity_bio_async.dir
+/home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_learning_signal_adapter.dir
+/home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_optimizer_bio_async.dir
+/home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_event_manager.dir
+/home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_weight_update_router.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/rebuild_cache.dir
@@ -1458,6 +1467,9 @@
 /home/bbrelin/nimcp/build/test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_immune_integration.dir
 /home/bbrelin/nimcp/build/test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_perception_plasticity_integration.dir
 /home/bbrelin/nimcp/build/test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_cortical_plasticity_integration.dir
+/home/bbrelin/nimcp/build/test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_edp_bio_async.dir
+/home/bbrelin/nimcp/build/test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_adapters_bio_async.dir
+/home/bbrelin/nimcp/build/test/integration/middleware/training/CMakeFiles/integration_middleware_training_test_pipeline_bio_async.dir
 /home/bbrelin/nimcp/build/test/integration/middleware/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/middleware/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/middleware/training/CMakeFiles/rebuild_cache.dir
@@ -1557,6 +1569,8 @@
 /home/bbrelin/nimcp/build/test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_cognitive_training_bridge_regression.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_perception_training_bridge_regression.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_cortical_training_bridge_regression.dir
+/home/bbrelin/nimcp/build/test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_edp_bio_async_regression.dir
+/home/bbrelin/nimcp/build/test/regression/middleware/training/CMakeFiles/regression_middleware_training_test_adapters_bio_async_regression.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/training/CMakeFiles/rebuild_cache.dir
@@ -5352,6 +5366,7 @@
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_eligibility_utils_quantum_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_denormal_threshold.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_hybrid_learning.dir
+/home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/test_backprop_grad_clip.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/rebuild_cache.dir
@@ -6074,6 +6089,7 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/training/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/training/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/CMakeFiles/integration_gpu_test_gpu_cpu_fallback_integration.dir
+/home/bbrelin/nimcp/build/test/integration/CMakeFiles/integration_test_backprop_grad_clip.dir
 /home/bbrelin/nimcp/build/test/integration/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/CMakeFiles/rebuild_cache.dir
@@ -6559,6 +6575,15 @@
 /home/bbrelin/nimcp/build/test/regression/quantum/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_integration_test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_pipeline_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_cnn_backprop_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_cnn_cortex_bridge_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_nas_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_snn_backprop_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_snn_backprop_stubs_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_portia_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_stability_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_symbolic_logic_hub_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_dispatch_test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/rebuild_cache.dir
@@ -6574,6 +6599,9 @@
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_cl_mtl.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_amp_distributed.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_adv_gs.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_quantization_ternary.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_snn_backprop_stubs.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_training_dispatch.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/rebuild_cache.dir
@@ -6608,6 +6636,7 @@
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_attention.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_test_training_integration.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_bio_modulation.dir
+/home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_snn_backprop.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/rebuild_cache.dir

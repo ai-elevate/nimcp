@@ -150,8 +150,8 @@ int shadow_emotions_fep_apply_shadow_diagnostic(shadow_emotions_fep_bridge_t* br
 int shadow_emotions_fep_update_beliefs_from_correction(shadow_emotions_fep_bridge_t* bridge);
 
 int shadow_emotions_fep_bridge_update(shadow_emotions_fep_bridge_t* bridge, uint64_t delta_ms);
-int shadow_emotions_fep_bridge_get_state(const shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_state_t* state);
-int shadow_emotions_fep_bridge_get_stats(const shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_stats_t* stats);
+int shadow_emotions_fep_bridge_get_state(shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_state_t* state);
+int shadow_emotions_fep_bridge_get_stats(shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_stats_t* stats);
 
 int shadow_emotions_fep_bridge_connect_bio_async(shadow_emotions_fep_bridge_t* bridge);
 int shadow_emotions_fep_bridge_disconnect_bio_async(shadow_emotions_fep_bridge_t* bridge);

@@ -425,7 +425,7 @@ int collective_hub_bridge_disconnect(collective_hub_bridge_t* bridge);
  * @param bridge Bridge instance
  * @return true if connected, false otherwise
  */
-bool collective_hub_bridge_is_connected(const collective_hub_bridge_t* bridge);
+bool collective_hub_bridge_is_connected(collective_hub_bridge_t* bridge);
 
 /* ============================================================================
  * Event Callback API

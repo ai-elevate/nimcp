@@ -591,7 +591,7 @@ int biology_set_sleep_deprivation(biology_t* bio, float level);
  * @param stats Output statistics
  * @return 0 on success
  */
-int biology_get_stats(const biology_t* bio, biology_stats_t* stats);
+int biology_get_stats(biology_t* bio, biology_stats_t* stats);
 
 /**
  * @brief Reset statistics

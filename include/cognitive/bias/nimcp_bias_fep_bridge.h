@@ -94,12 +94,12 @@ int bias_fep_detect_bias(bias_fep_bridge_t* bridge, float prediction_error);
 int bias_fep_correct_prior(bias_fep_bridge_t* bridge, cognitive_bias_type_t bias);
 
 int bias_fep_bridge_update(bias_fep_bridge_t* bridge, uint64_t delta_ms);
-int bias_fep_bridge_get_state(const bias_fep_bridge_t* bridge, bias_fep_state_t* state);
-int bias_fep_bridge_get_stats(const bias_fep_bridge_t* bridge, bias_fep_stats_t* stats);
+int bias_fep_bridge_get_state(bias_fep_bridge_t* bridge, bias_fep_state_t* state);
+int bias_fep_bridge_get_stats(bias_fep_bridge_t* bridge, bias_fep_stats_t* stats);
 
 int bias_fep_bridge_connect_bio_async(bias_fep_bridge_t* bridge);
 int bias_fep_bridge_disconnect_bio_async(bias_fep_bridge_t* bridge);
-bool bias_fep_bridge_is_bio_async_connected(const bias_fep_bridge_t* bridge);
+bool bias_fep_bridge_is_bio_async_connected(bias_fep_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

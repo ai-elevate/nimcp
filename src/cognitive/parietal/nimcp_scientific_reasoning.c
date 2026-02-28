@@ -1230,7 +1230,7 @@ int scientific_set_sleep_deprivation(scientific_reasoning_t* sr, float level) {
  * STATISTICS API
  * ============================================================================ */
 
-int scientific_get_stats(const scientific_reasoning_t* sr, scientific_stats_t* stats) {
+int scientific_get_stats(scientific_reasoning_t* sr, scientific_stats_t* stats) {
     if (!sr) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_get_stats: sr is NULL");
         return -1;

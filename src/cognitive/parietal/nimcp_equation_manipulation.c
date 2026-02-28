@@ -1450,7 +1450,7 @@ int equation_set_fatigue(equation_engine_t* eq, float level) {
  * STATISTICS API
  * ============================================================================ */
 
-int equation_get_stats(const equation_engine_t* eq, equation_stats_t* stats) {
+int equation_get_stats(equation_engine_t* eq, equation_stats_t* stats) {
     if (!eq) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_get_stats: eq is NULL");
         return -1;

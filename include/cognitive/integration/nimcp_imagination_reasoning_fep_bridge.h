@@ -359,7 +359,7 @@ int imag_reason_fep_bridge_unregister(imag_reason_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if registered with orchestrator
  */
-bool imag_reason_fep_bridge_is_registered(const imag_reason_fep_bridge_t* bridge);
+bool imag_reason_fep_bridge_is_registered(imag_reason_fep_bridge_t* bridge);
 
 /**
  * @brief Get the FEP bridge ID assigned by orchestrator
@@ -367,7 +367,7 @@ bool imag_reason_fep_bridge_is_registered(const imag_reason_fep_bridge_t* bridge
  * @param bridge Bridge handle
  * @return Bridge ID, or 0 if not registered
  */
-uint32_t imag_reason_fep_bridge_get_id(const imag_reason_fep_bridge_t* bridge);
+uint32_t imag_reason_fep_bridge_get_id(imag_reason_fep_bridge_t* bridge);
 
 /*=============================================================================
  * FEP UPDATE CALLBACK (Internal - used by FEP orchestrator)
@@ -524,7 +524,7 @@ int imag_reason_fep_bridge_reset_stats(imag_reason_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return Current free energy, -1.0f on error
  */
-float imag_reason_fep_bridge_get_free_energy(const imag_reason_fep_bridge_t* bridge);
+float imag_reason_fep_bridge_get_free_energy(imag_reason_fep_bridge_t* bridge);
 
 /**
  * @brief Get current scenario quality
@@ -576,7 +576,7 @@ imag_reason_fep_state_t imag_reason_fep_bridge_get_state(
  * @param bridge Bridge handle
  * @return true if free energy is above threshold
  */
-bool imag_reason_fep_bridge_is_degraded(const imag_reason_fep_bridge_t* bridge);
+bool imag_reason_fep_bridge_is_degraded(imag_reason_fep_bridge_t* bridge);
 
 /**
  * @brief Check if reasoning is coherent
@@ -584,7 +584,7 @@ bool imag_reason_fep_bridge_is_degraded(const imag_reason_fep_bridge_t* bridge);
  * @param bridge Bridge handle
  * @return true if reasoning coherence is above epsilon
  */
-bool imag_reason_fep_bridge_is_coherent(const imag_reason_fep_bridge_t* bridge);
+bool imag_reason_fep_bridge_is_coherent(imag_reason_fep_bridge_t* bridge);
 
 /**
  * @brief Get state name as string

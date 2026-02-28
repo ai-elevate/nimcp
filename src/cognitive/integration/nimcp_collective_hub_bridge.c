@@ -434,7 +434,6 @@ collective_hub_bridge_t* collective_hub_bridge_create(
 void collective_hub_bridge_destroy(collective_hub_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "collective_hub");
     }
 
     /* Disconnect if still connected */
@@ -660,7 +659,7 @@ int collective_hub_bridge_disconnect(collective_hub_bridge_t* bridge) {
     return 0;
 }
 
-bool collective_hub_bridge_is_connected(const collective_hub_bridge_t* bridge) {
+bool collective_hub_bridge_is_connected(collective_hub_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }

@@ -334,7 +334,7 @@ int rcog_hub_bridge_set_engine(
  * @param bridge Rcog hub bridge
  * @return true if connected, false otherwise
  */
-bool rcog_hub_bridge_is_connected(const rcog_hub_bridge_t* bridge);
+bool rcog_hub_bridge_is_connected(rcog_hub_bridge_t* bridge);
 
 /* ============================================================================
  * Event Callback Registration

@@ -258,7 +258,7 @@ int memory_fep_bridge_update(memory_fep_bridge_t* bridge, uint64_t delta_ms) {
     return 0;
 }
 
-int memory_fep_bridge_get_state(const memory_fep_bridge_t* bridge, memory_fep_state_t* state) {
+int memory_fep_bridge_get_state(memory_fep_bridge_t* bridge, memory_fep_state_t* state) {
     /* Phase 8: Heartbeat at operation start */
     memory_fep_bridge_heartbeat("memory_fep_b_get_state", 0.0f);
 
@@ -270,7 +270,7 @@ int memory_fep_bridge_get_state(const memory_fep_bridge_t* bridge, memory_fep_st
     return 0;
 }
 
-int memory_fep_bridge_get_stats(const memory_fep_bridge_t* bridge, memory_fep_stats_t* stats) {
+int memory_fep_bridge_get_stats(memory_fep_bridge_t* bridge, memory_fep_stats_t* stats) {
     /* Phase 8: Heartbeat at operation start */
     memory_fep_bridge_heartbeat("memory_fep_b_get_stats", 0.0f);
 

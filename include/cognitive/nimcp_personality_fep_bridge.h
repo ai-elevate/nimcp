@@ -95,9 +95,9 @@ int personality_fep_bridge_connect_personality(personality_fep_bridge_t* bridge,
                                                 personality_profile_t* personality);
 int personality_fep_bridge_disconnect(personality_fep_bridge_t* bridge);
 int personality_fep_bridge_update(personality_fep_bridge_t* bridge);
-int personality_fep_bridge_get_state(const personality_fep_bridge_t* bridge,
+int personality_fep_bridge_get_state(personality_fep_bridge_t* bridge,
                                       personality_fep_state_t* state);
-int personality_fep_bridge_get_stats(const personality_fep_bridge_t* bridge,
+int personality_fep_bridge_get_stats(personality_fep_bridge_t* bridge,
                                       personality_fep_stats_t* stats);
 int personality_fep_bridge_connect_bio_async(personality_fep_bridge_t* bridge);
 int personality_fep_bridge_disconnect_bio_async(personality_fep_bridge_t* bridge);

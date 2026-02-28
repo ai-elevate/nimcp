@@ -342,7 +342,7 @@ int attention_thalamic_set_attention(attention_thalamic_bridge_t* bridge, float 
     return 0;
 }
 
-int attention_thalamic_get_attention(const attention_thalamic_bridge_t* bridge, float* attention) {
+int attention_thalamic_get_attention(attention_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_thalamic_get_attention: bridge or attention is NULL");
         return -1;

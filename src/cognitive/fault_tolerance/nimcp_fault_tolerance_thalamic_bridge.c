@@ -208,7 +208,7 @@ int fault_tolerance_thalamic_set_attention(fault_tolerance_thalamic_bridge_t* br
     return 0;
 }
 
-int fault_tolerance_thalamic_get_attention(const fault_tolerance_thalamic_bridge_t* bridge, float* attention) {
+int fault_tolerance_thalamic_get_attention(fault_tolerance_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
                               "fault_tolerance_thalamic_get_attention: NULL argument");
@@ -224,7 +224,7 @@ int fault_tolerance_thalamic_get_attention(const fault_tolerance_thalamic_bridge
     return 0;
 }
 
-int fault_tolerance_thalamic_bridge_get_stats(const fault_tolerance_thalamic_bridge_t* bridge, fault_tolerance_thalamic_stats_t* stats) {
+int fault_tolerance_thalamic_bridge_get_stats(fault_tolerance_thalamic_bridge_t* bridge, fault_tolerance_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
                               "fault_tolerance_thalamic_bridge_get_stats: NULL argument");

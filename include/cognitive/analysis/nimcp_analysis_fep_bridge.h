@@ -163,8 +163,8 @@ int analysis_fep_update_model_structure(analysis_fep_bridge_t* bridge);
 
 int analysis_fep_bridge_update(analysis_fep_bridge_t* bridge, uint64_t delta_ms);
 
-int analysis_fep_bridge_get_state(const analysis_fep_bridge_t* bridge, analysis_fep_state_t* state);
-int analysis_fep_bridge_get_stats(const analysis_fep_bridge_t* bridge, analysis_fep_stats_t* stats);
+int analysis_fep_bridge_get_state(analysis_fep_bridge_t* bridge, analysis_fep_state_t* state);
+int analysis_fep_bridge_get_stats(analysis_fep_bridge_t* bridge, analysis_fep_stats_t* stats);
 
 int analysis_fep_bridge_connect_bio_async(analysis_fep_bridge_t* bridge);
 int analysis_fep_bridge_disconnect_bio_async(analysis_fep_bridge_t* bridge);

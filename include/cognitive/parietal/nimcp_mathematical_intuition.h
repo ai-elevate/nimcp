@@ -543,7 +543,7 @@ int math_intuition_set_fatigue(
  * @return 0 on success
  */
 int math_intuition_get_stats(
-    const math_intuition_t* mi,
+    math_intuition_t* mi,
     math_intuition_stats_t* stats
 );
 

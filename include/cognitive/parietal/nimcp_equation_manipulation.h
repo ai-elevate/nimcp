@@ -569,7 +569,7 @@ int equation_set_fatigue(
  * @return 0 on success
  */
 int equation_get_stats(
-    const equation_engine_t* eq,
+    equation_engine_t* eq,
     equation_stats_t* stats
 );
 
