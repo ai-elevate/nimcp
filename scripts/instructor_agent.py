@@ -49,6 +49,27 @@ _EMBEDDING_MODEL = None
 _EMBEDDING_LOCK = threading.Lock()
 _EMBEDDING_AVAILABLE = None  # None = not checked yet
 
+# Progressive feature unfreezing (Enhancement #8)
+_GLOBAL_FEATURE_STEP = 0
+_FEATURE_STEP_LOCK = threading.Lock()
+
+def _get_feature_blend_ratio():
+    """Progressive unfreezing: start pure semantic, blend in n-grams over time."""
+    global _GLOBAL_FEATURE_STEP
+    with _FEATURE_STEP_LOCK:
+        step = _GLOBAL_FEATURE_STEP
+        _GLOBAL_FEATURE_STEP += 1
+
+    # Phase 1 (steps 0-1000): 100% semantic (0% n-gram)
+    if step < 1000:
+        return 0.0
+    # Phase 2 (steps 1000-3000): Linear ramp from 0% to 50% n-gram
+    elif step < 3000:
+        return 0.5 * (step - 1000) / 2000.0
+    # Phase 3 (steps 3000+): Steady 50/50
+    else:
+        return 0.5
+
 def _get_embedding_model():
     """Lazy-load sentence-transformer model (thread-safe singleton)."""
     global _EMBEDDING_MODEL, _EMBEDDING_AVAILABLE
@@ -115,6 +136,7 @@ class InstructorConfig:
     startup_delay_s: float = 0.0
     min_domain_accuracy: float = 0.0    # Min accuracy before domain is "done" (0=disabled)
     max_retry_passes: int = 5           # Max times to re-teach datasets if below threshold
+    output_range: Optional[Tuple[int, int]] = None  # (start_idx, end_idx) for domain-specific output neurons
 
 
 # ---------------------------------------------------------------------------
@@ -255,7 +277,7 @@ class InstructorAgent(threading.Thread):
 
         # Phase 3: Spaced repetition + difficulty tracking
         self._spaced_replay: list = []  # heap: (next_review_step, interval, features, label)
-        self._example_difficulty: dict = {}  # hash(features) -> fail_count
+        self._example_difficulty: dict = {}  # hash -> {'fails': int, 'attempts': int, 'conf_history': deque(maxlen=10)}
         self._peak_accuracy = 0.0
         self._method_accuracy_delta: Dict[str, deque] = {
             m.value: deque(maxlen=200) for m in TeachingMethod}
@@ -624,15 +646,109 @@ class InstructorAgent(threading.Thread):
             # Fallback for older nimcp without predict_in_domain
             return self.brain.predict_fast(features)
 
+    def _scope_target_to_domain(self, target):
+        """Mask target to only update this domain's output neurons.
+
+        When output_range is set, zeros out all target neurons except those
+        in this domain's dedicated range and the shared pool (last 20%).
+        This prevents cross-domain interference during training.
+        """
+        if self.config.output_range is None:
+            return target
+
+        start, end = self.config.output_range
+        if not isinstance(target, (list, np.ndarray)):
+            return target  # Non-vector targets (e.g. label strings) pass through
+
+        target_arr = np.array(target, dtype=np.float32) if not isinstance(target, np.ndarray) else target
+        n = len(target_arr)
+        if n == 0:
+            return target
+
+        scoped = np.zeros(n, dtype=np.float32)
+        # Copy only the neurons in this domain's dedicated range
+        actual_end = min(end, n)
+        if start < actual_end:
+            scoped[start:actual_end] = target_arr[start:actual_end]
+        # Also include shared pool neurons (last 20%)
+        shared_start = int(n * 0.8)
+        if shared_start < n:
+            scoped[shared_start:] = target_arr[shared_start:]
+        return scoped.tolist()
+
+    def _domain_label_from_output(self, output_vector, label):
+        """Extract label from domain-specific output neurons only.
+
+        For evaluation, when checking if prediction is correct, consider
+        only this domain's dedicated output neurons to avoid cross-domain
+        interference in accuracy measurement.
+        """
+        if self.config.output_range is None:
+            return None  # Use default prediction
+
+        start, end = self.config.output_range
+        if isinstance(output_vector, (list, np.ndarray)) and len(output_vector) > end:
+            domain_outputs = np.array(output_vector[start:end])
+            return int(np.argmax(domain_outputs)) + start
+        return None
+
+    def _ensemble_predict(self, features, domain: str, k=3, noise_sigma=0.01):
+        """Run K forward passes with input perturbation, return majority-vote prediction.
+
+        Used during self-assessment and evaluation for more stable accuracy measurement.
+        Not used during training (too slow).
+        """
+        votes = {}   # label -> count
+        confidences = []  # confidence per pass
+        features_arr = np.array(features, dtype=np.float32)
+
+        for i in range(k):
+            if i == 0:
+                # First pass: original features (no noise)
+                query = features
+            else:
+                # Subsequent passes: add Gaussian noise
+                noisy = features_arr + np.random.normal(
+                    0, noise_sigma, size=features_arr.shape
+                ).astype(np.float32)
+                # Re-normalize to maintain unit norm
+                norm = np.linalg.norm(noisy)
+                if norm > 1e-6:
+                    noisy /= norm
+                query = noisy.tolist()
+
+            try:
+                pred, conf = self._predict_domain(query, domain)
+                votes[pred] = votes.get(pred, 0) + 1
+                confidences.append(conf)
+            except Exception:
+                continue
+
+        if not votes:
+            return None, 0.0, 0.0
+
+        # Majority vote
+        best_label = max(votes, key=votes.get)
+        agreement = votes[best_label] / k
+        avg_confidence = (
+            sum(confidences) / len(confidences) if confidences else 0.0
+        )
+
+        return best_label, avg_confidence * agreement, agreement
+
     def _execute_method(self, method: TeachingMethod, features: list,
                         label: str, domain: str,
                         grade: Optional[DataGrade]) -> Tuple[bool, float]:
         """Execute a teaching method with dynamic learning hooks."""
         conf_mod = grade.confidence_modifier if grade else 1.0
 
-        # Phase 3: Difficulty-scaled LR modifier
-        diff_scale = self._get_difficulty_lr_scale(features)
+        # Enhancement #6: Difficulty-scaled LR modifier (confidence trajectory)
+        diff_scale = self._get_difficulty_lr_scale(features, label)
         conf_mod *= diff_scale
+
+        # Enhancement #3: Focal loss — scale LR by prediction uncertainty
+        focal_factor = self._compute_focal_factor(features, label)
+        conf_mod *= focal_factor
 
         # Phase 3: Process any due spaced-replay examples
         self._spaced_replay_tick()
@@ -645,21 +761,41 @@ class InstructorAgent(threading.Thread):
             self._maybe_collect_holdout(features, label)
 
         if method == TeachingMethod.SOCRATIC:
-            return self._method_socratic(features, label, domain, conf_mod)
+            result = self._method_socratic(features, label, domain, conf_mod)
         elif method == TeachingMethod.CURRICULUM:
-            return self._method_curriculum(features, label, domain, conf_mod)
+            result = self._method_curriculum(features, label, domain, conf_mod)
         elif method == TeachingMethod.CONTRASTIVE:
-            return self._method_contrastive(features, label, domain, conf_mod)
+            result = self._method_contrastive(features, label, domain, conf_mod)
         elif method == TeachingMethod.DEBATE:
-            return self._method_debate(features, label, domain, conf_mod)
+            result = self._method_debate(features, label, domain, conf_mod)
         elif method == TeachingMethod.META:
-            return self._method_meta(features, label, domain, conf_mod)
+            result = self._method_meta(features, label, domain, conf_mod)
         elif method == TeachingMethod.ADVERSARIAL:
-            return self._method_adversarial(features, label, domain, conf_mod)
+            result = self._method_adversarial(features, label, domain, conf_mod)
         elif method == TeachingMethod.ANALOGICAL:
-            return self._method_analogical(features, label, domain, conf_mod)
+            result = self._method_analogical(features, label, domain, conf_mod)
         else:
-            return self._method_socratic(features, label, domain, conf_mod)
+            result = self._method_socratic(features, label, domain, conf_mod)
+
+        # Enhancement #6: Record difficulty with confidence trajectory
+        correct, loss = result
+        fh = self._feature_hash(features)
+        if fh not in self._example_difficulty:
+            self._example_difficulty[fh] = {
+                'fails': 0, 'attempts': 0, 'conf_history': deque(maxlen=10)}
+        info = self._example_difficulty[fh]
+        info['attempts'] += 1
+        if not correct:
+            info['fails'] += 1
+        # Record confidence from the pre-prediction (focal factor path)
+        try:
+            pre_pred = self._predict_domain(features, domain)
+            pre_conf = pre_pred[1] if isinstance(pre_pred, tuple) else 0.5
+        except Exception:
+            pre_conf = 0.5
+        info['conf_history'].append(pre_conf)
+
+        return result
 
     def _method_socratic(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Predict-before-learn with adaptive confidence + spaced replay."""
@@ -667,7 +803,7 @@ class InstructorAgent(threading.Thread):
         correct = (pred == label)
 
         # Phase 3: Skip easy examples at high mastery
-        if self._should_skip_easy(features, conf) and correct:
+        if self._should_skip_easy(features, label, conf) and correct:
             self.socratic.mastery.record(domain, correct)
             return correct, 0.0
 
@@ -681,7 +817,7 @@ class InstructorAgent(threading.Thread):
         else:
             lr = 0.8 * conf_mod
 
-        self.brain.learn(features, label, self._modulate_lr(lr))
+        self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
         loss = 0.0 if correct else (1.0 - conf)
         self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
@@ -702,7 +838,7 @@ class InstructorAgent(threading.Thread):
             return correct, 0.0
 
         lr = (0.5 + 0.5 * self.difficulty) * conf_mod
-        self.brain.learn(features, label, self._modulate_lr(lr))
+        self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
         loss = 0.0 if correct else (1.0 - conf)
         self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
@@ -714,12 +850,13 @@ class InstructorAgent(threading.Thread):
         correct = (pred == label)
 
         # Teach the correct label
-        self.brain.learn(features, label, self._modulate_lr(0.7 * conf_mod))
+        scoped_label = self._scope_target_to_domain(label)
+        self.brain.learn(features, scoped_label, self._modulate_lr(0.7 * conf_mod))
 
         # If wrong, also explicitly teach "not the wrong answer"
         if not correct and pred:
             # Re-teach with correct answer at higher confidence
-            self.brain.learn(features, label, self._modulate_lr(0.9 * conf_mod))
+            self.brain.learn(features, scoped_label, self._modulate_lr(0.9 * conf_mod))
 
         loss = 0.0 if correct else (1.0 - conf)
         self._update_metrics_and_decide(loss)
@@ -743,7 +880,7 @@ class InstructorAgent(threading.Thread):
             lr = 0.9 * conf_mod  # disagreement → stronger teaching
 
         correct = (pred1 == label)
-        self.brain.learn(features, label, self._modulate_lr(lr))
+        self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
 
         loss = 0.0 if correct else max(1.0 - conf1, 1.0 - conf2)
         self._update_metrics_and_decide(loss)
@@ -758,7 +895,7 @@ class InstructorAgent(threading.Thread):
         # Use mastery to set learning rate
         mastery = self.socratic.mastery.mastery(domain)
         lr = (0.3 + 0.7 * (1.0 - mastery)) * conf_mod
-        self.brain.learn(features, label, self._modulate_lr(lr))
+        self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
 
         loss = 0.0 if correct else (1.0 - conf)
         self._update_metrics_and_decide(loss)
@@ -766,31 +903,107 @@ class InstructorAgent(threading.Thread):
         return correct, loss
 
     def _method_adversarial(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
-        """Find weaknesses, schedule spaced review, re-teach."""
+        """Adversarial training: find minimal perturbation that flips prediction, then train on it."""
+        features_arr = np.array(features, dtype=np.float32)
+
+        # Step 1: Get current prediction
         pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Phase 3: Skip easy examples at high mastery
-        if self._should_skip_easy(features, conf) and correct:
+        if self._should_skip_easy(features, label, conf) and correct:
             self.socratic.mastery.record(domain, correct)
             return correct, 0.0
 
-        # Store hard examples in both adversarial_bank AND spaced replay
+        # Store hard examples in adversarial_bank AND spaced replay
         if not correct or conf < 0.5:
             if len(self.adversarial_bank) < 500:
                 self.adversarial_bank.append((features, label))
-            # Phase 3: Schedule for spaced repetition
             self._spaced_replay_push(features, label)
 
-        # Teach with boosted confidence on hard examples
-        lr = (0.9 if not correct else 0.4) * conf_mod
-        self.brain.learn(features, label, self._modulate_lr(lr))
+        # Step 2: Binary search for decision boundary
+        # Try multiple random directions to find adversarial examples
+        best_adversarial = None
+        best_epsilon = float('inf')
+        num_directions = 5
 
-        # Periodically re-teach hard examples
+        for _ in range(num_directions):
+            # Random unit direction
+            direction = np.random.randn(len(features_arr)).astype(np.float32)
+            direction /= (np.linalg.norm(direction) + 1e-8)
+
+            # Binary search for minimal epsilon that flips prediction
+            lo, hi = 0.0, 0.3
+            flip_found = False
+
+            for _ in range(8):  # 8 binary search steps
+                mid = (lo + hi) / 2.0
+                perturbed = features_arr + mid * direction
+                norm = np.linalg.norm(perturbed)
+                if norm > 1e-6:
+                    perturbed /= norm
+
+                try:
+                    pert_pred, _ = self._predict_domain(
+                        perturbed.tolist(), domain
+                    )
+                except Exception:
+                    break
+
+                if pert_pred != pred:
+                    hi = mid
+                    flip_found = True
+                else:
+                    lo = mid
+
+            if flip_found and hi < best_epsilon:
+                best_epsilon = hi
+                best_adversarial = features_arr + hi * direction
+                norm = np.linalg.norm(best_adversarial)
+                if norm > 1e-6:
+                    best_adversarial /= norm
+
+        # Step 3: Train on original example
+        lr = (0.9 if not correct else 0.4) * conf_mod
+        scoped_label = self._scope_target_to_domain(label)
+        self.brain.learn(features, scoped_label, self._modulate_lr(lr))
+
+        # Step 4: Train on adversarial example (if found) with correct label
+        if best_adversarial is not None:
+            try:
+                # Boost LR for boundary examples — most informative
+                self.brain.learn(
+                    best_adversarial.tolist(), scoped_label,
+                    self._modulate_lr(lr * 1.5)
+                )
+                # Push to spaced replay — adversarial examples are high-value
+                self._spaced_replay_push(best_adversarial.tolist(), label)
+            except Exception:
+                pass
+        else:
+            # No adversarial found — fallback: add random noise
+            noise = np.random.normal(
+                0, 0.05, size=features_arr.shape
+            ).astype(np.float32)
+            noisy_features = features_arr + noise
+            norm = np.linalg.norm(noisy_features)
+            if norm > 1e-6:
+                noisy_features /= norm
+            try:
+                self.brain.learn(
+                    noisy_features.tolist(), scoped_label, self._modulate_lr(lr)
+                )
+            except Exception:
+                pass
+
+        # Periodically re-teach hard examples from adversarial bank
         if (self.total_examples % 200 == 0 and self.adversarial_bank
                 and random.random() < self.config.adversarial_fraction):
             hard_feat, hard_label = random.choice(self.adversarial_bank)
-            self.brain.learn(hard_feat, hard_label, self._modulate_lr(0.8 * conf_mod))
+            self.brain.learn(
+                hard_feat, self._scope_target_to_domain(hard_label),
+                self._modulate_lr(0.8 * conf_mod)
+            )
 
         loss = 0.0 if correct else (1.0 - conf)
         self._update_metrics_and_decide(loss)
@@ -802,7 +1015,7 @@ class InstructorAgent(threading.Thread):
         pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
-        self.brain.learn(features, label, self._modulate_lr(0.7 * conf_mod))
+        self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.7 * conf_mod))
 
         # Try to blend with cross-domain exemplar
         try:
@@ -815,7 +1028,7 @@ class InstructorAgent(threading.Thread):
                         f * (1 - ratio) + e * ratio
                         for f, e in zip(features, ex_feats)
                     ]
-                    self.brain.learn(blended, label, self._modulate_lr(0.4 * conf_mod))
+                    self.brain.learn(blended, self._scope_target_to_domain(label), self._modulate_lr(0.4 * conf_mod))
         except Exception:
             pass
 
@@ -938,7 +1151,8 @@ class InstructorAgent(threading.Thread):
                 break
             pred, conf = self._predict_domain(features, domain)
             correct = (pred == label)
-            self.brain.learn(features, label, self._modulate_lr(0.8))
+            focal = self._compute_focal_factor(features, label)
+            self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.8 * focal))
             self.total_examples += 1
             if correct:
                 self.total_correct += 1
@@ -1038,8 +1252,11 @@ class InstructorAgent(threading.Thread):
         interval = 1
         next_step = self.total_examples + interval
         heapq.heappush(self._spaced_replay, (next_step, interval, features, label))
-        # Track difficulty
-        self._example_difficulty[key] = self._example_difficulty.get(key, 0) + 1
+        # Track difficulty (Enhancement #6: confidence trajectory format)
+        if key not in self._example_difficulty:
+            self._example_difficulty[key] = {
+                'fails': 0, 'attempts': 0, 'conf_history': deque(maxlen=10)}
+        self._example_difficulty[key]['fails'] += 1
 
     def _spaced_replay_tick(self):
         """Process any due spaced-replay examples."""
@@ -1051,7 +1268,8 @@ class InstructorAgent(threading.Thread):
             pred, conf = self._predict_domain(features, self.config.domain)
             correct = (pred == label)
             # Always re-learn (even if correct, reinforce)
-            self.brain.learn(features, label, self._modulate_lr(0.6))
+            focal = self._compute_focal_factor(features, label)
+            self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.6 * focal))
             self.socratic.mastery.record(self.config.domain, correct)
             if correct:
                 # Extend interval (exponential backoff)
@@ -1075,34 +1293,59 @@ class InstructorAgent(threading.Thread):
     # Phase 3: Difficulty-Gated Curriculum
     # ------------------------------------------------------------------
 
-    def _should_skip_easy(self, features: list, conf: float) -> bool:
-        """Skip examples the brain already knows with high confidence."""
-        mastery = self.socratic.mastery.mastery(self.config.domain)
-        if mastery < 0.5:
-            # Low mastery: skip nothing
-            return False
-        if mastery > 0.8 and conf > 0.95:
-            # High mastery: skip only very confident
-            return True
-        if conf > 0.98:
-            # Skip extremely confident regardless
-            return True
+    def _should_skip_easy(self, features: list, label: str,
+                          confidence: float) -> bool:
+        """Skip examples the brain already knows well, considering confidence trajectory."""
+        accuracy = self.total_correct / max(self.total_examples, 1)
+        if accuracy < 0.7:
+            return False  # Don't skip anything at low mastery
+
+        fh = self._feature_hash(features)
+        info = self._example_difficulty.get(fh)
+
+        if info is None:
+            return False  # Never seen, don't skip
+
+        if confidence > 0.95 and info['fails'] == 0:
+            return True  # High confidence, never failed -- skip
+
+        # Check confidence trajectory: if confidence is rising, prioritize
+        if len(info['conf_history']) >= 3:
+            recent = list(info['conf_history'])
+            trend = recent[-1] - recent[0]
+            if trend > 0.1 and confidence > 0.8:
+                return True  # Confidence rising and already high -- skip
+
         return False
 
-    def _get_difficulty_lr_scale(self, features: list) -> float:
-        """Scale LR based on example difficulty relative to current mastery."""
-        key = self._feature_hash(features)
-        fail_count = self._example_difficulty.get(key, 0)
-        mastery = self.socratic.mastery.mastery(self.config.domain)
-        if mastery < 0.5:
-            # Low mastery: boost easy examples (foundation building)
-            return 1.0 if fail_count == 0 else 0.8
-        elif mastery < 0.8:
-            # Mid mastery: balanced
-            return 0.7 + 0.3 * min(fail_count / 3.0, 1.0)
+    def _get_difficulty_lr_scale(self, features: list, label: str = "") -> float:
+        """Scale LR based on example difficulty and confidence trajectory."""
+        fh = self._feature_hash(features)
+        info = self._example_difficulty.get(fh)
+
+        if info is None:
+            return 1.0  # Unseen example -- normal LR
+
+        fail_rate = info['fails'] / max(info['attempts'], 1)
+        accuracy = self.total_correct / max(self.total_examples, 1)
+
+        # Check if confidence is improving on this example
+        if len(info['conf_history']) >= 2:
+            recent = list(info['conf_history'])
+            trend = recent[-1] - recent[0]
+
+            if trend > 0.05:
+                # Confidence improving -- this example is being learned, boost slightly
+                return 1.0 + 0.3 * fail_rate
+            elif trend < -0.05:
+                # Confidence decreasing -- possibly too hard, reduce LR to prevent oscillation
+                return max(0.3, 0.7 - 0.2 * fail_rate)
+
+        # Default: higher LR for harder examples
+        if accuracy > 0.8:
+            return 0.5 + fail_rate  # Focus on hard at high mastery
         else:
-            # High mastery: focus on hard examples
-            return 0.3 + 0.7 * min(fail_count / 3.0, 1.0)
+            return 1.0 - 0.3 * fail_rate  # Easier examples first at low mastery
 
     # ------------------------------------------------------------------
     # Phase 3: Self-Assessment
@@ -1128,13 +1371,18 @@ class InstructorAgent(threading.Thread):
         self._last_self_assessment_step = self.total_examples
         domain = self.config.domain
 
-        # Pure prediction on holdout (no learning)
+        # Pure prediction on holdout (no learning) — ensemble for stability
         correct = 0
+        total_agreement = 0.0
         for features, label in self._holdout_buffer:
-            pred, conf = self._predict_domain(features, domain)
+            pred, conf, agreement = self._ensemble_predict(
+                features, domain, k=3, noise_sigma=0.01
+            )
             if pred == label:
                 correct += 1
+            total_agreement += agreement
         self._held_out_accuracy = correct / len(self._holdout_buffer)
+        avg_agreement = total_agreement / len(self._holdout_buffer)
 
         train_acc = self.total_correct / max(self.total_examples, 1)
         gap = train_acc - self._held_out_accuracy
@@ -1145,6 +1393,7 @@ class InstructorAgent(threading.Thread):
             "training_accuracy": round(train_acc, 4),
             "gap": round(gap, 4),
             "holdout_size": len(self._holdout_buffer),
+            "ensemble_agreement": round(avg_agreement, 4),
             "verdict": "overfitting" if gap > 0.1 else "good_generalization",
         })
 
@@ -1195,6 +1444,32 @@ class InstructorAgent(threading.Thread):
         """Return the running domain centroid (for cross-domain similarity)."""
         return self._domain_centroid
 
+    # ------------------------------------------------------------------
+    # Enhancement #3: Focal Loss (Confidence-Calibrated Training Signal)
+    # ------------------------------------------------------------------
+
+    def _compute_focal_factor(self, features, label):
+        """Compute focal loss scaling factor for this example.
+
+        Scales learning rate by how much the brain needs to learn:
+        - Already correct with high confidence -> very low LR (save compute)
+        - Incorrect with high confidence -> high LR (strong correction needed)
+        """
+        try:
+            pre_decision = self.brain.predict_fast(features)
+            pre_confidence = pre_decision.get('confidence', 0.5) if isinstance(pre_decision, dict) else 0.5
+            pre_correct = (pre_decision.get('label', -1) == label) if isinstance(pre_decision, dict) else False
+            if pre_correct:
+                # Already correct -- scale down LR proportional to confidence
+                # High confidence correct -> very low LR (don't waste compute)
+                return max(0.05, 1.0 - pre_confidence)
+            else:
+                # Incorrect -- scale up LR proportional to confidence
+                # High confidence wrong -> high LR (need strong correction)
+                return min(2.0, 0.5 + pre_confidence)
+        except Exception:
+            return 1.0  # Fallback: no scaling
+
 
 # ---------------------------------------------------------------------------
 # Cosine Annealing LR Scheduler (per-instructor)
@@ -1233,26 +1508,40 @@ class _CosineAnnealingLR:
 def _text_to_features(text: str, num_inputs: int) -> list:
     """Hybrid text feature encoding: semantic embeddings + character n-grams.
 
-    Layout (for num_inputs=1024):
-      Dims 0-511:   Sentence-transformer embedding (384d zero-padded to 512)
-      Dims 512-1023: Character n-grams (existing encoder, scaled to 512)
+    Enhancement #8: Progressive feature unfreezing — starts with 100% semantic
+    features, gradually blends in n-grams over training steps.
+
+    Phase 1 (steps 0-1000):    100% semantic (pure embedding signal)
+    Phase 2 (steps 1000-3000): Linear ramp from 0% to 50% n-gram
+    Phase 3 (steps 3000+):     Steady 50/50 (original behavior)
+
     Falls back to pure n-grams if sentence-transformers unavailable.
     """
     model = _get_embedding_model()
     if model is not None:
         try:
-            half = num_inputs // 2
-            # Semantic half: sentence-transformer embedding
+            ngram_ratio = _get_feature_blend_ratio()
+            semantic_ratio = 1.0 - ngram_ratio
+
+            # Compute dimensions for each component
+            sem_dims = max(1, int(num_inputs * semantic_ratio))
+            ngram_dims = num_inputs - sem_dims
+
+            # Semantic features
             embedding = model.encode(text[:1000], convert_to_numpy=True)
-            sem_features = np.zeros(half, dtype=np.float32)
-            copy_len = min(len(embedding), half)
+            sem_features = np.zeros(sem_dims, dtype=np.float32)
+            copy_len = min(len(embedding), sem_dims)
             sem_features[:copy_len] = embedding[:copy_len]
 
-            # N-gram half
-            ngram_features = _text_to_ngram_features(text, half)
+            if ngram_dims > 0:
+                ngram_features = np.array(
+                    _text_to_ngram_features(text, ngram_dims), dtype=np.float32)
+                combined = np.concatenate([sem_features, ngram_features])
+            else:
+                # Pad semantic to full width
+                combined = np.zeros(num_inputs, dtype=np.float32)
+                combined[:len(sem_features)] = sem_features
 
-            # Combine and L2-normalize
-            combined = np.concatenate([sem_features, np.array(ngram_features, dtype=np.float32)])
             norm = np.linalg.norm(combined)
             if norm > 1e-6:
                 combined /= norm

@@ -3157,6 +3157,20 @@ add_e2e_test(e2e_test_training_integration
     ${CMAKE_CURRENT_SOURCE_DIR}/test_training_integration_e2e.cpp
 )
 
+# =============================================================================
+# Athena Training Pipeline E2E Test (Full lifecycle, loss reduction, gradient
+# clipping, consolidation mid-training, multi-domain, state persistence)
+# =============================================================================
+add_e2e_test(e2e_test_athena_training_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_athena_training_pipeline.cpp
+)
+# Override: 6 tests each with brain create/destroy (~10s each) need more time
+set_tests_properties(e2e_test_athena_training_pipeline PROPERTIES
+    TIMEOUT 600
+    RESOURCE_LOCK "brain_heavy"
+)
+
 # Include Utils E2E test subdirectory (Memory + Health Agent)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/utils/CMakeLists.txt)
     message(STATUS "Adding Utils E2E tests...")

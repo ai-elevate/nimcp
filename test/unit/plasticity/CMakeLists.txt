@@ -722,3 +722,27 @@ gtest_discover_tests(unit_plasticity_hybrid_learning
     PROPERTIES LABELS "unit;plasticity;adaptive;hybrid"
     TIMEOUT 60
 )
+
+# ============================================================================
+# Backprop Gradient Clipping Tests (C, no GTest)
+# ============================================================================
+# WHAT: Unit tests for gradient norm clipping in backprop_sparse_full()
+# WHY:  Ensure max_grad_norm parameter correctly bounds gradient magnitudes
+# HOW:  Direct C tests with NULL/invalid params and functional network tests
+# ============================================================================
+
+add_executable(test_backprop_grad_clip
+    test_backprop_grad_clip.c
+)
+target_link_libraries(test_backprop_grad_clip
+    PRIVATE nimcp pthread m
+)
+target_include_directories(test_backprop_grad_clip PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+add_test(NAME test_backprop_grad_clip COMMAND test_backprop_grad_clip)
+set_tests_properties(test_backprop_grad_clip PROPERTIES
+    LABELS "unit;plasticity;adaptive;backprop;grad_clip"
+    TIMEOUT 60
+)

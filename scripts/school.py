@@ -413,6 +413,11 @@ class School:
         self._last_checkpoint = 0.0
         self._last_config_check = 0.0
 
+        # Domain-specific output head allocation
+        # Each domain gets a dedicated slice of output neurons to prevent cross-domain interference
+        self._domain_output_map: Dict[str, tuple] = {}  # domain_name -> (start_idx, end_idx)
+        self._shared_output_range: tuple = (0, 0)
+
         # Hot-reload tracking
         self._config_path: Optional[Path] = None
         self._config_mtime: float = 0.0
@@ -471,12 +476,55 @@ class School:
             )
             self.instructors.append(agent)
 
+        # Allocate domain-specific output heads and assign to each instructor
+        self._allocate_domain_outputs()
+
         self.logger.log(f"[School] Created {len(self.instructors)} instructors "
                         f"across {len(domain_datasets)} domains")
         for agent in self.instructors:
             self.logger.log(f"  {agent.config.domain:20s} [{agent.config.modality}] "
                             f"— {len(agent.datasets)} datasets, "
                             f"delay={agent.config.startup_delay_s:.1f}s")
+
+    def _allocate_domain_outputs(self):
+        """Allocate non-overlapping output neuron ranges for each domain.
+
+        With 256 outputs and ~24 domains, each domain gets ~10 dedicated output
+        neurons.  The remaining neurons are shared (for cross-domain transfer).
+        After allocation, each instructor's config.output_range is set.
+        """
+        num_outputs = self.config.num_outputs  # 256
+        domains = sorted(set(a.config.domain for a in self.instructors))
+
+        if not domains:
+            return
+
+        # Reserve 20% of outputs as shared pool for cross-domain transfer
+        shared_pool_size = max(16, num_outputs // 5)  # At least 16 shared neurons
+        dedicated_pool = num_outputs - shared_pool_size
+
+        # Divide dedicated pool evenly among domains
+        per_domain = max(4, dedicated_pool // len(domains))  # At least 4 neurons per domain
+
+        for i, domain in enumerate(domains):
+            start = i * per_domain
+            end = min(start + per_domain, dedicated_pool)
+            if start >= dedicated_pool:
+                # More domains than slots -- share last slot
+                start = dedicated_pool - per_domain
+                end = dedicated_pool
+            self._domain_output_map[domain] = (start, end)
+
+        self._shared_output_range = (dedicated_pool, num_outputs)
+
+        # Assign output_range to each instructor's config
+        for agent in self.instructors:
+            output_range = self._domain_output_map.get(agent.config.domain)
+            if output_range is not None:
+                agent.config.output_range = output_range
+
+        self.logger.log(f"[School] Allocated output heads: {len(self._domain_output_map)} domains, "
+                        f"{per_domain} neurons/domain, {shared_pool_size} shared")
 
     def start(self):
         """Start all instructors and run coordinator loop."""
@@ -608,6 +656,8 @@ class School:
                                 f"queuing {len(ds_list)} new dataset(s) as separate instructor")
 
             modality = domain if domain in multimodal_domains else "text"
+            # Use existing output range if domain is known, otherwise None
+            output_range = self._domain_output_map.get(domain)
             ic = InstructorConfig(
                 domain=domain,
                 modality=modality,
@@ -615,6 +665,7 @@ class School:
                 startup_delay_s=0.0,
                 min_domain_accuracy=self.config.min_domain_accuracy,
                 max_retry_passes=self.config.max_retry_passes,
+                output_range=output_range,
             )
             agent = InstructorAgent(
                 brain=self.brain,

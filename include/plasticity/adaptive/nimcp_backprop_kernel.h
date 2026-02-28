@@ -51,6 +51,39 @@ int backprop_sparse_full(
     float* out_grad_norm);
 
 /**
+ * @brief Run sparse backprop with gradient accumulation via LR scaling
+ *
+ * Mathematically equivalent to accumulating N gradients and averaging:
+ * scales the learning rate by 1/accumulation_steps so each micro-batch
+ * contributes 1/N of its gradient to the weight update.
+ *
+ * @param net           Base neural network handle
+ * @param num_layers    Number of layers (must be >= 2)
+ * @param layer_sizes   Array of per-layer neuron counts [num_layers]
+ * @param learning_rate Base learning rate (will be divided by accumulation_steps)
+ * @param min_weight    Weight clamp lower bound
+ * @param max_weight    Weight clamp upper bound
+ * @param target        Target vector [target_size]
+ * @param output        Network output vector [target_size]
+ * @param target_size   Length of target/output vectors
+ * @param max_grad_norm Maximum gradient norm for clipping (0.0 = no clipping)
+ * @param accumulation_steps Number of micro-batches to simulate (LR divided by this)
+ * @param out_grad_norm Output: L2 gradient norm (sqrt of sum of squared weight deltas)
+ * @return 0 on success, -1 on error
+ */
+int backprop_with_accumulation(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float max_grad_norm,
+    uint32_t accumulation_steps,
+    float* out_grad_norm);
+
+/**
  * @brief Destroy the static backprop thread pool
  *
  * Call during shutdown to release worker threads.

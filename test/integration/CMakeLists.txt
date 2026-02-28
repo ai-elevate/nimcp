@@ -96,6 +96,25 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/generation/CMakeLists.txt)
 endif()
 
 # =============================================================================
+# Backprop Gradient Clipping Integration Tests
+# =============================================================================
+# WHAT: Integration tests for gradient clipping in backprop kernel + adaptive network
+# WHY:  Athena 95% accuracy plan added max_grad_norm/out_grad_norm to backprop_sparse_full()
+# HOW:  Test end-to-end gradient norm tracking, bounding, and convergence
+
+add_executable(integration_test_backprop_grad_clip
+    test_backprop_gradient_clipping_integration.cpp
+)
+target_link_libraries(integration_test_backprop_grad_clip
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(integration_test_backprop_grad_clip PRIVATE cxx_std_17)
+gtest_discover_tests(integration_test_backprop_grad_clip
+    PROPERTIES LABELS "integration;plasticity;backprop;gradient_clipping"
+    TIMEOUT 120
+)
+
+# =============================================================================
 # Training Integration Tests
 # =============================================================================
 # Note: training subdirectory is added by test/CMakeLists.txt

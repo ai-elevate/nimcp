@@ -86,3 +86,22 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/training/CMakeLists.txt)
     message(STATUS "Adding Training Integration Regression tests...")
     add_subdirectory(training)
 endif()
+
+# =============================================================================
+# Backprop Kernel Backward Compatibility Regression Tests
+# =============================================================================
+# WHAT: Regression tests for backprop kernel API changes (max_grad_norm, out_grad_norm)
+# WHY:  Athena 95% accuracy plan added gradient clipping params; verify backward compat
+# HOW:  Exercise API with default/disabled/extreme clipping values, verify convergence
+# =============================================================================
+add_executable(regression_test_backprop_kernel_compat
+    test_backprop_kernel_backward_compat.cpp
+)
+target_link_libraries(regression_test_backprop_kernel_compat
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(regression_test_backprop_kernel_compat PRIVATE cxx_std_17)
+gtest_discover_tests(regression_test_backprop_kernel_compat
+    PROPERTIES LABELS "regression;plasticity;backprop;backward_compat"
+    TIMEOUT 120
+)

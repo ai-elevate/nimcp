@@ -652,6 +652,28 @@ bool adaptive_network_is_frozen(adaptive_network_t network);
  */
 float adaptive_network_get_last_grad_norm(adaptive_network_t network);
 
+/**
+ * @brief Get the exponential moving average of gradient norms
+ *
+ * Tracks training stability using EMA with decay=0.99.
+ * Returns -1.0 if no training has occurred yet (uninitialized).
+ *
+ * @param network Adaptive network
+ * @return EMA gradient norm, or 0.0 if network is NULL
+ */
+float adaptive_network_get_ema_grad_norm(adaptive_network_t network);
+
+/**
+ * @brief Get the exponential moving average of training loss
+ *
+ * Tracks loss trend using EMA with decay=0.99.
+ * Returns -1.0 if no training has occurred yet (uninitialized).
+ *
+ * @param network Adaptive network
+ * @return EMA loss, or 0.0 if network is NULL
+ */
+float adaptive_network_get_ema_loss(adaptive_network_t network);
+
 #ifdef __cplusplus
 }
 #endif

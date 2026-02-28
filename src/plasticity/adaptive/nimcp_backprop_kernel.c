@@ -723,3 +723,32 @@ after_act_deriv:
     *out_grad_norm = sqrtf((float)grad_norm_sq);
     return 0;
 }
+
+//=============================================================================
+// Gradient Accumulation via Learning Rate Scaling
+//=============================================================================
+
+int backprop_with_accumulation(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float max_grad_norm,
+    uint32_t accumulation_steps,
+    float* out_grad_norm)
+{
+    // Clamp accumulation_steps to at least 1 to avoid division by zero
+    if (accumulation_steps < 1) accumulation_steps = 1;
+
+    // Scale learning rate by 1/N — mathematically equivalent to
+    // accumulating N gradients and averaging before applying.
+    float scaled_lr = learning_rate / (float)accumulation_steps;
+
+    return backprop_sparse_full(net, num_layers, layer_sizes,
+        scaled_lr, min_weight, max_weight,
+        target, output, target_size,
+        max_grad_norm, out_grad_norm);
+}

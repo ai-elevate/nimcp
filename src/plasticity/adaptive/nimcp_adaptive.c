@@ -327,6 +327,10 @@ struct adaptive_network_struct {
 
     // Gradient norm tracking
     float last_grad_norm;  /**< L2 norm of gradients from most recent learn step */
+
+    // EMA tracking for training stability detection
+    float ema_grad_norm;   /**< Exponential moving average of gradient norms (decay=0.99), -1 = uninitialized */
+    float ema_loss;        /**< Exponential moving average of training loss (decay=0.99), -1 = uninitialized */
 };
 
 //=============================================================================
@@ -1056,6 +1060,10 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     network->uses_cow_states = false;
     network->cow_states_region = NULL;
     network->cow_states_view = NULL;
+
+    // Initialize EMA tracking fields (-1 = uninitialized, first sample will seed)
+    network->ema_grad_norm = -1.0f;
+    network->ema_loss = -1.0f;
 
     // Deep copy layer_sizes array to avoid dangling pointer
     // WHY: Config may be stack-allocated by caller, so we need our own copy
@@ -1811,6 +1819,13 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     &grad_norm);
             }
             network->last_grad_norm = grad_norm;
+
+            // Update EMA of gradient norm for training stability detection
+            if (network->ema_grad_norm < 0.0f) {
+                network->ema_grad_norm = grad_norm;  // First iteration: seed
+            } else {
+                network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+            }
         }
 
         // 6. Mark weights dirty (learning modified synapse weights on CPU)
@@ -1894,6 +1909,13 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                         &grad_norm);
                 }
                 network->last_grad_norm = grad_norm;
+
+                // Update EMA of gradient norm for training stability detection
+                if (network->ema_grad_norm < 0.0f) {
+                    network->ema_grad_norm = grad_norm;  // First iteration: seed
+                } else {
+                    network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                }
             }
             break;
 
@@ -1989,6 +2011,13 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     }
                 }
                 network->last_grad_norm = grad_norm;
+
+                // Update EMA of gradient norm for training stability detection
+                if (network->ema_grad_norm < 0.0f) {
+                    network->ema_grad_norm = grad_norm;  // First iteration: seed
+                } else {
+                    network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                }
             }
             break;
     }
@@ -1996,6 +2025,15 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     free_hot_buffer(output);  // Phase MP: Return to pool
 
     network->total_learning_steps++;
+
+    // Update EMA of training loss for stability detection
+    if (loss >= 0.0f) {
+        if (network->ema_loss < 0.0f) {
+            network->ema_loss = loss;  // First iteration: seed
+        } else {
+            network->ema_loss = 0.99f * network->ema_loss + 0.01f * loss;
+        }
+    }
 
     return loss;
 }
@@ -3010,6 +3048,18 @@ float adaptive_network_get_last_grad_norm(adaptive_network_t network)
 {
     if (!network) return 0.0f;
     return network->last_grad_norm;
+}
+
+float adaptive_network_get_ema_grad_norm(adaptive_network_t network)
+{
+    if (!network) return 0.0f;
+    return network->ema_grad_norm;
+}
+
+float adaptive_network_get_ema_loss(adaptive_network_t network)
+{
+    if (!network) return 0.0f;
+    return network->ema_loss;
 }
 
 /**
