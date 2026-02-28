@@ -33,7 +33,6 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_training_validation.cpp)
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/test/e2e
         ${CMAKE_SOURCE_DIR}/src/lib
-        ${GTEST_INCLUDE_DIRS}
     )
     target_link_libraries(e2e_test_training_validation PRIVATE
         nimcp
@@ -47,10 +46,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_training_validation.cpp)
         NIMCP_TESTING
         NIMCP_E2E_TESTING
     )
-    add_test(NAME e2e_test_training_validation COMMAND e2e_test_training_validation)
+    add_test(NAME e2e_test_training_validation COMMAND e2e_test_training_validation
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(e2e_test_training_validation PROPERTIES
         LABELS "e2e;training;validation;convergence"
         TIMEOUT 600
+        RESOURCE_LOCK "brain_heavy"
     )
     message(STATUS "    Added: e2e_test_training_validation")
 endif()
@@ -88,10 +89,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_dispatch_e2e.c)
         NIMCP_TESTING
         NIMCP_E2E_TESTING
     )
-    add_test(NAME e2e_test_training_dispatch COMMAND e2e_test_training_dispatch)
+    add_test(NAME e2e_test_training_dispatch COMMAND e2e_test_training_dispatch
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(e2e_test_training_dispatch PROPERTIES
         LABELS "e2e;training;dispatch;workflow"
         TIMEOUT 600
+        RESOURCE_LOCK "brain_heavy"
     )
     message(STATUS "    Added: e2e_test_training_dispatch")
 endif()
@@ -128,7 +131,6 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_pipeline_e2e.cpp)
         ${CMAKE_SOURCE_DIR}/test/e2e
         ${CMAKE_SOURCE_DIR}/src/lib
         ${CMAKE_SOURCE_DIR}/src
-        ${GTEST_INCLUDE_DIRS}
     )
     target_link_libraries(e2e_test_training_pipeline PRIVATE
         nimcp
@@ -142,11 +144,47 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_pipeline_e2e.cpp)
         NIMCP_TESTING
         NIMCP_E2E_TESTING
     )
-    add_test(NAME e2e_test_training_pipeline COMMAND e2e_test_training_pipeline)
+    add_test(NAME e2e_test_training_pipeline COMMAND e2e_test_training_pipeline
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(e2e_test_training_pipeline PROPERTIES
         LABELS "e2e;training;pipeline;modulation;regression"
         TIMEOUT 600
         RESOURCE_LOCK "brain_heavy"
     )
     message(STATUS "    Added: e2e_test_training_pipeline")
+endif()
+
+# =============================================================================
+# SNN Backprop E2E Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_e2e.cpp)
+    add_executable(e2e_test_snn_backprop
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_e2e.cpp
+    )
+    target_include_directories(e2e_test_snn_backprop PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/test/e2e
+        ${CMAKE_SOURCE_DIR}/src/lib
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_link_libraries(e2e_test_snn_backprop PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_snn_backprop PRIVATE cxx_std_20)
+    target_compile_definitions(e2e_test_snn_backprop PRIVATE
+        NIMCP_TESTING
+        NIMCP_E2E_TESTING
+    )
+    add_test(NAME e2e_test_snn_backprop COMMAND e2e_test_snn_backprop
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_snn_backprop PROPERTIES
+        LABELS "e2e;training;snn;backprop"
+        TIMEOUT 600
+        RESOURCE_LOCK "brain_heavy"
+    )
+    message(STATUS "    Added: e2e_test_snn_backprop")
 endif()

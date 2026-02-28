@@ -33,7 +33,7 @@ import re
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -286,6 +286,9 @@ class InstructorAgent(threading.Thread):
 
         # H6: LR adjustment cooldown to prevent ratcheting
         self._last_lr_adjust_step = 0
+        # M4: Track last LR direction to suppress oscillation between detectors
+        self._last_lr_direction = None  # "up" or "down"
+        self._last_lr_direction_step = 0
 
         # Phase 3: Spaced repetition + difficulty tracking
         self._spaced_replay: list = []  # heap: (next_review_step, interval, features, label)
@@ -525,6 +528,9 @@ class InstructorAgent(threading.Thread):
                 self.method_stats.update_weights()
                 self._send_report()
 
+            # Difficulty ramp
+            self.difficulty = min(1.0, self.difficulty + self.config.difficulty_ramp_rate / 1000)
+
             if count >= self.config.max_examples_per_dataset:
                 break
 
@@ -576,6 +582,9 @@ class InstructorAgent(threading.Thread):
             if count % self.config.report_interval == 0:
                 self.method_stats.update_weights()
                 self._send_report()
+
+            # Difficulty ramp
+            self.difficulty = min(1.0, self.difficulty + self.config.difficulty_ramp_rate / 1000)
 
             if count >= self.config.max_examples_per_dataset:
                 break
@@ -698,22 +707,6 @@ class InstructorAgent(threading.Thread):
             scoped[shared_start:] = target_arr[shared_start:]
         return scoped.tolist()
 
-    def _domain_label_from_output(self, output_vector, label):
-        """Extract label from domain-specific output neurons only.
-
-        For evaluation, when checking if prediction is correct, consider
-        only this domain's dedicated output neurons to avoid cross-domain
-        interference in accuracy measurement.
-        """
-        if self.config.output_range is None:
-            return None  # Use default prediction
-
-        start, end = self.config.output_range
-        if isinstance(output_vector, (list, np.ndarray)) and len(output_vector) > end:
-            domain_outputs = np.array(output_vector[start:end])
-            return int(np.argmax(domain_outputs)) + start
-        return None
-
     def _ensemble_predict(self, features, domain: str, k=3, noise_sigma=0.01):
         """Run K forward passes with input perturbation, return majority-vote prediction.
 
@@ -762,9 +755,6 @@ class InstructorAgent(threading.Thread):
                         label: str, domain: str,
                         grade: Optional[DataGrade]) -> Tuple[bool, float]:
         """Execute a teaching method with dynamic learning hooks."""
-        # H3: Step scheduler once per example (not inside get_lr)
-        self._lr_scheduler.step()
-
         conf_mod = grade.confidence_modifier if grade else 1.0
 
         # C4: Capture pre-prediction BEFORE learning so confidence reflects
@@ -776,6 +766,17 @@ class InstructorAgent(threading.Thread):
             pre_pred_label = None
             pre_conf = 0.5
             pre_correct = False
+
+        # Phase 3: Collect holdout samples for self-assessment
+        # H1: Holdout examples are NOT trained on — keeps self-assessment unbiased
+        # M3: Scheduler must NOT advance on holdout examples (moved step() below)
+        if random.random() < 0.02:  # 2% holdout rate
+            self._maybe_collect_holdout(features, label)
+            return pre_correct, 0.0  # holdout: use actual prediction correctness
+
+        # H3: Step scheduler once per example (not inside get_lr)
+        # M3: Only step after holdout check so holdout examples don't advance schedule
+        self._lr_scheduler.step()
 
         # Enhancement #6: Difficulty-scaled LR modifier (confidence trajectory)
         diff_scale = self._get_difficulty_lr_scale(features, label)
@@ -793,12 +794,6 @@ class InstructorAgent(threading.Thread):
 
         # Phase 4: Update domain centroid
         self._update_domain_centroid(features)
-
-        # Phase 3: Collect holdout samples for self-assessment
-        # H1: Holdout examples are NOT trained on — keeps self-assessment unbiased
-        if random.random() < 0.02:  # 2% holdout rate
-            self._maybe_collect_holdout(features, label)
-            return True, 0.0  # holdout example, don't train on it
 
         if method == TeachingMethod.SOCRATIC:
             result = self._method_socratic(features, label, domain, conf_mod, pre_pred=pre_pred_label, pre_conf=pre_conf)
@@ -901,21 +896,26 @@ class InstructorAgent(threading.Thread):
 
     def _method_contrastive(self, features, label, domain, conf_mod,
                             pre_pred=None, pre_conf=None) -> Tuple[bool, float]:
-        """Learn what things are NOT — teach with negative examples."""
+        """Learn what things are NOT — teach with negative examples.
+
+        M6: Actually perform contrastive learning by teaching a negative label
+        at reduced LR so the brain learns to discriminate.
+        """
         if pre_pred is not None:
             pred, conf = pre_pred, pre_conf
         else:
             pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
-        # Teach the correct label
+        # Positive example: teach the correct label
         scoped_label = self._scope_target_to_domain(label)
         self.brain.learn(features, scoped_label, self._modulate_lr(0.7 * conf_mod))
 
-        # If wrong, also explicitly teach "not the wrong answer"
-        if not correct and pred:
-            # Re-teach with correct answer at higher confidence
-            self.brain.learn(features, scoped_label, self._modulate_lr(0.9 * conf_mod))
+        # Negative example: teach with a wrong label at reduced LR
+        # This helps the brain learn discriminative boundaries
+        neg_label = f"NOT_{label}"
+        scoped_neg = self._scope_target_to_domain(neg_label)
+        self.brain.learn(features, scoped_neg, self._modulate_lr(0.2 * conf_mod))
 
         loss = 0.0 if correct else (1.0 - conf)
         self._update_metrics_and_decide(loss)
@@ -1113,6 +1113,12 @@ class InstructorAgent(threading.Thread):
                         for f, e in zip(features, ex_feats)
                     ]
                     self.brain.learn(blended, self._scope_target_to_domain(label), self._modulate_lr(0.4 * conf_mod))
+                else:
+                    # M2: Dimension mismatch — put exemplar back for another instructor
+                    self.cross_domain_queue.put_nowait(exemplar)
+            else:
+                # M2: Modality mismatch — put exemplar back for another instructor
+                self.cross_domain_queue.put_nowait(exemplar)
         except Exception as e:
             logger.debug(f"Learn failed: {e}")
 
@@ -1236,7 +1242,8 @@ class InstructorAgent(threading.Thread):
                 break
             pred, conf = self._predict_domain(features, domain)
             correct = (pred == label)
-            focal = self._compute_focal_factor(features, label)
+            focal = self._compute_focal_factor(features, label,
+                                               pre_confidence=conf, pre_correct=correct)
             self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.8 * focal))
             self.total_examples += 1
             if correct:
@@ -1360,7 +1367,8 @@ class InstructorAgent(threading.Thread):
             pred, conf = self._predict_domain(features, self.config.domain)
             correct = (pred == label)
             # Always re-learn (even if correct, reinforce)
-            focal = self._compute_focal_factor(features, label)
+            focal = self._compute_focal_factor(features, label,
+                                               pre_confidence=conf, pre_correct=correct)
             self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.6 * focal))
             self.socratic.mastery.record(self.config.domain, correct)
             if correct:
@@ -1502,6 +1510,9 @@ class InstructorAgent(threading.Thread):
             self._lr_scheduler.base_lr *= 0.8
             self._lr_scheduler.base_lr = max(self._lr_scheduler.base_lr, 0.1)
             self._last_lr_adjust_step = self.total_examples
+            # M4: Record direction to suppress opposite adjustment for 500 steps
+            self._last_lr_direction = "down"
+            self._last_lr_direction_step = self.total_examples
 
     # ------------------------------------------------------------------
     # Phase 3: Metacognition-Driven Actions
@@ -1518,11 +1529,18 @@ class InstructorAgent(threading.Thread):
 
         # Detect regression (>5% drop from peak)
         # H6: Only adjust LR if cooldown has elapsed (200 steps)
+        # M4: Suppress upward adjustment if last direction was "down" within 500 steps
+        _suppress_up = (self._last_lr_direction == "down"
+                        and (self.total_examples - self._last_lr_direction_step) < 500)
         if (self._peak_accuracy > 0.3 and train_acc < self._peak_accuracy - 0.05
-                and (self.total_examples - self._last_lr_adjust_step) >= 200):
+                and (self.total_examples - self._last_lr_adjust_step) >= 200
+                and not _suppress_up):
             # Temporary LR boost to escape
             self._lr_scheduler.base_lr = min(self._lr_scheduler.base_lr * 1.3, 1.5)
             self._last_lr_adjust_step = self.total_examples
+            # M4: Record direction to suppress opposite adjustment for 500 steps
+            self._last_lr_direction = "up"
+            self._last_lr_direction_step = self.total_examples
             self._log_example({
                 "action": "METACOG_REGRESSION",
                 "peak": round(self._peak_accuracy, 4),
@@ -1614,10 +1632,6 @@ class _CosineAnnealingLR:
         cycle_pos = (self.step_count - self.warmup_steps) % self.cycle_steps
         cosine_factor = 0.5 * (1.0 + math.cos(math.pi * cycle_pos / self.cycle_steps))
         return self.min_lr + (self.base_lr - self.min_lr) * cosine_factor
-
-    def peek_lr(self) -> float:
-        """Alias for get_lr — compute current LR factor without advancing step."""
-        return self.get_lr()
 
     def reset(self):
         self.step_count = 0

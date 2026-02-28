@@ -29,7 +29,8 @@ target_link_libraries(unit_training_test_cnn_backprop
 )
 
 add_test(NAME unit_training_test_cnn_backprop
-         COMMAND unit_training_test_cnn_backprop)
+         COMMAND unit_training_test_cnn_backprop
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_training_test_cnn_backprop
     PROPERTIES
@@ -59,7 +60,8 @@ target_link_libraries(unit_training_test_cnn_cortex_bridge
 )
 
 add_test(NAME unit_training_test_cnn_cortex_bridge
-         COMMAND unit_training_test_cnn_cortex_bridge)
+         COMMAND unit_training_test_cnn_cortex_bridge
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_training_test_cnn_cortex_bridge
     PROPERTIES
@@ -123,7 +125,8 @@ target_link_libraries(unit_training_test_auto_architecture_nas
 )
 
 add_test(NAME unit_training_test_auto_architecture_nas
-         COMMAND unit_training_test_auto_architecture_nas)
+         COMMAND unit_training_test_auto_architecture_nas
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_training_test_auto_architecture_nas
     PROPERTIES
@@ -153,7 +156,8 @@ target_link_libraries(unit_training_test_meta_hpo
 )
 
 add_test(NAME unit_training_test_meta_hpo
-         COMMAND unit_training_test_meta_hpo)
+         COMMAND unit_training_test_meta_hpo
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_training_test_meta_hpo
     PROPERTIES
@@ -183,7 +187,8 @@ target_link_libraries(unit_training_test_kd_qat
 )
 
 add_test(NAME unit_training_test_kd_qat
-         COMMAND unit_training_test_kd_qat)
+         COMMAND unit_training_test_kd_qat
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_training_test_kd_qat
     PROPERTIES
@@ -213,7 +218,8 @@ target_link_libraries(unit_training_test_cl_mtl
 )
 
 add_test(NAME unit_training_test_cl_mtl
-         COMMAND unit_training_test_cl_mtl)
+         COMMAND unit_training_test_cl_mtl
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_training_test_cl_mtl
     PROPERTIES
@@ -243,7 +249,8 @@ target_link_libraries(unit_training_test_amp_distributed
 )
 
 add_test(NAME unit_training_test_amp_distributed
-         COMMAND unit_training_test_amp_distributed)
+         COMMAND unit_training_test_amp_distributed
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_training_test_amp_distributed
     PROPERTIES
@@ -273,12 +280,88 @@ target_link_libraries(unit_training_test_adv_gs
 )
 
 add_test(NAME unit_training_test_adv_gs
-         COMMAND unit_training_test_adv_gs)
+         COMMAND unit_training_test_adv_gs
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_training_test_adv_gs
     PROPERTIES
         LABELS "unit;training;adversarial;gradient-scaling;adv;gs"
         TIMEOUT 180)
+
+# =============================================================================
+# Orphaned Unit Test Targets
+# =============================================================================
+
+# Quantization Ternary Unit Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_quantization_ternary.cpp)
+    add_executable(unit_training_test_quantization_ternary
+        test_quantization_ternary.cpp
+    )
+    target_include_directories(unit_training_test_quantization_ternary PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_training_test_quantization_ternary PRIVATE cxx_std_20)
+    target_link_libraries(unit_training_test_quantization_ternary PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME unit_training_test_quantization_ternary
+             COMMAND unit_training_test_quantization_ternary
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_training_test_quantization_ternary
+        PROPERTIES
+            LABELS "unit;training;quantization;ternary"
+            TIMEOUT 120)
+endif()
+
+# SNN Backprop Stubs Unit Tests
+# Header enum conflict resolved via #ifdef guards in nimcp_snn_backprop.h
+# 29/55 pass (26 fail because snn_backprop_create() is still a stub returning NULL)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_stubs.cpp)
+    add_executable(unit_training_test_snn_backprop_stubs
+        test_snn_backprop_stubs.cpp
+    )
+    target_include_directories(unit_training_test_snn_backprop_stubs PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_training_test_snn_backprop_stubs PRIVATE cxx_std_20)
+    target_link_libraries(unit_training_test_snn_backprop_stubs PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME unit_training_test_snn_backprop_stubs
+             COMMAND unit_training_test_snn_backprop_stubs
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_training_test_snn_backprop_stubs
+        PROPERTIES
+            LABELS "unit;training;snn;backprop;stubs"
+            TIMEOUT 120)
+endif()
+
+# Training Dispatch Unit Tests (C — libcheck)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_dispatch.c)
+    add_executable(unit_training_test_training_dispatch
+        test_training_dispatch.c
+    )
+    target_include_directories(unit_training_test_training_dispatch PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_training_test_training_dispatch PRIVATE c_std_11)
+    target_compile_options(unit_training_test_training_dispatch PRIVATE
+        -Wall -Wextra
+    )
+    target_link_libraries(unit_training_test_training_dispatch PRIVATE
+        nimcp Threads::Threads check_pic subunit rt m
+    )
+    add_test(NAME unit_training_test_training_dispatch
+             COMMAND unit_training_test_training_dispatch
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_training_test_training_dispatch
+        PROPERTIES
+            LABELS "unit;training;dispatch"
+            TIMEOUT 300)
+endif()
 
 # Training Integration Hub Unit Tests
 add_subdirectory(integration)

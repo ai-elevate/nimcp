@@ -636,3 +636,139 @@ set_tests_properties(unit_middleware_training_test_training_integration_fixes
     PROPERTIES
         LABELS "unit;middleware;training;integration_fixes"
         TIMEOUT 120)
+
+# =============================================================================
+# Orphaned Unit Test Targets
+# =============================================================================
+
+# Brain Training Bio-Async Unit Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_brain_training_bio_async.cpp)
+    add_executable(unit_middleware_training_test_brain_training_bio_async
+        test_brain_training_bio_async.cpp
+    )
+    target_include_directories(unit_middleware_training_test_brain_training_bio_async PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_middleware_training_test_brain_training_bio_async PRIVATE cxx_std_20)
+    target_link_libraries(unit_middleware_training_test_brain_training_bio_async PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME unit_middleware_training_test_brain_training_bio_async
+             COMMAND unit_middleware_training_test_brain_training_bio_async
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_middleware_training_test_brain_training_bio_async
+        PROPERTIES
+            LABELS "unit;middleware;training;bio-async;brain"
+            TIMEOUT 120)
+endif()
+
+# Event-Driven Plasticity Bio-Async Unit Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_event_driven_plasticity_bio_async.cpp)
+    add_executable(unit_middleware_training_test_event_driven_plasticity_bio_async
+        test_event_driven_plasticity_bio_async.cpp
+    )
+    target_include_directories(unit_middleware_training_test_event_driven_plasticity_bio_async PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_middleware_training_test_event_driven_plasticity_bio_async PRIVATE cxx_std_20)
+    target_link_libraries(unit_middleware_training_test_event_driven_plasticity_bio_async PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME unit_middleware_training_test_event_driven_plasticity_bio_async
+             COMMAND unit_middleware_training_test_event_driven_plasticity_bio_async
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_middleware_training_test_event_driven_plasticity_bio_async
+        PROPERTIES
+            LABELS "unit;middleware;training;event-driven-plasticity;bio-async"
+            TIMEOUT 120)
+endif()
+
+# Learning Signal Adapter Unit Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_learning_signal_adapter.cpp)
+    add_executable(unit_middleware_training_test_learning_signal_adapter
+        test_learning_signal_adapter.cpp
+    )
+    target_include_directories(unit_middleware_training_test_learning_signal_adapter PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_middleware_training_test_learning_signal_adapter PRIVATE cxx_std_20)
+    target_link_libraries(unit_middleware_training_test_learning_signal_adapter PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME unit_middleware_training_test_learning_signal_adapter
+             COMMAND unit_middleware_training_test_learning_signal_adapter
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_middleware_training_test_learning_signal_adapter
+        PROPERTIES
+            LABELS "unit;middleware;training;learning-signal;adapter"
+            TIMEOUT 120)
+endif()
+
+# Optimizer Bio-Async Unit Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_optimizer_bio_async.cpp)
+    add_executable(unit_middleware_training_test_optimizer_bio_async
+        test_optimizer_bio_async.cpp
+    )
+    target_include_directories(unit_middleware_training_test_optimizer_bio_async PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_middleware_training_test_optimizer_bio_async PRIVATE cxx_std_20)
+    target_link_libraries(unit_middleware_training_test_optimizer_bio_async PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME unit_middleware_training_test_optimizer_bio_async
+             COMMAND unit_middleware_training_test_optimizer_bio_async
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_middleware_training_test_optimizer_bio_async
+        PROPERTIES
+            LABELS "unit;middleware;training;optimizer;bio-async"
+            TIMEOUT 120)
+endif()
+
+# Training Event Manager Unit Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_event_manager.cpp)
+    add_executable(unit_middleware_training_test_training_event_manager
+        test_training_event_manager.cpp
+    )
+    target_include_directories(unit_middleware_training_test_training_event_manager PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_middleware_training_test_training_event_manager PRIVATE cxx_std_20)
+    target_link_libraries(unit_middleware_training_test_training_event_manager PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME unit_middleware_training_test_training_event_manager
+             COMMAND unit_middleware_training_test_training_event_manager
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_middleware_training_test_training_event_manager
+        PROPERTIES
+            LABELS "unit;middleware;training;event-manager"
+            TIMEOUT 120)
+endif()
+
+# Weight Update Router Unit Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_weight_update_router.cpp)
+    add_executable(unit_middleware_training_test_weight_update_router
+        test_weight_update_router.cpp
+    )
+    target_include_directories(unit_middleware_training_test_weight_update_router PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_middleware_training_test_weight_update_router PRIVATE cxx_std_20)
+    target_link_libraries(unit_middleware_training_test_weight_update_router PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME unit_middleware_training_test_weight_update_router
+             COMMAND unit_middleware_training_test_weight_update_router
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_middleware_training_test_weight_update_router
+        PROPERTIES
+            LABELS "unit;middleware;training;weight-update;router"
+            TIMEOUT 120)
+endif()

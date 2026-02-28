@@ -334,3 +334,49 @@ set_tests_properties(regression_middleware_training_test_cortical_training_bridg
     PROPERTIES
         LABELS "regression;middleware;training;cortical_training"
         TIMEOUT 300)
+
+# =============================================================================
+# Orphaned Regression Test Targets
+# =============================================================================
+
+# Event-Driven Plasticity Bio-Async Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_event_driven_plasticity_bio_async_regression.cpp)
+    add_executable(regression_middleware_training_test_edp_bio_async_regression
+        test_event_driven_plasticity_bio_async_regression.cpp
+    )
+    target_include_directories(regression_middleware_training_test_edp_bio_async_regression PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_middleware_training_test_edp_bio_async_regression PRIVATE cxx_std_20)
+    target_link_libraries(regression_middleware_training_test_edp_bio_async_regression PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME regression_middleware_training_test_edp_bio_async_regression
+             COMMAND regression_middleware_training_test_edp_bio_async_regression)
+    set_tests_properties(regression_middleware_training_test_edp_bio_async_regression
+        PROPERTIES
+            LABELS "regression;middleware;training;event-driven-plasticity;bio-async"
+            TIMEOUT 300)
+endif()
+
+# Training Adapters Bio-Async Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_adapters_bio_async_regression.cpp)
+    add_executable(regression_middleware_training_test_adapters_bio_async_regression
+        test_training_adapters_bio_async_regression.cpp
+    )
+    target_include_directories(regression_middleware_training_test_adapters_bio_async_regression PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_middleware_training_test_adapters_bio_async_regression PRIVATE cxx_std_20)
+    target_link_libraries(regression_middleware_training_test_adapters_bio_async_regression PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME regression_middleware_training_test_adapters_bio_async_regression
+             COMMAND regression_middleware_training_test_adapters_bio_async_regression)
+    set_tests_properties(regression_middleware_training_test_adapters_bio_async_regression
+        PROPERTIES
+            LABELS "regression;middleware;training;adapters;bio-async"
+            TIMEOUT 300)
+endif()

@@ -217,7 +217,9 @@ class CosineAnnealingLR:
         return self.min_lr + (self.base_lr - self.min_lr) * cosine_factor
 
     def peek_lr(self):
-        """Return current LR without advancing the schedule."""
+        """Return LR from the last step. Before any step(), returns base_lr."""
+        if self.step_count == 0:
+            return self.base_lr
         if self.step_count <= self.warmup_steps:
             return self.min_lr + (self.base_lr - self.min_lr) * (self.step_count / max(self.warmup_steps, 1))
         cycle_pos = (self.step_count - self.warmup_steps) % self.cycle_steps
@@ -533,8 +535,15 @@ class AthenaLogger:
         self.log_file = log_dir / f"athena_train_{ts}.log"
         self.metrics_file = log_dir / f"athena_metrics_{ts}.jsonl"
         self.start_time = time.time()
-        self._log_fh = open(self.log_file, "a")
-        self._metrics_fh = open(self.metrics_file, "a")
+        self._log_fh = None
+        self._metrics_fh = None
+        try:
+            self._log_fh = open(self.log_file, "a")
+            self._metrics_fh = open(self.metrics_file, "a")
+        except Exception:
+            if self._log_fh:
+                self._log_fh.close()
+            raise
         self._writes_since_flush = 0
 
     def log(self, msg: str):
@@ -619,8 +628,12 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
 
     for domain_name, ds in qa_datasets:
         examples = ds.get_examples()
-        adapted_examples = adapt_dataset_labels(examples, domain_name)
-        all_datasets.append((domain_name, adapted_examples))
+        adapted = []
+        for ex in examples:
+            feats = _pad_or_truncate(ex["features"], ATHENA_NUM_INPUTS)
+            adapted.append({"features": feats,
+                            "label": domain_label(domain_name, ex["label"])})
+        all_datasets.append((domain_name, adapted))
 
     # Initialize training strategy components
     all_domain_names = [name for name, _ in all_datasets]
@@ -812,7 +825,7 @@ def phase1_parallel_school(brain, socratic: SocraticTrainer,
     if not SCHOOL_AVAILABLE:
         logger.log("Phase 1 (parallel school) SKIPPED — school module not available")
         logger.log("Falling back to sequential Phase 2...")
-        return total_trained
+        return total_trained, None
 
     logger.log("\n" + "=" * 70)
     logger.log("PHASE 1: Parallel School (23 Instructors)")
@@ -821,7 +834,7 @@ def phase1_parallel_school(brain, socratic: SocraticTrainer,
     config_file = SCRIPT_DIR / "foundation_datasets_config.json"
     if not config_file.exists():
         logger.log(f"Phase 1 SKIPPED — {config_file} not found")
-        return total_trained
+        return total_trained, None
 
     school_config = SchoolConfig(
         recess_interval_s=300.0,
@@ -1182,15 +1195,16 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                     examples_since_introspection += 1
 
                     # Record for hard example mining (estimate loss from prediction)
-                    # Only call predict_fast every 10th example to reduce overhead
-                    est_loss = 0.5  # Default estimate
+                    # Only call predict_fast every 10th example to reduce overhead;
+                    # only record examples where we have an actual loss estimate
+                    est_loss = 0.5  # Default estimate (not recorded)
                     if count % 10 == 0:
                         try:
                             pred, conf = brain.predict_fast(features)
                             est_loss = 0.0 if str(pred) == str(prefixed_label) else (1.0 - conf)
                         except Exception:
                             est_loss = 0.5
-                    phase2_miner.record(features, prefixed_label, est_loss)
+                        phase2_miner.record(features, prefixed_label, est_loss)
 
                     # Run reasoning chain on hard examples (loss > 0.3)
                     if est_loss > 0.3 and hasattr(cognitive, 'reason_about'):
@@ -1312,15 +1326,16 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                         count += 1
                         total_trained += 1
                         # Hard example mining for deferred datasets too
-                        # Only call predict_fast every 10th example
-                        est_loss = 0.5
+                        # Only call predict_fast every 10th example;
+                        # only record examples where we have an actual loss estimate
                         if count % 10 == 0:
+                            est_loss = 0.5
                             try:
                                 pred, conf = brain.predict_fast(features)
                                 est_loss = 0.0 if str(pred) == str(prefixed_label) else (1.0 - conf)
                             except Exception:
                                 est_loss = 0.5
-                        phase2_miner.record(features, prefixed_label, est_loss)
+                            phase2_miner.record(features, prefixed_label, est_loss)
                         if count >= PHASE2_MAX_PER_DATASET:
                             break
                     logger.log(f"  {name}: {count:,} deferred examples")
@@ -1350,15 +1365,18 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
 
             logger.log(f"\n--- Streaming: {name} [{domain}] ---")
             try:
+                hf_split = ds_config.get("hf_split", "train")
                 if hf_subset:
                     dataset = load_dataset(hf_dataset, hf_subset,
-                                           split="train", streaming=True)
+                                           split=hf_split, streaming=True)
                 else:
-                    dataset = load_dataset(hf_dataset, split="train",
+                    dataset = load_dataset(hf_dataset, split=hf_split,
                                            streaming=True)
 
                 count = 0
                 for example in dataset:
+                    if _shutdown_requested:
+                        break
                     text = ""
                     for key in ("text", "question", "content", "input", "ctx"):
                         if key in example and example[key]:
@@ -1509,10 +1527,15 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
     # different training domains — the hallmark of creative thinking.
     # Measures: novelty, coherence, surprise, cross-domain integration.
     logger.log(f"\n--- Creativity Test ---")
-    creativity_result = active_learner.creativity_exam(
-        num_inputs=ATHENA_NUM_INPUTS,
-        num_trials=10
-    )
+    try:
+        creativity_result = active_learner.creativity_exam(
+            num_inputs=ATHENA_NUM_INPUTS,
+            num_trials=10
+        )
+    except Exception as e:
+        logger.log(f"  Creativity exam failed: {e}")
+        creativity_result = {"creativity_score": 0, "novelty": 0, "coherence": 0,
+                             "surprise": 0, "cross_domain": 0, "trials": []}
     logger.log(f"  Overall creativity score: {creativity_result['creativity_score']:.3f}")
     logger.log(f"  Novelty:      {creativity_result['novelty']:.3f}")
     logger.log(f"  Coherence:    {creativity_result['coherence']:.3f}")
@@ -1743,7 +1766,7 @@ def save_progress(phase: str, checkpoint_path: Path, total_trained: int):
         "completed_phase": phase,
         "checkpoint": str(checkpoint_path),
         "total_trained": total_trained,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     with open(PROGRESS_FILE, "w") as f:
         json.dump(progress, f, indent=2)
@@ -2077,9 +2100,34 @@ def main():
         else:
             logger.log("SKIPPING Phase 3 (completed in previous run)")
 
+    # Check for shutdown before proceeding to exam phase
+    if _shutdown_requested:
+        logger.log("Shutdown requested -- skipping to emergency save")
+        brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_emergency.bin"))
+        logger.close()
+        del brain
+        gc.collect()
+        try:
+            nimcp.shutdown()
+        except Exception:
+            pass
+        return 0
+
     # Final health check + conversation probe before exam
     health_check(brain, logger, "Pre-Exam", abort_on_fail=True)
     conversation_probe(brain, logger, "Pre-Exam (All Training Complete)")
+
+    if _shutdown_requested:
+        logger.log("Shutdown requested -- skipping to emergency save")
+        brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_emergency.bin"))
+        logger.close()
+        del brain
+        gc.collect()
+        try:
+            nimcp.shutdown()
+        except Exception:
+            pass
+        return 0
 
     # Phase 2 (Final): Creative Exam + Final Consolidation + Save
     total_trained = phase4_exam_and_save(brain, active_learner, socratic,

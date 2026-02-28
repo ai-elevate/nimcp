@@ -88,3 +88,183 @@ gtest_discover_tests(regression_training_pipeline_test
         TIMEOUT 300
         RESOURCE_LOCK "brain_heavy"
 )
+
+# =============================================================================
+# Orphaned Regression Test Targets
+# =============================================================================
+
+# CNN Backprop Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cnn_backprop_regression.cpp)
+    add_executable(regression_training_cnn_backprop_test
+        test_cnn_backprop_regression.cpp
+    )
+    target_include_directories(regression_training_cnn_backprop_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_cnn_backprop_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_cnn_backprop_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_training_cnn_backprop_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;cnn;backprop"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()
+
+# CNN-Cortex Bridge Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cnn_cortex_bridge_regression.cpp)
+    add_executable(regression_training_cnn_cortex_bridge_test
+        test_cnn_cortex_bridge_regression.cpp
+    )
+    target_include_directories(regression_training_cnn_cortex_bridge_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_cnn_cortex_bridge_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_cnn_cortex_bridge_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_training_cnn_cortex_bridge_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;cnn;cortex;bridge"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()
+
+# NAS Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_nas_regression.cpp)
+    add_executable(regression_training_nas_test
+        test_nas_regression.cpp
+    )
+    target_include_directories(regression_training_nas_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_nas_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_nas_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_training_nas_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;nas;architecture"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()
+
+# SNN Backprop Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_regression.cpp)
+    add_executable(regression_training_snn_backprop_test
+        test_snn_backprop_regression.cpp
+    )
+    target_include_directories(regression_training_snn_backprop_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_snn_backprop_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_snn_backprop_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_training_snn_backprop_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;snn;backprop"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()
+
+# SNN Backprop Stubs Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_stubs_regression.cpp)
+    add_executable(regression_training_snn_backprop_stubs_test
+        test_snn_backprop_stubs_regression.cpp
+    )
+    target_include_directories(regression_training_snn_backprop_stubs_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_snn_backprop_stubs_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_snn_backprop_stubs_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_training_snn_backprop_stubs_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;snn;backprop;stubs"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()
+
+# Training Portia Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_portia_regression.cpp)
+    add_executable(regression_training_portia_test
+        test_training_portia_regression.cpp
+    )
+    target_include_directories(regression_training_portia_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_portia_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_portia_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_training_portia_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;portia"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()
+
+# Training Stability Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_stability_regression.cpp)
+    add_executable(regression_training_stability_test
+        test_training_stability_regression.cpp
+    )
+    target_include_directories(regression_training_stability_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_stability_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_stability_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_training_stability_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;stability"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()
+
+# Training Symbolic Logic Hub Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_symbolic_logic_hub_regression.cpp)
+    add_executable(regression_training_symbolic_logic_hub_test
+        test_training_symbolic_logic_hub_regression.cpp
+    )
+    target_include_directories(regression_training_symbolic_logic_hub_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_symbolic_logic_hub_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_symbolic_logic_hub_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_training_symbolic_logic_hub_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;symbolic-logic;hub"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()

@@ -299,6 +299,11 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
     const char* label;
     float confidence = 1.0F;
 
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
     if (!PyArg_ParseTuple(args, "Os|f", &features_list, &label, &confidence)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_learn: Invalid arguments");
         return NULL;
@@ -359,9 +364,11 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
 
     /* Return actual loss from the C learning engine */
     float loss = nimcp_brain_get_last_loss(self->brain);
-    PyObject* result = PyFloat_FromDouble((double)loss);
-    if (!result) return NULL;  /* OOM */
-    return result;
+    if (isnan(loss) || isinf(loss)) {
+        PyErr_SetString(PyExc_ValueError, "Brain.learn() produced NaN/inf loss");
+        return NULL;
+    }
+    return PyFloat_FromDouble((double)loss);
 }
 
 /**
@@ -390,6 +397,11 @@ static PyObject* Brain_get_last_gradient_norm(BrainObject* self, PyObject* Py_UN
  */
 static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
     PyObject* features_list;
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
 
     if (!PyArg_ParseTuple(args, "O", &features_list)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict: Invalid arguments");
@@ -442,6 +454,11 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
  */
 static PyObject* Brain_predict_fast(BrainObject* self, PyObject* args) {
     PyObject* features_list;
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
 
     if (!PyArg_ParseTuple(args, "O", &features_list)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict_fast: Invalid arguments");
@@ -496,6 +513,11 @@ static PyObject* Brain_predict_in_domain(BrainObject* self, PyObject* args) {
     PyObject* features_list;
     const char* domain_prefix;
 
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
     if (!PyArg_ParseTuple(args, "Os", &features_list, &domain_prefix)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict_in_domain: expected (features, domain)");
         return NULL;
@@ -546,6 +568,11 @@ static PyObject* Brain_predict_in_domain(BrainObject* self, PyObject* args) {
 static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     PyObject* features_batch;
 
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
     if (!PyArg_ParseTuple(args, "O", &features_batch)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict_batch: Invalid arguments");
         return NULL;
@@ -561,6 +588,10 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     if (batch_size == 0) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict_batch: Batch cannot be empty");
         PyErr_SetString(PyExc_ValueError, "Batch cannot be empty");
+        return NULL;
+    }
+    if (batch_size > 100000) {
+        PyErr_SetString(PyExc_ValueError, "Batch size exceeds maximum (100000)");
         return NULL;
     }
 
@@ -761,6 +792,11 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
  */
 static PyObject* Brain_save(BrainObject* self, PyObject* args) {
     const char* filepath;
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
 
     if (!PyArg_ParseTuple(args, "s", &filepath)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_save: Invalid arguments");
@@ -1557,9 +1593,7 @@ static PyObject* Brain_bg_update_reward(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "bg_update_reward failed");
         return NULL;
     }
-    PyObject* py_result = PyLong_FromLong(result);
-    if (!py_result) return NULL;  /* OOM */
-    return py_result;
+    Py_RETURN_TRUE;
 }
 
 /**
@@ -1730,7 +1764,11 @@ static PyObject* Brain_medulla_boost_arousal(BrainObject* self, PyObject* args) 
     float delta;
     if (!PyArg_ParseTuple(args, "f", &delta)) return NULL;
 
-    brain_ti_boost_arousal(self->brain->internal_brain, delta);
+    int rc = brain_ti_boost_arousal(self->brain->internal_brain, delta);
+    if (rc != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "medulla_boost_arousal failed");
+        return NULL;
+    }
     Py_RETURN_NONE;
 }
 
@@ -1962,12 +2000,11 @@ static PyObject* Brain_ti_compute_unified_lr(BrainObject* self, PyObject* args) 
  * WHY:  Exposes complete breakdown of all modulation factors for diagnostics
  * HOW:  Calls brain_ti_compute_modulation_state, returns dict with all fields
  */
-static PyObject* Brain_ti_compute_modulation_state(BrainObject* self, PyObject* args) {
+static PyObject* Brain_ti_compute_modulation_state(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
-    (void)args;
 
     brain_ti_modulation_state_t state;
     memset(&state, 0, sizeof(state));
@@ -2736,6 +2773,11 @@ static PyObject* Brain_ti_compute_decision_cycle(BrainObject* self, PyObject* ar
         return NULL;
     }
 
+    if (isnan(loss_current) || isnan(grad_norm) || isinf(loss_current) || isinf(grad_norm)) {
+        PyErr_SetString(PyExc_ValueError, "Decision cycle received NaN/inf metric");
+        return NULL;
+    }
+
     brain_ti_training_metrics_t metrics = {
         .loss_current = loss_current,
         .loss_previous = loss_previous,
@@ -2851,7 +2893,7 @@ static PyObject* Brain_ti_compute_decision_cycle(BrainObject* self, PyObject* ar
  * HOW:  Calls nimcp_brain_configure_training() with nimcp_training_config_default()
  *       and also flips the brain_config_t flags so the training middleware sees them.
  *
- * @param kwargs Optional: learning_rate, weight_decay, gradient_clip, scheduler
+ * @param kwargs Optional: learning_rate, weight_decay, gradient_clip
  * @return True on success
  */
 static PyObject* Brain_configure_training(BrainObject* self, PyObject* args, PyObject* kwargs) {
@@ -2863,13 +2905,16 @@ static PyObject* Brain_configure_training(BrainObject* self, PyObject* args, PyO
     float learning_rate = 0.001F;
     float weight_decay = 0.0001F;
     float gradient_clip = 1.0F;
-    const char* scheduler = "cosine";
 
-    static char* kwlist[] = {"learning_rate", "weight_decay", "gradient_clip", "scheduler", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|fffs", kwlist,
-                                      &learning_rate, &weight_decay, &gradient_clip, &scheduler)) {
+    static char* kwlist[] = {"learning_rate", "weight_decay", "gradient_clip", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|fff", kwlist,
+                                      &learning_rate, &weight_decay, &gradient_clip)) {
         return NULL;
     }
+
+    /* WARNING: Not thread-safe. Call before starting training threads. */
+    /* TODO: Should use nimcp_brain_configure_training() public API in the future
+     * instead of directly mutating internal config fields. */
 
     /* Flip the brain_config_t flags so the training middleware uses them.
      * The brain.learn() path uses brain_config flags, not the training pipeline API.
@@ -2953,7 +2998,7 @@ static PyMethodDef Brain_methods[] = {
 
     // Training configuration
     {"configure_training", (PyCFunction)Brain_configure_training, METH_VARARGS | METH_KEYWORDS,
-     "Configure training pipeline: configure_training(learning_rate=0.001, weight_decay=0.0001, gradient_clip=1.0, scheduler='cosine') -> True\n"
+     "Configure training pipeline: configure_training(learning_rate=0.001, weight_decay=0.0001, gradient_clip=1.0) -> True\n"
      "WARNING: Must be called before starting concurrent training threads.\n"
      "This method mutates brain config without locking — not thread-safe."},
 

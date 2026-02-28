@@ -607,7 +607,7 @@ TEST_F(SNNBackpropStubTest, AlgorithmNamesNonNull) {
 }
 
 TEST_F(SNNBackpropStubTest, SurrogateNamesNonNull) {
-    for (int i = 0; i < SNN_BACKPROP_SURROGATE_COUNT; i++) {
+    for (int i = 0; i < SNN_SURROGATE_BACKPROP_COUNT; i++) {
         const char* name = snn_surrogate_method_name((snn_surrogate_method_t)i);
         EXPECT_NE(name, nullptr) << "NULL for surrogate " << i;
         EXPECT_GT(strlen(name), 0u) << "Empty for surrogate " << i;

@@ -54,7 +54,7 @@ protected:
     // Helper: Create test tensor with known values
     nimcp_tensor_t* createTestTensor(const std::vector<float>& values) {
         uint32_t dims[] = {static_cast<uint32_t>(values.size())};
-        nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_FLOAT32);
+        nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
         if (tensor) {
             float* data = static_cast<float*>(nimcp_tensor_data(tensor));
             for (size_t i = 0; i < values.size(); i++) {
@@ -67,7 +67,7 @@ protected:
     // Helper: Create random tensor
     nimcp_tensor_t* createRandomTensor(uint32_t size, float min_val = -1.0f, float max_val = 1.0f) {
         uint32_t dims[] = {size};
-        nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_FLOAT32);
+        nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
         if (tensor) {
             float* data = static_cast<float*>(nimcp_tensor_data(tensor));
             std::random_device rd;
@@ -854,7 +854,7 @@ TEST_F(EdgeCasesTest, EmptyTensor) {
     if (!ctx) GTEST_SKIP() << "QAT ternary context not available";
 
     uint32_t dims[] = {0};
-    nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
 
     if (tensor) {
         qat_ternary_params_t params;

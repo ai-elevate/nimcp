@@ -392,7 +392,7 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
 // Surrogate Gradient Functions
 //=============================================================================
 
-float snn_surrogate_gradient(const snn_training_ctx_t* ctx, float membrane_v) {
+static float snn_surrogate_gradient_local(const snn_training_ctx_t* ctx, float membrane_v) {
     if (!ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_surrogate_gradient: null context pointer");
         return 0.0f;
@@ -478,7 +478,7 @@ int snn_surrogate_backward(snn_training_ctx_t* ctx,
     snn_training_heartbeat("snn_backward", 0.0f);
 
     for (uint32_t i = 0; i < n_neurons; i++) {
-        float surrogate = snn_surrogate_gradient(ctx, membrane_v[i]);
+        float surrogate = snn_surrogate_gradient_local(ctx, membrane_v[i]);
         float grad = output_grad[i] * surrogate;
 
         /* Apply gradient clipping to prevent exploding gradients

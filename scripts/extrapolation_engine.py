@@ -191,7 +191,6 @@ class ExtrapolationEngine:
         start_time = time.time()
         reasoning_trace = []
         knowledge_sources = []
-        self._history_updated_this_call = False
 
         # NOTE: The lock is held for the entire 7-stage pipeline to ensure
         # generation history consistency.  Candidates produced by _stage_imagine
@@ -501,6 +500,21 @@ class ExtrapolationEngine:
 
         trace.append(f"Generated {len(candidates)} candidates (T={config.temperature})")
 
+        # Update generation history with the best candidate's output vector
+        # (deferred from _compute_novelty to avoid first-candidate bias).
+        if candidates:
+            # Pick candidate with highest novelty to represent this generation
+            best_candidate = max(candidates, key=lambda c: c.get("novelty", 0.0))
+            best_output_vec = best_candidate.get("output_distribution")
+            if best_output_vec is None:
+                # Fallback: use output_vector from decision if available
+                best_output_vec = best_candidate.get("output_vector")
+            if best_output_vec is not None:
+                arr = np.array(best_output_vec, dtype=np.float32)
+                self._generation_history.append(arr.copy())
+                if len(self._generation_history) > self._max_history:
+                    self._generation_history.pop(0)
+
         # Release dopamine for novel discovery
         if candidates:
             try:
@@ -517,8 +531,10 @@ class ExtrapolationEngine:
                              trace: list) -> Optional[Dict]:
         """Extrapolate by extending the output distribution beyond observed patterns."""
         try:
-            # Use cached decision from recall stage if available
-            if hasattr(self, '_cached_recall_decision') and self._cached_recall_decision:
+            # Use cached decision only for the first candidate; subsequent
+            # candidates run fresh inference on their perturbed features so
+            # that temperature perturbation actually produces diverse results.
+            if idx == 0 and self._cached_recall_decision:
                 decision = self._cached_recall_decision
             else:
                 decision = self.brain.decide_full(features)
@@ -595,11 +611,10 @@ class ExtrapolationEngine:
                 noise = np.random.randn(len(features)).astype(np.float32) * 0.05
                 blended = (feat_arr + noise).tolist()
 
-            # Use cached decision from recall stage if available
-            if hasattr(self, '_cached_recall_decision') and self._cached_recall_decision:
-                blended_decision = self._cached_recall_decision
-            else:
-                blended_decision = self.brain.decide_full(blended)
+            # Always call decide_full on blended features -- using cached
+            # decision defeats the purpose of interpolation since we need
+            # the brain's response to the BLENDED input, not the original.
+            blended_decision = self.brain.decide_full(list(blended))
             if not blended_decision:
                 return None
 
@@ -637,8 +652,9 @@ class ExtrapolationEngine:
             except Exception:
                 pass
 
-            # Use cached decision from recall stage if available
-            if hasattr(self, '_cached_recall_decision') and self._cached_recall_decision:
+            # Use cached decision only for first candidate; fresh inference
+            # for subsequent candidates to get diversity from perturbation.
+            if idx == 0 and self._cached_recall_decision:
                 decision = self._cached_recall_decision
             else:
                 decision = self.brain.decide_full(features)
@@ -668,8 +684,9 @@ class ExtrapolationEngine:
                              trace: list) -> Optional[Dict]:
         """Generate hypotheses using causal reasoning + reasoning engine."""
         try:
-            # Use cached decision from recall stage if available
-            if hasattr(self, '_cached_recall_decision') and self._cached_recall_decision:
+            # Use cached decision only for first candidate; fresh inference
+            # for subsequent candidates to get diversity from perturbation.
+            if idx == 0 and self._cached_recall_decision:
                 decision = self._cached_recall_decision
             else:
                 decision = self.brain.decide_full(features)
@@ -726,8 +743,9 @@ class ExtrapolationEngine:
                 except Exception:
                     pass
 
-            # Use cached decision from recall stage if available
-            if hasattr(self, '_cached_recall_decision') and self._cached_recall_decision:
+            # Use cached decision only for first candidate; fresh inference
+            # for subsequent candidates to get diversity from perturbation.
+            if idx == 0 and self._cached_recall_decision:
                 decision = self._cached_recall_decision
             else:
                 decision = self.brain.decide_full(features)
@@ -984,9 +1002,11 @@ class ExtrapolationEngine:
                                      config: ExtrapolationConfig):
         """Integrate generated knowledge back into brain."""
         try:
-            # Only add high-confidence content to KB
-            if result.confidence >= 0.5:
-                content_str = str(result.content.get("primary_output", ""))[:200]
+            # Only add high-confidence, meaningful content to KB
+            content_str = str(result.content.get("primary_output", ""))[:200]
+            if (result.confidence >= 0.8
+                    and content_str
+                    and not content_str.startswith(("transfer:", "NOT_"))):
                 self.brain.ti_add_fact(content_str, result.confidence)
 
             # Reward signal for successful generation
@@ -1005,6 +1025,8 @@ class ExtrapolationEngine:
     def _temperature_softmax(self, logits: np.ndarray,
                              temperature: float) -> np.ndarray:
         """Temperature-scaled softmax for diverse sampling."""
+        if not np.isfinite(logits).any():
+            return np.ones_like(logits) / max(len(logits), 1)
         if temperature <= 0:
             # Argmax (deterministic)
             result = np.zeros_like(logits)
@@ -1016,11 +1038,14 @@ class ExtrapolationEngine:
         return exp / (np.sum(exp) + 1e-10)
 
     def _compute_novelty(self, output: np.ndarray) -> float:
-        """Compute novelty score: how different is this from previous generations."""
+        """Compute novelty score: how different is this from previous generations.
+
+        NOTE: Does NOT update _generation_history.  The caller (_stage_imagine)
+        is responsible for updating history after all candidates are scored,
+        so that all candidates in a single generate() call are scored against
+        the same baseline (prevents first-candidate bias).
+        """
         if not self._generation_history:
-            if not self._history_updated_this_call:
-                self._generation_history.append(output.copy())
-                self._history_updated_this_call = True
             return 1.0  # First generation is maximally novel
 
         # Cosine distance to all previous outputs
@@ -1036,13 +1061,6 @@ class ExtrapolationEngine:
             sim = float(np.dot(output, prev) / (norm * prev_norm))
             sim = np.clip(sim, -1.0, 1.0)
             max_sim = max(max_sim, sim)
-
-        # Track this output (once per generation call, not per candidate)
-        if not self._history_updated_this_call:
-            self._generation_history.append(output.copy())
-            self._history_updated_this_call = True
-            if len(self._generation_history) > self._max_history:
-                self._generation_history.pop(0)
 
         # Novelty = 1 - max similarity to previous
         return max(0.0, 1.0 - max_sim) if max_sim >= 0.0 else 1.0

@@ -1051,6 +1051,10 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     // Copy configuration (shallow copy first)
     memcpy(&network->config, config, sizeof(adaptive_network_config_t));
 
+    // M-3: Null out the shallow-copied checkpoint_path pointer to avoid dangling reference.
+    // The caller's config may be stack-allocated, so our shallow copy would point at freed memory.
+    network->config.checkpoint_path = NULL;
+
     // Initialize COW fields to NULL/false (Phase COW)
     network->uses_cow_states = false;
     network->cow_states_region = NULL;
@@ -1090,6 +1094,10 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     if (!network->base_network) {
         if (network->config.base_config.layer_sizes) {
             nimcp_free((void*)network->config.base_config.layer_sizes);
+        }
+        // M-2: Free hash table allocated in initialize_design_patterns() to prevent leak
+        if (network->label_table) {
+            hash_table_destroy(network->label_table);
         }
         nimcp_free(network);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_create: validation failed");
@@ -2192,9 +2200,17 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
             // Write neuron count
             FWRITE_CHECKED(&network->num_neurons, sizeof(uint32_t), 1, file);
 
-            // Write neuron states
+            // Write neuron states (M-4: field-by-field to skip pointer fields)
             for (uint32_t i = 0; i < network->num_neurons; i++) {
-                FWRITE_CHECKED(&network->neuron_states[i], sizeof(adaptive_neuron_state_t), 1, file);
+                adaptive_neuron_state_t* ns = &network->neuron_states[i];
+                FWRITE_CHECKED(&ns->membrane_potential, sizeof(float), 1, file);
+                FWRITE_CHECKED(&ns->adaptive_threshold, sizeof(float), 1, file);
+                FWRITE_CHECKED(&ns->spike_count, sizeof(int32_t), 1, file);
+                // Skip spike_train pointer — not meaningful across processes
+                FWRITE_CHECKED(&ns->spike_train_length, sizeof(uint32_t), 1, file);
+                FWRITE_CHECKED(&ns->activation_mean, sizeof(float), 1, file);
+                FWRITE_CHECKED(&ns->activation_variance, sizeof(float), 1, file);
+                FWRITE_CHECKED(&ns->sample_count, sizeof(uint32_t), 1, file);
             }
 
             // Write label map
@@ -2218,7 +2234,39 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
 
                 for (uint32_t i = 0; i < base_num_neurons; i++) {
                     neuron_t* neuron = neural_network_get_neuron(network->base_network, i);
-                    if (!neuron) continue;
+                    // C-1: Write zero/default data for NULL neurons instead of skipping,
+                    // because load expects sequential entries for every neuron index
+                    if (!neuron) {
+                        uint32_t zero_syn = 0;
+                        FWRITE_CHECKED(&zero_syn, sizeof(uint32_t), 1, file);
+                        // Write default neuron state fields matching the non-NULL path
+                        float zero_f = 0.0f;
+                        uint64_t zero_u64 = 0;
+                        FWRITE_CHECKED(&zero_f, sizeof(float), 1, file);  // state
+                        FWRITE_CHECKED(&zero_f, sizeof(float), 1, file);  // bias
+                        FWRITE_CHECKED(&zero_f, sizeof(float), 1, file);  // threshold
+                        FWRITE_CHECKED(&zero_f, sizeof(float), 1, file);  // adaptation
+                        FWRITE_CHECKED(&zero_f, sizeof(float), 1, file);  // calcium_concentration
+                        FWRITE_CHECKED(&zero_f, sizeof(float), 1, file);  // plasticity_rate
+                        FWRITE_CHECKED(&zero_f, sizeof(float), 1, file);  // homeostatic_factor
+                        FWRITE_CHECKED(&zero_f, sizeof(float), 1, file);  // avg_activity
+                        FWRITE_CHECKED(&zero_f, sizeof(float), 1, file);  // weight_norm
+                        learning_rule_t zero_lr = 0;
+                        FWRITE_CHECKED(&zero_lr, sizeof(learning_rule_t), 1, file);
+                        activation_type_t zero_at = 0;
+                        FWRITE_CHECKED(&zero_at, sizeof(activation_type_t), 1, file);
+                        oja_params_t zero_oja = {0};
+                        FWRITE_CHECKED(&zero_oja, sizeof(oja_params_t), 1, file);
+                        stdp_params_t zero_stdp = {0};
+                        FWRITE_CHECKED(&zero_stdp, sizeof(stdp_params_t), 1, file);
+                        homeostatic_params_t zero_homeo = {0};
+                        FWRITE_CHECKED(&zero_homeo, sizeof(homeostatic_params_t), 1, file);
+                        FWRITE_CHECKED(&zero_u64, sizeof(uint64_t), 1, file);  // last_spike
+                        FWRITE_CHECKED(&zero_u64, sizeof(uint64_t), 1, file);  // last_update
+                        neuron_model_type_t zero_mt = 0;
+                        FWRITE_CHECKED(&zero_mt, sizeof(neuron_model_type_t), 1, file);
+                        continue;
+                    }
 
                     // Write number of synapses for this neuron
                     uint32_t num_syn = NEURON_OUT_COUNT(neuron);
@@ -2332,8 +2380,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     memset(&config, 0, sizeof(adaptive_network_config_t));
 
     // Read base_config fields
-    // Note: Using (void) cast intentionally ignores return value for non-critical config fields
-    // that have safe defaults. Critical fields use explicit error checking.
+    // M-1: Use checked reads to detect file misalignment from partial I/O failures
     if (fread(&config.base_config.num_neurons, sizeof(uint32_t), 1, file) != 1) {
         fclose(file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
@@ -2346,20 +2393,29 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             "adaptive_network_load: num_neurons exceeds maximum (10M)");
         return NULL;
     }
-    (void)fread(&config.base_config.ei_ratio, sizeof(float), 1, file);
-    (void)fread(&config.base_config.learning_rate, sizeof(float), 1, file);
-    (void)fread(&config.base_config.hebbian_rate, sizeof(float), 1, file);
-    (void)fread(&config.base_config.stdp_window, sizeof(float), 1, file);
-    (void)fread(&config.base_config.homeostatic_rate, sizeof(float), 1, file);
-    (void)fread(&config.base_config.target_activity, sizeof(float), 1, file);
-    (void)fread(&config.base_config.adaptation_rate, sizeof(float), 1, file);
-    (void)fread(&config.base_config.refractory_period, sizeof(float), 1, file);
-    (void)fread(&config.base_config.min_weight, sizeof(float), 1, file);
-    (void)fread(&config.base_config.max_weight, sizeof(float), 1, file);
-    (void)fread(&config.base_config.update_interval, sizeof(uint32_t), 1, file);
-    (void)fread(&config.base_config.input_size, sizeof(uint32_t), 1, file);
-    (void)fread(&config.base_config.output_size, sizeof(uint32_t), 1, file);
-    (void)fread(&config.base_config.num_layers, sizeof(uint32_t), 1, file);
+    {
+        bool cfg_ok = true;
+        cfg_ok = cfg_ok && (fread(&config.base_config.ei_ratio, sizeof(float), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.learning_rate, sizeof(float), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.hebbian_rate, sizeof(float), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.stdp_window, sizeof(float), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.homeostatic_rate, sizeof(float), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.target_activity, sizeof(float), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.adaptation_rate, sizeof(float), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.refractory_period, sizeof(float), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.min_weight, sizeof(float), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.max_weight, sizeof(float), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.update_interval, sizeof(uint32_t), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.input_size, sizeof(uint32_t), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.output_size, sizeof(uint32_t), 1, file) == 1);
+        cfg_ok = cfg_ok && (fread(&config.base_config.num_layers, sizeof(uint32_t), 1, file) == 1);
+        if (!cfg_ok) {
+            fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "adaptive_network_load: failed to read base config fields");
+            return NULL;
+        }
+    }
 
     // Validate dimensions: prevent corrupt data from causing crashes
     if (config.base_config.input_size > 1000000 ||
@@ -2395,29 +2451,39 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         config.base_config.layer_sizes = layer_sizes;
     }
 
-    // Read remaining base_config fields (non-critical, use (void) cast)
-    (void)fread(&config.base_config.enable_stdp, sizeof(bool), 1, file);
-    (void)fread(&config.base_config.enable_hebbian, sizeof(bool), 1, file);
-    (void)fread(&config.base_config.enable_oja, sizeof(bool), 1, file);
-    (void)fread(&config.base_config.enable_homeostasis, sizeof(bool), 1, file);
-    (void)fread(&config.base_config.neuron_model, sizeof(neuron_model_type_t), 1, file);
-    config.base_config.model_params = NULL;  // Not serialized
-    (void)fread(&config.base_config.integration_method, sizeof(ode_integration_method_t), 1, file);
-    (void)fread(&config.base_config.enable_bcm, sizeof(bool), 1, file);
-    (void)fread(&config.base_config.enable_eligibility, sizeof(bool), 1, file);
+    // M-1: Read remaining base_config fields with checked reads
+    {
+        bool cfg2_ok = true;
+        cfg2_ok = cfg2_ok && (fread(&config.base_config.enable_stdp, sizeof(bool), 1, file) == 1);
+        cfg2_ok = cfg2_ok && (fread(&config.base_config.enable_hebbian, sizeof(bool), 1, file) == 1);
+        cfg2_ok = cfg2_ok && (fread(&config.base_config.enable_oja, sizeof(bool), 1, file) == 1);
+        cfg2_ok = cfg2_ok && (fread(&config.base_config.enable_homeostasis, sizeof(bool), 1, file) == 1);
+        cfg2_ok = cfg2_ok && (fread(&config.base_config.neuron_model, sizeof(neuron_model_type_t), 1, file) == 1);
+        config.base_config.model_params = NULL;  // Not serialized
+        cfg2_ok = cfg2_ok && (fread(&config.base_config.integration_method, sizeof(ode_integration_method_t), 1, file) == 1);
+        cfg2_ok = cfg2_ok && (fread(&config.base_config.enable_bcm, sizeof(bool), 1, file) == 1);
+        cfg2_ok = cfg2_ok && (fread(&config.base_config.enable_eligibility, sizeof(bool), 1, file) == 1);
 
-    // Read spike_params (non-critical)
-    (void)fread(&config.spike_params, sizeof(adaptive_spike_params_t), 1, file);
+        // Read spike_params
+        cfg2_ok = cfg2_ok && (fread(&config.spike_params, sizeof(adaptive_spike_params_t), 1, file) == 1);
 
-    // Read remaining adaptive config fields (non-critical)
-    (void)fread(&config.enable_sparsity, sizeof(bool), 1, file);
-    (void)fread(&config.pruning_threshold, sizeof(float), 1, file);
-    (void)fread(&config.update_frequency, sizeof(uint32_t), 1, file);
+        // Read remaining adaptive config fields
+        cfg2_ok = cfg2_ok && (fread(&config.enable_sparsity, sizeof(bool), 1, file) == 1);
+        cfg2_ok = cfg2_ok && (fread(&config.pruning_threshold, sizeof(float), 1, file) == 1);
+        cfg2_ok = cfg2_ok && (fread(&config.update_frequency, sizeof(uint32_t), 1, file) == 1);
 
-    config.checkpoint_path = NULL;  // Not serialized, will be NULL
-    (void)fread(&config.auto_load, sizeof(bool), 1, file);
-    (void)fread(&config.auto_save, sizeof(bool), 1, file);
-    (void)fread(&config.auto_save_interval, sizeof(uint32_t), 1, file);
+        config.checkpoint_path = NULL;  // Not serialized, will be NULL
+        cfg2_ok = cfg2_ok && (fread(&config.auto_load, sizeof(bool), 1, file) == 1);
+        cfg2_ok = cfg2_ok && (fread(&config.auto_save, sizeof(bool), 1, file) == 1);
+        cfg2_ok = cfg2_ok && (fread(&config.auto_save_interval, sizeof(uint32_t), 1, file) == 1);
+        if (!cfg2_ok) {
+            if (layer_sizes) nimcp_free(layer_sizes);
+            fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "adaptive_network_load: failed to read remaining config fields");
+            return NULL;
+        }
+    }
 
     // Create network with reconstructed config
     adaptive_network_t network = adaptive_network_create(&config);
@@ -2461,19 +2527,26 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
     }
 
-    // Read neuron states
+    // Read neuron states (M-4: field-by-field matching save format, pointer skipped)
     for (uint32_t i = 0; i < num_neurons; i++) {
-        if (fread(&network->neuron_states[i], sizeof(adaptive_neuron_state_t), 1, file) != 1) {
+        adaptive_neuron_state_t* ns = &network->neuron_states[i];
+        bool ns_ok = true;
+        ns_ok = ns_ok && (fread(&ns->membrane_potential, sizeof(float), 1, file) == 1);
+        ns_ok = ns_ok && (fread(&ns->adaptive_threshold, sizeof(float), 1, file) == 1);
+        ns_ok = ns_ok && (fread(&ns->spike_count, sizeof(int32_t), 1, file) == 1);
+        // spike_train pointer was not serialized — keep it NULL from calloc
+        ns->spike_train = NULL;
+        ns_ok = ns_ok && (fread(&ns->spike_train_length, sizeof(uint32_t), 1, file) == 1);
+        ns->spike_train_length = 0;  // No spike train data in checkpoint
+        ns_ok = ns_ok && (fread(&ns->activation_mean, sizeof(float), 1, file) == 1);
+        ns_ok = ns_ok && (fread(&ns->activation_variance, sizeof(float), 1, file) == 1);
+        ns_ok = ns_ok && (fread(&ns->sample_count, sizeof(uint32_t), 1, file) == 1);
+        if (!ns_ok) {
             adaptive_network_destroy(network);
             fclose(file);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
             return NULL;
         }
-        // C-2: Null out pointer fields deserialized from file — the saved
-        // spike_train pointer is meaningless in the new process address space
-        // and would be a wild pointer if dereferenced
-        network->neuron_states[i].spike_train = NULL;
-        network->neuron_states[i].spike_train_length = 0;
     }
 
     // Read label map
@@ -2543,10 +2616,27 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         }
     }
 
-    // Read statistics (non-critical, use (void) cast)
-    (void)fread(&network->total_inferences, sizeof(uint64_t), 1, file);
-    (void)fread(&network->total_learning_steps, sizeof(uint64_t), 1, file);
-    (void)fread(&network->running_sparsity, sizeof(float), 1, file);
+    // H-1: Rebuild label hash table from loaded label_map entries.
+    // Labels were loaded into label_map[] above but never inserted into the
+    // hash table that was freshly created (empty) during adaptive_network_create().
+    if (network->label_table && network->label_map) {
+        for (uint32_t i = 0; i < network->num_labels; i++) {
+            if (network->label_map[i]) {
+                hash_table_insert_label(network->label_table, network->label_map[i], i);
+            }
+        }
+    }
+
+    // M-1: Read statistics with checked reads to detect truncated file
+    {
+        bool stats_ok = true;
+        stats_ok = stats_ok && (fread(&network->total_inferences, sizeof(uint64_t), 1, file) == 1);
+        stats_ok = stats_ok && (fread(&network->total_learning_steps, sizeof(uint64_t), 1, file) == 1);
+        stats_ok = stats_ok && (fread(&network->running_sparsity, sizeof(float), 1, file) == 1);
+        if (!stats_ok) {
+            fprintf(stderr, "WARNING: Failed to read statistics from checkpoint, using defaults\n");
+        }
+    }
 
     // Read synaptic weights from base_network (CRITICAL: restores learned weights)
     uint32_t base_num_neurons = 0;
@@ -2561,10 +2651,15 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 return network;
             }
 
+            // C-2: Track load errors from inner synapse loop so we can break out of
+            // the outer neuron loop too, preventing file position misalignment
+            bool load_error = false;
+
             for (uint32_t i = 0; i < base_num_neurons; i++) {
                 neuron_t* neuron = neural_network_get_neuron(network->base_network, i);
                 if (!neuron) {
                     fprintf(stderr, "WARNING: Failed to get neuron %u\n", i);
+                    load_error = true;
                     break;
                 }
 
@@ -2572,6 +2667,15 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 uint32_t num_synapses = 0;
                 if (fread(&num_synapses, sizeof(uint32_t), 1, file) != 1) {
                     fprintf(stderr, "WARNING: Failed to read synapse count for neuron %u\n", i);
+                    load_error = true;
+                    break;
+                }
+
+                // H-2: Upper bound validation on num_synapses to detect corrupt data
+                if (num_synapses > 1000000) {
+                    fprintf(stderr, "WARNING: num_synapses %u exceeds max for neuron %u\n",
+                            num_synapses, i);
+                    load_error = true;
                     break;
                 }
 
@@ -2589,18 +2693,18 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                     uint32_t target_id; float weight, plasticity, trace, strength;
                     float meta_plasticity, last_change; uint64_t last_active;
                     bool enable_stp;
-                    if (fread(&target_id, sizeof(uint32_t), 1, file) != 1) break;
-                    if (fread(&weight, sizeof(float), 1, file) != 1) break;
-                    if (fread(&plasticity, sizeof(float), 1, file) != 1) break;
-                    if (fread(&trace, sizeof(float), 1, file) != 1) break;
-                    if (fread(&strength, sizeof(float), 1, file) != 1) break;
-                    if (fread(&meta_plasticity, sizeof(float), 1, file) != 1) break;
-                    if (fread(&last_change, sizeof(float), 1, file) != 1) break;
-                    if (fread(&last_active, sizeof(uint64_t), 1, file) != 1) break;
-                    if (fread(&enable_stp, sizeof(bool), 1, file) != 1) break;
+                    if (fread(&target_id, sizeof(uint32_t), 1, file) != 1) { load_error = true; break; }
+                    if (fread(&weight, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                    if (fread(&plasticity, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                    if (fread(&trace, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                    if (fread(&strength, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                    if (fread(&meta_plasticity, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                    if (fread(&last_change, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                    if (fread(&last_active, sizeof(uint64_t), 1, file) != 1) { load_error = true; break; }
+                    if (fread(&enable_stp, sizeof(bool), 1, file) != 1) { load_error = true; break; }
                     stp_state_t stp_data = {0};
                     if (enable_stp) {
-                        if (fread(&stp_data, sizeof(stp_state_t), 1, file) != 1) break;
+                        if (fread(&stp_data, sizeof(stp_state_t), 1, file) != 1) { load_error = true; break; }
                     }
 
                     // Add synapse with metadata to sparse storage
@@ -2622,27 +2726,32 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                         }
                     }
                 }
+                // C-2: If inner synapse loop broke due to read failure, abort outer loop
+                if (load_error) break;
 
                 // Restore full neuron state (CRITICAL: enables exact training resume)
-                if (fread(&neuron->state, sizeof(float), 1, file) != 1) break;
-                if (fread(&neuron->bias, sizeof(float), 1, file) != 1) break;
-                if (fread(&neuron->threshold, sizeof(float), 1, file) != 1) break;
-                if (fread(&neuron->adaptation, sizeof(float), 1, file) != 1) break;
-                if (fread(&neuron->calcium_concentration, sizeof(float), 1, file) != 1) break;
-                if (fread(&neuron->plasticity_rate, sizeof(float), 1, file) != 1) break;
-                if (fread(&neuron->homeostatic_factor, sizeof(float), 1, file) != 1) break;
-                if (fread(&neuron->avg_activity, sizeof(float), 1, file) != 1) break;
-                if (fread(&neuron->weight_norm, sizeof(float), 1, file) != 1) break;
-                if (fread(&neuron->learning_rule, sizeof(learning_rule_t), 1, file) != 1) break;
-                if (fread(&neuron->activation_type, sizeof(activation_type_t), 1, file) != 1) break;
-                if (fread(&neuron->oja_params, sizeof(oja_params_t), 1, file) != 1) break;
-                if (fread(&neuron->stdp_params, sizeof(stdp_params_t), 1, file) != 1) break;
-                if (fread(&neuron->homeostatic, sizeof(homeostatic_params_t), 1, file) != 1) break;
-                if (fread(&neuron->last_spike, sizeof(uint64_t), 1, file) != 1) break;
-                if (fread(&neuron->last_update, sizeof(uint64_t), 1, file) != 1) break;
-                if (fread(&neuron->model_type, sizeof(neuron_model_type_t), 1, file) != 1) break;
+                if (fread(&neuron->state, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->bias, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->threshold, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->adaptation, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->calcium_concentration, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->plasticity_rate, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->homeostatic_factor, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->avg_activity, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->weight_norm, sizeof(float), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->learning_rule, sizeof(learning_rule_t), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->activation_type, sizeof(activation_type_t), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->oja_params, sizeof(oja_params_t), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->stdp_params, sizeof(stdp_params_t), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->homeostatic, sizeof(homeostatic_params_t), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->last_spike, sizeof(uint64_t), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->last_update, sizeof(uint64_t), 1, file) != 1) { load_error = true; break; }
+                if (fread(&neuron->model_type, sizeof(neuron_model_type_t), 1, file) != 1) { load_error = true; break; }
                 // Note: neuron.model (neuron_model_state_t) is opaque pointer, not restored here
                 // TODO: If model_type != NEURON_MODEL_NONE, deserialize model-specific state
+            }
+            if (load_error) {
+                fprintf(stderr, "WARNING: Load error during weight restoration, partially loaded\n");
             }
         }
     }
@@ -2732,6 +2841,15 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
 
     analysis->num_active_neurons = active_count;
     analysis->sparsity = network->running_sparsity;
+
+    // H-3: Early return when active_count==0 to avoid nimcp_malloc(0)
+    if (active_count == 0) {
+        analysis->active_neuron_ids = NULL;
+        analysis->activation_strengths = NULL;
+        analysis->confidence = 0.0f;
+        free_hot_buffer(output);
+        return true;
+    }
 
     // Allocate arrays for active neurons
     analysis->active_neuron_ids = nimcp_malloc(active_count * sizeof(uint32_t));

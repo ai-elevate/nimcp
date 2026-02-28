@@ -333,5 +333,30 @@ gtest_discover_tests(integration_training_bio_modulation
         RESOURCE_LOCK "brain_heavy"
 )
 
+# =============================================================================
+# SNN Backprop Integration Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_integration.cpp)
+    add_executable(integration_training_snn_backprop
+        test_snn_backprop_integration.cpp
+    )
+    target_include_directories(integration_training_snn_backprop PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_training_snn_backprop PRIVATE cxx_std_20)
+    target_link_libraries(integration_training_snn_backprop PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME integration_training_snn_backprop
+             COMMAND integration_training_snn_backprop
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_training_snn_backprop
+        PROPERTIES
+            LABELS "integration;training;snn;backprop"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
 # Training Exception Handling Integration Tests
 add_subdirectory(exception)

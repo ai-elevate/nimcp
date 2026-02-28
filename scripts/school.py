@@ -185,7 +185,9 @@ class ThreadSafeBrain:
             # Cache the wrapper on the instance
             object.__setattr__(self, name, _locked_method)
             return _locked_method
-        return attr
+        else:
+            with self._lock:
+                return getattr(self._brain, name)
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +201,6 @@ class SchoolConfig:
     checkpoint_interval_s: float = 600.0   # Checkpoint every 10 min
     max_training_time_s: float = 86400.0   # 24h max
     graduation_mastery: float = 0.85       # Graduate when all domains reach this
-    cross_domain_interval: int = 10_000    # Cross-domain exemplar exchange interval
     max_examples_per_dataset: int = 50_000
     startup_stagger_s: float = 2.0         # Delay between instructor starts
     num_inputs: int = 1024   # Match ATHENA_NUM_INPUTS (was 128)
@@ -219,7 +220,6 @@ class SchoolProgressBoard:
     def __init__(self):
         self._lock = threading.Lock()
         self._reports: Dict[str, dict] = {}
-        self._total_examples = 0
         self._recess_count = 0
         self._checkpoint_count = 0
 
@@ -442,12 +442,11 @@ class School:
         self._last_recess = 0.0
         self._last_report = 0.0
         self._last_checkpoint = 0.0
-        self._last_config_check = 0.0
+        self._last_config_check = time.time()
 
         # Domain-specific output head allocation
         # Each domain gets a dedicated slice of output neurons to prevent cross-domain interference
         self._domain_output_map: Dict[str, tuple] = {}  # domain_name -> (start_idx, end_idx)
-        self._shared_output_range: tuple = (0, 0)
 
         # Hot-reload tracking
         self._config_path: Optional[Path] = None
@@ -556,10 +555,6 @@ class School:
                 start = dedicated_pool - per_domain
                 end = dedicated_pool
             self._domain_output_map[domain] = (start, end)
-
-        # H5: Start shared range right after the last domain allocation to avoid
-        # wasting neurons in the gap between last domain end and dedicated_pool
-        self._shared_output_range = (len(domains) * per_domain, num_outputs)
 
         # Assign output_range to each instructor's config
         for agent in self.instructors:
@@ -805,13 +800,13 @@ class School:
                         # M3: Snapshot the bank to avoid data race with instructor thread
                         bank = list(agent.adversarial_bank)
                         exemplars = random.sample(bank, min(5, len(bank)))
-                        for feat, _ in exemplars:
+                        for feat, orig_lbl in exemplars:
                             try:
                                 self.cross_domain_queue.put_nowait({
                                     "target_domain": d_low,
                                     "domain": d_low,
                                     "features": feat,
-                                    "label": f"transfer:{d_high}->{d_low}",
+                                    "label": orig_lbl,
                                     "modality": agent.config.modality,
                                 })
                             except Exception:
@@ -899,6 +894,9 @@ class School:
             # Drain instructor reports
             self._drain_reports()
 
+            # Re-capture time after drain (may have taken non-trivial time)
+            now = time.time()
+
             # Phase 4: Update domain similarity matrix periodically
             if now - self._last_similarity_update >= self._similarity_update_interval:
                 self._update_domain_centroids()
@@ -969,7 +967,7 @@ class School:
 
             time.sleep(1.0)
 
-    def _drain_reports(self):
+    def _drain_reports(self, allow_recess=True):
         """Process all pending instructor reports."""
         needs_recess = False
         while True:
@@ -1005,16 +1003,18 @@ class School:
 
             # Log to school-level JSONL
             if self._school_log_file:
-                self._school_log_file.write(json.dumps(report) + "\n")
+                self._school_log_file.write(json.dumps(report, default=str) + "\n")
                 self._school_log_file.flush()
 
         # H1: Call recess at most once per drain cycle
-        if needs_recess:
+        if needs_recess and allow_recess:
             self._call_recess()
             self._last_recess = time.time()
 
     def _call_recess(self):
         """Full-system consolidation with multi-domain interleaved replay."""
+        if time.time() - self._last_recess < 30.0:
+            return
         self.logger.log("\n[School] === RECESS — Memory Consolidation ===")
         recess_start = time.time()
 
@@ -1042,15 +1042,21 @@ class School:
             if all_exemplars:
                 random.shuffle(all_exemplars)
                 replayed = 0
+                # L5: Use brain's modulation system for replay LR (fallback to 0.3)
+                replay_lr = 0.3
+                try:
+                    replay_lr = raw_brain.ti_compute_unified_lr(0.3)
+                except Exception:
+                    pass
                 for feat, lbl, dom in all_exemplars[:50]:
                     try:
                         # C3: Domain-scoped replay — use the domain's output range
                         output_range = self._domain_output_map.get(dom)
                         if output_range is not None:
-                            raw_brain.learn(feat, lbl, 0.3,
+                            raw_brain.learn(feat, lbl, replay_lr,
                                             output_range=output_range)
                         else:
-                            raw_brain.learn(feat, lbl, 0.3)
+                            raw_brain.learn(feat, lbl, replay_lr)
                         replayed += 1
                     except Exception as e:
                         self.logger.log(f"[School] WARNING: Recess replay failed for {dom}: {e}")
@@ -1136,14 +1142,20 @@ class School:
         M4: Check ALL instructors (including finished-but-not-mastered) to
         avoid premature graduation when an instructor finished its dataset
         without reaching mastery.
+        M2: Skip errored instructors — they will never reach mastery and
+        should not block graduation of the remaining domains.
         """
         if not self.instructors:
             return False
         threshold = self.config.graduation_mastery
+        has_non_errored = False
         for agent in self.instructors:
+            if agent._error:
+                continue
+            has_non_errored = True
             if agent.get_mastery() < threshold:
                 return False
-        return True
+        return has_non_errored
 
     def _shutdown(self):
         """Graceful shutdown of all instructors."""
@@ -1158,7 +1170,7 @@ class School:
                 self.logger.log(f"  WARNING: {agent.config.domain} thread still alive")
 
         # Final dashboard
-        self._drain_reports()
+        self._drain_reports(allow_recess=False)
         self._print_dashboard()
 
         # Close log

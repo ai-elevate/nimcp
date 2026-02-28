@@ -377,8 +377,12 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network);
  * @param ctx Training context
  * @param membrane_v Membrane potential
  * @return Surrogate gradient value
+ *
+ * NOTE: Renamed to snn_surrogate_gradient_local() and made static
+ * to resolve ODR conflict with snn_backprop's snn_surrogate_gradient().
+ * Use the backprop header's version for public API usage.
  */
-float snn_surrogate_gradient(const snn_training_ctx_t* ctx, float membrane_v);
+/* float snn_surrogate_gradient(const snn_training_ctx_t* ctx, float membrane_v); */
 
 /**
  * @brief Backpropagate error through SNN layer

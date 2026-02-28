@@ -24,9 +24,11 @@ target_link_libraries(integration_training_exception
 )
 
 add_test(NAME integration_training_exception
-         COMMAND integration_training_exception)
+         COMMAND integration_training_exception
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(integration_training_exception
     PROPERTIES
         LABELS "integration;training;exception;immune;gradient;recovery;checkpoint"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")

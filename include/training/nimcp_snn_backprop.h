@@ -91,17 +91,33 @@ extern "C" {
  * - Fast Sigmoid: Shrestha & Orchard, "SLAYER", NeurIPS 2018
  * - Arctan: Bohte et al., "Error-backpropagation in temporally encoded
  *   networks of spiking neurons", Neurocomputing 2002
+ *
+ * NOTE: Base surrogate constants (SNN_SURROGATE_SIGMOID through
+ * SNN_SURROGATE_RECTANGULAR) are defined in nimcp_snn_types.h as
+ * snn_surrogate_t.  When that header is included (which is always,
+ * since we #include it above), we typedef snn_surrogate_method_t to
+ * snn_surrogate_t and only add backprop-specific extensions.
  */
+#ifdef NIMCP_SNN_TYPES_H
+/* Base surrogate constants already defined in nimcp_snn_types.h. */
+typedef snn_surrogate_t snn_surrogate_method_t;
+/* Backprop-specific extension (value follows SNN_SURROGATE_COUNT from types) */
+#define SNN_SURROGATE_EXPONENTIAL ((snn_surrogate_method_t)(SNN_SURROGATE_COUNT))
+/* Total including the extension */
+#define SNN_SURROGATE_BACKPROP_COUNT (SNN_SURROGATE_EXPONENTIAL + 1)
+#else
 typedef enum {
-    SNN_SURROGATE_SUPERSPIKE = 0,   /**< σ'(x) = 1/(β|x|+1)² - SuperSpike (Zenke 2018) */
-    SNN_SURROGATE_FAST_SIGMOID,     /**< σ'(x) = x/(1+|x|)² - Fast computation */
-    SNN_SURROGATE_SIGMOID,          /**< σ'(x) = βσ(βx)(1-σ(βx)) - Standard sigmoid derivative */
-    SNN_SURROGATE_ARCTAN,           /**< σ'(x) = 1/(1+(πx)²) - Arctan derivative */
-    SNN_SURROGATE_TRIANGULAR,       /**< σ'(x) = max(0,1-|x|/a) - Piecewise linear */
-    SNN_SURROGATE_RECTANGULAR,      /**< σ'(x) = 1 if |x|<a else 0 - Straight-through estimator */
-    SNN_SURROGATE_EXPONENTIAL,      /**< σ'(x) = β·exp(-β|x|) - Exponential decay */
+    SNN_SURROGATE_SUPERSPIKE = 0,
+    SNN_SURROGATE_FAST_SIGMOID,
+    SNN_SURROGATE_SIGMOID,
+    SNN_SURROGATE_ARCTAN,
+    SNN_SURROGATE_TRIANGULAR,
+    SNN_SURROGATE_RECTANGULAR,
+    SNN_SURROGATE_EXPONENTIAL,
     SNN_SURROGATE_COUNT
 } snn_surrogate_method_t;
+#define SNN_SURROGATE_BACKPROP_COUNT SNN_SURROGATE_COUNT
+#endif
 
 /**
  * @brief Training algorithm for SNN backpropagation
@@ -115,17 +131,34 @@ typedef enum {
  * 2. RTRL: Real-time recurrent learning
  * 3. SLAYER: Spike layer error reassignment
  * 4. BPTT: Full backprop through time (least biologically plausible)
+ *
+ * NOTE: Some constants (SNN_TRAIN_EPROP, SNN_TRAIN_SLAYER,
+ * SNN_TRAIN_DECOLLE) overlap with snn_train_mode_t in
+ * nimcp_snn_types.h.  When that header is included, we typedef
+ * snn_train_algorithm_t to snn_train_mode_t and only add the
+ * backprop-specific algorithms.
  */
+#ifdef NIMCP_SNN_TYPES_H
+/* Base train mode constants already defined in nimcp_snn_types.h. */
+typedef snn_train_mode_t snn_train_algorithm_t;
+/* Backprop-specific algorithm constants (values follow SNN_TRAIN_COUNT) */
+#define SNN_TRAIN_BPTT           ((snn_train_algorithm_t)(SNN_TRAIN_COUNT))
+#define SNN_TRAIN_TRUNCATED_BPTT ((snn_train_algorithm_t)(SNN_TRAIN_COUNT + 1))
+#define SNN_TRAIN_RTRL           ((snn_train_algorithm_t)(SNN_TRAIN_COUNT + 2))
+#define SNN_TRAIN_HYBRID         ((snn_train_algorithm_t)(SNN_TRAIN_COUNT + 3))
+#define SNN_TRAIN_MODE_COUNT     ((snn_train_algorithm_t)(SNN_TRAIN_COUNT + 4))
+#else
 typedef enum {
-    SNN_TRAIN_BPTT = 0,             /**< Backprop Through Time - full unroll */
-    SNN_TRAIN_TRUNCATED_BPTT,       /**< Truncated BPTT - limited unroll window */
-    SNN_TRAIN_EPROP,                /**< E-prop - eligibility propagation (online) */
-    SNN_TRAIN_RTRL,                 /**< Real-Time Recurrent Learning (online) */
-    SNN_TRAIN_SLAYER,               /**< SLAYER - spike layer error reassignment */
-    SNN_TRAIN_DECOLLE,              /**< DECOLLE - deep continuous local learning */
-    SNN_TRAIN_HYBRID,               /**< Hybrid: local STDP + global gradient */
+    SNN_TRAIN_BPTT = 0,
+    SNN_TRAIN_TRUNCATED_BPTT,
+    SNN_TRAIN_EPROP,
+    SNN_TRAIN_RTRL,
+    SNN_TRAIN_SLAYER,
+    SNN_TRAIN_DECOLLE,
+    SNN_TRAIN_HYBRID,
     SNN_TRAIN_MODE_COUNT
 } snn_train_algorithm_t;
+#endif
 
 /**
  * @brief Loss functions for SNN training

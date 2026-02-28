@@ -24,7 +24,8 @@ target_link_libraries(unit_training_exception_handling
 )
 
 add_test(NAME unit_training_exception_handling
-         COMMAND unit_training_exception_handling)
+         COMMAND unit_training_exception_handling
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_training_exception_handling
     PROPERTIES

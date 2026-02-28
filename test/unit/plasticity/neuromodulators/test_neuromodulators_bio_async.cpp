@@ -30,8 +30,12 @@ class NeuromodulatorsBioAsyncTest : public ::testing::Test {
 protected:
     neuromodulator_system_t system_;
     bio_router_config_t router_config_;
+    bio_module_context_t module_ctx_;
 
     void SetUp() override {
+        system_ = nullptr;
+        module_ctx_ = nullptr;
+
         // Initialize bio-async system
         nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
         ASSERT_EQ(NIMCP_SUCCESS, nimcp_bio_async_init(&bio_config));
@@ -40,7 +44,7 @@ protected:
         router_config_ = bio_router_default_config();
         ASSERT_EQ(NIMCP_SUCCESS, bio_router_init(&router_config_));
 
-        // Create neuromodulator system (auto-registers with bio-router)
+        // Create neuromodulator system
         neuromodulator_config_t config = {};
         config.baseline_dopamine = 0.1f;
         config.baseline_serotonin = 0.2f;
@@ -62,9 +66,26 @@ protected:
 
         // Verify bio-router is initialized
         ASSERT_TRUE(bio_router_is_initialized());
+
+        // Explicitly register neuromodulator module with bio-router.
+        // The compiled neuromodulator_system_create() does not auto-register;
+        // registration lives in the _part_lifecycle.c SRP split which is not
+        // currently #included by the main compilation unit.
+        bio_module_info_t module_info = {};
+        module_info.module_id = BIO_MODULE_NEUROMODULATOR;
+        module_info.module_name = "neuromodulator";
+        module_info.inbox_capacity = 64;
+        module_info.user_data = system_;
+
+        module_ctx_ = bio_router_register_module(&module_info);
+        ASSERT_NE(nullptr, module_ctx_);
     }
 
     void TearDown() override {
+        if (module_ctx_) {
+            bio_router_unregister_module(module_ctx_);
+            module_ctx_ = nullptr;
+        }
         if (system_) {
             neuromodulator_system_destroy(system_);
             system_ = nullptr;
@@ -113,7 +134,7 @@ TEST_F(NeuromodulatorsBioAsyncTest, HandleDopamineReleaseMessage) {
     msg.diffusion_radius_um = 100.0f;
 
     // Get initial dopamine level
-    neuromodulator_pool_t pool_before = {};
+    neuromodulator_pool_t pool_before = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_before));
     float dopamine_before = neuromodulator_pool_get_dopamine(&pool_before);
 
@@ -126,14 +147,17 @@ TEST_F(NeuromodulatorsBioAsyncTest, HandleDopamineReleaseMessage) {
     EXPECT_GT(rpe, 0.0f);
 
     // Verify concentration changed
-    neuromodulator_pool_t pool_after = {};
+    neuromodulator_pool_t pool_after = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_after));
     EXPECT_GT(neuromodulator_pool_get_dopamine(&pool_after), dopamine_before);
+
+    neuromodulator_pool_destroy(&pool_before);
+    neuromodulator_pool_destroy(&pool_after);
 }
 
 TEST_F(NeuromodulatorsBioAsyncTest, HandleSerotoninReleaseMessage) {
     // Get initial serotonin level
-    neuromodulator_pool_t pool_before = {};
+    neuromodulator_pool_t pool_before = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_before));
     float serotonin_before = neuromodulator_pool_get_serotonin(&pool_before);
 
@@ -142,14 +166,17 @@ TEST_F(NeuromodulatorsBioAsyncTest, HandleSerotoninReleaseMessage) {
     EXPECT_GT(release, 0.0f);
 
     // Verify concentration changed
-    neuromodulator_pool_t pool_after = {};
+    neuromodulator_pool_t pool_after = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_after));
     EXPECT_GT(neuromodulator_pool_get_serotonin(&pool_after), serotonin_before);
+
+    neuromodulator_pool_destroy(&pool_before);
+    neuromodulator_pool_destroy(&pool_after);
 }
 
 TEST_F(NeuromodulatorsBioAsyncTest, HandleNorepinephrineReleaseMessage) {
     // Get initial norepinephrine level
-    neuromodulator_pool_t pool_before = {};
+    neuromodulator_pool_t pool_before = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_before));
     float ne_before = neuromodulator_pool_get_norepinephrine(&pool_before);
 
@@ -158,14 +185,17 @@ TEST_F(NeuromodulatorsBioAsyncTest, HandleNorepinephrineReleaseMessage) {
     EXPECT_GT(release, 0.0f);
 
     // Verify concentration changed
-    neuromodulator_pool_t pool_after = {};
+    neuromodulator_pool_t pool_after = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_after));
     EXPECT_GT(neuromodulator_pool_get_norepinephrine(&pool_after), ne_before);
+
+    neuromodulator_pool_destroy(&pool_before);
+    neuromodulator_pool_destroy(&pool_after);
 }
 
 TEST_F(NeuromodulatorsBioAsyncTest, HandleAcetylcholineReleaseMessage) {
     // Get initial acetylcholine level
-    neuromodulator_pool_t pool_before = {};
+    neuromodulator_pool_t pool_before = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_before));
     float ach_before = neuromodulator_pool_get_acetylcholine(&pool_before);
 
@@ -174,9 +204,12 @@ TEST_F(NeuromodulatorsBioAsyncTest, HandleAcetylcholineReleaseMessage) {
     EXPECT_GT(release, 0.0f);
 
     // Verify concentration changed
-    neuromodulator_pool_t pool_after = {};
+    neuromodulator_pool_t pool_after = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_after));
     EXPECT_GT(neuromodulator_pool_get_acetylcholine(&pool_after), ach_before);
+
+    neuromodulator_pool_destroy(&pool_before);
+    neuromodulator_pool_destroy(&pool_after);
 }
 
 //=============================================================================
@@ -235,7 +268,7 @@ TEST_F(NeuromodulatorsBioAsyncTest, HandleInvalidChannelType) {
 
 TEST_F(NeuromodulatorsBioAsyncTest, HandleMultipleSequentialReleases) {
     // Multiple releases should accumulate
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
 
     neuromodulator_release_dopamine(system_, 0.2f, 0.0f);
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool));
@@ -246,6 +279,8 @@ TEST_F(NeuromodulatorsBioAsyncTest, HandleMultipleSequentialReleases) {
     float da2 = neuromodulator_pool_get_dopamine(&pool);
 
     EXPECT_GT(da2, da1);
+
+    neuromodulator_pool_destroy(&pool);
 }
 
 TEST_F(NeuromodulatorsBioAsyncTest, ConcentrationClamping) {
@@ -254,10 +289,12 @@ TEST_F(NeuromodulatorsBioAsyncTest, ConcentrationClamping) {
         neuromodulator_release_dopamine(system_, 1.0f, 0.0f);
     }
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool));
     EXPECT_LE(neuromodulator_pool_get_dopamine(&pool), 1.0f);
     EXPECT_GE(neuromodulator_pool_get_dopamine(&pool), 0.0f);
+
+    neuromodulator_pool_destroy(&pool);
 }
 
 //=============================================================================
@@ -288,19 +325,22 @@ TEST_F(NeuromodulatorsBioAsyncTest, ConcentrationDecayOverTime) {
     // Release dopamine
     neuromodulator_release_dopamine(system_, 0.8f, 0.0f);
 
-    neuromodulator_pool_t pool1 = {};
+    neuromodulator_pool_t pool1 = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool1));
     float da_initial = neuromodulator_pool_get_dopamine(&pool1);
 
     // Update dynamics (decay)
     ASSERT_TRUE(neuromodulator_update(system_, 1.0f));  // 1 second
 
-    neuromodulator_pool_t pool2 = {};
+    neuromodulator_pool_t pool2 = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool2));
     float da_after_decay = neuromodulator_pool_get_dopamine(&pool2);
 
     // Dopamine should have decayed
     EXPECT_LT(da_after_decay, da_initial);
+
+    neuromodulator_pool_destroy(&pool1);
+    neuromodulator_pool_destroy(&pool2);
 }
 
 //=============================================================================
@@ -316,8 +356,10 @@ TEST_F(NeuromodulatorsBioAsyncTest, ConcurrentReleases) {
     }
 
     // System should still be functional
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool));
+
+    neuromodulator_pool_destroy(&pool);
 }
 
 //=============================================================================

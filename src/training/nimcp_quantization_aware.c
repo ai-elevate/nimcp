@@ -93,11 +93,11 @@ struct qat_ctx_s {
 
 static const char* dtype_names[] = {
     "INT8", "UINT8", "INT4", "INT2", "INT1",
-    "FP8_E4M3", "FP8_E5M2", "FP4"
+    "FP8_E4M3", "FP8_E5M2", "FP4", "Ternary"
 };
 
 static const uint32_t dtype_bits[] = {
-    8, 8, 4, 2, 1, 8, 8, 4
+    8, 8, 4, 2, 1, 8, 8, 4, 2
 };
 
 static const char* scheme_names[] = {

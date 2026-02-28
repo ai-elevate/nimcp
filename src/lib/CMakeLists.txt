@@ -2400,6 +2400,9 @@ set(NIMCP_CORE_SOURCES
     # Training - CNN Training Module (Conv2D, Dense, Pool, BatchNorm, Dropout, full backprop)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cnn_training.c
 
+    # Training - SNN Backpropagation (surrogate gradients, BPTT, E-prop, RTRL)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_snn_backprop.c
+
     # Training Dispatcher (Phase TD-1: Unified Training Dispatch)
     # Routes training to SNN/LNN/CNN/Adaptive based on network_type configuration
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_training_dispatch.c
