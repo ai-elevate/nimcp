@@ -697,13 +697,10 @@ int hetero_pink_noise_get_statistics(
     float* avg_competition,
     float* avg_radius)
 {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, total_updates, sizeof(*total_updates));
-
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
 
     if (total_updates) *total_updates = bridge->total_updates;

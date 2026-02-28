@@ -119,6 +119,11 @@ struct cnn_layer_s {
     nimcp_tensor_shape_t input_shape;
     nimcp_tensor_shape_t output_shape;
 
+    /* Dropout mask: stored during forward pass, applied during backward.
+     * Each element is 0.0 (dropped) or 1.0 (kept). */
+    float* dropout_mask;
+    size_t dropout_mask_size;
+
     cnn_layer_t* next;              /**< Linked list */
 };
 
@@ -404,6 +409,7 @@ void cnn_trainer_destroy(cnn_trainer_t* trainer) {
         if (layer->bias_grad) nimcp_tensor_destroy(layer->bias_grad);
         if (layer->running_mean) nimcp_tensor_destroy(layer->running_mean);
         if (layer->running_var) nimcp_tensor_destroy(layer->running_var);
+        if (layer->dropout_mask) nimcp_free(layer->dropout_mask);
 
         nimcp_free(layer);
         layer = next;
@@ -1308,7 +1314,7 @@ static nimcp_tensor_t* cnn_forward_batch_norm(cnn_layer_t* layer, const nimcp_te
 /**
  * @brief Forward pass through dropout layer
  */
-static nimcp_tensor_t* cnn_forward_dropout(const cnn_layer_t* layer, const nimcp_tensor_t* input,
+static nimcp_tensor_t* cnn_forward_dropout(cnn_layer_t* layer, const nimcp_tensor_t* input,
                                            bool training, uint32_t* seed) {
     const cnn_dropout_config_t* cfg = &layer->config.dropout;
 
@@ -1330,13 +1336,24 @@ static nimcp_tensor_t* cnn_forward_dropout(const cnn_layer_t* layer, const nimcp
     size_t numel = nimcp_tensor_numel(output);
     float scale = 1.0f / (1.0f - cfg->dropout_rate);
 
+    /* BUG FIX: Store the dropout mask so backward pass can reuse it.
+     * Previously, backward pass either generated a new random mask or
+     * just scaled uniformly, which breaks the gradient computation. */
+    if (layer->dropout_mask_size != numel) {
+        nimcp_free(layer->dropout_mask);
+        layer->dropout_mask = (float*)nimcp_malloc(numel * sizeof(float));
+        layer->dropout_mask_size = layer->dropout_mask ? numel : 0;
+    }
+
     for (size_t i = 0; i < numel; i++) {
         *seed = (*seed * 1103515245 + 12345) & 0x7FFFFFFF;
         float r = (float)(*seed) / (float)0x7FFFFFFF;
         if (r < cfg->dropout_rate) {
             data[i] = 0.0f;
+            if (layer->dropout_mask) layer->dropout_mask[i] = 0.0f;
         } else {
             data[i] *= scale;
+            if (layer->dropout_mask) layer->dropout_mask[i] = scale;
         }
     }
 
@@ -1858,15 +1875,18 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
 
             case CNN_LAYER_DROPOUT: {
                 /* WHAT: Backward pass through dropout layer
-                 * WHY:  Propagate gradients with same scaling as forward pass
-                 * HOW:  Scale gradient by 1/(1-dropout_rate) during training, unchanged during eval
+                 * WHY:  Propagate gradients with same mask as forward pass
+                 * HOW:  Apply the stored forward mask (0 for dropped, scale for kept)
+                 *
+                 * BUG FIX: Previously generated a uniform scale 1/(1-p) for ALL
+                 * elements, ignoring which elements were dropped in forward pass.
+                 * Correct behavior: zeroed neurons in forward must also be zeroed
+                 * in backward; kept neurons get the same inverted-dropout scaling.
                  *
                  * BIOLOGICAL BASIS: Models stochastic synaptic transmission failures.
                  * During training, surviving connections are upscaled to maintain expected signal.
                  */
                 if (i > 0) {
-                    const cnn_dropout_config_t* cfg = &layer->config.dropout;
-
                     /* Create gradient for previous layer */
                     nimcp_tensor_t* new_grad = nimcp_tensor_clone(grad);
                     if (!new_grad) {
@@ -1877,14 +1897,15 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                         return NIMCP_ERROR_NO_MEMORY;
                     }
 
-                    /* Apply scaling during training mode */
-                    if (trainer->training_mode && cfg->dropout_rate > 0.0f) {
-                        float scale = 1.0f / (1.0f - cfg->dropout_rate);
+                    /* Apply stored forward mask during training mode */
+                    if (trainer->training_mode && layer->dropout_mask) {
                         float* grad_data_ptr = nimcp_tensor_data(new_grad);
                         size_t numel = nimcp_tensor_numel(new_grad);
+                        size_t mask_len = layer->dropout_mask_size;
 
                         for (size_t j = 0; j < numel; j++) {
-                            grad_data_ptr[j] *= scale;
+                            /* mask[j] is 0.0 (dropped) or scale (kept) from forward */
+                            grad_data_ptr[j] *= (j < mask_len) ? layer->dropout_mask[j] : 0.0f;
                         }
                     }
 
@@ -2141,10 +2162,21 @@ nimcp_error_t cnn_trainer_step(cnn_trainer_t* trainer) {
     NIMCP_CHECK_THROW(trainer->optimizer, NIMCP_ERROR_INVALID_STATE,
                       "cnn_trainer_step: optimizer is NULL");
 
-    /* Apply perception-modulated learning rate if connected to cortex */
+    /* Apply perception-modulated learning rate if connected to cortex.
+     * WHAT: Scale the optimizer's learning rate by cortical confidence
+     * WHY:  High-confidence cortical input should accelerate learning;
+     *       lr_scale was previously computed but never applied (discarded).
+     * HOW:  Temporarily scale the optimizer LR, run steps, then restore.
+     */
     float lr_scale = 1.0f;
     if (trainer->input_from_cortex && trainer->current_perception_confidence > 0.0f) {
         lr_scale = 0.5f + 0.5f * trainer->current_perception_confidence;
+    }
+
+    /* Scale optimizer LR if lr_scale differs from 1.0 */
+    float original_lr = nimcp_optimizer_get_lr(trainer->optimizer);
+    if (lr_scale != 1.0f) {
+        nimcp_optimizer_set_lr(trainer->optimizer, original_lr * lr_scale);
     }
 
     /* Update each layer's weights */
@@ -2170,8 +2202,12 @@ nimcp_error_t cnn_trainer_step(cnn_trainer_t* trainer) {
         layer = layer->next;
     }
 
+    /* Restore original LR after scaled step */
+    if (lr_scale != 1.0f) {
+        nimcp_optimizer_set_lr(trainer->optimizer, original_lr);
+    }
+
     trainer->global_step++;
-    (void)lr_scale;  /* Used for future perception-modulated LR */
 
     return NIMCP_SUCCESS;
 }
@@ -2251,6 +2287,42 @@ nimcp_error_t cnn_trainer_train_epoch(cnn_trainer_t* trainer,
         }
         batch_loss /= (float)numel;
         total_loss += batch_loss;
+
+        /* Count correct predictions using argmax comparison.
+         * WHAT: Compare predicted class (argmax of output) vs true class (argmax of label)
+         * WHY:  train_accuracy was always 0 because 'correct' was never updated
+         * HOW:  For each sample in batch, find argmax of output and label vectors,
+         *       increment correct if they match.
+         */
+        {
+            const nimcp_tensor_shape_t* out_shape = nimcp_tensor_shape(fwd_result.output);
+            if (out_shape && out_shape->rank >= 2) {
+                uint32_t batch_sz = out_shape->dims[0];
+                uint32_t num_classes = out_shape->dims[out_shape->rank - 1];
+                for (uint32_t s = 0; s < batch_sz; s++) {
+                    const float* out_row = out_data + s * num_classes;
+                    const float* lbl_row = label_data + s * num_classes;
+                    uint32_t pred_class = 0;
+                    uint32_t true_class = 0;
+                    float pred_max = out_row[0];
+                    float true_max = lbl_row[0];
+                    for (uint32_t c = 1; c < num_classes; c++) {
+                        if (out_row[c] > pred_max) { pred_max = out_row[c]; pred_class = c; }
+                        if (lbl_row[c] > true_max) { true_max = lbl_row[c]; true_class = c; }
+                    }
+                    if (pred_class == true_class) correct++;
+                    total_samples++;
+                }
+            } else if (out_shape && out_shape->rank == 1) {
+                /* Single-class regression: count as correct if within threshold */
+                uint32_t n = out_shape->dims[0];
+                for (uint32_t s = 0; s < n; s++) {
+                    float diff = out_data[s] - label_data[s];
+                    if (diff * diff < 0.25f) correct++;
+                    total_samples++;
+                }
+            }
+        }
 
         /* Backward pass */
         err = cnn_trainer_backward(trainer, batch_labels, &fwd_result);

@@ -559,7 +559,7 @@ int parietal_quantum_frame_superposition(
         return -1;
     }
     if (!bridge->config.enable_superposition) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "parietal_quantum_frame_superposition: superposition not enabled");
+        LOG_DEBUG("parietal_quantum_frame_superposition: superposition not enabled");
         return -1;
     }
 
@@ -828,7 +828,7 @@ int parietal_quantum_walk_init(
         return -1;
     }
     if (!bridge->config.enable_quantum_walk) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "parietal_quantum_walk_init: quantum walk not enabled");
+        LOG_DEBUG("parietal_quantum_walk_init: quantum walk not enabled");
         return -1;
     }
 

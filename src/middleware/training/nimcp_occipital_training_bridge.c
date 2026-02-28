@@ -244,6 +244,12 @@ occipital_training_bridge_t* occipital_training_bridge_create(
         return NULL;
     }
 
+    /* Initialize bridge base infrastructure (mutex, metrics, lifecycle) */
+    if (bridge_base_init(&bridge->base, 0, "occipital_training") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     if (config) {
         bridge->config = *config;
     } else {
@@ -283,6 +289,8 @@ occipital_training_bridge_t* occipital_training_bridge_create(
 void occipital_training_bridge_destroy(occipital_training_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "occipital_training");
+
+    bridge_base_cleanup(&bridge->base);
 
     if (bridge->attention_buffer) {
         nimcp_free(bridge->attention_buffer);

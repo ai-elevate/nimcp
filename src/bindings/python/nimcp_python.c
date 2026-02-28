@@ -1199,7 +1199,7 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
 #define SET(key, val) do { \
     PyObject* v = (val); \
     if (!v) { Py_DECREF(dict); return NULL; } \
-    PyDict_SetItemString(dict, (key), v); \
+    if (PyDict_SetItemString(dict, (key), v) < 0) { Py_DECREF(v); Py_DECREF(dict); return NULL; } \
     Py_DECREF(v); \
 } while (0)
 
@@ -1265,7 +1265,7 @@ static PyObject* Brain_rubric(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
 #define SET(key, val) do { \
     PyObject* v = (val); \
     if (!v) { Py_DECREF(dict); return NULL; } \
-    PyDict_SetItemString(dict, (key), v); \
+    if (PyDict_SetItemString(dict, (key), v) < 0) { Py_DECREF(v); Py_DECREF(dict); return NULL; } \
     Py_DECREF(v); \
 } while (0)
 
@@ -1369,7 +1369,7 @@ static PyObject* Brain_training_rubric(BrainObject* self, PyObject* Py_UNUSED(ig
 #define SET(key, val) do { \
     PyObject* v = (val); \
     if (!v) { Py_DECREF(dict); return NULL; } \
-    PyDict_SetItemString(dict, (key), v); \
+    if (PyDict_SetItemString(dict, (key), v) < 0) { Py_DECREF(v); Py_DECREF(dict); return NULL; } \
     Py_DECREF(v); \
 } while (0)
 
@@ -1389,10 +1389,6 @@ static PyObject* Brain_training_rubric(BrainObject* self, PyObject* Py_UNUSED(ig
     return dict;
 }
 
-/* P6-8: PyDict_SetItemString return values are unchecked in this method.
- * This is a known limitation under extreme OOM — the SET macro pattern used in
- * other methods is preferred but would require significant restructuring here.
- * PyDict_SetItemString failure under OOM will not crash (dict just misses keys). */
 /* P6-9: ~4.6KB stack allocation (output_vector[1024]) is bounded and within
  * thread stack limits (typically 1-8MB). Not worth heap-allocating. */
 static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
@@ -1457,23 +1453,30 @@ static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
     PyObject* tmp;
     tmp = PyUnicode_FromString(label);
     if (!tmp) { Py_DECREF(vec_list); Py_DECREF(result); return NULL; }
-    PyDict_SetItemString(result, "label", tmp); Py_DECREF(tmp);
+    if (PyDict_SetItemString(result, "label", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(vec_list); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
     tmp = PyFloat_FromDouble(confidence);
     if (!tmp) { Py_DECREF(vec_list); Py_DECREF(result); return NULL; }
-    PyDict_SetItemString(result, "confidence", tmp); Py_DECREF(tmp);
+    if (PyDict_SetItemString(result, "confidence", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(vec_list); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
     tmp = PyUnicode_FromString(explanation);
     if (!tmp) { Py_DECREF(vec_list); Py_DECREF(result); return NULL; }
-    PyDict_SetItemString(result, "explanation", tmp); Py_DECREF(tmp);
-    PyDict_SetItemString(result, "output_vector", vec_list); Py_DECREF(vec_list);
+    if (PyDict_SetItemString(result, "explanation", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(vec_list); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
+    if (PyDict_SetItemString(result, "output_vector", vec_list) < 0) { Py_DECREF(vec_list); Py_DECREF(result); return NULL; }
+    Py_DECREF(vec_list);
     tmp = PyLong_FromUnsignedLong(num_active_neurons);
     if (!tmp) { Py_DECREF(result); return NULL; }
-    PyDict_SetItemString(result, "num_active_neurons", tmp); Py_DECREF(tmp);
+    if (PyDict_SetItemString(result, "num_active_neurons", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
     tmp = PyFloat_FromDouble(sparsity);
     if (!tmp) { Py_DECREF(result); return NULL; }
-    PyDict_SetItemString(result, "sparsity", tmp); Py_DECREF(tmp);
+    if (PyDict_SetItemString(result, "sparsity", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
     tmp = PyLong_FromUnsignedLongLong(inference_time_us);
     if (!tmp) { Py_DECREF(result); return NULL; }
-    PyDict_SetItemString(result, "inference_time_us", tmp); Py_DECREF(tmp);
+    if (PyDict_SetItemString(result, "inference_time_us", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
 
     return result;
 }
@@ -1542,13 +1545,21 @@ static PyObject* Brain_curiosity_detect_gaps(BrainObject* self, PyObject* args) 
     gap = curiosity_detect_knowledge_gap(curiosity, topic);
     Py_END_ALLOW_THREADS
 
+    /* Generate questions from the gap — do this before building the dict
+     * so that all C-allocated resources exist for cleanup on any error path. */
+    generated_question_t questions[8];
+    uint32_t num_q;
+    Py_BEGIN_ALLOW_THREADS
+    num_q = curiosity_generate_questions(curiosity, &gap, questions, 8);
+    Py_END_ALLOW_THREADS
+
     PyObject* dict = PyDict_New();
-    if (!dict) return NULL;
+    if (!dict) goto cleanup;
 
 #define SET(key, val) do { \
     PyObject* v = (val); \
-    if (!v) { Py_DECREF(dict); return NULL; } \
-    PyDict_SetItemString(dict, (key), v); \
+    if (!v) { Py_DECREF(dict); dict = NULL; goto cleanup; } \
+    if (PyDict_SetItemString(dict, (key), v) < 0) { Py_DECREF(v); Py_DECREF(dict); dict = NULL; goto cleanup; } \
     Py_DECREF(v); \
 } while (0)
 
@@ -1558,24 +1569,39 @@ static PyObject* Brain_curiosity_detect_gaps(BrainObject* self, PyObject* args) 
     SET("learning_potential", PyFloat_FromDouble(gap.learning_potential));
     SET("related_concepts", PyLong_FromUnsignedLong(gap.related_concepts));
 
-    /* Generate questions from the gap */
-    generated_question_t questions[8];
-    uint32_t num_q;
-    Py_BEGIN_ALLOW_THREADS
-    num_q = curiosity_generate_questions(curiosity, &gap, questions, 8);
-    Py_END_ALLOW_THREADS
-
-    PyObject* q_list = PyList_New(num_q);
-    if (!q_list) { Py_DECREF(dict); return NULL; }
-    for (uint32_t i = 0; i < num_q; i++) {
-        PyObject* q_str = PyUnicode_FromString(questions[i].question);
-        if (!q_str) { Py_DECREF(q_list); Py_DECREF(dict); return NULL; }
-        PyList_SET_ITEM(q_list, i, q_str);
+    {
+        PyObject* q_list = PyList_New(num_q);
+        if (!q_list) { Py_DECREF(dict); dict = NULL; goto cleanup; }
+        for (uint32_t i = 0; i < num_q; i++) {
+            PyObject* q_str = PyUnicode_FromString(questions[i].question);
+            if (!q_str) { Py_DECREF(q_list); Py_DECREF(dict); dict = NULL; goto cleanup; }
+            PyList_SET_ITEM(q_list, i, q_str);
+        }
+        SET("questions", q_list);
     }
-    SET("questions", q_list);
 
 #undef SET
-    return dict;
+
+cleanup:
+    /* Free search_terms in each generated question (Bug #5) */
+    for (uint32_t qi = 0; qi < num_q; qi++) {
+        if (questions[qi].search_terms) {
+            for (uint32_t j = 0; j < questions[qi].num_search_terms; j++) {
+                free(questions[qi].search_terms[j]);
+            }
+            free(questions[qi].search_terms);
+        }
+    }
+
+    /* Free prerequisites array from knowledge_gap_t (Bug #4) */
+    if (gap.prerequisites) {
+        for (uint32_t pi = 0; pi < gap.num_prerequisites; pi++) {
+            free(gap.prerequisites[pi]);
+        }
+        free(gap.prerequisites);
+    }
+
+    return dict;  /* NULL on error, valid dict on success */
 }
 
 /**
@@ -2393,16 +2419,20 @@ static PyObject* Brain_cache_communities(BrainObject* self, PyObject* Py_UNUSED(
     PyObject* tmp;
     tmp = PyLong_FromUnsignedLong(self->community_cache->num_communities);
     if (!tmp) { Py_DECREF(result); return NULL; }
-    PyDict_SetItemString(result, "num_communities", tmp); Py_DECREF(tmp);
+    if (PyDict_SetItemString(result, "num_communities", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
     tmp = PyLong_FromUnsignedLong(self->community_cache->num_hubs);
     if (!tmp) { Py_DECREF(result); return NULL; }
-    PyDict_SetItemString(result, "num_hubs", tmp); Py_DECREF(tmp);
+    if (PyDict_SetItemString(result, "num_hubs", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
     tmp = PyFloat_FromDouble(self->community_cache->modularity);
     if (!tmp) { Py_DECREF(result); return NULL; }
-    PyDict_SetItemString(result, "modularity", tmp); Py_DECREF(tmp);
+    if (PyDict_SetItemString(result, "modularity", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
     tmp = PyLong_FromUnsignedLong(self->community_cache->num_neurons);
     if (!tmp) { Py_DECREF(result); return NULL; }
-    PyDict_SetItemString(result, "num_neurons", tmp); Py_DECREF(tmp);
+    if (PyDict_SetItemString(result, "num_neurons", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
 
     return result;
 }
@@ -2489,7 +2519,7 @@ static PyObject* Brain_get_uncertainty(BrainObject* self, PyObject* args) {
 #define SET(key, val) do { \
     PyObject* v = (val); \
     if (!v) { Py_DECREF(dict); brain_uncertainty_free(&unc); return NULL; } \
-    PyDict_SetItemString(dict, (key), v); \
+    if (PyDict_SetItemString(dict, (key), v) < 0) { Py_DECREF(v); Py_DECREF(dict); brain_uncertainty_free(&unc); return NULL; } \
     Py_DECREF(v); \
 } while (0)
 
@@ -2533,7 +2563,7 @@ static PyObject* Brain_self_assess(BrainObject* self, PyObject* args) {
 #define SET(key, val) do { \
     PyObject* v = (val); \
     if (!v) { Py_DECREF(dict); return NULL; } \
-    PyDict_SetItemString(dict, (key), v); \
+    if (PyDict_SetItemString(dict, (key), v) < 0) { Py_DECREF(v); Py_DECREF(dict); return NULL; } \
     Py_DECREF(v); \
 } while (0)
 
@@ -2798,10 +2828,12 @@ static PyObject* Brain_lgss_check_content(BrainObject* self, PyObject* args) {
         PyObject* dict = PyDict_New();
         if (!dict) return NULL;
         PyObject* v = Py_True; Py_INCREF(v);
-        PyDict_SetItemString(dict, "is_safe", v); Py_DECREF(v);
+        if (PyDict_SetItemString(dict, "is_safe", v) < 0) { Py_DECREF(v); Py_DECREF(dict); return NULL; }
+        Py_DECREF(v);
         v = PyUnicode_FromString("no lgss filter available");
         if (!v) { Py_DECREF(dict); return NULL; }
-        PyDict_SetItemString(dict, "reason", v); Py_DECREF(v);
+        if (PyDict_SetItemString(dict, "reason", v) < 0) { Py_DECREF(v); Py_DECREF(dict); return NULL; }
+        Py_DECREF(v);
         return dict;
     }
 
@@ -2821,7 +2853,7 @@ static PyObject* Brain_lgss_check_content(BrainObject* self, PyObject* args) {
 #define SET(key, val) do { \
     PyObject* v = (val); \
     if (!v) { Py_DECREF(dict); return NULL; } \
-    PyDict_SetItemString(dict, (key), v); \
+    if (PyDict_SetItemString(dict, (key), v) < 0) { Py_DECREF(v); Py_DECREF(dict); return NULL; } \
     Py_DECREF(v); \
 } while (0)
 

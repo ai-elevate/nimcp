@@ -76,6 +76,9 @@ typedef struct {
     uint64_t num_saturate_max_events;   /* Times weight hit w_max limit */
     uint64_t num_saturate_min_events;   /* Times weight hit w_min limit */
 
+    /* Minimum trace threshold for gating plasticity updates (default: 0.1) */
+    float min_trace_threshold;
+
 } stdp_synapse_t;
 
 /**
@@ -91,6 +94,7 @@ typedef struct {
     bool enable_da_modulation;
     float da_modulation_gain;
     float burst_amplification;
+    float min_trace_threshold;  /* Min trace magnitude to trigger update (default: 0.1) */
 } stdp_config_t;
 
 /**

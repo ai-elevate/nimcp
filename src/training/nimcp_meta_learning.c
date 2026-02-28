@@ -499,23 +499,50 @@ float meta_inner_loop(
         /* Compute loss */
         loss = compute_loss_from_logits(logits, task->support_y);
 
-        /* Compute gradients (would use autograd in full implementation) */
-        /* For now, simulate gradient descent */
+        /* Compute gradients via forward finite differences and apply SGD.
+         * For each parameter, perturb by +eps, re-forward, measure loss change.
+         * grad_i ~= (L(theta + eps*e_i) - L(theta)) / eps
+         * To keep cost manageable, use coordinate-wise perturbation with
+         * random sampling when parameter count is large. */
+        float eps_fd = 1e-3f;
         for (uint32_t p = 0; p < adapted->num_params; p++) {
             float lr = ctx->inner_lrs ? ctx->inner_lrs[p] : inner_lr;
-
-            /* In full implementation: grad = compute_gradient(loss, adapted->params[p]) */
-            /* Then: adapted->params[p] -= lr * grad */
-
-            /* Simulate gradient step by small random perturbation */
             size_t count = nimcp_tensor_numel(adapted->params[p]);
             float* data = nimcp_tensor_data(adapted->params[p]);
-            if (data) {
-                /* Gradient approximation: move toward lower loss */
-                for (size_t i = 0; i < count; i++) {
-                    /* Placeholder: actual gradient would come from backprop */
-                    data[i] -= lr * 0.01f * (data[i] > 0 ? 1.0f : -1.0f);
+            if (!data || count == 0) continue;
+
+            /* For large parameter tensors, sample a subset of coordinates */
+            size_t max_coords = 256;
+            size_t stride = (count > max_coords) ? count / max_coords : 1;
+
+            for (size_t i = 0; i < count; i += stride) {
+                /* Perturb parameter i by +eps */
+                float orig_val = data[i];
+                data[i] = orig_val + eps_fd;
+
+                /* Forward pass to compute perturbed loss */
+                nimcp_tensor_t* perturbed_logits = forward_fn(model, task->support_x);
+                float perturbed_loss = loss;  /* fallback */
+                if (perturbed_logits) {
+                    perturbed_loss = compute_loss_from_logits(perturbed_logits, task->support_y);
+                    nimcp_tensor_destroy(perturbed_logits);
                 }
+
+                /* Finite-difference gradient estimate */
+                float grad_i = (perturbed_loss - loss) / eps_fd;
+
+                /* Clamp gradient to prevent explosion */
+                if (grad_i > 10.0f) grad_i = 10.0f;
+                if (grad_i < -10.0f) grad_i = -10.0f;
+
+                /* Apply gradient to this coordinate and neighbors in stride */
+                for (size_t j = i; j < count && j < i + stride; j++) {
+                    data[j] -= lr * grad_i;
+                }
+
+                /* Restore unperturbed value for subsequent gradient estimates,
+                 * then apply the update to coordinate i */
+                data[i] = orig_val - lr * grad_i;
             }
         }
 
@@ -634,34 +661,43 @@ int meta_step(
 
             ctx->stats.tasks_processed++;
 
-            /* In full implementation:
-             * - Compute gradient of query_loss w.r.t. original parameters
-             * - If MAML: need second-order gradients through inner loop
-             * - If FOMAML: use first-order approximation
-             * - Accumulate gradients for meta-update */
+            /* Compute meta-gradient via difference between adapted and original params.
+             * For FOMAML/MAML, the meta-gradient is approximated by the direction
+             * from original to adapted parameters (similar to Reptile update direction).
+             * Full MAML second-order is handled by meta_compute_second_order_gradient
+             * when called explicitly; here we accumulate first-order meta-gradients. */
+            if (ctx->outer_lr > 0 && adapted->num_params == ctx->num_params) {
+                for (uint32_t p = 0; p < ctx->num_params; p++) {
+                    size_t count = nimcp_tensor_numel(ctx->params[p]);
+                    size_t adapted_count = nimcp_tensor_numel(adapted->params[p]);
+                    if (count != adapted_count) continue;
+
+                    float* orig_data = nimcp_tensor_data(ctx->params[p]);
+                    float* adapted_data = nimcp_tensor_data(adapted->params[p]);
+                    if (!orig_data || !adapted_data) continue;
+
+                    /* Meta-gradient ~ query_loss direction estimated by (adapted - orig)
+                     * scaled by query loss magnitude. The adapted params already
+                     * moved toward lower support loss; we scale the meta-update
+                     * by how well it generalizes (inverse of query loss). */
+                    float scale = query_loss > 1e-6f ? 1.0f / (1.0f + query_loss) : 1.0f;
+                    float lr = ctx->outer_lr / (float)num_tasks;
+
+                    for (size_t i = 0; i < count; i++) {
+                        float meta_grad = orig_data[i] - adapted_data[i];
+                        /* Clamp meta-gradient */
+                        if (meta_grad > 5.0f) meta_grad = 5.0f;
+                        if (meta_grad < -5.0f) meta_grad = -5.0f;
+                        orig_data[i] -= lr * scale * meta_grad;
+                    }
+                }
+            }
 
             meta_free_adapted(adapted);
         }
     }
 
     *avg_query_loss = total_query_loss / (float)num_tasks;
-
-    /* Meta-update: apply accumulated gradients to original parameters */
-    /* In full implementation: outer_optimizer.step() */
-    if (ctx->outer_lr > 0) {
-        /* Update original parameters */
-        for (uint32_t p = 0; p < ctx->num_params; p++) {
-            /* Placeholder: actual gradient would come from meta-gradient computation */
-            size_t count = nimcp_tensor_numel(ctx->params[p]);
-            float* data = (float*)nimcp_tensor_data(ctx->params[p]);
-            if (data) {
-                float lr = ctx->outer_lr;
-                for (size_t i = 0; i < count; i++) {
-                    data[i] -= lr * 0.001f;  /* Placeholder gradient */
-                }
-            }
-        }
-    }
 
     ctx->stats.total_meta_steps++;
 
@@ -697,26 +733,47 @@ float meta_reptile_step(
     float outer_lr = ctx->config.reptile.outer_lr;
     uint32_t inner_steps = ctx->config.reptile.inner_steps;
 
-    /* Perform multiple SGD steps on task */
+    /* Perform multiple SGD steps on task using finite-difference gradients */
     for (uint32_t step = 0; step < inner_steps; step++) {
         nimcp_tensor_t* logits = forward_fn(model, task->support_x);
         if (!logits) break;
 
         loss = compute_loss_from_logits(logits, task->support_y);
+        nimcp_tensor_destroy(logits);
 
-        /* SGD step on task_params */
+        /* Compute gradients via coordinate-wise finite differences */
+        float eps_fd = 1e-3f;
         for (uint32_t p = 0; p < ctx->num_params; p++) {
             size_t count = nimcp_tensor_numel(task_params[p]);
             float* data = nimcp_tensor_data(task_params[p]);
-            if (data) {
-                for (size_t i = 0; i < count; i++) {
-                    /* Placeholder gradient step */
-                    data[i] -= inner_lr * 0.01f;
+            if (!data || count == 0) continue;
+
+            /* Sample subset for large tensors */
+            size_t max_coords = 256;
+            size_t stride = (count > max_coords) ? count / max_coords : 1;
+
+            for (size_t i = 0; i < count; i += stride) {
+                float orig_val = data[i];
+                data[i] = orig_val + eps_fd;
+
+                nimcp_tensor_t* perturbed_logits = forward_fn(model, task->support_x);
+                float perturbed_loss = loss;
+                if (perturbed_logits) {
+                    perturbed_loss = compute_loss_from_logits(perturbed_logits, task->support_y);
+                    nimcp_tensor_destroy(perturbed_logits);
                 }
+
+                float grad_i = (perturbed_loss - loss) / eps_fd;
+                if (grad_i > 10.0f) grad_i = 10.0f;
+                if (grad_i < -10.0f) grad_i = -10.0f;
+
+                /* Apply gradient to coordinate and neighbors */
+                for (size_t j = i; j < count && j < i + stride; j++) {
+                    data[j] -= inner_lr * grad_i;
+                }
+                data[i] = orig_val - inner_lr * grad_i;
             }
         }
-
-        nimcp_tensor_destroy(logits);
     }
 
     /* Reptile meta-update: interpolate toward task-adapted parameters */
@@ -1174,8 +1231,93 @@ static float compute_loss_from_logits(const nimcp_tensor_t* logits, const nimcp_
         return 0.0f;
     }
 
-    /* Placeholder: actual implementation would compute cross-entropy */
-    return 0.5f;
+    size_t logit_count = nimcp_tensor_numel(logits);
+    size_t label_count = nimcp_tensor_numel(labels);
+    const float* logit_data = nimcp_tensor_data((nimcp_tensor_t*)logits);
+    const float* label_data = nimcp_tensor_data((nimcp_tensor_t*)labels);
+
+    if (!logit_data || !label_data || logit_count == 0 || label_count == 0) {
+        return 0.0f;
+    }
+
+    /* Determine number of classes from shape */
+    const nimcp_tensor_shape_t* logit_shape = nimcp_tensor_shape(logits);
+    const nimcp_tensor_shape_t* label_shape = nimcp_tensor_shape(labels);
+    if (!logit_shape || !label_shape) {
+        return 0.0f;
+    }
+
+    /* Infer batch size and number of classes.
+     * Logits: [batch, n_classes] or [n_classes] (single sample)
+     * Labels: [batch] (class indices) or [batch, n_classes] (one-hot) */
+    uint32_t n_classes = 1;
+    uint32_t batch_size = 1;
+
+    if (logit_shape->rank >= 2) {
+        batch_size = logit_shape->dims[0];
+        n_classes = logit_shape->dims[logit_shape->rank - 1];
+    } else if (logit_shape->rank == 1) {
+        n_classes = logit_shape->dims[0];
+        batch_size = 1;
+    }
+
+    if (n_classes == 0) n_classes = 1;
+    if (batch_size == 0) batch_size = 1;
+
+    bool labels_are_onehot = (label_count == logit_count);
+
+    /* If n_classes == 1, use MSE (regression) */
+    if (n_classes == 1) {
+        float mse = 0.0f;
+        size_t count = (logit_count < label_count) ? logit_count : label_count;
+        for (size_t i = 0; i < count; i++) {
+            float diff = logit_data[i] - label_data[i];
+            mse += diff * diff;
+        }
+        return mse / (float)count;
+    }
+
+    /* Cross-entropy loss with log-softmax */
+    float total_loss = 0.0f;
+
+    for (uint32_t b = 0; b < batch_size; b++) {
+        const float* sample_logits = logit_data + (size_t)b * n_classes;
+
+        /* Numerically stable log-softmax: log_softmax_i = x_i - log(sum(exp(x_j - max_x))) - max_x */
+        float max_logit = sample_logits[0];
+        for (uint32_t c = 1; c < n_classes; c++) {
+            if (sample_logits[c] > max_logit) {
+                max_logit = sample_logits[c];
+            }
+        }
+
+        float sum_exp = 0.0f;
+        for (uint32_t c = 0; c < n_classes; c++) {
+            sum_exp += expf(sample_logits[c] - max_logit);
+        }
+        float log_sum_exp = logf(sum_exp + 1e-10f) + max_logit;
+
+        if (labels_are_onehot) {
+            /* One-hot labels: loss = -sum(y_c * log_softmax_c) */
+            const float* sample_labels = label_data + (size_t)b * n_classes;
+            float sample_loss = 0.0f;
+            for (uint32_t c = 0; c < n_classes; c++) {
+                if (sample_labels[c] > 0.5f) {
+                    float log_prob = sample_logits[c] - log_sum_exp;
+                    sample_loss -= sample_labels[c] * log_prob;
+                }
+            }
+            total_loss += sample_loss;
+        } else {
+            /* Class index labels: loss = -log_softmax[target_class] */
+            uint32_t target_class = (uint32_t)label_data[b];
+            if (target_class >= n_classes) target_class = 0;
+            float log_prob = sample_logits[target_class] - log_sum_exp;
+            total_loss -= log_prob;
+        }
+    }
+
+    return total_loss / (float)batch_size;
 }
 
 /**
@@ -1186,8 +1328,67 @@ static float compute_accuracy(const nimcp_tensor_t* logits, const nimcp_tensor_t
         return 0.0f;
     }
 
-    /* Placeholder: actual implementation would compute accuracy */
-    return 0.5f;
+    size_t logit_count = nimcp_tensor_numel(logits);
+    size_t label_count = nimcp_tensor_numel(labels);
+    const float* logit_data = nimcp_tensor_data((nimcp_tensor_t*)logits);
+    const float* label_data = nimcp_tensor_data((nimcp_tensor_t*)labels);
+
+    if (!logit_data || !label_data || logit_count == 0 || label_count == 0) {
+        return 0.0f;
+    }
+
+    const nimcp_tensor_shape_t* logit_shape = nimcp_tensor_shape(logits);
+    if (!logit_shape) return 0.0f;
+
+    uint32_t n_classes = 1;
+    uint32_t batch_size = 1;
+
+    if (logit_shape->rank >= 2) {
+        batch_size = logit_shape->dims[0];
+        n_classes = logit_shape->dims[logit_shape->rank - 1];
+    } else if (logit_shape->rank == 1) {
+        n_classes = logit_shape->dims[0];
+        batch_size = 1;
+    }
+
+    if (n_classes <= 1 || batch_size == 0) return 0.0f;
+
+    bool labels_are_onehot = (label_count == logit_count);
+    uint32_t correct = 0;
+
+    for (uint32_t b = 0; b < batch_size; b++) {
+        const float* sample_logits = logit_data + (size_t)b * n_classes;
+
+        /* Find predicted class (argmax) */
+        uint32_t pred_class = 0;
+        float max_val = sample_logits[0];
+        for (uint32_t c = 1; c < n_classes; c++) {
+            if (sample_logits[c] > max_val) {
+                max_val = sample_logits[c];
+                pred_class = c;
+            }
+        }
+
+        /* Get target class */
+        uint32_t target_class;
+        if (labels_are_onehot) {
+            const float* sample_labels = label_data + (size_t)b * n_classes;
+            target_class = 0;
+            float max_label = sample_labels[0];
+            for (uint32_t c = 1; c < n_classes; c++) {
+                if (sample_labels[c] > max_label) {
+                    max_label = sample_labels[c];
+                    target_class = c;
+                }
+            }
+        } else {
+            target_class = (uint32_t)label_data[b];
+        }
+
+        if (pred_class == target_class) correct++;
+    }
+
+    return (float)correct / (float)batch_size;
 }
 
 /**

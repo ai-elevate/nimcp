@@ -285,8 +285,8 @@ void vesicle_pink_noise_destroy(vesicle_pink_noise_bridge_t* bridge) {
  */
 nimcp_error_t vesicle_pink_noise_connect_pool(vesicle_pink_noise_bridge_t* bridge,
                                                vesicle_pool_state_t* pool) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, pool, sizeof(*pool));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_connect_pool: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -659,8 +659,8 @@ uint32_t vesicle_pink_noise_get_targets(const vesicle_pink_noise_bridge_t* bridg
  */
 nimcp_error_t vesicle_pink_noise_get_state(const vesicle_pink_noise_bridge_t* bridge,
                                             vesicle_noise_state_t* state) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_get_state: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -778,8 +778,8 @@ nimcp_error_t vesicle_pink_noise_set_strength(vesicle_pink_noise_bridge_t* bridg
 nimcp_error_t vesicle_pink_noise_get_strength(const vesicle_pink_noise_bridge_t* bridge,
                                                vesicle_noise_target_t target,
                                                float* strength) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, strength, sizeof(*strength));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_get_strength: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }

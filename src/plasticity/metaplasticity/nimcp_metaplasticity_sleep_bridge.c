@@ -276,8 +276,8 @@ int metaplasticity_sleep_monitor_threshold_drift(
     float* drift
 ) {
     /* Guard clauses */
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, drift, sizeof(*drift));
+    if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in monitor_threshold_drift");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_monitor_threshold_drift: bridge is NULL");
         return -1;
@@ -331,8 +331,8 @@ int metaplasticity_sleep_compute_sleep_pressure(
     float* sleep_pressure
 ) {
     /* Guard clauses */
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, sleep_pressure, sizeof(*sleep_pressure));
+    if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in compute_sleep_pressure");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_compute_sleep_pressure: bridge is NULL");
         return -1;
@@ -446,8 +446,8 @@ int metaplasticity_sleep_get_drift_stats(
     float* max_drift
 ) {
     /* Guard clauses */
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, mean_drift, sizeof(*mean_drift));
+    if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in get_drift_stats");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_get_drift_stats: bridge is NULL");
         return -1;

@@ -457,13 +457,10 @@ int homeostatic_immune_trigger_from_instability(
     uint32_t num_neurons
 ) {
     /* Guard clauses */
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, firing_rates, sizeof(*firing_rates));
-
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
     if (!bridge->enable_instability_immune_trigger) return 0;
     if (!bridge->immune_system || !firing_rates) {
@@ -646,13 +643,10 @@ int homeostatic_immune_bridge_update(
     uint64_t delta_ms
 ) {
     /* Guard clauses */
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, firing_rates, sizeof(*firing_rates));
-
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);

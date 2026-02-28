@@ -226,7 +226,7 @@ eligibility_trace_t* eligibility_utils_alloc_trace(eligibility_utils_ctx_t ctx) 
         return NULL;
     }
     if (!ctx->config.enable_trace_pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "eligibility_utils_alloc_trace: trace pool not enabled");
+        LOG_DEBUG("eligibility_utils_alloc_trace: trace pool not enabled");
         return NULL;
     }
 
@@ -256,7 +256,7 @@ void eligibility_utils_free_trace(eligibility_utils_ctx_t ctx, eligibility_trace
         return;
     }
     if (!ctx->config.enable_trace_pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "eligibility_utils_free_trace: trace pool not enabled");
+        LOG_DEBUG("eligibility_utils_free_trace: trace pool not enabled");
         return;
     }
 
@@ -270,6 +270,12 @@ void eligibility_utils_free_trace(eligibility_utils_ctx_t ctx, eligibility_trace
     }
 
     uint32_t idx = (uint32_t)offset;
+
+    /* Bounds check: prevent free_head underflow (would cause OOB write) */
+    if (pool->free_head == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "eligibility_utils_free_trace: free_head underflow — pool is already fully free");
+        return;
+    }
 
     /* Add back to free list */
     pool->free_head--;

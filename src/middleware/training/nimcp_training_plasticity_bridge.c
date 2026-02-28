@@ -1045,6 +1045,15 @@ static float tpb_apply_stdp_rule(tpb_context_t* ctx, uint32_t region_id,
     float a_plus = 0.005F;
     float a_minus = 0.00525F;
 
+    /* THRESHOLD GATE: Skip update if pre or post activity is negligible.
+     * WHY:  Without threshold, near-zero activities produce trivial weight
+     *       changes that waste computation and introduce FP noise.
+     */
+    static const float STDP_ACTIVITY_THRESHOLD = 0.1F;
+    if (fabsf(pre) < STDP_ACTIVITY_THRESHOLD || fabsf(post) < STDP_ACTIVITY_THRESHOLD) {
+        return 0.0F;
+    }
+
     float weight_change = 0.0F;
 
     if (delta_t > 0) {

@@ -550,6 +550,14 @@ static void label_to_output(brain_t brain, const char* label, float* output, flo
 {
     uint32_t label_idx = get_or_create_label_index(brain, label);
 
+    /* Guard: OOB label index → clamp to last valid output */
+    if (label_idx >= brain->config.num_outputs) {
+        LOG_WARN(LOG_MODULE, "label_to_output: label_idx %u >= num_outputs %u, clamping",
+                 label_idx, brain->config.num_outputs);
+        if (brain->config.num_outputs == 0) return;
+        label_idx = brain->config.num_outputs - 1;
+    }
+
     memset(output, 0, brain->config.num_outputs * sizeof(float));
     output[label_idx] = confidence;
 }
@@ -1089,20 +1097,31 @@ static bool save_working_memory_state(working_memory_t* wm, FILE* file)
     working_memory_stats_t stats;
     working_memory_get_stats(wm, &stats);
 
-    // Write metadata
-    if (fwrite(&stats.current_size, sizeof(uint32_t), 1, file) != 1) {
+    // Count valid items first so the written count matches items actually serialized.
+    // The load function reads this count and expects exactly that many items to follow.
+    uint32_t valid_count = 0;
+    for (uint32_t i = 0; i < stats.current_size; i++) {
+        uint32_t item_size = 0;
+        const float* item = working_memory_get(wm, i, &item_size);
+        if (item && item_size > 0) {
+            valid_count++;
+        }
+    }
+
+    // Write metadata: valid_count (not current_size) so load reads the correct number
+    if (fwrite(&valid_count, sizeof(uint32_t), 1, file) != 1) {
         success = false;
     }
     if (fwrite(&stats.capacity, sizeof(uint32_t), 1, file) != 1) {
         success = false;
     }
 
-    // Write each item
+    // Write each valid item
     for (uint32_t i = 0; i < stats.current_size; i++) {
         uint32_t item_size = 0;
         const float* item = working_memory_get(wm, i, &item_size);
 
-        // Guard: Invalid item → skip
+        // Guard: Invalid item → skip (already excluded from valid_count)
         if (!item || item_size == 0) {
             continue;
         }

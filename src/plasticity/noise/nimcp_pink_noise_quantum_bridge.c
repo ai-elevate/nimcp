@@ -406,8 +406,8 @@ int pink_quantum_generate_sample(
     pink_quantum_bridge_t* bridge,
     float* sample
 ) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, sample, sizeof(*sample));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
             "pink_quantum_generate_sample: bridge is NULL");
         return -1;
@@ -484,8 +484,8 @@ int pink_quantum_generate_batch(
     float* samples,
     uint32_t num_samples
 ) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, samples, sizeof(*samples));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
             "pink_quantum_generate_batch: bridge is NULL");
         return -1;

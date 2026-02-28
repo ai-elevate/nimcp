@@ -1059,7 +1059,6 @@ bool thalamic_router_trigger_receptor(thalamic_router_t* router,
 
     if (!router->second_messengers_enabled || !router->second_messengers) {
         LOG_DEBUG(LOG_MODULE, "Second messengers not enabled");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_router_trigger_receptor: second_messengers not enabled");
         return false;
     }
 
@@ -1136,7 +1135,6 @@ bool thalamic_router_get_second_messenger_state(const thalamic_router_t* router,
 
     if (!router->second_messengers_enabled || !router->second_messengers) {
         LOG_DEBUG(LOG_MODULE, "Second messengers not enabled");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_router_get_second_messenger_state: second_messengers not enabled");
         return false;
     }
 
@@ -1308,8 +1306,7 @@ bool thalamic_router_register_imagination_handler(thalamic_router_t* router) {
     }
 
     if (!router->bio_async_enabled || !router->bio_ctx) {
-        LOG_WARN(LOG_MODULE, "Bio-async not enabled, cannot register imagination handler");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_router_register_imagination_handler: bio_async not enabled");
+        LOG_DEBUG(LOG_MODULE, "Bio-async not enabled, cannot register imagination handler");
         return false;
     }
 
@@ -1413,7 +1410,6 @@ bool thalamic_router_route_imagination_content(thalamic_router_t* router,
     if (!router->imagination_routing_enabled) {
         LOG_DEBUG(LOG_MODULE, "Imagination routing disabled, skipping scenario %u",
                   scenario_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_router_route_imagination_content: imagination_routing disabled");
         return false;
     }
 
@@ -1423,7 +1419,6 @@ bool thalamic_router_route_imagination_content(thalamic_router_t* router,
         LOG_DEBUG(LOG_MODULE, "Imagination attention %.3f below threshold %.3f, "
                   "filtering scenario %u",
                   attention, router->config.min_attention_threshold, scenario_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamic_router_register_imagination_handler: validation failed");
         return false;
     }
 

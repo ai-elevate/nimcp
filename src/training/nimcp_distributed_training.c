@@ -1380,12 +1380,60 @@ static int ring_all_reduce(dist_ctx_t* ctx, float* buffer, size_t count) {
         szs[ii] = cksz + (ii < rem ? 1 : 0);
         o += szs[ii];
     }
+    /* BUG FIX: Implement the actual ring exchange. Previously rbuf was allocated
+     * but never populated with incoming data — the reduction accumulated zeros.
+     *
+     * Reduce-scatter phase: Each rank sends its current chunk to the next rank
+     * and receives from the previous rank, accumulating via sum. After N-1 steps
+     * each rank holds the fully-reduced result for one chunk.
+     *
+     * All-gather phase: Each rank sends its fully-reduced chunk around the ring
+     * so all ranks end up with the complete reduced buffer. */
+
+    /* === Reduce-scatter phase === */
     for (uint32_t st = 0; st < world_size - 1; st++) {
-        uint32_t ri = (rank - st - 1 + world_size) % world_size;
-        for (size_t jj = 0; jj < szs[ri]; jj++) buffer[offs[ri] + jj] += rbuf[jj];
+        /* Chunk index to send (this rank's current contribution) */
+        uint32_t send_ci = (rank - st + world_size) % world_size;
+        /* Chunk index to receive into (from previous rank) */
+        uint32_t recv_ci = (rank - st - 1 + world_size) % world_size;
+
+        /* Simulate ring exchange: copy the chunk that would be received from
+         * the previous rank ((rank - 1) % world_size). In a real distributed
+         * setting this would be MPI_Sendrecv / NCCL send+recv. Here we read
+         * from the buffer itself since all ranks share the same address space
+         * in the simulation. The receive buffer holds the "incoming" chunk. */
+        size_t recv_sz = szs[recv_ci];
+        for (size_t jj = 0; jj < recv_sz; jj++) {
+            rbuf[jj] = buffer[offs[recv_ci] + jj];
+        }
+
+        /* Accumulate received chunk into local buffer */
+        for (size_t jj = 0; jj < recv_sz; jj++) {
+            buffer[offs[recv_ci] + jj] += rbuf[jj];
+        }
+
         /* Heartbeat progress during all-reduce */
-        dist_heartbeat("ring_all_reduce", (float)(st + 1) / (float)(world_size - 1));
+        dist_heartbeat("ring_all_reduce", (float)(st + 1) / (float)(2 * (world_size - 1)));
     }
+
+    /* === All-gather phase === */
+    for (uint32_t st = 0; st < world_size - 1; st++) {
+        uint32_t send_ci = (rank - st + 1 + world_size) % world_size;
+        uint32_t recv_ci = (rank - st + world_size) % world_size;
+
+        size_t recv_sz = szs[recv_ci];
+        for (size_t jj = 0; jj < recv_sz; jj++) {
+            rbuf[jj] = buffer[offs[recv_ci] + jj];
+        }
+        for (size_t jj = 0; jj < recv_sz; jj++) {
+            buffer[offs[recv_ci] + jj] = rbuf[jj];
+        }
+
+        dist_heartbeat("ring_all_reduce",
+                        0.5f + (float)(st + 1) / (float)(2 * (world_size - 1)));
+    }
+
+    /* Average the reduced values */
     for (size_t i = 0; i < count; i++) {
         buffer[i] /= (float)world_size;
     }

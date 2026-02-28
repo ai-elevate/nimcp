@@ -280,10 +280,13 @@ int nimcp_brain_qreason_solve_sat(brain_t brain,
     result->confidence = conf_count > 0 ? total_confidence / conf_count : qresult.satisfaction_prob;
 
     /* Estimate quantum speedup: √(2^N) vs 2^N */
-    if (query->cnf.n_variables > 0) {
-        float classical_ops = (float)(1u << query->cnf.n_variables);
+    if (query->cnf.n_variables > 0 && query->cnf.n_variables < 63) {
+        float classical_ops = (float)((uint64_t)1 << query->cnf.n_variables);
         float quantum_ops = sqrtf(classical_ops);
         result->quantum_speedup = classical_ops / quantum_ops;
+    } else if (query->cnf.n_variables >= 63) {
+        /* Cap at maximum representable value to avoid UB */
+        result->quantum_speedup = sqrtf((float)((uint64_t)1 << 62));
     }
 
     /* Update statistics */

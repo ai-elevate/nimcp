@@ -455,7 +455,7 @@ int nimcp_brain_thal_set_attention(brain_t brain, float attention) {
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_set_attention: thalamus not enabled");
+        LOG_DEBUG("nimcp_brain_thal_set_attention: thalamus not enabled");
         return -1;
     }
 
@@ -478,7 +478,7 @@ int nimcp_brain_thal_set_nucleus_attention(brain_t brain,
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_set_nucleus_attention: thalamus not enabled");
+        LOG_DEBUG("nimcp_brain_thal_set_nucleus_attention: thalamus not enabled");
         return -1;
     }
 
@@ -494,7 +494,7 @@ int nimcp_brain_thal_set_arousal(brain_t brain, float arousal) {
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_set_arousal: thalamus not enabled");
+        LOG_DEBUG("nimcp_brain_thal_set_arousal: thalamus not enabled");
         return -1;
     }
 
@@ -512,7 +512,7 @@ int nimcp_brain_thal_apply_trn_inhibition(brain_t brain,
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_apply_trn_inhibition: thalamus not enabled");
+        LOG_DEBUG("nimcp_brain_thal_apply_trn_inhibition: thalamus not enabled");
         return -1;
     }
 
@@ -534,7 +534,7 @@ int nimcp_brain_thal_set_mode(brain_t brain,
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_set_mode: thalamus not enabled");
+        LOG_DEBUG("nimcp_brain_thal_set_mode: thalamus not enabled");
         return -1;
     }
 
@@ -567,7 +567,7 @@ int nimcp_brain_thal_trigger_burst(brain_t brain,
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_trigger_burst: thalamus not enabled");
+        LOG_DEBUG("nimcp_brain_thal_trigger_burst: thalamus not enabled");
         return -1;
     }
 
@@ -666,7 +666,7 @@ int nimcp_brain_thal_get_stats(brain_t brain, thalamus_stats_t* stats) {
 
     if (!b->thalamus_enabled || !b->thalamus) {
         memset(stats, 0, sizeof(*stats));
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_get_stats: thalamus not enabled");
+        LOG_DEBUG("nimcp_brain_thal_get_stats: thalamus not enabled");
         return -1;
     }
 
@@ -690,7 +690,7 @@ float nimcp_brain_thal_get_attention(brain_t brain) {
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_get_attention: thalamus not enabled");
+        LOG_DEBUG("nimcp_brain_thal_get_attention: thalamus not enabled");
         return -1.0f;
     }
 
@@ -706,7 +706,7 @@ float nimcp_brain_thal_get_arousal(brain_t brain) {
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_get_arousal: thalamus not enabled");
+        LOG_DEBUG("nimcp_brain_thal_get_arousal: thalamus not enabled");
         return -1.0f;
     }
 

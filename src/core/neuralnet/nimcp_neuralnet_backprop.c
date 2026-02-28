@@ -539,9 +539,12 @@ bool backprop_backward(backprop_ctx_t* ctx,
                     delta_target = layer_deltas[target_layer][target_idx];
                 }
 
-                /* Weight gradient: dL/dW = a_source * delta_target */
+                /* Weight gradient: dL/dW = a_source * delta_target
+                 * Chain rule: gradient flows through delta (which already includes
+                 * activation derivative), NOT multiplied by synapse strength.
+                 * Previously multiplied by sh->strength which corrupted gradients. */
                 if (weight_idx < ctx->total_weights) {
-                    ctx->weight_gradients[weight_idx] = a_source * delta_target * sh->strength;
+                    ctx->weight_gradients[weight_idx] = a_source * delta_target;
                 }
                 weight_idx++;
             }

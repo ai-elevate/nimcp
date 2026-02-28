@@ -1150,8 +1150,8 @@ int mirror_plasticity_register_weight_callback(
     mirror_plasticity_weight_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_register_weight_callback: bridge is NULL");
         return -1;
     }
@@ -1171,8 +1171,8 @@ int mirror_plasticity_register_consolidation_callback(
     mirror_plasticity_consolidation_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_register_consolidation_callback: bridge is NULL");
         return -1;
     }
@@ -1192,8 +1192,8 @@ int mirror_plasticity_register_homeostatic_callback(
     mirror_plasticity_homeostatic_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_register_homeostatic_callback: bridge is NULL");
         return -1;
     }
@@ -1213,8 +1213,8 @@ int mirror_plasticity_register_energy_callback(
     mirror_plasticity_energy_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_register_energy_callback: bridge is NULL");
         return -1;
     }

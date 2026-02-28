@@ -611,10 +611,15 @@ float* amp_create_master_weights(amp_ctx_t* ctx,
             break;
         }
 
-        case AMP_DTYPE_BF16:
-            /* BF16 conversion would go here */
-            memcpy(master, weights, count * sizeof(float));
+        case AMP_DTYPE_BF16: {
+            /* BF16: upper 16 bits of IEEE 754 float — expand by shifting left 16 bits */
+            const uint16_t* bf16_weights = (const uint16_t*)weights;
+            for (size_t i = 0; i < count; i++) {
+                uint32_t bits = (uint32_t)bf16_weights[i] << 16;
+                memcpy(&master[i], &bits, sizeof(float));
+            }
             break;
+        }
 
         default:
             nimcp_free(master);

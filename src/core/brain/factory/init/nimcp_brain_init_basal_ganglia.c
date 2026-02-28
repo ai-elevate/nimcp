@@ -521,7 +521,7 @@ int nimcp_brain_bg_connect_training_context(brain_t brain,
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->basal_ganglia_enabled || !b->basal_ganglia) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_connect_training_context: BG not enabled or NULL");
+        LOG_DEBUG("nimcp_brain_bg_connect_training_context: BG not enabled or NULL");
         return -1;
     }
 

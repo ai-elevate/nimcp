@@ -935,7 +935,12 @@ uint32_t nimcp_brain_register_callback(
     nimcp_mutex_lock(&g_callback_wrappers_mutex);
     uint32_t wrapper_idx = g_next_wrapper_id % MAX_CALLBACK_WRAPPERS;
     if (g_callback_wrappers[wrapper_idx]) {
+        // Mark stale wrapper as inactive before freeing to prevent use-after-free
+        // if internal callback manager still holds a reference
+        g_callback_wrappers[wrapper_idx]->public_callback = NULL;
+        g_callback_wrappers[wrapper_idx]->user_data = NULL;
         nimcp_free(g_callback_wrappers[wrapper_idx]);
+        g_callback_wrappers[wrapper_idx] = NULL;
     }
     g_callback_wrappers[wrapper_idx] = wrapper;
     g_next_wrapper_id++;

@@ -48,7 +48,8 @@ stdp_config_t stdp_config_default(void) {
         .tau_minus = 0.020F,        /* 20 ms */
         .enable_da_modulation = true,
         .da_modulation_gain = 100.0F,   /* DA concentration [0-1] → LR multiplier */
-        .burst_amplification = 3.0F     /* 3x learning during bursts */
+        .burst_amplification = 3.0F,    /* 3x learning during bursts */
+        .min_trace_threshold = 0.1F     /* Min trace to trigger plasticity update */
     };
     return config;
 }
@@ -117,6 +118,14 @@ void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t*
     synapse->burst_amplification = config->burst_amplification;
 
     synapse->current_sleep_state = SLEEP_STATE_AWAKE;  /* Default to awake */
+
+    /* Initialize STDP trace threshold for gating plasticity updates
+     * WHY:  Without a threshold, all spikes trigger updates even when traces
+     *       are negligibly small, wasting computation and introducing FP noise.
+     * HOW:  Only apply weight change when opposing trace exceeds this value.
+     */
+    synapse->min_trace_threshold = (config->min_trace_threshold > 0.0F)
+        ? config->min_trace_threshold : 0.1F;
 
     /* Initialize spinlock for thread safety */
     nimcp_spinlock_init(&synapse->lock);
@@ -200,10 +209,19 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
     float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
     float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
 
-    /* LTD: post trace indicates recent postsynaptic spike */
-    /* Apply sleep modulation: LR factor and ratio factor (ratio affects A-) */
-    float modulated_a_minus = synapse->a_minus / ratio_factor;  /* Lower ratio = higher A- */
-    float weight_change = -modulated_a_minus * synapse->learning_rate * lr_factor * synapse->post_trace;
+    /* THRESHOLD GATE: Skip LTD computation if post trace is below threshold.
+     * WHY:  Prevents trivial weight updates when no recent postsynaptic spike occurred.
+     *       Without this, every presynaptic spike triggers a near-zero LTD computation,
+     *       wasting cycles and introducing floating-point noise into weights.
+     * HOW:  Still increment pre_trace (spike happened), but skip the weight update.
+     */
+    float weight_change = 0.0F;
+    if (synapse->post_trace >= synapse->min_trace_threshold) {
+        /* LTD: post trace indicates recent postsynaptic spike */
+        /* Apply sleep modulation: LR factor and ratio factor (ratio affects A-) */
+        float modulated_a_minus = synapse->a_minus / ratio_factor;  /* Lower ratio = higher A- */
+        weight_change = -modulated_a_minus * synapse->learning_rate * lr_factor * synapse->post_trace;
+    }
 
     /* Thread-safe weight modification */
     nimcp_spinlock_lock(&synapse->lock);
@@ -212,8 +230,7 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
      * WHY:  NaN/Inf can propagate and corrupt weights
      */
     if (isnan(weight_change) || isinf(weight_change)) {
-        nimcp_spinlock_unlock(&synapse->lock);
-        return 0.0F;  /* Return zero to indicate no valid change */
+        weight_change = 0.0F;
     }
 
     if (weight_change < 0.0F) {
@@ -226,28 +243,30 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
      * WHY:  Frequent saturation indicates potential learning issues
      * HOW:  Track when weights hit bounds, log periodic warnings
      */
-    float new_weight = synapse->weight + weight_change;
-    bool saturated = false;
-    if (new_weight < synapse->w_min) {
-        new_weight = synapse->w_min;
-        synapse->num_saturate_min_events++;
-        saturated = true;
-    } else if (new_weight > synapse->w_max) {
-        new_weight = synapse->w_max;
-        synapse->num_saturate_max_events++;
-        saturated = true;
-    }
-    synapse->weight = new_weight;
+    if (weight_change != 0.0F) {
+        float new_weight = synapse->weight + weight_change;
+        bool saturated = false;
+        if (new_weight < synapse->w_min) {
+            new_weight = synapse->w_min;
+            synapse->num_saturate_min_events++;
+            saturated = true;
+        } else if (new_weight > synapse->w_max) {
+            new_weight = synapse->w_max;
+            synapse->num_saturate_max_events++;
+            saturated = true;
+        }
+        synapse->weight = new_weight;
 
-    /* Log warning if saturation is frequent (every 100 events) */
-    if (saturated) {
-        uint64_t total_sat = synapse->num_saturate_min_events + synapse->num_saturate_max_events;
-        if (total_sat % 100 == 0) {
-            printf("STDP weight saturation warning: min=%lu max=%lu events "
-                   "(w=%.4f, w_min=%.4f, w_max=%.4f)\n",
-                   (unsigned long)synapse->num_saturate_min_events,
-                   (unsigned long)synapse->num_saturate_max_events,
-                   synapse->weight, synapse->w_min, synapse->w_max);
+        /* Log warning if saturation is frequent (every 100 events) */
+        if (saturated) {
+            uint64_t total_sat = synapse->num_saturate_min_events + synapse->num_saturate_max_events;
+            if (total_sat % 100 == 0) {
+                printf("STDP weight saturation warning: min=%lu max=%lu events "
+                       "(w=%.4f, w_min=%.4f, w_max=%.4f)\n",
+                       (unsigned long)synapse->num_saturate_min_events,
+                       (unsigned long)synapse->num_saturate_max_events,
+                       synapse->weight, synapse->w_min, synapse->w_max);
+            }
         }
     }
 
@@ -274,10 +293,17 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
     float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
     float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
 
-    /* LTP: pre trace indicates recent presynaptic spike */
-    /* Apply sleep modulation: LR factor and ratio factor (ratio affects A+) */
-    float modulated_a_plus = synapse->a_plus * ratio_factor;  /* Higher ratio = higher A+ */
-    float weight_change = modulated_a_plus * synapse->learning_rate * lr_factor * synapse->pre_trace;
+    /* THRESHOLD GATE: Skip LTP computation if pre trace is below threshold.
+     * WHY:  Prevents trivial weight updates when no recent presynaptic spike occurred.
+     *       Without this, every postsynaptic spike triggers a near-zero LTP computation.
+     */
+    float weight_change = 0.0F;
+    if (synapse->pre_trace >= synapse->min_trace_threshold) {
+        /* LTP: pre trace indicates recent presynaptic spike */
+        /* Apply sleep modulation: LR factor and ratio factor (ratio affects A+) */
+        float modulated_a_plus = synapse->a_plus * ratio_factor;  /* Higher ratio = higher A+ */
+        weight_change = modulated_a_plus * synapse->learning_rate * lr_factor * synapse->pre_trace;
+    }
 
     /* Thread-safe weight modification */
     nimcp_spinlock_lock(&synapse->lock);
@@ -286,8 +312,7 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
      * WHY:  NaN/Inf can propagate and corrupt weights
      */
     if (isnan(weight_change) || isinf(weight_change)) {
-        nimcp_spinlock_unlock(&synapse->lock);
-        return 0.0F;  /* Return zero to indicate no valid change */
+        weight_change = 0.0F;
     }
 
     if (weight_change > 0.0F) {
@@ -295,33 +320,31 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
         synapse->total_ltp += weight_change;
     }
 
-    /* Apply weight change with saturation tracking and clamping
-     * WHAT: Update weight and detect saturation
-     * WHY:  Frequent saturation indicates potential learning issues
-     * HOW:  Track when weights hit bounds, log periodic warnings
-     */
-    float new_weight = synapse->weight + weight_change;
-    bool saturated = false;
-    if (new_weight < synapse->w_min) {
-        new_weight = synapse->w_min;
-        synapse->num_saturate_min_events++;
-        saturated = true;
-    } else if (new_weight > synapse->w_max) {
-        new_weight = synapse->w_max;
-        synapse->num_saturate_max_events++;
-        saturated = true;
-    }
-    synapse->weight = new_weight;
+    /* Apply weight change with saturation tracking and clamping */
+    if (weight_change != 0.0F) {
+        float new_weight = synapse->weight + weight_change;
+        bool saturated = false;
+        if (new_weight < synapse->w_min) {
+            new_weight = synapse->w_min;
+            synapse->num_saturate_min_events++;
+            saturated = true;
+        } else if (new_weight > synapse->w_max) {
+            new_weight = synapse->w_max;
+            synapse->num_saturate_max_events++;
+            saturated = true;
+        }
+        synapse->weight = new_weight;
 
-    /* Log warning if saturation is frequent (every 100 events) */
-    if (saturated) {
-        uint64_t total_sat = synapse->num_saturate_min_events + synapse->num_saturate_max_events;
-        if (total_sat % 100 == 0) {
-            printf("STDP weight saturation warning: min=%lu max=%lu events "
-                   "(w=%.4f, w_min=%.4f, w_max=%.4f)\n",
-                   (unsigned long)synapse->num_saturate_min_events,
-                   (unsigned long)synapse->num_saturate_max_events,
-                   synapse->weight, synapse->w_min, synapse->w_max);
+        /* Log warning if saturation is frequent (every 100 events) */
+        if (saturated) {
+            uint64_t total_sat = synapse->num_saturate_min_events + synapse->num_saturate_max_events;
+            if (total_sat % 100 == 0) {
+                printf("STDP weight saturation warning: min=%lu max=%lu events "
+                       "(w=%.4f, w_min=%.4f, w_max=%.4f)\n",
+                       (unsigned long)synapse->num_saturate_min_events,
+                       (unsigned long)synapse->num_saturate_max_events,
+                       synapse->weight, synapse->w_min, synapse->w_max);
+            }
         }
     }
 
@@ -448,13 +471,17 @@ float stdp_pre_spike_modulated(stdp_synapse_t* synapse,
     float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
     float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
 
-    /* Compute base weight change (LTD from post trace) with sleep modulation */
-    float modulated_a_minus = synapse->a_minus / ratio_factor;
-    float base_weight_change = -modulated_a_minus * synapse->learning_rate * lr_factor * synapse->post_trace;
+    /* THRESHOLD GATE: Skip LTD if post trace below threshold */
+    float modulated_weight_change = 0.0F;
+    if (synapse->post_trace >= synapse->min_trace_threshold) {
+        /* Compute base weight change (LTD from post trace) with sleep modulation */
+        float modulated_a_minus = synapse->a_minus / ratio_factor;
+        float base_weight_change = -modulated_a_minus * synapse->learning_rate * lr_factor * synapse->post_trace;
 
-    /* Apply dopamine modulation */
-    float modulated_weight_change = stdp_apply_modulated_weight_change(
-        synapse, base_weight_change, neuromod);
+        /* Apply dopamine modulation */
+        modulated_weight_change = stdp_apply_modulated_weight_change(
+            synapse, base_weight_change, neuromod);
+    }
 
     /* Increment presynaptic trace with upper bound to prevent unbounded growth
      * WHY:  Without clamping, rapid spike bursts can cause trace overflow
@@ -482,13 +509,17 @@ float stdp_post_spike_modulated(stdp_synapse_t* synapse,
     float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
     float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
 
-    /* Compute base weight change (LTP from pre trace) with sleep modulation */
-    float modulated_a_plus = synapse->a_plus * ratio_factor;
-    float base_weight_change = modulated_a_plus * synapse->learning_rate * lr_factor * synapse->pre_trace;
+    /* THRESHOLD GATE: Skip LTP if pre trace below threshold */
+    float modulated_weight_change = 0.0F;
+    if (synapse->pre_trace >= synapse->min_trace_threshold) {
+        /* Compute base weight change (LTP from pre trace) with sleep modulation */
+        float modulated_a_plus = synapse->a_plus * ratio_factor;
+        float base_weight_change = modulated_a_plus * synapse->learning_rate * lr_factor * synapse->pre_trace;
 
-    /* Apply dopamine modulation */
-    float modulated_weight_change = stdp_apply_modulated_weight_change(
-        synapse, base_weight_change, neuromod);
+        /* Apply dopamine modulation */
+        modulated_weight_change = stdp_apply_modulated_weight_change(
+            synapse, base_weight_change, neuromod);
+    }
 
     /* Increment postsynaptic trace with upper bound to prevent unbounded growth
      * WHY:  Without clamping, rapid spike bursts can cause trace overflow

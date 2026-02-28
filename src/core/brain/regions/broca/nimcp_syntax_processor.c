@@ -276,7 +276,8 @@ bool syntax_add_unit(syntax_processor_t* processor, const syntactic_unit_t* unit
     }
 
     if (processor->unit_count >= processor->config.max_units) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Unit buffer full");
+        LOG_DEBUG("syntax_processor: unit buffer full (count=%u, max=%u)",
+                  processor->unit_count, processor->config.max_units);
         return false;
     }
 

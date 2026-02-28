@@ -702,13 +702,10 @@ int wm_snn_get_most_active_slot(
     wm_snn_bridge_t* bridge,
     float* confidence)
 {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, confidence, sizeof(*confidence));
-
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -920,13 +917,10 @@ int wm_snn_register_spike_callback(
     wm_snn_spike_callback_t callback,
     void* user_data)
 {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
-
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -946,13 +940,10 @@ int wm_snn_register_encoding_callback(
     wm_snn_encoding_callback_t callback,
     void* user_data)
 {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
-
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -972,13 +963,10 @@ int wm_snn_register_retrieval_callback(
     wm_snn_retrieval_callback_t callback,
     void* user_data)
 {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
-
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
 
     /* Phase 8: Heartbeat at operation start */

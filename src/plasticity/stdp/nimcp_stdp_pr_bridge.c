@@ -458,8 +458,8 @@ int stdp_pr_get_modulation(stdp_pr_bridge_t bridge,
 int stdp_pr_apply_resonance_modulation(stdp_pr_bridge_t bridge,
                                        float resonance, float base_lr,
                                        float* modulated_lr) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, modulated_lr, sizeof(*modulated_lr));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_apply_resonance_modulation: bridge is NULL");
         return -1;
     }
@@ -488,8 +488,8 @@ int stdp_pr_apply_resonance_modulation(stdp_pr_bridge_t bridge,
 int stdp_pr_apply_consolidation_gate(stdp_pr_bridge_t bridge,
                                      float consolidation, float base_lr,
                                      float* gated_lr) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, gated_lr, sizeof(*gated_lr));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_apply_consolidation_gate: bridge is NULL");
         return -1;
     }
@@ -528,8 +528,8 @@ int stdp_pr_apply_consolidation_gate(stdp_pr_bridge_t bridge,
 int stdp_pr_get_tier_rate(stdp_pr_bridge_t bridge,
                           stdp_pr_memory_tier_t tier,
                           float* rate_multiplier) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, rate_multiplier, sizeof(*rate_multiplier));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_get_tier_rate: bridge is NULL");
         return -1;
     }
@@ -615,8 +615,8 @@ int stdp_pr_compute_modulation(stdp_pr_bridge_t bridge,
 
 int stdp_pr_bridge_get_state(stdp_pr_bridge_t bridge,
                              stdp_pr_bridge_state_t* state) {
-    if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
+    if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_get_state: bridge is NULL");
         return -1;
     }

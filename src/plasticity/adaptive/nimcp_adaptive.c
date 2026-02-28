@@ -2013,11 +2013,22 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             goto cpu_learn_path;
         }
 
-        // 3. GPU MSE loss computation
-        float loss = nimcp_gpu_compute_loss(network->gpu_weight_cache,
-                                            output, example->target,
-                                            example->target_size);
-        if (loss < 0.0F) loss = 0.0F;  // Fallback on GPU error
+        // 3. Compute loss using same BCE formula as CPU path to keep EMA consistent.
+        // BUG FIX: Previously used nimcp_gpu_compute_loss() which computes MSE,
+        // but CPU path uses binary cross-entropy. The EMA tracker aggregates both
+        // paths, so mismatched loss scales corrupt the running average.
+        float loss = 0.0f;
+        {
+            float eps = 1e-7f;
+            for (uint32_t li = 0; li < example->target_size; li++) {
+                float raw_o = isfinite(output[li]) ? output[li] : 0.5f;
+                float o = fmaxf(eps, fminf(1.0f - eps, raw_o));
+                float t = fminf(fmaxf(example->target[li], 0.0f), 1.0f);
+                loss -= t * logf(o) + (1.0f - t) * logf(1.0f - o);
+            }
+            loss /= example->target_size;
+            if (!isfinite(loss) || loss < 0.0f) loss = 0.0f;
+        }
 
         // 4. Download activations so CPU bio-plasticity can read neuron states
         nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,

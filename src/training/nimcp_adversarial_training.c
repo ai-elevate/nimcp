@@ -436,6 +436,17 @@ int adv_pgd(
     float* grad = nimcp_calloc(input_size, sizeof(float));
     float* perturbation = nimcp_calloc(input_size, sizeof(float));
 
+    /* Guard: allocation failure → clean up and return error */
+    if (!grad || !perturbation) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+            input_size * sizeof(float) * 2,
+            "PGD attack: failed to allocate gradient/perturbation buffers");
+        nimcp_free(grad);
+        nimcp_free(perturbation);
+        nimcp_tensor_destroy(adv_input);
+        return -1;
+    }
+
     /* PGD iterations */
     for (uint32_t step = 0; step < num_steps; step++) {
         /* Heartbeat progress during PGD attack */

@@ -868,9 +868,128 @@ int qat_matmul(
         return -1;
     }
 
-    /* This is a simplified implementation */
-    /* Real QAT matmul would use integer arithmetic with requantization */
+    /* Get tensor shapes for matrix dimensions.
+     * Assumes 2D tensors: A is [M, K], B is [K, N], C is [M, N] */
+    const nimcp_tensor_shape_t* a_shape = nimcp_tensor_shape(a);
+    const nimcp_tensor_shape_t* b_shape = nimcp_tensor_shape(b);
+    const nimcp_tensor_shape_t* c_shape = nimcp_tensor_shape(c);
 
+    if (!a_shape || !b_shape || !c_shape) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_matmul: tensor shape is NULL");
+        return -1;
+    }
+
+    uint32_t M, K_a, K_b, N;
+    if (a_shape->rank >= 2) {
+        M = a_shape->dims[0];
+        K_a = a_shape->dims[1];
+    } else {
+        /* 1D: treat as [1, K] */
+        M = 1;
+        K_a = a_shape->dims[0];
+    }
+
+    if (b_shape->rank >= 2) {
+        K_b = b_shape->dims[0];
+        N = b_shape->dims[1];
+    } else {
+        K_b = b_shape->dims[0];
+        N = 1;
+    }
+
+    if (K_a != K_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_matmul: inner dimensions mismatch (K_a != K_b)");
+        return -1;
+    }
+    uint32_t K = K_a;
+
+    /* Verify output dimensions */
+    if (c_count < (size_t)M * N) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_matmul: output tensor too small");
+        return -1;
+    }
+
+    const float* a_data = nimcp_tensor_data((nimcp_tensor_t*)a);
+    const float* b_data = nimcp_tensor_data((nimcp_tensor_t*)b);
+    float* c_data = nimcp_tensor_data(c);
+
+    if (!a_data || !b_data || !c_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_matmul: tensor data is NULL");
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+
+    /* Get quantization ranges for A and B */
+    int32_t a_qmin, a_qmax, b_qmin, b_qmax;
+    get_qmin_qmax(a_params->dtype, &a_qmin, &a_qmax);
+    get_qmin_qmax(b_params->dtype, &b_qmin, &b_qmax);
+
+    float a_scale = a_params->scale;
+    float b_scale = b_params->scale;
+    int32_t a_zp = a_params->zero_point;
+    int32_t b_zp = b_params->zero_point;
+
+    float a_inv_scale = (a_scale > 1e-10f) ? 1.0f / a_scale : 1.0f;
+    float b_inv_scale = (b_scale > 1e-10f) ? 1.0f / b_scale : 1.0f;
+
+    /* Product scale: S_c = S_a * S_b */
+    float c_scale = a_scale * b_scale;
+
+    /* Fake-quantized matmul:
+     * 1. Quantize A: q_a = clamp(round(a / S_a + ZP_a), qmin, qmax)
+     * 2. Quantize B: q_b = clamp(round(b / S_b + ZP_b), qmin, qmax)
+     * 3. Integer matmul: acc = sum((q_a - ZP_a) * (q_b - ZP_b))
+     * 4. Dequantize: c = acc * S_a * S_b
+     *
+     * This simulates integer arithmetic while maintaining float precision
+     * for gradient flow during training (straight-through estimator). */
+    for (uint32_t m = 0; m < M; m++) {
+        for (uint32_t n = 0; n < N; n++) {
+            int64_t acc = 0;  /* Integer accumulator */
+
+            for (uint32_t k = 0; k < K; k++) {
+                /* Fake-quantize A[m,k] */
+                float a_val = a_data[m * K + k];
+                float a_scaled = a_val * a_inv_scale + (float)a_zp;
+                int32_t q_a = (int32_t)roundf(a_scaled);
+                q_a = (q_a < a_qmin) ? a_qmin : ((q_a > a_qmax) ? a_qmax : q_a);
+
+                /* Fake-quantize B[k,n] */
+                float b_val = b_data[k * N + n];
+                float b_scaled = b_val * b_inv_scale + (float)b_zp;
+                int32_t q_b = (int32_t)roundf(b_scaled);
+                q_b = (q_b < b_qmin) ? b_qmin : ((q_b > b_qmax) ? b_qmax : q_b);
+
+                /* Integer MAC (shifted by zero points) */
+                acc += (int64_t)(q_a - a_zp) * (int64_t)(q_b - b_zp);
+            }
+
+            /* Dequantize accumulator */
+            c_data[m * N + n] = (float)acc * c_scale;
+        }
+    }
+
+    /* Optionally requantize output if c_params provided */
+    if (c_params && c_params->scale > 0.0f) {
+        int32_t c_qmin, c_qmax;
+        get_qmin_qmax(c_params->dtype, &c_qmin, &c_qmax);
+        float c_out_scale = c_params->scale;
+        int32_t c_out_zp = c_params->zero_point;
+        float c_inv_scale = (c_out_scale > 1e-10f) ? 1.0f / c_out_scale : 1.0f;
+
+        for (size_t i = 0; i < (size_t)M * N; i++) {
+            float scaled = c_data[i] * c_inv_scale + (float)c_out_zp;
+            int32_t quantized = (int32_t)roundf(scaled);
+            quantized = (quantized < c_qmin) ? c_qmin : ((quantized > c_qmax) ? c_qmax : quantized);
+            c_data[i] = ((float)quantized - (float)c_out_zp) * c_out_scale;
+        }
+    }
+
+    /* Update statistics */
+    ctx->stats.total_steps++;
+
+    nimcp_mutex_unlock(ctx->mutex);
     return 0;
 }
 

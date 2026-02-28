@@ -1202,19 +1202,26 @@ static double sample_tpe(tpe_sampler_t* sampler, double low, double high) {
 static void update_tpe(tpe_sampler_t* sampler, double value, double objective, bool is_good) {
     if (!sampler) return;
 
+    /* BUG FIX: Previously, realloc result was assigned directly to the array
+     * pointer AND count was incremented before the NULL check. If realloc
+     * returned NULL: (1) the old pointer was leaked, (2) count was wrong,
+     * (3) subsequent access would NULL-deref. Fix: use temp pointer, only
+     * commit on success. */
     if (is_good) {
-        sampler->num_good++;
-        sampler->good_values = nimcp_realloc(sampler->good_values,
-                                              sampler->num_good * sizeof(double));
-        if (sampler->good_values) {
-            sampler->good_values[sampler->num_good - 1] = value;
+        double* tmp = nimcp_realloc(sampler->good_values,
+                                     (sampler->num_good + 1) * sizeof(double));
+        if (tmp) {
+            sampler->good_values = tmp;
+            sampler->good_values[sampler->num_good] = value;
+            sampler->num_good++;
         }
     } else {
-        sampler->num_bad++;
-        sampler->bad_values = nimcp_realloc(sampler->bad_values,
-                                             sampler->num_bad * sizeof(double));
-        if (sampler->bad_values) {
-            sampler->bad_values[sampler->num_bad - 1] = value;
+        double* tmp = nimcp_realloc(sampler->bad_values,
+                                     (sampler->num_bad + 1) * sizeof(double));
+        if (tmp) {
+            sampler->bad_values = tmp;
+            sampler->bad_values[sampler->num_bad] = value;
+            sampler->num_bad++;
         }
     }
 }

@@ -50,6 +50,9 @@
 #include "cognitive/memory/core/nimcp_prime_signature.h"
 #include "core/brain/regions/mammillary/nimcp_mammillary.h"
 
+/* Loss history circular buffer size — must match brain_internal.h loss_history[10] */
+#define LOSS_HISTORY_SIZE 10
+
 #define LOG_MODULE "core_brain_learning"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
@@ -201,8 +204,8 @@ void nimcp_brain_learning_adapt_learning_rate(brain_t brain, float current_loss)
 
     // Store current loss in circular buffer
     brain->loss_history[brain->loss_history_index] = current_loss;
-    brain->loss_history_index = (brain->loss_history_index + 1) % 10;
-    if (brain->loss_history_count < 10) {
+    brain->loss_history_index = (brain->loss_history_index + 1) % LOSS_HISTORY_SIZE;
+    if (brain->loss_history_count < LOSS_HISTORY_SIZE) {
         brain->loss_history_count++;
     }
 
@@ -212,19 +215,23 @@ void nimcp_brain_learning_adapt_learning_rate(brain_t brain, float current_loss)
     }
 
     // Compute loss trend: recent avg vs older avg
+    // Use modular arithmetic to correctly index the circular buffer.
+    // Oldest entry is at loss_history_index (the next write position),
+    // so we walk forward from there using (head + offset) % capacity.
     float recent_avg = 0.0F;
     float older_avg = 0.0F;
     uint32_t half = brain->loss_history_count / 2;
+    uint32_t head = (brain->loss_history_index + LOSS_HISTORY_SIZE - brain->loss_history_count) % LOSS_HISTORY_SIZE;
 
-    // Older half
+    // Older half (oldest entries first)
     for (uint32_t i = 0; i < half; i++) {
-        older_avg += brain->loss_history[i];
+        older_avg += brain->loss_history[(head + i) % LOSS_HISTORY_SIZE];
     }
     older_avg /= half;
 
-    // Recent half
+    // Recent half (newest entries)
     for (uint32_t i = half; i < brain->loss_history_count; i++) {
-        recent_avg += brain->loss_history[i];
+        recent_avg += brain->loss_history[(head + i) % LOSS_HISTORY_SIZE];
     }
     recent_avg /= (brain->loss_history_count - half);
 
@@ -752,10 +759,13 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     if (brain->neuromodulator_system) {
         // Dopamine: based on expected reward (inverse of recent loss)
         float da_level = 0.5f; // baseline
-        if (brain->stats.total_learning_steps > 10) {
-            // Use loss trend: decreasing loss = positive prediction error = more DA
-            float loss_trend = brain->loss_history[0] - brain->loss_history[
-                (brain->stats.total_learning_steps - 1) % 10];
+        if (brain->loss_history_count >= LOSS_HISTORY_SIZE) {
+            // Use loss trend: compare oldest vs newest entry in circular buffer.
+            // Oldest entry is at loss_history_index (next write position).
+            // Newest entry is at (loss_history_index + LOSS_HISTORY_SIZE - 1) % LOSS_HISTORY_SIZE.
+            uint32_t oldest_idx = brain->loss_history_index;
+            uint32_t newest_idx = (brain->loss_history_index + LOSS_HISTORY_SIZE - 1) % LOSS_HISTORY_SIZE;
+            float loss_trend = brain->loss_history[oldest_idx] - brain->loss_history[newest_idx];
             if (loss_trend > 0.0f) {
                 da_level = fminf(1.0f, 0.5f + loss_trend * 2.0f); // Boost DA when improving
             } else {
@@ -2173,7 +2183,9 @@ static void* async_learn_thread(void* arg)
     nimcp_promise_destroy(ctx->promise);
     nimcp_free(ctx);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_learn_thread: operation failed");
+    /* BUG FIX: Previously unconditionally threw NIMCP_THROW_TO_IMMUNE here,
+     * which fired even on successful learning. Thread functions should just
+     * return; errors are already propagated via the promise/future. */
     return NULL;
 }
 

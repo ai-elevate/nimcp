@@ -973,12 +973,16 @@ class School:
             if stall > 10:
                 for agent in self.instructors:
                     if agent.config.domain == domain and agent.is_alive():
-                        if agent._forced_method is None:
-                            new_method = agent.method_stats.least_used_method()
-                            agent._forced_method = new_method
-                            agent._forced_method_remaining = agent.config.report_interval * 5
+                        forced_method_name = None
+                        with agent._method_lock:
+                            if agent._forced_method is None:
+                                new_method = agent.method_stats.least_used_method()
+                                agent._forced_method = new_method
+                                agent._forced_method_remaining = agent.config.report_interval * 5
+                                forced_method_name = new_method.value
+                        if forced_method_name is not None:
                             self.logger.log(f"[Metacognition] {domain}: stall={stall}, "
-                                            f"forcing method switch to {new_method.value}")
+                                            f"forcing method switch to {forced_method_name}")
                         break
 
             # Stall > 20: Flag consolidation + LR reset (called once after loop)

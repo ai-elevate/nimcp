@@ -345,6 +345,10 @@ class InstructorAgent(threading.Thread):
         self._prev_metacog_acc = 0.0
         self._forced_method: Optional[TeachingMethod] = None  # overrides select_method() when set
         self._forced_method_remaining = 0  # examples left under forced method
+        # Lock protecting _forced_method and _forced_method_remaining — written by
+        # both the instructor's own thread (metacognition) and the School coordinator
+        # thread (_metacognition_act).
+        self._method_lock = threading.Lock()
 
         # Phase 3: Self-assessment holdout
         self._holdout_buffer: List[Tuple[list, str]] = []  # (features, label)
@@ -519,11 +523,12 @@ class InstructorAgent(threading.Thread):
 
             # Select and execute teaching method
             # Phase 3: Respect forced method override from metacognition
-            method = self.method_stats.select_method(forced=self._forced_method)
-            if self._forced_method is not None:
-                self._forced_method_remaining -= 1
-                if self._forced_method_remaining <= 0:
-                    self._forced_method = None
+            with self._method_lock:
+                method = self.method_stats.select_method(forced=self._forced_method)
+                if self._forced_method is not None:
+                    self._forced_method_remaining -= 1
+                    if self._forced_method_remaining <= 0:
+                        self._forced_method = None
             correct, loss = self._execute_method(method, features, str(label),
                                                   domain, grade)
 
@@ -590,11 +595,12 @@ class InstructorAgent(threading.Thread):
             label = f"{domain}:{label}"
 
             grade = self._grade_example("", domain, source_name)
-            method = self.method_stats.select_method(forced=self._forced_method)
-            if self._forced_method is not None:
-                self._forced_method_remaining -= 1
-                if self._forced_method_remaining <= 0:
-                    self._forced_method = None
+            with self._method_lock:
+                method = self.method_stats.select_method(forced=self._forced_method)
+                if self._forced_method is not None:
+                    self._forced_method_remaining -= 1
+                    if self._forced_method_remaining <= 0:
+                        self._forced_method = None
             correct, loss = self._execute_method(method, features, str(label),
                                                   domain, grade)
 
@@ -659,11 +665,12 @@ class InstructorAgent(threading.Thread):
             label_val = f"{domain}:{example.get('answer', example.get('label', 0))}"
 
             grade = self._grade_example(text, domain, source_name)
-            method = self.method_stats.select_method(forced=self._forced_method)
-            if self._forced_method is not None:
-                self._forced_method_remaining -= 1
-                if self._forced_method_remaining <= 0:
-                    self._forced_method = None
+            with self._method_lock:
+                method = self.method_stats.select_method(forced=self._forced_method)
+                if self._forced_method is not None:
+                    self._forced_method_remaining -= 1
+                    if self._forced_method_remaining <= 0:
+                        self._forced_method = None
             correct, loss = self._execute_method(method, features, str(label_val),
                                                   domain, grade)
 
@@ -1905,15 +1912,18 @@ class InstructorAgent(threading.Thread):
             self._stall_count = 0
 
         # Stall > 10: Force method switch (try least-used method for exploration)
-        if self._stall_count > 10 and self._forced_method is None:
+        with self._method_lock:
+            should_force = (self._stall_count > 10 and self._forced_method is None)
+        if should_force:
             new_method = self.method_stats.least_used_method()
-            self._forced_method = new_method
-            self._forced_method_remaining = self.config.report_interval * 5  # 5 report cycles
+            with self._method_lock:
+                self._forced_method = new_method
+                self._forced_method_remaining = self.config.report_interval * 5  # 5 report cycles
             self._log_example({
                 "action": "METACOG_FORCE_METHOD",
                 "stall_count": self._stall_count,
                 "forced_to": new_method.value,
-                "duration": self._forced_method_remaining,
+                "duration": self.config.report_interval * 5,
             })
 
         # Stall > 20: Aggressive cosine LR restart (escape local minimum)

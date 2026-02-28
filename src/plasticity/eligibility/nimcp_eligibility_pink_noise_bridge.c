@@ -79,7 +79,7 @@ int elig_pink_noise_update(elig_pink_noise_bridge_t* bridge) {
         return -1;
     }
     if (!bridge->is_enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "elig_pink_noise_update: bridge is not enabled");
+        LOG_DEBUG("elig_pink_noise_update: bridge is not enabled");
         return -1;
     }
     if (!bridge->noise_gen) {

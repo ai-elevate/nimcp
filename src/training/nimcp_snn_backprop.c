@@ -27,6 +27,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -435,6 +436,122 @@ int snn_backprop_set_surrogate(
 // Lifecycle Functions (Stubs)
 //=============================================================================
 
+/**
+ * @brief Helper: Allocate activation buffer for recording forward pass state
+ */
+static activation_buffer_t* alloc_activation_buffer(
+    uint32_t timesteps, uint32_t batch_size, uint32_t n_neurons)
+{
+    activation_buffer_t* buf = nimcp_calloc(1, sizeof(activation_buffer_t));
+    if (!buf) return NULL;
+
+    buf->timesteps = timesteps;
+    buf->batch_size = batch_size;
+    buf->n_neurons = n_neurons;
+
+    uint32_t total = timesteps * batch_size * n_neurons;
+    if (total == 0) total = 1;
+
+    uint32_t dims[3] = { timesteps, batch_size, n_neurons };
+
+    buf->membrane_v = nimcp_tensor_create(dims, 3, NIMCP_DTYPE_F32);
+    buf->spikes = nimcp_tensor_create(dims, 3, NIMCP_DTYPE_F32);
+    buf->currents = nimcp_tensor_create(dims, 3, NIMCP_DTYPE_F32);
+    buf->thresholds = nimcp_tensor_create(dims, 3, NIMCP_DTYPE_F32);
+
+    if (!buf->membrane_v || !buf->spikes || !buf->currents || !buf->thresholds) {
+        if (buf->membrane_v) nimcp_tensor_destroy(buf->membrane_v);
+        if (buf->spikes) nimcp_tensor_destroy(buf->spikes);
+        if (buf->currents) nimcp_tensor_destroy(buf->currents);
+        if (buf->thresholds) nimcp_tensor_destroy(buf->thresholds);
+        nimcp_free(buf);
+        return NULL;
+    }
+
+    return buf;
+}
+
+/**
+ * @brief Helper: Free activation buffer
+ */
+static void free_activation_buffer(activation_buffer_t* buf) {
+    if (!buf) return;
+    if (buf->membrane_v) nimcp_tensor_destroy(buf->membrane_v);
+    if (buf->spikes) nimcp_tensor_destroy(buf->spikes);
+    if (buf->currents) nimcp_tensor_destroy(buf->currents);
+    if (buf->thresholds) nimcp_tensor_destroy(buf->thresholds);
+    nimcp_free(buf);
+}
+
+/**
+ * @brief Helper: Allocate gradient buffer
+ */
+static gradient_buffer_t* alloc_gradient_buffer(uint32_t n_synapses, uint32_t n_neurons) {
+    gradient_buffer_t* buf = nimcp_calloc(1, sizeof(gradient_buffer_t));
+    if (!buf) return NULL;
+
+    buf->accumulation_count = 0;
+
+    uint32_t syn_dims[1] = { n_synapses > 0 ? n_synapses : 1 };
+    uint32_t nrn_dims[1] = { n_neurons > 0 ? n_neurons : 1 };
+
+    buf->weight_grads = nimcp_tensor_create(syn_dims, 1, NIMCP_DTYPE_F32);
+    buf->threshold_grads = nimcp_tensor_create(nrn_dims, 1, NIMCP_DTYPE_F32);
+    buf->tau_grads = nimcp_tensor_create(nrn_dims, 1, NIMCP_DTYPE_F32);
+
+    if (!buf->weight_grads || !buf->threshold_grads || !buf->tau_grads) {
+        if (buf->weight_grads) nimcp_tensor_destroy(buf->weight_grads);
+        if (buf->threshold_grads) nimcp_tensor_destroy(buf->threshold_grads);
+        if (buf->tau_grads) nimcp_tensor_destroy(buf->tau_grads);
+        nimcp_free(buf);
+        return NULL;
+    }
+
+    return buf;
+}
+
+/**
+ * @brief Helper: Free gradient buffer
+ */
+static void free_gradient_buffer(gradient_buffer_t* buf) {
+    if (!buf) return;
+    if (buf->weight_grads) nimcp_tensor_destroy(buf->weight_grads);
+    if (buf->threshold_grads) nimcp_tensor_destroy(buf->threshold_grads);
+    if (buf->tau_grads) nimcp_tensor_destroy(buf->tau_grads);
+    nimcp_free(buf);
+}
+
+/**
+ * @brief Helper: Allocate eligibility trace buffer (for E-prop/RTRL)
+ */
+static eligibility_buffer_t* alloc_eligibility_buffer(
+    uint32_t n_synapses, const snn_eprop_config_t* eprop_cfg)
+{
+    eligibility_buffer_t* buf = nimcp_calloc(1, sizeof(eligibility_buffer_t));
+    if (!buf) return NULL;
+
+    buf->tau = eprop_cfg ? eprop_cfg->eligibility_tau : SNN_ELIGIBILITY_TAU_DEFAULT;
+    buf->dt = 1.0f;  /* Default 1ms timestep */
+
+    uint32_t dims[1] = { n_synapses > 0 ? n_synapses : 1 };
+    buf->eligibility = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+    if (!buf->eligibility) {
+        nimcp_free(buf);
+        return NULL;
+    }
+
+    return buf;
+}
+
+/**
+ * @brief Helper: Free eligibility trace buffer
+ */
+static void free_eligibility_buffer(eligibility_buffer_t* buf) {
+    if (!buf) return;
+    if (buf->eligibility) nimcp_tensor_destroy(buf->eligibility);
+    nimcp_free(buf);
+}
+
 snn_backprop_ctx_t* snn_backprop_create(
     snn_network_t* network,
     const snn_backprop_config_t* config
@@ -449,16 +566,90 @@ snn_backprop_ctx_t* snn_backprop_create(
     // Guard: Validate config
     if (snn_backprop_validate_config(config) != SNN_SUCCESS) {
         NIMCP_LOGGING_ERROR("Invalid configuration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_backprop_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_backprop_create: validation failed");
         return NULL;
     }
 
-    // TODO: Full implementation
-    NIMCP_LOGGING_INFO("SNN backprop trainer creation (stub)");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_IMPLEMENTED,
-        "snn_backprop_create: stub - full implementation pending");
+    /* Allocate context */
+    snn_backprop_ctx_t* ctx = nimcp_calloc(1, sizeof(snn_backprop_ctx_t));
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_backprop_create: failed to allocate context");
+        return NULL;
+    }
 
-    return NULL; // Stub return
+    /* Copy configuration */
+    memcpy(&ctx->config, config, sizeof(snn_backprop_config_t));
+
+    /* Store network reference */
+    ctx->network = network;
+
+    /* Create mutex for thread safety */
+    ctx->mutex = nimcp_mutex_create(NULL);
+    if (!ctx->mutex) {
+        NIMCP_LOGGING_WARN("snn_backprop_create: failed to create mutex, proceeding without");
+    }
+
+    /* Determine network dimensions from populations */
+    uint32_t total_neurons = 0;
+    uint32_t total_synapses = 0;
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        if (network->populations[p]) {
+            total_neurons += network->populations[p]->n_neurons;
+        }
+    }
+    /* Estimate synapses from neuron count (connectivity varies) */
+    total_synapses = total_neurons * 10;  /* rough estimate */
+    if (total_neurons == 0) total_neurons = 1;
+
+    /* Allocate activation buffers if needed for BPTT */
+    if (config->preallocate_buffers) {
+        uint32_t timesteps = config->bptt.unroll_steps;
+        if (timesteps == 0) timesteps = config->sequence_length;
+        if (timesteps == 0) timesteps = 50;
+
+        /* Cap timesteps to avoid excessive memory */
+        if (timesteps > 1000) timesteps = 1000;
+
+        uint32_t batch_size = config->batch_size;
+        if (batch_size == 0) batch_size = 1;
+
+        ctx->activations = alloc_activation_buffer(timesteps, batch_size, total_neurons);
+        if (!ctx->activations) {
+            NIMCP_LOGGING_WARN("snn_backprop_create: failed to allocate activation buffers, will allocate on demand");
+        }
+    }
+
+    /* Allocate gradient buffers */
+    ctx->gradients = alloc_gradient_buffer(total_synapses, total_neurons);
+    if (!ctx->gradients) {
+        NIMCP_LOGGING_WARN("snn_backprop_create: failed to allocate gradient buffers");
+    }
+
+    /* Allocate eligibility traces for E-prop/RTRL algorithms */
+    if (config->algorithm == SNN_TRAIN_EPROP ||
+        config->algorithm == SNN_TRAIN_RTRL) {
+        ctx->eligibility = alloc_eligibility_buffer(total_synapses, &config->eprop);
+        if (!ctx->eligibility) {
+            NIMCP_LOGGING_WARN("snn_backprop_create: failed to allocate eligibility traces");
+        }
+    }
+
+    /* Create gradient manager if configured */
+    if (config->use_gradient_manager) {
+        nimcp_gradient_manager_config_t gm_config = config->grad_manager_config;
+        ctx->grad_manager = nimcp_gradient_manager_create(&gm_config);
+        if (!ctx->grad_manager) {
+            NIMCP_LOGGING_WARN("snn_backprop_create: failed to create gradient manager");
+        }
+    }
+
+    /* Initialize statistics */
+    memset(&ctx->stats, 0, sizeof(snn_backprop_stats_t));
+
+    NIMCP_LOGGING_INFO("SNN backprop trainer created: %u neurons, %u synapses, algorithm=%d",
+                       total_neurons, total_synapses, (int)config->algorithm);
+
+    return ctx;
 }
 
 void snn_backprop_destroy(snn_backprop_ctx_t* ctx) {
@@ -467,8 +658,49 @@ void snn_backprop_destroy(snn_backprop_ctx_t* ctx) {
         return;
     }
 
-    // TODO: Free all resources
-    NIMCP_LOGGING_INFO("SNN backprop trainer destruction (stub)");
+    /* Free activation buffers */
+    if (ctx->activations) {
+        free_activation_buffer(ctx->activations);
+        ctx->activations = NULL;
+    }
+
+    /* Free gradient buffers */
+    if (ctx->gradients) {
+        free_gradient_buffer(ctx->gradients);
+        ctx->gradients = NULL;
+    }
+
+    /* Free eligibility traces */
+    if (ctx->eligibility) {
+        free_eligibility_buffer(ctx->eligibility);
+        ctx->eligibility = NULL;
+    }
+
+    /* Destroy gradient manager */
+    if (ctx->grad_manager) {
+        nimcp_gradient_manager_destroy(ctx->grad_manager);
+        ctx->grad_manager = NULL;
+    }
+
+    /* Destroy loss context */
+    if (ctx->loss_ctx) {
+        nimcp_loss_destroy(ctx->loss_ctx);
+        ctx->loss_ctx = NULL;
+    }
+
+    /* Destroy mutex */
+    if (ctx->mutex) {
+        nimcp_mutex_destroy(ctx->mutex);
+        ctx->mutex = NULL;
+    }
+
+    /* Free memory pool if allocated */
+    if (ctx->memory_pool) {
+        nimcp_free(ctx->memory_pool);
+        ctx->memory_pool = NULL;
+    }
+
+    nimcp_free(ctx);
 }
 
 int snn_backprop_reset(snn_backprop_ctx_t* ctx) {
@@ -479,8 +711,41 @@ int snn_backprop_reset(snn_backprop_ctx_t* ctx) {
         return SNN_ERROR_NULL_POINTER;
     }
 
-    // TODO: Reset state
-    NIMCP_LOGGING_INFO("SNN backprop trainer reset (stub)");
+    /* Zero out gradient buffers */
+    if (ctx->gradients) {
+        if (ctx->gradients->weight_grads) {
+            float* data = nimcp_tensor_data(ctx->gradients->weight_grads);
+            if (data) {
+                memset(data, 0, nimcp_tensor_numel(ctx->gradients->weight_grads) * sizeof(float));
+            }
+        }
+        if (ctx->gradients->threshold_grads) {
+            float* data = nimcp_tensor_data(ctx->gradients->threshold_grads);
+            if (data) {
+                memset(data, 0, nimcp_tensor_numel(ctx->gradients->threshold_grads) * sizeof(float));
+            }
+        }
+        if (ctx->gradients->tau_grads) {
+            float* data = nimcp_tensor_data(ctx->gradients->tau_grads);
+            if (data) {
+                memset(data, 0, nimcp_tensor_numel(ctx->gradients->tau_grads) * sizeof(float));
+            }
+        }
+        ctx->gradients->accumulation_count = 0;
+    }
+
+    /* Zero out eligibility traces */
+    if (ctx->eligibility && ctx->eligibility->eligibility) {
+        float* data = nimcp_tensor_data(ctx->eligibility->eligibility);
+        if (data) {
+            memset(data, 0, nimcp_tensor_numel(ctx->eligibility->eligibility) * sizeof(float));
+        }
+    }
+
+    /* Reset statistics */
+    memset(&ctx->stats, 0, sizeof(snn_backprop_stats_t));
+
+    NIMCP_LOGGING_INFO("SNN backprop trainer reset");
 
     return SNN_SUCCESS;
 }

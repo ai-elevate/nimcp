@@ -258,7 +258,7 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
                     spin_count++;
                     if (spin_count >= max_spins) {
                         atomic_fetch_add(&buffer->atomic_overflows, 1);  // THREAD SAFETY FIX
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "circular_buffer_push: capacity exceeded");
+                        LOG_DEBUG("circular_buffer_push: OVERFLOW_BLOCK timeout after %u spins", max_spins);
                         return false;  /* Timeout - prevent infinite loop */
                     }
                 }
@@ -266,9 +266,8 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
             }
 
             case OVERFLOW_ERROR:
-                // Report error
-                /* P3-MW-02 fix: Use NIMCP_ERROR_OUT_OF_RANGE instead of generic INVALID_PARAM */
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "circular_buffer_push: buffer full (OVERFLOW_ERROR strategy)");
+                // Report error — buffer full is an expected condition under OVERFLOW_ERROR strategy
+                LOG_DEBUG("circular_buffer_push: buffer full (OVERFLOW_ERROR strategy)");
                 return false;
         }
     }

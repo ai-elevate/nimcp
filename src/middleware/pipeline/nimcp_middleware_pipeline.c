@@ -270,7 +270,7 @@ bool middleware_pipeline_execute_stage(middleware_pipeline_t pipeline,
 
     pipeline_stage_config_t* stage = &pipeline->stages[stage_id];
     if (!stage->enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "middleware_pipeline_execute_stage: stage is disabled");
+        LOG_DEBUG("middleware_pipeline_execute_stage: stage %u is disabled", stage_id);
         return false;
     }
 

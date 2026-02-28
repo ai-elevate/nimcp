@@ -490,7 +490,7 @@ class StreamingTrainer:
                    f"({examples_this_epoch/epoch_time:.1f} examples/sec)")
 
     def _train_example(self, features: np.ndarray, label: str, metadata: Dict):
-        """Train on a single example"""
+        """Train on a single example using brain forward pass and loss computation."""
         domain = metadata.get('domain', 'unknown')
         modality = metadata.get('modality', 'unknown')
 
@@ -500,21 +500,37 @@ class StreamingTrainer:
         domain_stat = self.stats.domain_stats[domain]
         domain_stat.examples_trained += 1
 
-        # Simulate epistemic filtering
+        # Epistemic filtering: weight confidence by source quality
         is_opinion = metadata.get('is_opinion', False)
         epistemic_quality = 0.5 if is_opinion else 0.9
         domain_stat.epistemic_quality_sum += epistemic_quality
 
-        # Simulate novelty detection (curiosity)
-        novelty = random.uniform(0.0, 1.0)  # TODO: Get from brain
-        domain_stat.novelty_sum += novelty
+        if self.brain and NIMCP_AVAILABLE:
+            # Actual forward pass through the brain
+            features_list = features.tolist()
+            lr = self.config.learning_rate * epistemic_quality
 
-        # Simulate training loss
-        loss = random.uniform(0.1, 0.5)  # TODO: Get from brain.learn()
+            # Learn: returns (predicted_label, confidence)
+            result = self.brain.learn(features_list, label, lr)
+
+            # Compute loss from brain's internal loss tracker
+            loss = self.brain.get_last_loss()
+            if loss is None or not np.isfinite(loss):
+                loss = 1.0  # fallback for NaN/None
+
+            # Novelty from uncertainty — higher epistemic uncertainty = more novel
+            try:
+                unc = self.brain.get_uncertainty(features_list)
+                novelty = unc.get('epistemic', 0.5)
+            except Exception:
+                novelty = 0.5
+        else:
+            # Simulation fallback when brain is not available
+            loss = random.uniform(0.1, 0.5)
+            novelty = random.uniform(0.0, 1.0)
+
         domain_stat.total_loss += loss
-
-        # TODO: Actually call brain.learn(features, label)
-        # loss = self.brain.learn(features, label, confidence=epistemic_quality)
+        domain_stat.novelty_sum += novelty
 
     def _log_progress(self):
         """Log training progress"""
@@ -538,9 +554,14 @@ class StreamingTrainer:
 
     def _trigger_consolidation(self):
         """Trigger memory consolidation (sleep cycle)"""
-        logger.info("💤 Triggering memory consolidation (sleep cycle)...")
-        # TODO: Call brain.consolidate() or trigger sleep state
-        time.sleep(0.1)  # Simulate consolidation time
+        logger.info("Triggering memory consolidation (sleep cycle)...")
+        if self.brain and NIMCP_AVAILABLE:
+            try:
+                self.brain.consolidate(mode="auto")
+            except Exception as e:
+                logger.warning(f"Consolidation failed: {e}")
+        else:
+            time.sleep(0.1)  # Simulate consolidation time when no brain
 
     def _save_checkpoint(self):
         """Save training checkpoint"""

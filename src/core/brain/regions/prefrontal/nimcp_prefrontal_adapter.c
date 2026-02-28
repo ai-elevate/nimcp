@@ -1289,7 +1289,7 @@ bool prefrontal_learn_rule(prefrontal_adapter_t* adapter,
         return false;
     }
     if (!adapter->config.enable_rule_learning) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "prefrontal_learn_rule: rule learning is disabled");
+        LOG_DEBUG("prefrontal_learn_rule: rule learning is disabled");
         return false;
     }
 
