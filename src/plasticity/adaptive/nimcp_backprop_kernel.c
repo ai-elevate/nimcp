@@ -648,9 +648,9 @@ after_weight_update:
                     int act_type = (int)first_n->activation_type;
                     bool uniform = true;
 
-                    // Gather states + deltas into contiguous arrays
-                    float* gathered_states = (float*)nimcp_malloc(nsparse_prev * sizeof(float));
-                    float* gathered_deltas = (float*)nimcp_malloc(nsparse_prev * sizeof(float));
+                    // M-simd: Use pool allocator instead of heap in hot loop
+                    float* gathered_states = (float*)bp_alloc_hot_buffer(nsparse_prev * sizeof(float));
+                    float* gathered_deltas = (float*)bp_alloc_hot_buffer(nsparse_prev * sizeof(float));
 
                     if (gathered_states && gathered_deltas) {
                         for (uint32_t ai = 0; ai < nsparse_prev; ai++) {
@@ -679,13 +679,13 @@ after_weight_update:
                                 delta_prev[sparse_prev[ai]] = gathered_deltas[ai];
                             }
 
-                            nimcp_free(gathered_states);
-                            nimcp_free(gathered_deltas);
+                            bp_free_hot_buffer(gathered_states);
+                            bp_free_hot_buffer(gathered_deltas);
                             goto after_act_deriv;
                         }
                     }
-                    nimcp_free(gathered_states);
-                    nimcp_free(gathered_deltas);
+                    bp_free_hot_buffer(gathered_states);
+                    bp_free_hot_buffer(gathered_deltas);
                 }
             }
 

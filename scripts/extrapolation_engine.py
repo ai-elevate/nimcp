@@ -36,6 +36,7 @@ MODULES USED:
   Medulla:        medulla_get_arousal, medulla_get_circadian_efficiency
 """
 
+import logging
 import math
 import random
 import time
@@ -43,9 +44,11 @@ import threading
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +191,7 @@ class ExtrapolationEngine:
         start_time = time.time()
         reasoning_trace = []
         knowledge_sources = []
+        self._history_updated_this_call = False
 
         # NOTE: The lock is held for the entire 7-stage pipeline to ensure
         # generation history consistency.  Candidates produced by _stage_imagine
@@ -204,6 +208,13 @@ class ExtrapolationEngine:
             # Stage 2: RECALL — Retrieve relevant knowledge
             recalled = self._stage_recall(features, config, reasoning_trace)
             knowledge_sources.extend(recalled.get("sources", []))
+
+            # Cache recall decision for imagine stage
+            self._cached_recall_decision = None
+            for output in recalled.get("outputs", []):
+                if output.get("type") == "cognitive_decision":
+                    self._cached_recall_decision = output
+                    break
 
             # Stage 3: REASON — Chain reasoning on the seed
             reasoned = self._stage_reason(
@@ -277,14 +288,14 @@ class ExtrapolationEngine:
         if config.boost_arousal:
             try:
                 self.brain.medulla_boost_arousal(config.arousal_boost)
-            except (AttributeError, Exception):
+            except Exception:
                 pass
 
         # Prime working memory with the prompt context
         try:
             salience = 0.8 + 0.2 * config.temperature
             self.brain.working_memory_add(features[:64], salience)
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
         return features
@@ -317,7 +328,7 @@ class ExtrapolationEngine:
                 if label:
                     sources.append(f"decision:{label}")
                 trace.append(f"Cognitive recall: '{label}' (conf={conf:.2f}) — {explanation}")
-        except (AttributeError, Exception) as e:
+        except Exception as e:
             trace.append(f"Cognitive recall failed: {e}")
 
         # 2b: Domain-scoped predictions for context domains
@@ -336,7 +347,7 @@ class ExtrapolationEngine:
                     })
                     sources.append(f"domain:{domain}:{pred}")
                     trace.append(f"Domain recall [{domain}]: '{pred}' (conf={conf:.2f})")
-            except (AttributeError, Exception):
+            except Exception:
                 pass
 
         # 2c: Query knowledge base
@@ -346,7 +357,7 @@ class ExtrapolationEngine:
             if facts_found > 0:
                 sources.append(f"kb:{config.domain_context}:{facts_found}_facts")
                 trace.append(f"Knowledge base: {facts_found} relevant facts retrieved")
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
         # 2d: Read working memory
@@ -354,7 +365,7 @@ class ExtrapolationEngine:
             wm_stats = self.brain.working_memory_stats()
             if wm_stats and wm_stats[0] > 0:
                 trace.append(f"Working memory: {wm_stats[0]}/{wm_stats[1]} items active")
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
         # 2e: Curiosity — detect knowledge gaps
@@ -365,7 +376,7 @@ class ExtrapolationEngine:
                 if gap_list:
                     trace.append(f"Curiosity gaps: {len(gap_list)} gaps detected")
                     sources.append(f"curiosity:{len(gap_list)}_gaps")
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
         return {
@@ -388,7 +399,7 @@ class ExtrapolationEngine:
             try:
                 self.brain.ti_add_fact(prompt[:200], 0.9)
                 trace.append("Seeded reasoning engine with prompt")
-            except (AttributeError, Exception):
+            except Exception:
                 pass
 
         # 3b: Forward chaining — derive new facts from existing knowledge
@@ -397,7 +408,7 @@ class ExtrapolationEngine:
             reasoning_results["forward_chain"] = inferences
             if inferences > 0:
                 trace.append(f"Forward chaining: {inferences} new inferences derived")
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
         # 3c: Backward chaining — try to prove the prompt as a goal
@@ -406,7 +417,7 @@ class ExtrapolationEngine:
                 goal_conf = self.brain.ti_backward_chain(prompt[:200])
                 reasoning_results["backward_chain"] = goal_conf
                 trace.append(f"Backward chaining: goal confidence={goal_conf:.3f}")
-            except (AttributeError, Exception):
+            except Exception:
                 pass
 
         # 3d: General reasoning query
@@ -414,7 +425,7 @@ class ExtrapolationEngine:
             reason_conf = self.brain.ti_reason(prompt[:200])
             reasoning_results["reason_confidence"] = reason_conf
             trace.append(f"Reasoning query: confidence={reason_conf:.3f}")
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
         # 3e: Check cognitive capacity and urgency
@@ -423,7 +434,7 @@ class ExtrapolationEngine:
             reasoning_results["cognitive_capacity"] = capacity
             if capacity < 0.3:
                 trace.append(f"WARNING: Low cognitive capacity ({capacity:.2f})")
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
         # 3f: Basal ganglia conflict detection (competing hypotheses)
@@ -433,7 +444,7 @@ class ExtrapolationEngine:
             if conflict > 0.5:
                 trace.append(f"High conflict detected ({conflict:.2f}) — "
                              "competing hypotheses")
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
         return reasoning_results
@@ -456,7 +467,7 @@ class ExtrapolationEngine:
                 base_output = np.array(raw_output, dtype=np.float32)
             else:
                 base_output = np.zeros(self._num_outputs, dtype=np.float32)
-        except (AttributeError, Exception):
+        except Exception:
             base_output = np.zeros(self._num_outputs, dtype=np.float32)
 
         for i in range(config.num_candidates):
@@ -496,7 +507,7 @@ class ExtrapolationEngine:
                 avg_novelty = np.mean([c.get("novelty", 0.5) for c in candidates])
                 self.brain.release_dopamine(
                     config.dopamine_reward * avg_novelty, 0.3)
-            except (AttributeError, Exception):
+            except Exception:
                 pass
 
         return candidates
@@ -506,7 +517,11 @@ class ExtrapolationEngine:
                              trace: list) -> Optional[Dict]:
         """Extrapolate by extending the output distribution beyond observed patterns."""
         try:
-            decision = self.brain.decide_full(features)
+            # Use cached decision from recall stage if available
+            if hasattr(self, '_cached_recall_decision') and self._cached_recall_decision:
+                decision = self._cached_recall_decision
+            else:
+                decision = self.brain.decide_full(features)
             if not decision:
                 return None
 
@@ -536,7 +551,8 @@ class ExtrapolationEngine:
                 "novelty": self._compute_novelty(output_arr),
                 "candidate_idx": idx,
             }
-        except Exception:
+        except Exception as e:
+            logger.debug(f"_imagine_extrapolate failed: {e}")
             return None
 
     def _imagine_interpolate(self, features: list,
@@ -574,11 +590,16 @@ class ExtrapolationEngine:
                 blended = (feat_arr * alpha + cent_arr * (1 - alpha)).tolist()
             else:
                 # Fallback: perturb features with noise
+                alpha = 0.5  # Default blend ratio for noise-based fallback
                 feat_arr = np.array(features, dtype=np.float32)
                 noise = np.random.randn(len(features)).astype(np.float32) * 0.05
                 blended = (feat_arr + noise).tolist()
 
-            blended_decision = self.brain.decide_full(blended)
+            # Use cached decision from recall stage if available
+            if hasattr(self, '_cached_recall_decision') and self._cached_recall_decision:
+                blended_decision = self._cached_recall_decision
+            else:
+                blended_decision = self.brain.decide_full(blended)
             if not blended_decision:
                 return None
 
@@ -595,7 +616,8 @@ class ExtrapolationEngine:
                              [0.0] * self._num_outputs), dtype=np.float32)),
                 "candidate_idx": idx,
             }
-        except Exception:
+        except Exception as e:
+            logger.debug(f"_imagine_interpolate failed: {e}")
             return None
 
     def _imagine_analogize(self, features: list, base_output: np.ndarray,
@@ -615,7 +637,11 @@ class ExtrapolationEngine:
             except Exception:
                 pass
 
-            decision = self.brain.decide_full(features)
+            # Use cached decision from recall stage if available
+            if hasattr(self, '_cached_recall_decision') and self._cached_recall_decision:
+                decision = self._cached_recall_decision
+            else:
+                decision = self.brain.decide_full(features)
             if not decision:
                 return None
 
@@ -633,7 +659,8 @@ class ExtrapolationEngine:
                              [0.0] * self._num_outputs), dtype=np.float32)),
                 "candidate_idx": idx,
             }
-        except Exception:
+        except Exception as e:
+            logger.debug(f"_imagine_analogize failed: {e}")
             return None
 
     def _imagine_hypothesize(self, features: list, reasoned: Dict,
@@ -641,7 +668,11 @@ class ExtrapolationEngine:
                              trace: list) -> Optional[Dict]:
         """Generate hypotheses using causal reasoning + reasoning engine."""
         try:
-            decision = self.brain.decide_full(features)
+            # Use cached decision from recall stage if available
+            if hasattr(self, '_cached_recall_decision') and self._cached_recall_decision:
+                decision = self._cached_recall_decision
+            else:
+                decision = self.brain.decide_full(features)
             if not decision:
                 return None
 
@@ -674,7 +705,8 @@ class ExtrapolationEngine:
                              [0.0] * self._num_outputs), dtype=np.float32)),
                 "candidate_idx": idx,
             }
-        except Exception:
+        except Exception as e:
+            logger.debug(f"_imagine_hypothesize failed: {e}")
             return None
 
     def _imagine_synthesize(self, features: list, base_output: np.ndarray,
@@ -694,7 +726,11 @@ class ExtrapolationEngine:
                 except Exception:
                     pass
 
-            decision = self.brain.decide_full(features)
+            # Use cached decision from recall stage if available
+            if hasattr(self, '_cached_recall_decision') and self._cached_recall_decision:
+                decision = self._cached_recall_decision
+            else:
+                decision = self.brain.decide_full(features)
             if not decision:
                 return None
 
@@ -710,7 +746,8 @@ class ExtrapolationEngine:
                              [0.0] * self._num_outputs), dtype=np.float32)),
                 "candidate_idx": idx,
             }
-        except Exception:
+        except Exception as e:
+            logger.debug(f"_imagine_synthesize failed: {e}")
             return None
 
     # ------------------------------------------------------------------
@@ -727,8 +764,21 @@ class ExtrapolationEngine:
         unc = None
         try:
             unc = self.brain.get_uncertainty(features)
-        except (AttributeError, Exception):
+        except Exception:
             pass
+
+        # Pre-compute brain-state-dependent values (invariant across candidates)
+        try:
+            self_assess_result = self.brain.self_assess(config.domain_context or "general")
+        except Exception:
+            self_assess_result = None
+
+        pac_mod = None
+        if config.use_oscillations:
+            try:
+                pac_mod = self.brain.get_pac_modulation(6.0, 40.0)
+            except Exception:
+                pass
 
         for candidate in candidates:
             score = 0.0
@@ -750,29 +800,19 @@ class ExtrapolationEngine:
                 uncertainty_scores["aleatoric"] = aleatoric
                 # Moderate epistemic uncertainty is GOOD for generation
                 # (too low = memorized, too high = random)
-                optimal_uncertainty = 1.0 - abs(epistemic - 0.4) / 0.6
+                optimal_uncertainty = max(0.0, 1.0 - abs(epistemic - 0.4) / 0.6)
                 score += 0.2 * optimal_uncertainty
 
-            # 5d: Self-assessment
-            try:
-                self_assess = self.brain.self_assess(
-                    config.domain_context or "general")
-                if self_assess:
-                    self_conf = self_assess.get("confidence", 0.5)
-                    score += 0.15 * self_conf
-                    uncertainty_scores["self_assessment"] = self_conf
-            except (AttributeError, Exception):
-                pass
+            # 5d: Self-assessment (pre-computed)
+            if self_assess_result:
+                self_conf = self_assess_result.get("confidence", 0.5)
+                score += 0.15 * self_conf
+                uncertainty_scores["self_assessment"] = self_conf
 
-            # 5e: Phase coherence (binding quality)
-            if config.use_oscillations:
-                try:
-                    pac = self.brain.get_pac_modulation(6.0, 40.0)
-                    if pac > 0:
-                        score += 0.1 * pac
-                        uncertainty_scores["phase_amplitude_coupling"] = pac
-                except (AttributeError, Exception):
-                    pass
+            # 5e: Phase coherence (binding quality, pre-computed)
+            if pac_mod is not None and pac_mod > 0:
+                score += 0.1 * pac_mod
+                uncertainty_scores["phase_amplitude_coupling"] = pac_mod
 
             candidate["score"] = score
             candidate["uncertainty"] = uncertainty_scores
@@ -814,7 +854,7 @@ class ExtrapolationEngine:
                         best["score"] = best.get("score", 0) * (1 + 0.1 * coherence)
                     trace.append(f"Mesh: {participants} participants, "
                                  f"coherence={coherence:.2f}")
-            except (AttributeError, Exception):
+            except Exception:
                 pass
 
         # 6b: Global workspace broadcast — compete for conscious access
@@ -835,7 +875,7 @@ class ExtrapolationEngine:
             else:
                 best["workspace_broadcast"] = False
                 trace.append("Global workspace: another module won broadcast")
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
         # 6c: Basal ganglia reward prediction error
@@ -846,7 +886,7 @@ class ExtrapolationEngine:
             best["dopamine_level"] = dopamine
             if rpe > 0:
                 trace.append(f"Positive RPE ({rpe:.3f}) — novel and better than expected")
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
         # 6d: Safety check
@@ -858,7 +898,7 @@ class ExtrapolationEngine:
                     if safety and not safety.get("is_safe", True):
                         best["safety_flag"] = safety.get("reason", "unsafe")
                         trace.append(f"Safety flag: {safety.get('reason', 'unsafe')}")
-            except (AttributeError, Exception):
+            except Exception:
                 pass
 
         return candidates
@@ -944,9 +984,10 @@ class ExtrapolationEngine:
                                      config: ExtrapolationConfig):
         """Integrate generated knowledge back into brain."""
         try:
-            # Add generated content as new fact
-            content_str = str(result.content.get("primary_output", ""))[:200]
-            self.brain.ti_add_fact(content_str, result.confidence)
+            # Only add high-confidence content to KB
+            if result.confidence >= 0.5:
+                content_str = str(result.content.get("primary_output", ""))[:200]
+                self.brain.ti_add_fact(content_str, result.confidence)
 
             # Reward signal for successful generation
             if result.confidence > config.confidence_threshold:
@@ -954,7 +995,7 @@ class ExtrapolationEngine:
 
             # Light consolidation
             self.brain.consolidate(mode="light")
-        except (AttributeError, Exception):
+        except Exception:
             pass
 
     # ------------------------------------------------------------------
@@ -977,7 +1018,9 @@ class ExtrapolationEngine:
     def _compute_novelty(self, output: np.ndarray) -> float:
         """Compute novelty score: how different is this from previous generations."""
         if not self._generation_history:
-            self._generation_history.append(output.copy())
+            if not self._history_updated_this_call:
+                self._generation_history.append(output.copy())
+                self._history_updated_this_call = True
             return 1.0  # First generation is maximally novel
 
         # Cosine distance to all previous outputs
@@ -991,12 +1034,15 @@ class ExtrapolationEngine:
             if prev_norm < 1e-8:
                 continue
             sim = float(np.dot(output, prev) / (norm * prev_norm))
+            sim = np.clip(sim, -1.0, 1.0)
             max_sim = max(max_sim, sim)
 
-        # Track this output
-        self._generation_history.append(output.copy())
-        if len(self._generation_history) > self._max_history:
-            self._generation_history.pop(0)
+        # Track this output (once per generation call, not per candidate)
+        if not self._history_updated_this_call:
+            self._generation_history.append(output.copy())
+            self._history_updated_this_call = True
+            if len(self._generation_history) > self._max_history:
+                self._generation_history.pop(0)
 
         # Novelty = 1 - max similarity to previous
         return max(0.0, 1.0 - max_sim) if max_sim >= 0.0 else 1.0
@@ -1027,46 +1073,46 @@ class ExtrapolationEngine:
         state = {}
         try:
             state["arousal"] = self.brain.medulla_get_arousal()
-        except (AttributeError, Exception):
+        except Exception:
             pass
         try:
             state["dopamine"] = self.brain.bg_get_dopamine()
-        except (AttributeError, Exception):
+        except Exception:
             pass
         try:
             state["circadian_efficiency"] = self.brain.medulla_get_circadian_efficiency()
-        except (AttributeError, Exception):
+        except Exception:
             pass
         try:
             state["cognitive_capacity"] = self.brain.ti_get_cognitive_capacity()
-        except (AttributeError, Exception):
+        except Exception:
             pass
         try:
             state["stress_level"] = self.brain.ti_get_stress_level()
-        except (AttributeError, Exception):
+        except Exception:
             pass
         try:
             state["urgency_mode"] = self.brain.ti_get_urgency_mode()
-        except (AttributeError, Exception):
+        except Exception:
             pass
         try:
             state["bg_mode"] = self.brain.bg_get_mode()
-        except (AttributeError, Exception):
+        except Exception:
             pass
         try:
             state["rpe"] = self.brain.bg_get_rpe()
-        except (AttributeError, Exception):
+        except Exception:
             pass
         try:
             if self.brain.ti_mesh_is_available():
                 state["mesh_coherence"] = self.brain.ti_mesh_get_coherence()
                 state["mesh_participants"] = self.brain.ti_mesh_get_participant_count()
-        except (AttributeError, Exception):
+        except Exception:
             pass
         try:
             pac = self.brain.get_pac_modulation(6.0, 40.0)
             state["theta_gamma_coupling"] = pac
-        except (AttributeError, Exception):
+        except Exception:
             pass
         return state
 

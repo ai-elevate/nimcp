@@ -29,7 +29,7 @@ target_include_directories(unit_test_training_integration_hub
         ${PROJECT_SOURCE_DIR}/src
 )
 
-target_compile_features(unit_test_training_integration_hub PRIVATE cxx_std_17)
+target_compile_features(unit_test_training_integration_hub PRIVATE cxx_std_20)
 
 gtest_discover_tests(unit_test_training_integration_hub
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -70,7 +70,7 @@ target_include_directories(unit_test_training_symbolic_logic_hub_bridge
         ${PROJECT_SOURCE_DIR}/src
 )
 
-target_compile_features(unit_test_training_symbolic_logic_hub_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_test_training_symbolic_logic_hub_bridge PRIVATE cxx_std_20)
 
 gtest_discover_tests(unit_test_training_symbolic_logic_hub_bridge
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

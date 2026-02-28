@@ -551,14 +551,7 @@ bool adaptive_network_get_connection_count(adaptive_network_t network, uint32_t 
 bool adaptive_network_get_total_weight(adaptive_network_t network, uint32_t neuron_id,
                                        float* total_weight);
 
-/**
- * @brief Get network base handle for direct access
- * WARNING: For internal use by consciousness subsystems only
- *
- * @param network Adaptive network
- * @return Base neural network handle (do not free!)
- */
-neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
+// M-duplicate-decl: Second declaration removed — see line 221 for the canonical declaration.
 
 //=============================================================================
 // GPU Inference Accessors

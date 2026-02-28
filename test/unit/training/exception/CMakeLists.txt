@@ -15,11 +15,11 @@ target_compile_features(unit_training_exception_handling PRIVATE cxx_std_20)
 
 target_link_libraries(unit_training_exception_handling
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 

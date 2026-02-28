@@ -20,13 +20,16 @@ Teaching Methods:
 
 Modalities: text, audio, visual, speech
 """
+from __future__ import annotations
 
 import hashlib
 import heapq
 import json
+import logging
 import math
 import os
 import random
+import re
 import threading
 import time
 from collections import deque
@@ -36,6 +39,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 from socratic_trainer import SocraticTrainer, SocraticConfig
 from cognitive_orchestrator import CognitiveOrchestrator
@@ -419,12 +424,18 @@ class InstructorAgent(threading.Thread):
             if result is None:
                 continue
 
-            features, label = result
+            _, label = result
             # Domain-prefix label to prevent cross-domain collision
             label = f"{domain}:{label}"
 
-            # Grade data quality
+            # C1: Use hybrid features instead of pure n-gram from processor
             text = self._extract_text(example)
+            if not text or not text.strip():
+                continue
+            self._feature_step_count += 1
+            features = _text_to_features(text, self.num_inputs, self._feature_step_count)
+
+            # Grade data quality
             grade = self._grade_example(text, domain, source_name)
 
             # Select and execute teaching method
@@ -632,7 +643,7 @@ class InstructorAgent(threading.Thread):
         loss_volatility = (sum((l - mean_loss) ** 2 for l in losses) / len(losses)) ** 0.5
 
         mean_grad = sum(grads) / len(grads)
-        gradient_variance = (sum((g - mean_grad) ** 2 for g in grads) / len(grads)) ** 0.5
+        gradient_std = (sum((g - mean_grad) ** 2 for g in grads) / len(grads)) ** 0.5
 
         # Get current LR from the unified pipeline (use actual base_lr, not hardcoded)
         current_lr = self.cognitive.compute_adaptive_lr(self._lr_scheduler.base_lr)
@@ -640,7 +651,7 @@ class InstructorAgent(threading.Thread):
         decision = self.cognitive.compute_decision_cycle(
             loss_current, loss_previous,
             grad_norm, grad_norm_previous,
-            loss_volatility, gradient_variance,
+            loss_volatility, gradient_std,
             current_lr, 32.0)
 
         if decision is not None:
@@ -751,6 +762,9 @@ class InstructorAgent(threading.Thread):
                         label: str, domain: str,
                         grade: Optional[DataGrade]) -> Tuple[bool, float]:
         """Execute a teaching method with dynamic learning hooks."""
+        # H3: Step scheduler once per example (not inside get_lr)
+        self._lr_scheduler.step()
+
         conf_mod = grade.confidence_modifier if grade else 1.0
 
         # C4: Capture pre-prediction BEFORE learning so confidence reflects
@@ -759,6 +773,7 @@ class InstructorAgent(threading.Thread):
             pre_pred_label, pre_conf = self._predict_domain(features, domain)
             pre_correct = (pre_pred_label == label)
         except Exception:
+            pre_pred_label = None
             pre_conf = 0.5
             pre_correct = False
 
@@ -780,25 +795,27 @@ class InstructorAgent(threading.Thread):
         self._update_domain_centroid(features)
 
         # Phase 3: Collect holdout samples for self-assessment
+        # H1: Holdout examples are NOT trained on — keeps self-assessment unbiased
         if random.random() < 0.02:  # 2% holdout rate
             self._maybe_collect_holdout(features, label)
+            return True, 0.0  # holdout example, don't train on it
 
         if method == TeachingMethod.SOCRATIC:
-            result = self._method_socratic(features, label, domain, conf_mod)
+            result = self._method_socratic(features, label, domain, conf_mod, pre_pred=pre_pred_label, pre_conf=pre_conf)
         elif method == TeachingMethod.CURRICULUM:
-            result = self._method_curriculum(features, label, domain, conf_mod)
+            result = self._method_curriculum(features, label, domain, conf_mod, pre_pred=pre_pred_label, pre_conf=pre_conf)
         elif method == TeachingMethod.CONTRASTIVE:
-            result = self._method_contrastive(features, label, domain, conf_mod)
+            result = self._method_contrastive(features, label, domain, conf_mod, pre_pred=pre_pred_label, pre_conf=pre_conf)
         elif method == TeachingMethod.DEBATE:
-            result = self._method_debate(features, label, domain, conf_mod)
+            result = self._method_debate(features, label, domain, conf_mod, pre_pred=pre_pred_label, pre_conf=pre_conf)
         elif method == TeachingMethod.META:
-            result = self._method_meta(features, label, domain, conf_mod)
+            result = self._method_meta(features, label, domain, conf_mod, pre_pred=pre_pred_label, pre_conf=pre_conf)
         elif method == TeachingMethod.ADVERSARIAL:
-            result = self._method_adversarial(features, label, domain, conf_mod)
+            result = self._method_adversarial(features, label, domain, conf_mod, pre_pred=pre_pred_label, pre_conf=pre_conf)
         elif method == TeachingMethod.ANALOGICAL:
-            result = self._method_analogical(features, label, domain, conf_mod)
+            result = self._method_analogical(features, label, domain, conf_mod, pre_pred=pre_pred_label, pre_conf=pre_conf)
         else:
-            result = self._method_socratic(features, label, domain, conf_mod)
+            result = self._method_socratic(features, label, domain, conf_mod, pre_pred=pre_pred_label, pre_conf=pre_conf)
 
         # Enhancement #6: Record difficulty with confidence trajectory
         correct, loss = result
@@ -813,14 +830,24 @@ class InstructorAgent(threading.Thread):
         # C4: Use pre-prediction confidence captured before learning
         info['conf_history'].append(pre_conf)
 
+        # H4: Evict oldest entries to prevent unbounded growth
+        if len(self._example_difficulty) > 50000:
+            keys_to_remove = list(self._example_difficulty.keys())[:10000]
+            for k in keys_to_remove:
+                del self._example_difficulty[k]
+
         # H3: Track recent results for rolling accuracy
         self._recent_results.append(correct)
 
         return result
 
-    def _method_socratic(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
+    def _method_socratic(self, features, label, domain, conf_mod,
+                         pre_pred=None, pre_conf=None) -> Tuple[bool, float]:
         """Predict-before-learn with adaptive confidence + spaced replay."""
-        pred, conf = self._predict_domain(features, domain)
+        if pre_pred is not None:
+            pred, conf = pre_pred, pre_conf
+        else:
+            pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Phase 3: Skip easy examples at high mastery
@@ -852,9 +879,13 @@ class InstructorAgent(threading.Thread):
 
         return correct, loss
 
-    def _method_curriculum(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
+    def _method_curriculum(self, features, label, domain, conf_mod,
+                           pre_pred=None, pre_conf=None) -> Tuple[bool, float]:
         """Difficulty-ordered: skip easy examples as difficulty ramps."""
-        pred, conf = self._predict_domain(features, domain)
+        if pre_pred is not None:
+            pred, conf = pre_pred, pre_conf
+        else:
+            pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Skip if brain already knows AND difficulty is still low
@@ -868,9 +899,13 @@ class InstructorAgent(threading.Thread):
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
-    def _method_contrastive(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
+    def _method_contrastive(self, features, label, domain, conf_mod,
+                            pre_pred=None, pre_conf=None) -> Tuple[bool, float]:
         """Learn what things are NOT — teach with negative examples."""
-        pred, conf = self._predict_domain(features, domain)
+        if pre_pred is not None:
+            pred, conf = pre_pred, pre_conf
+        else:
+            pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Teach the correct label
@@ -887,10 +922,14 @@ class InstructorAgent(threading.Thread):
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
-    def _method_debate(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
+    def _method_debate(self, features, label, domain, conf_mod,
+                       pre_pred=None, pre_conf=None) -> Tuple[bool, float]:
         """Two perspectives (original + noisy) argue, brain resolves."""
         # Perspective 1: original features
-        pred1, conf1 = self._predict_domain(features, domain)
+        if pre_pred is not None:
+            pred1, conf1 = pre_pred, pre_conf
+        else:
+            pred1, conf1 = self._predict_domain(features, domain)
 
         # Perspective 2: perturbed features (different viewpoint)
         noise_level = self.config.debate_noise_level
@@ -911,9 +950,13 @@ class InstructorAgent(threading.Thread):
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
-    def _method_meta(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
+    def _method_meta(self, features, label, domain, conf_mod,
+                     pre_pred=None, pre_conf=None) -> Tuple[bool, float]:
         """Meta-learning: adapt method weights based on performance."""
-        pred, conf = self._predict_domain(features, domain)
+        if pre_pred is not None:
+            pred, conf = pre_pred, pre_conf
+        else:
+            pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Use mastery to set learning rate
@@ -926,7 +969,8 @@ class InstructorAgent(threading.Thread):
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
-    def _method_adversarial(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
+    def _method_adversarial(self, features, label, domain, conf_mod,
+                            pre_pred=None, pre_conf=None) -> Tuple[bool, float]:
         """Adversarial training: find minimal perturbation that flips prediction, then train on it.
 
         WARNING: ~40x more expensive than socratic method due to binary search
@@ -936,7 +980,10 @@ class InstructorAgent(threading.Thread):
         features_arr = np.array(features, dtype=np.float32)
 
         # Step 1: Get current prediction
-        pred, conf = self._predict_domain(features, domain)
+        if pre_pred is not None:
+            pred, conf = pre_pred, pre_conf
+        else:
+            pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Phase 3: Skip easy examples at high mastery
@@ -1011,8 +1058,8 @@ class InstructorAgent(threading.Thread):
                 )
                 # Push to spaced replay — adversarial examples are high-value
                 self._spaced_replay_push(best_adversarial.tolist(), label)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Learn failed: {e}")
         else:
             # No adversarial found — fallback: add random noise
             noise = np.random.normal(
@@ -1026,8 +1073,8 @@ class InstructorAgent(threading.Thread):
                 self.brain.learn(
                     noisy_features.tolist(), scoped_label, self._modulate_lr(lr)
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Learn failed: {e}")
 
         # Periodically re-teach hard examples from adversarial bank
         if (self.total_examples % 200 == 0 and self.adversarial_bank
@@ -1043,9 +1090,13 @@ class InstructorAgent(threading.Thread):
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
-    def _method_analogical(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
+    def _method_analogical(self, features, label, domain, conf_mod,
+                           pre_pred=None, pre_conf=None) -> Tuple[bool, float]:
         """Cross-domain transfer via blending with cross-domain exemplar."""
-        pred, conf = self._predict_domain(features, domain)
+        if pre_pred is not None:
+            pred, conf = pre_pred, pre_conf
+        else:
+            pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.7 * conf_mod))
@@ -1062,8 +1113,8 @@ class InstructorAgent(threading.Thread):
                         for f, e in zip(features, ex_feats)
                     ]
                     self.brain.learn(blended, self._scope_target_to_domain(label), self._modulate_lr(0.4 * conf_mod))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Learn failed: {e}")
 
         loss = 0.0 if correct else (1.0 - conf)
         self._update_metrics_and_decide(loss)
@@ -1090,7 +1141,7 @@ class InstructorAgent(threading.Thread):
         audio = example.get("audio")
         if audio and isinstance(audio, dict):
             samples = audio.get("array", [])
-            if isinstance(samples, list) and len(samples) > 0:
+            if isinstance(samples, (list, np.ndarray)) and len(samples) > 0:
                 try:
                     features = self.brain.audio_cortex_process(samples)
                     return _pad_or_truncate(features, self.num_inputs), label
@@ -1135,7 +1186,7 @@ class InstructorAgent(threading.Thread):
         audio = example.get("audio")
         if audio and isinstance(audio, dict):
             samples = audio.get("array", [])
-            if isinstance(samples, list) and len(samples) > 0:
+            if isinstance(samples, (list, np.ndarray)) and len(samples) > 0:
                 try:
                     features = self.brain.speech_cortex_process(samples)
                     return _pad_or_truncate(features, self.num_inputs), label
@@ -1398,7 +1449,7 @@ class InstructorAgent(threading.Thread):
             self._holdout_buffer.append((features, label))
         else:
             # Reservoir sampling
-            idx = random.randint(0, self.total_examples)
+            idx = random.randint(0, self.total_examples - 1)
             if idx < self._holdout_max:
                 self._holdout_buffer[idx] = (features, label)
 
@@ -1549,16 +1600,24 @@ class _CosineAnnealingLR:
         self.warmup_steps = warmup_steps
         self.step_count = 0
 
-    def get_lr(self) -> float:
+    def step(self):
+        """Advance scheduler by one step. Call once per example."""
         self.step_count += 1
+
+    def get_lr(self) -> float:
+        """Compute current LR factor without advancing step."""
         # Warmup phase
         if self.step_count <= self.warmup_steps:
             return self.min_lr + (self.base_lr - self.min_lr) * (
-                self.step_count / self.warmup_steps)
+                self.step_count / max(self.warmup_steps, 1))
         # Cosine annealing with warm restarts
         cycle_pos = (self.step_count - self.warmup_steps) % self.cycle_steps
         cosine_factor = 0.5 * (1.0 + math.cos(math.pi * cycle_pos / self.cycle_steps))
         return self.min_lr + (self.base_lr - self.min_lr) * cosine_factor
+
+    def peek_lr(self) -> float:
+        """Alias for get_lr — compute current LR factor without advancing step."""
+        return self.get_lr()
 
     def reset(self):
         self.step_count = 0
@@ -1629,8 +1688,6 @@ def _text_to_ngram_features(text: str, num_inputs: int) -> list:
     except ImportError:
         pass
     # Inline fallback — collision-free character n-gram encoding
-    import math as _math
-    import re as _re
     features = [0.0] * num_inputs
     if not text:
         return features
@@ -1775,7 +1832,7 @@ def _text_to_ngram_features(text: str, num_inputs: int) -> list:
     original = text[:4000]
     if meta_base + 14 < num_inputs:
         features[meta_base + 14] = sum(1 for c in original if c.isupper()) / max(len(original), 1)
-    numbers = _re.findall(r'\d+', text_lower)
+    numbers = re.findall(r'\d+', text_lower)
     if meta_base + 15 < num_inputs:
         features[meta_base + 15] = min(len(numbers) / 10.0, 1.0)
 
@@ -1804,7 +1861,7 @@ def _text_to_ngram_features(text: str, num_inputs: int) -> list:
             features[meta_base + 16 + d_idx] = min(overlap / 5.0, 1.0)
 
     remaining_start = meta_base + 24
-    vowel_clusters = len(_re.findall(r'[aeiou]+', text_lower))
+    vowel_clusters = len(re.findall(r'[aeiou]+', text_lower))
     if remaining_start < num_inputs:
         features[remaining_start] = min(vowel_clusters / max(n_words, 1) / 3.0, 1.0)
     if remaining_start + 1 < num_inputs:
@@ -1815,7 +1872,7 @@ def _text_to_ngram_features(text: str, num_inputs: int) -> list:
             if words else 0.5
         )
 
-    norm = _math.sqrt(sum(v * v for v in features))
+    norm = math.sqrt(sum(v * v for v in features))
     if norm > 0:
         features = [v / norm for v in features]
     return features

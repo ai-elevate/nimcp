@@ -50,10 +50,8 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 BUILD_PYTHON = PROJECT_ROOT / "build" / "lib" / "python"
 
 # Add Python bindings to path
-for p in [BUILD_PYTHON, PROJECT_ROOT / "build/lib/python"]:
-    if p.exists():
-        sys.path.insert(0, str(p))
-        break
+if BUILD_PYTHON.exists():
+    sys.path.insert(0, str(BUILD_PYTHON))
 
 # Add scripts dir for streaming_train imports
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -84,7 +82,7 @@ try:
     print("[Athena] Benchmark datasets loaded")
 except ImportError:
     BENCHMARKS_AVAILABLE = False
-    print("[Athena] WARNING: benchmark_datasets not found — Phase 1 skipped")
+    print("[Athena] WARNING: benchmark_datasets not found — Phase 0/1 skipped")
 
 # Streaming datasets (HuggingFace)
 HF_AVAILABLE = False
@@ -112,6 +110,16 @@ from active_learner import ActiveLearner
 
 print("[Athena] Socratic active learning layers loaded")
 
+
+def _pad_or_truncate(feats: list, target_len: int) -> list:
+    """Pad with zeros or truncate features to target length."""
+    if len(feats) < target_len:
+        return feats + [0.0] * (target_len - len(feats))
+    elif len(feats) > target_len:
+        return feats[:target_len]
+    return feats
+
+
 # Parallel school system
 try:
     from school import School, SchoolConfig
@@ -129,8 +137,12 @@ _shutdown_requested = False
 
 def _signal_handler(signum, frame):
     global _shutdown_requested
+    if _shutdown_requested:
+        logger_msg = "[Athena] Second signal received — forcing exit"
+        print(f"\n{logger_msg}")
+        sys.exit(1)
     _shutdown_requested = True
-    print(f"\n[Athena] Received signal {signum}, shutting down gracefully...")
+    print(f"\n[Athena] Signal {signum} received — graceful shutdown requested")
 
 
 signal.signal(signal.SIGINT, _signal_handler)
@@ -464,11 +476,7 @@ def health_check(brain, logger: "AthenaLogger", phase_name: str,
             sample = random.sample(examples, min(10, len(examples)))
             correct = 0
             for ex in sample:
-                feats = ex["features"]
-                if len(feats) < ATHENA_NUM_INPUTS:
-                    feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
-                elif len(feats) > ATHENA_NUM_INPUTS:
-                    feats = feats[:ATHENA_NUM_INPUTS]
+                feats = _pad_or_truncate(ex["features"], ATHENA_NUM_INPUTS)
                 expected = domain_label(ds_name, ex["label"])
                 try:
                     pred, conf = brain.predict_fast(feats)
@@ -604,11 +612,7 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
         examples = ds.get_examples()
         adapted = []
         for ex in examples:
-            feats = ex["features"]
-            if len(feats) < ATHENA_NUM_INPUTS:
-                feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
-            elif len(feats) > ATHENA_NUM_INPUTS:
-                feats = feats[:ATHENA_NUM_INPUTS]
+            feats = _pad_or_truncate(ex["features"], ATHENA_NUM_INPUTS)
             adapted.append({"features": feats,
                             "label": domain_label(domain_name, ex["label"])})
         all_datasets.append((domain_name, adapted))
@@ -653,7 +657,16 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
                 # Record for hard example mining — skip during warmup when
                 # loss estimates are unreliable
                 if scheduler.step_count > warmup_steps:
-                    estimated_loss = 1.0 - lr
+                    # H12: Use actual prediction error instead of LR proxy
+                    try:
+                        result = brain.predict_fast(ex["features"])
+                        if result is not None:
+                            pred, _ = result
+                            estimated_loss = 0.0 if str(pred) == str(ex["label"]) else 1.0
+                        else:
+                            estimated_loss = 0.5
+                    except Exception:
+                        estimated_loss = 0.5
                     hard_miner.record(ex["features"], str(ex["label"]), estimated_loss)
 
             # Replay hard examples at the end of each epoch
@@ -698,7 +711,16 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
                 brain.learn(ex["features"], str(ex["label"]), lr)
                 total_trained += 1
                 if scheduler.step_count > warmup_steps:
-                    estimated_loss = 1.0 - lr
+                    # H12: Use actual prediction error instead of LR proxy
+                    try:
+                        result = brain.predict_fast(ex["features"])
+                        if result is not None:
+                            pred, _ = result
+                            estimated_loss = 0.0 if str(pred) == str(ex["label"]) else 1.0
+                        else:
+                            estimated_loss = 0.5
+                    except Exception:
+                        estimated_loss = 0.5
                     hard_miner.record(ex["features"], str(ex["label"]), estimated_loss)
 
             replay_batch = hard_miner.get_replay_batch(batch_size=50)
@@ -893,11 +915,7 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
         examples = ds.get_examples()
         adapted = []
         for ex in examples:
-            feats = ex["features"]
-            if len(feats) < ATHENA_NUM_INPUTS:
-                feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
-            elif len(feats) > ATHENA_NUM_INPUTS:
-                feats = feats[:ATHENA_NUM_INPUTS]
+            feats = _pad_or_truncate(ex["features"], ATHENA_NUM_INPUTS)
             adapted.append({"features": feats,
                             "label": domain_label(domain_name, ex["label"])})
         all_datasets.append((domain_name, adapted))
@@ -907,34 +925,26 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
         examples = ds.get_examples()
         adapted = []
         for ex in examples:
-            feats = ex["features"]
-            if len(feats) < ATHENA_NUM_INPUTS:
-                feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
-            elif len(feats) > ATHENA_NUM_INPUTS:
-                feats = feats[:ATHENA_NUM_INPUTS]
+            feats = _pad_or_truncate(ex["features"], ATHENA_NUM_INPUTS)
             adapted.append({"features": feats,
                             "label": domain_label(domain_name, ex["label"])})
         all_datasets.append((domain_name, adapted))
 
-    nback_adapted = [{"features": ex["features"] + [0.0] * max(0, ATHENA_NUM_INPUTS - len(ex["features"])),
+    nback_adapted = [{"features": _pad_or_truncate(ex["features"], ATHENA_NUM_INPUTS),
                       "label": domain_label("nback", ex["label"])}
                      for ex in nback_examples]
     all_datasets.append(("nback", nback_adapted))
 
     ethics_adapted = []
     for s in ethics:
-        feats = s["features"]
-        if len(feats) < ATHENA_NUM_INPUTS:
-            feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
+        feats = _pad_or_truncate(s["features"], ATHENA_NUM_INPUTS)
         ethics_adapted.append({"features": feats,
                                "label": domain_label("ethics", s["category"])})
     all_datasets.append(("ethics", ethics_adapted))
 
     seq_adapted = []
     for s in seq_patterns:
-        feats = s["features"]
-        if len(feats) < ATHENA_NUM_INPUTS:
-            feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
+        feats = _pad_or_truncate(s["features"], ATHENA_NUM_INPUTS)
         seq_adapted.append({"features": feats,
                             "label": domain_label("sequences", str(s["position"] % 4))})
     all_datasets.append(("sequences", seq_adapted))
@@ -976,8 +986,8 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
                     accuracy=batch_accuracy,
                     expected=domain_expected,
                     domain=domain_name_for_bg)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.log(f"  Non-critical (BG update): {e}")
 
             # Forward chain to derive new facts (every 10k steps)
             if total_trained % 10000 < result["batch_size"]:
@@ -985,22 +995,22 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
                     new_facts = cognitive.forward_chain(max_iterations=100)
                     if new_facts > 0:
                         logger.log(f"  Forward chaining derived {new_facts} new facts")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.log(f"  Non-critical (forward chain): {e}")
 
             # Check if domain is habitual (mastery > 0.7)
             try:
                 cognitive.check_habit(domain)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.log(f"  Non-critical (habit check): {e}")
 
             # Refresh community cache every 10k steps
             if total_trained % 10000 < result["batch_size"]:
                 try:
                     cognitive.invalidate_community_cache()
                     cognitive.cache_communities()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.log(f"  Non-critical (community cache): {e}")
 
             if (epoch + 1) % 5 == 0 or epoch == 0:
                 logger.log(f"  Epoch {epoch+1:2d}/{PHASE1_EPOCHS}: "
@@ -1146,7 +1156,6 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
 
                 stream = iter(dataset)
                 count = 0
-                batch = []
 
                 while True:
                     if _shutdown_requested:
@@ -1424,6 +1433,9 @@ def phase3_research(brain, active_learner: ActiveLearner,
     logger.log(f"Domains eligible for research: {list(research_domains.keys())}")
 
     for domain, mastery in sorted(research_domains.items(), key=lambda x: -x[1]):
+        if _shutdown_requested:
+            logger.log("Shutdown requested, aborting phase")
+            break
         logger.log(f"\n--- Research: {domain} (mastery={mastery:.3f}) ---")
 
         # Curiosity generates research topics
@@ -1476,6 +1488,9 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
     if advanced_domains:
         logger.log(f"Creative exam domains: {list(advanced_domains.keys())}")
         for domain, mastery in advanced_domains.items():
+            if _shutdown_requested:
+                logger.log("Shutdown requested, aborting phase")
+                break
             logger.log(f"\n--- Creative Exam: {domain} (mastery={mastery:.3f}) ---")
             # Generate a few test prompts and self-grade
             dummy_features = [random.random() for _ in range(ATHENA_NUM_INPUTS)]
@@ -1552,15 +1567,14 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
         for domain_name, ds in consolidation_sets:
             examples = ds.get_examples()
             for ex in examples:
-                feats = ex["features"]
-                if len(feats) < ATHENA_NUM_INPUTS:
-                    feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
-                elif len(feats) > ATHENA_NUM_INPUTS:
-                    feats = feats[:ATHENA_NUM_INPUTS]
+                feats = _pad_or_truncate(ex["features"], ATHENA_NUM_INPUTS)
                 all_examples.append({"features": feats,
                                      "label": domain_label(domain_name, ex["label"])})
 
         for epoch in range(2):
+            if _shutdown_requested:
+                logger.log("Shutdown requested, aborting phase")
+                break
             batch = [(ex["features"], str(ex["label"])) for ex in all_examples]
             random.shuffle(batch)
             result = socratic.train_batch_socratic(batch, "final_consolidation")
@@ -1605,13 +1619,13 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
             correct = 0
             total = 0
             for ex in examples:
-                feats = ex["features"]
-                if len(feats) < ATHENA_NUM_INPUTS:
-                    feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
-                elif len(feats) > ATHENA_NUM_INPUTS:
-                    feats = feats[:ATHENA_NUM_INPUTS]
+                feats = _pad_or_truncate(ex["features"], ATHENA_NUM_INPUTS)
                 expected = domain_label(domain_name, ex["label"])
-                pred, conf = brain.predict_fast(feats)
+                result = brain.predict_fast(feats)
+                if result is None:
+                    total += 1
+                    continue
+                pred, conf = result
                 if pred == expected:
                     correct += 1
                 total += 1
@@ -1857,6 +1871,9 @@ def main():
 
     # Configure training pipeline (LR scheduler, regularization, gradient management)
     # Essential for effective training — especially for checkpoints from older saves
+    # NOTE: Python-side CosineAnnealingLR produces LR in [0.05, 0.5] passed to brain.learn().
+    # The C-level configure_training sets weight_decay and gradient clipping parameters
+    # but its learning_rate is overridden by the explicit LR in learn() calls.
     try:
         brain.configure_training(
             learning_rate=0.001,
@@ -1916,7 +1933,7 @@ def main():
             logger.log(f"  OK: predict returns result (decision={decision})")
 
         # 2. Verify learn works
-        brain.learn(test_input, "smoke:test_label")
+        brain.learn(test_input, "smoke:test_label", 0.1)
         logger.log("  OK: brain.learn() accepted input")
 
         # 3. Verify encoding pipeline (text, QA, image)

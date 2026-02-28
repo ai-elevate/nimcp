@@ -91,7 +91,7 @@ TEST_F(NeuromodulatorTest, InitialLevels) {
     /* WHAT: Test initial neuromodulator concentrations
      * WHY:  Should start at baseline values from config
      */
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     ASSERT_TRUE(neuromodulator_get_levels(system, &pool));
 
     EXPECT_FLOAT_EQ(neuromodulator_pool_get_dopamine(&pool), 0.3f);
@@ -106,7 +106,7 @@ TEST_F(NeuromodulatorTest, SetLevelDopamine) {
      */
     ASSERT_TRUE(neuromodulator_set_level(system, NEUROMOD_DOPAMINE, 0.8f));
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
     EXPECT_FLOAT_EQ(neuromodulator_pool_get_dopamine(&pool), 0.8f);
 }
@@ -117,7 +117,7 @@ TEST_F(NeuromodulatorTest, SetLevelBoundaryCheck) {
      */
     ASSERT_TRUE(neuromodulator_set_level(system, NEUROMOD_DOPAMINE, 1.5f));
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
     EXPECT_FLOAT_EQ(neuromodulator_pool_get_dopamine(&pool), 1.0f);  // Should clamp to 1.0
 
@@ -140,7 +140,7 @@ TEST_F(NeuromodulatorTest, DopamineDecay) {
     // Update for 2 seconds (one time constant, τ=2.0s)
     neuromodulator_update(system, 2.0f);
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     /* WHAT: Verify decay toward baseline (0.3)
@@ -160,7 +160,7 @@ TEST_F(NeuromodulatorTest, SerotoninSlowDecay) {
 
     neuromodulator_update(system, 2.0f);
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     // Serotonin τ=10s, so after 2s should be higher than dopamine τ=2s
@@ -176,7 +176,7 @@ TEST_F(NeuromodulatorTest, AcetylcholineFastDecay) {
 
     neuromodulator_update(system, 0.5f);
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     // ACh should decay faster than DA
@@ -196,7 +196,7 @@ TEST_F(NeuromodulatorTest, RewardPredictionErrorPositive) {
 
     EXPECT_GT(rpe, 0.0f);  // Positive RPE
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     EXPECT_GT(neuromodulator_pool_get_dopamine(&pool), config.baseline_dopamine);
@@ -210,7 +210,7 @@ TEST_F(NeuromodulatorTest, RewardPredictionErrorNegative) {
 
     EXPECT_LT(rpe, 0.0f);  // Negative RPE
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     EXPECT_LT(neuromodulator_pool_get_dopamine(&pool), config.baseline_dopamine);
@@ -225,7 +225,7 @@ TEST_F(NeuromodulatorTest, RewardPredictionErrorZero) {
 
     EXPECT_NEAR(rpe, 0.0f, 0.01f);
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     EXPECT_NEAR(neuromodulator_pool_get_dopamine(&pool), baseline, 0.05f);
@@ -243,7 +243,7 @@ TEST_F(NeuromodulatorTest, ThreatReleaseNorepinephrine) {
 
     EXPECT_GT(ne_released, 0.0f);
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     EXPECT_GT(neuromodulator_pool_get_norepinephrine(&pool), config.baseline_norepinephrine);
@@ -272,7 +272,7 @@ TEST_F(NeuromodulatorTest, SalienceReleaseAcetylcholine) {
 
     EXPECT_GT(ach_released, 0.0f);
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     EXPECT_GT(neuromodulator_pool_get_acetylcholine(&pool), config.baseline_acetylcholine);
@@ -290,7 +290,7 @@ TEST_F(NeuromodulatorTest, PunishmentReleaseSerotonin) {
 
     EXPECT_GT(serotonin_released, 0.0f);
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     EXPECT_GT(neuromodulator_pool_get_serotonin(&pool), config.baseline_serotonin);
@@ -404,7 +404,7 @@ TEST_F(NeuromodulatorTest, EthicsToNeuromodulatorsPositive) {
 
     ASSERT_TRUE(neuromodulator_release_from_ethics(system, golden_rule, trust, harm, salience));
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     EXPECT_GT(neuromodulator_pool_get_dopamine(&pool), config.baseline_dopamine);  // Reward
@@ -422,7 +422,7 @@ TEST_F(NeuromodulatorTest, EthicsToNeuromodulatorsNegative) {
 
     ASSERT_TRUE(neuromodulator_release_from_ethics(system, golden_rule, trust, harm, salience));
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     EXPECT_GT(neuromodulator_pool_get_serotonin(&pool), config.baseline_serotonin);  // Inhibition
@@ -543,7 +543,7 @@ TEST_F(NeuromodulatorTest, ResetToBaseline) {
 
     ASSERT_TRUE(neuromodulator_reset(system));
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     EXPECT_FLOAT_EQ(neuromodulator_pool_get_dopamine(&pool), config.baseline_dopamine);
@@ -663,7 +663,7 @@ TEST_F(NeuromodulatorTest, AllNeuromodulatorsSimultaneous) {
     neuromodulator_release_acetylcholine(system, 0.7f);
     neuromodulator_release_norepinephrine(system, 0.5f, 0.4f);
 
-    neuromodulator_pool_t pool = {};
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(system, &pool);
 
     // All should be elevated above baseline

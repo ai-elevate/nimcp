@@ -607,7 +607,8 @@ bool neuromodulator_set_level(neuromodulator_system_t system, neuromodulator_typ
 
 bool neuromodulator_update(neuromodulator_system_t system, float dt)
 {
-    if (!system || dt <= 0.0f) return false;
+    if (!system || dt < 0.0f) return false;
+    if (dt == 0.0f) return true;  // No-op: zero elapsed time means no decay
 
     nimcp_platform_rwlock_wrlock(&system->rwlock);
 

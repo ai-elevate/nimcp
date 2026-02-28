@@ -19,6 +19,7 @@ target_link_libraries(unit_middleware_training_test_training_module
         nimcp_middleware
         nimcp
         Threads::Threads
+        m
 )
 
 add_test(NAME unit_middleware_training_test_training_module
@@ -26,7 +27,7 @@ add_test(NAME unit_middleware_training_test_training_module
 
 # Label for filtering
 set_tests_properties(unit_middleware_training_test_training_module
-    PROPERTIES LABELS "unit;middleware;training")
+    PROPERTIES LABELS "unit;middleware;training" TIMEOUT 120)
 
 # Loss Functions Unit Tests (Phase TM-2)
 add_executable(unit_middleware_training_test_loss_functions

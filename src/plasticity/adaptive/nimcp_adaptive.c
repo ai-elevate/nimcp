@@ -611,7 +611,7 @@ static uint32_t encode_integer(int32_t spike_count, uint8_t* spike_train, uint32
  */
 static uint32_t encode_binary(int32_t spike_count, uint8_t* spike_train, uint32_t max_length)
 {
-    uint32_t abs_count = (uint32_t) abs(spike_count);
+    uint32_t abs_count = (spike_count >= 0) ? (uint32_t)spike_count : (uint32_t)(-(spike_count + 1)) + 1u;
     uint32_t length = (abs_count < max_length) ? abs_count : max_length;
     memset(spike_train, 1, length);
     return length;
@@ -645,7 +645,7 @@ static uint32_t encode_ternary(int32_t spike_count, uint8_t* spike_train, uint32
  */
 static uint32_t encode_bitwise(int32_t spike_count, uint8_t* spike_train, uint32_t max_length)
 {
-    uint32_t abs_count = (uint32_t) abs(spike_count);
+    uint32_t abs_count = (spike_count >= 0) ? (uint32_t)spike_count : (uint32_t)(-(spike_count + 1)) + 1u;
     uint32_t bytes_needed = (abs_count + 7) / 8;
 
     // Guard clause: Check capacity
@@ -718,7 +718,7 @@ static int32_t decode_bitwise(const uint8_t* spike_train, uint32_t length)
     uint32_t limit = (length < 4) ? length : 4;
     int32_t spike_count = 0;
     for (uint32_t i = 0; i < limit; i++) {
-        spike_count |= (spike_train[i] << (i * 8));
+        spike_count |= ((uint32_t)spike_train[i] << (i * 8));
     }
     return spike_count;
 }
@@ -1751,9 +1751,13 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     if (!network || !example)
         return -1.0F;
 
-    // Guard: target_size==0 would cause division by zero in MSE computation
-    if (example->target_size == 0 || !example->target)
-        return -1.0F;
+    // Guard: target_size==0 would cause division by zero in MSE computation.
+    // Only enforced for modes that require targets (supervised, distillation, hybrid).
+    // Unsupervised and reinforcement modes don't use example->target.
+    if (mode != LEARN_MODE_UNSUPERVISED && mode != LEARN_MODE_REINFORCEMENT) {
+        if (example->target_size == 0 || !example->target)
+            return -1.0F;
+    }
 
     // Frozen network rejects learning
     if (network->frozen)
@@ -1862,7 +1866,10 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
     // Forward pass to get current output (Phase MP: use pool)
     // Use raw forward (no sparsity thresholding) so backprop sees true activations
-    float* output = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
+    // H10: Output buffer must be at least max(target_size, output_size) to avoid undersize
+    uint32_t out_buf_size = example->target_size > network->config.base_config.output_size
+        ? example->target_size : network->config.base_config.output_size;
+    float* output = (float*)alloc_hot_buffer(out_buf_size * sizeof(float));
     if (!output) {
         return -1.0F;
     }
@@ -2487,14 +2494,19 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
     }
 
-    network->label_map = nimcp_malloc(num_labels * sizeof(char*));
-    // C-3: NULL check after label_map allocation to prevent NULL dereference
-    if (!network->label_map) {
-        adaptive_network_destroy(network);
-        fclose(file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "adaptive_network_load: failed to allocate label_map");
-        return NULL;
+    // M-malloc0: Guard against nimcp_malloc(0) when num_labels==0
+    if (num_labels > 0) {
+        network->label_map = nimcp_malloc(num_labels * sizeof(char*));
+        // C-3: NULL check after label_map allocation to prevent NULL dereference
+        if (!network->label_map) {
+            adaptive_network_destroy(network);
+            fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "adaptive_network_load: failed to allocate label_map");
+            return NULL;
+        }
+    } else {
+        network->label_map = NULL;
     }
     network->num_labels = num_labels;
 
@@ -2517,6 +2529,12 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         }
 
         network->label_map[i] = nimcp_malloc(label_len);
+        // H8: NULL check on per-label malloc during checkpoint load
+        if (!network->label_map[i]) {
+            adaptive_network_destroy(network);
+            fclose(file);
+            return NULL;
+        }
         if (fread(network->label_map[i], label_len, 1, file) != 1) {
             adaptive_network_destroy(network);
             fclose(file);
@@ -2636,10 +2654,17 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         neural_network_rebuild_incoming(network->base_network);
     }
 
+    // H11: Clean up GPU resources from create() before re-initializing
+    if (network->gpu_weight_cache) {
+        nimcp_gpu_weight_cache_destroy(network->gpu_weight_cache);
+        network->gpu_weight_cache = NULL;
+    }
+    if (network->gpu_ctx) {
+        nimcp_gpu_context_destroy(network->gpu_ctx);
+        network->gpu_ctx = NULL;
+    }
     // Phase GPU: Initialize GPU acceleration for loaded network
     network->gpu_enabled = false;
-    network->gpu_ctx = NULL;
-    network->gpu_weight_cache = NULL;
     if (gpu_is_available() &&
         network->config.base_config.num_layers >= 2 &&
         network->config.base_config.layer_sizes) {

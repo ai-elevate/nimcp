@@ -71,6 +71,7 @@
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <math.h>    /* for isnan, isinf (M-nan checks) */
 
 #include <stddef.h>  /* for NULL */
 #include <stdint.h>  /* for UINT32_MAX (H-6 bounds checks) */
@@ -169,11 +170,7 @@ static float* py_list_to_float_array(PyObject* list_obj, Py_ssize_t* size) {
     float* array = (float*)nimcp_malloc((*size) * sizeof(float));
     if (!array) {
         Py_XDECREF(converted_list);
-        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, (*size) * sizeof(float),
-                          "py_list_to_float_array: Failed to allocate float array");
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate float array");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "array is NULL");
-
         return NULL;
     }
 
@@ -191,7 +188,7 @@ static float* py_list_to_float_array(PyObject* list_obj, Py_ssize_t* size) {
         /* C-2: Check for PyFloat_AsDouble overflow/error */
         array[i] = (float)PyFloat_AsDouble(item);
         if (array[i] == -1.0f && PyErr_Occurred()) {
-            free(array);
+            nimcp_free(array);
             Py_XDECREF(converted_list);
             return NULL;
         }
@@ -1219,6 +1216,12 @@ static PyObject* Brain_set_rubric_validation(BrainObject* self, PyObject* args) 
     if (!features)
         return NULL;
 
+    if (num_features > UINT32_MAX) {
+        nimcp_free(features);
+        PyErr_SetString(PyExc_OverflowError, "Input too large for uint32_t");
+        return NULL;
+    }
+
     nimcp_status_t status;
     Py_BEGIN_ALLOW_THREADS
     status = nimcp_brain_set_rubric_validation(self->brain, features, (uint32_t)num_features);
@@ -1299,6 +1302,12 @@ static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
     float* features = py_list_to_float_array(features_list, &num_features);
     if (!features)
         return NULL;
+
+    if (num_features > UINT32_MAX) {
+        nimcp_free(features);
+        PyErr_SetString(PyExc_OverflowError, "Input too large for uint32_t");
+        return NULL;
+    }
 
     char label[NIMCP_MAX_LABEL_SIZE];
     float confidence;
@@ -1905,7 +1914,16 @@ static PyObject* Brain_ti_compute_adaptive_lr(BrainObject* self, PyObject* args)
     float base_lr;
     if (!PyArg_ParseTuple(args, "f", &base_lr)) return NULL;
 
-    float adaptive_lr = brain_ti_compute_adaptive_lr(self->brain->internal_brain, base_lr);
+    float adaptive_lr;
+    Py_BEGIN_ALLOW_THREADS
+    adaptive_lr = brain_ti_compute_adaptive_lr(self->brain->internal_brain, base_lr);
+    Py_END_ALLOW_THREADS
+
+    if (isnan(adaptive_lr) || isinf(adaptive_lr)) {
+        PyErr_SetString(PyExc_ValueError, "Adaptive LR returned NaN or inf");
+        return NULL;
+    }
+
     PyObject* result = PyFloat_FromDouble((double)adaptive_lr);
     if (!result) return NULL;  /* OOM */
     return result;
@@ -1924,7 +1942,16 @@ static PyObject* Brain_ti_compute_unified_lr(BrainObject* self, PyObject* args) 
     float base_lr;
     if (!PyArg_ParseTuple(args, "f", &base_lr)) return NULL;
 
-    float unified_lr = brain_ti_compute_unified_lr(self->brain->internal_brain, base_lr, NULL);
+    float unified_lr;
+    Py_BEGIN_ALLOW_THREADS
+    unified_lr = brain_ti_compute_unified_lr(self->brain->internal_brain, base_lr, NULL);
+    Py_END_ALLOW_THREADS
+
+    if (isnan(unified_lr) || isinf(unified_lr)) {
+        PyErr_SetString(PyExc_ValueError, "Adaptive LR returned NaN or inf");
+        return NULL;
+    }
+
     PyObject* result = PyFloat_FromDouble((double)unified_lr);
     if (!result) return NULL;  /* OOM */
     return result;
@@ -1944,7 +1971,10 @@ static PyObject* Brain_ti_compute_modulation_state(BrainObject* self, PyObject* 
 
     brain_ti_modulation_state_t state;
     memset(&state, 0, sizeof(state));
-    int rc = brain_ti_compute_modulation_state(self->brain->internal_brain, &state);
+    int rc;
+    Py_BEGIN_ALLOW_THREADS
+    rc = brain_ti_compute_modulation_state(self->brain->internal_brain, &state);
+    Py_END_ALLOW_THREADS
 
     /* Helper macros — PyDict_SetItemString does NOT steal the reference,
        so we must Py_DECREF the temporary after insertion.
@@ -2024,8 +2054,11 @@ static PyObject* Brain_ti_post_batch_update(BrainObject* self, PyObject* args, P
         return NULL;
     }
 
-    int result = brain_ti_post_batch_update(self->brain->internal_brain,
-                                            accuracy, expected, domain);
+    int result;
+    Py_BEGIN_ALLOW_THREADS
+    result = brain_ti_post_batch_update(self->brain->internal_brain,
+                                        accuracy, expected, domain);
+    Py_END_ALLOW_THREADS
     /* M-4: Raise exception on error instead of silently returning False */
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "ti_post_batch_update failed");
@@ -2283,6 +2316,12 @@ static PyObject* Brain_get_uncertainty(BrainObject* self, PyObject* args) {
     if (features_list && features_list != Py_None) {
         features = py_list_to_float_array(features_list, &num_features);
         if (!features) return NULL;
+
+        if (num_features > UINT32_MAX) {
+            nimcp_free(features);
+            PyErr_SetString(PyExc_OverflowError, "Input too large for uint32_t");
+            return NULL;
+        }
     }
 
     brain_uncertainty_t unc;
@@ -2388,6 +2427,12 @@ static PyObject* Brain_audio_cortex_process(BrainObject* self, PyObject* args) {
     Py_ssize_t num_samples;
     float* samples = py_list_to_float_array(samples_list, &num_samples);
     if (!samples) return NULL;
+
+    if (num_samples > UINT32_MAX) {
+        nimcp_free(samples);
+        PyErr_SetString(PyExc_OverflowError, "Input too large for uint32_t");
+        return NULL;
+    }
 
     /* Access audio cortex from internal brain */
     brain_t ib = self->brain->internal_brain;
@@ -2530,6 +2575,12 @@ static PyObject* Brain_speech_cortex_process(BrainObject* self, PyObject* args) 
     Py_ssize_t num_samples;
     float* samples = py_list_to_float_array(samples_list, &num_samples);
     if (!samples) return NULL;
+
+    if (num_samples > UINT32_MAX) {
+        nimcp_free(samples);
+        PyErr_SetString(PyExc_OverflowError, "Input too large for uint32_t");
+        return NULL;
+    }
 
     brain_t ib = self->brain->internal_brain;
     if (!ib || !ib->speech_cortex) {
@@ -3127,6 +3178,12 @@ static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
     float* inputs = py_list_to_float_array(input_list, &num_inputs);
     if (!inputs) return NULL;
 
+    if (num_inputs > UINT32_MAX) {
+        nimcp_free(inputs);
+        PyErr_SetString(PyExc_OverflowError, "Input too large for uint32_t");
+        return NULL;
+    }
+
     float* outputs = (float*)nimcp_malloc(num_outputs * sizeof(float));
     if (!outputs) {
         nimcp_free(inputs);
@@ -3183,10 +3240,23 @@ static PyObject* Network_train(NetworkObject* self, PyObject* args) {
     float* inputs = py_list_to_float_array(input_list, &num_inputs);
     if (!inputs) return NULL;
 
+    if (num_inputs > UINT32_MAX) {
+        nimcp_free(inputs);
+        PyErr_SetString(PyExc_OverflowError, "Input too large for uint32_t");
+        return NULL;
+    }
+
     Py_ssize_t num_targets;
     float* targets = py_list_to_float_array(target_list, &num_targets);
     if (!targets) {
         nimcp_free(inputs);
+        return NULL;
+    }
+
+    if (num_targets > UINT32_MAX) {
+        nimcp_free(inputs);
+        nimcp_free(targets);
+        PyErr_SetString(PyExc_OverflowError, "Input too large for uint32_t");
         return NULL;
     }
 

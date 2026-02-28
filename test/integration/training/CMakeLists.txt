@@ -16,24 +16,25 @@ target_include_directories(integration_training_symbolic_logic_hub PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
-target_compile_features(integration_training_symbolic_logic_hub PRIVATE cxx_std_17)
+target_compile_features(integration_training_symbolic_logic_hub PRIVATE cxx_std_20)
 
 target_link_libraries(integration_training_symbolic_logic_hub
     PRIVATE
         GTest::gtest
         GTest::gtest_main
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
 add_test(NAME integration_training_symbolic_logic_hub
-         COMMAND integration_training_symbolic_logic_hub)
+         COMMAND integration_training_symbolic_logic_hub WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(integration_training_symbolic_logic_hub
     PROPERTIES
         LABELS "integration;training;symbolic-logic;hub"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 target_include_directories(integration_training_test_cnn_backprop_integration PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -48,17 +49,18 @@ target_link_libraries(integration_training_test_cnn_backprop_integration
         GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
 add_test(NAME integration_training_test_cnn_backprop_integration
-         COMMAND integration_training_test_cnn_backprop_integration)
+         COMMAND integration_training_test_cnn_backprop_integration WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(integration_training_test_cnn_backprop_integration
     PROPERTIES
         LABELS "integration;training;cnn;backprop;gradient"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # CNN-Cortex Bridge Integration Tests
 add_executable(integration_training_test_cnn_cortex_integration
@@ -78,17 +80,18 @@ target_link_libraries(integration_training_test_cnn_cortex_integration
         GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
 add_test(NAME integration_training_test_cnn_cortex_integration
-         COMMAND integration_training_test_cnn_cortex_integration)
+         COMMAND integration_training_test_cnn_cortex_integration WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(integration_training_test_cnn_cortex_integration
     PROPERTIES
         LABELS "integration;training;cnn;cortex;bridge"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Training Dispatch Integration Tests (C)
 add_executable(integration_training_dispatch
@@ -109,17 +112,18 @@ target_compile_options(integration_training_dispatch PRIVATE
 target_link_libraries(integration_training_dispatch
     PRIVATE
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
 add_test(NAME integration_training_dispatch
-         COMMAND integration_training_dispatch)
+         COMMAND integration_training_dispatch WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(integration_training_dispatch
     PROPERTIES
         LABELS "integration;training;dispatch;snn;lnn;cnn;adaptive"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Bio Learning Integration Tests (Engram, Mammillary, Neuromodulators, Glial, PR Memory)
 add_executable(integration_training_bio_learning
@@ -131,24 +135,25 @@ target_include_directories(integration_training_bio_learning PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
-target_compile_features(integration_training_bio_learning PRIVATE cxx_std_17)
+target_compile_features(integration_training_bio_learning PRIVATE cxx_std_20)
 
 target_link_libraries(integration_training_bio_learning
     PRIVATE
         GTest::gtest
         GTest::gtest_main
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
 add_test(NAME integration_training_bio_learning
-         COMMAND integration_training_bio_learning)
+         COMMAND integration_training_bio_learning WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(integration_training_bio_learning
     PROPERTIES
         LABELS "integration;training;bio;engram;mammillary;neuromodulator;glial"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Multi-Network Ensemble Training Integration Tests (LNN + CNN + Adaptive)
 add_executable(integration_training_multi_network
@@ -160,24 +165,25 @@ target_include_directories(integration_training_multi_network PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
-target_compile_features(integration_training_multi_network PRIVATE cxx_std_17)
+target_compile_features(integration_training_multi_network PRIVATE cxx_std_20)
 
 target_link_libraries(integration_training_multi_network
     PRIVATE
         GTest::gtest
         GTest::gtest_main
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
 add_test(NAME integration_training_multi_network
-         COMMAND integration_training_multi_network)
+         COMMAND integration_training_multi_network WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(integration_training_multi_network
     PROPERTIES
         LABELS "integration;training;multi-network;lnn;cnn;ensemble"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # VAE Training Integration Tests
 add_executable(integration_training_vae
@@ -189,24 +195,25 @@ target_include_directories(integration_training_vae PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
-target_compile_features(integration_training_vae PRIVATE cxx_std_17)
+target_compile_features(integration_training_vae PRIVATE cxx_std_20)
 
 target_link_libraries(integration_training_vae
     PRIVATE
         GTest::gtest
         GTest::gtest_main
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
 add_test(NAME integration_training_vae
-         COMMAND integration_training_vae)
+         COMMAND integration_training_vae WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(integration_training_vae
     PROPERTIES
         LABELS "integration;training;vae;autoencoder;fep"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Attention Training Integration Tests
 add_executable(integration_training_attention
@@ -218,24 +225,25 @@ target_include_directories(integration_training_attention PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
-target_compile_features(integration_training_attention PRIVATE cxx_std_17)
+target_compile_features(integration_training_attention PRIVATE cxx_std_20)
 
 target_link_libraries(integration_training_attention
     PRIVATE
         GTest::gtest
         GTest::gtest_main
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
 add_test(NAME integration_training_attention
-         COMMAND integration_training_attention)
+         COMMAND integration_training_attention WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(integration_training_attention
     PROPERTIES
         LABELS "integration;training;attention;plasticity;multihead"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # =============================================================================
 # Cognitive Training Integration Tests (brain_ti_* facade)
@@ -264,7 +272,7 @@ target_include_directories(integration_training_test_training_integration PRIVAT
     ${PROJECT_SOURCE_DIR}/test
 )
 
-target_compile_features(integration_training_test_training_integration PRIVATE cxx_std_17)
+target_compile_features(integration_training_test_training_integration PRIVATE cxx_std_20)
 
 gtest_discover_tests(integration_training_test_training_integration
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -315,7 +323,7 @@ target_include_directories(integration_training_bio_modulation PRIVATE
     ${PROJECT_SOURCE_DIR}/test
 )
 
-target_compile_features(integration_training_bio_modulation PRIVATE cxx_std_17)
+target_compile_features(integration_training_bio_modulation PRIVATE cxx_std_20)
 
 gtest_discover_tests(integration_training_bio_modulation
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

@@ -409,8 +409,8 @@ TEST_F(QuantizationAwareTrainingTest, DefaultConfigInitialization) {
     EXPECT_EQ(config.default_weight_dtype, QAT_DTYPE_INT8);
     EXPECT_EQ(config.default_activation_dtype, QAT_DTYPE_INT8);
     EXPECT_EQ(config.default_scheme, QAT_SCHEME_SYMMETRIC);
-    // Note: Implementation uses MOVING_AVG by default instead of MINMAX
-    EXPECT_EQ(config.observer.method, QAT_OBSERVER_MOVING_AVG);
+    // Implementation defaults to MINMAX observer method
+    EXPECT_EQ(config.observer.method, QAT_OBSERVER_MINMAX);
     EXPECT_EQ(config.fake_quant.method, QAT_FAKE_QUANT_STE);
 }
 

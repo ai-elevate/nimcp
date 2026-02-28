@@ -14,11 +14,12 @@ target_compile_features(regression_middleware_training_test_training_module_regr
 
 target_link_libraries(regression_middleware_training_test_training_module_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
+        m
 )
 
 add_test(NAME regression_middleware_training_test_training_module_regression
@@ -43,11 +44,11 @@ target_compile_features(regression_middleware_training_test_loss_functions_regre
 
 target_link_libraries(regression_middleware_training_test_loss_functions_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -73,11 +74,11 @@ target_compile_features(regression_middleware_training_test_optimizers_regressio
 
 target_link_libraries(regression_middleware_training_test_optimizers_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -103,11 +104,11 @@ target_compile_features(regression_middleware_training_test_plasticity_bridge_re
 
 target_link_libraries(regression_middleware_training_test_plasticity_bridge_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -133,11 +134,11 @@ target_compile_features(regression_middleware_training_test_event_driven_plastic
 
 target_link_libraries(regression_middleware_training_test_event_driven_plasticity_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -163,11 +164,11 @@ target_compile_features(regression_middleware_training_test_security_registratio
 
 target_link_libraries(regression_middleware_training_test_security_registration_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -193,11 +194,11 @@ target_compile_features(regression_middleware_training_test_training_callbacks_r
 
 target_link_libraries(regression_middleware_training_test_training_callbacks_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -227,11 +228,11 @@ target_compile_features(regression_middleware_training_test_training_logic_bridg
 
 target_link_libraries(regression_middleware_training_test_training_logic_bridge_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -258,11 +259,11 @@ target_compile_features(regression_middleware_training_test_cognitive_training_b
 
 target_link_libraries(regression_middleware_training_test_cognitive_training_bridge_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -288,11 +289,11 @@ target_compile_features(regression_middleware_training_test_perception_training_
 
 target_link_libraries(regression_middleware_training_test_perception_training_bridge_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -318,11 +319,11 @@ target_compile_features(regression_middleware_training_test_cortical_training_br
 
 target_link_libraries(regression_middleware_training_test_cortical_training_bridge_regression
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 

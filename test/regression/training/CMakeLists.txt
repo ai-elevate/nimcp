@@ -27,7 +27,7 @@ target_include_directories(regression_training_integration_test
         ${PROJECT_SOURCE_DIR}/test
 )
 
-target_compile_features(regression_training_integration_test PRIVATE cxx_std_17)
+target_compile_features(regression_training_integration_test PRIVATE cxx_std_20)
 
 gtest_discover_tests(regression_training_integration_test
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -79,7 +79,7 @@ target_include_directories(regression_training_pipeline_test
         ${PROJECT_SOURCE_DIR}/test
 )
 
-target_compile_features(regression_training_pipeline_test PRIVATE cxx_std_17)
+target_compile_features(regression_training_pipeline_test PRIVATE cxx_std_20)
 
 gtest_discover_tests(regression_training_pipeline_test
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

@@ -27,7 +27,7 @@ import queue
 import random
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -156,6 +156,18 @@ class ThreadSafeBrain:
         with self._lock:
             return self._brain.curiosity_detect_gaps(*args, **kwargs)
 
+    def acquire_exclusive(self):
+        """Acquire exclusive brain access for consolidation."""
+        self._lock.acquire()
+
+    def release_exclusive(self):
+        """Release exclusive brain access."""
+        self._lock.release()
+
+    def get_raw_brain(self):
+        """Get the underlying brain for direct access while lock is held."""
+        return self._brain
+
     def __getattr__(self, name):
         """Proxy all other attributes to the underlying brain with lock.
 
@@ -170,10 +182,10 @@ class ThreadSafeBrain:
             def _locked_method(*args, **kwargs):
                 with self._lock:
                     return attr(*args, **kwargs)
+            # Cache the wrapper on the instance
+            object.__setattr__(self, name, _locked_method)
             return _locked_method
-        else:
-            with self._lock:
-                return attr
+        return attr
 
 
 # ---------------------------------------------------------------------------
@@ -282,7 +294,7 @@ class TrainingMetacognition:
         alpha = 0.1  # EMA smoothing
         stats['ema_accuracy'] = alpha * accuracy + (1 - alpha) * stats['ema_accuracy']
         stats['ema_loss'] = alpha * loss + (1 - alpha) * stats['ema_loss']
-        stats['total_examples'] += examples
+        stats['total_examples'] = examples
         stats['assessments'] += 1
 
         # Stall detection: accuracy not improving over multiple assessments
@@ -363,6 +375,10 @@ class TrainingMetacognition:
         """Return list of domains that appear mastered."""
         return [d for d, s in self._domain_stats.items() if s['mastered']]
 
+    def has_stats(self):
+        """Return True if any domain stats are available."""
+        return bool(self._domain_stats)
+
     def format_dashboard(self) -> str:
         """Format metacognitive assessment as dashboard string."""
         lines = ["\n[Metacognition] Domain Assessment:"]
@@ -416,9 +432,9 @@ class School:
         # Phase 4: Domain similarity matrix & cross-domain transfer
         self._domain_centroids: Dict[str, np.ndarray] = {}
         self._domain_similarity: Dict[str, Dict[str, float]] = {}
-        self._last_similarity_update = 0.0
+        self._last_similarity_update = time.time()
         self._similarity_update_interval = 120.0  # Update every 2 min
-        self._last_transfer_check = 0.0
+        self._last_transfer_check = time.time()
         self._transfer_check_interval = 180.0  # Check transfer opportunities every 3 min
 
         self.instructors: List[InstructorAgent] = []
@@ -448,8 +464,12 @@ class School:
         self._config_path = Path(config_path)
         self._config_mtime = self._config_path.stat().st_mtime
 
-        with open(config_path) as f:
-            config_data = json.load(f)
+        try:
+            with open(config_path) as f:
+                config_data = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            self.logger.log(f"[School] ERROR: Failed to load config {config_path}: {e}")
+            config_data = {}
 
         datasets = config_data.get("datasets", [])
 
@@ -621,7 +641,7 @@ class School:
 
     def _domain_stats_available(self):
         """Check if metacognition has accumulated any domain stats."""
-        return bool(self.metacognition._domain_stats)
+        return self.metacognition.has_stats()
 
     def _check_config_reload(self):
         """Check if foundation_datasets_config.json has changed on disk.
@@ -788,6 +808,7 @@ class School:
                         for feat, _ in exemplars:
                             try:
                                 self.cross_domain_queue.put_nowait({
+                                    "target_domain": d_low,
                                     "domain": d_low,
                                     "features": feat,
                                     "label": f"transfer:{d_high}->{d_low}",
@@ -844,6 +865,7 @@ class School:
         # H1: Call recess at most once per metacognition cycle
         if needs_recess:
             self._call_recess()
+            self._last_recess = time.time()
 
     def _coordinator_loop(self):
         """Main coordinator loop — ticks every 1s."""
@@ -1002,13 +1024,17 @@ class School:
 
         # C2: Acquire brain lock to ensure exclusive access during recess.
         # No instructor can be mid-learn while we replay and consolidate.
-        with self.brain._lock:
+        self.brain.acquire_exclusive()
+        try:
+            raw_brain = self.brain.get_raw_brain()
+
             # Phase 4: Multi-domain interleaved replay before consolidation
             # Gather exemplars from ALL active instructors (round-robin)
             all_exemplars = []
             for agent in self.instructors:
                 if agent.adversarial_bank:
                     # M3: Snapshot to avoid data race with instructor thread
+                    # NOTE: CPython GIL makes list() atomic for simple lists
                     bank = list(agent.adversarial_bank)
                     samples = random.sample(bank, min(10, len(bank)))
                     for feat, lbl in samples:
@@ -1021,23 +1047,26 @@ class School:
                         # C3: Domain-scoped replay — use the domain's output range
                         output_range = self._domain_output_map.get(dom)
                         if output_range is not None:
-                            self.brain._brain.learn(feat, lbl, 0.3,
-                                                    output_range=output_range)
+                            raw_brain.learn(feat, lbl, 0.3,
+                                            output_range=output_range)
                         else:
-                            self.brain._brain.learn(feat, lbl, 0.3)
+                            raw_brain.learn(feat, lbl, 0.3)
                         replayed += 1
-                    except Exception:
-                        break
+                    except Exception as e:
+                        self.logger.log(f"[School] WARNING: Recess replay failed for {dom}: {e}")
+                        continue
                 self.logger.log(
                     f"[School] Interleaved replay: {replayed} examples "
                     f"from {len(set(d for _, _, d in all_exemplars))} domains")
 
             # Consolidation
             try:
-                self.brain._brain.consolidate()
+                raw_brain.consolidate()
                 self.logger.log("[School] brain.consolidate() complete")
             except Exception as e:
                 self.logger.log(f"[School] consolidation error: {e}")
+        finally:
+            self.brain.release_exclusive()
 
         self.board.increment_recess()
         recess_duration = time.time() - recess_start
@@ -1090,7 +1119,7 @@ class School:
 
     def _save_checkpoint(self):
         """Save brain checkpoint."""
-        ckpt_dir = Path("checkpoints") / "athena"
+        ckpt_dir = Path(__file__).parent.parent / "checkpoints" / "athena"
         ckpt_dir.mkdir(parents=True, exist_ok=True)
         ts = time.strftime("%Y%m%d_%H%M%S")
         path = ckpt_dir / f"athena_school_{ts}.bin"

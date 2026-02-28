@@ -137,7 +137,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_pipeline_e2e.cpp)
         Threads::Threads
         m
     )
-    target_compile_features(e2e_test_training_pipeline PRIVATE cxx_std_17)
+    target_compile_features(e2e_test_training_pipeline PRIVATE cxx_std_20)
     target_compile_definitions(e2e_test_training_pipeline PRIVATE
         NIMCP_TESTING
         NIMCP_E2E_TESTING
