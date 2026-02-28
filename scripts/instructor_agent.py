@@ -27,7 +27,6 @@ import json
 import math
 import os
 import random
-import struct
 import threading
 import time
 from collections import deque
@@ -49,17 +48,16 @@ _EMBEDDING_MODEL = None
 _EMBEDDING_LOCK = threading.Lock()
 _EMBEDDING_AVAILABLE = None  # None = not checked yet
 
-# Progressive feature unfreezing (Enhancement #8)
-_GLOBAL_FEATURE_STEP = 0
-_FEATURE_STEP_LOCK = threading.Lock()
+# Progressive feature unfreezing (Enhancement #8) — per-instructor step tracking
+# Note: Thresholds (1000/3000) are per-instructor, not global. With N concurrent
+# instructors, each independently ramps from semantic to blended features.
 
-def _get_feature_blend_ratio():
-    """Progressive unfreezing: start pure semantic, blend in n-grams over time."""
-    global _GLOBAL_FEATURE_STEP
-    with _FEATURE_STEP_LOCK:
-        step = _GLOBAL_FEATURE_STEP
-        _GLOBAL_FEATURE_STEP += 1
+def _get_feature_blend_ratio_for_step(step: int) -> float:
+    """Progressive unfreezing: start pure semantic, blend in n-grams over time.
 
+    Args:
+        step: Per-instructor feature step count.
+    """
     # Phase 1 (steps 0-1000): 100% semantic (0% n-gram)
     if step < 1000:
         return 0.0
@@ -87,7 +85,7 @@ def _get_embedding_model():
             _EMBEDDING_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
             _EMBEDDING_AVAILABLE = True
             return _EMBEDDING_MODEL
-        except (ImportError, Exception):
+        except Exception:
             _EMBEDDING_AVAILABLE = False
             return None
 
@@ -259,6 +257,7 @@ class InstructorAgent(threading.Thread):
         self.total_correct = 0
         self.difficulty = 0.0
         self.adversarial_bank: List[Tuple[list, str]] = []
+        self._adv_bank_idx = 0  # M5: rotating index for bounded adversarial bank
         self._start_time = 0.0
         self._finished = False
         self._error: Optional[str] = None
@@ -273,14 +272,20 @@ class InstructorAgent(threading.Thread):
         # Phase 2: Cosine annealing LR scheduler (per-instructor)
         self._lr_scheduler = _CosineAnnealingLR(
             base_lr=1.0, min_lr=0.05, cycle_steps=5000, warmup_steps=500)
-        self._lr_step_count = 0
+
+        # Per-instructor feature step counter (H5: replaces global counter)
+        self._feature_step_count = 0
+
+        # H3: Rolling window for recent accuracy (replaces cumulative for metacognition)
+        self._recent_results: deque = deque(maxlen=500)
+
+        # H6: LR adjustment cooldown to prevent ratcheting
+        self._last_lr_adjust_step = 0
 
         # Phase 3: Spaced repetition + difficulty tracking
         self._spaced_replay: list = []  # heap: (next_review_step, interval, features, label)
         self._example_difficulty: dict = {}  # hash -> {'fails': int, 'attempts': int, 'conf_history': deque(maxlen=10)}
         self._peak_accuracy = 0.0
-        self._method_accuracy_delta: Dict[str, deque] = {
-            m.value: deque(maxlen=200) for m in TeachingMethod}
 
         # Phase 3: Self-assessment holdout
         self._holdout_buffer: List[Tuple[list, str]] = []  # (features, label)
@@ -399,7 +404,9 @@ class InstructorAgent(threading.Thread):
                 dataset = self.processor.load_streaming_dataset(ds_config)
             if dataset is None:
                 return
-        except Exception:
+        except Exception as e:
+            self._log_example({"action": "DATASET_ERROR", "dataset": name,
+                               "error": f"[{self.config.domain}] Dataset load error: {e}"})
             return
 
         count = 0
@@ -469,7 +476,9 @@ class InstructorAgent(threading.Thread):
                 dataset = load_dataset(hf_dataset, hf_subset, **kwargs)
             else:
                 dataset = load_dataset(hf_dataset, **kwargs)
-        except Exception:
+        except Exception as e:
+            self._log_example({"action": "DATASET_ERROR", "dataset": name,
+                               "error": f"[{self.config.domain}] Dataset load error: {e}"})
             return
 
         count = 0
@@ -522,7 +531,9 @@ class InstructorAgent(threading.Thread):
                 dataset = load_dataset(hf_dataset, hf_subset, **kwargs)
             else:
                 dataset = load_dataset(hf_dataset, **kwargs)
-        except Exception:
+        except Exception as e:
+            self._log_example({"action": "DATASET_ERROR", "dataset": name,
+                               "error": f"[{self.config.domain}] Dataset load error: {e}"})
             return
 
         count = 0
@@ -535,7 +546,8 @@ class InstructorAgent(threading.Thread):
             if not text or not text.strip():
                 continue
 
-            features = _text_to_features(text, self.num_inputs)
+            self._feature_step_count += 1
+            features = _text_to_features(text, self.num_inputs, self._feature_step_count)
             # Domain-prefix label to prevent cross-domain collision
             label_val = f"{domain}:{example.get('answer', example.get('label', 0))}"
 
@@ -568,7 +580,6 @@ class InstructorAgent(threading.Thread):
           3. Fallback to unified 8-factor pipeline if no decision
         """
         # Step 1: Cosine annealing schedule
-        self._lr_step_count += 1
         schedule_factor = self._lr_scheduler.get_lr()
 
         # Step 2: Decision cycle lr_factor if available
@@ -623,8 +634,8 @@ class InstructorAgent(threading.Thread):
         mean_grad = sum(grads) / len(grads)
         gradient_variance = (sum((g - mean_grad) ** 2 for g in grads) / len(grads)) ** 0.5
 
-        # Get current LR from the unified pipeline
-        current_lr = self.cognitive.compute_adaptive_lr(0.001)
+        # Get current LR from the unified pipeline (use actual base_lr, not hardcoded)
+        current_lr = self.cognitive.compute_adaptive_lr(self._lr_scheduler.base_lr)
 
         decision = self.cognitive.compute_decision_cycle(
             loss_current, loss_previous,
@@ -742,12 +753,24 @@ class InstructorAgent(threading.Thread):
         """Execute a teaching method with dynamic learning hooks."""
         conf_mod = grade.confidence_modifier if grade else 1.0
 
+        # C4: Capture pre-prediction BEFORE learning so confidence reflects
+        # the brain's state prior to this example's training signal.
+        try:
+            pre_pred_label, pre_conf = self._predict_domain(features, domain)
+            pre_correct = (pre_pred_label == label)
+        except Exception:
+            pre_conf = 0.5
+            pre_correct = False
+
         # Enhancement #6: Difficulty-scaled LR modifier (confidence trajectory)
         diff_scale = self._get_difficulty_lr_scale(features, label)
         conf_mod *= diff_scale
 
         # Enhancement #3: Focal loss — scale LR by prediction uncertainty
-        focal_factor = self._compute_focal_factor(features, label)
+        # M1: Reuse pre-prediction instead of making a redundant predict_fast call
+        focal_factor = self._compute_focal_factor(features, label,
+                                                  pre_confidence=pre_conf,
+                                                  pre_correct=pre_correct)
         conf_mod *= focal_factor
 
         # Phase 3: Process any due spaced-replay examples
@@ -787,13 +810,11 @@ class InstructorAgent(threading.Thread):
         info['attempts'] += 1
         if not correct:
             info['fails'] += 1
-        # Record confidence from the pre-prediction (focal factor path)
-        try:
-            pre_pred = self._predict_domain(features, domain)
-            pre_conf = pre_pred[1] if isinstance(pre_pred, tuple) else 0.5
-        except Exception:
-            pre_conf = 0.5
+        # C4: Use pre-prediction confidence captured before learning
         info['conf_history'].append(pre_conf)
+
+        # H3: Track recent results for rolling accuracy
+        self._recent_results.append(correct)
 
         return result
 
@@ -818,6 +839,9 @@ class InstructorAgent(threading.Thread):
             lr = 0.8 * conf_mod
 
         self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
+        # M11: Loss is a heuristic proxy (1 - confidence), not the actual network loss.
+        # It serves as a directional signal for decision cycle and logging, but does
+        # not reflect true cross-entropy or MSE from the C backprop path.
         loss = 0.0 if correct else (1.0 - conf)
         self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
@@ -903,7 +927,12 @@ class InstructorAgent(threading.Thread):
         return correct, loss
 
     def _method_adversarial(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
-        """Adversarial training: find minimal perturbation that flips prediction, then train on it."""
+        """Adversarial training: find minimal perturbation that flips prediction, then train on it.
+
+        WARNING: ~40x more expensive than socratic method due to binary search
+        over multiple random directions (5 directions x 8 binary search steps =
+        40 forward passes). Use adversarial_fraction config to limit frequency.
+        """
         features_arr = np.array(features, dtype=np.float32)
 
         # Step 1: Get current prediction
@@ -917,8 +946,12 @@ class InstructorAgent(threading.Thread):
 
         # Store hard examples in adversarial_bank AND spaced replay
         if not correct or conf < 0.5:
+            # M5: Rotate oldest entry when bank is full instead of refusing
             if len(self.adversarial_bank) < 500:
                 self.adversarial_bank.append((features, label))
+            else:
+                self.adversarial_bank[self._adv_bank_idx % 500] = (features, label)
+            self._adv_bank_idx += 1
             self._spaced_replay_push(features, label)
 
         # Step 2: Binary search for decision boundary
@@ -1114,7 +1147,8 @@ class InstructorAgent(threading.Thread):
         # Fallback: treat text transcription as text
         text = example.get("text", example.get("transcription", ""))
         if text:
-            return _text_to_features(str(text), self.num_inputs), label
+            self._feature_step_count += 1
+            return _text_to_features(str(text), self.num_inputs, self._feature_step_count), label
         return None, label
 
     # --- Helpers ---
@@ -1246,17 +1280,24 @@ class InstructorAgent(threading.Thread):
     # ------------------------------------------------------------------
 
     def _spaced_replay_push(self, features: list, label: str):
-        """Schedule a failed example for spaced review."""
-        key = self._feature_hash(features)
+        """Schedule a failed example for spaced review.
+
+        Note: This method only handles scheduling. Difficulty tracking (fail
+        count, attempt count, confidence history) is managed by _execute_method
+        to avoid double-counting failures (C2 fix).
+        """
         # Reset interval on failure
         interval = 1
         next_step = self.total_examples + interval
         heapq.heappush(self._spaced_replay, (next_step, interval, features, label))
-        # Track difficulty (Enhancement #6: confidence trajectory format)
-        if key not in self._example_difficulty:
-            self._example_difficulty[key] = {
-                'fails': 0, 'attempts': 0, 'conf_history': deque(maxlen=10)}
-        self._example_difficulty[key]['fails'] += 1
+
+        # H2: Cap replay heap to prevent unbounded growth
+        if len(self._spaced_replay) > 2000:
+            # Remove the lowest-priority items (highest next_review_step)
+            # by rebuilding as a list, sorting, and keeping the 2000 most urgent
+            items = sorted(self._spaced_replay)[:2000]
+            self._spaced_replay = items
+            heapq.heapify(self._spaced_replay)
 
     def _spaced_replay_tick(self):
         """Process any due spaced-replay examples."""
@@ -1283,11 +1324,11 @@ class InstructorAgent(threading.Thread):
 
     def _feature_hash(self, features: list) -> str:
         """Fast hash of a feature vector for difficulty tracking."""
-        if len(features) > 16:
-            sample = features[:8] + features[-8:]
+        if len(features) > 32:
+            sample = features[:16] + features[-16:]
         else:
             sample = features
-        return hashlib.md5(str(sample).encode()).hexdigest()[:12]
+        return hashlib.md5(str(sample).encode()).hexdigest()[:16]
 
     # ------------------------------------------------------------------
     # Phase 3: Difficulty-Gated Curriculum
@@ -1361,6 +1402,12 @@ class InstructorAgent(threading.Thread):
             if idx < self._holdout_max:
                 self._holdout_buffer[idx] = (features, label)
 
+    def _rolling_accuracy(self) -> float:
+        """Compute rolling accuracy from recent results (H3)."""
+        if not self._recent_results:
+            return self.total_correct / max(self.total_examples, 1)
+        return sum(self._recent_results) / len(self._recent_results)
+
     def _maybe_self_assess(self):
         """Run self-assessment cycle if due."""
         if (self.total_examples - self._last_self_assessment_step
@@ -1384,7 +1431,8 @@ class InstructorAgent(threading.Thread):
         self._held_out_accuracy = correct / len(self._holdout_buffer)
         avg_agreement = total_agreement / len(self._holdout_buffer)
 
-        train_acc = self.total_correct / max(self.total_examples, 1)
+        # H4: Use rolling window accuracy instead of cumulative (less inertial)
+        train_acc = self._rolling_accuracy()
         gap = train_acc - self._held_out_accuracy
 
         self._log_example({
@@ -1398,9 +1446,11 @@ class InstructorAgent(threading.Thread):
         })
 
         # If overfitting: reduce LR via scheduler reset to slow down
-        if gap > 0.15:
+        # H6: Only adjust if cooldown has elapsed
+        if gap > 0.15 and (self.total_examples - self._last_lr_adjust_step) >= 200:
             self._lr_scheduler.base_lr *= 0.8
             self._lr_scheduler.base_lr = max(self._lr_scheduler.base_lr, 0.1)
+            self._last_lr_adjust_step = self.total_examples
 
     # ------------------------------------------------------------------
     # Phase 3: Metacognition-Driven Actions
@@ -1408,16 +1458,20 @@ class InstructorAgent(threading.Thread):
 
     def _metacognition_check(self):
         """Check for stall/regression and take corrective action."""
-        train_acc = self.total_correct / max(self.total_examples, 1)
+        # H3: Use rolling window accuracy instead of cumulative
+        train_acc = self._rolling_accuracy()
 
         # Track peak accuracy
         if train_acc > self._peak_accuracy:
             self._peak_accuracy = train_acc
 
         # Detect regression (>5% drop from peak)
-        if self._peak_accuracy > 0.3 and train_acc < self._peak_accuracy - 0.05:
+        # H6: Only adjust LR if cooldown has elapsed (200 steps)
+        if (self._peak_accuracy > 0.3 and train_acc < self._peak_accuracy - 0.05
+                and (self.total_examples - self._last_lr_adjust_step) >= 200):
             # Temporary LR boost to escape
             self._lr_scheduler.base_lr = min(self._lr_scheduler.base_lr * 1.3, 1.5)
+            self._last_lr_adjust_step = self.total_examples
             self._log_example({
                 "action": "METACOG_REGRESSION",
                 "peak": round(self._peak_accuracy, 4),
@@ -1448,17 +1502,26 @@ class InstructorAgent(threading.Thread):
     # Enhancement #3: Focal Loss (Confidence-Calibrated Training Signal)
     # ------------------------------------------------------------------
 
-    def _compute_focal_factor(self, features, label):
+    def _compute_focal_factor(self, features, label,
+                              pre_confidence=None, pre_correct=None):
         """Compute focal loss scaling factor for this example.
 
         Scales learning rate by how much the brain needs to learn:
         - Already correct with high confidence -> very low LR (save compute)
         - Incorrect with high confidence -> high LR (strong correction needed)
+
+        Args:
+            pre_confidence: Pre-computed confidence from caller (M1: avoids
+                redundant prediction). If None, performs its own prediction.
+            pre_correct: Pre-computed correctness from caller. If None,
+                performs its own prediction.
         """
         try:
-            pre_decision = self.brain.predict_fast(features)
-            pre_confidence = pre_decision.get('confidence', 0.5) if isinstance(pre_decision, dict) else 0.5
-            pre_correct = (pre_decision.get('label', -1) == label) if isinstance(pre_decision, dict) else False
+            if pre_confidence is None or pre_correct is None:
+                # C1: predict_fast returns a tuple (label_string, confidence_float)
+                pred_label, pre_confidence = self.brain.predict_fast(features)
+                pre_correct = (pred_label == label)
+
             if pre_correct:
                 # Already correct -- scale down LR proportional to confidence
                 # High confidence correct -> very low LR (don't waste compute)
@@ -1505,7 +1568,7 @@ class _CosineAnnealingLR:
 # Feature Utilities
 # ---------------------------------------------------------------------------
 
-def _text_to_features(text: str, num_inputs: int) -> list:
+def _text_to_features(text: str, num_inputs: int, feature_step: int = 3000) -> list:
     """Hybrid text feature encoding: semantic embeddings + character n-grams.
 
     Enhancement #8: Progressive feature unfreezing — starts with 100% semantic
@@ -1516,11 +1579,14 @@ def _text_to_features(text: str, num_inputs: int) -> list:
     Phase 3 (steps 3000+):     Steady 50/50 (original behavior)
 
     Falls back to pure n-grams if sentence-transformers unavailable.
+
+    Args:
+        feature_step: Per-instructor feature step count (default 3000 = steady state).
     """
     model = _get_embedding_model()
     if model is not None:
         try:
-            ngram_ratio = _get_feature_blend_ratio()
+            ngram_ratio = _get_feature_blend_ratio_for_step(feature_step)
             semantic_ratio = 1.0 - ngram_ratio
 
             # Compute dimensions for each component

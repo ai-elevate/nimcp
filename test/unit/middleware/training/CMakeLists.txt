@@ -14,11 +14,11 @@ target_compile_features(unit_middleware_training_test_training_module PRIVATE cx
 
 target_link_libraries(unit_middleware_training_test_training_module
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
 )
 
 add_test(NAME unit_middleware_training_test_training_module
@@ -42,11 +42,11 @@ target_compile_features(unit_middleware_training_test_loss_functions PRIVATE cxx
 
 target_link_libraries(unit_middleware_training_test_loss_functions
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -72,11 +72,11 @@ target_compile_features(unit_middleware_training_test_optimizers PRIVATE cxx_std
 
 target_link_libraries(unit_middleware_training_test_optimizers
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -102,11 +102,11 @@ target_compile_features(unit_middleware_training_test_lr_scheduler PRIVATE cxx_s
 
 target_link_libraries(unit_middleware_training_test_lr_scheduler
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -132,11 +132,11 @@ target_compile_features(unit_middleware_training_test_regularization PRIVATE cxx
 
 target_link_libraries(unit_middleware_training_test_regularization
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -162,11 +162,11 @@ target_compile_features(unit_middleware_training_test_gradient_manager PRIVATE c
 
 target_link_libraries(unit_middleware_training_test_gradient_manager
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -192,11 +192,11 @@ target_compile_features(unit_middleware_training_test_plasticity_bridge PRIVATE 
 
 target_link_libraries(unit_middleware_training_test_plasticity_bridge
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -222,11 +222,11 @@ target_compile_features(unit_middleware_training_test_event_driven_plasticity PR
 
 target_link_libraries(unit_middleware_training_test_event_driven_plasticity
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -252,11 +252,11 @@ target_compile_features(unit_middleware_training_test_security_registration PRIV
 
 target_link_libraries(unit_middleware_training_test_security_registration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -282,11 +282,11 @@ target_compile_features(unit_middleware_training_test_training_callbacks PRIVATE
 
 target_link_libraries(unit_middleware_training_test_training_callbacks
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -312,11 +312,11 @@ target_compile_features(unit_middleware_training_test_tpb_bio_async PRIVATE cxx_
 
 target_link_libraries(unit_middleware_training_test_tpb_bio_async
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -341,11 +341,11 @@ target_compile_features(unit_middleware_training_test_training_adapters_bio_asyn
 
 target_link_libraries(unit_middleware_training_test_training_adapters_bio_async
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -380,11 +380,11 @@ target_compile_features(unit_middleware_training_test_training_logic_bridge PRIV
 
 target_link_libraries(unit_middleware_training_test_training_logic_bridge
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -410,11 +410,11 @@ target_compile_features(unit_middleware_training_test_cognitive_training_bridge 
 
 target_link_libraries(unit_middleware_training_test_cognitive_training_bridge
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -440,11 +440,11 @@ target_compile_features(unit_middleware_training_test_perception_training_bridge
 
 target_link_libraries(unit_middleware_training_test_perception_training_bridge
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -470,11 +470,11 @@ target_compile_features(unit_middleware_training_test_cortical_training_bridge P
 
 target_link_libraries(unit_middleware_training_test_cortical_training_bridge
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -500,11 +500,11 @@ target_compile_features(unit_middleware_training_test_occipital_training_bridge 
 
 target_link_libraries(unit_middleware_training_test_occipital_training_bridge
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -530,11 +530,11 @@ target_compile_features(unit_middleware_training_test_training_convergent_decisi
 
 target_link_libraries(unit_middleware_training_test_training_convergent_decision
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -560,11 +560,11 @@ target_compile_features(unit_middleware_training_test_training_causal_model PRIV
 
 target_link_libraries(unit_middleware_training_test_training_causal_model
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -590,11 +590,11 @@ target_compile_features(unit_middleware_training_test_training_diagnosis PRIVATE
 
 target_link_libraries(unit_middleware_training_test_training_diagnosis
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -620,11 +620,11 @@ target_compile_features(unit_middleware_training_test_training_integration_fixes
 
 target_link_libraries(unit_middleware_training_test_training_integration_fixes
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 

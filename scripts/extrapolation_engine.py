@@ -36,7 +36,6 @@ MODULES USED:
   Medulla:        medulla_get_arousal, medulla_get_circadian_efficiency
 """
 
-import json
 import math
 import random
 import time
@@ -78,6 +77,8 @@ class ExtrapolationConfig:
     use_mesh: bool = True            # Use mesh network for consensus
     use_oscillations: bool = True    # Use phase coherence for binding
     consolidate_after: bool = False  # Consolidate after generation
+    add_to_kb: bool = False          # Add prompt as fact to knowledge base
+    boost_arousal: bool = True       # Boost arousal during generation
     domain_context: str = ""         # Primary domain context
     cross_domains: List[str] = field(default_factory=list)  # Secondary domains
 
@@ -95,6 +96,21 @@ class GenerationResult:
     generation_time_ms: float        # Wall-clock time
     mode: str                        # Generation mode used
     cognitive_state: Dict[str, Any]  # Brain state during generation
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize result to a plain dictionary."""
+        return {
+            "content": self.content,
+            "confidence": self.confidence,
+            "novelty": self.novelty,
+            "coherence": self.coherence,
+            "reasoning_trace": self.reasoning_trace,
+            "knowledge_sources": self.knowledge_sources,
+            "uncertainty": self.uncertainty,
+            "generation_time_ms": self.generation_time_ms,
+            "mode": self.mode,
+            "cognitive_state": self.cognitive_state,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -173,6 +189,13 @@ class ExtrapolationEngine:
         reasoning_trace = []
         knowledge_sources = []
 
+        # NOTE: The lock is held for the entire 7-stage pipeline to ensure
+        # generation history consistency.  Candidates produced by _stage_imagine
+        # are scored against _generation_history in _compute_novelty; releasing
+        # the lock between stages would allow a concurrent generate() call to
+        # interleave history entries and corrupt novelty scores.  This means
+        # generation is serialized per-engine — callers needing parallelism
+        # should use separate ExtrapolationEngine instances.
         with self._lock:
             # Stage 1: SEED — Encode prompt into feature space
             features = self._stage_seed(prompt, config)
@@ -251,10 +274,11 @@ class ExtrapolationEngine:
         features = self._encode(prompt, self._num_inputs)
 
         # Boost arousal for creative generation
-        try:
-            self.brain.medulla_boost_arousal(config.arousal_boost)
-        except (AttributeError, Exception):
-            pass
+        if config.boost_arousal:
+            try:
+                self.brain.medulla_boost_arousal(config.arousal_boost)
+            except (AttributeError, Exception):
+                pass
 
         # Prime working memory with the prompt context
         try:
@@ -359,12 +383,13 @@ class ExtrapolationEngine:
         """Apply reasoning modules to the seed."""
         reasoning_results = {}
 
-        # 3a: Add prompt as a fact for reasoning engine
-        try:
-            self.brain.ti_add_fact(prompt[:200], 0.9)
-            trace.append("Seeded reasoning engine with prompt")
-        except (AttributeError, Exception):
-            pass
+        # 3a: Optionally add prompt as a fact for reasoning engine
+        if config.add_to_kb:
+            try:
+                self.brain.ti_add_fact(prompt[:200], 0.9)
+                trace.append("Seeded reasoning engine with prompt")
+            except (AttributeError, Exception):
+                pass
 
         # 3b: Forward chaining — derive new facts from existing knowledge
         try:
@@ -532,11 +557,26 @@ class ExtrapolationEngine:
                 except Exception:
                     pass
 
-            # Interpolation: blend features between domains
-            alpha = random.uniform(0.3, 0.7)
-            feat_arr = np.array(features, dtype=np.float32)
-            noise = np.random.randn(len(features)).astype(np.float32) * 0.05
-            blended = (feat_arr * alpha + (feat_arr + noise) * (1 - alpha)).tolist()
+            # Try to get domain centroid for true interpolation
+            centroid = None
+            if hasattr(self.brain, '_domain_centroids'):
+                # Use brain's domain centroids if available
+                for d in config.cross_domains:
+                    c = getattr(self.brain, '_domain_centroids', {}).get(d)
+                    if c is not None:
+                        centroid = c
+                        break
+
+            if centroid is not None and len(centroid) == len(features):
+                feat_arr = np.array(features, dtype=np.float32)
+                cent_arr = np.array(centroid, dtype=np.float32)
+                alpha = random.uniform(0.3, 0.7)
+                blended = (feat_arr * alpha + cent_arr * (1 - alpha)).tolist()
+            else:
+                # Fallback: perturb features with noise
+                feat_arr = np.array(features, dtype=np.float32)
+                noise = np.random.randn(len(features)).astype(np.float32) * 0.05
+                blended = (feat_arr + noise).tolist()
 
             blended_decision = self.brain.decide_full(blended)
             if not blended_decision:
@@ -551,7 +591,8 @@ class ExtrapolationEngine:
                 "blend_alpha": alpha,
                 "explanation": blended_decision.get("explanation", ""),
                 "novelty": self._compute_novelty(
-                    np.array(blended_decision.get("output_vector", [0.0]), dtype=np.float32)),
+                    np.array(blended_decision.get("output_vector",
+                             [0.0] * self._num_outputs), dtype=np.float32)),
                 "candidate_idx": idx,
             }
         except Exception:
@@ -588,7 +629,8 @@ class ExtrapolationEngine:
                 "reasoning_confidence": reason_conf,
                 "explanation": decision.get("explanation", ""),
                 "novelty": self._compute_novelty(
-                    np.array(decision.get("output_vector", [0.0]), dtype=np.float32)),
+                    np.array(decision.get("output_vector",
+                             [0.0] * self._num_outputs), dtype=np.float32)),
                 "candidate_idx": idx,
             }
         except Exception:
@@ -628,7 +670,8 @@ class ExtrapolationEngine:
                 "cognitive_capacity": reasoned.get("cognitive_capacity", 1.0),
                 "explanation": decision.get("explanation", ""),
                 "novelty": self._compute_novelty(
-                    np.array(decision.get("output_vector", [0.0]), dtype=np.float32)),
+                    np.array(decision.get("output_vector",
+                             [0.0] * self._num_outputs), dtype=np.float32)),
                 "candidate_idx": idx,
             }
         except Exception:
@@ -663,7 +706,8 @@ class ExtrapolationEngine:
                 "num_contributing_domains": len(domain_predictions),
                 "explanation": decision.get("explanation", ""),
                 "novelty": self._compute_novelty(
-                    np.array(decision.get("output_vector", [0.0]), dtype=np.float32)),
+                    np.array(decision.get("output_vector",
+                             [0.0] * self._num_outputs), dtype=np.float32)),
                 "candidate_idx": idx,
             }
         except Exception:
@@ -679,6 +723,13 @@ class ExtrapolationEngine:
         """Evaluate and score candidates using introspection + uncertainty."""
         scored = []
 
+        # Pre-compute uncertainty once (same features for all candidates)
+        unc = None
+        try:
+            unc = self.brain.get_uncertainty(features)
+        except (AttributeError, Exception):
+            pass
+
         for candidate in candidates:
             score = 0.0
             uncertainty_scores = {}
@@ -691,20 +742,16 @@ class ExtrapolationEngine:
             novelty = candidate.get("novelty", 0.5)
             score += 0.25 * novelty
 
-            # 5c: Uncertainty quantification
-            try:
-                unc = self.brain.get_uncertainty(features)
-                if unc:
-                    epistemic = unc.get("epistemic", 0.5)
-                    aleatoric = unc.get("aleatoric", 0.5)
-                    uncertainty_scores["epistemic"] = epistemic
-                    uncertainty_scores["aleatoric"] = aleatoric
-                    # Moderate epistemic uncertainty is GOOD for generation
-                    # (too low = memorized, too high = random)
-                    optimal_uncertainty = 1.0 - abs(epistemic - 0.4) / 0.6
-                    score += 0.2 * optimal_uncertainty
-            except (AttributeError, Exception):
-                pass
+            # 5c: Uncertainty quantification (using pre-computed unc)
+            if unc:
+                epistemic = unc.get("epistemic", 0.5)
+                aleatoric = unc.get("aleatoric", 0.5)
+                uncertainty_scores["epistemic"] = epistemic
+                uncertainty_scores["aleatoric"] = aleatoric
+                # Moderate epistemic uncertainty is GOOD for generation
+                # (too low = memorized, too high = random)
+                optimal_uncertainty = 1.0 - abs(epistemic - 0.4) / 0.6
+                score += 0.2 * optimal_uncertainty
 
             # 5d: Self-assessment
             try:
@@ -851,7 +898,7 @@ class ExtrapolationEngine:
             "type": best.get("type", mode.value),
             "top_k_candidates": [
                 {
-                    "label": c.get("label", c.get("blended_label", c.get("synthesized_label", ""))),
+                    "label": self._extract_label(c),
                     "score": round(c.get("score", 0), 4),
                     "novelty": round(c.get("novelty", 0), 4),
                     "type": c.get("type", ""),
@@ -898,8 +945,8 @@ class ExtrapolationEngine:
         """Integrate generated knowledge back into brain."""
         try:
             # Add generated content as new fact
-            content_str = json.dumps(result.content.get("primary_output", ""))
-            self.brain.ti_add_fact(content_str[:200], result.confidence)
+            content_str = str(result.content.get("primary_output", ""))[:200]
+            self.brain.ti_add_fact(content_str, result.confidence)
 
             # Reward signal for successful generation
             if result.confidence > config.confidence_threshold:
@@ -922,7 +969,7 @@ class ExtrapolationEngine:
             result = np.zeros_like(logits)
             result[np.argmax(logits)] = 1.0
             return result
-        scaled = logits / max(temperature, 1e-8)
+        scaled = logits / temperature
         scaled -= np.max(scaled)  # Numerical stability
         exp = np.exp(scaled)
         return exp / (np.sum(exp) + 1e-10)
@@ -938,13 +985,13 @@ class ExtrapolationEngine:
         if norm < 1e-8:
             return 0.0
 
-        min_sim = 1.0
+        max_sim = -1.0
         for prev in self._generation_history:
             prev_norm = np.linalg.norm(prev)
             if prev_norm < 1e-8:
                 continue
             sim = float(np.dot(output, prev) / (norm * prev_norm))
-            min_sim = min(min_sim, sim)
+            max_sim = max(max_sim, sim)
 
         # Track this output
         self._generation_history.append(output.copy())
@@ -952,14 +999,21 @@ class ExtrapolationEngine:
             self._generation_history.pop(0)
 
         # Novelty = 1 - max similarity to previous
-        return max(0.0, 1.0 - min_sim)
+        return max(0.0, 1.0 - max_sim) if max_sim >= 0.0 else 1.0
+
+    @staticmethod
+    def _extract_label(candidate: Dict) -> str:
+        """Extract the best label from a candidate regardless of type."""
+        return (candidate.get("label")
+                or candidate.get("blended_label")
+                or candidate.get("synthesized_label")
+                or "")
 
     def _compute_coherence(self, candidates: List[Dict]) -> float:
         """Measure agreement among top candidates."""
         if len(candidates) < 2:
             return 1.0
-        labels = [c.get("label", c.get("blended_label",
-                  c.get("synthesized_label", ""))) for c in candidates[:5]]
+        labels = [self._extract_label(c) for c in candidates[:5]]
         labels = [l for l in labels if l]
         if not labels:
             return 0.0
@@ -1023,8 +1077,8 @@ class ExtrapolationEngine:
             return features
         text_lower = text[:2000].lower()
         for i, ch in enumerate(text_lower):
-            idx = ord(ch) % num_inputs
-            features[idx] += 1.0
+            bucket = (ord(ch) + i * 7) % num_inputs  # Position-dependent hashing
+            features[bucket] += 1.0
         total = sum(features) or 1.0
         return [f / total for f in features]
 
@@ -1039,14 +1093,24 @@ def create_engine(brain, **kwargs) -> ExtrapolationEngine:
 
 
 def extrapolate(brain, prompt: str, domain: str = "",
-                temperature: float = 0.7) -> GenerationResult:
-    """One-shot extrapolation convenience function."""
-    engine = ExtrapolationEngine(brain)
+                temperature: float = 0.7,
+                engine: Optional[ExtrapolationEngine] = None) -> GenerationResult:
+    """One-shot extrapolation convenience function.
+
+    Pass an existing *engine* to avoid creating a disposable instance each call.
+    """
+    if engine is None:
+        engine = ExtrapolationEngine(brain)
     return engine.generate_in_domain(prompt, domain, temperature)
 
 
 def hypothesize(brain, question: str,
-                domains: List[str] = None) -> GenerationResult:
-    """One-shot hypothesis generation convenience function."""
-    engine = ExtrapolationEngine(brain)
+                domains: List[str] = None,
+                engine: Optional[ExtrapolationEngine] = None) -> GenerationResult:
+    """One-shot hypothesis generation convenience function.
+
+    Pass an existing *engine* to avoid creating a disposable instance each call.
+    """
+    if engine is None:
+        engine = ExtrapolationEngine(brain)
     return engine.hypothesize(question, domains)

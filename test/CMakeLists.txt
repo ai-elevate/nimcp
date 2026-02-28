@@ -378,8 +378,8 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e")
     add_subdirectory(e2e)
 endif()
 
-# Enable CTest
-enable_testing()
+# NOTE: enable_testing() is already called in the top-level CMakeLists.txt.
+# Do not call it again here — it only needs to be called once per project.
 
 # ============================================================================
 # Timeout Configuration for Slow Tests
@@ -2881,5 +2881,10 @@ gtest_discover_tests(regression_test_backprop_kernel_compat
     PROPERTIES LABELS "regression;plasticity;backprop;backward_compat"
     TIMEOUT 120
 )
+
+# NOTE: integration_gpu_test_gpu_cpu_fallback_integration and
+# integration_test_backprop_grad_clip are defined in
+# test/integration/CMakeLists.txt, which is included via
+# add_subdirectory(integration) above (line ~1949).
 
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)

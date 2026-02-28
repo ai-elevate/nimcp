@@ -72,7 +72,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adaptive)
 #define SPARSITY_ADAPT_INCREASE 1.01f
 #define SPARSITY_ADAPT_DECREASE 0.99f
 #define SPARSITY_EMA_WEIGHT 0.1f
-#define OUTPUT_LR_BOOST 10.0f  /* Output layer LR multiplier for classification */
+// OUTPUT_LR_BOOST is defined in nimcp_backprop_kernel.h (single source of truth)
 #define LATERAL_INHIBITION_STRENGTH 0.3f  /* Strength for output layer lateral inhibition */
 
 // WHAT: Helper macros for checked file I/O (cert-err33-c compliance)
@@ -713,8 +713,11 @@ static int32_t decode_ternary(const uint8_t* spike_train, uint32_t length)
  */
 static int32_t decode_bitwise(const uint8_t* spike_train, uint32_t length)
 {
+    // M-2: Clamp to 4 bytes to prevent undefined behavior from shifting
+    // beyond the width of int32_t (32 bits = 4 bytes max)
+    uint32_t limit = (length < 4) ? length : 4;
     int32_t spike_count = 0;
-    for (uint32_t i = 0; i < length; i++) {
+    for (uint32_t i = 0; i < limit; i++) {
         spike_count |= (spike_train[i] << (i * 8));
     }
     return spike_count;
@@ -1024,23 +1027,15 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
 
     // Auto-load from checkpoint if enabled (default behavior)
     // WHY: Allow seamless continuation of training from saved state
-    // HOW: Check if checkpoint exists and auto_load is enabled, then load instead of creating fresh
+    // M-6: Removed TOCTOU race (fopen→fclose→load) — call load directly
+    //       and handle NULL return (file absent OR corrupt)
     if (config->checkpoint_path && config->auto_load) {
-        // Check if checkpoint file exists
-        FILE* test_file = fopen(config->checkpoint_path, "rb");
-        if (test_file) {
-            fclose(test_file);
-            // Checkpoint exists, load it
-            adaptive_network_t loaded_network = adaptive_network_load(config->checkpoint_path);
-            if (loaded_network) {
-                // Successfully loaded from checkpoint
-                return loaded_network;
-            }
-            // If load failed, fall through to create fresh network
-            fprintf(stderr, "WARNING: Failed to load checkpoint from '%s', creating fresh network\n",
-                    config->checkpoint_path);
+        adaptive_network_t loaded_network = adaptive_network_load(config->checkpoint_path);
+        if (loaded_network) {
+            return loaded_network;
         }
-        // Checkpoint doesn't exist yet, create fresh network (will be saved later)
+        // Load returned NULL — file doesn't exist or is corrupt.
+        // Fall through to create a fresh network.
     }
 
     // Allocate network structure
@@ -1644,11 +1639,10 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
     }
 
     // Phase GPU: GPU-accelerated forward pass (read-only — no statistics update)
-    if (network->gpu_enabled && network->gpu_weight_cache) {
-        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
-            nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
-                                         network->base_network);
-        }
+    // H-1: In readonly path, don't upload weights (that mutates GPU state).
+    //       Fall through to CPU path if weights are dirty on CPU.
+    if (network->gpu_enabled && network->gpu_weight_cache &&
+        !network->gpu_weight_cache->weights_dirty_on_cpu) {
         nimcp_gpu_forward_pass(network->gpu_weight_cache,
                                input, input_size, output, output_size);
         /* BUG-11 fix: Use readonly=true to avoid mutating state through const */
@@ -1784,7 +1778,11 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         if (!spike_input) return -1.0F;
 
         // 3. GPU forward pass with spike-encoded input
-        float* output = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
+        // M-5: Allocate max(target_size, output_size) to prevent OOB write when
+        //       the network's output_size exceeds example->target_size
+        uint32_t out_buf_size = example->target_size > network->config.base_config.output_size
+            ? example->target_size : network->config.base_config.output_size;
+        float* output = (float*)alloc_hot_buffer(out_buf_size * sizeof(float));
         if (!output) { free_hot_buffer(spike_input); return -1.0F; }
 
         nimcp_gpu_forward_pass(network->gpu_weight_cache,
@@ -1847,6 +1845,16 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
         free_hot_buffer(output);
         network->total_learning_steps++;
+
+        // L-3: Update EMA of training loss in GPU path (same logic as CPU path)
+        if (loss >= 0.0f) {
+            if (network->ema_loss < 0.0f) {
+                network->ema_loss = loss;  // First iteration: seed
+            } else {
+                network->ema_loss = 0.99f * network->ema_loss + 0.01f * loss;
+            }
+        }
+
         return loss;
     }
 
@@ -1923,6 +1931,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             // Hebbian learning - no explicit target
             // Already handled by base network's plasticity rules during forward pass
             loss = 0.0F;
+            // H-3: No backprop gradient to track for unsupervised mode
+            network->last_grad_norm = 0.0f;
             break;
 
         case LEARN_MODE_REINFORCEMENT:
@@ -1942,6 +1952,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 neural_network_apply_reward_learning(base_rl, rl_reward, learning_rate, time_rl);
             }
             }
+            // H-3: No backprop gradient to track for reinforcement mode
+            network->last_grad_norm = 0.0f;
             break;
 
         case LEARN_MODE_HYBRID:
@@ -2432,6 +2444,16 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
     }
 
+    // C-1: Bounds check — saved neuron count must not exceed the network's
+    // allocated neuron_states array, otherwise fread would write past the end
+    if (num_neurons > network->num_neurons) {
+        adaptive_network_destroy(network);
+        fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "adaptive_network_load: saved neuron count exceeds network capacity");
+        return NULL;
+    }
+
     // Read neuron states
     for (uint32_t i = 0; i < num_neurons; i++) {
         if (fread(&network->neuron_states[i], sizeof(adaptive_neuron_state_t), 1, file) != 1) {
@@ -2440,6 +2462,11 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
             return NULL;
         }
+        // C-2: Null out pointer fields deserialized from file — the saved
+        // spike_train pointer is meaningless in the new process address space
+        // and would be a wild pointer if dereferenced
+        network->neuron_states[i].spike_train = NULL;
+        network->neuron_states[i].spike_train_length = 0;
     }
 
     // Read label map
@@ -2461,6 +2488,14 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     }
 
     network->label_map = nimcp_malloc(num_labels * sizeof(char*));
+    // C-3: NULL check after label_map allocation to prevent NULL dereference
+    if (!network->label_map) {
+        adaptive_network_destroy(network);
+        fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "adaptive_network_load: failed to allocate label_map");
+        return NULL;
+    }
     network->num_labels = num_labels;
 
     for (uint32_t i = 0; i < num_labels; i++) {
@@ -2686,8 +2721,9 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
     }
 
     // Collect active neurons
+    // M-4: Also bound by num_neurons to prevent OOB access on neuron_states[]
     uint32_t idx = 0;
-    for (uint32_t i = 0; i < network->config.base_config.output_size && idx < active_count; i++) {
+    for (uint32_t i = 0; i < network->config.base_config.output_size && idx < active_count && i < network->num_neurons; i++) {
         if (fabsf(output[i]) > network->neuron_states[i].adaptive_threshold) {
             analysis->active_neuron_ids[idx] = i;
             analysis->activation_strengths[idx] = output[i];
@@ -2764,11 +2800,25 @@ uint32_t adaptive_network_explain(adaptive_network_t network, const float* input
                            analysis.num_active_neurons, network->config.base_config.output_size,
                            analysis.sparsity * 100.0F, analysis.confidence);
 
+    // M-1: Check snprintf return value — negative on encoding error,
+    //       >= max_length means output was truncated (no room for more)
+    if (written < 0 || (uint32_t)written >= max_length) {
+        nimcp_free(analysis.active_neuron_ids);
+        nimcp_free(analysis.activation_strengths);
+        return (written < 0) ? 0 : (uint32_t)written;
+    }
+
     // Add top 3 neurons
     uint32_t top_count = (analysis.num_active_neurons < 3) ? analysis.num_active_neurons : 3;
     for (uint32_t i = 0; i < top_count; i++) {
-        written += snprintf(explanation + written, max_length - written, "N%u(%.2f) ",
+        int added = snprintf(explanation + written, max_length - written, "N%u(%.2f) ",
                             analysis.active_neuron_ids[i], analysis.activation_strengths[i]);
+        if (added < 0 || (uint32_t)(written + added) >= max_length) {
+            // Truncated — stop adding more neurons
+            if (added > 0) written += added;
+            break;
+        }
+        written += added;
     }
 
     // Free analysis arrays

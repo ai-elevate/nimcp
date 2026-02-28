@@ -12,7 +12,7 @@ target_link_libraries(test_attention_bioasync
         Threads::Threads
         m
 )
-target_compile_features(test_attention_bioasync PRIVATE cxx_std_17)
+target_compile_features(test_attention_bioasync PRIVATE cxx_std_20)
 gtest_discover_tests(test_attention_bioasync
     PROPERTIES LABELS "unit;plasticity;attention")
 
@@ -28,7 +28,7 @@ target_link_libraries(test_dendritic_bioasync
         Threads::Threads
         m
 )
-target_compile_features(test_dendritic_bioasync PRIVATE cxx_std_17)
+target_compile_features(test_dendritic_bioasync PRIVATE cxx_std_20)
 gtest_discover_tests(test_dendritic_bioasync
     PROPERTIES LABELS "unit;plasticity;dendritic")
 
@@ -44,7 +44,7 @@ target_link_libraries(test_adaptive_bioasync
         Threads::Threads
         m
 )
-target_compile_features(test_adaptive_bioasync PRIVATE cxx_std_17)
+target_compile_features(test_adaptive_bioasync PRIVATE cxx_std_20)
 gtest_discover_tests(test_adaptive_bioasync
     PROPERTIES LABELS "unit;plasticity;adaptive")
 
@@ -60,7 +60,7 @@ target_link_libraries(test_predictive_bioasync
         Threads::Threads
         m
 )
-target_compile_features(test_predictive_bioasync PRIVATE cxx_std_17)
+target_compile_features(test_predictive_bioasync PRIVATE cxx_std_20)
 gtest_discover_tests(test_predictive_bioasync
     PROPERTIES LABELS "unit;plasticity;predictive")
 
@@ -76,7 +76,7 @@ target_link_libraries(unit_plasticity_second_messengers_test
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_second_messengers_test PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_second_messengers_test PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_second_messengers_test
     PROPERTIES LABELS "unit;plasticity;second_messengers")
 
@@ -92,7 +92,7 @@ target_link_libraries(unit_plasticity_second_messengers_modules_test
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_second_messengers_modules_test PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_second_messengers_modules_test PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_second_messengers_modules_test
     PROPERTIES LABELS "unit;plasticity;second_messengers;modules")
 
@@ -108,7 +108,7 @@ target_link_libraries(unit_plasticity_neuromodulator_immune
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_neuromodulator_immune PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_neuromodulator_immune PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_neuromodulator_immune
     PROPERTIES LABELS "unit;plasticity;immune;neuromodulator")
 
@@ -129,7 +129,7 @@ target_link_libraries(unit_plasticity_test_fep_bridges
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_test_fep_bridges PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_test_fep_bridges PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_test_fep_bridges
     PROPERTIES LABELS "unit;plasticity;fep;bridge"
     TIMEOUT 60
@@ -152,7 +152,7 @@ target_link_libraries(unit_plasticity_test_coordinator
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_test_coordinator PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_test_coordinator PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_test_coordinator
     PROPERTIES LABELS "unit;plasticity;coordinator"
     TIMEOUT 60
@@ -176,7 +176,7 @@ add_executable(unit_plasticity_neuromodulators_sleep_bridge
 target_link_libraries(unit_plasticity_neuromodulators_sleep_bridge
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )
-target_compile_features(unit_plasticity_neuromodulators_sleep_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_neuromodulators_sleep_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_neuromodulators_sleep_bridge
     PROPERTIES LABELS "unit;plasticity;neuromodulators;sleep")
 
@@ -187,7 +187,7 @@ add_executable(unit_plasticity_stdp_sleep_bridge
 target_link_libraries(unit_plasticity_stdp_sleep_bridge
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )
-target_compile_features(unit_plasticity_stdp_sleep_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_stdp_sleep_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_stdp_sleep_bridge
     PROPERTIES LABELS "unit;plasticity;stdp;sleep")
 
@@ -198,7 +198,7 @@ add_executable(unit_plasticity_triplet_stdp
 target_link_libraries(unit_plasticity_triplet_stdp
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )
-target_compile_features(unit_plasticity_triplet_stdp PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_triplet_stdp PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_triplet_stdp
     PROPERTIES LABELS "unit;plasticity;stdp;triplet")
 
@@ -209,7 +209,7 @@ add_executable(unit_plasticity_stdp_quantum_optimizer
 target_link_libraries(unit_plasticity_stdp_quantum_optimizer
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )
-target_compile_features(unit_plasticity_stdp_quantum_optimizer PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_stdp_quantum_optimizer PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_stdp_quantum_optimizer
     PROPERTIES LABELS "unit;plasticity;stdp;quantum")
 
@@ -220,7 +220,7 @@ add_executable(unit_plasticity_stdp_utils_bridge
 target_link_libraries(unit_plasticity_stdp_utils_bridge
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )
-target_compile_features(unit_plasticity_stdp_utils_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_stdp_utils_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_stdp_utils_bridge
     PROPERTIES LABELS "unit;plasticity;stdp;utils;bridge"
     TIMEOUT 60)
@@ -232,7 +232,7 @@ add_executable(unit_plasticity_stdp_state_ops
 target_link_libraries(unit_plasticity_stdp_state_ops
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )
-target_compile_features(unit_plasticity_stdp_state_ops PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_stdp_state_ops PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_stdp_state_ops
     PROPERTIES LABELS "unit;plasticity;stdp;state;fault_tolerance"
     TIMEOUT 120)
@@ -244,7 +244,7 @@ add_executable(unit_plasticity_bcm_sleep_bridge
 target_link_libraries(unit_plasticity_bcm_sleep_bridge
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )
-target_compile_features(unit_plasticity_bcm_sleep_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_bcm_sleep_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_bcm_sleep_bridge
     PROPERTIES LABELS "unit;plasticity;bcm;sleep")
 
@@ -255,7 +255,7 @@ add_executable(unit_plasticity_homeostatic_sleep_bridge
 target_link_libraries(unit_plasticity_homeostatic_sleep_bridge
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )
-target_compile_features(unit_plasticity_homeostatic_sleep_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_homeostatic_sleep_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_homeostatic_sleep_bridge
     PROPERTIES LABELS "unit;plasticity;homeostatic;sleep")
 
@@ -282,7 +282,7 @@ add_executable(unit_plasticity_protein_synthesis
 target_link_libraries(unit_plasticity_protein_synthesis
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )
-target_compile_features(unit_plasticity_protein_synthesis PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_protein_synthesis PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_protein_synthesis
     PROPERTIES LABELS "unit;plasticity;protein"
     TIMEOUT 60
@@ -307,7 +307,7 @@ target_link_libraries(unit_plasticity_metabolic
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_metabolic PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_metabolic PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_metabolic
     PROPERTIES LABELS "unit;plasticity;metabolic"
     TIMEOUT 60
@@ -332,7 +332,7 @@ target_link_libraries(unit_plasticity_structural
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_structural PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_structural PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_structural
     PROPERTIES LABELS "unit;plasticity;structural"
     TIMEOUT 60
@@ -357,7 +357,7 @@ target_link_libraries(unit_plasticity_extended_metaplasticity
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_extended_metaplasticity PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_extended_metaplasticity PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_extended_metaplasticity
     PROPERTIES LABELS "unit;plasticity;metaplasticity"
     TIMEOUT 60
@@ -382,7 +382,7 @@ target_link_libraries(unit_plasticity_astrocyte
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_astrocyte PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_astrocyte PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_astrocyte
     PROPERTIES LABELS "unit;plasticity;astrocyte"
     TIMEOUT 60
@@ -407,7 +407,7 @@ target_link_libraries(unit_plasticity_orchestrator
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_orchestrator PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_orchestrator PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_orchestrator
     PROPERTIES LABELS "unit;plasticity;orchestrator"
     TIMEOUT 120
@@ -432,7 +432,7 @@ target_link_libraries(unit_plasticity_axon_orchestrator_bridge
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_axon_orchestrator_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_axon_orchestrator_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_axon_orchestrator_bridge
     PROPERTIES LABELS "unit;plasticity;orchestrator;axon"
     TIMEOUT 120
@@ -457,7 +457,7 @@ target_link_libraries(unit_plasticity_neuron_orchestrator_bridge
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_neuron_orchestrator_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_neuron_orchestrator_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_neuron_orchestrator_bridge
     PROPERTIES LABELS "unit;plasticity;orchestrator;neuron"
     TIMEOUT 120
@@ -482,7 +482,7 @@ target_link_libraries(unit_plasticity_dendrite_orchestrator_bridge
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_dendrite_orchestrator_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_dendrite_orchestrator_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_dendrite_orchestrator_bridge
     PROPERTIES LABELS "unit;plasticity;orchestrator;dendrite"
     TIMEOUT 120
@@ -507,7 +507,7 @@ target_link_libraries(unit_plasticity_neural_coordinator
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_neural_coordinator PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_neural_coordinator PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_neural_coordinator
     PROPERTIES LABELS "unit;plasticity;orchestrator;coordinator"
     TIMEOUT 180
@@ -532,7 +532,7 @@ target_link_libraries(unit_plasticity_pink_noise_enhancements
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_pink_noise_enhancements PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_pink_noise_enhancements PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_pink_noise_enhancements
     PROPERTIES LABELS "unit;plasticity;noise;pink"
     TIMEOUT 120
@@ -557,7 +557,7 @@ target_link_libraries(unit_plasticity_pink_noise_exception_handling
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_pink_noise_exception_handling PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_pink_noise_exception_handling PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_pink_noise_exception_handling
     PROPERTIES LABELS "unit;plasticity;noise;pink;exception"
     TIMEOUT 60
@@ -583,7 +583,7 @@ target_link_libraries(unit_plasticity_dendrite_bridge
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_dendrite_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_dendrite_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_dendrite_bridge
     PROPERTIES LABELS "unit;plasticity;bridges;dendrite"
     TIMEOUT 120
@@ -601,7 +601,7 @@ target_link_libraries(unit_plasticity_synapse_bridge
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_synapse_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_synapse_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_synapse_bridge
     PROPERTIES LABELS "unit;plasticity;bridges;synapse"
     TIMEOUT 120
@@ -619,7 +619,7 @@ target_link_libraries(unit_plasticity_axon_bridge
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_axon_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_axon_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_axon_bridge
     PROPERTIES LABELS "unit;plasticity;bridges;axon"
     TIMEOUT 120
@@ -637,7 +637,7 @@ target_link_libraries(unit_plasticity_eligibility_quantum_bridge
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_eligibility_quantum_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_eligibility_quantum_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_eligibility_quantum_bridge
     PROPERTIES LABELS "unit;plasticity;eligibility;quantum;bridge"
     TIMEOUT 120
@@ -655,7 +655,7 @@ target_link_libraries(unit_plasticity_eligibility_utils_quantum_bridge
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_eligibility_utils_quantum_bridge PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_eligibility_utils_quantum_bridge PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_eligibility_utils_quantum_bridge
     PROPERTIES LABELS "unit;plasticity;eligibility;utils;quantum;bridge"
     TIMEOUT 120
@@ -681,7 +681,7 @@ target_link_libraries(unit_plasticity_denormal_threshold
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_denormal_threshold PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_denormal_threshold PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_denormal_threshold
     PROPERTIES
         TIMEOUT 120
@@ -717,7 +717,7 @@ target_link_libraries(unit_plasticity_hybrid_learning
         Threads::Threads
         m
 )
-target_compile_features(unit_plasticity_hybrid_learning PRIVATE cxx_std_17)
+target_compile_features(unit_plasticity_hybrid_learning PRIVATE cxx_std_20)
 gtest_discover_tests(unit_plasticity_hybrid_learning
     PROPERTIES LABELS "unit;plasticity;adaptive;hybrid"
     TIMEOUT 60

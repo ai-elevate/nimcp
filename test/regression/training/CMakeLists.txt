@@ -34,6 +34,7 @@ gtest_discover_tests(regression_training_integration_test
     PROPERTIES
         LABELS "regression;training;integration"
         TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy"
 )
 
 # =============================================================================

@@ -23,8 +23,8 @@ macro(add_integration_gpu_test TEST_NAME)
     )
     target_link_libraries(integration_gpu_${TEST_NAME}
         PRIVATE
-            GTest::GTest
-            GTest::Main
+            GTest::gtest
+            GTest::gtest_main
             nimcp
             m
             pthread
@@ -108,7 +108,7 @@ add_executable(integration_test_backprop_grad_clip
 target_link_libraries(integration_test_backprop_grad_clip
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )
-target_compile_features(integration_test_backprop_grad_clip PRIVATE cxx_std_17)
+target_compile_features(integration_test_backprop_grad_clip PRIVATE cxx_std_20)
 gtest_discover_tests(integration_test_backprop_grad_clip
     PROPERTIES LABELS "integration;plasticity;backprop;gradient_clipping"
     TIMEOUT 120

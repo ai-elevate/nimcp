@@ -20,9 +20,11 @@ Architecture:
     └── InstructorAgent × 23             (20 text + 3 multimodal)
 """
 
+import collections
 import json
 import os
 import queue
+import random
 import threading
 import time
 from dataclasses import dataclass, field
@@ -213,10 +215,6 @@ class SchoolProgressBoard:
         with self._lock:
             self._reports[domain] = report
 
-    def add_examples(self, count: int):
-        with self._lock:
-            self._total_examples += count
-
     def increment_recess(self):
         with self._lock:
             self._recess_count += 1
@@ -298,6 +296,10 @@ class TrainingMetacognition:
         if stats['ema_accuracy'] > 0.85 and stats['assessments'] > 10:
             stats['mastered'] = True
 
+        # De-mastery: if accuracy drops significantly, revoke mastery
+        if stats['mastered'] and stats['ema_accuracy'] < 0.75:
+            stats['mastered'] = False
+
     def assess(self) -> Dict[str, dict]:
         """Run metacognitive assessment across all domains.
 
@@ -349,6 +351,10 @@ class TrainingMetacognition:
             reverse=True
         )
 
+    def get_domain_priority(self, domain: str) -> float:
+        """Return the priority for a given domain (public accessor)."""
+        return self._domain_stats.get(domain, {}).get('priority', 1.0)
+
     def get_stalled_domains(self) -> List[str]:
         """Return list of domains that appear stalled."""
         return [d for d, s in self._domain_stats.items() if s['stall_count'] > 5]
@@ -363,9 +369,16 @@ class TrainingMetacognition:
         lines.append(f"  {'Domain':20s} {'Status':15s} {'Priority':>8s} {'Accuracy':>10s} {'Stall':>6s}")
         lines.append("  " + "-" * 65)
         for domain, stats in sorted(self._domain_stats.items()):
-            status = 'mastered' if stats['mastered'] else (
-                'stalled' if stats['stall_count'] > 5 else 'learning'
-            )
+            if stats['mastered']:
+                status = 'mastered'
+            elif stats['stall_count'] > 5:
+                status = 'stalled'
+            elif stats['ema_accuracy'] < 0.3 and stats['assessments'] > 5:
+                status = 'struggling'
+            elif stats['ema_accuracy'] > 0.7:
+                status = 'progressing_well'
+            else:
+                status = 'learning'
             lines.append(
                 f"  {domain:20s} {status:15s} {stats['priority']:8.2f} "
                 f"{stats['ema_accuracy']:10.4f} {stats['stall_count']:6d}"
@@ -394,6 +407,8 @@ class School:
         self.board = SchoolProgressBoard()
         self.metacognition = TrainingMetacognition(self.logger)
         self.cognitive = CognitiveOrchestrator(self.brain)
+
+        self._last_metacog = 0.0
 
         # Per-domain accuracy history for stall detection via CognitiveOrchestrator
         self._domain_accuracy_history: Dict[str, List[float]] = {}
@@ -506,6 +521,13 @@ class School:
         # Divide dedicated pool evenly among domains
         per_domain = max(4, dedicated_pool // len(domains))  # At least 4 neurons per domain
 
+        # H3: If too many domains would overflow, shrink per_domain to fit
+        if per_domain * len(domains) > dedicated_pool:
+            per_domain = max(1, dedicated_pool // len(domains))
+            self.logger.log(f"[School] WARNING: {len(domains)} domains exceed "
+                            f"dedicated pool ({dedicated_pool}), reduced to "
+                            f"{per_domain} neurons/domain")
+
         for i, domain in enumerate(domains):
             start = i * per_domain
             end = min(start + per_domain, dedicated_pool)
@@ -515,7 +537,9 @@ class School:
                 end = dedicated_pool
             self._domain_output_map[domain] = (start, end)
 
-        self._shared_output_range = (dedicated_pool, num_outputs)
+        # H5: Start shared range right after the last domain allocation to avoid
+        # wasting neurons in the gap between last domain end and dedicated_pool
+        self._shared_output_range = (len(domains) * per_domain, num_outputs)
 
         # Assign output_range to each instructor's config
         for agent in self.instructors:
@@ -543,7 +567,7 @@ class School:
 
         # Start instructors in batches to avoid heap corruption from too many
         # concurrent threads hitting the brain simultaneously
-        self._pending_instructors = list(self.instructors)
+        self._pending_instructors = collections.deque(self.instructors)
         self._active_instructors = []
         self._start_next_batch(max_conc)
 
@@ -556,10 +580,10 @@ class School:
             self._shutdown()
 
     def _start_next_batch(self, count: int):
-        """Start up to `count` instructors from the pending list."""
+        """Start up to `count` instructors from the pending deque."""
         started = 0
         while self._pending_instructors and started < count:
-            agent = self._pending_instructors.pop(0)
+            agent = self._pending_instructors.popleft()
             agent.start()
             self._active_instructors.append(agent)
             self.logger.log(f"  [School] Started instructor: {agent.config.domain}")
@@ -582,11 +606,11 @@ class School:
 
         # Sort pending by metacognitive priority (highest first)
         if self._pending_instructors and self._domain_stats_available():
-            self._pending_instructors.sort(
-                key=lambda a: self.metacognition._domain_stats.get(
-                    a.config.domain, {}).get('priority', 1.0),
+            self._pending_instructors = collections.deque(sorted(
+                self._pending_instructors,
+                key=lambda a: self.metacognition.get_domain_priority(a.config.domain),
                 reverse=True
-            )
+            ))
 
         # Start new instructors to fill vacant slots
         slots = max_conc - len(self._active_instructors)
@@ -688,6 +712,11 @@ class School:
                 self.logger.log(f"    + {ds.get('name', '?')}: "
                                 f"{ds.get('description', '')[:80]}")
 
+        # H2: Reallocate domain output heads to include new domains, then
+        # update ALL instructors (existing + new) with their output ranges
+        if added > 0:
+            self._allocate_domain_outputs()
+
         self.logger.log(f"[School] Hot-reload complete: {added} new instructor(s), "
                         f"{len(self._pending_instructors)} pending")
 
@@ -753,9 +782,9 @@ class School:
                 # with low-mastery domain labels (at reduced LR)
                 for agent in self.instructors:
                     if agent.config.domain == d_high and agent.adversarial_bank:
-                        exemplars = random.sample(
-                            agent.adversarial_bank,
-                            min(5, len(agent.adversarial_bank)))
+                        # M3: Snapshot the bank to avoid data race with instructor thread
+                        bank = list(agent.adversarial_bank)
+                        exemplars = random.sample(bank, min(5, len(bank)))
                         for feat, _ in exemplars:
                             try:
                                 self.cross_domain_queue.put_nowait({
@@ -763,7 +792,6 @@ class School:
                                     "features": feat,
                                     "label": f"transfer:{d_high}->{d_low}",
                                     "modality": agent.config.modality,
-                                    "transfer_lr_scale": 0.3,
                                 })
                             except Exception:
                                 break
@@ -798,30 +826,24 @@ class School:
 
     def _metacognition_act(self, assessment: Dict[str, dict]):
         """Take real actions based on metacognitive assessment."""
+        needs_recess = False
         for domain, info in assessment.items():
             stall = info.get('stall_count', 0)
 
-            # Stall > 10: Force method switch signal via cross-domain queue
-            if stall > 10:
-                try:
-                    self.cross_domain_queue.put_nowait({
-                        "domain": domain,
-                        "action": "force_method_switch",
-                        "from": "stall_metacog",
-                    })
-                except Exception:
-                    pass
-
-            # Stall > 20: Force consolidation + LR reset
+            # Stall > 20: Flag consolidation + LR reset (called once after loop)
             if stall > 20:
                 self.logger.log(f"[Metacognition] {domain}: stall={stall}, "
-                                f"forcing consolidation + LR restart")
-                self._call_recess()
+                                f"flagging consolidation + LR restart")
+                needs_recess = True
 
             # Mastery > 0.9: reduce frequency (already handled by priority)
             if info.get('ema_accuracy', 0) > 0.9:
                 # Already reducing via priority — just log
                 pass
+
+        # H1: Call recess at most once per metacognition cycle
+        if needs_recess:
+            self._call_recess()
 
     def _coordinator_loop(self):
         """Main coordinator loop — ticks every 1s."""
@@ -927,6 +949,7 @@ class School:
 
     def _drain_reports(self):
         """Process all pending instructor reports."""
+        needs_recess = False
         while True:
             try:
                 report = self.school_queue.get_nowait()
@@ -944,29 +967,29 @@ class School:
                 report.get("total_examples", 0),
             )
 
-            # Accumulate per-domain accuracy for stall detection
+            # Accumulate per-domain accuracy for stall detection (L7: deque)
             accuracy = report.get("accuracy", 0.0)
             if domain not in self._domain_accuracy_history:
-                self._domain_accuracy_history[domain] = []
+                self._domain_accuracy_history[domain] = collections.deque(maxlen=100)
             self._domain_accuracy_history[domain].append(accuracy)
-            # Keep last 100 entries per domain
-            if len(self._domain_accuracy_history[domain]) > 100:
-                self._domain_accuracy_history[domain] = \
-                    self._domain_accuracy_history[domain][-100:]
 
             # Stall detection: check if learning is stalled for this domain
-            recent_accs = self._domain_accuracy_history[domain]
+            recent_accs = list(self._domain_accuracy_history[domain])
             if self.cognitive.is_learning_stalled(recent_accs):
                 self.logger.log(
                     f"[School] Learning stalled in {domain}, "
-                    f"triggering consolidation")
-                self._call_recess()
-                self._last_recess = time.time()
+                    f"flagging consolidation")
+                needs_recess = True
 
             # Log to school-level JSONL
             if self._school_log_file:
                 self._school_log_file.write(json.dumps(report) + "\n")
                 self._school_log_file.flush()
+
+        # H1: Call recess at most once per drain cycle
+        if needs_recess:
+            self._call_recess()
+            self._last_recess = time.time()
 
     def _call_recess(self):
         """Full-system consolidation with multi-domain interleaved replay."""
@@ -977,34 +1000,44 @@ class School:
         self.recess_event.set()
         time.sleep(0.5)  # Let threads notice
 
-        # Phase 4: Multi-domain interleaved replay before consolidation
-        # Gather exemplars from ALL active instructors (round-robin)
-        all_exemplars = []
-        for agent in self.instructors:
-            if agent.adversarial_bank:
-                samples = random.sample(
-                    agent.adversarial_bank,
-                    min(10, len(agent.adversarial_bank)))
-                for feat, lbl in samples:
-                    all_exemplars.append((feat, lbl, agent.config.domain))
-        if all_exemplars:
-            random.shuffle(all_exemplars)
-            replayed = 0
-            for feat, lbl, dom in all_exemplars[:50]:
-                try:
-                    self.brain.learn(feat, lbl, 0.3)  # Low LR replay
-                    replayed += 1
-                except Exception:
-                    break
-            self.logger.log(f"[School] Interleaved replay: {replayed} examples "
-                            f"from {len(set(d for _, _, d in all_exemplars))} domains")
+        # C2: Acquire brain lock to ensure exclusive access during recess.
+        # No instructor can be mid-learn while we replay and consolidate.
+        with self.brain._lock:
+            # Phase 4: Multi-domain interleaved replay before consolidation
+            # Gather exemplars from ALL active instructors (round-robin)
+            all_exemplars = []
+            for agent in self.instructors:
+                if agent.adversarial_bank:
+                    # M3: Snapshot to avoid data race with instructor thread
+                    bank = list(agent.adversarial_bank)
+                    samples = random.sample(bank, min(10, len(bank)))
+                    for feat, lbl in samples:
+                        all_exemplars.append((feat, lbl, agent.config.domain))
+            if all_exemplars:
+                random.shuffle(all_exemplars)
+                replayed = 0
+                for feat, lbl, dom in all_exemplars[:50]:
+                    try:
+                        # C3: Domain-scoped replay — use the domain's output range
+                        output_range = self._domain_output_map.get(dom)
+                        if output_range is not None:
+                            self.brain._brain.learn(feat, lbl, 0.3,
+                                                    output_range=output_range)
+                        else:
+                            self.brain._brain.learn(feat, lbl, 0.3)
+                        replayed += 1
+                    except Exception:
+                        break
+                self.logger.log(
+                    f"[School] Interleaved replay: {replayed} examples "
+                    f"from {len(set(d for _, _, d in all_exemplars))} domains")
 
-        # Consolidation
-        try:
-            self.brain.consolidate()
-            self.logger.log("[School] brain.consolidate() complete")
-        except Exception as e:
-            self.logger.log(f"[School] consolidation error: {e}")
+            # Consolidation
+            try:
+                self.brain._brain.consolidate()
+                self.logger.log("[School] brain.consolidate() complete")
+            except Exception as e:
+                self.logger.log(f"[School] consolidation error: {e}")
 
         self.board.increment_recess()
         recess_duration = time.time() - recess_start
@@ -1069,12 +1102,17 @@ class School:
             self.logger.log(f"[School] Checkpoint failed: {e}")
 
     def _check_graduation(self) -> bool:
-        """Check if all domains have reached graduation mastery."""
+        """Check if all domains have reached graduation mastery.
+
+        M4: Check ALL instructors (including finished-but-not-mastered) to
+        avoid premature graduation when an instructor finished its dataset
+        without reaching mastery.
+        """
         if not self.instructors:
             return False
         threshold = self.config.graduation_mastery
         for agent in self.instructors:
-            if not agent.is_finished and agent.get_mastery() < threshold:
+            if agent.get_mastery() < threshold:
                 return False
         return True
 

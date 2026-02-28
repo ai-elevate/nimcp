@@ -73,6 +73,7 @@
 #include <string.h>
 
 #include <stddef.h>  /* for NULL */
+#include <stdint.h>  /* for UINT32_MAX (H-6 bounds checks) */
 #include "utils/memory/nimcp_memory.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "constants/nimcp_buffer_constants.h"
@@ -128,24 +129,46 @@ extern int init_signal_filter_module(PyObject* module);
  * @param size Output: size of array
  * @return float array (caller must free) or NULL on error
  */
-static float* py_list_to_float_array(PyObject* list, Py_ssize_t* size) {
-    // Guard: Validate input
-    if (!PyList_Check(list)) {
-        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "py_list_to_float_array: Expected list of floats");
-        PyErr_SetString(PyExc_TypeError, "Expected list of floats");
-        return NULL;
+static float* py_list_to_float_array(PyObject* list_obj, Py_ssize_t* size) {
+    // Guard: Validate input — accept lists, tuples, and any sequence type (M-3)
+    if (!PyList_Check(list_obj) && !PyTuple_Check(list_obj)) {
+        // Try to convert to list via PySequence_List (handles numpy arrays, etc.)
+        PyObject* as_list = PySequence_List(list_obj);
+        if (!as_list) {
+            PyErr_SetString(PyExc_TypeError, "Expected list, tuple, or sequence of floats");
+            NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "py_list_to_float_array: Expected sequence of floats");
+            return NULL;
+        }
+        float* result = py_list_to_float_array(as_list, size);
+        Py_DECREF(as_list);
+        return result;
+    }
+
+    /* At this point we have a list or tuple — normalize to list for uniform access */
+    PyObject* list = list_obj;
+    PyObject* converted_list = NULL;
+    if (PyTuple_Check(list_obj)) {
+        converted_list = PySequence_List(list_obj);
+        if (!converted_list) {
+            PyErr_SetString(PyExc_TypeError, "Failed to convert tuple to list");
+            return NULL;
+        }
+        list = converted_list;
     }
 
     *size = PyList_Size(list);
     if (*size == 0) {
-        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "py_list_to_float_array: List cannot be empty");
+        Py_XDECREF(converted_list);
+        /* L-1: PyErr_SetString first, then NIMCP_THROW */
         PyErr_SetString(PyExc_ValueError, "List cannot be empty");
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "py_list_to_float_array: List cannot be empty");
         return NULL;
     }
 
     // Allocate array
     float* array = (float*)nimcp_malloc((*size) * sizeof(float));
     if (!array) {
+        Py_XDECREF(converted_list);
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, (*size) * sizeof(float),
                           "py_list_to_float_array: Failed to allocate float array");
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate float array");
@@ -159,14 +182,22 @@ static float* py_list_to_float_array(PyObject* list, Py_ssize_t* size) {
         PyObject* item = PyList_GetItem(list, i);
         if (!PyFloat_Check(item) && !PyLong_Check(item)) {
             nimcp_free(array);
+            Py_XDECREF(converted_list);
+            PyErr_SetString(PyExc_TypeError, "List must contain only numbers");
             NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
                        "py_list_to_float_array: List element %zd is not a number", i);
-            PyErr_SetString(PyExc_TypeError, "List must contain only numbers");
             return NULL;
         }
+        /* C-2: Check for PyFloat_AsDouble overflow/error */
         array[i] = (float)PyFloat_AsDouble(item);
+        if (array[i] == -1.0f && PyErr_Occurred()) {
+            free(array);
+            Py_XDECREF(converted_list);
+            return NULL;
+        }
     }
 
+    Py_XDECREF(converted_list);
     return array;
 }
 
@@ -285,6 +316,13 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
+    /* H-6: Bounds check before truncation from Py_ssize_t to uint32_t */
+    if (num_features > UINT32_MAX || num_features < 0) {
+        nimcp_free(features);
+        PyErr_SetString(PyExc_OverflowError, "Feature list too large for uint32_t");
+        return NULL;
+    }
+
     /* P1-49: nimcp_brain_learn_example returns nimcp_status_t, NOT float.
      * Error codes are POSITIVE (not negative), so checking < 0.0F was wrong. */
     nimcp_status_t status = NIMCP_ERROR_UNKNOWN;
@@ -370,6 +408,13 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
+    /* H-6: Bounds check before truncation from Py_ssize_t to uint32_t */
+    if (num_features > UINT32_MAX || num_features < 0) {
+        nimcp_free(features);
+        PyErr_SetString(PyExc_OverflowError, "Feature list too large for uint32_t");
+        return NULL;
+    }
+
     char label[NIMCP_NAME_BUFFER_SIZE];
     float confidence;
     nimcp_status_t status;
@@ -410,6 +455,13 @@ static PyObject* Brain_predict_fast(BrainObject* self, PyObject* args) {
     float* features = py_list_to_float_array(features_list, &num_features);
     if (!features) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "features is NULL");
+        return NULL;
+    }
+
+    /* H-6: Bounds check before truncation from Py_ssize_t to uint32_t */
+    if (num_features > UINT32_MAX || num_features < 0) {
+        nimcp_free(features);
+        PyErr_SetString(PyExc_OverflowError, "Feature list too large for uint32_t");
         return NULL;
     }
 
@@ -456,6 +508,13 @@ static PyObject* Brain_predict_in_domain(BrainObject* self, PyObject* args) {
     float* features = py_list_to_float_array(features_list, &num_features);
     if (!features) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "features is NULL");
+        return NULL;
+    }
+
+    /* H-6: Bounds check before truncation from Py_ssize_t to uint32_t */
+    if (num_features > UINT32_MAX || num_features < 0) {
+        nimcp_free(features);
+        PyErr_SetString(PyExc_OverflowError, "Feature list too large for uint32_t");
         return NULL;
     }
 
@@ -599,10 +658,26 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     }
 
     // Call batch prediction
-    // NOTE: nimcp_brain_predict_batch not yet implemented in C library
-    // Fallback to individual predictions for now
+    // NOTE: nimcp_brain_predict_batch not yet implemented in C library.
+    // H-5: This is a SERIAL FALLBACK — each sample is predicted individually.
+    // When the C batch API is implemented, this should be replaced with a
+    // single nimcp_brain_predict_batch() call for better throughput.
     nimcp_status_t status = NIMCP_OK;
     nimcp_brain_t brain_ref = self->brain;
+
+    /* H-6: Bounds check before truncation from Py_ssize_t to uint32_t */
+    if (num_features > UINT32_MAX || num_features < 0) {
+        for (Py_ssize_t i = 0; i < batch_size; i++) {
+            nimcp_free(feature_arrays[i]);
+            nimcp_free(labels[i]);
+        }
+        nimcp_free(features_ptrs);
+        nimcp_free(feature_arrays);
+        nimcp_free(labels);
+        nimcp_free(confidences);
+        PyErr_SetString(PyExc_OverflowError, "Feature list too large for uint32_t");
+        return NULL;
+    }
     uint32_t nf = (uint32_t)num_features;
 
     Py_BEGIN_ALLOW_THREADS
@@ -695,7 +770,11 @@ static PyObject* Brain_save(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
-    nimcp_status_t status = nimcp_brain_save(self->brain, filepath);
+    /* H-1: Release GIL around I/O operation */
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_save(self->brain, filepath);
+    Py_END_ALLOW_THREADS
 
     if (status != NIMCP_OK) {
         NIMCP_THROW_IO(NIMCP_ERROR_FILE_WRITE, filepath,
@@ -720,7 +799,11 @@ static PyObject* Brain_load(PyTypeObject* type, PyObject* args) {
         return NULL;
     }
 
-    nimcp_brain_t brain = nimcp_brain_load(filepath);
+    /* H-1: Release GIL around I/O operation */
+    nimcp_brain_t brain;
+    Py_BEGIN_ALLOW_THREADS
+    brain = nimcp_brain_load(filepath);
+    Py_END_ALLOW_THREADS
 
     if (!brain) {
         NIMCP_THROW_IO(NIMCP_ERROR_FILE_READ, filepath,
@@ -1460,6 +1543,11 @@ static PyObject* Brain_bg_update_reward(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "ff", &reward, &expected)) return NULL;
 
     int result = brain_ti_update_reward(self->brain->internal_brain, reward, expected);
+    /* M-4: Raise exception on error instead of silently returning error code */
+    if (result != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "bg_update_reward failed");
+        return NULL;
+    }
     PyObject* py_result = PyLong_FromLong(result);
     if (!py_result) return NULL;  /* OOM */
     return py_result;
@@ -1668,10 +1756,12 @@ static PyObject* Brain_ti_add_fact(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "sf", &fact, &salience)) return NULL;
 
     int result = brain_ti_add_fact(self->brain->internal_brain, fact, salience);
-    if (result == 0) {
-        Py_RETURN_TRUE;
+    /* M-4: Raise exception on error instead of silently returning False */
+    if (result != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "ti_add_fact failed");
+        return NULL;
     }
-    Py_RETURN_FALSE;
+    Py_RETURN_TRUE;
 }
 
 /**
@@ -1689,10 +1779,12 @@ static PyObject* Brain_ti_add_rule(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "sf", &rule, &priority)) return NULL;
 
     int result = brain_ti_add_rule(self->brain->internal_brain, rule, priority);
-    if (result == 0) {
-        Py_RETURN_TRUE;
+    /* M-4: Raise exception on error instead of silently returning False */
+    if (result != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "ti_add_rule failed");
+        return NULL;
     }
-    Py_RETURN_FALSE;
+    Py_RETURN_TRUE;
 }
 
 /**
@@ -1708,7 +1800,13 @@ static PyObject* Brain_ti_forward_chain(BrainObject* self, PyObject* args) {
     int max_iterations;
     if (!PyArg_ParseTuple(args, "i", &max_iterations)) return NULL;
 
-    int derived = brain_ti_forward_chain(self->brain->internal_brain, max_iterations);
+    /* H-3: Release GIL around C computation */
+    brain_t ib = self->brain->internal_brain;
+    int derived;
+    Py_BEGIN_ALLOW_THREADS
+    derived = brain_ti_forward_chain(ib, max_iterations);
+    Py_END_ALLOW_THREADS
+
     PyObject* result = PyLong_FromLong(derived);
     if (!result) return NULL;  /* OOM */
     return result;
@@ -1727,7 +1825,13 @@ static PyObject* Brain_ti_backward_chain(BrainObject* self, PyObject* args) {
     const char* goal;
     if (!PyArg_ParseTuple(args, "s", &goal)) return NULL;
 
-    float confidence = brain_ti_backward_chain(self->brain->internal_brain, goal);
+    /* H-3: Release GIL around C computation */
+    brain_t ib = self->brain->internal_brain;
+    float confidence;
+    Py_BEGIN_ALLOW_THREADS
+    confidence = brain_ti_backward_chain(ib, goal);
+    Py_END_ALLOW_THREADS
+
     PyObject* result = PyFloat_FromDouble((double)confidence);
     if (!result) return NULL;  /* OOM */
     return result;
@@ -1922,10 +2026,12 @@ static PyObject* Brain_ti_post_batch_update(BrainObject* self, PyObject* args, P
 
     int result = brain_ti_post_batch_update(self->brain->internal_brain,
                                             accuracy, expected, domain);
-    if (result == 0) {
-        Py_RETURN_TRUE;
+    /* M-4: Raise exception on error instead of silently returning False */
+    if (result != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "ti_post_batch_update failed");
+        return NULL;
     }
-    Py_RETURN_FALSE;
+    Py_RETURN_TRUE;
 }
 
 /**
@@ -2015,8 +2121,13 @@ static PyObject* Brain_ti_get_stress_level(BrainObject* self, PyObject* Py_UNUSE
  * WHY:  Mesh provides distributed consensus evidence for reasoning queries
  * HOW:  Calls brain_ti_mesh_is_available(), returns bool
  */
-static PyObject* Brain_ti_mesh_is_available(PyObject* self, PyObject* args) {
-    (void)self; (void)args;
+static PyObject* Brain_ti_mesh_is_available(BrainObject* self, PyObject* args) {
+    (void)args;
+    /* M-2: Proper null check for brain */
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
     bool avail = brain_ti_mesh_is_available();
     return PyBool_FromLong(avail);
 }
@@ -2026,8 +2137,13 @@ static PyObject* Brain_ti_mesh_is_available(PyObject* self, PyObject* args) {
  * WHY:  More participants = stronger consensus evidence
  * HOW:  Calls brain_ti_mesh_get_participant_count(), returns uint32
  */
-static PyObject* Brain_ti_mesh_get_participant_count(PyObject* self, PyObject* args) {
-    (void)self; (void)args;
+static PyObject* Brain_ti_mesh_get_participant_count(BrainObject* self, PyObject* args) {
+    (void)args;
+    /* M-2: Proper null check for brain */
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
     uint32_t count = brain_ti_mesh_get_participant_count();
     PyObject* result = PyLong_FromUnsignedLong(count);
     if (!result) return NULL;  /* OOM */
@@ -2039,8 +2155,13 @@ static PyObject* Brain_ti_mesh_get_participant_count(PyObject* self, PyObject* a
  * WHY:  High coherence means mesh participants agree, low means disagreement
  * HOW:  Calls brain_ti_mesh_get_coherence(), returns float [0,1]
  */
-static PyObject* Brain_ti_mesh_get_coherence(PyObject* self, PyObject* args) {
-    (void)self; (void)args;
+static PyObject* Brain_ti_mesh_get_coherence(BrainObject* self, PyObject* args) {
+    (void)args;
+    /* M-2: Proper null check for brain */
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
     float coherence = brain_ti_mesh_get_coherence();
     PyObject* result = PyFloat_FromDouble((double)coherence);
     if (!result) return NULL;  /* OOM */
@@ -2576,8 +2697,13 @@ static PyObject* Brain_ti_compute_decision_cycle(BrainObject* self, PyObject* ar
     };
 
     brain_ti_decision_cycle_result_t result;
-    int rc = brain_ti_compute_decision_cycle(self->brain->internal_brain,
-                                              &metrics, &result);
+    /* H-2: All Python values captured into local C variables above.
+     * Release GIL around the C computation. */
+    brain_t internal_brain = self->brain->internal_brain;
+    int rc;
+    Py_BEGIN_ALLOW_THREADS
+    rc = brain_ti_compute_decision_cycle(internal_brain, &metrics, &result);
+    Py_END_ALLOW_THREADS
 
     /* Helper macros — PyDict_SetItemString does NOT steal the reference,
        so we must Py_DECREF the temporary after insertion.
@@ -2738,7 +2864,7 @@ static PyObject* Brain_get_is_frozen(BrainObject* self, void* closure) {
 
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
-     "Learn from example: learn(features, label, confidence=1.0) -> loss"},
+     "Learn from example: learn(features, label, confidence=1.0) -> float (loss value, not bool)"},
     {"predict", (PyCFunction)Brain_predict, METH_VARARGS,
      "Make prediction: predict(features) -> (label, confidence)"},
     {"predict_batch", (PyCFunction)Brain_predict_batch, METH_VARARGS,
@@ -2776,7 +2902,9 @@ static PyMethodDef Brain_methods[] = {
 
     // Training configuration
     {"configure_training", (PyCFunction)Brain_configure_training, METH_VARARGS | METH_KEYWORDS,
-     "Configure training pipeline: configure_training(learning_rate=0.001, weight_decay=0.0001, gradient_clip=1.0, scheduler='cosine') -> True"},
+     "Configure training pipeline: configure_training(learning_rate=0.001, weight_decay=0.0001, gradient_clip=1.0, scheduler='cosine') -> True\n"
+     "WARNING: Must be called before starting concurrent training threads.\n"
+     "This method mutates brain config without locking — not thread-safe."},
 
     // Training metrics
     {"get_accuracy", (PyCFunction)Brain_get_accuracy, METH_NOARGS,
@@ -2895,11 +3023,11 @@ static PyMethodDef Brain_methods[] = {
      "Get urgency mode from hypothalamus (0=relaxed, 3=fight-or-flight)"},
     {"ti_get_stress_level", (PyCFunction)Brain_ti_get_stress_level, METH_NOARGS,
      "Get stress level from hypothalamus (0.0-1.0)"},
-    {"ti_mesh_is_available", Brain_ti_mesh_is_available, METH_NOARGS,
+    {"ti_mesh_is_available", (PyCFunction)Brain_ti_mesh_is_available, METH_NOARGS,
      "Check if mesh network is available for reasoning"},
-    {"ti_mesh_get_participant_count", Brain_ti_mesh_get_participant_count, METH_NOARGS,
+    {"ti_mesh_get_participant_count", (PyCFunction)Brain_ti_mesh_get_participant_count, METH_NOARGS,
      "Get mesh reasoning channel participant count"},
-    {"ti_mesh_get_coherence", Brain_ti_mesh_get_coherence, METH_NOARGS,
+    {"ti_mesh_get_coherence", (PyCFunction)Brain_ti_mesh_get_coherence, METH_NOARGS,
      "Get mesh reasoning channel coherence [0,1]"},
 
     // Decision cycle orchestrator (Layer 1 + 2 + 3)

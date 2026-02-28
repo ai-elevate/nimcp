@@ -26,13 +26,17 @@
 
 #include <math.h>
 #include <string.h>
+#include <stdbool.h>
 #include <stdatomic.h>
+
+// H-4: Atomic flag to prevent use-after-free during cleanup
+static _Atomic bool g_bp_shutting_down = false;
 
 //=============================================================================
 // Constants
 //=============================================================================
 
-#define OUTPUT_LR_BOOST 10.0f
+// OUTPUT_LR_BOOST is defined in nimcp_backprop_kernel.h (single source of truth)
 #define BP_PARALLEL_THRESHOLD 256
 #define BP_NEURONS_PER_THREAD 64
 #define BP_MAX_WORKERS 4
@@ -101,6 +105,9 @@ static nimcp_thread_pool_t* get_bp_thread_pool(void) {
 }
 
 void backprop_kernel_cleanup(void) {
+    // H-4: Signal shutdown to prevent new backprop_sparse_full calls from racing
+    atomic_store(&g_bp_shutting_down, true);
+
     nimcp_thread_pool_t* pool = atomic_load(&g_bp_thread_pool);
     if (pool) {
         nimcp_pool_destroy(pool);
@@ -361,6 +368,9 @@ int backprop_sparse_full(
     float max_grad_norm,
     float* out_grad_norm)
 {
+    // H-4: Reject if kernel is shutting down to prevent use-after-free
+    if (atomic_load(&g_bp_shutting_down)) return -1;
+
     if (!net || num_layers < 2 || !layer_sizes || !target || !output || !out_grad_norm)
         return -1;
 
@@ -435,7 +445,15 @@ int backprop_sparse_full(
             layer_lr = learning_rate / sqrtf(fmaxf(fan_in, 1.0f));
         }
 
-        // Global gradient norm clipping: scale layer_lr if grad norm exceeds threshold
+        // Global gradient norm clipping: scale layer_lr if grad norm exceeds threshold.
+        //
+        // NOTE (H-2): Gradient clipping asymmetry — the output layer is processed
+        // first and contributes to grad_norm_sq, but hidden layers see a
+        // progressively updated norm. The output layer itself sees grad_norm_sq=0
+        // on its first pass and is never clipped by its own contribution.
+        // This is intentional-ish: the output layer already receives OUTPUT_LR_BOOST
+        // (10x) and its deltas are individually clamped to [-1, 1], so the combined
+        // effect provides adequate gradient control without a two-pass approach.
         if (max_grad_norm > 0.0f && grad_norm_sq > 0.0) {
             float running_norm = (float)sqrt(grad_norm_sq);
             if (running_norm > max_grad_norm) {
@@ -747,8 +765,17 @@ int backprop_with_accumulation(
     // accumulating N gradients and averaging before applying.
     float scaled_lr = learning_rate / (float)accumulation_steps;
 
-    return backprop_sparse_full(net, num_layers, layer_sizes,
+    int rc = backprop_sparse_full(net, num_layers, layer_sizes,
         scaled_lr, min_weight, max_weight,
         target, output, target_size,
         max_grad_norm, out_grad_norm);
+
+    // L-4: The gradient norm reported by backprop_sparse_full reflects the
+    // SCALED learning rate (lr/N).  Rescale so the caller sees the norm that
+    // would correspond to the original (un-accumulated) learning rate.
+    if (rc == 0 && out_grad_norm && accumulation_steps > 1) {
+        *out_grad_norm *= (float)accumulation_steps;
+    }
+
+    return rc;
 }

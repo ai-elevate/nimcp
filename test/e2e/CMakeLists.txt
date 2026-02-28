@@ -38,8 +38,8 @@ set(E2E_LIBRARIES
     nimcp_portia
     nimcp
     nimcp_middleware
-    GTest::GTest
-    GTest::Main
+    GTest::gtest
+    GTest::gtest_main
     Python3::Python
     pthread
     m
@@ -487,8 +487,8 @@ add_executable(e2e_test_bridge_pipelines
 )
 target_link_libraries(e2e_test_bridge_pipelines
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp
 )
 target_include_directories(e2e_test_bridge_pipelines
@@ -514,8 +514,8 @@ add_executable(e2e_test_perception_cortical
 )
 target_link_libraries(e2e_test_perception_cortical
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp
 )
 target_include_directories(e2e_test_perception_cortical
@@ -2741,8 +2741,8 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_training_pipeline.cp
     )
     target_link_libraries(e2e_test_hypothalamus_training_pipeline PRIVATE
         nimcp
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         Threads::Threads
         m
     )

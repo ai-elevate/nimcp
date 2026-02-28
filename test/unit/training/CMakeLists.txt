@@ -20,11 +20,11 @@ target_compile_features(unit_training_test_cnn_backprop PRIVATE cxx_std_20)
 
 target_link_libraries(unit_training_test_cnn_backprop
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -50,11 +50,11 @@ target_compile_features(unit_training_test_cnn_cortex_bridge PRIVATE cxx_std_20)
 
 target_link_libraries(unit_training_test_cnn_cortex_bridge
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -83,11 +83,11 @@ target_compile_features(unit_training_test_auto_architecture PRIVATE cxx_std_20)
 
 target_link_libraries(unit_training_test_auto_architecture
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -114,11 +114,11 @@ target_compile_features(unit_training_test_auto_architecture_nas PRIVATE cxx_std
 
 target_link_libraries(unit_training_test_auto_architecture_nas
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -144,11 +144,11 @@ target_compile_features(unit_training_test_meta_hpo PRIVATE cxx_std_20)
 
 target_link_libraries(unit_training_test_meta_hpo
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -174,11 +174,11 @@ target_compile_features(unit_training_test_kd_qat PRIVATE cxx_std_20)
 
 target_link_libraries(unit_training_test_kd_qat
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -204,11 +204,11 @@ target_compile_features(unit_training_test_cl_mtl PRIVATE cxx_std_20)
 
 target_link_libraries(unit_training_test_cl_mtl
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -234,11 +234,11 @@ target_compile_features(unit_training_test_amp_distributed PRIVATE cxx_std_20)
 
 target_link_libraries(unit_training_test_amp_distributed
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -264,11 +264,11 @@ target_compile_features(unit_training_test_adv_gs PRIVATE cxx_std_20)
 
 target_link_libraries(unit_training_test_adv_gs
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 

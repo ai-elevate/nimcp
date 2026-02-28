@@ -20,8 +20,8 @@ target_compile_features(integration_training_symbolic_logic_hub PRIVATE cxx_std_
 
 target_link_libraries(integration_training_symbolic_logic_hub
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp
         pthread
         m
@@ -44,8 +44,8 @@ target_compile_features(integration_training_test_cnn_backprop_integration PRIVA
 
 target_link_libraries(integration_training_test_cnn_backprop_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
         pthread
@@ -74,8 +74,8 @@ target_compile_features(integration_training_test_cnn_cortex_integration PRIVATE
 
 target_link_libraries(integration_training_test_cnn_cortex_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
         pthread
@@ -100,8 +100,8 @@ target_include_directories(integration_training_dispatch PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
+target_compile_features(integration_training_dispatch PRIVATE c_std_11)
 target_compile_options(integration_training_dispatch PRIVATE
-    -std=c11
     -Wall
     -Wextra
 )
@@ -135,8 +135,8 @@ target_compile_features(integration_training_bio_learning PRIVATE cxx_std_17)
 
 target_link_libraries(integration_training_bio_learning
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp
         pthread
         m
@@ -164,8 +164,8 @@ target_compile_features(integration_training_multi_network PRIVATE cxx_std_17)
 
 target_link_libraries(integration_training_multi_network
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp
         pthread
         m
@@ -193,8 +193,8 @@ target_compile_features(integration_training_vae PRIVATE cxx_std_17)
 
 target_link_libraries(integration_training_vae
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp
         pthread
         m
@@ -222,8 +222,8 @@ target_compile_features(integration_training_attention PRIVATE cxx_std_17)
 
 target_link_libraries(integration_training_attention
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp
         pthread
         m
@@ -271,6 +271,7 @@ gtest_discover_tests(integration_training_test_training_integration
     PROPERTIES
         LABELS "integration;training;brain"
         TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy"
 )
 
 # =============================================================================

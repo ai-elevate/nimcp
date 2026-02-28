@@ -23,6 +23,11 @@ typedef struct neural_network_struct* neural_network_t;
 extern "C" {
 #endif
 
+/** Output layer learning rate multiplier for classification tasks.
+ *  Defined here (single source of truth) so both nimcp_adaptive.c and
+ *  nimcp_backprop_kernel.c share the same constant. */
+#define OUTPUT_LR_BOOST 10.0f
+
 /**
  * @brief Run sparse backprop through all layers
  *

@@ -1,3 +1,7 @@
+# NOTE: This file is NOT processed by the build system.
+# test/CMakeLists.txt uses discover_category_tests(regression) which
+# auto-discovers files but skips directories with CMakeLists.txt.
+# Test targets should be defined in test/CMakeLists.txt directly.
 
 # =============================================================================
 # Brain KG Regression Tests
