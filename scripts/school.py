@@ -860,6 +860,18 @@ class School:
         for domain, info in assessment.items():
             stall = info.get('stall_count', 0)
 
+            # Stall > 10: Force method switch on stalled instructor
+            if stall > 10:
+                for agent in self.instructors:
+                    if agent.config.domain == domain and agent.is_alive():
+                        if agent._forced_method is None:
+                            new_method = agent.method_stats.least_used_method()
+                            agent._forced_method = new_method
+                            agent._forced_method_remaining = agent.config.report_interval * 5
+                            self.logger.log(f"[Metacognition] {domain}: stall={stall}, "
+                                            f"forcing method switch to {new_method.value}")
+                        break
+
             # Stall > 20: Flag consolidation + LR reset (called once after loop)
             if stall > 20:
                 self.logger.log(f"[Metacognition] {domain}: stall={stall}, "
@@ -875,10 +887,9 @@ class School:
                             agent._lr_scheduler.current_step = 0
                         break
 
-            # Mastery > 0.9: reduce frequency (already handled by priority)
+            # Mastery > 0.9: reduce instructor frequency (yield slots to struggling domains)
             if info.get('ema_accuracy', 0) > 0.9:
-                # Already reducing via priority — just log
-                pass
+                self.logger.log(f"[Metacognition] {domain}: mastery>0.9, yielding slots")
 
         # H1: Call recess at most once per metacognition cycle
         # H2: Only update timer when recess actually ran

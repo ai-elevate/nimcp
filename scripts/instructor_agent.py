@@ -191,8 +191,17 @@ class MethodStats:
             return sum(recent) / max(len(recent), 1)
         return 0.5  # prior when no data
 
-    def select_method(self, epsilon: float = 0.15) -> TeachingMethod:
+    def least_used_method(self) -> TeachingMethod:
+        """Return the method with fewest attempts (for forced switching on stall)."""
+        methods = list(TeachingMethod)
+        return min(methods, key=lambda m: self._stats[m.value]["attempts"])
+
+    def select_method(self, epsilon: float = 0.15,
+                      forced: "Optional[TeachingMethod]" = None) -> TeachingMethod:
         """Epsilon-greedy method selection weighted by effectiveness."""
+        # Phase 3: Honor forced method override from metacognition
+        if forced is not None:
+            return forced
         if random.random() < epsilon:
             return random.choice(list(TeachingMethod))
         # INST-6: Weighted selection by rolling accuracy (not cumulative)
@@ -330,6 +339,12 @@ class InstructorAgent(threading.Thread):
         # INST-10/14: Track feature hashes in replay heap for O(1) dedup/eviction
         self._replay_feature_hashes: set = set()
         self._peak_accuracy = 0.0
+
+        # Phase 3: Plateau/stall detection + forced method switching
+        self._stall_count = 0  # consecutive report intervals with < 0.5% accuracy change
+        self._prev_metacog_acc = 0.0
+        self._forced_method: Optional[TeachingMethod] = None  # overrides select_method() when set
+        self._forced_method_remaining = 0  # examples left under forced method
 
         # Phase 3: Self-assessment holdout
         self._holdout_buffer: List[Tuple[list, str]] = []  # (features, label)
@@ -503,7 +518,12 @@ class InstructorAgent(threading.Thread):
             grade = self._grade_example(text, domain, source_name)
 
             # Select and execute teaching method
-            method = self.method_stats.select_method()
+            # Phase 3: Respect forced method override from metacognition
+            method = self.method_stats.select_method(forced=self._forced_method)
+            if self._forced_method is not None:
+                self._forced_method_remaining -= 1
+                if self._forced_method_remaining <= 0:
+                    self._forced_method = None
             correct, loss = self._execute_method(method, features, str(label),
                                                   domain, grade)
 
@@ -570,7 +590,11 @@ class InstructorAgent(threading.Thread):
             label = f"{domain}:{label}"
 
             grade = self._grade_example("", domain, source_name)
-            method = self.method_stats.select_method()
+            method = self.method_stats.select_method(forced=self._forced_method)
+            if self._forced_method is not None:
+                self._forced_method_remaining -= 1
+                if self._forced_method_remaining <= 0:
+                    self._forced_method = None
             correct, loss = self._execute_method(method, features, str(label),
                                                   domain, grade)
 
@@ -635,7 +659,11 @@ class InstructorAgent(threading.Thread):
             label_val = f"{domain}:{example.get('answer', example.get('label', 0))}"
 
             grade = self._grade_example(text, domain, source_name)
-            method = self.method_stats.select_method()
+            method = self.method_stats.select_method(forced=self._forced_method)
+            if self._forced_method is not None:
+                self._forced_method_remaining -= 1
+                if self._forced_method_remaining <= 0:
+                    self._forced_method = None
             correct, loss = self._execute_method(method, features, str(label_val),
                                                   domain, grade)
 
@@ -1868,7 +1896,37 @@ class InstructorAgent(threading.Thread):
         # INST-4: Faster decay (0.995/0.005) — halves in ~140 calls instead of ~700
         self._peak_accuracy = max(train_acc, self._peak_accuracy * 0.995 + train_acc * 0.005)
 
-        # Detect regression (>5% drop from peak)
+        # --- Phase 3: Plateau/stall detection ---
+        acc_delta = abs(train_acc - self._prev_metacog_acc)
+        self._prev_metacog_acc = train_acc
+        if acc_delta < 0.005 and self.total_examples > 200:
+            self._stall_count += 1
+        else:
+            self._stall_count = 0
+
+        # Stall > 10: Force method switch (try least-used method for exploration)
+        if self._stall_count > 10 and self._forced_method is None:
+            new_method = self.method_stats.least_used_method()
+            self._forced_method = new_method
+            self._forced_method_remaining = self.config.report_interval * 5  # 5 report cycles
+            self._log_example({
+                "action": "METACOG_FORCE_METHOD",
+                "stall_count": self._stall_count,
+                "forced_to": new_method.value,
+                "duration": self._forced_method_remaining,
+            })
+
+        # Stall > 20: Aggressive cosine LR restart (escape local minimum)
+        if self._stall_count > 20:
+            self._lr_scheduler.restart()
+            self._stall_count = 0  # reset after restart
+            self._log_example({
+                "action": "METACOG_LR_RESTART",
+                "reason": "plateau_stall_gt_20",
+                "current_acc": round(train_acc, 4),
+            })
+
+        # --- Detect regression (>5% drop from peak) ---
         # H6: Only adjust LR if cooldown has elapsed (200 steps)
         # M4: Suppress upward adjustment if last direction was "down" within 500 steps
         _suppress_up = (self._last_lr_direction == "down"
@@ -1888,6 +1946,12 @@ class InstructorAgent(threading.Thread):
                 "current": round(train_acc, 4),
                 "new_base_lr": round(self._lr_scheduler.base_lr, 4),
             })
+
+        # --- Mastery > 0.9: Yield teaching slots to struggling domains ---
+        mastery = self.socratic.mastery.mastery(self.config.domain)
+        if mastery > 0.9 and self.total_examples > 1000:
+            # Slow down — sleep briefly to give CPU time to struggling instructors
+            time.sleep(0.05)
 
     # ------------------------------------------------------------------
     # Phase 4: Domain Centroid Tracking
