@@ -1428,7 +1428,7 @@ uint32_t prospective_scheduler_add_conflict(
     group->strategy = strategy;
     group->capacity = num_intentions > INITIAL_CONFLICT_CAPACITY ?
                       num_intentions : INITIAL_CONFLICT_CAPACITY;
-    group->intention_ids = (uint64_t*)nimcp_malloc(group->capacity * sizeof(uint64_t));
+    group->intention_ids = (uint64_t*)nimcp_calloc(group->capacity, sizeof(uint64_t));
     if (!group->intention_ids) {
         return 0;
     }

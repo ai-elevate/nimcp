@@ -332,9 +332,9 @@ int omni_logic_update(omni_logic_bridge_t* bridge) {
     bridge->stats.total_updates++;
     float n = (float)bridge->stats.total_updates;
     bridge->stats.avg_forward_confidence =
-        (bridge->stats.avg_forward_confidence * (n - 1) + bridge->omni_effects.forward_confidence) / n;
+        (bridge->stats.avg_forward_confidence * (n - 1) + bridge->omni_effects.forward_confidence) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     bridge->stats.avg_backward_confidence =
-        (bridge->stats.avg_backward_confidence * (n - 1) + bridge->omni_effects.backward_confidence) / n;
+        (bridge->stats.avg_backward_confidence * (n - 1) + bridge->omni_effects.backward_confidence) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;

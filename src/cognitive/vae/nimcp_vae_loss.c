@@ -303,7 +303,7 @@ float vae_loss_laplace_nll(const nimcp_tensor_t* x,
 
     for (uint32_t i = 0; i < total; i++) {
         float diff = fabsf(x_data[i] - mu_data[i]);
-        sum += log_2b + diff / scale;
+        sum += log_2b + diff / (fabsf(scale) > 1e-7f ? scale : 1e-7f);
     }
 
     uint32_t batch_size = (x->shape.rank >= 1) ? x->shape.dims[0] : 1;

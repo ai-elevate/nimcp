@@ -413,7 +413,7 @@ int financial_market_garch_fit(financial_market_eng_t* mkt,
     for (uint32_t i = 0; i < p; i++) beta[i]  = 0.85f / (float)p;
 
     /* Conditional variance series */
-    float* sigma2 = (float*)nimcp_malloc(length * sizeof(float));
+    float* sigma2 = (float*)nimcp_calloc(length, sizeof(float));
     if (!sigma2) {
         set_error("garch_fit: allocation failed for variance series");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_market_garch_fit: allocation failed for variance series");
@@ -701,8 +701,8 @@ int financial_market_compute_macd(const float* prices, uint32_t length,
     /* Compute fast and slow EMA */
     uint32_t ema_fast_len = length - fast + 1;
     uint32_t ema_slow_len = length - slow + 1;
-    float* ema_fast = (float*)nimcp_malloc(ema_fast_len * sizeof(float));
-    float* ema_slow = (float*)nimcp_malloc(ema_slow_len * sizeof(float));
+    float* ema_fast = (float*)nimcp_calloc(ema_fast_len, sizeof(float));
+    float* ema_slow = (float*)nimcp_calloc(ema_slow_len, sizeof(float));
     if (!ema_fast || !ema_slow) {
         nimcp_free(ema_fast);
         nimcp_free(ema_slow);
@@ -1563,8 +1563,8 @@ int financial_market_monte_carlo(financial_market_eng_t* mkt,
     if (initial_value < FIN_MKT_EPSILON) initial_value = 1.0f;
 
     /* Allocate terminal values array */
-    float* terminal_values = (float*)nimcp_malloc(effective_paths * sizeof(float));
-    float* path_returns = (float*)nimcp_malloc(effective_paths * sizeof(float));
+    float* terminal_values = (float*)nimcp_calloc(effective_paths, sizeof(float));
+    float* path_returns = (float*)nimcp_calloc(effective_paths, sizeof(float));
     if (!terminal_values || !path_returns) {
         nimcp_free(terminal_values);
         nimcp_free(path_returns);

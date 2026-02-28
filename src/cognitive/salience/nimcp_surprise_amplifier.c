@@ -328,11 +328,11 @@ static int surprise_amplifier_process_event_unlocked(
     } else {
         float n = (float)amp->stats.total_surprises;
         amp->stats.avg_magnitude =
-            (amp->stats.avg_magnitude * (n - 1.0f) + magnitude) / n;
+            (amp->stats.avg_magnitude * (n - 1.0f) + magnitude) / (fabsf(n) > 1e-7f ? n : 1e-7f);
         amp->stats.avg_attention_boost =
-            (amp->stats.avg_attention_boost * (n - 1.0f) + attention_boost) / n;
+            (amp->stats.avg_attention_boost * (n - 1.0f) + attention_boost) / (fabsf(n) > 1e-7f ? n : 1e-7f);
         amp->stats.avg_curiosity_boost =
-            (amp->stats.avg_curiosity_boost * (n - 1.0f) + curiosity_boost) / n;
+            (amp->stats.avg_curiosity_boost * (n - 1.0f) + curiosity_boost) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     }
 
     /* Peak magnitude */

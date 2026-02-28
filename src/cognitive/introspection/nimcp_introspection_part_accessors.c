@@ -69,8 +69,8 @@ neuron_population_t brain_get_active_population(introspection_context_t context,
 
     /* WHAT: Allocate temporary arrays for gathering active neurons */
     /* WHY: Don't know count until we scan, so use max size */
-    uint32_t* temp_ids = (uint32_t*) nimcp_malloc(total_neurons * sizeof(uint32_t));
-    float* temp_activations = (float*) nimcp_malloc(total_neurons * sizeof(float));
+    uint32_t* temp_ids = (uint32_t*) nimcp_calloc(total_neurons, sizeof(uint32_t));
+    float* temp_activations = (float*) nimcp_calloc(total_neurons, sizeof(float));
 
     if (temp_ids == NULL || temp_activations == NULL) {
         nimcp_free(temp_ids);
@@ -96,8 +96,8 @@ neuron_population_t brain_get_active_population(introspection_context_t context,
     }
 
     /* WHAT: Allocate right-sized arrays for results */
-    population.neuron_ids = (uint32_t*) nimcp_malloc(active_count * sizeof(uint32_t));
-    population.activation_levels = (float*) nimcp_malloc(active_count * sizeof(float));
+    population.neuron_ids = (uint32_t*) nimcp_calloc(active_count, sizeof(uint32_t));
+    population.activation_levels = (float*) nimcp_calloc(active_count, sizeof(float));
 
     if (population.neuron_ids == NULL || population.activation_levels == NULL) {
         nimcp_free(population.neuron_ids);
@@ -256,7 +256,7 @@ brain_state_t brain_get_internal_state(introspection_context_t context,
 
     /* WHAT: Allocate state vector */
     state.dimension = sampled_neurons;
-    state.state_vector = (float*) nimcp_malloc(sampled_neurons * sizeof(float));
+    state.state_vector = (float*) nimcp_calloc(sampled_neurons, sizeof(float));
     if (state.state_vector == NULL) {
         return state;
     }
@@ -391,7 +391,7 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
 
         /* WHAT: Allocate and copy ensemble predictions */
         uncertainty.ensemble_predictions = (float*)
-            nimcp_malloc(ens_result.num_models * sizeof(float));
+            nimcp_calloc(ens_result.num_models, sizeof(float));
         if (uncertainty.ensemble_predictions != NULL && ens_result.mean_prediction != NULL) {
             /* Copy mean prediction as representative ensemble output */
             /* For compatibility, store first output dimension from each model */
@@ -427,7 +427,7 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
 
         /* WHAT: Allocate array for simulated predictions */
         uncertainty.ensemble_predictions = (float*)
-            nimcp_malloc(ensemble_size * sizeof(float));
+            nimcp_calloc(ensemble_size, sizeof(float));
         if (uncertainty.ensemble_predictions == NULL) {
             return uncertainty;
         }
@@ -802,7 +802,7 @@ activity_history_entry_t* brain_get_activity_history(introspection_context_t con
 
     // Allocate array for history entries
     activity_history_entry_t* history =
-        (activity_history_entry_t*) nimcp_malloc(queue_size * sizeof(activity_history_entry_t));
+        (activity_history_entry_t*) nimcp_calloc(queue_size, sizeof(activity_history_entry_t));
 
     if (history == NULL) {
         *num_entries = 0;

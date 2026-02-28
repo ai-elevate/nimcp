@@ -489,9 +489,9 @@ static void update_stats(
     float mag = fabsf(response->dopamine_delta) + fabsf(response->norepinephrine_delta) +
                 fabsf(response->serotonin_delta) + fabsf(response->acetylcholine_delta);
     bridge->stats.avg_response_magnitude =
-        (bridge->stats.avg_response_magnitude * (n - 1) + mag) / n;
+        (bridge->stats.avg_response_magnitude * (n - 1) + mag) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     bridge->stats.avg_learning_rate_mod =
-        (bridge->stats.avg_learning_rate_mod * (n - 1) + response->learning_rate_modifier) / n;
+        (bridge->stats.avg_learning_rate_mod * (n - 1) + response->learning_rate_modifier) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     bridge->stats.last_event_us = get_time_us();
 }

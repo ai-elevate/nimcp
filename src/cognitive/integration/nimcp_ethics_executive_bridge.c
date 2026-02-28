@@ -252,13 +252,13 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
     }
 
     /* Allocate evaluations array */
-    bridge->evaluations = nimcp_malloc(sizeof(action_evaluation_t) * DEFAULT_EVAL_CAPACITY);
+    bridge->evaluations = nimcp_calloc(DEFAULT_EVAL_CAPACITY, sizeof(action_evaluation_t));
     if (!bridge->evaluations) {
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_executive_bridge_create: bridge->evaluations is NULL");
         return NULL;
     }
-    memset(bridge->evaluations, 0, sizeof(action_evaluation_t) * DEFAULT_EVAL_CAPACITY);
+    /* calloc zero-initializes */
     bridge->eval_capacity = DEFAULT_EVAL_CAPACITY;
     bridge->eval_count = 0;
 

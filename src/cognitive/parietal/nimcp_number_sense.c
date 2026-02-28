@@ -528,7 +528,7 @@ float number_sense_discriminability(
     float log_diff = fabsf(logf(magnitude_a) - logf(magnitude_b));
     float noise_sigma = ns->effective_weber_fraction * sqrtf(2.0f);
 
-    return log_diff / noise_sigma;
+    return log_diff / (fabsf(noise_sigma) > 1e-7f ? noise_sigma : 1e-7f);
 }
 
 /* ============================================================================

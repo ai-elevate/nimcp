@@ -1608,7 +1608,7 @@ int pr_training_update_loss_weights(
     variance /= (float)loss_count;
 
     /* Compute coefficient of variation */
-    float cv = (mean > PR_TRAIN_EPSILON) ? sqrtf(variance) / mean : 0.0f;
+    float cv = (mean > PR_TRAIN_EPSILON) ? sqrtf(variance) / (fabsf(mean) > 1e-7f ? mean : 1e-7f) : 0.0f;
 
     /* Adaptive logic:
      * - High CV (unstable): increase supervised weight

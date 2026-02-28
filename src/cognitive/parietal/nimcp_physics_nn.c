@@ -529,7 +529,7 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
     nn->num_layers = config->num_layers;
 
     /* Determine layer sizes */
-    uint32_t* sizes = (uint32_t*)nimcp_malloc((config->num_layers + 1) * sizeof(uint32_t));
+    uint32_t* sizes = (uint32_t*)nimcp_calloc((config->num_layers + 1), sizeof(uint32_t));
     if (!sizes) {
         nimcp_free(nn);
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate layer sizes");
@@ -1301,7 +1301,7 @@ int physics_nn_train_from_trajectory(
     uint32_t state_dim = nn->config.state_dim;
 
     /* Compute derivatives from trajectory using finite differences */
-    float* derivative = (float*)nimcp_malloc(state_dim * sizeof(float));
+    float* derivative = (float*)nimcp_calloc(state_dim, sizeof(float));
     if (!derivative) {
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate derivative buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_train_from_trajectory: derivative is NULL");
@@ -1336,7 +1336,7 @@ int physics_nn_train_from_trajectory(
                                      (float)(j + 1) / (float)state_dim);
                 }
 
-                derivative[j] = (trajectory[i + 1][j] - trajectory[i][j]) / dt;
+                derivative[j] = (trajectory[i + 1][j] - trajectory[i][j]) / (fabsf(dt) > 1e-7f ? dt : 1e-7f);
             }
         }
 
@@ -1408,7 +1408,7 @@ int physics_nn_predict(
     uint32_t state_dim = nn->config.state_dim;
 
     /* Allocate trajectory */
-    prediction->trajectory = (float**)nimcp_malloc(num_steps * sizeof(float*));
+    prediction->trajectory = (float**)nimcp_calloc(num_steps, sizeof(float*));
     if (!prediction->trajectory) {
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate trajectory");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_predict: prediction->trajectory is NULL");
@@ -1422,7 +1422,7 @@ int physics_nn_predict(
                              (float)(i + 1) / (float)num_steps);
         }
 
-        prediction->trajectory[i] = (float*)nimcp_malloc(state_dim * sizeof(float));
+        prediction->trajectory[i] = (float*)nimcp_calloc(state_dim, sizeof(float));
         if (!prediction->trajectory[i]) {
             for (uint32_t j = 0; j < i; j++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -1444,13 +1444,13 @@ int physics_nn_predict(
 
     /* Allocate Hamiltonians if using Hamiltonian constraint */
     if (nn->config.use_hamiltonian) {
-        prediction->hamiltonians = (float*)nimcp_malloc(num_steps * sizeof(float));
+        prediction->hamiltonians = (float*)nimcp_calloc(num_steps, sizeof(float));
     } else {
         prediction->hamiltonians = NULL;
     }
 
     /* Copy initial state */
-    float* current_state = (float*)nimcp_malloc(state_dim * sizeof(float));
+    float* current_state = (float*)nimcp_calloc(state_dim, sizeof(float));
     if (!current_state) {
         physics_nn_free_prediction(prediction);
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate current state");
@@ -1643,8 +1643,8 @@ int physics_nn_symplectic_euler(physics_nn_t* nn, float* q, float* p, float dt) 
      */
 
     /* Combine into state for forward pass */
-    float* state = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
-    float* deriv = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
+    float* state = (float*)nimcp_calloc(nn->config.state_dim, sizeof(float));
+    float* deriv = (float*)nimcp_calloc(nn->config.state_dim, sizeof(float));
     if (!state || !deriv) {
         nimcp_free(state);
         nimcp_free(deriv);
@@ -1704,8 +1704,8 @@ int physics_nn_leapfrog(physics_nn_t* nn, float* q, float* p, float dt) {
 
     uint32_t n = nn->config.state_dim / 2;
 
-    float* state = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
-    float* deriv = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
+    float* state = (float*)nimcp_calloc(nn->config.state_dim, sizeof(float));
+    float* deriv = (float*)nimcp_calloc(nn->config.state_dim, sizeof(float));
     if (!state || !deriv) {
         nimcp_free(state);
         nimcp_free(deriv);
@@ -1784,9 +1784,9 @@ int physics_nn_velocity_verlet(physics_nn_t* nn, float* q, float* p, float dt) {
 
     uint32_t n = nn->config.state_dim / 2;
 
-    float* state = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
-    float* deriv = (float*)nimcp_malloc(nn->config.state_dim * sizeof(float));
-    float* force_old = (float*)nimcp_malloc(n * sizeof(float));
+    float* state = (float*)nimcp_calloc(nn->config.state_dim, sizeof(float));
+    float* deriv = (float*)nimcp_calloc(nn->config.state_dim, sizeof(float));
+    float* force_old = (float*)nimcp_calloc(n, sizeof(float));
     if (!state || !deriv || !force_old) {
         nimcp_free(state);
         nimcp_free(deriv);

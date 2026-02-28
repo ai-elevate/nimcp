@@ -624,7 +624,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_extract_features(
             peak = abs_sample;
         }
     }
-    features->rms_energy = sqrtf(sum_sq / num_samples);
+    features->rms_energy = sqrtf(sum_sq / (fabsf(num_samples) > 1e-7f ? num_samples : 1e-7f));
     features->peak_energy = peak;
     features->loudness_db = 20.0f * log10f(features->rms_energy + PR_AUDIO_EPSILON);
 
@@ -1258,8 +1258,8 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_detect_temporal_pattern(
     }
 
     /* Compute statistics */
-    float mean_interval = interval_sum / valid_count;
-    float variance = (interval_sq_sum / valid_count) - (mean_interval * mean_interval);
+    float mean_interval = interval_sum / (valid_count > 0 ? valid_count : 1);
+    float variance = (interval_sq_sum / (valid_count > 0 ? valid_count : 1)) - (mean_interval * mean_interval);
     float std_dev = sqrtf(fabsf(variance));
 
     result->mean_interval_ms = mean_interval;

@@ -120,7 +120,7 @@ bool global_workspace_compete(
     bool pool_was_empty = (ws->num_active_competitors == 0);
 
     // Copy content - we own this buffer now
-    float* content_copy = (float*)nimcp_malloc(content_dim * sizeof(float));
+    float* content_copy = (float*)nimcp_calloc(content_dim, sizeof(float));
     if (!content_copy) {
         LOG_ERROR("Failed to allocate content buffer in global_workspace_compete");
         nimcp_platform_mutex_unlock(&ws->mutex);
@@ -323,7 +323,7 @@ bool global_workspace_submit(
     bool pool_was_empty = (ws->num_active_competitors == 0);
 
     // Copy content - we own this buffer now (fixes buffer ownership issue)
-    float* content_copy = (float*)nimcp_malloc(content_dim * sizeof(float));
+    float* content_copy = (float*)nimcp_calloc(content_dim, sizeof(float));
     if (!content_copy) {
         LOG_ERROR("Failed to allocate content buffer in global_workspace_submit");
         nimcp_platform_mutex_unlock(&ws->mutex);

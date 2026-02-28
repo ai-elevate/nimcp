@@ -302,8 +302,8 @@ static float physics_nn_forward(physics_nn_t* nn, const float* input, float* out
     }
 
     /* Allocate activation buffers to max layer size */
-    float* current = nimcp_malloc(max_size * sizeof(float));
-    float* next = nimcp_malloc(max_size * sizeof(float));
+    float* current = nimcp_calloc(max_size, sizeof(float));
+    float* next = nimcp_calloc(max_size, sizeof(float));
 
     if (!current || !next) {
         nimcp_free(current);
@@ -387,7 +387,7 @@ static float physics_nn_train_step(physics_nn_t* nn, const float* state,
                                     const float* target_derivative) {
     if (!nn || !state || !target_derivative) return 0.0f;
 
-    float* predicted = nimcp_malloc(nn->state_dim * sizeof(float));
+    float* predicted = nimcp_calloc(nn->state_dim, sizeof(float));
     if (!predicted) return 0.0f;
 
     /* Forward pass */
@@ -1626,8 +1626,8 @@ int parietal_predict_dynamics(parietal_lobe_t* parietal,
 
     nimcp_mutex_lock(parietal->lock);
 
-    float* current = nimcp_malloc(state_dim * sizeof(float));
-    float* derivative = nimcp_malloc(state_dim * sizeof(float));
+    float* current = nimcp_calloc(state_dim, sizeof(float));
+    float* derivative = nimcp_calloc(state_dim, sizeof(float));
 
     if (!current || !derivative) {
         nimcp_free(current);
@@ -1687,7 +1687,7 @@ float parietal_compute_hamiltonian(parietal_lobe_t* parietal,
 
     nimcp_mutex_lock(parietal->lock);
 
-    float* output = nimcp_malloc(state_dim * sizeof(float));
+    float* output = nimcp_calloc(state_dim, sizeof(float));
     float hamiltonian = physics_nn_forward(parietal->physics_nn, state, output);
     nimcp_free(output);
 

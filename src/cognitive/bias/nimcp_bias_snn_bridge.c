@@ -622,7 +622,7 @@ int bias_snn_simulate(bias_snn_bridge_t* bridge, float duration_ms) {
     bridge->state = BIAS_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
-    int steps = (int)(duration_ms / dt);
+    int steps = (int)(duration_ms / (fabsf(dt) > 1e-7f ? dt : 1e-7f));
 
     for (int step = 0; step < steps; step++) {
         /* Phase 8: Loop progress heartbeat */
@@ -821,7 +821,7 @@ int bias_snn_detect_biases(
         }
     }
 
-    output->overall_bias_level = total_activation / BIAS_SNN_TYPE_COUNT;
+    output->overall_bias_level = total_activation / (fabsf(BIAS_SNN_TYPE_COUNT) > 1e-7f ? BIAS_SNN_TYPE_COUNT : 1e-7f);
     output->dominant_bias = dominant;
     output->bias_detected = (max_activation > bridge->config.bias_detection_threshold);
 

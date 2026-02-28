@@ -366,7 +366,7 @@ static void types_init(curiosity_type_profile_t* profile,
                                  (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
             }
 
-            profile->type_intensities[i] = 1.0f / CURIOSITY_TYPE_COUNT;
+            profile->type_intensities[i] = 1.0f / (fabsf(CURIOSITY_TYPE_COUNT) > 1e-7f ? CURIOSITY_TYPE_COUNT : 1e-7f);
         }
     }
 
@@ -853,7 +853,7 @@ void curiosity_enhanced_config_default(curiosity_enhanced_config_t* config) {
                              (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
         }
 
-        config->types.type_weights[i] = 1.0f / CURIOSITY_TYPE_COUNT;
+        config->types.type_weights[i] = 1.0f / (fabsf(CURIOSITY_TYPE_COUNT) > 1e-7f ? CURIOSITY_TYPE_COUNT : 1e-7f);
     }
     config->types.transition_threshold = 0.3f;
     config->types.enable_dynamic_switching = true;
@@ -2193,7 +2193,7 @@ int curiosity_enhanced_estimate_uncertainty(
 
     /* Bootstrap sampling for uncertainty estimation */
     uint32_t num_samples = system->qmc_config.num_samples;
-    float* samples = (float*)nimcp_malloc(num_samples * sizeof(float));
+    float* samples = (float*)nimcp_calloc(num_samples, sizeof(float));
 
     if (!samples) {
         nimcp_platform_mutex_unlock(system->mutex);
@@ -2543,7 +2543,7 @@ float curiosity_enhanced_sample_by_uncertainty(
     nimcp_platform_mutex_lock(system->mutex);
 
     /* Compute uncertainty-weighted scores */
-    float* scores = (float*)nimcp_malloc(num_topics * sizeof(float));
+    float* scores = (float*)nimcp_calloc(num_topics, sizeof(float));
     if (!scores) {
         nimcp_platform_mutex_unlock(system->mutex);
         return -1.0f;
@@ -2777,7 +2777,7 @@ uint32_t curiosity_enhanced_plan_exploration_mcts(
     if (system->quantum_bridge) {
         num_topics = curiosity_quantum_get_graph_size(system->quantum_bridge);
         if (num_topics > 0) {
-            available_topics = (char**)nimcp_malloc(num_topics * sizeof(char*));
+            available_topics = (char**)nimcp_calloc(num_topics, sizeof(char*));
             if (available_topics) {
                 for (uint32_t i = 0; i < num_topics; i++) {
                     /* Phase 8: Loop progress heartbeat */

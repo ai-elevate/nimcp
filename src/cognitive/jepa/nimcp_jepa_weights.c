@@ -183,7 +183,7 @@ static int read_tensor_data(FILE* fp, jepa_tensor_desc_t* tensor) {
         return NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
-    tensor->data = nimcp_malloc(tensor->num_elements * sizeof(float));
+    tensor->data = nimcp_calloc(tensor->num_elements, sizeof(float));
     if (!tensor->data) {
         return NIMCP_ERROR_MEMORY;
     }
@@ -242,14 +242,14 @@ jepa_weights_t* jepa_weights_open(const char* path) {
     strncpy(weights->filepath, path, sizeof(weights->filepath) - 1);
 
     /* Allocate tensor descriptors */
-    weights->tensors = nimcp_malloc(weights->header.num_tensors * sizeof(jepa_tensor_desc_t));
+    weights->tensors = nimcp_calloc(weights->header.num_tensors, sizeof(jepa_tensor_desc_t));
     if (!weights->tensors) {
         fclose(fp);
         nimcp_free(weights);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_weights_open: weights->tensors is NULL");
         return NULL;
     }
-    memset(weights->tensors, 0, weights->header.num_tensors * sizeof(jepa_tensor_desc_t));
+    /* calloc zero-initializes */
 
     /* Read tensor descriptors */
     for (uint32_t i = 0; i < weights->header.num_tensors; i++) {

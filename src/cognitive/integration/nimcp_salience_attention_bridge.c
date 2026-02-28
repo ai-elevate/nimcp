@@ -898,7 +898,7 @@ int salience_attention_publish_salience_detection(
         /* Update average */
         uint64_t count = bridge->stats.salience_detections;
         float total = bridge->stats.avg_salience_score * (count - 1);
-        bridge->stats.avg_salience_score = (total + score) / count;
+        bridge->stats.avg_salience_score = (total + score) / (count > 0 ? count : 1);
 
         nimcp_mutex_unlock(bridge->base.mutex);
     }
@@ -1070,7 +1070,7 @@ int salience_attention_notify_attention_focus(
         /* Update average attention strength */
         uint64_t count = bridge->stats.focus_notifications;
         float total = bridge->stats.avg_attention_strength * (count - 1);
-        bridge->stats.avg_attention_strength = (total + focus->focus_strength) / count;
+        bridge->stats.avg_attention_strength = (total + focus->focus_strength) / (count > 0 ? count : 1);
 
         nimcp_mutex_unlock(bridge->base.mutex);
     }

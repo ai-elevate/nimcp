@@ -23,6 +23,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include <math.h>
 
 BRIDGE_BOILERPLATE(imagination_workspace, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -536,7 +537,7 @@ int imagination_workspace_release_scenario(
     /* Update average duration (rolling average) */
     float n = (float)workspace->stats.scenarios_created;
     workspace->stats.avg_scenario_duration_ms =
-        (workspace->stats.avg_scenario_duration_ms * (n - 1) + (float)duration) / n;
+        (workspace->stats.avg_scenario_duration_ms * (n - 1) + (float)duration) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     /* Reset slot */
     slot_reset(slot);

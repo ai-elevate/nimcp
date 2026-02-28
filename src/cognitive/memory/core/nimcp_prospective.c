@@ -1418,7 +1418,7 @@ NIMCP_EXPORT prospective_error_t prospective_execute_intention(
         // Update running mean
         float n = (float)pm->stats.total_executed;
         pm->stats.mean_response_time =
-            ((n - 1) * pm->stats.mean_response_time + response_time) / n;
+            ((n - 1) * pm->stats.mean_response_time + response_time) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     }
 
     remove_from_active_monitors(pm, intent);
@@ -1699,7 +1699,7 @@ NIMCP_EXPORT prospective_error_t prospective_get_urgent(
         float urgency_score;
     } urgency_entry_t;
 
-    urgency_entry_t* entries = (urgency_entry_t*)nimcp_malloc(pm->num_intentions * sizeof(urgency_entry_t));
+    urgency_entry_t* entries = (urgency_entry_t*)nimcp_calloc(pm->num_intentions, sizeof(urgency_entry_t));
     if (!entries) {
         set_error("Memory allocation failed");
         return PROSP_ERROR_NO_MEMORY;

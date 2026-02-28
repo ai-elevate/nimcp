@@ -209,7 +209,7 @@ static void softmax_probabilities(const float* q_values, uint32_t num_actions,
     } else {
         /* Uniform if degenerate */
         for (uint32_t i = 0; i < num_actions; i++) {
-            probs[i] = 1.0f / num_actions;
+            probs[i] = 1.0f / (num_actions > 0 ? num_actions : 1);
         }
     }
 }

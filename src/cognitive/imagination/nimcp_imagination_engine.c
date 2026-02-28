@@ -1813,7 +1813,7 @@ uint64_t imagination_inject_element(
     elem->features = element->features ? nimcp_tensor_clone(element->features) : NULL;
 
     if (element->position && element->position_dim > 0) {
-        elem->position = (float*)nimcp_malloc(element->position_dim * sizeof(float));
+        elem->position = (float*)nimcp_calloc(element->position_dim, sizeof(float));
         if (elem->position) {
             memcpy(elem->position, element->position,
                    element->position_dim * sizeof(float));
@@ -3427,7 +3427,7 @@ static void* imag_mcts_apply_action(const void* state, uint32_t action, void* us
 
     new_state->latent_size = s->latent_size;
     new_state->depth = s->depth + 1;
-    new_state->latent_copy = nimcp_malloc(s->latent_size * sizeof(float));
+    new_state->latent_copy = nimcp_calloc(s->latent_size, sizeof(float));
     if (!new_state->latent_copy) {
         nimcp_free(new_state);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imag_mcts_apply_action: new_state->latent_copy is NULL");
@@ -3601,7 +3601,7 @@ static void* imag_mcts_clone_state(const void* state, void* user_data) {
     clone->coherence = s->coherence;
     clone->depth = s->depth;
 
-    clone->latent_copy = nimcp_malloc(s->latent_size * sizeof(float));
+    clone->latent_copy = nimcp_calloc(s->latent_size, sizeof(float));
     if (!clone->latent_copy) {
         nimcp_free(clone);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imag_mcts_clone_state: clone->latent_copy is NULL");
@@ -3666,7 +3666,7 @@ int imagination_search_goal_mcts(
     /* Create initial MCTS state */
     imag_mcts_state_t initial_state;
     initial_state.latent_size = (uint32_t)latent_size;
-    initial_state.latent_copy = nimcp_malloc(latent_size * sizeof(float));
+    initial_state.latent_copy = nimcp_calloc(latent_size, sizeof(float));
     if (!initial_state.latent_copy) {
         nimcp_mutex_unlock(engine->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_search_goal_mcts: initial_state is NULL");

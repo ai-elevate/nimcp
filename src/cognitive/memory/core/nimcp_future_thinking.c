@@ -502,8 +502,8 @@ NIMCP_EXPORT future_error_t future_thinking_combine_fragments(
     memset(combined_signature, 0, sizeof(prime_signature_t));
 
     // Collect quaternions for blending
-    nimcp_quaternion_t* quats = nimcp_malloc(num_fragments * sizeof(nimcp_quaternion_t));
-    float* blend_weights = nimcp_malloc(num_fragments * sizeof(float));
+    nimcp_quaternion_t* quats = nimcp_calloc(num_fragments, sizeof(nimcp_quaternion_t));
+    float* blend_weights = nimcp_calloc(num_fragments, sizeof(float));
     if (!quats || !blend_weights) {
         nimcp_free(quats);
         nimcp_free(blend_weights);
@@ -645,7 +645,7 @@ NIMCP_EXPORT future_error_t future_thinking_construct_scene(
     if (scene_out->num_elements > 0) {
         nimcp_quaternion_t* element_states = nimcp_malloc(scene_out->num_elements *
                                                      sizeof(nimcp_quaternion_t));
-        float* element_weights = nimcp_malloc(scene_out->num_elements * sizeof(float));
+        float* element_weights = nimcp_calloc(scene_out->num_elements, sizeof(float));
 
         if (element_states && element_weights) {
             for (size_t i = 0; i < scene_out->num_elements; i++) {
@@ -1095,8 +1095,8 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
     }
 
     // Sample memory fragments
-    uint64_t* fragments = nimcp_malloc(ft->config.sample_count * sizeof(uint64_t));
-    float* weights = nimcp_malloc(ft->config.sample_count * sizeof(float));
+    uint64_t* fragments = nimcp_calloc(ft->config.sample_count, sizeof(uint64_t));
+    float* weights = nimcp_calloc(ft->config.sample_count, sizeof(float));
     size_t num_fragments = 0;
 
     if (!fragments || !weights) {
@@ -1137,7 +1137,7 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
     ft->status = FUTURE_SIM_CONSTRUCTING;
 
     // Create scene elements from fragments
-    scene_element_t* elements = nimcp_malloc(num_fragments * sizeof(scene_element_t));
+    scene_element_t* elements = nimcp_calloc(num_fragments, sizeof(scene_element_t));
     if (!elements) {
         prime_sig_destroy(context_sig);
         nimcp_free(fragments);
@@ -1707,8 +1707,8 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
 
     // Find events relevant to this goal
     size_t relevant_count = 0;
-    uint64_t* relevant_events = nimcp_malloc(ft->num_events * sizeof(uint64_t));
-    float* relevances = nimcp_malloc(ft->num_events * sizeof(float));
+    uint64_t* relevant_events = nimcp_calloc(ft->num_events, sizeof(uint64_t));
+    float* relevances = nimcp_calloc(ft->num_events, sizeof(float));
 
     if (!relevant_events || !relevances) {
         nimcp_free(relevant_events);
@@ -1740,7 +1740,7 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
     // Simplified: just use first max_steps relevant events
     size_t path_length = relevant_count < max_steps ? relevant_count : max_steps;
 
-    result_out->step_event_ids = nimcp_malloc(path_length * sizeof(uint64_t));
+    result_out->step_event_ids = nimcp_calloc(path_length, sizeof(uint64_t));
     if (!result_out->step_event_ids) {
         nimcp_free(relevant_events);
         nimcp_free(relevances);

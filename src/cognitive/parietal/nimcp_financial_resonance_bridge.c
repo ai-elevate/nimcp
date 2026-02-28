@@ -725,8 +725,8 @@ int financial_resonance_bridge_compute_similarity(
     bridge->stats.similarity_queries++;
     float n = (float)bridge->stats.similarity_queries;
     bridge->stats.avg_combined_score =
-        bridge->stats.avg_combined_score * ((n - 1.0f) / n) +
-        out_result->combined_score / n;
+        bridge->stats.avg_combined_score * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+        out_result->combined_score / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     return FIN_RESONANCE_ERR_OK;
 }

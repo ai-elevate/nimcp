@@ -274,14 +274,14 @@ static float compute_introspection_entropy(const float* values, uint32_t count)
     if (count <= 256) {
         probs = stack_probs;
     } else {
-        probs = (float*)nimcp_malloc(count * sizeof(float));
+        probs = (float*)nimcp_calloc(count, sizeof(float));
         if (!probs) {
             return 0.0F;
         }
     }
 
     for (uint32_t i = 0; i < count; i++) {
-        probs[i] = fabsf(values[i]) / sum;
+        probs[i] = fabsf(values[i]) / (fabsf(sum) > 1e-7f ? sum : 1e-7f);
     }
 
     /* WHAT: Delegate entropy computation to central statistics module */

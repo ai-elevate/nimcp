@@ -857,8 +857,8 @@ int mirror_hippocampus_retrieve_by_sequence(
             if (best_match > 0.5f) matches++;
         }
 
-        float avg_sim = total_sim / num_actions;
-        float match_ratio = (float)matches / num_actions;
+        float avg_sim = total_sim / (fabsf(num_actions) > 1e-7f ? num_actions : 1e-7f);
+        float match_ratio = (float)matches / (fabsf(num_actions) > 1e-7f ? num_actions : 1e-7f);
         float final_sim = (avg_sim + match_ratio) * 0.5f * episode->episode_strength;
 
         if (final_sim >= bridge->config.retrieval_threshold) {
@@ -1227,7 +1227,7 @@ int mirror_hippocampus_bridge_update(
 
     bridge->state.consolidated_episodes = consolidated_count;
     bridge->state.avg_episode_strength = (active_count > 0) ?
-                                          total_strength / active_count : 0.0f;
+                                          total_strength / (active_count > 0 ? active_count : 1) : 0.0f;
     bridge->state.pending_encoding = 0; /* Not implementing queue */
 
     /* Update average encoding strength */

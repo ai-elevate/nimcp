@@ -106,7 +106,7 @@ static uint32_t find_or_create_action(mirror_neurons_t mirror, const action_t* a
     strncpy(mapping->action_name, action->action_name, sizeof(mapping->action_name) - 1);
     mapping->num_neurons = 0;
     mapping->capacity = 10;  // Initial capacity
-    mapping->neuron_indices = (uint32_t*)nimcp_malloc(mapping->capacity * sizeof(uint32_t));
+    mapping->neuron_indices = (uint32_t*)nimcp_calloc(mapping->capacity, sizeof(uint32_t));
     mapping->total_observations = 0;
     mapping->total_executions = 0;
     mapping->avg_similarity = 0.0F;

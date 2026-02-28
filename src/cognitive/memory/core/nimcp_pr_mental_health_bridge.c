@@ -713,7 +713,7 @@ pr_mh_error_t pr_mental_health_bridge_track_retrieval_event(
             // Update running average intensity
             float n = (float)record->intrusion_count;
             record->average_intensity = ((n - 1) * record->average_intensity +
-                                         event->intensity) / n;
+                                         event->intensity) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
             bridge->stats.intrusion_events++;
         }
@@ -891,9 +891,9 @@ pr_mh_error_t pr_mental_health_bridge_track_intrusion(
     // Update running averages
     float n = (float)record->intrusion_count;
     record->average_intensity = ((n - 1) * record->average_intensity +
-                                 nimcp_myelin_clamp(intensity, 0.0f, 1.0f)) / n;
+                                 nimcp_myelin_clamp(intensity, 0.0f, 1.0f)) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     record->distress_level = ((n - 1) * record->distress_level +
-                              nimcp_myelin_clamp(distress, 0.0f, 1.0f)) / n;
+                              nimcp_myelin_clamp(distress, 0.0f, 1.0f)) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     bridge->stats.intrusion_events++;
     bridge->stats.tracked_intrusions = bridge->intrusion_count;
@@ -1023,14 +1023,14 @@ pr_mh_error_t pr_mental_health_bridge_analyze_valence_bias(
 
     // Fill bias structure
     memset(bias, 0, sizeof(*bias));
-    bias->positive_ratio = positive / total;
-    bias->negative_ratio = negative / total;
-    bias->neutral_ratio = neutral / total;
+    bias->positive_ratio = positive / (total > 0 ? total : 1);
+    bias->negative_ratio = negative / (total > 0 ? total : 1);
+    bias->neutral_ratio = neutral / (total > 0 ? total : 1);
     bias->total_retrievals = (uint32_t)total;
     bias->analysis_window_ms = bridge->config.analysis_window_ms;
 
     // Compute bias score: +1 = all positive, -1 = all negative
-    bias->bias_score = (positive - negative) / total;
+    bias->bias_score = (positive - negative) / (total > 0 ? total : 1);
 
     // Interpret bias
     bias->indicates_depression = (bias->bias_score < bridge->config.valence_bias_depressive);
@@ -1335,9 +1335,9 @@ pr_mh_error_t pr_mental_health_bridge_get_mood_from_memories(
         return PR_MH_ERROR_INSUFFICIENT_DATA;
     }
 
-    float mean_valence = valence_sum / count;
-    float mean_arousal = arousal_sum / count;
-    float variance = (valence_sq_sum / count) - (mean_valence * mean_valence);
+    float mean_valence = valence_sum / (count > 0 ? count : 1);
+    float mean_arousal = arousal_sum / (count > 0 ? count : 1);
+    float variance = (valence_sq_sum / (count > 0 ? count : 1)) - (mean_valence * mean_valence);
     float variability = sqrtf(fmaxf(0.0f, variance));
 
     inference->valence_trend = mean_valence;

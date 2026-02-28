@@ -28,6 +28,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/math/nimcp_math_helpers.h"
+#include <math.h>
 
 BRIDGE_BOILERPLATE(quaternion, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -616,7 +617,7 @@ nimcp_quaternion_t quat_blend_memories(const nimcp_quaternion_t* quats,
         return quat_identity();
     }
 
-    float inv_total = 1.0f / total_weight;
+    float inv_total = 1.0f / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
 
     // For small counts, use iterative SLERP
     // For larger counts, use log-space averaging

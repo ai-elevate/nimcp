@@ -2834,11 +2834,11 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
 
         float n = (float)engine->stats.total_queries;
         engine->stats.avg_confidence =
-            engine->stats.avg_confidence * ((n - 1.0f) / n) +
-            chain->overall_confidence / n;
+            engine->stats.avg_confidence * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            chain->overall_confidence / (fabsf(n) > 1e-7f ? n : 1e-7f);
         engine->stats.avg_steps_per_query =
-            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
-            (float)chain->num_steps / n;
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            (float)chain->num_steps / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
         /* Record metacognitive outcome for learning */
         if (engine->metacognition && engine->config.enable_metacognition) {
@@ -2882,11 +2882,11 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
 
         float n = (float)engine->stats.total_queries;
         engine->stats.avg_confidence =
-            engine->stats.avg_confidence * ((n - 1.0f) / n) +
-            chain->overall_confidence / n;
+            engine->stats.avg_confidence * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            chain->overall_confidence / (fabsf(n) > 1e-7f ? n : 1e-7f);
         engine->stats.avg_steps_per_query =
-            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
-            (float)chain->num_steps / n;
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            (float)chain->num_steps / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
         /* Record metacognitive outcome for learning */
         if (engine->metacognition && engine->config.enable_metacognition) {
@@ -2926,10 +2926,10 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
         /* Update running average confidence */
         float n = (float)engine->stats.total_queries;
         engine->stats.avg_confidence =
-            engine->stats.avg_confidence * ((n - 1.0f) / n) + overall / n;
+            engine->stats.avg_confidence * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) + overall / (fabsf(n) > 1e-7f ? n : 1e-7f);
         engine->stats.avg_steps_per_query =
-            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
-            (float)chain->num_steps / n;
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            (float)chain->num_steps / (fabsf(n) > 1e-7f ? n : 1e-7f);
         engine->config = saved_config;
         if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
         return 0;
@@ -3142,10 +3142,10 @@ finalize:
     /* Running average using incremental formula */
     float n = (float)engine->stats.total_queries;
     engine->stats.avg_confidence =
-        engine->stats.avg_confidence * ((n - 1.0f) / n) + overall / n;
+        engine->stats.avg_confidence * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) + overall / (fabsf(n) > 1e-7f ? n : 1e-7f);
     engine->stats.avg_steps_per_query =
-        engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
-        (float)chain->num_steps / n;
+        engine->stats.avg_steps_per_query * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+        (float)chain->num_steps / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     /* Record metacognitive outcome for learning */
     if (engine->metacognition && engine->config.enable_metacognition) {
@@ -3244,11 +3244,11 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
 
         float n = (float)engine->stats.total_queries;
         engine->stats.avg_confidence =
-            engine->stats.avg_confidence * ((n - 1.0f) / n) +
-            chain->overall_confidence / n;
+            engine->stats.avg_confidence * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            chain->overall_confidence / (fabsf(n) > 1e-7f ? n : 1e-7f);
         engine->stats.avg_steps_per_query =
-            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
-            (float)chain->num_steps / n;
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            (float)chain->num_steps / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
         if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
         return result;
@@ -3268,11 +3268,11 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
 
         float n = (float)engine->stats.total_queries;
         engine->stats.avg_confidence =
-            engine->stats.avg_confidence * ((n - 1.0f) / n) +
-            chain->overall_confidence / n;
+            engine->stats.avg_confidence * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            chain->overall_confidence / (fabsf(n) > 1e-7f ? n : 1e-7f);
         engine->stats.avg_steps_per_query =
-            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
-            (float)chain->num_steps / n;
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            (float)chain->num_steps / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
         if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
         return result;
@@ -3440,10 +3440,10 @@ domain_finalize:
 
         float n = (float)engine->stats.total_queries;
         engine->stats.avg_confidence =
-            engine->stats.avg_confidence * ((n - 1.0f) / n) + overall / n;
+            engine->stats.avg_confidence * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) + overall / (fabsf(n) > 1e-7f ? n : 1e-7f);
         engine->stats.avg_steps_per_query =
-            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
-            (float)chain->num_steps / n;
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            (float)chain->num_steps / (fabsf(n) > 1e-7f ? n : 1e-7f);
     }
 
     if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);

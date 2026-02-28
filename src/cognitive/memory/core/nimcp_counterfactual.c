@@ -1135,7 +1135,7 @@ bool counterfactual_compute_affect(
     if (cf->regret_intensity > 0.0f) {
         float n = (float)(system->stats.upward_count + 1);
         system->stats.mean_regret = ((n - 1.0f) * system->stats.mean_regret +
-                                     cf->regret_intensity) / n;
+                                     cf->regret_intensity) / (fabsf(n) > 1e-7f ? n : 1e-7f);
         if (cf->regret_intensity > system->stats.max_regret) {
             system->stats.max_regret = cf->regret_intensity;
         }
@@ -1144,7 +1144,7 @@ bool counterfactual_compute_affect(
     if (cf->relief_intensity > 0.0f) {
         float n = (float)(system->stats.downward_count + 1);
         system->stats.mean_relief = ((n - 1.0f) * system->stats.mean_relief +
-                                     cf->relief_intensity) / n;
+                                     cf->relief_intensity) / (fabsf(n) > 1e-7f ? n : 1e-7f);
         if (cf->relief_intensity > system->stats.max_relief) {
             system->stats.max_relief = cf->relief_intensity;
         }

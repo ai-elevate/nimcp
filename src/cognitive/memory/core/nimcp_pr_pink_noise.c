@@ -989,7 +989,7 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
     buffer->current_index = 0;
 
     /* Generate pink noise samples into temporary buffer */
-    float* samples = (float*)nimcp_malloc(sample_count * sizeof(float));
+    float* samples = (float*)nimcp_calloc(sample_count, sizeof(float));
     if (!samples) {
         set_error("Failed to allocate sample buffer");
         nimcp_free(buffer);

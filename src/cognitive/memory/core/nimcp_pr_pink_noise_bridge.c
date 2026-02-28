@@ -1101,7 +1101,7 @@ NIMCP_EXPORT bool pr_pink_bridge_modulate_resonance_batch(
     }
 
     /* Generate batch of noise samples */
-    float* noise_batch = nimcp_malloc(count * sizeof(float));
+    float* noise_batch = nimcp_calloc(count, sizeof(float));
     if (noise_batch == NULL) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_modulate_resonance_batch: validation failed");
         return false;
@@ -1202,7 +1202,7 @@ NIMCP_EXPORT bool pr_pink_modulate_decay_batch(
     float amplitude = target->params.amplitude * bridge->global_amplitude;
 
     /* Generate batch of noise samples */
-    float* noise_batch = nimcp_malloc(count * sizeof(float));
+    float* noise_batch = nimcp_calloc(count, sizeof(float));
     if (noise_batch == NULL) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_decay_batch: validation failed");
         return false;
@@ -1539,7 +1539,7 @@ NIMCP_EXPORT bool pr_pink_modulate_retrieval_order(
     float amplitude = target->params.amplitude * bridge->global_amplitude * 0.3f;
 
     /* Generate batch of noise samples */
-    float* noise_batch = nimcp_malloc(count * sizeof(float));
+    float* noise_batch = nimcp_calloc(count, sizeof(float));
     if (noise_batch == NULL) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_retrieval_order: validation failed");
         return false;

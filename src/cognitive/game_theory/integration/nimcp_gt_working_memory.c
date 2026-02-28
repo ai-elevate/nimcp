@@ -280,7 +280,7 @@ nimcp_error_t gt_wm_add(
         // Slot available, allocate directly
         gt_wm_slot_internal_t* slot = &ctx->slots[free_slot];
 
-        slot->content = nimcp_malloc(item_size * sizeof(float));
+        slot->content = nimcp_calloc(item_size, sizeof(float));
         if (!slot->content) {
             return NIMCP_ERROR_NO_MEMORY;
         }
@@ -326,7 +326,7 @@ nimcp_error_t gt_wm_add(
     evict_slot(ctx, (uint32_t)lowest_idx);
 
     gt_wm_slot_internal_t* slot = &ctx->slots[lowest_idx];
-    slot->content = nimcp_malloc(item_size * sizeof(float));
+    slot->content = nimcp_calloc(item_size, sizeof(float));
     if (!slot->content) {
         return NIMCP_ERROR_NO_MEMORY;
     }

@@ -422,8 +422,8 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     init_zero_bias(bridge->encoder_bias, embed_dim);
 
     /* Allocate target encoder weights (copy of encoder initially) */
-    bridge->target_encoder_weights = (float*)nimcp_malloc(num_factors * embed_dim * sizeof(float));
-    bridge->target_encoder_bias = (float*)nimcp_malloc(embed_dim * sizeof(float));
+    bridge->target_encoder_weights = (float*)nimcp_calloc((size_t)num_factors * embed_dim, sizeof(float));
+    bridge->target_encoder_bias = (float*)nimcp_calloc(embed_dim, sizeof(float));
     if (!bridge->target_encoder_weights || !bridge->target_encoder_bias) {
         set_error("Failed to allocate target encoder weights");
         financial_jepa_bridge_destroy(bridge);

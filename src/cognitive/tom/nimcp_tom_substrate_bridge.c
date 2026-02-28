@@ -282,13 +282,13 @@ static void update_statistics(
         /* Update running averages */
         float n = (float)stats->total_updates;
         stats->avg_mentalizing = ((stats->avg_mentalizing * (n - 1.0f)) +
-                                  effects->mentalizing_capacity) / n;
+                                  effects->mentalizing_capacity) / (fabsf(n) > 1e-7f ? n : 1e-7f);
         stats->avg_atp_level = ((stats->avg_atp_level * (n - 1.0f)) +
-                               metabolic->atp_level) / n;
+                               metabolic->atp_level) / (fabsf(n) > 1e-7f ? n : 1e-7f);
         /* Compute fatigue from inverse of metabolic capacity */
         float fatigue_level = 1.0f - metabolic->metabolic_capacity;
         stats->avg_fatigue_level = ((stats->avg_fatigue_level * (n - 1.0f)) +
-                                    fatigue_level) / n;
+                                    fatigue_level) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     }
 }
 

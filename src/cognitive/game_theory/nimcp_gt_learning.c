@@ -1181,7 +1181,7 @@ nimcp_error_t nimcp_gt_cfr_update(
                 if (learner->config.use_cfr_plus) {
                     r = fmaxf(r, 0.0f);
                 }
-                strategy[i] = (r > 0.0f) ? (r / positive_regret_sum) : 0.0f;
+                strategy[i] = (r > 0.0f) ? (r / (fabsf(positive_regret_sum) > 1e-7f ? positive_regret_sum : 1e-7f)) : 0.0f;
             }
         }
     } else {
@@ -1311,7 +1311,7 @@ nimcp_error_t nimcp_gt_cfr_get_strategy(
             if (learner->config.use_cfr_plus) {
                 r = fmaxf(r, 0.0f);
             }
-            strategy_out[a] = (r > 0.0f) ? (r / positive_regret_sum) : 0.0f;
+            strategy_out[a] = (r > 0.0f) ? (r / (fabsf(positive_regret_sum) > 1e-7f ? positive_regret_sum : 1e-7f)) : 0.0f;
         }
     } else {
         float uniform = 1.0f / (float)entry->num_actions;
@@ -1375,7 +1375,7 @@ nimcp_error_t nimcp_gt_cfr_get_average_strategy(
                                  (float)(a + 1) / (float)entry->num_actions);
             }
 
-            strategy_out[a] = entry->cumulative_strategy[a] / strategy_sum;
+            strategy_out[a] = entry->cumulative_strategy[a] / (fabsf(strategy_sum) > 1e-7f ? strategy_sum : 1e-7f);
         }
     } else {
         float uniform = 1.0f / (float)entry->num_actions;
@@ -1537,7 +1537,7 @@ nimcp_error_t nimcp_gt_fictitious_play_get_distribution(
                                  (float)(a + 1) / (float)learner->config.num_actions);
             }
 
-            distribution_out[a] = (float)learner->opponent_action_counts[a] / total;
+            distribution_out[a] = (float)learner->opponent_action_counts[a] / (fabsf(total) > 1e-7f ? total : 1e-7f);
         }
     }
 
@@ -1592,7 +1592,7 @@ nimcp_error_t nimcp_gt_fictitious_play_best_response(
                                  (float)(a + 1) / (float)num_actions);
             }
 
-            opp_dist[a] = (float)learner->opponent_action_counts[a] / total;
+            opp_dist[a] = (float)learner->opponent_action_counts[a] / (fabsf(total) > 1e-7f ? total : 1e-7f);
         }
     }
 
@@ -1669,7 +1669,7 @@ nimcp_error_t nimcp_gt_exp3_update(
         weight_sum += learner->exp3_weights[a];
     }
 
-    float prob_action = (1.0f - gamma) * (learner->exp3_weights[action] / weight_sum) +
+    float prob_action = (1.0f - gamma) * (learner->exp3_weights[action] / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f)) +
                          gamma / (float)num_actions;
 
     /* Unbiased estimator */
@@ -1740,7 +1740,7 @@ nimcp_error_t nimcp_gt_exp3_select(
         }
 
         learner->exp3_probabilities[a] = (1.0f - gamma) *
-                                          (learner->exp3_weights[a] / weight_sum) +
+                                          (learner->exp3_weights[a] / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f)) +
                                           gamma / (float)num_actions;
     }
 
@@ -1790,7 +1790,7 @@ nimcp_error_t nimcp_gt_exp3_get_probabilities(
         }
 
         probabilities_out[a] = (1.0f - gamma) *
-                                (learner->exp3_weights[a] / weight_sum) +
+                                (learner->exp3_weights[a] / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f)) +
                                 gamma / (float)num_actions;
     }
 

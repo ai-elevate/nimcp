@@ -413,15 +413,15 @@ complement_system_t* complement_create(const complement_config_t* config,
 
     /* Allocate pools */
     system->c3b_capacity = COMPLEMENT_MAX_ACTIVE_C3B;
-    system->c3b_pool = nimcp_malloc(sizeof(complement_c3b_t) * system->c3b_capacity);
+    system->c3b_pool = nimcp_calloc(system->c3b_capacity, sizeof(complement_c3b_t));
     if (!system->c3b_pool) goto error;
 
     system->c5b_capacity = COMPLEMENT_MAX_ACTIVE_C5B;
-    system->c5b_pool = nimcp_malloc(sizeof(complement_c5b_t) * system->c5b_capacity);
+    system->c5b_pool = nimcp_calloc(system->c5b_capacity, sizeof(complement_c5b_t));
     if (!system->c5b_pool) goto error;
 
     system->mac_capacity = COMPLEMENT_MAX_MACS;
-    system->mac_pool = nimcp_malloc(sizeof(complement_mac_t) * system->mac_capacity);
+    system->mac_pool = nimcp_calloc(system->mac_capacity, sizeof(complement_mac_t));
     if (!system->mac_pool) goto error;
 
     system->anaphylatoxin_capacity = COMPLEMENT_MAX_ANAPHYLATOXINS;

@@ -119,7 +119,7 @@ static float compute_bayesian_precision_update(float current_precision,
                                                 float learning_rate) {
     /* Bayesian update: precision increases when errors are small */
     float error_variance = prediction_error * prediction_error + 0.01f;
-    float observed_precision = 1.0f / error_variance;
+    float observed_precision = 1.0f / (fabsf(error_variance) > 1e-7f ? error_variance : 1e-7f);
 
     /* Blend current and observed precision */
     float new_precision = (1.0f - learning_rate) * current_precision +
@@ -144,7 +144,7 @@ static float compute_ema_precision_update(float current_precision,
                                            float learning_rate) {
     /* Exponential moving average of inverse error variance */
     float error_variance = prediction_error * prediction_error + 0.01f;
-    float observed_precision = 1.0f / error_variance;
+    float observed_precision = 1.0f / (fabsf(error_variance) > 1e-7f ? error_variance : 1e-7f);
 
     float new_precision = current_precision * (1.0f - learning_rate) +
                           observed_precision * learning_rate;

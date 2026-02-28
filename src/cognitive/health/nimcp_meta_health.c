@@ -422,11 +422,11 @@ static void compute_assessment(
     assessment->false_positive_rate = total > 0 ? (float)false_positives / (float)total : 0.0f;
     assessment->false_negative_rate = total > 0 ? (float)false_negatives / (float)total : 0.0f;
     assessment->avg_response_time_ms = response_count > 0 ?
-                                       total_response_time / response_count : 0.0f;
+                                       total_response_time / (response_count > 0 ? response_count : 1) : 0.0f;
     assessment->avg_recovery_time_ms = recovery_count > 0 ?
-                                       total_recovery_time / recovery_count : 0.0f;
+                                       total_recovery_time / (recovery_count > 0 ? recovery_count : 1) : 0.0f;
     assessment->avg_post_recovery_health = recovery_count > 0 ?
-                                           total_post_health / recovery_count : 1.0f;
+                                           total_post_health / (recovery_count > 0 ? recovery_count : 1) : 1.0f;
     assessment->assessment_period_ms = (log->num_decisions > 0) ?
         (get_time_us() - log->decisions[0].timestamp_us) / 1000 : 0;
     assessment->decisions_in_period = log->num_decisions;
@@ -714,9 +714,9 @@ int meta_health_reflect(
 
     float n = (float)reflector->stats.reflections_performed;
     reflector->stats.avg_reflection_time_ms =
-        ((n - 1) * reflector->stats.avg_reflection_time_ms + result->reflection_time_ms) / n;
+        ((n - 1) * reflector->stats.avg_reflection_time_ms + result->reflection_time_ms) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     reflector->stats.avg_improvement =
-        ((n - 1) * reflector->stats.avg_improvement + result->improvement_potential) / n;
+        ((n - 1) * reflector->stats.avg_improvement + result->improvement_potential) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     reflector->stats.last_reflection_us = result->timestamp_us;
 
     return 0;

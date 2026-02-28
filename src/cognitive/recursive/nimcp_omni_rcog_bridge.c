@@ -313,9 +313,9 @@ int omni_rcog_update(omni_rcog_bridge_t* bridge) {
 
     float n = (float)bridge->stats.total_updates;
     bridge->stats.avg_pe_at_decomp =
-        (bridge->stats.avg_pe_at_decomp * (n - 1) + pe) / n;
+        (bridge->stats.avg_pe_at_decomp * (n - 1) + pe) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     bridge->stats.avg_depth =
-        (bridge->stats.avg_depth * (n - 1) + bridge->omni_effects.suggested_depth) / n;
+        (bridge->stats.avg_depth * (n - 1) + bridge->omni_effects.suggested_depth) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;

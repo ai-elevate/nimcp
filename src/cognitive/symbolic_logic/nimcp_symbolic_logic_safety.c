@@ -239,7 +239,7 @@ safety_kb_t* symbolic_logic_safety_kb_create(uint32_t max_rules) {
     size_t page_size = (size_t)sysconf(_SC_PAGESIZE);
     size_t rules_size = max_rules * sizeof(safety_rule_t);
     // Round up to page boundary
-    size_t mmap_size = ((rules_size + page_size - 1) / page_size) * page_size;
+    size_t mmap_size = ((rules_size + page_size - 1) / (page_size > 0 ? page_size : 1)) * page_size;
 
     // Create mmap region
     void* region = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,

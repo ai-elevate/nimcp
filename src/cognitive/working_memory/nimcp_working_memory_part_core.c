@@ -69,7 +69,7 @@ bool working_memory_add(
     // WHY: The input 'item' pointer may point to an existing working memory item.
     //      If we evict that item before copying, we'd read from freed memory.
     //      By copying first, we safely capture the data before any eviction.
-    float* item_copy = nimcp_malloc(item_size * sizeof(float));
+    float* item_copy = nimcp_calloc(item_size, sizeof(float));
     if (!item_copy) {
         set_error("Failed to allocate item memory");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_add: item_copy is NULL");

@@ -1299,7 +1299,7 @@ schema_instantiation_t* schema_instantiate(
 
     // Update running average fit
     float n = (float)schema->instantiation_count;
-    schema->avg_fit = ((n - 1.0f) * schema->avg_fit + inst->fit_score) / n;
+    schema->avg_fit = ((n - 1.0f) * schema->avg_fit + inst->fit_score) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     // Update system stats
     system->stats.num_active = system->num_active;
@@ -1693,7 +1693,7 @@ bool schema_match_top_k(
         float fit;
     } fit_entry_t;
 
-    fit_entry_t* entries = (fit_entry_t*)nimcp_malloc(system->num_schemas * sizeof(fit_entry_t));
+    fit_entry_t* entries = (fit_entry_t*)nimcp_calloc(system->num_schemas, sizeof(fit_entry_t));
     if (!entries) {
         set_error("Failed to allocate fit array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_match_top_k: entries is NULL");
@@ -1976,7 +1976,7 @@ bool schema_learn_from_instance(
             float n = (float)schema_slot->fill_count;
             schema_slot->avg_confidence =
                 ((n - 1.0f) * schema_slot->avg_confidence +
-                 instantiation->filled_slots[i].confidence) / n;
+                 instantiation->filled_slots[i].confidence) / (fabsf(n) > 1e-7f ? n : 1e-7f);
         }
     }
 

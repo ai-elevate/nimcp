@@ -688,7 +688,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_pattern_sort(pr_spike_pattern_t* pattern) {
     if (pattern->num_spikes <= 1) return PR_SNN_SUCCESS;
 
     /* Create temporary array for sorting */
-    spike_entry_t* entries = (spike_entry_t*)nimcp_malloc(pattern->num_spikes * sizeof(spike_entry_t));
+    spike_entry_t* entries = (spike_entry_t*)nimcp_calloc(pattern->num_spikes, sizeof(spike_entry_t));
     if (!entries) return PR_SNN_ERROR_NO_MEMORY;
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
@@ -1738,7 +1738,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
     }
 
     /* Collect ISIs */
-    float* isis = (float*)nimcp_malloc(pattern->num_spikes * sizeof(float));
+    float* isis = (float*)nimcp_calloc(pattern->num_spikes, sizeof(float));
     if (!isis) return PR_SNN_ERROR_NO_MEMORY;
 
     size_t isi_count = 0;
@@ -1794,7 +1794,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
         if (isis[i] < stats->min_isi_ms) stats->min_isi_ms = isis[i];
         if (isis[i] > stats->max_isi_ms) stats->max_isi_ms = isis[i];
     }
-    stats->mean_isi_ms = sum / isi_count;
+    stats->mean_isi_ms = sum / (fabsf(isi_count) > 1e-7f ? isi_count : 1e-7f);
 
     float var_sum = 0.0f;
     for (size_t i = 0; i < isi_count; i++) {
@@ -1807,7 +1807,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
         float diff = isis[i] - stats->mean_isi_ms;
         var_sum += diff * diff;
     }
-    stats->std_isi_ms = sqrtf(var_sum / isi_count);
+    stats->std_isi_ms = sqrtf(var_sum / (fabsf(isi_count) > 1e-7f ? isi_count : 1e-7f));
 
     stats->cv_isi = (stats->mean_isi_ms > 0.0f) ?
                     stats->std_isi_ms / stats->mean_isi_ms : 0.0f;

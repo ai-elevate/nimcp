@@ -308,7 +308,7 @@ static json_value_t* json_parse_array(json_ctx_t* ctx) {
     val->array.count = 0;
 
     size_t capacity = 8;
-    val->array.items = (json_value_t**)nimcp_malloc(capacity * sizeof(json_value_t*));
+    val->array.items = (json_value_t**)nimcp_calloc(capacity, sizeof(json_value_t*));
     if (!val->array.items) {
         nimcp_free(val);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "json_parse_array: val->array is NULL");

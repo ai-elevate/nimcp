@@ -184,7 +184,7 @@ uint32_t brain_evaluate_salience_batch(salience_evaluator_t eval, const float** 
      * WHY: Each worker needs context for its sample
      * HOW: Heap allocation for safety across threads
      */
-    batch_task_t* tasks = (batch_task_t*) nimcp_malloc(num_samples * sizeof(batch_task_t));
+    batch_task_t* tasks = (batch_task_t*) nimcp_calloc(num_samples, sizeof(batch_task_t));
     if (!tasks) {
         return 0;
     }

@@ -389,7 +389,7 @@ static void mesh_compute_collective_belief(
         }
     }
 
-    collective->collective_precision = total_precision / active_count;
+    collective->collective_precision = total_precision / (active_count > 0 ? active_count : 1);
     collective->contributing_participants = active_count;
     collective->byzantine_excluded = mesh->belief_count - active_count;
 }
@@ -683,7 +683,7 @@ static void mesh_bp_compute_marginals(linguistics_mesh_t* mesh) {
         /* Normalize and update belief */
         if (marginal_sum > 1e-6f) {
             for (uint32_t d = 0; d < dim; d++) {
-                mesh->beliefs[i].belief.belief_vector[d] = marginal[d] / marginal_sum;
+                mesh->beliefs[i].belief.belief_vector[d] = marginal[d] / (fabsf(marginal_sum) > 1e-7f ? marginal_sum : 1e-7f);
             }
         }
     }
@@ -931,7 +931,7 @@ static int mesh_covariance_intersection_internal(
     float fused_cov_inv[MESH_BELIEF_VECTOR_DIM] = {0};
     float fused_mean_weighted[MESH_BELIEF_VECTOR_DIM] = {0};
 
-    float weight_per_belief = omega / active_count;
+    float weight_per_belief = omega / (active_count > 0 ? active_count : 1);
 
     for (uint32_t i = 0; i < mesh->belief_count; i++) {
         if (mesh->beliefs[i].excluded_bft) continue;
@@ -981,7 +981,7 @@ static int mesh_update_pagerank_internal(linguistics_mesh_t* mesh) {
 
     /* Initialize uniform */
     for (uint32_t i = 0; i < n; i++) {
-        mesh->pagerank_scores[i] = 1.0f / n;
+        mesh->pagerank_scores[i] = 1.0f / (n > 0 ? n : 1);
     }
 
     float damping = mesh->config.alg_config.pagerank_damping;
@@ -992,7 +992,7 @@ static int mesh_update_pagerank_internal(linguistics_mesh_t* mesh) {
         /* Default: uniform transition */
         for (uint32_t iter = 0; iter < max_iter; iter++) {
             float new_scores[LINGUISTICS_MAX_MESH_PARTICIPANTS];
-            float uniform = (1.0f - damping) / n;
+            float uniform = (1.0f - damping) / (n > 0 ? n : 1);
 
             for (uint32_t i = 0; i < n; i++) {
                 new_scores[i] = uniform;
@@ -1018,7 +1018,7 @@ static int mesh_update_pagerank_internal(linguistics_mesh_t* mesh) {
         /* Use adjacency matrix */
         for (uint32_t iter = 0; iter < max_iter; iter++) {
             float new_scores[LINGUISTICS_MAX_MESH_PARTICIPANTS];
-            float uniform = (1.0f - damping) / n;
+            float uniform = (1.0f - damping) / (n > 0 ? n : 1);
 
             for (uint32_t i = 0; i < n; i++) {
                 new_scores[i] = uniform;

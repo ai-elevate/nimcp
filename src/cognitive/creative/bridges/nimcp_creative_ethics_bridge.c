@@ -437,7 +437,7 @@ int creative_ethics_evaluate_text(creative_ethics_bridge_t* bridge,
 
     /* Calculate overall risk */
     evaluation->overall_risk_score = (risk_count > 0) ?
-                                     (total_risk / risk_count) : 0.0f;
+                                     (total_risk / (risk_count > 0 ? risk_count : 1)) : 0.0f;
 
     /* Determine if ethical */
     if (evaluation->max_severity >= ETHICS_SEVERITY_SEVERE) {

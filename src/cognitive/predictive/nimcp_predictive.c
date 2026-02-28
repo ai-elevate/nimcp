@@ -292,7 +292,7 @@ predictive_network_t predictive_create(const predictive_config_t* config)
         layer->state = (float*)nimcp_calloc(size, sizeof(float));
         layer->prediction = (float*)nimcp_calloc(size, sizeof(float));
         layer->prediction_error = (float*)nimcp_calloc(size, sizeof(float));
-        layer->precision = (float*)nimcp_malloc(size * sizeof(float));
+        layer->precision = (float*)nimcp_calloc(size, sizeof(float));
 
         if (!layer->state || !layer->prediction ||
             !layer->prediction_error || !layer->precision) {
@@ -962,7 +962,7 @@ static bool generate_predictions(predictive_network_t net)
                                  (float)(j + 1) / (float)lower->size);
             }
 
-            uint32_t upper_idx = j / ratio;
+            uint32_t upper_idx = j / (ratio > 0 ? ratio : 1);
             if (upper_idx >= upper->size) {
                 upper_idx = upper->size - 1;
             }

@@ -1116,7 +1116,7 @@ int phonological_wm_mesh_process(
 
         /* First few phonemes */
         for (uint32_t i = 0; i < 4 && i < trace.length; i++) {
-            belief->belief_vector[4 + i] = (float)trace.phonemes[i] / PHONEME_COUNT;
+            belief->belief_vector[4 + i] = (float)trace.phonemes[i] / (PHONEME_COUNT > 0 ? PHONEME_COUNT : 1);
         }
     } else {
         belief->certainty = 0.0f;

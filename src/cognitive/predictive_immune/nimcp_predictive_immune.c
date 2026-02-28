@@ -175,7 +175,7 @@ predictive_immune_system_t* predictive_immune_create(
     /* Allocate region precision tracking */
     sys->region_capacity = 16;
     sys->region_precisions = (immune_modulated_precision_t*)
-        nimcp_malloc(sys->region_capacity * sizeof(immune_modulated_precision_t));
+        nimcp_calloc(sys->region_capacity, sizeof(immune_modulated_precision_t));
     if (!sys->region_precisions) {
         if (sys->intero_network) predictive_destroy(sys->intero_network);
         nimcp_free(sys);
@@ -186,7 +186,7 @@ predictive_immune_system_t* predictive_immune_create(
 
     /* Allocate error trigger tracking */
     sys->error_triggers = (prediction_error_trigger_t*)
-        nimcp_malloc(sys->region_capacity * sizeof(prediction_error_trigger_t));
+        nimcp_calloc(sys->region_capacity, sizeof(prediction_error_trigger_t));
     if (!sys->error_triggers) {
         nimcp_free(sys->region_precisions);
         if (sys->intero_network) predictive_destroy(sys->intero_network);
@@ -400,7 +400,7 @@ nimcp_result_t predictive_immune_apply_immune_modulation(
 
             /* Set precision for all neurons in region */
             uint32_t num_neurons = 100; /* TODO: get from region */
-            float* precisions = (float*)nimcp_malloc(num_neurons * sizeof(float));
+            float* precisions = (float*)nimcp_calloc(num_neurons, sizeof(float));
             if (precisions) {
                 for (uint32_t i = 0; i < num_neurons; i++) {
                     /* Phase 8: Loop progress heartbeat */
@@ -502,7 +502,7 @@ nimcp_result_t predictive_immune_monitor_prediction_errors(
 
         total_error += fabsf(pred_ext->prediction_error[i]);
     }
-    float mean_error = total_error / num_neurons;
+    float mean_error = total_error / (fabsf(num_neurons) > 1e-7f ? num_neurons : 1e-7f);
 
     /* Check against threshold */
     uint32_t trigger_idx = 0; /* TODO: map region to trigger index */
@@ -719,7 +719,7 @@ nimcp_result_t predictive_immune_disconnect_region(
     brain_region_predictive_t* pred_ext = brain_region_get_predictive(region);
     if (pred_ext) {
         uint32_t num_neurons = 100; /* TODO: get from region */
-        float* precisions = (float*)nimcp_malloc(num_neurons * sizeof(float));
+        float* precisions = (float*)nimcp_calloc(num_neurons, sizeof(float));
         if (precisions) {
             for (uint32_t i = 0; i < num_neurons; i++) {
                 /* Phase 8: Loop progress heartbeat */

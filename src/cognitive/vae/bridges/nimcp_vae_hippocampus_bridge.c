@@ -76,7 +76,7 @@ static void apply_sparsification(float* vec, uint32_t dim, float sparsity_target
     if (target_active == 0) target_active = 1;
     if (target_active >= dim) return;
 
-    float* magnitudes = (float*)nimcp_malloc(dim * sizeof(float));
+    float* magnitudes = (float*)nimcp_calloc(dim, sizeof(float));
     if (!magnitudes) return;
 
     for (uint32_t i = 0; i < dim; i++) {
@@ -383,14 +383,14 @@ int vae_hippo_encode_episode(vae_hippo_bridge_t* bridge,
     result->active_dimensions = count_active_dimensions(bridge->variance_buffer,
                                                         bridge->vae_latent_dim, 0.01f);
 
-    result->latent_code = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    result->latent_code = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (result->latent_code) {
         memcpy(result->latent_code, bridge->latent_buffer,
                bridge->vae_latent_dim * sizeof(float));
     }
 
     if (bridge->config.encode.include_variance) {
-        result->latent_variance = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+        result->latent_variance = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
         if (result->latent_variance) {
             memcpy(result->latent_variance, bridge->variance_buffer,
                    bridge->vae_latent_dim * sizeof(float));
@@ -594,7 +594,7 @@ int vae_hippo_retrieve(vae_hippo_bridge_t* bridge,
     result->confidence = match_confidence;
     result->reconstruction_dim = bridge->vae_output_dim;
 
-    result->reconstruction = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
+    result->reconstruction = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
     if (result->reconstruction) {
         float* recon_data = (float*)nimcp_tensor_data(recon_tensor);
         memcpy(result->reconstruction, recon_data, bridge->vae_output_dim * sizeof(float));
@@ -675,7 +675,7 @@ int vae_hippo_retrieve_by_id(vae_hippo_bridge_t* bridge,
     result->confidence = 1.0f;
     result->reconstruction_dim = bridge->vae_output_dim;
 
-    result->reconstruction = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
+    result->reconstruction = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
     if (result->reconstruction) {
         float* recon_data = (float*)nimcp_tensor_data(recon_tensor);
         memcpy(result->reconstruction, recon_data, bridge->vae_output_dim * sizeof(float));
@@ -910,7 +910,7 @@ int vae_hippo_pattern_complete(vae_hippo_bridge_t* bridge,
     memset(result, 0, sizeof(*result));
     result->operation = VAE_HIPPO_PATTERN_COMPLETE;
 
-    result->output_pattern = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
+    result->output_pattern = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
     if (!result->output_pattern) {
         bridge->state = VAE_HIPPO_STATE_ERROR;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");

@@ -90,18 +90,18 @@ jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
     memset(latent, 0, sizeof(jepa_latent_t));
 
     /* Allocate embedding array */
-    latent->embedding = nimcp_malloc(config->latent_dim * sizeof(float));
+    latent->embedding = nimcp_calloc(config->latent_dim, sizeof(float));
     if (!latent->embedding) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate embedding array");
         nimcp_free(latent);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_latent_create: latent->embedding is NULL");
         return NULL;
     }
-    memset(latent->embedding, 0, config->latent_dim * sizeof(float));
+    /* calloc zero-initializes */
 
     /* Optionally allocate variance array */
     if (config->enable_variance) {
-        latent->variance = nimcp_malloc(config->latent_dim * sizeof(float));
+        latent->variance = nimcp_calloc(config->latent_dim, sizeof(float));
         if (!latent->variance) {
             NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate variance array");
             nimcp_free(latent->embedding);
@@ -312,7 +312,7 @@ int jepa_latent_set_variance(jepa_latent_t* latent, const float* variance, uint3
 
     if (!latent->variance) {
         /* Allocate variance array if not present */
-        latent->variance = nimcp_malloc(latent->latent_dim * sizeof(float));
+        latent->variance = nimcp_calloc(latent->latent_dim, sizeof(float));
         if (!latent->variance) {
             return NIMCP_ERROR_NO_MEMORY;
         }
@@ -424,7 +424,7 @@ int jepa_latent_normalize(jepa_latent_t* latent) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    float inv_norm = 1.0f / norm;
+    float inv_norm = 1.0f / (fabsf(norm) > 1e-7f ? norm : 1e-7f);
     for (uint32_t i = 0; i < latent->latent_dim; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && latent->latent_dim > 256) {
@@ -478,7 +478,7 @@ int jepa_latent_layer_normalize(jepa_latent_t* latent) {
     float std = sqrtf(variance + JEPA_LATENT_EPSILON);
 
     /* Normalize: (x - mean) / std */
-    float inv_std = 1.0f / std;
+    float inv_std = 1.0f / (fabsf(std) > 1e-7f ? std : 1e-7f);
     for (uint32_t i = 0; i < latent->latent_dim; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && latent->latent_dim > 256) {

@@ -384,10 +384,10 @@ int visual_generate(visual_generator_t* gen,
     /* Update statistics */
     gen->images_generated++;
     float n = (float)gen->images_generated;
-    gen->avg_quality_score = gen->avg_quality_score * ((n-1)/n) +
-                             result->evaluation.overall_quality / n;
-    gen->avg_generation_time_ms = gen->avg_generation_time_ms * ((n-1)/n) +
-                                   result->generation_time_ms / n;
+    gen->avg_quality_score = gen->avg_quality_score * ((n-1)/(fabsf(n) > 1e-7f ? n : 1e-7f)) +
+                             result->evaluation.overall_quality / (fabsf(n) > 1e-7f ? n : 1e-7f);
+    gen->avg_generation_time_ms = gen->avg_generation_time_ms * ((n-1)/(fabsf(n) > 1e-7f ? n : 1e-7f)) +
+                                   result->generation_time_ms / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     return 0;
 }

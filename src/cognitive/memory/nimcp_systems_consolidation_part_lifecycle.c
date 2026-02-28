@@ -39,7 +39,7 @@ static cortical_memory_node_t* cortical_node_create(
     }
 
     // WHAT: Allocate and copy feature vector
-    node->features = nimcp_malloc(feature_dim * sizeof(float));
+    node->features = nimcp_calloc(feature_dim, sizeof(float));
     if (!node->features) {
         nimcp_free(node);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_node_create: node->features is NULL");

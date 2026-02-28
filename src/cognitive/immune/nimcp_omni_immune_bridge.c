@@ -383,9 +383,9 @@ int omni_immune_update(omni_immune_bridge_t* bridge) {
 
     float n = (float)bridge->stats.total_updates;
     bridge->stats.avg_pe_magnitude =
-        (bridge->stats.avg_pe_magnitude * (n - 1) + pe_magnitude) / n;
+        (bridge->stats.avg_pe_magnitude * (n - 1) + pe_magnitude) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     bridge->stats.avg_inflammation =
-        (bridge->stats.avg_inflammation * (n - 1) + bridge->omni_effects.inflammation_signal) / n;
+        (bridge->stats.avg_inflammation * (n - 1) + bridge->omni_effects.inflammation_signal) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     if (bridge->omni_effects.inflammation_signal > bridge->stats.max_inflammation) {
         bridge->stats.max_inflammation = bridge->omni_effects.inflammation_signal;
     }

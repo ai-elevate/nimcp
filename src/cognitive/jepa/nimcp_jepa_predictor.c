@@ -182,23 +182,23 @@ static int mlp_layer_create(jepa_mlp_layer_t* layer, uint32_t in_dim,
     layer->activation = activation;
 
     /* Allocate weights [out_dim × in_dim] */
-    layer->weights = nimcp_malloc(out_dim * in_dim * sizeof(float));
+    layer->weights = nimcp_calloc((size_t)out_dim * in_dim, sizeof(float));
     if (!layer->weights) {
         return NIMCP_ERROR_MEMORY;
     }
     xavier_init(layer->weights, in_dim, out_dim);
 
     /* Allocate bias [out_dim] */
-    layer->bias = nimcp_malloc(out_dim * sizeof(float));
+    layer->bias = nimcp_calloc(out_dim, sizeof(float));
     if (!layer->bias) {
         nimcp_free(layer->weights);
         return NIMCP_ERROR_MEMORY;
     }
-    memset(layer->bias, 0, out_dim * sizeof(float));
+    /* calloc zero-initializes */
 
     /* Allocate gradient buffers */
-    layer->grad_weights = nimcp_malloc(out_dim * in_dim * sizeof(float));
-    layer->grad_bias = nimcp_malloc(out_dim * sizeof(float));
+    layer->grad_weights = nimcp_calloc((size_t)out_dim * in_dim, sizeof(float));
+    layer->grad_bias = nimcp_calloc(out_dim, sizeof(float));
     if (!layer->grad_weights || !layer->grad_bias) {
         nimcp_free(layer->weights);
         nimcp_free(layer->bias);
@@ -339,18 +339,18 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
         mlp->num_layers = actual_layers;
 
         /* Allocate layer array */
-        mlp->layers = nimcp_malloc(actual_layers * sizeof(jepa_mlp_layer_t));
+        mlp->layers = nimcp_calloc(actual_layers, sizeof(jepa_mlp_layer_t));
         if (!mlp->layers) {
             bridge_base_cleanup(&pred->base);
             nimcp_free(pred);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_predictor_create: mlp->layers is NULL");
             return NULL;
         }
-        memset(mlp->layers, 0, actual_layers * sizeof(jepa_mlp_layer_t));
+        /* calloc zero-initializes */
 
         /* Allocate activation buffers */
-        mlp->activations = nimcp_malloc(actual_layers * sizeof(float*));
-        mlp->pre_activations = nimcp_malloc(actual_layers * sizeof(float*));
+        mlp->activations = nimcp_calloc(actual_layers, sizeof(float*));
+        mlp->pre_activations = nimcp_calloc(actual_layers, sizeof(float*));
         if (!mlp->activations || !mlp->pre_activations) {
             nimcp_free(mlp->layers);
             nimcp_free(mlp->activations);
@@ -415,8 +415,8 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
             }
 
             /* Allocate activation buffers for this layer */
-            mlp->activations[i] = nimcp_malloc(out_d * sizeof(float));
-            mlp->pre_activations[i] = nimcp_malloc(out_d * sizeof(float));
+            mlp->activations[i] = nimcp_calloc(out_d, sizeof(float));
+            mlp->pre_activations[i] = nimcp_calloc(out_d, sizeof(float));
             if (!mlp->activations[i] || !mlp->pre_activations[i]) {
                 /* Cleanup */
                 for (uint32_t j = 0; j <= i; j++) {
@@ -439,8 +439,8 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
     /* temp_hidden stores input for backward pass, needs input_dim size */
     uint32_t temp_size = config->input_dim > config->hidden_dim ?
                          config->input_dim : config->hidden_dim;
-    pred->temp_hidden = nimcp_malloc(temp_size * sizeof(float));
-    pred->temp_output = nimcp_malloc(config->output_dim * sizeof(float));
+    pred->temp_hidden = nimcp_calloc(temp_size, sizeof(float));
+    pred->temp_output = nimcp_calloc(config->output_dim, sizeof(float));
     if (!pred->temp_hidden || !pred->temp_output) {
         /* Full cleanup would be needed here - simplified */
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate temp buffers");
@@ -770,7 +770,7 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
     jepa_mlp_t* mlp = &predictor->network.mlp;
 
     /* Start with output error gradient */
-    float* grad_out = nimcp_malloc(predictor->config.output_dim * sizeof(float));
+    float* grad_out = nimcp_calloc(predictor->config.output_dim, sizeof(float));
     NIMCP_CHECK_THROW(grad_out, NIMCP_ERROR_MEMORY, "failed to allocate grad_out");
 
     /* For MSE: dL/dout = 2 * (pred - target) / dim = 2 * error / dim */
@@ -846,12 +846,12 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
 
         /* Propagate to previous layer if not first */
         if (l > 0) {
-            grad_next = nimcp_malloc(layer->in_dim * sizeof(float));
+            grad_next = nimcp_calloc(layer->in_dim, sizeof(float));
             if (!grad_next) {
                 nimcp_free(grad_out);
                 return NIMCP_ERROR_MEMORY;
             }
-            memset(grad_next, 0, layer->in_dim * sizeof(float));
+            /* calloc zero-initializes */
 
             /* grad_input[j] = sum_i(grad_out[i] * W[i,j]) */
             for (uint32_t j = 0; j < layer->in_dim; j++) {
@@ -1241,8 +1241,8 @@ jepa_prediction_error_t* jepa_prediction_error_create(uint32_t dim) {
     }
 
     error->dim = dim;
-    error->error = nimcp_malloc(dim * sizeof(float));
-    error->weighted_error = nimcp_malloc(dim * sizeof(float));
+    error->error = nimcp_calloc(dim, sizeof(float));
+    error->weighted_error = nimcp_calloc(dim, sizeof(float));
 
     if (!error->error || !error->weighted_error) {
         nimcp_free(error->error);
@@ -1693,7 +1693,7 @@ static float jepa_qmc_energy_fn(const float* state, uint32_t dim, void* user_dat
     if (ctx->layer_idx >= mlp->num_layers) return FLT_MAX;
 
     jepa_mlp_layer_t* layer = &mlp->layers[ctx->layer_idx];
-    float* original_weights = nimcp_malloc(dim * sizeof(float));
+    float* original_weights = nimcp_calloc(dim, sizeof(float));
     if (!original_weights) return FLT_MAX;
 
     /* Save and replace weights */
@@ -1760,7 +1760,7 @@ int jepa_predictor_qmc_amplitude_estimate(
 
     /* Make multiple predictions to build amplitude distribution */
     uint32_t dim = predictor->config.output_dim;
-    float* amplitudes = nimcp_malloc(config->num_samples * sizeof(float));
+    float* amplitudes = nimcp_calloc(config->num_samples, sizeof(float));
     NIMCP_CHECK_THROW(amplitudes, NIMCP_ERROR_MEMORY, "failed to allocate amplitudes");
 
     jepa_latent_t* pred = jepa_latent_create_dim(dim);
@@ -1972,7 +1972,7 @@ int jepa_predictor_qmc_entropy(
     }
 
     /* Convert embeddings to positive values and normalize to probabilities */
-    float* probs = nimcp_malloc(dim * sizeof(float));
+    float* probs = nimcp_calloc(dim, sizeof(float));
     if (!probs) {
         jepa_latent_destroy(pred);
         return NIMCP_ERROR_MEMORY;
@@ -2067,8 +2067,8 @@ float jepa_predictor_qmc_fidelity(
     uint32_t dim = latent1->latent_dim;
 
     /* Normalize embeddings as amplitudes */
-    float* amp1 = nimcp_malloc(dim * sizeof(float));
-    float* amp2 = nimcp_malloc(dim * sizeof(float));
+    float* amp1 = nimcp_calloc(dim, sizeof(float));
+    float* amp2 = nimcp_calloc(dim, sizeof(float));
     if (!amp1 || !amp2) {
         nimcp_free(amp1);
         nimcp_free(amp2);
@@ -2150,7 +2150,7 @@ int jepa_predictor_qmc_sample_latent(
     }
 
     /* Create probability distribution from base prediction */
-    float* probs = nimcp_malloc(dim * sizeof(float));
+    float* probs = nimcp_calloc(dim, sizeof(float));
     if (!probs) {
         jepa_latent_destroy(base);
         return NIMCP_ERROR_MEMORY;
@@ -2413,7 +2413,7 @@ static jepa_mcts_node_t* jepa_mcts_node_create(uint32_t dim) {
 
     }
 
-    node->embedding = nimcp_malloc(dim * sizeof(float));
+    node->embedding = nimcp_calloc(dim, sizeof(float));
     if (!node->embedding) {
         nimcp_free(node);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mcts_node_create: node->embedding is NULL");
@@ -2591,7 +2591,7 @@ int jepa_predictor_qmc_mcts_explore(
 
         /* Simulation: rollout with random moves */
         float rollout_value = current->value;
-        float* rollout_state = nimcp_malloc(dim * sizeof(float));
+        float* rollout_state = nimcp_calloc(dim, sizeof(float));
         if (rollout_state) {
             memcpy(rollout_state, current->embedding, dim * sizeof(float));
             for (uint32_t d = current->depth; d < max_depth; d++) {

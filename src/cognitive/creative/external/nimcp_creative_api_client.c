@@ -21,6 +21,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "constants/nimcp_timing_constants.h"
+#include <math.h>
 
 //=============================================================================
 // Circuit Breaker for External API Protection
@@ -401,8 +402,8 @@ int api_generate_image(creative_api_client_t* client,
     /* Update statistics */
     client->successful_requests++;
     float n = (float)client->successful_requests;
-    client->avg_response_time_ms = client->avg_response_time_ms * ((n-1)/n) +
-                                    response->generation_time_ms / n;
+    client->avg_response_time_ms = client->avg_response_time_ms * ((n-1)/(fabsf(n) > 1e-7f ? n : 1e-7f)) +
+                                    response->generation_time_ms / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     return 0;
 }
@@ -456,8 +457,8 @@ int api_upscale_image(creative_api_client_t* client,
             /* Simple nearest-neighbor upscale */
             for (uint32_t y = 0; y < new_height; y++) {
                 for (uint32_t x = 0; x < new_width; x++) {
-                    uint32_t src_x = x / scale;
-                    uint32_t src_y = y / scale;
+                    uint32_t src_x = x / (scale > 0 ? scale : 1);
+                    uint32_t src_y = y / (scale > 0 ? scale : 1);
 
                     src_x = src_x < image->width ? src_x : image->width - 1;
                     src_y = src_y < image->height ? src_y : image->height - 1;

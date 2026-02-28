@@ -284,7 +284,7 @@ float nimcp_fairness_theil_index(const float* values, uint32_t num_values) {
         }
 
         if (values[i] > 1e-10f) {
-            float ratio = values[i] / mean;
+            float ratio = values[i] / (fabsf(mean) > 1e-7f ? mean : 1e-7f);
             theil += ratio * logf(ratio);
         }
         // Zero values contribute 0 to Theil (limit of x*ln(x) as x->0)
@@ -346,7 +346,7 @@ float nimcp_fairness_atkinson_index(const float* values, uint32_t num_values,
     float mean_powered = sum_powered / (float)num_values;
     float ede = powf(mean_powered, 1.0f / exponent);  // Equally Distributed Equivalent
 
-    return 1.0f - (ede / mean);
+    return 1.0f - (ede / (fabsf(mean) > 1e-7f ? mean : 1e-7f));
 }
 
 float nimcp_fairness_coefficient_variation(const float* values, uint32_t num_values) {
@@ -380,7 +380,7 @@ float nimcp_fairness_coefficient_variation(const float* values, uint32_t num_val
     variance /= (float)num_values;
 
     // CV = stddev / mean
-    return sqrtf(variance) / mean;
+    return sqrtf(variance) / (fabsf(mean) > 1e-7f ? mean : 1e-7f);
 }
 
 //=============================================================================

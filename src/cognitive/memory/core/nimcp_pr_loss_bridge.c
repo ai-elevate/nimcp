@@ -994,7 +994,7 @@ float pr_loss_consolidation_weighted(
     }
 
     /* Normalize by total weight */
-    float loss = (weight_sum > PR_LOSS_EPSILON) ? weighted_sum / weight_sum : 0.0f;
+    float loss = (weight_sum > PR_LOSS_EPSILON) ? weighted_sum / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f) : 0.0f;
 
     /* Update statistics */
     if (bridge) {
@@ -1238,7 +1238,7 @@ float pr_loss_tier_aware(
         tier_counts[tier]++;
     }
 
-    float loss = (weight_sum > PR_LOSS_EPSILON) ? weighted_sum / weight_sum : 0.0f;
+    float loss = (weight_sum > PR_LOSS_EPSILON) ? weighted_sum / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f) : 0.0f;
 
     /* Update statistics */
     if (bridge) {
@@ -1416,7 +1416,7 @@ int pr_loss_combined(
     /* Update running average */
     float n = (float)bridge->stats.combined_computations;
     bridge->stats.avg_combined_loss =
-        (bridge->stats.avg_combined_loss * (n - 1.0f) + result->total_loss) / n;
+        (bridge->stats.avg_combined_loss * (n - 1.0f) + result->total_loss) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     if (result->total_loss < bridge->stats.min_combined_loss) {
         bridge->stats.min_combined_loss = result->total_loss;
@@ -1657,7 +1657,7 @@ float pr_loss_clip_gradient(
     float norm = pr_loss_gradient_norm(grad);
 
     if (norm > max_norm) {
-        float scale = max_norm / norm;
+        float scale = max_norm / (fabsf(norm) > 1e-7f ? norm : 1e-7f);
         grad->dw *= scale;
         grad->dx *= scale;
         grad->dy *= scale;

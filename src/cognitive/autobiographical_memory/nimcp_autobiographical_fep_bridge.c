@@ -342,11 +342,11 @@ int autobiographical_fep_encode_surprising_episode(autobiographical_fep_bridge_t
         /* Update average encoding surprise */
         float count = (float)bridge->stats.total_surprise_encodings;
         bridge->stats.avg_encoding_surprise =
-            (bridge->stats.avg_encoding_surprise * (count - 1.0f) + surprise) / count;
+            (bridge->stats.avg_encoding_surprise * (count - 1.0f) + surprise) / (fabsf(count) > 1e-7f ? count : 1e-7f);
 
         /* Update average importance */
         bridge->state.avg_memory_importance =
-            (bridge->state.avg_memory_importance * (count - 1.0f) + importance) / count;
+            (bridge->state.avg_memory_importance * (count - 1.0f) + importance) / (fabsf(count) > 1e-7f ? count : 1e-7f);
 
         /* Apply encoding boost effect */
         bridge->effects.memory_encoding_boost = importance;

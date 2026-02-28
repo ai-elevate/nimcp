@@ -713,7 +713,7 @@ int vae_world_fuse(vae_world_bridge_t* bridge,
             }
 
             for (uint32_t m = 0; m < num_valid; m++) {
-                float w = valid_weights[m] / weight_sum;
+                float w = valid_weights[m] / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f);
                 uint32_t d = valid_dims[m] < fused_dim ? valid_dims[m] : fused_dim;
                 for (uint32_t i = 0; i < d; i++) {
                     result->fused_latent[i] += w * valid_latents[m][i];

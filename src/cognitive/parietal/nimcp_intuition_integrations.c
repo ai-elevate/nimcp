@@ -97,8 +97,8 @@ static void fit_linear_trend(const intuition_data_point_t** data, uint32_t count
         sum_x += data[i]->timestamp;
         sum_y += (data[i]->values && data[i]->dim > 0) ? data[i]->values[0] : 0;
     }
-    float mean_x = sum_x / count;
-    float mean_y = sum_y / count;
+    float mean_x = sum_x / (fabsf(count) > 1e-7f ? count : 1e-7f);
+    float mean_y = sum_y / (fabsf(count) > 1e-7f ? count : 1e-7f);
 
     /* Compute slope */
     float num = 0, denom = 0, ss_tot = 0;
@@ -964,7 +964,7 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
                         }
 
                         synth->synthesized->unified_representation[j] +=
-                            fragments[i]->content[j] * fragments[i]->confidence / count;
+                            fragments[i]->content[j] * fragments[i]->confidence / (fabsf(count) > 1e-7f ? count : 1e-7f);
                     }
                 }
             }

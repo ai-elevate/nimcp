@@ -440,7 +440,7 @@ float shannon_measure_feature_information(
 
     /* Step 2 & 3: Compute entropy */
     float entropy = 0.0F;
-    float inv_sum = 1.0F / sum;
+    float inv_sum = 1.0F / (fabsf(sum) > 1e-7f ? sum : 1e-7f);
 
     for (uint32_t i = 0; i < dim; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -719,7 +719,7 @@ shannon_broadcast_metrics_t global_workspace_broadcast_with_shannon(
     /* Calculate efficiency */
     float total = metrics.total_info_delivered + metrics.total_info_loss;
     metrics.delivery_efficiency = (total > SHANNON_EPSILON) ?
-        (metrics.total_info_delivered / total) : 1.0F;
+        (metrics.total_info_delivered / (fabsf(total) > 1e-7f ? total : 1e-7f)) : 1.0F;
 
     /* Update global statistics */
     state->stats.total_info_delivered_bits += metrics.total_info_delivered;

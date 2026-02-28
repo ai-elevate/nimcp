@@ -445,9 +445,9 @@ detected_pattern_t math_detect_pattern(
     nimcp_mutex_lock(mi->lock);
 
     /* Allocate working arrays */
-    float* diffs = nimcp_malloc((length - 1) * sizeof(float));
-    float* ratios = nimcp_malloc((length - 1) * sizeof(float));
-    float* x_vals = nimcp_malloc(length * sizeof(float));
+    float* diffs = nimcp_calloc((length - 1), sizeof(float));
+    float* ratios = nimcp_calloc((length - 1), sizeof(float));
+    float* x_vals = nimcp_calloc(length, sizeof(float));
 
     if (!diffs || !ratios || !x_vals) {
         nimcp_free(diffs);
@@ -855,8 +855,8 @@ geometric_result_t math_check_congruent(
     }
 
     /* Compute edge lengths for both shapes */
-    float* edges1 = nimcp_malloc(num_vertices1 * sizeof(float));
-    float* edges2 = nimcp_malloc(num_vertices2 * sizeof(float));
+    float* edges1 = nimcp_calloc(num_vertices1, sizeof(float));
+    float* edges2 = nimcp_calloc(num_vertices2, sizeof(float));
 
     if (!edges1 || !edges2) {
         nimcp_free(edges1);

@@ -708,7 +708,7 @@ int jepa_context_encode(
             }
             encoder->stats.avg_modulation_strength =
                 (encoder->stats.avg_modulation_strength *
-                 encoder->stats.encodings_performed + mod_strength / input_dim) /
+                 encoder->stats.encodings_performed + mod_strength / (fabsf(input_dim) > 1e-7f ? input_dim : 1e-7f)) /
                 (encoder->stats.encodings_performed + 1);
             break;
         }

@@ -931,7 +931,7 @@ int financial_consolidation_bridge_replay(
     financial_consolidation_result_init(result);
 
     /* Allocate pattern strengths array */
-    result->pattern_strengths = (float*)nimcp_malloc(bridge->num_patterns * sizeof(float));
+    result->pattern_strengths = (float*)nimcp_calloc(bridge->num_patterns, sizeof(float));
     if (!result->pattern_strengths) {
         set_error("Failed to allocate result pattern_strengths");
         return FIN_CONSOLIDATION_ERR_NO_MEMORY;
@@ -1028,7 +1028,7 @@ int financial_consolidation_bridge_prune_losers(
     /* Initialize result */
     financial_consolidation_result_init(result);
 
-    result->pattern_strengths = (float*)nimcp_malloc(bridge->num_patterns * sizeof(float));
+    result->pattern_strengths = (float*)nimcp_calloc(bridge->num_patterns, sizeof(float));
     if (!result->pattern_strengths) {
         set_error("Failed to allocate result pattern_strengths");
         return FIN_CONSOLIDATION_ERR_NO_MEMORY;
@@ -1144,7 +1144,7 @@ int financial_consolidation_bridge_strengthen_winners(
     /* Initialize result */
     financial_consolidation_result_init(result);
 
-    result->pattern_strengths = (float*)nimcp_malloc(bridge->num_patterns * sizeof(float));
+    result->pattern_strengths = (float*)nimcp_calloc(bridge->num_patterns, sizeof(float));
     if (!result->pattern_strengths) {
         set_error("Failed to allocate result pattern_strengths");
         return FIN_CONSOLIDATION_ERR_NO_MEMORY;

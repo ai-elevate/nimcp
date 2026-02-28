@@ -708,7 +708,7 @@ NIMCP_API uint32_t nimcp_hypergraph_add_edge_full(
 
     /* Allocate and copy vertices */
     edge->vertex_capacity = count;
-    edge->vertices = (uint32_t*)nimcp_malloc(count * sizeof(uint32_t));
+    edge->vertices = (uint32_t*)nimcp_calloc(count, sizeof(uint32_t));
     if (!edge->vertices) {
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
@@ -1517,7 +1517,7 @@ NIMCP_API uint32_t nimcp_hypergraph_all_transversals(
         return 0;
     }
 
-    transversals[0] = (uint32_t*)nimcp_malloc(hg->vertex_count * sizeof(uint32_t));
+    transversals[0] = (uint32_t*)nimcp_calloc(hg->vertex_count, sizeof(uint32_t));
     if (!transversals[0]) {
         return 0;
     }
@@ -1912,7 +1912,7 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_connected_components(
     }
 
     uint32_t current_component = 0;
-    uint32_t* stack = (uint32_t*)nimcp_malloc(hg->vertex_count * sizeof(uint32_t));
+    uint32_t* stack = (uint32_t*)nimcp_calloc(hg->vertex_count, sizeof(uint32_t));
     if (!stack) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "nimcp_hypergraph_connected_components: failed to allocate stack");

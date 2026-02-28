@@ -71,14 +71,14 @@ inner_dialogue_turn_history_t* inner_dialogue_turn_history_create(void) {
     }
     memset(history, 0, sizeof(inner_dialogue_turn_history_t));
 
-    history->turns = nimcp_malloc(sizeof(inner_dialogue_turn_t) * INNER_DIALOGUE_MAX_HISTORY);
+    history->turns = nimcp_calloc(INNER_DIALOGUE_MAX_HISTORY, sizeof(inner_dialogue_turn_t));
     if (!history->turns) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_INNER_DIALOGUE_TURN_ERROR_NO_MEMORY,
                               "inner_dialogue_turn: failed to allocate turn ring buffer");
         nimcp_free(history);
         return NULL;
     }
-    memset(history->turns, 0, sizeof(inner_dialogue_turn_t) * INNER_DIALOGUE_MAX_HISTORY);
+    /* calloc zero-initializes */
 
     history->capacity = INNER_DIALOGUE_MAX_HISTORY;
     history->head = 0;
@@ -161,9 +161,9 @@ int inner_dialogue_turn_history_record(inner_dialogue_turn_history_t* history,
 
     /* Incremental averages */
     float n = (float)st->total_turns_recorded;
-    st->avg_confidence += (turn->confidence - st->avg_confidence) / n;
-    st->avg_relevance  += (turn->relevance  - st->avg_relevance)  / n;
-    st->avg_novelty    += (turn->novelty    - st->avg_novelty)    / n;
+    st->avg_confidence += (turn->confidence - st->avg_confidence) / (fabsf(n) > 1e-7f ? n : 1e-7f);
+    st->avg_relevance  += (turn->relevance  - st->avg_relevance)  / (fabsf(n) > 1e-7f ? n : 1e-7f);
+    st->avg_novelty    += (turn->novelty    - st->avg_novelty)    / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     /* Count by act type */
     if ((unsigned)turn->act < DIALOGUE_ACT_COUNT) {

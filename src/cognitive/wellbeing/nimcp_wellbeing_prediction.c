@@ -78,8 +78,8 @@ static float compute_trajectory_slope(const distress_sample_t* history, uint32_t
         sum_time += (double)history[i].timestamp;
         sum_distress += (double)history[i].distress_score;
     }
-    double mean_time = sum_time / count;
-    double mean_distress = sum_distress / count;
+    double mean_time = sum_time / (fabsf(count) > 1e-7f ? count : 1e-7f);
+    double mean_distress = sum_distress / (fabsf(count) > 1e-7f ? count : 1e-7f);
 
     /* Compute slope via covariance / variance */
     double covariance = 0.0;
@@ -102,7 +102,7 @@ static float compute_trajectory_slope(const distress_sample_t* history, uint32_t
         return 0.0f;  /* All timestamps identical = no slope */
     }
 
-    float slope = (float)(covariance / variance);
+    float slope = (float)(covariance / (fabsf(variance) > 1e-7f ? variance : 1e-7f));
 
     /* Clamp to reasonable range */
     if (slope > MAX_SLOPE_FOR_PREDICTION) {

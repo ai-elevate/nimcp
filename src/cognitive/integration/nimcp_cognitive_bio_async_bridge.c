@@ -706,7 +706,7 @@ int cognitive_bio_bridge_update(
     static _Atomic uint64_t update_count = 0;
     uint64_t count = atomic_fetch_add(&update_count, 1) + 1;
     bridge->stats.avg_update_time_us =
-        (bridge->stats.avg_update_time_us * (count - 1) + (float)elapsed) / count;
+        (bridge->stats.avg_update_time_us * (count - 1) + (float)elapsed) / (count > 0 ? count : 1);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

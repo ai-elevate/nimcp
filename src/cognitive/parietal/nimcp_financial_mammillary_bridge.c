@@ -770,7 +770,7 @@ int financial_mammillary_bridge_query_similar(
         float price_sim = 0.0f;
         if (params->target_price > 0.0f && t->trace.trade_price > 0.0f) {
             float ratio = t->trace.trade_price / params->target_price;
-            if (ratio > 1.0f) ratio = 1.0f / ratio;
+            if (ratio > 1.0f) ratio = 1.0f / (fabsf(ratio) > 1e-7f ? ratio : 1e-7f);
             price_sim = ratio;
         } else {
             price_sim = 1.0f;  /* No price target = full similarity */
@@ -791,7 +791,7 @@ int financial_mammillary_bridge_query_similar(
         float similarity = (params->price_weight * price_sim +
                            params->volatility_weight * vol_sim +
                            params->trend_weight * trend_sim +
-                           params->outcome_weight * outcome_sim) / total_weight;
+                           params->outcome_weight * outcome_sim) / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
 
         /* Recency bonus */
         if (params->prefer_recent && t->last_retrieval_ms > 0) {

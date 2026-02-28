@@ -1306,7 +1306,7 @@ NIMCP_EXPORT procedural_error_t procedural_practice_detailed(
     }
 
     // Practice with aggregate metrics
-    float avg_accuracy = total_accuracy / num_steps;
+    float avg_accuracy = total_accuracy / (fabsf(num_steps) > 1e-7f ? num_steps : 1e-7f);
     return procedural_practice(pm, skill_id, avg_accuracy, total_duration);
 }
 
@@ -2076,7 +2076,7 @@ NIMCP_EXPORT procedural_error_t procedural_chunk_skills(
     chunk->is_chunk = true;
 
     // Allocate sub-skills array
-    chunk->sub_skills = (uint64_t*)nimcp_malloc(num_sub_skills * sizeof(uint64_t));
+    chunk->sub_skills = (uint64_t*)nimcp_calloc(num_sub_skills, sizeof(uint64_t));
     if (!chunk->sub_skills) {
         procedural_remove_skill(pm, chunk_id);
         set_error("Failed to allocate sub-skills array");
@@ -2471,7 +2471,7 @@ NIMCP_EXPORT procedural_error_t procedural_get_strongest_skills(
         float strength;
     } skill_entry_t;
 
-    skill_entry_t* entries = (skill_entry_t*)nimcp_malloc(pm->num_skills * sizeof(skill_entry_t));
+    skill_entry_t* entries = (skill_entry_t*)nimcp_calloc(pm->num_skills, sizeof(skill_entry_t));
     if (!entries) {
         set_error("Memory allocation failed");
         return PROC_ERROR_NO_MEMORY;

@@ -554,7 +554,7 @@ int ling_snn_encode_spatial_word(
         sum += result->population_activity[i];
     }
     result->encoding_precision = (sum > 0.0f) ?
-        result->winner_rate / sum : 0.0f;
+        result->winner_rate / (fabsf(sum) > 1e-7f ? sum : 1e-7f) : 0.0f;
 
     bridge->stats.total_encodings++;
 
@@ -889,7 +889,7 @@ int ling_snn_mesh_process(
                 return ret;
             }
 
-            belief->certainty = 1.0f - (encoding.uncertainty / magnitude);
+            belief->certainty = 1.0f - (encoding.uncertainty / (fabsf(magnitude) > 1e-7f ? magnitude : 1e-7f));
             if (belief->certainty < 0.0f) belief->certainty = 0.0f;
             belief->precision = bridge->current_precision;
             belief->belief_vector[0] = encoding.firing_rate;

@@ -23,6 +23,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include <math.h>
 
 BRIDGE_BOILERPLATE(collective_health, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -480,7 +481,7 @@ int collective_health_check_consensus(
                     consensus->total_instances = total;
                     consensus->consensus_confidence = pending->total_confidence / total;
                     consensus->consensus_reached =
-                        ((float)pending->votes_for / total) >= monitor->config.anomaly_consensus_threshold;
+                        ((float)pending->votes_for / (total > 0 ? total : 1)) >= monitor->config.anomaly_consensus_threshold;
                     consensus->agreed_severity = pending->proposal.severity;
                     consensus->agreed_recovery = pending->proposal.suggested_recovery;
                     consensus->consensus_time_ms = (uint32_t)elapsed_ms;
@@ -596,7 +597,7 @@ int collective_health_get_summary(
         summary->failed_instances = 0;
     } else {
         summary->collective_health_score = total_weight > 0.0f ?
-                                           total_health / total_weight : 0.0f;
+                                           total_health / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f) : 0.0f;
         summary->healthy_instances = healthy;
         summary->degraded_instances = degraded;
         summary->failed_instances = failed;

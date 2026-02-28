@@ -398,7 +398,7 @@ int financial_bridge_fuzzy_score(financial_bridge_t* bridge,
     /* Running average for safety score */
     float n = (float)bridge->stats.fuzzy_validation_calls;
     bridge->stats.avg_fuzzy_safety_score =
-        bridge->stats.avg_fuzzy_safety_score * ((n - 1.0f) / n) + safety_score / n;
+        bridge->stats.avg_fuzzy_safety_score * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) + safety_score / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     fin_bridge_heartbeat("fin_bridge_fuzzy_score", 1.0f);
     return FIN_BRIDGE_ERR_OK;

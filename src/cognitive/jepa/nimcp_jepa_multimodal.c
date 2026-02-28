@@ -987,7 +987,7 @@ int jepa_multimodal_align_step(
                 }
 
                 /* NCE loss: -log(exp(pos) / sum(exp)) */
-                total_loss -= logf(expf(pos_sim) / exp_sum);
+                total_loss -= logf(expf(pos_sim) / (fabsf(exp_sum) > 1e-7f ? exp_sum : 1e-7f));
 
                 nimcp_free(v_joint.embedding);
                 nimcp_free(s_joint.embedding);

@@ -464,7 +464,7 @@ int immune_metrics_record_fix(
     /* Update running average confidence */
     float n = (float)metrics->fixes.total_attempts;
     metrics->fixes.avg_confidence =
-        (metrics->fixes.avg_confidence * (n - 1) + confidence) / n;
+        (metrics->fixes.avg_confidence * (n - 1) + confidence) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     /* Update success rate */
     metrics->fixes.success_rate = calculate_success_rate(

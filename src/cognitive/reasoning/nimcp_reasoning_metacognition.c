@@ -624,7 +624,7 @@ metacognitive_assessment_t reasoning_metacognition_assess(
 
     float n = (float)mc->stats.total_assessments;
     mc->total_assessment_time_us += (float)elapsed_us;
-    mc->stats.avg_assessment_time_us = mc->total_assessment_time_us / n;
+    mc->stats.avg_assessment_time_us = mc->total_assessment_time_us / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     NIMCP_LOGGING_DEBUG("reasoning_metacognition: query=\"%.40s%s\" "
                         "score=%.3f complexity=%s strategy=%s confidence=%.3f",

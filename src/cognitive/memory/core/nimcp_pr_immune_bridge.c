@@ -469,13 +469,13 @@ pr_immune_bridge_t pr_immune_bridge_create(
 
     /* Allocate cleanup queue */
     bridge->cleanup_capacity = PR_IMMUNE_MAX_CLEANUP_QUEUE;
-    bridge->cleanup_queue = nimcp_malloc(bridge->cleanup_capacity * sizeof(pr_cleanup_tag_t));
+    bridge->cleanup_queue = nimcp_calloc(bridge->cleanup_capacity, sizeof(pr_cleanup_tag_t));
     if (!bridge->cleanup_queue) {
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_immune_bridge_create: bridge->cleanup_queue is NULL");
         return NULL;
     }
-    memset(bridge->cleanup_queue, 0, bridge->cleanup_capacity * sizeof(pr_cleanup_tag_t));
+    /* calloc zero-initializes */
 
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_immune") != 0) {

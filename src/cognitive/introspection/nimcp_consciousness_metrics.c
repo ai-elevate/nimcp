@@ -283,8 +283,8 @@ static uint32_t generate_partitions(
         /* Allocate subsets */
         partitions[p].subset_a_size = count_a;
         partitions[p].subset_b_size = count_b;
-        partitions[p].subset_a = (uint32_t*)nimcp_malloc(count_a * sizeof(uint32_t));
-        partitions[p].subset_b = (uint32_t*)nimcp_malloc(count_b * sizeof(uint32_t));
+        partitions[p].subset_a = (uint32_t*)nimcp_calloc(count_a, sizeof(uint32_t));
+        partitions[p].subset_b = (uint32_t*)nimcp_calloc(count_b, sizeof(uint32_t));
 
         /* Fill subsets */
         uint32_t idx_a = 0, idx_b = 0;
@@ -372,8 +372,8 @@ static phi_partition_t* find_mip_internal(
     *mip = partitions[mip_index];
 
     /* Deep copy arrays */
-    mip->subset_a = (uint32_t*)nimcp_malloc(mip->subset_a_size * sizeof(uint32_t));
-    mip->subset_b = (uint32_t*)nimcp_malloc(mip->subset_b_size * sizeof(uint32_t));
+    mip->subset_a = (uint32_t*)nimcp_calloc(mip->subset_a_size, sizeof(uint32_t));
+    mip->subset_b = (uint32_t*)nimcp_calloc(mip->subset_b_size, sizeof(uint32_t));
 
     if (mip->subset_a) {
         memcpy(mip->subset_a, partitions[mip_index].subset_a,

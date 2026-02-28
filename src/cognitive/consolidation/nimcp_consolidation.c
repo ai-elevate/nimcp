@@ -712,7 +712,7 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
     /* WHY: Neurons with all weak synapses become isolated */
     if (config->prune_weak) {
         /* Estimate: ~10% of pruned synapses result in isolated neurons */
-        uint32_t patterns_removed = (pruned_count / num_neurons) / 10;
+        uint32_t patterns_removed = (pruned_count / (num_neurons > 0 ? num_neurons : 1)) / 10;
         stats->patterns_removed += patterns_removed;
     }
 
@@ -1135,7 +1135,7 @@ pattern_importance_t* brain_get_important_patterns(brain_t brain, uint32_t* num_
 
 
     pattern_importance_t* patterns =
-        (pattern_importance_t*) nimcp_malloc(*num_patterns * sizeof(pattern_importance_t));
+        (pattern_importance_t*) nimcp_calloc(*num_patterns, sizeof(pattern_importance_t));
 
     if (patterns == NULL) {
         *num_patterns = 0;
@@ -1657,9 +1657,9 @@ bool consolidation_cache_communities(consolidation_community_cache_t* cache, bra
     if (hubs && hubs->num_hubs > 0) {
         cache->num_hubs = hubs->num_hubs;
 
-        cache->hub_neuron_ids = (uint32_t*)nimcp_malloc(hubs->num_hubs * sizeof(uint32_t));
-        cache->hub_centralities = (float*)nimcp_malloc(hubs->num_hubs * sizeof(float));
-        cache->hub_community_ids = (uint32_t*)nimcp_malloc(hubs->num_hubs * sizeof(uint32_t));
+        cache->hub_neuron_ids = (uint32_t*)nimcp_calloc(hubs->num_hubs, sizeof(uint32_t));
+        cache->hub_centralities = (float*)nimcp_calloc(hubs->num_hubs, sizeof(float));
+        cache->hub_community_ids = (uint32_t*)nimcp_calloc(hubs->num_hubs, sizeof(uint32_t));
         cache->hub_is_connector = (bool*)nimcp_calloc(hubs->num_hubs, sizeof(bool));
 
         if (cache->hub_neuron_ids && cache->hub_centralities &&

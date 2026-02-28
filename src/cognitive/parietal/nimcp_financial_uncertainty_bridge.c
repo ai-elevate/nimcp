@@ -126,7 +126,7 @@ static float compute_weighted_mean(const float* values, const float* weights, ui
         weight_sum += w;
     }
     if (weight_sum < 1e-10f) return 0.0f;
-    return sum / weight_sum;
+    return sum / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f);
 }
 
 static float compute_weighted_variance(const float* values, const float* weights,
@@ -141,7 +141,7 @@ static float compute_weighted_variance(const float* values, const float* weights
         weight_sum += w;
     }
     if (weight_sum < 1e-10f) return 0.0f;
-    return sum_sq / weight_sum;
+    return sum_sq / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f);
 }
 
 //=============================================================================
@@ -556,7 +556,7 @@ int financial_uncertainty_bridge_decompose(
             weight_sum += conf;
         }
         if (weight_sum > 1e-10f) {
-            aleatoric_var = total_aleatoric / weight_sum;
+            aleatoric_var = total_aleatoric / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f);
         }
     } else {
         /* Unweighted decomposition - use central statistics module */
@@ -1029,7 +1029,7 @@ int financial_uncertainty_bridge_recommend_info(
     /* Source: Fundamental analysis - reduces model uncertainty */
     if (count < max_recommendations) {
         recommendations[count].source = FIN_INFO_SOURCE_FUNDAMENTAL;
-        recommendations[count].expected_uncertainty_reduction = 0.25f * epistemic / total;
+        recommendations[count].expected_uncertainty_reduction = 0.25f * epistemic / (fabsf(total) > 1e-7f ? total : 1e-7f);
         recommendations[count].cost = 0.3f;
         recommendations[count].value_of_information =
             recommendations[count].expected_uncertainty_reduction /
@@ -1043,7 +1043,7 @@ int financial_uncertainty_bridge_recommend_info(
     /* Source: Analyst estimates - consensus reduces variance */
     if (count < max_recommendations) {
         recommendations[count].source = FIN_INFO_SOURCE_ANALYST;
-        recommendations[count].expected_uncertainty_reduction = 0.2f * epistemic / total;
+        recommendations[count].expected_uncertainty_reduction = 0.2f * epistemic / (fabsf(total) > 1e-7f ? total : 1e-7f);
         recommendations[count].cost = 0.1f;
         recommendations[count].value_of_information =
             recommendations[count].expected_uncertainty_reduction /
@@ -1057,7 +1057,7 @@ int financial_uncertainty_bridge_recommend_info(
     /* Source: Technical analysis - pattern recognition */
     if (count < max_recommendations) {
         recommendations[count].source = FIN_INFO_SOURCE_TECHNICAL;
-        recommendations[count].expected_uncertainty_reduction = 0.15f * epistemic / total;
+        recommendations[count].expected_uncertainty_reduction = 0.15f * epistemic / (total > 0 ? total : 1);
         recommendations[count].cost = 0.2f;
         recommendations[count].value_of_information =
             recommendations[count].expected_uncertainty_reduction /
@@ -1071,7 +1071,7 @@ int financial_uncertainty_bridge_recommend_info(
     /* Source: Sentiment - market psychology */
     if (count < max_recommendations) {
         recommendations[count].source = FIN_INFO_SOURCE_SENTIMENT;
-        recommendations[count].expected_uncertainty_reduction = 0.1f * epistemic / total;
+        recommendations[count].expected_uncertainty_reduction = 0.1f * epistemic / (total > 0 ? total : 1);
         recommendations[count].cost = 0.15f;
         recommendations[count].value_of_information =
             recommendations[count].expected_uncertainty_reduction /
@@ -1085,7 +1085,7 @@ int financial_uncertainty_bridge_recommend_info(
     /* Source: Options market - implied information */
     if (count < max_recommendations) {
         recommendations[count].source = FIN_INFO_SOURCE_OPTIONS;
-        recommendations[count].expected_uncertainty_reduction = 0.18f * epistemic / total;
+        recommendations[count].expected_uncertainty_reduction = 0.18f * epistemic / (total > 0 ? total : 1);
         recommendations[count].cost = 0.25f;
         recommendations[count].value_of_information =
             recommendations[count].expected_uncertainty_reduction /

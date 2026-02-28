@@ -253,7 +253,7 @@ static void init_strategy(evolutionary_proof_search_t* eps,
                              (float)(i + 1) / (float)PROOF_ACTION_COUNT);
         }
 
-        strategy->action_weights[i] = 1.0f / PROOF_ACTION_COUNT;
+        strategy->action_weights[i] = 1.0f / (fabsf(PROOF_ACTION_COUNT) > 1e-7f ? PROOF_ACTION_COUNT : 1e-7f);
     }
 }
 

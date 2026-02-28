@@ -1120,7 +1120,7 @@ NIMCP_EXPORT bool kuramoto_evolve(kuramoto_system_t* system, float duration) {
     }
 
     float dt = system->config.dt;
-    uint32_t n_steps = (uint32_t)(duration / dt + 0.5f);
+    uint32_t n_steps = (uint32_t)(duration / (fabsf(dt) > 1e-7f ? dt : 1e-7f) + 0.5f);
 
     return kuramoto_step_n(system, dt, n_steps);
 }

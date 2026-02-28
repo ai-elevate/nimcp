@@ -404,7 +404,7 @@ static char** deep_copy_string_array(char** src, uint32_t count)
         return NULL;
     }
 
-    char** dest = (char**)nimcp_malloc(count * sizeof(char*));
+    char** dest = (char**)nimcp_calloc(count, sizeof(char*));
     if (!dest) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deep_copy_string_array: dest is NULL");
         return NULL;

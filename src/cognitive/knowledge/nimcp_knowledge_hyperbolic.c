@@ -108,7 +108,7 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
     radius = fminf(radius, 0.95F);  // Cap at 0.95 for numerical stability
 
     // Allocate coordinates
-    float *coords = (float*)nimcp_malloc(dim * sizeof(float));
+    float *coords = (float*)nimcp_calloc(dim, sizeof(float));
     if (!coords) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "knowledge_init_hyperbolic_embedding: failed to allocate coordinates");
@@ -157,7 +157,7 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
                                      (float)(i + 1) / (float)dim);
                 }
 
-                coords[i] = (coords[i] / norm) * radius;
+                coords[i] = (coords[i] / (fabsf(norm) > 1e-7f ? norm : 1e-7f)) * radius;
             }
         } else {
             // Degenerate case - just use first axis
@@ -260,7 +260,7 @@ uint32_t knowledge_hyperbolic_knn(knowledge_system_t system,
     }
 
     // Allocate candidates array
-    knn_candidate_t *candidates = (knn_candidate_t*)nimcp_malloc(num_items * sizeof(knn_candidate_t));
+    knn_candidate_t *candidates = (knn_candidate_t*)nimcp_calloc(num_items, sizeof(knn_candidate_t));
     if (!candidates) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "knowledge_hyperbolic_knn: failed to allocate candidates array");
@@ -416,7 +416,7 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
     }
 
     // Allocate gradient buffer
-    float *gradient = (float*)nimcp_malloc(dim * sizeof(float));
+    float *gradient = (float*)nimcp_calloc(dim, sizeof(float));
     if (!gradient) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "knowledge_learn_hyperbolic_embeddings: failed to allocate gradient");
@@ -573,7 +573,7 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
     uint32_t copy_dim = (target_dim < source_dim) ? target_dim : source_dim;
 
     // Allocate hyperbolic coordinates
-    float *hyp_coords = (float*)nimcp_malloc(target_dim * sizeof(float));
+    float *hyp_coords = (float*)nimcp_calloc(target_dim, sizeof(float));
     if (!hyp_coords) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "knowledge_euclidean_to_hyperbolic: failed to allocate coords");
@@ -612,7 +612,7 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
                                  (float)(i + 1) / (float)target_dim);
             }
 
-            hyp_coords[i] = (hyp_coords[i] / norm) * target_radius;
+            hyp_coords[i] = (hyp_coords[i] / (fabsf(norm) > 1e-7f ? norm : 1e-7f)) * target_radius;
         }
     }
 

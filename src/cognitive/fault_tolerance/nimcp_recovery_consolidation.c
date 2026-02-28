@@ -173,9 +173,9 @@ static float calculate_confidence(uint32_t success_count, uint32_t total_count) 
     float z2 = z * z;
 
     // Interval width
-    float numerator = z * sqrtf(p * (1.0F - p) / n + z2 / (4.0F * n * n));
-    float denominator = 1.0F + z2 / n;
-    float interval_width = 2.0F * numerator / denominator;
+    float numerator = z * sqrtf(p * (1.0F - p) / (fabsf(n) > 1e-7f ? n : 1e-7f) + z2 / (4.0F * n * n));
+    float denominator = 1.0F + z2 / (fabsf(n) > 1e-7f ? n : 1e-7f);
+    float interval_width = 2.0F * numerator / (fabsf(denominator) > 1e-7f ? denominator : 1e-7f);
 
     // Confidence = 1 - (normalized interval width)
     float confidence = 1.0F - (interval_width / 2.0F);

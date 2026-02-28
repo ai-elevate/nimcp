@@ -499,7 +499,7 @@ int fep_curiosity_record_observation(
 
     /* Add new entry if not found and space available */
     if (!found && sys->memory_count < sys->memory_capacity) {
-        float* new_state = (float*)nimcp_malloc(dim * sizeof(float));
+        float* new_state = (float*)nimcp_calloc(dim, sizeof(float));
         if (new_state) {
             memcpy(new_state, observation, dim * sizeof(float));
             sys->memory[sys->memory_count].state = new_state;

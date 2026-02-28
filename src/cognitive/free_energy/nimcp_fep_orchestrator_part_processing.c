@@ -230,7 +230,7 @@ int fep_orchestrator_update(
     /* Rolling average */
     uint64_t n = orchestrator->stats.total_update_cycles;
     orchestrator->stats.avg_cycle_time_us = 
-        (orchestrator->stats.avg_cycle_time_us * (n - 1) + (float)cycle_time_us) / n;
+        (orchestrator->stats.avg_cycle_time_us * (n - 1) + (float)cycle_time_us) / (n > 0 ? n : 1);
     
     /* Check for time budget overrun */
     if (orchestrator->config.update_time_budget_ms > 0 &&
@@ -372,7 +372,7 @@ int fep_orchestrator_force_update_all(fep_orchestrator_t* orchestrator) {
     uint32_t n = orchestrator->stats.total_update_cycles + 1;
     orchestrator->stats.total_update_cycles = n;
     orchestrator->stats.avg_cycle_time_us =
-        (orchestrator->stats.avg_cycle_time_us * (n - 1) + (float)cycle_time_us) / n;
+        (orchestrator->stats.avg_cycle_time_us * (n - 1) + (float)cycle_time_us) / (n > 0 ? n : 1);
     if ((float)cycle_time_us > orchestrator->stats.max_cycle_time_us) {
         orchestrator->stats.max_cycle_time_us = (float)cycle_time_us;
     }

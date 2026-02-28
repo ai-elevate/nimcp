@@ -1632,8 +1632,8 @@ float pr_memory_node_resonance(
         return 0.0f;
     }
 
-    float sig_w = signature_weight / total_weight;
-    float state_w = state_weight / total_weight;
+    float sig_w = signature_weight / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
+    float state_w = state_weight / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
 
     // Compute signature similarity (Jaccard)
     float sig_similarity = prime_sig_jaccard(&node1->signature, &node2->signature);

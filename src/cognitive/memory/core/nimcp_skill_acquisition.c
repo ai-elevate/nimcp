@@ -439,7 +439,7 @@ static bool check_plateau_condition(skill_acquisition_state_t* state,
     float mean = compute_mean(recent, window);
 
     // Coefficient of variation (CV) = std / mean
-    float cv = (mean > SKILL_EPSILON) ? sqrtf(variance) / mean : 0.0f;
+    float cv = (mean > SKILL_EPSILON) ? sqrtf(variance) / (fabsf(mean) > 1e-7f ? mean : 1e-7f) : 0.0f;
 
     // Check if variance is below threshold (plateau)
     if (cv < config->plateau_threshold) {
@@ -634,7 +634,7 @@ static skill_error_t fit_power_law_internal(skill_acquisition_state_t* state) {
     state->power_law.asymptote = best_c;
 
     // Compute R-squared
-    float* predicted = (float*)nimcp_malloc(state->history_count * sizeof(float));
+    float* predicted = (float*)nimcp_calloc(state->history_count, sizeof(float));
     if (predicted) {
         for (size_t i = 0; i < state->history_count; i++) {
             /* Phase 8: Loop progress heartbeat */
@@ -1105,7 +1105,7 @@ NIMCP_EXPORT skill_error_t skill_acquisition_record_trial(
         // Running average of feedback frequency
         float n = (float)state->power_law.practice_count;
         state->feedback_frequency =
-            ((n - 1) * state->feedback_frequency + result->feedback_given) / n;
+            ((n - 1) * state->feedback_frequency + result->feedback_given) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     }
 
     // Check for plateau
@@ -1748,8 +1748,8 @@ NIMCP_EXPORT skill_error_t skill_acquisition_analyze_weak_points(
     }
 
     // Allocate arrays
-    analysis->weak_step_indices = (size_t*)nimcp_malloc(num_weak * sizeof(size_t));
-    analysis->weak_step_errors = (float*)nimcp_malloc(num_weak * sizeof(float));
+    analysis->weak_step_indices = (size_t*)nimcp_calloc(num_weak, sizeof(size_t));
+    analysis->weak_step_errors = (float*)nimcp_calloc(num_weak, sizeof(float));
 
     if (!analysis->weak_step_indices || !analysis->weak_step_errors) {
         nimcp_free(analysis->weak_step_indices);
@@ -1857,8 +1857,8 @@ NIMCP_EXPORT skill_error_t skill_acquisition_plan_deliberate_practice(
         // No weak points - distribute practice evenly
         if (state->skill && state->skill->num_steps > 0) {
             plan->num_focus_steps = state->skill->num_steps;
-            plan->focus_steps = (size_t*)nimcp_malloc(plan->num_focus_steps * sizeof(size_t));
-            plan->focus_durations = (float*)nimcp_malloc(plan->num_focus_steps * sizeof(float));
+            plan->focus_steps = (size_t*)nimcp_calloc(plan->num_focus_steps, sizeof(size_t));
+            plan->focus_durations = (float*)nimcp_calloc(plan->num_focus_steps, sizeof(float));
 
             if (plan->focus_steps && plan->focus_durations) {
                 float equal_time = 1.0f / (float)plan->num_focus_steps;
@@ -1884,7 +1884,7 @@ NIMCP_EXPORT skill_error_t skill_acquisition_plan_deliberate_practice(
         plan->focus_steps = weak_analysis.weak_step_indices;
         weak_analysis.weak_step_indices = NULL;  // Transfer ownership
 
-        plan->focus_durations = (float*)nimcp_malloc(plan->num_focus_steps * sizeof(float));
+        plan->focus_durations = (float*)nimcp_calloc(plan->num_focus_steps, sizeof(float));
         if (plan->focus_durations) {
             // Allocate time proportional to difficulty
             float total_difficulty = 0.0f;
@@ -2109,9 +2109,9 @@ NIMCP_EXPORT skill_error_t skill_acquisition_get_learning_curve(
     }
 
     // Allocate arrays
-    curve->trial_numbers = (float*)nimcp_malloc(state->history_count * sizeof(float));
-    curve->performances = (float*)nimcp_malloc(state->history_count * sizeof(float));
-    curve->predicted = (float*)nimcp_malloc(state->history_count * sizeof(float));
+    curve->trial_numbers = (float*)nimcp_calloc(state->history_count, sizeof(float));
+    curve->performances = (float*)nimcp_calloc(state->history_count, sizeof(float));
+    curve->predicted = (float*)nimcp_calloc(state->history_count, sizeof(float));
 
     if (!curve->trial_numbers || !curve->performances || !curve->predicted) {
         nimcp_free(curve->trial_numbers);

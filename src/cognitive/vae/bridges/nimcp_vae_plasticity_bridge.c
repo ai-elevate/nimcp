@@ -678,7 +678,7 @@ int vae_plasticity_generate_replay(vae_plasticity_bridge_t* bridge,
         nimcp_free(z);
     }
 
-    result->avg_reconstruction_error = total_recon_error / num_samples;
+    result->avg_reconstruction_error = total_recon_error / (num_samples > 0 ? num_samples : 1);
     result->replay_time_us = (float)(get_timestamp_us() - start_us);
 
     bridge->stats.total_replays++;

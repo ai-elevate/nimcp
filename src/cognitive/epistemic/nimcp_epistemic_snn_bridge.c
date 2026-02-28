@@ -559,7 +559,7 @@ int epistemic_snn_simulate(epistemic_snn_bridge_t* bridge, float duration_ms) {
     bridge->state = EPISTEMIC_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
-    int steps = (int)(duration_ms / dt);
+    int steps = (int)(duration_ms / (fabsf(dt) > 1e-7f ? dt : 1e-7f));
 
     for (int step = 0; step < steps; step++) {
         /* Phase 8: Loop progress heartbeat */
@@ -760,7 +760,7 @@ int epistemic_snn_decode_assessment(
     // Compute uncertainty from variance in output membrane potentials using statistics module
     float variance = 0.0f;
     if (bridge->num_output_neurons > 0) {
-        float* potentials = (float*)nimcp_malloc(bridge->num_output_neurons * sizeof(float));
+        float* potentials = (float*)nimcp_calloc(bridge->num_output_neurons, sizeof(float));
         if (potentials) {
             for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
                 /* Phase 8: Loop progress heartbeat */

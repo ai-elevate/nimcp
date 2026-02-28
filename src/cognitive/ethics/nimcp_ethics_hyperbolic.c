@@ -151,8 +151,8 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
     ethics_hyperbolic_heartbeat("ethics_hyper_ethics_find_relevant", 0.0f);
 
 
-    knowledge_item_t **neighbors = nimcp_malloc(k * sizeof(knowledge_item_t*));
-    float *distances = nimcp_malloc(k * sizeof(float));
+    knowledge_item_t **neighbors = nimcp_calloc(k, sizeof(knowledge_item_t*));
+    float *distances = nimcp_calloc(k, sizeof(float));
 
     if (!neighbors || !distances) {
         nimcp_free(neighbors);

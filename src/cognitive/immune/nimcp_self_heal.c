@@ -1253,7 +1253,7 @@ int self_heal_generate_fix(
         /* Update running average */
         float n = (float)engine->stats.fixes_generated;
         engine->stats.avg_confidence =
-            (engine->stats.avg_confidence * (n - 1) + result->confidence) / n;
+            (engine->stats.avg_confidence * (n - 1) + result->confidence) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     } else {
         engine->stats.failed_fixes++;
     }

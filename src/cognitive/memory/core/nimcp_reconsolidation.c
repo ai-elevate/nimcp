@@ -279,7 +279,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
     }
 
     // Allocate free indices stack
-    system->free_indices = (size_t*)nimcp_malloc(cfg.max_windows * sizeof(size_t));
+    system->free_indices = (size_t*)nimcp_calloc(cfg.max_windows, sizeof(size_t));
     if (system->free_indices == NULL) {
         nimcp_free(system->windows);
         nimcp_free(system);

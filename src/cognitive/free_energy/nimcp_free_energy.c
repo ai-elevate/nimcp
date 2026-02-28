@@ -1109,7 +1109,7 @@ static int fep_evaluate_policies_unlocked(fep_system_t* fep) {
     }
 
     /* Compute policy probabilities via softmax over -G(π) */
-    float* neg_efe = (float*)nimcp_malloc(fep->num_policies * sizeof(float));
+    float* neg_efe = (float*)nimcp_calloc(fep->num_policies, sizeof(float));
     if (neg_efe) {
         for (uint32_t i = 0; i < fep->num_policies; i++) {
             /* Phase 8: Loop progress heartbeat */

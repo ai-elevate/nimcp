@@ -203,7 +203,7 @@ int ethics_fep_bridge_update(ethics_fep_bridge_t* bridge, uint64_t delta_ms) {
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->state.ethical_policies_selected > 0) {
         float total = bridge->state.ethical_policies_selected + bridge->state.harmful_actions_blocked;
-        bridge->state.current_value_alignment = bridge->state.ethical_policies_selected / total;
+        bridge->state.current_value_alignment = bridge->state.ethical_policies_selected / (fabsf(total) > 1e-7f ? total : 1e-7f);
     }
     bridge->stats.avg_value_alignment = (bridge->stats.avg_value_alignment * 0.99f) +
         (bridge->state.current_value_alignment * 0.01f);

@@ -172,7 +172,7 @@ static void sample_uniform_ball(qme_math_simulation_t* sim,
 
     /* Scale by random radius */
     float r = powf(random_uniform(sim), 1.0f / domain->dim);
-    float scale = r * domain->radius / norm;
+    float scale = r * domain->radius / (fabsf(norm) > 1e-7f ? norm : 1e-7f);
 
     for (uint32_t i = 0; i < domain->dim; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -450,18 +450,18 @@ NIMCP_API nimcp_error_t qme_integrate(
 
             /* Update error estimate */
             if (n > 1) {
-                double mean = sum / n;
-                double variance = (sum_sq / n - mean * mean) * n / (n - 1);
-                current_error = sqrtf((float)variance / n) / (fabsf((float)mean) + 1e-10f);
+                double mean = sum / (n > 0 ? n : 1);
+                double variance = (sum_sq / (n > 0 ? n : 1) - mean * mean) * n / (n - 1);
+                current_error = sqrtf((float)variance / (n > 0 ? n : 1)) / (fabsf((float)mean) + 1e-10f);
             }
         }
 
         /* Compute final results */
-        double mean = sum / n;
-        double variance = (n > 1) ? (sum_sq / n - mean * mean) * n / (n - 1) : 0.0;
+        double mean = sum / (n > 0 ? n : 1);
+        double variance = (n > 1) ? (sum_sq / (n > 0 ? n : 1) - mean * mean) * n / (n - 1) : 0.0;
 
         result->value = (float)(mean * volume);
-        result->variance = (float)(variance * volume * volume / n);
+        result->variance = (float)(variance * volume * volume / (n > 0 ? n : 1));
         result->std_error = sqrtf(result->variance);
         result->relative_error = result->std_error / (fabsf(result->value) + 1e-10f);
         result->samples_used = n;
@@ -642,9 +642,9 @@ NIMCP_API nimcp_error_t qme_estimate_expectation(
         }
 
         /* Compute results */
-        result->mean = (float)(sum / n);
-        result->variance = (float)((sum_sq / n - result->mean * result->mean) * n / (n - 1));
-        result->std_error = sqrtf(result->variance / n);
+        result->mean = (float)(sum / (n > 0 ? n : 1));
+        result->variance = (float)((sum_sq / (n > 0 ? n : 1) - result->mean * result->mean) * n / (n - 1));
+        result->std_error = sqrtf(result->variance / (n > 0 ? n : 1));
         result->effective_sample_size = (float)n;
         result->moment_estimates = NULL;
         result->num_moments = 0;
@@ -778,8 +778,8 @@ NIMCP_API nimcp_error_t qme_partition_function(
         }
 
         /* Compute thermodynamic quantities */
-        result->mean_energy = (float)(sum_energy / n);
-        float energy_var = (float)((sum_energy_sq / n - result->mean_energy * result->mean_energy));
+        result->mean_energy = (float)(sum_energy / (n > 0 ? n : 1));
+        float energy_var = (float)((sum_energy_sq / (n > 0 ? n : 1) - result->mean_energy * result->mean_energy));
         result->heat_capacity = beta * beta * energy_var;
 
         /* Estimate log(Z) using thermodynamic integration (simplified) */
@@ -789,7 +789,7 @@ NIMCP_API nimcp_error_t qme_partition_function(
         result->entropy = (result->mean_energy - result->free_energy) / temperature;
 
         /* Error estimate */
-        result->std_error = sqrtf(energy_var / n) * beta;
+        result->std_error = sqrtf(energy_var / (n > 0 ? n : 1)) * beta;
 
         nimcp_mutex_unlock(sim->mutex);
 

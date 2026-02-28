@@ -426,7 +426,7 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
 
     // Allocate action map (2x size for reduced collisions)
     stdp->action_map_size = max_synapses * 2;
-    stdp->action_map = (uint32_t*)nimcp_malloc(stdp->action_map_size * sizeof(uint32_t));
+    stdp->action_map = (uint32_t*)nimcp_calloc(stdp->action_map_size, sizeof(uint32_t));
     if (!stdp->action_map) {
         LOG_ERROR("mirror_stdp_create: failed to allocate action map");
         nimcp_free(stdp->synapses);

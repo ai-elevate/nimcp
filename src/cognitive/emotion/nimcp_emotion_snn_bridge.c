@@ -380,7 +380,7 @@ int emotion_snn_encode_observation(
 
     /* Encode based on detected emotion category and confidence
      * emotion_recognition_result_t has: category, confidence, valence, arousal */
-    uint32_t neurons_per_emotion = bridge->config.input_dim / EMOTION_COUNT;
+    uint32_t neurons_per_emotion = bridge->config.input_dim / (EMOTION_COUNT > 0 ? EMOTION_COUNT : 1);
 
     /* Set high activity for the detected emotion category */
     uint32_t detected_cat = (uint32_t)result->category;

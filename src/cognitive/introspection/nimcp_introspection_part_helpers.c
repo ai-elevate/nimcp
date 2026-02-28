@@ -130,7 +130,7 @@ static uint32_t* clone_neurons_per_layer(const uint32_t* source, uint32_t num_la
     }
 
     /* Allocate new array */
-    uint32_t* clone = (uint32_t*) nimcp_malloc(num_layers * sizeof(uint32_t));
+    uint32_t* clone = (uint32_t*) nimcp_calloc(num_layers, sizeof(uint32_t));
 
     /* Guard clause: allocation failed */
     if (clone == NULL) {

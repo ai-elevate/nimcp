@@ -817,7 +817,7 @@ int numerical_language_generate_word(
     uint64_t divisor = 1000000000000ULL;
 
     while (magnitude >= 0) {
-        uint64_t group = n / divisor;
+        uint64_t group = n / (divisor > 0 ? divisor : 1);
         n %= divisor;
 
         if (group > 0) {
@@ -1016,7 +1016,7 @@ int numerical_language_mesh_process(
         belief->vector_dim = 6;
         belief->belief_vector[0] = semantics.magnitude / NUMERICAL_LANG_MAX_VALUE;
         belief->belief_vector[1] = semantics.uncertainty / NUMERICAL_LANG_MAX_VALUE;
-        belief->belief_vector[2] = (float)semantics.type / NUM_WORD_TYPE_COUNT;
+        belief->belief_vector[2] = (float)semantics.type / (NUM_WORD_TYPE_COUNT > 0 ? NUM_WORD_TYPE_COUNT : 1);
         belief->belief_vector[3] = semantics.is_approximate ? 1.0f : 0.0f;
         belief->belief_vector[4] = (float)semantics.ordinal_position / 1000.0f;
         belief->belief_vector[5] = semantics.confidence;

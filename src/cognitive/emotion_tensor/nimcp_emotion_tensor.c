@@ -281,7 +281,7 @@ static float compute_emotion_entropy(const float* channels) {
     /* Normalize to probability distribution */
     float probs[EMOTION_TENSOR_PRIMARY_COUNT];
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
-        probs[i] = channels[i] / total;
+        probs[i] = channels[i] / (fabsf(total) > 1e-7f ? total : 1e-7f);
     }
 
     /* Use central statistics module for entropy computation */
@@ -419,7 +419,7 @@ static float compute_stability(const emotion_tensor_t* tensor) {
         total_variance += variance;
     }
 
-    float avg_variance = total_variance / EMOTION_TENSOR_PRIMARY_COUNT;
+    float avg_variance = total_variance / (fabsf(EMOTION_TENSOR_PRIMARY_COUNT) > 1e-7f ? EMOTION_TENSOR_PRIMARY_COUNT : 1e-7f);
     /* Stability is inverse of variance, normalized */
     return 1.0F / (1.0F + avg_variance * 10.0F);
 }

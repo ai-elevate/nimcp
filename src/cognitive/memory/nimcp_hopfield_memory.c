@@ -69,7 +69,7 @@ static float l2_norm(const float* v, uint32_t dim) {
 static void normalize_vector(float* v, uint32_t dim) {
     float norm = l2_norm(v, dim);
     if (norm > 1e-8f) {
-        float inv_norm = 1.0f / norm;
+        float inv_norm = 1.0f / (fabsf(norm) > 1e-7f ? norm : 1e-7f);
         for (uint32_t i = 0; i < dim; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && dim > 256) {

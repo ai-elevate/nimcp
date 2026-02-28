@@ -568,7 +568,7 @@ NIMCP_EXPORT uint64_t social_memory_add_person_full(
     if (person->facts && person->num_facts > 0) {
         new_person->max_facts = person->num_facts > mem->config.max_facts_per_person ?
                                 mem->config.max_facts_per_person : person->num_facts;
-        new_person->facts = (prime_signature_t*)nimcp_malloc(new_person->max_facts * sizeof(prime_signature_t));
+        new_person->facts = (prime_signature_t*)nimcp_calloc(new_person->max_facts, sizeof(prime_signature_t));
         if (new_person->facts) {
             /* Only copy up to max_facts elements to avoid buffer overflow */
             memcpy(new_person->facts, person->facts, new_person->max_facts * sizeof(prime_signature_t));
@@ -974,7 +974,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_identify_top_k(
     }
 
     // Allocate temporary array for all scores
-    person_query_result_t* all_results = (person_query_result_t*)nimcp_malloc(total_persons * sizeof(person_query_result_t));
+    person_query_result_t* all_results = (person_query_result_t*)nimcp_calloc(total_persons, sizeof(person_query_result_t));
     if (!all_results) {
         return SOCIAL_MEM_ERROR_NO_MEMORY;
     }
@@ -1100,7 +1100,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_add_fact(
     // Allocate facts array if needed
     if (!person->facts) {
         person->max_facts = mem->config.max_facts_per_person;
-        person->facts = (prime_signature_t*)nimcp_malloc(person->max_facts * sizeof(prime_signature_t));
+        person->facts = (prime_signature_t*)nimcp_calloc(person->max_facts, sizeof(prime_signature_t));
         if (!person->facts) {
             return SOCIAL_MEM_ERROR_NO_MEMORY;
         }
@@ -1691,7 +1691,7 @@ NIMCP_EXPORT uint64_t social_memory_record_episode(
     if (participant_ids && num_participants > 0) {
         size_t max_p = (num_participants > SOCIAL_MEM_MAX_EPISODE_PARTICIPANTS) ?
                        SOCIAL_MEM_MAX_EPISODE_PARTICIPANTS : num_participants;
-        episode->participant_ids = (uint64_t*)nimcp_malloc(max_p * sizeof(uint64_t));
+        episode->participant_ids = (uint64_t*)nimcp_calloc(max_p, sizeof(uint64_t));
         if (episode->participant_ids) {
             memcpy(episode->participant_ids, participant_ids, max_p * sizeof(uint64_t));
             episode->num_participants = max_p;
@@ -1774,7 +1774,7 @@ NIMCP_EXPORT uint64_t social_memory_record_episode_full(
 
     // Copy participants
     if (episode->participant_ids && episode->num_participants > 0) {
-        new_ep->participant_ids = (uint64_t*)nimcp_malloc(episode->num_participants * sizeof(uint64_t));
+        new_ep->participant_ids = (uint64_t*)nimcp_calloc(episode->num_participants, sizeof(uint64_t));
         if (new_ep->participant_ids) {
             memcpy(new_ep->participant_ids, episode->participant_ids,
                    episode->num_participants * sizeof(uint64_t));
@@ -2064,7 +2064,7 @@ NIMCP_EXPORT int social_memory_degrees_of_separation(
     // BFS to find shortest path
     int* distance = (int*)nimcp_calloc(mem->matrix_size, sizeof(int));
     bool* visited = (bool*)nimcp_calloc(mem->matrix_size, sizeof(bool));
-    int* queue = (int*)nimcp_malloc(mem->matrix_size * sizeof(int));
+    int* queue = (int*)nimcp_calloc(mem->matrix_size, sizeof(int));
 
     if (!distance || !visited || !queue) {
         nimcp_free(distance);
@@ -2133,7 +2133,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
     }
 
     // Simple connected components clustering
-    int* component = (int*)nimcp_malloc(mem->matrix_size * sizeof(int));
+    int* component = (int*)nimcp_calloc(mem->matrix_size, sizeof(int));
     if (!component) {
         return SOCIAL_MEM_ERROR_NO_MEMORY;
     }
@@ -2161,7 +2161,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
         if (mem->matrix_person_ids[start] == SOCIAL_MEM_INVALID_PERSON_ID) continue;
 
         // BFS from this node
-        int* queue = (int*)nimcp_malloc(mem->matrix_size * sizeof(int));
+        int* queue = (int*)nimcp_calloc(mem->matrix_size, sizeof(int));
         if (!queue) {
             nimcp_free(component);
             return SOCIAL_MEM_ERROR_NO_MEMORY;
@@ -2381,7 +2381,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_get_entangled(
     }
 
     // Get neighbors from entanglement graph
-    entangle_neighbor_t* neighbors = (entangle_neighbor_t*)nimcp_malloc(max_ids * sizeof(entangle_neighbor_t));
+    entangle_neighbor_t* neighbors = (entangle_neighbor_t*)nimcp_calloc(max_ids, sizeof(entangle_neighbor_t));
     if (!neighbors) {
         return SOCIAL_MEM_ERROR_NO_MEMORY;
     }

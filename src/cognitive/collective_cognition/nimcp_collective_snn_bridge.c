@@ -580,7 +580,7 @@ int collective_snn_simulate(collective_snn_bridge_t* bridge, float duration_ms) 
     bridge->state = COLLECTIVE_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
-    uint32_t steps = (uint32_t)(duration_ms / dt);
+    uint32_t steps = (uint32_t)(duration_ms / (fabsf(dt) > 1e-7f ? dt : 1e-7f));
 
     /* Set inputs before simulation */
     if (bridge->snn) {

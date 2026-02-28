@@ -1125,7 +1125,7 @@ static float compute_action_entropy(const action_record_t* action) {
                              (float)(i + 1) / (float)action->num_features);
         }
 
-        float p = fabsf(action->features[i]) / sum;
+        float p = fabsf(action->features[i]) / (fabsf(sum) > 1e-7f ? sum : 1e-7f);
         if (p > 1e-10F) {
             entropy -= p * log2f(p);
         }
@@ -1234,7 +1234,7 @@ NIMCP_EXPORT bool combinatorial_fractal_analysis(
         }
 
         analysis->harm_by_scale[scale] = (count_at_scale > 0) ?
-            scale_harm / count_at_scale : 0.0F;
+            scale_harm / (count_at_scale > 0 ? count_at_scale : 1) : 0.0F;
 
         // Weight by scale (longer scales = more weight for persistent patterns)
         float weight = 1.0F + (float)scale * 0.5F;
@@ -1247,7 +1247,7 @@ NIMCP_EXPORT bool combinatorial_fractal_analysis(
 
     // Self-similar aggregation
     analysis->aggregated_harm = (total_weight > 0.0F) ?
-        weighted_harm / total_weight : 0.0F;
+        weighted_harm / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f) : 0.0F;
 
     // Estimate Hurst exponent from scale variance
     // H > 0.5 indicates long-range dependence (persistent harm pattern)
@@ -1509,7 +1509,7 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
         return true;
     }
 
-    float mean_harm = sum_harm / series_len;
+    float mean_harm = sum_harm / (series_len > 0 ? series_len : 1);
 
     // Use full pink noise modules if enabled
     if (detector->pink_noise_enabled && detector->pink_monitor != NULL) {
@@ -1736,7 +1736,7 @@ NIMCP_EXPORT bool combinatorial_full_mathematical_analysis(
     }
 
     analysis->unified_harm_score = (total_weight > 0.0F) ?
-        weighted_sum / total_weight : 0.0F;
+        weighted_sum / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f) : 0.0F;
 
     // Confidence based on method agreement
     float variance = 0.0F;

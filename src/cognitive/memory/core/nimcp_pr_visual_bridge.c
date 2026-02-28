@@ -1124,7 +1124,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_retrieve_similar_visual(
         bridge->stats.successful_retrievals++;
         bridge->stats.avg_resonance_score =
             (bridge->stats.avg_resonance_score * (bridge->stats.successful_retrievals - 1) +
-             total_resonance / match_count) / bridge->stats.successful_retrievals;
+             total_resonance / (match_count > 0 ? match_count : 1)) / bridge->stats.successful_retrievals;
     }
 
     nimcp_free(temp_results);

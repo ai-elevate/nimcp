@@ -1282,13 +1282,13 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
     stats->convergent_queries++;
     float n = (float)stats->convergent_queries;
     stats->avg_convergent_contributors =
-        stats->avg_convergent_contributors * ((n - 1.0f) / n) +
-        (float)num_active / n;
+        stats->avg_convergent_contributors * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+        (float)num_active / (fabsf(n) > 1e-7f ? n : 1e-7f);
     if (chain->end_time_us > chain->start_time_us) {
         float duration = (float)(chain->end_time_us - chain->start_time_us);
         stats->avg_convergence_time_us =
-            stats->avg_convergence_time_us * ((n - 1.0f) / n) +
-            duration / n;
+            stats->avg_convergence_time_us * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+            duration / (fabsf(n) > 1e-7f ? n : 1e-7f);
     }
 
     /* Update calibration reliability stat */

@@ -1045,8 +1045,8 @@ int spatial_language_mesh_process(
 
         /* Encode semantics into belief vector */
         belief->vector_dim = 8;
-        belief->belief_vector[0] = (float)semantics.preposition / SPATIAL_PREPOSITION_COUNT;
-        belief->belief_vector[1] = (float)semantics.frame / REF_FRAME_COUNT;
+        belief->belief_vector[0] = (float)semantics.preposition / (SPATIAL_PREPOSITION_COUNT > 0 ? SPATIAL_PREPOSITION_COUNT : 1);
+        belief->belief_vector[1] = (float)semantics.frame / (REF_FRAME_COUNT > 0 ? REF_FRAME_COUNT : 1);
         belief->belief_vector[2] = semantics.distance_membership;
         belief->belief_vector[3] = semantics.angle_membership;
         belief->belief_vector[4] = semantics.direction[0];

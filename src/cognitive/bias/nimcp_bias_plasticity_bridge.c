@@ -818,7 +818,7 @@ int bias_plasticity_consolidate(bias_plasticity_bridge_t* bridge) {
                         bridge->synapses[i].false_negatives;
 
         if (total > 10) {
-            float accuracy = (float)bridge->synapses[i].correct_detections / total;
+            float accuracy = (float)bridge->synapses[i].correct_detections / (total > 0 ? total : 1);
 
             if (accuracy > 0.7f) {
                 bridge->synapses[i].consolidation_level += 0.1f * accuracy;

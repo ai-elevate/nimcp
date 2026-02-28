@@ -257,7 +257,7 @@ static void extract_text_patterns(creative_pattern_extractor_t* ext,
             /* Fill feature vector */
             for (uint32_t i = 0; i < p->feature_dim && i < 50; i++) {
                 p->feature_vector[i] = para_count > 0 ?
-                    (float)para_lengths[i] / para_count : 0.0f;
+                    (float)para_lengths[i] / (para_count > 0 ? para_count : 1) : 0.0f;
             }
 
             if (ext->config.normalize_features) {

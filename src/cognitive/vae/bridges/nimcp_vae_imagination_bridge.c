@@ -164,7 +164,7 @@ static void exponential_map(const float* x, const float* v, float* result, uint3
     }
 
     float t = tanhf(lambda_x * norm_v / 2.0f);
-    float* v_normalized = (float*)nimcp_malloc(dim * sizeof(float));
+    float* v_normalized = (float*)nimcp_calloc(dim, sizeof(float));
     if (!v_normalized) {
         memcpy(result, x, dim * sizeof(float));
         return;
@@ -506,8 +506,8 @@ int vae_imag_generate(vae_imag_bridge_t* bridge,
     }
 
     /* Fill result */
-    result->generated = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
-    result->latent = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    result->generated = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
+    result->latent = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
 
     if (!result->generated || !result->latent) {
         if (result->generated) nimcp_free(result->generated);
@@ -637,7 +637,7 @@ int vae_imag_simulate_future(vae_imag_bridge_t* bridge,
     }
 
     /* Initialize with start state */
-    float* current_latent = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    float* current_latent = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (!current_latent) {
         nimcp_free(result->trajectory);
         nimcp_free(result->decoded_trajectory);
@@ -653,8 +653,8 @@ int vae_imag_simulate_future(vae_imag_bridge_t* bridge,
 
     for (uint32_t step = 0; step < num_steps; step++) {
         /* Store current latent */
-        result->trajectory[step] = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
-        result->decoded_trajectory[step] = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
+        result->trajectory[step] = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+        result->decoded_trajectory[step] = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
 
         if (!result->trajectory[step] || !result->decoded_trajectory[step]) {
             /* Cleanup on failure */
@@ -695,7 +695,7 @@ int vae_imag_simulate_future(vae_imag_bridge_t* bridge,
     result->trajectory_length = num_steps;
     result->latent_dim = bridge->vae_latent_dim;
     result->decoded_dim = bridge->vae_output_dim;
-    result->avg_coherence = total_coherence / num_steps;
+    result->avg_coherence = total_coherence / (num_steps > 0 ? num_steps : 1);
 
     uint64_t elapsed = get_time_us() - start_time;
     bridge->stats.prospective_generations++;
@@ -716,7 +716,7 @@ int vae_imag_counterfactual(vae_imag_bridge_t* bridge,
     }
 
     /* Apply intervention to original state */
-    float* modified_state = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    float* modified_state = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (!modified_state) return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
 
     uint32_t copy_dim = (state_dim < bridge->vae_latent_dim) ? state_dim : bridge->vae_latent_dim;
@@ -764,8 +764,8 @@ int vae_imag_interpolate(vae_imag_bridge_t* bridge,
     for (uint32_t step = 0; step < num_steps; step++) {
         float t = (num_steps > 1) ? (float)step / (num_steps - 1) : 0.5f;
 
-        result->trajectory[step] = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
-        result->decoded_trajectory[step] = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
+        result->trajectory[step] = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+        result->decoded_trajectory[step] = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
 
         if (!result->trajectory[step] || !result->decoded_trajectory[step]) {
             /* Cleanup */
@@ -784,7 +784,7 @@ int vae_imag_interpolate(vae_imag_bridge_t* bridge,
         if (bridge->config.enable_hyperbolic_latent) {
             /* Geodesic interpolation in Poincaré ball */
             /* For simplicity, use exponential map interpolation */
-            float* tangent = (float*)nimcp_malloc(dim * sizeof(float));
+            float* tangent = (float*)nimcp_calloc(dim, sizeof(float));
             if (tangent) {
                 for (uint32_t i = 0; i < dim; i++) {
                     tangent[i] = (state_b[i] - state_a[i]) * t;
@@ -826,9 +826,9 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
     memset(result, 0, sizeof(*result));
 
     /* Use importance sampling with QMC-like adaptive strategy */
-    float* best_sample = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
-    float* current_sample = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
-    float* proposal = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    float* best_sample = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+    float* current_sample = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+    float* proposal = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
 
     if (!best_sample || !current_sample || !proposal) {
         if (best_sample) nimcp_free(best_sample);
@@ -906,7 +906,7 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
     nimcp_free(proposal);
 
     /* Decode best sample */
-    result->generated = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
+    result->generated = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
     if (!result->generated) {
         nimcp_free(best_sample);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
@@ -927,7 +927,7 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
     result->latent_dim = bridge->vae_latent_dim;
     result->method_used = VAE_IMAG_SAMPLE_QMC;
     result->samples_generated = num_samples;
-    result->acceptance_rate = (float)accepted / num_samples;
+    result->acceptance_rate = (float)accepted / (num_samples > 0 ? num_samples : 1);
 
     uint64_t elapsed = get_time_us() - start_time;
     result->generation_time_us = elapsed;
@@ -949,7 +949,7 @@ int vae_imag_quantum_walk(vae_imag_bridge_t* bridge,
     memset(result, 0, sizeof(*result));
 
     /* Simulate quantum walk on latent space graph */
-    float* position = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    float* position = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (!position) return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
 
     if (start_state) {
@@ -970,7 +970,7 @@ int vae_imag_quantum_walk(vae_imag_bridge_t* bridge,
             float amplitude = (coin < coin_bias) ? 1.0f : -1.0f;
 
             /* Add interference-like term */
-            float phase = 2.0f * PI * (float)step / num_steps;
+            float phase = 2.0f * PI * (float)step / (num_steps > 0 ? num_steps : 1);
             float interference = cosf(phase + i * 0.1f);
 
             position[i] += 0.1f * amplitude * (1.0f + 0.3f * interference);
@@ -980,7 +980,7 @@ int vae_imag_quantum_walk(vae_imag_bridge_t* bridge,
     result->latent = position;
     result->latent_dim = bridge->vae_latent_dim;
 
-    result->generated = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
+    result->generated = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
     if (!result->generated) {
         nimcp_free(position);
         result->latent = NULL;
@@ -1016,9 +1016,9 @@ int vae_imag_quantum_anneal(vae_imag_bridge_t* bridge,
     uint64_t start_time = get_time_us();
     memset(result, 0, sizeof(*result));
 
-    float* state = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
-    float* best_state = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
-    float* proposal = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    float* state = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+    float* best_state = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+    float* proposal = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
 
     if (!state || !best_state || !proposal) {
         if (state) nimcp_free(state);
@@ -1045,7 +1045,7 @@ int vae_imag_quantum_anneal(vae_imag_bridge_t* bridge,
     uint32_t num_steps = bridge->config.sample.annealing_steps;
 
     /* Annealing schedule */
-    float cooling_rate = powf(final_temp / temp, 1.0f / num_steps);
+    float cooling_rate = powf(final_temp / temp, 1.0f / (num_steps > 0 ? num_steps : 1));
 
     for (uint32_t step = 0; step < num_steps; step++) {
         /* Propose move */
@@ -1123,7 +1123,7 @@ int vae_imag_quantum_anneal(vae_imag_bridge_t* bridge,
     }
 
     /* Decode best state */
-    result->best_decoded = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
+    result->best_decoded = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
     if (result->best_decoded) {
         decode_latent(bridge, best_state, result->best_decoded);
         result->decoded_dim = bridge->vae_output_dim;
@@ -1170,7 +1170,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
 
     memset(result, 0, sizeof(*result));
 
-    float* latent = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    float* latent = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (!latent) return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
 
     if (center_point && center_dim > 0) {
@@ -1182,7 +1182,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     }
 
     /* Sample direction uniformly on sphere */
-    float* direction = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    float* direction = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (!direction) {
         nimcp_free(latent);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
@@ -1198,7 +1198,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     }
 
     /* Apply exponential map from center */
-    float* result_point = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    float* result_point = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (!result_point) {
         nimcp_free(latent);
         nimcp_free(direction);
@@ -1214,7 +1214,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     result->latent = result_point;
     result->latent_dim = bridge->vae_latent_dim;
 
-    result->generated = (float*)nimcp_malloc(bridge->vae_output_dim * sizeof(float));
+    result->generated = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
     if (!result->generated) {
         nimcp_free(result_point);
         result->latent = NULL;
@@ -1269,7 +1269,7 @@ int vae_imag_to_hyperbolic(vae_imag_bridge_t* bridge,
     }
 
     float r = tanhf(norm) * bridge->config.geometry.boundary_clip;
-    float scale = r / norm;
+    float scale = r / (fabsf(norm) > 1e-7f ? norm : 1e-7f);
 
     for (uint32_t i = 0; i < dim; i++) {
         hyperbolic[i] = euclidean[i] * scale;
@@ -1291,7 +1291,7 @@ int vae_imag_from_hyperbolic(vae_imag_bridge_t* bridge,
     }
 
     float r = atanhf(norm / bridge->config.geometry.boundary_clip);
-    float scale = r / norm;
+    float scale = r / (fabsf(norm) > 1e-7f ? norm : 1e-7f);
 
     for (uint32_t i = 0; i < dim; i++) {
         euclidean[i] = hyperbolic[i] * scale;
@@ -1312,7 +1312,7 @@ int vae_imag_inject_element(vae_imag_bridge_t* bridge,
     if (!vae_imag_bridge_is_connected(bridge)) return NIMCP_ERROR_VAE_IMAG_NOT_CONNECTED;
 
     /* Add element features to current latent with salience weighting */
-    float* modified = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    float* modified = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (!modified) return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
 
     memcpy(modified, bridge->latent_buffer, bridge->vae_latent_dim * sizeof(float));
@@ -1335,7 +1335,7 @@ int vae_imag_remove_element(vae_imag_bridge_t* bridge,
     if (!bridge || !element_features || !result) return NIMCP_ERROR_VAE_IMAG_NULL;
 
     /* Subtract element features from current latent */
-    float* modified = (float*)nimcp_malloc(bridge->vae_latent_dim * sizeof(float));
+    float* modified = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (!modified) return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
 
     memcpy(modified, bridge->latent_buffer, bridge->vae_latent_dim * sizeof(float));

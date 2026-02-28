@@ -507,8 +507,8 @@ int introspection_plasticity_learn(
 
     /* Update running mean */
     float n = (float)bridge->stats.weight_updates;
-    bridge->stats.mean_weight_change = bridge->stats.mean_weight_change * ((n - 1) / n) +
-                                       fabsf(actual_delta) / n;
+    bridge->stats.mean_weight_change = bridge->stats.mean_weight_change * ((n - 1) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+                                       fabsf(actual_delta) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     syn->last_update_us = bridge->current_time_us;
     syn->update_count++;
@@ -879,7 +879,7 @@ int introspection_plasticity_get_state(
     /* Calculate mean weight and variance using statistics module */
     if (bridge->num_synapses > 0) {
         /* Collect synapse weights to temporary array */
-        float* weights = (float*)nimcp_malloc(bridge->num_synapses * sizeof(float));
+        float* weights = (float*)nimcp_calloc(bridge->num_synapses, sizeof(float));
         if (weights) {
             for (uint32_t i = 0; i < bridge->num_synapses; i++) {
                 /* Phase 8: Loop progress heartbeat */

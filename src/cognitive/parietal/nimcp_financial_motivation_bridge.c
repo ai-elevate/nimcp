@@ -672,7 +672,7 @@ int financial_motivation_bridge_rational_value(
     float win_prob = nimcp_clampf(0.5f + opportunity->expected_return * 2.0f, 0.1f, 0.9f);
     float loss_prob = 1.0f - win_prob;
     float win_loss_ratio = 1.0f / (opportunity->risk_level + 0.1f);
-    float kelly = (win_prob * win_loss_ratio - loss_prob) / win_loss_ratio;
+    float kelly = (win_prob * win_loss_ratio - loss_prob) / (fabsf(win_loss_ratio) > 1e-7f ? win_loss_ratio : 1e-7f);
     kelly = nimcp_clampf(kelly, 0.0f, 0.25f);  /* Cap at 25% */
 
     /* Confidence based on information quality
@@ -813,8 +813,8 @@ int financial_motivation_bridge_process_outcome(
     bridge->outcome_count++;
     float n = (float)bridge->outcome_count;
     bridge->cumulative_prediction_error =
-        bridge->cumulative_prediction_error * ((n - 1.0f) / n) +
-        prediction_error / n;
+        bridge->cumulative_prediction_error * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+        prediction_error / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     /* Update baseline wanting (adaptation)
      * Baseline moves toward recent outcomes

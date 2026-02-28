@@ -803,7 +803,7 @@ int game_theory_executive_get_recommendation(
     /* Update average expected utility */
     float n = (float)bridge->stats.recommendations_made;
     bridge->stats.avg_expected_utility =
-        ((n - 1.0f) * bridge->stats.avg_expected_utility + best_utility) / n;
+        ((n - 1.0f) * bridge->stats.avg_expected_utility + best_utility) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -841,7 +841,7 @@ int game_theory_executive_notify_outcome(
         float n = (float)bridge->stats.decisions_received;
         bridge->stats.avg_realized_utility =
             ((n - 1.0f) * bridge->stats.avg_realized_utility +
-             outcome->outcome_utility) / n;
+             outcome->outcome_utility) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
         /* Update accuracy rate */
         if (bridge->stats.recommendations_made > 0) {
@@ -1038,7 +1038,7 @@ int game_theory_executive_request_risk_assessment(
     float n = (float)bridge->stats.risk_assessments;
     bridge->stats.avg_risk_score =
         ((n - 1.0f) * bridge->stats.avg_risk_score +
-         assessment->overall_risk) / n;
+         assessment->overall_risk) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

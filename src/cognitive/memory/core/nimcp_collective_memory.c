@@ -253,8 +253,8 @@ static collective_memory_t* create_collective_memory(uint64_t memory_id,
 
     // Initialize arrays
     memory->agent_capacity = 4;
-    memory->agent_ids = nimcp_malloc(memory->agent_capacity * sizeof(uint64_t));
-    memory->agent_versions = nimcp_malloc(memory->agent_capacity * sizeof(float));
+    memory->agent_ids = nimcp_calloc(memory->agent_capacity, sizeof(uint64_t));
+    memory->agent_versions = nimcp_calloc(memory->agent_capacity, sizeof(float));
 
     if (!memory->agent_ids || !memory->agent_versions) {
         nimcp_free(memory->agent_ids);
@@ -304,9 +304,9 @@ static collective_error_t init_agent_state(agent_memory_state_t* state,
 
     // Initialize memory arrays
     state->memory_capacity = 16;
-    state->memories = nimcp_malloc(state->memory_capacity * sizeof(prime_signature_t));
-    state->memory_ids = nimcp_malloc(state->memory_capacity * sizeof(uint64_t));
-    state->memory_versions = nimcp_malloc(state->memory_capacity * sizeof(float));
+    state->memories = nimcp_calloc(state->memory_capacity, sizeof(prime_signature_t));
+    state->memory_ids = nimcp_calloc(state->memory_capacity, sizeof(uint64_t));
+    state->memory_versions = nimcp_calloc(state->memory_capacity, sizeof(float));
 
     if (!state->memories || !state->memory_ids || !state->memory_versions) {
         nimcp_free(state->memories);
@@ -1283,7 +1283,7 @@ NIMCP_EXPORT collective_error_t collective_memory_compute_drift(
     // Compute drift rate
     float elapsed = system->current_time - memory->origin_time;
     if (elapsed > COLLECTIVE_EPSILON) {
-        measurement->drift_rate = measurement->total_drift / elapsed;
+        measurement->drift_rate = measurement->total_drift / (fabsf(elapsed) > 1e-7f ? elapsed : 1e-7f);
     }
 
     // Check divergence threshold

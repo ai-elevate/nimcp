@@ -536,7 +536,7 @@ int genius_snn_simulate(genius_snn_bridge_t* bridge, float duration_ms) {
     bridge->state = GENIUS_SNN_STATE_PROCESSING;
 
     float dt = bridge->config.dt_ms;
-    int steps = (int)(duration_ms / dt);
+    int steps = (int)(duration_ms / (fabsf(dt) > 1e-7f ? dt : 1e-7f));
 
     for (int s = 0; s < steps; s++) {
         /* Phase 8: Loop progress heartbeat */

@@ -70,7 +70,7 @@ char** brain_list_patterns(introspection_context_t context, uint32_t* num_patter
     }
 
     /* WHAT: Allocate array of strings */
-    char** pattern_list = (char**) nimcp_malloc(*num_patterns * sizeof(char*));
+    char** pattern_list = (char**) nimcp_calloc(*num_patterns, sizeof(char*));
     if (pattern_list == NULL) {
         nimcp_mutex_unlock(&context->pattern_registry->lock);
         *num_patterns = 0;

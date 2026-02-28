@@ -20,6 +20,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "constants/nimcp_buffer_constants.h"
+#include <math.h>
 
 BRIDGE_BOILERPLATE_MESH_ONLY(creative_onnx_runtime, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -466,7 +467,7 @@ int onnx_run(onnx_session_t* session,
 
     session->inferences++;
     float n = (float)session->inferences;
-    session->avg_time_ms = session->avg_time_ms * ((n-1)/n) + time_ms / n;
+    session->avg_time_ms = session->avg_time_ms * ((n-1)/(fabsf(n) > 1e-7f ? n : 1e-7f)) + time_ms / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     return 0;
 }

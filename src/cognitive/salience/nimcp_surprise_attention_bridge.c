@@ -304,7 +304,7 @@ int surprise_att_apply_boost(
     /* Running avg */
     float n = (float)bridge->stats.attention_boosts;
     bridge->stats.avg_boost_magnitude =
-        bridge->stats.avg_boost_magnitude * ((n - 1.0f) / n) + effective_boost / n;
+        bridge->stats.avg_boost_magnitude * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) + effective_boost / (fabsf(n) > 1e-7f ? n : 1e-7f);
     if (effective_boost > bridge->stats.max_boost_magnitude) {
         bridge->stats.max_boost_magnitude = effective_boost;
     }
@@ -444,7 +444,7 @@ int surprise_att_bridge_update(surprise_att_bridge_t* bridge, float dt_seconds) 
         /* Running avg */
         float n = (float)bridge->stats.sensitivity_updates;
         bridge->stats.avg_sensitivity =
-            bridge->stats.avg_sensitivity * ((n - 1.0f) / n) + sensitivity / n;
+            bridge->stats.avg_sensitivity * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) + sensitivity / (fabsf(n) > 1e-7f ? n : 1e-7f);
     }
 
     bridge->stats.total_updates++;

@@ -203,7 +203,7 @@ working_memory_t* working_memory_create_custom(
         }
 
         // Allocate PE buffer for temporary position encodings
-        wm->pe_buffer = nimcp_malloc(config->pe_embedding_dim * sizeof(float));
+        wm->pe_buffer = nimcp_calloc(config->pe_embedding_dim, sizeof(float));
         if (!wm->pe_buffer) {
             LOG_ERROR("Failed to allocate PE buffer");
             working_memory_destroy(wm);

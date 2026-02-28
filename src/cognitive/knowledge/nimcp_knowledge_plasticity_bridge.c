@@ -908,7 +908,7 @@ int knowledge_plasticity_get_state(
     /* Calculate mean weight and variance using statistics module */
     if (bridge->synapse_count > 0) {
         /* Collect active synapse weights to temporary array */
-        float* weights = (float*)nimcp_malloc(bridge->synapse_count * sizeof(float));
+        float* weights = (float*)nimcp_calloc(bridge->synapse_count, sizeof(float));
         if (weights) {
             uint32_t weight_idx = 0;
             for (uint32_t i = 0; i < bridge->max_synapses && weight_idx < bridge->synapse_count; i++) {

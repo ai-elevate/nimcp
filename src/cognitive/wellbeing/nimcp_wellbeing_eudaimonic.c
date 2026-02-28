@@ -315,7 +315,7 @@ int enhanced_wellbeing_update_eudaimonic(enhanced_wellbeing_system_t* system)
         config->mastery_weight * system->eudaimonic.mastery +
         config->connection_weight * system->eudaimonic.connection +
         config->growth_weight * system->eudaimonic.growth
-    ) / total_weight;
+    ) / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
 
     // 7. Determine flourishing and languishing
     system->eudaimonic.is_flourishing =
@@ -481,7 +481,7 @@ int enhanced_wellbeing_compute_satisfaction(
         // Slope of linear regression
         float denominator = n * sum_x2 - sum_x * sum_x;
         if (fabsf(denominator) > 0.001f) {
-            satisfaction->satisfaction_trend = (n * sum_xy - sum_x * sum_y) / denominator;
+            satisfaction->satisfaction_trend = (n * sum_xy - sum_x * sum_y) / (fabsf(denominator) > 1e-7f ? denominator : 1e-7f);
             // Normalize to [-1, 1]
             satisfaction->satisfaction_trend = fminf(fmaxf(satisfaction->satisfaction_trend, -1.0f), 1.0f);
         }

@@ -612,11 +612,11 @@ int reasoning_abduction_generate(reasoning_abduction_t* abduction,
 
     float n = (float)abduction->stats.total_abductions;
     abduction->stats.avg_hypotheses_generated =
-        abduction->stats.avg_hypotheses_generated * ((n - 1.0f) / n) +
-        (float)hyp_count / n;
+        abduction->stats.avg_hypotheses_generated * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+        (float)hyp_count / (fabsf(n) > 1e-7f ? n : 1e-7f);
     abduction->stats.avg_best_plausibility =
-        abduction->stats.avg_best_plausibility * ((n - 1.0f) / n) +
-        result->best_plausibility / n;
+        abduction->stats.avg_best_plausibility * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+        result->best_plausibility / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     NIMCP_LOGGING_INFO("reasoning_abduction: generated %u hypotheses from %u observations "
                        "(best_plausibility=%.3f, time=%lu us)",

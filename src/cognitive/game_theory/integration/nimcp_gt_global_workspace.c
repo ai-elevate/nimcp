@@ -300,7 +300,7 @@ nimcp_error_t gt_gw_bid(
     pending->content_dim = content_dim;
 
     // Copy content
-    pending->content = nimcp_malloc(content_dim * sizeof(float));
+    pending->content = nimcp_calloc(content_dim, sizeof(float));
     if (!pending->content) {
         return NIMCP_ERROR_NO_MEMORY;
     }

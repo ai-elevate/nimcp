@@ -569,8 +569,8 @@ int creative_bridge_validate(creative_bridge_t* bridge,
     }
 
     float n = (float)bridge->validations_performed;
-    bridge->avg_validation_time_ms = bridge->avg_validation_time_ms * ((n-1)/n) +
-                                      result->total_time_ms / n;
+    bridge->avg_validation_time_ms = bridge->avg_validation_time_ms * ((n-1)/(fabsf(n) > 1e-7f ? n : 1e-7f)) +
+                                      result->total_time_ms / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     /* Handle escalation callback */
     if (result->overall_result == CREATIVE_VALIDATION_ESCALATE &&

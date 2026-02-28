@@ -329,7 +329,7 @@ int surprise_gw_submit_broadcast(
     /* Running avg */
     float n = (float)bridge->stats.broadcasts_submitted;
     bridge->stats.avg_broadcast_magnitude =
-        bridge->stats.avg_broadcast_magnitude * ((n - 1.0f) / n) + mag / n;
+        bridge->stats.avg_broadcast_magnitude * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) + mag / (fabsf(n) > 1e-7f ? n : 1e-7f);
     if (mag > bridge->stats.max_broadcast_magnitude) {
         bridge->stats.max_broadcast_magnitude = mag;
     }

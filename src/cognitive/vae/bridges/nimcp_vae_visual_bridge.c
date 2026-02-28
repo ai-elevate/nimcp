@@ -178,7 +178,7 @@ int vae_visual_encode(vae_visual_bridge_t* bridge,
     float* mu_data = (float*)nimcp_tensor_data(mu_tensor);
     float* logvar_data = (float*)nimcp_tensor_data(logvar_tensor);
 
-    result->combined_latent = (float*)nimcp_malloc(latent_dim * sizeof(float));
+    result->combined_latent = (float*)nimcp_calloc(latent_dim, sizeof(float));
     if (result->combined_latent) {
         memcpy(result->combined_latent, mu_data, latent_dim * sizeof(float));
     }
@@ -189,8 +189,8 @@ int vae_visual_encode(vae_visual_bridge_t* bridge,
         uint32_t area_dim = bridge->config.areas[i].latent_dim;
         uint32_t offset = bridge->area_offsets[i];
 
-        result->areas[i].latent = (float*)nimcp_malloc(area_dim * sizeof(float));
-        result->areas[i].variance = (float*)nimcp_malloc(area_dim * sizeof(float));
+        result->areas[i].latent = (float*)nimcp_calloc(area_dim, sizeof(float));
+        result->areas[i].variance = (float*)nimcp_calloc(area_dim, sizeof(float));
 
         if (result->areas[i].latent && offset + area_dim <= latent_dim) {
             memcpy(result->areas[i].latent, mu_data + offset, area_dim * sizeof(float));
@@ -291,7 +291,7 @@ int vae_visual_decode(vae_visual_bridge_t* bridge,
         return NIMCP_ERROR_VAE_VISUAL_DECODE_FAILED;
     }
 
-    result->reconstruction = (float*)nimcp_malloc(output_size * sizeof(float));
+    result->reconstruction = (float*)nimcp_calloc(output_size, sizeof(float));
     if (result->reconstruction) {
         float* output_data = (float*)nimcp_tensor_data(output_tensor);
         memcpy(result->reconstruction, output_data, output_size * sizeof(float));

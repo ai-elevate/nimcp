@@ -862,7 +862,7 @@ rcog_error_t rcog_answer_extract(
     nimcp_mutex_lock(refiner->mutex);
 
     /* Copy latent as output */
-    float* result = nimcp_malloc(state->latent_dim * sizeof(float));
+    float* result = nimcp_calloc(state->latent_dim, sizeof(float));
     if (!result) {
         nimcp_mutex_unlock(refiner->mutex);
         return RCOG_ERROR_OUT_OF_MEMORY;

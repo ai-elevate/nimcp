@@ -674,7 +674,7 @@ pr_attn_error_t pr_attention_bridge_compute_bottom_up(
 
     // Visual contribution (if connected)
     if (bridge->visual_bridge) {
-        float visual_weight = bridge->config.visual_weight / total_weight;
+        float visual_weight = bridge->config.visual_weight / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
         // Synthetic: center-weighted attention
         for (size_t y = 0; y < bridge->spatial_height; y++) {
             /* Phase 8: Loop progress heartbeat */
@@ -701,7 +701,7 @@ pr_attn_error_t pr_attention_bridge_compute_bottom_up(
 
     // Audio contribution (if connected)
     if (bridge->audio_bridge) {
-        float audio_weight = bridge->config.audio_weight / total_weight;
+        float audio_weight = bridge->config.audio_weight / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
         // Synthetic: uniform low-level attention (audio is non-spatial)
         for (size_t i = 0; i < map_size; i++) {
             /* Phase 8: Loop progress heartbeat */
@@ -716,7 +716,7 @@ pr_attn_error_t pr_attention_bridge_compute_bottom_up(
 
     // Omni-sensory contribution (if connected)
     if (bridge->omni_bridge) {
-        float omni_weight = bridge->config.omni_weight / total_weight;
+        float omni_weight = bridge->config.omni_weight / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
         // Synthetic: edge-enhanced attention
         for (size_t y = 1; y < bridge->spatial_height - 1; y++) {
             for (size_t x = 1; x < bridge->spatial_width - 1; x++) {
@@ -1445,7 +1445,7 @@ float pr_attention_bridge_get_mean_attention(
         sum += bridge->unified_attention_map[i];
     }
 
-    return sum / map_size;
+    return sum / (fabsf(map_size) > 1e-7f ? map_size : 1e-7f);
 }
 
 //=============================================================================

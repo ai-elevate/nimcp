@@ -65,7 +65,7 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
     }
 
     // Allocate centrality scores
-    cache->centrality_scores = (float*)nimcp_malloc(N * sizeof(float));
+    cache->centrality_scores = (float*)nimcp_calloc(N, sizeof(float));
     if (!cache->centrality_scores) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "fractal_cognitive_init: failed to allocate centrality_scores");
@@ -81,7 +81,7 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
     }
 
     // Allocate and compute normalized degrees
-    cache->degree_normalized = (float*)nimcp_malloc(N * sizeof(float));
+    cache->degree_normalized = (float*)nimcp_calloc(N, sizeof(float));
     if (!cache->degree_normalized) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "fractal_cognitive_init: failed to allocate degree_normalized");
@@ -292,7 +292,7 @@ uint32_t fractal_get_central_neighbors(neural_network_t network,
     } scored_neuron_t;
 
     uint32_t N = cache->stats.num_neurons;
-    scored_neuron_t *scored = (scored_neuron_t*)nimcp_malloc(N * sizeof(scored_neuron_t));
+    scored_neuron_t *scored = (scored_neuron_t*)nimcp_calloc(N, sizeof(scored_neuron_t));
     if (!scored) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
 
@@ -448,7 +448,7 @@ bool fractal_get_neurons_at_level(const fractal_cognitive_cache_t *cache,
     }
 
     // Allocate output array
-    *neurons_out = (uint32_t*)nimcp_malloc(count * sizeof(uint32_t));
+    *neurons_out = (uint32_t*)nimcp_calloc(count, sizeof(uint32_t));
     if (!*neurons_out) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "fractal_get_neurons_at_level: failed to allocate neurons_out");

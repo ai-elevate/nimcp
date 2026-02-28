@@ -690,7 +690,7 @@ int temporal_replay_sample(temporal_replay_t* replay,
             float prob = p / total_p;
             float weight = powf(replay->count * prob, -replay->config.is_beta);
             float max_weight = powf(replay->count * (min_p / total_p), -replay->config.is_beta);
-            batch->is_weights[i] = weight / max_weight;
+            batch->is_weights[i] = weight / (fabsf(max_weight) > 1e-7f ? max_weight : 1e-7f);
         } else if (batch->is_weights) {
             batch->is_weights[i] = 1.0f;
         }

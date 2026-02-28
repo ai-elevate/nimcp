@@ -433,7 +433,7 @@ quaternion_t quaternion_normalize(quaternion_t q) {
 
     float len = sqrtf(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
     if (len < 1e-10f) return quaternion_identity();
-    return (quaternion_t){q.w / len, q.x / len, q.y / len, q.z / len};
+    return (quaternion_t){q.w / (fabsf(len) > 1e-7f ? len : 1e-7f), q.x / (fabsf(len) > 1e-7f ? len : 1e-7f), q.y / (fabsf(len) > 1e-7f ? len : 1e-7f), q.z / (fabsf(len) > 1e-7f ? len : 1e-7f)};
 }
 
 vec3_t quaternion_rotate_vector(quaternion_t q, vec3_t v) {
@@ -504,9 +504,9 @@ rotation_result_t spatial_rotate_and_compare(
 
     float axis_len = sqrtf(q_diff.x * q_diff.x + q_diff.y * q_diff.y + q_diff.z * q_diff.z);
     if (axis_len > 1e-6f) {
-        result.rotation_axis = vec3_create(q_diff.x / axis_len,
-                                           q_diff.y / axis_len,
-                                           q_diff.z / axis_len);
+        result.rotation_axis = vec3_create(q_diff.x / (fabsf(axis_len) > 1e-7f ? axis_len : 1e-7f),
+                                           q_diff.y / (fabsf(axis_len) > 1e-7f ? axis_len : 1e-7f),
+                                           q_diff.z / (fabsf(axis_len) > 1e-7f ? axis_len : 1e-7f));
     } else {
         result.rotation_axis = vec3_create(0, 1, 0);
     }
@@ -787,7 +787,7 @@ uint32_t spatial_add_object(spatial_reasoning_t* sr, const spatial_object_t* obj
 
     /* Copy vertices if present */
     if (object->vertices && object->num_vertices > 0) {
-        new_obj->vertices = nimcp_malloc(object->num_vertices * sizeof(vec3_t));
+        new_obj->vertices = nimcp_calloc(object->num_vertices, sizeof(vec3_t));
         if (new_obj->vertices) {
             memcpy(new_obj->vertices, object->vertices,
                    object->num_vertices * sizeof(vec3_t));
@@ -957,8 +957,8 @@ uint32_t spatial_find_k_nearest(
     /* For production, use a proper K-NN algorithm with priority queue */
 
     /* Collect all distances */
-    float* all_dists = nimcp_malloc(sr->num_objects * sizeof(float));
-    uint32_t* indices = nimcp_malloc(sr->num_objects * sizeof(uint32_t));
+    float* all_dists = nimcp_calloc(sr->num_objects, sizeof(float));
+    uint32_t* indices = nimcp_calloc(sr->num_objects, sizeof(uint32_t));
 
     if (!all_dists || !indices) {
         nimcp_free(all_dists);

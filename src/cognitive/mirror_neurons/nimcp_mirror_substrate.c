@@ -175,7 +175,7 @@ mirror_substrate_pool_t* mirror_substrate_pool_create(uint32_t capacity)
     }
 
     /* Allocate bitmap (1 = free) */
-    pool->bitmap = (uint64_t*)nimcp_malloc(num_words * sizeof(uint64_t));
+    pool->bitmap = (uint64_t*)nimcp_calloc(num_words, sizeof(uint64_t));
     if (!pool->bitmap) {
         SUBSTRATE_LOG_ERROR("Mirror substrate pool: failed to allocate bitmap");
         nimcp_free(pool->buffer);

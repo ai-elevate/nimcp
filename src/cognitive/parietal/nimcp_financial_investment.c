@@ -499,7 +499,7 @@ int financial_investment_portfolio_rebalance(financial_investment_eng_t* fin,
         return FIN_ERR_INVALID_WEIGHT;
     }
 
-    float inv_sum = 1.0f / sum;
+    float inv_sum = 1.0f / (fabsf(sum) > 1e-7f ? sum : 1e-7f);
     for (uint32_t i = 0; i < n; i++) {
         portfolio->weights[i] = target_weights[i] * inv_sum;
     }
@@ -780,7 +780,7 @@ float financial_investment_compute_var(financial_investment_eng_t* fin,
     financial_investment_heartbeat("fin_compute_var", 0.0f);
 
     /* Copy and sort returns ascending */
-    float* sorted = (float*)nimcp_malloc(count * sizeof(float));
+    float* sorted = (float*)nimcp_calloc(count, sizeof(float));
     if (!sorted) {
         set_error("Allocation failed in compute_var");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_compute_var: Allocation failed");
@@ -821,7 +821,7 @@ float financial_investment_compute_cvar(financial_investment_eng_t* fin,
     financial_investment_heartbeat("fin_compute_cvar", 0.0f);
 
     /* Copy and sort returns ascending */
-    float* sorted = (float*)nimcp_malloc(count * sizeof(float));
+    float* sorted = (float*)nimcp_calloc(count, sizeof(float));
     if (!sorted) {
         set_error("Allocation failed in compute_cvar");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_compute_cvar: Allocation failed");
@@ -1096,7 +1096,7 @@ int financial_investment_binomial_tree(financial_investment_eng_t* fin,
     float p = (expf(rate * dt) - d) / (u - d); /* Risk-neutral probability */
 
     /* Allocate price tree at terminal nodes */
-    float* prices = (float*)nimcp_malloc((steps + 1) * sizeof(float));
+    float* prices = (float*)nimcp_calloc((steps + 1), sizeof(float));
     if (!prices) {
         set_error("Allocation failed in binomial_tree");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_binomial_tree: Allocation failed");
@@ -1317,7 +1317,7 @@ int financial_investment_comparables(financial_investment_eng_t* fin,
     out_result->method = FIN_VALUATION_COMPARABLES;
 
     /* Find median of peer multiples */
-    float* sorted = (float*)nimcp_malloc(peer_count * sizeof(float));
+    float* sorted = (float*)nimcp_calloc(peer_count, sizeof(float));
     if (!sorted) {
         set_error("Allocation failed in comparables");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_comparables: Allocation failed");
@@ -1981,7 +1981,7 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
         float diff = asset_returns[t] - asset_mean;
         ss_total += diff * diff;
     }
-    out_result->r_squared = (ss_total > EPSILON) ? 1.0f - ss_residual / ss_total : 0.0f;
+    out_result->r_squared = (ss_total > EPSILON) ? 1.0f - ss_residual / (fabsf(ss_total) > 1e-7f ? ss_total : 1e-7f) : 0.0f;
     out_result->r_squared = nimcp_clamp01(out_result->r_squared);
 
     /* Store factor returns (means) */

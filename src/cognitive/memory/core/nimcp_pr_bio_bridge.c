@@ -712,7 +712,7 @@ NIMCP_EXPORT size_t pr_bio_bridge_process_pending(pr_bio_bridge_t bridge) {
             if (bridge->stats.messages_received > 0) {
                 float n = (float)bridge->stats.messages_received;
                 bridge->stats.avg_latency_ms =
-                    (bridge->stats.avg_latency_ms * (n - 1) + latency) / n;
+                    (bridge->stats.avg_latency_ms * (n - 1) + latency) / (fabsf(n) > 1e-7f ? n : 1e-7f);
             } else {
                 bridge->stats.avg_latency_ms = latency;
             }

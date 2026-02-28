@@ -23,6 +23,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include <math.h>
 
 BRIDGE_BOILERPLATE(rcog_health, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -629,9 +630,9 @@ int rcog_health_submit_goal(
         /* Update averages */
         float n = (float)integration->stats.goals_completed;
         integration->stats.avg_processing_time_ms =
-            ((n - 1) * integration->stats.avg_processing_time_ms + answer->processing_time_ms) / n;
+            ((n - 1) * integration->stats.avg_processing_time_ms + answer->processing_time_ms) / (fabsf(n) > 1e-7f ? n : 1e-7f);
         integration->stats.avg_confidence =
-            ((n - 1) * integration->stats.avg_confidence + answer->overall_confidence) / n;
+            ((n - 1) * integration->stats.avg_confidence + answer->overall_confidence) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
         if (answer->max_depth_used > integration->stats.max_depth_used) {
             integration->stats.max_depth_used = answer->max_depth_used;

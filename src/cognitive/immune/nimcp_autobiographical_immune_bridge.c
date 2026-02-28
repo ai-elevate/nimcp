@@ -270,7 +270,7 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
     /* Allocate sickness landmarks array */
     bridge->sickness_landmark_capacity = config->max_sickness_landmarks;
     bridge->sickness_landmarks = (sickness_landmark_t*)
-        nimcp_malloc(sizeof(sickness_landmark_t) * bridge->sickness_landmark_capacity);
+        nimcp_calloc(bridge->sickness_landmark_capacity, sizeof(sickness_landmark_t));
     if (!bridge->sickness_landmarks) {
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_bridge_create: bridge->sickness_landmarks is NULL");

@@ -962,7 +962,7 @@ int heal_bridge_record_candidate_outcome(
     /* Update running average confidence */
     uint32_t total = candidate->success_count + candidate->failure_count;
     candidate->avg_confidence =
-        (candidate->avg_confidence * (total - 1) + confidence) / total;
+        (candidate->avg_confidence * (total - 1) + confidence) / (total > 0 ? total : 1);
 
     /* Check for promotion threshold */
     bool should_promote = false;

@@ -153,7 +153,7 @@ int vae_audio_encode(vae_audio_bridge_t* bridge,
     for (uint32_t i = 0; i < num_samples; i++) {
         energy += audio[i] * audio[i];
     }
-    energy = sqrtf(energy / num_samples);
+    energy = sqrtf(energy / (num_samples > 0 ? num_samples : 1));
 
     /* Distribute energy across mel bins (simplified) */
     for (uint32_t i = 0; i < feature_dim; i++) {
@@ -193,7 +193,7 @@ int vae_audio_encode(vae_audio_bridge_t* bridge,
 
     float* mu_data = (float*)nimcp_tensor_data(mu_tensor);
 
-    result->latent = (float*)nimcp_malloc(latent_dim * sizeof(float));
+    result->latent = (float*)nimcp_calloc(latent_dim, sizeof(float));
     result->features = features;
     result->feature_dim = feature_dim;
     result->latent_dim = latent_dim;
@@ -264,7 +264,7 @@ int vae_audio_encode_features(vae_audio_bridge_t* bridge,
 
     float* mu_data = (float*)nimcp_tensor_data(mu_tensor);
 
-    result->latent = (float*)nimcp_malloc(latent_dim * sizeof(float));
+    result->latent = (float*)nimcp_calloc(latent_dim, sizeof(float));
     result->latent_dim = latent_dim;
     if (result->latent) {
         memcpy(result->latent, mu_data, latent_dim * sizeof(float));
@@ -310,7 +310,7 @@ int vae_audio_decode(vae_audio_bridge_t* bridge,
         return NIMCP_ERROR_VAE_AUDIO_DECODE_FAILED;
     }
 
-    result->spectrum = (float*)nimcp_malloc(output_dim * sizeof(float));
+    result->spectrum = (float*)nimcp_calloc(output_dim, sizeof(float));
     result->spectrum_dim = output_dim;
     if (result->spectrum) {
         float* output_data = (float*)nimcp_tensor_data(output_tensor);
@@ -357,7 +357,7 @@ int vae_audio_compute_mel(vae_audio_bridge_t* bridge,
     for (uint32_t i = 0; i < num_samples; i++) {
         energy += audio[i] * audio[i];
     }
-    energy = sqrtf(energy / num_samples);
+    energy = sqrtf(energy / (num_samples > 0 ? num_samples : 1));
 
     for (uint32_t i = 0; i < *mel_dim; i++) {
         mel_features[i] = energy * (1.0f - (float)i / (*mel_dim));
@@ -402,7 +402,7 @@ int vae_audio_compute_novelty(vae_audio_bridge_t* bridge,
     for (uint32_t i = 0; i < num_samples; i++) {
         energy += audio[i] * audio[i];
     }
-    energy = sqrtf(energy / num_samples);
+    energy = sqrtf(energy / (num_samples > 0 ? num_samples : 1));
 
     /* Novelty based on energy deviation from baseline */
     if (bridge->baseline_samples > 0 && bridge->novelty_baseline) {

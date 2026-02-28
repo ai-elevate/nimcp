@@ -527,8 +527,8 @@ int gan_generate(gan_bridge_t* bridge,
 
     bridge->images_generated++;
     float n = (float)bridge->images_generated;
-    bridge->avg_generation_time_ms = bridge->avg_generation_time_ms * ((n-1)/n) +
-                                      time_ms / n;
+    bridge->avg_generation_time_ms = bridge->avg_generation_time_ms * ((n-1)/(fabsf(n) > 1e-7f ? n : 1e-7f)) +
+                                      time_ms / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     return 0;
 }

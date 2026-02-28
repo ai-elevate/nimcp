@@ -550,8 +550,8 @@ int style_repr_embed_audio(style_representer_t* repr,
         }
     }
 
-    rms = sqrtf(rms / num_samples);
-    zcr = zcr / num_samples;
+    rms = sqrtf(rms / (num_samples > 0 ? num_samples : 1));
+    zcr = zcr / (num_samples > 0 ? num_samples : 1);
 
     float duration = (float)num_samples / sample_rate;
 

@@ -31,6 +31,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/math/nimcp_math_helpers.h"
+#include <math.h>
 
 BRIDGE_BOILERPLATE(resonance, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -382,7 +383,7 @@ bool resonance_compute(
     }
     // Running mean update (simple moving average)
     float n = (float)s_stats.total_computations;
-    s_stats.mean_resonance = ((n - 1.0f) * s_stats.mean_resonance + result->total) / n;
+    s_stats.mean_resonance = ((n - 1.0f) * s_stats.mean_resonance + result->total) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     if (result->total > s_stats.max_resonance) {
         s_stats.max_resonance = result->total;
@@ -421,7 +422,7 @@ bool resonance_compute_fast(
     // Redistribute weight proportionally to other components
     float other_sum = cfg.weight_jaccard + cfg.weight_phase + cfg.weight_quaternion;
     if (other_sum > RESONANCE_EPSILON) {
-        float scale = (other_sum + kuramoto_weight) / other_sum;
+        float scale = (other_sum + kuramoto_weight) / (fabsf(other_sum) > 1e-7f ? other_sum : 1e-7f);
         cfg.weight_jaccard *= scale;
         cfg.weight_phase *= scale;
         cfg.weight_quaternion *= scale;
@@ -564,7 +565,7 @@ int resonance_compute_top_k(
 
     // Allocate temporary array for all results
     resonance_batch_result_t* all_results =
-        (resonance_batch_result_t*)nimcp_malloc(count * sizeof(resonance_batch_result_t));
+        (resonance_batch_result_t*)nimcp_calloc(count, sizeof(resonance_batch_result_t));
     if (!all_results) {
         set_error("Failed to allocate memory for batch results");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "resonance_compute_top_k: all_results is NULL");

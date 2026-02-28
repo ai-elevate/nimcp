@@ -25,6 +25,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include <math.h>
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(health_cognitive_bridge)
 //=============================================================================
@@ -548,11 +549,11 @@ int health_cognitive_intelligent_handle(
 
     float n = (float)(bridge->stats.handling_success + bridge->stats.handling_failed);
     bridge->stats.avg_handling_time_ms =
-        ((n - 1) * bridge->stats.avg_handling_time_ms + result->total_processing_time_ms) / n;
+        ((n - 1) * bridge->stats.avg_handling_time_ms + result->total_processing_time_ms) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     bridge->stats.avg_consensus_time_ms =
-        ((n - 1) * bridge->stats.avg_consensus_time_ms + result->consensus_time_ms) / n;
+        ((n - 1) * bridge->stats.avg_consensus_time_ms + result->consensus_time_ms) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     bridge->stats.avg_diagnosis_time_ms =
-        ((n - 1) * bridge->stats.avg_diagnosis_time_ms + result->diagnosis_time_ms) / n;
+        ((n - 1) * bridge->stats.avg_diagnosis_time_ms + result->diagnosis_time_ms) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     if (bridge->stats.recoveries_executed > 0) {
         bridge->stats.recovery_success_rate =

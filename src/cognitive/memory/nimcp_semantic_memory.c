@@ -666,7 +666,7 @@ uint64_t semantic_memory_create_concept(
 
     // Copy features
     concept->feature_dim = feature_dim;
-    concept->features = (float*)nimcp_malloc(feature_dim * sizeof(float));
+    concept->features = (float*)nimcp_calloc(feature_dim, sizeof(float));
     if (!concept->features) {
         nimcp_free(concept);
         return 0;
@@ -819,8 +819,8 @@ semantic_query_result_t* semantic_memory_find_similar(
                              match_count : max_results;
 
     result->count = return_count;
-    result->concept_ids = (uint64_t*)nimcp_malloc(return_count * sizeof(uint64_t));
-    result->activation_levels = (float*)nimcp_malloc(return_count * sizeof(float));
+    result->concept_ids = (uint64_t*)nimcp_calloc(return_count, sizeof(uint64_t));
+    result->activation_levels = (float*)nimcp_calloc(return_count, sizeof(float));
 
     if (!result->concept_ids || !result->activation_levels) {
         nimcp_free(temp_ids);
@@ -1142,8 +1142,8 @@ semantic_query_result_t* semantic_memory_activate(
         return result;
     }
 
-    result->concept_ids = (uint64_t*)nimcp_malloc(activated_count * sizeof(uint64_t));
-    result->activation_levels = (float*)nimcp_malloc(activated_count * sizeof(float));
+    result->concept_ids = (uint64_t*)nimcp_calloc(activated_count, sizeof(uint64_t));
+    result->activation_levels = (float*)nimcp_calloc(activated_count, sizeof(float));
 
     if (!result->concept_ids || !result->activation_levels) {
         semantic_memory_free_result(result);

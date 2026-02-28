@@ -1223,7 +1223,7 @@ static float compute_loss(brain_t brain, const float** inputs,
     }
 
     nimcp_free(decisions);
-    return total_loss / num_samples;  // Average loss
+    return total_loss / (fabsf(num_samples) > 1e-7f ? num_samples : 1e-7f);  // Average loss
 }
 
 /**

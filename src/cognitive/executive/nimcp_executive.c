@@ -127,6 +127,7 @@ static inline bool exec_has_gpu_mc(void) { return false; }
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include <math.h>
 
 BRIDGE_BOILERPLATE(exec, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -1284,7 +1285,7 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
     exec->stats.total_switches++;
     float old_avg = exec->stats.avg_switch_cost_ms;
     float n = (float)exec->stats.total_switches;
-    exec->stats.avg_switch_cost_ms = (old_avg * (n - 1.0F) + switch_cost) / n;
+    exec->stats.avg_switch_cost_ms = (old_avg * (n - 1.0F) + switch_cost) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     // REMOVE target from queue (to prevent double-free)
     if (found_in_queue) {
@@ -1591,7 +1592,7 @@ classical_planning:
     exec->stats.plans_created++;
     float old_avg = exec->stats.avg_plan_length;
     float n = (float)exec->stats.plans_created;
-    exec->stats.avg_plan_length = (old_avg * (n - 1.0F) + (float)plan->num_steps) / n;
+    exec->stats.avg_plan_length = (old_avg * (n - 1.0F) + (float)plan->num_steps) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     return plan;
 }
@@ -3367,7 +3368,7 @@ plan_t* executive_create_plan_mcts(
     exec->stats.plans_created++;
     float old_avg = exec->stats.avg_plan_length;
     float n = (float)exec->stats.plans_created;
-    exec->stats.avg_plan_length = (old_avg * (n - 1.0f) + (float)plan->num_steps) / n;
+    exec->stats.avg_plan_length = (old_avg * (n - 1.0f) + (float)plan->num_steps) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     LOG_DEBUG("MCTS plan created: %u steps, %u nodes, value %.3f",
               plan->num_steps, ctx.nodes_created, mcts_result.best_value);

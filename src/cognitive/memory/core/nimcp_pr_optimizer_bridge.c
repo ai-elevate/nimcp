@@ -1067,7 +1067,7 @@ float pr_optimizer_clip_by_entanglement(
 
     // Clip if necessary
     if (original_norm > clip_norm && original_norm > GRAD_NORM_MIN) {
-        float scale = clip_norm / original_norm;
+        float scale = clip_norm / (fabsf(original_norm) > 1e-7f ? original_norm : 1e-7f);
         scale_gradients(gradients, count, scale);
         atomic_fetch_add(&bridge->stats.gradient_clips, 1);
     }
@@ -1095,7 +1095,7 @@ float pr_optimizer_clip_by_norm(
     float original_norm = compute_grad_norm(gradients, count);
 
     if (original_norm > max_norm && original_norm > GRAD_NORM_MIN) {
-        float scale = max_norm / original_norm;
+        float scale = max_norm / (fabsf(original_norm) > 1e-7f ? original_norm : 1e-7f);
         scale_gradients(gradients, count, scale);
 
         if (bridge) {
@@ -1613,7 +1613,7 @@ nimcp_quaternion_t pr_optimizer_exp_map(
         exp_v.y = tangent_vec.y;
         exp_v.z = tangent_vec.z;
     } else {
-        float s = sinf(norm) / norm;
+        float s = sinf(norm) / (fabsf(norm) > 1e-7f ? norm : 1e-7f);
         exp_v.w = cosf(norm);
         exp_v.x = tangent_vec.x * s;
         exp_v.y = tangent_vec.y * s;

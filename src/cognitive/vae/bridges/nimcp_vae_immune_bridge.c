@@ -914,7 +914,7 @@ int vae_immune_update_baseline(vae_immune_bridge_t* bridge,
     /* Online update of mean and variance */
     for (uint32_t i = 0; i < dim; i++) {
         float old_mean = bridge->baseline_latent_mean[i];
-        float new_mean = old_mean + (latent->mu[i] - old_mean) / n;
+        float new_mean = old_mean + (latent->mu[i] - old_mean) / (fabsf(n) > 1e-7f ? n : 1e-7f);
         bridge->baseline_latent_mean[i] = new_mean;
 
         /* Welford's online algorithm for variance */

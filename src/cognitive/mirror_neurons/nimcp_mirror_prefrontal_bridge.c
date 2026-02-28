@@ -756,7 +756,7 @@ uint32_t mirror_prefrontal_store_sequence(
     bridge->stats.sequences_stored++;
     uint64_t total = bridge->stats.sequences_stored;
     bridge->stats.avg_sequence_length =
-        (bridge->stats.avg_sequence_length * (total - 1) + sequence->action_count) / total;
+        (bridge->stats.avg_sequence_length * (total - 1) + sequence->action_count) / (total > 0 ? total : 1);
 
     /* Send bio-async notification */
     if (bridge->bio_async_enabled && bridge->bio_context) {
@@ -940,7 +940,7 @@ int mirror_prefrontal_notify_goal_inference(
     /* Update running average of goal relevance */
     uint64_t total = bridge->stats.goals_inferred;
     bridge->stats.avg_goal_relevance =
-        (bridge->stats.avg_goal_relevance * (total - 1) + confidence) / total;
+        (bridge->stats.avg_goal_relevance * (total - 1) + confidence) / (total > 0 ? total : 1);
 
     /* Send bio-async notification */
     if (bridge->bio_async_enabled && bridge->bio_context) {

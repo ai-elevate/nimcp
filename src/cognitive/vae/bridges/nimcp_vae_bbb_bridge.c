@@ -999,7 +999,7 @@ float vae_bbb_perturbation_magnitude(const nimcp_tensor_t* input,
         sum_sq += diff * diff;
     }
 
-    return sqrtf(sum_sq / total);
+    return sqrtf(sum_sq / (total > 0 ? total : 1));
 }
 
 /* ============================================================================

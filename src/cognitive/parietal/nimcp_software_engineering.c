@@ -1034,7 +1034,7 @@ float software_eng_instability(float afferent_coupling, float efferent_coupling)
 
     float total = afferent_coupling + efferent_coupling;
     if (total < EPSILON) return 0.0f;
-    return efferent_coupling / total;
+    return efferent_coupling / (fabsf(total) > 1e-7f ? total : 1e-7f);
 }
 
 /* ============================================================================

@@ -603,7 +603,7 @@ int core_directives_record_action(
     }
 
     // Allocate and copy action vector
-    entry->action_vector = nimcp_malloc(action_dim * sizeof(float));
+    entry->action_vector = nimcp_calloc(action_dim, sizeof(float));
     if (!entry->action_vector) {
         nimcp_platform_mutex_unlock(&directives->mutex);
         return NIMCP_ERROR_NO_MEMORY;

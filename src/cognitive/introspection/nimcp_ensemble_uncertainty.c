@@ -381,7 +381,7 @@ uint32_t ensemble_predict(ensemble_context_t ensemble,
         uint32_t output_size = net_config->base_config.output_size;
 
         /* WHAT: Allocate output buffer */
-        float* output = (float*) nimcp_malloc(output_size * sizeof(float));
+        float* output = (float*) nimcp_calloc(output_size, sizeof(float));
         if (output == NULL) {
             continue;
         }
@@ -449,8 +449,8 @@ ensemble_uncertainty_result_t ensemble_compute_uncertainty(
     result.num_models = num_predictions;
 
     /* WHAT: Allocate result arrays */
-    result.mean_prediction = (float*) nimcp_malloc(output_dim * sizeof(float));
-    result.prediction_variance = (float*) nimcp_malloc(output_dim * sizeof(float));
+    result.mean_prediction = (float*) nimcp_calloc(output_dim, sizeof(float));
+    result.prediction_variance = (float*) nimcp_calloc(output_dim, sizeof(float));
     result.individual_predictions = predictions; /* Transfer ownership */
 
     if (result.mean_prediction == NULL || result.prediction_variance == NULL) {
@@ -663,7 +663,7 @@ float ensemble_compute_entropy(const float* probabilities, uint32_t size)
                              (float)(i + 1) / (float)size);
         }
 
-        float p = fabsf(probabilities[i]) / sum;
+        float p = fabsf(probabilities[i]) / (fabsf(sum) > 1e-7f ? sum : 1e-7f);
         if (p > 1e-10F) {
             entropy -= p * safe_log2f(p);
         }
@@ -691,7 +691,7 @@ float ensemble_compute_variance(const float** predictions,
     ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_compute_var", 0.0f);
 
 
-    float* mean = (float*) nimcp_malloc(dimension * sizeof(float));
+    float* mean = (float*) nimcp_calloc(dimension, sizeof(float));
     if (mean == NULL) {
         return 0.0F;
     }

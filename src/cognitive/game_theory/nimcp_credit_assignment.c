@@ -386,7 +386,7 @@ nimcp_error_t nimcp_credit_approximate_shapley(
     memset(result, 0, sizeof(nimcp_credit_result_t));
 
     // Allocate permutation array
-    uint32_t* permutation = nimcp_malloc(n * sizeof(uint32_t));
+    uint32_t* permutation = nimcp_calloc(n, sizeof(uint32_t));
     if (!permutation) {
         nimcp_platform_mutex_unlock(&system->mutex);
         return NIMCP_GT_ERROR_NO_MEMORY;
@@ -468,7 +468,7 @@ nimcp_error_t nimcp_credit_approximate_shapley(
 
     // Normalize to ensure efficiency (optional)
     if (result->efficiency_error > 1e-6f && result->total_value > 0.0f) {
-        float scale = result->total_value / sum;
+        float scale = result->total_value / (fabsf(sum) > 1e-7f ? sum : 1e-7f);
         for (uint32_t i = 0; i < n; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && n > 256) {

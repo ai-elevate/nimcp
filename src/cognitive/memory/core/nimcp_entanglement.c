@@ -425,7 +425,7 @@ static bool build_node_index_map(
 
     if (graph->node_count == 0) return true;
 
-    uint64_t* ids = (uint64_t*)nimcp_malloc(graph->node_count * sizeof(uint64_t));
+    uint64_t* ids = (uint64_t*)nimcp_calloc(graph->node_count, sizeof(uint64_t));
     if (!ids) {
         set_error("Failed to allocate node ID array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_node_index_map: ids is NULL");
@@ -854,7 +854,7 @@ bool entangle_add_edge(entangle_graph_t graph, const entangle_edge_t* edge) {
 
     /* Update average weight (incremental) */
     float n = (float)graph->edge_count;
-    graph->stats.avg_weight = ((n - 1.0f) * graph->stats.avg_weight + weight) / n;
+    graph->stats.avg_weight = ((n - 1.0f) * graph->stats.avg_weight + weight) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     graph->stats.memory_bytes += sizeof(edge_entry_t) + 2 * sizeof(edge_list_node_t);
 
@@ -1328,7 +1328,7 @@ bool entangle_get_strongest(
 
     /* Get all neighbors first */
     size_t max_temp = 1024;  /* Reasonable limit */
-    entangle_neighbor_t* temp = (entangle_neighbor_t*)nimcp_malloc(max_temp * sizeof(entangle_neighbor_t));
+    entangle_neighbor_t* temp = (entangle_neighbor_t*)nimcp_calloc(max_temp, sizeof(entangle_neighbor_t));
     if (!temp) {
         set_error("Failed to allocate temporary buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entangle_get_strongest: temp is NULL");
@@ -1593,7 +1593,7 @@ size_t entangle_prune_weak(entangle_graph_t graph, float threshold) {
     size_t to_remove_count = 0;
 
     typedef struct { uint64_t from; uint64_t to; } edge_pair_t;
-    edge_pair_t* to_remove = (edge_pair_t*)nimcp_malloc(capacity * sizeof(edge_pair_t));
+    edge_pair_t* to_remove = (edge_pair_t*)nimcp_calloc(capacity, sizeof(edge_pair_t));
     if (!to_remove) {
         set_error("Failed to allocate removal list");
         return 0;
@@ -1874,7 +1874,7 @@ bool entangle_quantum_walk_step(entangle_graph_t graph, quantum_walk_state_t* st
             if (out->edge_ref) {
                 ssize_t j = find_node_index(state->node_ids, state->num_nodes, out->other_id);
                 if (j >= 0) {
-                    float transfer = amp * (out->edge_ref->edge.weight / total_weight);
+                    float transfer = amp * (out->edge_ref->edge.weight / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f));
                     new_amplitudes[j] += transfer;
                 }
             }
@@ -1972,7 +1972,7 @@ bool quantum_walk_collapse(quantum_walk_state_t* state, quantum_walk_result_t* r
     }
 
     /* Compute probabilities (|amplitude|^2) */
-    float* probs = (float*)nimcp_malloc(state->num_nodes * sizeof(float));
+    float* probs = (float*)nimcp_calloc(state->num_nodes, sizeof(float));
     if (!probs) {
         set_error("Failed to allocate probability array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_walk_collapse: probs is NULL");
@@ -2073,7 +2073,7 @@ bool quantum_walk_get_top_k(
     }
 
     /* Build result array with probabilities */
-    quantum_walk_result_t* all = (quantum_walk_result_t*)nimcp_malloc(state->num_nodes * sizeof(quantum_walk_result_t));
+    quantum_walk_result_t* all = (quantum_walk_result_t*)nimcp_calloc(state->num_nodes, sizeof(quantum_walk_result_t));
     if (!all) {
         set_error("Failed to allocate result array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_walk_get_top_k: all is NULL");
@@ -2271,7 +2271,7 @@ bool entangle_spread_activation(
 
     /* Collect results above threshold */
     typedef struct { size_t idx; float activation; } act_entry_t;
-    act_entry_t* entries = (act_entry_t*)nimcp_malloc(num_nodes * sizeof(act_entry_t));
+    act_entry_t* entries = (act_entry_t*)nimcp_calloc(num_nodes, sizeof(act_entry_t));
     if (!entries) {
         read_unlock(graph);
         nimcp_free(node_ids);
@@ -2367,8 +2367,8 @@ bool entangle_cascade(
 
     /* Start with single node */
     size_t current_count = 1;
-    uint64_t* current_nodes = (uint64_t*)nimcp_malloc(top_k * sizeof(uint64_t));
-    float* current_activations = (float*)nimcp_malloc(top_k * sizeof(float));
+    uint64_t* current_nodes = (uint64_t*)nimcp_calloc(top_k, sizeof(uint64_t));
+    float* current_activations = (float*)nimcp_calloc(top_k, sizeof(float));
 
     if (!current_nodes || !current_activations) {
         nimcp_free(current_nodes);
@@ -2383,7 +2383,7 @@ bool entangle_cascade(
 
     /* Temporary buffer for spread results */
     size_t temp_max = top_k * 10;  /* Allow some expansion */
-    entangle_neighbor_t* temp_results = (entangle_neighbor_t*)nimcp_malloc(temp_max * sizeof(entangle_neighbor_t));
+    entangle_neighbor_t* temp_results = (entangle_neighbor_t*)nimcp_calloc(temp_max, sizeof(entangle_neighbor_t));
     if (!temp_results) {
         nimcp_free(current_nodes);
         nimcp_free(current_activations);

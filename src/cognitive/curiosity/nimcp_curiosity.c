@@ -2889,7 +2889,7 @@ uint32_t curiosity_sample_by_empowerment(
     uint32_t* seed = curiosity_get_mc_seed();
 
     /* Compute empowerment for each concept */
-    float* scores = (float*)nimcp_malloc(num_concepts * sizeof(float));
+    float* scores = (float*)nimcp_calloc(num_concepts, sizeof(float));
     if (!scores) return 0;
 
     float max_score = -1e10f;

@@ -123,7 +123,7 @@ uint32_t curiosity_fractal_next_exploration_target(neural_network_t network,
     }
 
     // Get k most central neighbors of the hub
-    uint32_t *candidates = (uint32_t*)nimcp_malloc(k * sizeof(uint32_t));
+    uint32_t *candidates = (uint32_t*)nimcp_calloc(k, sizeof(uint32_t));
     if (!candidates) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "curiosity_fractal_next_exploration_target: allocation failed");

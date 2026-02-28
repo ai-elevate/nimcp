@@ -646,7 +646,7 @@ int financial_temporal_credit_bridge_record_extended_decision(
         /* Deep copy pattern_ids if present */
         if (decision->pattern_ids && decision->num_patterns > 0) {
             bridge->extended_decisions[bridge->num_extended].pattern_ids =
-                (uint32_t*)nimcp_malloc(decision->num_patterns * sizeof(uint32_t));
+                (uint32_t*)nimcp_calloc(decision->num_patterns, sizeof(uint32_t));
             if (bridge->extended_decisions[bridge->num_extended].pattern_ids) {
                 memcpy(bridge->extended_decisions[bridge->num_extended].pattern_ids,
                        decision->pattern_ids,
@@ -1018,7 +1018,7 @@ int financial_temporal_credit_bridge_eligibility_trace(
         return FIN_TEMPORAL_CREDIT_ERR_OK;
     }
 
-    result->traces = (float*)nimcp_malloc(bridge->num_decisions * sizeof(float));
+    result->traces = (float*)nimcp_calloc(bridge->num_decisions, sizeof(float));
     if (!result->traces) {
         set_error("Failed to allocate trace results");
         return FIN_TEMPORAL_CREDIT_ERR_NO_MEMORY;

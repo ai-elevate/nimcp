@@ -460,7 +460,7 @@ int ling_stats_hmm_viterbi_decode(
     }
 
     /* Backtrace */
-    result->state_sequence = (num_hmm_state_t*)nimcp_malloc(num_obs * sizeof(num_hmm_state_t));
+    result->state_sequence = (num_hmm_state_t*)nimcp_calloc(num_obs, sizeof(num_hmm_state_t));
     if (!result->state_sequence) {
         return LING_STATS_ERR_HMM_FAIL;
     }

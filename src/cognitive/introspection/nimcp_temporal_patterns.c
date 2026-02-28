@@ -235,7 +235,7 @@ temporal_pattern_t* introspection_detect_patterns(introspection_context_t contex
 
         /* Allocate state sequence (simplified: just avg_activation values) */
         patterns[pattern_count].state_sequence =
-            (float**)nimcp_malloc(window_size * sizeof(float*));
+            (float**)nimcp_calloc(window_size, sizeof(float*));
 
         if (patterns[pattern_count].state_sequence != NULL) {
             for (uint32_t i = 0; i < window_size; i++) {
@@ -371,7 +371,7 @@ pattern_match_result_t introspection_match_pattern(introspection_context_t conte
         distance += diff * diff;
     }
 
-    distance = sqrtf(distance / compare_len); /* RMSE */
+    distance = sqrtf(distance / (fabsf(compare_len) > 1e-7f ? compare_len : 1e-7f)); /* RMSE */
 
     /* WHAT: Convert distance to confidence (inverse relationship) */
     /* WHY: Lower distance = higher confidence */
@@ -533,7 +533,7 @@ temporal_trend_t introspection_get_trend(introspection_context_t context,
     }
 
     /* WHAT: Extract metric values */
-    float* values = (float*)nimcp_malloc(window * sizeof(float));
+    float* values = (float*)nimcp_calloc(window, sizeof(float));
     if (values == NULL) {
         nimcp_free(history);
         return trend;
@@ -676,7 +676,7 @@ bool introspection_register_pattern(introspection_context_t context,
     /* WHAT: Deep copy state sequence */
     if (pattern->state_sequence != NULL && pattern->sequence_length > 0) {
         entry->pattern.state_sequence =
-            (float**)nimcp_malloc(pattern->sequence_length * sizeof(float*));
+            (float**)nimcp_calloc(pattern->sequence_length, sizeof(float*));
 
         if (entry->pattern.state_sequence != NULL) {
             for (uint32_t i = 0; i < pattern->sequence_length; i++) {
@@ -687,7 +687,7 @@ bool introspection_register_pattern(introspection_context_t context,
                 }
 
                 entry->pattern.state_sequence[i] =
-                    (float*)nimcp_malloc(pattern->state_dimension * sizeof(float));
+                    (float*)nimcp_calloc(pattern->state_dimension, sizeof(float));
 
                 if (entry->pattern.state_sequence[i] != NULL && pattern->state_sequence[i] != NULL) {
                     memcpy(entry->pattern.state_sequence[i], pattern->state_sequence[i],
@@ -825,7 +825,7 @@ temporal_pattern_t* introspection_get_pattern_library(introspection_context_t co
         /* WHY: Caller will free returned patterns, must not double-free library data */
         if (entry->pattern.state_sequence != NULL && entry->pattern.sequence_length > 0) {
             patterns[index].state_sequence =
-                (float**)nimcp_malloc(entry->pattern.sequence_length * sizeof(float*));
+                (float**)nimcp_calloc(entry->pattern.sequence_length, sizeof(float*));
 
             if (patterns[index].state_sequence != NULL) {
                 for (uint32_t j = 0; j < entry->pattern.sequence_length; j++) {
@@ -837,7 +837,7 @@ temporal_pattern_t* introspection_get_pattern_library(introspection_context_t co
 
                     if (entry->pattern.state_sequence[j] != NULL) {
                         patterns[index].state_sequence[j] =
-                            (float*)nimcp_malloc(entry->pattern.state_dimension * sizeof(float));
+                            (float*)nimcp_calloc(entry->pattern.state_dimension, sizeof(float));
                         if (patterns[index].state_sequence[j] != NULL) {
                             memcpy(patterns[index].state_sequence[j],
                                    entry->pattern.state_sequence[j],
@@ -911,7 +911,7 @@ float introspection_pattern_similarity(const temporal_pattern_t* pattern1,
         }
     }
 
-    distance = sqrtf(distance / min_len);
+    distance = sqrtf(distance / (fabsf(min_len) > 1e-7f ? min_len : 1e-7f));
 
     /* WHAT: Convert distance to similarity (inverse) */
     float similarity = 1.0F / (1.0F + distance);
@@ -1233,8 +1233,8 @@ static float compute_dtw_distance(const float* seq1, uint32_t len1,
     }
 
     /* WHAT: Allocate DTW matrix (simplified: use previous row only) */
-    float* prev_row = (float*)nimcp_malloc((len2 + 1) * sizeof(float));
-    float* curr_row = (float*)nimcp_malloc((len2 + 1) * sizeof(float));
+    float* prev_row = (float*)nimcp_calloc((len2 + 1), sizeof(float));
+    float* curr_row = (float*)nimcp_calloc((len2 + 1), sizeof(float));
 
     if (prev_row == NULL || curr_row == NULL) {
         nimcp_free(prev_row);
@@ -1375,7 +1375,7 @@ static void linear_regression(const float* values, uint32_t count,
     *intercept = (sum_y - (*slope) * sum_x) / n;
 
     /* WHAT: Compute R² (coefficient of determination) */
-    float mean_y = sum_y / n;
+    float mean_y = sum_y / (fabsf(n) > 1e-7f ? n : 1e-7f);
     float ss_tot = 0.0F, ss_res = 0.0F;
 
     for (uint32_t i = 0; i < count; i++) {

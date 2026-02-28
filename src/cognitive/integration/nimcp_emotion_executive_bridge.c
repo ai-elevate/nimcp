@@ -210,13 +210,13 @@ emotion_executive_bridge_t* emotion_executive_bridge_create(
     }
 
     /* Allocate decisions array */
-    bridge->decisions = nimcp_malloc(sizeof(decision_record_t) * DEFAULT_DECISION_CAPACITY);
+    bridge->decisions = nimcp_calloc(DEFAULT_DECISION_CAPACITY, sizeof(decision_record_t));
     if (!bridge->decisions) {
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_executive_bridge_create: bridge->decisions is NULL");
         return NULL;
     }
-    memset(bridge->decisions, 0, sizeof(decision_record_t) * DEFAULT_DECISION_CAPACITY);
+    /* calloc zero-initializes */
     bridge->decision_capacity = DEFAULT_DECISION_CAPACITY;
     bridge->decision_count = 0;
 

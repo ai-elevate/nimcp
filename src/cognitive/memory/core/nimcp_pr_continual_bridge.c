@@ -790,7 +790,7 @@ int pr_continual_compute_fisher_weighted(
 
     /* Normalize */
     if (total_weight > PR_CONTINUAL_EPSILON) {
-        float inv_w = 1.0f / total_weight;
+        float inv_w = 1.0f / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
         for (size_t i = 0; i < num_params; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && num_params > 256) {
@@ -1211,7 +1211,7 @@ int pr_continual_replay_sample(
         if (tier_size == 0) continue;
 
         /* Get all nodes from tier for sampling */
-        pr_memory_node_t** tier_nodes = (pr_memory_node_t**)nimcp_malloc(tier_size * sizeof(pr_memory_node_t*));
+        pr_memory_node_t** tier_nodes = (pr_memory_node_t**)nimcp_calloc(tier_size, sizeof(pr_memory_node_t*));
         if (!tier_nodes) continue;
 
         size_t actual_count = 0;
@@ -1663,7 +1663,7 @@ int pr_continual_consolidate_task(
         if (tier_size == 0) continue;
 
         /* Get all nodes from tier */
-        pr_memory_node_t** tier_nodes = (pr_memory_node_t**)nimcp_malloc(tier_size * sizeof(pr_memory_node_t*));
+        pr_memory_node_t** tier_nodes = (pr_memory_node_t**)nimcp_calloc(tier_size, sizeof(pr_memory_node_t*));
         if (!tier_nodes) continue;
 
         size_t actual_count = 0;

@@ -345,7 +345,7 @@ metamem_error_t metamem_monitor_update(
             size_t count = z_ladder_get_count(monitor->z_ladder, (pr_memory_tier_t)tier);
             if (count == 0) continue;
 
-            pr_memory_node_t** nodes = (pr_memory_node_t**)nimcp_malloc(count * sizeof(pr_memory_node_t*));
+            pr_memory_node_t** nodes = (pr_memory_node_t**)nimcp_calloc(count, sizeof(pr_memory_node_t*));
             if (nodes) {
                 size_t actual = 0;
                 z_ladder_get_nodes(monitor->z_ladder, (pr_memory_tier_t)tier, nodes, count, &actual);
@@ -485,7 +485,7 @@ int metamem_monitor_inventory_domains(metamem_monitor_t monitor) {
         size_t count = z_ladder_get_count(monitor->z_ladder, (pr_memory_tier_t)tier);
         if (count == 0) continue;
 
-        pr_memory_node_t** nodes = (pr_memory_node_t**)nimcp_malloc(count * sizeof(pr_memory_node_t*));
+        pr_memory_node_t** nodes = (pr_memory_node_t**)nimcp_calloc(count, sizeof(pr_memory_node_t*));
         if (!nodes) continue;
 
         size_t actual = 0;
@@ -780,7 +780,7 @@ int metamem_monitor_detect_at_risk(metamem_monitor_t monitor) {
         size_t count = z_ladder_get_count(monitor->z_ladder, (pr_memory_tier_t)tier);
         if (count == 0) continue;
 
-        pr_memory_node_t** nodes = (pr_memory_node_t**)nimcp_malloc(count * sizeof(pr_memory_node_t*));
+        pr_memory_node_t** nodes = (pr_memory_node_t**)nimcp_calloc(count, sizeof(pr_memory_node_t*));
         if (!nodes) continue;
 
         size_t actual = 0;
@@ -1593,11 +1593,11 @@ static float compute_memory_risk(metamem_monitor_t monitor, const pr_memory_node
                          monitor->config.risk_weight_entanglement +
                          monitor->config.risk_weight_salience;
 
-    float w_consol = monitor->config.risk_weight_consolidation / total_weight;
-    float w_time = monitor->config.risk_weight_time / total_weight;
-    float w_tier = monitor->config.risk_weight_tier / total_weight;
-    float w_entangle = monitor->config.risk_weight_entanglement / total_weight;
-    float w_salience = monitor->config.risk_weight_salience / total_weight;
+    float w_consol = monitor->config.risk_weight_consolidation / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
+    float w_time = monitor->config.risk_weight_time / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
+    float w_tier = monitor->config.risk_weight_tier / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
+    float w_entangle = monitor->config.risk_weight_entanglement / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
+    float w_salience = monitor->config.risk_weight_salience / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
 
     // 1. Consolidation risk: lower consolidation = higher risk
     float consol_risk = 1.0f - state.w;

@@ -299,7 +299,7 @@ int surprise_fep_forward_pe(
             /* Running average */
             float n = (float)bridge->stats.pe_events_forwarded;
             bridge->stats.avg_pe_forwarded =
-                bridge->stats.avg_pe_forwarded * ((n - 1.0f) / n) + weighted / n;
+                bridge->stats.avg_pe_forwarded * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) + weighted / (fabsf(n) > 1e-7f ? n : 1e-7f);
         }
     }
     nimcp_mutex_unlock(bridge->mutex);
@@ -374,7 +374,7 @@ int surprise_fep_modulate_precision(surprise_fep_bridge_t* bridge) {
     /* Running avg */
     float n = (float)bridge->stats.precision_modulations;
     bridge->stats.avg_precision_boost =
-        bridge->stats.avg_precision_boost * ((n - 1.0f) / n) + boost / n;
+        bridge->stats.avg_precision_boost * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) + boost / (fabsf(n) > 1e-7f ? n : 1e-7f);
     if (boost > bridge->stats.max_precision_boost) {
         bridge->stats.max_precision_boost = boost;
     }

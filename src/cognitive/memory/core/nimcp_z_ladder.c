@@ -1507,7 +1507,7 @@ size_t z_ladder_process_promotions(z_ladder_t ladder) {
 
         // Collect eligible nodes first (to avoid modifying while iterating)
         size_t eligible_count = 0;
-        uint64_t* eligible_ids = (uint64_t*)nimcp_malloc(tier->count * sizeof(uint64_t));
+        uint64_t* eligible_ids = (uint64_t*)nimcp_calloc(tier->count, sizeof(uint64_t));
         if (!eligible_ids) {
             continue;
         }
@@ -1564,7 +1564,7 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
 
         // Collect nodes to demote
         size_t demote_count = 0;
-        uint64_t* demote_ids = (uint64_t*)nimcp_malloc(tier->count * sizeof(uint64_t));
+        uint64_t* demote_ids = (uint64_t*)nimcp_calloc(tier->count, sizeof(uint64_t));
         if (!demote_ids) {
             continue;
         }
@@ -1603,7 +1603,7 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
 
     // Collect nodes to evict from Z0
     size_t evict_count = 0;
-    size_t* evict_indices = (size_t*)nimcp_malloc(z0->count * sizeof(size_t));
+    size_t* evict_indices = (size_t*)nimcp_calloc(z0->count, sizeof(size_t));
     if (evict_indices) {
         for (size_t i = 0; i < z0->count; i++) {
             /* Phase 8: Loop progress heartbeat */
@@ -1990,7 +1990,7 @@ z_ladder_error_t z_ladder_get_strongest(z_ladder_t ladder, pr_memory_tier_t tier
 
     // Copy pointers to temporary array
     size_t n = storage->count;
-    pr_memory_node_t** temp = (pr_memory_node_t**)nimcp_malloc(n * sizeof(pr_memory_node_t*));
+    pr_memory_node_t** temp = (pr_memory_node_t**)nimcp_calloc(n, sizeof(pr_memory_node_t*));
     if (!temp) {
         nimcp_mutex_unlock(&ladder->mutex);
         return Z_LADDER_ERROR_NO_MEMORY;
@@ -2042,7 +2042,7 @@ z_ladder_error_t z_ladder_get_weakest(z_ladder_t ladder, pr_memory_tier_t tier,
     z_tier_storage_t* storage = &ladder->tiers[tier];
 
     size_t n = storage->count;
-    pr_memory_node_t** temp = (pr_memory_node_t**)nimcp_malloc(n * sizeof(pr_memory_node_t*));
+    pr_memory_node_t** temp = (pr_memory_node_t**)nimcp_calloc(n, sizeof(pr_memory_node_t*));
     if (!temp) {
         nimcp_mutex_unlock(&ladder->mutex);
         return Z_LADDER_ERROR_NO_MEMORY;
@@ -2127,7 +2127,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
 
         // Collect nodes to demote
         size_t demote_count = 0;
-        uint64_t* demote_ids = (uint64_t*)nimcp_malloc(tier->count * sizeof(uint64_t));
+        uint64_t* demote_ids = (uint64_t*)nimcp_calloc(tier->count, sizeof(uint64_t));
         if (demote_ids) {
             for (size_t i = 0; i < tier->count; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -2174,7 +2174,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
         z_tier_storage_t* tier = &ladder->tiers[tier_idx];
 
         size_t promote_count = 0;
-        uint64_t* promote_ids = (uint64_t*)nimcp_malloc(tier->count * sizeof(uint64_t));
+        uint64_t* promote_ids = (uint64_t*)nimcp_calloc(tier->count, sizeof(uint64_t));
         if (promote_ids) {
             for (size_t i = 0; i < tier->count; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -2270,7 +2270,7 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
     // Process demotions (if not Z0)
     if (tier > PR_MEMORY_TIER_Z0) {
         size_t demote_count = 0;
-        uint64_t* demote_ids = (uint64_t*)nimcp_malloc(storage->count * sizeof(uint64_t));
+        uint64_t* demote_ids = (uint64_t*)nimcp_calloc(storage->count, sizeof(uint64_t));
         if (demote_ids) {
             for (size_t i = 0; i < storage->count; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -2301,7 +2301,7 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
     // Process promotions (if not Z3)
     if (tier < PR_MEMORY_TIER_Z3) {
         size_t promote_count = 0;
-        uint64_t* promote_ids = (uint64_t*)nimcp_malloc(storage->count * sizeof(uint64_t));
+        uint64_t* promote_ids = (uint64_t*)nimcp_calloc(storage->count, sizeof(uint64_t));
         if (promote_ids) {
             for (size_t i = 0; i < storage->count; i++) {
                 /* Phase 8: Loop progress heartbeat */
@@ -2374,7 +2374,7 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
 
         // Sort by emotional salience (emotional memories consolidate first)
         size_t n = z1->count;
-        pr_memory_node_t** sorted = (pr_memory_node_t**)nimcp_malloc(n * sizeof(pr_memory_node_t*));
+        pr_memory_node_t** sorted = (pr_memory_node_t**)nimcp_calloc(n, sizeof(pr_memory_node_t*));
         if (sorted) {
             memcpy(sorted, z1->nodes, n * sizeof(pr_memory_node_t*));
 
@@ -2434,7 +2434,7 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
 
         // Check for promotions after boost
         size_t promote_count = 0;
-        uint64_t* promote_ids = (uint64_t*)nimcp_malloc(z0->count * sizeof(uint64_t));
+        uint64_t* promote_ids = (uint64_t*)nimcp_calloc(z0->count, sizeof(uint64_t));
         if (promote_ids) {
             for (size_t i = 0; i < z0->count; i++) {
                 /* Phase 8: Loop progress heartbeat */

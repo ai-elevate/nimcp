@@ -84,7 +84,7 @@ static float clip_gradients(float* grad, uint32_t size, float max_norm)
 {
     float norm = compute_grad_norm(grad, size);
     if (norm > max_norm && norm > 0.0f) {
-        float scale = max_norm / norm;
+        float scale = max_norm / (fabsf(norm) > 1e-7f ? norm : 1e-7f);
         for (uint32_t i = 0; i < size; i++) {
             grad[i] *= scale;
         }
@@ -777,7 +777,7 @@ int vae_training_batch_step(vae_training_bridge_t* bridge,
     }
 
     /* Average */
-    float inv_batch = 1.0f / batch_size;
+    float inv_batch = 1.0f / (batch_size > 0 ? batch_size : 1);
     result->loss.total_loss = total_loss.total_loss * inv_batch;
     result->loss.vae_loss = total_loss.vae_loss * inv_batch;
     result->loss.snn_loss = total_loss.snn_loss * inv_batch;

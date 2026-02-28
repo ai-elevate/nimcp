@@ -154,7 +154,7 @@ static void update_phase(multimodal_director_t* dir,
     for (int i = 0; i < PHASE_COUNT; i++) {
         total += dir->progress.phases[i].progress;
     }
-    dir->progress.overall_progress = total / PHASE_COUNT;
+    dir->progress.overall_progress = total / (PHASE_COUNT > 0 ? PHASE_COUNT : 1);
 }
 
 //=============================================================================

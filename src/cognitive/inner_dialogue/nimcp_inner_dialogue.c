@@ -1184,7 +1184,7 @@ int inner_dialogue_engine_run(inner_dialogue_engine_t* engine,
         engine->stats.conversations_completed > 0) {
         float n = (float)engine->stats.conversations_completed;
         engine->stats.avg_turns_to_convergence +=
-            ((float)result->total_turns - engine->stats.avg_turns_to_convergence) / n;
+            ((float)result->total_turns - engine->stats.avg_turns_to_convergence) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     }
 
     return step_result;

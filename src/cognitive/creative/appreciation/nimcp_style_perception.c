@@ -210,7 +210,7 @@ static float compute_text_features(const char* text, size_t len, float* features
             if (c >= 'A' && c <= 'Z') c += 32;
             if (c == target) count++;
         }
-        features[f] = (float)count / len * 10.0f;
+        features[f] = (float)count / (len > 0 ? len : 1) * 10.0f;
     }
 
     return (float)num_features;

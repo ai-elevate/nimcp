@@ -248,7 +248,7 @@ static float mf_triangular(float a, float b, float c, float x) {
 }
 
 static float mf_gaussian(float center, float sigma, float x) {
-    float d = (x - center) / sigma;
+    float d = (x - center) / (fabsf(sigma) > 1e-7f ? sigma : 1e-7f);
     return expf(-0.5f * d * d);
 }
 
@@ -1373,10 +1373,10 @@ int financial_investor_archetype_evaluate(
 
     /* Running average conviction */
     float n = (float)arch->stats.total_evaluations;
-    arch->stats.avg_conviction = arch->stats.avg_conviction * ((n - 1.0f) / n)
-                                 + out_decision->conviction / n;
-    arch->stats.avg_decision_entropy = arch->stats.avg_decision_entropy * ((n - 1.0f) / n)
-                                       + out_decision->fuzzy_decision.decision_entropy / n;
+    arch->stats.avg_conviction = arch->stats.avg_conviction * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f))
+                                 + out_decision->conviction / (fabsf(n) > 1e-7f ? n : 1e-7f);
+    arch->stats.avg_decision_entropy = arch->stats.avg_decision_entropy * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f))
+                                       + out_decision->fuzzy_decision.decision_entropy / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     /* Antigen presentation for anomalies */
     /* Bias detected: emotional bias score > 0.7 (from emotional state) */
@@ -1450,7 +1450,7 @@ int financial_investor_archetype_evaluate_blend(
     /* Evaluate each archetype independently */
     for (uint32_t i = 0; i < count; i++) {
         out_blend->archetypes[i] = archetypes[i];
-        out_blend->weights[i] = weights[i] / weight_sum;
+        out_blend->weights[i] = weights[i] / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f);
 
         int rc = financial_investor_archetype_evaluate(
             arch, archetypes[i], input, &out_blend->decisions[i]);
@@ -1834,7 +1834,7 @@ int financial_investor_archetype_mirror_record(
             float old_acc = arch->stats.archetype_accuracy[aid];
             float n = (float)usage;
             arch->stats.archetype_accuracy[aid] =
-                old_acc * ((n - 1.0f) / n) + outcome_score / n;
+                old_acc * ((n - 1.0f) / (fabsf(n) > 1e-7f ? n : 1e-7f)) + outcome_score / (fabsf(n) > 1e-7f ? n : 1e-7f);
         }
     }
 

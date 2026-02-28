@@ -278,7 +278,7 @@ static float detect_periodicity(const float* data, uint32_t length) {
     variance /= length;
 
     if (variance < 1e-10f) return 0.0f;
-    return fmaxf(0.0f, fminf(1.0f, max_autocorr / variance));
+    return fmaxf(0.0f, fminf(1.0f, max_autocorr / (fabsf(variance) > 1e-7f ? variance : 1e-7f)));
 }
 
 /**
@@ -928,7 +928,7 @@ float intuitive_estimate_statement_plausibility(
 
             feature_sum += domain_features[i];
         }
-        float avg_feature = feature_sum / num_features;
+        float avg_feature = feature_sum / (fabsf(num_features) > 1e-7f ? num_features : 1e-7f);
         plausibility += 0.2f * avg_feature;
     }
 

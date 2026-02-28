@@ -168,7 +168,7 @@ static float compute_mean(const float* data, uint32_t n) {
 
         sum += data[i];
     }
-    return (float)(sum / n);
+    return (float)(sum / (fabsf(n) > 1e-7f ? n : 1e-7f));
 }
 
 /**
@@ -221,7 +221,7 @@ static theta_phase_window_t phase_to_window_internal(float phase) {
 
     /* Each window is 45° = π/4 radians */
     float window_size = M_PI / 4.0f;
-    int idx = (int)(phase / window_size);
+    int idx = (int)(phase / (fabsf(window_size) > 1e-7f ? window_size : 1e-7f));
 
     if (idx < 0) idx = 0;
     if (idx >= THETA_PHASE_WINDOW_COUNT) idx = THETA_PHASE_WINDOW_COUNT - 1;
@@ -705,9 +705,9 @@ bool theta_gamma_update(theta_gamma_manager_t manager, uint64_t dt_ns) {
     /* Update running mean gating strengths */
     float n = (float)mgr->stats.total_updates;
     mgr->stats.mean_encode_strength =
-        ((n - 1.0f) * mgr->stats.mean_encode_strength + encode_str) / n;
+        ((n - 1.0f) * mgr->stats.mean_encode_strength + encode_str) / (fabsf(n) > 1e-7f ? n : 1e-7f);
     mgr->stats.mean_retrieve_strength =
-        ((n - 1.0f) * mgr->stats.mean_retrieve_strength + retrieve_str) / n;
+        ((n - 1.0f) * mgr->stats.mean_retrieve_strength + retrieve_str) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     clear_error();
     return true;

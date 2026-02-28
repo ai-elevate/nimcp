@@ -1153,8 +1153,8 @@ NIMCP_EXPORT transactive_error_t transactive_lookup_constrained(
     }
 
     if (result_count > 0) {
-        result->recommended_agents = (uint64_t*)nimcp_malloc(result_count * sizeof(uint64_t));
-        result->agent_scores = (float*)nimcp_malloc(result_count * sizeof(float));
+        result->recommended_agents = (uint64_t*)nimcp_calloc(result_count, sizeof(uint64_t));
+        result->agent_scores = (float*)nimcp_calloc(result_count, sizeof(float));
 
         if (!result->recommended_agents || !result->agent_scores) {
             nimcp_free(result->recommended_agents);
@@ -1571,7 +1571,7 @@ NIMCP_EXPORT transactive_error_t transactive_compute_domain_coverage(
     coverage->total_coverage = fminf(1.0f, total_expertise);
     coverage->expert_count = expert_count;
     coverage->avg_expertise = expert_count > 0 ?
-        total_expertise / expert_count : 0.0f;
+        total_expertise / (expert_count > 0 ? expert_count : 1) : 0.0f;
     coverage->max_expertise = max_expertise;
     coverage->top_expert = top_expert;
     coverage->redundancy = expert_count > 1 ?

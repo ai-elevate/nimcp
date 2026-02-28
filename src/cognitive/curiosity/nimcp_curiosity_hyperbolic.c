@@ -171,8 +171,8 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
 
 
     uint32_t oversample_k = k * 3;
-    knowledge_item_t **neighbors = nimcp_malloc(oversample_k * sizeof(knowledge_item_t*));
-    float *distances = nimcp_malloc(oversample_k * sizeof(float));
+    knowledge_item_t **neighbors = nimcp_calloc(oversample_k, sizeof(knowledge_item_t*));
+    float *distances = nimcp_calloc(oversample_k, sizeof(float));
 
     if (!neighbors || !distances) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -198,7 +198,7 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
         float priority;
     } scored_item_t;
 
-    scored_item_t *scored = nimcp_malloc(num_neighbors * sizeof(scored_item_t));
+    scored_item_t *scored = nimcp_calloc(num_neighbors, sizeof(scored_item_t));
     if (!scored) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "curiosity_find_interesting_hyperbolic: scored allocation failed");

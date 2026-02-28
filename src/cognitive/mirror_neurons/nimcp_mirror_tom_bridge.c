@@ -709,7 +709,7 @@ int mirror_tom_update_mental_state(mirror_tom_bridge_t bridge,
 
     /* Update average */
     float n = (float)bridge->stats.resonance_modulations;
-    bridge->stats.avg_resonance_gain = (bridge->stats.avg_resonance_gain * (n - 1) + gain) / n;
+    bridge->stats.avg_resonance_gain = (bridge->stats.avg_resonance_gain * (n - 1) + gain) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     /* Check deception suppression */
     if (bridge->config.enable_deception_suppression &&

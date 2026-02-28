@@ -746,6 +746,155 @@
       "poll_interval_s": 300,
       "max_examples": 0,
       "description": "Live news from 22 RSS feeds (Reuters, BBC, NYT, NPR, Al Jazeera, etc.) — continuous, never finishes"
+    },
+
+    {
+      "name": "mmlu_electrical_engineering",
+      "domain": "electrical_engineering",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "electrical_engineering",
+      "description": "MMLU electrical engineering — circuits, signals, electronics (~145 Q)"
+    },
+    {
+      "name": "mmlu_computer_security",
+      "domain": "electrical_engineering",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "computer_security",
+      "description": "MMLU computer security — hardware/software security (~100 Q)"
+    },
+    {
+      "name": "arxiv_eess",
+      "domain": "electrical_engineering",
+      "priority": 2,
+      "type": "arxiv",
+      "category": "eess",
+      "max_examples": 50000,
+      "description": "arXiv Electrical Engineering & Systems Science paper abstracts"
+    },
+
+    {
+      "name": "mmlu_machine_learning",
+      "domain": "mechanical_engineering",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "machine_learning",
+      "description": "MMLU machine learning — ML fundamentals and optimization (~112 Q, overlap with mech eng optimization)"
+    },
+    {
+      "name": "mmlu_conceptual_physics",
+      "domain": "mechanical_engineering",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "conceptual_physics",
+      "description": "MMLU conceptual physics — mechanics, thermodynamics, fluid dynamics (~235 Q)"
+    },
+    {
+      "name": "arxiv_mech_eng",
+      "domain": "mechanical_engineering",
+      "priority": 2,
+      "type": "arxiv",
+      "category": "physics.class-ph",
+      "max_examples": 50000,
+      "description": "arXiv classical physics — mechanics, thermodynamics, material behavior"
+    },
+
+    {
+      "name": "mmlu_college_chemistry_materials",
+      "domain": "materials_science",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "college_chemistry",
+      "description": "MMLU college chemistry — bonding, crystal structures, material properties"
+    },
+    {
+      "name": "mmlu_college_physics_materials",
+      "domain": "materials_science",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "college_physics",
+      "description": "MMLU college physics — solid state physics, material mechanics"
+    },
+    {
+      "name": "arxiv_cond_mat",
+      "domain": "materials_science",
+      "priority": 1,
+      "type": "arxiv",
+      "category": "cond-mat",
+      "max_examples": 50000,
+      "description": "arXiv Condensed Matter — materials science, crystallography, superconductors, polymers"
+    },
+    {
+      "name": "pubmed_materials",
+      "domain": "materials_science",
+      "priority": 2,
+      "type": "pubmed",
+      "query": "materials science biomaterials nanocomposites alloy",
+      "max_examples": 50000,
+      "description": "PubMed materials science abstracts — biomaterials, composites, metallurgy"
+    },
+
+    {
+      "name": "arxiv_surface_physics",
+      "domain": "surface_physics",
+      "priority": 1,
+      "type": "arxiv",
+      "category": "cond-mat.mtrl-sci",
+      "max_examples": 50000,
+      "description": "arXiv Materials Science — surface physics, thin films, interfaces, epitaxy"
+    },
+    {
+      "name": "arxiv_surface_physics_soft",
+      "domain": "surface_physics",
+      "priority": 1,
+      "type": "arxiv",
+      "category": "cond-mat.soft",
+      "max_examples": 50000,
+      "description": "arXiv Soft Condensed Matter — surface tension, wetting, colloids, polymers at interfaces"
+    },
+    {
+      "name": "mmlu_college_physics_surface",
+      "domain": "surface_physics",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "college_physics",
+      "description": "MMLU college physics — surface phenomena, electrostatics, optics at interfaces"
+    },
+
+    {
+      "name": "arxiv_surface_chemistry",
+      "domain": "surface_chemistry",
+      "priority": 1,
+      "type": "arxiv",
+      "category": "physics.chem-ph",
+      "max_examples": 50000,
+      "description": "arXiv Chemical Physics — surface reactions, catalysis, adsorption, electrochemistry"
+    },
+    {
+      "name": "mmlu_college_chemistry_surface",
+      "domain": "surface_chemistry",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "college_chemistry",
+      "description": "MMLU college chemistry — surface chemistry, catalysis, electrochemistry"
+    },
+    {
+      "name": "pubmed_surface_chemistry",
+      "domain": "surface_chemistry",
+      "priority": 2,
+      "type": "pubmed",
+      "query": "surface chemistry catalysis adsorption electrochemistry interface",
+      "max_examples": 50000,
+      "description": "PubMed surface chemistry abstracts — catalysis, coatings, functionalization"
     }
   ],
   "training_order": [
@@ -762,6 +911,11 @@
     "biology",
     "chemistry",
     "physics",
+    "materials_science",
+    "electrical_engineering",
+    "mechanical_engineering",
+    "surface_physics",
+    "surface_chemistry",
     "humanities",
     "finance",
     "cryptocurrency",
@@ -777,13 +931,13 @@
   "notes": {
     "curriculum_strategy": "All 23 domains taught simultaneously by parallel instructor agents. Training order used for staggered startup.",
     "dataset_selection": "ALL datasets verified streaming=True with datasets v4.5+ — no legacy scripts, no gated access",
-    "coverage": "23 domains: 20 text (language, literature, programming, ethics, philosophy, history, psychology, anthropology, social_sciences, medicine, biology, chemistry, physics, humanities, finance, cryptocurrency, sociology, paleontology, economics, earth_sciences) + 3 multimodal (audio, visual, speech)",
-    "new_in_v5": "Added 10 domains: humanities (3 datasets), finance (3), cryptocurrency (2), sociology (3), paleontology (2), economics (2), earth_sciences (2), audio (3), visual (3), speech (3)",
+    "coverage": "29 domains: 25 text (language, literature, programming, ethics, philosophy, history, psychology, anthropology, social_sciences, medicine, biology, chemistry, physics, materials_science, electrical_engineering, mechanical_engineering, surface_physics, surface_chemistry, humanities, finance, cryptocurrency, sociology, paleontology, economics, earth_sciences) + 3 multimodal (audio, visual, speech) + 1 live (news)",
+    "new_in_v6": "Added 5 engineering/science domains: materials_science (4 datasets), electrical_engineering (3), mechanical_engineering (3), surface_physics (3), surface_chemistry (3)",
     "multimodal_note": "Audio/visual/speech datasets require sensory cortex Python bindings (audio_cortex_process, visual_cortex_process, speech_cortex_process). Fallback feature extraction used if bindings unavailable.",
     "api_sources": "7 streaming API sources: wikipedia (MediaWiki API), arxiv (arXiv API), stackexchange (SE API), pubmed (NCBI E-utilities), gutenberg (HTTP), conceptnet (REST API), news_rss (22 RSS feeds). All stream over HTTP — zero disk footprint.",
     "live_news": "news_rss streams continuously from 22 RSS feeds (Reuters, BBC, NYT, NPR, Al Jazeera, Nature, Ars Technica, HN, Guardian). Polls every 5min, deduplicates by URL, never finishes. Keeps Athena current with world events.",
     "estimated_total_size": "~60GB+ (text ~50GB + audio/visual/speech ~10GB + local ~200MB + API/news streams ~0 disk)",
-    "total_datasets": 81,
-    "version": "v5.3 — 24 domains, parallel school training, multimodal + self-knowledge + streaming APIs + live news"
+    "total_datasets": 97,
+    "version": "v6.0 — 29 domains, parallel school training, multimodal + self-knowledge + streaming APIs + live news + engineering/materials science"
   }
 }

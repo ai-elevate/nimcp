@@ -542,13 +542,13 @@ int feedback_analyze_loop(
     }
 
     float n = (float)hist->count;
-    analysis->mean_value = sum / n;
-    analysis->variance = (sum_sq / n) - (analysis->mean_value * analysis->mean_value);
+    analysis->mean_value = sum / (fabsf(n) > 1e-7f ? n : 1e-7f);
+    analysis->variance = (sum_sq / (fabsf(n) > 1e-7f ? n : 1e-7f)) - (analysis->mean_value * analysis->mean_value);
     analysis->min_value = min_val;
     analysis->max_value = max_val;
-    analysis->avg_latency_ms = sum_latency / n;
+    analysis->avg_latency_ms = sum_latency / (fabsf(n) > 1e-7f ? n : 1e-7f);
     analysis->max_latency_ms = max_latency;
-    analysis->success_rate = (float)success_count / n;
+    analysis->success_rate = (float)success_count / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     /* Compute trend using linear regression on recent samples */
     if (trend_count >= 3) {

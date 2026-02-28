@@ -109,7 +109,7 @@ static void compute_cross_modal_attention(nimcp_world_model_t* wm) {
 
     /* Compute coherence (how consistent are modalities) */
     float variance = 0.0f;
-    float mean = 1.0f / WM_MODALITY_COUNT;
+    float mean = 1.0f / (fabsf(WM_MODALITY_COUNT) > 1e-7f ? WM_MODALITY_COUNT : 1e-7f);
     for (int i = 0; i < WM_MODALITY_COUNT; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && WM_MODALITY_COUNT > 256) {
@@ -284,7 +284,7 @@ wm_error_t wm_init(nimcp_world_model_t* wm) {
                              (float)(i + 1) / (float)WM_MODALITY_COUNT);
         }
 
-        wm->attention.modality_weights[i] = 1.0f / WM_MODALITY_COUNT;
+        wm->attention.modality_weights[i] = 1.0f / (fabsf(WM_MODALITY_COUNT) > 1e-7f ? WM_MODALITY_COUNT : 1e-7f);
     }
 
     /* Initialize stats */

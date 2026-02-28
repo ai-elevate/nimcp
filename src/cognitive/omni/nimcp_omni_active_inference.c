@@ -517,7 +517,7 @@ int omni_ai_generate_random_policies(omni_active_inference_t* ai,
 
     for (uint32_t p = 0; p < num_policies && ai->num_policies < OMNI_AI_MAX_POLICIES; p++) {
         /* Allocate random actions */
-        float* actions = nimcp_malloc(horizon * action_dim * sizeof(float));
+        float* actions = nimcp_calloc((size_t)horizon * action_dim, sizeof(float));
         if (!actions) continue;
 
         for (uint32_t i = 0; i < horizon * action_dim; i++) {
@@ -642,7 +642,7 @@ int omni_ai_add_goal(omni_active_inference_t* ai,
     goal->goal_precision = precision;
     goal->active = true;
 
-    goal->preferred_obs = nimcp_malloc(obs_dim * sizeof(float));
+    goal->preferred_obs = nimcp_calloc(obs_dim, sizeof(float));
     if (!goal->preferred_obs) {
         nimcp_mutex_unlock(ai->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_clear_policies: goal->preferred_obs is NULL");
@@ -814,8 +814,8 @@ int omni_ai_select_action_forward(omni_active_inference_t* ai,
     }
 
     /* Compute policy probabilities via softmax */
-    float* efe_vals = nimcp_malloc(ai->num_policies * sizeof(float));
-    float* probs = nimcp_malloc(ai->num_policies * sizeof(float));
+    float* efe_vals = nimcp_calloc(ai->num_policies, sizeof(float));
+    float* probs = nimcp_calloc(ai->num_policies, sizeof(float));
     if (!efe_vals || !probs) {
         if (efe_vals) nimcp_free(efe_vals);
         if (probs) nimcp_free(probs);
@@ -1359,7 +1359,7 @@ int omni_ai_softmax_efe(const float* efe,
         }
     } else {
         /* Uniform if all zero */
-        float uniform = 1.0f / n;
+        float uniform = 1.0f / (fabsf(n) > 1e-7f ? n : 1e-7f);
         for (uint32_t i = 0; i < n; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && n > 256) {

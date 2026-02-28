@@ -286,7 +286,7 @@ int financial_wm_bridge_create(financial_wm_bridge_t** bridge,
     b->capacity = b->config.capacity;
 
     /* Allocate item storage */
-    b->items = (fin_wm_item_t*)nimcp_malloc(sizeof(fin_wm_item_t) * b->capacity);
+    b->items = (fin_wm_item_t*)nimcp_calloc(b->capacity, sizeof(fin_wm_item_t));
     if (!b->items) {
         set_error("Failed to allocate item storage");
         nimcp_free(b);
@@ -294,7 +294,7 @@ int financial_wm_bridge_create(financial_wm_bridge_t** bridge,
             "Failed to allocate working memory item storage");
         return FIN_WM_ERR_MEMORY;
     }
-    memset(b->items, 0, sizeof(fin_wm_item_t) * b->capacity);
+    /* calloc zero-initializes */
     b->item_count = 0;
 
     /* Initialize flags from config */

@@ -582,7 +582,7 @@ static nimcp_error_t process_pending_events(
 
         /* Store threat signature if we have capacity */
         if (event->threat_signature && bridge->signature_count < bridge->signature_capacity) {
-            float* sig_copy = nimcp_malloc(event->signature_dim * sizeof(float));
+            float* sig_copy = nimcp_calloc(event->signature_dim, sizeof(float));
             if (sig_copy) {
                 memcpy(sig_copy, event->threat_signature,
                        event->signature_dim * sizeof(float));
@@ -1405,21 +1405,21 @@ nimcp_error_t omni_wm_security_immune_bridge_process_security_event(
 
         /* Copy state vectors */
         if (event->pre_event_state && event->state_dim > 0) {
-            dest->pre_event_state = nimcp_malloc(event->state_dim * sizeof(float));
+            dest->pre_event_state = nimcp_calloc(event->state_dim, sizeof(float));
             if (dest->pre_event_state) {
                 memcpy(dest->pre_event_state, event->pre_event_state,
                        event->state_dim * sizeof(float));
             }
         }
         if (event->post_event_state && event->state_dim > 0) {
-            dest->post_event_state = nimcp_malloc(event->state_dim * sizeof(float));
+            dest->post_event_state = nimcp_calloc(event->state_dim, sizeof(float));
             if (dest->post_event_state) {
                 memcpy(dest->post_event_state, event->post_event_state,
                        event->state_dim * sizeof(float));
             }
         }
         if (event->threat_signature && event->signature_dim > 0) {
-            dest->threat_signature = nimcp_malloc(event->signature_dim * sizeof(float));
+            dest->threat_signature = nimcp_calloc(event->signature_dim, sizeof(float));
             if (dest->threat_signature) {
                 memcpy(dest->threat_signature, event->threat_signature,
                        event->signature_dim * sizeof(float));

@@ -1014,7 +1014,7 @@ int financial_curiosity_bridge_select_exploration(
         case FIN_SELECTION_SOFTMAX: {
             /* Softmax/Boltzmann selection */
             float temperature = bridge->config.temperature * (2.0f - health_mod);
-            float* probs = (float*)nimcp_malloc(num_candidates * sizeof(float));
+            float* probs = (float*)nimcp_calloc(num_candidates, sizeof(float));
             if (!probs) {
                 bridge->operational_state = FIN_CURIOSITY_STATE_ERROR;
                 return FIN_CURIOSITY_ERR_NO_MEMORY;

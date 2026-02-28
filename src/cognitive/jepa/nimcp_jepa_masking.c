@@ -253,7 +253,7 @@ jepa_mask_generator_t* jepa_mask_generator_create(const jepa_mask_config_t* conf
 
     /* Allocate temp buffer (for largest expected mask) */
     gen->temp_buffer_size = JEPA_MASK_MAX_WIDTH * JEPA_MASK_MAX_HEIGHT;
-    gen->temp_buffer = nimcp_malloc(gen->temp_buffer_size * sizeof(float));
+    gen->temp_buffer = nimcp_calloc(gen->temp_buffer_size, sizeof(float));
     if (!gen->temp_buffer) {
         bridge_base_cleanup(&gen->base);
         nimcp_free(gen);
@@ -335,7 +335,7 @@ jepa_mask_t* jepa_mask_create(uint32_t width, uint32_t height, uint32_t temporal
     mask->temporal = temporal;
     mask->total_size = width * height * temporal;
 
-    mask->data = nimcp_malloc(mask->total_size * sizeof(float));
+    mask->data = nimcp_calloc(mask->total_size, sizeof(float));
     if (!mask->data) {
         nimcp_free(mask);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mask_create: mask->data is NULL");
@@ -343,7 +343,7 @@ jepa_mask_t* jepa_mask_create(uint32_t width, uint32_t height, uint32_t temporal
     }
 
     /* Initialize to all visible (0) */
-    memset(mask->data, 0, mask->total_size * sizeof(float));
+    /* calloc zero-initializes */
     mask->mask_ratio = 0.0f;
     mask->num_masked = 0;
     mask->num_visible = mask->total_size;

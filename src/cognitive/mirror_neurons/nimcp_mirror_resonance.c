@@ -251,7 +251,7 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
 
     // Allocate action map
     resonance->action_map_size = max_channels * 2;
-    resonance->action_map = (uint32_t*)nimcp_malloc(resonance->action_map_size * sizeof(uint32_t));
+    resonance->action_map = (uint32_t*)nimcp_calloc(resonance->action_map_size, sizeof(uint32_t));
     if (!resonance->action_map) {
         LOG_ERROR("Failed to allocate action map");
         nimcp_free(resonance->channels);

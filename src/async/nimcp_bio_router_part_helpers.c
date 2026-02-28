@@ -95,11 +95,10 @@ static nimcp_error_t bio_msg_queue_grow(bio_msg_queue_t* queue) {
     // trylock returning non-zero (EBUSY) is expected - mutex is properly held
 #endif
 
-    // Check if already at max capacity
+    // Check if already at max capacity — return error, don't THROW (this is normal backpressure)
     if (queue->capacity >= MAX_INBOX_MESSAGES) {
         LOG_DEBUG("Queue at max capacity %u, cannot grow further", MAX_INBOX_MESSAGES);
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE,
-                          "bio_msg_queue_grow: queue at max capacity");
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     // Calculate new capacity (double, but cap at max)
@@ -186,10 +185,9 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
                 // Successfully grew, can now enqueue
                 break;
             }
-            // Growth failed (at max capacity), return backpressure error
+            // Growth failed (at max capacity) — return error, don't THROW (normal backpressure)
             nimcp_platform_mutex_unlock(&queue->mutex);
-            NIMCP_CHECK_THROW(false, NIMCP_ERROR_QUEUE_FULL,
-                              "bio_msg_queue_enqueue: queue full and cannot grow");
+            return NIMCP_ERROR_QUEUE_FULL;
         }
 
         // Blocking mode: wait for space

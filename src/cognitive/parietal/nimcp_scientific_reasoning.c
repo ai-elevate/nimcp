@@ -709,7 +709,7 @@ float scientific_compare_hypotheses(
     float post_ratio = (h1->posterior + EPSILON) / (h2->posterior + EPSILON);
     float prior_ratio = (h1->prior + EPSILON) / (h2->prior + EPSILON);
 
-    return post_ratio / prior_ratio;
+    return post_ratio / (fabsf(prior_ratio) > 1e-7f ? prior_ratio : 1e-7f);
 }
 
 uint32_t scientific_best_hypothesis(
@@ -807,7 +807,7 @@ causal_graph_t* scientific_create_causal_graph(
     }
 
     /* Allocate adjacency matrix */
-    graph->adjacency = nimcp_malloc(num_variables * sizeof(float*));
+    graph->adjacency = nimcp_calloc(num_variables, sizeof(float*));
     if (!graph->adjacency) {
         scientific_destroy_causal_graph(graph);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_create_causal_graph: graph->adjacency is NULL");
@@ -880,7 +880,7 @@ int scientific_learn_causal_structure(
     uint32_t n = graph->num_variables;
 
     /* Phase 1: Compute correlation matrix and create skeleton */
-    float** corr = nimcp_malloc(n * sizeof(float*));
+    float** corr = nimcp_calloc(n, sizeof(float*));
     if (!corr) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_learn_causal_structure: corr alloc failed");
         nimcp_mutex_unlock(sr->lock);
@@ -911,7 +911,7 @@ int scientific_learn_causal_structure(
                              (float)(i + 1) / (float)n);
         }
 
-        float* col_i = nimcp_malloc(num_samples * sizeof(float));
+        float* col_i = nimcp_calloc(num_samples, sizeof(float));
         if (!col_i) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_learn_causal_structure: col_i alloc failed");
             for (uint32_t k = 0; k < n; k++) nimcp_free(corr[k]);
@@ -930,7 +930,7 @@ int scientific_learn_causal_structure(
         }
 
         for (uint32_t j = i + 1; j < n; j++) {
-            float* col_j = nimcp_malloc(num_samples * sizeof(float));
+            float* col_j = nimcp_calloc(num_samples, sizeof(float));
             if (!col_j) {
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_learn_causal_structure: col_j alloc failed");
                 nimcp_free(col_i);
@@ -1120,8 +1120,8 @@ int scientific_suggest_experiment(
     design->name[sizeof(design->name) - 1] = '\0';
 
     /* Find causes of target */
-    design->treatment_vars = nimcp_malloc(graph->num_variables * sizeof(uint32_t));
-    design->control_vars = nimcp_malloc(graph->num_variables * sizeof(uint32_t));
+    design->treatment_vars = nimcp_calloc(graph->num_variables, sizeof(uint32_t));
+    design->control_vars = nimcp_calloc(graph->num_variables, sizeof(uint32_t));
     design->outcome_vars = nimcp_malloc(sizeof(uint32_t));
 
     design->outcome_vars[0] = target_effect_id;

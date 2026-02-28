@@ -732,7 +732,7 @@ int analogical_evaluate_analogy(
         }
     }
     quality->structural_similarity = (entity_count > 0) ?
-                                      entity_coverage / entity_count : 0.0f;
+                                      entity_coverage / (entity_count > 0 ? entity_count : 1) : 0.0f;
 
     /* Relational similarity */
     quality->relational_similarity = analogy->relational_depth;

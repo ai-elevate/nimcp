@@ -426,7 +426,7 @@ NIMCP_API nimcp_error_t quantum_mcts_plan(
     if (qmcts->current_state) {
         nimcp_free(qmcts->current_state);
     }
-    qmcts->current_state = (float*)nimcp_malloc(state_dim * sizeof(float));
+    qmcts->current_state = (float*)nimcp_calloc(state_dim, sizeof(float));
     if (qmcts->current_state) {
         memcpy(qmcts->current_state, state, state_dim * sizeof(float));
         qmcts->current_state_dim = state_dim;
@@ -690,7 +690,7 @@ NIMCP_API float quantum_mcts_rollout(
 
         float* temp_state = NULL;
         if (node->state_dim > 0) {
-            temp_state = (float*)nimcp_malloc(node->state_dim * sizeof(float));
+            temp_state = (float*)nimcp_calloc(node->state_dim, sizeof(float));
             if (temp_state) {
                 memcpy(temp_state, node->state, node->state_dim * sizeof(float));
             }
@@ -1270,7 +1270,7 @@ static uint32_t create_node(quantum_mcts_t* qmcts, uint32_t parent_id,
 
     /* Copy state */
     if (state && state_dim > 0) {
-        node->state = (float*)nimcp_malloc(state_dim * sizeof(float));
+        node->state = (float*)nimcp_calloc(state_dim, sizeof(float));
         if (node->state) {
             memcpy(node->state, state, state_dim * sizeof(float));
             node->state_dim = state_dim;

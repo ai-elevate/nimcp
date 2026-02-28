@@ -1405,7 +1405,7 @@ NIMCP_EXPORT sr_error_t sr_optimize_schedule(
         float value;  // retention impact per minute
     } item_value_t;
 
-    item_value_t* items = (item_value_t*)nimcp_malloc(due_count * sizeof(item_value_t));
+    item_value_t* items = (item_value_t*)nimcp_calloc(due_count, sizeof(item_value_t));
     if (!items) {
         return SR_ERROR_NO_MEMORY;
     }

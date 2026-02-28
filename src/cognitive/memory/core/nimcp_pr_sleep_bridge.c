@@ -1046,7 +1046,7 @@ NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
         }
     } else {
         // Random order - use simple Fisher-Yates shuffle
-        uint64_t* shuffled = (uint64_t*)nimcp_malloc(count * sizeof(uint64_t));
+        uint64_t* shuffled = (uint64_t*)nimcp_calloc(count, sizeof(uint64_t));
         if (!shuffled) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate shuffled");
 
@@ -1988,7 +1988,7 @@ static int consolidate_n3_sws(pr_sleep_bridge_t bridge) {
                        count : bridge->config.max_replay_per_cycle;
 
     // Build replay sequence
-    uint64_t* replay_ids = (uint64_t*)nimcp_malloc(to_replay * sizeof(uint64_t));
+    uint64_t* replay_ids = (uint64_t*)nimcp_calloc(to_replay, sizeof(uint64_t));
     if (!replay_ids) {
         return 0;
     }
@@ -2042,7 +2042,7 @@ static int consolidate_rem(pr_sleep_bridge_t bridge) {
         // Replay with random order (creative recombination)
         size_t to_replay = count < 30 ? count : 30;
 
-        uint64_t* replay_ids = (uint64_t*)nimcp_malloc(to_replay * sizeof(uint64_t));
+        uint64_t* replay_ids = (uint64_t*)nimcp_calloc(to_replay, sizeof(uint64_t));
         if (replay_ids) {
             for (size_t i = 0; i < to_replay; i++) {
                 /* Phase 8: Loop progress heartbeat */

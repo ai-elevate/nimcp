@@ -424,7 +424,7 @@ static float compute_anomaly_score(const float* predicted, const float* observed
     float norm = sqrtf(sum_sq_pred);
     if (norm < 1e-6f) norm = 1.0f;
 
-    float distance = sqrtf(sum_sq_diff) / norm;
+    float distance = sqrtf(sum_sq_diff) / (fabsf(norm) > 1e-7f ? norm : 1e-7f);
 
     /* Convert to anomaly score [0,1] using sigmoid-like function */
     float score = 2.0f / (1.0f + expf(-distance)) - 1.0f;

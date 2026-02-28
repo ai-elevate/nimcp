@@ -831,7 +831,7 @@ int pr_curriculum_compute_difficulty(
                 result->total_difficulty =
                     (bridge->config.resonance_weight * result->resonance_difficulty +
                      bridge->config.entanglement_weight * result->entanglement_difficulty +
-                     bridge->config.quaternion_weight * result->quaternion_difficulty) / total_weight;
+                     bridge->config.quaternion_weight * result->quaternion_difficulty) / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
             } else {
                 result->total_difficulty = (result->resonance_difficulty +
                                            result->entanglement_difficulty +
@@ -1000,7 +1000,7 @@ int pr_curriculum_order_by_resonance(
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_order_", 0.0f);
 
 
-    sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
+    sample_score_t* scores = nimcp_calloc(count, sizeof(sample_score_t));
     if (!scores) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_resonance: scores is NULL");
         return -1;
@@ -1037,7 +1037,7 @@ int pr_curriculum_order_by_resonance(
     qsort(scores, count, sizeof(sample_score_t), compare_scores_desc);
 
     /* Reorder samples in place using temporary buffer */
-    pr_curriculum_sample_t* temp = nimcp_malloc(count * sizeof(pr_curriculum_sample_t));
+    pr_curriculum_sample_t* temp = nimcp_calloc(count, sizeof(pr_curriculum_sample_t));
     if (!temp) {
         nimcp_free(scores);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_resonance: temp is NULL");
@@ -1077,7 +1077,7 @@ int pr_curriculum_order_by_difficulty(
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_order_", 0.0f);
 
 
-    sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
+    sample_score_t* scores = nimcp_calloc(count, sizeof(sample_score_t));
     if (!scores) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_difficulty: scores is NULL");
         return -1;
@@ -1119,7 +1119,7 @@ int pr_curriculum_order_by_difficulty(
     }
 
     /* Reorder samples */
-    pr_curriculum_sample_t* temp = nimcp_malloc(count * sizeof(pr_curriculum_sample_t));
+    pr_curriculum_sample_t* temp = nimcp_calloc(count, sizeof(pr_curriculum_sample_t));
     if (!temp) {
         nimcp_free(scores);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_difficulty: temp is NULL");
@@ -1159,7 +1159,7 @@ int pr_curriculum_order_by_curiosity(
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_order_", 0.0f);
 
 
-    sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
+    sample_score_t* scores = nimcp_calloc(count, sizeof(sample_score_t));
     if (!scores) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_curiosity: scores is NULL");
         return -1;
@@ -1196,7 +1196,7 @@ int pr_curriculum_order_by_curiosity(
     qsort(scores, count, sizeof(sample_score_t), compare_scores_desc);
 
     /* Reorder samples */
-    pr_curriculum_sample_t* temp = nimcp_malloc(count * sizeof(pr_curriculum_sample_t));
+    pr_curriculum_sample_t* temp = nimcp_calloc(count, sizeof(pr_curriculum_sample_t));
     if (!temp) {
         nimcp_free(scores);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_curiosity: temp is NULL");
@@ -1248,7 +1248,7 @@ int pr_curriculum_select_next_batch(
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute difficulties and scores for all samples */
-    sample_score_t* scores = nimcp_malloc(sample_count * sizeof(sample_score_t));
+    sample_score_t* scores = nimcp_calloc(sample_count, sizeof(sample_score_t));
     if (!scores) {
         nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_select_next_batch: scores is NULL");
@@ -1428,7 +1428,7 @@ int pr_curriculum_select_balanced_batch(
                              (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
         }
 
-        tier_targets[t] = (uint32_t)((tier_weights[t] / total_weight) * batch_size);
+        tier_targets[t] = (uint32_t)((tier_weights[t] / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f)) * batch_size);
         assigned += tier_targets[t];
     }
     /* Assign remainder to Z1 */
@@ -1445,7 +1445,7 @@ int pr_curriculum_select_balanced_batch(
                              (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
         }
 
-        tier_indices[t] = nimcp_malloc(sample_count * sizeof(uint32_t));
+        tier_indices[t] = nimcp_calloc(sample_count, sizeof(uint32_t));
         if (!tier_indices[t]) {
             for (int j = 0; j < t; j++) nimcp_free(tier_indices[j]);
             nimcp_mutex_unlock(bridge->base.mutex);
@@ -1570,7 +1570,7 @@ int pr_curriculum_select_most_curious(
     if (k > sample_count) k = sample_count;
 
     /* Compute curiosity scores and sort */
-    sample_score_t* scores = nimcp_malloc(sample_count * sizeof(sample_score_t));
+    sample_score_t* scores = nimcp_calloc(sample_count, sizeof(sample_score_t));
     if (!scores) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_select_most_curious: scores is NULL");
         return -1;

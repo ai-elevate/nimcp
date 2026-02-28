@@ -614,7 +614,7 @@ int ensemble_pink_update_uncertainty(
     float total = uncertainty->epistemic + uncertainty->aleatoric;
     if (total > 1e-6f) {
         bridge->uncertainty.epistemic_aleatoric_ratio =
-            uncertainty->epistemic / total;
+            uncertainty->epistemic / (fabsf(total) > 1e-7f ? total : 1e-7f);
     } else {
         bridge->uncertainty.epistemic_aleatoric_ratio = 0.5f;
     }

@@ -178,7 +178,7 @@ static float weighted_average(const float* values, const float* weights, size_t 
     }
 
     if (weight_sum > PR_OMNI_EPSILON) {
-        return sum / weight_sum;
+        return sum / (fabsf(weight_sum) > 1e-7f ? weight_sum : 1e-7f);
     }
     return 0.0f;
 }

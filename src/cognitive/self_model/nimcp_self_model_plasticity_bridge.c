@@ -509,8 +509,8 @@ int self_model_plasticity_learn(
 
     /* Update running mean */
     float n = (float)bridge->stats.weight_updates;
-    bridge->stats.mean_weight_change = bridge->stats.mean_weight_change * ((n - 1) / n) +
-                                       fabsf(actual_delta) / n;
+    bridge->stats.mean_weight_change = bridge->stats.mean_weight_change * ((n - 1) / (fabsf(n) > 1e-7f ? n : 1e-7f)) +
+                                       fabsf(actual_delta) / (fabsf(n) > 1e-7f ? n : 1e-7f);
 
     syn->last_update_us = bridge->current_time_us;
     syn->update_count++;

@@ -2536,9 +2536,9 @@ nimcp_error_t omni_wm_parietal_normalize(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    result->x = v->x / len;
-    result->y = v->y / len;
-    result->z = v->z / len;
+    result->x = v->x / (fabsf(len) > 1e-7f ? len : 1e-7f);
+    result->y = v->y / (fabsf(len) > 1e-7f ? len : 1e-7f);
+    result->z = v->z / (fabsf(len) > 1e-7f ? len : 1e-7f);
 
     return NIMCP_SUCCESS;
 }

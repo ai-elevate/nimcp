@@ -1,3 +1,4 @@
+#include <math.h>
 // nimcp_omni_world_model_part_lifecycle.c - lifecycle functions
 // Part of nimcp_omni_world_model.c (SRP #include-based split)
 // DO NOT compile separately - #included from nimcp_omni_world_model.c
@@ -476,7 +477,7 @@ omni_wm_mdn_prediction_t* omni_wm_mdn_create(uint32_t num_components, uint32_t d
         pred->components[k].mean = nimcp_calloc(dim, sizeof(float));
         pred->components[k].std = nimcp_calloc(dim, sizeof(float));
         pred->components[k].dim = dim;
-        pred->components[k].weight = 1.0f / num_components;
+        pred->components[k].weight = 1.0f / (fabsf(num_components) > 1e-7f ? num_components : 1e-7f);
 
         if (!pred->components[k].mean || !pred->components[k].std) {
             omni_wm_mdn_destroy(pred);

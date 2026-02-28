@@ -428,7 +428,7 @@ static void update_feature_statistics(gist_system_t system,
 
         // Update running mean (for frequency)
         float old_mean = system->feature_frequency[i];
-        float new_mean = old_mean + (value - old_mean) / n;
+        float new_mean = old_mean + (value - old_mean) / (fabsf(n) > 1e-7f ? n : 1e-7f);
         system->feature_frequency[i] = new_mean;
 
         // Update variance using Welford's algorithm
@@ -436,7 +436,7 @@ static void update_feature_statistics(gist_system_t system,
             float old_var = system->feature_variance[i];
             float delta = value - old_mean;
             float delta2 = value - new_mean;
-            float new_var = old_var + (delta * delta2 - old_var) / n;
+            float new_var = old_var + (delta * delta2 - old_var) / (fabsf(n) > 1e-7f ? n : 1e-7f);
             system->feature_variance[i] = fmaxf(0.0f, new_var);
         }
     }
@@ -1285,7 +1285,7 @@ float gist_compute_abstractness(
     if (total_weight < GIST_EPSILON) return 0.5f;
 
     // Abstractness = proportion of semantic features
-    return semantic_weight / total_weight;
+    return semantic_weight / (fabsf(total_weight) > 1e-7f ? total_weight : 1e-7f);
 }
 
 gist_error_t gist_update_feature_importance(
@@ -1350,7 +1350,7 @@ gist_error_t gist_match(
     gist_heartbeat("gist_match", 0.0f);
 
 
-    gist_match_result_t* all_matches = nimcp_malloc(system->num_gists * sizeof(gist_match_result_t));
+    gist_match_result_t* all_matches = nimcp_calloc(system->num_gists, sizeof(gist_match_result_t));
     if (!all_matches && system->num_gists > 0) {
         return GIST_ERROR_NO_MEMORY;
     }
@@ -1530,7 +1530,7 @@ gist_error_t gist_merge(
     gist_heartbeat("gist_merge", 0.0f);
 
 
-    gist_node_t** gists = nimcp_malloc(count * sizeof(gist_node_t*));
+    gist_node_t** gists = nimcp_calloc(count, sizeof(gist_node_t*));
     if (!gists) return GIST_ERROR_NO_MEMORY;
 
     for (size_t i = 0; i < count; i++) {
@@ -1584,8 +1584,8 @@ gist_error_t gist_merge(
     prime_sig_destroy(intersection);
 
     // Average quaternion states
-    nimcp_quaternion_t* quats = nimcp_malloc(count * sizeof(nimcp_quaternion_t));
-    float* weights = nimcp_malloc(count * sizeof(float));
+    nimcp_quaternion_t* quats = nimcp_calloc(count, sizeof(nimcp_quaternion_t));
+    float* weights = nimcp_calloc(count, sizeof(float));
     if (!quats || !weights) {
         nimcp_free(quats);
         nimcp_free(weights);
@@ -1846,7 +1846,7 @@ size_t gist_prune_weak(
     size_t removed = 0;
 
     // Iterate and collect weak gists
-    uint64_t* to_remove = nimcp_malloc(system->num_gists * sizeof(uint64_t));
+    uint64_t* to_remove = nimcp_calloc(system->num_gists, sizeof(uint64_t));
     if (!to_remove) return 0;
 
     size_t remove_count = 0;

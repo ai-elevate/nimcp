@@ -753,7 +753,7 @@ bool engram_recognize(
             pattern, count,
             engram->neuron_ids, engram->neuron_count);
 
-        float familiarity = (float)overlap / count;
+        float familiarity = (float)overlap / (count > 0 ? count : 1);
 
         // Weight by consolidation
         familiarity *= engram->consolidation_strength;

@@ -293,8 +293,8 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
 
     /* For higher orders, use matrix formulation (simplified for order 2-3) */
     int p = order + 1;
-    double* A = (double*)nimcp_malloc(sizeof(double) * (size_t)(p * p));
-    double* b = (double*)nimcp_malloc(sizeof(double) * (size_t)p);
+    double* A = (double*)nimcp_calloc((size_t)(p * p), sizeof(double));
+    double* b = (double*)nimcp_calloc((size_t)p, sizeof(double));
 
     if (!A || !b) {
         nimcp_free(A);
@@ -305,7 +305,7 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
 
     /* Build normal equations */
     memset(A, 0, sizeof(double) * (size_t)(p * p));
-    memset(b, 0, sizeof(double) * (size_t)p);
+    /* calloc zero-initializes */
 
     for (size_t i = 0; i < n; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -562,9 +562,9 @@ int fractal_hurst_rs(
     }
 
     /* Allocate working arrays */
-    size_t* scales = (size_t*)nimcp_malloc(cfg.num_scales * sizeof(size_t));
-    float* log_scales = (float*)nimcp_malloc(cfg.num_scales * sizeof(float));
-    float* log_rs = (float*)nimcp_malloc(cfg.num_scales * sizeof(float));
+    size_t* scales = (size_t*)nimcp_calloc(cfg.num_scales, sizeof(size_t));
+    float* log_scales = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
+    float* log_rs = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
 
     if (!scales || !log_scales || !log_rs) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -592,7 +592,7 @@ int fractal_hurst_rs(
             continue;
         }
 
-        size_t num_segments = count / n;
+        size_t num_segments = count / (n > 0 ? n : 1);
         if (num_segments < 1) {
             continue;
         }
@@ -636,7 +636,7 @@ int fractal_hurst_rs(
             }
 
             float range = max_cumsum - min_cumsum;
-            float rs = range / std;
+            float rs = range / (fabsf(std) > 1e-7f ? std : 1e-7f);
 
             rs_sum += (double)rs;
             rs_count++;
@@ -745,7 +745,7 @@ int fractal_dfa(
     float mean = compute_mean(samples, count);
 
     /* Integrate signal: y(k) = sum_{i=1}^{k} (x(i) - mean) */
-    float* y = (float*)nimcp_malloc(count * sizeof(float));
+    float* y = (float*)nimcp_calloc(count, sizeof(float));
     if (!y) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "fractal_dfa: allocation failure for integrated signal");
@@ -769,11 +769,11 @@ int fractal_dfa(
     }
 
     /* Allocate working arrays */
-    size_t* scales = (size_t*)nimcp_malloc(cfg.num_scales * sizeof(size_t));
-    float* log_scales = (float*)nimcp_malloc(cfg.num_scales * sizeof(float));
-    float* log_fluct = (float*)nimcp_malloc(cfg.num_scales * sizeof(float));
-    float* coeffs = (float*)nimcp_malloc((size_t)(cfg.dfa_poly_order + 1) * sizeof(float));
-    float* x_seg = (float*)nimcp_malloc(max_scale * sizeof(float));
+    size_t* scales = (size_t*)nimcp_calloc(cfg.num_scales, sizeof(size_t));
+    float* log_scales = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
+    float* log_fluct = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
+    float* coeffs = (float*)nimcp_calloc((size_t)(cfg.dfa_poly_order + 1), sizeof(float));
+    float* x_seg = (float*)nimcp_calloc(max_scale, sizeof(float));
 
     if (!scales || !log_scales || !log_fluct || !coeffs || !x_seg) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -804,7 +804,7 @@ int fractal_dfa(
             continue;
         }
 
-        size_t num_segments = count / n;
+        size_t num_segments = count / (n > 0 ? n : 1);
         if (num_segments < 1) {
             continue;
         }
@@ -1005,9 +1005,9 @@ int fractal_spectral_exponent_config(
     fft_plan_set_window(plan, FFT_WINDOW_HANN);
 
     /* Allocate arrays */
-    float* windowed = (float*)nimcp_malloc(fft_size * sizeof(float));
-    fft_complex_t* spectrum = (fft_complex_t*)nimcp_malloc((fft_size / 2 + 1) * sizeof(fft_complex_t));
-    float* psd = (float*)nimcp_malloc((fft_size / 2 + 1) * sizeof(float));
+    float* windowed = (float*)nimcp_calloc(fft_size, sizeof(float));
+    fft_complex_t* spectrum = (fft_complex_t*)nimcp_calloc((fft_size / 2 + 1), sizeof(fft_complex_t));
+    float* psd = (float*)nimcp_calloc((fft_size / 2 + 1), sizeof(float));
 
     if (!windowed || !spectrum || !psd) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -1070,8 +1070,8 @@ int fractal_spectral_exponent_config(
     }
 
     size_t fit_count = fit_end - fit_start;
-    float* log_f = (float*)nimcp_malloc(fit_count * sizeof(float));
-    float* log_p = (float*)nimcp_malloc(fit_count * sizeof(float));
+    float* log_f = (float*)nimcp_calloc(fit_count, sizeof(float));
+    float* log_p = (float*)nimcp_calloc(fit_count, sizeof(float));
 
     if (!log_f || !log_p) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -1213,9 +1213,9 @@ int fractal_box_dimension(
 
     /* Allocate arrays */
     size_t num_scales = cfg.num_scales;
-    size_t* scales = (size_t*)nimcp_malloc(num_scales * sizeof(size_t));
-    float* log_eps = (float*)nimcp_malloc(num_scales * sizeof(float));
-    float* log_n = (float*)nimcp_malloc(num_scales * sizeof(float));
+    size_t* scales = (size_t*)nimcp_calloc(num_scales, sizeof(size_t));
+    float* log_eps = (float*)nimcp_calloc(num_scales, sizeof(float));
+    float* log_n = (float*)nimcp_calloc(num_scales, sizeof(float));
 
     if (!scales || !log_eps || !log_n) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -1248,7 +1248,7 @@ int fractal_box_dimension(
         float epsilon_y = y_range * epsilon_x;
 
         /* Count occupied boxes using a grid approach */
-        size_t num_x_boxes = (count + box_size - 1) / box_size;
+        size_t num_x_boxes = (count + box_size - 1) / (fabsf(box_size) > 1e-7f ? box_size : 1e-7f);
         size_t num_y_boxes = (size_t)(y_range / epsilon_y) + 1;
         size_t grid_size = num_x_boxes * num_y_boxes;
 
@@ -1277,7 +1277,7 @@ int fractal_box_dimension(
                                      (float)(i + 1) / (float)count);
                 }
 
-                size_t x_box = i / box_size;
+                size_t x_box = i / (box_size > 0 ? box_size : 1);
                 size_t y_box = (size_t)((samples[i] - y_min) / epsilon_y);
                 if (y_box >= num_y_boxes) y_box = num_y_boxes - 1;
 
@@ -1308,7 +1308,7 @@ int fractal_box_dimension(
             }
 
             /* Pre-allocate node pool for efficiency */
-            hash_node_t* node_pool = (hash_node_t*)nimcp_malloc(count * sizeof(hash_node_t));
+            hash_node_t* node_pool = (hash_node_t*)nimcp_calloc(count, sizeof(hash_node_t));
             if (!node_pool) {
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                     "fractal_box_dimension: allocation failure for node pool");
@@ -1327,7 +1327,7 @@ int fractal_box_dimension(
                                      (float)(i + 1) / (float)count);
                 }
 
-                size_t x_box = i / box_size;
+                size_t x_box = i / (box_size > 0 ? box_size : 1);
                 size_t y_box = (size_t)((samples[i] - y_min) / epsilon_y);
                 if (y_box >= num_y_boxes) y_box = num_y_boxes - 1;
 
@@ -1547,7 +1547,7 @@ int fractal_lacunarity_curve(
     }
 
     /* Generate scales */
-    size_t* scale_vals = (size_t*)nimcp_malloc(num_scales * sizeof(size_t));
+    size_t* scale_vals = (size_t*)nimcp_calloc(num_scales, sizeof(size_t));
     if (!scale_vals) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "fractal_lacunarity_curve: allocation failure for scale_vals");
@@ -1627,12 +1627,12 @@ int fractal_multifractal_spectrum(
     }
 
     mf->spectrum_size = q_steps;
-    mf->q_values = (float*)nimcp_malloc(q_steps * sizeof(float));
-    mf->tau_q = (float*)nimcp_malloc(q_steps * sizeof(float));
-    mf->h_q = (float*)nimcp_malloc(q_steps * sizeof(float));
-    mf->D_q = (float*)nimcp_malloc(q_steps * sizeof(float));
-    mf->f_alpha = (float*)nimcp_malloc(q_steps * sizeof(float));
-    mf->alpha = (float*)nimcp_malloc(q_steps * sizeof(float));
+    mf->q_values = (float*)nimcp_calloc(q_steps, sizeof(float));
+    mf->tau_q = (float*)nimcp_calloc(q_steps, sizeof(float));
+    mf->h_q = (float*)nimcp_calloc(q_steps, sizeof(float));
+    mf->D_q = (float*)nimcp_calloc(q_steps, sizeof(float));
+    mf->f_alpha = (float*)nimcp_calloc(q_steps, sizeof(float));
+    mf->alpha = (float*)nimcp_calloc(q_steps, sizeof(float));
 
     if (!mf->q_values || !mf->tau_q || !mf->h_q || !mf->D_q ||
         !mf->f_alpha || !mf->alpha) {
@@ -1656,7 +1656,7 @@ int fractal_multifractal_spectrum(
 
     /* Integration step: y(k) = sum_{i=1}^{k} (x(i) - mean) */
     float mean = compute_mean(samples, count);
-    float* y = (float*)nimcp_malloc(count * sizeof(float));
+    float* y = (float*)nimcp_calloc(count, sizeof(float));
     if (!y) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "fractal_multifractal_spectrum: allocation failure for integrated signal");
@@ -1681,11 +1681,11 @@ int fractal_multifractal_spectrum(
     size_t max_scale = count / 4;
     size_t num_scales = cfg.num_scales;
 
-    size_t* scales = (size_t*)nimcp_malloc(num_scales * sizeof(size_t));
-    float* log_scales = (float*)nimcp_malloc(num_scales * sizeof(float));
-    float* log_fq = (float*)nimcp_malloc(num_scales * sizeof(float));
+    size_t* scales = (size_t*)nimcp_calloc(num_scales, sizeof(size_t));
+    float* log_scales = (float*)nimcp_calloc(num_scales, sizeof(float));
+    float* log_fq = (float*)nimcp_calloc(num_scales, sizeof(float));
     float* coeffs = (float*)nimcp_malloc(2 * sizeof(float));  /* Linear fit */
-    float* x_seg = (float*)nimcp_malloc(max_scale * sizeof(float));
+    float* x_seg = (float*)nimcp_calloc(max_scale, sizeof(float));
 
     if (!scales || !log_scales || !log_fq || !coeffs || !x_seg) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -1726,7 +1726,7 @@ int fractal_multifractal_spectrum(
                 continue;
             }
 
-            size_t num_segments = count / n;
+            size_t num_segments = count / (n > 0 ? n : 1);
             if (num_segments < 1) {
                 continue;
             }
@@ -1903,7 +1903,7 @@ int fractal_multifractal_spectrum(
     }
     float total = left_sum + right_sum;
     if (total > EPSILON) {
-        mf->asymmetry = (right_sum - left_sum) / total;
+        mf->asymmetry = (right_sum - left_sum) / (fabsf(total) > 1e-7f ? total : 1e-7f);
     } else {
         mf->asymmetry = 0.0f;
     }
