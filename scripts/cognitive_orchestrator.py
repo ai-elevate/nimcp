@@ -212,15 +212,26 @@ class CognitiveOrchestrator:
         """
         Check if learning has stalled (accuracy plateau).
 
-        Returns True if accuracy improvement over last `window` measurements
-        is less than `threshold`.
+        SCH-5 fix: Uses linear regression slope instead of range.
+        Range-based detection (max-min) can be fooled by a single outlier;
+        slope captures the actual trend direction.
+
+        Returns True if the slope of accuracy over the last `window`
+        measurements is near zero (not improving).
         """
-        if len(recent_accuracies) < window:
+        recent = recent_accuracies[-window:]
+        if len(recent) < 3:
             return False
 
-        recent = recent_accuracies[-window:]
-        improvement = max(recent) - min(recent)
-        return improvement < threshold
+        # Linear regression slope
+        n = len(recent)
+        x_mean = (n - 1) / 2.0
+        y_mean = sum(recent) / n
+        num = sum((i - x_mean) * (recent[i] - y_mean) for i in range(n))
+        den = sum((i - x_mean) ** 2 for i in range(n))
+        slope = num / den if den > 0 else 0.0
+        # Stalled if slope is near zero (not improving)
+        return abs(slope) < threshold / window
 
     # ------------------------------------------------------------------
     # Self-Model: Track capabilities per domain

@@ -22,6 +22,7 @@ Modalities: text, audio, visual, speech
 """
 from __future__ import annotations
 
+import collections
 import hashlib
 import heapq
 import json
@@ -33,6 +34,7 @@ import random
 import re
 import threading
 import time
+import traceback
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum
@@ -160,6 +162,10 @@ class MethodStats:
             }
         # Meta-learning weights (all start equal)
         self._weights = {m.value: 1.0 for m in TeachingMethod}
+        # INST-6: Rolling window per method for recent accuracy
+        self._recent: Dict[str, collections.deque] = {
+            m.value: collections.deque(maxlen=500) for m in TeachingMethod
+        }
 
     def record(self, method: str, correct: bool, loss: float = 0.0):
         s = self._stats.get(method)
@@ -169,21 +175,31 @@ class MethodStats:
         if correct:
             s["correct"] += 1
         s["total_loss"] += loss
+        # INST-6: Track in rolling window
+        if method in self._recent:
+            self._recent[method].append(correct)
 
     def accuracy(self, method: str) -> float:
         s = self._stats.get(method, {})
         a = s.get("attempts", 0)
         return s.get("correct", 0) / max(a, 1)
 
+    def rolling_accuracy(self, method: str) -> float:
+        """INST-6: Rolling window accuracy (recent 500 examples per method)."""
+        recent = self._recent.get(method)
+        if recent and len(recent) > 0:
+            return sum(recent) / max(len(recent), 1)
+        return 0.5  # prior when no data
+
     def select_method(self, epsilon: float = 0.15) -> TeachingMethod:
         """Epsilon-greedy method selection weighted by effectiveness."""
         if random.random() < epsilon:
             return random.choice(list(TeachingMethod))
-        # Weighted selection by accuracy
+        # INST-6: Weighted selection by rolling accuracy (not cumulative)
         methods = list(TeachingMethod)
         weights = []
         for m in methods:
-            acc = self.accuracy(m.value)
+            acc = self.rolling_accuracy(m.value)
             w = self._weights[m.value] * (0.3 + 0.7 * acc)
             weights.append(max(w, 0.01))
         total = sum(weights)
@@ -202,7 +218,8 @@ class MethodStats:
         get reduced (but never zeroed — exploration floor of 0.1).
         """
         for m in TeachingMethod:
-            acc = self.accuracy(m.value)
+            # INST-6: Use rolling accuracy instead of cumulative
+            acc = self.rolling_accuracy(m.value)
             # Blend recent accuracy with weight history
             new_w = 0.7 * self._weights[m.value] + 0.3 * (0.3 + 0.7 * acc)
             self._weights[m.value] = max(new_w, 0.1)  # exploration floor
@@ -294,6 +311,8 @@ class InstructorAgent(threading.Thread):
 
         # H3: Rolling window for recent accuracy (replaces cumulative for metacognition)
         self._recent_results: deque = deque(maxlen=500)
+        # INST-3: Separate primary results deque (excludes replay/remedial/bank)
+        self._primary_results: deque = deque(maxlen=200)
 
         # H6: LR adjustment cooldown to prevent ratcheting
         self._last_lr_adjust_step = 0
@@ -301,16 +320,22 @@ class InstructorAgent(threading.Thread):
         self._last_lr_direction = None  # "up" or "down"
         self._last_lr_direction_step = 0
 
+        # INST-7: Track actual effective LR used in last learn call
+        self._last_effective_lr = 1.0
+
         # Phase 3: Spaced repetition + difficulty tracking
         self._spaced_replay: list = []  # heap: (next_review_step, interval, tiebreak, features, label)
         self._spaced_replay_counter = 0  # L5: monotonic tiebreaker for heap
         self._example_difficulty: dict = {}  # hash -> {'fails': int, 'attempts': int, 'conf_history': deque(maxlen=10)}
+        # INST-10/14: Track feature hashes in replay heap for O(1) dedup/eviction
+        self._replay_feature_hashes: set = set()
         self._peak_accuracy = 0.0
 
         # Phase 3: Self-assessment holdout
         self._holdout_buffer: List[Tuple[list, str]] = []  # (features, label)
         self._holdout_max = 50
         self._holdout_candidates_seen = 0  # M7: separate counter for reservoir sampling
+        self._holdout_count = 0  # INST-17: total holdout examples withheld from training
         self._last_self_assessment_step = 0
         self._self_assessment_interval = 500
         self._held_out_accuracy: float = 0.0
@@ -405,7 +430,8 @@ class InstructorAgent(threading.Thread):
             self._remedial_teaching()
 
         except Exception as e:
-            self._error = str(e)
+            # INST-15: Preserve full traceback, not just str(e)
+            self._error = traceback.format_exc()
         finally:
             self._finished = True
             self.close_log()
@@ -452,11 +478,17 @@ class InstructorAgent(threading.Thread):
                 break
             self._wait_for_recess()
 
-            result = self.processor.extract_features_and_label(example, domain)
-            if result is None:
+            # INST-8: Extract label directly — avoid full n-gram encoding from
+            # processor.extract_features_and_label() since only the label is kept.
+            if hasattr(self.processor, 'extract_label'):
+                label = self.processor.extract_label(example, domain)
+            else:
+                result = self.processor.extract_features_and_label(example, domain)
+                if result is None:
+                    continue
+                _, label = result
+            if label is None:
                 continue
-
-            _, label = result
             # Domain-prefix label to prevent cross-domain collision
             label = f"{domain}:{label}"
 
@@ -613,6 +645,14 @@ class InstructorAgent(threading.Thread):
                 self.total_correct += 1
             count += 1
 
+            # INST-13: Add per-example logging matching _teach_text_dataset pattern
+            self._log_example({
+                "action": "LEARN", "method": method.value,
+                "correct": correct, "loss": round(loss, 5),
+                "confidence_mod": round(grade.confidence_modifier, 3) if grade else 1.0,
+                "dataset": name, "features_dim": len(features),
+            })
+
             if count % self.config.report_interval == 0:
                 self.method_stats.update_weights()
                 self._send_report()
@@ -644,7 +684,10 @@ class InstructorAgent(threading.Thread):
             dc_factor = self._last_decision.get("lr_factor", 1.0)
             result = base_lr * schedule_factor * dc_factor
             # H4: Final clamp to prevent unbounded compounding
-            return max(0.01, min(result, 3.0))
+            effective = max(0.01, min(result, 3.0))
+            # INST-7: Track actual effective LR for decision cycle
+            self._last_effective_lr = effective
+            return effective
 
         # Step 3: Fallback to unified pipeline
         # M3: Normalize fallback path — extract factor from adaptive result so
@@ -657,7 +700,10 @@ class InstructorAgent(threading.Thread):
         except Exception:
             result = base_lr * schedule_factor
         # H4: Final clamp to prevent unbounded compounding
-        return max(0.01, min(result, 3.0))
+        effective = max(0.01, min(result, 3.0))
+        # INST-7: Track actual effective LR for decision cycle
+        self._last_effective_lr = effective
+        return effective
 
     def _learn_and_capture_grad(self, features, label, lr):
         """Learn and atomically capture gradient norm (C1 fix).
@@ -673,7 +719,8 @@ class InstructorAgent(threading.Thread):
             grad = self.cognitive.get_last_gradient_norm()
             return result, grad
 
-    def _update_metrics_and_decide(self, loss: float, grad_norm=None):
+    def _update_metrics_and_decide(self, loss: float, grad_norm=None,
+                                    is_primary: bool = True):
         """Track rolling metrics and run decision cycle at report intervals.
 
         Called after each learn(). Accumulates loss/gradient history, and runs
@@ -684,6 +731,8 @@ class InstructorAgent(threading.Thread):
             loss: Heuristic loss for this example.
             grad_norm: Pre-captured gradient norm from _learn_and_capture_grad.
                        If None, fetches from C backend (legacy path).
+            is_primary: INST-3 — True for primary training examples, False for
+                        replay/remedial/bank items (excluded from _primary_results).
         """
         # C1: Use pre-captured gradient if provided, else fallback to fetch
         if grad_norm is None:
@@ -716,14 +765,15 @@ class InstructorAgent(threading.Thread):
         grad_norm_previous = grads[-2]
 
         # Compute volatility and variance from rolling window
+        # INST-16: Use sample std dev (N-1) instead of population std dev (N)
         mean_loss = sum(losses) / len(losses)
-        loss_volatility = (sum((l - mean_loss) ** 2 for l in losses) / len(losses)) ** 0.5
+        loss_volatility = (sum((l - mean_loss) ** 2 for l in losses) / max(len(losses) - 1, 1)) ** 0.5
 
         mean_grad = sum(grads) / len(grads)
-        gradient_std = (sum((g - mean_grad) ** 2 for g in grads) / len(grads)) ** 0.5
+        gradient_std = (sum((g - mean_grad) ** 2 for g in grads) / max(len(grads) - 1, 1)) ** 0.5
 
-        # Get current LR from the unified pipeline (use actual base_lr, not hardcoded)
-        current_lr = self.cognitive.compute_adaptive_lr(self._lr_scheduler.base_lr)
+        # INST-7: Use actual effective LR from last learn call (not unified pipeline output)
+        current_lr = self._last_effective_lr
 
         decision = self.cognitive.compute_decision_cycle(
             loss_current, loss_previous,
@@ -842,6 +892,8 @@ class InstructorAgent(threading.Thread):
         # M3: Scheduler must NOT advance on holdout examples (moved step() below)
         if random.random() < 0.02:  # 2% holdout rate
             self._maybe_collect_holdout(features, label)
+            # INST-17: Track holdout count separately
+            self._holdout_count += 1
             return pre_correct, 0.0  # holdout: use actual prediction correctness
 
         # H3: Step scheduler once per example (not inside get_lr)
@@ -896,20 +948,20 @@ class InstructorAgent(threading.Thread):
         info['conf_history'].append(pre_conf)
 
         # H4: Evict oldest entries to prevent unbounded growth
-        # M5: Skip entries that are actively in the replay heap
+        # INST-14: Use maintained _replay_feature_hashes for O(1) lookup
+        # instead of scanning the entire heap
         if len(self._example_difficulty) > 50000:
-            replay_hashes = set()
-            for entry in self._spaced_replay:
-                replay_hashes.add(self._feature_hash(entry[3]))  # index 3 = features
             keys_to_remove = [
                 k for k in list(self._example_difficulty.keys())
-                if k not in replay_hashes
+                if k not in self._replay_feature_hashes
             ][:10000]
             for k in keys_to_remove:
                 del self._example_difficulty[k]
 
         # H3: Track recent results for rolling accuracy
         self._recent_results.append(correct)
+        # INST-3: Track primary results separately (excludes replay/remedial/bank)
+        self._primary_results.append(correct)
 
         return result
 
@@ -924,6 +976,8 @@ class InstructorAgent(threading.Thread):
 
         # Phase 3: Skip easy examples at high mastery
         if self._should_skip_easy(features, label, conf) and correct:
+            # INST-11: Feed decision cycle even on skip paths
+            self._update_metrics_and_decide(0.0, grad_norm=0.0, is_primary=True)
             self.socratic.mastery.record(domain, correct)
             return correct, 0.0
 
@@ -966,6 +1020,8 @@ class InstructorAgent(threading.Thread):
 
         # Skip if brain already knows AND difficulty is still low
         if correct and conf > 0.9 and self.difficulty < 0.5:
+            # INST-11: Feed decision cycle even on skip paths
+            self._update_metrics_and_decide(0.0, grad_norm=0.0, is_primary=True)
             # M6: Record mastery even on skip path
             self.socratic.mastery.record(domain, correct)
             return correct, 0.0
@@ -1000,6 +1056,21 @@ class InstructorAgent(threading.Thread):
         # C1: Atomically learn + capture gradient
         _, grad = self._learn_and_capture_grad(
             features, scoped_label, self._modulate_lr(0.7 * conf_mod * boost))
+
+        # INST-9: Actual contrastive signal — brief negative learn with random
+        # wrong label at 0.1x LR to push brain AWAY from confusable alternatives
+        if not correct and pred is not None and pred != label:
+            # Use the brain's wrong prediction as the negative label
+            try:
+                neg_lr = self._modulate_lr(0.7 * conf_mod * boost) * 0.1
+                # Perturb features slightly to create negative example
+                neg_features = [f + random.gauss(0, 0.02) for f in features]
+                neg_norm = math.sqrt(sum(v * v for v in neg_features))
+                if neg_norm > 1e-6:
+                    neg_features = [v / neg_norm for v in neg_features]
+                self.brain.learn(neg_features, self._scope_target_to_domain(pred), neg_lr)
+            except Exception:
+                pass  # Non-critical — skip on failure
 
         # M6: Update metrics after the positive learn (not after a negative learn)
         # C1 fix: confident-wrong = high loss
@@ -1088,6 +1159,8 @@ class InstructorAgent(threading.Thread):
 
         # Phase 3: Skip easy examples at high mastery
         if self._should_skip_easy(features, label, conf) and correct:
+            # INST-11: Feed decision cycle even on skip paths
+            self._update_metrics_and_decide(0.0, grad_norm=0.0, is_primary=True)
             self.socratic.mastery.record(domain, correct)
             return correct, 0.0
 
@@ -1201,11 +1274,15 @@ class InstructorAgent(threading.Thread):
                 self.adversarial_bank.pop(bank_idx)
             else:
                 bank_loss = 0.0 if bank_correct else max(0.1, bank_conf)
-                self.brain.learn(
+                # INST-5: Use fixed multiplier (not conf_mod from current example)
+                # INST-2: Use _learn_and_capture_grad for gradient tracking
+                _, bank_grad = self._learn_and_capture_grad(
                     hard_feat, self._scope_target_to_domain(hard_label),
-                    self._modulate_lr(0.8 * conf_mod)
+                    self._modulate_lr(0.8)
                 )
-                self._update_metrics_and_decide(bank_loss)
+                # INST-3: Mark as non-primary (bank replay)
+                self._update_metrics_and_decide(bank_loss, grad_norm=bank_grad,
+                                                is_primary=False)
                 # H2 fix: Include bank replay result in rolling metrics
                 self._recent_results.append(bank_correct)
         self.socratic.mastery.record(domain, correct)
@@ -1398,10 +1475,14 @@ class InstructorAgent(threading.Thread):
             correct = (pred == label)
             focal = self._compute_focal_factor(features, label,
                                                pre_confidence=conf, pre_correct=correct)
-            self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.8 * focal))
+            # INST-2: Use _learn_and_capture_grad for gradient tracking
+            _, remedial_grad = self._learn_and_capture_grad(
+                features, self._scope_target_to_domain(label), self._modulate_lr(0.8 * focal))
             # H2 fix: Include remedial results in decision cycle metrics
             remedial_loss = 0.0 if correct else max(0.1, conf)
-            self._update_metrics_and_decide(remedial_loss)
+            # INST-3: Mark as non-primary (remedial)
+            self._update_metrics_and_decide(remedial_loss, grad_norm=remedial_grad,
+                                            is_primary=False)
             # M2: Track remedial separately to avoid inflating primary accuracy
             self.remedial_examples += 1
             if correct:
@@ -1463,7 +1544,10 @@ class InstructorAgent(threading.Thread):
             "type": "final_report" if final else "progress",
             "domain": self.config.domain,
             "modality": self.config.modality,
+            # INST-17: Report trained examples (excluding holdout)
             "total_examples": self.total_examples,
+            "trained_examples": self.total_examples - self._holdout_count,
+            "holdout_count": self._holdout_count,
             "accuracy": round(accuracy, 4),
             # H-school-1: Include loss so metacognition doesn't always get default 1.0
             "loss": round(self._last_loss, 5),
@@ -1504,7 +1588,10 @@ class InstructorAgent(threading.Thread):
         return {
             "domain": self.config.domain,
             "modality": self.config.modality,
+            # INST-17: Include holdout tracking
             "total_examples": self.total_examples,
+            "trained_examples": self.total_examples - self._holdout_count,
+            "holdout_count": self._holdout_count,
             "accuracy": round(self.total_correct / max(self.total_examples, 1), 4),
             "mastery": round(self.get_mastery(), 4),
             "method_stats": self.method_stats.summary(),
@@ -1527,6 +1614,12 @@ class InstructorAgent(threading.Thread):
         count, attempt count, confidence history) is managed by _execute_method
         to avoid double-counting failures (C2 fix).
         """
+        # INST-10: Skip if this feature hash is already in the replay heap
+        fh = self._feature_hash(features)
+        if fh in self._replay_feature_hashes:
+            return
+        self._replay_feature_hashes.add(fh)
+
         # Reset interval on failure
         interval = 1
         next_step = self.total_examples + interval
@@ -1539,6 +1632,10 @@ class InstructorAgent(threading.Thread):
             # Remove the lowest-priority items (highest next_review_step)
             # by rebuilding as a list, sorting, and keeping the 2000 most urgent
             items = sorted(self._spaced_replay)[:2000]
+            # INST-14: Rebuild hash set from surviving entries
+            self._replay_feature_hashes = set()
+            for entry in items:
+                self._replay_feature_hashes.add(self._feature_hash(entry[3]))
             self._spaced_replay = items
             heapq.heapify(self._spaced_replay)
 
@@ -1549,6 +1646,9 @@ class InstructorAgent(threading.Thread):
                self._spaced_replay[0][0] <= self.total_examples and
                reviewed < 5):  # max 5 replays per tick
             next_step, interval, _tiebreak, features, label = heapq.heappop(self._spaced_replay)
+            # INST-10: Remove hash on pop (will be re-added on re-push below)
+            fh = self._feature_hash(features)
+            self._replay_feature_hashes.discard(fh)
             # H2: Guard prediction against failure
             try:
                 pred, conf = self._predict_domain(features, self.config.domain)
@@ -1558,10 +1658,14 @@ class InstructorAgent(threading.Thread):
             # Always re-learn (even if correct, reinforce)
             focal = self._compute_focal_factor(features, label,
                                                pre_confidence=conf, pre_correct=correct)
-            self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.6 * focal))
+            # INST-2: Use _learn_and_capture_grad for gradient tracking
+            _, replay_grad = self._learn_and_capture_grad(
+                features, self._scope_target_to_domain(label), self._modulate_lr(0.6 * focal))
             # H2 fix: Include spaced replay in decision cycle metrics
             replay_loss = 0.0 if correct else max(0.1, conf)
-            self._update_metrics_and_decide(replay_loss)
+            # INST-3: Mark as non-primary (spaced replay)
+            self._update_metrics_and_decide(replay_loss, grad_norm=replay_grad,
+                                            is_primary=False)
             self.socratic.mastery.record(self.config.domain, correct)
             # M4: Include spaced replay results in rolling accuracy
             self._recent_results.append(correct)
@@ -1575,6 +1679,8 @@ class InstructorAgent(threading.Thread):
             # L5: Use tiebreaker counter to prevent heap comparison falling through to feature list
             self._spaced_replay_counter += 1
             heapq.heappush(self._spaced_replay, (new_step, new_interval, self._spaced_replay_counter, features, label))
+            # INST-10: Re-add hash after re-push
+            self._replay_feature_hashes.add(fh)
             reviewed += 1
 
     def _feature_hash(self, features: list) -> str:
@@ -1663,6 +1769,12 @@ class InstructorAgent(threading.Thread):
 
         # M7: Use separate counter for holdout candidates (not total_examples)
         self._holdout_candidates_seen += 1
+
+        # INST-12: Reset reservoir every 10,000 candidates to prevent staleness
+        if self._holdout_candidates_seen % 10000 == 0:
+            self._holdout_buffer.clear()
+            self._holdout_candidates_seen = 0
+
         if len(self._holdout_buffer) < self._holdout_max:
             self._holdout_buffer.append((features, label))
         else:
@@ -1680,6 +1792,12 @@ class InstructorAgent(threading.Thread):
         if not self._recent_results:
             return 0.5  # chance-level prior, not cumulative
         return sum(self._recent_results) / len(self._recent_results)
+
+    def _primary_rolling_accuracy(self) -> float:
+        """INST-3: Rolling accuracy from primary results only (excludes replay/remedial/bank)."""
+        if not self._primary_results:
+            return 0.5
+        return sum(self._primary_results) / len(self._primary_results)
 
     def _maybe_self_assess(self):
         """Run self-assessment cycle if due."""
@@ -1707,8 +1825,8 @@ class InstructorAgent(threading.Thread):
         self._held_out_accuracy = correct / len(self._holdout_buffer)
         avg_agreement = total_agreement / len(self._holdout_buffer)
 
-        # H4: Use rolling window accuracy instead of cumulative (less inertial)
-        train_acc = self._rolling_accuracy()
+        # INST-3: Use primary rolling accuracy (excludes replay/remedial/bank bias)
+        train_acc = self._primary_rolling_accuracy()
         gap = train_acc - self._held_out_accuracy
 
         self._log_example({
@@ -1742,12 +1860,13 @@ class InstructorAgent(threading.Thread):
 
     def _metacognition_check(self):
         """Check for stall/regression and take corrective action."""
-        # H3: Use rolling window accuracy instead of cumulative
-        train_acc = self._rolling_accuracy()
+        # INST-3: Use primary rolling accuracy (excludes replay/remedial/bank bias)
+        train_acc = self._primary_rolling_accuracy()
 
         # M4: Track peak accuracy with decay to prevent temporary spikes
         # from setting permanently high thresholds that trigger false regression alerts
-        self._peak_accuracy = max(train_acc, self._peak_accuracy * 0.999 + train_acc * 0.001)
+        # INST-4: Faster decay (0.995/0.005) — halves in ~140 calls instead of ~700
+        self._peak_accuracy = max(train_acc, self._peak_accuracy * 0.995 + train_acc * 0.005)
 
         # Detect regression (>5% drop from peak)
         # H6: Only adjust LR if cooldown has elapsed (200 steps)
@@ -1891,8 +2010,10 @@ def _text_to_features(text: str, num_inputs: int, feature_step: int = 3000) -> l
             sem_dims = max(1, int(num_inputs * semantic_ratio))
             ngram_dims = num_inputs - sem_dims
 
-            # Semantic features
-            embedding = model.encode(text[:1000], convert_to_numpy=True)
+            # INST-1: Acquire lock around model.encode() — PyTorch inference is
+            # NOT thread-safe and multiple instructor threads share the singleton
+            with _EMBEDDING_LOCK:
+                embedding = model.encode(text[:1000], convert_to_numpy=True)
             sem_features = np.zeros(sem_dims, dtype=np.float32)
             copy_len = min(len(embedding), sem_dims)
             sem_features[:copy_len] = embedding[:copy_len]

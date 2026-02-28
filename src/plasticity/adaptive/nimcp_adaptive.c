@@ -37,6 +37,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
+#include <sched.h>  // C-ADP-11: sched_yield() for pool cleanup drain
+#endif
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/containers/nimcp_hash_table.h"
@@ -126,6 +129,10 @@ static int compare_neuron_importance_desc(const void* a, const void* b) {
 static _Atomic(memory_pool_t) g_adaptive_pool = NULL;
 static nimcp_platform_once_t g_adaptive_pool_once = NIMCP_PLATFORM_ONCE_INIT;
 
+// C-ADP-11: Refcount and shutdown flag for adaptive pool (mirrors backprop kernel pattern)
+static _Atomic int g_adaptive_pool_refcount = 0;
+static _Atomic bool g_adaptive_pool_shutting_down = false;
+
 /**
  * @brief One-time initialization of adaptive memory pool
  */
@@ -155,6 +162,18 @@ static memory_pool_t get_adaptive_pool(void) {
  *                when no other threads are using the adaptive module
  */
 void adaptive_pool_cleanup(void) {
+    // C-ADP-11: Signal shutdown to prevent new pool allocations from racing
+    atomic_store(&g_adaptive_pool_shutting_down, true);
+
+    // Drain any in-flight alloc_hot_buffer / free_hot_buffer calls
+    while (atomic_load(&g_adaptive_pool_refcount) > 0) {
+#ifdef _WIN32
+        SwitchToThread();
+#else
+        sched_yield();
+#endif
+    }
+
     memory_pool_t pool = atomic_load(&g_adaptive_pool);
     if (pool) {
         memory_pool_destroy(pool);
@@ -162,12 +181,19 @@ void adaptive_pool_cleanup(void) {
     }
     // Reset once flag to allow re-initialization
     g_adaptive_pool_once = NIMCP_PLATFORM_ONCE_INIT;
+
+    // Reset shutdown flag for re-initialization after nimcp_shutdown()+nimcp_init()
+    atomic_store(&g_adaptive_pool_shutting_down, false);
 }
 
 /**
  * @brief Allocate buffer from pool or heap
  */
 static void* alloc_hot_buffer(size_t size) {
+    // C-ADP-11: Reject allocations during shutdown to prevent use-after-free
+    if (atomic_load(&g_adaptive_pool_shutting_down)) {
+        return nimcp_calloc(1, size);
+    }
     if (size <= ADAPTIVE_POOL_BLOCK_SIZE) {
         memory_pool_t pool = get_adaptive_pool();
         if (pool) {
@@ -339,11 +365,15 @@ struct adaptive_network_struct {
     bool frozen;
 
     // Gradient norm tracking
-    float last_grad_norm;  /**< L2 norm of gradients from most recent learn step */
+    // C-ADP-2: Use volatile to prevent compiler reordering on cross-thread reads.
+    // These fields are written by learn() on training threads and read by Python
+    // threads via getters. Full _Atomic float would require -latomic and is overkill
+    // for approximate monitoring values — volatile provides sufficient ordering.
+    volatile float last_grad_norm;  /**< L2 norm of gradients from most recent learn step */
 
     // EMA tracking for training stability detection
-    float ema_grad_norm;   /**< Exponential moving average of gradient norms (decay=0.99), -1 = uninitialized */
-    float ema_loss;        /**< Exponential moving average of training loss (decay=0.99), -1 = uninitialized */
+    volatile float ema_grad_norm;   /**< Exponential moving average of gradient norms (decay=0.99), -1 = uninitialized */
+    volatile float ema_loss;        /**< Exponential moving average of training loss (decay=0.99), -1 = uninitialized */
 };
 
 //=============================================================================
@@ -508,11 +538,13 @@ static float compute_mean_abs(const float* input, uint32_t size)
     if (!input || size == 0)
         return 0.0F;
 
-    float sum = 0.0F;
+    // C-ADP-14: Use double accumulator to prevent float precision loss
+    // when summing many small values (large input vectors)
+    double sum = 0.0;
     for (uint32_t i = 0; i < size; i++) {
-        sum += fabsf(input[i]);
+        sum += (double)fabsf(input[i]);
     }
-    return sum / size;
+    return (float)(sum / size);
 }
 
 /**
@@ -543,6 +575,13 @@ static void update_statistics(adaptive_neuron_state_t* state, float activation)
     state->activation_mean += delta / state->sample_count;
     float delta2 = activation - state->activation_mean;
     state->activation_variance += delta * delta2;
+
+    // C-ADP-12: Cap Welford's running sum-of-squares to prevent float overflow
+    // after billions of updates. The value is still unnormalized (divide by N to
+    // get variance), but capping prevents Inf propagation.
+    if (state->activation_variance > 1e30f) {
+        state->activation_variance = 1e30f;
+    }
 }
 
 /**
@@ -1049,8 +1088,10 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
 {
 
     // Guard clause: Validate configuration
+    // C-ADP-13: Use INVALID_PARAM (not NO_MEMORY) — config validation failure
+    // is a parameter error, not an allocation failure
     if (!validate_network_config(config)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_network_create: validate_network_config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_create: invalid network configuration");
         return NULL;
     }
 
@@ -1370,8 +1411,36 @@ static float* convert_input_to_spikes(const float* input, uint32_t input_size, f
         return spike_input;
     }
 
-    // I-M5: SPIKE_ENCODING_PASSTHROUGH and all other encodings — copy raw floats
-    // directly. PASSTHROUGH is the default for gradient training (set in brain init).
+    // C-ADP-3: Handle BINARY, TERNARY, BITWISE encodings explicitly instead of
+    // silently falling through to PASSTHROUGH copy.
+    if (encoding == SPIKE_ENCODING_BINARY) {
+        for (uint32_t i = 0; i < input_size; i++) {
+            spike_input[i] = (input[i] > threshold) ? 1.0f : 0.0f;
+        }
+        return spike_input;
+    }
+
+    if (encoding == SPIKE_ENCODING_TERNARY) {
+        for (uint32_t i = 0; i < input_size; i++) {
+            spike_input[i] = (input[i] > threshold) ? 1.0f
+                           : (input[i] < -threshold) ? -1.0f
+                           : 0.0f;
+        }
+        return spike_input;
+    }
+
+    if (encoding == SPIKE_ENCODING_BITWISE) {
+        // Bitwise encoding maps to binary thresholding for float inputs.
+        // The integer bitwise encoder operates on spike counts, but for
+        // raw float inputs we use the same binary threshold logic.
+        for (uint32_t i = 0; i < input_size; i++) {
+            spike_input[i] = (input[i] > threshold) ? 1.0f : 0.0f;
+        }
+        return spike_input;
+    }
+
+    // SPIKE_ENCODING_PASSTHROUGH: Copy raw floats directly.
+    // This is the default for gradient training (set in brain init).
     memcpy(spike_input, input, input_size * sizeof(float));
     return spike_input;
 }
@@ -1610,14 +1679,13 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
                                          network->base_network);
         }
 
-        // Spike encoding with FIXED threshold to preserve magnitude discrimination.
-        // The adaptive threshold (mean_abs / k_factor) normalizes per-input, making
-        // uniform inputs like [0.9]*N and [0.1]*N produce identical spike patterns.
-        // A fixed threshold preserves magnitude: 0.9/0.1=9 spikes vs 0.1/0.1=1 spike.
-        float fixed_threshold = network->config.spike_params.min_threshold;
-        if (fixed_threshold <= 0.0f) fixed_threshold = 0.1f;  // safe default
+        // C-ADP-4: Use same adaptive threshold as CPU path to prevent
+        // train/test encoding mismatch. Previously used a fixed threshold
+        // which caused inconsistent spike patterns between GPU and CPU paths.
+        float gpu_threshold =
+            adaptive_compute_threshold(input, input_size, network->config.spike_params.k_factor);
 
-        float* spike_input = convert_input_to_spikes(input, input_size, fixed_threshold,
+        float* spike_input = convert_input_to_spikes(input, input_size, gpu_threshold,
                                                      network->config.spike_params.encoding);
         if (!spike_input) return 0;
 
@@ -2046,8 +2114,10 @@ cpu_learn_path:
                     // M-3: Guard against NaN/Inf output propagating through BCE
                     float raw_o = isfinite(output[i]) ? output[i] : 0.5f;
                     float o = fmaxf(eps, fminf(1.0f - eps, raw_o));
-                    loss -= example->target[i] * logf(o)
-                          + (1.0f - example->target[i]) * logf(1.0f - o);
+                    // C-ADP-10: Clamp target to [0,1] to prevent NaN from logf
+                    // with out-of-range targets (e.g., regression targets > 1)
+                    float t = fminf(fmaxf(example->target[i], 0.0f), 1.0f);
+                    loss -= t * logf(o) + (1.0f - t) * logf(1.0f - o);
                 }
                 loss /= example->target_size;
             }
@@ -2161,8 +2231,9 @@ cpu_learn_path:
                     // M-3: Guard against NaN/Inf output propagating through BCE
                     float raw_o = isfinite(output[i]) ? output[i] : 0.5f;
                     float o = fmaxf(eps, fminf(1.0f - eps, raw_o));
-                    loss -= example->target[i] * logf(o)
-                          + (1.0f - example->target[i]) * logf(1.0f - o);
+                    // C-ADP-10: Clamp target to [0,1] (same as supervised path)
+                    float t = fminf(fmaxf(example->target[i], 0.0f), 1.0f);
+                    loss -= t * logf(o) + (1.0f - t) * logf(1.0f - o);
                 }
                 loss /= example->target_size;
             }
@@ -2424,8 +2495,14 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
             // H3-FIX: Persist EMA tracking values (new in v2.5.1)
             // Without these, checkpoint restore resets EMA to -1 (uninitialized),
             // causing incorrect stability detection until the EMA warms up again.
-            FWRITE_CHECKED(&network->ema_grad_norm, sizeof(float), 1, file);
-            FWRITE_CHECKED(&network->ema_loss, sizeof(float), 1, file);
+            // C-ADP-2: Copy volatile fields to local vars for fwrite (volatile float*
+            // is not implicitly convertible to const void*)
+            {
+                float tmp_ema_gn = network->ema_grad_norm;
+                float tmp_ema_l = network->ema_loss;
+                FWRITE_CHECKED(&tmp_ema_gn, sizeof(float), 1, file);
+                FWRITE_CHECKED(&tmp_ema_l, sizeof(float), 1, file);
+            }
 
             // Write synaptic weights from base_network (CRITICAL: enables weight persistence)
             if (network->base_network) {
@@ -2765,6 +2842,16 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
             return NULL;
         }
+
+        // C-ADP-6: Validate loaded neuron state floats for NaN/Inf from corrupt checkpoints
+        if (!isfinite(ns->adaptive_threshold) || ns->adaptive_threshold <= 0.0f)
+            ns->adaptive_threshold = network->config.spike_params.min_threshold;
+        if (!isfinite(ns->activation_mean))
+            ns->activation_mean = 0.0f;
+        if (!isfinite(ns->activation_variance))
+            ns->activation_variance = 0.0f;
+        if (!isfinite(ns->membrane_potential))
+            ns->membrane_potential = 0.0f;
     }
 
     // Read label map
@@ -2793,7 +2880,11 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     if (num_labels > 0) {
         uint32_t cap = 16;
         while (cap < num_labels) cap *= 2;
-        network->label_map = nimcp_malloc(cap * sizeof(char*));
+        // C-ADP-1: Use nimcp_calloc to zero the ENTIRE allocation. Previously
+        // nimcp_malloc + partial memset only zeroed slots [num_labels, cap), leaving
+        // slots [0, num_labels) uninitialized. If the label reading loop fails
+        // partway, destroy() would free garbage pointers in uninitialized slots.
+        network->label_map = nimcp_calloc(cap, sizeof(char*));
         // C-3: NULL check after label_map allocation to prevent NULL dereference
         if (!network->label_map) {
             adaptive_network_destroy(network);
@@ -2802,8 +2893,6 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 "adaptive_network_load: failed to allocate label_map");
             return NULL;
         }
-        // Zero the unused slots to prevent stale pointer dereference
-        memset(network->label_map + num_labels, 0, (cap - num_labels) * sizeof(char*));
         network->label_map_capacity = cap;
     } else {
         network->label_map = NULL;
@@ -2898,13 +2987,22 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     // defaults set by adaptive_network_create().
     if (version >= 0x00020501) {
         bool ema_ok = true;
-        ema_ok = ema_ok && (fread(&network->ema_grad_norm, sizeof(float), 1, file) == 1);
-        ema_ok = ema_ok && (fread(&network->ema_loss, sizeof(float), 1, file) == 1);
+        // C-ADP-2: Cast volatile away for fread — fread needs non-volatile void*
+        float tmp_ema_grad = 0.0f, tmp_ema_loss = 0.0f;
+        ema_ok = ema_ok && (fread(&tmp_ema_grad, sizeof(float), 1, file) == 1);
+        ema_ok = ema_ok && (fread(&tmp_ema_loss, sizeof(float), 1, file) == 1);
         if (!ema_ok) {
             fprintf(stderr, "WARNING: Failed to read EMA fields from checkpoint, using defaults\n");
             network->ema_grad_norm = -1.0f;
             network->ema_loss = -1.0f;
+        } else {
+            network->ema_grad_norm = tmp_ema_grad;
+            network->ema_loss = tmp_ema_loss;
         }
+
+        // C-ADP-5: Validate loaded EMA values for NaN/Inf from corrupt checkpoints
+        if (!isfinite(network->ema_grad_norm)) network->ema_grad_norm = -1.0f;
+        if (!isfinite(network->ema_loss)) network->ema_loss = -1.0f;
     }
 
     // Read synaptic weights from base_network (CRITICAL: restores learned weights)

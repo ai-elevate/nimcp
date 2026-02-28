@@ -198,6 +198,12 @@ RESEARCH_MASTERY_THRESHOLD = 0.6   # Phase 3: minimum mastery for research eligi
 CREATIVE_MASTERY_THRESHOLD = 0.8   # Phase 4: minimum mastery for creative exam
 HARD_EXAMPLE_LOSS_THRESHOLD = 0.3  # Loss above which reasoning chain runs
 
+# Hard example mining parameters
+REPLAY_LR_FACTOR = 0.8            # Replay LR = base_lr * factor (lower avoids overfit)
+MAX_HARD_REPLAY_PER_PASS = 500    # Max hard examples replayed at end of phase
+REPLAY_DECAY_FACTOR = 0.95        # Decay factor for aging hard examples
+RECESS_AROUSAL_BOOST = 0.15       # Arousal boost during introspection recess
+
 
 # ---------------------------------------------------------------------------
 # Learning Rate Scheduling — Cosine Annealing with Warm Restarts
@@ -721,30 +727,33 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
                 total_trained += 1
 
                 # Record for hard example mining — skip during warmup when
-                # loss estimates are unreliable
-                if scheduler.step_count > warmup_steps:
+                # loss estimates are unreliable.
+                # TA-1+TA-4: Only call predict_fast every 5th example to
+                # reduce overhead; use None default to avoid stale 0.5 loss
+                # that would pollute the hard example bank.
+                if scheduler.step_count > warmup_steps and total_trained % 5 == 0:
                     # H12: Use actual prediction error instead of LR proxy
+                    estimated_loss = None
                     try:
                         result = brain.predict_fast(ex["features"])
                         if result is not None:
                             pred, _ = result
                             estimated_loss = 0.0 if str(pred) == str(ex["label"]) else 1.0
-                        else:
-                            estimated_loss = 0.5
                     except Exception:
-                        estimated_loss = 0.5
-                    hard_miner.record(ex["features"], str(ex["label"]), estimated_loss)
+                        pass
+                    if estimated_loss is not None:
+                        hard_miner.record(ex["features"], str(ex["label"]), estimated_loss)
 
             # Replay hard examples at the end of each epoch
             # Use peek_lr() to avoid advancing the scheduler step_count on replay
             replay_batch = hard_miner.get_replay_batch(batch_size=50)
             for _loss, feats, label in replay_batch:
                 replay_lr = scheduler.peek_lr()
-                brain.learn(feats, label, replay_lr * 0.8)  # Slightly lower LR for replay
+                brain.learn(feats, label, replay_lr * REPLAY_LR_FACTOR)  # Slightly lower LR for replay
                 total_trained += 1
 
         # Decay hard example losses between datasets
-        hard_miner.decay(factor=0.95)
+        hard_miner.decay(factor=REPLAY_DECAY_FACTOR)
 
         elapsed = time.time() - t0
         rate = n_examples / max(elapsed, 0.01)
@@ -755,7 +764,7 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
     # Final hard example replay pass — use peek_lr() to avoid advancing scheduler
     if hard_miner.hard_examples:
         logger.log(f"  Final hard example replay: {len(hard_miner.hard_examples)} items")
-        for _loss, _cnt, feats, label in hard_miner.hard_examples[:500]:
+        for _loss, _cnt, feats, label in hard_miner.hard_examples[:MAX_HARD_REPLAY_PER_PASS]:
             if _shutdown_requested:
                 break
             lr = scheduler.peek_lr()
@@ -1278,11 +1287,11 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                                 r_lr = adaptive_lr
                             brain.learn(r_feats, r_label, r_lr)
                             total_trained += 1
-                        phase2_miner.decay(factor=0.95)
+                        phase2_miner.decay(factor=REPLAY_DECAY_FACTOR)
 
                         # Boost arousal during recess (simulates coffee break)
                         try:
-                            cognitive.boost_arousal(delta=0.15)
+                            cognitive.boost_arousal(delta=RECESS_AROUSAL_BOOST)
                         except Exception:
                             pass
 
@@ -1318,6 +1327,10 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
             logger.log(f"\n--- Teaching {len(deferred_datasets)} curriculum-deferred datasets ---")
             phase2_curriculum.step = 5001  # Force all domains active
             for ds_config in deferred_datasets:
+                # TA-5: Check shutdown in deferred dataset outer loop
+                if _shutdown_requested:
+                    logger.log("  Shutdown requested — stopping deferred datasets")
+                    break
                 name = ds_config["name"]
                 domain = ds_config.get("domain", "general")
                 logger.log(f"\n--- Deferred: {name} [{domain}] ---")
@@ -1343,15 +1356,17 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                         phase2_curriculum.advance()
                         # Hard example mining for deferred datasets too
                         # Only call predict_fast every 10th example;
-                        # only record examples where we have an actual loss estimate
+                        # only record examples where we have an actual loss estimate.
+                        # TA-1: Use None default instead of stale 0.5.
                         if count % 10 == 0:
-                            est_loss = 0.5
+                            est_loss = None
                             try:
                                 pred, conf = brain.predict_fast(features)
                                 est_loss = 0.0 if str(pred) == str(prefixed_label) else (1.0 - conf)
                             except Exception:
-                                est_loss = 0.5
-                            phase2_miner.record(features, prefixed_label, est_loss)
+                                pass
+                            if est_loss is not None:
+                                phase2_miner.record(features, prefixed_label, est_loss)
                         if count >= PHASE2_MAX_PER_DATASET:
                             break
                     logger.log(f"  {name}: {count:,} deferred examples")
@@ -1359,7 +1374,7 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                     logger.log(f"  {name}: ERROR — {e}")
                 # Decay hard example losses after each deferred dataset to
                 # prevent unbounded growth and let old hard examples age out
-                phase2_miner.decay(factor=0.95)
+                phase2_miner.decay(factor=REPLAY_DECAY_FACTOR)
 
                 # Introspection + consolidation between deferred datasets
                 # (matches main dataset loop quality — prevents degraded training)
@@ -1387,7 +1402,7 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
 
         # Final hard example replay for Phase 2 — use peek_lr() for replay
         if phase2_miner.hard_examples:
-            replay_count = min(500, len(phase2_miner.hard_examples))
+            replay_count = min(MAX_HARD_REPLAY_PER_PASS, len(phase2_miner.hard_examples))
             logger.log(f"\n  Phase 2 hard example replay: {replay_count} items")
             for _loss, _cnt, feats, label in phase2_miner.hard_examples[:replay_count]:
                 if _shutdown_requested:
@@ -1438,8 +1453,14 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                         continue
 
                     features = text_to_features(text, ATHENA_NUM_INPUTS)
-                    label_val = example.get("answer", example.get("label", 0))
-                    socratic.train_example(features, domain_label(domain, label_val), domain)
+                    label_val = example.get("answer", example.get("label", None))
+                    # TA-2: Skip examples where label is None to avoid training
+                    # on "domain:None" labels that pollute the output space.
+                    # Fall back to dataset name as domain if domain config is missing.
+                    if label_val is None:
+                        continue
+                    effective_domain = domain if domain else name
+                    socratic.train_example(features, domain_label(effective_domain, label_val), effective_domain)
                     count += 1
                     total_trained += 1
 
@@ -1453,6 +1474,16 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                     "phase": 2, "dataset": name, "domain": domain,
                     "examples": count, "total_trained": total_trained,
                 })
+
+                # TA-3: Per-dataset checkpoint in fallback path (matches
+                # the primary streaming path's checkpoint pattern).
+                checkpoint_path = ATHENA_CHECKPOINT_DIR / f"athena_after_{name}.bin"
+                try:
+                    brain.save(str(checkpoint_path))
+                    logger.log(f"  Checkpoint saved: {checkpoint_path.name}")
+                except Exception as e:
+                    logger.log(f"  Checkpoint save failed: {e}")
+
             except Exception as e:
                 logger.log(f"  {name}: ERROR — {e}")
                 continue

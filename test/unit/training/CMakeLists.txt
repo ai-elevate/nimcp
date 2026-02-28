@@ -11,8 +11,8 @@ add_executable(unit_training_test_snn_backprop
 )
 
 target_include_directories(unit_training_test_snn_backprop PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_compile_features(unit_training_test_snn_backprop PRIVATE cxx_std_20)
@@ -44,8 +44,8 @@ add_executable(unit_training_test_cnn_backprop
 )
 
 target_include_directories(unit_training_test_cnn_backprop PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_compile_features(unit_training_test_cnn_backprop PRIVATE cxx_std_20)
@@ -76,8 +76,8 @@ add_executable(unit_training_test_cnn_cortex_bridge
 )
 
 target_include_directories(unit_training_test_cnn_cortex_bridge PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_compile_features(unit_training_test_cnn_cortex_bridge PRIVATE cxx_std_20)
@@ -111,8 +111,8 @@ add_executable(unit_training_test_auto_architecture
 )
 
 target_include_directories(unit_training_test_auto_architecture PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_compile_features(unit_training_test_auto_architecture PRIVATE cxx_std_20)
@@ -144,8 +144,8 @@ add_executable(unit_training_test_auto_architecture_nas
 )
 
 target_include_directories(unit_training_test_auto_architecture_nas PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_compile_features(unit_training_test_auto_architecture_nas PRIVATE cxx_std_20)
@@ -176,8 +176,8 @@ add_executable(unit_training_test_meta_hpo
 )
 
 target_include_directories(unit_training_test_meta_hpo PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_compile_features(unit_training_test_meta_hpo PRIVATE cxx_std_20)
@@ -208,8 +208,8 @@ add_executable(unit_training_test_kd_qat
 )
 
 target_include_directories(unit_training_test_kd_qat PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_compile_features(unit_training_test_kd_qat PRIVATE cxx_std_20)
@@ -240,8 +240,8 @@ add_executable(unit_training_test_cl_mtl
 )
 
 target_include_directories(unit_training_test_cl_mtl PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_compile_features(unit_training_test_cl_mtl PRIVATE cxx_std_20)
@@ -272,8 +272,8 @@ add_executable(unit_training_test_amp_distributed
 )
 
 target_include_directories(unit_training_test_amp_distributed PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_compile_features(unit_training_test_amp_distributed PRIVATE cxx_std_20)
@@ -304,8 +304,8 @@ add_executable(unit_training_test_adv_gs
 )
 
 target_include_directories(unit_training_test_adv_gs PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_compile_features(unit_training_test_adv_gs PRIVATE cxx_std_20)
@@ -340,8 +340,8 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_quantization_ternary.cpp)
         test_quantization_ternary.cpp
     )
     target_include_directories(unit_training_test_quantization_ternary PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
     )
     target_compile_features(unit_training_test_quantization_ternary PRIVATE cxx_std_20)
     target_link_libraries(unit_training_test_quantization_ternary PRIVATE
@@ -365,8 +365,8 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_stubs.cpp)
         test_snn_backprop_stubs.cpp
     )
     target_include_directories(unit_training_test_snn_backprop_stubs PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
     )
     target_compile_features(unit_training_test_snn_backprop_stubs PRIVATE cxx_std_20)
     target_link_libraries(unit_training_test_snn_backprop_stubs PRIVATE
@@ -391,15 +391,15 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_dispatch.c)
         test_training_dispatch.c
     )
     target_include_directories(unit_training_test_training_dispatch PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
     )
     target_compile_features(unit_training_test_training_dispatch PRIVATE c_std_11)
     target_compile_options(unit_training_test_training_dispatch PRIVATE
         -Wall -Wextra
     )
     target_link_libraries(unit_training_test_training_dispatch PRIVATE
-        nimcp nimcp_middleware Threads::Threads check_pic subunit rt m
+        nimcp_middleware nimcp Threads::Threads check_pic subunit rt m
     )
     add_test(NAME unit_training_test_training_dispatch
              COMMAND unit_training_test_training_dispatch

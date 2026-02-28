@@ -29,6 +29,15 @@
 #include <stdbool.h>
 #include <stdatomic.h>
 
+// C-ADP-7: sched_yield() / SwitchToThread() for busy-wait drain in cleanup
+#ifdef _WIN32
+#include <windows.h>
+#define BP_YIELD() SwitchToThread()
+#else
+#include <sched.h>
+#define BP_YIELD() sched_yield()
+#endif
+
 // H-4: Atomic flag to prevent use-after-free during cleanup
 static _Atomic bool g_bp_shutting_down = false;
 
@@ -118,8 +127,10 @@ void backprop_kernel_cleanup(void) {
     // H-3 / H-7: Spin until all in-flight backprop_sparse_full calls have exited.
     // This prevents destroying the thread pool or memory pool while workers are
     // still using them.
+    // C-ADP-7: Yield CPU while waiting for in-flight calls to drain,
+    // instead of burning cycles in a tight spin loop
     while (atomic_load(&g_bp_refcount) > 0) {
-        // Busy-wait — shutdown is rare and refcount drains quickly
+        BP_YIELD();
     }
 
     nimcp_thread_pool_t* pool = atomic_load(&g_bp_thread_pool);
@@ -189,18 +200,25 @@ __attribute__((target("avx2,fma")))
 static void bp_tanh_deriv_avx2(float* delta, const float* states, size_t n)
 {
     __m256 one = _mm256_set1_ps(1.0f);
+    __m256 zero = _mm256_setzero_ps();
     size_t i = 0;
     for (; i + 8 <= n; i += 8) {
         __m256 s = _mm256_loadu_ps(states + i);
         __m256 d = _mm256_loadu_ps(delta + i);
         __m256 s2 = _mm256_mul_ps(s, s);
         __m256 deriv = _mm256_sub_ps(one, s2);
+        // C-ADP-8: Clamp deriv to non-negative — states slightly outside [-1,1]
+        // (from floating point drift) produce negative 1-s^2
+        deriv = _mm256_max_ps(deriv, zero);
         d = _mm256_mul_ps(d, deriv);
         _mm256_storeu_ps(delta + i, d);
     }
     for (; i < n; i++) {
         float s = states[i];
-        delta[i] *= (1.0f - s * s);
+        // C-ADP-8: Clamp to non-negative (scalar tail)
+        float d = (1.0f - s * s);
+        if (d < 0.0f) d = 0.0f;
+        delta[i] *= d;
     }
 }
 
@@ -246,7 +264,10 @@ static void bp_tanh_deriv_scalar(float* delta, const float* states, size_t n)
 {
     for (size_t i = 0; i < n; i++) {
         float s = states[i];
-        delta[i] *= (1.0f - s * s);
+        // C-ADP-8: Clamp to non-negative — states outside [-1,1] cause negative deriv
+        float d = (1.0f - s * s);
+        if (d < 0.0f) d = 0.0f;
+        delta[i] *= d;
     }
 }
 
@@ -482,13 +503,15 @@ int backprop_sparse_full(
 
         // Global gradient norm clipping: scale layer_lr if grad norm exceeds threshold.
         //
-        // NOTE (H-2): Gradient clipping asymmetry — the output layer is processed
-        // first and contributes to grad_norm_sq, but hidden layers see a
+        // NOTE (H-2 / C-ADP-9): Gradient clipping asymmetry — the output layer is
+        // processed first and contributes to grad_norm_sq, but hidden layers see a
         // progressively updated norm. The output layer itself sees grad_norm_sq=0
         // on its first pass and is never clipped by its own contribution.
-        // This is intentional-ish: the output layer already receives OUTPUT_LR_BOOST
-        // (10x) and its deltas are individually clamped to [-1, 1], so the combined
-        // effect provides adequate gradient control without a two-pass approach.
+        // This is a deliberate design choice: the output layer already receives
+        // OUTPUT_LR_BOOST (10x) and its deltas are individually clamped to [-1, 1],
+        // so the combined effect provides adequate gradient control. A two-pass
+        // approach (compute norm first, then clip) would double the computation cost
+        // for marginal benefit given the existing per-delta clamps.
         if (max_grad_norm > 0.0f && grad_norm_sq > 0.0) {
             float running_norm = (float)sqrt(grad_norm_sq);
             if (running_norm > max_grad_norm) {
@@ -740,7 +763,10 @@ after_weight_update:
                     case ACTIVATION_LEAKY_RELU:
                         act_deriv = (s > 0.0f) ? 1.0f : 0.01f; break;
                     case ACTIVATION_TANH:
-                        act_deriv = 1.0f - s * s; break;
+                        // C-ADP-8: Clamp to non-negative
+                        act_deriv = 1.0f - s * s;
+                        if (act_deriv < 0.0f) act_deriv = 0.0f;
+                        break;
                     case ACTIVATION_SIGMOID:
                         act_deriv = s * (1.0f - s);
                         if (act_deriv < 0.01f) act_deriv = 0.01f; break;

@@ -817,25 +817,51 @@ static void determine_output_label(brain_t brain, brain_decision_t* decision)
     // P2-50 FIX: Guard against output_size==0 to prevent OOB access on output_vector[0]
     if (decision->output_size == 0) return;
 
+    // W7-1 FIX (C-INF-1): NaN-safe argmax. If output contains NaN values, standard
+    // comparison (NaN > max_value) is always false, silently picking index 0.
+    // Use isfinite() to skip NaN/Inf values and detect all-NaN output.
+    // Previously initialized max_value = output_vector[0] which propagated NaN.
     uint32_t max_idx = 0;
-    float max_value = decision->output_vector[0];
+    float max_value = -FLT_MAX;
+    bool has_valid = false;
 
-    for (uint32_t i = 1; i < decision->output_size; i++) {
-        if (decision->output_vector[i] > max_value) {
+    for (uint32_t i = 0; i < decision->output_size; i++) {
+        if (isfinite(decision->output_vector[i]) && decision->output_vector[i] > max_value) {
             max_value = decision->output_vector[i];
             max_idx = i;
+            has_valid = true;
         }
     }
 
-    // Set label
-    if (max_idx < brain->num_output_labels) {
+    // If all outputs are NaN/Inf, set label to UNKNOWN with zero confidence
+    if (!has_valid) {
+        strncpy(decision->label, "UNKNOWN", sizeof(decision->label) - 1);
+        decision->label[sizeof(decision->label) - 1] = '\0';
+        decision->confidence = 0.0f;
+        return;
+    }
+
+    // W7-2 FIX (C-INF-2): 3-way NULL guard before accessing output_labels.
+    // Check: (1) output_labels array is non-NULL, (2) max_idx is within bounds,
+    // AND (3) the specific entry is non-NULL. Previous code only checked bounds.
+    if (brain->output_labels && max_idx < brain->num_output_labels
+        && brain->output_labels[max_idx]) {
         strncpy(decision->label, brain->output_labels[max_idx], sizeof(decision->label) - 1);
     } else {
         snprintf(decision->label, sizeof(decision->label), "output_%u", max_idx);
     }
 
-    // P3-51 FIX: Replace magic number with named constant
-    decision->confidence = fminf(max_value / CONFIDENCE_NORMALIZATION_FACTOR, 1.0F);
+    // W7-3 FIX (C-INF-3): Use ratio normalization (max/sum_abs) matching predict_fast,
+    // replacing the fixed-divisor formula (max/10.0) that gave inconsistent
+    // confidence values compared to predict_fast for the same inputs.
+    // Also clamp to [0, 1] to prevent negative confidence from negative max_value.
+    float sum_abs = 0.0f;
+    for (uint32_t i = 0; i < decision->output_size; i++) {
+        if (isfinite(decision->output_vector[i]))
+            sum_abs += fabsf(decision->output_vector[i]);
+    }
+    float raw_conf = (sum_abs > 0.0f) ? (max_value / sum_abs) : 0.0f;
+    decision->confidence = fmaxf(0.0f, fminf(raw_conf, 1.0f));
 }
 
 
@@ -855,11 +881,20 @@ static void populate_interpretability(brain_t brain, const float* features, uint
                                  sizeof(decision->explanation));
     }
 
+    // W7-9: Guard against nimcp_malloc(0) when active_neurons==0.
+    // malloc(0) is implementation-defined and may return NULL or a non-NULL
+    // pointer that must not be dereferenced.
+    if (active_neurons == 0) return;
+
     // Populate active neuron IDs
     decision->active_neuron_ids = nimcp_malloc(active_neurons * sizeof(uint32_t));
     if (!decision->active_neuron_ids) {
+        // W7-10: Reset num_active_neurons to 0 on alloc failure.
+        // Without this, num_active_neurons is non-zero but pointer is NULL,
+        // causing callers that iterate active_neuron_ids to dereference NULL.
+        decision->num_active_neurons = 0;
         set_error("Failed to allocate active neuron IDs array (%u neurons)", active_neurons);
-        return;  // decision->num_active_neurons is 0, so this is safe
+        return;
     }
     for (uint32_t i = 0; i < active_neurons; i++) {
         decision->active_neuron_ids[i] = i;

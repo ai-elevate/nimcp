@@ -95,6 +95,7 @@ add_nimcp_test_binary(core_tests
     test_brain_comprehensive.cpp  # Comprehensive brain.c coverage (target: 100%)
     test_brain_cognitive_integration.cpp  # Deep cognitive integration tests for brain_decide
 )
+set_tests_properties(core_tests PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 
 # ============================================================================
 # TEST BINARY 2: Glial Cell Tests (medium speed, related)
@@ -116,6 +117,7 @@ add_nimcp_test_binary(plasticity_tests
     test_bcm.cpp
     test_attention.cpp
 )
+set_tests_properties(plasticity_tests PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 
 # ============================================================================
 # TEST BINARY 3.5: Fractal Topology Tests (fast)
@@ -123,6 +125,7 @@ add_nimcp_test_binary(plasticity_tests
 add_nimcp_test_binary(topology_tests
     topology_tests.cpp
 )
+set_tests_properties(topology_tests PROPERTIES TIMEOUT 180 RESOURCE_LOCK "brain_heavy")
 
 # ============================================================================
 # TEST BINARY 3.6: Topology Integration Tests (medium)
@@ -130,6 +133,7 @@ add_nimcp_test_binary(topology_tests
 add_nimcp_test_binary(topology_integration_tests
     topology_integration_tests.cpp
 )
+set_tests_properties(topology_integration_tests PROPERTIES TIMEOUT 180 RESOURCE_LOCK "brain_heavy")
 
 # ============================================================================
 # TEST BINARY 3.7: Pink Noise Generator Tests (fast)
@@ -170,6 +174,7 @@ add_nimcp_test_binary(cognitive_tests
     test_predictive.cpp         # Phase 10.9: Predictive Processing (free energy, active inference)
     test_mirror_neurons.cpp     # Phase 10.11: Mirror Neurons (observation, imitation, social cognition)
 )
+set_tests_properties(cognitive_tests PROPERTIES TIMEOUT 600 RESOURCE_LOCK "brain_heavy")
 
 # ============================================================================
 # TEST BINARY 5: Networking & P2P Tests (medium-slow)
@@ -248,6 +253,7 @@ add_nimcp_test_binary(integration_tests
     test_visual_cortex_e2e.cpp
     test_visual_cortex_regression.cpp
 )
+set_tests_properties(integration_tests PROPERTIES TIMEOUT 600 RESOURCE_LOCK "brain_heavy")
 
 # ============================================================================
 # TEST BINARY 10: Quality & Stress Tests (very slow)
@@ -273,17 +279,22 @@ message(STATUS "")
 message(STATUS "===============================================================================")
 message(STATUS "NIMCP Parallel Test Suite Configured")
 message(STATUS "===============================================================================")
-message(STATUS "Test Binaries: 10 (can run in parallel)")
-message(STATUS "  1. core_tests          - Core neural network & neuron types (5 test files)")
-message(STATUS "  2. glial_tests         - Glial cells & integration (4 test files)")
-message(STATUS "  3. plasticity_tests    - Neuromodulators, BCM, attention (3 test files)")
-message(STATUS "  4. cognitive_tests     - Higher-level cognition (6 test files)")
-message(STATUS "  5. networking_tests    - P2P & networking (4 test files)")
-message(STATUS "  6. io_tests            - Data I/O & serialization (4 test files)")
-message(STATUS "  7. utility_tests       - Data structures & utilities (10 test files)")
-message(STATUS "  8. security_tests      - Security & performance (3 test files)")
-message(STATUS "  9. integration_tests   - Cross-module integration (7 test files)")
-message(STATUS " 10. quality_tests       - Stress, leaks, lint, regression (5 test files)")
+message(STATUS "Test Binaries: 13 active (can run in parallel)")
+message(STATUS "  1.   core_tests                  - Core neural network & brain (7 test files)")
+message(STATUS "  2.   glial_tests                 - DISABLED (moved to test/unit/glial/)")
+message(STATUS "  3.   plasticity_tests             - Neuromodulators, BCM, attention (3 test files)")
+message(STATUS "  3.5  topology_tests               - Fractal topology (1 test file)")
+message(STATUS "  3.6  topology_integration_tests   - Topology integration (1 test file)")
+message(STATUS "  3.7  pink_noise_tests             - Pink noise generator (1 test file)")
+message(STATUS "  3.8  epistemic_filter_tests       - Epistemic filter (1 test file)")
+message(STATUS "  4.   cognitive_tests              - Higher-level cognition (19 test files)")
+message(STATUS "  5.   networking_tests             - P2P & networking (4 test files)")
+message(STATUS "  6.   io_tests                     - Data I/O & serialization (4 test files)")
+message(STATUS "  7.   utility_tests                - Data structures & utilities (16 test files)")
+message(STATUS "  7.5  perception_bidirectional_tests - Audio & speech cortex (2 test files)")
+message(STATUS "  8.   security_tests               - DISABLED (API mismatches)")
+message(STATUS "  9.   integration_tests            - Cross-module integration (10 test files)")
+message(STATUS " 10.   quality_tests                - DISABLED (API mismatches)")
 message(STATUS "")
 message(STATUS "Parallel Execution:")
 message(STATUS "  Run all:  ctest -j\$(nproc)")

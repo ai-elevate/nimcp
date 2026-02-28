@@ -1094,6 +1094,9 @@ static PyObject* Brain_restore_cow(BrainObject* self, PyObject* args) {
 
     nimcp_brain_snapshot_t snapshot =
         (nimcp_brain_snapshot_t)PyCapsule_GetPointer(capsule, "nimcp.brain_snapshot");
+    if (!snapshot) {
+        return NULL;  /* PyErr already set by PyCapsule_GetPointer */
+    }
 
     nimcp_status_t status;
 
@@ -1413,8 +1416,10 @@ static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
     }
 
     char label[NIMCP_MAX_LABEL_SIZE];
+    memset(label, 0, sizeof(label));
     float confidence;
     char explanation[NIMCP_NAME_BUFFER_SIZE];
+    memset(explanation, 0, sizeof(explanation));
     enum { DECIDE_FULL_MAX_OUTPUT = 1024 };
     float output_vector[DECIDE_FULL_MAX_OUTPUT];
     uint32_t output_size = DECIDE_FULL_MAX_OUTPUT;
@@ -3526,6 +3531,11 @@ static int Knowledge_init(KnowledgeObject* self, PyObject* args, PyObject* kwds)
  * HOW:  Call nimcp_knowledge_add_fact
  */
 static PyObject* Knowledge_add_fact(KnowledgeObject* self, PyObject* args) {
+    if (!self->knowledge) {
+        PyErr_SetString(PyExc_RuntimeError, "Knowledge system not initialized");
+        return NULL;
+    }
+
     const char* subject;
     const char* predicate;
     const char* object;
@@ -3555,6 +3565,11 @@ static PyObject* Knowledge_add_fact(KnowledgeObject* self, PyObject* args) {
  * HOW:  Call nimcp_knowledge_query with pre-allocated buffer
  */
 static PyObject* Knowledge_query(KnowledgeObject* self, PyObject* args) {
+    if (!self->knowledge) {
+        PyErr_SetString(PyExc_RuntimeError, "Knowledge system not initialized");
+        return NULL;
+    }
+
     const char* query_str;
 
     if (!PyArg_ParseTuple(args, "s", &query_str)) {

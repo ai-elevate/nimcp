@@ -2178,9 +2178,15 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     update_inference_stats(brain, decision);
 
     // Cache decision for future reuse (thread-safe with mutex protection)
+    // W7-8 (C-INF-M3): Log warning on mutex lock failure instead of silently
+    // skipping cache update. A failed lock indicates contention or corruption
+    // that should be diagnosed, not silently ignored.
     if (nimcp_platform_mutex_lock(&brain->cache_mutex) == 0) {
         cache_decision(brain, features, num_features, decision);
         nimcp_platform_mutex_unlock(&brain->cache_mutex);
+    } else {
+        LOG_MODULE_WARN("BRAIN", "brain_decide: failed to lock cache_mutex — "
+                        "decision not cached (possible contention or corruption)");
     }
 
     // Free the defensive copy of features
@@ -2263,6 +2269,21 @@ bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
 
     LOG_MODULE_INFO("BRAIN", "brain_predict: performing forward pass (readonly=%d)", brain->can_use_readonly);
 
+    // W7-7 (C-INF-M2): Forward path consistency note.
+    // brain_predict() uses adaptive_network_forward() (thresholded), which applies
+    // adaptive output thresholding that zeros below-threshold outputs. This differs
+    // from the API-level predict_fast/predict_in_domain which use forward_raw().
+    // brain_decide() also uses adaptive_network_forward (via perform_forward_pass).
+    //
+    // This means:
+    //   - brain_predict() and brain_decide() are CONSISTENT (both thresholded)
+    //   - predict_fast() uses raw (unthresholded) for classification argmax
+    //
+    // The thresholded version is correct here because brain_predict() populates
+    // a raw output buffer for the caller, and the threshold reflects the network's
+    // actual learned decision boundary. predict_fast uses raw specifically because
+    // it does its own argmax and thresholding would collapse outputs to the same class.
+    //
     // Perform forward pass through network
     // Use read-only mode if this is a COW clone
     if (brain->can_use_readonly) {

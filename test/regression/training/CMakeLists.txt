@@ -106,7 +106,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cnn_backprop_regression.cpp)
     )
     target_compile_features(regression_training_cnn_backprop_test PRIVATE cxx_std_20)
     target_link_libraries(regression_training_cnn_backprop_test PRIVATE
-        GTest::gtest GTest::gtest_main nimcp nimcp_middleware Threads::Threads m
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
     )
     gtest_discover_tests(regression_training_cnn_backprop_test
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -128,7 +128,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cnn_cortex_bridge_regression.cpp)
     )
     target_compile_features(regression_training_cnn_cortex_bridge_test PRIVATE cxx_std_20)
     target_link_libraries(regression_training_cnn_cortex_bridge_test PRIVATE
-        GTest::gtest GTest::gtest_main nimcp nimcp_middleware Threads::Threads m
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
     )
     gtest_discover_tests(regression_training_cnn_cortex_bridge_test
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -150,7 +150,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_nas_regression.cpp)
     )
     target_compile_features(regression_training_nas_test PRIVATE cxx_std_20)
     target_link_libraries(regression_training_nas_test PRIVATE
-        GTest::gtest GTest::gtest_main nimcp nimcp_middleware Threads::Threads m
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
     )
     gtest_discover_tests(regression_training_nas_test
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -172,7 +172,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_regression.cpp)
     )
     target_compile_features(regression_training_snn_backprop_test PRIVATE cxx_std_20)
     target_link_libraries(regression_training_snn_backprop_test PRIVATE
-        GTest::gtest GTest::gtest_main nimcp nimcp_middleware Threads::Threads m
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
     )
     gtest_discover_tests(regression_training_snn_backprop_test
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -194,7 +194,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_stubs_regression.cpp)
     )
     target_compile_features(regression_training_snn_backprop_stubs_test PRIVATE cxx_std_20)
     target_link_libraries(regression_training_snn_backprop_stubs_test PRIVATE
-        GTest::gtest GTest::gtest_main nimcp nimcp_middleware Threads::Threads m
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
     )
     gtest_discover_tests(regression_training_snn_backprop_stubs_test
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -216,7 +216,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_portia_regression.cpp)
     )
     target_compile_features(regression_training_portia_test PRIVATE cxx_std_20)
     target_link_libraries(regression_training_portia_test PRIVATE
-        GTest::gtest GTest::gtest_main nimcp nimcp_middleware Threads::Threads m
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
     )
     gtest_discover_tests(regression_training_portia_test
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -238,7 +238,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_stability_regression.cpp)
     )
     target_compile_features(regression_training_stability_test PRIVATE cxx_std_20)
     target_link_libraries(regression_training_stability_test PRIVATE
-        GTest::gtest GTest::gtest_main nimcp nimcp_middleware Threads::Threads m
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
     )
     gtest_discover_tests(regression_training_stability_test
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -260,7 +260,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_symbolic_logic_hub_regressio
     )
     target_compile_features(regression_training_symbolic_logic_hub_test PRIVATE cxx_std_20)
     target_link_libraries(regression_training_symbolic_logic_hub_test PRIVATE
-        GTest::gtest GTest::gtest_main nimcp nimcp_middleware Threads::Threads m
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
     )
     gtest_discover_tests(regression_training_symbolic_logic_hub_test
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -276,21 +276,21 @@ endif()
 # or FindPkgConfig + libcheck-dev installed. The check_pic/subunit targets come from
 # the system libcheck package (apt install check libsubunit-dev).
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_dispatch_regression.c)
-    add_executable(regression_test_training_dispatch
+    add_executable(regression_training_dispatch_test
         test_training_dispatch_regression.c
     )
-    target_include_directories(regression_test_training_dispatch PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
+    target_include_directories(regression_training_dispatch_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
     )
-    target_compile_features(regression_test_training_dispatch PRIVATE c_std_11)
-    target_link_libraries(regression_test_training_dispatch PRIVATE
-        nimcp nimcp_middleware Threads::Threads check_pic subunit rt m
+    target_compile_features(regression_training_dispatch_test PRIVATE c_std_11)
+    target_link_libraries(regression_training_dispatch_test PRIVATE
+        nimcp_middleware nimcp Threads::Threads check_pic subunit rt m
     )
-    add_test(NAME regression_test_training_dispatch
-             COMMAND regression_test_training_dispatch
+    add_test(NAME regression_training_dispatch_test
+             COMMAND regression_training_dispatch_test
              WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-    set_tests_properties(regression_test_training_dispatch
+    set_tests_properties(regression_training_dispatch_test
         PROPERTIES
             LABELS "regression;training;dispatch"
             TIMEOUT 300

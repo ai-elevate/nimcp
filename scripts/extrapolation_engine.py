@@ -37,13 +37,11 @@ MODULES USED:
 """
 
 import logging
-import math
 import random
 import time
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -618,6 +616,10 @@ class ExtrapolationEngine:
             if not blended_decision:
                 return None
 
+            # EX-1: Include output_vector so _stage_imagine can update
+            # _generation_history for non-extrapolate modes.
+            output_vec = blended_decision.get("output_vector",
+                         [0.0] * self._num_outputs)
             return {
                 "type": "interpolation",
                 "primary": {"domain": config.domain_context, "label": pred1, "confidence": conf1},
@@ -626,9 +628,9 @@ class ExtrapolationEngine:
                 "blended_confidence": blended_decision.get("confidence", 0.0),
                 "blend_alpha": alpha,
                 "explanation": blended_decision.get("explanation", ""),
+                "output_vector": output_vec,
                 "novelty": self._compute_novelty(
-                    np.array(blended_decision.get("output_vector",
-                             [0.0] * self._num_outputs), dtype=np.float32)),
+                    np.array(output_vec, dtype=np.float32)),
                 "candidate_idx": idx,
             }
         except Exception as e:
@@ -661,6 +663,10 @@ class ExtrapolationEngine:
             if not decision:
                 return None
 
+            # EX-1: Include output_vector so _stage_imagine can update
+            # _generation_history for non-extrapolate modes.
+            output_vec = decision.get("output_vector",
+                         [0.0] * self._num_outputs)
             return {
                 "type": "analogy",
                 "source_domain": config.domain_context,
@@ -670,9 +676,9 @@ class ExtrapolationEngine:
                 "epistemic_uncertainty": epistemic,
                 "reasoning_confidence": reason_conf,
                 "explanation": decision.get("explanation", ""),
+                "output_vector": output_vec,
                 "novelty": self._compute_novelty(
-                    np.array(decision.get("output_vector",
-                             [0.0] * self._num_outputs), dtype=np.float32)),
+                    np.array(output_vec, dtype=np.float32)),
                 "candidate_idx": idx,
             }
         except Exception as e:
@@ -706,6 +712,10 @@ class ExtrapolationEngine:
                 0.1 * min(forward_inferences / 10.0, 1.0)
             )
 
+            # EX-1: Include output_vector so _stage_imagine can update
+            # _generation_history for non-extrapolate modes.
+            output_vec = decision.get("output_vector",
+                         [0.0] * self._num_outputs)
             return {
                 "type": "hypothesis",
                 "label": decision.get("label", ""),
@@ -717,9 +727,9 @@ class ExtrapolationEngine:
                 "bg_conflict": reasoned.get("bg_conflict", 0.0),
                 "cognitive_capacity": reasoned.get("cognitive_capacity", 1.0),
                 "explanation": decision.get("explanation", ""),
+                "output_vector": output_vec,
                 "novelty": self._compute_novelty(
-                    np.array(decision.get("output_vector",
-                             [0.0] * self._num_outputs), dtype=np.float32)),
+                    np.array(output_vec, dtype=np.float32)),
                 "candidate_idx": idx,
             }
         except Exception as e:
@@ -752,6 +762,10 @@ class ExtrapolationEngine:
             if not decision:
                 return None
 
+            # EX-1: Include output_vector so _stage_imagine can update
+            # _generation_history for non-extrapolate modes.
+            output_vec = decision.get("output_vector",
+                         [0.0] * self._num_outputs)
             return {
                 "type": "synthesis",
                 "domain_predictions": domain_predictions,
@@ -759,9 +773,9 @@ class ExtrapolationEngine:
                 "synthesized_confidence": decision.get("confidence", 0.0),
                 "num_contributing_domains": len(domain_predictions),
                 "explanation": decision.get("explanation", ""),
+                "output_vector": output_vec,
                 "novelty": self._compute_novelty(
-                    np.array(decision.get("output_vector",
-                             [0.0] * self._num_outputs), dtype=np.float32)),
+                    np.array(output_vec, dtype=np.float32)),
                 "candidate_idx": idx,
             }
         except Exception as e:

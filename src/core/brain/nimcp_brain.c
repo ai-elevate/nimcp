@@ -33,6 +33,7 @@
 
 #define LOG_MODULE "BRAIN"
 #include <math.h>
+#include <float.h>  // W7: FLT_MAX for NaN-safe argmax in determine_output_label
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

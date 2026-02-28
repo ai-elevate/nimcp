@@ -420,6 +420,8 @@ nimcp_status_t nimcp_brain_predict_in_domain(
     }
 
     // If no labels matched the domain, fall back to global argmax
+    // W7-5 (C-INF-5): Use the already-computed output buffer instead of calling
+    // predict_fast, which would execute a redundant second forward pass.
     if (max_idx == UINT32_MAX) {
         // I-M4: Log warning when no domain labels match -- silent fallback makes
         // debugging domain configuration issues difficult
@@ -427,9 +429,50 @@ nimcp_status_t nimcp_brain_predict_in_domain(
             LOG_WARN("predict_in_domain: no valid labels match domain prefix '%s', "
                      "falling back to global argmax", domain_prefix);
         }
+
+        // Global argmax on already-computed output (same logic as predict_fast)
+        uint32_t global_max_idx = 0;
+        float global_max_val = -FLT_MAX;
+        bool global_has_valid = false;
+        for (uint32_t i = 0; i < num_outputs; i++) {
+            if (isfinite(output[i]) && output[i] > global_max_val) {
+                global_max_val = output[i];
+                global_max_idx = i;
+                global_has_valid = true;
+            }
+        }
+
+        if (!global_has_valid) {
+            snprintf(out_label, NIMCP_MAX_LABEL_SIZE, "UNKNOWN");
+            out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
+            *out_confidence = 0.0f;
+            if (output != stack_buf) nimcp_free(output);
+            set_error("All network outputs are NaN/Inf");
+            return NIMCP_OK;
+        }
+
+        if (ib->output_labels && global_max_idx < ib->num_output_labels
+            && ib->output_labels[global_max_idx]) {
+            strncpy(out_label, ib->output_labels[global_max_idx], NIMCP_MAX_LABEL_SIZE - 1);
+        } else {
+            snprintf(out_label, NIMCP_MAX_LABEL_SIZE, "output_%u", global_max_idx);
+        }
+        out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
+
+        // Confidence via sum_abs normalization (matching predict_fast)
+        float global_sum = 0.0f;
+        for (uint32_t i = 0; i < num_outputs; i++) {
+            if (isfinite(output[i])) global_sum += fabsf(output[i]);
+        }
+        float global_conf = (global_sum > 0.0f) ? (global_max_val / global_sum) : 0.0f;
+        if (global_conf < 0.0f) global_conf = 0.0f;
+        if (global_conf > 1.0f) global_conf = 1.0f;
+        if (!isfinite(global_conf)) global_conf = 0.0f;
+        *out_confidence = global_conf;
+
         if (output != stack_buf) nimcp_free(output);
-        return nimcp_brain_predict_fast(brain, features, num_features,
-                                         out_label, out_confidence);
+        set_error("No error");
+        return NIMCP_OK;
     }
 
     strncpy(out_label, ib->output_labels[max_idx], NIMCP_MAX_LABEL_SIZE - 1);
@@ -552,7 +595,11 @@ nimcp_status_t nimcp_brain_decide_full(
         for (uint32_t i = 0; i < copy_n; i++) {
             out_output_vector[i] = decision->output_vector[i];
         }
-        *out_output_size = decision->output_size;
+        // W7-6 (C-INF-M1): Report actual number of elements copied, not full
+        // output_size. Previously reported decision->output_size which could be
+        // larger than the caller's buffer capacity, causing the caller to read
+        // beyond what was actually written.
+        *out_output_size = copy_n;
     }
 
     if (out_num_active_neurons) *out_num_active_neurons = decision->num_active_neurons;

@@ -323,14 +323,17 @@ class TrainingMetacognition:
         stats['assessments'] += 1
 
         # Stall detection: accuracy not improving over multiple assessments
-        if abs(stats['ema_accuracy'] - stats['prev_accuracy']) < 0.005:
+        # SCH-1 fix: threshold 0.005 was miscalibrated for alpha=0.1 EMA
+        # (EMA delta per update is ~0.1*delta, almost never exceeds 0.005)
+        if abs(stats['ema_accuracy'] - stats['prev_accuracy']) < 0.001:
             stats['stall_count'] += 1
         else:
             stats['stall_count'] = 0
         stats['prev_accuracy'] = stats['ema_accuracy']
 
         # Mastery detection (M2 fix: uses configurable threshold)
-        if stats['ema_accuracy'] > self._mastery_threshold and stats['assessments'] > 10:
+        # SCH-9 fix: Use >= for consistency with graduation threshold check
+        if stats['ema_accuracy'] >= self._mastery_threshold and stats['assessments'] > 10:
             stats['mastered'] = True
 
         # De-mastery: if accuracy drops significantly below threshold, revoke mastery
@@ -613,7 +616,11 @@ class School:
         still_active = []
         for agent in self._active_instructors:
             if agent.is_finished or not agent.is_alive():
-                self.logger.log(f"  [School] Instructor finished: {agent.config.domain}")
+                # SCH-14 fix: Distinguish errored vs cleanly finished
+                if agent.has_error:
+                    self.logger.log(f"  [School] Instructor ERRORED: {agent.config.domain}")
+                else:
+                    self.logger.log(f"  [School] Instructor finished: {agent.config.domain}")
             else:
                 still_active.append(agent)
         self._active_instructors = still_active
@@ -808,11 +815,12 @@ class School:
                         target_q = self.cross_domain_queues[d_low]
                         for feat, orig_lbl in exemplars:
                             try:
+                                # SCH-13 fix: Removed unused "label" field —
+                                # cross-domain transfer uses target domain labels
                                 target_q.put_nowait({
                                     "target_domain": d_low,
                                     "domain": d_low,
                                     "features": feat,
-                                    "label": orig_lbl,
                                     "modality": agent.config.modality,
                                 })
                             except Exception:
@@ -857,6 +865,15 @@ class School:
                 self.logger.log(f"[Metacognition] {domain}: stall={stall}, "
                                 f"flagging consolidation + LR restart")
                 needs_recess = True
+                # SCH-2 fix: Actually signal the stalled instructor to restart LR
+                for agent in self.instructors:
+                    if agent.config.domain == domain and agent.is_alive():
+                        if hasattr(agent, '_lr_scheduler') and hasattr(agent._lr_scheduler, 'restart'):
+                            agent._lr_scheduler.restart()
+                        elif hasattr(agent, '_lr_scheduler'):
+                            agent._lr_scheduler.base_lr = 1.0
+                            agent._lr_scheduler.current_step = 0
+                        break
 
             # Mastery > 0.9: reduce frequency (already handled by priority)
             if info.get('ema_accuracy', 0) > 0.9:
@@ -949,8 +966,9 @@ class School:
                         if state.get("should_pause", False):
                             self.logger.log("[BrainState] WARNING: Brain signals training should PAUSE")
                             # H2: Only update timer when recess actually ran
+                            # SCH-10 fix: Use time.time() instead of stale `now`
                             if self._call_recess():
-                                self._last_recess = now
+                                self._last_recess = time.time()
                 except Exception:
                     pass
 
@@ -958,9 +976,10 @@ class School:
 
             # Recess (consolidation)
             # H2: Only update timer when recess actually ran
+            # SCH-10 fix: Use time.time() instead of stale `now`
             if now - self._last_recess >= self.config.recess_interval_s:
                 if self._call_recess():
-                    self._last_recess = now
+                    self._last_recess = time.time()
 
             # Dashboard
             if now - self._last_report >= self.config.report_interval_s:
@@ -1009,18 +1028,23 @@ class School:
                 self._domain_accuracy_history[domain] = collections.deque(maxlen=100)
             self._domain_accuracy_history[domain].append(accuracy)
 
-            # Stall detection: check if learning is stalled for this domain
-            recent_accs = list(self._domain_accuracy_history[domain])
-            if self.cognitive.is_learning_stalled(recent_accs):
-                self.logger.log(
-                    f"[School] Learning stalled in {domain}, "
-                    f"flagging consolidation")
-                needs_recess = True
+            # SCH-7 fix: Removed cognitive-based stall detection here to avoid
+            # double stall triggering — metacognition's EMA-based detection
+            # (now correctly calibrated after SCH-1 fix) is the sole authority.
 
             # Log to school-level JSONL
+            # SCH-6 fix: Handle IOError/OSError in log write
             if self._school_log_file:
-                self._school_log_file.write(json.dumps(report, default=str) + "\n")
-                self._school_log_file.flush()
+                try:
+                    self._school_log_file.write(json.dumps(report, default=str) + "\n")
+                    self._school_log_file.flush()
+                except OSError as e:
+                    self.logger.log(f"[School] WARNING: Log write failed: {e}")
+                    try:
+                        self._school_log_file.close()
+                    except OSError:
+                        pass
+                    self._school_log_file = None
 
         # H1: Call recess at most once per drain cycle
         # H2: Only update timer when recess actually ran
@@ -1080,9 +1104,11 @@ class School:
                     except Exception as e:
                         self.logger.log(f"[School] WARNING: Recess replay failed for {dom}: {e}")
                         continue
+                # SCH-15 fix: Count domains from the actually-replayed slice,
+                # not the full all_exemplars list
                 self.logger.log(
                     f"[School] Interleaved replay: {replayed} examples "
-                    f"from {len(set(d for _, _, d in all_exemplars))} domains")
+                    f"from {len(set(d for _, _, d in all_exemplars[:50]))} domains")
 
             # Consolidation
             try:
@@ -1145,11 +1171,15 @@ class School:
         })
 
     def _save_checkpoint(self):
-        """Save brain checkpoint."""
+        """Save brain checkpoint.
+
+        SCH-12: Logs before save to indicate checkpoint is in progress.
+        """
         ckpt_dir = Path(__file__).parent.parent / "checkpoints" / "athena"
         ckpt_dir.mkdir(parents=True, exist_ok=True)
         ts = time.strftime("%Y%m%d_%H%M%S")
         path = ckpt_dir / f"athena_school_{ts}.bin"
+        self.logger.log(f"[School] Saving checkpoint to {path.name}...")
         try:
             self.brain.save(str(path))
             self.board.increment_checkpoint()
@@ -1168,9 +1198,19 @@ class School:
         """
         if not self.instructors:
             return False
+
+        # SCH-3 fix: Minimum examples guard — prevent premature graduation
+        min_total_examples = 500
+        min_per_domain_examples = 100
+        total_examples = sum(a.total_examples for a in self.instructors
+                             if not a.has_error)
+        if total_examples < min_total_examples:
+            return False
+
         threshold = self.config.graduation_mastery
         has_non_errored = False
         best_mastery = {}
+        domain_examples = {}
         for agent in self.instructors:
             if agent.has_error:
                 continue
@@ -1179,8 +1219,14 @@ class School:
             m = agent.get_mastery()
             if domain not in best_mastery or m > best_mastery[domain]:
                 best_mastery[domain] = m
+            domain_examples[domain] = (
+                domain_examples.get(domain, 0) + agent.total_examples)
         if not has_non_errored or not best_mastery:
             return False
+        # SCH-3: Per-domain minimum examples check
+        for domain in best_mastery:
+            if domain_examples.get(domain, 0) < min_per_domain_examples:
+                return False
         return all(m >= threshold for m in best_mastery.values())
 
     def _shutdown(self):
@@ -1197,17 +1243,27 @@ class School:
                 # L4 fix: Use public close_log() (renamed from _close_log)
                 agent.close_log()
 
-        # Final dashboard
-        self._drain_reports(allow_recess=False)
-        self._print_dashboard()
+        # SCH-11 fix: Wrap drain/dashboard/save in try/finally for cleanup
+        try:
+            # Final dashboard
+            self._drain_reports(allow_recess=False)
+            self._print_dashboard()
 
-        # M1: Save final checkpoint before closing log
-        self._save_checkpoint()
-
-        # Close log
-        if self._school_log_file:
-            self._school_log_file.close()
-            self._school_log_file = None
+            # SCH-4 fix: Save final checkpoint with timeout to prevent hang
+            self.logger.log("[School] Saving final checkpoint...")
+            save_thread = threading.Thread(target=self._save_checkpoint)
+            save_thread.start()
+            save_thread.join(timeout=30.0)
+            if save_thread.is_alive():
+                self.logger.log("[School] WARNING: Checkpoint save timed out after 30s")
+        finally:
+            # Close log (always runs even if above code fails)
+            if self._school_log_file:
+                try:
+                    self._school_log_file.close()
+                except OSError:
+                    pass
+                self._school_log_file = None
 
         self.logger.log("[School] Shutdown complete")
 
@@ -1231,12 +1287,24 @@ class School:
             self._school_log_file = None
 
     def get_report_card(self) -> dict:
-        """Get final report card for all instructors."""
+        """Get final report card for all instructors.
+
+        SCH-8 fix: Use best-per-domain aggregation so multiple instructors
+        for the same domain (e.g. from hot-reload) count as one domain.
+        """
         snap = self.board.snapshot()
-        domain_reports = []
+
+        # SCH-8: Aggregate best report per domain
+        best_per_domain: Dict[str, dict] = {}
+        all_reports = []
         for agent in self.instructors:
             r = agent.get_report()
-            domain_reports.append(r)
+            all_reports.append(r)
+            d = r["domain"]
+            if d not in best_per_domain or r["mastery"] > best_per_domain[d]["mastery"]:
+                best_per_domain[d] = r
+
+        domain_reports = list(best_per_domain.values())
 
         # Build readable report
         lines = ["Domain Report Card:", "=" * 65]
@@ -1245,6 +1313,7 @@ class School:
         lines.append("-" * 65)
 
         graduated = 0
+        total_domains = len(best_per_domain)
         for r in sorted(domain_reports, key=lambda x: -x.get("mastery", 0)):
             status = "GRADUATED" if r["mastery"] >= self.config.graduation_mastery else "learning"
             if r.get("error"):
@@ -1256,14 +1325,14 @@ class School:
                 f"{r['accuracy']:>7.3f} {r['mastery']:>8.3f} {status:>10s}"
             )
         lines.append("-" * 65)
-        lines.append(f"Graduated: {graduated}/{len(domain_reports)} domains")
+        lines.append(f"Graduated: {graduated}/{total_domains} domains")
 
         return {
             "num_instructors": len(self.instructors),
             "total_examples": snap["total_examples"],
             "graduated": graduated,
-            "total_domains": len(domain_reports),
-            "domain_reports": domain_reports,
+            "total_domains": total_domains,
+            "domain_reports": all_reports,
             "domain_report": "\n".join(lines),
             "recess_count": snap["recess_count"],
             "checkpoint_count": snap["checkpoint_count"],

@@ -527,6 +527,21 @@ typedef struct {
 
 /**
  * @brief Worker function for parallel CPU batch inference
+ *
+ * W7-4 (C-INF-4) DATA RACE WARNING: Each worker calls brain_decide() on the
+ * SAME brain instance. brain_decide() -> perform_forward_pass() ->
+ * adaptive_network_forward() mutates shared neuron state (spike encoding,
+ * weight statistics). Concurrent calls without external synchronization
+ * produce undefined behavior (corrupted neuron state, wrong predictions).
+ *
+ * SAFE USAGE PATTERNS:
+ *   1. Frozen brain (brain_freeze()): Forward pass is read-only, no mutation.
+ *   2. ThreadSafeBrain (Python): Wraps brain_decide in a per-brain RLock.
+ *   3. Read-only COW clones: can_use_readonly path uses forward_readonly().
+ *
+ * The parallel path is dispatched only when inference_pool exists, which is
+ * created during brain_create for GPU-enabled or explicitly pooled brains.
+ * Users of the C API must ensure one of the above safety patterns.
  */
 static void batch_decide_worker(void* arg)
 {
@@ -554,7 +569,10 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
     }
 
     // CPU parallel path: use thread pool for batch >= 4 when pool exists
-    if (num_inputs >= 4 && brain->inference_pool) {
+    // W7-4 (C-INF-4): Only use parallel path if brain is safe for concurrent access.
+    // Unfrozen, non-COW brains have mutable neuron state that races under concurrency.
+    if (num_inputs >= 4 && brain->inference_pool
+        && (brain->frozen || brain->can_use_readonly)) {
         batch_decide_task_t* tasks = nimcp_calloc(num_inputs, sizeof(batch_decide_task_t));
         if (!tasks) {
             // Fall through to serial path
