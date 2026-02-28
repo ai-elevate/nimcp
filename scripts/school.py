@@ -54,6 +54,10 @@ class ThreadSafeBrain:
         with self._lock:
             return self._brain.predict_fast(*args, **kwargs)
 
+    def predict_in_domain(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.predict_in_domain(*args, **kwargs)
+
     def predict(self, *args, **kwargs):
         with self._lock:
             return self._brain.predict(*args, **kwargs)

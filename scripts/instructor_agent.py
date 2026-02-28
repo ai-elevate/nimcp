@@ -544,6 +544,15 @@ class InstructorAgent(threading.Thread):
 
     # --- Teaching Methods ---
 
+    def _predict_domain(self, features, domain: str):
+        """Domain-scoped prediction — only considers labels from this domain."""
+        prefix = f"{domain}:"
+        try:
+            return self.brain.predict_in_domain(features, prefix)
+        except (AttributeError, TypeError):
+            # Fallback for older nimcp without predict_in_domain
+            return self.brain.predict_fast(features)
+
     def _execute_method(self, method: TeachingMethod, features: list,
                         label: str, domain: str,
                         grade: Optional[DataGrade]) -> Tuple[bool, float]:
@@ -569,7 +578,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_socratic(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Predict-before-learn with adaptive confidence."""
-        pred, conf = self.brain.predict_fast(features)
+        pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Adaptive confidence scaling
@@ -590,7 +599,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_curriculum(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Difficulty-ordered: skip easy examples as difficulty ramps."""
-        pred, conf = self.brain.predict_fast(features)
+        pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Skip if brain already knows AND difficulty is still low
@@ -606,7 +615,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_contrastive(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Learn what things are NOT — teach with negative examples."""
-        pred, conf = self.brain.predict_fast(features)
+        pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Teach the correct label
@@ -625,12 +634,12 @@ class InstructorAgent(threading.Thread):
     def _method_debate(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Two perspectives (original + noisy) argue, brain resolves."""
         # Perspective 1: original features
-        pred1, conf1 = self.brain.predict_fast(features)
+        pred1, conf1 = self._predict_domain(features, domain)
 
         # Perspective 2: perturbed features (different viewpoint)
         noise_level = self.config.debate_noise_level
         noisy = [f + random.gauss(0, noise_level) for f in features]
-        pred2, conf2 = self.brain.predict_fast(noisy)
+        pred2, conf2 = self._predict_domain(noisy, domain)
 
         # Brain resolves: if both agree, lower confidence. If disagree, higher.
         if pred1 == pred2:
@@ -648,7 +657,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_meta(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Meta-learning: adapt method weights based on performance."""
-        pred, conf = self.brain.predict_fast(features)
+        pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Use mastery to set learning rate
@@ -663,7 +672,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_adversarial(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Find weaknesses, store hard examples, re-teach."""
-        pred, conf = self.brain.predict_fast(features)
+        pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         # Store hard examples
@@ -688,7 +697,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_analogical(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Cross-domain transfer via blending with cross-domain exemplar."""
-        pred, conf = self.brain.predict_fast(features)
+        pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
         self.brain.learn(features, label, self._modulate_lr(0.7 * conf_mod))
@@ -825,7 +834,7 @@ class InstructorAgent(threading.Thread):
         for features, label in self.adversarial_bank[:200]:
             if self.stop_event.is_set():
                 break
-            pred, conf = self.brain.predict(features)
+            pred, conf = self._predict_domain(features, domain)
             correct = (pred == label)
             self.brain.learn(features, label, self._modulate_lr(0.8))
             self.total_examples += 1

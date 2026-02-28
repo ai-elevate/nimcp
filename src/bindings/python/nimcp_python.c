@@ -433,6 +433,53 @@ static PyObject* Brain_predict_fast(BrainObject* self, PyObject* args) {
 }
 
 /**
+ * WHAT: Domain-scoped fast prediction
+ * WHY:  Multi-domain training causes first-mover dominance — predict_fast always
+ *        returns labels from the dominant domain. This restricts argmax to the
+ *        caller's domain so biology predictions only consider biology labels.
+ * HOW:  Calls nimcp_brain_predict_in_domain() with domain prefix filter
+ *
+ * @param features List of float features
+ * @param domain   Domain prefix string (e.g., "biology:")
+ * @return Tuple (label, confidence)
+ */
+static PyObject* Brain_predict_in_domain(BrainObject* self, PyObject* args) {
+    PyObject* features_list;
+    const char* domain_prefix;
+
+    if (!PyArg_ParseTuple(args, "Os", &features_list, &domain_prefix)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict_in_domain: expected (features, domain)");
+        return NULL;
+    }
+
+    Py_ssize_t num_features;
+    float* features = py_list_to_float_array(features_list, &num_features);
+    if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "features is NULL");
+        return NULL;
+    }
+
+    char label[NIMCP_NAME_BUFFER_SIZE];
+    float confidence;
+    nimcp_status_t status;
+    nimcp_brain_t brain_ref = self->brain;
+    uint32_t nf = (uint32_t)num_features;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_predict_in_domain(brain_ref, features, nf,
+                                            domain_prefix, label, &confidence);
+    nimcp_free(features);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        return NULL;
+    }
+
+    return Py_BuildValue("(sf)", label, confidence);
+}
+
+/**
  * WHAT: Batch prediction (v2.7.0 enhancement)
  * WHY:  Efficient processing of multiple samples
  * HOW:  Convert list of lists to 2D array, call nimcp_brain_predict_batch
@@ -2698,6 +2745,8 @@ static PyMethodDef Brain_methods[] = {
      "Batch prediction: predict_batch(features_list) -> (labels, confidences)"},
     {"predict_fast", (PyCFunction)Brain_predict_fast, METH_VARARGS,
      "Fast prediction — forward pass only, no cognitive stages: predict_fast(features) -> (label, confidence)"},
+    {"predict_in_domain", (PyCFunction)Brain_predict_in_domain, METH_VARARGS,
+     "Domain-scoped prediction — only considers labels matching domain prefix: predict_in_domain(features, 'biology:') -> (label, confidence)"},
     {"save", (PyCFunction)Brain_save, METH_VARARGS,
      "Save to file: save(filepath)"},
     {"load", (PyCFunction)Brain_load, METH_VARARGS | METH_CLASS,

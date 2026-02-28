@@ -229,6 +229,88 @@ nimcp_status_t nimcp_brain_predict_fast(
 }
 
 
+nimcp_status_t nimcp_brain_predict_in_domain(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    const char* domain_prefix,
+    char* out_label,
+    float* out_confidence)
+{
+    // If no domain prefix, fall back to standard predict_fast
+    if (!domain_prefix || domain_prefix[0] == '\0') {
+        return nimcp_brain_predict_fast(brain, features, num_features,
+                                         out_label, out_confidence);
+    }
+
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    API_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
+    API_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence pointer is NULL");
+
+    brain_t ib = brain->internal_brain;
+    if (!ib || !ib->network) {
+        set_error("Brain not initialized");
+        return NIMCP_ERROR;
+    }
+
+    uint32_t num_outputs = ib->config.num_outputs;
+    if (num_outputs == 0) {
+        set_error("Brain has 0 outputs");
+        return NIMCP_ERROR_INVALID;
+    }
+    float stack_buf[256];
+    float* output = (num_outputs <= 256) ? stack_buf : (float*)nimcp_calloc(num_outputs, sizeof(float));
+    if (!output) {
+        set_error("Failed to allocate output buffer");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    adaptive_network_forward(ib->network, features, num_features,
+                             output, num_outputs, 0);
+
+    // Domain-filtered argmax: only consider neurons whose label starts with domain_prefix
+    size_t prefix_len = strlen(domain_prefix);
+    uint32_t max_idx = UINT32_MAX;
+    float max_val = -1e30f;
+    float domain_sum = 0.0f;
+
+    for (uint32_t i = 0; i < num_outputs; i++) {
+        if (!ib->output_labels || i >= ib->num_output_labels || !ib->output_labels[i])
+            continue;
+        if (strncmp(ib->output_labels[i], domain_prefix, prefix_len) != 0)
+            continue;
+
+        domain_sum += fabsf(output[i]);
+        if (output[i] > max_val) {
+            max_val = output[i];
+            max_idx = i;
+        }
+    }
+
+    // If no labels matched the domain, fall back to global argmax
+    if (max_idx == UINT32_MAX) {
+        if (output != stack_buf) nimcp_free(output);
+        return nimcp_brain_predict_fast(brain, features, num_features,
+                                         out_label, out_confidence);
+    }
+
+    strncpy(out_label, ib->output_labels[max_idx], NIMCP_MAX_LABEL_SIZE - 1);
+    out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
+
+    // Domain-scoped confidence (only among same-domain outputs)
+    float raw_conf = (domain_sum > 0.0f) ? (max_val / domain_sum) : 0.0f;
+    if (raw_conf < 0.0f) raw_conf = 0.0f;
+    if (raw_conf > 1.0f) raw_conf = 1.0f;
+    *out_confidence = raw_conf;
+
+    if (output != stack_buf) nimcp_free(output);
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
 nimcp_status_t nimcp_brain_infer(
     nimcp_brain_t brain,
     const float* features,

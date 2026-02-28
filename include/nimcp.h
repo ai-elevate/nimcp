@@ -327,6 +327,35 @@ nimcp_status_t nimcp_brain_predict_fast(
 );
 
 /**
+ * @brief Domain-scoped fast prediction (forward pass only)
+ *
+ * WHAT: Same as predict_fast but restricts argmax to output neurons whose label
+ *       starts with the given domain prefix (e.g., "biology:" only considers
+ *       neurons mapped to biology labels).
+ * WHY:  Multi-domain training causes first-mover dominance — domains that train
+ *       first develop stronger output activations, causing predict_fast to always
+ *       return labels from the dominant domain for inputs with similar features.
+ * HOW:  Forward pass + domain-filtered argmax + domain-scoped confidence
+ *
+ * @param brain Brain handle
+ * @param features Input features array
+ * @param num_features Number of input features
+ * @param domain_prefix Domain prefix to filter by (e.g., "biology:"). If NULL,
+ *        behaves identically to nimcp_brain_predict_fast.
+ * @param out_label Buffer to store predicted label (must be pre-allocated, min 64 bytes)
+ * @param out_confidence Pointer to store prediction confidence (0.0-1.0)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_predict_in_domain(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    const char* domain_prefix,
+    char* out_label,
+    float* out_confidence
+);
+
+/**
  * @brief Run inference and get raw output vector
  *
  * WHAT: Forward pass through network returning raw outputs
