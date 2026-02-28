@@ -95,6 +95,18 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /** Shutdown guard — set by nimcp.shutdown(), prevents Brain_dealloc crash */
 static int g_py_shutdown_called = 0;
 
+/**
+ * P6-2: NULL guard macro for self->brain->internal_brain.
+ * Many methods access internal_brain without checking for NULL.
+ * This macro should be placed after the existing `if (!self->brain)` check.
+ */
+#define CHECK_INTERNAL_BRAIN(self) do { \
+    if (!self->brain->internal_brain) { \
+        PyErr_SetString(PyExc_RuntimeError, "Brain internal state not available"); \
+        return NULL; \
+    } \
+} while(0)
+
 /** Global health agent for python module */
 static nimcp_health_agent_t* g_python_health_agent = NULL;
 
@@ -432,8 +444,10 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
+    /* P6-3: Zero-initialize label buffer to avoid garbage reads if C API writes nothing */
     char label[NIMCP_NAME_BUFFER_SIZE];
-    float confidence;
+    label[0] = '\0';
+    float confidence = 0.0f;
     nimcp_status_t status;
     nimcp_brain_t brain_ref = self->brain;
     uint32_t nf = (uint32_t)num_features;
@@ -487,8 +501,10 @@ static PyObject* Brain_predict_fast(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
+    /* P6-3: Zero-initialize label buffer to avoid garbage reads if C API writes nothing */
     char label[NIMCP_NAME_BUFFER_SIZE];
-    float confidence;
+    label[0] = '\0';
+    float confidence = 0.0f;
     nimcp_status_t status;
     nimcp_brain_t brain_ref = self->brain;
     uint32_t nf = (uint32_t)num_features;
@@ -545,8 +561,10 @@ static PyObject* Brain_predict_in_domain(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
+    /* P6-3: Zero-initialize label buffer to avoid garbage reads if C API writes nothing */
     char label[NIMCP_NAME_BUFFER_SIZE];
-    float confidence;
+    label[0] = '\0';
+    float confidence = 0.0f;
     nimcp_status_t status;
     nimcp_brain_t brain_ref = self->brain;
     uint32_t nf = (uint32_t)num_features;
@@ -1083,7 +1101,12 @@ static PyObject* Brain_restore_cow(BrainObject* self, PyObject* args) {
     status = nimcp_brain_restore_cow(self->brain, snapshot);
     Py_END_ALLOW_THREADS
 
-    return PyBool_FromLong(status == NIMCP_OK);
+    /* P6-4: Raise exception on failure instead of returning False */
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "COW snapshot restore failed");
+        return NULL;
+    }
+    Py_RETURN_TRUE;
 }
 
 /**
@@ -1363,6 +1386,12 @@ static PyObject* Brain_training_rubric(BrainObject* self, PyObject* Py_UNUSED(ig
     return dict;
 }
 
+/* P6-8: PyDict_SetItemString return values are unchecked in this method.
+ * This is a known limitation under extreme OOM — the SET macro pattern used in
+ * other methods is preferred but would require significant restructuring here.
+ * PyDict_SetItemString failure under OOM will not crash (dict just misses keys). */
+/* P6-9: ~4.6KB stack allocation (output_vector[1024]) is bounded and within
+ * thread stack limits (typically 1-8MB). Not worth heap-allocating. */
 static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
     PyObject* features_list;
     if (!PyArg_ParseTuple(args, "O", &features_list))
@@ -1494,6 +1523,7 @@ static PyObject* Brain_curiosity_detect_gaps(BrainObject* self, PyObject* args) 
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
 
     curiosity_engine_t curiosity = brain_get_curiosity(self->brain->internal_brain);
     if (!curiosity) {
@@ -1606,10 +1636,12 @@ static PyObject* Brain_consolidate(BrainObject* self, PyObject* args, PyObject* 
     }
     Py_END_ALLOW_THREADS
 
-    if (success) {
-        Py_RETURN_TRUE;
+    /* P6-6: Raise exception on failure instead of returning False */
+    if (!success) {
+        PyErr_SetString(PyExc_RuntimeError, "Memory consolidation failed");
+        return NULL;
     }
-    Py_RETURN_FALSE;
+    Py_RETURN_TRUE;
 }
 
 //=============================================================================
@@ -1626,6 +1658,7 @@ static PyObject* Brain_bg_update_reward(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float reward, expected;
     if (!PyArg_ParseTuple(args, "ff", &reward, &expected)) return NULL;
 
@@ -1648,6 +1681,7 @@ static PyObject* Brain_bg_get_conflict(BrainObject* self, PyObject* Py_UNUSED(ar
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float conflict = brain_ti_get_conflict(self->brain->internal_brain);
     PyObject* result = PyFloat_FromDouble((double)conflict);
     if (!result) return NULL;  /* OOM */
@@ -1664,6 +1698,7 @@ static PyObject* Brain_bg_get_mode(BrainObject* self, PyObject* Py_UNUSED(args))
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     int mode = brain_ti_get_mode(self->brain->internal_brain);
     PyObject* result = PyLong_FromLong(mode);
     if (!result) return NULL;  /* OOM */
@@ -1680,6 +1715,7 @@ static PyObject* Brain_bg_get_dopamine(BrainObject* self, PyObject* Py_UNUSED(ar
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float dopamine = brain_ti_get_dopamine(self->brain->internal_brain);
     PyObject* result = PyFloat_FromDouble((double)dopamine);
     if (!result) return NULL;  /* OOM */
@@ -1696,6 +1732,7 @@ static PyObject* Brain_bg_get_rpe(BrainObject* self, PyObject* Py_UNUSED(args)) 
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float rpe = brain_ti_get_rpe(self->brain->internal_brain);
     PyObject* result = PyFloat_FromDouble((double)rpe);
     if (!result) return NULL;  /* OOM */
@@ -1712,6 +1749,7 @@ static PyObject* Brain_bg_register_habit(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     const char* domain;
     int action_id;
     if (!PyArg_ParseTuple(args, "si", &domain, &action_id)) return NULL;
@@ -1732,6 +1770,7 @@ static PyObject* Brain_bg_check_habit(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     const char* domain;
     if (!PyArg_ParseTuple(args, "s", &domain)) return NULL;
 
@@ -1751,6 +1790,7 @@ static PyObject* Brain_bg_strengthen_habit(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     int habit_id;
     int success;
     if (!PyArg_ParseTuple(args, "ip", &habit_id, &success)) return NULL;
@@ -1771,6 +1811,7 @@ static PyObject* Brain_medulla_get_arousal(BrainObject* self, PyObject* Py_UNUSE
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float arousal = brain_ti_get_arousal(self->brain->internal_brain);
     PyObject* result = PyFloat_FromDouble((double)arousal);
     if (!result) return NULL;  /* OOM */
@@ -1787,6 +1828,7 @@ static PyObject* Brain_medulla_get_circadian_phase(BrainObject* self, PyObject* 
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     int phase = brain_ti_get_circadian_phase(self->brain->internal_brain);
     PyObject* result = PyLong_FromLong(phase);
     if (!result) return NULL;  /* OOM */
@@ -1803,6 +1845,7 @@ static PyObject* Brain_medulla_boost_arousal(BrainObject* self, PyObject* args) 
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float delta;
     if (!PyArg_ParseTuple(args, "f", &delta)) return NULL;
 
@@ -1824,6 +1867,7 @@ static PyObject* Brain_medulla_get_circadian_efficiency(BrainObject* self, PyObj
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float efficiency = brain_ti_get_circadian_efficiency(self->brain->internal_brain);
     PyObject* result = PyFloat_FromDouble((double)efficiency);
     if (!result) return NULL;  /* OOM */
@@ -1840,6 +1884,7 @@ static PyObject* Brain_ti_add_fact(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     const char* fact;
     float salience;
     if (!PyArg_ParseTuple(args, "sf", &fact, &salience)) return NULL;
@@ -1863,6 +1908,7 @@ static PyObject* Brain_ti_add_rule(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     const char* rule;
     float priority;
     if (!PyArg_ParseTuple(args, "sf", &rule, &priority)) return NULL;
@@ -1886,6 +1932,7 @@ static PyObject* Brain_ti_forward_chain(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     int max_iterations;
     if (!PyArg_ParseTuple(args, "i", &max_iterations)) return NULL;
 
@@ -1911,6 +1958,7 @@ static PyObject* Brain_ti_backward_chain(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     const char* goal;
     if (!PyArg_ParseTuple(args, "s", &goal)) return NULL;
 
@@ -1936,6 +1984,7 @@ static PyObject* Brain_ti_query_knowledge(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     const char* query;
     if (!PyArg_ParseTuple(args, "s", &query)) return NULL;
 
@@ -1955,11 +2004,14 @@ static PyObject* Brain_ti_init_reasoning(BrainObject* self, PyObject* Py_UNUSED(
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     int result = brain_ti_init_reasoning(self->brain->internal_brain);
-    if (result == 0) {
-        Py_RETURN_TRUE;
+    /* P6-5: Raise exception on failure instead of silently returning False */
+    if (result != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Reasoning subsystem initialization failed");
+        return NULL;
     }
-    Py_RETURN_FALSE;
+    Py_RETURN_TRUE;
 }
 
 /**
@@ -1972,6 +2024,7 @@ static PyObject* Brain_ti_reason(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     const char* query;
     if (!PyArg_ParseTuple(args, "s", &query)) return NULL;
 
@@ -1991,6 +2044,7 @@ static PyObject* Brain_ti_compute_adaptive_lr(BrainObject* self, PyObject* args)
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float base_lr;
     if (!PyArg_ParseTuple(args, "f", &base_lr)) return NULL;
 
@@ -2019,6 +2073,7 @@ static PyObject* Brain_ti_compute_unified_lr(BrainObject* self, PyObject* args) 
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float base_lr;
     if (!PyArg_ParseTuple(args, "f", &base_lr)) return NULL;
 
@@ -2047,6 +2102,7 @@ static PyObject* Brain_ti_compute_modulation_state(BrainObject* self, PyObject* 
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
 
     brain_ti_modulation_state_t state;
     memset(&state, 0, sizeof(state));
@@ -2124,6 +2180,7 @@ static PyObject* Brain_ti_post_batch_update(BrainObject* self, PyObject* args, P
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float accuracy, expected;
     const char* domain;
 
@@ -2194,6 +2251,7 @@ static PyObject* Brain_ti_get_cognitive_capacity(BrainObject* self, PyObject* Py
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float capacity = brain_ti_get_cognitive_capacity(self->brain->internal_brain);
     PyObject* result = PyFloat_FromDouble((double)capacity);
     if (!result) return NULL;  /* OOM */
@@ -2208,6 +2266,7 @@ static PyObject* Brain_ti_get_urgency_mode(BrainObject* self, PyObject* Py_UNUSE
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     int mode = brain_ti_get_urgency_mode(self->brain->internal_brain);
     PyObject* result = PyLong_FromLong(mode);
     if (!result) return NULL;  /* OOM */
@@ -2222,6 +2281,7 @@ static PyObject* Brain_ti_get_stress_level(BrainObject* self, PyObject* Py_UNUSE
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
     float stress = brain_ti_get_stress_level(self->brain->internal_brain);
     PyObject* result = PyFloat_FromDouble((double)stress);
     if (!result) return NULL;  /* OOM */
@@ -2297,6 +2357,7 @@ static PyObject* Brain_cache_communities(BrainObject* self, PyObject* Py_UNUSED(
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
 
     /* Create cache if needed */
     if (!self->community_cache) {
@@ -2370,6 +2431,7 @@ static PyObject* Brain_get_uncertainty(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
 
     introspection_context_t introspection = brain_get_introspection(self->brain->internal_brain);
     if (!introspection) {
@@ -2502,6 +2564,7 @@ static PyObject* Brain_audio_cortex_process(BrainObject* self, PyObject* args) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
 
     Py_ssize_t num_samples;
     float* samples = py_list_to_float_array(samples_list, &num_samples);
@@ -2515,7 +2578,7 @@ static PyObject* Brain_audio_cortex_process(BrainObject* self, PyObject* args) {
 
     /* Access audio cortex from internal brain */
     brain_t ib = self->brain->internal_brain;
-    if (!ib || !ib->audio_cortex) {
+    if (!ib || !ib->audio_cortex) {  /* P6-2: ib checked here as fallback path */
         nimcp_free(samples);
         /* Return empty list — cortex not initialized */
         return PyList_New(0);
@@ -2576,6 +2639,7 @@ static PyObject* Brain_visual_cortex_process(BrainObject* self, PyObject* args) 
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
 
     Py_ssize_t num_pixels;
     float* pixels_float = py_list_to_float_array(pixels_list, &num_pixels);
@@ -2650,6 +2714,7 @@ static PyObject* Brain_speech_cortex_process(BrainObject* self, PyObject* args) 
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
 
     Py_ssize_t num_samples;
     float* samples = py_list_to_float_array(samples_list, &num_samples);
@@ -2662,7 +2727,7 @@ static PyObject* Brain_speech_cortex_process(BrainObject* self, PyObject* args) 
     }
 
     brain_t ib = self->brain->internal_brain;
-    if (!ib || !ib->speech_cortex) {
+    if (!ib->speech_cortex) {
         nimcp_free(samples);
         return PyList_New(0);
     }
@@ -2804,6 +2869,7 @@ static PyObject* Brain_ti_compute_decision_cycle(BrainObject* self, PyObject* ar
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
+    CHECK_INTERNAL_BRAIN(self);
 
     float loss_current, loss_previous, grad_norm, grad_norm_previous;
     float loss_volatility, gradient_variance, current_lr, current_batch;
@@ -3260,6 +3326,12 @@ static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
     PyObject* input_list;
     unsigned int num_outputs;
 
+    /* P6-1: NULL guard for self->network */
+    if (!self->network) {
+        PyErr_SetString(PyExc_RuntimeError, "Network not initialized");
+        return NULL;
+    }
+
     if (!PyArg_ParseTuple(args, "OI", &input_list, &num_outputs)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Network_forward: Invalid arguments");
         return NULL;
@@ -3272,6 +3344,13 @@ static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
     if (num_inputs > UINT32_MAX) {
         nimcp_free(inputs);
         PyErr_SetString(PyExc_OverflowError, "Input too large for uint32_t");
+        return NULL;
+    }
+
+    /* P6-7: Overflow check before malloc — num_outputs * sizeof(float) can wrap */
+    if (num_outputs == 0 || num_outputs > (SIZE_MAX / sizeof(float))) {
+        nimcp_free(inputs);
+        PyErr_SetString(PyExc_ValueError, "Invalid num_outputs value");
         return NULL;
     }
 
@@ -3322,6 +3401,12 @@ static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
 static PyObject* Network_train(NetworkObject* self, PyObject* args) {
     PyObject* input_list;
     PyObject* target_list;
+
+    /* P6-1: NULL guard for self->network */
+    if (!self->network) {
+        PyErr_SetString(PyExc_RuntimeError, "Network not initialized");
+        return NULL;
+    }
 
     if (!PyArg_ParseTuple(args, "OO", &input_list, &target_list)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Network_train: Invalid arguments");

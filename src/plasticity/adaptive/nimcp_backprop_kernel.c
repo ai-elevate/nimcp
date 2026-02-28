@@ -73,7 +73,10 @@ void* bp_alloc_hot_buffer(size_t size) {
         if (pool) {
             void* buf = memory_pool_acquire(pool);
             if (buf) {
-                memset(buf, 0, size);
+                // W6-08 FIX: Zero the full pool block, not just the requested size.
+                // A smaller subsequent allocation from the same block could read stale
+                // non-zero data from a previous larger allocation's tail.
+                memset(buf, 0, BP_POOL_BLOCK_SIZE);
                 return buf;
             }
         }

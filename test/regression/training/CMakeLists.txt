@@ -272,6 +272,9 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_symbolic_logic_hub_regressio
 endif()
 
 # Training Dispatch Regression Tests (C — libcheck)
+# NOTE: Requires pkg_check_modules(CHECK REQUIRED check) in a parent CMakeLists.txt
+# or FindPkgConfig + libcheck-dev installed. The check_pic/subunit targets come from
+# the system libcheck package (apt install check libsubunit-dev).
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_dispatch_regression.c)
     add_executable(regression_test_training_dispatch
         test_training_dispatch_regression.c

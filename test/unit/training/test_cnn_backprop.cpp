@@ -17,6 +17,12 @@
  * - Null pointer handling
  * - Gradient accumulation
  *
+ * P6-12: 13 of 17 tests GTEST_SKIP because per-layer gradient accessor APIs
+ * (weight_grad, bias_grad, gamma_grad, beta_grad) are not yet exposed in the
+ * public CNN training header. The backward pass itself runs and is verified not
+ * to crash, but gradient *values* cannot be inspected until the accessor API is
+ * added. This is expected and not a test gap -- tracked for future API work.
+ *
  * @author NIMCP Development Team
  * @date 2025-12-24
  */

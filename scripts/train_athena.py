@@ -162,7 +162,7 @@ signal.signal(signal.SIGTERM, _signal_handler)
 # Resume Phase Ordering
 # ---------------------------------------------------------------------------
 PHASE_ORDER = {
-    "phase0": 0, "phase1": 1, "phase2": 2, "phase3": 3,
+    "phase0": 0, "phase1": 1, "phase2": 2, "phase3": 3, "phase4": 4,
     "legacy_phase1": 1, "legacy_phase2": 2, "legacy_phase3": 3,
 }
 
@@ -281,12 +281,14 @@ class CurriculumManager:
         else:
             return self.all_domains
 
+    def advance(self, steps: int = 1):
+        """Advance the curriculum step counter by the given number of training steps."""
+        self.step += steps
+
     def get_active_domains(self) -> list:
-        self.step += 1
         return self._compute_active_domains(self.step)
 
     def should_include(self, domain: str) -> bool:
-        self.step += 1
         active = self._compute_active_domains(self.step)
         return domain in active or domain.split(':')[0] in active
 
@@ -304,37 +306,45 @@ class HardExampleMiner:
     def __init__(self, capacity: int = 5000, replay_ratio: float = 0.2):
         self.capacity = capacity
         self.replay_ratio = replay_ratio  # Fraction of batch from hard examples
-        self.hard_examples = []  # Min-heap of (loss, features, label) tuples
+        self.hard_examples = []  # Min-heap of (loss, counter, features, label) tuples
         self.min_loss_threshold = 0.3  # Only store examples with loss > threshold
+        self._counter = 0  # Tiebreaker for equal-loss comparisons (avoids O(n) list cmp)
 
     def record(self, features: list, label: str, loss: float):
         """Record a training example and its loss.
 
-        Uses a min-heap keyed by loss so that when over capacity we can
-        efficiently pop the smallest-loss item in O(log n) instead of
-        sorting the entire list in O(n log n).
+        Uses a min-heap keyed by (loss, counter) so that when over capacity we
+        can efficiently pop the smallest-loss item in O(log n) instead of
+        sorting the entire list in O(n log n).  The counter tiebreaker prevents
+        fallthrough to O(n) list comparison when two entries have equal loss.
         """
         if loss > self.min_loss_threshold:
+            self._counter += 1
+            entry = (loss, self._counter, features, label)
             if len(self.hard_examples) < self.capacity:
-                heapq.heappush(self.hard_examples, (loss, features, label))
+                heapq.heappush(self.hard_examples, entry)
             elif loss > self.hard_examples[0][0]:
                 # Replace the smallest-loss item with this harder example
-                heapq.heapreplace(self.hard_examples, (loss, features, label))
+                heapq.heapreplace(self.hard_examples, entry)
 
     def get_replay_batch(self, batch_size: int) -> list:
-        """Get a batch of hard examples for replay."""
+        """Get a batch of hard examples for replay.
+
+        Returns list of (loss, features, label) tuples (counter stripped).
+        """
         replay_count = max(1, int(batch_size * self.replay_ratio))
         if len(self.hard_examples) < replay_count:
-            return list(self.hard_examples)
-        return random.sample(self.hard_examples, replay_count)
+            return [(loss, f, l) for loss, _, f, l in self.hard_examples]
+        sample = random.sample(self.hard_examples, replay_count)
+        return [(loss, f, l) for loss, _, f, l in sample]
 
     def decay(self, factor: float = 0.95):
         """Decay stored losses (so old hard examples eventually drop out)."""
         decayed = []
-        for loss, f, l in self.hard_examples:
+        for loss, cnt, f, l in self.hard_examples:
             new_loss = loss * factor
             if new_loss > self.min_loss_threshold * 0.5:
-                decayed.append((new_loss, f, l))
+                decayed.append((new_loss, cnt, f, l))
         heapq.heapify(decayed)
         self.hard_examples = decayed
 
@@ -613,12 +623,6 @@ class AthenaLogger:
             self._metrics_fh.flush()
             self._metric_writes_since_flush = 0
 
-    def _flush(self):
-        self._log_fh.flush()
-        self._metrics_fh.flush()
-        self._log_writes_since_flush = 0
-        self._metric_writes_since_flush = 0
-
     def close(self):
         """Flush and close file handles."""
         try:
@@ -689,17 +693,16 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
     all_domain_names = [name for name, _ in all_datasets]
     scheduler = CosineAnnealingLR(base_lr=0.5, min_lr=0.05,
                                   cycle_steps=5000, warmup_steps=500)
-    curriculum = CurriculumManager(all_domain_names)
+    # NOTE: CurriculumManager is NOT used in Phase 0. Phase 0 dataset names
+    # (wine, breast_cancer, fashion_mnist, mmlu, etc.) don't match curriculum
+    # domain names (biology, chemistry, physics, etc.), so every dataset would
+    # be deferred. Phase 0 is a quick warm-up where all datasets should train.
     hard_miner = HardExampleMiner(capacity=5000, replay_ratio=0.2)
 
-    logger.log(f"  Training strategy: CosineAnnealingLR + CurriculumManager + HardExampleMiner")
+    logger.log(f"  Training strategy: CosineAnnealingLR + HardExampleMiner (no curriculum gating in Phase 0)")
 
     total_trained = 0
     for ds_name, examples in all_datasets:
-        # Curriculum gating: skip datasets not in the current phase
-        if not curriculum.should_include(ds_name):
-            logger.log(f"  {ds_name}: DEFERRED by curriculum (step {curriculum.step})")
-            continue
 
         t0 = time.time()
         n_examples = len(examples) * PHASE0_EPOCHS
@@ -749,61 +752,10 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
                    f"({rate:.0f} steps/s), lr={scheduler.peek_lr():.4f}, "
                    f"hard_bank={len(hard_miner.hard_examples)}")
 
-    # Track which domains were taught in first pass
-    taught_domains = set()
-    for ds_name, examples in all_datasets:
-        if curriculum.should_include(ds_name):
-            taught_domains.add(ds_name)
-
-    # Second pass: teach any domains deferred by curriculum
-    curriculum.step = 5001  # Force all domains active for second pass
-    for ds_name, examples in all_datasets:
-        # Only teach domains that were skipped in the first pass
-        if ds_name in taught_domains:
-            continue  # Already taught
-
-        t0 = time.time()
-        n_examples = len(examples) * PHASE0_EPOCHS
-        logger.log(f"  {ds_name} (deferred): {len(examples)} examples × {PHASE0_EPOCHS} epochs")
-
-        for epoch in range(PHASE0_EPOCHS):
-            for ex in examples:
-                if _shutdown_requested:
-                    logger.log("  Shutdown requested — stopping deferred training")
-                    return total_trained
-                lr = scheduler.get_lr()
-                brain.learn(ex["features"], str(ex["label"]), lr)
-                total_trained += 1
-                if scheduler.step_count > warmup_steps:
-                    # H12: Use actual prediction error instead of LR proxy
-                    try:
-                        result = brain.predict_fast(ex["features"])
-                        if result is not None:
-                            pred, _ = result
-                            estimated_loss = 0.0 if str(pred) == str(ex["label"]) else 1.0
-                        else:
-                            estimated_loss = 0.5
-                    except Exception:
-                        estimated_loss = 0.5
-                    hard_miner.record(ex["features"], str(ex["label"]), estimated_loss)
-
-            # Use peek_lr() to avoid advancing the scheduler step_count on replay
-            replay_batch = hard_miner.get_replay_batch(batch_size=50)
-            for _loss, feats, label in replay_batch:
-                replay_lr = scheduler.peek_lr()
-                brain.learn(feats, label, replay_lr * 0.8)
-                total_trained += 1
-
-        hard_miner.decay(factor=0.95)
-        elapsed = time.time() - t0
-        rate = n_examples / max(elapsed, 0.01)
-        logger.log(f"    -> {ds_name} done: {n_examples} steps in {elapsed:.1f}s "
-                   f"({rate:.0f} steps/s)")
-
     # Final hard example replay pass — use peek_lr() to avoid advancing scheduler
     if hard_miner.hard_examples:
         logger.log(f"  Final hard example replay: {len(hard_miner.hard_examples)} items")
-        for _loss, feats, label in hard_miner.hard_examples[:500]:
+        for _loss, _cnt, feats, label in hard_miner.hard_examples[:500]:
             if _shutdown_requested:
                 break
             lr = scheduler.peek_lr()
@@ -1247,17 +1199,18 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                     # Socratic: predict-before-learn per example
                     # Domain-prefix label to prevent cross-domain collision
                     socratic.train_example(features, prefixed_label, domain)
-                    # Advance the cosine LR scheduler's step counter.
-                    # The LR value is used for replay and adaptive modulation.
+                    # Advance cosine schedule — LR consumed via peek_lr() during
+                    # replay and adaptive modulation; main loop uses SocraticTrainer's Leitner LR
                     phase2_scheduler.get_lr()
                     count += 1
                     total_trained += 1
                     examples_since_introspection += 1
+                    phase2_curriculum.advance()
 
                     # Record for hard example mining (estimate loss from prediction)
                     # Only call predict_fast every 10th example to reduce overhead;
                     # only record examples where we have an actual loss estimate
-                    est_loss = 0.5  # Default estimate (not recorded)
+                    est_loss = None  # Only set on 10th-example probes
                     if count % 10 == 0:
                         try:
                             pred, conf = brain.predict_fast(features)
@@ -1267,7 +1220,7 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                         phase2_miner.record(features, prefixed_label, est_loss)
 
                     # Run reasoning chain on hard examples (loss > 0.3)
-                    if est_loss > HARD_EXAMPLE_LOSS_THRESHOLD and hasattr(cognitive, 'reason_about'):
+                    if est_loss is not None and est_loss > HARD_EXAMPLE_LOSS_THRESHOLD and hasattr(cognitive, 'reason_about'):
                         try:
                             # Use first 512 chars of text representation
                             example_text = str(label)[:512]
@@ -1387,6 +1340,7 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                         phase2_scheduler.get_lr()  # Advance cosine schedule
                         count += 1
                         total_trained += 1
+                        phase2_curriculum.advance()
                         # Hard example mining for deferred datasets too
                         # Only call predict_fast every 10th example;
                         # only record examples where we have an actual loss estimate
@@ -1421,20 +1375,33 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                 except Exception:
                     pass
 
+                # Checkpoint after each deferred dataset (matches main loop pattern)
+                checkpoint_path = ATHENA_CHECKPOINT_DIR / f"athena_after_{name}.bin"
+                try:
+                    brain.save(str(checkpoint_path))
+                    logger.log(f"  Checkpoint saved: {checkpoint_path.name}")
+                except Exception as e:
+                    logger.log(f"  Checkpoint save failed: {e}")
+
                 gc.collect()
 
         # Final hard example replay for Phase 2 — use peek_lr() for replay
         if phase2_miner.hard_examples:
             replay_count = min(500, len(phase2_miner.hard_examples))
             logger.log(f"\n  Phase 2 hard example replay: {replay_count} items")
-            for _loss, feats, label in phase2_miner.hard_examples[:replay_count]:
+            for _loss, _cnt, feats, label in phase2_miner.hard_examples[:replay_count]:
                 if _shutdown_requested:
                     break
                 lr = phase2_scheduler.peek_lr()
                 brain.learn(feats, label, lr)
                 total_trained += 1
     else:
-        # Fallback: minimal streaming with Socratic training
+        # Fallback: minimal streaming with Socratic training.
+        # INTENTIONAL: This simpler fallback mode omits CosineAnnealingLR,
+        # CurriculumManager, and HardExampleMiner.  It relies solely on
+        # SocraticTrainer's internal Leitner scheduling for LR and replay.
+        # This is by design — the fallback activates when streaming_train
+        # is unavailable, indicating a minimal environment.
         if not BENCHMARKS_AVAILABLE:
             logger.log("Fallback streaming SKIPPED — text_to_features requires benchmark_datasets")
         else:
@@ -2150,6 +2117,7 @@ def main() -> int:
     # which avoids UnboundLocalError if the local `brain` name has been deleted or
     # if Python treats `del brain` as making `brain` local in this nested scope.
     def _shutdown_save_and_return():
+        global _clean_exit
         logger.log("Shutdown requested — emergency save before exit")
         try:
             if _brain_ref[0] is not None:
@@ -2159,6 +2127,7 @@ def main() -> int:
             logger.log(f"Emergency save failed: {e}")
         # Null out the ref so atexit handler doesn't double-save
         _brain_ref[0] = None
+        _clean_exit = True
         logger.close()
         gc.collect()
         try:

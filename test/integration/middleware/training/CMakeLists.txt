@@ -14,11 +14,12 @@ target_compile_features(integration_middleware_training_test_training_module_int
 
 target_link_libraries(integration_middleware_training_test_training_module_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
+        m
 )
 
 add_test(NAME integration_middleware_training_test_training_module_integration
@@ -45,11 +46,11 @@ target_compile_features(integration_middleware_training_test_loss_functions_inte
 
 target_link_libraries(integration_middleware_training_test_loss_functions_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -77,11 +78,11 @@ target_compile_features(integration_middleware_training_test_optimizers_integrat
 
 target_link_libraries(integration_middleware_training_test_optimizers_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -109,11 +110,11 @@ target_compile_features(integration_middleware_training_test_brain_training_inte
 
 target_link_libraries(integration_middleware_training_test_brain_training_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -141,11 +142,11 @@ target_compile_features(integration_middleware_training_test_plasticity_bridge_i
 
 target_link_libraries(integration_middleware_training_test_plasticity_bridge_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -173,11 +174,11 @@ target_compile_features(integration_middleware_training_test_event_driven_plasti
 
 target_link_libraries(integration_middleware_training_test_event_driven_plasticity_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -205,11 +206,11 @@ target_compile_features(integration_middleware_training_test_security_registrati
 
 target_link_libraries(integration_middleware_training_test_security_registration_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -237,11 +238,11 @@ target_compile_features(integration_middleware_training_test_training_callbacks_
 
 target_link_libraries(integration_middleware_training_test_training_callbacks_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -269,11 +270,11 @@ target_compile_features(integration_middleware_training_test_training_async_pipe
 
 target_link_libraries(integration_middleware_training_test_training_async_pipeline
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -305,11 +306,11 @@ target_compile_features(integration_middleware_training_test_training_logic_brid
 
 target_link_libraries(integration_middleware_training_test_training_logic_bridge_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -337,11 +338,11 @@ target_compile_features(integration_middleware_training_test_cognitive_training_
 
 target_link_libraries(integration_middleware_training_test_cognitive_training_bridge_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -369,11 +370,11 @@ target_compile_features(integration_middleware_training_test_perception_training
 
 target_link_libraries(integration_middleware_training_test_perception_training_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -401,11 +402,11 @@ target_compile_features(integration_middleware_training_test_cortical_training_i
 
 target_link_libraries(integration_middleware_training_test_cortical_training_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -433,11 +434,11 @@ target_compile_features(integration_middleware_training_test_perception_cognitiv
 
 target_link_libraries(integration_middleware_training_test_perception_cognitive_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -465,11 +466,11 @@ target_compile_features(integration_middleware_training_test_cortical_cognitive_
 
 target_link_libraries(integration_middleware_training_test_cortical_cognitive_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -497,11 +498,11 @@ target_compile_features(integration_middleware_training_test_perception_logic_in
 
 target_link_libraries(integration_middleware_training_test_perception_logic_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -529,11 +530,11 @@ target_compile_features(integration_middleware_training_test_cortical_logic_inte
 
 target_link_libraries(integration_middleware_training_test_cortical_logic_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -561,11 +562,11 @@ target_compile_features(integration_middleware_training_test_perception_immune_i
 
 target_link_libraries(integration_middleware_training_test_perception_immune_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -593,11 +594,11 @@ target_compile_features(integration_middleware_training_test_cortical_immune_int
 
 target_link_libraries(integration_middleware_training_test_cortical_immune_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -625,11 +626,11 @@ target_compile_features(integration_middleware_training_test_perception_plastici
 
 target_link_libraries(integration_middleware_training_test_perception_plasticity_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -657,11 +658,11 @@ target_compile_features(integration_middleware_training_test_cortical_plasticity
 
 target_link_libraries(integration_middleware_training_test_cortical_plasticity_integration
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp_middleware
         nimcp
-        pthread
+        Threads::Threads
         m
 )
 
@@ -674,3 +675,76 @@ set_tests_properties(integration_middleware_training_test_cortical_plasticity_in
         LABELS "integration;middleware;training;cross_bridge;cortical_plasticity"
         TIMEOUT 300
         RESOURCE_LOCK "brain_heavy")
+
+# =============================================================================
+# Bio-Async Orphaned Integration Test Targets
+# =============================================================================
+
+# Event-Driven Plasticity Bio-Async Integration Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_event_driven_plasticity_bio_async_integration.cpp)
+    add_executable(integration_middleware_training_test_edp_bio_async
+        test_event_driven_plasticity_bio_async_integration.cpp
+    )
+    target_include_directories(integration_middleware_training_test_edp_bio_async PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_middleware_training_test_edp_bio_async PRIVATE cxx_std_20)
+    target_link_libraries(integration_middleware_training_test_edp_bio_async PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME integration_middleware_training_test_edp_bio_async
+             COMMAND integration_middleware_training_test_edp_bio_async
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_middleware_training_test_edp_bio_async
+        PROPERTIES
+            LABELS "integration;middleware;training;bio-async;event-driven-plasticity"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
+# Training Adapters Bio-Async Integration Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_adapters_bio_async_integration.cpp)
+    add_executable(integration_middleware_training_test_adapters_bio_async
+        test_training_adapters_bio_async_integration.cpp
+    )
+    target_include_directories(integration_middleware_training_test_adapters_bio_async PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_middleware_training_test_adapters_bio_async PRIVATE cxx_std_20)
+    target_link_libraries(integration_middleware_training_test_adapters_bio_async PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME integration_middleware_training_test_adapters_bio_async
+             COMMAND integration_middleware_training_test_adapters_bio_async
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_middleware_training_test_adapters_bio_async
+        PROPERTIES
+            LABELS "integration;middleware;training;bio-async;adapters"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
+# Training Pipeline Bio-Async Integration Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_pipeline_bio_async.cpp)
+    add_executable(integration_middleware_training_test_pipeline_bio_async
+        test_training_pipeline_bio_async.cpp
+    )
+    target_include_directories(integration_middleware_training_test_pipeline_bio_async PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_middleware_training_test_pipeline_bio_async PRIVATE cxx_std_20)
+    target_link_libraries(integration_middleware_training_test_pipeline_bio_async PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME integration_middleware_training_test_pipeline_bio_async
+             COMMAND integration_middleware_training_test_pipeline_bio_async
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_middleware_training_test_pipeline_bio_async
+        PROPERTIES
+            LABELS "integration;middleware;training;bio-async;pipeline"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy")
+endif()

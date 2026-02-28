@@ -1029,11 +1029,13 @@ class ExtrapolationEngine:
     def _temperature_softmax(self, logits: np.ndarray,
                              temperature: float) -> np.ndarray:
         """Temperature-scaled softmax for diverse sampling."""
-        # Replace any non-finite values (NaN, inf, -inf) with 0.0
-        # to prevent partial NaN propagation through the softmax
-        logits = np.where(np.isfinite(logits), logits, 0.0)
+        # Check for all-non-finite BEFORE replacement so the guard
+        # actually triggers (replacing first makes everything finite)
         if not np.isfinite(logits).any():
             return np.ones_like(logits) / max(len(logits), 1)
+        # Replace remaining non-finite values (NaN, inf, -inf) with 0.0
+        # to prevent partial NaN propagation through the softmax
+        logits = np.where(np.isfinite(logits), logits, 0.0)
         if temperature <= 0:
             # Argmax (deterministic)
             result = np.zeros_like(logits)

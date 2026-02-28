@@ -907,8 +907,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     /* Phase 8: Send heartbeat at start of cognitive decision */
     brain_heartbeat(brain, "brain_decide", 0.0f);
 
-    // Guard: Check dimensions
-    if (num_features != brain->config.num_inputs) {
+    // W6-7 FIX: Align dimension check with predict_fast's soft check.
+    // brain->config.num_inputs is 0 for unconfigured brains (before first learn_example),
+    // so reject mismatches only when num_inputs has been set (> 0).
+    if (brain->config.num_inputs > 0 && num_features != brain->config.num_inputs) {
         set_error("Feature count mismatch: expected %u, got %u", brain->config.num_inputs,
                   num_features);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_decide: feature count mismatch");

@@ -25,6 +25,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
 #include <cmath>
 #include <vector>
 #include <limits>
@@ -105,6 +106,9 @@ protected:
     }
 
     void CreateSampleData(uint32_t batch_size, uint32_t n_inputs, uint32_t n_outputs) {
+        /* P6-10: Seed RNG for reproducibility */
+        srand(42);
+
         // Create input tensor
         uint32_t input_dims[2] = {batch_size, n_inputs};
         input_tensor = nimcp_tensor_create(input_dims, 2, NIMCP_DTYPE_F32);

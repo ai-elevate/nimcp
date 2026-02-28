@@ -49,6 +49,7 @@
 #include "core/brain/inference/nimcp_brain_inference.h"
 #include <math.h>
 #include <float.h>  // I-H3 FIX: FLT_MAX for NaN-safe argmax
+#include <stdint.h> // SIZE_MAX for W6-13 overflow guard
 #include <string.h>
 #include <stdio.h>
 #include "utils/memory/nimcp_memory.h"
@@ -103,6 +104,15 @@ static brain_decision_t* allocate_decision(uint32_t output_size)
     }
 
     decision->output_size = output_size;
+
+    // W6-13 FIX: Guard against integer overflow in allocation size computation.
+    // output_size * sizeof(float) can wrap around for very large output_size values.
+    if (output_size > SIZE_MAX / sizeof(float)) {
+        nimcp_free(decision);
+        set_error("Output size too large for allocation (%u outputs)", output_size);
+        return NULL;
+    }
+
     decision->output_vector = nimcp_malloc(output_size * sizeof(float));
 
     if (!decision->output_vector) {
@@ -251,15 +261,26 @@ static void determine_output_label(brain_t brain, brain_decision_t* decision)
         return;
     }
 
-    // Set label
-    if (max_idx < brain->num_output_labels) {
+    // W6-1 FIX: 3-way NULL guard matching predict_fast pattern.
+    // Check output_labels array, bounds, AND specific entry for NULL.
+    if (brain->output_labels && max_idx < brain->num_output_labels
+        && brain->output_labels[max_idx]) {
         strncpy(decision->label, brain->output_labels[max_idx], sizeof(decision->label) - 1);
     } else {
         snprintf(decision->label, sizeof(decision->label), "output_%u", max_idx);
     }
 
-    // P3-51 FIX: Replace magic number with named constant
-    decision->confidence = fminf(max_value / CONFIDENCE_NORMALIZATION_FACTOR, 1.0F);
+    // W6-3 FIX: Use ratio normalization (max/sum_abs) matching predict_fast,
+    // replacing the fixed-divisor formula (max/10.0) that gave inconsistent
+    // confidence values compared to predict_fast for the same inputs.
+    // W6-2 FIX: Lower-bound clamp to ensure confidence is in [0, 1].
+    float sum_abs = 0.0f;
+    for (uint32_t i = 0; i < decision->output_size; i++) {
+        if (isfinite(decision->output_vector[i]))
+            sum_abs += fabsf(decision->output_vector[i]);
+    }
+    float raw_conf = (sum_abs > 0.0f) ? (max_value / sum_abs) : 0.0f;
+    decision->confidence = fmaxf(0.0f, fminf(raw_conf, 1.0f));
 }
 
 /**
@@ -286,9 +307,16 @@ static void populate_interpretability(brain_t brain, const float* features, uint
     // Populate active neuron IDs
     decision->active_neuron_ids = nimcp_malloc(active_neurons * sizeof(uint32_t));
     if (!decision->active_neuron_ids) {
+        // W6-8 FIX: Reset num_active_neurons to 0 on alloc failure.
+        // Without this, num_active_neurons is non-zero but pointer is NULL,
+        // causing callers that iterate active_neuron_ids to dereference NULL.
+        decision->num_active_neurons = 0;
         set_error("Failed to allocate active neuron IDs array (%u neurons)", active_neurons);
-        return;  // decision->num_active_neurons is 0, so this is safe
+        return;
     }
+    // W6-11 NOTE: These are sequential indices [0..active_neurons-1], not the
+    // real neuron IDs from the network. Mapping real IDs would require
+    // adaptive_network to expose its active set, which is not yet implemented.
     for (uint32_t i = 0; i < active_neurons; i++) {
         decision->active_neuron_ids[i] = i;
     }
@@ -309,8 +337,11 @@ static void update_inference_stats(brain_t brain, brain_decision_t* decision)
     uint64_t new_count = __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED) + 1;
 
     // Update average inference time using the new count
-    // Note: This calculation is not perfectly atomic, but the result
-    // is a reasonable approximation under concurrent updates
+    // W6-10 NOTE: This is a non-atomic read-modify-write on avg_inference_time_us
+    // (torn read/write possible under concurrent inference). This is benign under
+    // typical usage because: (1) the value is only used for monitoring/logging,
+    // (2) worst case is a transiently inaccurate average, and (3) using atomics
+    // for double would require _Atomic double + -latomic which adds overhead.
     brain->stats.avg_inference_time_us =
         (brain->stats.avg_inference_time_us * (new_count - 1) +
          decision->inference_time_us) /
@@ -562,6 +593,19 @@ serial_path:
     {
     uint32_t batch_failures = 0;
     for (uint32_t i = 0; i < num_inputs; i++) {
+        // W6-5 FIX: Free existing decision fields before overwriting.
+        // When the parallel batch path partially succeeds then falls through
+        // to serial, successful parallel decisions have heap-allocated
+        // output_vector and active_neuron_ids that would leak if overwritten.
+        if (decisions[i].output_vector) {
+            nimcp_free(decisions[i].output_vector);
+            decisions[i].output_vector = NULL;
+        }
+        if (decisions[i].active_neuron_ids) {
+            nimcp_free(decisions[i].active_neuron_ids);
+            decisions[i].active_neuron_ids = NULL;
+        }
+
         brain_decision_t* decision = brain_decide(brain, inputs[i], features_per_input);
 
         if (!decision) {
@@ -795,10 +839,16 @@ static void* async_infer_thread(void* arg)
 
     // Cleanup
     nimcp_free(ctx->features);
+    // W6-12 NOTE: Promise is destroyed here before the future consumer may have
+    // read the result. This is safe because nimcp_promise_complete() copies the
+    // result into the shared future state before returning, so the promise
+    // object itself is no longer needed after completion.
     nimcp_promise_destroy(ctx->promise);
     nimcp_free(ctx);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_infer_thread: operation failed");
+    // W6-4 FIX: Removed unconditional NIMCP_THROW_TO_IMMUNE that fired on every
+    // async inference completion (including success), generating false immune events.
+    // The error path is already handled by nimcp_promise_fail() above.
     return NULL;
 }
 

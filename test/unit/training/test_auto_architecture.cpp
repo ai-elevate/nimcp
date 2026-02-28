@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
 #include <cmath>
 #include <unistd.h>
 
@@ -69,6 +70,9 @@ protected:
     }
 
     void CreateSampleData(uint32_t n_samples, uint32_t n_features, uint32_t n_classes) {
+        /* P6-11: Seed RNG for reproducibility */
+        srand(42);
+
         // Create training data
         uint32_t data_dims[2] = {n_samples, n_features};
         train_data = nimcp_tensor_create(data_dims, 2, NIMCP_DTYPE_F32);

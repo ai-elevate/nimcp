@@ -233,7 +233,10 @@ nimcp_status_t nimcp_brain_predict_fast(
         set_error("Brain has 0 outputs");
         return NIMCP_ERROR_INVALID;
     }
-    float stack_buf[256];
+    // W6-6 FIX: Zero-initialize stack buffer. If forward_raw partially writes
+    // (e.g., writes fewer outputs than num_outputs), argmax would read garbage
+    // from uninitialized slots, potentially selecting a wrong output index.
+    float stack_buf[256] = {0};
     float* output = (num_outputs <= 256) ? stack_buf : (float*)nimcp_calloc(num_outputs, sizeof(float));
     if (!output) {
         set_error("Failed to allocate output buffer");
@@ -246,8 +249,14 @@ nimcp_status_t nimcp_brain_predict_fast(
     // raw network activations needed for accurate argmax classification.
     // I-H2: Note -- forward_raw mutates neuron states (spike encoding + weight reads).
     // Concurrent predict_fast calls from multiple threads require external synchronization.
-    adaptive_network_forward_raw(ib->network, features, num_features,
+    // W6-9 FIX: Store return value (active neuron count) for diagnostics.
+    // forward_raw returning 0 active neurons with valid outputs is normal for sparse
+    // networks, so we only log it at debug level rather than treating it as an error.
+    uint32_t active_count = adaptive_network_forward_raw(ib->network, features, num_features,
                                  output, num_outputs);
+    if (active_count == 0) {
+        LOG_DEBUG("predict_fast: forward_raw returned 0 active neurons");
+    }
 
     // I-H3 FIX: NaN-safe argmax. If output contains NaN values, standard comparison
     // (NaN > max_val) is always false, silently picking index 0. Use isfinite() to
@@ -369,7 +378,9 @@ nimcp_status_t nimcp_brain_predict_in_domain(
         set_error("Brain has 0 outputs");
         return NIMCP_ERROR_INVALID;
     }
-    float stack_buf[256];
+    // W6-6 FIX: Zero-initialize stack buffer to prevent argmax reading garbage
+    // if forward_raw partially writes the output array.
+    float stack_buf[256] = {0};
     float* output = (num_outputs <= 256) ? stack_buf : (float*)nimcp_calloc(num_outputs, sizeof(float));
     if (!output) {
         set_error("Failed to allocate output buffer");
@@ -377,8 +388,12 @@ nimcp_status_t nimcp_brain_predict_in_domain(
     }
 
     // I-C1: Use forward_raw for classification (same reasoning as predict_fast)
-    adaptive_network_forward_raw(ib->network, features, num_features,
+    // W6-9 FIX: Store return value for diagnostics (same as predict_fast).
+    uint32_t active_count = adaptive_network_forward_raw(ib->network, features, num_features,
                                  output, num_outputs);
+    if (active_count == 0) {
+        LOG_DEBUG("predict_in_domain: forward_raw returned 0 active neurons");
+    }
 
     // I-H3 FIX: NaN-safe domain-filtered argmax. Use isfinite() to skip NaN/Inf values.
     size_t prefix_len = strlen(domain_prefix);

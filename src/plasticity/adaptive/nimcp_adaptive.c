@@ -262,9 +262,12 @@ typedef int32_t (*spike_decoder_fn)(const uint8_t* spike_train, uint32_t length)
  *
  * WHY: O(1) dispatch to encoding function vs O(n) switch statement
  */
+// W6-10 FIX: Use SPIKE_ENCODING_PASSTHROUGH as the array bound sentinel instead of
+// magic number 4. PASSTHROUGH is the last encoding before the count sentinel in the
+// enum, so the table has exactly the right number of slots for encodable types.
 typedef struct {
-    spike_encoder_fn encoders[4];  // One per encoding type
-    spike_decoder_fn decoders[4];
+    spike_encoder_fn encoders[SPIKE_ENCODING_PASSTHROUGH];
+    spike_decoder_fn decoders[SPIKE_ENCODING_PASSTHROUGH];
 } spike_strategy_table_t;
 
 //=============================================================================
@@ -847,7 +850,7 @@ uint32_t adaptive_encode_spikes(int32_t spike_count, spike_encoding_t encoding,
         return 0;
 
     // Guard clause: Validate encoding type
-    if (encoding >= 4)
+    if (encoding >= SPIKE_ENCODING_PASSTHROUGH)
         return 0;
 
     // BUG-13: Known performance issue — strategy table is rebuilt per encode call.
@@ -884,7 +887,7 @@ float adaptive_decode_spikes(const uint8_t* spike_train, uint32_t length, spike_
         return 0.0F;
 
     // Guard clause: Validate encoding type
-    if (encoding >= 4)
+    if (encoding >= SPIKE_ENCODING_PASSTHROUGH)
         return 0.0F;
 
     // Create temporary strategy table
@@ -1048,6 +1051,15 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     // Guard clause: Validate configuration
     if (!validate_network_config(config)) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_network_create: validate_network_config is NULL");
+        return NULL;
+    }
+
+    // W6-12 FIX: Guard against zero input_size which causes implementation-defined
+    // calloc(0) when allocating input_statistics buffer. Enforce minimum of 1.
+    if (config->base_config.input_size == 0) {
+        fprintf(stderr, "[ERROR] adaptive_network_create: input_size is 0\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "adaptive_network_create: input_size must be > 0");
         return NULL;
     }
 
@@ -1839,6 +1851,10 @@ uint32_t adaptive_network_forward_raw(adaptive_network_t network, const float* i
     for (uint32_t i = 0; i < output_size; i++) {
         if (fabsf(output[i]) > 1e-6f) active++;
     }
+
+    // W6-07 FIX: Increment total_inferences in CPU path (GPU path already does this).
+    network->total_inferences++;
+
     return active;
 }
 
@@ -2068,6 +2084,12 @@ cpu_learn_path:
                 }
                 network->last_grad_norm = grad_norm;
 
+                // W6-03 FIX: Mark GPU weight cache dirty after CPU backprop modifies weights.
+                // Without this, the next GPU-path learn/forward uses stale cached weights.
+                if (network->gpu_weight_cache) {
+                    network->gpu_weight_cache->weights_dirty_on_cpu = true;
+                }
+
                 // Update EMA of gradient norm for training stability detection
                 // H2-FIX: Guard against NaN/Inf corrupting the EMA (matches GPU path)
                 if (isfinite(grad_norm)) {
@@ -2103,6 +2125,12 @@ cpu_learn_path:
             uint32_t rl_n = neural_network_get_num_neurons(base_rl);
             if (rl_n <= 100000) {
                 neural_network_apply_reward_learning(base_rl, rl_reward, learning_rate, time_rl);
+            }
+
+            // W6-04 FIX: Mark GPU weight cache dirty after reward learning modifies CPU weights.
+            // Without this, the next GPU-path learn/forward uses stale cached weights.
+            if (network->gpu_weight_cache) {
+                network->gpu_weight_cache->weights_dirty_on_cpu = true;
             }
             }
             // H-3: No backprop gradient to track for reinforcement mode
@@ -2179,6 +2207,11 @@ cpu_learn_path:
                 }
                 network->last_grad_norm = grad_norm;
 
+                // W6-03 FIX: Mark GPU weight cache dirty after CPU HYBRID backprop + bio-plasticity.
+                if (network->gpu_weight_cache) {
+                    network->gpu_weight_cache->weights_dirty_on_cpu = true;
+                }
+
                 // Update EMA of gradient norm for training stability detection
                 // H2-FIX: Guard against NaN/Inf corrupting the EMA (matches GPU path)
                 if (isfinite(grad_norm)) {
@@ -2221,11 +2254,13 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
 
     for (uint32_t i = 0; i < num_examples; i++) {
         float loss = adaptive_network_learn(network, &examples[i], mode, learning_rate);
-        if (loss >= 0.0F) {
+        // W6-09 FIX: Add isfinite check to prevent total_loss from overflowing to Inf
+        // when accumulating across many examples. NaN/Inf would poison the average.
+        if (loss >= 0.0F && isfinite(loss)) {
             total_loss += loss;
             successful++;
         }
-        /* Skip examples that return -1.0f (error) to avoid corrupting average */
+        /* Skip examples that return -1.0f (error) or non-finite to avoid corrupting average */
     }
 
     return (successful > 0) ? (total_loss / successful) : -1.0F;
@@ -2320,9 +2355,11 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
             }
 
             // Continue with base_config booleans and enums
-            // M-11 TODO: sizeof(bool) is implementation-defined (1 on x86_64, could be 4 elsewhere).
-            // A future checkpoint version should use uint8_t for all bool fields to ensure
-            // cross-platform portability. Changing now would break checkpoint backward compat.
+            // W6-11 NOTE (LOW): ABI-dependent checkpoint field sizes — sizeof(bool),
+            // sizeof(enum), and struct padding are implementation-defined. Checkpoints are
+            // NOT portable across compilers/platforms. A future checkpoint version should use
+            // fixed-width types (uint8_t for bools, uint32_t for enums) to enable portability.
+            // Changing now would break backward compatibility with existing checkpoints.
             FWRITE_CHECKED(&network->config.base_config.enable_stdp, sizeof(bool), 1, file);
             FWRITE_CHECKED(&network->config.base_config.enable_hebbian, sizeof(bool), 1, file);
             FWRITE_CHECKED(&network->config.base_config.enable_oja, sizeof(bool), 1, file);
@@ -2363,8 +2400,17 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
             }
 
             // Write label map
+            // W6-06 FIX: Guard against NULL label_map entries which would crash strlen()
             FWRITE_CHECKED(&network->num_labels, sizeof(uint32_t), 1, file);
             for (uint32_t i = 0; i < network->num_labels; i++) {
+                if (!network->label_map[i]) {
+                    // Write empty placeholder for NULL entries
+                    uint32_t label_len = 1;
+                    char nul = '\0';
+                    FWRITE_CHECKED(&label_len, sizeof(uint32_t), 1, file);
+                    FWRITE_CHECKED(&nul, 1, 1, file);
+                    continue;
+                }
                 uint32_t label_len = strlen(network->label_map[i]) + 1;
                 FWRITE_CHECKED(&label_len, sizeof(uint32_t), 1, file);
                 FWRITE_CHECKED(network->label_map[i], label_len, 1, file);
@@ -2739,9 +2785,15 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
     }
 
+    // W6-01 FIX: Allocate label_map for the CAPACITY (next power-of-2), not just num_labels.
+    // Previously allocated num_labels entries but set label_map_capacity to the next
+    // power-of-2, so adding a new label when num_labels < capacity would skip realloc
+    // and write past the allocation (heap overflow).
     // M-malloc0: Guard against nimcp_malloc(0) when num_labels==0
     if (num_labels > 0) {
-        network->label_map = nimcp_malloc(num_labels * sizeof(char*));
+        uint32_t cap = 16;
+        while (cap < num_labels) cap *= 2;
+        network->label_map = nimcp_malloc(cap * sizeof(char*));
         // C-3: NULL check after label_map allocation to prevent NULL dereference
         if (!network->label_map) {
             adaptive_network_destroy(network);
@@ -2750,8 +2802,12 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 "adaptive_network_load: failed to allocate label_map");
             return NULL;
         }
+        // Zero the unused slots to prevent stale pointer dereference
+        memset(network->label_map + num_labels, 0, (cap - num_labels) * sizeof(char*));
+        network->label_map_capacity = cap;
     } else {
         network->label_map = NULL;
+        network->label_map_capacity = 0;
     }
     network->num_labels = num_labels;
 
@@ -2804,17 +2860,9 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         }
     }
 
-    // C2-FIX: Set label_map_capacity to match loaded label count.
-    // adaptive_network_create() initialized label_map_capacity=0, but we just loaded
-    // num_labels entries into a freshly allocated label_map. Without this fix,
-    // get_label_index() would see num_labels >= capacity (always true with capacity=0)
-    // and realloc to 16 — which SHRINKS the buffer if num_labels > 16, corrupting it.
-    // Use next power-of-2 >= num_labels for consistent geometric growth behavior.
-    {
-        uint32_t cap = 16;
-        while (cap < network->num_labels) cap *= 2;
-        network->label_map_capacity = cap;
-    }
+    // C2-FIX: label_map_capacity already set during allocation above (W6-01 fix).
+    // The capacity is allocated as next power-of-2 >= num_labels, and label_map
+    // is allocated for the full capacity, not just num_labels.
 
     // H-1: Rebuild label hash table from loaded label_map entries.
     // Labels were loaded into label_map[] above but never inserted into the
@@ -2827,14 +2875,21 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         }
     }
 
-    // M-1: Read statistics with checked reads to detect truncated file
+    // W6-02 FIX: On partial stats read, reset to defaults and return WITHOUT attempting
+    // to read weights. A partial read leaves the file position misaligned, so all
+    // subsequent reads (EMA, weights) would parse from the wrong position.
     {
         bool stats_ok = true;
         stats_ok = stats_ok && (fread(&network->total_inferences, sizeof(uint64_t), 1, file) == 1);
         stats_ok = stats_ok && (fread(&network->total_learning_steps, sizeof(uint64_t), 1, file) == 1);
         stats_ok = stats_ok && (fread(&network->running_sparsity, sizeof(float), 1, file) == 1);
         if (!stats_ok) {
-            fprintf(stderr, "WARNING: Failed to read statistics from checkpoint, using defaults\n");
+            fprintf(stderr, "WARNING: Failed to read statistics, skipping weight load\n");
+            network->total_inferences = 0;
+            network->total_learning_steps = 0;
+            network->running_sparsity = 0.0f;
+            fclose(file);
+            return network;
         }
     }
 
@@ -2964,8 +3019,14 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 // Note: neuron.model (neuron_model_state_t) is opaque pointer, not restored here
                 // TODO: If model_type != NEURON_MODEL_NONE, deserialize model-specific state
             }
+            // W6-05 FIX: On load error, destroy the network and return NULL instead of
+            // returning a partially-loaded network. Callers can't distinguish partial
+            // from complete, leading to silent data corruption during training.
             if (load_error) {
-                fprintf(stderr, "WARNING: Load error during weight restoration, partially loaded\n");
+                fprintf(stderr, "ERROR: Load error during weight restoration, aborting\n");
+                adaptive_network_destroy(network);
+                fclose(file);
+                return NULL;
             }
         }
     }

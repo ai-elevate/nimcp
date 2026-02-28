@@ -54,6 +54,14 @@ class ThreadSafeBrain:
         with self._lock:
             return self._brain.learn(*args, **kwargs)
 
+    def learn_and_get_gradient(self, features, label, lr):
+        """Atomically learn and capture gradient norm (C1 fix: prevents
+        another instructor from overwriting the gradient between calls)."""
+        with self._lock:
+            result = self._brain.learn(features, label, lr)
+            grad = self._brain.get_last_gradient_norm()
+            return result, grad
+
     def predict_fast(self, *args, **kwargs):
         with self._lock:
             return self._brain.predict_fast(*args, **kwargs)
@@ -209,6 +217,8 @@ class SchoolConfig:
     report_interval_s: float = 30.0        # Dashboard every 30s
     checkpoint_interval_s: float = 600.0   # Checkpoint every 10 min
     max_training_time_s: float = 86400.0   # 24h max
+    # L-school-8: graduation_mastery is used for BOTH graduation threshold AND
+    # metacognition's mastery_threshold. Splitting would require a separate config field.
     graduation_mastery: float = 0.85       # Graduate when all domains reach this
     max_examples_per_dataset: int = 50_000
     startup_stagger_s: float = 2.0         # Delay between instructor starts
@@ -252,6 +262,8 @@ class SchoolProgressBoard:
                 domains[domain] = {
                     "examples": r.get("total_examples", 0),
                     "accuracy": r.get("accuracy", 0.0),
+                    # L-school-10: Include rolling accuracy alongside cumulative
+                    "rolling_accuracy": r.get("rolling_accuracy", r.get("accuracy", 0.0)),
                     "mastery": r.get("mastery", 0.0),
                     "rate": r.get("examples_per_sec", 0.0),
                     "modality": r.get("modality", "text"),
@@ -749,6 +761,9 @@ class School:
                 if i >= j:
                     continue
                 c2 = self._domain_centroids[d2]
+                # H-school-3: Skip if dimension mismatch to avoid ValueError
+                if c1.shape != c2.shape:
+                    continue
                 norm2 = np.linalg.norm(c2)
                 if norm2 < 1e-8:
                     continue
@@ -891,8 +906,11 @@ class School:
 
             # Phase 4: Update domain similarity matrix periodically
             if now - self._last_similarity_update >= self._similarity_update_interval:
-                self._update_domain_centroids()
-                self._log_domain_similarity()
+                try:
+                    self._update_domain_centroids()
+                    self._log_domain_similarity()
+                except Exception as e:
+                    self.logger.log(f"[School] WARNING: centroid update failed: {e}")
                 self._last_similarity_update = now
 
             # Phase 4: Cross-domain transfer check
@@ -973,16 +991,20 @@ class School:
             domain = report.get("domain", "unknown")
             self.board.update_instructor(domain, report)
 
+            # H-school-2: Prefer rolling_accuracy for stall detection and
+            # metacognition — cumulative accuracy has low variance at scale.
+            rolling_acc = report.get("rolling_accuracy", report.get("accuracy", 0.0))
+
             # Feed into metacognitive tracker
             self.metacognition.update(
                 domain,
-                report.get("accuracy", 0.0),
+                rolling_acc,
                 report.get("loss", 1.0),
                 report.get("total_examples", 0),
             )
 
             # Accumulate per-domain accuracy for stall detection (L7: deque)
-            accuracy = report.get("accuracy", 0.0)
+            accuracy = rolling_acc
             if domain not in self._domain_accuracy_history:
                 self._domain_accuracy_history[domain] = collections.deque(maxlen=100)
             self._domain_accuracy_history[domain].append(accuracy)
@@ -1101,13 +1123,14 @@ class School:
             f"Instructors: {snap['num_instructors']}  |  "
             f"Recesses: {snap['recess_count']}",
             f"  {'Domain':<20s} {'Mod':>5s} {'Examples':>10s} {'Acc':>7s} "
-            f"{'Mastery':>8s} {'Rate':>8s}",
-            f"  {'-'*60}",
+            f"{'RolAcc':>7s} {'Mastery':>8s} {'Rate':>8s}",
+            f"  {'-'*68}",
         ]
         for domain, d in sorted(snap["domains"].items()):
             lines.append(
                 f"  {domain:<20s} {d['modality']:>5s} {d['examples']:>10,d} "
-                f"{d['accuracy']:>7.3f} {d['mastery']:>8.3f} "
+                f"{d['accuracy']:>7.3f} {d.get('rolling_accuracy', d['accuracy']):>7.3f} "
+                f"{d['mastery']:>8.3f} "
                 f"{d['rate']:>7.1f}/s"
             )
 
@@ -1137,9 +1160,9 @@ class School:
     def _check_graduation(self) -> bool:
         """Check if all domains have reached graduation mastery.
 
-        M4: Check ALL instructors (including finished-but-not-mastered) to
-        avoid premature graduation when an instructor finished its dataset
-        without reaching mastery.
+        M-school-4: Collect best mastery per domain so that old finished
+        instructors with low mastery (from hot-reload) don't permanently
+        block graduation. Only the best instructor per domain matters.
         M2: Skip errored instructors — they will never reach mastery and
         should not block graduation of the remaining domains.
         """
@@ -1147,15 +1170,18 @@ class School:
             return False
         threshold = self.config.graduation_mastery
         has_non_errored = False
+        best_mastery = {}
         for agent in self.instructors:
-            # M4: Use has_error property instead of direct _error access
-            # across thread boundary
             if agent.has_error:
                 continue
             has_non_errored = True
-            if agent.get_mastery() < threshold:
-                return False
-        return has_non_errored
+            domain = agent.config.domain
+            m = agent.get_mastery()
+            if domain not in best_mastery or m > best_mastery[domain]:
+                best_mastery[domain] = m
+        if not has_non_errored or not best_mastery:
+            return False
+        return all(m >= threshold for m in best_mastery.values())
 
     def _shutdown(self):
         """Graceful shutdown of all instructors."""
@@ -1186,16 +1212,23 @@ class School:
         self.logger.log("[School] Shutdown complete")
 
     def _open_school_log(self):
-        """Open school-level JSONL log."""
-        if hasattr(self.logger, 'log_file'):
-            log_dir = Path(self.logger.log_file).parent
-        else:
-            log_dir = Path("logs")
-        log_dir.mkdir(parents=True, exist_ok=True)
-        ts = time.strftime("%Y%m%d_%H%M%S")
-        path = log_dir / f"athena_training_{ts}.jsonl"
-        self._school_log_path = path
-        self._school_log_file = open(path, "a")
+        """Open school-level JSONL log.
+
+        M-school-5: Wrapped in try/except so OSError doesn't crash training.
+        """
+        try:
+            if hasattr(self.logger, 'log_file'):
+                log_dir = Path(self.logger.log_file).parent
+            else:
+                log_dir = Path("logs")
+            log_dir.mkdir(parents=True, exist_ok=True)
+            ts = time.strftime("%Y%m%d_%H%M%S")
+            path = log_dir / f"athena_training_{ts}.jsonl"
+            self._school_log_path = path
+            self._school_log_file = open(path, "a")
+        except OSError as e:
+            self.logger.log(f"[School] WARNING: Could not open school log: {e}")
+            self._school_log_file = None
 
     def get_report_card(self) -> dict:
         """Get final report card for all instructors."""

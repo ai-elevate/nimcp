@@ -383,6 +383,9 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_stubs.cpp)
 endif()
 
 # Training Dispatch Unit Tests (C — libcheck)
+# NOTE: Requires pkg_check_modules(CHECK REQUIRED check) in a parent CMakeLists.txt
+# or FindPkgConfig + libcheck-dev installed. The check_pic/subunit targets come from
+# the system libcheck package (apt install check libsubunit-dev).
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_dispatch.c)
     add_executable(unit_training_test_training_dispatch
         test_training_dispatch.c

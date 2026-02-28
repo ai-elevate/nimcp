@@ -253,7 +253,8 @@ add_test(NAME unit_middleware_training_test_event_driven_plasticity
 set_tests_properties(unit_middleware_training_test_event_driven_plasticity
     PROPERTIES
         LABELS "unit;middleware;training;event_driven_plasticity"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Security Registration Unit Tests (Phase SR-1)
 add_executable(unit_middleware_training_test_security_registration
@@ -284,7 +285,8 @@ add_test(NAME unit_middleware_training_test_security_registration
 set_tests_properties(unit_middleware_training_test_security_registration
     PROPERTIES
         LABELS "unit;middleware;training;security_registration"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Training Callbacks Unit Tests (Phase TCB-1)
 add_executable(unit_middleware_training_test_training_callbacks
@@ -315,7 +317,8 @@ add_test(NAME unit_middleware_training_test_training_callbacks
 set_tests_properties(unit_middleware_training_test_training_callbacks
     PROPERTIES
         LABELS "unit;middleware;training;callbacks"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Training Plasticity Bridge Bio-Async Integration Tests (Phase TPB-BIO-1)
 add_executable(unit_middleware_training_test_tpb_bio_async
@@ -344,6 +347,7 @@ gtest_discover_tests(unit_middleware_training_test_tpb_bio_async
     PROPERTIES
         LABELS "unit;middleware;training;tpb;bio-async"
         TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy"
 )
 
 # Training Adapters Bio-Async Integration Tests (Phase TA-BIO-1)
@@ -373,6 +377,7 @@ gtest_discover_tests(unit_middleware_training_test_training_adapters_bio_async
     PROPERTIES
         LABELS "unit;middleware;training;adapters;bio-async"
         TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy"
 )
 
 # Portia-Training Integration Tests (Phase PORTIA-1)
@@ -414,7 +419,8 @@ add_test(NAME unit_middleware_training_test_training_logic_bridge
 set_tests_properties(unit_middleware_training_test_training_logic_bridge
     PROPERTIES
         LABELS "unit;middleware;training;logic_bridge"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Cognitive-Training Bridge Unit Tests (Phase CTB-1)
 add_executable(unit_middleware_training_test_cognitive_training_bridge
@@ -541,7 +547,8 @@ add_test(NAME unit_middleware_training_test_occipital_training_bridge
 set_tests_properties(unit_middleware_training_test_occipital_training_bridge
     PROPERTIES
         LABELS "unit;middleware;training;occipital_training"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Convergent Training Decision Unit Tests (Layer 1)
 add_executable(unit_middleware_training_test_training_convergent_decision
@@ -668,7 +675,8 @@ add_test(NAME unit_middleware_training_test_training_integration_fixes
 set_tests_properties(unit_middleware_training_test_training_integration_fixes
     PROPERTIES
         LABELS "unit;middleware;training;integration_fixes"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # =============================================================================
 # Orphaned Unit Test Targets

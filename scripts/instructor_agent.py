@@ -6,7 +6,7 @@ InstructorAgent — Parallel Domain-Specific Teaching Thread
 WHAT: A threaded instructor that teaches one domain using 7 teaching methods
 WHY:  Parallel domain-specialized instruction — like a school with 23 teachers
 HOW:  Each InstructorAgent owns a SocraticTrainer, CognitiveOrchestrator,
-      SafetyGate, StreamingDatasetProcessor, and DataSkeptic. It streams
+      StreamingDatasetProcessor, and DataSkeptic. It streams
       HuggingFace datasets and trains the shared brain using method rotation.
 
 Teaching Methods:
@@ -28,6 +28,7 @@ import json
 import logging
 import math
 import os
+import queue
 import random
 import re
 import threading
@@ -44,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 from socratic_trainer import SocraticTrainer, SocraticConfig
 from cognitive_orchestrator import CognitiveOrchestrator
-from safety_gate import SafetyGate, SafetyConfig
+# L1: SafetyGate/SafetyConfig removed — was instantiated but never used
 
 # ---------------------------------------------------------------------------
 # Lazy-loaded sentence-transformer embedding model (Phase 1)
@@ -243,7 +244,7 @@ class InstructorAgent(threading.Thread):
         # Per-instructor components
         self.socratic = SocraticTrainer(brain, SocraticConfig())
         self.cognitive = CognitiveOrchestrator(brain)
-        self.safety = SafetyGate(brain, SafetyConfig())
+        # L1: SafetyGate removed — was instantiated but never used
         self.skeptic = DataSkeptic(brain) if SKEPTIC_AVAILABLE else None
         self.method_stats = MethodStats()
 
@@ -269,7 +270,9 @@ class InstructorAgent(threading.Thread):
         self.difficulty = 0.0
         self.adversarial_bank: List[Tuple[list, str]] = []
         self._adv_bank_idx = 0  # M5: rotating index for bounded adversarial bank
-        self._start_time = 0.0
+        # L4: Initialize to current time so get_report() returns valid elapsed
+        # time even before run() is called
+        self._start_time = time.time()
         self._finished = False
         self._error: Optional[str] = None
 
@@ -279,6 +282,8 @@ class InstructorAgent(threading.Thread):
         self._last_loss = 0.0
         self._last_grad_norm = 0.0
         self._last_decision: Optional[dict] = None
+        # H1: Track last decision cycle step to prevent duplicate fires
+        self._last_dc_step = -1
 
         # Phase 2: Cosine annealing LR scheduler (per-instructor)
         self._lr_scheduler = _CosineAnnealingLR(
@@ -347,10 +352,12 @@ class InstructorAgent(threading.Thread):
 
         L4 fix: Renamed from _close_log to public — called from School._shutdown()
         across class boundary.
+        L-school-7: Protected by _log_lock since _log_example also uses it.
         """
-        if self._log_file:
-            self._log_file.close()
-            self._log_file = None
+        with self._log_lock:
+            if self._log_file:
+                self._log_file.close()
+                self._log_file = None
 
     def run(self):
         """Main instructor loop — repeats until accuracy threshold or max passes."""
@@ -505,7 +512,8 @@ class InstructorAgent(threading.Thread):
             from datasets import load_dataset
             hf_dataset = ds_config.get("hf_dataset", "")
             hf_subset = ds_config.get("hf_subset")
-            kwargs = {"split": "train", "streaming": True}
+            # L2: Use hf_split from config instead of hardcoded "train"
+            kwargs = {"split": ds_config.get("hf_split", "train"), "streaming": True}
             if os.environ.get("HF_TOKEN"):
                 kwargs["token"] = os.environ["HF_TOKEN"]
             if hf_subset:
@@ -566,7 +574,8 @@ class InstructorAgent(threading.Thread):
             from datasets import load_dataset
             hf_dataset = ds_config.get("hf_dataset", "")
             hf_subset = ds_config.get("hf_subset")
-            kwargs = {"split": "train", "streaming": True}
+            # L2: Use hf_split from config instead of hardcoded "train"
+            kwargs = {"split": ds_config.get("hf_split", "train"), "streaming": True}
             if os.environ.get("HF_TOKEN"):
                 kwargs["token"] = os.environ["HF_TOKEN"]
             if hf_subset:
@@ -650,15 +659,35 @@ class InstructorAgent(threading.Thread):
         # H4: Final clamp to prevent unbounded compounding
         return max(0.01, min(result, 3.0))
 
-    def _update_metrics_and_decide(self, loss: float):
+    def _learn_and_capture_grad(self, features, label, lr):
+        """Learn and atomically capture gradient norm (C1 fix).
+
+        Prevents another instructor from overwriting the C backend's
+        gradient norm between learn() and get_last_gradient_norm().
+        """
+        if hasattr(self.brain, 'learn_and_get_gradient'):
+            result, grad = self.brain.learn_and_get_gradient(features, label, lr)
+            return result, grad
+        else:
+            result = self.brain.learn(features, label, lr)
+            grad = self.cognitive.get_last_gradient_norm()
+            return result, grad
+
+    def _update_metrics_and_decide(self, loss: float, grad_norm=None):
         """Track rolling metrics and run decision cycle at report intervals.
 
-        Called after each learn(). Captures gradient norm from C, accumulates
-        loss/gradient history, and runs the full decision cycle (observe ->
-        diagnose -> simulate -> decide) every report_interval examples.
+        Called after each learn(). Accumulates loss/gradient history, and runs
+        the full decision cycle (observe -> diagnose -> simulate -> decide)
+        every report_interval examples.
+
+        Args:
+            loss: Heuristic loss for this example.
+            grad_norm: Pre-captured gradient norm from _learn_and_capture_grad.
+                       If None, fetches from C backend (legacy path).
         """
-        # Capture gradient norm from C backprop
-        grad_norm = self.cognitive.get_last_gradient_norm()
+        # C1: Use pre-captured gradient if provided, else fallback to fetch
+        if grad_norm is None:
+            grad_norm = self.cognitive.get_last_gradient_norm()
         if grad_norm < 0:
             grad_norm = 0.0
 
@@ -667,8 +696,11 @@ class InstructorAgent(threading.Thread):
         self._last_loss = loss
         self._last_grad_norm = grad_norm
 
-        # Run decision cycle every report_interval
-        if self.total_examples > 0 and self.total_examples % self.config.report_interval == 0:
+        # H1: Guard against multiple decision cycle fires per step
+        if (self.total_examples > 0
+                and self.total_examples % self.config.report_interval == 0
+                and self.total_examples != self._last_dc_step):
+            self._last_dc_step = self.total_examples
             self._run_decision_cycle()
 
     def _run_decision_cycle(self):
@@ -905,14 +937,16 @@ class InstructorAgent(threading.Thread):
         else:
             lr = 0.8 * conf_mod
 
-        self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
+        # C1: Atomically learn + capture gradient to prevent race condition
+        _, grad = self._learn_and_capture_grad(
+            features, self._scope_target_to_domain(label), self._modulate_lr(lr))
         # M11: Loss is a heuristic proxy, not the actual network loss.
         # It serves as a directional signal for decision cycle and logging, but does
         # not reflect true cross-entropy or MSE from the C backprop path.
         # C1 fix: Use confidence directly as loss when wrong — higher confidence
         # when wrong means higher loss (cross-entropy-like behavior).
         loss = 0.0 if correct else max(0.1, conf)
-        self._update_metrics_and_decide(loss)
+        self._update_metrics_and_decide(loss, grad_norm=grad)
         self.socratic.mastery.record(domain, correct)
 
         # Phase 3: Schedule failed examples for spaced repetition
@@ -932,13 +966,17 @@ class InstructorAgent(threading.Thread):
 
         # Skip if brain already knows AND difficulty is still low
         if correct and conf > 0.9 and self.difficulty < 0.5:
+            # M6: Record mastery even on skip path
+            self.socratic.mastery.record(domain, correct)
             return correct, 0.0
 
         lr = (0.5 + 0.5 * self.difficulty) * conf_mod
-        self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
+        # C1: Atomically learn + capture gradient
+        _, grad = self._learn_and_capture_grad(
+            features, self._scope_target_to_domain(label), self._modulate_lr(lr))
         # C1 fix: confident-wrong = high loss
         loss = 0.0 if correct else max(0.1, conf)
-        self._update_metrics_and_decide(loss)
+        self._update_metrics_and_decide(loss, grad_norm=grad)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -959,12 +997,14 @@ class InstructorAgent(threading.Thread):
         # space with "NOT_" negative labels that persist in the brain's memory
         scoped_label = self._scope_target_to_domain(label)
         boost = 1.2 if not correct else 1.0  # Extra boost for incorrect predictions
-        self.brain.learn(features, scoped_label, self._modulate_lr(0.7 * conf_mod * boost))
+        # C1: Atomically learn + capture gradient
+        _, grad = self._learn_and_capture_grad(
+            features, scoped_label, self._modulate_lr(0.7 * conf_mod * boost))
 
         # M6: Update metrics after the positive learn (not after a negative learn)
         # C1 fix: confident-wrong = high loss
         loss = 0.0 if correct else max(0.1, conf)
-        self._update_metrics_and_decide(loss)
+        self._update_metrics_and_decide(loss, grad_norm=grad)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -997,11 +1037,13 @@ class InstructorAgent(threading.Thread):
             lr = 0.9 * conf_mod  # disagreement → stronger teaching
 
         correct = (pred1 == label)
-        self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
+        # C1: Atomically learn + capture gradient
+        _, grad = self._learn_and_capture_grad(
+            features, self._scope_target_to_domain(label), self._modulate_lr(lr))
 
         # C1 fix: confident-wrong = high loss (use max confidence of the two perspectives)
         loss = 0.0 if correct else max(0.1, max(conf1, conf2))
-        self._update_metrics_and_decide(loss)
+        self._update_metrics_and_decide(loss, grad_norm=grad)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -1017,11 +1059,13 @@ class InstructorAgent(threading.Thread):
         # Use mastery to set learning rate
         mastery = self.socratic.mastery.mastery(domain)
         lr = (0.3 + 0.7 * (1.0 - mastery)) * conf_mod
-        self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
+        # C1: Atomically learn + capture gradient
+        _, grad = self._learn_and_capture_grad(
+            features, self._scope_target_to_domain(label), self._modulate_lr(lr))
 
         # C1 fix: confident-wrong = high loss
         loss = 0.0 if correct else max(0.1, conf)
-        self._update_metrics_and_decide(loss)
+        self._update_metrics_and_decide(loss, grad_norm=grad)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -1102,7 +1146,9 @@ class InstructorAgent(threading.Thread):
         # Step 3: Train on original example
         lr = (0.9 if not correct else 0.4) * conf_mod
         scoped_label = self._scope_target_to_domain(label)
-        self.brain.learn(features, scoped_label, self._modulate_lr(lr))
+        # C1/M1: Atomically learn + capture gradient from the MAIN example
+        _, main_grad = self._learn_and_capture_grad(
+            features, scoped_label, self._modulate_lr(lr))
 
         # Step 4: Train on adversarial example (if found) with correct label
         if best_adversarial is not None:
@@ -1132,9 +1178,10 @@ class InstructorAgent(threading.Thread):
             except Exception as e:
                 logger.debug(f"Learn failed: {e}")
 
-        # C1 fix: confident-wrong = high loss
+        # C1/M1 fix: confident-wrong = high loss; use gradient from MAIN learn,
+        # not from the adversarial/noisy follow-up learn calls
         loss = 0.0 if correct else max(0.1, conf)
-        self._update_metrics_and_decide(loss)
+        self._update_metrics_and_decide(loss, grad_norm=main_grad)
 
         # Periodically re-teach hard examples from adversarial bank
         # L6: Call _update_metrics_and_decide for bank re-teaching too
@@ -1173,7 +1220,9 @@ class InstructorAgent(threading.Thread):
             pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
-        self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.7 * conf_mod))
+        # C1: Atomically learn + capture gradient
+        _, grad = self._learn_and_capture_grad(
+            features, self._scope_target_to_domain(label), self._modulate_lr(0.7 * conf_mod))
 
         # H1: Try to blend with cross-domain exemplar from per-domain queue
         # (with fallback to shared queue for backward compat)
@@ -1195,25 +1244,32 @@ class InstructorAgent(threading.Thread):
                     self.brain.learn(blended, self._scope_target_to_domain(label), self._modulate_lr(0.4 * conf_mod))
                 else:
                     # M1 fix: Dimension mismatch — re-queue with bounce_count,
-                    # discard if bounced too many times to prevent infinite cycling
+                    # discard if bounced too many times to prevent infinite cycling.
+                    # L-school-9: Bounded by bounce_count=3 — max 3 re-queues
+                    # before discard, so no infinite loop is possible.
                     bounce = exemplar.get("bounce_count", 0) + 1
                     if bounce <= 3:
                         exemplar["bounce_count"] = bounce
                         source_q.put_nowait(exemplar)
                     # else: silently discard — bounced too many times
             else:
-                # M1 fix: Modality mismatch — re-queue with bounce_count
+                # M1 fix: Modality mismatch — re-queue with bounce_count.
+                # L-school-9: Bounded by bounce_count=3.
                 bounce = exemplar.get("bounce_count", 0) + 1
                 if bounce <= 3:
                     exemplar["bounce_count"] = bounce
                     source_q.put_nowait(exemplar)
                 # else: silently discard — bounced too many times
+        except queue.Empty:
+            # L3/M-school-6: No exemplar available — not an error
+            pass
         except Exception as e:
-            logger.debug(f"Learn failed: {e}")
+            # M-school-6: Genuine errors logged at WARNING, not DEBUG
+            logger.warning("[%s] Analogical blend failed: %s", domain, e)
 
         # C1 fix: confident-wrong = high loss
         loss = 0.0 if correct else max(0.1, conf)
-        self._update_metrics_and_decide(loss)
+        self._update_metrics_and_decide(loss, grad_norm=grad)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -1409,6 +1465,10 @@ class InstructorAgent(threading.Thread):
             "modality": self.config.modality,
             "total_examples": self.total_examples,
             "accuracy": round(accuracy, 4),
+            # H-school-1: Include loss so metacognition doesn't always get default 1.0
+            "loss": round(self._last_loss, 5),
+            # H-school-2: Include rolling accuracy for stall detection (low variance)
+            "rolling_accuracy": round(self._rolling_accuracy(), 4),
             "mastery": round(mastery, 4),
             "examples_per_sec": round(rate, 1),
             "elapsed_s": round(elapsed, 1),
@@ -1518,9 +1578,14 @@ class InstructorAgent(threading.Thread):
             reviewed += 1
 
     def _feature_hash(self, features: list) -> str:
-        """Fast hash of a feature vector for difficulty tracking."""
+        """Fast hash of a feature vector for difficulty tracking.
+
+        M5: Include middle elements to reduce collision potential —
+        head+tail only missed interior differences in long vectors.
+        """
         if len(features) > 32:
-            sample = features[:16] + features[-16:]
+            mid_start = len(features) // 4
+            sample = features[:12] + features[mid_start:mid_start+8] + features[-12:]
         else:
             sample = features
         return hashlib.md5(str(sample).encode()).hexdigest()[:16]
@@ -1532,7 +1597,8 @@ class InstructorAgent(threading.Thread):
     def _should_skip_easy(self, features: list, label: str,
                           confidence: float) -> bool:
         """Skip examples the brain already knows well, considering confidence trajectory."""
-        accuracy = self.total_correct / max(self.total_examples, 1)
+        # H2: Use rolling accuracy instead of cumulative (becomes inertial at scale)
+        accuracy = self._rolling_accuracy()
         if accuracy < 0.7:
             return False  # Don't skip anything at low mastery
 
@@ -1563,7 +1629,8 @@ class InstructorAgent(threading.Thread):
             return 1.0  # Unseen example -- normal LR
 
         fail_rate = info['fails'] / max(info['attempts'], 1)
-        accuracy = self.total_correct / max(self.total_examples, 1)
+        # M2: Use rolling accuracy instead of cumulative (becomes inertial at scale)
+        accuracy = self._rolling_accuracy()
 
         # Check if confidence is improving on this example
         if len(info['conf_history']) >= 2:
@@ -1589,6 +1656,11 @@ class InstructorAgent(threading.Thread):
 
     def _maybe_collect_holdout(self, features: list, label: str):
         """Reservoir-sample into holdout buffer for self-assessment."""
+        # M3: Don't use examples that were already trained on in a previous pass
+        fh = self._feature_hash(features)
+        if fh in self._example_difficulty:
+            return  # Already trained on — don't use as holdout
+
         # M7: Use separate counter for holdout candidates (not total_examples)
         self._holdout_candidates_seen += 1
         if len(self._holdout_buffer) < self._holdout_max:
@@ -1620,6 +1692,9 @@ class InstructorAgent(threading.Thread):
         domain = self.config.domain
 
         # Pure prediction on holdout (no learning) — ensemble for stability
+        # L5: This makes up to 50 * 3 = 150 predictions which blocks the
+        # instructor thread. Acceptable at 500-step intervals, but would
+        # need batching or async if self-assessment frequency increases.
         correct = 0
         total_agreement = 0.0
         for features, label in self._holdout_buffer:
@@ -1670,9 +1745,9 @@ class InstructorAgent(threading.Thread):
         # H3: Use rolling window accuracy instead of cumulative
         train_acc = self._rolling_accuracy()
 
-        # Track peak accuracy
-        if train_acc > self._peak_accuracy:
-            self._peak_accuracy = train_acc
+        # M4: Track peak accuracy with decay to prevent temporary spikes
+        # from setting permanently high thresholds that trigger false regression alerts
+        self._peak_accuracy = max(train_acc, self._peak_accuracy * 0.999 + train_acc * 0.001)
 
         # Detect regression (>5% drop from peak)
         # H6: Only adjust LR if cooldown has elapsed (200 steps)
