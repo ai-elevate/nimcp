@@ -38,7 +38,8 @@ BRIDGE_BOILERPLATE_MESH_ONLY(style_perception, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 static const char* literary_archetype_names[] = {
     "Hemingway", "Tolstoy", "Joyce", "Poe", "Austen",
-    "Shakespeare", "Borges", "Kafka", "Marquez"
+    "Shakespeare", "Borges", "Kafka", "Marquez",
+    "Dostoevsky", "Woolf", "Faulkner"
 };
 
 static const char* literary_archetype_descriptions[] = {
@@ -50,12 +51,16 @@ static const char* literary_archetype_descriptions[] = {
     "Iambic pentameter, complex wordplay, timeless human themes",
     "Magical realism, labyrinths, infinite libraries, philosophical puzzles",
     "Absurdist, bureaucratic nightmares, alienation, transformation",
-    "Magical realism, Colombian settings, multi-generational sagas"
+    "Magical realism, Colombian settings, multi-generational sagas",
+    "Psychological depth, moral complexity, existential questioning",
+    "Interior monologue, impressionistic, fragmented time",
+    "Southern gothic, temporal shifts, multiple narrators"
 };
 
 static const char* music_archetype_names[] = {
     "Bach", "Beethoven", "Debussy", "John Williams",
-    "Miles Davis", "Hans Zimmer"
+    "Miles Davis", "Hans Zimmer", "Stravinsky", "Ennio Morricone",
+    "Sakamoto", "Glass", "Copland", "Ravel"
 };
 
 static const char* music_archetype_descriptions[] = {
@@ -64,12 +69,19 @@ static const char* music_archetype_descriptions[] = {
     "Impressionism, whole-tone scales, atmospheric textures, French",
     "Leitmotifs, orchestral film scores, heroic fanfares, adventure themes",
     "Jazz improvisation, modal jazz, cool jazz, Kind of Blue",
-    "Electronic-orchestral hybrid, pulsing rhythms, epic film scores"
+    "Electronic-orchestral hybrid, pulsing rhythms, epic film scores",
+    "Modernist, rhythmic complexity, dissonant harmonies, ballet scores",
+    "Western film scores, eclectic instrumentation, memorable themes",
+    "Minimalist, ambient, electronic-classical fusion, contemplative",
+    "Minimalist, repetitive arpeggios, hypnotic, opera and film scores",
+    "American pastoral, folk-influenced, open harmonies, Appalachian Spring",
+    "Orchestral color, precision, jazz influence, Bolero"
 };
 
 static const char* visual_archetype_names[] = {
     "Van Gogh", "Monet", "Picasso", "Dali",
-    "Warhol", "Rembrandt"
+    "Warhol", "Rembrandt", "Klimt", "Escher",
+    "Hokusai", "Basquiat", "Caravaggio", "Kandinsky"
 };
 
 static const char* visual_archetype_descriptions[] = {
@@ -78,12 +90,19 @@ static const char* visual_archetype_descriptions[] = {
     "Cubism, multiple perspectives, geometric abstraction, periods",
     "Surrealism, melting clocks, dreamscapes, paranoid-critical method",
     "Pop art, celebrity culture, mass production, screen printing",
-    "Baroque, chiaroscuro, Dutch Golden Age, psychological portraits"
+    "Baroque, chiaroscuro, Dutch Golden Age, psychological portraits",
+    "Art nouveau, gold leaf, decorative patterns, symbolism",
+    "Mathematical art, impossible geometry, tessellated patterns",
+    "Ukiyo-e, nature studies, dynamic lines, Great Wave",
+    "Neo-expressionist, raw energy, symbolic, street art influence",
+    "Dramatic lighting, realism, intense chiaroscuro, Baroque",
+    "Abstract, color theory, musical analogies, geometric composition"
 };
 
 static const char* cinema_archetype_names[] = {
     "Kubrick", "Spielberg", "Tarantino", "Nolan",
-    "Tarkovsky", "Miyazaki"
+    "Tarkovsky", "Miyazaki", "Hitchcock", "Welles",
+    "Kurosawa", "Fincher", "Villeneuve", "Coppola"
 };
 
 static const char* cinema_archetype_descriptions[] = {
@@ -92,7 +111,13 @@ static const char* cinema_archetype_descriptions[] = {
     "Non-linear narrative, pop culture dialogue, violence stylization",
     "Mind-bending plots, practical effects, time manipulation, IMAX",
     "Poetic cinema, long takes, spiritual themes, Russian art film",
-    "Hand-drawn animation, flight motifs, environmentalism, Studio Ghibli"
+    "Hand-drawn animation, flight motifs, environmentalism, Studio Ghibli",
+    "Suspense master, psychological tension, voyeuristic camera, audience manipulation",
+    "Deep focus cinematography, innovative camera angles, ambitious storytelling",
+    "Epic samurai dramas, weather as character, humanist philosophy, movement",
+    "Dark aesthetic, meticulous detail, psychological thrillers, digital precision",
+    "Atmospheric slow-burn, immersive visuals, grand scale, philosophical sci-fi",
+    "Epic family sagas, chiaroscuro lighting, operatic storytelling, moral complexity"
 };
 
 //=============================================================================

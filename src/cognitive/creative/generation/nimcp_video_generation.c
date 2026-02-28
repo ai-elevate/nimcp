@@ -369,7 +369,7 @@ int video_generate(video_generator_t* gen,
     /* Apply camera if specified */
     if (request->camera) {
         for (uint32_t i = 0; i < num_frames; i++) {
-            float progress = (float)i / (float)(num_frames - 1);
+            float progress = (num_frames > 1) ? (float)i / (float)(num_frames - 1) : 0.0f;
 
             /* Allocate temp buffer */
             visual_image_t temp;
@@ -678,7 +678,7 @@ int video_apply_camera(video_generator_t* gen,
     result->height = frames[0].image.height;
 
     for (uint32_t i = 0; i < num_frames; i++) {
-        float progress = (float)i / (float)(num_frames - 1);
+        float progress = (num_frames > 1) ? (float)i / (float)(num_frames - 1) : 0.0f;
 
         result->frames[i].frame_number = i;
         result->frames[i].timestamp = frames[i].timestamp;
@@ -767,7 +767,12 @@ int video_concatenate(const video_generation_result_t* videos,
     float fps = videos[0].fps > 0 ? videos[0].fps : 24.0f;
     uint32_t trans_frames = (uint32_t)(transition_duration * fps);
     if (num_videos > 1) {
-        total_frames -= trans_frames * (num_videos - 1);
+        uint32_t overlap = trans_frames * (num_videos - 1);
+        if (overlap >= total_frames) {
+            total_frames = num_videos;
+        } else {
+            total_frames -= overlap;
+        }
     }
 
     result->frames = nimcp_calloc(total_frames, sizeof(video_frame_t));

@@ -740,12 +740,17 @@ int influence_blender_optimize_weights(influence_blender_t* blender) {
         }
 
         /* Compute blend */
+        style_embedding_destroy(&blend);
         blend_linear(blender->current_influences, n, &blend);
         float coherence = compute_coherence(&blend, blender->current_influences, n);
 
         /* Compute gradients (numerical) */
         float* gradients = nimcp_calloc(n, sizeof(float));
-        if (!gradients) break;
+        if (!gradients) {
+            style_embedding_destroy(&blend);
+            nimcp_free(weights);
+            return -1;
+        }
 
         for (uint32_t i = 0; i < n; i++) {
             float orig = weights[i];
@@ -755,6 +760,7 @@ int influence_blender_optimize_weights(influence_blender_t* blender) {
             for (uint32_t j = 0; j < n; j++) {
                 blender->current_influences[j].weight = weights[j];
             }
+            style_embedding_destroy(&blend);
             blend_linear(blender->current_influences, n, &blend);
             float coh_plus = compute_coherence(&blend, blender->current_influences, n);
 
@@ -762,6 +768,7 @@ int influence_blender_optimize_weights(influence_blender_t* blender) {
             for (uint32_t j = 0; j < n; j++) {
                 blender->current_influences[j].weight = weights[j];
             }
+            style_embedding_destroy(&blend);
             blend_linear(blender->current_influences, n, &blend);
             float coh_minus = compute_coherence(&blend, blender->current_influences, n);
 
@@ -878,9 +885,21 @@ int influence_blender_refine(influence_blender_t* blender,
         return -1;
     }
 
-    /* Copy current result */
+    /* Copy current result - deep copy to avoid use-after-free from shallow copy */
     *result = *current;
+    /* Deep-clone embeddings */
+    style_embedding_clone(&current->blended_style, &result->blended_style);
     style_embedding_clone(&current->style, &result->style);
+    /* Deep-clone influence_weights pointer to avoid dangling reference */
+    if (current->influence_weights && current->num_influences > 0) {
+        result->influence_weights = nimcp_calloc(current->num_influences, sizeof(float));
+        if (result->influence_weights) {
+            memcpy(result->influence_weights, current->influence_weights,
+                   current->num_influences * sizeof(float));
+        }
+    } else {
+        result->influence_weights = NULL;
+    }
 
     if (current->coherence >= coherence_target) {
         return 0;  /* Already meets target */
@@ -898,6 +917,8 @@ int influence_blender_refine(influence_blender_t* blender,
 
         if (new_result.coherence_score > result->coherence_score) {
             style_embedding_destroy(&result->blended_style);
+            style_embedding_destroy(&result->style);
+            nimcp_free(result->influence_weights);
             *result = new_result;
 
             if (result->coherence_score >= coherence_target) {

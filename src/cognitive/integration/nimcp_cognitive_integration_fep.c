@@ -31,6 +31,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
@@ -60,9 +61,15 @@ typedef struct {
 
 static cognitive_integration_fep_state_t g_cog_integ_fep_state = {0};
 
-/* Thread-safe one-time initialization guard */
-static nimcp_once_t g_cog_integ_fep_once = NIMCP_ONCE_INIT;
-static volatile bool g_cog_integ_fep_init_failed = false;
+/* Thread-safe initialization guard */
+static nimcp_platform_mutex_t g_cog_integ_fep_init_mutex;
+static volatile bool g_cog_integ_fep_init_mutex_ready = false;
+
+__attribute__((constructor))
+static void cog_integ_fep_init_guard(void) {
+    nimcp_platform_mutex_init(&g_cog_integ_fep_init_mutex, false);
+    g_cog_integ_fep_init_mutex_ready = true;
+}
 
 /* ============================================================================
  * Bridge Names
@@ -92,15 +99,35 @@ static int ensure_initialized(void) {
         return 0;
     }
 
+    /* Guard against concurrent initialization with a platform mutex */
+    if (g_cog_integ_fep_init_mutex_ready) {
+        nimcp_platform_mutex_lock(&g_cog_integ_fep_init_mutex);
+    }
+
+    /* Double-check after acquiring lock */
+    if (g_cog_integ_fep_state.initialized) {
+        if (g_cog_integ_fep_init_mutex_ready) {
+            nimcp_platform_mutex_unlock(&g_cog_integ_fep_init_mutex);
+        }
+        return 0;
+    }
+
     memset(&g_cog_integ_fep_state, 0, sizeof(cognitive_integration_fep_state_t));
 
     g_cog_integ_fep_state.mutex = nimcp_mutex_create(NULL);
     if (!g_cog_integ_fep_state.mutex) {
+        if (g_cog_integ_fep_init_mutex_ready) {
+            nimcp_platform_mutex_unlock(&g_cog_integ_fep_init_mutex);
+        }
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "ensure_initialized: g_cog_integ_fep_state is NULL");
         return -1;
     }
 
     g_cog_integ_fep_state.initialized = true;
+
+    if (g_cog_integ_fep_init_mutex_ready) {
+        nimcp_platform_mutex_unlock(&g_cog_integ_fep_init_mutex);
+    }
     return 0;
 }
 

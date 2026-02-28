@@ -18,6 +18,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include <time.h>
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
@@ -390,7 +391,9 @@ int sleep_immune_apply_inflammation_effects(sleep_immune_bridge_t* bridge) {
 
     /* Get inflammation state */
     state->current_level = get_max_inflammation_level(bridge->immune_system);
-    uint64_t current_time = 0; /* Would get from system clock */
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t current_time = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
     state->inflammation_duration_sec = get_inflammation_duration_sec(
         bridge->immune_system, current_time);
     state->is_chronic = (state->inflammation_duration_sec >= 604800.0f); /* 7 days */
@@ -696,6 +699,12 @@ int sleep_immune_bridge_update(
     sleep_immune_consolidate_memory_during_rem(bridge);
     sleep_immune_suppress_from_deprivation(bridge);
     sleep_immune_inflame_from_chronic_loss(bridge);
+
+    /* Update base timestamp so callers see real wall-clock time */
+    struct timespec upd_ts;
+    clock_gettime(CLOCK_MONOTONIC, &upd_ts);
+    bridge->base.last_update_time_ms =
+        (uint64_t)upd_ts.tv_sec * 1000ULL + (uint64_t)upd_ts.tv_nsec / 1000000ULL;
 
     bridge->total_updates++;
     return 0;

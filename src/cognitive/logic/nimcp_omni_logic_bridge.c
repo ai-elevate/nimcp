@@ -375,10 +375,10 @@ int omni_logic_get_direction(omni_logic_bridge_t* bridge,
 
 
     NIMCP_CHECK_THROW(bridge && direction, NIMCP_ERROR_INVALID_PARAM, "bridge or direction is NULL");
-    nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *direction = bridge->logic_effects.direction;
-    ((omni_logic_bridge_t*)bridge)->stats.direction_decisions++;
-    nimcp_mutex_unlock(((omni_logic_bridge_t*)bridge)->mutex);
+    bridge->stats.direction_decisions++;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -432,9 +432,9 @@ int omni_logic_get_conditions(omni_logic_bridge_t* bridge,
 
 
     NIMCP_CHECK_THROW(bridge && conditions, NIMCP_ERROR_INVALID_PARAM, "bridge or conditions is NULL");
-    nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(conditions, &bridge->conditions, sizeof(omni_logic_conditions_t));
-    nimcp_mutex_unlock(((omni_logic_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -608,9 +608,9 @@ int omni_logic_get_omni_effects(omni_logic_bridge_t* bridge,
 
 
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
-    nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_logic_effects_t));
-    nimcp_mutex_unlock(((omni_logic_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -621,9 +621,9 @@ int omni_logic_get_logic_effects(omni_logic_bridge_t* bridge,
 
 
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
-    nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->logic_effects, sizeof(logic_to_omni_effects_t));
-    nimcp_mutex_unlock(((omni_logic_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -634,9 +634,9 @@ int omni_logic_get_stats(omni_logic_bridge_t* bridge,
 
 
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM, "bridge or stats is NULL");
-    nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_logic_stats_t));
-    nimcp_mutex_unlock(((omni_logic_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 

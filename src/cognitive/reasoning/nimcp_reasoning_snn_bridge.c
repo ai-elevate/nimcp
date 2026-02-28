@@ -213,13 +213,13 @@ reasoning_snn_bridge_t* reasoning_snn_create(const reasoning_snn_config_t* confi
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
-    if (!bridge->encoding_buffer) return -1;
+    if (!bridge->encoding_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return -1;
+    if (!bridge->output_buffer) return NULL;
     bridge->inference_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->inference_buffer) return -1;
+    if (!bridge->inference_buffer) return NULL;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->prev_state) return -1;
+    if (!bridge->prev_state) return NULL;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->inference_buffer || !bridge->prev_state) {
@@ -459,7 +459,7 @@ int reasoning_snn_encode_deduction(
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
-    return reasoning_snn_encode_state(bridge, dims, 2);
+    return reasoning_snn_encode_state(bridge, dims, REASON_DIM_COUNT);
 }
 
 int reasoning_snn_encode_causal(
@@ -487,7 +487,7 @@ int reasoning_snn_encode_causal(
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
-    return reasoning_snn_encode_state(bridge, dims, 2);
+    return reasoning_snn_encode_state(bridge, dims, REASON_DIM_COUNT);
 }
 
 int reasoning_snn_encode_evidence(
@@ -512,7 +512,7 @@ int reasoning_snn_encode_evidence(
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
-    return reasoning_snn_encode_state(bridge, dims, 2);
+    return reasoning_snn_encode_state(bridge, dims, REASON_DIM_COUNT);
 }
 
 //=============================================================================

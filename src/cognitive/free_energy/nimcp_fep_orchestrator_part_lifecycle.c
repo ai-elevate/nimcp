@@ -9,7 +9,7 @@ fep_orchestrator_t* fep_orchestrator_create(const fep_orchestrator_config_t* con
 
 
     fep_orchestrator_t* orchestrator = (fep_orchestrator_t*)nimcp_calloc(1, sizeof(fep_orchestrator_t));
-    if (!orchestrator) return -1;
+    if (!orchestrator) return NULL;
     NIMCP_API_CHECK_ALLOC(orchestrator, "Failed to allocate FEP orchestrator");
     
     /* Apply configuration */

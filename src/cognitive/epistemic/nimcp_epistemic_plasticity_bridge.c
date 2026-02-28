@@ -115,7 +115,6 @@ static epistemic_source_learning_t* find_source(
             return &bridge->sources[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_source: validation failed");
     return NULL;
 }
 

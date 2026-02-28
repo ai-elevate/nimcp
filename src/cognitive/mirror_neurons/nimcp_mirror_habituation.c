@@ -473,7 +473,7 @@ uint32_t habituation_process_batch(
     if (!system || !stimuli || !results || count == 0) {
         if (!system || !stimuli || !results) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_process_batch: required parameter is NULL");
-            return -1;
+            return 0;
         }
         return 0;
     }

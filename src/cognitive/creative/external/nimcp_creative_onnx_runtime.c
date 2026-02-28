@@ -133,7 +133,7 @@ creative_onnx_runtime_t* onnx_runtime_create(const onnx_runtime_config_t* config
     runtime->ort_allocator = NULL;
 
     runtime->sessions = nimcp_calloc(16, sizeof(onnx_session_t*));
-    if (!runtime->sessions) return -1;
+    if (!runtime->sessions) return NULL;
     runtime->num_sessions = 0;
     runtime->sessions_capacity = 16;
 
@@ -305,7 +305,7 @@ onnx_session_t* onnx_load_model_from_memory(creative_onnx_runtime_t* runtime,
 
     session->num_inputs = 1;
     session->inputs = nimcp_calloc(1, sizeof(onnx_io_info_t));
-    if (!session->inputs) return -1;
+    if (!session->inputs) return NULL;
     session->num_outputs = 1;
     session->outputs = nimcp_calloc(1, sizeof(onnx_io_info_t));
 

@@ -237,11 +237,11 @@ static nn_layer_t* layer_create(uint32_t input_size, uint32_t output_size,
 
     /* Allocate weights and biases */
     layer->weights = (float*)nimcp_calloc(input_size * output_size, sizeof(float));
-    if (!layer->weights) return -1;
+    if (!layer->weights) return NULL;
     layer->biases = (float*)nimcp_calloc(output_size, sizeof(float));
-    if (!layer->biases) return -1;
+    if (!layer->biases) return NULL;
     layer->weight_grads = (float*)nimcp_calloc(input_size * output_size, sizeof(float));
-    if (!layer->weight_grads) return -1;
+    if (!layer->weight_grads) return NULL;
     layer->bias_grads = (float*)nimcp_calloc(output_size, sizeof(float));
 
     if (!layer->weights || !layer->biases ||
@@ -1461,7 +1461,10 @@ int physics_nn_predict(
     /* Allocate Hamiltonians if using Hamiltonian constraint */
     if (nn->config.use_hamiltonian) {
         prediction->hamiltonians = (float*)nimcp_calloc(num_steps, sizeof(float));
-        if (!prediction->hamiltonians) return -1;
+        if (!prediction->hamiltonians) {
+            physics_nn_free_prediction(prediction);
+            return -1;
+        }
     } else {
         prediction->hamiltonians = NULL;
     }

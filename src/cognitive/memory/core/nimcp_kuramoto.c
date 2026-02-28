@@ -384,15 +384,15 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
 
     /* Allocate RK4 workspace */
     system->k1 = nimcp_calloc(cfg.max_oscillators, sizeof(float));
-    if (!system->k1) return -1;
+    if (!system->k1) return NULL;
     system->k2 = nimcp_calloc(cfg.max_oscillators, sizeof(float));
-    if (!system->k2) return -1;
+    if (!system->k2) return NULL;
     system->k3 = nimcp_calloc(cfg.max_oscillators, sizeof(float));
-    if (!system->k3) return -1;
+    if (!system->k3) return NULL;
     system->k4 = nimcp_calloc(cfg.max_oscillators, sizeof(float));
-    if (!system->k4) return -1;
+    if (!system->k4) return NULL;
     system->temp_phases = nimcp_calloc(cfg.max_oscillators, sizeof(float));
-    if (!system->temp_phases) return -1;
+    if (!system->temp_phases) return NULL;
 
     if (!system->k1 || !system->k2 || !system->k3 ||
         !system->k4 || !system->temp_phases) {

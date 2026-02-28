@@ -187,7 +187,6 @@ static rcog_variable_t* find_variable(
         var = var->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_variable: validation failed");
     return NULL;
 }
 

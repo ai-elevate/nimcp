@@ -511,12 +511,12 @@ hunch_t* intuitive_form_hunch(
 
     /* Allocate pattern storage */
     hunch->predicted_pattern = nimcp_calloc(max_dim, sizeof(float));
-    if (!hunch->predicted_pattern) return -1;
+    if (!hunch->predicted_pattern) return NULL;
     hunch->pattern_dim = max_dim;
 
     /* Compute weighted average pattern */
     float* weights = nimcp_calloc(num_observations, sizeof(float));
-    if (!weights) return -1;
+    if (!weights) return NULL;
     float weight_sum = 0.0f;
 
     for (uint32_t i = 0; i < num_observations; i++) {
@@ -615,7 +615,7 @@ hunch_t* intuitive_form_hunch(
 
     /* Track supporting observations */
     hunch->supporting_obs = nimcp_calloc(num_observations, sizeof(uint32_t));
-    if (!hunch->supporting_obs) return -1;
+    if (!hunch->supporting_obs) return NULL;
     hunch->num_supporting = num_observations;
     for (uint32_t i = 0; i < num_observations; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -1153,7 +1153,7 @@ insight_t* intuitive_leap_with_strategy(
     /* Generate solution based on strategy */
     insight->solution_dim = problem->state_dim;
     insight->solution = nimcp_calloc(insight->solution_dim, sizeof(float));
-    if (!insight->solution) return -1;
+    if (!insight->solution) return NULL;
 
     switch (strategy) {
         case INTUITIVE_STRATEGY_RECOGNITION:

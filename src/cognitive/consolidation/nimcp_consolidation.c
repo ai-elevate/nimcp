@@ -1662,13 +1662,13 @@ bool consolidation_cache_communities(consolidation_community_cache_t* cache, bra
         cache->num_hubs = hubs->num_hubs;
 
         cache->hub_neuron_ids = (uint32_t*)nimcp_calloc(hubs->num_hubs, sizeof(uint32_t));
-        if (!cache->hub_neuron_ids) return -1;
+        if (!cache->hub_neuron_ids) return false;
         cache->hub_centralities = (float*)nimcp_calloc(hubs->num_hubs, sizeof(float));
-        if (!cache->hub_centralities) return -1;
+        if (!cache->hub_centralities) return false;
         cache->hub_community_ids = (uint32_t*)nimcp_calloc(hubs->num_hubs, sizeof(uint32_t));
-        if (!cache->hub_community_ids) return -1;
+        if (!cache->hub_community_ids) return false;
         cache->hub_is_connector = (bool*)nimcp_calloc(hubs->num_hubs, sizeof(bool));
-        if (!cache->hub_is_connector) return -1;
+        if (!cache->hub_is_connector) return false;
 
         if (cache->hub_neuron_ids && cache->hub_centralities &&
             cache->hub_community_ids && cache->hub_is_connector) {

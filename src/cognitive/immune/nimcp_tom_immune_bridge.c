@@ -18,6 +18,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include <time.h>
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
@@ -130,7 +131,9 @@ static float query_cytokine_concentration(
 static float get_inflammation_duration_sec(const brain_immune_system_t* immune) {
     if (!immune || !immune->inflammation_sites) return 0.0f;
 
-    uint64_t current_time = 0;  /* Would use actual time */
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t current_time = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
     uint64_t oldest_start = current_time;
 
     for (size_t i = 0; i < immune->inflammation_count; i++) {
@@ -763,6 +766,12 @@ int tom_immune_bridge_update(
 
     /* ToM → Immune effects would be triggered by events, not periodic updates */
     /* (e.g., rejection events, prediction errors, etc.) */
+
+    /* Update base timestamp so callers see real wall-clock time */
+    struct timespec upd_ts;
+    clock_gettime(CLOCK_MONOTONIC, &upd_ts);
+    bridge->base.last_update_time_ms =
+        (uint64_t)upd_ts.tv_sec * 1000ULL + (uint64_t)upd_ts.tv_nsec / 1000000ULL;
 
     bridge->total_updates++;
     return 0;

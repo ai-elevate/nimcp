@@ -245,13 +245,13 @@ genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
     uint32_t output_dim = 8; /* insight, elegance, pattern, conjecture, gauss, newton, erdos, creativity */
 
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
-    if (!bridge->encoding_buffer) return -1;
+    if (!bridge->encoding_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return -1;
+    if (!bridge->output_buffer) return NULL;
     bridge->mode_buffer = nimcp_calloc(GENIUS_MODE_COUNT, sizeof(float));
-    if (!bridge->mode_buffer) return -1;
+    if (!bridge->mode_buffer) return NULL;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->prev_state) return -1;
+    if (!bridge->prev_state) return NULL;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->mode_buffer || !bridge->prev_state) {
@@ -436,7 +436,7 @@ int genius_snn_encode_state(genius_snn_bridge_t* bridge, const float* dimensions
                                  (float)(n + 1) / (float)neurons_per_dim);
             }
 
-            float neuron_pref = (float)n / (float)(neurons_per_dim - 1);
+            float neuron_pref = (neurons_per_dim > 1) ? (float)n / (float)(neurons_per_dim - 1) : 0.0f;
             float tuning = expf(-4.0f * (value - neuron_pref) * (value - neuron_pref));
             bridge->encoding_buffer[d * neurons_per_dim + n] = tuning * rate * bridge->config.encoding_gain;
 

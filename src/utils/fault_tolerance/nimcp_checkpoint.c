@@ -26,6 +26,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "plasticity/adaptive/nimcp_adaptive.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -577,6 +578,14 @@ static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t*
     }
 
     b->stats = stats;
+
+    // GPU weight cache was initialized with default weights during brain_create_custom().
+    // After restoring neuron weights from the checkpoint, the CPU has newer weights than
+    // the GPU cache. Mark dirty so the next forward/learn re-uploads from CPU.
+    if (net) {
+        adaptive_network_mark_gpu_weights_dirty(net);
+    }
+
     *brain = new_brain;
     return true;
 }

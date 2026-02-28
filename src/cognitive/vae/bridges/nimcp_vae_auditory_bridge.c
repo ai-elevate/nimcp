@@ -76,11 +76,11 @@ vae_audio_bridge_t* vae_audio_bridge_create(const vae_audio_bridge_config_t* con
     else vae_audio_bridge_default_config(&bridge->config);
 
     bridge->fft_buffer = (float*)nimcp_calloc(bridge->config.fft_size, sizeof(float));
-    if (!bridge->fft_buffer) return -1;
+    if (!bridge->fft_buffer) return NULL;
     bridge->mel_buffer = (float*)nimcp_calloc(bridge->config.mel_bins, sizeof(float));
-    if (!bridge->mel_buffer) return -1;
+    if (!bridge->mel_buffer) return NULL;
     bridge->mfcc_buffer = (float*)nimcp_calloc(bridge->config.mfcc_coeffs, sizeof(float));
-    if (!bridge->mfcc_buffer) return -1;
+    if (!bridge->mfcc_buffer) return NULL;
     bridge->window = (float*)nimcp_calloc(bridge->config.fft_size, sizeof(float));
 
     if (bridge->window) {

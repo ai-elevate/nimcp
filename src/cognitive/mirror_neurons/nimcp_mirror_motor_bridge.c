@@ -111,7 +111,6 @@ static int32_t find_program_by_action(const mirror_motor_bridge_t* bridge, uint3
             return (int32_t)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_program_by_action: validation failed");
     return -1;
 }
 
@@ -131,7 +130,6 @@ static int32_t find_execution_by_program(const mirror_motor_bridge_t* bridge, ui
             return (int32_t)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_execution_by_program: operation failed");
     return -1;
 }
 
@@ -143,7 +141,6 @@ static int32_t get_free_program_slot(mirror_motor_bridge_t* bridge) {
         return (int32_t)(bridge->num_programs++);
     }
     /* No free slots - could implement LRU eviction here */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_free_program_slot: validation failed");
     return -1;
 }
 
@@ -167,7 +164,6 @@ static int32_t get_free_execution_slot(mirror_motor_bridge_t* bridge) {
     if (bridge->num_executions < bridge->max_executions) {
         return (int32_t)(bridge->num_executions++);
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_free_execution_slot: validation failed");
     return -1;
 }
 
@@ -470,12 +466,17 @@ uint32_t mirror_motor_extract_program_full(
 
     /* Estimate velocity from positions and duration */
     float dist = vec3_distance(start, end);
-    float peak_vel = (2.0f * dist) / (duration_ms / 1000.0f); /* Simple estimate */
-    prog->peak_velocity = (motor_vec3_t){
-        .x = (end->x - start->x) * peak_vel / dist,
-        .y = (end->y - start->y) * peak_vel / dist,
-        .z = (end->z - start->z) * peak_vel / dist
-    };
+    float duration_sec = duration_ms / 1000.0f;
+    float peak_vel = (duration_sec > 1e-6f) ? (2.0f * dist) / duration_sec : 0.0f;
+    if (dist < 1e-6f) {
+        prog->peak_velocity = (motor_vec3_t){ .x = 0.0f, .y = 0.0f, .z = 0.0f };
+    } else {
+        prog->peak_velocity = (motor_vec3_t){
+            .x = (end->x - start->x) * peak_vel / dist,
+            .y = (end->y - start->y) * peak_vel / dist,
+            .z = (end->z - start->z) * peak_vel / dist
+        };
+    }
 
     prog->extraction_confidence = 1.0f; /* Full specification */
 

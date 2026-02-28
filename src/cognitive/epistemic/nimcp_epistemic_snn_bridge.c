@@ -166,7 +166,6 @@ static bool neuron_step(epistemic_neuron_t* neuron, float dt_ms, float input) {
 
     if (neuron->refractory_remaining > 0.0f) {
         neuron->refractory_remaining -= dt_ms;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_step: validation failed");
         return false;
     }
 
@@ -182,7 +181,6 @@ static bool neuron_step(epistemic_neuron_t* neuron, float dt_ms, float input) {
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_step: capacity exceeded");
     return false;
 }
 
@@ -256,13 +254,13 @@ epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* confi
     bridge->num_output_neurons = config->neurons_per_dim * 2;
 
     bridge->evidence_neurons = nimcp_calloc(bridge->num_evidence_neurons, sizeof(epistemic_neuron_t));
-    if (!bridge->evidence_neurons) return -1;
+    if (!bridge->evidence_neurons) return NULL;
     bridge->reliability_neurons = nimcp_calloc(bridge->num_reliability_neurons, sizeof(epistemic_neuron_t));
-    if (!bridge->reliability_neurons) return -1;
+    if (!bridge->reliability_neurons) return NULL;
     bridge->bias_neurons = nimcp_calloc(bridge->num_bias_neurons, sizeof(epistemic_neuron_t));
-    if (!bridge->bias_neurons) return -1;
+    if (!bridge->bias_neurons) return NULL;
     bridge->output_neurons = nimcp_calloc(bridge->num_output_neurons, sizeof(epistemic_neuron_t));
-    if (!bridge->output_neurons) return -1;
+    if (!bridge->output_neurons) return NULL;
 
     if (!bridge->evidence_neurons || !bridge->reliability_neurons ||
         !bridge->bias_neurons || !bridge->output_neurons) {
@@ -450,7 +448,7 @@ int epistemic_snn_encode_evidence(
         }
 
         // Population coding: each neuron tuned to different evidence level
-        float tuning = (float)i / (float)(bridge->num_evidence_neurons - 1);
+        float tuning = (bridge->num_evidence_neurons > 1) ? (float)i / (float)(bridge->num_evidence_neurons - 1) : 0.0f;
         float activation = expf(-powf(evidence_quality - tuning, 2.0f) / 0.1f);
         bridge->evidence_neurons[i].evidence_input = evidence_input * activation;
     }
@@ -463,7 +461,7 @@ int epistemic_snn_encode_evidence(
                              (float)(i + 1) / (float)bridge->num_reliability_neurons);
         }
 
-        float tuning = (float)i / (float)(bridge->num_reliability_neurons - 1);
+        float tuning = (bridge->num_reliability_neurons > 1) ? (float)i / (float)(bridge->num_reliability_neurons - 1) : 0.0f;
         float activation = expf(-powf(source_reliability - tuning, 2.0f) / 0.1f);
         bridge->reliability_neurons[i].reliability_input = source_reliability * activation;
     }

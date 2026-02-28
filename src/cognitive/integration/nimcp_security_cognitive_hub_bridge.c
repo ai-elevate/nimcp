@@ -232,18 +232,18 @@ static int security_query_handler(
     BRIDGE_LOCK(bridge);
     bridge->stats.security_queries_handled++;
 
-    /* Static result data for each query type */
-    static struct {
+    /* Stack-local result data for each query type (was static — thread-unsafe) */
+    struct {
         bool is_active;
         uint32_t state_code;
     } status_result;
 
-    static struct {
+    struct {
         float threat_level;
         bool in_lockdown;
     } state_result;
 
-    static struct {
+    struct {
         uint64_t threats_detected;
         uint64_t attacks_blocked;
     } metrics_result;
@@ -929,7 +929,7 @@ int security_cognitive_shift_attention(
     }
 
     /* Publish attention shift event */
-    static cognitive_category_t attention_target;  /* Static to ensure pointer validity */
+    cognitive_category_t attention_target;  /* Stack-local (was static — thread-unsafe) */
     attention_target = target_category;
 
     cognitive_event_data_t event = {};

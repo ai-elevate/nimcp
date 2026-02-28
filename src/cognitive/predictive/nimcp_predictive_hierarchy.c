@@ -51,11 +51,11 @@ static pred_level_t* create_level(const pred_level_config_t* config,
     level->gen_hidden_dim = config->gen_hidden_dim;
 
     level->state = nimcp_calloc(config->dim, sizeof(float));
-    if (!level->state) return -1;
+    if (!level->state) return NULL;
     level->prediction = nimcp_calloc(config->dim, sizeof(float));
-    if (!level->prediction) return -1;
+    if (!level->prediction) return NULL;
     level->prediction_error = nimcp_calloc(config->dim, sizeof(float));
-    if (!level->prediction_error) return -1;
+    if (!level->prediction_error) return NULL;
     level->precision = nimcp_calloc(config->dim, sizeof(float));
 
     if (!level->state || !level->prediction ||
@@ -75,11 +75,11 @@ static pred_level_t* create_level(const pred_level_config_t* config,
 
     if (config->gen_type == PRED_HIER_GEN_LINEAR && level_index > 0) {
         level->gen_weights = nimcp_calloc(config->dim * config->dim, sizeof(float));
-        if (!level->gen_weights) return -1;
+        if (!level->gen_weights) return NULL;
         level->gen_bias = nimcp_calloc(config->dim, sizeof(float));
-        if (!level->gen_bias) return -1;
+        if (!level->gen_bias) return NULL;
         level->grad_gen_weights = nimcp_calloc(config->dim * config->dim, sizeof(float));
-        if (!level->grad_gen_weights) return -1;
+        if (!level->grad_gen_weights) return NULL;
         level->grad_gen_bias = nimcp_calloc(config->dim, sizeof(float));
 
         if (!level->gen_weights || !level->gen_bias ||

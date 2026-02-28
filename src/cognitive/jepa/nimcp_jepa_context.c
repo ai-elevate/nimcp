@@ -150,7 +150,7 @@ jepa_context_encoder_t* jepa_context_encoder_create(
 
     /* Allocate encoder */
     encoder = (jepa_context_encoder_t*)nimcp_calloc(1, sizeof(jepa_context_encoder_t));
-    if (!encoder) return -1;
+    if (!encoder) return NULL;
     NIMCP_API_CHECK_ALLOC(encoder, "Failed to allocate context encoder");
 
     /* Initialize bridge base */

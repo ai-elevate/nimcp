@@ -304,7 +304,10 @@ struct treg_system {
     treg_activation_cb_t on_activation;
     treg_checkpoint_cb_t on_checkpoint;
     treg_cytokine_cb_t on_cytokine;
-    void* callback_user_data;
+    void* callback_user_data;          /**< Legacy/shared (deprecated) */
+    void* activation_user_data;        /**< Per-callback user_data for activation */
+    void* checkpoint_user_data;        /**< Per-callback user_data for checkpoint */
+    void* cytokine_user_data;          /**< Per-callback user_data for cytokine */
 
     /* Statistics */
     treg_stats_t stats;

@@ -438,11 +438,11 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     /* Allocate predictor network weights */
     bridge->predictor_w1 = (float*)nimcp_calloc(embed_dim * hidden_dim, sizeof(float));
     bridge->predictor_b1 = (float*)nimcp_calloc(hidden_dim, sizeof(float));
-    if (!bridge->predictor_b1) return -1;
+    if (!bridge->predictor_b1) return NULL;
     bridge->predictor_w2 = (float*)nimcp_calloc(hidden_dim * embed_dim, sizeof(float));
-    if (!bridge->predictor_w2) return -1;
+    if (!bridge->predictor_w2) return NULL;
     bridge->predictor_b2 = (float*)nimcp_calloc(embed_dim, sizeof(float));
-    if (!bridge->predictor_b2) return -1;
+    if (!bridge->predictor_b2) return NULL;
     if (!bridge->predictor_w1 || !bridge->predictor_b1 ||
         !bridge->predictor_w2 || !bridge->predictor_b2) {
         set_error("Failed to allocate predictor weights");
@@ -500,9 +500,9 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     /* Allocate working buffers */
     bridge->visible_embedding = (float*)nimcp_calloc(embed_dim, sizeof(float));
     bridge->predicted_embedding = (float*)nimcp_calloc(embed_dim, sizeof(float));
-    if (!bridge->predicted_embedding) return -1;
+    if (!bridge->predicted_embedding) return NULL;
     bridge->hidden_buffer = (float*)nimcp_calloc(hidden_dim, sizeof(float));
-    if (!bridge->hidden_buffer) return -1;
+    if (!bridge->hidden_buffer) return NULL;
     if (!bridge->visible_embedding || !bridge->predicted_embedding ||
         !bridge->hidden_buffer) {
         set_error("Failed to allocate working buffers");

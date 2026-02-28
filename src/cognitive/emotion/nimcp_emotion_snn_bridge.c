@@ -265,13 +265,13 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
 
     /* Allocate buffers */
     bridge->input_buffer = nimcp_calloc(bridge->config.input_dim, sizeof(float));
-    if (!bridge->input_buffer) return -1;
+    if (!bridge->input_buffer) return NULL;
     bridge->hidden_buffer = nimcp_calloc(bridge->config.hidden_dim, sizeof(float));
-    if (!bridge->hidden_buffer) return -1;
+    if (!bridge->hidden_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(bridge->config.output_dim, sizeof(float));
-    if (!bridge->output_buffer) return -1;
+    if (!bridge->output_buffer) return NULL;
     bridge->va_buffer = nimcp_calloc(bridge->config.va_dim * 2, sizeof(float));
-    if (!bridge->va_buffer) return -1;
+    if (!bridge->va_buffer) return NULL;
 
     if (!bridge->input_buffer || !bridge->hidden_buffer ||
         !bridge->output_buffer || !bridge->va_buffer) {
@@ -844,7 +844,7 @@ int emotion_snn_get_valence_arousal(
         }
 
         float rate = bridge->va_buffer[i];  /* Use stored encoding buffer */
-        float pos = ((float)i / (float)(half_dim - 1)) * 2.0f - 1.0f;  /* Map to [-1, 1] */
+        float pos = (half_dim > 1) ? ((float)i / (float)(half_dim - 1)) * 2.0f - 1.0f : 0.0f;  /* Map to [-1, 1] */
         v_weighted_sum += rate * pos;
         v_total_rate += rate;
     }
@@ -862,7 +862,7 @@ int emotion_snn_get_valence_arousal(
         }
 
         float rate = bridge->va_buffer[half_dim + i];  /* Use stored encoding buffer */
-        float pos = (float)i / (float)(half_dim - 1);  /* Map to [0, 1] */
+        float pos = (half_dim > 1) ? (float)i / (float)(half_dim - 1) : 0.0f;  /* Map to [0, 1] */
         a_weighted_sum += rate * pos;
         a_total_rate += rate;
     }

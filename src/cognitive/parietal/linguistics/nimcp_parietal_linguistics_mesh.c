@@ -763,11 +763,21 @@ static void mesh_init_laplacian(linguistics_mesh_t* mesh) {
     /* Allocate if needed */
     if (!mesh->laplacian.laplacian) {
         mesh->laplacian.laplacian = nimcp_calloc(n * n, sizeof(float));
-        if (!mesh->laplacian.laplacian) return -1;
+        if (!mesh->laplacian.laplacian) return;
         mesh->laplacian.degree_matrix = nimcp_calloc(n, sizeof(float));
-        if (!mesh->laplacian.degree_matrix) return -1;
+        if (!mesh->laplacian.degree_matrix) {
+            nimcp_free(mesh->laplacian.laplacian);
+            mesh->laplacian.laplacian = NULL;
+            return;
+        }
         mesh->laplacian.adjacency = nimcp_calloc(n * n, sizeof(float));
-        if (!mesh->laplacian.adjacency) return -1;
+        if (!mesh->laplacian.adjacency) {
+            nimcp_free(mesh->laplacian.laplacian);
+            mesh->laplacian.laplacian = NULL;
+            nimcp_free(mesh->laplacian.degree_matrix);
+            mesh->laplacian.degree_matrix = NULL;
+            return;
+        }
         mesh->laplacian.size = n;
     }
 

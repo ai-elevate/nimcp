@@ -168,7 +168,7 @@ cf_counterfactual_t* counterfactual_imagine(counterfactual_engine_t* engine,
 
     /* Trace consequences */
     cf->consequences = nimcp_calloc(CF_MAX_CONSEQUENCES, sizeof(cf_consequence_t));
-    if (!cf->consequences) return -1;
+    if (!cf->consequences) return NULL;
     counterfactual_trace_effects(engine, cf, cf->consequences, CF_MAX_CONSEQUENCES, &cf->num_consequences);
 
     /* Compute distance and plausibility */

@@ -412,16 +412,16 @@ const char* scientific_dimension_to_string(
 
         if (exps[i] != 0) {
             if (!first) {
-                strncat(p, "*", sizeof(p) - strlen(p) - 1);
+                strncat(p, "*", buffer_size - strlen(p) - 1);
             }
             first = false;
 
             if (exps[i] == 1) {
-                strncat(p, units[i], sizeof(p) - strlen(p) - 1);
+                strncat(p, units[i], buffer_size - strlen(p) - 1);
             } else {
                 char tmp[16];
                 snprintf(tmp, sizeof(tmp), "%s^%d", units[i], exps[i]);
-                strncat(p, tmp, sizeof(p) - strlen(p) - 1);
+                strncat(p, tmp, buffer_size - strlen(p) - 1);
             }
         }
     }
@@ -1134,9 +1134,19 @@ int scientific_suggest_experiment(
     design->treatment_vars = nimcp_calloc(graph->num_variables, sizeof(uint32_t));
     if (!design->treatment_vars) return -1;
     design->control_vars = nimcp_calloc(graph->num_variables, sizeof(uint32_t));
-    if (!design->control_vars) return -1;
+    if (!design->control_vars) {
+        nimcp_free(design->treatment_vars);
+        design->treatment_vars = NULL;
+        return -1;
+    }
     design->outcome_vars = nimcp_malloc(sizeof(uint32_t));
-    if (!design->outcome_vars) return -1;
+    if (!design->outcome_vars) {
+        nimcp_free(design->treatment_vars);
+        design->treatment_vars = NULL;
+        nimcp_free(design->control_vars);
+        design->control_vars = NULL;
+        return -1;
+    }
 
     design->outcome_vars[0] = target_effect_id;
     design->num_outcomes = 1;

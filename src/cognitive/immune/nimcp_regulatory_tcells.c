@@ -207,7 +207,7 @@ treg_system_t* treg_create(
 
     /* Allocate system */
     treg_system_t* system = (treg_system_t*)nimcp_calloc(1, sizeof(treg_system_t));
-    if (!system) return -1;
+    if (!system) return NULL;
     NIMCP_API_CHECK_ALLOC(system, "Failed to allocate Treg system");
 
     /* Set configuration */
@@ -295,7 +295,7 @@ void treg_destroy(treg_system_t* system)
 
     /* Destroy mutex */
     if (system->mutex) {
-        nimcp_mutex_free(system->mutex);
+        nimcp_mutex_destroy(system->mutex);
     }
 
     /* Free pools */
@@ -330,7 +330,6 @@ int treg_update(treg_system_t* system, uint64_t delta_ms)
 
     if (nimcp_mutex_lock(system->mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_update: validation failed");
-        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -367,7 +366,7 @@ int treg_update(treg_system_t* system, uint64_t delta_ms)
 
             /* Trigger callback */
             if (system->on_activation) {
-                system->on_activation(system, max_level, system->callback_user_data);
+                system->on_activation(system, max_level, system->activation_user_data);
             }
         }
 
@@ -448,7 +447,6 @@ int treg_suppress_inflammation(treg_system_t* system, uint32_t site_id)
 
     if (nimcp_mutex_lock(system->mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_suppress_inflammation: validation failed");
-        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -537,7 +535,6 @@ int treg_checkpoint_activate(
     /* Lock for thread safety */
     if (nimcp_mutex_lock(system->mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_checkpoint_activate: validation failed");
-        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -583,7 +580,7 @@ int treg_checkpoint_activate(
 
     /* Trigger callback */
     if (system->on_checkpoint) {
-        system->on_checkpoint(system, cp, system->callback_user_data);
+        system->on_checkpoint(system, cp, system->checkpoint_user_data);
     }
 
     if (system->config.enable_logging) {
@@ -609,7 +606,6 @@ int treg_checkpoint_release(treg_system_t* system, uint32_t checkpoint_id)
 
     if (nimcp_mutex_lock(system->mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_checkpoint_release: validation failed");
-        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -700,7 +696,6 @@ int treg_release_cytokine(
     /* Lock for thread safety */
     if (nimcp_mutex_lock(system->mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_release_cytokine: validation failed");
-        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -751,7 +746,7 @@ int treg_release_cytokine(
 
     /* Trigger callback */
     if (system->on_cytokine) {
-        system->on_cytokine(system, cyt, system->callback_user_data);
+        system->on_cytokine(system, cyt, system->cytokine_user_data);
     }
 
     nimcp_mutex_unlock(system->mutex);
@@ -780,7 +775,7 @@ int treg_set_activation_callback(
 
 
     system->on_activation = callback;
-    system->callback_user_data = user_data;
+    system->activation_user_data = user_data;
     return 0;
 }
 
@@ -802,7 +797,7 @@ int treg_set_checkpoint_callback(
 
 
     system->on_checkpoint = callback;
-    system->callback_user_data = user_data;
+    system->checkpoint_user_data = user_data;
     return 0;
 }
 
@@ -824,7 +819,7 @@ int treg_set_cytokine_callback(
 
 
     system->on_cytokine = callback;
-    system->callback_user_data = user_data;
+    system->cytokine_user_data = user_data;
     return 0;
 }
 

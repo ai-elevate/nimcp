@@ -255,13 +255,13 @@ fep_snn_bridge_t* fep_snn_create(const fep_snn_config_t* config) {
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
-    if (!bridge->encoding_buffer) return -1;
+    if (!bridge->encoding_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return -1;
+    if (!bridge->output_buffer) return NULL;
     bridge->belief_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->belief_buffer) return -1;
+    if (!bridge->belief_buffer) return NULL;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->prev_state) return -1;
+    if (!bridge->prev_state) return NULL;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->belief_buffer || !bridge->prev_state) {

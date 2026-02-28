@@ -194,7 +194,6 @@ static int32_t find_agent_slot(const struct mirror_tom_bridge* bridge,
             return (int32_t)idx;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_agent_id: operation failed");
     return -1;
 }
 
@@ -219,8 +218,7 @@ static int32_t find_or_create_agent_slot(struct mirror_tom_bridge* bridge,
     if (bridge->agent_count >= MIRROR_TOM_MAX_AGENTS) {
         nimcp_log(LOG_LEVEL_WARN, "Mirror-ToM: max agents (%d) reached",
                   MIRROR_TOM_MAX_AGENTS);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hash_agent_id: capacity exceeded");
-        return -1;
+            return -1;
     }
 
     /* Find empty slot */
@@ -256,7 +254,6 @@ static int32_t find_or_create_agent_slot(struct mirror_tom_bridge* bridge,
             return (int32_t)idx;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_agent_id: validation failed");
     return -1;
 }
 

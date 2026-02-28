@@ -21,7 +21,6 @@ static rcog_active_request_t* find_request_by_id(rcog_engine_t* engine, uint64_t
             return &engine->requests[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_request_by_id: operation failed");
     return NULL;
 }
 
@@ -41,7 +40,6 @@ static rcog_active_request_t* allocate_request_slot(rcog_engine_t* engine) {
             return &engine->requests[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "allocate_request_slot: engine->requests is NULL");
     return NULL;
 }
 

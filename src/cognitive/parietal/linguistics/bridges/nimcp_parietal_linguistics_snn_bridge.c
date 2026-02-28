@@ -238,7 +238,7 @@ ling_snn_bridge_t* ling_snn_bridge_create(
 
     bridge->phoneme_rates = nimcp_calloc(phoneme_pop_size, sizeof(float));
     bridge->spatial_rates = nimcp_calloc(spatial_pop_size, sizeof(float));
-    if (!bridge->spatial_rates) return -1;
+    if (!bridge->spatial_rates) return NULL;
     bridge->number_rates = nimcp_calloc(number_pop_size, sizeof(float));
 
     if (!bridge->phoneme_rates || !bridge->spatial_rates || !bridge->number_rates) {

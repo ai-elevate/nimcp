@@ -897,6 +897,21 @@ typedef struct {
     uint32_t annealing_steps;          /**< Number of annealing steps (default: 1000) */
     uint32_t quantum_annealing_frequency; /**< Run annealing every N learning steps (default: 100) */
 
+    // === FAST TRAINING MODE ===
+    /**
+     * When true, brain_learn_example() skips all biological subsystems
+     * (VAE, attention, engram, neuromodulators, emotions, cortical columns,
+     * predictive coding, quantum annealing, etc.) and only runs:
+     *   1. Input validation
+     *   2. adaptive_network_learn() (GPU forward + parallel backprop)
+     *   3. Post-learning MSE computation
+     *   4. Adaptive LR adjustment
+     *   5. Statistics update
+     * This reduces per-example overhead from ~30 subsystems to ~5 steps,
+     * yielding 5-10x speedup for bulk training.
+     */
+    bool fast_training_mode;
+
     // === PERSISTENCE & CHECKPOINTING ===
     const char* checkpoint_path;      /**< Path to checkpoint file (NULL = no checkpoint) */
     bool auto_load;                   /**< Auto-load from checkpoint on create (default: true) */

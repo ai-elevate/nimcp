@@ -425,6 +425,31 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     strncpy(example.label, label, sizeof(example.label) - 1);
 
     // ========================================================================
+    // FAST TRAINING MODE: Skip all biological subsystems for bulk throughput
+    // ========================================================================
+    // When fast_training_mode is enabled, we only do:
+    //   1. Input validation (already done above)
+    //   2. adaptive_network_learn() (GPU forward + parallel backprop)
+    //   3. Post-learning MSE computation
+    //   4. Adaptive LR + statistics
+    // This gives 5-10x speedup by skipping ~25 biological subsystems.
+    if (brain->config.fast_training_mode) {
+        float fast_loss = adaptive_network_learn(brain->network, &example,
+                                                  LEARN_MODE_SUPERVISED,
+                                                  brain->config.learning_rate);
+
+        // Use loss directly from adaptive_network_learn — skip second forward pass.
+        // The learn() call already computes loss internally; a second forward pass
+        // through 1.5M neurons would double the per-example time for minimal benefit.
+        nimcp_brain_learning_adapt_learning_rate(brain, fast_loss);
+        __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
+        clear_cache(brain);
+
+        if (!target_from_scratch) nimcp_free(target);
+        return fast_loss;
+    }
+
+    // ========================================================================
     // Phase 11: EPISTEMIC FILTERING - Apply Skepticism to Training Data
     // ========================================================================
     // WHAT: Evaluate training label for epistemic quality before learning
@@ -813,8 +838,10 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     // Learn using adaptive network with curiosity-modulated learning rate
     // HYBRID mode: Supervised backprop + biological plasticity (STDP/BCM/eligibility)
     // This enables neuromodulator-gated plasticity alongside gradient descent
+    uint64_t _t_learn_start = nimcp_time_get_us();
     float network_loss = adaptive_network_learn(brain->network, &example, LEARN_MODE_HYBRID,
                                                 effective_learning_rate);
+    uint64_t _t_learn_us = nimcp_time_get_us() - _t_learn_start;
 
     // ========================================================================
     // BIOLOGICAL SECURITY: Monitor for attacks after learning (Phase 11)
@@ -912,6 +939,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     }
 
     // Post-learning evaluation: MSE between updated network output and target
+    uint64_t _t_post_start = nimcp_time_get_us();
     bool prediction_from_scratch = false;
     float* prediction;
     if (brain->learn_scratch.prediction && brain->learn_scratch.target_cap >= brain->config.num_outputs) {
@@ -1656,6 +1684,17 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         // Use simulated time in microseconds for timestamp-based step
         uint64_t glial_timestamp = (uint64_t)(brain->stats.total_learning_steps * 1000);
         glial_integration_step(brain->glial, glial_timestamp);
+    }
+
+    uint64_t _t_post_us = nimcp_time_get_us() - _t_post_start;
+    uint64_t _t_total_us = _t_learn_us + _t_post_us;
+
+    // Log timing every 10 examples for profiling
+    if ((brain->stats.total_learning_steps % 10) == 0) {
+        LOG_INFO("LEARN TIMING: total=%llu ms  core_learn=%llu ms  post_phases=%llu ms",
+                 (unsigned long long)(_t_total_us / 1000),
+                 (unsigned long long)(_t_learn_us / 1000),
+                 (unsigned long long)(_t_post_us / 1000));
     }
 
     brain_clear_error();

@@ -325,7 +325,7 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
     if (skill && skill->num_steps > 0) {
         state->step_errors = (size_t*)nimcp_calloc(skill->num_steps, sizeof(size_t));
         state->step_practice_count = (size_t*)nimcp_calloc(skill->num_steps, sizeof(size_t));
-        if (!state->step_practice_count) return -1;
+        if (!state->step_practice_count) return NULL;
         state->step_difficulty = (float*)nimcp_calloc(skill->num_steps, sizeof(float));
 
         if (!state->step_errors || !state->step_practice_count || !state->step_difficulty) {

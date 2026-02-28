@@ -642,6 +642,14 @@ mirror_language_bridge_t* mirror_language_bridge_create(
 
     memset(bridge, 0, sizeof(*bridge));
 
+    /* Initialize bridge base infrastructure (includes mutex for thread safety) */
+    if (bridge_base_init(&bridge->base, 0, "mirror_language") != 0) {
+        NIMCP_LOGGING_WARN("Mirror-Language: Failed to initialize bridge base");
+        nimcp_free(bridge);
+        bridge = NULL;
+        return NULL;
+    }
+
     /* Apply configuration */
     if (config) {
         bridge->config = *config;
@@ -695,6 +703,7 @@ void mirror_language_bridge_destroy(mirror_language_bridge_t* bridge)
         }
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
     NIMCP_LOGGING_INFO("Mirror-language bridge destroyed");

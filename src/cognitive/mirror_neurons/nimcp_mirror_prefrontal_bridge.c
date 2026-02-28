@@ -222,7 +222,6 @@ static int find_sequence_slot(mirror_prefrontal_bridge_t bridge, uint32_t sequen
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_sequence_slot: validation failed");
     return -1;
 }
 

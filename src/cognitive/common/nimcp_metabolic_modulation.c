@@ -216,7 +216,7 @@ metabolic_effects_tensor_t* metabolic_effects_tensor_create(uint32_t batch_size)
         "metabolic_effects_tensor_create: batch_size must be > 0");
 
     metabolic_effects_tensor_t* effects = nimcp_calloc(1, sizeof(metabolic_effects_tensor_t));
-    if (!effects) return -1;
+    if (!effects) return NULL;
     NIMCP_API_CHECK_ALLOC(effects, "metabolic_effects_tensor_create: allocation failed");
 
     /* Create tensor with shape [batch_size, METABOLIC_EFFECT_COUNT] */
@@ -262,7 +262,7 @@ metabolic_input_tensor_t* metabolic_input_tensor_create(uint32_t batch_size) {
         "metabolic_input_tensor_create: batch_size must be > 0");
 
     metabolic_input_tensor_t* input = nimcp_calloc(1, sizeof(metabolic_input_tensor_t));
-    if (!input) return -1;
+    if (!input) return NULL;
     NIMCP_API_CHECK_ALLOC(input, "metabolic_input_tensor_create: allocation failed");
 
     uint32_t dims[1] = { batch_size };
@@ -312,7 +312,7 @@ metabolic_multipliers_tensor_t* metabolic_multipliers_tensor_create(uint32_t bat
         "metabolic_multipliers_tensor_create: batch_size must be > 0");
 
     metabolic_multipliers_tensor_t* mult = nimcp_calloc(1, sizeof(metabolic_multipliers_tensor_t));
-    if (!mult) return -1;
+    if (!mult) return NULL;
     NIMCP_API_CHECK_ALLOC(mult, "metabolic_multipliers_tensor_create: allocation failed");
 
     /* Shape: [batch_size, 4] for the 4 multiplier types */

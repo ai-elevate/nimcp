@@ -155,7 +155,7 @@ metacognition_t* metacognition_create(const metacognition_config_t* config) {
     LOG_DEBUG("Creating module");
     // GUARD: Allocate main structure
     metacognition_t* meta = (metacognition_t*)nimcp_malloc(sizeof(metacognition_t));
-    if (!meta) return -1;
+    if (!meta) return NULL;
     NIMCP_API_CHECK_ALLOC(meta, "Failed to allocate metacognition structure");
 
     // Initialize to zero
@@ -951,7 +951,8 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
     if (health->reasoning_speed < baseline->reasoning_speed * 0.7F) {
         diagnosis->has_reasoning_issues = true;
         issue_count++;
-        float severity = 1.0F - (health->reasoning_speed / baseline->reasoning_speed);
+        float severity = (fabsf(baseline->reasoning_speed) < 1e-7f) ? 1.0f
+                       : 1.0F - (health->reasoning_speed / baseline->reasoning_speed);
         if (severity > max_severity) {
             max_severity = severity;
             primary = DIAGNOSIS_COGNITIVE_SLOWDOWN;
@@ -972,7 +973,8 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
     // Check decision quality
     if (health->decision_quality < baseline->decision_quality * 0.7F) {
         issue_count++;
-        float severity = 1.0F - (health->decision_quality / baseline->decision_quality);
+        float severity = (fabsf(baseline->decision_quality) < 1e-7f) ? 1.0f
+                       : 1.0F - (health->decision_quality / baseline->decision_quality);
         if (severity > max_severity) {
             max_severity = severity;
             primary = DIAGNOSIS_DECISION_QUALITY_LOW;
@@ -983,7 +985,8 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
     if (health->learning_rate_actual < baseline->learning_rate_actual * 0.7F) {
         diagnosis->has_learning_issues = true;
         issue_count++;
-        float severity = 1.0F - (health->learning_rate_actual / baseline->learning_rate_actual);
+        float severity = (fabsf(baseline->learning_rate_actual) < 1e-7f) ? 1.0f
+                       : 1.0F - (health->learning_rate_actual / baseline->learning_rate_actual);
         if (severity > max_severity) {
             max_severity = severity;
             primary = DIAGNOSIS_LEARNING_IMPAIRED;
@@ -994,7 +997,8 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
     if (health->attention_focus < baseline->attention_focus * 0.7F) {
         diagnosis->has_attention_issues = true;
         issue_count++;
-        float severity = 1.0F - (health->attention_focus / baseline->attention_focus);
+        float severity = (fabsf(baseline->attention_focus) < 1e-7f) ? 1.0f
+                       : 1.0F - (health->attention_focus / baseline->attention_focus);
         if (severity > max_severity) {
             max_severity = severity;
             primary = DIAGNOSIS_ATTENTION_DEFICIT;

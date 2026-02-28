@@ -862,13 +862,13 @@ void recovery_consolidation_run(recovery_consolidation_t* consolidation) {
         }
     }
 
+    // UPDATE: Statistics (must be before clearing episode_count)
+    consolidation->stats.consolidation_runs++;
+    consolidation->stats.total_episodes_processed += consolidation->episode_count;
+
     // CLEAR: Processed episodes
     consolidation->episode_count = 0;
     consolidation->episode_head = 0;
-
-    // UPDATE: Statistics
-    consolidation->stats.consolidation_runs++;
-    consolidation->stats.total_episodes_processed += consolidation->episode_count;
 
     // Compute average confidence
     if (consolidation->rule_count > 0) {

@@ -140,7 +140,6 @@ static habituation_entry_t* find_source(surprise_plasticity_bridge_t* bridge, ui
             return &bridge->sources[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_source: validation failed");
     return NULL;
 }
 

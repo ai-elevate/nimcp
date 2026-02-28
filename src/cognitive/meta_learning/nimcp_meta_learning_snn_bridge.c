@@ -209,13 +209,13 @@ meta_learning_snn_bridge_t* meta_learning_snn_create(const meta_learning_snn_con
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
-    if (!bridge->encoding_buffer) return -1;
+    if (!bridge->encoding_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return -1;
+    if (!bridge->output_buffer) return NULL;
     bridge->insight_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->insight_buffer) return -1;
+    if (!bridge->insight_buffer) return NULL;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->prev_state) return -1;
+    if (!bridge->prev_state) return NULL;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->insight_buffer || !bridge->prev_state) {

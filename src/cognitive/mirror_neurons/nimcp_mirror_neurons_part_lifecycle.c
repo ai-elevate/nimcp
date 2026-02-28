@@ -99,7 +99,7 @@ static uint32_t find_or_create_action(mirror_neurons_t mirror, const action_t* a
     }
 
     // Create new action mapping
-    uint32_t idx = mirror->num_actions++;
+    uint32_t idx = mirror->num_actions;
     action_mapping_t* mapping = &mirror->actions[idx];
 
     mapping->action_id = action->action_id;
@@ -107,16 +107,16 @@ static uint32_t find_or_create_action(mirror_neurons_t mirror, const action_t* a
     mapping->num_neurons = 0;
     mapping->capacity = 10;  // Initial capacity
     mapping->neuron_indices = (uint32_t*)nimcp_calloc(mapping->capacity, sizeof(uint32_t));
-    if (!mapping->neuron_indices) return -1;
+    if (!mapping->neuron_indices) {
+        MIRROR_LOG_ERROR("Mirror neurons: failed to allocate neuron indices");
+        return UINT32_MAX;
+    }
     mapping->total_observations = 0;
     mapping->total_executions = 0;
     mapping->avg_similarity = 0.0F;
 
-    if (!mapping->neuron_indices) {
-        MIRROR_LOG_ERROR("Mirror neurons: failed to allocate neuron indices");
-        mirror->num_actions--;
-        return UINT32_MAX;
-    }
+    /* Increment count only after successful initialization */
+    mirror->num_actions++;
 
     return idx;
 }

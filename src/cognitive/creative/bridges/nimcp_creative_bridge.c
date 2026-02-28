@@ -169,7 +169,7 @@ creative_bridge_t* creative_bridge_create(const creative_bridge_config_t* config
     if (db) {
         db->capacity = 1000;
         db->entries = nimcp_calloc(db->capacity, sizeof(copyright_entry_t));
-        if (!db->entries) return -1;
+        if (!db->entries) return NULL;
         db->num_entries = 0;
     }
     bridge->copyright_db = db;
@@ -829,7 +829,7 @@ uint32_t creative_bridge_find_similar_works(creative_bridge_t* bridge,
     }
 
     /* Sort by similarity (simple bubble sort for small arrays) */
-    for (uint32_t i = 0; i < num_found - 1; i++) {
+    for (uint32_t i = 0; i + 1 < num_found; i++) {
         for (uint32_t j = 0; j < num_found - i - 1; j++) {
             if (results[j].similarity < results[j+1].similarity) {
                 similarity_result_t temp = results[j];

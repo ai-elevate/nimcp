@@ -255,7 +255,12 @@ gw_cognitive_bridge_t* gw_cognitive_bridge_create(
     bridge->competitor_count = 0;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "gw_cognitive") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "gw_cognitive") != 0) {
+        nimcp_free(bridge->competitors);
+        nimcp_free(bridge->receivers);
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         nimcp_free(bridge->competitors);
         nimcp_free(bridge->receivers);

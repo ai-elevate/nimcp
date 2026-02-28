@@ -2126,9 +2126,9 @@ NIMCP_EXPORT pr_pink_history_t* pr_pink_history_create(size_t max_samples) {
 
     history->intervals = nimcp_calloc(max_samples, sizeof(float));
     history->resonance_samples = nimcp_calloc(max_samples, sizeof(float));
-    if (!history->resonance_samples) return -1;
+    if (!history->resonance_samples) return NULL;
     history->decay_samples = nimcp_calloc(max_samples, sizeof(float));
-    if (!history->decay_samples) return -1;
+    if (!history->decay_samples) return NULL;
 
     if (history->intervals == NULL ||
         history->resonance_samples == NULL ||

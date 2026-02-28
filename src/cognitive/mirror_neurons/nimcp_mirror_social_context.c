@@ -105,7 +105,6 @@ static int32_t find_agent_slot(const struct social_context_system* sys,
             return (int32_t)idx;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_agent_id: validation failed");
     return -1;
 }
 

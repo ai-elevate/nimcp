@@ -18,6 +18,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include <time.h>
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
@@ -174,8 +175,10 @@ static float get_inflammation_duration_sec(const brain_immune_system_t* immune) 
 
     if (oldest_start == UINT64_MAX) return 0.0f;
 
-    /* Calculate duration (simplified - would use actual time API) */
-    uint64_t current_time = immune->start_time; /* Placeholder */
+    /* Calculate duration using monotonic clock */
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t current_time = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
     return (float)(current_time - oldest_start) / 1000.0f; /* ms to sec */
 }
 
@@ -825,7 +828,11 @@ int executive_immune_bridge_update(
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bridge->total_updates++;
-    bridge->last_update_time += delta_ms;
+    struct timespec upd_ts;
+    clock_gettime(CLOCK_MONOTONIC, &upd_ts);
+    uint64_t now_ms = (uint64_t)upd_ts.tv_sec * 1000ULL + (uint64_t)upd_ts.tv_nsec / 1000000ULL;
+    bridge->last_update_time = now_ms;
+    bridge->base.last_update_time_ms = now_ms;
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;

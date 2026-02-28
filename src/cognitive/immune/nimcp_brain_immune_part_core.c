@@ -277,21 +277,26 @@ int brain_immune_sync_memory_to_swarm(
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_sync_memory_to_swarm", 0.0f);
 
+    /* Thread-safety fix: hold mutex while searching and using B cell / antigen data */
+    nimcp_mutex_lock(system->mutex);
 
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
     if (!b_cell || b_cell->state != B_CELL_MEMORY) {
+        nimcp_mutex_unlock(system->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_sync_memory_to_swarm: b_cell is NULL");
         return -1;
     }
 
     /* Check if already synced (prevent duplicate memory cells) */
     if (b_cell->swarm_memory_cell_id != 0) {
+        nimcp_mutex_unlock(system->mutex);
         return 0;  /* Already synced */
     }
 
     /* Find corresponding antigen to get response type */
     brain_antigen_t* antigen = find_antigen_by_id(system, b_cell->bound_antigen_id);
     if (!antigen) {
+        nimcp_mutex_unlock(system->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_sync_memory_to_swarm: antigen is NULL");
         return -1;
     }
@@ -329,7 +334,6 @@ int brain_immune_sync_memory_to_swarm(
     );
 
     if (res == NIMCP_SUCCESS) {
-        nimcp_mutex_lock(system->mutex);
         b_cell->swarm_memory_cell_id = swarm_cell_id;
         nimcp_mutex_unlock(system->mutex);
 
@@ -341,6 +345,7 @@ int brain_immune_sync_memory_to_swarm(
         return 0;
     }
 
+    nimcp_mutex_unlock(system->mutex);
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_immune_sync_memory_to_swarm: validation failed");
     return -1;
 }
@@ -579,29 +584,45 @@ int brain_immune_propagate_secondary_response(
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_propagate_secondary_", 0.0f);
 
+    nimcp_mutex_lock(system->mutex);
 
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, memory_b_cell_id);
     if (!b_cell || b_cell->state != B_CELL_MEMORY) {
+        nimcp_mutex_unlock(system->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_propagate_secondary_response: b_cell is NULL");
         return -1;
     }
 
     /* Share memory cell with swarm if not already shared */
     if (b_cell->swarm_memory_cell_id == 0) {
+        nimcp_mutex_unlock(system->mutex);
         brain_immune_sync_memory_to_swarm(system, memory_b_cell_id);
+        nimcp_mutex_lock(system->mutex);
+        /* Re-lookup after releasing lock (cell may have moved) */
+        b_cell = find_b_cell_by_id(system, memory_b_cell_id);
+        if (!b_cell) {
+            nimcp_mutex_unlock(system->mutex);
+            return -1;
+        }
     }
 
     /* Share memory cell with entire swarm */
-    if (b_cell->swarm_memory_cell_id != 0) {
+    uint32_t swarm_cell_id = b_cell->swarm_memory_cell_id;
+    float memory_multiplier = system->config.memory_response_multiplier;
+    bool logging = system->config.enable_logging;
+
+    nimcp_mutex_unlock(system->mutex);
+
+    if (swarm_cell_id != 0) {
         nimcp_result_t res = nimcp_swarm_immune_share_memory_cell(
             system->swarm_immune,
-            b_cell->swarm_memory_cell_id
+            swarm_cell_id
         );
 
-        if (res == NIMCP_SUCCESS && system->config.enable_logging) {
+        if (res == NIMCP_SUCCESS && logging) {
             LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
                 "Propagated secondary response: memory cell %u shared across swarm",
-                b_cell->swarm_memory_cell_id);
+                swarm_cell_id);
         }
     }
 
@@ -613,7 +634,7 @@ int brain_immune_propagate_secondary_response(
     brain_immune_release_cytokine(
         system, BRAIN_CYTOKINE_IFN_GAMMA,
         memory_b_cell_id,
-        system->config.memory_response_multiplier,
+        memory_multiplier,
         0,  /* Broadcast */
         &cytokine_id
     );
@@ -642,16 +663,19 @@ int brain_immune_present_antigen(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_present_antigen: required parameter is NULL (system, epitope)");
         return -1;
     }
-    if (system->antigen_count >= system->antigen_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_present_antigen: capacity exceeded");
-        return -1;
-    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_present_antigen", 0.0f);
 
 
     nimcp_mutex_lock(system->mutex);
+
+    /* TOCTOU fix: capacity check moved AFTER mutex lock */
+    if (system->antigen_count >= system->antigen_capacity) {
+        nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_present_antigen: capacity exceeded");
+        return -1;
+    }
 
     brain_antigen_t* antigen = &system->antigens[system->antigen_count];
     memset(antigen, 0, sizeof(*antigen));

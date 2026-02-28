@@ -18,6 +18,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include <time.h>
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
@@ -150,8 +151,10 @@ static float get_inflammation_duration_sec(const brain_immune_system_t* immune) 
 
     if (!found) return 0.0f;
 
-    /* Compute duration (simplified - would use actual timestamp) */
-    uint64_t current_time = 0; /* Would get from system */
+    /* Compute duration using monotonic clock */
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t current_time = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
     if (current_time > oldest_time) {
         return (float)(current_time - oldest_time) / 1000.0f; /* ms to sec */
     }
@@ -544,7 +547,9 @@ int introspection_immune_detect_sickness(introspection_immune_bridge_t* bridge) 
 
     /* Record detection time if newly detected */
     if (detection->sickness_detected) {
-        detection->detection_time = 0; /* Would use actual timestamp */
+        struct timespec det_ts;
+        clock_gettime(CLOCK_MONOTONIC, &det_ts);
+        detection->detection_time = (uint64_t)det_ts.tv_sec * 1000000ULL + (uint64_t)det_ts.tv_nsec / 1000ULL;
         bridge->sickness_detections++;
     }
 
@@ -613,6 +618,12 @@ int introspection_immune_bridge_update(
     /* Apply introspection → immune detection */
     introspection_immune_detect_sickness(bridge);
     introspection_immune_correlate_patterns(bridge);
+
+    /* Update base timestamp so callers see real wall-clock time */
+    struct timespec upd_ts;
+    clock_gettime(CLOCK_MONOTONIC, &upd_ts);
+    bridge->base.last_update_time_ms =
+        (uint64_t)upd_ts.tv_sec * 1000ULL + (uint64_t)upd_ts.tv_nsec / 1000000ULL;
 
     bridge->total_updates++;
     return 0;

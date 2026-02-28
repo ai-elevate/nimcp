@@ -76,19 +76,19 @@ working_memory_t* working_memory_create_custom(
 
     // Allocate arrays
     wm->items = nimcp_calloc(config->capacity, sizeof(float*));
-    if (!wm->items) return -1;
+    if (!wm->items) return NULL;
     wm->item_sizes = nimcp_calloc(config->capacity, sizeof(uint32_t));
-    if (!wm->item_sizes) return -1;
+    if (!wm->item_sizes) return NULL;
     wm->salience = nimcp_calloc(config->capacity, sizeof(float));
-    if (!wm->salience) return -1;
+    if (!wm->salience) return NULL;
     wm->timestamps = nimcp_calloc(config->capacity, sizeof(uint64_t));
-    if (!wm->timestamps) return -1;
+    if (!wm->timestamps) return NULL;
     wm->attention_refreshed = nimcp_calloc(config->capacity, sizeof(bool));
-    if (!wm->attention_refreshed) return -1;
+    if (!wm->attention_refreshed) return NULL;
     wm->emotions = nimcp_calloc(config->capacity, sizeof(emotional_tag_t));  // Phase 10.3
-    if (!wm->emotions) return -1;
+    if (!wm->emotions) return NULL;
     wm->has_emotion = nimcp_calloc(config->capacity, sizeof(bool));          // Phase 10.3
-    if (!wm->has_emotion) return -1;
+    if (!wm->has_emotion) return NULL;
 
     // Check all allocations
     if (!wm->items || !wm->item_sizes || !wm->salience ||

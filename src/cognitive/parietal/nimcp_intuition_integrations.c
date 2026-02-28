@@ -628,7 +628,7 @@ extrapolation_t* intuition_extrapolate(intuition_system_t* system,
     }
 
     ext->extrapolated = nimcp_calloc(num_samples, sizeof(intuition_data_point_t*));
-    if (!ext->extrapolated) return -1;
+    if (!ext->extrapolated) return NULL;
     if (ext->extrapolated && ext->detected_trend) {
         float step = (target_range->end - target_range->start) / (float)num_samples;
         float last_known_t = known[count - 1]->timestamp;
@@ -1013,7 +1013,7 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
 
     /* Identify gaps */
     synth->identified_gaps = nimcp_calloc(INTUITION_MAX_GAPS, sizeof(intuition_gap_t*));
-    if (!synth->identified_gaps) return -1;
+    if (!synth->identified_gaps) return NULL;
     synth->num_gaps = 0;
 
     /* Check for low-confidence regions as gaps */
@@ -1034,7 +1034,7 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
 
     /* Identify contradictions (fragments with opposite high confidence) */
     synth->conflicts = nimcp_calloc(INTUITION_MAX_GAPS, sizeof(knowledge_contradiction_t*));
-    if (!synth->conflicts) return -1;
+    if (!synth->conflicts) return NULL;
     synth->num_conflicts = 0;
 
     for (uint32_t i = 0; i < count && synth->num_conflicts < INTUITION_MAX_GAPS; i++) {

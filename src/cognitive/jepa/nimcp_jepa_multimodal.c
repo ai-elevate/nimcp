@@ -141,7 +141,7 @@ jepa_multimodal_t* jepa_multimodal_create(const jepa_multimodal_config_t* config
 
     /* Allocate system */
     mm = (jepa_multimodal_t*)nimcp_calloc(1, sizeof(jepa_multimodal_t));
-    if (!mm) return -1;
+    if (!mm) return NULL;
     NIMCP_API_CHECK_ALLOC(mm, "Failed to allocate multimodal system");
 
     /* Initialize bridge base */
@@ -190,7 +190,7 @@ jepa_multimodal_t* jepa_multimodal_create(const jepa_multimodal_config_t* config
     /* Allocate working buffers */
     mm->visual_buffer = (float*)nimcp_calloc(config->joint_dim, sizeof(float));
     mm->speech_buffer = (float*)nimcp_calloc(config->joint_dim, sizeof(float));
-    if (!mm->speech_buffer) return -1;
+    if (!mm->speech_buffer) return NULL;
     mm->fused_buffer = (float*)nimcp_calloc(config->joint_dim * 2, sizeof(float));
 
     if (!mm->visual_buffer || !mm->speech_buffer || !mm->fused_buffer) {

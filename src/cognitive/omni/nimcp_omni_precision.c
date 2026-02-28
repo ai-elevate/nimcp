@@ -91,7 +91,6 @@ static omni_module_precision_t* find_module(omni_precision_ctx_t* ctx,
             return &ctx->modules[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_precision_training_end: validation failed");
     return NULL;
 }
 
@@ -110,7 +109,6 @@ static const omni_module_precision_t* find_module_const(
             return &ctx->modules[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_const: validation failed");
     return NULL;
 }
 

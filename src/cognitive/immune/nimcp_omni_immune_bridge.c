@@ -429,9 +429,9 @@ int omni_immune_get_omni_effects(omni_immune_bridge_t* bridge,
 
 
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
-    nimcp_mutex_lock(((omni_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_immune_effects_t));
-    nimcp_mutex_unlock(((omni_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -442,9 +442,9 @@ int omni_immune_get_immune_effects(omni_immune_bridge_t* bridge,
 
 
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
-    nimcp_mutex_lock(((omni_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->immune_effects, sizeof(immune_to_omni_effects_t));
-    nimcp_mutex_unlock(((omni_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -455,9 +455,9 @@ int omni_immune_get_stats(omni_immune_bridge_t* bridge,
 
 
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM, "bridge or stats is NULL");
-    nimcp_mutex_lock(((omni_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_immune_stats_t));
-    nimcp_mutex_unlock(((omni_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 

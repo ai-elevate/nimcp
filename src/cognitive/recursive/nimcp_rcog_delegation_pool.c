@@ -531,14 +531,14 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
     /* Initialize completed results storage */
     pool->completed_capacity = POOL_INITIAL_RESULT_CAPACITY;
     pool->completed = nimcp_calloc(pool->completed_capacity, sizeof(rcog_completed_task_t));
-    if (!pool->completed) return -1;
+    if (!pool->completed) return NULL;
     pool->completed_count = 0;
     pool->completed_mutex = nimcp_mutex_create(&attr);
 
     /* Initialize batch tracking */
     pool->batches_capacity = 16;
     pool->batches = nimcp_calloc(pool->batches_capacity, sizeof(rcog_batch_handle_t*));
-    if (!pool->batches) return -1;
+    if (!pool->batches) return NULL;
     pool->num_batches = 0;
     pool->next_batch_id = 1;
     pool->batches_mutex = nimcp_mutex_create(&attr);

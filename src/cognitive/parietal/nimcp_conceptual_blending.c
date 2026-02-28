@@ -223,13 +223,13 @@ conceptual_blend_t* blending_create_blend(blending_engine_t* engine,
 
     /* Find mappings */
     b->mappings = nimcp_calloc(BLEND_MAX_MAPPINGS, sizeof(blend_mapping_t));
-    if (!b->mappings) return -1;
+    if (!b->mappings) return NULL;
     blending_find_mappings(engine, concept1, concept2, b->mappings, BLEND_MAX_MAPPINGS, &b->num_mappings);
 
     /* Find emergent properties */
     if (engine->config.enable_emergence_detection) {
         b->emergent_properties = nimcp_calloc(BLEND_MAX_PROPERTIES, sizeof(blend_property_t));
-        if (!b->emergent_properties) return -1;
+        if (!b->emergent_properties) return NULL;
         if (b->emergent_properties && b->num_mappings > 0) {
             b->emergent_properties[0].is_emergent = true;
             snprintf(b->emergent_properties[0].name, sizeof(b->emergent_properties[0].name),

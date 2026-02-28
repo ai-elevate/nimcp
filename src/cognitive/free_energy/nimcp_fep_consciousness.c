@@ -123,9 +123,9 @@ fep_consciousness_bridge_t* fep_consciousness_create(
 
     /* Allocate attention arrays */
     bridge->attention_targets = (uint32_t*)nimcp_calloc(32, sizeof(uint32_t));
-    if (!bridge->attention_targets) return -1;
+    if (!bridge->attention_targets) return NULL;
     bridge->attention_priorities = (float*)nimcp_calloc(32, sizeof(float));
-    if (!bridge->attention_priorities) return -1;
+    if (!bridge->attention_priorities) return NULL;
 
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();

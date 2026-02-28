@@ -267,7 +267,7 @@ vae_snn_bridge_t* vae_snn_bridge_create(const vae_snn_bridge_config_t* config)
     uint32_t default_dim = VAE_SNN_DEFAULT_NEURONS;
     bridge->encode_buffer = nimcp_calloc(default_dim, sizeof(float));
     bridge->decode_buffer = nimcp_calloc(default_dim, sizeof(float));
-    if (!bridge->decode_buffer) return -1;
+    if (!bridge->decode_buffer) return NULL;
     bridge->spike_buffer = nimcp_calloc(default_dim * 100, sizeof(uint32_t));
 
     if (!bridge->encode_buffer || !bridge->decode_buffer || !bridge->spike_buffer) {

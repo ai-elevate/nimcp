@@ -251,7 +251,7 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return -1;
+    if (!bridge->output_buffer) return NULL;
     bridge->judgment_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
 
     if (!bridge->encoding_buffer || !bridge->output_buffer || !bridge->judgment_buffer) {

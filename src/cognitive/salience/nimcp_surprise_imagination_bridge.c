@@ -92,7 +92,6 @@ static surprise_imagination_scenario_t* find_scenario(
             return &bridge->scenarios[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_scenario: operation failed");
     return NULL;
 }
 

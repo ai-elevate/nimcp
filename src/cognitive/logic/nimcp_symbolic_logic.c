@@ -89,7 +89,7 @@ logical_term_t* logic_term_create(term_type_t type, const char* name)
     NIMCP_API_CHECK_NULL_RET_NULL(name, "NULL name in logic_term_create");
 
     logical_term_t* term = (logical_term_t*)nimcp_calloc(1, sizeof(logical_term_t));
-    if (!term) return -1;
+    if (!term) return NULL;
     NIMCP_API_CHECK_ALLOC(term, "Failed to allocate logical term");
 
     term->type = type;
@@ -164,21 +164,17 @@ static bool terms_equal(const logical_term_t* t1, const logical_term_t* t2)
         return false;
     }
     if (t1->type != t2->type) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "terms_equal: validation failed");
         return false;
     }
     if (strcmp(t1->name, t2->name) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "terms_equal: validation failed");
         return false;
     }
     if (t1->arity != t2->arity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "terms_equal: validation failed");
         return false;
     }
 
     for (uint8_t i = 0; i < t1->arity; i++) {
         if (!terms_equal(t1->args[i], t2->args[i])) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "terms_equal: terms_equal is NULL");
             return false;
         }
     }
@@ -206,7 +202,7 @@ atomic_formula_t* logic_atom_create(const char* name, logical_term_t** terms, ui
     }
 
     atomic_formula_t* atom = (atomic_formula_t*)nimcp_calloc(1, sizeof(atomic_formula_t));
-    if (!atom) return -1;
+    if (!atom) return NULL;
     NIMCP_API_CHECK_ALLOC(atom, "Failed to allocate atomic formula");
 
     strncpy(atom->name, name, LOGIC_MAX_NAME_LENGTH - 1);
@@ -592,21 +588,17 @@ static bool atoms_equal(const atomic_formula_t* a1, const atomic_formula_t* a2)
         return false;
     }
     if (strcmp(a1->name, a2->name) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "atoms_equal: validation failed");
         return false;
     }
     if (a1->arity != a2->arity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "atoms_equal: validation failed");
         return false;
     }
     if (a1->negated != a2->negated) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "atoms_equal: validation failed");
         return false;
     }
 
     for (uint8_t i = 0; i < a1->arity; i++) {
         if (!terms_equal(a1->terms[i], a2->terms[i])) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "atoms_equal: terms_equal is NULL");
             return false;
         }
     }
@@ -718,7 +710,7 @@ symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
     }
 
     symbolic_logic_t* logic = (symbolic_logic_t*)nimcp_calloc(1, sizeof(symbolic_logic_t));
-    if (!logic) return -1;
+    if (!logic) return NULL;
     NIMCP_API_CHECK_ALLOC(logic, "Failed to allocate symbolic logic engine");
 
     logic->config = *config;

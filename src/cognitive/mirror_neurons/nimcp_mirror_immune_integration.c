@@ -154,6 +154,7 @@ mirror_immune_integration_t* mirror_immune_create(
         return NULL;
     }
     if (nimcp_mutex_init(integration->mutex, NULL) != NIMCP_SUCCESS) {
+        nimcp_free(integration->mutex);
         nimcp_free(integration);
         integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_immune_create: validation failed");

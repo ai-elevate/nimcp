@@ -424,15 +424,15 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     /* Allocate buffers */
     uint32_t head_buffer_size = bridge->config.num_heads * bridge->config.neurons_per_head;
     bridge->head_buffer = nimcp_calloc(head_buffer_size, sizeof(float));
-    if (!bridge->head_buffer) return -1;
+    if (!bridge->head_buffer) return NULL;
     bridge->salience_buffer = nimcp_calloc(bridge->config.salience_dim, sizeof(float));
-    if (!bridge->salience_buffer) return -1;
+    if (!bridge->salience_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(bridge->config.num_heads, sizeof(float));
-    if (!bridge->output_buffer) return -1;
+    if (!bridge->output_buffer) return NULL;
     bridge->competition_buffer = nimcp_calloc(bridge->config.num_heads, sizeof(float));
-    if (!bridge->competition_buffer) return -1;
+    if (!bridge->competition_buffer) return NULL;
     bridge->top_k_buffer = nimcp_calloc(bridge->config.top_k, sizeof(int32_t));
-    if (!bridge->top_k_buffer) return -1;
+    if (!bridge->top_k_buffer) return NULL;
 
     if (!bridge->head_buffer || !bridge->salience_buffer ||
         !bridge->output_buffer || !bridge->competition_buffer || !bridge->top_k_buffer) {
@@ -444,9 +444,9 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     /* Allocate attention state arrays */
     bridge->attention.attention_weights = nimcp_calloc(bridge->config.num_heads, sizeof(float));
     bridge->attention.salience_map = nimcp_calloc(bridge->config.sequence_length, sizeof(float));
-    if (!bridge->attention.salience_map) return -1;
+    if (!bridge->attention.salience_map) return NULL;
     bridge->attention.top_k_indices = nimcp_calloc(bridge->config.top_k, sizeof(int32_t));
-    if (!bridge->attention.top_k_indices) return -1;
+    if (!bridge->attention.top_k_indices) return NULL;
 
     if (!bridge->attention.attention_weights ||
         !bridge->attention.salience_map ||

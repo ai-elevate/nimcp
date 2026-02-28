@@ -182,7 +182,7 @@ static void get_sampler_schedule(visual_sampler_t sampler, uint32_t steps,
 {
     /* Simple linear schedule for placeholder */
     for (uint32_t i = 0; i < steps; i++) {
-        float t = (float)i / (float)(steps - 1);
+        float t = (steps > 1) ? (float)i / (float)(steps - 1) : 0.0f;
         alphas[i] = sqrtf(1.0f - t);
         sigmas[i] = sqrtf(t);
     }

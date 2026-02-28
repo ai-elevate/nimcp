@@ -1328,8 +1328,20 @@ const task_descriptor_t* executive_get_active_task(executive_controller_t* exec)
     /* Phase 8: Heartbeat at operation start */
     exec_heartbeat("exec_executive_get_active", 0.0f);
 
+    /* Thread-safety fix: copy active_task data under mutex to a thread-local
+     * buffer so the caller gets a stable snapshot even if another thread
+     * frees/replaces the active task after we release the lock. */
+    static _Thread_local task_descriptor_t tl_task_copy;
 
-    return exec->active_task;
+    nimcp_mutex_lock(&exec->task_mutex);
+    if (!exec->active_task) {
+        nimcp_mutex_unlock(&exec->task_mutex);
+        return NULL;
+    }
+    tl_task_copy = *exec->active_task;
+    nimcp_mutex_unlock(&exec->task_mutex);
+
+    return &tl_task_copy;
 }
 
 bool executive_complete_task(executive_controller_t* exec, bool success, uint64_t current_time_ms)
@@ -1690,17 +1702,23 @@ float executive_get_cognitive_load(executive_controller_t* exec)
     /* Phase 8: Heartbeat at operation start */
     exec_heartbeat("exec_executive_get_cognit", 0.0f);
 
+    /* Thread-safety fix: read shared state under mutex */
+    nimcp_mutex_lock(&exec->task_mutex);
 
     uint32_t total_tasks = exec->num_tasks;
     if (exec->active_task) {
         total_tasks++;  // Count active task
     }
 
-    if (exec->max_tasks == 0) {
+    uint32_t max_tasks = exec->max_tasks;
+
+    nimcp_mutex_unlock(&exec->task_mutex);
+
+    if (max_tasks == 0) {
         return 0.0F;
     }
 
-    float load = (float)total_tasks / (float)exec->max_tasks;
+    float load = (float)total_tasks / (float)max_tasks;
 
     // Clamp to [0, 1]
     return fminf(fmaxf(load, 0.0F), 1.0F);
@@ -1741,6 +1759,9 @@ bool executive_boost_task_priority(executive_controller_t* exec,
     // WHAT: Search for task by name
     // WHY:  Need to find task in queue or active slot
     // HOW:  Linear search through task descriptors
+    /* Thread-safety fix: hold mutex while searching and modifying task priorities */
+    nimcp_mutex_lock(&exec->task_mutex);
+
     bool found = false;
 
     // Check active task
@@ -1763,6 +1784,8 @@ bool executive_boost_task_priority(executive_controller_t* exec,
             found = true;
         }
     }
+
+    nimcp_mutex_unlock(&exec->task_mutex);
 
     if (!found) {
         set_error("Task '%s' not found", task_name);

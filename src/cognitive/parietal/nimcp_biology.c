@@ -762,7 +762,11 @@ phylo_tree_t* biology_create_phylo_tree(
 
     /* Create leaf nodes */
     phylo_node_t** nodes = nimcp_calloc(num_species, sizeof(phylo_node_t*));
-    if (!nodes) return -1;
+    if (!nodes) {
+        nimcp_free(tree);
+        nimcp_mutex_unlock(bio->lock);
+        return NULL;
+    }
     for (uint32_t i = 0; i < num_species; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && num_species > 256) {
@@ -771,6 +775,16 @@ phylo_tree_t* biology_create_phylo_tree(
         }
 
         nodes[i] = nimcp_calloc(1, sizeof(phylo_node_t));
+        if (!nodes[i]) {
+            /* Free previously allocated nodes */
+            for (uint32_t k = 0; k < i; k++) {
+                if (nodes[k]) nimcp_free(nodes[k]);
+            }
+            nimcp_free(nodes);
+            nimcp_free(tree);
+            nimcp_mutex_unlock(bio->lock);
+            return NULL;
+        }
         nodes[i]->id = i;
         strncpy(nodes[i]->name, species_names[i], sizeof(nodes[i]->name) - 1);
         nodes[i]->is_leaf = true;
@@ -806,7 +820,16 @@ phylo_tree_t* biology_create_phylo_tree(
 
         /* Create internal node */
         phylo_node_t* internal = nimcp_calloc(1, sizeof(phylo_node_t));
-        if (!internal) return -1;
+        if (!internal) {
+            /* Free all allocated nodes */
+            for (uint32_t k = 0; k < num_species; k++) {
+                if (nodes[k]) nimcp_free(nodes[k]);
+            }
+            nimcp_free(nodes);
+            nimcp_free(tree);
+            nimcp_mutex_unlock(bio->lock);
+            return NULL;
+        }
         internal->id = next_id++;
         internal->left = nodes[min_i];
         internal->right = nodes[min_j];

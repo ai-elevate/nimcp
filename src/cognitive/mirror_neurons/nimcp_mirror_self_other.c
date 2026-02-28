@@ -116,7 +116,6 @@ static efference_copy_t* find_efference_for_action(
 
         return ec;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_efference_for_action: validation failed");
     return NULL;
 }
 
@@ -332,7 +331,6 @@ efference_copy_t* self_other_get_efference(
             return &system->efference_buffer[idx];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_other_get_efference: validation failed");
     return NULL;
 }
 
@@ -381,7 +379,7 @@ void self_other_update_body_part(
     if (!system || !pose || part >= BODY_PART_COUNT) {
         if (!system || !pose) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_update_body_part: required parameter is NULL");
-            return -1;
+            return;
         }
         return;
     }
@@ -719,7 +717,7 @@ uint32_t self_other_classify_batch(
     if (!system || !observations || !decisions || count == 0) {
         if (!system || !observations || !decisions) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_classify_batch: required parameter is NULL");
-            return -1;
+            return 0;
         }
         return 0;
     }

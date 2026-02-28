@@ -143,11 +143,11 @@ omni_wm_rssm_state_t* omni_wm_rssm_state_create(uint32_t h_dim, uint32_t z_dim) 
     }
 
     state->h = nimcp_calloc(h_dim, sizeof(float));
-    if (!state->h) return -1;
+    if (!state->h) return NULL;
     state->z = nimcp_calloc(z_dim, sizeof(float));
-    if (!state->z) return -1;
+    if (!state->z) return NULL;
     state->z_mean = nimcp_calloc(z_dim, sizeof(float));
-    if (!state->z_mean) return -1;
+    if (!state->z_mean) return NULL;
     state->z_std = nimcp_calloc(z_dim, sizeof(float));
 
     if (!state->h || !state->z || !state->z_mean || !state->z_std) {

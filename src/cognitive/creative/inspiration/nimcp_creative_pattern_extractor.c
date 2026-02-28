@@ -767,7 +767,7 @@ uint32_t creative_pattern_db_find_similar(const creative_pattern_extractor_t* ex
     }
 
     /* Sort by similarity */
-    for (uint32_t i = 0; i < ext->num_known_patterns - 1; i++) {
+    for (uint32_t i = 0; i + 1 < ext->num_known_patterns; i++) {
         for (uint32_t j = 0; j < ext->num_known_patterns - i - 1; j++) {
             if (scores[j].sim < scores[j + 1].sim) {
                 scored_t tmp = scores[j];
@@ -861,7 +861,7 @@ uint32_t creative_pattern_top_n(const pattern_extraction_result_t* result,
     }
 
     /* Sort */
-    for (uint32_t i = 0; i < result->num_patterns - 1; i++) {
+    for (uint32_t i = 0; i + 1 < result->num_patterns; i++) {
         for (uint32_t j = 0; j < result->num_patterns - i - 1; j++) {
             if (scores[j].importance < scores[j + 1].importance) {
                 scored_t tmp = scores[j];

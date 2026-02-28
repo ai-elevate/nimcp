@@ -1018,8 +1018,10 @@ int nimcp_health_agent_connect_cognitive(
         return -1;
     }
 
-    /* In a real implementation, we would store the bridge reference in the agent.
-     * For now, this is a simplified version. */
+    /* TODO: Store bridge reference in agent struct to prevent memory leak.
+     * The agent struct needs a cognitive_bridge field added.
+     * For now, destroy the bridge to prevent leak since it's not stored anywhere. */
+    health_cognitive_bridge_destroy(bridge);
 
     return 0;
 }

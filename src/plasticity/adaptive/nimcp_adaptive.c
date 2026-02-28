@@ -3589,6 +3589,14 @@ bool adaptive_network_is_gpu_enabled(adaptive_network_t network)
     return network->gpu_enabled;
 }
 
+void adaptive_network_mark_gpu_weights_dirty(adaptive_network_t network)
+{
+    if (!network) return;
+    if (network->gpu_weight_cache) {
+        network->gpu_weight_cache->weights_dirty_on_cpu = true;
+    }
+}
+
 //=============================================================================
 // Neuron (Inferentia) Inference Accessors
 //=============================================================================

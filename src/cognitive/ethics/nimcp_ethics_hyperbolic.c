@@ -227,7 +227,7 @@ float ethics_resolve_conflict_hyperbolic(const knowledge_item_t *principle1,
                                          const knowledge_item_t *situation,
                                          int *resolution_out) {
     if (!principle1 || !principle2 || !situation || !resolution_out) {
-        *resolution_out = 0;
+        if (resolution_out) *resolution_out = 0;
         return 0.0F;
     }
 

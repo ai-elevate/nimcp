@@ -464,7 +464,14 @@ static void update_cell_exhaustion(
 static void update_system_stats(exhaustion_system_t* system) {
     if (!system) return;
 
+    /* Save cumulative counters before clearing stats */
+    uint64_t saved_exhaustion = system->stats.total_exhaustion_events;
+    uint64_t saved_recovery = system->stats.total_recovery_events;
+    uint64_t saved_blockade = system->stats.checkpoint_blockade_uses;
     memset(&system->stats, 0, sizeof(exhaustion_stats_t));
+    system->stats.total_exhaustion_events = saved_exhaustion;
+    system->stats.total_recovery_events = saved_recovery;
+    system->stats.checkpoint_blockade_uses = saved_blockade;
 
     float total_capacity = 0.0f;
     float total_activation_ms = 0.0f;

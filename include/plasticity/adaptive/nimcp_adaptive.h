@@ -589,6 +589,16 @@ void adaptive_network_set_gpu_enabled(adaptive_network_t network, bool enabled);
  */
 bool adaptive_network_is_gpu_enabled(adaptive_network_t network);
 
+/**
+ * @brief Mark GPU weight cache as stale (CPU has newer weights)
+ *
+ * Call after restoring weights on CPU (e.g., checkpoint deserialization)
+ * so the next GPU operation re-uploads from CPU neuron structs.
+ *
+ * @param network Adaptive network (NULL-safe)
+ */
+void adaptive_network_mark_gpu_weights_dirty(adaptive_network_t network);
+
 //=============================================================================
 // Neuron (AWS Inferentia) Inference Accessors
 //=============================================================================

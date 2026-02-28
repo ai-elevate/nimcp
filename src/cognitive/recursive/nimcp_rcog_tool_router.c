@@ -196,7 +196,6 @@ static int find_tool_index(const rcog_tool_router_t* router, const char* name) {
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_tool_index: operation failed");
     return -1;
 }
 

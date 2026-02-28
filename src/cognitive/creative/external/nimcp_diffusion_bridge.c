@@ -169,7 +169,7 @@ diffusion_bridge_t* diffusion_bridge_create(const diffusion_bridge_config_t* con
 
         /* Pre-compute scheduler coefficients */
         scheduler->alphas_cumprod = nimcp_calloc(1000, sizeof(float));
-        if (!scheduler->alphas_cumprod) return -1;
+        if (!scheduler->alphas_cumprod) return NULL;
         scheduler->sigmas = nimcp_calloc(1000, sizeof(float));
 
         if (scheduler->alphas_cumprod && scheduler->sigmas) {

@@ -475,7 +475,6 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);
-    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

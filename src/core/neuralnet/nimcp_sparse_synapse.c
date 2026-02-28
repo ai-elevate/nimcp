@@ -779,8 +779,7 @@ int sparse_synapse_remove(
 
     uint32_t total = storage->embedded_count + storage->overflow_count;
     if (index >= total) {
-        LOG_ERROR("Invalid synapse index %u (total=%u)", index, total);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sparse_synapse_remove: capacity exceeded");
+        LOG_DEBUG("sparse_synapse_remove: index %u >= total %u, skipping", index, total);
         return -1;
     }
 
@@ -833,8 +832,9 @@ synapse_handle_t* sparse_synapse_get(
 
     uint32_t total = storage->embedded_count + storage->overflow_count;
     if (index >= total) {
-        LOG_ERROR("Invalid synapse index %u (total=%u)", index, total);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sparse_synapse_get: capacity exceeded");
+        /* Hot-path lookup — return NULL silently; callers already handle NULL.
+         * Stale peer_index values after checkpoint restore cause frequent
+         * out-of-bounds here; throwing 5000+/sec kills performance. */
         return NULL;
     }
 

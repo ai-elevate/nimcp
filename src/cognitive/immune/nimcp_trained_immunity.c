@@ -413,7 +413,7 @@ void trained_immunity_destroy(trained_immunity_t* system) {
     }
 
     if (system->mutex) {
-        nimcp_mutex_free(system->mutex);
+        nimcp_mutex_destroy(system->mutex);
     }
 
     nimcp_free(system);

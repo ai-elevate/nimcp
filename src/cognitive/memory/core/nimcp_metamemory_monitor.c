@@ -1550,13 +1550,13 @@ static void history_init(metamem_monitor_t monitor) {
     monitor->history_index = 0;
 
     monitor->consolidation_history = (float*)nimcp_calloc(monitor->history_capacity, sizeof(float));
-    if (!monitor->consolidation_history) return -1;
+    if (!monitor->consolidation_history) return;
     monitor->accessibility_history = (float*)nimcp_calloc(monitor->history_capacity, sizeof(float));
-    if (!monitor->accessibility_history) return -1;
+    if (!monitor->accessibility_history) return;
     monitor->retrieval_history = (float*)nimcp_calloc(monitor->history_capacity, sizeof(float));
-    if (!monitor->retrieval_history) return -1;
+    if (!monitor->retrieval_history) return;
     monitor->timestamp_history = (uint64_t*)nimcp_calloc(monitor->history_capacity, sizeof(uint64_t));
-    if (!monitor->timestamp_history) return -1;
+    if (!monitor->timestamp_history) return;
 }
 
 static void history_cleanup(metamem_monitor_t monitor) {

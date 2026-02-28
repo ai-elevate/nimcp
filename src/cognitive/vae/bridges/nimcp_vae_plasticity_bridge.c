@@ -245,7 +245,7 @@ vae_plasticity_bridge_t* vae_plasticity_bridge_create(const vae_plasticity_bridg
     bridge->history_length = VAE_PLAST_HISTORY_SIZE;
     bridge->recon_error_history = nimcp_calloc(VAE_PLAST_HISTORY_SIZE, sizeof(float));
     bridge->kl_history = nimcp_calloc(VAE_PLAST_HISTORY_SIZE, sizeof(float));
-    if (!bridge->kl_history) return -1;
+    if (!bridge->kl_history) return NULL;
     bridge->precision_history = nimcp_calloc(VAE_PLAST_HISTORY_SIZE, sizeof(float));
 
     if (!bridge->recon_error_history || !bridge->kl_history || !bridge->precision_history) {

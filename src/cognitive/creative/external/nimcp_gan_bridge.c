@@ -870,7 +870,7 @@ int gan_generate_interpolation(gan_bridge_t* bridge,
     }
 
     for (uint32_t i = 0; i < num_steps; i++) {
-        float t = (float)i / (float)(num_steps - 1);
+        float t = (num_steps > 1) ? (float)i / (float)(num_steps - 1) : 0.0f;
 
         gan_latent_t interp;
         int rc = gan_interpolate_latent(start, end, t, &interp);

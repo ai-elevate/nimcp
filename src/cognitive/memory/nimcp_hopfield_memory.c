@@ -297,7 +297,7 @@ hopfield_memory_t* hopfield_memory_create(const hopfield_config_t* config) {
 
     memory->query_buffer = nimcp_calloc(config->pattern_dim, sizeof(float));
     memory->similarity_buffer = nimcp_calloc(config->capacity, sizeof(float));
-    if (!memory->similarity_buffer) return -1;
+    if (!memory->similarity_buffer) return NULL;
     memory->attention_buffer = nimcp_calloc(config->capacity, sizeof(float));
 
     if (!memory->query_buffer || !memory->similarity_buffer || !memory->attention_buffer) {

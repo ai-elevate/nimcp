@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 #include <stdatomic.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
@@ -83,8 +84,9 @@ struct shared_intentionality {
  *===========================================================================*/
 
 static uint64_t get_timestamp_us(void) {
-    static _Atomic uint64_t counter = 0;
-    return atomic_fetch_add(&counter, 1);
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 }
 
 /*=============================================================================
@@ -121,7 +123,6 @@ static si_instance_t* find_free_instance_slot(shared_intentionality_t* si) {
             return &si->instances[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_instance_slot: si->instances is NULL");
     return NULL;
 }
 
@@ -144,7 +145,6 @@ static shared_goal_t* find_goal(
             return &si->goals[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal: validation failed");
     return NULL;
 }
 
@@ -179,7 +179,6 @@ static goal_commitment_t* find_commitment(
             return &goal->commitments[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_commitment: validation failed");
     return NULL;
 }
 
@@ -225,7 +224,6 @@ static joint_attention_t* find_attention(
             return &si->attentions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_attention: validation failed");
     return NULL;
 }
 

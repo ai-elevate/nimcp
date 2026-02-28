@@ -294,9 +294,9 @@ vae_training_bridge_t* vae_training_bridge_create(const vae_training_bridge_conf
     /* Allocate gradient buffers */
     bridge->vae_grad_buffer = nimcp_calloc(VAE_TRAIN_GRAD_BUFFER_SIZE, sizeof(float));
     bridge->snn_grad_buffer = nimcp_calloc(VAE_TRAIN_GRAD_BUFFER_SIZE, sizeof(float));
-    if (!bridge->snn_grad_buffer) return -1;
+    if (!bridge->snn_grad_buffer) return NULL;
     bridge->combined_grad_buffer = nimcp_calloc(VAE_TRAIN_GRAD_BUFFER_SIZE, sizeof(float));
-    if (!bridge->combined_grad_buffer) return -1;
+    if (!bridge->combined_grad_buffer) return NULL;
 
     if (!bridge->vae_grad_buffer || !bridge->snn_grad_buffer ||
         !bridge->combined_grad_buffer) {

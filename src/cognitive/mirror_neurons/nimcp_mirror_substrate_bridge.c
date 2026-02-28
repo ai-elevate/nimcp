@@ -128,6 +128,14 @@ mirror_substrate_bridge_t* mirror_substrate_bridge_create(void* mirror, neural_s
 
     }
 
+    /* Initialize bridge base infrastructure (includes mutex for thread safety) */
+    if (bridge_base_init(&bridge->base, 0, "mirror_substrate") != 0) {
+        NIMCP_LOGGING_WARN("Mirror-Substrate: Failed to initialize bridge base");
+        nimcp_free(bridge);
+        bridge = NULL;
+        return NULL;
+    }
+
     bridge->mirror = mirror;
     bridge->substrate = substrate;
     bridge->config = config ? *config : mirror_substrate_default_config();
@@ -151,7 +159,10 @@ void mirror_substrate_bridge_destroy(mirror_substrate_bridge_t* bridge) {
 
     NIMCP_LOGGING_DEBUG("Destroying mirror_substrate_bridge");
 
-    if (bridge) nimcp_free(bridge);
+    if (bridge) {
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+    }
 }
 
 int mirror_substrate_bridge_update(mirror_substrate_bridge_t* bridge) {

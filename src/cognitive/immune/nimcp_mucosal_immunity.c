@@ -15,6 +15,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
@@ -240,7 +241,7 @@ mucosal_system_t* mucosal_create(
     system->m_cell_sample_capacity = system->config.max_m_cell_samples;
 
     /* Create mutex */
-    system->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
+    system->mutex = nimcp_mutex_create(NULL);
     if (!system->mutex) {
         mucosal_destroy(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mucosal_create: system->mutex is NULL");
@@ -267,7 +268,7 @@ void mucosal_destroy(mucosal_system_t* system) {
     if (system->siga_antibodies) nimcp_free(system->siga_antibodies);
     if (system->tolerances) nimcp_free(system->tolerances);
     if (system->m_cell_samples) nimcp_free(system->m_cell_samples);
-    if (system->mutex) nimcp_free(system->mutex);
+    if (system->mutex) nimcp_mutex_free(system->mutex);
 
     nimcp_free(system);
     system = NULL;
@@ -415,10 +416,20 @@ int mucosal_sample_antigen(
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_sample_antig", 0.0f);
 
+    /* Thread-safety fix: protect shared state */
+    nimcp_mutex_lock(system->mutex);
 
     mucosal_site_t* site = find_site(system, site_id);
     if (!site || !site->active) {
+        nimcp_mutex_unlock(system->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_sample_antigen: required parameter is NULL (site, site->active)");
+        return -1;
+    }
+
+    /* Re-check capacity under lock (TOCTOU fix) */
+    if (system->m_cell_sample_count >= system->m_cell_sample_capacity) {
+        nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mucosal_sample_antigen: capacity exceeded");
         return -1;
     }
 
@@ -441,6 +452,7 @@ int mucosal_sample_antigen(
     site->antigens_sampled++;
     system->stats.total_samples++;
 
+    nimcp_mutex_unlock(system->mutex);
     return 0;
 }
 
@@ -561,10 +573,20 @@ int mucosal_produce_siga(
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_produce_siga", 0.0f);
 
+    /* Thread-safety fix: protect shared state */
+    nimcp_mutex_lock(system->mutex);
 
     mucosal_site_t* site = find_site(system, site_id);
     if (!site || !site->active) {
+        nimcp_mutex_unlock(system->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_produce_siga: required parameter is NULL (site, site->active)");
+        return -1;
+    }
+
+    /* Re-check capacity under lock (TOCTOU fix) */
+    if (system->siga_count >= system->siga_capacity) {
+        nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mucosal_produce_siga: capacity exceeded");
         return -1;
     }
 
@@ -572,6 +594,7 @@ int mucosal_produce_siga(
     const brain_antigen_t* antigen = brain_immune_get_antigen(
         system->immune_system, antigen_id);
     if (!antigen) {
+        nimcp_mutex_unlock(system->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_produce_siga: antigen is NULL");
         return -1;
     }
@@ -602,6 +625,7 @@ int mucosal_produce_siga(
     system->stats.active_siga++;
     system->stats.siga_produced++;
 
+    nimcp_mutex_unlock(system->mutex);
     NIMCP_LOGGING_INFO("Produced secretory IgA antibody");
     return 0;
 }
@@ -751,6 +775,8 @@ int mucosal_check_tolerance(
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_check_tolera", 0.0f);
 
+    /* Thread-safety fix: protect shared state */
+    nimcp_mutex_lock(system->mutex);
 
     for (size_t i = 0; i < system->tolerance_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -775,10 +801,12 @@ int mucosal_check_tolerance(
         if (affinity >= threshold) {
             if (tolerance_id) *tolerance_id = tolerance->id;
             tolerance->suppressed_responses++;
+            nimcp_mutex_unlock(system->mutex);
             return 0;  /* Tolerized */
         }
     }
 
+    nimcp_mutex_unlock(system->mutex);
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mucosal_check_tolerance: validation failed");
     return -1;  /* Not tolerized */
 }
@@ -929,6 +957,8 @@ int mucosal_update(
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_update", 0.0f);
 
+    /* Thread-safety fix: protect shared state during update */
+    nimcp_mutex_lock(system->mutex);
 
     uint64_t current_time = get_current_time_ms();
 
@@ -950,8 +980,10 @@ int mucosal_update(
             /* Check if transcytosis complete */
             uint64_t elapsed = current_time - sample->transcytosis_start;
             if (elapsed >= system->config.m_cell_transcytosis_ms) {
-                /* Process sample */
+                /* Process sample — unlock to avoid recursive lock in process_m_cell_sample */
+                nimcp_mutex_unlock(system->mutex);
                 mucosal_process_m_cell_sample(system, sample->id);
+                nimcp_mutex_lock(system->mutex);
             }
         }
     }
@@ -1001,6 +1033,7 @@ int mucosal_update(
         system->stats.avg_barrier_integrity = total_integrity / active_sites;
     }
 
+    nimcp_mutex_unlock(system->mutex);
     return 0;
 }
 

@@ -1117,11 +1117,11 @@ replay_batch_t* replay_batch_create(uint32_t batch_size,
     }
 
     batch->states = nimcp_calloc(batch_size * state_dim, sizeof(float));
-    if (!batch->states) return -1;
+    if (!batch->states) return NULL;
     batch->rewards = nimcp_calloc(batch_size, sizeof(float));
-    if (!batch->rewards) return -1;
+    if (!batch->rewards) return NULL;
     batch->is_weights = nimcp_calloc(batch_size, sizeof(float));
-    if (!batch->is_weights) return -1;
+    if (!batch->is_weights) return NULL;
     batch->indices = nimcp_calloc(batch_size, sizeof(uint32_t));
 
     if (!batch->states || !batch->rewards || !batch->is_weights || !batch->indices) {
@@ -1132,7 +1132,7 @@ replay_batch_t* replay_batch_create(uint32_t batch_size,
 
     if (action_dim > 0) {
         batch->actions = nimcp_calloc(batch_size * action_dim, sizeof(float));
-        if (!batch->actions) return -1;
+        if (!batch->actions) return NULL;
         batch->next_states = nimcp_calloc(batch_size * state_dim, sizeof(float));
     }
 
@@ -1178,7 +1178,7 @@ replay_sweep_result_t* replay_sweep_result_create(uint32_t max_length,
 
     result->states = nimcp_calloc(max_length, sizeof(float*));
     result->timestamps = nimcp_calloc(max_length, sizeof(uint64_t));
-    if (!result->timestamps) return -1;
+    if (!result->timestamps) return NULL;
     result->rewards = nimcp_calloc(max_length, sizeof(float));
 
     if (!result->states || !result->timestamps || !result->rewards) {

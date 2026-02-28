@@ -623,7 +623,7 @@ int vae_latent_interpolate_path(const nimcp_tensor_t* z1,
     }
 
     for (uint32_t s = 0; s < num_steps; s++) {
-        float alpha = (float)s / (float)(num_steps - 1);
+        float alpha = (num_steps > 1) ? (float)s / (float)(num_steps - 1) : 0.0f;
 
         int result = 0;
         if (use_slerp) {

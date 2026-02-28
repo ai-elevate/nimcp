@@ -47,7 +47,7 @@ rcog_orchestrator_t* rcog_orchestrator_create(
     /* Initialize trace if enabled */
     if (orch->config.enable_trace) {
         orch->trace = nimcp_calloc(1, sizeof(rcog_trace_t));
-        if (!orch->trace) return -1;
+        if (!orch->trace) return NULL;
         orch->trace_enabled = true;
     }
 

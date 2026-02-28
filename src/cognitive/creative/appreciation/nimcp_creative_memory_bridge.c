@@ -443,7 +443,7 @@ uint32_t creative_memory_recall_by_emotion(creative_memory_bridge_t* bridge,
     }
 
     /* Simple bubble sort for top results (would use better algo for large N) */
-    for (uint32_t i = 0; i < bridge->episodic_count - 1; i++) {
+    for (uint32_t i = 0; i + 1 < bridge->episodic_count; i++) {
         for (uint32_t j = 0; j < bridge->episodic_count - i - 1; j++) {
             if (scores[j].score < scores[j + 1].score) {
                 scored_memory_t tmp = scores[j];

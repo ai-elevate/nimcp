@@ -1261,12 +1261,14 @@ const char* failure_predictor_get_highest_priority_action(
         return NULL;
     }
 
-    // Get highest probability prediction (already sorted)
-    failure_prediction_t* top = &predictor->predictions[0];
+    /* Thread-safety fix: copy prediction data to stack before releasing lock,
+     * because the pointer into predictor->predictions[] may be invalidated
+     * after unlock if another thread modifies the predictions array. */
+    failure_prediction_t top_copy = predictor->predictions[0];
 
     unlock(predictor);
 
-    return failure_predictor_get_preventive_action(predictor, top);
+    return failure_predictor_get_preventive_action(predictor, &top_copy);
 }
 
 /* ============================================================================

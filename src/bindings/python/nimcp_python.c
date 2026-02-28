@@ -3106,6 +3106,25 @@ static PyObject* Brain_get_is_frozen(BrainObject* self, void* closure) {
     Py_RETURN_FALSE;
 }
 
+/**
+ * WHAT: Toggle fast training mode (skip biological subsystems)
+ * WHY:  5-10x speedup for bulk training by skipping VAE, attention,
+ *       engram, neuromodulators, emotions, cortical columns, etc.
+ * HOW:  Sets brain->config.fast_training_mode flag
+ */
+static PyObject* Brain_set_fast_training(BrainObject* self, PyObject* args) {
+    int enabled = 1;
+    if (!PyArg_ParseTuple(args, "|p", &enabled)) {
+        return NULL;
+    }
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    self->brain->internal_brain->config.fast_training_mode = (bool)enabled;
+    Py_RETURN_TRUE;
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
      "Learn from example: learn(features, label, confidence=1.0) -> float (loss value, not bool)"},
@@ -3149,6 +3168,10 @@ static PyMethodDef Brain_methods[] = {
      "Configure training pipeline: configure_training(learning_rate=0.001, weight_decay=0.0001, gradient_clip=1.0) -> True\n"
      "WARNING: Must be called before starting concurrent training threads.\n"
      "This method mutates brain config without locking — not thread-safe."},
+    {"set_fast_training", (PyCFunction)Brain_set_fast_training, METH_VARARGS,
+     "Toggle fast training mode: set_fast_training(True/False)\n"
+     "When enabled, skips biological subsystems (VAE, attention, engram, emotions, etc.)\n"
+     "for 5-10x speedup. Core learning (GPU forward + parallel backprop) still runs."},
 
     // Training metrics
     {"get_accuracy", (PyCFunction)Brain_get_accuracy, METH_NOARGS,

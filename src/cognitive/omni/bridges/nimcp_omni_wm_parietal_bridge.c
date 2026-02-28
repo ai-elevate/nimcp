@@ -1793,9 +1793,9 @@ nimcp_error_t omni_wm_parietal_bridge_set_attention_focus(
                     }
 
                     /* Map grid to spatial coordinates */
-                    float gx = (float)x / (float)(dim - 1) - 0.5f;
-                    float gy = (float)y / (float)(dim - 1) - 0.5f;
-                    float gz = (float)z / (float)(dim - 1) - 0.5f;
+                    float gx = (dim > 1) ? (float)x / (float)(dim - 1) - 0.5f : 0.0f;
+                    float gy = (dim > 1) ? (float)y / (float)(dim - 1) - 0.5f : 0.0f;
+                    float gz = (dim > 1) ? (float)z / (float)(dim - 1) - 0.5f : 0.0f;
 
                     /* Distance from focus */
                     float fx = gx - focus->x;

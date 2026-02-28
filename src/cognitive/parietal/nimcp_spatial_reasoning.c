@@ -320,7 +320,7 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
     }
 
     spatial_reasoning_t* sr = nimcp_calloc(1, sizeof(spatial_reasoning_t));
-    if (!sr) return -1;
+    if (!sr) return NULL;
     NIMCP_API_CHECK_ALLOC(sr, "Failed to allocate spatial reasoning");
 
     sr->config = cfg;
@@ -1068,7 +1068,7 @@ spatial_query_result_t* spatial_query_result_create(uint32_t capacity) {
 
 
     spatial_query_result_t* result = nimcp_calloc(1, sizeof(spatial_query_result_t));
-    if (!result) return -1;
+    if (!result) return NULL;
     NIMCP_API_CHECK_ALLOC(result, "Failed to allocate spatial query result");
 
     result->objects = nimcp_calloc(capacity, sizeof(spatial_object_t*));

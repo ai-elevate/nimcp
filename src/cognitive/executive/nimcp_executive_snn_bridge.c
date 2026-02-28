@@ -255,18 +255,27 @@ executive_snn_bridge_t* executive_snn_create(const executive_snn_config_t* confi
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
-    if (!bridge->encoding_buffer) return -1;
-    bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return -1;
-    bridge->control_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->control_buffer) return -1;
-    bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->prev_state) return -1;
-
-    if (!bridge->encoding_buffer || !bridge->output_buffer ||
-        !bridge->control_buffer || !bridge->prev_state) {
+    if (!bridge->encoding_buffer) {
         executive_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_snn_create: encoding_buffer alloc failed");
+        return NULL;
+    }
+    bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
+    if (!bridge->output_buffer) {
+        executive_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_snn_create: output_buffer alloc failed");
+        return NULL;
+    }
+    bridge->control_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->control_buffer) {
+        executive_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_snn_create: control_buffer alloc failed");
+        return NULL;
+    }
+    bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->prev_state) {
+        executive_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_snn_create: prev_state alloc failed");
         return NULL;
     }
 
