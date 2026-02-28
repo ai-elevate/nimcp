@@ -29,6 +29,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import numpy as np
+
 from cognitive_orchestrator import CognitiveOrchestrator
 from instructor_agent import InstructorAgent, InstructorConfig
 
@@ -396,6 +398,14 @@ class School:
         # Per-domain accuracy history for stall detection via CognitiveOrchestrator
         self._domain_accuracy_history: Dict[str, List[float]] = {}
 
+        # Phase 4: Domain similarity matrix & cross-domain transfer
+        self._domain_centroids: Dict[str, np.ndarray] = {}
+        self._domain_similarity: Dict[str, Dict[str, float]] = {}
+        self._last_similarity_update = 0.0
+        self._similarity_update_interval = 120.0  # Update every 2 min
+        self._last_transfer_check = 0.0
+        self._transfer_check_interval = 180.0  # Check transfer opportunities every 3 min
+
         self.instructors: List[InstructorAgent] = []
         self._start_time = 0.0
         self._last_recess = 0.0
@@ -630,6 +640,138 @@ class School:
         self.logger.log(f"[School] Hot-reload complete: {added} new instructor(s), "
                         f"{len(self._pending_instructors)} pending")
 
+    # ------------------------------------------------------------------
+    # Phase 4: Domain Similarity & Cross-Domain Transfer
+    # ------------------------------------------------------------------
+
+    def _update_domain_centroids(self):
+        """Collect centroids from all active instructors and compute similarity."""
+        for agent in self.instructors:
+            centroid = agent.get_domain_centroid()
+            if centroid is not None:
+                self._domain_centroids[agent.config.domain] = centroid
+
+        # Compute pairwise cosine similarity
+        domains = list(self._domain_centroids.keys())
+        if len(domains) < 2:
+            return
+
+        for i, d1 in enumerate(domains):
+            if d1 not in self._domain_similarity:
+                self._domain_similarity[d1] = {}
+            c1 = self._domain_centroids[d1]
+            norm1 = np.linalg.norm(c1)
+            if norm1 < 1e-8:
+                continue
+            for j, d2 in enumerate(domains):
+                if i >= j:
+                    continue
+                c2 = self._domain_centroids[d2]
+                norm2 = np.linalg.norm(c2)
+                if norm2 < 1e-8:
+                    continue
+                sim = float(np.dot(c1, c2) / (norm1 * norm2))
+                if d2 not in self._domain_similarity:
+                    self._domain_similarity[d2] = {}
+                self._domain_similarity[d1][d2] = sim
+                self._domain_similarity[d2][d1] = sim
+
+    def _attempt_cross_domain_transfer(self):
+        """Transfer knowledge from high-mastery to low-mastery similar domains."""
+        if not self._domain_similarity:
+            return
+
+        # Find mastery levels
+        domain_mastery = {}
+        for agent in self.instructors:
+            domain_mastery[agent.config.domain] = (
+                agent.total_correct / max(agent.total_examples, 1))
+
+        transfers = 0
+        for d_high, acc_high in domain_mastery.items():
+            if acc_high < 0.75:
+                continue  # Not mastered enough to transfer from
+            for d_low, acc_low in domain_mastery.items():
+                if d_low == d_high or acc_low > 0.40:
+                    continue  # Already doing okay
+                sim = self._domain_similarity.get(d_high, {}).get(d_low, 0.0)
+                if sim < 0.5:
+                    continue  # Not similar enough
+
+                # Transfer: put high-mastery exemplars onto cross-domain queue
+                # with low-mastery domain labels (at reduced LR)
+                for agent in self.instructors:
+                    if agent.config.domain == d_high and agent.adversarial_bank:
+                        exemplars = random.sample(
+                            agent.adversarial_bank,
+                            min(5, len(agent.adversarial_bank)))
+                        for feat, _ in exemplars:
+                            try:
+                                self.cross_domain_queue.put_nowait({
+                                    "domain": d_low,
+                                    "features": feat,
+                                    "label": f"transfer:{d_high}->{d_low}",
+                                    "modality": agent.config.modality,
+                                    "transfer_lr_scale": 0.3,
+                                })
+                            except Exception:
+                                break
+                        transfers += 1
+                        break
+
+        if transfers > 0:
+            self.logger.log(f"[School] Cross-domain transfer: {transfers} "
+                            f"domain pair(s) eligible")
+
+    def _log_domain_similarity(self):
+        """Log domain similarity matrix."""
+        if not self._domain_similarity:
+            return
+        lines = ["\n[School] Domain Similarity Matrix (top pairs):"]
+        pairs = []
+        seen = set()
+        for d1, sims in self._domain_similarity.items():
+            for d2, sim in sims.items():
+                key = tuple(sorted([d1, d2]))
+                if key not in seen:
+                    seen.add(key)
+                    pairs.append((d1, d2, sim))
+        pairs.sort(key=lambda x: x[2], reverse=True)
+        for d1, d2, sim in pairs[:10]:
+            lines.append(f"  {d1:15s} <-> {d2:15s} : {sim:.3f}")
+        self.logger.log('\n'.join(lines))
+
+    # ------------------------------------------------------------------
+    # Phase 3: Enhanced Metacognition Actions
+    # ------------------------------------------------------------------
+
+    def _metacognition_act(self, assessment: Dict[str, dict]):
+        """Take real actions based on metacognitive assessment."""
+        for domain, info in assessment.items():
+            stall = info.get('stall_count', 0)
+
+            # Stall > 10: Force method switch signal via cross-domain queue
+            if stall > 10:
+                try:
+                    self.cross_domain_queue.put_nowait({
+                        "domain": domain,
+                        "action": "force_method_switch",
+                        "from": "stall_metacog",
+                    })
+                except Exception:
+                    pass
+
+            # Stall > 20: Force consolidation + LR reset
+            if stall > 20:
+                self.logger.log(f"[Metacognition] {domain}: stall={stall}, "
+                                f"forcing consolidation + LR restart")
+                self._call_recess()
+
+            # Mastery > 0.9: reduce frequency (already handled by priority)
+            if info.get('ema_accuracy', 0) > 0.9:
+                # Already reducing via priority — just log
+                pass
+
     def _coordinator_loop(self):
         """Main coordinator loop — ticks every 1s."""
         self._last_config_check = time.time()
@@ -662,11 +804,24 @@ class School:
             # Drain instructor reports
             self._drain_reports()
 
+            # Phase 4: Update domain similarity matrix periodically
+            if now - self._last_similarity_update >= self._similarity_update_interval:
+                self._update_domain_centroids()
+                self._log_domain_similarity()
+                self._last_similarity_update = now
+
+            # Phase 4: Cross-domain transfer check
+            if now - self._last_transfer_check >= self._transfer_check_interval:
+                self._attempt_cross_domain_transfer()
+                self._last_transfer_check = now
+
             # Metacognitive assessment every 60s
             if now - self._last_metacog >= 60.0:
                 assessment = self.metacognition.assess()
                 if assessment:
                     self.logger.log(self.metacognition.format_dashboard())
+                    # Phase 3: Take real actions based on assessment
+                    self._metacognition_act(assessment)
                     stalled = self.metacognition.get_stalled_domains()
                     if stalled:
                         self.logger.log(f"[Metacognition] STALLED domains: {stalled}")
@@ -763,13 +918,35 @@ class School:
                 self._school_log_file.flush()
 
     def _call_recess(self):
-        """Full-system consolidation pause."""
+        """Full-system consolidation with multi-domain interleaved replay."""
         self.logger.log("\n[School] === RECESS — Memory Consolidation ===")
         recess_start = time.time()
 
         # Signal all instructors to pause
         self.recess_event.set()
         time.sleep(0.5)  # Let threads notice
+
+        # Phase 4: Multi-domain interleaved replay before consolidation
+        # Gather exemplars from ALL active instructors (round-robin)
+        all_exemplars = []
+        for agent in self.instructors:
+            if agent.adversarial_bank:
+                samples = random.sample(
+                    agent.adversarial_bank,
+                    min(10, len(agent.adversarial_bank)))
+                for feat, lbl in samples:
+                    all_exemplars.append((feat, lbl, agent.config.domain))
+        if all_exemplars:
+            random.shuffle(all_exemplars)
+            replayed = 0
+            for feat, lbl, dom in all_exemplars[:50]:
+                try:
+                    self.brain.learn(feat, lbl, 0.3)  # Low LR replay
+                    replayed += 1
+                except Exception:
+                    break
+            self.logger.log(f"[School] Interleaved replay: {replayed} examples "
+                            f"from {len(set(d for _, _, d in all_exemplars))} domains")
 
         # Consolidation
         try:

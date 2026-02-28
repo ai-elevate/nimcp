@@ -1807,6 +1807,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     network->config.base_config.min_weight,
                     network->config.base_config.max_weight,
                     example->target, output, example->target_size,
+                    1.0f,
                     &grad_norm);
             }
             network->last_grad_norm = grad_norm;
@@ -1889,6 +1890,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
+                        1.0f,
                         &grad_norm);
                 }
                 network->last_grad_norm = grad_norm;
@@ -1959,6 +1961,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
+                        1.0f,
                         &grad_norm);
 
                     // Phase 3: Biological plasticity AFTER backprop

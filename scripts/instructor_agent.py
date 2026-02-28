@@ -21,7 +21,10 @@ Teaching Methods:
 Modalities: text, audio, visual, speech
 """
 
+import hashlib
+import heapq
 import json
+import math
 import os
 import random
 import struct
@@ -33,9 +36,39 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import numpy as np
+
 from socratic_trainer import SocraticTrainer, SocraticConfig
 from cognitive_orchestrator import CognitiveOrchestrator
 from safety_gate import SafetyGate, SafetyConfig
+
+# ---------------------------------------------------------------------------
+# Lazy-loaded sentence-transformer embedding model (Phase 1)
+# ---------------------------------------------------------------------------
+_EMBEDDING_MODEL = None
+_EMBEDDING_LOCK = threading.Lock()
+_EMBEDDING_AVAILABLE = None  # None = not checked yet
+
+def _get_embedding_model():
+    """Lazy-load sentence-transformer model (thread-safe singleton)."""
+    global _EMBEDDING_MODEL, _EMBEDDING_AVAILABLE
+    if _EMBEDDING_AVAILABLE is False:
+        return None
+    if _EMBEDDING_MODEL is not None:
+        return _EMBEDDING_MODEL
+    with _EMBEDDING_LOCK:
+        if _EMBEDDING_MODEL is not None:
+            return _EMBEDDING_MODEL
+        if _EMBEDDING_AVAILABLE is False:
+            return None
+        try:
+            from sentence_transformers import SentenceTransformer
+            _EMBEDDING_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
+            _EMBEDDING_AVAILABLE = True
+            return _EMBEDDING_MODEL
+        except (ImportError, Exception):
+            _EMBEDDING_AVAILABLE = False
+            return None
 
 try:
     from streaming_train import StreamingDatasetProcessor, StreamConfig
@@ -135,10 +168,18 @@ class MethodStats:
         return methods[-1]
 
     def update_weights(self):
-        """Meta-learning: adjust method weights based on performance."""
+        """Meta-learning: adjust method weights based on recent performance delta.
+
+        Phase 3: Methods that improve accuracy get boosted, stalled methods
+        get reduced (but never zeroed — exploration floor of 0.1).
+        """
         for m in TeachingMethod:
+            s = self._stats.get(m.value, {})
+            recent = s.get("attempts", 0)
             acc = self.accuracy(m.value)
-            self._weights[m.value] = 0.8 * self._weights[m.value] + 0.2 * (0.5 + acc)
+            # Blend recent accuracy with weight history
+            new_w = 0.7 * self._weights[m.value] + 0.3 * (0.3 + 0.7 * acc)
+            self._weights[m.value] = max(new_w, 0.1)  # exploration floor
 
     def summary(self) -> Dict:
         return {
@@ -206,6 +247,29 @@ class InstructorAgent(threading.Thread):
         self._last_loss = 0.0
         self._last_grad_norm = 0.0
         self._last_decision: Optional[dict] = None
+
+        # Phase 2: Cosine annealing LR scheduler (per-instructor)
+        self._lr_scheduler = _CosineAnnealingLR(
+            base_lr=1.0, min_lr=0.05, cycle_steps=5000, warmup_steps=500)
+        self._lr_step_count = 0
+
+        # Phase 3: Spaced repetition + difficulty tracking
+        self._spaced_replay: list = []  # heap: (next_review_step, interval, features, label)
+        self._example_difficulty: dict = {}  # hash(features) -> fail_count
+        self._peak_accuracy = 0.0
+        self._method_accuracy_delta: Dict[str, deque] = {
+            m.value: deque(maxlen=200) for m in TeachingMethod}
+
+        # Phase 3: Self-assessment holdout
+        self._holdout_buffer: List[Tuple[list, str]] = []  # (features, label)
+        self._holdout_max = 50
+        self._last_self_assessment_step = 0
+        self._self_assessment_interval = 500
+        self._held_out_accuracy: float = 0.0
+
+        # Phase 4: Domain centroid tracking (running EMA)
+        self._domain_centroid: Optional[np.ndarray] = None
+        self._centroid_count = 0
 
         # Logging
         self._log_dir = log_dir
@@ -474,21 +538,28 @@ class InstructorAgent(threading.Thread):
     # --- Brain-State LR Modulation ---
 
     def _modulate_lr(self, base_lr: float) -> float:
-        """Modulate learning rate through the brain's decision cycle.
+        """Modulate learning rate through cosine schedule + decision cycle.
 
-        If the decision cycle (Layers 1/2/3) has run recently, uses its
-        consensus lr_factor. Otherwise falls back to the unified 8-factor
-        pipeline. Falls back to base_lr if neither is available.
+        Pipeline:
+          1. Cosine annealing with warm restarts (per-instructor)
+          2. Decision cycle lr_factor (Layers 1/2/3) multiplied on top
+          3. Fallback to unified 8-factor pipeline if no decision
         """
-        # Use decision cycle lr_factor if available and recent
+        # Step 1: Cosine annealing schedule
+        self._lr_step_count += 1
+        schedule_factor = self._lr_scheduler.get_lr()
+
+        # Step 2: Decision cycle lr_factor if available
         if self._last_decision is not None:
-            lr_factor = self._last_decision.get("lr_factor", 1.0)
-            return base_lr * lr_factor
-        # Fallback to unified pipeline
+            dc_factor = self._last_decision.get("lr_factor", 1.0)
+            return base_lr * schedule_factor * dc_factor
+
+        # Step 3: Fallback to unified pipeline
         try:
-            return float(self.cognitive.compute_adaptive_lr(base_lr))
+            adaptive = float(self.cognitive.compute_adaptive_lr(base_lr))
+            return adaptive * schedule_factor
         except Exception:
-            return base_lr
+            return base_lr * schedule_factor
 
     def _update_metrics_and_decide(self, loss: float):
         """Track rolling metrics and run decision cycle at report intervals.
@@ -556,8 +627,22 @@ class InstructorAgent(threading.Thread):
     def _execute_method(self, method: TeachingMethod, features: list,
                         label: str, domain: str,
                         grade: Optional[DataGrade]) -> Tuple[bool, float]:
-        """Execute a teaching method. Returns (correct, loss)."""
+        """Execute a teaching method with dynamic learning hooks."""
         conf_mod = grade.confidence_modifier if grade else 1.0
+
+        # Phase 3: Difficulty-scaled LR modifier
+        diff_scale = self._get_difficulty_lr_scale(features)
+        conf_mod *= diff_scale
+
+        # Phase 3: Process any due spaced-replay examples
+        self._spaced_replay_tick()
+
+        # Phase 4: Update domain centroid
+        self._update_domain_centroid(features)
+
+        # Phase 3: Collect holdout samples for self-assessment
+        if random.random() < 0.02:  # 2% holdout rate
+            self._maybe_collect_holdout(features, label)
 
         if method == TeachingMethod.SOCRATIC:
             return self._method_socratic(features, label, domain, conf_mod)
@@ -577,9 +662,14 @@ class InstructorAgent(threading.Thread):
             return self._method_socratic(features, label, domain, conf_mod)
 
     def _method_socratic(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
-        """Predict-before-learn with adaptive confidence."""
+        """Predict-before-learn with adaptive confidence + spaced replay."""
         pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
+
+        # Phase 3: Skip easy examples at high mastery
+        if self._should_skip_easy(features, conf) and correct:
+            self.socratic.mastery.record(domain, correct)
+            return correct, 0.0
 
         # Adaptive confidence scaling
         if correct and conf > 0.7:
@@ -595,6 +685,11 @@ class InstructorAgent(threading.Thread):
         loss = 0.0 if correct else (1.0 - conf)
         self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
+
+        # Phase 3: Schedule failed examples for spaced repetition
+        if not correct:
+            self._spaced_replay_push(features, label)
+
         return correct, loss
 
     def _method_curriculum(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
@@ -671,14 +766,21 @@ class InstructorAgent(threading.Thread):
         return correct, loss
 
     def _method_adversarial(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
-        """Find weaknesses, store hard examples, re-teach."""
+        """Find weaknesses, schedule spaced review, re-teach."""
         pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
-        # Store hard examples
+        # Phase 3: Skip easy examples at high mastery
+        if self._should_skip_easy(features, conf) and correct:
+            self.socratic.mastery.record(domain, correct)
+            return correct, 0.0
+
+        # Store hard examples in both adversarial_bank AND spaced replay
         if not correct or conf < 0.5:
             if len(self.adversarial_bank) < 500:
                 self.adversarial_bank.append((features, label))
+            # Phase 3: Schedule for spaced repetition
+            self._spaced_replay_push(features, label)
 
         # Teach with boosted confidence on hard examples
         lr = (0.9 if not correct else 0.4) * conf_mod
@@ -867,6 +969,10 @@ class InstructorAgent(threading.Thread):
         except Exception:
             pass
 
+        # Phase 3: Run self-assessment and metacognition checks
+        self._maybe_self_assess()
+        self._metacognition_check()
+
         # Include decision cycle state if available
         decision_info = None
         if self._last_decision is not None:
@@ -921,13 +1027,247 @@ class InstructorAgent(threading.Thread):
             "error": self._error,
         }
 
+    # ------------------------------------------------------------------
+    # Phase 3: Spaced Repetition
+    # ------------------------------------------------------------------
+
+    def _spaced_replay_push(self, features: list, label: str):
+        """Schedule a failed example for spaced review."""
+        key = self._feature_hash(features)
+        # Reset interval on failure
+        interval = 1
+        next_step = self.total_examples + interval
+        heapq.heappush(self._spaced_replay, (next_step, interval, features, label))
+        # Track difficulty
+        self._example_difficulty[key] = self._example_difficulty.get(key, 0) + 1
+
+    def _spaced_replay_tick(self):
+        """Process any due spaced-replay examples."""
+        reviewed = 0
+        while (self._spaced_replay and
+               self._spaced_replay[0][0] <= self.total_examples and
+               reviewed < 5):  # max 5 replays per tick
+            next_step, interval, features, label = heapq.heappop(self._spaced_replay)
+            pred, conf = self._predict_domain(features, self.config.domain)
+            correct = (pred == label)
+            # Always re-learn (even if correct, reinforce)
+            self.brain.learn(features, label, self._modulate_lr(0.6))
+            self.socratic.mastery.record(self.config.domain, correct)
+            if correct:
+                # Extend interval (exponential backoff)
+                new_interval = min(interval * 2, 256)
+            else:
+                # Reset interval
+                new_interval = 1
+            new_step = self.total_examples + new_interval
+            heapq.heappush(self._spaced_replay, (new_step, new_interval, features, label))
+            reviewed += 1
+
+    def _feature_hash(self, features: list) -> str:
+        """Fast hash of a feature vector for difficulty tracking."""
+        if len(features) > 16:
+            sample = features[:8] + features[-8:]
+        else:
+            sample = features
+        return hashlib.md5(str(sample).encode()).hexdigest()[:12]
+
+    # ------------------------------------------------------------------
+    # Phase 3: Difficulty-Gated Curriculum
+    # ------------------------------------------------------------------
+
+    def _should_skip_easy(self, features: list, conf: float) -> bool:
+        """Skip examples the brain already knows with high confidence."""
+        mastery = self.socratic.mastery.mastery(self.config.domain)
+        if mastery < 0.5:
+            # Low mastery: skip nothing
+            return False
+        if mastery > 0.8 and conf > 0.95:
+            # High mastery: skip only very confident
+            return True
+        if conf > 0.98:
+            # Skip extremely confident regardless
+            return True
+        return False
+
+    def _get_difficulty_lr_scale(self, features: list) -> float:
+        """Scale LR based on example difficulty relative to current mastery."""
+        key = self._feature_hash(features)
+        fail_count = self._example_difficulty.get(key, 0)
+        mastery = self.socratic.mastery.mastery(self.config.domain)
+        if mastery < 0.5:
+            # Low mastery: boost easy examples (foundation building)
+            return 1.0 if fail_count == 0 else 0.8
+        elif mastery < 0.8:
+            # Mid mastery: balanced
+            return 0.7 + 0.3 * min(fail_count / 3.0, 1.0)
+        else:
+            # High mastery: focus on hard examples
+            return 0.3 + 0.7 * min(fail_count / 3.0, 1.0)
+
+    # ------------------------------------------------------------------
+    # Phase 3: Self-Assessment
+    # ------------------------------------------------------------------
+
+    def _maybe_collect_holdout(self, features: list, label: str):
+        """Reservoir-sample into holdout buffer for self-assessment."""
+        if len(self._holdout_buffer) < self._holdout_max:
+            self._holdout_buffer.append((features, label))
+        else:
+            # Reservoir sampling
+            idx = random.randint(0, self.total_examples)
+            if idx < self._holdout_max:
+                self._holdout_buffer[idx] = (features, label)
+
+    def _maybe_self_assess(self):
+        """Run self-assessment cycle if due."""
+        if (self.total_examples - self._last_self_assessment_step
+                < self._self_assessment_interval):
+            return
+        if len(self._holdout_buffer) < 20:
+            return
+        self._last_self_assessment_step = self.total_examples
+        domain = self.config.domain
+
+        # Pure prediction on holdout (no learning)
+        correct = 0
+        for features, label in self._holdout_buffer:
+            pred, conf = self._predict_domain(features, domain)
+            if pred == label:
+                correct += 1
+        self._held_out_accuracy = correct / len(self._holdout_buffer)
+
+        train_acc = self.total_correct / max(self.total_examples, 1)
+        gap = train_acc - self._held_out_accuracy
+
+        self._log_example({
+            "action": "SELF_ASSESS",
+            "held_out_accuracy": round(self._held_out_accuracy, 4),
+            "training_accuracy": round(train_acc, 4),
+            "gap": round(gap, 4),
+            "holdout_size": len(self._holdout_buffer),
+            "verdict": "overfitting" if gap > 0.1 else "good_generalization",
+        })
+
+        # If overfitting: reduce LR via scheduler reset to slow down
+        if gap > 0.15:
+            self._lr_scheduler.base_lr *= 0.8
+            self._lr_scheduler.base_lr = max(self._lr_scheduler.base_lr, 0.1)
+
+    # ------------------------------------------------------------------
+    # Phase 3: Metacognition-Driven Actions
+    # ------------------------------------------------------------------
+
+    def _metacognition_check(self):
+        """Check for stall/regression and take corrective action."""
+        train_acc = self.total_correct / max(self.total_examples, 1)
+
+        # Track peak accuracy
+        if train_acc > self._peak_accuracy:
+            self._peak_accuracy = train_acc
+
+        # Detect regression (>5% drop from peak)
+        if self._peak_accuracy > 0.3 and train_acc < self._peak_accuracy - 0.05:
+            # Temporary LR boost to escape
+            self._lr_scheduler.base_lr = min(self._lr_scheduler.base_lr * 1.3, 1.5)
+            self._log_example({
+                "action": "METACOG_REGRESSION",
+                "peak": round(self._peak_accuracy, 4),
+                "current": round(train_acc, 4),
+                "new_base_lr": round(self._lr_scheduler.base_lr, 4),
+            })
+
+    # ------------------------------------------------------------------
+    # Phase 4: Domain Centroid Tracking
+    # ------------------------------------------------------------------
+
+    def _update_domain_centroid(self, features: list):
+        """Update running EMA centroid for this domain."""
+        feat_arr = np.array(features, dtype=np.float32)
+        if self._domain_centroid is None:
+            self._domain_centroid = feat_arr.copy()
+            self._centroid_count = 1
+        else:
+            alpha = min(0.01, 2.0 / (self._centroid_count + 1))
+            self._domain_centroid = (1 - alpha) * self._domain_centroid + alpha * feat_arr
+            self._centroid_count += 1
+
+    def get_domain_centroid(self) -> Optional[np.ndarray]:
+        """Return the running domain centroid (for cross-domain similarity)."""
+        return self._domain_centroid
+
+
+# ---------------------------------------------------------------------------
+# Cosine Annealing LR Scheduler (per-instructor)
+# ---------------------------------------------------------------------------
+
+class _CosineAnnealingLR:
+    """Cosine annealing with warm restarts — returns a multiplicative factor."""
+
+    def __init__(self, base_lr: float = 1.0, min_lr: float = 0.05,
+                 cycle_steps: int = 5000, warmup_steps: int = 500):
+        self.base_lr = base_lr
+        self.min_lr = min_lr
+        self.cycle_steps = cycle_steps
+        self.warmup_steps = warmup_steps
+        self.step_count = 0
+
+    def get_lr(self) -> float:
+        self.step_count += 1
+        # Warmup phase
+        if self.step_count <= self.warmup_steps:
+            return self.min_lr + (self.base_lr - self.min_lr) * (
+                self.step_count / self.warmup_steps)
+        # Cosine annealing with warm restarts
+        cycle_pos = (self.step_count - self.warmup_steps) % self.cycle_steps
+        cosine_factor = 0.5 * (1.0 + math.cos(math.pi * cycle_pos / self.cycle_steps))
+        return self.min_lr + (self.base_lr - self.min_lr) * cosine_factor
+
+    def reset(self):
+        self.step_count = 0
+
 
 # ---------------------------------------------------------------------------
 # Feature Utilities
 # ---------------------------------------------------------------------------
 
 def _text_to_features(text: str, num_inputs: int) -> list:
-    """Text -> feature encoding using shared benchmark_datasets encoder."""
+    """Hybrid text feature encoding: semantic embeddings + character n-grams.
+
+    Layout (for num_inputs=1024):
+      Dims 0-511:   Sentence-transformer embedding (384d zero-padded to 512)
+      Dims 512-1023: Character n-grams (existing encoder, scaled to 512)
+    Falls back to pure n-grams if sentence-transformers unavailable.
+    """
+    model = _get_embedding_model()
+    if model is not None:
+        try:
+            half = num_inputs // 2
+            # Semantic half: sentence-transformer embedding
+            embedding = model.encode(text[:1000], convert_to_numpy=True)
+            sem_features = np.zeros(half, dtype=np.float32)
+            copy_len = min(len(embedding), half)
+            sem_features[:copy_len] = embedding[:copy_len]
+
+            # N-gram half
+            ngram_features = _text_to_ngram_features(text, half)
+
+            # Combine and L2-normalize
+            combined = np.concatenate([sem_features, np.array(ngram_features, dtype=np.float32)])
+            norm = np.linalg.norm(combined)
+            if norm > 1e-6:
+                combined /= norm
+            return combined.tolist()
+        except Exception:
+            pass  # Fall through to pure n-grams
+    return _text_to_ngram_features(text, num_inputs)
+
+
+def _text_to_ngram_features(text: str, num_inputs: int) -> list:
+    """Text -> character n-gram feature encoding (fallback).
+
+    Original 4-channel n-gram encoder kept as fallback when
+    sentence-transformers is unavailable.
+    """
     try:
         from benchmark_datasets import text_to_features
         return text_to_features(text, num_inputs)

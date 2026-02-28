@@ -358,6 +358,7 @@ int backprop_sparse_full(
     float min_weight, float max_weight,
     const float* target, const float* output,
     uint32_t target_size,
+    float max_grad_norm,
     float* out_grad_norm)
 {
     if (!net || num_layers < 2 || !layer_sizes || !target || !output || !out_grad_norm)
@@ -432,6 +433,14 @@ int backprop_sparse_full(
         } else {
             float fan_in = (float)prev_size;
             layer_lr = learning_rate / sqrtf(fmaxf(fan_in, 1.0f));
+        }
+
+        // Global gradient norm clipping: scale layer_lr if grad norm exceeds threshold
+        if (max_grad_norm > 0.0f && grad_norm_sq > 0.0) {
+            float running_norm = (float)sqrt(grad_norm_sq);
+            if (running_norm > max_grad_norm) {
+                layer_lr *= max_grad_norm / running_norm;
+            }
         }
 
         nsparse_prev = 0;

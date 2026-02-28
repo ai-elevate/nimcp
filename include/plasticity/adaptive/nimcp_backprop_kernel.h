@@ -35,6 +35,7 @@ extern "C" {
  * @param target        Target vector [target_size]
  * @param output        Network output vector [target_size]
  * @param target_size   Length of target/output vectors
+ * @param max_grad_norm  Maximum gradient norm for clipping (0.0 = no clipping)
  * @param out_grad_norm Output: L2 gradient norm (sqrt of sum of squared weight deltas)
  * @return 0 on success, -1 on allocation failure
  */
@@ -46,6 +47,7 @@ int backprop_sparse_full(
     float min_weight, float max_weight,
     const float* target, const float* output,
     uint32_t target_size,
+    float max_grad_norm,
     float* out_grad_norm);
 
 /**
