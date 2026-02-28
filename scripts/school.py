@@ -993,11 +993,11 @@ class School:
                 # SCH-2 fix: Actually signal the stalled instructor to restart LR
                 for agent in self.instructors:
                     if agent.config.domain == domain and agent.is_alive():
-                        if hasattr(agent, '_lr_scheduler') and hasattr(agent._lr_scheduler, 'restart'):
-                            agent._lr_scheduler.restart()
+                        if hasattr(agent, '_lr_scheduler') and hasattr(agent._lr_scheduler, 'reset'):
+                            agent._lr_scheduler.reset()
                         elif hasattr(agent, '_lr_scheduler'):
                             agent._lr_scheduler.base_lr = 1.0
-                            agent._lr_scheduler.current_step = 0
+                            agent._lr_scheduler.step_count = 0
                         break
 
             # Mastery > 0.9: reduce instructor frequency (yield slots to struggling domains)
@@ -1132,7 +1132,6 @@ class School:
 
     def _drain_reports(self, allow_recess=True):
         """Process all pending instructor reports."""
-        needs_recess = False
         while True:
             try:
                 report = self.school_queue.get_nowait()
@@ -1177,12 +1176,6 @@ class School:
                     except OSError:
                         pass
                     self._school_log_file = None
-
-        # H1: Call recess at most once per drain cycle
-        # H2: Only update timer when recess actually ran
-        if needs_recess and allow_recess:
-            if self._call_recess():
-                self._last_recess = time.time()
 
     def _call_recess(self) -> bool:
         """Full-system consolidation with multi-domain interleaved replay.

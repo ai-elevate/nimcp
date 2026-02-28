@@ -364,8 +364,8 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
         status = NIMCP_ERROR_UNKNOWN;
     } SIGNAL_TRY_END;
 
-    nimcp_free(features);
     Py_END_ALLOW_THREADS
+    nimcp_free(features);
 
     if (learn_crashed) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
@@ -454,8 +454,8 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
 
     Py_BEGIN_ALLOW_THREADS
     status = nimcp_brain_predict(brain_ref, features, nf, label, &confidence);
-    nimcp_free(features);
     Py_END_ALLOW_THREADS
+    nimcp_free(features);
 
     if (status != NIMCP_OK) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
@@ -511,8 +511,8 @@ static PyObject* Brain_predict_fast(BrainObject* self, PyObject* args) {
 
     Py_BEGIN_ALLOW_THREADS
     status = nimcp_brain_predict_fast(brain_ref, features, nf, label, &confidence);
-    nimcp_free(features);
     Py_END_ALLOW_THREADS
+    nimcp_free(features);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
@@ -572,8 +572,8 @@ static PyObject* Brain_predict_in_domain(BrainObject* self, PyObject* args) {
     Py_BEGIN_ALLOW_THREADS
     status = nimcp_brain_predict_in_domain(brain_ref, features, nf,
                                             domain_prefix, label, &confidence);
-    nimcp_free(features);
     Py_END_ALLOW_THREADS
+    nimcp_free(features);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());

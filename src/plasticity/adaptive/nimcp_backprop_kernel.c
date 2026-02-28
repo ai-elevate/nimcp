@@ -76,7 +76,14 @@ static memory_pool_t get_bp_pool(void) {
     return atomic_load(&g_bp_pool);
 }
 
+/** Shutdown flag for bp pool — prevents alloc/free from racing with cleanup */
+static _Atomic bool g_bp_pool_shutting_down = false;
+
 void* bp_alloc_hot_buffer(size_t size) {
+    // Reject pool allocations during shutdown to prevent use-after-free
+    if (atomic_load(&g_bp_pool_shutting_down)) {
+        return nimcp_calloc(1, size);
+    }
     if (size <= BP_POOL_BLOCK_SIZE) {
         memory_pool_t pool = get_bp_pool();
         if (pool) {
@@ -95,6 +102,11 @@ void* bp_alloc_hot_buffer(size_t size) {
 
 void bp_free_hot_buffer(void* buf) {
     if (!buf) return;
+    // During shutdown, pool may already be destroyed — fall through to nimcp_free
+    if (atomic_load(&g_bp_pool_shutting_down)) {
+        nimcp_free(buf);
+        return;
+    }
     memory_pool_t pool = get_bp_pool();
     if (pool && memory_pool_owns(pool, buf)) {
         memory_pool_release(pool, buf);
@@ -123,6 +135,8 @@ static nimcp_thread_pool_t* get_bp_thread_pool(void) {
 void backprop_kernel_cleanup(void) {
     // H-4: Signal shutdown to prevent new backprop_sparse_full calls from racing
     atomic_store(&g_bp_shutting_down, true);
+    // Also signal pool shutdown to prevent alloc/free from racing with pool destroy
+    atomic_store(&g_bp_pool_shutting_down, true);
 
     // H-3 / H-7: Spin until all in-flight backprop_sparse_full calls have exited.
     // This prevents destroying the thread pool or memory pool while workers are
@@ -147,9 +161,10 @@ void backprop_kernel_cleanup(void) {
     }
     g_bp_pool_once = NIMCP_PLATFORM_ONCE_INIT;
 
-    // C-2: Reset shutdown flag so backprop kernel can be re-initialized after
+    // C-2: Reset shutdown flags so backprop kernel can be re-initialized after
     // nimcp_shutdown() + nimcp_init() cycle
     atomic_store(&g_bp_shutting_down, false);
+    atomic_store(&g_bp_pool_shutting_down, false);
 }
 
 //=============================================================================

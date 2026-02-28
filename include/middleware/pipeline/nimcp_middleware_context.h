@@ -48,12 +48,14 @@ typedef struct {
     // Feature cache (avoid recomputation)
     float* cached_features;         /**< Extracted features */
     uint32_t num_cached_features;   /**< Feature count */
+    uint32_t cached_features_capacity; /**< Allocated capacity of cached_features */
     bool features_valid;            /**< Cache valid? */
 
     // Pattern detection cache
     uint32_t* detected_patterns;    /**< Detected pattern IDs */
     float* pattern_confidences;     /**< Pattern match confidences */
     uint32_t num_detected_patterns; /**< Pattern count */
+    uint32_t pattern_capacity;      /**< Allocated capacity of pattern arrays */
 
     // Recent events (for debugging/replay)
     brain_event_t* recent_events;   /**< Circular buffer of recent events */

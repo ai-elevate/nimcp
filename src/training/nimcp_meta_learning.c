@@ -446,25 +446,21 @@ void meta_destroy_task_batch(meta_task_batch_t* batch) {
 // Inner Loop API Implementation
 //=============================================================================
 
-float meta_inner_loop(
+/**
+ * @brief Inner loop adaptation without mutex (caller must hold ctx->mutex)
+ */
+static float meta_inner_loop_unlocked(
     meta_ctx_t* ctx,
     const meta_task_t* task,
     nimcp_tensor_t* (*forward_fn)(void* model, const nimcp_tensor_t* input),
     void* model,
     meta_adapted_params_t** adapted_params
 ) {
-    if (!ctx || !task || !forward_fn || !model || !adapted_params) {
-        return -1.0f;
-    }
-
-    nimcp_mutex_lock(ctx->mutex);
-
     double start_time = get_time_ms();
 
     /* Create adapted parameters by cloning original parameters */
     meta_adapted_params_t* adapted = nimcp_calloc(1, sizeof(meta_adapted_params_t));
     if (!adapted) {
-        nimcp_mutex_unlock(ctx->mutex);
         return -1.0f;
     }
 
@@ -472,7 +468,6 @@ float meta_inner_loop(
     adapted->params = nimcp_calloc(ctx->num_params, sizeof(nimcp_tensor_t*));
     if (!adapted->params) {
         nimcp_free(adapted);
-        nimcp_mutex_unlock(ctx->mutex);
         return -1.0f;
     }
 
@@ -480,7 +475,6 @@ float meta_inner_loop(
     if (clone_params(ctx->params, adapted->params, ctx->num_params) != 0) {
         nimcp_free(adapted->params);
         nimcp_free(adapted);
-        nimcp_mutex_unlock(ctx->mutex);
         return -1.0f;
     }
 
@@ -556,8 +550,58 @@ float meta_inner_loop(
     double end_time = get_time_ms();
     ctx->stats.inner_loop_time_ms += (end_time - start_time);
 
-    nimcp_mutex_unlock(ctx->mutex);
     return loss;
+}
+
+float meta_inner_loop(
+    meta_ctx_t* ctx,
+    const meta_task_t* task,
+    nimcp_tensor_t* (*forward_fn)(void* model, const nimcp_tensor_t* input),
+    void* model,
+    meta_adapted_params_t** adapted_params
+) {
+    if (!ctx || !task || !forward_fn || !model || !adapted_params) {
+        return -1.0f;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+    float result = meta_inner_loop_unlocked(ctx, task, forward_fn, model, adapted_params);
+    nimcp_mutex_unlock(ctx->mutex);
+    return result;
+}
+
+/**
+ * @brief Query loss computation without mutex (caller must hold ctx->mutex)
+ */
+static int meta_query_loss_unlocked(
+    meta_ctx_t* ctx,
+    const meta_task_t* task,
+    const meta_adapted_params_t* adapted_params,
+    nimcp_tensor_t* (*forward_fn)(void* model, const nimcp_tensor_t* input),
+    void* model,
+    float* query_loss,
+    float* query_accuracy
+) {
+    /* Temporarily swap in adapted parameters */
+    /* In full implementation, model would use adapted_params for forward pass */
+
+    /* Forward pass on query set with adapted parameters */
+    nimcp_tensor_t* logits = forward_fn(model, task->query_x);
+    if (!logits) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_query_loss: logits is NULL");
+        return -1;
+    }
+
+    /* Compute query loss and accuracy */
+    *query_loss = compute_loss_from_logits(logits, task->query_y);
+
+    if (query_accuracy) {
+        *query_accuracy = compute_accuracy(logits, task->query_y);
+    }
+
+    nimcp_tensor_destroy(logits);
+
+    return 0;
 }
 
 int meta_query_loss(
@@ -575,29 +619,9 @@ int meta_query_loss(
     }
 
     nimcp_mutex_lock(ctx->mutex);
-
-    /* Temporarily swap in adapted parameters */
-    /* In full implementation, model would use adapted_params for forward pass */
-
-    /* Forward pass on query set with adapted parameters */
-    nimcp_tensor_t* logits = forward_fn(model, task->query_x);
-    if (!logits) {
-        nimcp_mutex_unlock(ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_query_loss: logits is NULL");
-        return -1;
-    }
-
-    /* Compute query loss and accuracy */
-    *query_loss = compute_loss_from_logits(logits, task->query_y);
-
-    if (query_accuracy) {
-        *query_accuracy = compute_accuracy(logits, task->query_y);
-    }
-
-    nimcp_tensor_destroy(logits);
-
+    int result = meta_query_loss_unlocked(ctx, task, adapted_params, forward_fn, model, query_loss, query_accuracy);
     nimcp_mutex_unlock(ctx->mutex);
-    return 0;
+    return result;
 }
 
 void meta_free_adapted(meta_adapted_params_t* adapted) {
@@ -636,15 +660,15 @@ int meta_step(
     for (uint32_t t = 0; t < num_tasks; t++) {
         const meta_task_t* task = &task_batch->tasks[t];
 
-        /* Inner loop adaptation */
+        /* Inner loop adaptation (unlocked — we already hold ctx->mutex) */
         meta_adapted_params_t* adapted = NULL;
-        float support_loss = meta_inner_loop(ctx, task, forward_fn, model, &adapted);
+        float support_loss = meta_inner_loop_unlocked(ctx, task, forward_fn, model, &adapted);
 
         if (adapted) {
-            /* Compute query loss with adapted parameters */
+            /* Compute query loss with adapted parameters (unlocked) */
             float query_loss = 0.0f;
             float query_acc = 0.0f;
-            meta_query_loss(ctx, task, adapted, forward_fn, model, &query_loss, &query_acc);
+            meta_query_loss_unlocked(ctx, task, adapted, forward_fn, model, &query_loss, &query_acc);
 
             total_query_loss += query_loss;
 
@@ -969,9 +993,20 @@ int meta_prototypical_loss(
     float total_loss = 0.0f;
     uint32_t correct = 0;
 
+    /* Hoist log_probs allocation outside the loop — n_way is constant */
+    float* log_probs = nimcp_calloc(n_way, sizeof(float));
+    if (!log_probs) {
+        nimcp_free(prototypes);
+        nimcp_tensor_destroy(query_embeddings);
+        nimcp_tensor_destroy(support_embeddings);
+        nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prototypical_loss: failed to allocate log_probs");
+        return -1;
+    }
+
     for (size_t q = 0; q < query_count; q++) {
-        /* Compute distances to all prototypes */
-        float* log_probs = nimcp_calloc(n_way, sizeof(float));
+        /* Compute distances to all prototypes — reuse hoisted buffer */
+        memset(log_probs, 0, n_way * sizeof(float));
         float max_log_prob = -FLT_MAX;
 
         for (uint32_t c = 0; c < n_way; c++) {
@@ -1010,9 +1045,9 @@ int meta_prototypical_loss(
         if (pred_class == true_class) {
             correct++;
         }
-
-        nimcp_free(log_probs);
     }
+
+    nimcp_free(log_probs);
 
     *loss = total_loss / (float)query_count;
     if (accuracy) {
@@ -1197,14 +1232,7 @@ static int clone_params(nimcp_tensor_t** src, nimcp_tensor_t** dst, uint32_t cou
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clone_params: dst is NULL");
             return -1;
         }
-
-        /* Copy data */
-        size_t count_elem = nimcp_tensor_numel(src[i]);
-        const float* src_data = nimcp_tensor_data(src[i]);
-        float* dst_data = nimcp_tensor_data(dst[i]);
-        if (src_data && dst_data) {
-            memcpy(dst_data, src_data, count_elem * sizeof(float));
-        }
+        /* nimcp_tensor_clone() already deep-copies data — no extra memcpy needed */
     }
     return 0;
 }

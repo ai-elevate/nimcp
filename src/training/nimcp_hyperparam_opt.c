@@ -385,8 +385,14 @@ hpo_study_t* hpo_get_study(
     /* Would load from storage in full implementation */
     if (create_if_missing) {
         if (ctx->study) {
-            /* Clean up old study */
+            /* Clean up old study - free each trial's internal allocations */
             if (ctx->study->trials) {
+                for (uint32_t i = 0; i < ctx->study->num_trials; i++) {
+                    hpo_free_params(&ctx->study->trials[i].params);
+                    if (ctx->study->trials[i].intermediate_values) {
+                        nimcp_free(ctx->study->trials[i].intermediate_values);
+                    }
+                }
                 nimcp_free(ctx->study->trials);
             }
             nimcp_free(ctx->study);
@@ -565,7 +571,8 @@ double hpo_optimize(
     void* user_data,
     hpo_params_t** best_params
 ) {
-    if (!ctx || !objective_fn) {
+    if (!ctx) return DBL_MAX;
+    if (!objective_fn) {
         return ctx->config.direction == HPO_MINIMIZE ? DBL_MAX : -DBL_MAX;
     }
 
@@ -608,7 +615,10 @@ double hpo_optimize(
 
         if (is_better) {
             best_objective = objective;
-            if (best) hpo_free_params(best);
+            if (best) {
+                hpo_free_params(best);
+                nimcp_free(best);
+            }
             best = params;
 
             ctx->stats.best_objective = best_objective;
@@ -619,6 +629,7 @@ double hpo_optimize(
             }
         } else {
             hpo_free_params(params);
+            nimcp_free(params);
         }
 
         /* Update statistics */
@@ -634,6 +645,7 @@ double hpo_optimize(
         *best_params = best;
     } else if (best) {
         hpo_free_params(best);
+        nimcp_free(best);
     }
 
     nimcp_mutex_unlock(ctx->mutex);
@@ -670,6 +682,7 @@ int hpo_suggest(hpo_ctx_t* ctx, hpo_params_t** params) {
 
     if (!p->param_names || !p->param_values || !p->param_choices) {
         hpo_free_params(p);
+        nimcp_free(p);
         nimcp_mutex_unlock(ctx->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hpo_suggest: required parameter is NULL (p->param_names, p->param_values, p->param_choices)");
         return -1;

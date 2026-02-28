@@ -471,26 +471,28 @@ float stdp_pre_spike_modulated(stdp_synapse_t* synapse,
     float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
     float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
 
-    /* THRESHOLD GATE: Skip LTD if post trace below threshold */
+    /* THRESHOLD GATE: Skip LTD if post trace below threshold
+     * FIX: Read post_trace under spinlock to prevent data race — another thread
+     * may be modifying it concurrently via stdp_post_spike_modulated.
+     * We read the trace and increment pre_trace in one lock acquisition to
+     * keep spinlock hold time reasonable.
+     */
+    float local_post_trace;
+    nimcp_spinlock_lock(&synapse->lock);
+    local_post_trace = synapse->post_trace;
+    synapse->pre_trace = fminf(synapse->pre_trace + 1.0F, 10.0F);
+    nimcp_spinlock_unlock(&synapse->lock);
+
     float modulated_weight_change = 0.0F;
-    if (synapse->post_trace >= synapse->min_trace_threshold) {
+    if (local_post_trace >= synapse->min_trace_threshold) {
         /* Compute base weight change (LTD from post trace) with sleep modulation */
         float modulated_a_minus = synapse->a_minus / ratio_factor;
-        float base_weight_change = -modulated_a_minus * synapse->learning_rate * lr_factor * synapse->post_trace;
+        float base_weight_change = -modulated_a_minus * synapse->learning_rate * lr_factor * local_post_trace;
 
         /* Apply dopamine modulation */
         modulated_weight_change = stdp_apply_modulated_weight_change(
             synapse, base_weight_change, neuromod);
     }
-
-    /* Increment presynaptic trace with upper bound to prevent unbounded growth
-     * WHY:  Without clamping, rapid spike bursts can cause trace overflow
-     * HOW:  Cap trace at 10.0 (typical biological saturation)
-     * NOTE: Must be under spinlock for thread safety (matches stdp_pre_spike pattern)
-     */
-    nimcp_spinlock_lock(&synapse->lock);
-    synapse->pre_trace = fminf(synapse->pre_trace + 1.0F, 10.0F);
-    nimcp_spinlock_unlock(&synapse->lock);
 
     return modulated_weight_change;
 }
@@ -509,26 +511,28 @@ float stdp_post_spike_modulated(stdp_synapse_t* synapse,
     float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
     float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
 
-    /* THRESHOLD GATE: Skip LTP if pre trace below threshold */
+    /* THRESHOLD GATE: Skip LTP if pre trace below threshold
+     * FIX: Read pre_trace under spinlock to prevent data race — another thread
+     * may be modifying it concurrently via stdp_pre_spike_modulated.
+     * We read the trace and increment post_trace in one lock acquisition to
+     * keep spinlock hold time reasonable.
+     */
+    float local_pre_trace;
+    nimcp_spinlock_lock(&synapse->lock);
+    local_pre_trace = synapse->pre_trace;
+    synapse->post_trace = fminf(synapse->post_trace + 1.0F, 10.0F);
+    nimcp_spinlock_unlock(&synapse->lock);
+
     float modulated_weight_change = 0.0F;
-    if (synapse->pre_trace >= synapse->min_trace_threshold) {
+    if (local_pre_trace >= synapse->min_trace_threshold) {
         /* Compute base weight change (LTP from pre trace) with sleep modulation */
         float modulated_a_plus = synapse->a_plus * ratio_factor;
-        float base_weight_change = modulated_a_plus * synapse->learning_rate * lr_factor * synapse->pre_trace;
+        float base_weight_change = modulated_a_plus * synapse->learning_rate * lr_factor * local_pre_trace;
 
         /* Apply dopamine modulation */
         modulated_weight_change = stdp_apply_modulated_weight_change(
             synapse, base_weight_change, neuromod);
     }
-
-    /* Increment postsynaptic trace with upper bound to prevent unbounded growth
-     * WHY:  Without clamping, rapid spike bursts can cause trace overflow
-     * HOW:  Cap trace at 10.0 (typical biological saturation)
-     * NOTE: Must be under spinlock for thread safety (matches stdp_post_spike pattern)
-     */
-    nimcp_spinlock_lock(&synapse->lock);
-    synapse->post_trace = fminf(synapse->post_trace + 1.0F, 10.0F);
-    nimcp_spinlock_unlock(&synapse->lock);
 
     return modulated_weight_change;
 }

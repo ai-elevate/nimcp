@@ -435,13 +435,16 @@ static bool encoding_stage_execute(middleware_context_t* ctx, void* data) {
         return true; // Not an error, just nothing to encode
     }
 
-    // Allocate features array if not already allocated
-    if (!ctx->cached_features) {
-        ctx->cached_features = nimcp_calloc(ctx->num_active_neurons, sizeof(float));
-        if (!ctx->cached_features) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "encoding_stage_execute: ctx->cached_features is NULL");
+    // Allocate or grow features array if needed
+    if (!ctx->cached_features || ctx->num_active_neurons > ctx->cached_features_capacity) {
+        float* new_buf = nimcp_calloc(ctx->num_active_neurons, sizeof(float));
+        if (!new_buf) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "encoding_stage_execute: failed to allocate cached_features");
             return false;
         }
+        nimcp_free(ctx->cached_features);
+        ctx->cached_features = new_buf;
+        ctx->cached_features_capacity = ctx->num_active_neurons;
     }
 
     // Simple rate encoding: Convert active neuron count to population firing rate
@@ -493,19 +496,6 @@ static bool extraction_stage_execute(middleware_context_t* ctx, void* data) {
     // Extract statistical features from rate-coded signals
     // In full implementation, this would use brain's spike_feature_extractor
 
-    // Compute basic statistics: mean, variance
-    float sum = 0.0F;
-    float sum_sq = 0.0F;
-
-    for (uint32_t i = 0; i < ctx->num_cached_features; i++) {
-        float val = ctx->cached_features[i];
-        sum += val;
-        sum_sq += val * val;
-    }
-
-    float mean = sum / ctx->num_cached_features;
-    float variance = (sum_sq / ctx->num_cached_features) - (mean * mean);
-
     // Store extracted features (append to existing features)
     // For now, just update the feature validity
     ctx->features_valid = true;
@@ -547,14 +537,29 @@ static bool detection_stage_execute(middleware_context_t* ctx, void* data) {
     // For now, simple threshold-based detection
     uint32_t patterns_detected = 0;
 
-    // Allocate pattern arrays if needed
-    if (!ctx->detected_patterns && ctx->num_cached_features > 0) {
-        ctx->detected_patterns = nimcp_calloc(ctx->num_cached_features, sizeof(uint32_t));
-        ctx->pattern_confidences = nimcp_calloc(ctx->num_cached_features, sizeof(float));
-        if (!ctx->detected_patterns || !ctx->pattern_confidences) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "detection_stage_execute: required parameter is NULL (ctx->detected_patterns, ctx->pattern_confidences)");
+    // Allocate or grow pattern arrays if needed
+    if (!ctx->detected_patterns || !ctx->pattern_confidences ||
+        ctx->num_cached_features > ctx->pattern_capacity) {
+        uint32_t new_cap = ctx->num_cached_features;
+        uint32_t* new_patterns = nimcp_calloc(new_cap, sizeof(uint32_t));
+        float* new_confidences = nimcp_calloc(new_cap, sizeof(float));
+        if (!new_patterns || !new_confidences) {
+            nimcp_free(new_patterns);
+            nimcp_free(new_confidences);
+            // Ensure both are NULL so next call retries allocation
+            nimcp_free(ctx->detected_patterns);
+            nimcp_free(ctx->pattern_confidences);
+            ctx->detected_patterns = NULL;
+            ctx->pattern_confidences = NULL;
+            ctx->pattern_capacity = 0;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "detection_stage_execute: failed to allocate pattern arrays");
             return false;
         }
+        nimcp_free(ctx->detected_patterns);
+        nimcp_free(ctx->pattern_confidences);
+        ctx->detected_patterns = new_patterns;
+        ctx->pattern_confidences = new_confidences;
+        ctx->pattern_capacity = new_cap;
     }
 
     // Simple pattern detection: features above mean (positive z-scores after normalization)

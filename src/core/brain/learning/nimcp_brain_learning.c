@@ -712,6 +712,8 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
             #define RECALL_MAX_NEURONS 100
             uint32_t recalled_neurons[RECALL_MAX_NEURONS];
             float recalled_activations[RECALL_MAX_NEURONS];
+            memset(recalled_neurons, 0, sizeof(recalled_neurons));
+            memset(recalled_activations, 0, sizeof(recalled_activations));
             float recall_confidence = 0.0f;
 
             uint64_t recalled_id = engram_recall(
@@ -834,6 +836,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                 nimcp_security_emergency_inhibit(adaptive_network_get_base_network(brain->network));
             }
 
+            if (!attended_from_scratch) nimcp_free(attended_features);
             if (!target_from_scratch) nimcp_free(target);
             return -1.0F;  // Abort learning
         } else if (activity_stats.activity_ratio > brain->config.activity_warning_threshold) {
@@ -1268,6 +1271,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
     if (brain->config.enable_quantum_annealing &&
         brain->quantum_annealer &&
+        brain->config.quantum_annealing_frequency > 0 &&
         (brain->stats.total_learning_steps % brain->config.quantum_annealing_frequency) == 0) {
 
         brain->stats.quantum_annealing_runs++;
@@ -1421,10 +1425,11 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
             );
 
             (void)engram_id;  // Suppress unused warning (could log for debugging)
-
-            nimcp_free(neuron_ids);
-            nimcp_free(activations);
         }
+        // Free unconditionally — nimcp_free(NULL) is a safe no-op,
+        // so partial allocation failure (one NULL, one non-NULL) is handled.
+        nimcp_free(neuron_ids);
+        nimcp_free(activations);
     }
 
 

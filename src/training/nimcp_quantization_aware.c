@@ -21,6 +21,7 @@
 #include <math.h>
 #include <float.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "utils/math/nimcp_math_helpers.h"
@@ -447,6 +448,7 @@ int qat_observe(
                 for (uint32_t i = 0; i < obs->num_bins; i++) {
                     total += obs->histogram[i];
                 }
+                if (total == 0) break;
 
                 float percentile = ctx->config.observer.percentile;
                 uint64_t lower_target = (uint64_t)(total * (1.0f - percentile));
@@ -454,10 +456,12 @@ int qat_observe(
 
                 uint64_t cumsum = 0;
                 uint32_t lower_bin = 0, upper_bin = obs->num_bins - 1;
+                bool lower_found = false;
                 for (uint32_t i = 0; i < obs->num_bins; i++) {
                     cumsum += obs->histogram[i];
-                    if (cumsum >= lower_target && lower_bin == 0) {
+                    if (cumsum >= lower_target && !lower_found) {
                         lower_bin = i;
+                        lower_found = true;
                     }
                     if (cumsum >= upper_target) {
                         upper_bin = i;
@@ -1225,6 +1229,7 @@ static void compute_scale_zp(
             /* Symmetric: zero_point = 0, scale based on max absolute value */
             {
                 float max_abs = fmaxf(fabsf(min_val), fabsf(max_val));
+                if (max_abs < 1e-8f) max_abs = 1e-8f;
                 *scale = max_abs / (float)qmax;
                 *zero_point = 0;
             }
@@ -1536,7 +1541,8 @@ int qat_compute_optimal_ternary_threshold(
     }
 
     float mean_abs = sum / (float)count;
-    float std_abs = sqrtf(sum_sq / (float)count - mean_abs * mean_abs);
+    float variance = fmaxf(0.0f, sum_sq / (float)count - mean_abs * mean_abs);
+    float std_abs = sqrtf(variance);
 
     /* Optimal threshold approximation based on Ternary Weight Networks paper:
      * threshold ~= 0.7 * mean(|W|)

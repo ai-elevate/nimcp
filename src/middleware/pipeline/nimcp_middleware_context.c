@@ -85,6 +85,7 @@ middleware_context_t* middleware_context_create(brain_t brain,
     ctx->cached_features = nimcp_calloc(max_features, sizeof(float));
     if (max_features > 0 && !ctx->cached_features) goto cleanup;
     ctx->num_cached_features = max_features;
+    ctx->cached_features_capacity = max_features;
 
     ctx->detected_patterns = nimcp_calloc(max_patterns, sizeof(uint32_t));
     if (max_patterns > 0 && !ctx->detected_patterns) goto cleanup;
@@ -92,6 +93,7 @@ middleware_context_t* middleware_context_create(brain_t brain,
     ctx->pattern_confidences = nimcp_calloc(max_patterns, sizeof(float));
     if (max_patterns > 0 && !ctx->pattern_confidences) goto cleanup;
     ctx->num_detected_patterns = max_patterns;
+    ctx->pattern_capacity = max_patterns;
 
     ctx->recent_events = nimcp_calloc(event_history_size, sizeof(brain_event_t));
     if (event_history_size > 0 && !ctx->recent_events) goto cleanup;

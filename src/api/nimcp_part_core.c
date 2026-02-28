@@ -528,6 +528,13 @@ nimcp_status_t nimcp_brain_infer(
         return NIMCP_ERROR;
     }
 
+    // Guard: output_vector must be valid
+    if (!decision->output_vector) {
+        brain_free_decision(decision);
+        set_error("Decision output_vector is NULL");
+        return NIMCP_ERROR;
+    }
+
     // Copy raw output vector
     uint32_t copy_size = (decision->output_size < num_outputs) ? decision->output_size : num_outputs;
     for (uint32_t i = 0; i < copy_size; i++) {
@@ -1537,7 +1544,11 @@ bool nimcp_brain_resize(nimcp_brain_t brain, uint32_t new_neuron_count) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_resize: brain is NULL");
         return false;
     }
-    
+    if (!brain->internal_brain) {
+        set_error("Brain internal state is NULL");
+        return false;
+    }
+
     return brain_resize(brain->internal_brain, new_neuron_count);
 }
 
@@ -1548,7 +1559,11 @@ bool nimcp_brain_auto_resize(nimcp_brain_t brain) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_auto_resize: brain is NULL");
         return false;
     }
-    
+    if (!brain->internal_brain) {
+        set_error("Brain internal state is NULL");
+        return false;
+    }
+
     return brain_auto_resize(brain->internal_brain);
 }
 

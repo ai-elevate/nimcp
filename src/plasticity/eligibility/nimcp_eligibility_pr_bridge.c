@@ -159,6 +159,7 @@ elig_pr_bridge_t elig_pr_bridge_create(const elig_pr_bridge_config_t* config) {
 
 void elig_pr_bridge_destroy(elig_pr_bridge_t bridge) {
     if (bridge) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
     }
 }

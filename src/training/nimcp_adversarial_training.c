@@ -335,6 +335,12 @@ int adv_fgsm(
 
     /* Compute gradient of loss w.r.t. input */
     float* grad = nimcp_calloc(input_size, sizeof(float));
+    if (!grad) {
+        nimcp_tensor_destroy(adv_input);
+        nimcp_tensor_destroy(logits);
+        nimcp_mutex_unlock(ctx->mutex);
+        return -1;
+    }
     compute_gradient(logits, label, input, grad);
 
     /* FGSM: x_adv = x + epsilon * sign(grad) */
@@ -444,6 +450,7 @@ int adv_pgd(
         nimcp_free(grad);
         nimcp_free(perturbation);
         nimcp_tensor_destroy(adv_input);
+        nimcp_mutex_unlock(ctx->mutex);
         return -1;
     }
 
@@ -570,6 +577,9 @@ static int adv_generate_batch_unlocked(
 
     /* Allocate gradient buffer */
     float* grad = nimcp_calloc(batch_size * sample_size, sizeof(float));
+    if (!grad) {
+        return -1;
+    }
 
     /* Random start */
     if (ctx->config.attack.random_start) {
@@ -704,6 +714,14 @@ int adv_compute_loss(
 
             float* clean_probs = nimcp_calloc(batch_size * num_classes, sizeof(float));
             float* adv_probs = nimcp_calloc(batch_size * num_classes, sizeof(float));
+            if (!clean_probs || !adv_probs) {
+                if (clean_probs) nimcp_free(clean_probs);
+                if (adv_probs) nimcp_free(adv_probs);
+                nimcp_tensor_destroy(clean_logits);
+                nimcp_tensor_destroy(adv_logits);
+                nimcp_mutex_unlock(ctx->mutex);
+                return -1;
+            }
 
             /* Compute softmax */
             const float* cl_data = (const float*)nimcp_tensor_data_const(clean_logits);
@@ -747,6 +765,9 @@ int adv_compute_loss(
             const float* labels_data = (const float*)nimcp_tensor_data_const(labels);
             for (uint32_t b = 0; b < batch_size; b++) {
                 float* probs = nimcp_calloc(num_classes, sizeof(float));
+                if (!probs) {
+                    break;
+                }
                 softmax(&mart_data[b * num_classes], probs, num_classes);
 
                 uint32_t true_class = (uint32_t)labels_data[b];
@@ -1303,6 +1324,7 @@ static float compute_loss(const nimcp_tensor_t* logits, const nimcp_tensor_t* la
         }
 
         uint32_t label = (uint32_t)labels_data[b];
+        if (label >= num_classes) continue;
         float log_prob = (sample_logits[label] - max_val) - logf(sum_exp);
         total_loss -= log_prob;
     }
@@ -1334,6 +1356,7 @@ static void compute_gradient(const nimcp_tensor_t* logits, const nimcp_tensor_t*
         float sum = 0.0f;
         for (uint32_t b = 0; b < batch_size; b++) {
             uint32_t label = (uint32_t)labels_data[b];
+            if (label >= num_classes) continue;
             const float* sample_logits = &logits_data[b * num_classes];
 
             /* Use logit value at correct class as proxy */

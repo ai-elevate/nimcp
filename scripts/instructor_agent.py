@@ -1928,7 +1928,7 @@ class InstructorAgent(threading.Thread):
 
         # Stall > 20: Aggressive cosine LR restart (escape local minimum)
         if self._stall_count > 20:
-            self._lr_scheduler.restart()
+            self._lr_scheduler.reset()
             self._stall_count = 0  # reset after restart
             self._log_example({
                 "action": "METACOG_LR_RESTART",

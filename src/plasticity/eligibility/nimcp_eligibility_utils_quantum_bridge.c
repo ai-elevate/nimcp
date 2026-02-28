@@ -205,8 +205,9 @@ void elig_uq_bridge_destroy(elig_uq_bridge_t bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_destroy: bridge is NULL");
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "eligibility_utils_quantum");
     }
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "eligibility_utils_quantum");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

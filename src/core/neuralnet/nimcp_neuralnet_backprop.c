@@ -282,6 +282,10 @@ bool backprop_forward(backprop_ctx_t* ctx,
     for (uint32_t i = 0; i < in_size && i < input_size; i++) {
         ctx->activations[0].pre_activation[i] = inputs[i];
         ctx->activations[0].post_activation[i] = inputs[i];  /* No activation on input */
+        /* Sync neuron state so layers reading .state get current values */
+        if (i < network->num_neurons) {
+            network->neurons[i].state = inputs[i];
+        }
     }
 
     /* Forward propagation through layers */

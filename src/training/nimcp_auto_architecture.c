@@ -507,6 +507,18 @@ auto_arch_context_t* auto_arch_create(const auto_arch_config_t* config)
     ctx->pareto_fitness = (auto_arch_fitness_t*)nimcp_malloc(
         ctx->pareto_capacity * sizeof(auto_arch_fitness_t));
 
+    /* Verify all allocations succeeded */
+    if (!ctx->history || !ctx->history_fitness ||
+        !ctx->pareto_frontier || !ctx->pareto_fitness) {
+        if (ctx->history) nimcp_free(ctx->history);
+        if (ctx->history_fitness) nimcp_free(ctx->history_fitness);
+        if (ctx->pareto_frontier) nimcp_free(ctx->pareto_frontier);
+        if (ctx->pareto_fitness) nimcp_free(ctx->pareto_fitness);
+        nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_create: allocation failed");
+        return NULL;
+    }
+
     /* Initialize method-specific context */
     int result = 0;
     switch (config->search_method) {
@@ -584,7 +596,63 @@ void auto_arch_destroy(auto_arch_context_t* ctx)
     }
 
     /* Free method-specific context */
-    /* TODO: Implement method-specific cleanup */
+    switch (ctx->config.search_method) {
+        case AUTO_ARCH_EVOLUTIONARY:
+        case AUTO_ARCH_NEUROEVOLUTION:
+            if (ctx->method_ctx.evolutionary.population) {
+                for (uint32_t i = 0; i < ctx->config.population_size; i++) {
+                    if (ctx->method_ctx.evolutionary.population[i].arch) {
+                        auto_arch_architecture_destroy(ctx->method_ctx.evolutionary.population[i].arch);
+                    }
+                }
+                nimcp_free(ctx->method_ctx.evolutionary.population);
+            }
+            break;
+
+        case AUTO_ARCH_RL_NAS:
+            if (ctx->method_ctx.rl_nas.controller) {
+                rl_controller_t* controller = ctx->method_ctx.rl_nas.controller;
+                if (controller->weights) nimcp_tensor_destroy(controller->weights);
+                if (controller->gradients) nimcp_tensor_destroy(controller->gradients);
+                if (controller->optimizer) nimcp_free(controller->optimizer);
+                if (controller->lstm_state) nimcp_free(controller->lstm_state);
+                nimcp_free(controller);
+            }
+            break;
+
+        case AUTO_ARCH_DARTS:
+            if (ctx->method_ctx.darts.darts) {
+                darts_context_t* darts = ctx->method_ctx.darts.darts;
+                if (darts->alpha) {
+                    for (uint32_t i = 0; i < darts->n_layers; i++) {
+                        if (darts->alpha[i]) nimcp_tensor_destroy(darts->alpha[i]);
+                    }
+                    nimcp_free(darts->alpha);
+                }
+                if (darts->weights) {
+                    for (uint32_t i = 0; i < darts->n_layers; i++) {
+                        if (darts->weights[i]) nimcp_tensor_destroy(darts->weights[i]);
+                    }
+                    nimcp_free(darts->weights);
+                }
+                if (darts->arch_optimizer) nimcp_free(darts->arch_optimizer);
+                if (darts->weight_optimizer) nimcp_free(darts->weight_optimizer);
+                nimcp_free(darts);
+            }
+            break;
+
+        case AUTO_ARCH_PRUNING_BASED:
+            if (ctx->method_ctx.pruning.dense_arch) {
+                auto_arch_architecture_destroy(ctx->method_ctx.pruning.dense_arch);
+            }
+            if (ctx->method_ctx.pruning.importance_scores) {
+                nimcp_tensor_destroy(ctx->method_ctx.pruning.importance_scores);
+            }
+            break;
+
+        default:
+            break;
+    }
 
     /* Free context */
     nimcp_free(ctx);
@@ -776,11 +844,20 @@ auto_arch_result_t* auto_arch_search(
         ctx->n_pareto * sizeof(auto_arch_architecture_t*));
     result->pareto_fitness = (auto_arch_fitness_t*)nimcp_malloc(
         ctx->n_pareto * sizeof(auto_arch_fitness_t));
-    result->n_pareto = ctx->n_pareto;
 
-    for (uint32_t i = 0; i < ctx->n_pareto; i++) {
-        result->pareto_frontier[i] = auto_arch_clone(ctx->pareto_frontier[i]);
-        result->pareto_fitness[i] = ctx->pareto_fitness[i];
+    if (!result->pareto_frontier || !result->pareto_fitness) {
+        /* Allocation failed — skip copy, set n_pareto to 0 */
+        if (result->pareto_frontier) nimcp_free(result->pareto_frontier);
+        if (result->pareto_fitness) nimcp_free(result->pareto_fitness);
+        result->pareto_frontier = NULL;
+        result->pareto_fitness = NULL;
+        result->n_pareto = 0;
+    } else {
+        result->n_pareto = ctx->n_pareto;
+        for (uint32_t i = 0; i < ctx->n_pareto; i++) {
+            result->pareto_frontier[i] = auto_arch_clone(ctx->pareto_frontier[i]);
+            result->pareto_fitness[i] = ctx->pareto_fitness[i];
+        }
     }
 
     result->history = NULL; /* Can be added if needed */
@@ -1467,7 +1544,12 @@ auto_arch_architecture_t* auto_arch_clone(const auto_arch_architecture_t* arch)
 void auto_arch_architecture_destroy(auto_arch_architecture_t* arch)
 {
     if (!arch) return;
-    if (arch->layers) nimcp_free(arch->layers);
+    if (arch->layers) {
+        for (uint32_t i = 0; i < arch->n_layers; i++) {
+            if (arch->layers[i].input_layers) nimcp_free(arch->layers[i].input_layers);
+        }
+        nimcp_free(arch->layers);
+    }
     nimcp_free(arch);
 }
 
@@ -2718,7 +2800,12 @@ static auto_arch_architecture_t* evolutionary_step(auto_arch_context_t* ctx,
             /* Remove last layer */
             child->n_layers--;
         } else if (child->n_layers < ctx->config.constraints.max_layers) {
-            /* Add layer */
+            /* Add layer — realloc to accommodate one more */
+            auto_arch_layer_spec_t* new_layers = nimcp_realloc(child->layers,
+                (child->n_layers + 1) * sizeof(auto_arch_layer_spec_t));
+            if (!new_layers) return child;  /* graceful degradation */
+            child->layers = new_layers;
+            memset(&child->layers[child->n_layers], 0, sizeof(auto_arch_layer_spec_t));
             child->layers[child->n_layers].n_neurons = 64;
             child->layers[child->n_layers].type = AUTO_ARCH_LAYER_DENSE;
             child->layers[child->n_layers].activation = LNN_ACTIVATION_RELU;

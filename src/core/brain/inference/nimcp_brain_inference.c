@@ -568,6 +568,10 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
         return false;
     }
 
+    // Zero-initialize all decisions so partial parallel failures don't leave
+    // garbage pointers that the serial fallback would try to free.
+    memset(decisions, 0, num_inputs * sizeof(brain_decision_t));
+
     // CPU parallel path: use thread pool for batch >= 4 when pool exists
     // W7-4 (C-INF-4): Only use parallel path if brain is safe for concurrent access.
     // Unfrozen, non-COW brains have mutable neuron state that races under concurrency.

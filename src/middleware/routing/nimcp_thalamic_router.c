@@ -670,9 +670,10 @@ bool thalamic_router_route_signal(thalamic_router_t* router,
 
     /* P2 fix: Use saturation to prevent theoretical overflow after 2^64 signals
      * WHY:  Wraparound would reset stats, corrupting historical metrics
+     * Thread safety: Use atomic increment to avoid torn read/write on concurrent routes
      */
     if (router->total_signal_count < UINT64_MAX) {
-        router->total_signal_count++;
+        __sync_fetch_and_add(&router->total_signal_count, 1);
     }
 
     // High priority or bypass flag: deliver immediately
@@ -682,12 +683,12 @@ bool thalamic_router_route_signal(thalamic_router_t* router,
         bool delivered = deliver_signal(router, signal);
 
         if (delivered) {
-            /* P2 fix: Use saturation for stats counters */
+            /* P2 fix: Use saturation for stats counters (atomic for thread safety) */
             if (router->stats.signals_routed < UINT64_MAX) {
-                router->stats.signals_routed++;
+                __sync_fetch_and_add(&router->stats.signals_routed, 1);
             }
             if (router->stats.signals_bypassed < UINT64_MAX) {
-                router->stats.signals_bypassed++;
+                __sync_fetch_and_add(&router->stats.signals_bypassed, 1);
             }
 
             // Update routing table (Hebbian learning)
@@ -946,7 +947,15 @@ bool thalamic_router_get_stats(const thalamic_router_t* router,
         return false;
     }
 
+    /* Lock the queue mutex to prevent torn reads of the stats struct */
+    nimcp_mutex_t* qmutex = router->queue_mutex;
+    if (qmutex) {
+        nimcp_mutex_lock(qmutex);
+    }
     *stats = router->stats;
+    if (qmutex) {
+        nimcp_mutex_unlock(qmutex);
+    }
     return true;
 }
 

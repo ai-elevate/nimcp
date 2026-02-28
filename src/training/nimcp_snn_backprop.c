@@ -34,6 +34,7 @@
 #include <math.h>
 #include <string.h>
 #include <float.h>
+#include <stdint.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_backprop)
@@ -449,8 +450,12 @@ static activation_buffer_t* alloc_activation_buffer(
     buf->batch_size = batch_size;
     buf->n_neurons = n_neurons;
 
-    uint32_t total = timesteps * batch_size * n_neurons;
+    uint64_t total = (uint64_t)timesteps * batch_size * n_neurons;
     if (total == 0) total = 1;
+    if (total > UINT32_MAX) {
+        nimcp_free(buf);
+        return NULL;
+    }
 
     uint32_t dims[3] = { timesteps, batch_size, n_neurons };
 
@@ -584,9 +589,12 @@ snn_backprop_ctx_t* snn_backprop_create(
     ctx->network = network;
 
     /* Create mutex for thread safety */
-    ctx->mutex = nimcp_mutex_create(NULL);
+    mutex_attr_t mutex_attr = { .type = MUTEX_TYPE_NORMAL };
+    ctx->mutex = nimcp_mutex_create(&mutex_attr);
     if (!ctx->mutex) {
-        NIMCP_LOGGING_WARN("snn_backprop_create: failed to create mutex, proceeding without");
+        NIMCP_LOGGING_ERROR("snn_backprop_create: failed to create mutex");
+        nimcp_free(ctx);
+        return NULL;
     }
 
     /* Determine network dimensions from populations */
@@ -690,7 +698,7 @@ void snn_backprop_destroy(snn_backprop_ctx_t* ctx) {
 
     /* Destroy mutex */
     if (ctx->mutex) {
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
         ctx->mutex = NULL;
     }
 

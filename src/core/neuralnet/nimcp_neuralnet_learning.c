@@ -513,7 +513,7 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_reward_learning: network is NULL");
         return 0;
     }
-    if (reward < 0.0f || reward > 1.0f || learning_rate <= 0.0f) {
+    if (!isfinite(reward) || learning_rate <= 0.0f) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_apply_reward_learning: invalid reward=%.3f or lr=%.3f", reward, learning_rate);
         return 0;
     }

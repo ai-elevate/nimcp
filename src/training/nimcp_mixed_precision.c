@@ -391,7 +391,10 @@ bool amp_is_autocasting(const amp_ctx_t* ctx) {
     if (!ctx) {
         return false;
     }
-    return ctx->autocast_enabled && ctx->config.autocast.enabled;
+    nimcp_mutex_lock(((amp_ctx_t*)ctx)->mutex);
+    bool result = ctx->autocast_enabled && ctx->config.autocast.enabled;
+    nimcp_mutex_unlock(((amp_ctx_t*)ctx)->mutex);
+    return result;
 }
 
 amp_dtype_t amp_get_op_dtype(const amp_ctx_t* ctx, amp_op_category_t category) {
@@ -537,7 +540,10 @@ void amp_update_scale(amp_ctx_t* ctx, bool gradients_valid) {
 
 float amp_get_scale(const amp_ctx_t* ctx) {
     if (!ctx) return 1.0f;
-    return ctx->current_scale;
+    nimcp_mutex_lock(((amp_ctx_t*)ctx)->mutex);
+    float scale = ctx->current_scale;
+    nimcp_mutex_unlock(((amp_ctx_t*)ctx)->mutex);
+    return scale;
 }
 
 int amp_set_scale(amp_ctx_t* ctx, float scale) {
@@ -662,10 +668,16 @@ int amp_update_master_weights(amp_ctx_t* ctx,
             break;
         }
 
-        case AMP_DTYPE_BF16:
-            /* BF16 conversion would go here */
-            memcpy(compute_weights, master_weights, count * sizeof(float));
+        case AMP_DTYPE_BF16: {
+            /* FP32 → BF16: extract upper 16 bits of each float */
+            uint16_t* bf16_weights = (uint16_t*)compute_weights;
+            for (size_t i = 0; i < count; i++) {
+                uint32_t bits;
+                memcpy(&bits, &master_weights[i], sizeof(uint32_t));
+                bf16_weights[i] = (uint16_t)(bits >> 16);
+            }
             break;
+        }
 
         default:
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_set_scale: operation failed");
@@ -698,10 +710,16 @@ int amp_sync_compute_weights(amp_ctx_t* ctx,
             break;
         }
 
-        case AMP_DTYPE_BF16:
-            /* BF16 would go here */
-            memcpy(compute_weights, master_weights, count * sizeof(float));
+        case AMP_DTYPE_BF16: {
+            /* FP32 → BF16: extract upper 16 bits of each float */
+            uint16_t* bf16_weights = (uint16_t*)compute_weights;
+            for (size_t i = 0; i < count; i++) {
+                uint32_t bits;
+                memcpy(&bits, &master_weights[i], sizeof(uint32_t));
+                bf16_weights[i] = (uint16_t)(bits >> 16);
+            }
             break;
+        }
 
         default:
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_set_scale: operation failed");
@@ -822,7 +840,6 @@ bool amp_dtype_supported(amp_dtype_t dtype) {
         case AMP_DTYPE_BF16:
             return true;
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_dtype_supported: operation failed");
             return false;
     }
 }
@@ -834,7 +851,6 @@ bool amp_bf16_available(void) {
     return true;
 #else
     /* Could also check GPU capabilities at runtime */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_bf16_available: operation failed");
     return false;
 #endif
 }

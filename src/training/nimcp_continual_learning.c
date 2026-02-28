@@ -243,6 +243,12 @@ void cl_destroy(cl_ctx_t* ctx) {
             }
             nimcp_free(task->omega);
         }
+        if (task->param_delta) {
+            for (uint32_t p = 0; p < task->num_params; p++) {
+                if (task->param_delta[p]) nimcp_free(task->param_delta[p]);
+            }
+            nimcp_free(task->param_delta);
+        }
         if (task->param_sizes) nimcp_free(task->param_sizes);
     }
 
@@ -303,6 +309,9 @@ int cl_start_task(cl_ctx_t* ctx, uint32_t task_id, const char* task_name) {
         if (!task->param_sizes || !task->fisher || !task->optimal_params) {
             NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ctx->num_params * sizeof(float*),
                               "cl_start_task: failed to allocate task arrays");
+            if (task->param_sizes) { nimcp_free(task->param_sizes); task->param_sizes = NULL; }
+            if (task->fisher) { nimcp_free(task->fisher); task->fisher = NULL; }
+            if (task->optimal_params) { nimcp_free(task->optimal_params); task->optimal_params = NULL; }
             nimcp_mutex_unlock(ctx->mutex);
             return -1;
         }
@@ -315,6 +324,14 @@ int cl_start_task(cl_ctx_t* ctx, uint32_t task_id, const char* task_name) {
             if (!task->fisher[p] || !task->optimal_params[p]) {
                 NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, size * sizeof(float),
                                   "cl_start_task: failed to allocate param arrays for param %u", p);
+                /* Free already-allocated sub-arrays (up to and including p) */
+                for (uint32_t q = 0; q <= p; q++) {
+                    if (task->fisher[q]) nimcp_free(task->fisher[q]);
+                    if (task->optimal_params[q]) nimcp_free(task->optimal_params[q]);
+                }
+                nimcp_free(task->fisher); task->fisher = NULL;
+                nimcp_free(task->optimal_params); task->optimal_params = NULL;
+                nimcp_free(task->param_sizes); task->param_sizes = NULL;
                 nimcp_mutex_unlock(ctx->mutex);
                 return -1;
             }
@@ -327,6 +344,9 @@ int cl_start_task(cl_ctx_t* ctx, uint32_t task_id, const char* task_name) {
             if (!task->omega || !task->param_delta) {
                 NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ctx->num_params * sizeof(float*),
                                   "cl_start_task: failed to allocate SI tracking arrays");
+                if (task->omega) { nimcp_free(task->omega); task->omega = NULL; }
+                if (task->param_delta) { nimcp_free(task->param_delta); task->param_delta = NULL; }
+                /* fisher/optimal_params/param_sizes still valid — will be cleaned up by cl_destroy */
                 nimcp_mutex_unlock(ctx->mutex);
                 return -1;
             }
@@ -336,6 +356,13 @@ int cl_start_task(cl_ctx_t* ctx, uint32_t task_id, const char* task_name) {
                 if (!task->omega[p] || !task->param_delta[p]) {
                     NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, task->param_sizes[p] * sizeof(float),
                                       "cl_start_task: failed to allocate SI arrays for param %u", p);
+                    /* Free already-allocated sub-arrays (up to and including p) */
+                    for (uint32_t q = 0; q <= p; q++) {
+                        if (task->omega[q]) nimcp_free(task->omega[q]);
+                        if (task->param_delta[q]) nimcp_free(task->param_delta[q]);
+                    }
+                    nimcp_free(task->omega); task->omega = NULL;
+                    nimcp_free(task->param_delta); task->param_delta = NULL;
                     nimcp_mutex_unlock(ctx->mutex);
                     return -1;
                 }
@@ -385,6 +412,11 @@ int cl_end_task(cl_ctx_t* ctx) {
     }
 
     nimcp_mutex_lock(ctx->mutex);
+
+    if (!ctx->params) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return -1;
+    }
 
     task_data_t* task = &ctx->tasks[ctx->current_task];
 
@@ -520,19 +552,24 @@ float cl_compute_penalty(
         task_data_t* task = &ctx->tasks[t];
         if (!task->completed) continue;
 
+        size_t param_offset = 0;
         for (uint32_t p = 0; p < ctx->num_params; p++) {
-            /* Use provided params if available, otherwise use tensor data */
-            const float* current = current_params ? current_params :
+            /* Use provided flat params with offset, otherwise per-tensor data */
+            const float* current = current_params ? (current_params + param_offset) :
                                    (const float*)nimcp_tensor_data(ctx->params[p]);
             const float* optimal = task->optimal_params[p];
             const float* fisher = task->fisher[p];
 
-            if (!current || !optimal || !fisher) continue;
+            if (!current || !optimal || !fisher) {
+                param_offset += task->param_sizes[p];
+                continue;
+            }
 
             for (size_t i = 0; i < task->param_sizes[p]; i++) {
                 float diff = current[i] - optimal[i];
                 penalty += fisher[i] * diff * diff;
             }
+            param_offset += task->param_sizes[p];
         }
     }
 

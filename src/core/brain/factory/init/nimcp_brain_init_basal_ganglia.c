@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
@@ -38,6 +39,9 @@ extern int mesh_basal_ganglia_register_participant(mesh_basal_ganglia_integratio
 extern int mesh_basal_ganglia_set_health_agent(mesh_basal_ganglia_integration_t* integration,
                                                 void* agent);
 
+/** Mutex protecting global mesh state (set/get/init/destroy races) */
+static pthread_mutex_t g_bg_mesh_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /** Global mesh bootstrap handle (set externally) */
 static mesh_bootstrap_t* g_bg_mesh_bootstrap = NULL;
 static mesh_basal_ganglia_integration_t* g_bg_mesh_integration = NULL;
@@ -52,7 +56,9 @@ static mesh_basal_ganglia_integration_t* g_bg_mesh_integration = NULL;
  * @param bootstrap Mesh bootstrap handle (NULL to disable)
  */
 void nimcp_brain_bg_set_mesh_bootstrap(mesh_bootstrap_t* bootstrap) {
+    pthread_mutex_lock(&g_bg_mesh_mutex);
     g_bg_mesh_bootstrap = bootstrap;
+    pthread_mutex_unlock(&g_bg_mesh_mutex);
     if (bootstrap) {
         NIMCP_LOGGING_INFO("Mesh bootstrap set for basal ganglia integration");
     }
@@ -64,7 +70,10 @@ void nimcp_brain_bg_set_mesh_bootstrap(mesh_bootstrap_t* bootstrap) {
  * @return Current mesh integration or NULL if not registered
  */
 mesh_basal_ganglia_integration_t* nimcp_brain_bg_get_mesh_integration(void) {
-    return g_bg_mesh_integration;
+    pthread_mutex_lock(&g_bg_mesh_mutex);
+    mesh_basal_ganglia_integration_t* result = g_bg_mesh_integration;
+    pthread_mutex_unlock(&g_bg_mesh_mutex);
+    return result;
 }
 
 //=============================================================================
@@ -189,6 +198,7 @@ bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t brain) {
     NIMCP_LOGGING_INFO("Enhanced basal ganglia initialized successfully");
 
     /* Register with mesh network if bootstrap is available */
+    pthread_mutex_lock(&g_bg_mesh_mutex);
     if (g_bg_mesh_bootstrap) {
         brain_init_basal_ganglia_heartbeat("mesh_registration", 0.0f);
 
@@ -221,6 +231,7 @@ bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t brain) {
 
         brain_init_basal_ganglia_heartbeat("mesh_registration", 1.0f);
     }
+    pthread_mutex_unlock(&g_bg_mesh_mutex);
 
     /* Log enabled features */
     NIMCP_LOGGING_DEBUG("BG features enabled:");
@@ -245,11 +256,13 @@ void nimcp_brain_bg_destroy(brain_t brain) {
     struct brain_struct* b = (struct brain_struct*)brain;
 
     /* Destroy mesh integration first */
+    pthread_mutex_lock(&g_bg_mesh_mutex);
     if (g_bg_mesh_integration) {
         mesh_basal_ganglia_destroy(g_bg_mesh_integration);
         g_bg_mesh_integration = NULL;
         NIMCP_LOGGING_DEBUG("Basal ganglia mesh integration destroyed");
     }
+    pthread_mutex_unlock(&g_bg_mesh_mutex);
 
     if (b->basal_ganglia) {
         bg_enhanced_destroy(b->basal_ganglia);
@@ -296,9 +309,15 @@ int nimcp_brain_bg_select_action(brain_t brain,
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->basal_ganglia_enabled || !b->basal_ganglia) {
-        /* BG not enabled - fall back to max activation */
+        /* BG not enabled - fall back to max activation over known outputs */
         uint32_t num_actions = b->config.num_outputs;
-        if (num_actions == 0) num_actions = 16;
+        if (num_actions == 0) {
+            /* No outputs configured - cannot safely index cortical_input */
+            *selected_action = 0;
+            return 0;
+        }
+        /* Safety clamp: never read beyond 64 elements even if config is misconfigured */
+        if (num_actions > 64) num_actions = 64;
 
         float max_val = cortical_input[0];
         *selected_action = 0;

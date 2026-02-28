@@ -108,10 +108,10 @@ static void pool_init(elig_trace_pool_t* pool, uint32_t capacity) {
 }
 
 static void pool_destroy(elig_trace_pool_t* pool) {
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "eligibility_utils");
     if (!pool) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_destroy: pool is NULL");
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "eligibility_utils");
     }
 
     nimcp_free(pool->pool);

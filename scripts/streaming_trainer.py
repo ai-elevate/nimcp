@@ -411,8 +411,14 @@ class StreamingTrainer:
         logger.info(f"  Curiosity: {'ENABLED' if self.config.enable_curiosity else 'DISABLED'}")
         logger.info(f"  Skepticism: {'ENABLED' if self.config.enable_skepticism else 'DISABLED'}")
 
-        # TODO: Call actual NIMCP brain creation
-        # self.brain = nimcp.create_brain(...)
+        if NIMCP_AVAILABLE:
+            self.brain = nimcp.Brain(
+                'streaming_trainer',  # name
+                0,                    # size = TINY (will grow automatically)
+                0,                    # task = CLASSIFICATION
+                self.config.num_inputs,
+                self.config.num_outputs,
+            )
 
         logger.info("✓ Brain initialized with all cognitive systems active")
 
@@ -497,7 +503,7 @@ class StreamingTrainer:
         # Update counts
         self.stats.total_examples += 1
         self.stats.modality_counts[modality] += 1
-        domain_stat = self.stats.domain_stats[domain]
+        domain_stat = self.stats.domain_stats.setdefault(domain, DomainStats())
         domain_stat.examples_trained += 1
 
         # Epistemic filtering: weight confidence by source quality

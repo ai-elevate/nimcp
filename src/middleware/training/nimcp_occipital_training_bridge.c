@@ -104,7 +104,7 @@ static float compute_feature_novelty(occipital_training_bridge_t* bridge) {
     }
 
     occipital_stats_t stats;
-    if (occipital_get_stats(bridge->occipital, &stats) != OCCIPITAL_ERROR_NONE) {
+    if (!occipital_get_stats(bridge->occipital, &stats)) {
         return 0.5f;
     }
 
@@ -279,6 +279,7 @@ occipital_training_bridge_t* occipital_training_bridge_create(
     bridge->attention_buffer = nimcp_calloc(bridge->attention_buffer_size, sizeof(float));
     if (!bridge->attention_buffer) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_training_bridge_create: attention buffer allocation failed");
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }

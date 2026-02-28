@@ -531,7 +531,7 @@ dist_group_t* dist_world_group(dist_ctx_t* ctx) {
 }
 
 void dist_destroy_group(dist_group_t* group) {
-    if (!group || group == group->parent->world_group) {
+    if (!group || (group->parent && group == group->parent->world_group)) {
         return;  /* Don't destroy world group */
     }
 
@@ -1397,18 +1397,20 @@ static int ring_all_reduce(dist_ctx_t* ctx, float* buffer, size_t count) {
         /* Chunk index to receive into (from previous rank) */
         uint32_t recv_ci = (rank - st - 1 + world_size) % world_size;
 
-        /* Simulate ring exchange: copy the chunk that would be received from
-         * the previous rank ((rank - 1) % world_size). In a real distributed
-         * setting this would be MPI_Sendrecv / NCCL send+recv. Here we read
-         * from the buffer itself since all ranks share the same address space
-         * in the simulation. The receive buffer holds the "incoming" chunk. */
+        /* Simulate ring exchange: In a real distributed setting, the previous
+         * rank sends its send_ci chunk and we accumulate it into our recv_ci
+         * chunk. Since all ranks share the same buffer in this simulation, we
+         * read from the SEND chunk (which represents the data the previous
+         * rank would have sent) and accumulate into the RECEIVE chunk. */
         size_t recv_sz = szs[recv_ci];
-        for (size_t jj = 0; jj < recv_sz; jj++) {
-            rbuf[jj] = buffer[offs[recv_ci] + jj];
+        size_t send_sz = szs[send_ci];
+        size_t copy_sz = recv_sz < send_sz ? recv_sz : send_sz;
+        for (size_t jj = 0; jj < copy_sz; jj++) {
+            rbuf[jj] = buffer[offs[send_ci] + jj];
         }
 
         /* Accumulate received chunk into local buffer */
-        for (size_t jj = 0; jj < recv_sz; jj++) {
+        for (size_t jj = 0; jj < copy_sz; jj++) {
             buffer[offs[recv_ci] + jj] += rbuf[jj];
         }
 

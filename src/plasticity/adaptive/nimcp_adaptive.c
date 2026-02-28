@@ -190,8 +190,12 @@ void adaptive_pool_cleanup(void) {
  * @brief Allocate buffer from pool or heap
  */
 static void* alloc_hot_buffer(size_t size) {
+    // C-ADP-11: Increment refcount so cleanup knows we're in-flight
+    atomic_fetch_add(&g_adaptive_pool_refcount, 1);
+
     // C-ADP-11: Reject allocations during shutdown to prevent use-after-free
     if (atomic_load(&g_adaptive_pool_shutting_down)) {
+        atomic_fetch_sub(&g_adaptive_pool_refcount, 1);
         return nimcp_calloc(1, size);
     }
     if (size <= ADAPTIVE_POOL_BLOCK_SIZE) {
@@ -202,10 +206,12 @@ static void* alloc_hot_buffer(size_t size) {
                 // I-M3: Clear full pool block, not just requested size, to prevent
                 // stale data from a previous allocation bleeding into a smaller request
                 memset(buf, 0, ADAPTIVE_POOL_BLOCK_SIZE);
+                atomic_fetch_sub(&g_adaptive_pool_refcount, 1);
                 return buf;
             }
         }
     }
+    atomic_fetch_sub(&g_adaptive_pool_refcount, 1);
     return nimcp_calloc(1, size);
 }
 
@@ -214,12 +220,14 @@ static void* alloc_hot_buffer(size_t size) {
  */
 static void free_hot_buffer(void* buf) {
     if (!buf) return;
+    atomic_fetch_add(&g_adaptive_pool_refcount, 1);
     memory_pool_t pool = get_adaptive_pool();
     if (pool && memory_pool_owns(pool, buf)) {
         memory_pool_release(pool, buf);
     } else {
         nimcp_free(buf);
     }
+    atomic_fetch_sub(&g_adaptive_pool_refcount, 1);
 }
 
 //=============================================================================
@@ -365,15 +373,15 @@ struct adaptive_network_struct {
     bool frozen;
 
     // Gradient norm tracking
-    // C-ADP-2: Use volatile to prevent compiler reordering on cross-thread reads.
+    // C-ADP-2: Use _Atomic float for proper cross-thread visibility.
     // These fields are written by learn() on training threads and read by Python
-    // threads via getters. Full _Atomic float would require -latomic and is overkill
-    // for approximate monitoring values — volatile provides sufficient ordering.
-    volatile float last_grad_norm;  /**< L2 norm of gradients from most recent learn step */
+    // threads via getters. Relaxed ordering suffices for approximate monitoring values.
+    // Requires -latomic on GCC/Linux (already linked).
+    _Atomic float last_grad_norm;  /**< L2 norm of gradients from most recent learn step */
 
     // EMA tracking for training stability detection
-    volatile float ema_grad_norm;   /**< Exponential moving average of gradient norms (decay=0.99), -1 = uninitialized */
-    volatile float ema_loss;        /**< Exponential moving average of training loss (decay=0.99), -1 = uninitialized */
+    _Atomic float ema_grad_norm;   /**< Exponential moving average of gradient norms (decay=0.99), -1 = uninitialized */
+    _Atomic float ema_loss;        /**< Exponential moving average of training loss (decay=0.99), -1 = uninitialized */
 };
 
 //=============================================================================
@@ -3253,9 +3261,13 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
     }
 
     // Collect active neurons
-    // M-4: Also bound by num_neurons to prevent OOB access on neuron_states[]
+    // M-4: Use min(output_size, num_neurons) as single loop bound to prevent OOB on both output[] and neuron_states[]
+    uint32_t loop_bound = network->config.base_config.output_size;
+    if (network->num_neurons < loop_bound) {
+        loop_bound = network->num_neurons;
+    }
     uint32_t idx = 0;
-    for (uint32_t i = 0; i < network->config.base_config.output_size && idx < active_count && i < network->num_neurons; i++) {
+    for (uint32_t i = 0; i < loop_bound && idx < active_count; i++) {
         if (fabsf(output[i]) > network->neuron_states[i].adaptive_threshold) {
             analysis->active_neuron_ids[idx] = i;
             analysis->activation_strengths[idx] = output[i];

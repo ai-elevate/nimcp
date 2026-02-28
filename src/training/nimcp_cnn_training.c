@@ -1060,9 +1060,20 @@ static nimcp_tensor_t* cnn_forward_conv(const cnn_layer_t* layer, const nimcp_te
         return NULL;
     }
 
-    /* Compute output dimensions */
-    uint32_t out_h = (in_h + 2 * cfg->padding_h - cfg->dilation_h * (cfg->kernel_h - 1) - 1) / cfg->stride_h + 1;
-    uint32_t out_w = (in_w + 2 * cfg->padding_w - cfg->dilation_w * (cfg->kernel_w - 1) - 1) / cfg->stride_w + 1;
+    /* Compute output dimensions in signed arithmetic to detect underflow */
+    int64_t out_h_signed = ((int64_t)in_h + 2*(int64_t)cfg->padding_h
+                            - (int64_t)cfg->dilation_h * ((int64_t)cfg->kernel_h - 1) - 1)
+                           / (int64_t)cfg->stride_h + 1;
+    int64_t out_w_signed = ((int64_t)in_w + 2*(int64_t)cfg->padding_w
+                            - (int64_t)cfg->dilation_w * ((int64_t)cfg->kernel_w - 1) - 1)
+                           / (int64_t)cfg->stride_w + 1;
+    if (out_h_signed <= 0 || out_w_signed <= 0) {
+        NIMCP_LOGGING_ERROR("cnn_forward_conv: Invalid output dimensions (out_h=%lld, out_w=%lld)",
+                            (long long)out_h_signed, (long long)out_w_signed);
+        return NULL;
+    }
+    uint32_t out_h = (uint32_t)out_h_signed;
+    uint32_t out_w = (uint32_t)out_w_signed;
 
     /* Create output tensor */
     uint32_t out_dims[4] = {batch, cfg->out_channels, out_h, out_w};
@@ -1156,9 +1167,18 @@ static nimcp_tensor_t* cnn_forward_pool(const cnn_layer_t* layer, const nimcp_te
         return NULL;
     }
 
-    /* Compute output dimensions */
-    uint32_t out_h = (in_h + 2 * cfg->padding_h - cfg->pool_h) / cfg->stride_h + 1;
-    uint32_t out_w = (in_w + 2 * cfg->padding_w - cfg->pool_w) / cfg->stride_w + 1;
+    /* Compute output dimensions in signed arithmetic to detect underflow */
+    int64_t out_h_signed = ((int64_t)in_h + 2*(int64_t)cfg->padding_h - (int64_t)cfg->pool_h)
+                           / (int64_t)cfg->stride_h + 1;
+    int64_t out_w_signed = ((int64_t)in_w + 2*(int64_t)cfg->padding_w - (int64_t)cfg->pool_w)
+                           / (int64_t)cfg->stride_w + 1;
+    if (out_h_signed <= 0 || out_w_signed <= 0) {
+        NIMCP_LOGGING_ERROR("cnn_forward_pool: Invalid output dimensions (out_h=%lld, out_w=%lld)",
+                            (long long)out_h_signed, (long long)out_w_signed);
+        return NULL;
+    }
+    uint32_t out_h = (uint32_t)out_h_signed;
+    uint32_t out_w = (uint32_t)out_w_signed;
 
     /* Handle global pooling */
     if (cfg->type == CNN_POOL_GLOBAL_MAX || cfg->type == CNN_POOL_GLOBAL_AVERAGE) {
@@ -1251,7 +1271,15 @@ static nimcp_tensor_t* cnn_forward_batch_norm(cnn_layer_t* layer, const nimcp_te
     nimcp_tensor_get_shape(input, &shape);
     uint32_t batch = shape.dims[0];
     uint32_t channels = cfg->num_features;
+    if (batch == 0 || channels == 0) {
+        nimcp_tensor_destroy(output);
+        return NULL;
+    }
     size_t spatial = shape.numel / (batch * channels);
+    if (spatial == 0) {
+        nimcp_tensor_destroy(output);
+        return NULL;
+    }
 
     const float* in_data = nimcp_tensor_data_const(input);
     float* out_data = nimcp_tensor_data(output);
@@ -1370,6 +1398,7 @@ static nimcp_tensor_t* cnn_forward_dense(const cnn_layer_t* layer, const nimcp_t
     nimcp_tensor_shape_t in_shape;
     nimcp_tensor_get_shape(input, &in_shape);
     uint32_t batch = in_shape.dims[0];
+    if (batch == 0) return NULL;
     uint32_t in_features = in_shape.numel / batch;
 
     /* Create output: (batch, out_features) */
@@ -1413,6 +1442,7 @@ static nimcp_tensor_t* cnn_forward_flatten(const nimcp_tensor_t* input) {
     nimcp_tensor_get_shape(input, &in_shape);
 
     uint32_t batch = in_shape.dims[0];
+    if (batch == 0) return NULL;
     uint32_t flat_size = in_shape.numel / batch;
 
     uint32_t out_dims[2] = {batch, flat_size};

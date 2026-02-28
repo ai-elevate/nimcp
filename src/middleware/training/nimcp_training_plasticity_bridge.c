@@ -95,6 +95,7 @@ struct tpb_context {
     /* Callback context (Phase TCB-1) */
     tcb_context_t* callback_ctx;
     uint64_t callback_stats[4];  /* loss, weight, epoch, divergence */
+    float callback_modulation[TCB_EVENT_COUNT];  /* per-event modulation factors */
     nimcp_mutex_t callback_mutex;
 
     /* Perception-Cortical Training Integration (Phase XBI) */
@@ -370,7 +371,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
     tpb_context_t* ctx = nimcp_malloc(sizeof(tpb_context_t));
     if (!ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tpb_create: failed to allocate bridge context");
-        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to allocate bridge context");
+        LOG_ERROR("[%s] Failed to allocate bridge context", TPB_LOG_MODULE);
         return NULL;
     }
     memset(ctx, 0, sizeof(tpb_context_t));
@@ -382,6 +383,11 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
         ctx->config = tpb_config_default();
     }
 
+    /* Initialize callback modulation factors to 1.0 (no modulation) */
+    for (int i = 0; i < TCB_EVENT_COUNT; i++) {
+        ctx->callback_modulation[i] = 1.0F;
+    }
+
     /* Initialize RPE state */
     ctx->rpe_state.mode = ctx->config.rpe_mode;
     ctx->rpe_state.rpe_alpha = ctx->config.rpe_smoothing_alpha;
@@ -390,14 +396,14 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
 
     /* Initialize mutexes */
     if (nimcp_mutex_init(&ctx->rpe_mutex, NULL) != NIMCP_SUCCESS) {
-        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init RPE mutex");
+        LOG_ERROR("[%s] Failed to init RPE mutex", TPB_LOG_MODULE);
         nimcp_free(ctx);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "tpb_create: validation failed");
         return NULL;
     }
 
     if (nimcp_mutex_init(&ctx->stats_mutex, NULL) != NIMCP_SUCCESS) {
-        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init stats mutex");
+        LOG_ERROR("[%s] Failed to init stats mutex", TPB_LOG_MODULE);
         nimcp_mutex_destroy(&ctx->rpe_mutex);
         nimcp_free(ctx);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "tpb_create: validation failed");
@@ -405,7 +411,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
     }
 
     if (nimcp_mutex_init(&ctx->callback_mutex, NULL) != NIMCP_SUCCESS) {
-        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init callback mutex");
+        LOG_ERROR("[%s] Failed to init callback mutex", TPB_LOG_MODULE);
         nimcp_mutex_destroy(&ctx->stats_mutex);
         nimcp_mutex_destroy(&ctx->rpe_mutex);
         nimcp_free(ctx);
@@ -415,7 +421,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
 
     /* Initialize RW lock for regions */
     if (nimcp_platform_rwlock_init(&ctx->region_rwlock) != 0) {
-        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init region rwlock");
+        LOG_ERROR("[%s] Failed to init region rwlock", TPB_LOG_MODULE);
         nimcp_mutex_destroy(&ctx->callback_mutex);
         nimcp_mutex_destroy(&ctx->stats_mutex);
         nimcp_mutex_destroy(&ctx->rpe_mutex);
@@ -443,7 +449,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
 
         ctx->neuromod_system = neuromodulator_system_create(&neuromod_config);
         if (!ctx->neuromod_system) {
-            LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to create neuromodulator system");
+            LOG_ERROR("[%s] Failed to create neuromodulator system", TPB_LOG_MODULE);
             nimcp_platform_rwlock_destroy(&ctx->region_rwlock);
             nimcp_mutex_destroy(&ctx->stats_mutex);
             nimcp_mutex_destroy(&ctx->rpe_mutex);
@@ -818,7 +824,7 @@ nimcp_result_t tpb_configure_region(tpb_context_t* ctx, const tpb_region_config_
 
     if (ctx->num_regions >= TPB_MAX_REGIONS) {
         nimcp_platform_rwlock_wrunlock(&ctx->region_rwlock);
-        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Maximum regions exceeded");
+        LOG_ERROR("[%s] Maximum regions exceeded", TPB_LOG_MODULE);
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -938,7 +944,9 @@ nimcp_result_t tpb_apply_plasticity_batch(tpb_context_t* ctx, uint32_t num_synap
     NIMCP_CHECK_THROW(weights != NULL, NIMCP_ERROR_INVALID_PARAM, "weights is NULL");
     NIMCP_CHECK_THROW(num_synapses > 0, NIMCP_ERROR_INVALID_PARAM, "num_synapses is zero");
 
-    uint64_t start_time = ((uint64_t)clock() * 1000000000ULL / CLOCKS_PER_SEC);
+    struct timespec ts_start;
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
+    uint64_t start_time = (uint64_t)ts_start.tv_sec * 1000000000ULL + (uint64_t)ts_start.tv_nsec;
 
     if (ctx->thread_pool && num_synapses > 1000) {
         /* Parallel execution for large batches */
@@ -993,8 +1001,10 @@ nimcp_result_t tpb_apply_plasticity_batch(tpb_context_t* ctx, uint32_t num_synap
         }
     }
 
-    /* Update timing statistics */
-    uint64_t elapsed = ((uint64_t)clock() * 1000000000ULL / CLOCKS_PER_SEC) - start_time;
+    /* Update timing statistics (wall time, not CPU time) */
+    struct timespec ts_end;
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    uint64_t elapsed = ((uint64_t)ts_end.tv_sec * 1000000000ULL + (uint64_t)ts_end.tv_nsec) - start_time;
     nimcp_mutex_lock(&ctx->stats_mutex);
     ctx->stats.total_time_ns += elapsed;
     nimcp_mutex_unlock(&ctx->stats_mutex);
@@ -1857,7 +1867,8 @@ nimcp_result_t tpb_set_callback_modulation(tpb_context_t* ctx, tcb_event_type_t 
 
     LOG_DEBUG("[%s] Set callback modulation for event %d: %.2f", TPB_LOG_MODULE, event, modulation);
 
-    /* Store in config or internal state */
+    /* Store per-event modulation factor */
+    ctx->callback_modulation[event] = modulation;
     return NIMCP_SUCCESS;
 }
 

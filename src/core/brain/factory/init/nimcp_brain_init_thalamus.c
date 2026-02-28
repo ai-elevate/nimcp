@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
@@ -38,6 +39,9 @@ extern int mesh_thalamus_register_participant(mesh_thalamus_integration_t* integ
 extern int mesh_thalamus_set_health_agent(mesh_thalamus_integration_t* integration,
                                            void* agent);
 
+/** Mutex protecting global mesh state (set/get/init/destroy races) */
+static pthread_mutex_t g_thalamus_mesh_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /** Global mesh bootstrap handle (set externally) */
 static mesh_bootstrap_t* g_thalamus_mesh_bootstrap = NULL;
 static mesh_thalamus_integration_t* g_thalamus_mesh_integration = NULL;
@@ -52,7 +56,9 @@ static mesh_thalamus_integration_t* g_thalamus_mesh_integration = NULL;
  * @param bootstrap Mesh bootstrap handle (NULL to disable)
  */
 void nimcp_brain_thalamus_set_mesh_bootstrap(mesh_bootstrap_t* bootstrap) {
+    pthread_mutex_lock(&g_thalamus_mesh_mutex);
     g_thalamus_mesh_bootstrap = bootstrap;
+    pthread_mutex_unlock(&g_thalamus_mesh_mutex);
     if (bootstrap) {
         NIMCP_LOGGING_INFO("Mesh bootstrap set for thalamus integration");
     }
@@ -64,7 +70,10 @@ void nimcp_brain_thalamus_set_mesh_bootstrap(mesh_bootstrap_t* bootstrap) {
  * @return Current mesh integration or NULL if not registered
  */
 mesh_thalamus_integration_t* nimcp_brain_thalamus_get_mesh_integration(void) {
-    return g_thalamus_mesh_integration;
+    pthread_mutex_lock(&g_thalamus_mesh_mutex);
+    mesh_thalamus_integration_t* result = g_thalamus_mesh_integration;
+    pthread_mutex_unlock(&g_thalamus_mesh_mutex);
+    return result;
 }
 
 //=============================================================================
@@ -189,6 +198,7 @@ bool nimcp_brain_factory_init_thalamus_subsystem(brain_t brain) {
                         THAL_NUCLEUS_COUNT);
 
     /* Register with mesh network if bootstrap is available */
+    pthread_mutex_lock(&g_thalamus_mesh_mutex);
     if (g_thalamus_mesh_bootstrap) {
         brain_init_thalamus_heartbeat("mesh_registration", 0.0f);
 
@@ -221,6 +231,7 @@ bool nimcp_brain_factory_init_thalamus_subsystem(brain_t brain) {
 
         brain_init_thalamus_heartbeat("mesh_registration", 1.0f);
     }
+    pthread_mutex_unlock(&g_thalamus_mesh_mutex);
 
     /* Log enabled nuclei */
     NIMCP_LOGGING_DEBUG("Thalamus nuclei enabled:");
@@ -242,11 +253,13 @@ void nimcp_brain_thal_destroy(brain_t brain) {
     struct brain_struct* b = (struct brain_struct*)brain;
 
     /* Destroy mesh integration first */
+    pthread_mutex_lock(&g_thalamus_mesh_mutex);
     if (g_thalamus_mesh_integration) {
         mesh_thalamus_destroy(g_thalamus_mesh_integration);
         g_thalamus_mesh_integration = NULL;
         NIMCP_LOGGING_DEBUG("Thalamus mesh integration destroyed");
     }
+    pthread_mutex_unlock(&g_thalamus_mesh_mutex);
 
     if (b->thalamus) {
         thalamus_destroy(b->thalamus);
