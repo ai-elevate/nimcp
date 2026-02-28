@@ -445,6 +445,18 @@ static float snn_surrogate_gradient_local(const snn_training_ctx_t* ctx, float m
     return grad;
 }
 
+/**
+ * @brief Public wrapper for snn_surrogate_gradient_local
+ *
+ * WHAT: Public API for computing surrogate gradient with snn_training_ctx_t
+ * WHY:  Exposes functionality renamed from snn_surrogate_gradient() to avoid
+ *       ODR conflict with snn_backprop's snn_surrogate_gradient()
+ * HOW:  Delegates to static snn_surrogate_gradient_local()
+ */
+float snn_training_surrogate_gradient(const snn_training_ctx_t* ctx, float membrane_v) {
+    return snn_surrogate_gradient_local(ctx, membrane_v);
+}
+
 /** Gradient clipping bounds for numerical stability */
 #define SNN_GRADIENT_CLIP_MIN -5.0f
 #define SNN_GRADIENT_CLIP_MAX 5.0f

@@ -250,7 +250,7 @@ TEST_F(SNNTrainingTest, SurrogateGradientNonZeroNearThreshold) {
     ASSERT_NE(ctx, nullptr);
 
     /* At threshold (1.0), gradient should be maximum */
-    float grad = snn_surrogate_gradient(ctx, 1.0f);
+    float grad = snn_training_surrogate_gradient(ctx, 1.0f);
     EXPECT_GT(grad, 0.0f);
 
     snn_training_destroy(ctx);
@@ -261,9 +261,9 @@ TEST_F(SNNTrainingTest, SurrogateGradientDecaysAwayFromThreshold) {
     snn_training_ctx_t* ctx = snn_training_create_surrogate(&surrogate_config, 10, 5);
     ASSERT_NE(ctx, nullptr);
 
-    float grad_near = snn_surrogate_gradient(ctx, 1.0f);   /* At threshold */
-    float grad_below = snn_surrogate_gradient(ctx, 0.5f);  /* Below threshold */
-    float grad_above = snn_surrogate_gradient(ctx, 1.5f);  /* Above threshold */
+    float grad_near = snn_training_surrogate_gradient(ctx, 1.0f);   /* At threshold */
+    float grad_below = snn_training_surrogate_gradient(ctx, 0.5f);  /* Below threshold */
+    float grad_above = snn_training_surrogate_gradient(ctx, 1.5f);  /* Above threshold */
 
     EXPECT_GE(grad_near, grad_below);
     EXPECT_GE(grad_near, grad_above);
@@ -273,7 +273,7 @@ TEST_F(SNNTrainingTest, SurrogateGradientDecaysAwayFromThreshold) {
 
 TEST_F(SNNTrainingTest, SurrogateGradientHandlesNullContext) {
     /* WHAT: Verify NULL context returns zero */
-    float grad = snn_surrogate_gradient(nullptr, 1.0f);
+    float grad = snn_training_surrogate_gradient(nullptr, 1.0f);
     EXPECT_EQ(grad, 0.0f);
 }
 

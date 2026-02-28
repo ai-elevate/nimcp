@@ -41,7 +41,7 @@ protected:
 
         // Register test module as observer
         bio_module_info_t test_info = {
-            .module_id = BIO_MODULE_TEST,
+            .module_id = BIO_MODULE_STP,
             .module_name = "integration_test",
             .inbox_capacity = 128,
             .user_data = this

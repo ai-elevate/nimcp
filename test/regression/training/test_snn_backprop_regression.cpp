@@ -28,6 +28,7 @@
 // Headers have their own extern "C" guards
 #include "training/nimcp_snn_backprop.h"
 #include "snn/nimcp_snn_network.h"
+#include "snn/nimcp_snn_config.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -58,12 +59,8 @@ protected:
     }
 
     void CreateSmallNetwork() {
-        snn_network_config_t net_config;
-        memset(&net_config, 0, sizeof(net_config));
-        net_config.n_inputs = 10;
-        net_config.n_outputs = 5;
-        net_config.n_hidden = 20;
-        net_config.dt_ms = 1.0f;
+        snn_config_t net_config;
+        snn_config_feedforward(&net_config, 10, 20, 5);
 
         network = snn_network_create(&net_config);
         ASSERT_NE(network, nullptr);

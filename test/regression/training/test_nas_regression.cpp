@@ -27,6 +27,7 @@
 
 // Headers have their own extern "C" guards
 #include "training/nimcp_auto_architecture.h"
+#include "lnn/nimcp_lnn_config.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -63,7 +64,7 @@ protected:
 
     nimcp_tensor_t* CreateDummyData(uint32_t n_samples, uint32_t n_features) {
         uint32_t dims[2] = {n_samples, n_features};
-        nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_FLOAT32);
+        nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
         if (tensor) {
             float* data = static_cast<float*>(nimcp_tensor_data(tensor));
             for (uint32_t i = 0; i < n_samples * n_features; i++) {

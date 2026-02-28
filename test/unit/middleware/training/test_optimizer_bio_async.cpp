@@ -27,11 +27,11 @@ protected:
 
     void SetUp() override {
         // Initialize bio-router
-        bio_router_config_t cfg = {0}; bio_router_init(&cfg);
+        bio_router_config_t cfg = {}; bio_router_init(&cfg);
 
         // Register test module to receive messages
         bio_module_info_t test_info = {
-            .module_id = BIO_MODULE_TEST,
+            .module_id = BIO_MODULE_STP,
             .module_name = "test_module",
             .inbox_capacity = 32,
             .user_data = this
@@ -154,11 +154,11 @@ TEST_F(OptimizerBioAsyncTest, HandlesGradientComputedMessage) {
     ASSERT_NE(optimizer, nullptr);
 
     // Send gradient computed message to optimizer
-    bio_msg_gradient_computed_t msg = {0};
+    bio_msg_gradient_computed_t msg = {};
     bio_msg_init_header(&msg.header, BIO_MSG_GRADIENT_COMPUTED,
-                       BIO_MODULE_TEST, BIO_MODULE_TRAINING_OPTIMIZER,
+                       BIO_MODULE_STP, BIO_MODULE_TRAINING_OPTIMIZER,
                        sizeof(bio_msg_gradient_computed_t) - sizeof(bio_message_header_t));
-    msg.batch_id = 42;
+    msg.layer_id = 42;
     msg.gradient_norm = 0.123f;
 
     // Send via bio-router (would need access to optimizer's inbox)

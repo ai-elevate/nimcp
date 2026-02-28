@@ -11,20 +11,33 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "core/events/nimcp_event_bus.h"
 
 class TrainingAdaptersIntegrationTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Initialize unified memory
-        unified_memory_config_t mem_config = unified_memory_default_config();
-        ASSERT_EQ(NIMCP_SUCCESS, unified_memory_init(&mem_config));
+        // Initialize memory subsystem
+        nimcp_memory_init();
 
         // Initialize bio-async
         nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
         bio_config.enable_logging = true;
         ASSERT_EQ(NIMCP_SUCCESS, nimcp_bio_async_init(&bio_config));
+
+        // Initialize bio-router for message sending
+        bio_router_config_t router_config = bio_router_default_config();
+        bio_router_init(&router_config);
+
+        // Register a sender module
+        bio_module_info_t sender_info = {
+            .module_id = BIO_MODULE_STP,
+            .module_name = "TestSender",
+            .inbox_capacity = 64,
+            .user_data = nullptr
+        };
+        sender_module_ = bio_router_register_module(&sender_info);
 
         // Create event bus
         event_bus = event_bus_create("integration_test", EVENT_DELIVERY_IMMEDIATE);
@@ -35,9 +48,16 @@ protected:
         if (event_bus) {
             event_bus_destroy(event_bus);
         }
+        if (sender_module_) {
+            bio_router_unregister_module(sender_module_);
+            sender_module_ = nullptr;
+        }
+        bio_router_shutdown();
         nimcp_bio_async_shutdown();
-        unified_memory_shutdown();
+        nimcp_memory_cleanup();
     }
+
+    bio_module_context_t sender_module_ = nullptr;
 
     event_bus_t event_bus = nullptr;
 };
@@ -126,7 +146,7 @@ TEST_F(TrainingAdaptersIntegrationTest, MultiChannelCommunication) {
             (nimcp_bio_channel_type_t)channel,
             sizeof(bio_msg_weight_update_response_t));
 
-        bio_module_send_message(BIO_MODULE_TRAINING, &request, sizeof(request), promise);
+        bio_router_send(sender_module_, &request, sizeof(request), 500);
 
         nimcp_bio_future_t future = nimcp_bio_promise_get_future(promise);
         bio_msg_weight_update_response_t response;
@@ -159,7 +179,7 @@ TEST_F(TrainingAdaptersIntegrationTest, ConcurrentMessageProcessing) {
         promises[i] = nimcp_bio_promise_create(BIO_CHANNEL_DOPAMINE,
                                                sizeof(bio_msg_weight_update_response_t));
 
-        bio_module_send_message(BIO_MODULE_TRAINING, &request, sizeof(request), promises[i]);
+        bio_router_send(sender_module_, &request, sizeof(request), 500);
         futures[i] = nimcp_bio_promise_get_future(promises[i]);
     }
 

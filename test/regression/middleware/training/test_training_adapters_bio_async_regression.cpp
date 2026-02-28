@@ -12,22 +12,42 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
 class TrainingAdaptersRegressionTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        unified_memory_config_t mem_config = unified_memory_default_config();
-        ASSERT_EQ(NIMCP_SUCCESS, unified_memory_init(&mem_config));
+        nimcp_memory_init();
 
         nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
         ASSERT_EQ(NIMCP_SUCCESS, nimcp_bio_async_init(&bio_config));
+
+        // Initialize bio-router for message sending
+        bio_router_config_t router_config = bio_router_default_config();
+        bio_router_init(&router_config);
+
+        // Register a sender module
+        bio_module_info_t sender_info = {
+            .module_id = BIO_MODULE_STP,
+            .module_name = "TestSender",
+            .inbox_capacity = 64,
+            .user_data = nullptr
+        };
+        sender_module_ = bio_router_register_module(&sender_info);
     }
 
     void TearDown() override {
+        if (sender_module_) {
+            bio_router_unregister_module(sender_module_);
+            sender_module_ = nullptr;
+        }
+        bio_router_shutdown();
         nimcp_bio_async_shutdown();
-        unified_memory_shutdown();
+        nimcp_memory_cleanup();
     }
+
+    bio_module_context_t sender_module_ = nullptr;
 };
 
 //=============================================================================
@@ -68,7 +88,7 @@ TEST_F(TrainingAdaptersRegressionTest, NoMemoryLeakOnMessageFlood) {
         request.synapse_id = i;
         request.weight_delta = 0.001f;
 
-        bio_module_send_message(BIO_MODULE_TRAINING, &request, sizeof(request), nullptr);
+        bio_router_send(sender_module_, &request, sizeof(request), 500);
     }
 
     nimcp_bio_async_step(100.0f);
@@ -98,7 +118,7 @@ TEST_F(TrainingAdaptersRegressionTest, MessageProcessingPerformance) {
         request.synapse_id = i;
         request.weight_delta = 0.001f;
 
-        bio_module_send_message(BIO_MODULE_TRAINING, &request, sizeof(request), nullptr);
+        bio_router_send(sender_module_, &request, sizeof(request), 500);
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -156,11 +176,11 @@ TEST_F(TrainingAdaptersRegressionTest, StatisticsAccuracy) {
         bio_msg_init_header(&msg.header, BIO_MSG_GRADIENT_COMPUTED,
                            BIO_MODULE_TRAINING, BIO_MODULE_TRAINING,
                            sizeof(msg) - sizeof(bio_message_header_t));
-        msg.batch_id = i;
-        msg.loss_value = 0.1f;
-        msg.loss_gradient = -0.01f;
+        msg.layer_id = i;
+        msg.gradient_norm = 0.1f;
+        msg.num_parameters = 100;
 
-        bio_module_send_message(BIO_MODULE_TRAINING, &msg, sizeof(msg), nullptr);
+        bio_router_send(sender_module_, &msg, sizeof(msg), 500);
     }
 
     nimcp_bio_async_step(10.0f);
@@ -221,8 +241,8 @@ TEST_F(TrainingAdaptersRegressionTest, ZeroSizeMessages) {
     ASSERT_NE(nullptr, adapter);
 
     // Send zero-size message (should be rejected)
-    nimcp_error_t err = bio_module_send_message(BIO_MODULE_TRAINING,
-                                                nullptr, 0, nullptr);
+    nimcp_error_t err = bio_router_send(sender_module_,
+                                       nullptr, 0, 500);
     // Should handle gracefully without crashing
 
     learning_signal_adapter_destroy(adapter);
@@ -236,14 +256,14 @@ TEST_F(TrainingAdaptersRegressionTest, ConcurrentAccessSafety) {
     std::vector<std::thread> threads;
 
     // Thread 1: Send messages
-    threads.emplace_back([adapter]() {
+    threads.emplace_back([this]() {
         for (int i = 0; i < 100; i++) {
             bio_msg_weight_update_request_t request = {};
             bio_msg_init_header(&request.header, BIO_MSG_WEIGHT_UPDATE_REQUEST,
                                BIO_MODULE_TRAINING, BIO_MODULE_TRAINING,
                                sizeof(request) - sizeof(bio_message_header_t));
             request.synapse_id = i;
-            bio_module_send_message(BIO_MODULE_TRAINING, &request, sizeof(request), nullptr);
+            bio_router_send(sender_module_, &request, sizeof(request), 500);
         }
     });
 
@@ -280,7 +300,7 @@ TEST_F(TrainingAdaptersRegressionTest, MessageOrderingPreservation) {
         request.synapse_id = i;
         sent_ids.push_back(i);
 
-        bio_module_send_message(BIO_MODULE_TRAINING, &request, sizeof(request), nullptr);
+        bio_router_send(sender_module_, &request, sizeof(request), 500);
     }
 
     nimcp_bio_async_step(50.0f);

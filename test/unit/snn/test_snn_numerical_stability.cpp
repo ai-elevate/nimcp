@@ -326,12 +326,12 @@ TEST_F(SNNNumericalStabilityTest, SurrogateGradientClipped) {
     ASSERT_NE(surrogate_ctx, nullptr);
 
     /* Very positive membrane potential */
-    float grad_pos = snn_surrogate_gradient(surrogate_ctx, 1000.0f);
+    float grad_pos = snn_training_surrogate_gradient(surrogate_ctx, 1000.0f);
     EXPECT_TRUE(is_finite(grad_pos));
     EXPECT_LE(std::abs(grad_pos), 10.0f);  /* Should be bounded */
 
     /* Very negative membrane potential */
-    float grad_neg = snn_surrogate_gradient(surrogate_ctx, -1000.0f);
+    float grad_neg = snn_training_surrogate_gradient(surrogate_ctx, -1000.0f);
     EXPECT_TRUE(is_finite(grad_neg));
     EXPECT_LE(std::abs(grad_neg), 10.0f);
 }
@@ -345,7 +345,7 @@ TEST_F(SNNNumericalStabilityTest, SurrogateGradientAtThreshold) {
     surrogate_ctx = snn_training_create_surrogate(&surrogate_config, 10, 10);
     ASSERT_NE(surrogate_ctx, nullptr);
 
-    float grad = snn_surrogate_gradient(surrogate_ctx, surrogate_config.threshold);
+    float grad = snn_training_surrogate_gradient(surrogate_ctx, surrogate_config.threshold);
     EXPECT_TRUE(is_finite(grad));
     EXPECT_GT(std::abs(grad), 0.0f);  /* Should have non-zero gradient */
 }
@@ -359,7 +359,7 @@ TEST_F(SNNNumericalStabilityTest, SurrogateGradientWithInfInput) {
     surrogate_ctx = snn_training_create_surrogate(&surrogate_config, 10, 10);
     ASSERT_NE(surrogate_ctx, nullptr);
 
-    float grad = snn_surrogate_gradient(surrogate_ctx, std::numeric_limits<float>::infinity());
+    float grad = snn_training_surrogate_gradient(surrogate_ctx, std::numeric_limits<float>::infinity());
     EXPECT_TRUE(is_finite(grad));  /* Should clamp to finite value */
 }
 
@@ -373,7 +373,7 @@ TEST_F(SNNNumericalStabilityTest, SurrogateGradientWithNaN) {
     ASSERT_NE(surrogate_ctx, nullptr);
 
     float nan_val = std::numeric_limits<float>::quiet_NaN();
-    float grad = snn_surrogate_gradient(surrogate_ctx, nan_val);
+    float grad = snn_training_surrogate_gradient(surrogate_ctx, nan_val);
 
     /* Should handle NaN gracefully */
     /* Result could be 0, NaN, or finite depending on implementation */
@@ -498,7 +498,7 @@ TEST_F(SNNNumericalStabilityTest, SurrogateGradientNullCtx) {
      * WHY:  Must handle NULL gracefully
      * HOW:  Pass NULL, verify no crash
      */
-    float grad = snn_surrogate_gradient(nullptr, 0.5f);
+    float grad = snn_training_surrogate_gradient(nullptr, 0.5f);
     EXPECT_EQ(grad, 0.0f);  /* Should return 0 for NULL */
 }
 

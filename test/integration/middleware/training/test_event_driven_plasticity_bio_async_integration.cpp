@@ -168,18 +168,18 @@ TEST_F(EDPBioAsyncIntegrationTest, ProcessesLearningSequence) {
     for (int i = 0; i < 5; i++) {
         edp_spike_record_t pre = {
             .neuron_id = static_cast<uint32_t>(i),
+            .region_id = 0,
             .timestamp_ns = static_cast<uint64_t>(i * 1000000),
             .amplitude = 1.0f,
-            .is_presynaptic = true,
-            .region_id = 0
+            .is_presynaptic = true
         };
 
         edp_spike_record_t post = {
             .neuron_id = static_cast<uint32_t>(i + 10),
+            .region_id = 0,
             .timestamp_ns = static_cast<uint64_t>(i * 1000000 + 5000000),
             .amplitude = 1.0f,
-            .is_presynaptic = false,
-            .region_id = 0
+            .is_presynaptic = false
         };
 
         // Process through EDP
