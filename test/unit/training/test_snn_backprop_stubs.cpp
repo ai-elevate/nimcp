@@ -199,10 +199,18 @@ TEST_F(SNNBackpropStubTest, ForwardProducesOutput) {
 
     // Outputs should be modified from sentinel value
     // They should be finite (not NaN or Inf)
+    bool any_non_sentinel = false;
     for (uint32_t i = 0; i < N_OUTPUTS; i++) {
         EXPECT_FALSE(std::isnan(outputs[i])) << "NaN at output " << i;
         EXPECT_FALSE(std::isinf(outputs[i])) << "Inf at output " << i;
+        if (outputs[i] != -999.0f) {
+            any_non_sentinel = true;
+        }
     }
+    /* M-7: Verify at least one output was actually written by the forward pass
+     * (i.e., not still the sentinel value). If all outputs remain -999.0f,
+     * the forward pass did not produce any results. */
+    EXPECT_TRUE(any_non_sentinel) << "All outputs still at sentinel value (-999.0f) — forward pass did not write outputs";
 }
 
 TEST_F(SNNBackpropStubTest, ForwardWithNullOutputsIsSafe) {

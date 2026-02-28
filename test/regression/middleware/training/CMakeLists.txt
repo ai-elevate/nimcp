@@ -1,5 +1,6 @@
 # Training Module Regression Tests
 # Phase TM-1: Security + Memory Pool Integration Regression Tests
+# TODO: Prefer gtest_discover_tests over add_test for automatic test registration
 
 add_executable(regression_middleware_training_test_training_module_regression
     test_training_module_regression.cpp
@@ -23,12 +24,14 @@ target_link_libraries(regression_middleware_training_test_training_module_regres
 )
 
 add_test(NAME regression_middleware_training_test_training_module_regression
-         COMMAND regression_middleware_training_test_training_module_regression)
+         COMMAND regression_middleware_training_test_training_module_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_training_module_regression
     PROPERTIES
         LABELS "regression;middleware;training"
-        TIMEOUT 120)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Loss Functions Regression Tests (Phase TM-2)
 add_executable(regression_middleware_training_test_loss_functions_regression
@@ -53,12 +56,14 @@ target_link_libraries(regression_middleware_training_test_loss_functions_regress
 )
 
 add_test(NAME regression_middleware_training_test_loss_functions_regression
-         COMMAND regression_middleware_training_test_loss_functions_regression)
+         COMMAND regression_middleware_training_test_loss_functions_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_loss_functions_regression
     PROPERTIES
         LABELS "regression;middleware;training;loss"
-        TIMEOUT 180)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Optimizers Regression Tests (Phase TM-2)
 add_executable(regression_middleware_training_test_optimizers_regression
@@ -83,12 +88,14 @@ target_link_libraries(regression_middleware_training_test_optimizers_regression
 )
 
 add_test(NAME regression_middleware_training_test_optimizers_regression
-         COMMAND regression_middleware_training_test_optimizers_regression)
+         COMMAND regression_middleware_training_test_optimizers_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_optimizers_regression
     PROPERTIES
         LABELS "regression;middleware;training;optimizer"
-        TIMEOUT 180)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Training-Plasticity Bridge Regression Tests (Phase TPB-1)
 add_executable(regression_middleware_training_test_plasticity_bridge_regression
@@ -113,12 +120,14 @@ target_link_libraries(regression_middleware_training_test_plasticity_bridge_regr
 )
 
 add_test(NAME regression_middleware_training_test_plasticity_bridge_regression
-         COMMAND regression_middleware_training_test_plasticity_bridge_regression)
+         COMMAND regression_middleware_training_test_plasticity_bridge_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_plasticity_bridge_regression
     PROPERTIES
         LABELS "regression;middleware;training;plasticity_bridge"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Event-Driven Plasticity Regression Tests (Phase EDP-1)
 add_executable(regression_middleware_training_test_event_driven_plasticity_regression
@@ -143,12 +152,14 @@ target_link_libraries(regression_middleware_training_test_event_driven_plasticit
 )
 
 add_test(NAME regression_middleware_training_test_event_driven_plasticity_regression
-         COMMAND regression_middleware_training_test_event_driven_plasticity_regression)
+         COMMAND regression_middleware_training_test_event_driven_plasticity_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_event_driven_plasticity_regression
     PROPERTIES
         LABELS "regression;middleware;training;event_driven_plasticity"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Security Registration Regression Tests (Phase SR-1)
 add_executable(regression_middleware_training_test_security_registration_regression
@@ -173,12 +184,14 @@ target_link_libraries(regression_middleware_training_test_security_registration_
 )
 
 add_test(NAME regression_middleware_training_test_security_registration_regression
-         COMMAND regression_middleware_training_test_security_registration_regression)
+         COMMAND regression_middleware_training_test_security_registration_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_security_registration_regression
     PROPERTIES
         LABELS "regression;middleware;training;security_registration"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Training Callbacks Regression Tests (Phase TCB-1)
 add_executable(regression_middleware_training_test_training_callbacks_regression
@@ -203,16 +216,18 @@ target_link_libraries(regression_middleware_training_test_training_callbacks_reg
 )
 
 add_test(NAME regression_middleware_training_test_training_callbacks_regression
-         COMMAND regression_middleware_training_test_training_callbacks_regression)
+         COMMAND regression_middleware_training_test_training_callbacks_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_training_callbacks_regression
     PROPERTIES
         LABELS "regression;middleware;training;callbacks"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Portia-Training Regression Tests (Phase PORTIA-1)
 # DISABLED: test_portia_training_regression.cpp has incorrect API usage
-message(STATUS "  [SKIP] test_portia_training_regression.cpp - API fixes needed")
+message(STATUS "  [SKIP] test_portia_training_regression.cpp - source file not yet created (API fixes needed)")
 
 # Training-Logic Bridge Regression Tests (Phase TLB-1)
 add_executable(regression_middleware_training_test_training_logic_bridge_regression
@@ -237,7 +252,8 @@ target_link_libraries(regression_middleware_training_test_training_logic_bridge_
 )
 
 add_test(NAME regression_middleware_training_test_training_logic_bridge_regression
-         COMMAND regression_middleware_training_test_training_logic_bridge_regression)
+         COMMAND regression_middleware_training_test_training_logic_bridge_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_training_logic_bridge_regression
     PROPERTIES
@@ -268,12 +284,14 @@ target_link_libraries(regression_middleware_training_test_cognitive_training_bri
 )
 
 add_test(NAME regression_middleware_training_test_cognitive_training_bridge_regression
-         COMMAND regression_middleware_training_test_cognitive_training_bridge_regression)
+         COMMAND regression_middleware_training_test_cognitive_training_bridge_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_cognitive_training_bridge_regression
     PROPERTIES
         LABELS "regression;middleware;training;cognitive_training"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Perception-Training Bridge Regression Tests (Phase PTB-1)
 add_executable(regression_middleware_training_test_perception_training_bridge_regression
@@ -298,12 +316,14 @@ target_link_libraries(regression_middleware_training_test_perception_training_br
 )
 
 add_test(NAME regression_middleware_training_test_perception_training_bridge_regression
-         COMMAND regression_middleware_training_test_perception_training_bridge_regression)
+         COMMAND regression_middleware_training_test_perception_training_bridge_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_perception_training_bridge_regression
     PROPERTIES
         LABELS "regression;middleware;training;perception_training"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Cortical-Training Bridge Regression Tests (Phase CRTB-1)
 add_executable(regression_middleware_training_test_cortical_training_bridge_regression
@@ -328,12 +348,14 @@ target_link_libraries(regression_middleware_training_test_cortical_training_brid
 )
 
 add_test(NAME regression_middleware_training_test_cortical_training_bridge_regression
-         COMMAND regression_middleware_training_test_cortical_training_bridge_regression)
+         COMMAND regression_middleware_training_test_cortical_training_bridge_regression
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(regression_middleware_training_test_cortical_training_bridge_regression
     PROPERTIES
         LABELS "regression;middleware;training;cortical_training"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # =============================================================================
 # Orphaned Regression Test Targets
@@ -353,11 +375,13 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_event_driven_plasticity_bio_async_reg
         GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
     )
     add_test(NAME regression_middleware_training_test_edp_bio_async_regression
-             COMMAND regression_middleware_training_test_edp_bio_async_regression)
+             COMMAND regression_middleware_training_test_edp_bio_async_regression
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(regression_middleware_training_test_edp_bio_async_regression
         PROPERTIES
             LABELS "regression;middleware;training;event-driven-plasticity;bio-async"
-            TIMEOUT 300)
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy")
 endif()
 
 # Training Adapters Bio-Async Regression Tests
@@ -374,9 +398,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_adapters_bio_async_regressio
         GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
     )
     add_test(NAME regression_middleware_training_test_adapters_bio_async_regression
-             COMMAND regression_middleware_training_test_adapters_bio_async_regression)
+             COMMAND regression_middleware_training_test_adapters_bio_async_regression
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(regression_middleware_training_test_adapters_bio_async_regression
         PROPERTIES
             LABELS "regression;middleware;training;adapters;bio-async"
-            TIMEOUT 300)
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy")
 endif()

@@ -2126,6 +2126,8 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/training/nimcp_gradient_kernels.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/training/nimcp_optimizer_kernels.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/training/nimcp_backprop_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/training/nimcp_activation_checkpoint.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/training/nimcp_gradient_checkpoint.cu>
     # SNN kernels (spiking neural networks)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/snn/nimcp_snn_kernels.cu>
     # CNN kernels (convolution, pooling)
@@ -2373,26 +2375,15 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/cognitive/nimcp_cognitive_adapters.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/cognitive/nimcp_working_memory_adapter.c
 
-    # Middleware - Training Adapters (Phase 2: Brain-Training Layer Integration)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_adapters.c
-
+    # Middleware - Training Adapters: REMOVED from nimcp (ODR fix) — compiled in nimcp_middleware only
     # Middleware - Training Module Infrastructure (Phase TM-1: Security + Memory Pool Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_module.c
-
-    # Middleware - Loss Functions (Phase TM-2: Training Loss Functions)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_loss_functions.c
-
-    # Middleware - Optimizers (Phase TM-2: Neural Network Optimizers)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_optimizers.c
 
     # Middleware - Brain Training Integration (Phase TM-3: Brain-Security Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_brain_training_integration.c
 
     # Middleware - Training Causal Model (Layer 2: Causal DAG of training dynamics)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_causal_model.c
-
-    # Middleware - Abductive Training Diagnosis (Layer 3: Root Cause Analysis)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_diagnosis.c
 
     # Training - CNN-Cortex Bridge (Phase CNN-CORTEX: Integration with visual/audio cortex)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cnn_cortex_bridge.c
@@ -2423,6 +2414,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/integration/nimcp_training_integration_hub.c  # Training integration hub for inter-module communication
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/integration/nimcp_training_symbolic_logic_hub_bridge.c  # Symbolic logic + training hub bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/integration/nimcp_training_state_manager.c  # Phase 8: State manager for training checkpointing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_curriculum_learning.c               # Curriculum learning: difficulty scheduling, self-paced learning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_training_data_pipeline.c            # Data pipeline: batching, augmentation, prefetch
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/integration/nimcp_training_bio_async_bridge.c  # Bio-async bridge for training subsystem
 
     # NOTE: nimcp_training_plasticity_bridge_bioasync_handlers.c is included via #include
     # in nimcp_training_plasticity_bridge.c, not compiled separately (uses internal types)

@@ -300,29 +300,8 @@ typedef struct {
     float compression_ratio;             /**< Compression ratio if compressed */
 } training_gradient_sync_payload_t;
 
-/**
- * @brief Loss broadcast message payload
- */
-typedef struct {
-    uint32_t worker_id;                  /**< Worker that computed loss */
-    uint32_t batch_id;                   /**< Batch ID */
-    uint32_t epoch;                      /**< Current epoch */
-    float loss_value;                    /**< Loss value */
-    float primary_loss;                  /**< Primary task loss */
-    float auxiliary_loss;                /**< Auxiliary losses */
-    float regularization_loss;           /**< Regularization loss */
-} training_loss_payload_t;
-
-/**
- * @brief Checkpoint message payload
- */
-typedef struct {
-    uint32_t epoch;                      /**< Epoch at checkpoint */
-    uint32_t global_step;                /**< Global training step */
-    float best_metric;                   /**< Best metric value */
-    bool is_best;                        /**< Whether this is best model */
-    const char* checkpoint_path;         /**< Path to checkpoint (if applicable) */
-} training_checkpoint_payload_t;
+/* training_loss_payload_t and training_checkpoint_payload_t are defined in
+ * nimcp_training_event_types.h (included above) — not redefined here. */
 
 /*=============================================================================
  * CONFIGURATION

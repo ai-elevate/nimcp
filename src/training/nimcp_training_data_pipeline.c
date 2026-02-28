@@ -25,6 +25,7 @@
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -845,7 +846,7 @@ training_pipeline_ctx_t* training_pipeline_create_from_files(
 
     /* Allocate data tensor */
     uint32_t data_dims[2] = {total_samples, sample_dim};
-    nimcp_tensor_t* data = nimcp_tensor_create(data_dims, 2, NIMCP_DTYPE_FLOAT32);
+    nimcp_tensor_t* data = nimcp_tensor_create(data_dims, 2, NIMCP_DTYPE_F32);
     if (!data) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "training_pipeline_create_from_files: data tensor allocation failed");
@@ -899,7 +900,7 @@ training_pipeline_ctx_t* training_pipeline_create_from_files(
 
         if (label_dim == 0) label_dim = 1;
         uint32_t label_dims[2] = {total_samples, label_dim};
-        labels = nimcp_tensor_create(label_dims, 2, NIMCP_DTYPE_FLOAT32);
+        labels = nimcp_tensor_create(label_dims, 2, NIMCP_DTYPE_F32);
         if (labels) {
             float* label_ptr = nimcp_tensor_data(labels);
             uint32_t loffset = 0;

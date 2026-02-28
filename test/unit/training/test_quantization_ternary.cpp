@@ -64,14 +64,13 @@ protected:
         return tensor;
     }
 
-    // Helper: Create random tensor
+    // Helper: Create random tensor with fixed seed for deterministic tests (M-2)
     nimcp_tensor_t* createRandomTensor(uint32_t size, float min_val = -1.0f, float max_val = 1.0f) {
         uint32_t dims[] = {size};
         nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
         if (tensor) {
             float* data = static_cast<float*>(nimcp_tensor_data(tensor));
-            std::random_device rd;
-            std::mt19937 gen(rd());
+            std::mt19937 gen(42);  // Fixed seed for reproducibility
             std::uniform_real_distribution<float> dist(min_val, max_val);
             for (uint32_t i = 0; i < size; i++) {
                 data[i] = dist(gen);
@@ -174,6 +173,17 @@ TEST_F(QatContextTest, CreateQatContextBasic) {
     if (ctx) {
         SUCCEED();
     }
+}
+
+TEST_F(QatContextTest, TernaryContextCreation) {
+    /* H-4: At least one test must ASSERT_NE(ctx, nullptr) to catch linkage
+     * failures. All other ternary tests silently GTEST_SKIP when ctx is NULL,
+     * which masks broken builds. */
+    int result = qat_ternary_default_config(&ternary_config);
+    ASSERT_EQ(result, 0) << "qat_ternary_default_config failed — possible linkage issue";
+
+    ctx = qat_ternary_create(&ternary_config);
+    ASSERT_NE(ctx, nullptr) << "qat_ternary_create returned NULL — ternary QAT not linked or not implemented";
 }
 
 TEST_F(QatContextTest, CreateTernaryQatContext) {

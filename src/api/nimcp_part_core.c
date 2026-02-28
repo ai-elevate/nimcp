@@ -33,6 +33,12 @@ nimcp_status_t nimcp_brain_learn_example(
     NIMCP_API_CHECK_NULL(label, NIMCP_ERROR_NULL_ARG, "Label is NULL");
     NIMCP_API_CHECK_NULL(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
+    /* I-H1 FIX: Validate input dimensions at API layer */
+    if (num_features == 0) {
+        set_error("num_features must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+
     /* === PHASE IS-1: BBB INPUT VALIDATION === */
     /* Validate external input data through Blood-Brain Barrier before processing */
     /* Note: brain->internal_brain already validated non-NULL above */
@@ -112,6 +118,18 @@ nimcp_status_t nimcp_brain_predict(
     API_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence pointer is NULL");
     API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
+    // I-H1 FIX: Validate input dimensions
+    if (num_features == 0) {
+        set_error("num_features must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+    if (brain->internal_brain->config.num_inputs > 0 &&
+        num_features != brain->internal_brain->config.num_inputs) {
+        set_error("Feature count mismatch: expected %u, got %u",
+                  brain->internal_brain->config.num_inputs, num_features);
+        return NIMCP_ERROR_INVALID;
+    }
+
     // === PHASE IS-1: BBB INPUT VALIDATION ===
     // Validate external input data through Blood-Brain Barrier before processing
     if (brain->internal_brain->bbb_enabled &&
@@ -156,6 +174,22 @@ nimcp_status_t nimcp_brain_predict(
 }
 
 
+/**
+ * @brief Fast prediction (no decision caching, no mirror neuron integration)
+ *
+ * I-M4: THREAD SAFETY CONTRACT
+ * This function is NOT thread-safe for concurrent calls on the same brain instance.
+ * forward_raw mutates neuron states (spike encoding + weight reads). Callers must
+ * provide external synchronization (e.g., Python ThreadSafeBrain uses RLock).
+ * Concurrent reads on different brain instances are safe.
+ *
+ * @param brain Brain handle
+ * @param features Input feature vector
+ * @param num_features Number of features (must match brain->config.num_inputs)
+ * @param out_label Output buffer for predicted label (at least NIMCP_MAX_LABEL_SIZE bytes)
+ * @param out_confidence Output confidence [0.0, 1.0]
+ * @return NIMCP_OK on success, error code on failure
+ */
 nimcp_status_t nimcp_brain_predict_fast(
     nimcp_brain_t brain,
     const float* features,
@@ -170,13 +204,32 @@ nimcp_status_t nimcp_brain_predict_fast(
 
     brain_t ib = brain->internal_brain;
     if (!ib || !ib->network) {
+        // I-L2: Consistent error logging for all error paths
+        LOG_ERROR("predict_fast: brain not initialized (ib=%p, network=%p)",
+                  (void*)ib, ib ? (void*)ib->network : NULL);
         set_error("Brain not initialized");
         return NIMCP_ERROR;
+    }
+
+    // I-H1 FIX: Validate input dimensions to prevent out-of-bounds reads in forward pass.
+    // Check both zero and mismatch against brain's expected input size.
+    if (num_features == 0) {
+        LOG_ERROR("predict_fast: num_features must be > 0");
+        set_error("num_features must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+    if (ib->config.num_inputs > 0 && num_features != ib->config.num_inputs) {
+        LOG_ERROR("predict_fast: feature count mismatch: expected %u, got %u",
+                  ib->config.num_inputs, num_features);
+        set_error("Feature count mismatch: expected %u, got %u",
+                  ib->config.num_inputs, num_features);
+        return NIMCP_ERROR_INVALID;
     }
 
     // Allocate output buffer on stack for small outputs, heap for large
     uint32_t num_outputs = ib->config.num_outputs;
     if (num_outputs == 0) {
+        LOG_ERROR("predict_fast: brain has 0 outputs");
         set_error("Brain has 0 outputs");
         return NIMCP_ERROR_INVALID;
     }
@@ -187,39 +240,63 @@ nimcp_status_t nimcp_brain_predict_fast(
         return NIMCP_ERROR_MEMORY;
     }
 
-    // Forward pass using the full adaptive network path (spike encoding + thresholding)
-    // to match the learning forward pass exactly.
-    // Note: adaptive_network_forward returns uint32_t active count, NOT bool.
-    // 0 active neurons is valid for a fresh/untrained brain — not a failure.
-    adaptive_network_forward(ib->network, features, num_features,
-                             output, num_outputs, 0);
+    // I-C1: Use forward_raw (no output thresholding) for classification.
+    // adaptive_network_forward() applies adaptive thresholding that zeros below-threshold
+    // outputs, collapsing all predictions to the same class. forward_raw preserves the
+    // raw network activations needed for accurate argmax classification.
+    // I-H2: Note -- forward_raw mutates neuron states (spike encoding + weight reads).
+    // Concurrent predict_fast calls from multiple threads require external synchronization.
+    adaptive_network_forward_raw(ib->network, features, num_features,
+                                 output, num_outputs);
 
-    // Find argmax and map to label (replicates determine_output_label logic)
+    // I-H3 FIX: NaN-safe argmax. If output contains NaN values, standard comparison
+    // (NaN > max_val) is always false, silently picking index 0. Use isfinite() to
+    // skip NaN/Inf values and detect all-NaN output as an error condition.
     uint32_t max_idx = 0;
-    float max_val = output[0];
-    for (uint32_t i = 1; i < num_outputs; i++) {
-        if (output[i] > max_val) {
+    float max_val = -FLT_MAX;
+    bool has_valid_output = false;
+    for (uint32_t i = 0; i < num_outputs; i++) {
+        if (isfinite(output[i]) && output[i] > max_val) {
             max_val = output[i];
             max_idx = i;
+            has_valid_output = true;
         }
     }
 
+    // If all outputs are NaN/Inf, return error with zero confidence
+    if (!has_valid_output) {
+        LOG_WARN("predict_fast: all %u outputs are NaN/Inf, returning confidence 0", num_outputs);
+        snprintf(out_label, NIMCP_MAX_LABEL_SIZE, "UNKNOWN");
+        out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
+        *out_confidence = 0.0f;
+        if (output != stack_buf) nimcp_free(output);
+        set_error("All network outputs are NaN/Inf");
+        return NIMCP_OK;  // Not a system error, just degenerate output
+    }
+
     // Map to label: use output_labels if available, else "output_N"
-    if (ib->output_labels && max_idx < ib->config.num_outputs && ib->output_labels[max_idx]) {
+    // H1-FIX: Check max_idx < num_output_labels (not num_outputs). The output layer
+    // has num_outputs neurons but only num_output_labels label mappings are populated.
+    // Using num_outputs could access uninitialized entries beyond num_output_labels.
+    if (ib->output_labels && max_idx < ib->num_output_labels && ib->output_labels[max_idx]) {
         strncpy(out_label, ib->output_labels[max_idx], NIMCP_MAX_LABEL_SIZE - 1);
     } else {
         snprintf(out_label, NIMCP_MAX_LABEL_SIZE, "output_%u", max_idx);
     }
     out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
 
-    // Confidence from softmax-like normalization
+    // I-M2: Confidence uses max/sum_abs normalization (not softmax). This is faster
+    // than softmax and provides a reasonable confidence estimate for classification.
+    // Softmax would be more principled but requires exp() per output neuron.
     float sum = 0.0f;
     for (uint32_t i = 0; i < num_outputs; i++) {
-        sum += fabsf(output[i]);
+        if (isfinite(output[i])) sum += fabsf(output[i]);
     }
     float raw_conf = (sum > 0.0f) ? (max_val / sum) : 0.0f;
     if (raw_conf < 0.0f) raw_conf = 0.0f;
     if (raw_conf > 1.0f) raw_conf = 1.0f;
+    // I-M1: Guard against NaN/Inf propagating from network outputs
+    if (!isfinite(raw_conf)) raw_conf = 0.0f;
     *out_confidence = raw_conf;
 
     if (output != stack_buf) nimcp_free(output);
@@ -229,6 +306,21 @@ nimcp_status_t nimcp_brain_predict_fast(
 }
 
 
+/**
+ * @brief Domain-scoped prediction (I-L3: documentation for complex logic)
+ *
+ * WHAT: Predicts using only output neurons whose labels start with domain_prefix.
+ * WHY:  When a brain has outputs for multiple domains (e.g., "math_add", "math_sub",
+ *       "history_ww2"), domain-scoped prediction restricts the argmax to the relevant
+ *       domain, preventing cross-domain interference.
+ * HOW:  Forward pass through full network, then filter outputs by domain prefix before
+ *       argmax. Confidence is computed only among same-domain outputs.
+ *
+ * FALLBACK: If no output labels match the domain prefix, falls back to predict_fast
+ *           (global argmax across all outputs).
+ *
+ * THREAD SAFETY: Same as predict_fast -- NOT thread-safe for same brain instance.
+ */
 nimcp_status_t nimcp_brain_predict_in_domain(
     nimcp_brain_t brain,
     const float* features,
@@ -250,12 +342,30 @@ nimcp_status_t nimcp_brain_predict_in_domain(
 
     brain_t ib = brain->internal_brain;
     if (!ib || !ib->network) {
+        // I-L2: Consistent error logging
+        LOG_ERROR("predict_in_domain: brain not initialized");
         set_error("Brain not initialized");
         return NIMCP_ERROR;
     }
 
+    // I-H1 FIX: Validate input dimensions to prevent out-of-bounds reads in forward pass.
+    // Check both zero and mismatch against brain's expected input size.
+    if (num_features == 0) {
+        LOG_ERROR("predict_in_domain: num_features must be > 0");
+        set_error("num_features must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+    if (ib->config.num_inputs > 0 && num_features != ib->config.num_inputs) {
+        LOG_ERROR("predict_in_domain: feature count mismatch: expected %u, got %u",
+                  ib->config.num_inputs, num_features);
+        set_error("Feature count mismatch: expected %u, got %u",
+                  ib->config.num_inputs, num_features);
+        return NIMCP_ERROR_INVALID;
+    }
+
     uint32_t num_outputs = ib->config.num_outputs;
     if (num_outputs == 0) {
+        LOG_ERROR("predict_in_domain: brain has 0 outputs");
         set_error("Brain has 0 outputs");
         return NIMCP_ERROR_INVALID;
     }
@@ -266,14 +376,16 @@ nimcp_status_t nimcp_brain_predict_in_domain(
         return NIMCP_ERROR_MEMORY;
     }
 
-    adaptive_network_forward(ib->network, features, num_features,
-                             output, num_outputs, 0);
+    // I-C1: Use forward_raw for classification (same reasoning as predict_fast)
+    adaptive_network_forward_raw(ib->network, features, num_features,
+                                 output, num_outputs);
 
-    // Domain-filtered argmax: only consider neurons whose label starts with domain_prefix
+    // I-H3 FIX: NaN-safe domain-filtered argmax. Use isfinite() to skip NaN/Inf values.
     size_t prefix_len = strlen(domain_prefix);
     uint32_t max_idx = UINT32_MAX;
-    float max_val = -1e30f;
+    float max_val = -FLT_MAX;
     float domain_sum = 0.0f;
+    bool has_valid_domain_output = false;
 
     for (uint32_t i = 0; i < num_outputs; i++) {
         if (!ib->output_labels || i >= ib->num_output_labels || !ib->output_labels[i])
@@ -281,15 +393,25 @@ nimcp_status_t nimcp_brain_predict_in_domain(
         if (strncmp(ib->output_labels[i], domain_prefix, prefix_len) != 0)
             continue;
 
+        // I-H3: Skip NaN/Inf outputs in domain argmax
+        if (!isfinite(output[i])) continue;
+
         domain_sum += fabsf(output[i]);
         if (output[i] > max_val) {
             max_val = output[i];
             max_idx = i;
+            has_valid_domain_output = true;
         }
     }
 
     // If no labels matched the domain, fall back to global argmax
     if (max_idx == UINT32_MAX) {
+        // I-M4: Log warning when no domain labels match -- silent fallback makes
+        // debugging domain configuration issues difficult
+        if (!has_valid_domain_output) {
+            LOG_WARN("predict_in_domain: no valid labels match domain prefix '%s', "
+                     "falling back to global argmax", domain_prefix);
+        }
         if (output != stack_buf) nimcp_free(output);
         return nimcp_brain_predict_fast(brain, features, num_features,
                                          out_label, out_confidence);
@@ -302,6 +424,8 @@ nimcp_status_t nimcp_brain_predict_in_domain(
     float raw_conf = (domain_sum > 0.0f) ? (max_val / domain_sum) : 0.0f;
     if (raw_conf < 0.0f) raw_conf = 0.0f;
     if (raw_conf > 1.0f) raw_conf = 1.0f;
+    // I-M1: Guard against NaN/Inf propagating from network outputs
+    if (!isfinite(raw_conf)) raw_conf = 0.0f;
     *out_confidence = raw_conf;
 
     if (output != stack_buf) nimcp_free(output);
@@ -324,6 +448,13 @@ nimcp_status_t nimcp_brain_infer(
     API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
     if (num_features == 0) {
         set_error("num_features must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+    // I-H1 FIX: Validate input dimension against brain config
+    if (brain->internal_brain->config.num_inputs > 0 &&
+        num_features != brain->internal_brain->config.num_inputs) {
+        set_error("Feature count mismatch: expected %u, got %u",
+                  brain->internal_brain->config.num_inputs, num_features);
         return NIMCP_ERROR_INVALID;
     }
     if (num_outputs == 0) {
@@ -372,6 +503,18 @@ nimcp_status_t nimcp_brain_decide_full(
     API_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
     API_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence is NULL");
     API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    // I-H1 FIX: Validate input dimensions
+    if (num_features == 0) {
+        set_error("num_features must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+    if (brain->internal_brain->config.num_inputs > 0 &&
+        num_features != brain->internal_brain->config.num_inputs) {
+        set_error("Feature count mismatch: expected %u, got %u",
+                  brain->internal_brain->config.num_inputs, num_features);
+        return NIMCP_ERROR_INVALID;
+    }
 
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
     if (!decision) {
@@ -1359,6 +1502,19 @@ nimcp_status_t nimcp_brain_train_batch(
 {
     NIMCP_CHECK_THROW(brain && features && targets, NIMCP_ERROR_NULL_ARG, "NULL argument provided");
     NIMCP_CHECK_THROW(batch_size != 0, NIMCP_ERROR_INVALID, "Batch size cannot be zero");
+    // I-M1 FIX: Validate feature/target counts and check for multiplication overflow
+    // in batch indexing. batch_size * num_features could overflow uint32_t, causing
+    // out-of-bounds reads from the features/targets arrays.
+    NIMCP_CHECK_THROW(num_features != 0, NIMCP_ERROR_INVALID, "num_features cannot be zero");
+    NIMCP_CHECK_THROW(num_targets != 0, NIMCP_ERROR_INVALID, "num_targets cannot be zero");
+    if (batch_size > UINT32_MAX / num_features) {
+        set_error("batch_size * num_features overflow");
+        return NIMCP_ERROR_INVALID;
+    }
+    if (batch_size > UINT32_MAX / num_targets) {
+        set_error("batch_size * num_targets overflow");
+        return NIMCP_ERROR_INVALID;
+    }
 
     // Train on each example and average results
     float total_loss = 0.0F;
@@ -1366,8 +1522,8 @@ nimcp_status_t nimcp_brain_train_batch(
     nimcp_training_result_t step_result = {0};
 
     for (uint32_t i = 0; i < batch_size; i++) {
-        const float* sample_features = features + (i * num_features);
-        const float* sample_targets = targets + (i * num_targets);
+        const float* sample_features = features + ((size_t)i * num_features);
+        const float* sample_targets = targets + ((size_t)i * num_targets);
 
         nimcp_status_t res = nimcp_brain_train_step(
             brain, sample_features, num_features,

@@ -278,6 +278,10 @@ typedef struct {
  * WHY: Communicate training loss information
  */
 typedef struct {
+    uint32_t worker_id;                     /* Worker that computed loss */
+    uint32_t batch_id;                      /* Batch ID */
+    uint32_t epoch;                         /* Current epoch */
+    float loss_value;                       /* Loss value (alias: total_loss) */
     float total_loss;                       /* Total combined loss */
     float primary_loss;                     /* Primary task loss */
     float regularization_loss;              /* Regularization loss */
@@ -325,10 +329,11 @@ typedef struct {
  * WHY: Communicate checkpoint information
  */
 typedef struct {
-    const char* checkpoint_path;            /* Path to checkpoint */
     uint32_t epoch;                         /* Epoch at checkpoint */
+    uint32_t global_step;                   /* Global training step */
     float best_metric;                      /* Best metric value */
     bool is_best;                           /* Whether this is best model */
+    const char* checkpoint_path;            /* Path to checkpoint */
 } training_checkpoint_payload_t;
 
 /* ========================================================================

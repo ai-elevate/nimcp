@@ -139,7 +139,9 @@ class InstructorConfig:
     startup_delay_s: float = 0.0
     min_domain_accuracy: float = 0.0    # Min accuracy before domain is "done" (0=disabled)
     max_retry_passes: int = 5           # Max times to re-teach datasets if below threshold
-    output_range: Optional[Tuple[int, int]] = None  # (start_idx, end_idx) for domain-specific output neurons
+    # NOTE: output_range is kept for backward compatibility but is not used.
+    # Domain isolation is handled by string label prefixing, not output neuron masking.
+    output_range: Optional[Tuple[int, int]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -199,8 +201,6 @@ class MethodStats:
         get reduced (but never zeroed — exploration floor of 0.1).
         """
         for m in TeachingMethod:
-            s = self._stats.get(m.value, {})
-            recent = s.get("attempts", 0)
             acc = self.accuracy(m.value)
             # Blend recent accuracy with weight history
             new_w = 0.7 * self._weights[m.value] + 0.3 * (0.3 + 0.7 * acc)
@@ -226,13 +226,16 @@ class InstructorAgent(threading.Thread):
     def __init__(self, brain, config: InstructorConfig, datasets: List[Dict],
                  school_queue, cross_domain_queue,
                  stop_event: threading.Event, recess_event: threading.Event,
-                 num_inputs: int, log_dir: Optional[Path] = None):
+                 num_inputs: int, log_dir: Optional[Path] = None,
+                 cross_domain_queues: Optional[Dict] = None):
         super().__init__(name=f"Instructor-{config.domain}", daemon=True)
         self.brain = brain
         self.config = config
         self.datasets = datasets
         self.school_queue = school_queue
         self.cross_domain_queue = cross_domain_queue
+        # H1: Per-domain cross-domain queues for targeted transfer
+        self.cross_domain_queues = cross_domain_queues
         self.stop_event = stop_event
         self.recess_event = recess_event
         self.num_inputs = num_inputs
@@ -260,6 +263,9 @@ class InstructorAgent(threading.Thread):
         # Counters
         self.total_examples = 0
         self.total_correct = 0
+        # M2: Separate counters for remedial teaching (excluded from primary accuracy)
+        self.remedial_examples = 0
+        self.remedial_correct = 0
         self.difficulty = 0.0
         self.adversarial_bank: List[Tuple[list, str]] = []
         self._adv_bank_idx = 0  # M5: rotating index for bounded adversarial bank
@@ -291,13 +297,15 @@ class InstructorAgent(threading.Thread):
         self._last_lr_direction_step = 0
 
         # Phase 3: Spaced repetition + difficulty tracking
-        self._spaced_replay: list = []  # heap: (next_review_step, interval, features, label)
+        self._spaced_replay: list = []  # heap: (next_review_step, interval, tiebreak, features, label)
+        self._spaced_replay_counter = 0  # L5: monotonic tiebreaker for heap
         self._example_difficulty: dict = {}  # hash -> {'fails': int, 'attempts': int, 'conf_history': deque(maxlen=10)}
         self._peak_accuracy = 0.0
 
         # Phase 3: Self-assessment holdout
         self._holdout_buffer: List[Tuple[list, str]] = []  # (features, label)
         self._holdout_max = 50
+        self._holdout_candidates_seen = 0  # M7: separate counter for reservoir sampling
         self._last_self_assessment_step = 0
         self._self_assessment_interval = 500
         self._held_out_accuracy: float = 0.0
@@ -306,12 +314,17 @@ class InstructorAgent(threading.Thread):
         self._domain_centroid: Optional[np.ndarray] = None
         self._centroid_count = 0
 
+        # H3: Track domain-scoped prediction fallback count
+        self._predict_fallback_count = 0
+        self._predict_fallback_warned = False
+
         # Logging
         self._log_dir = log_dir
         self._log_file = None
         self._log_lock = threading.Lock()
 
     def _open_log(self):
+        self._log_write_count = 0  # L4: counter for periodic flush
         if self._log_dir:
             self._log_dir.mkdir(parents=True, exist_ok=True)
             ts = time.strftime("%Y%m%d_%H%M%S")
@@ -324,8 +337,17 @@ class InstructorAgent(threading.Thread):
             data["domain"] = self.config.domain
             with self._log_lock:
                 self._log_file.write(json.dumps(data) + "\n")
+                self._log_write_count += 1
+                # L4: Periodic flush every 100 writes for crash safety
+                if self._log_write_count % 100 == 0:
+                    self._log_file.flush()
 
-    def _close_log(self):
+    def close_log(self):
+        """Close the instructor's log file.
+
+        L4 fix: Renamed from _close_log to public — called from School._shutdown()
+        across class boundary.
+        """
         if self._log_file:
             self._log_file.close()
             self._log_file = None
@@ -379,7 +401,7 @@ class InstructorAgent(threading.Thread):
             self._error = str(e)
         finally:
             self._finished = True
-            self._close_log()
+            self.close_log()
             # Send final report
             self._send_report(final=True)
 
@@ -534,6 +556,9 @@ class InstructorAgent(threading.Thread):
             if count >= self.config.max_examples_per_dataset:
                 break
 
+        # L3: Publish cross-domain exemplar for multimodal datasets
+        self._publish_exemplar(domain)
+
     def _teach_text_fallback(self, ds_config: dict, name: str, domain: str,
                               source_name: str):
         """Fallback text teaching without StreamingDatasetProcessor."""
@@ -589,6 +614,9 @@ class InstructorAgent(threading.Thread):
             if count >= self.config.max_examples_per_dataset:
                 break
 
+        # L3: Publish cross-domain exemplar for fallback text datasets
+        self._publish_exemplar(domain)
+
     # --- Brain-State LR Modulation ---
 
     def _modulate_lr(self, base_lr: float) -> float:
@@ -605,14 +633,22 @@ class InstructorAgent(threading.Thread):
         # Step 2: Decision cycle lr_factor if available
         if self._last_decision is not None:
             dc_factor = self._last_decision.get("lr_factor", 1.0)
-            return base_lr * schedule_factor * dc_factor
+            result = base_lr * schedule_factor * dc_factor
+            # H4: Final clamp to prevent unbounded compounding
+            return max(0.01, min(result, 3.0))
 
         # Step 3: Fallback to unified pipeline
+        # M3: Normalize fallback path — extract factor from adaptive result so
+        # magnitude is comparable to DC path (base_lr * schedule * factor)
         try:
             adaptive = float(self.cognitive.compute_adaptive_lr(base_lr))
-            return adaptive * schedule_factor
+            # adaptive already incorporates base_lr; extract the factor
+            fallback_factor = adaptive / max(base_lr, 1e-6)
+            result = base_lr * schedule_factor * fallback_factor
         except Exception:
-            return base_lr * schedule_factor
+            result = base_lr * schedule_factor
+        # H4: Final clamp to prevent unbounded compounding
+        return max(0.01, min(result, 3.0))
 
     def _update_metrics_and_decide(self, loss: float):
         """Track rolling metrics and run decision cycle at report intervals.
@@ -669,43 +705,42 @@ class InstructorAgent(threading.Thread):
     # --- Teaching Methods ---
 
     def _predict_domain(self, features, domain: str):
-        """Domain-scoped prediction — only considers labels from this domain."""
+        """Domain-scoped prediction — only considers labels from this domain.
+
+        C2 fix: All return paths sanitize confidence against NaN/Inf.
+        """
         prefix = f"{domain}:"
         try:
-            return self.brain.predict_in_domain(features, prefix)
+            pred, conf = self.brain.predict_in_domain(features, prefix)
+            if math.isnan(conf) or math.isinf(conf):
+                conf = 0.0
+            return pred, conf
         except (AttributeError, TypeError):
-            # Fallback for older nimcp without predict_in_domain
-            return self.brain.predict_fast(features)
+            # H3: Fallback silently degrades domain scoping — log warning once
+            self._predict_fallback_count += 1
+            if not self._predict_fallback_warned:
+                self._predict_fallback_warned = True
+                logger.warning(
+                    "[%s] predict_in_domain unavailable, falling back to "
+                    "predict_fast (domain scoping disabled)", domain)
+            pred, conf = self.brain.predict_fast(features)
+            if math.isnan(conf) or math.isinf(conf):
+                conf = 0.0
+            return pred, conf
+        except Exception:
+            # M8: Catch any other prediction errors with debug log
+            logger.debug("[%s] _predict_domain unexpected error", domain, exc_info=True)
+            raise
 
     def _scope_target_to_domain(self, target):
-        """Mask target to only update this domain's output neurons.
+        """Pass-through for domain-scoped targets.
 
-        When output_range is set, zeros out all target neurons except those
-        in this domain's dedicated range and the shared pool (last 20%).
-        This prevents cross-domain interference during training.
+        H1/H4 fix: Domain isolation is handled entirely by string label
+        prefixing (e.g. "biology:answer_a"), NOT by vector-based output
+        neuron masking. The C backend does not support output_range kwargs.
+        The old vector-masking code was dead (all targets are strings).
         """
-        if self.config.output_range is None:
-            return target
-
-        start, end = self.config.output_range
-        if not isinstance(target, (list, np.ndarray)):
-            return target  # Non-vector targets (e.g. label strings) pass through
-
-        target_arr = np.array(target, dtype=np.float32) if not isinstance(target, np.ndarray) else target
-        n = len(target_arr)
-        if n == 0:
-            return target
-
-        scoped = np.zeros(n, dtype=np.float32)
-        # Copy only the neurons in this domain's dedicated range
-        actual_end = min(end, n)
-        if start < actual_end:
-            scoped[start:actual_end] = target_arr[start:actual_end]
-        # Also include shared pool neurons (last 20%)
-        shared_start = int(n * 0.8)
-        if shared_start < n:
-            scoped[shared_start:] = target_arr[shared_start:]
-        return scoped.tolist()
+        return target
 
     def _ensemble_predict(self, features, domain: str, k=3, noise_sigma=0.01):
         """Run K forward passes with input perturbation, return majority-vote prediction.
@@ -761,6 +796,9 @@ class InstructorAgent(threading.Thread):
         # the brain's state prior to this example's training signal.
         try:
             pre_pred_label, pre_conf = self._predict_domain(features, domain)
+            # C2 fix: Guard against NaN/Inf confidence from predict
+            if math.isnan(pre_conf) or math.isinf(pre_conf):
+                pre_conf = 0.0
             pre_correct = (pre_pred_label == label)
         except Exception:
             pre_pred_label = None
@@ -826,8 +864,15 @@ class InstructorAgent(threading.Thread):
         info['conf_history'].append(pre_conf)
 
         # H4: Evict oldest entries to prevent unbounded growth
+        # M5: Skip entries that are actively in the replay heap
         if len(self._example_difficulty) > 50000:
-            keys_to_remove = list(self._example_difficulty.keys())[:10000]
+            replay_hashes = set()
+            for entry in self._spaced_replay:
+                replay_hashes.add(self._feature_hash(entry[3]))  # index 3 = features
+            keys_to_remove = [
+                k for k in list(self._example_difficulty.keys())
+                if k not in replay_hashes
+            ][:10000]
             for k in keys_to_remove:
                 del self._example_difficulty[k]
 
@@ -861,10 +906,12 @@ class InstructorAgent(threading.Thread):
             lr = 0.8 * conf_mod
 
         self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
-        # M11: Loss is a heuristic proxy (1 - confidence), not the actual network loss.
+        # M11: Loss is a heuristic proxy, not the actual network loss.
         # It serves as a directional signal for decision cycle and logging, but does
         # not reflect true cross-entropy or MSE from the C backprop path.
-        loss = 0.0 if correct else (1.0 - conf)
+        # C1 fix: Use confidence directly as loss when wrong — higher confidence
+        # when wrong means higher loss (cross-entropy-like behavior).
+        loss = 0.0 if correct else max(0.1, conf)
         self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
 
@@ -889,7 +936,8 @@ class InstructorAgent(threading.Thread):
 
         lr = (0.5 + 0.5 * self.difficulty) * conf_mod
         self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
-        loss = 0.0 if correct else (1.0 - conf)
+        # C1 fix: confident-wrong = high loss
+        loss = 0.0 if correct else max(0.1, conf)
         self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
@@ -907,17 +955,15 @@ class InstructorAgent(threading.Thread):
             pred, conf = self._predict_domain(features, domain)
         correct = (pred == label)
 
-        # Positive example: teach the correct label
+        # M1: Teach positive example with boosted LR instead of polluting label
+        # space with "NOT_" negative labels that persist in the brain's memory
         scoped_label = self._scope_target_to_domain(label)
-        self.brain.learn(features, scoped_label, self._modulate_lr(0.7 * conf_mod))
+        boost = 1.2 if not correct else 1.0  # Extra boost for incorrect predictions
+        self.brain.learn(features, scoped_label, self._modulate_lr(0.7 * conf_mod * boost))
 
-        # Negative example: teach with a wrong label at reduced LR
-        # This helps the brain learn discriminative boundaries
-        neg_label = f"NOT_{label}"
-        scoped_neg = self._scope_target_to_domain(neg_label)
-        self.brain.learn(features, scoped_neg, self._modulate_lr(0.2 * conf_mod))
-
-        loss = 0.0 if correct else (1.0 - conf)
+        # M6: Update metrics after the positive learn (not after a negative learn)
+        # C1 fix: confident-wrong = high loss
+        loss = 0.0 if correct else max(0.1, conf)
         self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
@@ -934,7 +980,15 @@ class InstructorAgent(threading.Thread):
         # Perspective 2: perturbed features (different viewpoint)
         noise_level = self.config.debate_noise_level
         noisy = [f + random.gauss(0, noise_level) for f in features]
-        pred2, conf2 = self._predict_domain(noisy, domain)
+        # L2: Re-normalize after noise addition to maintain unit norm
+        noisy_norm = math.sqrt(sum(v * v for v in noisy))
+        if noisy_norm > 1e-6:
+            noisy = [v / noisy_norm for v in noisy]
+        # H1: Guard against prediction failure on noisy features
+        try:
+            pred2, conf2 = self._predict_domain(noisy, domain)
+        except Exception:
+            pred2, conf2 = pred1, conf1  # Fall back to perspective 1
 
         # Brain resolves: if both agree, lower confidence. If disagree, higher.
         if pred1 == pred2:
@@ -945,7 +999,8 @@ class InstructorAgent(threading.Thread):
         correct = (pred1 == label)
         self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
 
-        loss = 0.0 if correct else max(1.0 - conf1, 1.0 - conf2)
+        # C1 fix: confident-wrong = high loss (use max confidence of the two perspectives)
+        loss = 0.0 if correct else max(0.1, max(conf1, conf2))
         self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
@@ -964,7 +1019,8 @@ class InstructorAgent(threading.Thread):
         lr = (0.3 + 0.7 * (1.0 - mastery)) * conf_mod
         self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(lr))
 
-        loss = 0.0 if correct else (1.0 - conf)
+        # C1 fix: confident-wrong = high loss
+        loss = 0.0 if correct else max(0.1, conf)
         self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
@@ -1076,17 +1132,35 @@ class InstructorAgent(threading.Thread):
             except Exception as e:
                 logger.debug(f"Learn failed: {e}")
 
+        # C1 fix: confident-wrong = high loss
+        loss = 0.0 if correct else max(0.1, conf)
+        self._update_metrics_and_decide(loss)
+
         # Periodically re-teach hard examples from adversarial bank
+        # L6: Call _update_metrics_and_decide for bank re-teaching too
+        # H1 fix: Re-predict to get fresh confidence, remove from bank if now correct
         if (self.total_examples % 200 == 0 and self.adversarial_bank
                 and random.random() < self.config.adversarial_fraction):
-            hard_feat, hard_label = random.choice(self.adversarial_bank)
-            self.brain.learn(
-                hard_feat, self._scope_target_to_domain(hard_label),
-                self._modulate_lr(0.8 * conf_mod)
-            )
-
-        loss = 0.0 if correct else (1.0 - conf)
-        self._update_metrics_and_decide(loss)
+            bank_idx = random.randrange(len(self.adversarial_bank))
+            hard_feat, hard_label = self.adversarial_bank[bank_idx]
+            try:
+                bank_pred, bank_conf = self._predict_domain(hard_feat, domain)
+                bank_correct = (bank_pred == hard_label)
+            except Exception:
+                bank_correct = False
+                bank_conf = 0.5
+            if bank_correct and bank_conf > 0.8:
+                # Brain now gets this right with high confidence — remove from bank
+                self.adversarial_bank.pop(bank_idx)
+            else:
+                bank_loss = 0.0 if bank_correct else max(0.1, bank_conf)
+                self.brain.learn(
+                    hard_feat, self._scope_target_to_domain(hard_label),
+                    self._modulate_lr(0.8 * conf_mod)
+                )
+                self._update_metrics_and_decide(bank_loss)
+                # H2 fix: Include bank replay result in rolling metrics
+                self._recent_results.append(bank_correct)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -1101,9 +1175,15 @@ class InstructorAgent(threading.Thread):
 
         self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.7 * conf_mod))
 
-        # Try to blend with cross-domain exemplar
+        # H1: Try to blend with cross-domain exemplar from per-domain queue
+        # (with fallback to shared queue for backward compat)
+        # L5 note: exemplar["domain"] = source domain (who published it),
+        # while per-domain queue key = target domain (who should consume it).
+        domain_q = (self.cross_domain_queues.get(self.config.domain)
+                     if self.cross_domain_queues else None)
+        source_q = domain_q or self.cross_domain_queue
         try:
-            exemplar = self.cross_domain_queue.get_nowait()
+            exemplar = source_q.get_nowait()
             if exemplar.get("modality", "text") == self.config.modality:
                 ex_feats = exemplar.get("features", [])
                 if len(ex_feats) == len(features):
@@ -1114,15 +1194,25 @@ class InstructorAgent(threading.Thread):
                     ]
                     self.brain.learn(blended, self._scope_target_to_domain(label), self._modulate_lr(0.4 * conf_mod))
                 else:
-                    # M2: Dimension mismatch — put exemplar back for another instructor
-                    self.cross_domain_queue.put_nowait(exemplar)
+                    # M1 fix: Dimension mismatch — re-queue with bounce_count,
+                    # discard if bounced too many times to prevent infinite cycling
+                    bounce = exemplar.get("bounce_count", 0) + 1
+                    if bounce <= 3:
+                        exemplar["bounce_count"] = bounce
+                        source_q.put_nowait(exemplar)
+                    # else: silently discard — bounced too many times
             else:
-                # M2: Modality mismatch — put exemplar back for another instructor
-                self.cross_domain_queue.put_nowait(exemplar)
+                # M1 fix: Modality mismatch — re-queue with bounce_count
+                bounce = exemplar.get("bounce_count", 0) + 1
+                if bounce <= 3:
+                    exemplar["bounce_count"] = bounce
+                    source_q.put_nowait(exemplar)
+                # else: silently discard — bounced too many times
         except Exception as e:
             logger.debug(f"Learn failed: {e}")
 
-        loss = 0.0 if correct else (1.0 - conf)
+        # C1 fix: confident-wrong = high loss
+        loss = 0.0 if correct else max(0.1, conf)
         self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
@@ -1232,7 +1322,11 @@ class InstructorAgent(threading.Thread):
             time.sleep(0.1)
 
     def _remedial_teaching(self):
-        """Re-teach hard items from adversarial bank."""
+        """Re-teach hard items from adversarial bank.
+
+        M2: Remedial results are tracked in separate counters (remedial_examples,
+        remedial_correct) so they don't inflate the primary accuracy metric.
+        """
         if not self.adversarial_bank:
             return
         domain = self.config.domain
@@ -1240,18 +1334,34 @@ class InstructorAgent(threading.Thread):
         for features, label in self.adversarial_bank[:200]:
             if self.stop_event.is_set():
                 break
-            pred, conf = self._predict_domain(features, domain)
+            # H2: Guard prediction against failure
+            try:
+                pred, conf = self._predict_domain(features, domain)
+            except Exception:
+                continue
             correct = (pred == label)
             focal = self._compute_focal_factor(features, label,
                                                pre_confidence=conf, pre_correct=correct)
             self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.8 * focal))
-            self.total_examples += 1
+            # H2 fix: Include remedial results in decision cycle metrics
+            remedial_loss = 0.0 if correct else max(0.1, conf)
+            self._update_metrics_and_decide(remedial_loss)
+            # M2: Track remedial separately to avoid inflating primary accuracy
+            self.remedial_examples += 1
             if correct:
-                self.total_correct += 1
+                self.remedial_correct += 1
+            # M4: Include remedial results in rolling accuracy (separate from cumulative)
+            self._recent_results.append(correct)
             self.socratic.mastery.record(domain, correct)
 
     def _publish_exemplar(self, domain: str):
-        """Publish a representative exemplar for cross-domain teaching."""
+        """Publish a representative exemplar for cross-domain teaching.
+
+        Design note (H3): This intentionally publishes to the shared fallback
+        queue (not per-domain queues). Instructor-published exemplars go to the
+        shared "grab bag" pool where any domain can pick them up for analogical
+        blending. School-directed transfers go to per-domain queues instead.
+        """
         if self.adversarial_bank:
             feats, lbl = random.choice(self.adversarial_bank)
             try:
@@ -1304,17 +1414,27 @@ class InstructorAgent(threading.Thread):
             "elapsed_s": round(elapsed, 1),
             "method_stats": self.method_stats.summary(),
             "decision_cycle": decision_info,
+            # M2: Remedial stats tracked separately
+            "remedial_examples": self.remedial_examples,
+            "remedial_correct": self.remedial_correct,
             "error": self._error,
             "ts": time.time(),
         }
         try:
             self.school_queue.put_nowait(report)
         except Exception:
-            pass
+            # M3 fix: Log dropped reports at DEBUG level
+            logger.debug("[%s] Report dropped — school_queue full",
+                         self.config.domain)
 
     @property
     def is_finished(self) -> bool:
         return self._finished
+
+    @property
+    def has_error(self) -> bool:
+        """M4: Thread-safe accessor for error state (avoids direct _error access)."""
+        return self._error is not None
 
     def get_mastery(self) -> float:
         return self.socratic.mastery.mastery(self.config.domain)
@@ -1328,6 +1448,9 @@ class InstructorAgent(threading.Thread):
             "accuracy": round(self.total_correct / max(self.total_examples, 1), 4),
             "mastery": round(self.get_mastery(), 4),
             "method_stats": self.method_stats.summary(),
+            # M2: Remedial stats tracked separately
+            "remedial_examples": self.remedial_examples,
+            "remedial_correct": self.remedial_correct,
             "elapsed_s": round(elapsed, 1),
             "finished": self._finished,
             "error": self._error,
@@ -1347,7 +1470,9 @@ class InstructorAgent(threading.Thread):
         # Reset interval on failure
         interval = 1
         next_step = self.total_examples + interval
-        heapq.heappush(self._spaced_replay, (next_step, interval, features, label))
+        # L5: Use tiebreaker counter to prevent heap comparison falling through to feature list
+        self._spaced_replay_counter += 1
+        heapq.heappush(self._spaced_replay, (next_step, interval, self._spaced_replay_counter, features, label))
 
         # H2: Cap replay heap to prevent unbounded growth
         if len(self._spaced_replay) > 2000:
@@ -1363,14 +1488,23 @@ class InstructorAgent(threading.Thread):
         while (self._spaced_replay and
                self._spaced_replay[0][0] <= self.total_examples and
                reviewed < 5):  # max 5 replays per tick
-            next_step, interval, features, label = heapq.heappop(self._spaced_replay)
-            pred, conf = self._predict_domain(features, self.config.domain)
+            next_step, interval, _tiebreak, features, label = heapq.heappop(self._spaced_replay)
+            # H2: Guard prediction against failure
+            try:
+                pred, conf = self._predict_domain(features, self.config.domain)
+            except Exception:
+                continue
             correct = (pred == label)
             # Always re-learn (even if correct, reinforce)
             focal = self._compute_focal_factor(features, label,
                                                pre_confidence=conf, pre_correct=correct)
             self.brain.learn(features, self._scope_target_to_domain(label), self._modulate_lr(0.6 * focal))
+            # H2 fix: Include spaced replay in decision cycle metrics
+            replay_loss = 0.0 if correct else max(0.1, conf)
+            self._update_metrics_and_decide(replay_loss)
             self.socratic.mastery.record(self.config.domain, correct)
+            # M4: Include spaced replay results in rolling accuracy
+            self._recent_results.append(correct)
             if correct:
                 # Extend interval (exponential backoff)
                 new_interval = min(interval * 2, 256)
@@ -1378,7 +1512,9 @@ class InstructorAgent(threading.Thread):
                 # Reset interval
                 new_interval = 1
             new_step = self.total_examples + new_interval
-            heapq.heappush(self._spaced_replay, (new_step, new_interval, features, label))
+            # L5: Use tiebreaker counter to prevent heap comparison falling through to feature list
+            self._spaced_replay_counter += 1
+            heapq.heappush(self._spaced_replay, (new_step, new_interval, self._spaced_replay_counter, features, label))
             reviewed += 1
 
     def _feature_hash(self, features: list) -> str:
@@ -1453,18 +1589,24 @@ class InstructorAgent(threading.Thread):
 
     def _maybe_collect_holdout(self, features: list, label: str):
         """Reservoir-sample into holdout buffer for self-assessment."""
+        # M7: Use separate counter for holdout candidates (not total_examples)
+        self._holdout_candidates_seen += 1
         if len(self._holdout_buffer) < self._holdout_max:
             self._holdout_buffer.append((features, label))
         else:
-            # Reservoir sampling
-            idx = random.randint(0, self.total_examples - 1)
+            # Reservoir sampling with correct population count
+            idx = random.randint(0, self._holdout_candidates_seen - 1)
             if idx < self._holdout_max:
                 self._holdout_buffer[idx] = (features, label)
 
     def _rolling_accuracy(self) -> float:
-        """Compute rolling accuracy from recent results (H3)."""
+        """Compute rolling accuracy from recent results (H3).
+
+        H3 fix: Return 0.5 (chance level) when no results yet, rather than
+        cumulative accuracy which is biased by early examples.
+        """
         if not self._recent_results:
-            return self.total_correct / max(self.total_examples, 1)
+            return 0.5  # chance-level prior, not cumulative
         return sum(self._recent_results) / len(self._recent_results)
 
     def _maybe_self_assess(self):
@@ -1506,7 +1648,12 @@ class InstructorAgent(threading.Thread):
 
         # If overfitting: reduce LR via scheduler reset to slow down
         # H6: Only adjust if cooldown has elapsed
-        if gap > 0.15 and (self.total_examples - self._last_lr_adjust_step) >= 200:
+        # M2: Symmetric suppression — suppress downward adjustment if last was "up"
+        _suppress_down = (self._last_lr_direction == "up"
+                          and (self.total_examples - self._last_lr_direction_step) < 500)
+        if (gap > 0.15
+                and (self.total_examples - self._last_lr_adjust_step) >= 200
+                and not _suppress_down):
             self._lr_scheduler.base_lr *= 0.8
             self._lr_scheduler.base_lr = max(self._lr_scheduler.base_lr, 0.1)
             self._last_lr_adjust_step = self.total_examples
@@ -1589,6 +1736,9 @@ class InstructorAgent(threading.Thread):
             if pre_confidence is None or pre_correct is None:
                 # C1: predict_fast returns a tuple (label_string, confidence_float)
                 pred_label, pre_confidence = self.brain.predict_fast(features)
+                # C2 fix: Guard NaN/Inf confidence
+                if math.isnan(pre_confidence) or math.isinf(pre_confidence):
+                    pre_confidence = 0.0
                 pre_correct = (pred_label == label)
 
             if pre_correct:

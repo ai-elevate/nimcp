@@ -4,7 +4,39 @@
 # SNN Backprop Unit Tests
 # DISABLED: snn_surrogate_t and snn_surrogate_method_t have duplicate enum values
 # Needs API refactoring to unify snn/nimcp_snn_types.h and training/nimcp_snn_backprop.h
-message(STATUS "unit_training_test_snn_backprop: DISABLED (duplicate enum definitions in headers)")
+message(STATUS "unit_training_test_snn_backprop: DISABLED (source file not yet created - duplicate enum definitions in headers)")
+#[[
+add_executable(unit_training_test_snn_backprop
+    test_snn_backprop.cpp
+)
+
+target_include_directories(unit_training_test_snn_backprop PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_training_test_snn_backprop PRIVATE cxx_std_20)
+
+target_link_libraries(unit_training_test_snn_backprop
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp_middleware
+        nimcp
+        Threads::Threads
+        m
+)
+
+add_test(NAME unit_training_test_snn_backprop
+         COMMAND unit_training_test_snn_backprop
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+set_tests_properties(unit_training_test_snn_backprop
+    PROPERTIES
+        LABELS "unit;training;snn;backprop"
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
+#]]
 
 # CNN Backprop Unit Tests
 add_executable(unit_training_test_cnn_backprop
@@ -35,7 +67,8 @@ add_test(NAME unit_training_test_cnn_backprop
 set_tests_properties(unit_training_test_cnn_backprop
     PROPERTIES
         LABELS "unit;training;cnn;backprop;gradient"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # CNN-Cortex Bridge Unit Tests
 add_executable(unit_training_test_cnn_cortex_bridge
@@ -66,11 +99,12 @@ add_test(NAME unit_training_test_cnn_cortex_bridge
 set_tests_properties(unit_training_test_cnn_cortex_bridge
     PROPERTIES
         LABELS "unit;training;cnn;cortex;bridge"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Auto Architecture Unit Tests
 # DISABLED: auto_arch_stats_t/lnn_config_t incomplete type issues
-message(STATUS "unit_training_test_auto_architecture: DISABLED (incomplete type issues)")
+message(STATUS "unit_training_test_auto_architecture: DISABLED (source file not yet created - incomplete type issues)")
 #[[
 add_executable(unit_training_test_auto_architecture
     test_auto_architecture.cpp
@@ -94,12 +128,14 @@ target_link_libraries(unit_training_test_auto_architecture
 )
 
 add_test(NAME unit_training_test_auto_architecture
-         COMMAND unit_training_test_auto_architecture)
+         COMMAND unit_training_test_auto_architecture
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_training_test_auto_architecture
     PROPERTIES
         LABELS "unit;training;auto;architecture"
-        TIMEOUT 180)
+        TIMEOUT 180
+        RESOURCE_LOCK "brain_heavy")
 #]]
 
 # Auto Architecture NAS Unit Tests
@@ -131,7 +167,8 @@ add_test(NAME unit_training_test_auto_architecture_nas
 set_tests_properties(unit_training_test_auto_architecture_nas
     PROPERTIES
         LABELS "unit;training;auto;architecture;nas;evolutionary;rl;darts;pruning;pareto"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Meta-Learning and HPO Unit Tests
 add_executable(unit_training_test_meta_hpo
@@ -162,7 +199,8 @@ add_test(NAME unit_training_test_meta_hpo
 set_tests_properties(unit_training_test_meta_hpo
     PROPERTIES
         LABELS "unit;training;meta-learning;hpo;hyperparameter"
-        TIMEOUT 180)
+        TIMEOUT 180
+        RESOURCE_LOCK "brain_heavy")
 
 # Knowledge Distillation and QAT Unit Tests
 add_executable(unit_training_test_kd_qat
@@ -193,7 +231,8 @@ add_test(NAME unit_training_test_kd_qat
 set_tests_properties(unit_training_test_kd_qat
     PROPERTIES
         LABELS "unit;training;kd;qat;distillation;quantization"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Continual Learning and Multi-Task Learning Unit Tests
 add_executable(unit_training_test_cl_mtl
@@ -224,7 +263,8 @@ add_test(NAME unit_training_test_cl_mtl
 set_tests_properties(unit_training_test_cl_mtl
     PROPERTIES
         LABELS "unit;training;continual-learning;multi-task;cl;mtl"
-        TIMEOUT 180)
+        TIMEOUT 180
+        RESOURCE_LOCK "brain_heavy")
 
 # Mixed Precision (AMP) and Distributed Training Unit Tests
 add_executable(unit_training_test_amp_distributed
@@ -255,7 +295,8 @@ add_test(NAME unit_training_test_amp_distributed
 set_tests_properties(unit_training_test_amp_distributed
     PROPERTIES
         LABELS "unit;training;amp;mixed-precision;distributed"
-        TIMEOUT 180)
+        TIMEOUT 180
+        RESOURCE_LOCK "brain_heavy")
 
 # Adversarial Training and Gradient Scaling Unit Tests
 add_executable(unit_training_test_adv_gs
@@ -286,7 +327,8 @@ add_test(NAME unit_training_test_adv_gs
 set_tests_properties(unit_training_test_adv_gs
     PROPERTIES
         LABELS "unit;training;adversarial;gradient-scaling;adv;gs"
-        TIMEOUT 180)
+        TIMEOUT 180
+        RESOURCE_LOCK "brain_heavy")
 
 # =============================================================================
 # Orphaned Unit Test Targets
@@ -311,7 +353,8 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_quantization_ternary.cpp)
     set_tests_properties(unit_training_test_quantization_ternary
         PROPERTIES
             LABELS "unit;training;quantization;ternary"
-            TIMEOUT 120)
+            TIMEOUT 120
+            RESOURCE_LOCK "brain_heavy")
 endif()
 
 # SNN Backprop Stubs Unit Tests
@@ -335,7 +378,8 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_stubs.cpp)
     set_tests_properties(unit_training_test_snn_backprop_stubs
         PROPERTIES
             LABELS "unit;training;snn;backprop;stubs"
-            TIMEOUT 120)
+            TIMEOUT 120
+            RESOURCE_LOCK "brain_heavy")
 endif()
 
 # Training Dispatch Unit Tests (C — libcheck)
@@ -352,7 +396,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_dispatch.c)
         -Wall -Wextra
     )
     target_link_libraries(unit_training_test_training_dispatch PRIVATE
-        nimcp Threads::Threads check_pic subunit rt m
+        nimcp nimcp_middleware Threads::Threads check_pic subunit rt m
     )
     add_test(NAME unit_training_test_training_dispatch
              COMMAND unit_training_test_training_dispatch
@@ -360,7 +404,8 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_dispatch.c)
     set_tests_properties(unit_training_test_training_dispatch
         PROPERTIES
             LABELS "unit;training;dispatch"
-            TIMEOUT 300)
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy")
 endif()
 
 # Training Integration Hub Unit Tests

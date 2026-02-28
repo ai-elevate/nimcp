@@ -15,7 +15,7 @@ Architecture:
   School (main thread — coordinator/"Principal")
     ├── stop_event, recess_event        (threading.Event)
     ├── school_queue                     (instructor → school reports)
-    ├── cross_domain_queue               (inter-instructor exemplars)
+    ├── cross_domain_queues              (per-domain inter-instructor exemplars)
     ├── SchoolProgressBoard              (thread-safe metrics)
     └── InstructorAgent × 23             (20 text + 3 multimodal)
 """
@@ -176,8 +176,17 @@ class ThreadSafeBrain:
         concurrent C-level mutations.  If you add a new brain method that
         mutates state, add an explicit wrapper above rather than relying on
         this passthrough.
+
+        L1 note (TOCTOU): The getattr → callable check → cache sequence has
+        a narrow window where another thread could see a stale cache entry.
+        Under CPython's GIL, object.__setattr__ is atomic for simple
+        attribute assignment, so the worst case is a redundant wrapper
+        creation (benign). No additional synchronization needed.
         """
-        attr = getattr(self._brain, name)
+        # M3: Acquire lock before initial getattr to prevent reading a
+        # non-callable attribute while another thread is mid-mutation.
+        with self._lock:
+            attr = getattr(self._brain, name)
         if callable(attr):
             def _locked_method(*args, **kwargs):
                 with self._lock:
@@ -204,7 +213,7 @@ class SchoolConfig:
     max_examples_per_dataset: int = 50_000
     startup_stagger_s: float = 2.0         # Delay between instructor starts
     num_inputs: int = 1024   # Match ATHENA_NUM_INPUTS (was 128)
-    num_outputs: int = 256   # Match ATHENA_NUM_OUTPUTS (was 32)
+    num_outputs: int = 256   # Match ATHENA_NUM_OUTPUTS (kept for API compat, not used internally)
     max_concurrent_instructors: int = 1    # Sequential: C library has memory corruption with concurrent access even through RLock
     min_domain_accuracy: float = 0.0       # Per-domain min accuracy before "done" (0=disabled)
     max_retry_passes: int = 5              # Max re-teach passes if below accuracy threshold
@@ -270,11 +279,15 @@ class TrainingMetacognition:
     HOW:  Per-domain EMA tracking of accuracy, loss trend, and stall detection
     """
 
-    def __init__(self, logger):
+    def __init__(self, logger, mastery_threshold: float = 0.85):
         self.logger = logger
+        # M2 fix: Use configurable mastery threshold instead of hardcoded 0.85
+        self._mastery_threshold = mastery_threshold
         self._domain_stats: Dict[str, dict] = {}  # domain -> {ema_accuracy, ema_loss, stall_count, ...}
         self._assessment_count = 0
         self._reallocation_count = 0
+        # L4: Cache last assess() result so format_dashboard doesn't duplicate logic
+        self._last_assessment: Dict[str, dict] = {}
 
     def update(self, domain: str, accuracy: float, loss: float, examples: int):
         """Update per-domain statistics with latest instructor report."""
@@ -304,12 +317,12 @@ class TrainingMetacognition:
             stats['stall_count'] = 0
         stats['prev_accuracy'] = stats['ema_accuracy']
 
-        # Mastery detection
-        if stats['ema_accuracy'] > 0.85 and stats['assessments'] > 10:
+        # Mastery detection (M2 fix: uses configurable threshold)
+        if stats['ema_accuracy'] > self._mastery_threshold and stats['assessments'] > 10:
             stats['mastered'] = True
 
-        # De-mastery: if accuracy drops significantly, revoke mastery
-        if stats['mastered'] and stats['ema_accuracy'] < 0.75:
+        # De-mastery: if accuracy drops significantly below threshold, revoke mastery
+        if stats['mastered'] and stats['ema_accuracy'] < (self._mastery_threshold - 0.10):
             stats['mastered'] = False
 
     def assess(self) -> Dict[str, dict]:
@@ -353,6 +366,8 @@ class TrainingMetacognition:
                 'total_examples': stats['total_examples'],
             }
 
+        # L4: Cache for format_dashboard reuse
+        self._last_assessment = results
         return results
 
     def get_priority_ranking(self) -> List[tuple]:
@@ -380,12 +395,20 @@ class TrainingMetacognition:
         return bool(self._domain_stats)
 
     def format_dashboard(self) -> str:
-        """Format metacognitive assessment as dashboard string."""
+        """Format metacognitive assessment as dashboard string.
+
+        L4: Uses cached status from the last assess() call instead of
+        duplicating the status derivation logic.
+        """
         lines = ["\n[Metacognition] Domain Assessment:"]
         lines.append(f"  {'Domain':20s} {'Status':15s} {'Priority':>8s} {'Accuracy':>10s} {'Stall':>6s}")
         lines.append("  " + "-" * 65)
         for domain, stats in sorted(self._domain_stats.items()):
-            if stats['mastered']:
+            # L4: Prefer cached status from assess() over re-deriving
+            cached = self._last_assessment.get(domain)
+            if cached:
+                status = cached['status']
+            elif stats['mastered']:
                 status = 'mastered'
             elif stats['stall_count'] > 5:
                 status = 'stalled'
@@ -419,9 +442,14 @@ class School:
         self.stop_event = threading.Event()
         self.recess_event = threading.Event()
         self.school_queue: queue.Queue = queue.Queue(maxsize=1000)
-        self.cross_domain_queue: queue.Queue = queue.Queue(maxsize=500)
+        # H1: Per-domain cross-domain queues so consumers only receive exemplars
+        # targeted at their domain (prevents mismatched cross-domain transfer).
+        # The shared fallback queue is kept for backward compat with _publish_exemplar.
+        self.cross_domain_queues: Dict[str, queue.Queue] = {}
+        self.cross_domain_queue: queue.Queue = queue.Queue(maxsize=500)  # fallback
         self.board = SchoolProgressBoard()
-        self.metacognition = TrainingMetacognition(self.logger)
+        self.metacognition = TrainingMetacognition(
+            self.logger, mastery_threshold=config.graduation_mastery)
         self.cognitive = CognitiveOrchestrator(self.brain)
 
         self._last_metacog = 0.0
@@ -444,9 +472,7 @@ class School:
         self._last_checkpoint = 0.0
         self._last_config_check = time.time()
 
-        # Domain-specific output head allocation
-        # Each domain gets a dedicated slice of output neurons to prevent cross-domain interference
-        self._domain_output_map: Dict[str, tuple] = {}  # domain_name -> (start_idx, end_idx)
+        # H1 fix: _domain_output_map removed — domain isolation uses string label prefixing only.
 
         # Hot-reload tracking
         self._config_path: Optional[Path] = None
@@ -497,6 +523,9 @@ class School:
                 min_domain_accuracy=self.config.min_domain_accuracy,
                 max_retry_passes=self.config.max_retry_passes,
             )
+            # H1: Ensure per-domain queue exists
+            if domain not in self.cross_domain_queues:
+                self.cross_domain_queues[domain] = queue.Queue(maxsize=500)
             agent = InstructorAgent(
                 brain=self.brain,
                 config=ic,
@@ -507,11 +536,14 @@ class School:
                 recess_event=self.recess_event,
                 num_inputs=self.config.num_inputs,
                 log_dir=log_dir,
+                cross_domain_queues=self.cross_domain_queues,
             )
             self.instructors.append(agent)
 
-        # Allocate domain-specific output heads and assign to each instructor
-        self._allocate_domain_outputs()
+        # H1 fix: Domain isolation is handled entirely by string label prefixing
+        # (e.g. "biology:answer_a"), NOT by vector-based output neuron masking.
+        # The old _allocate_domain_outputs() code was dead — the C backend does
+        # not support output_range kwargs, and all targets are strings.
 
         self.logger.log(f"[School] Created {len(self.instructors)} instructors "
                         f"across {len(domain_datasets)} domains")
@@ -519,51 +551,6 @@ class School:
             self.logger.log(f"  {agent.config.domain:20s} [{agent.config.modality}] "
                             f"— {len(agent.datasets)} datasets, "
                             f"delay={agent.config.startup_delay_s:.1f}s")
-
-    def _allocate_domain_outputs(self):
-        """Allocate non-overlapping output neuron ranges for each domain.
-
-        With 256 outputs and ~24 domains, each domain gets ~10 dedicated output
-        neurons.  The remaining neurons are shared (for cross-domain transfer).
-        After allocation, each instructor's config.output_range is set.
-        """
-        num_outputs = self.config.num_outputs  # 256
-        domains = sorted(set(a.config.domain for a in self.instructors))
-
-        if not domains:
-            return
-
-        # Reserve 20% of outputs as shared pool for cross-domain transfer
-        shared_pool_size = max(16, num_outputs // 5)  # At least 16 shared neurons
-        dedicated_pool = num_outputs - shared_pool_size
-
-        # Divide dedicated pool evenly among domains
-        per_domain = max(4, dedicated_pool // len(domains))  # At least 4 neurons per domain
-
-        # H3: If too many domains would overflow, shrink per_domain to fit
-        if per_domain * len(domains) > dedicated_pool:
-            per_domain = max(1, dedicated_pool // len(domains))
-            self.logger.log(f"[School] WARNING: {len(domains)} domains exceed "
-                            f"dedicated pool ({dedicated_pool}), reduced to "
-                            f"{per_domain} neurons/domain")
-
-        for i, domain in enumerate(domains):
-            start = i * per_domain
-            end = min(start + per_domain, dedicated_pool)
-            if start >= dedicated_pool:
-                # More domains than slots -- share last slot
-                start = dedicated_pool - per_domain
-                end = dedicated_pool
-            self._domain_output_map[domain] = (start, end)
-
-        # Assign output_range to each instructor's config
-        for agent in self.instructors:
-            output_range = self._domain_output_map.get(agent.config.domain)
-            if output_range is not None:
-                agent.config.output_range = output_range
-
-        self.logger.log(f"[School] Allocated output heads: {len(self._domain_output_map)} domains, "
-                        f"{per_domain} neurons/domain, {shared_pool_size} shared")
 
     def start(self):
         """Start all instructors and run coordinator loop."""
@@ -691,12 +678,14 @@ class School:
                 # (the existing instructor won't see the new dataset since it
                 #  was created with the old list, but it will finish eventually
                 #  and the new datasets will need a fresh instructor)
+                # L6 note: When the new instructor starts, its reports will
+                # overwrite the old instructor's entry on the dashboard. This
+                # is expected — the dashboard shows the most recent report per
+                # domain, and the new instructor is the active one.
                 self.logger.log(f"  [Hot-reload] {domain}: active instructor exists, "
                                 f"queuing {len(ds_list)} new dataset(s) as separate instructor")
 
             modality = domain if domain in multimodal_domains else "text"
-            # Use existing output range if domain is known, otherwise None
-            output_range = self._domain_output_map.get(domain)
             ic = InstructorConfig(
                 domain=domain,
                 modality=modality,
@@ -704,8 +693,10 @@ class School:
                 startup_delay_s=0.0,
                 min_domain_accuracy=self.config.min_domain_accuracy,
                 max_retry_passes=self.config.max_retry_passes,
-                output_range=output_range,
             )
+            # H1: Ensure per-domain queue exists for hot-reloaded domains
+            if domain not in self.cross_domain_queues:
+                self.cross_domain_queues[domain] = queue.Queue(maxsize=500)
             agent = InstructorAgent(
                 brain=self.brain,
                 config=ic,
@@ -716,6 +707,7 @@ class School:
                 recess_event=self.recess_event,
                 num_inputs=self.config.num_inputs,
                 log_dir=log_dir,
+                cross_domain_queues=self.cross_domain_queues,
             )
             self.instructors.append(agent)
             self._pending_instructors.append(agent)
@@ -726,11 +718,6 @@ class School:
             for ds in ds_list:
                 self.logger.log(f"    + {ds.get('name', '?')}: "
                                 f"{ds.get('description', '')[:80]}")
-
-        # H2: Reallocate domain output heads to include new domains, then
-        # update ALL instructors (existing + new) with their output ranges
-        if added > 0:
-            self._allocate_domain_outputs()
 
         self.logger.log(f"[School] Hot-reload complete: {added} new instructor(s), "
                         f"{len(self._pending_instructors)} pending")
@@ -793,16 +780,20 @@ class School:
                 if sim < 0.5:
                     continue  # Not similar enough
 
-                # Transfer: put high-mastery exemplars onto cross-domain queue
-                # with low-mastery domain labels (at reduced LR)
+                # H1: Transfer: put high-mastery exemplars onto per-domain
+                # queue for the low-mastery domain (at reduced LR)
                 for agent in self.instructors:
                     if agent.config.domain == d_high and agent.adversarial_bank:
                         # M3: Snapshot the bank to avoid data race with instructor thread
                         bank = list(agent.adversarial_bank)
                         exemplars = random.sample(bank, min(5, len(bank)))
+                        # Ensure per-domain queue exists for target
+                        if d_low not in self.cross_domain_queues:
+                            self.cross_domain_queues[d_low] = queue.Queue(maxsize=500)
+                        target_q = self.cross_domain_queues[d_low]
                         for feat, orig_lbl in exemplars:
                             try:
-                                self.cross_domain_queue.put_nowait({
+                                target_q.put_nowait({
                                     "target_domain": d_low,
                                     "domain": d_low,
                                     "features": feat,
@@ -858,9 +849,10 @@ class School:
                 pass
 
         # H1: Call recess at most once per metacognition cycle
+        # H2: Only update timer when recess actually ran
         if needs_recess:
-            self._call_recess()
-            self._last_recess = time.time()
+            if self._call_recess():
+                self._last_recess = time.time()
 
     def _coordinator_loop(self):
         """Main coordinator loop — ticks every 1s."""
@@ -938,17 +930,19 @@ class School:
                         )
                         if state.get("should_pause", False):
                             self.logger.log("[BrainState] WARNING: Brain signals training should PAUSE")
-                            self._call_recess()
-                            self._last_recess = now
+                            # H2: Only update timer when recess actually ran
+                            if self._call_recess():
+                                self._last_recess = now
                 except Exception:
                     pass
 
                 self._last_metacog = now
 
             # Recess (consolidation)
+            # H2: Only update timer when recess actually ran
             if now - self._last_recess >= self.config.recess_interval_s:
-                self._call_recess()
-                self._last_recess = now
+                if self._call_recess():
+                    self._last_recess = now
 
             # Dashboard
             if now - self._last_report >= self.config.report_interval_s:
@@ -1007,14 +1001,18 @@ class School:
                 self._school_log_file.flush()
 
         # H1: Call recess at most once per drain cycle
+        # H2: Only update timer when recess actually ran
         if needs_recess and allow_recess:
-            self._call_recess()
-            self._last_recess = time.time()
+            if self._call_recess():
+                self._last_recess = time.time()
 
-    def _call_recess(self):
-        """Full-system consolidation with multi-domain interleaved replay."""
+    def _call_recess(self) -> bool:
+        """Full-system consolidation with multi-domain interleaved replay.
+
+        Returns True if recess actually ran, False if skipped (too recent).
+        """
         if time.time() - self._last_recess < 30.0:
-            return
+            return False
         self.logger.log("\n[School] === RECESS — Memory Consolidation ===")
         recess_start = time.time()
 
@@ -1049,14 +1047,13 @@ class School:
                 except Exception:
                     pass
                 for feat, lbl, dom in all_exemplars[:50]:
+                    # L2 fix: Check stop_event during replay loop
+                    if self.stop_event.is_set():
+                        break
                     try:
-                        # C3: Domain-scoped replay — use the domain's output range
-                        output_range = self._domain_output_map.get(dom)
-                        if output_range is not None:
-                            raw_brain.learn(feat, lbl, replay_lr,
-                                            output_range=output_range)
-                        else:
-                            raw_brain.learn(feat, lbl, replay_lr)
+                        # H2 fix: Removed output_range kwarg — the C backend
+                        # does not support it. Domain isolation uses string labels.
+                        raw_brain.learn(feat, lbl, replay_lr)
                         replayed += 1
                     except Exception as e:
                         self.logger.log(f"[School] WARNING: Recess replay failed for {dom}: {e}")
@@ -1091,6 +1088,7 @@ class School:
 
         # Resume
         self.recess_event.clear()
+        return True
 
     def _print_dashboard(self):
         """Print aggregate dashboard to log."""
@@ -1150,7 +1148,9 @@ class School:
         threshold = self.config.graduation_mastery
         has_non_errored = False
         for agent in self.instructors:
-            if agent._error:
+            # M4: Use has_error property instead of direct _error access
+            # across thread boundary
+            if agent.has_error:
                 continue
             has_non_errored = True
             if agent.get_mastery() < threshold:
@@ -1168,10 +1168,15 @@ class School:
             agent.join(timeout=10.0)
             if agent.is_alive():
                 self.logger.log(f"  WARNING: {agent.config.domain} thread still alive")
+                # L4 fix: Use public close_log() (renamed from _close_log)
+                agent.close_log()
 
         # Final dashboard
         self._drain_reports(allow_recess=False)
         self._print_dashboard()
+
+        # M1: Save final checkpoint before closing log
+        self._save_checkpoint()
 
         # Close log
         if self._school_log_file:

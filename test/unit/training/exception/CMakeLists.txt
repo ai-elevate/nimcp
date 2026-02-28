@@ -30,4 +30,5 @@ add_test(NAME unit_training_exception_handling
 set_tests_properties(unit_training_exception_handling
     PROPERTIES
         LABELS "unit;training;exception;gradient;nan;inf;checkpoint;rollback"
-        TIMEOUT 180)
+        TIMEOUT 180
+        RESOURCE_LOCK "brain_heavy")

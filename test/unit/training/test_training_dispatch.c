@@ -337,11 +337,11 @@ START_TEST(test_step_zero_inputs)
         float targets[] = {0.0f, 1.0f};
         training_dispatch_result_t result;
 
-        /* The implementation does not validate zero counts separately;
-         * it only checks NULL pointers. For ADAPTIVE, returns -2 regardless.
-         * Just verify no crash. */
+        /* M-3: Zero-length inputs should return an error (or at least not
+         * succeed). For ADAPTIVE, dispatch returns -2 (use standard backprop).
+         * Either way, the return value should be <= 0 (not positive success). */
         int ret = training_dispatch_step(brain, inputs, 0, targets, 2, &result);
-        (void)ret;
+        ck_assert_int_le(ret, 0);
 
         nimcp_brain_destroy(handle);
     }
@@ -364,10 +364,11 @@ START_TEST(test_step_zero_targets)
         float targets[] = {0.0f, 1.0f};
         training_dispatch_result_t result;
 
-        /* Same as above - no separate validation for zero counts.
-         * Just verify no crash. */
+        /* M-3: Zero-length targets should return an error (or at least not
+         * succeed). For ADAPTIVE, dispatch returns -2 (use standard backprop).
+         * Either way, the return value should be <= 0 (not positive success). */
         int ret = training_dispatch_step(brain, inputs, 3, targets, 0, &result);
-        (void)ret;
+        ck_assert_int_le(ret, 0);
 
         nimcp_brain_destroy(handle);
     }
@@ -477,7 +478,11 @@ START_TEST(test_set_reward_out_of_range)
 
     if (handle != NULL) {
         brain_t brain = get_internal_brain(handle);
-        /* Test with reward outside -1 to +1 range */
+        /* Test with reward outside -1 to +1 range.
+         * M-4: The training_dispatch_set_reward() API does NOT validate the
+         * reward range — it passes the value directly to the SNN R-STDP
+         * implementation which may clamp or use as-is. This is by design:
+         * the caller (Python training loop) is responsible for range control. */
         int result = training_dispatch_set_reward(brain, 5.0f);
         /* Should either clamp the value or reject it */
         ck_assert(result == 0 || result == -1);
@@ -926,6 +931,11 @@ Suite* training_dispatch_suite(void)
     tcase_add_checked_fixture(tc_integration, setup, teardown);
     tcase_set_timeout(tc_integration, 60);
     tcase_add_test(tc_integration, test_full_lifecycle_adaptive);
+    /* M-5 TODO: Add full lifecycle tests for SNN, LNN, CNN, and HYBRID network
+     * types. These require creating brains with specific network configurations
+     * (e.g., NIMCP_NETWORK_SNN with R-STDP), which need more complex setup than
+     * the TINY brain used here. The ADAPTIVE test covers the dispatch mechanism;
+     * network-specific training is tested in dedicated test suites. */
     suite_add_tcase(s, tc_integration);
 
     return s;

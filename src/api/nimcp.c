@@ -58,6 +58,7 @@ static void api_set_error(const char* fmt, ...);
 #include <stdarg.h>
 #include <unistd.h>
 #include <math.h>
+#include <float.h>  // I-H3 FIX: FLT_MAX for NaN-safe argmax in predict_fast
 
 /**
  * @brief API-layer check+throw that also sets the public error string

@@ -124,6 +124,7 @@ struct training_bio_async_bridge {
 
     /* Statistics */
     training_bio_bridge_stats_t stats;
+};
 
 
 /*=============================================================================
@@ -1482,9 +1483,9 @@ int training_bio_bridge_get_outgoing_effects(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((training_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((training_bio_async_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
-    nimcp_mutex_unlock(((training_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((training_bio_async_bridge_t*)bridge)->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1497,9 +1498,9 @@ int training_bio_bridge_get_incoming_effects(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((training_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((training_bio_async_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
-    nimcp_mutex_unlock(((training_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((training_bio_async_bridge_t*)bridge)->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1516,9 +1517,9 @@ int training_bio_bridge_get_stats(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((training_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((training_bio_async_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((training_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((training_bio_async_bridge_t*)bridge)->base.mutex);
 
     return TRAIN_BIO_OK;
 }

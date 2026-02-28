@@ -7,11 +7,13 @@ WHAT: Train a 1M-neuron brain called "Athena" to serve as the pretrained
       baseline for all future brains.
 WHY:  Every new brain should start from a trained baseline rather than
       random initialization — dramatically faster convergence on new tasks.
-HOW:  3-phase parallel school pipeline:
+HOW:  5-phase parallel school pipeline:
       Phase 0: Orientation — built-in benchmarks with predict-before-learn (warm-up)
       Phase 1: Parallel School — 23 instructor agents teach simultaneously
                (20 text + 3 multimodal domains, 7 teaching methods each)
-      Phase 2: Final Exam — creativity test, hard-item review, save
+      Phase 2: Guided Study — streaming HuggingFace datasets (Socratic)
+      Phase 3: Research — curiosity-driven exploration
+      Phase 4: Final Exam — creativity test, hard-item review, save
 
 Full NIMCP system engaged: 67+ cognitive modules, 32 brain regions, 3 sensory
 cortices, mesh network, bio-async router, plasticity orchestrator, glial system,
@@ -32,6 +34,7 @@ All output goes to file, no interactive prompts.
 
 import atexit
 import gc
+import heapq
 import json
 import math
 import os
@@ -133,14 +136,20 @@ except ImportError:
 # Graceful Shutdown Signal Handling
 # ---------------------------------------------------------------------------
 _shutdown_requested = False
+_force_exit = False
+_clean_exit = False
 
 
 def _signal_handler(signum, frame):
-    global _shutdown_requested
+    global _shutdown_requested, _force_exit
     if _shutdown_requested:
-        logger_msg = "[Athena] Second signal received — forcing exit"
-        print(f"\n{logger_msg}")
-        sys.exit(1)
+        # Second signal: set force-exit flag instead of calling sys.exit(1),
+        # which would interrupt the atexit handler mid-save and corrupt the
+        # checkpoint.  The atexit handler checks _force_exit and skips save
+        # if set, then calls os._exit(1).
+        _force_exit = True
+        print(f"\n[Athena] Second signal received — will force exit after atexit")
+        return
     _shutdown_requested = True
     print(f"\n[Athena] Signal {signum} received — graceful shutdown requested")
 
@@ -155,11 +164,10 @@ signal.signal(signal.SIGTERM, _signal_handler)
 PHASE_ORDER = {
     "phase0": 0, "phase1": 1, "phase2": 2, "phase3": 3,
     "legacy_phase1": 1, "legacy_phase2": 2, "legacy_phase3": 3,
-    "full_assessment": 4, "mastery_loop": 5,
 }
 
 
-def phase_reached(resume_phase, target_phase):
+def phase_reached(resume_phase: str, target_phase: str) -> bool:
     """Check if resume_phase has reached or passed target_phase using ordinal comparison."""
     return PHASE_ORDER.get(resume_phase, -1) >= PHASE_ORDER.get(target_phase, 0)
 
@@ -184,6 +192,11 @@ PHASE2_MAX_PER_DATASET = 50_000   # Max examples per streaming dataset
 PHASE2_BATCH_SIZE = 1000          # Streaming batch size
 PHASE2_CHECKPOINT_INTERVAL = 10_000  # Checkpoint every N examples
 INTROSPECTION_INTERVAL = 5000     # Metacognitive check every N examples
+
+# Mastery thresholds for phase gating
+RESEARCH_MASTERY_THRESHOLD = 0.6   # Phase 3: minimum mastery for research eligibility
+CREATIVE_MASTERY_THRESHOLD = 0.8   # Phase 4: minimum mastery for creative exam
+HARD_EXAMPLE_LOSS_THRESHOLD = 0.3  # Loss above which reasoning chain runs
 
 
 # ---------------------------------------------------------------------------
@@ -243,15 +256,19 @@ class CurriculumManager:
     Phase 1 (steps 0-2000): 8 domains (core academics)
     Phase 2 (steps 2000-5000): 16 domains (+ professional)
     Phase 3 (steps 5000+): All domains
+
+    Domain names must match the actual dataset domain names from
+    foundation_datasets_config.json (e.g. 'biology', 'chemistry', 'physics').
     """
     def __init__(self, all_domains: list):
         self.all_domains = all_domains
         self.step = 0
-        # Sort domains by estimated difficulty (simpler first)
-        self.easy_domains = ['math', 'science', 'language', 'history',
-                            'geography', 'general', 'reading', 'coding']
-        self.medium_domains = ['medicine', 'law', 'finance', 'philosophy',
-                               'ethics', 'psychology', 'engineering', 'statistics']
+        # Sort domains by estimated difficulty (simpler first).
+        # Domain names match foundation_datasets_config.json domain field values.
+        self.easy_domains = ['biology', 'chemistry', 'physics', 'history',
+                            'language', 'humanities', 'literature', 'programming']
+        self.medium_domains = ['medicine', 'finance', 'philosophy', 'economics',
+                               'ethics', 'psychology', 'earth_sciences', 'sociology']
         self.hard_domains = [d for d in all_domains
                             if d not in self.easy_domains and d not in self.medium_domains]
 
@@ -269,6 +286,7 @@ class CurriculumManager:
         return self._compute_active_domains(self.step)
 
     def should_include(self, domain: str) -> bool:
+        self.step += 1
         active = self._compute_active_domains(self.step)
         return domain in active or domain.split(':')[0] in active
 
@@ -286,17 +304,22 @@ class HardExampleMiner:
     def __init__(self, capacity: int = 5000, replay_ratio: float = 0.2):
         self.capacity = capacity
         self.replay_ratio = replay_ratio  # Fraction of batch from hard examples
-        self.hard_examples = []  # List of (features, label, loss) tuples
+        self.hard_examples = []  # Min-heap of (loss, features, label) tuples
         self.min_loss_threshold = 0.3  # Only store examples with loss > threshold
 
     def record(self, features: list, label: str, loss: float):
-        """Record a training example and its loss."""
+        """Record a training example and its loss.
+
+        Uses a min-heap keyed by loss so that when over capacity we can
+        efficiently pop the smallest-loss item in O(log n) instead of
+        sorting the entire list in O(n log n).
+        """
         if loss > self.min_loss_threshold:
-            self.hard_examples.append((features, label, loss))
-            # Keep only the hardest examples
-            if len(self.hard_examples) > self.capacity:
-                self.hard_examples.sort(key=lambda x: x[2], reverse=True)
-                self.hard_examples = self.hard_examples[:self.capacity]
+            if len(self.hard_examples) < self.capacity:
+                heapq.heappush(self.hard_examples, (loss, features, label))
+            elif loss > self.hard_examples[0][0]:
+                # Replace the smallest-loss item with this harder example
+                heapq.heapreplace(self.hard_examples, (loss, features, label))
 
     def get_replay_batch(self, batch_size: int) -> list:
         """Get a batch of hard examples for replay."""
@@ -307,10 +330,13 @@ class HardExampleMiner:
 
     def decay(self, factor: float = 0.95):
         """Decay stored losses (so old hard examples eventually drop out)."""
-        for i in range(len(self.hard_examples)):
-            f, l, loss = self.hard_examples[i]
-            self.hard_examples[i] = (f, l, loss * factor)
-        self.hard_examples = [x for x in self.hard_examples if x[2] > self.min_loss_threshold * 0.5]
+        decayed = []
+        for loss, f, l in self.hard_examples:
+            new_loss = loss * factor
+            if new_loss > self.min_loss_threshold * 0.5:
+                decayed.append((new_loss, f, l))
+        heapq.heapify(decayed)
+        self.hard_examples = decayed
 
 
 # ---------------------------------------------------------------------------
@@ -322,9 +348,13 @@ def domain_label(domain: str, label) -> str:
 
     Without this, Wine label "0", MMLU label "0", Fashion-MNIST label "0",
     and ARC label "0" all map to the same output neuron — catastrophic
-    interference.  With prefixing, they become "wine:0", "mmlu:0", etc.
+    interference.  With prefixing, they become "wine_0", "mmlu_0", etc.
+    Colons in domain or label are replaced with underscores to avoid
+    ambiguity with the domain:label separator.
     """
-    return f"{domain}:{label}"
+    safe_domain = str(domain).replace(":", "_")
+    safe_label = str(label).replace(":", "_")
+    return f"{safe_domain}:{safe_label}"
 
 
 def adapt_dataset_labels(examples: list, domain: str) -> list:
@@ -365,11 +395,17 @@ PROBE_CONVERSATIONS = [
 
 def _probe_encode_text(text: str, num_inputs: int) -> list:
     """Encode text to feature vector (uses shared text_to_features)."""
+    if not BENCHMARKS_AVAILABLE:
+        # Cannot encode text without benchmark_datasets; return zeros
+        return [0.0] * num_inputs
     return text_to_features(text, num_inputs)
 
 
 def conversation_probe(brain, logger: "AthenaLogger", phase_name: str):
     """Run a conversation probe — inference only, no training."""
+    if not BENCHMARKS_AVAILABLE:
+        logger.log(f"\nCONVERSATION PROBE SKIPPED — benchmark_datasets not available")
+        return []
     logger.log(f"\n{'─' * 70}")
     logger.log(f"CONVERSATION PROBE — after {phase_name}")
     logger.log(f"{'─' * 70}")
@@ -442,6 +478,18 @@ def conversation_probe(brain, logger: "AthenaLogger", phase_name: str):
     return results
 
 
+# Module-level dataset cache to avoid re-instantiation on every health_check call
+_health_check_datasets = {}
+
+
+def _get_health_check_datasets():
+    """Return cached health-check dataset instances (singletons)."""
+    if not _health_check_datasets and BENCHMARKS_AVAILABLE:
+        _health_check_datasets["wine"] = WineDataset()
+        _health_check_datasets["breast_cancer"] = BreastCancerDataset()
+    return _health_check_datasets
+
+
 def health_check(brain, logger: "AthenaLogger", phase_name: str,
                  min_accuracy: float = 0.0, abort_on_fail: bool = False) -> dict:
     """
@@ -468,10 +516,8 @@ def health_check(brain, logger: "AthenaLogger", phase_name: str,
 
     # 2. Accuracy on built-in benchmark samples (quick — 10 per dataset)
     if BENCHMARKS_AVAILABLE:
-        check_datasets = [
-            ("wine", WineDataset()),
-            ("breast_cancer", BreastCancerDataset()),
-        ]
+        cached_ds = _get_health_check_datasets()
+        check_datasets = list(cached_ds.items())
         total_correct, total_tested = 0, 0
         for ds_name, ds in check_datasets:
             examples = ds.get_examples()
@@ -544,30 +590,34 @@ class AthenaLogger:
             if self._log_fh:
                 self._log_fh.close()
             raise
-        self._writes_since_flush = 0
+        self._log_writes_since_flush = 0
+        self._metric_writes_since_flush = 0
 
     def log(self, msg: str):
         elapsed = time.time() - self.start_time
         line = f"[{elapsed:10.1f}s] {msg}"
         print(line, flush=True)
         self._log_fh.write(line + "\n")
-        self._writes_since_flush += 1
-        if self._writes_since_flush >= 50:
-            self._flush()
+        self._log_writes_since_flush += 1
+        if self._log_writes_since_flush >= 50:
+            self._log_fh.flush()
+            self._log_writes_since_flush = 0
 
     def metric(self, data: dict):
         t = time.time()
         data["timestamp"] = t
         data["elapsed_s"] = t - self.start_time
         self._metrics_fh.write(json.dumps(data) + "\n")
-        self._writes_since_flush += 1
-        if self._writes_since_flush >= 50:
-            self._flush()
+        self._metric_writes_since_flush += 1
+        if self._metric_writes_since_flush >= 50:
+            self._metrics_fh.flush()
+            self._metric_writes_since_flush = 0
 
     def _flush(self):
         self._log_fh.flush()
         self._metrics_fh.flush()
-        self._writes_since_flush = 0
+        self._log_writes_since_flush = 0
+        self._metric_writes_since_flush = 0
 
     def close(self):
         """Flush and close file handles."""
@@ -589,7 +639,7 @@ class AthenaLogger:
 
 def phase0_orientation(brain, socratic: SocraticTrainer,
                        cognitive: CognitiveOrchestrator,
-                       logger: AthenaLogger):
+                       logger: AthenaLogger) -> int:
     """
     Phase 0: Quick warm-up on built-in benchmarks before parallel school.
     Fewer epochs than full Phase 1 — just enough to initialize domain
@@ -683,9 +733,10 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
                     hard_miner.record(ex["features"], str(ex["label"]), estimated_loss)
 
             # Replay hard examples at the end of each epoch
+            # Use peek_lr() to avoid advancing the scheduler step_count on replay
             replay_batch = hard_miner.get_replay_batch(batch_size=50)
-            for feats, label, _loss in replay_batch:
-                replay_lr = scheduler.get_lr()
+            for _loss, feats, label in replay_batch:
+                replay_lr = scheduler.peek_lr()
                 brain.learn(feats, label, replay_lr * 0.8)  # Slightly lower LR for replay
                 total_trained += 1
 
@@ -736,9 +787,10 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
                         estimated_loss = 0.5
                     hard_miner.record(ex["features"], str(ex["label"]), estimated_loss)
 
+            # Use peek_lr() to avoid advancing the scheduler step_count on replay
             replay_batch = hard_miner.get_replay_batch(batch_size=50)
-            for feats, label, _loss in replay_batch:
-                replay_lr = scheduler.get_lr()
+            for _loss, feats, label in replay_batch:
+                replay_lr = scheduler.peek_lr()
                 brain.learn(feats, label, replay_lr * 0.8)
                 total_trained += 1
 
@@ -748,11 +800,13 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
         logger.log(f"    -> {ds_name} done: {n_examples} steps in {elapsed:.1f}s "
                    f"({rate:.0f} steps/s)")
 
-    # Final hard example replay pass
+    # Final hard example replay pass — use peek_lr() to avoid advancing scheduler
     if hard_miner.hard_examples:
         logger.log(f"  Final hard example replay: {len(hard_miner.hard_examples)} items")
-        for feats, label, _loss in hard_miner.hard_examples[:500]:
-            lr = scheduler.get_lr()
+        for _loss, feats, label in hard_miner.hard_examples[:500]:
+            if _shutdown_requested:
+                break
+            lr = scheduler.peek_lr()
             brain.learn(feats, label, lr)
             total_trained += 1
 
@@ -817,7 +871,7 @@ def phase1_parallel_school(brain, socratic: SocraticTrainer,
                            logger: AthenaLogger, total_trained: int,
                            max_concurrent_instructors: int = 1,
                            min_domain_accuracy: float = 0.0,
-                           max_retry_passes: int = 5):
+                           max_retry_passes: int = 5) -> tuple:
     """
     Phase 1: 23 parallel instructor agents teach simultaneously.
     20 text domains + 3 multimodal (audio, visual, speech).
@@ -873,7 +927,7 @@ def phase1_parallel_school(brain, socratic: SocraticTrainer,
 
 def phase1_worksheets(brain, socratic: SocraticTrainer,
                       cognitive: CognitiveOrchestrator,
-                      logger: AthenaLogger):
+                      logger: AthenaLogger) -> int:
     """
     Phase 1: Socratic training on all built-in benchmark datasets.
     Predict-before-learn with adaptive confidence and spaced repetition.
@@ -1087,7 +1141,7 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
 
 def phase2_guided_study(brain, socratic: SocraticTrainer,
                         cognitive: CognitiveOrchestrator,
-                        logger: AthenaLogger, total_trained: int):
+                        logger: AthenaLogger, total_trained: int) -> int:
     """
     Phase 2: Socratic training on HuggingFace streaming datasets.
     Executive function chooses domain order based on curiosity + mastery.
@@ -1125,7 +1179,10 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
     domain_order = {d: i for i, d in enumerate(priority)}
     hf_datasets.sort(key=lambda d: domain_order.get(d.get("domain", "general"), 999))
 
-    # Initialize training strategy components for Phase 2
+    # Initialize training strategy components for Phase 2.
+    # INTENTIONAL: Phase 2 creates a fresh LR scheduler (separate from Phase 0's)
+    # so that warmup restarts for the new streaming datasets.  This is by design —
+    # the streaming data is structurally different from the built-in benchmarks.
     phase2_scheduler = CosineAnnealingLR(base_lr=0.5, min_lr=0.05,
                                          cycle_steps=10000, warmup_steps=1000)
     phase2_curriculum = CurriculumManager(available_domains)
@@ -1190,6 +1247,9 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                     # Socratic: predict-before-learn per example
                     # Domain-prefix label to prevent cross-domain collision
                     socratic.train_example(features, prefixed_label, domain)
+                    # Advance the cosine LR scheduler's step counter.
+                    # The LR value is used for replay and adaptive modulation.
+                    phase2_scheduler.get_lr()
                     count += 1
                     total_trained += 1
                     examples_since_introspection += 1
@@ -1207,7 +1267,7 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                         phase2_miner.record(features, prefixed_label, est_loss)
 
                     # Run reasoning chain on hard examples (loss > 0.3)
-                    if est_loss > 0.3 and hasattr(cognitive, 'reason_about'):
+                    if est_loss > HARD_EXAMPLE_LOSS_THRESHOLD and hasattr(cognitive, 'reason_about'):
                         try:
                             # Use first 512 chars of text representation
                             example_text = str(label)[:512]
@@ -1218,7 +1278,7 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                             pass
 
                     # Consolidate every 10k steps (not just end of phase)
-                    if total_trained % 10000 < 1:
+                    if total_trained % 10000 == 0:
                         try:
                             cognitive.consolidate(mode="auto")
                         except Exception:
@@ -1257,9 +1317,10 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                             adaptive_lr = None
 
                         # Replay hard examples during introspection pauses
+                        # Use peek_lr() to avoid advancing scheduler step_count on replay
                         replay_batch = phase2_miner.get_replay_batch(batch_size=20)
-                        for r_feats, r_label, _r_loss in replay_batch:
-                            r_lr = phase2_scheduler.get_lr()
+                        for _r_loss, r_feats, r_label in replay_batch:
+                            r_lr = phase2_scheduler.peek_lr()
                             if adaptive_lr is not None:
                                 r_lr = adaptive_lr
                             brain.learn(r_feats, r_label, r_lr)
@@ -1323,6 +1384,7 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                         features, label = result
                         prefixed_label = domain_label(domain, label)
                         socratic.train_example(features, prefixed_label, domain)
+                        phase2_scheduler.get_lr()  # Advance cosine schedule
                         count += 1
                         total_trained += 1
                         # Hard example mining for deferred datasets too
@@ -1344,20 +1406,40 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                 # Decay hard example losses after each deferred dataset to
                 # prevent unbounded growth and let old hard examples age out
                 phase2_miner.decay(factor=0.95)
+
+                # Introspection + consolidation between deferred datasets
+                # (matches main dataset loop quality — prevents degraded training)
+                try:
+                    progress = cognitive.assess_learning_progress()
+                    logger.log(f"    Deferred introspection: "
+                               f"acc={progress['accuracy']:.4f} "
+                               f"mastery={socratic.mastery.mastery(domain):.3f}")
+                except Exception:
+                    pass
+                try:
+                    cognitive.consolidate(mode="light")
+                except Exception:
+                    pass
+
                 gc.collect()
 
-        # Final hard example replay for Phase 2
+        # Final hard example replay for Phase 2 — use peek_lr() for replay
         if phase2_miner.hard_examples:
             replay_count = min(500, len(phase2_miner.hard_examples))
             logger.log(f"\n  Phase 2 hard example replay: {replay_count} items")
-            for feats, label, _loss in phase2_miner.hard_examples[:replay_count]:
-                lr = phase2_scheduler.get_lr()
+            for _loss, feats, label in phase2_miner.hard_examples[:replay_count]:
+                if _shutdown_requested:
+                    break
+                lr = phase2_scheduler.peek_lr()
                 brain.learn(feats, label, lr)
                 total_trained += 1
     else:
         # Fallback: minimal streaming with Socratic training
-        logger.log("Using fallback streaming (Socratic per-example)")
-        for ds_config in hf_datasets:
+        if not BENCHMARKS_AVAILABLE:
+            logger.log("Fallback streaming SKIPPED — text_to_features requires benchmark_datasets")
+        else:
+            logger.log("Using fallback streaming (Socratic per-example)")
+        for ds_config in (hf_datasets if BENCHMARKS_AVAILABLE else []):
             name = ds_config["name"]
             domain = ds_config.get("domain", "general")
             hf_dataset = ds_config["hf_dataset"]
@@ -1426,12 +1508,17 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
 def phase3_research(brain, active_learner: ActiveLearner,
                     socratic: SocraticTrainer,
                     cognitive: CognitiveOrchestrator,
-                    logger: AthenaLogger, total_trained: int):
+                    logger: AthenaLogger, total_trained: int) -> int:
     """
     Phase 3: For domains with mastery > 0.6, brain researches topics.
     SafetyGate pre-filters all queries and content.
     LGSS content filter validates all fetched text.
     Learns from web with reduced confidence (0.7).
+
+    NOTE: total_trained is intentionally NOT incremented in this phase.
+    Research generates questions and structures knowledge via curiosity-driven
+    exploration, but does not perform direct learn() calls that would count
+    toward training steps.
 
     NOTE: Web research requires network access. If unavailable, this phase
     uses curiosity-driven question generation as a knowledge structuring
@@ -1442,10 +1529,11 @@ def phase3_research(brain, active_learner: ActiveLearner,
     logger.log("=" * 70)
 
     masteries = socratic.mastery.all_masteries()
-    research_domains = {d: m for d, m in masteries.items() if m > 0.6}
+    research_domains = {d: m for d, m in masteries.items()
+                        if m > RESEARCH_MASTERY_THRESHOLD}
 
     if not research_domains:
-        logger.log("Phase 3 SKIPPED — no domains above 0.6 mastery")
+        logger.log(f"Phase 3 SKIPPED — no domains above {RESEARCH_MASTERY_THRESHOLD} mastery")
         return total_trained
 
     logger.log(f"Domains eligible for research: {list(research_domains.keys())}")
@@ -1488,7 +1576,7 @@ def phase3_research(brain, active_learner: ActiveLearner,
 def phase4_exam_and_save(brain, active_learner: ActiveLearner,
                          socratic: SocraticTrainer,
                          cognitive: CognitiveOrchestrator,
-                         logger: AthenaLogger, total_trained: int):
+                         logger: AthenaLogger, total_trained: int) -> int:
     """
     Phase 4: Creative exam, hard-item review, final consolidation, save.
     - For domains with mastery > 0.8: brain generates content, self-grades
@@ -1501,7 +1589,8 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
 
     # Creative exam for advanced domains
     masteries = socratic.mastery.all_masteries()
-    advanced_domains = {d: m for d, m in masteries.items() if m > 0.8}
+    advanced_domains = {d: m for d, m in masteries.items()
+                        if m > CREATIVE_MASTERY_THRESHOLD}
 
     if advanced_domains:
         logger.log(f"Creative exam domains: {list(advanced_domains.keys())}")
@@ -1518,7 +1607,7 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
             logger.log(f"  Grade: {result.get('grade', 0):.3f}")
             logger.metric({"phase": 4, "domain": domain, **result})
     else:
-        logger.log("No domains above 0.8 mastery — skipping creative exam")
+        logger.log(f"No domains above {CREATIVE_MASTERY_THRESHOLD} mastery — skipping creative exam")
 
     # ================================================================
     # CREATIVITY TEST: Can the brain create something that hasn't existed?
@@ -1644,13 +1733,16 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
             for ex in examples:
                 feats = _pad_or_truncate(ex["features"], ATHENA_NUM_INPUTS)
                 expected = domain_label(domain_name, ex["label"])
-                result = brain.predict_fast(feats)
-                if result is None:
-                    total += 1
-                    continue
-                pred, conf = result
-                if pred == expected:
-                    correct += 1
+                try:
+                    result = brain.predict_fast(feats)
+                    if result is None:
+                        total += 1
+                        continue
+                    pred, conf = result
+                    if pred == expected:
+                        correct += 1
+                except Exception:
+                    pass
                 total += 1
             acc = correct / max(total, 1)
             logger.log(f"  {domain_name:20s}: {acc:.4f} ({correct}/{total})")
@@ -1745,9 +1837,12 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
     }
 
     metadata_path = ATHENA_MODEL_DIR / "nimcp_athena_foundation_v1.0.json"
-    with open(metadata_path, "w") as f:
-        json.dump(metadata, f, indent=2)
-    logger.log(f"Metadata saved: {metadata_path}")
+    try:
+        with open(metadata_path, "w") as f:
+            json.dump(metadata, f, indent=2)
+        logger.log(f"Metadata saved: {metadata_path}")
+    except Exception as e:
+        logger.log(f"WARNING: Metadata save failed: {e}")
 
     return total_trained
 
@@ -1759,7 +1854,7 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
 PROGRESS_FILE = ATHENA_CHECKPOINT_DIR / "athena_progress.json"
 
 
-def save_progress(phase: str, checkpoint_path: Path, total_trained: int):
+def save_progress(phase: str, checkpoint_path: Path, total_trained: int) -> None:
     """Save training progress so --resume knows where to continue."""
     ATHENA_CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     progress = {
@@ -1772,7 +1867,7 @@ def save_progress(phase: str, checkpoint_path: Path, total_trained: int):
         json.dump(progress, f, indent=2)
 
 
-def load_progress() -> dict:
+def load_progress() -> dict | None:
     """Load training progress from previous run."""
     if PROGRESS_FILE.exists():
         with open(PROGRESS_FILE) as f:
@@ -1780,7 +1875,7 @@ def load_progress() -> dict:
     return None
 
 
-def find_latest_checkpoint() -> Path:
+def find_latest_checkpoint() -> Path | None:
     """Find the most recent checkpoint file."""
     # First check progress file for the exact checkpoint
     progress = load_progress()
@@ -1794,17 +1889,34 @@ def find_latest_checkpoint() -> Path:
     return checkpoints[0] if checkpoints else None
 
 
-def _parse_cli_arg(name, default, cast=int):
-    """Parse --name VALUE from sys.argv, return default if missing."""
+def _parse_cli_arg(name, default, cast=int, min_val=None, max_val=None):
+    """Parse --name VALUE from sys.argv, return default if missing.
+
+    Validates that the value can be cast and falls within [min_val, max_val].
+    """
     if name in sys.argv:
         idx = sys.argv.index(name)
         if idx + 1 < len(sys.argv) and (not sys.argv[idx + 1].startswith("-") or sys.argv[idx + 1][1:2].isdigit()):
-            return cast(sys.argv[idx + 1])
+            try:
+                value = cast(sys.argv[idx + 1])
+            except ValueError:
+                print(f"WARNING: Invalid value for {name}: {sys.argv[idx + 1]!r} "
+                      f"(expected {cast.__name__}), using default {default}")
+                return default
+            if min_val is not None and value < min_val:
+                print(f"WARNING: {name}={value} below minimum {min_val}, "
+                      f"clamping to {min_val}")
+                return min_val
+            if max_val is not None and value > max_val:
+                print(f"WARNING: {name}={value} above maximum {max_val}, "
+                      f"clamping to {max_val}")
+                return max_val
+            return value
     return default
 
 
-def main():
-    global ATHENA_NUM_INPUTS, ATHENA_NUM_OUTPUTS, PHASE2_MAX_PER_DATASET
+def main() -> int:
+    global ATHENA_NUM_INPUTS, ATHENA_NUM_OUTPUTS, PHASE2_MAX_PER_DATASET, _clean_exit
 
     # Parse CLI flags
     resume_path = None
@@ -1818,10 +1930,14 @@ def main():
             print(f"ERROR: No checkpoint found to resume from")
             sys.exit(1)
 
-    PHASE2_MAX_PER_DATASET = _parse_cli_arg("--examples-per-domain", PHASE2_MAX_PER_DATASET)
-    cli_max_concurrent = _parse_cli_arg("--max-concurrent", 1)
-    cli_min_accuracy = _parse_cli_arg("--min-domain-accuracy", 0.0, float)
-    cli_max_retry = _parse_cli_arg("--max-retry-passes", 5)
+    PHASE2_MAX_PER_DATASET = _parse_cli_arg("--examples-per-domain", PHASE2_MAX_PER_DATASET,
+                                            min_val=100, max_val=10_000_000)
+    cli_max_concurrent = _parse_cli_arg("--max-concurrent", 1,
+                                         min_val=1, max_val=32)
+    cli_min_accuracy = _parse_cli_arg("--min-domain-accuracy", 0.0, float,
+                                       min_val=0.0, max_val=1.0)
+    cli_max_retry = _parse_cli_arg("--max-retry-passes", 5,
+                                    min_val=1, max_val=100)
 
     logger = AthenaLogger(ATHENA_LOG_DIR)
 
@@ -1830,7 +1946,16 @@ def main():
 
     # Register emergency checkpoint save on exit
     def _emergency_save():
-        if _shutdown_requested and _brain_ref[0] is not None:
+        if _clean_exit:
+            # Normal exit path already saved and shut down — nothing to do.
+            return
+        if _force_exit:
+            # Second signal received — skip save to avoid corruption,
+            # then force-exit immediately.
+            print("[Athena] Force exit — skipping checkpoint save")
+            logger.close()
+            os._exit(1)
+        if _brain_ref[0] is not None:
             try:
                 ckpt = ATHENA_CHECKPOINT_DIR / "athena_emergency.bin"
                 ATHENA_CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1983,7 +2108,7 @@ def main():
         # 5. Quick learn+predict cycle to verify learning signal
         for i in range(5):
             features = [float(i == j) for j in range(ATHENA_NUM_INPUTS)]
-            brain.learn(features, f"smoke:{i}")
+            brain.learn(features, f"smoke:{i}", 0.5)
         result2 = brain.predict([1.0] + [0.0] * (ATHENA_NUM_INPUTS - 1))
         dec2 = result2[0] if isinstance(result2, tuple) else result2
         logger.log(f"  OK: 5-step train+predict cycle (decision={dec2 if result2 else 'None'})")
@@ -1995,6 +2120,8 @@ def main():
     if not smoke_ok:
         logger.log("SMOKE TEST FAILED — aborting to avoid wasting hours")
         brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_smoke_fail.bin"))
+        _brain_ref[0] = None
+        _clean_exit = True
         del brain
         nimcp.shutdown()
         sys.exit(1)
@@ -2018,6 +2145,27 @@ def main():
             logger.log("Resume: no progress file — skipping Phase 0 only")
             resume_phase = "phase0"
 
+    # Helper: emergency save and return on shutdown.
+    # Uses _brain_ref[0] (mutable container) instead of capturing `brain` directly,
+    # which avoids UnboundLocalError if the local `brain` name has been deleted or
+    # if Python treats `del brain` as making `brain` local in this nested scope.
+    def _shutdown_save_and_return():
+        logger.log("Shutdown requested — emergency save before exit")
+        try:
+            if _brain_ref[0] is not None:
+                _brain_ref[0].save(str(ATHENA_CHECKPOINT_DIR / "athena_emergency.bin"))
+                logger.log("Emergency checkpoint saved")
+        except Exception as e:
+            logger.log(f"Emergency save failed: {e}")
+        # Null out the ref so atexit handler doesn't double-save
+        _brain_ref[0] = None
+        logger.close()
+        gc.collect()
+        try:
+            nimcp.shutdown()
+        except Exception:
+            pass
+
     if SCHOOL_AVAILABLE:
         # ===== NEW PIPELINE: Parallel School =====
 
@@ -2039,6 +2187,11 @@ def main():
 
             health_check(brain, logger, "Phase 0", abort_on_fail=True)
             conversation_probe(brain, logger, "Phase 0 (Orientation)")
+
+        # Check for shutdown between Phase 0 and Phase 1
+        if _shutdown_requested:
+            _shutdown_save_and_return()
+            return 0
 
         # Phase 1: Parallel School (23 instructors)
         if resume_phase and phase_reached(resume_phase, "phase1"):
@@ -2079,6 +2232,11 @@ def main():
             total_trained = resume_trained
             logger.log("SKIPPING Phase 1 (completed in previous run)")
 
+        # Check for shutdown between Phase 1 and Phase 2
+        if _shutdown_requested:
+            _shutdown_save_and_return()
+            return 0
+
         if not (resume_phase and phase_reached(resume_phase, "legacy_phase2")):
             total_trained = phase2_guided_study(brain, socratic, cognitive,
                                                  logger, total_trained)
@@ -2089,6 +2247,11 @@ def main():
             conversation_probe(brain, logger, "Phase 2 (Guided Study)")
         else:
             logger.log("SKIPPING Phase 2 (completed in previous run)")
+
+        # Check for shutdown between Phase 2 and Phase 3
+        if _shutdown_requested:
+            _shutdown_save_and_return()
+            return 0
 
         if not (resume_phase and phase_reached(resume_phase, "legacy_phase3")):
             total_trained = phase3_research(brain, active_learner, socratic,
@@ -2104,6 +2267,8 @@ def main():
     if _shutdown_requested:
         logger.log("Shutdown requested -- skipping to emergency save")
         brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_emergency.bin"))
+        _brain_ref[0] = None
+        _clean_exit = True
         logger.close()
         del brain
         gc.collect()
@@ -2120,6 +2285,8 @@ def main():
     if _shutdown_requested:
         logger.log("Shutdown requested -- skipping to emergency save")
         brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_emergency.bin"))
+        _brain_ref[0] = None
+        _clean_exit = True
         logger.close()
         del brain
         gc.collect()
@@ -2129,7 +2296,7 @@ def main():
             pass
         return 0
 
-    # Phase 2 (Final): Creative Exam + Final Consolidation + Save
+    # Phase 4 (Final): Creative Exam + Final Consolidation + Save
     total_trained = phase4_exam_and_save(brain, active_learner, socratic,
                                           cognitive, logger, total_trained)
 
@@ -2147,7 +2314,9 @@ def main():
     logger.log(f"Model saved to: {ATHENA_MODEL_PATH}")
     logger.log("=" * 70)
 
-    # Clean exit
+    # Clean exit — set _clean_exit before shutdown so atexit handler is a no-op
+    _brain_ref[0] = None
+    _clean_exit = True
     logger.close()
     del brain
     gc.collect()

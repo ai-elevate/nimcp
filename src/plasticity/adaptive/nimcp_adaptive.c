@@ -78,8 +78,12 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adaptive)
 // WHAT: Helper macros for checked file I/O (cert-err33-c compliance)
 // WHY:  fwrite/fread return values must be checked to detect I/O errors
 // HOW:  Macros check return value and set success=false on failure
+// M-4: FWRITE_CHECKED now returns early on failure to avoid writing garbage
+// after a partial I/O failure corrupts the file position
 #define FWRITE_CHECKED(ptr, size, count, stream) \
-    do { if (fwrite((ptr), (size), (count), (stream)) != (count)) success = false; } while(0)
+    do { if (fwrite((ptr), (size), (count), (stream)) != (count)) { success = false; goto write_done; } } while(0)
+// M-5: FREAD_CHECKED uses goto cleanup — currently unused (load uses inline checks).
+// Retained for future use; requires a 'cleanup:' label in the calling function.
 #define FREAD_CHECKED(ptr, size, count, stream) \
     do { if (fread((ptr), (size), (count), (stream)) != (count)) goto cleanup; } while(0)
 
@@ -169,7 +173,9 @@ static void* alloc_hot_buffer(size_t size) {
         if (pool) {
             void* buf = memory_pool_acquire(pool);
             if (buf) {
-                memset(buf, 0, size);
+                // I-M3: Clear full pool block, not just requested size, to prevent
+                // stale data from a previous allocation bleeding into a smaller request
+                memset(buf, 0, ADAPTIVE_POOL_BLOCK_SIZE);
                 return buf;
             }
         }
@@ -206,6 +212,9 @@ static void free_hot_buffer(void* buf) {
  * - in_use array accurately reflects buffer availability
  * - next_available points to valid index [0, MAX_POOL_BUFFERS)
  */
+// L-1: spike_buffer_pool_t is currently unused dead code — the hot-path memory pool
+// (alloc_hot_buffer / free_hot_buffer) supersedes it. Retained for potential future
+// use in spike train encoding paths.
 typedef struct {
     uint8_t buffers[MAX_POOL_BUFFERS][256];  // Reusable spike train buffers
     bool in_use[MAX_POOL_BUFFERS];
@@ -303,6 +312,7 @@ struct adaptive_network_struct {
     // Label mapping for classification
     char** label_map;
     uint32_t num_labels;
+    uint32_t label_map_capacity;  // M-7: Geometric growth capacity to avoid O(n^2) realloc
 
     // Copy-on-Write support for state snapshots (Phase COW)
     // WHY: Enable O(1) network state snapshots for training rollback
@@ -556,14 +566,25 @@ static uint32_t get_label_index(adaptive_network_t network, const char* label)
     if (index != UINT32_MAX)
         return index;
 
-    // Add new label
-    char** new_map = nimcp_realloc(network->label_map, (network->num_labels + 1) * sizeof(char*));
-    // Guard clause: Check allocation
-    // BUG-12 fix: Return UINT32_MAX on allocation failure
-    if (!new_map)
-        return UINT32_MAX;
-
-    network->label_map = new_map;
+    // Add new label — M-7: geometric growth to avoid O(n^2) realloc
+    if (network->num_labels >= network->label_map_capacity) {
+        uint32_t new_cap = network->label_map_capacity == 0
+            ? 16
+            : network->label_map_capacity * 2;
+        // M2-FIX: Guard against uint32_t overflow in geometric doubling
+        if (new_cap < network->label_map_capacity) {
+            // Overflow — capacity already at max; try adding just 1
+            new_cap = network->label_map_capacity + 1;
+            if (new_cap == 0) return UINT32_MAX;  // truly maxed out
+        }
+        char** new_map = nimcp_realloc(network->label_map, new_cap * sizeof(char*));
+        // Guard clause: Check allocation
+        // BUG-12 fix: Return UINT32_MAX on allocation failure
+        if (!new_map)
+            return UINT32_MAX;
+        network->label_map = new_map;
+        network->label_map_capacity = new_cap;
+    }
     // Use nimcp_malloc instead of strdup to match nimcp_free in free_label_map
     size_t label_len = strlen(label);
     network->label_map[network->num_labels] = nimcp_malloc(label_len + 1);
@@ -572,9 +593,14 @@ static uint32_t get_label_index(adaptive_network_t network, const char* label)
     strncpy(network->label_map[network->num_labels], label, label_len + 1);
     network->label_map[network->num_labels][label_len] = '\0';
 
-    // Insert into hash table for future O(1) lookups
-    hash_table_insert_label(network->label_table, network->label_map[network->num_labels],
-                            network->num_labels);
+    // H-2: Insert into hash table for future O(1) lookups; on failure, undo
+    // the label_map entry to keep label_map and label_table in sync
+    if (!hash_table_insert_label(network->label_table, network->label_map[network->num_labels],
+                                 network->num_labels)) {
+        nimcp_free(network->label_map[network->num_labels]);
+        network->label_map[network->num_labels] = NULL;
+        return UINT32_MAX;
+    }
 
     return network->num_labels++;
 }
@@ -1116,6 +1142,10 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
         if (network->config.base_config.layer_sizes) {
             nimcp_free((void*)network->config.base_config.layer_sizes);
         }
+        // H-4: Free hash table allocated in initialize_design_patterns() to prevent leak
+        if (network->label_table) {
+            hash_table_destroy(network->label_table);
+        }
         nimcp_free(network);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_create: validation failed");
         return NULL;
@@ -1130,6 +1160,10 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
         if (network->config.base_config.layer_sizes) {
             nimcp_free((void*)network->config.base_config.layer_sizes);
         }
+        // H-4: Free hash table allocated in initialize_design_patterns() to prevent leak
+        if (network->label_table) {
+            hash_table_destroy(network->label_table);
+        }
         nimcp_free(network);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_create: validation failed");
         return NULL;
@@ -1138,6 +1172,7 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     // Initialize label map
     network->label_map = NULL;
     network->num_labels = 0;
+    network->label_map_capacity = 0;
 
     // Phase GPU-INF: Frozen state init
     network->frozen = false;
@@ -1323,7 +1358,8 @@ static float* convert_input_to_spikes(const float* input, uint32_t input_size, f
         return spike_input;
     }
 
-    // Otherwise, copy directly
+    // I-M5: SPIKE_ENCODING_PASSTHROUGH and all other encodings — copy raw floats
+    // directly. PASSTHROUGH is the default for gradient training (set in brain init).
     memcpy(spike_input, input, input_size * sizeof(float));
     return spike_input;
 }
@@ -1459,11 +1495,21 @@ static uint32_t process_network_outputs_impl(adaptive_network_t network, float* 
             }
         }
 
-        // Process neuron output (O(1))
-        bool is_active = process_neuron_output(state, &output[i], network->config.enable_sparsity);
-
-        if (is_active) {
-            active_count++;
+        // M-6: In readonly mode, check threshold without mutating spike_count.
+        // process_neuron_output writes spike_count which violates read-only contract.
+        if (readonly) {
+            bool is_active = (fabsf(output[i]) > state->adaptive_threshold);
+            if (network->config.enable_sparsity && !is_active) {
+                output[i] = 0.0F;
+            } else if (is_active) {
+                active_count++;
+            }
+        } else {
+            // Process neuron output (O(1)) — mutates spike_count
+            bool is_active = process_neuron_output(state, &output[i], network->config.enable_sparsity);
+            if (is_active) {
+                active_count++;
+            }
         }
     }
 
@@ -1563,16 +1609,20 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
                                                      network->config.spike_params.encoding);
         if (!spike_input) return 0;
 
-        nimcp_gpu_forward_pass(network->gpu_weight_cache,
-                               spike_input, input_size, output, output_size);
+        // I-C2: Check GPU forward return value — fall through to CPU on failure
+        bool gpu_ok = nimcp_gpu_forward_pass(network->gpu_weight_cache,
+                                             spike_input, input_size, output, output_size);
 
         free_hot_buffer(spike_input);
 
-        // Adaptive thresholding + sparsity tracking on CPU
-        uint32_t active_count = process_network_outputs(network, output, output_size);
-        update_running_sparsity(network, active_count, output_size);
-        network->total_inferences++;
-        return active_count;
+        if (gpu_ok) {
+            // Adaptive thresholding + sparsity tracking on CPU
+            uint32_t active_count = process_network_outputs(network, output, output_size);
+            update_running_sparsity(network, active_count, output_size);
+            network->total_inferences++;
+            return active_count;
+        }
+        // GPU failed — fall through to CPU path
     }
 
     // CPU fallback path (original code)
@@ -1651,11 +1701,29 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
     //       Fall through to CPU path if weights are dirty on CPU.
     if (network->gpu_enabled && network->gpu_weight_cache &&
         !network->gpu_weight_cache->weights_dirty_on_cpu) {
-        nimcp_gpu_forward_pass(network->gpu_weight_cache,
-                               input, input_size, output, output_size);
-        /* BUG-11 fix: Use readonly=true to avoid mutating state through const */
-        uint32_t active_count = process_network_outputs_impl((adaptive_network_t)network, output, output_size, true);
-        return active_count;
+        // H-1: Apply spike encoding before GPU forward (matches mutable path)
+        float fixed_threshold = network->config.spike_params.min_threshold;
+        if (fixed_threshold <= 0.0f) fixed_threshold = 0.1f;
+        float* spike_input = convert_input_to_spikes(input, input_size, fixed_threshold,
+                                                     network->config.spike_params.encoding);
+        if (!spike_input) return 0;
+
+        // I-C1 FIX: Check GPU forward return value — fall through to CPU on failure.
+        // Previously the return value was unchecked, so if GPU forward failed the output
+        // buffer contained garbage/zeros but inference proceeded as if successful.
+        bool gpu_ok = nimcp_gpu_forward_pass(network->gpu_weight_cache,
+                                             spike_input, input_size, output, output_size);
+        free_hot_buffer(spike_input);
+
+        if (gpu_ok) {
+            // I-H3: Note — GPU forward pass mutates activation tensors in the weight cache.
+            // This is a known limitation of the readonly path when using GPU acceleration.
+
+            /* BUG-11 fix: Use readonly=true to avoid mutating state through const */
+            uint32_t active_count = process_network_outputs_impl((adaptive_network_t)network, output, output_size, true);
+            return active_count;
+        }
+        // GPU failed — fall through to CPU path
     }
 
     // CPU fallback path
@@ -1691,13 +1759,22 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
 }
 
 /**
- * @brief Raw forward pass — spike encoding + network forward, NO output thresholding
+ * @brief Raw forward pass -- spike encoding + network forward, NO output thresholding
  *
  * WHAT: Same as adaptive_network_forward() but skips process_network_outputs()
  * WHY:  predict_fast needs raw network output for accurate argmax classification.
  *       The adaptive thresholding zeros out below-threshold outputs which collapses
  *       all predictions to the same class.
  * HOW:  Steps 1-3 of adaptive_network_forward(), skip step 4-5
+ *
+ * I-H2 FIX: Added GPU forward path. Previously was CPU-only, meaning GPU-trained
+ * brains would predict on CPU with different spike encoding thresholds (adaptive
+ * vs fixed), causing train/test discrepancy.
+ *
+ * I-H4 FIX: When GPU is enabled, use the same fixed threshold (min_threshold) that
+ * the GPU learning path uses. When GPU is disabled, use adaptive threshold for
+ * backward compatibility with CPU-only training. This eliminates the spike encoding
+ * threshold mismatch between training and inference.
  */
 uint32_t adaptive_network_forward_raw(adaptive_network_t network, const float* input,
                                       uint32_t input_size, float* output, uint32_t output_size)
@@ -1705,15 +1782,55 @@ uint32_t adaptive_network_forward_raw(adaptive_network_t network, const float* i
     if (!network || !input || !output)
         return 0;
 
-    // Spike encoding (must match learning forward pass)
-    float input_threshold =
-        adaptive_compute_threshold(input, input_size, network->config.spike_params.k_factor);
+    // I-H4 FIX: Use fixed threshold when GPU is enabled (matches GPU learning path).
+    // When GPU is disabled, use adaptive threshold (matches CPU learning path).
+    // This ensures spike encoding is consistent between training and inference.
+    float input_threshold;
+    if (network->gpu_enabled) {
+        // Fixed threshold — same as GPU learning path in adaptive_network_learn()
+        input_threshold = network->config.spike_params.min_threshold;
+        if (input_threshold <= 0.0f) input_threshold = 0.1f;
+    } else {
+        // Adaptive threshold — same as CPU learning path
+        input_threshold =
+            adaptive_compute_threshold(input, input_size, network->config.spike_params.k_factor);
+    }
+
     float* spike_input = convert_input_to_spikes(input, input_size, input_threshold,
                                                  network->config.spike_params.encoding);
     if (!spike_input)
         return 0;
 
-    // Forward pass through base network
+    // I-H2 FIX: GPU forward path for raw inference (no output thresholding).
+    // When GPU is enabled and weights are synced, use GPU for inference to match
+    // the computational path used during training.
+    if (network->gpu_enabled && network->gpu_weight_cache) {
+        // Re-upload weights if CPU biological learning modified them
+        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
+            nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
+                                         network->base_network);
+        }
+
+        bool gpu_ok = nimcp_gpu_forward_pass(network->gpu_weight_cache,
+                                             spike_input, input_size, output, output_size);
+        free_hot_buffer(spike_input);
+
+        if (gpu_ok) {
+            // Count non-zero outputs (informational, no thresholding applied)
+            uint32_t active = 0;
+            for (uint32_t i = 0; i < output_size; i++) {
+                if (fabsf(output[i]) > 1e-6f) active++;
+            }
+            network->total_inferences++;
+            return active;
+        }
+        // GPU failed -- fall through to CPU forward
+        spike_input = convert_input_to_spikes(input, input_size, input_threshold,
+                                              network->config.spike_params.encoding);
+        if (!spike_input) return 0;
+    }
+
+    // CPU forward pass through base network
     neural_network_forward(network->base_network, spike_input, input_size, output, output_size);
     free_hot_buffer(spike_input);
 
@@ -1797,11 +1914,20 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         float* output = (float*)alloc_hot_buffer(out_buf_size * sizeof(float));
         if (!output) { free_hot_buffer(spike_input); return -1.0F; }
 
-        nimcp_gpu_forward_pass(network->gpu_weight_cache,
-                               spike_input, example->input_size,
-                               output, example->target_size);
+        // I-C2 FIX: Check GPU forward return value — fall back to CPU on failure.
+        // Previously the return value was unchecked; if GPU forward failed, the output
+        // buffer contained garbage but loss computation and backprop proceeded.
+        bool gpu_fwd_ok = nimcp_gpu_forward_pass(network->gpu_weight_cache,
+                                                  spike_input, example->input_size,
+                                                  output, example->target_size);
 
         free_hot_buffer(spike_input);
+
+        if (!gpu_fwd_ok) {
+            // GPU forward failed — fall through to CPU learning path
+            free_hot_buffer(output);
+            goto cpu_learn_path;
+        }
 
         // 3. GPU MSE loss computation
         float loss = nimcp_gpu_compute_loss(network->gpu_weight_cache,
@@ -1825,16 +1951,19 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     network->config.base_config.min_weight,
                     network->config.base_config.max_weight,
                     example->target, output, example->target_size,
-                    1.0f,
+                    1.0f,  // L-3 TODO: Make max_grad_norm configurable via adaptive_network_config_t
                     &grad_norm);
             }
             network->last_grad_norm = grad_norm;
 
             // Update EMA of gradient norm for training stability detection
-            if (network->ema_grad_norm < 0.0f) {
-                network->ema_grad_norm = grad_norm;  // First iteration: seed
-            } else {
-                network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+            // H-5: Guard against +Inf/NaN corrupting the EMA
+            if (isfinite(grad_norm)) {
+                if (network->ema_grad_norm < 0.0f) {
+                    network->ema_grad_norm = grad_norm;  // First iteration: seed
+                } else {
+                    network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                }
             }
         }
 
@@ -1859,7 +1988,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         network->total_learning_steps++;
 
         // L-3: Update EMA of training loss in GPU path (same logic as CPU path)
-        if (loss >= 0.0f) {
+        // H-5: Guard against +Inf/NaN corrupting the EMA
+        if (loss >= 0.0f && isfinite(loss)) {
             if (network->ema_loss < 0.0f) {
                 network->ema_loss = loss;  // First iteration: seed
             } else {
@@ -1871,10 +2001,13 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     }
 
     // CPU fallback path (original code)
+cpu_learn_path:
+    ;  // empty statement after label (required by C standard before declaration)
 
     // Forward pass to get current output (Phase MP: use pool)
     // Use raw forward (no sparsity thresholding) so backprop sees true activations
     // H10: Output buffer must be at least max(target_size, output_size) to avoid undersize
+    {
     uint32_t out_buf_size = example->target_size > network->config.base_config.output_size
         ? example->target_size : network->config.base_config.output_size;
     float* output = (float*)alloc_hot_buffer(out_buf_size * sizeof(float));
@@ -1894,7 +2027,9 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             {
                 float eps = 1e-7f;
                 for (uint32_t i = 0; i < example->target_size; i++) {
-                    float o = fmaxf(eps, fminf(1.0f - eps, output[i]));
+                    // M-3: Guard against NaN/Inf output propagating through BCE
+                    float raw_o = isfinite(output[i]) ? output[i] : 0.5f;
+                    float o = fmaxf(eps, fminf(1.0f - eps, raw_o));
                     loss -= example->target[i] * logf(o)
                           + (1.0f - example->target[i]) * logf(1.0f - o);
                 }
@@ -1934,10 +2069,13 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 network->last_grad_norm = grad_norm;
 
                 // Update EMA of gradient norm for training stability detection
-                if (network->ema_grad_norm < 0.0f) {
-                    network->ema_grad_norm = grad_norm;  // First iteration: seed
-                } else {
-                    network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                // H2-FIX: Guard against NaN/Inf corrupting the EMA (matches GPU path)
+                if (isfinite(grad_norm)) {
+                    if (network->ema_grad_norm < 0.0f) {
+                        network->ema_grad_norm = grad_norm;  // First iteration: seed
+                    } else {
+                        network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                    }
                 }
             }
             break;
@@ -1992,7 +2130,9 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             {
                 float eps = 1e-7f;
                 for (uint32_t i = 0; i < example->target_size; i++) {
-                    float o = fmaxf(eps, fminf(1.0f - eps, output[i]));
+                    // M-3: Guard against NaN/Inf output propagating through BCE
+                    float raw_o = isfinite(output[i]) ? output[i] : 0.5f;
+                    float o = fmaxf(eps, fminf(1.0f - eps, raw_o));
                     loss -= example->target[i] * logf(o)
                           + (1.0f - example->target[i]) * logf(1.0f - o);
                 }
@@ -2040,10 +2180,13 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 network->last_grad_norm = grad_norm;
 
                 // Update EMA of gradient norm for training stability detection
-                if (network->ema_grad_norm < 0.0f) {
-                    network->ema_grad_norm = grad_norm;  // First iteration: seed
-                } else {
-                    network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                // H2-FIX: Guard against NaN/Inf corrupting the EMA (matches GPU path)
+                if (isfinite(grad_norm)) {
+                    if (network->ema_grad_norm < 0.0f) {
+                        network->ema_grad_norm = grad_norm;  // First iteration: seed
+                    } else {
+                        network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                    }
                 }
             }
             break;
@@ -2054,7 +2197,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     network->total_learning_steps++;
 
     // Update EMA of training loss for stability detection
-    if (loss >= 0.0f) {
+    // H2-FIX: Guard against NaN/Inf corrupting the EMA (matches GPU path)
+    if (loss >= 0.0f && isfinite(loss)) {
         if (network->ema_loss < 0.0f) {
             network->ema_loss = loss;  // First iteration: seed
         } else {
@@ -2063,6 +2207,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     }
 
     return loss;
+    }  // end cpu_learn_path block
 }
 
 float adaptive_network_learn_batch(adaptive_network_t network, const training_example_t* examples,
@@ -2139,7 +2284,8 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
         case SERIALIZE_FORMAT_BINARY:
             // Write magic header
             uint32_t magic = 0x4E494D43;    // "NIMC"
-            uint32_t version = 0x00020500;  // v2.5.0
+            // H3-FIX: Bump to v2.5.1 to include ema_grad_norm + ema_loss fields
+            uint32_t version = 0x00020501;  // v2.5.1
 
             FWRITE_CHECKED(&magic, sizeof(uint32_t), 1, file);
             FWRITE_CHECKED(&version, sizeof(uint32_t), 1, file);
@@ -2174,6 +2320,9 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
             }
 
             // Continue with base_config booleans and enums
+            // M-11 TODO: sizeof(bool) is implementation-defined (1 on x86_64, could be 4 elsewhere).
+            // A future checkpoint version should use uint8_t for all bool fields to ensure
+            // cross-platform portability. Changing now would break checkpoint backward compat.
             FWRITE_CHECKED(&network->config.base_config.enable_stdp, sizeof(bool), 1, file);
             FWRITE_CHECKED(&network->config.base_config.enable_hebbian, sizeof(bool), 1, file);
             FWRITE_CHECKED(&network->config.base_config.enable_oja, sizeof(bool), 1, file);
@@ -2226,6 +2375,12 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
             FWRITE_CHECKED(&network->total_learning_steps, sizeof(uint64_t), 1, file);
             FWRITE_CHECKED(&network->running_sparsity, sizeof(float), 1, file);
 
+            // H3-FIX: Persist EMA tracking values (new in v2.5.1)
+            // Without these, checkpoint restore resets EMA to -1 (uninitialized),
+            // causing incorrect stability detection until the EMA warms up again.
+            FWRITE_CHECKED(&network->ema_grad_norm, sizeof(float), 1, file);
+            FWRITE_CHECKED(&network->ema_loss, sizeof(float), 1, file);
+
             // Write synaptic weights from base_network (CRITICAL: enables weight persistence)
             if (network->base_network) {
                 synapse_metadata_pool_t save_m_pool = neural_network_get_synapse_metadata_pool(network->base_network);
@@ -2268,12 +2423,18 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
                         continue;
                     }
 
-                    // Write number of synapses for this neuron
-                    uint32_t num_syn = NEURON_OUT_COUNT(neuron);
+                    // C-1: Count non-NULL synapse handles before writing the count.
+                    // The load side reads exactly num_syn synapse records sequentially,
+                    // so we must not skip any entries or the file position will misalign.
+                    uint32_t total_syn = NEURON_OUT_COUNT(neuron);
+                    uint32_t num_syn = 0;
+                    for (uint32_t j = 0; j < total_syn; j++) {
+                        if (NEURON_OUT_HANDLE(neuron, j)) num_syn++;
+                    }
                     FWRITE_CHECKED(&num_syn, sizeof(uint32_t), 1, file);
 
                     // Write each synapse (weight and key plasticity data)
-                    for (uint32_t j = 0; j < num_syn; j++) {
+                    for (uint32_t j = 0; j < total_syn; j++) {
                         synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, j);
                         if (!h) continue;
                         synapse_t* syn = sparse_synapse_get_metadata(save_m_pool, h);
@@ -2334,6 +2495,7 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
             break;
     }
 
+write_done:
     fclose(file);
     return success;
 }
@@ -2369,6 +2531,16 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     if (fread(&version, sizeof(uint32_t), 1, file) != 1) {
         fclose(file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
+        return NULL;
+    }
+
+    // H-6: Validate checkpoint version — v2.5.0 and v2.5.1 formats are supported.
+    // v2.5.1 adds ema_grad_norm and ema_loss fields after statistics.
+    if (version != 0x00020500 && version != 0x00020501) {
+        fprintf(stderr, "WARNING: Checkpoint version 0x%08X not supported (expected 0x00020500 or 0x00020501)\n", version);
+        fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "adaptive_network_load: unsupported checkpoint version");
         return NULL;
     }
 
@@ -2601,6 +2773,15 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             return NULL;
         }
 
+        // M-2: Reject label_len==0 which would cause nimcp_malloc(0)
+        if (label_len == 0) {
+            adaptive_network_destroy(network);
+            fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "adaptive_network_load: label_len is 0");
+            return NULL;
+        }
+
         network->label_map[i] = nimcp_malloc(label_len);
         // H8: NULL check on per-label malloc during checkpoint load
         if (!network->label_map[i]) {
@@ -2614,6 +2795,25 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
             return NULL;
         }
+
+        // M-1: Verify loaded label string is null-terminated to prevent buffer overrun
+        // in strlen/strcmp/hash calls. Corrupt checkpoint data could omit the terminator.
+        if (network->label_map[i][label_len - 1] != '\0') {
+            network->label_map[i][label_len - 1] = '\0';
+            fprintf(stderr, "WARNING: Label %u missing null terminator, truncated\n", i);
+        }
+    }
+
+    // C2-FIX: Set label_map_capacity to match loaded label count.
+    // adaptive_network_create() initialized label_map_capacity=0, but we just loaded
+    // num_labels entries into a freshly allocated label_map. Without this fix,
+    // get_label_index() would see num_labels >= capacity (always true with capacity=0)
+    // and realloc to 16 — which SHRINKS the buffer if num_labels > 16, corrupting it.
+    // Use next power-of-2 >= num_labels for consistent geometric growth behavior.
+    {
+        uint32_t cap = 16;
+        while (cap < network->num_labels) cap *= 2;
+        network->label_map_capacity = cap;
     }
 
     // H-1: Rebuild label hash table from loaded label_map entries.
@@ -2635,6 +2835,20 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         stats_ok = stats_ok && (fread(&network->running_sparsity, sizeof(float), 1, file) == 1);
         if (!stats_ok) {
             fprintf(stderr, "WARNING: Failed to read statistics from checkpoint, using defaults\n");
+        }
+    }
+
+    // H3-FIX: Read EMA tracking values (v2.5.1+ only)
+    // Old v2.5.0 checkpoints don't have these fields — keep the -1 (uninitialized)
+    // defaults set by adaptive_network_create().
+    if (version >= 0x00020501) {
+        bool ema_ok = true;
+        ema_ok = ema_ok && (fread(&network->ema_grad_norm, sizeof(float), 1, file) == 1);
+        ema_ok = ema_ok && (fread(&network->ema_loss, sizeof(float), 1, file) == 1);
+        if (!ema_ok) {
+            fprintf(stderr, "WARNING: Failed to read EMA fields from checkpoint, using defaults\n");
+            network->ema_grad_norm = -1.0f;
+            network->ema_loss = -1.0f;
         }
     }
 
@@ -2808,8 +3022,13 @@ size_t adaptive_network_get_size(adaptive_network_t network)
     size += network->config.base_config.input_size * sizeof(float);
 
     // Add label map size
-    for (uint32_t i = 0; i < network->num_labels; i++) {
-        size += strlen(network->label_map[i]) + 1;
+    // M-8: Guard against NULL label_map or NULL entries
+    if (network->label_map) {
+        for (uint32_t i = 0; i < network->num_labels; i++) {
+            if (network->label_map[i]) {
+                size += strlen(network->label_map[i]) + 1;
+            }
+        }
     }
 
     // Add base network size (approximate)

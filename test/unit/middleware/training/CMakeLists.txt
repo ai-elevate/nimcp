@@ -1,5 +1,12 @@
 # Training Module Unit Tests
 # Phase TM-1: Security + Memory Pool Integration Tests
+# TODO: Prefer gtest_discover_tests over add_test for automatic test registration
+
+# =============================================================================
+# Orphan detection policy: Source files without a corresponding add_executable
+# are wrapped in if(EXISTS) guards at the bottom of this file. These will
+# automatically activate when the source file is created.
+# =============================================================================
 
 add_executable(unit_middleware_training_test_training_module
     test_training_module.cpp
@@ -23,7 +30,8 @@ target_link_libraries(unit_middleware_training_test_training_module
 )
 
 add_test(NAME unit_middleware_training_test_training_module
-         COMMAND unit_middleware_training_test_training_module)
+         COMMAND unit_middleware_training_test_training_module
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # Label for filtering
 set_tests_properties(unit_middleware_training_test_training_module
@@ -52,7 +60,8 @@ target_link_libraries(unit_middleware_training_test_loss_functions
 )
 
 add_test(NAME unit_middleware_training_test_loss_functions
-         COMMAND unit_middleware_training_test_loss_functions)
+         COMMAND unit_middleware_training_test_loss_functions
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_loss_functions
     PROPERTIES
@@ -82,7 +91,8 @@ target_link_libraries(unit_middleware_training_test_optimizers
 )
 
 add_test(NAME unit_middleware_training_test_optimizers
-         COMMAND unit_middleware_training_test_optimizers)
+         COMMAND unit_middleware_training_test_optimizers
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_optimizers
     PROPERTIES
@@ -112,7 +122,8 @@ target_link_libraries(unit_middleware_training_test_lr_scheduler
 )
 
 add_test(NAME unit_middleware_training_test_lr_scheduler
-         COMMAND unit_middleware_training_test_lr_scheduler)
+         COMMAND unit_middleware_training_test_lr_scheduler
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_lr_scheduler
     PROPERTIES
@@ -142,7 +153,8 @@ target_link_libraries(unit_middleware_training_test_regularization
 )
 
 add_test(NAME unit_middleware_training_test_regularization
-         COMMAND unit_middleware_training_test_regularization)
+         COMMAND unit_middleware_training_test_regularization
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_regularization
     PROPERTIES
@@ -172,7 +184,8 @@ target_link_libraries(unit_middleware_training_test_gradient_manager
 )
 
 add_test(NAME unit_middleware_training_test_gradient_manager
-         COMMAND unit_middleware_training_test_gradient_manager)
+         COMMAND unit_middleware_training_test_gradient_manager
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_gradient_manager
     PROPERTIES
@@ -202,12 +215,14 @@ target_link_libraries(unit_middleware_training_test_plasticity_bridge
 )
 
 add_test(NAME unit_middleware_training_test_plasticity_bridge
-         COMMAND unit_middleware_training_test_plasticity_bridge)
+         COMMAND unit_middleware_training_test_plasticity_bridge
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_plasticity_bridge
     PROPERTIES
         LABELS "unit;middleware;training;plasticity_bridge"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Event-Driven Plasticity Unit Tests (Phase EDP-1)
 add_executable(unit_middleware_training_test_event_driven_plasticity
@@ -232,7 +247,8 @@ target_link_libraries(unit_middleware_training_test_event_driven_plasticity
 )
 
 add_test(NAME unit_middleware_training_test_event_driven_plasticity
-         COMMAND unit_middleware_training_test_event_driven_plasticity)
+         COMMAND unit_middleware_training_test_event_driven_plasticity
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_event_driven_plasticity
     PROPERTIES
@@ -262,7 +278,8 @@ target_link_libraries(unit_middleware_training_test_security_registration
 )
 
 add_test(NAME unit_middleware_training_test_security_registration
-         COMMAND unit_middleware_training_test_security_registration)
+         COMMAND unit_middleware_training_test_security_registration
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_security_registration
     PROPERTIES
@@ -292,7 +309,8 @@ target_link_libraries(unit_middleware_training_test_training_callbacks
 )
 
 add_test(NAME unit_middleware_training_test_training_callbacks
-         COMMAND unit_middleware_training_test_training_callbacks)
+         COMMAND unit_middleware_training_test_training_callbacks
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_training_callbacks
     PROPERTIES
@@ -365,7 +383,7 @@ gtest_discover_tests(unit_middleware_training_test_training_adapters_bio_async
 #   - default_inbox_capacity (should be inbox_capacity)
 #   - enable_priority_channels (doesn't exist)
 #   - worker_thread_count (should be worker_threads)
-message(STATUS "  [SKIP] test_portia_training_integration.cpp - API fixes needed")
+message(STATUS "  [SKIP] test_portia_training_integration.cpp - source file not yet created (API fixes needed)")
 
 # Training-Logic Bridge Unit Tests (Phase TLB-1)
 add_executable(unit_middleware_training_test_training_logic_bridge
@@ -390,7 +408,8 @@ target_link_libraries(unit_middleware_training_test_training_logic_bridge
 )
 
 add_test(NAME unit_middleware_training_test_training_logic_bridge
-         COMMAND unit_middleware_training_test_training_logic_bridge)
+         COMMAND unit_middleware_training_test_training_logic_bridge
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_training_logic_bridge
     PROPERTIES
@@ -420,12 +439,14 @@ target_link_libraries(unit_middleware_training_test_cognitive_training_bridge
 )
 
 add_test(NAME unit_middleware_training_test_cognitive_training_bridge
-         COMMAND unit_middleware_training_test_cognitive_training_bridge)
+         COMMAND unit_middleware_training_test_cognitive_training_bridge
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_cognitive_training_bridge
     PROPERTIES
         LABELS "unit;middleware;training;cognitive_training"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Perception-Training Bridge Unit Tests (Phase PTB-1)
 add_executable(unit_middleware_training_test_perception_training_bridge
@@ -450,12 +471,14 @@ target_link_libraries(unit_middleware_training_test_perception_training_bridge
 )
 
 add_test(NAME unit_middleware_training_test_perception_training_bridge
-         COMMAND unit_middleware_training_test_perception_training_bridge)
+         COMMAND unit_middleware_training_test_perception_training_bridge
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_perception_training_bridge
     PROPERTIES
         LABELS "unit;middleware;training;perception_training"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Cortical-Training Bridge Unit Tests (Phase CRTB-1)
 add_executable(unit_middleware_training_test_cortical_training_bridge
@@ -480,12 +503,14 @@ target_link_libraries(unit_middleware_training_test_cortical_training_bridge
 )
 
 add_test(NAME unit_middleware_training_test_cortical_training_bridge
-         COMMAND unit_middleware_training_test_cortical_training_bridge)
+         COMMAND unit_middleware_training_test_cortical_training_bridge
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_cortical_training_bridge
     PROPERTIES
         LABELS "unit;middleware;training;cortical_training"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Occipital-Training Bridge Unit Tests (Phase OTB-1)
 add_executable(unit_middleware_training_test_occipital_training_bridge
@@ -510,7 +535,8 @@ target_link_libraries(unit_middleware_training_test_occipital_training_bridge
 )
 
 add_test(NAME unit_middleware_training_test_occipital_training_bridge
-         COMMAND unit_middleware_training_test_occipital_training_bridge)
+         COMMAND unit_middleware_training_test_occipital_training_bridge
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_occipital_training_bridge
     PROPERTIES
@@ -540,12 +566,14 @@ target_link_libraries(unit_middleware_training_test_training_convergent_decision
 )
 
 add_test(NAME unit_middleware_training_test_training_convergent_decision
-         COMMAND unit_middleware_training_test_training_convergent_decision)
+         COMMAND unit_middleware_training_test_training_convergent_decision
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_training_convergent_decision
     PROPERTIES
         LABELS "unit;middleware;training;convergent_decision"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Training Causal Model Unit Tests (Layer 2: Causal DAG of training dynamics)
 add_executable(unit_middleware_training_test_training_causal_model
@@ -570,12 +598,14 @@ target_link_libraries(unit_middleware_training_test_training_causal_model
 )
 
 add_test(NAME unit_middleware_training_test_training_causal_model
-         COMMAND unit_middleware_training_test_training_causal_model)
+         COMMAND unit_middleware_training_test_training_causal_model
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_training_causal_model
     PROPERTIES
         LABELS "unit;middleware;training;causal_model"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Abductive Training Diagnosis Unit Tests (Layer 3)
 add_executable(unit_middleware_training_test_training_diagnosis
@@ -600,12 +630,14 @@ target_link_libraries(unit_middleware_training_test_training_diagnosis
 )
 
 add_test(NAME unit_middleware_training_test_training_diagnosis
-         COMMAND unit_middleware_training_test_training_diagnosis)
+         COMMAND unit_middleware_training_test_training_diagnosis
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_training_diagnosis
     PROPERTIES
         LABELS "unit;middleware;training;diagnosis"
-        TIMEOUT 120)
+        TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy")
 
 # Training Integration Fixes Unit Tests (Bug fixes: Portia, inflammation, buffer, modulation)
 add_executable(unit_middleware_training_test_training_integration_fixes
@@ -630,7 +662,8 @@ target_link_libraries(unit_middleware_training_test_training_integration_fixes
 )
 
 add_test(NAME unit_middleware_training_test_training_integration_fixes
-         COMMAND unit_middleware_training_test_training_integration_fixes)
+         COMMAND unit_middleware_training_test_training_integration_fixes
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set_tests_properties(unit_middleware_training_test_training_integration_fixes
     PROPERTIES

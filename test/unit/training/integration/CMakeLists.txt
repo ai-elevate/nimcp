@@ -17,6 +17,7 @@ add_executable(unit_test_training_integration_hub
 target_link_libraries(unit_test_training_integration_hub
     PRIVATE
         nimcp
+        nimcp_middleware
         GTest::gtest
         GTest::gtest_main
         Threads::Threads
@@ -36,6 +37,7 @@ gtest_discover_tests(unit_test_training_integration_hub
     PROPERTIES
         LABELS "unit;training;integration;hub"
         TIMEOUT 60
+        RESOURCE_LOCK "brain_heavy"
 )
 
 # ============================================================================
@@ -58,6 +60,7 @@ add_executable(unit_test_training_symbolic_logic_hub_bridge
 target_link_libraries(unit_test_training_symbolic_logic_hub_bridge
     PRIVATE
         nimcp
+        nimcp_middleware
         GTest::gtest
         GTest::gtest_main
         Threads::Threads
@@ -77,4 +80,5 @@ gtest_discover_tests(unit_test_training_symbolic_logic_hub_bridge
     PROPERTIES
         LABELS "unit;training;integration;symbolic-logic;hub-bridge"
         TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy"
 )

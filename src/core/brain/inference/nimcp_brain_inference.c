@@ -48,6 +48,7 @@
 
 #include "core/brain/inference/nimcp_brain_inference.h"
 #include <math.h>
+#include <float.h>  // I-H3 FIX: FLT_MAX for NaN-safe argmax
 #include <string.h>
 #include <stdio.h>
 #include "utils/memory/nimcp_memory.h"
@@ -227,14 +228,27 @@ static void determine_output_label(brain_t brain, brain_decision_t* decision)
     // P2-50 FIX: Guard against output_size==0 to prevent OOB access on output_vector[0]
     if (decision->output_size == 0) return;
 
+    // I-H3 FIX: NaN-safe argmax. If output contains NaN values, standard comparison
+    // (NaN > max_value) is always false, silently picking index 0. Use isfinite()
+    // to skip NaN/Inf values and detect all-NaN output.
     uint32_t max_idx = 0;
-    float max_value = decision->output_vector[0];
+    float max_value = -FLT_MAX;
+    bool has_valid = false;
 
-    for (uint32_t i = 1; i < decision->output_size; i++) {
-        if (decision->output_vector[i] > max_value) {
+    for (uint32_t i = 0; i < decision->output_size; i++) {
+        if (isfinite(decision->output_vector[i]) && decision->output_vector[i] > max_value) {
             max_value = decision->output_vector[i];
             max_idx = i;
+            has_valid = true;
         }
+    }
+
+    // If all outputs are NaN/Inf, set label to UNKNOWN with zero confidence
+    if (!has_valid) {
+        strncpy(decision->label, "UNKNOWN", sizeof(decision->label) - 1);
+        decision->label[sizeof(decision->label) - 1] = '\0';
+        decision->confidence = 0.0f;
+        return;
     }
 
     // Set label
@@ -540,18 +554,38 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
     }
 
 serial_path:
+    ;  // empty statement after label (required by C before declarations)
+    // I-M5 FIX: Handle partial failures in batch prediction. Previously, if any
+    // single inference failed, the function returned false immediately, leaving
+    // remaining decisions uninitialized (garbage data). Now we continue processing
+    // all items, zero-initialize failed decisions, and report partial success.
+    {
+    uint32_t batch_failures = 0;
     for (uint32_t i = 0; i < num_inputs; i++) {
         brain_decision_t* decision = brain_decide(brain, inputs[i], features_per_input);
 
         if (!decision) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide_batch: decision is NULL");
-            return false;
+            // I-M5: Zero-initialize failed decisions instead of aborting the batch.
+            // Caller can check decision->confidence == 0 to detect failures.
+            memset(&decisions[i], 0, sizeof(brain_decision_t));
+            strncpy(decisions[i].label, "FAILED", sizeof(decisions[i].label) - 1);
+            batch_failures++;
+            continue;
         }
 
         memcpy(&decisions[i], decision, sizeof(brain_decision_t));
         decision->output_vector = NULL;
         decision->active_neuron_ids = NULL;
         brain_free_decision(decision);
+    }
+
+    if (batch_failures > 0) {
+        // I-M2: Propagate error information about partial failures
+        set_error("brain_decide_batch: %u of %u inferences failed", batch_failures, num_inputs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_decide_batch: %u of %u decisions failed", batch_failures, num_inputs);
+        return false;
+    }
     }
 
     brain_clear_error();

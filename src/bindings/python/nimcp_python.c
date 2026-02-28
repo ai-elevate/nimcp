@@ -136,8 +136,10 @@ static float* py_list_to_float_array(PyObject* list_obj, Py_ssize_t* size) {
         // Try to convert to list via PySequence_List (handles numpy arrays, etc.)
         PyObject* as_list = PySequence_List(list_obj);
         if (!as_list) {
-            PyErr_SetString(PyExc_TypeError, "Expected list, tuple, or sequence of floats");
+            /* M-9: NIMCP_THROW first, then PyErr_SetString last so Python
+             * error indicator is not overwritten by immune system logging */
             NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "py_list_to_float_array: Expected sequence of floats");
+            PyErr_SetString(PyExc_TypeError, "Expected list, tuple, or sequence of floats");
             return NULL;
         }
         float* result = py_list_to_float_array(as_list, size);
@@ -160,9 +162,10 @@ static float* py_list_to_float_array(PyObject* list_obj, Py_ssize_t* size) {
     *size = PyList_Size(list);
     if (*size == 0) {
         Py_XDECREF(converted_list);
-        /* L-1: PyErr_SetString first, then NIMCP_THROW */
-        PyErr_SetString(PyExc_ValueError, "List cannot be empty");
+        /* M-9: NIMCP_THROW first, then PyErr_SetString last so Python
+         * error indicator is not overwritten by immune system logging */
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "py_list_to_float_array: List cannot be empty");
+        PyErr_SetString(PyExc_ValueError, "List cannot be empty");
         return NULL;
     }
 
@@ -180,9 +183,10 @@ static float* py_list_to_float_array(PyObject* list_obj, Py_ssize_t* size) {
         if (!PyFloat_Check(item) && !PyLong_Check(item)) {
             nimcp_free(array);
             Py_XDECREF(converted_list);
-            PyErr_SetString(PyExc_TypeError, "List must contain only numbers");
+            /* M-9: NIMCP_THROW first, then PyErr_SetString last */
             NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
                        "py_list_to_float_array: List element %zd is not a number", i);
+            PyErr_SetString(PyExc_TypeError, "List must contain only numbers");
             return NULL;
         }
         /* C-2: Check for PyFloat_AsDouble overflow/error */
@@ -327,7 +331,11 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
 
     /* P1-49: nimcp_brain_learn_example returns nimcp_status_t, NOT float.
      * Error codes are POSITIVE (not negative), so checking < 0.0F was wrong. */
-    nimcp_status_t status = NIMCP_ERROR_UNKNOWN;
+    /* H-1: status must be volatile — it is modified between setjmp (inside
+     * SIGNAL_TRY_RECOVER) and longjmp (inside SIGNAL_ON_CRASH). Without
+     * volatile, the compiler may keep it in a register that gets clobbered
+     * by longjmp, causing undefined behavior. */
+    volatile nimcp_status_t status = NIMCP_ERROR_UNKNOWN;
     nimcp_brain_t brain_ref = self->brain;
     uint32_t nf = (uint32_t)num_features;
     volatile bool learn_crashed = false;
@@ -641,8 +649,8 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
             nimcp_free(feature_arrays);
             nimcp_free(labels);
             nimcp_free(confidences);
-            PyErr_SetString(PyExc_ValueError, "Failed to convert feature list");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_predict_batch: operation failed");
+            PyErr_SetString(PyExc_ValueError, "Failed to convert feature list");
             return NULL;
         }
         if (size != num_features) {
@@ -656,8 +664,8 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
             nimcp_free(feature_arrays);
             nimcp_free(labels);
             nimcp_free(confidences);
-            PyErr_SetString(PyExc_ValueError, "All feature lists must have same length");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_predict_batch: size mismatch");
+            PyErr_SetString(PyExc_ValueError, "All feature lists must have same length");
             return NULL;
         }
         feature_arrays[i] = features;
@@ -708,10 +716,13 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     }
     uint32_t nf = (uint32_t)num_features;
 
+    /* H-3: Use predict_fast instead of predict (which runs 28 cognitive stages
+     * per sample). For batch inference this is 10-100x faster since we skip
+     * sleep, curiosity, theory of mind, etc. for each sample. */
     Py_BEGIN_ALLOW_THREADS
     for (Py_ssize_t i = 0; i < batch_size; i++) {
-        status = nimcp_brain_predict(brain_ref, features_ptrs[i], nf,
-                                      labels[i], &confidences[i]);
+        status = nimcp_brain_predict_fast(brain_ref, features_ptrs[i], nf,
+                                          labels[i], &confidences[i]);
         if (status != NIMCP_OK) break;
     }
     Py_END_ALLOW_THREADS
@@ -735,8 +746,9 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
                 for (Py_ssize_t i = 0; i < batch_size; i++) {
                     PyObject* label_obj = PyUnicode_FromString(labels[i]);
                     if (!label_obj) {
-                        Py_DECREF(labels_list);
+                        /* M-9: Py_XDECREF in reverse creation order */
                         Py_DECREF(confidences_list);
+                        Py_DECREF(labels_list);
                         labels_list = NULL;
                         confidences_list = NULL;
                         status = NIMCP_ERROR_NO_MEMORY;
@@ -746,8 +758,9 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
 
                     PyObject* conf_obj = PyFloat_FromDouble(confidences[i]);
                     if (!conf_obj) {
-                        Py_DECREF(labels_list);
+                        /* M-9: Py_XDECREF in reverse creation order */
                         Py_DECREF(confidences_list);
+                        Py_DECREF(labels_list);
                         labels_list = NULL;
                         confidences_list = NULL;
                         status = NIMCP_ERROR_NO_MEMORY;
@@ -770,8 +783,10 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     nimcp_free(confidences);
 
     if (status != NIMCP_OK) {
-        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        /* M-9: NIMCP_THROW first, then PyErr_SetString last so Python
+         * error indicator is not overwritten by immune system logging */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_predict_batch: validation failed");
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
         return NULL;
     }
 
@@ -839,23 +854,22 @@ static PyObject* Brain_load(PyTypeObject* type, PyObject* args) {
     Py_END_ALLOW_THREADS
 
     if (!brain) {
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_IO(NIMCP_ERROR_FILE_READ, filepath,
                       "Brain_load: Failed to load brain from '%s'", filepath);
-        PyErr_SetString(PyExc_IOError, nimcp_get_error());
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
-
-
+        PyErr_SetString(PyExc_IOError, nimcp_get_error());
         return NULL;
     }
 
     BrainObject* self = (BrainObject*)type->tp_alloc(type, 0);
     if (!self) {
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(BrainObject),
                           "Brain_load: Failed to allocate BrainObject");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self is NULL");
         nimcp_brain_destroy(brain);
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate Brain object");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self is NULL");
-
         return NULL;
     }
     self->brain = brain;
@@ -877,6 +891,11 @@ static PyObject* Brain_load(PyTypeObject* type, PyObject* args) {
  * @return True on success, raises RuntimeError on failure
  */
 static PyObject* Brain_resize(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
     uint32_t new_neuron_count;
 
     if (!PyArg_ParseTuple(args, "I", &new_neuron_count)) {
@@ -890,12 +909,11 @@ static PyObject* Brain_resize(BrainObject* self, PyObject* args) {
     bool success = nimcp_brain_resize(self->brain, new_neuron_count);
 
     if (!success) {
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
                          "Brain_resize: Failed to resize brain to %u neurons", new_neuron_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Brain_resize: resize failed");
         PyErr_SetString(PyExc_RuntimeError, "Failed to resize brain. Check that new size > current size and sufficient memory available.");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
-
-
         return NULL;
     }
 
@@ -914,6 +932,11 @@ static PyObject* Brain_resize(BrainObject* self, PyObject* args) {
  * @return True if resize occurred, False if no resize needed
  */
 static PyObject* Brain_auto_resize(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
     // CRITICAL FIX: Pass internal brain, not handle wrapper
     // self->brain is nimcp_brain_t (struct nimcp_brain_handle*)
     // brain_auto_resize needs brain_t (self->brain->internal_brain)
@@ -936,6 +959,11 @@ static PyObject* Brain_auto_resize(BrainObject* self, PyObject* args) {
  * @return Integer neuron count
  */
 static PyObject* Brain_get_neuron_count(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
     // CRITICAL FIX: Pass internal brain, not handle wrapper
     uint32_t count = nimcp_brain_get_neuron_count(self->brain);
     PyObject* result = PyLong_FromUnsignedLong(count);
@@ -953,6 +981,11 @@ static PyObject* Brain_get_neuron_count(BrainObject* self, PyObject* args) {
  * @return Tuple (utilization, saturation) where both are floats [0.0, 1.0]
  */
 static PyObject* Brain_get_utilization_metrics(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
     float utilization = 0.0F;
     float saturation = 0.0F;
 
@@ -960,12 +993,11 @@ static PyObject* Brain_get_utilization_metrics(BrainObject* self, PyObject* args
     bool success = nimcp_brain_get_utilization_metrics(self->brain, &utilization, &saturation);
 
     if (!success) {
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
                          "Brain_get_utilization_metrics: Failed to get metrics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Brain_get_utilization_metrics: failed");
         PyErr_SetString(PyExc_RuntimeError, "Failed to get utilization metrics");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
-
-
         return NULL;
     }
 
@@ -992,8 +1024,9 @@ static void Brain_snapshot_capsule_destructor(PyObject* capsule)
  */
 static PyObject* Brain_snapshot_cow(BrainObject* self, PyObject* args) {
     if (!self->brain) {
-        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_cow: self->brain is NULL");
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
 
@@ -1004,8 +1037,9 @@ static PyObject* Brain_snapshot_cow(BrainObject* self, PyObject* args) {
     Py_END_ALLOW_THREADS
 
     if (!snapshot) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to create COW snapshot");
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Brain_snapshot_cow: snapshot is NULL");
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create COW snapshot");
         return NULL;
     }
 
@@ -1027,14 +1061,16 @@ static PyObject* Brain_restore_cow(BrainObject* self, PyObject* args) {
     }
 
     if (!self->brain) {
-        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_restore_cow: self->brain is NULL");
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
 
     if (!PyCapsule_IsValid(capsule, "nimcp.brain_snapshot")) {
-        PyErr_SetString(PyExc_TypeError, "Expected a brain snapshot capsule from snapshot_cow()");
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_restore_cow: invalid capsule");
+        PyErr_SetString(PyExc_TypeError, "Expected a brain snapshot capsule from snapshot_cow()");
         return NULL;
     }
 
@@ -1064,8 +1100,9 @@ static PyObject* Brain_destroy_cow_snapshot(BrainObject* self, PyObject* args) {
     }
 
     if (!PyCapsule_IsValid(capsule, "nimcp.brain_snapshot")) {
-        PyErr_SetString(PyExc_TypeError, "Expected a brain snapshot capsule from snapshot_cow()");
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_destroy_cow_snapshot: invalid capsule");
+        PyErr_SetString(PyExc_TypeError, "Expected a brain snapshot capsule from snapshot_cow()");
         return NULL;
     }
 
@@ -1092,8 +1129,9 @@ static PyObject* Brain_destroy_cow_snapshot(BrainObject* self, PyObject* args) {
  */
 static PyObject* Brain_broadcast_probe(BrainObject* self, PyObject* args) {
     if (!self->brain) {
-        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_broadcast_probe: self->brain is NULL");
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
 
@@ -1519,6 +1557,10 @@ static PyObject* Brain_curiosity_detect_gaps(BrainObject* self, PyObject* args) 
 static PyObject* Brain_consolidate(BrainObject* self, PyObject* args, PyObject* kwds) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    if (!self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain has no internal state");
         return NULL;
     }
 
@@ -2688,6 +2730,7 @@ static PyObject* Brain_lgss_check_content(BrainObject* self, PyObject* args) {
         PyObject* v = Py_True; Py_INCREF(v);
         PyDict_SetItemString(dict, "is_safe", v); Py_DECREF(v);
         v = PyUnicode_FromString("no lgss filter available");
+        if (!v) { Py_DECREF(dict); return NULL; }
         PyDict_SetItemString(dict, "reason", v); Py_DECREF(v);
         return dict;
     }
@@ -2912,7 +2955,9 @@ static PyObject* Brain_configure_training(BrainObject* self, PyObject* args, PyO
         return NULL;
     }
 
-    /* WARNING: Not thread-safe. Call before starting training threads. */
+    /* WARNING: Not thread-safe. Call before starting concurrent training.
+     * This function directly mutates brain config fields without locking.
+     * Calling it while training threads are active causes data races. */
     /* TODO: Should use nimcp_brain_configure_training() public API in the future
      * instead of directly mutating internal config fields. */
 
@@ -3197,8 +3242,9 @@ static int Network_init(NetworkObject* self, PyObject* args, PyObject* kwds) {
     self->network = nimcp_network_create(num_inputs, num_outputs, num_hidden, learning_rate);
 
     if (!self->network) {
-        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Network_init: network is NULL");
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
         return -1;
     }
 
@@ -3246,8 +3292,9 @@ static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
 
     if (status != NIMCP_OK) {
         nimcp_free(outputs);
-        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Network_forward: forward failed");
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
         return NULL;
     }
 
@@ -3372,11 +3419,16 @@ static PyObject* Knowledge_new(PyTypeObject* type, PyObject* args, PyObject* kwd
 }
 
 static int Knowledge_init(KnowledgeObject* self, PyObject* args, PyObject* kwds) {
+    /* L-2: args and kwds are intentionally ignored — KnowledgeSystem takes no
+     * construction parameters. nimcp_knowledge_create() uses internal defaults. */
+    (void)args;
+    (void)kwds;
     self->knowledge = nimcp_knowledge_create();
 
     if (!self->knowledge) {
-        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        /* L-2: NIMCP_THROW first, then PyErr_SetString last (M-9 ordering) */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Knowledge_init: knowledge is NULL");
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
         return -1;
     }
 
@@ -3474,7 +3526,9 @@ static PyTypeObject KnowledgeType = {
  * HOW:  Call nimcp_version()
  */
 static PyObject* nimcp_get_version(PyObject* self, PyObject* args) {
-    return Py_BuildValue("s", nimcp_version());
+    const char* ver = nimcp_version();
+    if (!ver) ver = "unknown";
+    return Py_BuildValue("s", ver);
 }
 
 /**
@@ -3545,21 +3599,29 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     // Prepare types
     if (PyType_Ready(&BrainType) < 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: BrainType ready failed");
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "PyInit_nimcp: Failed to ready BrainType");
         return NULL;
     }
     if (PyType_Ready(&NetworkType) < 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: NetworkType ready failed");
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "PyInit_nimcp: Failed to ready NetworkType");
         return NULL;
     }
     if (PyType_Ready(&KnowledgeType) < 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: KnowledgeType ready failed");
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "PyInit_nimcp: Failed to ready KnowledgeType");
         return NULL;
     }
 
     // Create module
     m = PyModule_Create(&nimcp_module);
     if (m == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PyInit_nimcp: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PyInit_nimcp: PyModule_Create failed");
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "PyInit_nimcp: Failed to create module");
         return NULL;
     }
 
@@ -3568,7 +3630,9 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     if (PyModule_AddObject(m, "Brain", (PyObject*)&BrainType) < 0) {
         Py_DECREF(&BrainType);
         Py_DECREF(m);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: Failed to add BrainType");
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "PyInit_nimcp: Failed to add Brain type to module");
         return NULL;
     }
 
@@ -3577,7 +3641,9 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     if (PyModule_AddObject(m, "NeuralNetwork", (PyObject*)&NetworkType) < 0) {
         Py_DECREF(&NetworkType);
         Py_DECREF(m);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: Failed to add NetworkType");
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "PyInit_nimcp: Failed to add NeuralNetwork type to module");
         return NULL;
     }
 
@@ -3586,7 +3652,9 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     if (PyModule_AddObject(m, "KnowledgeSystem", (PyObject*)&KnowledgeType) < 0) {
         Py_DECREF(&KnowledgeType);
         Py_DECREF(m);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: Failed to add KnowledgeType");
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "PyInit_nimcp: Failed to add KnowledgeSystem type to module");
         return NULL;
     }
 
@@ -3611,7 +3679,9 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     if (init_signal_filter_module(m) < 0) {
         LOG_MODULE_ERROR("bindings.python", "Failed to initialize signal filter module");
         Py_DECREF(m);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: signal filter init failed");
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "PyInit_nimcp: Failed to initialize signal filter module");
         return NULL;
     }
 

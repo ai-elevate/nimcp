@@ -166,8 +166,8 @@ class ExtrapolationEngine:
         self._generation_history: List[np.ndarray] = []
         self._max_history = 100
 
-        # Domain knowledge cache
-        self._domain_knowledge: Dict[str, List[Dict]] = {}
+        # Cached recall decision from Stage 2 for reuse in Stage 4 (imagine)
+        self._cached_recall_decision = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -864,6 +864,10 @@ class ExtrapolationEngine:
                 mesh_available = self.brain.ti_mesh_is_available()
                 if mesh_available:
                     participants = self.brain.ti_mesh_get_participant_count()
+                    # TODO: Pass config.mesh_consensus_timeout to
+                    # ti_mesh_get_coherence once the mesh API supports a
+                    # timeout parameter.  Currently the C API is synchronous
+                    # and does not accept a timeout argument.
                     coherence = self.brain.ti_mesh_get_coherence()
                     best["mesh_participants"] = participants
                     best["mesh_coherence"] = coherence
@@ -1025,6 +1029,9 @@ class ExtrapolationEngine:
     def _temperature_softmax(self, logits: np.ndarray,
                              temperature: float) -> np.ndarray:
         """Temperature-scaled softmax for diverse sampling."""
+        # Replace any non-finite values (NaN, inf, -inf) with 0.0
+        # to prevent partial NaN propagation through the softmax
+        logits = np.where(np.isfinite(logits), logits, 0.0)
         if not np.isfinite(logits).any():
             return np.ones_like(logits) / max(len(logits), 1)
         if temperature <= 0:
@@ -1044,6 +1051,10 @@ class ExtrapolationEngine:
         is responsible for updating history after all candidates are scored,
         so that all candidates in a single generate() call are scored against
         the same baseline (prevents first-candidate bias).
+
+        TODO: This is O(history * candidates) per generate() call.  With
+        _max_history=100 and num_candidates=5 this is ~500 dot products —
+        not worth optimizing for current usage.
         """
         if not self._generation_history:
             return 1.0  # First generation is maximally novel
@@ -1067,7 +1078,11 @@ class ExtrapolationEngine:
 
     @staticmethod
     def _extract_label(candidate: Dict) -> str:
-        """Extract the best label from a candidate regardless of type."""
+        """Extract the best label from a candidate regardless of type.
+
+        May return empty string if no label fields are populated; callers
+        (_stage_output, _compute_coherence) handle empty labels gracefully.
+        """
         return (candidate.get("label")
                 or candidate.get("blended_label")
                 or candidate.get("synthesized_label")
@@ -1135,7 +1150,14 @@ class ExtrapolationEngine:
         return state
 
     def _fallback_encode(self, text: str, num_inputs: int) -> list:
-        """Minimal fallback encoder when instructor_agent is not available."""
+        """Minimal fallback encoder when instructor_agent is not available.
+
+        NOTE: This produces L1-normalized character-frequency features, which
+        differs from the primary encoder (instructor_agent._text_to_features)
+        that uses character n-gram hashing.  Results may differ slightly when
+        running without instructor_agent, but the brain's activation function
+        is tolerant of this difference.
+        """
         features = [0.0] * num_inputs
         if not text:
             return features
@@ -1151,9 +1173,14 @@ class ExtrapolationEngine:
 # Convenience: Module-level helpers
 # ---------------------------------------------------------------------------
 
-def create_engine(brain, **kwargs) -> ExtrapolationEngine:
-    """Create an ExtrapolationEngine from a brain instance."""
-    return ExtrapolationEngine(brain, **kwargs)
+def create_engine(brain, feature_encoder=None) -> ExtrapolationEngine:
+    """Create an ExtrapolationEngine from a brain instance.
+
+    Args:
+        brain: NIMCP Brain instance (or ThreadSafeBrain wrapper)
+        feature_encoder: Optional callable(text, dim) -> list[float].
+    """
+    return ExtrapolationEngine(brain, feature_encoder=feature_encoder)
 
 
 def extrapolate(brain, prompt: str, domain: str = "",

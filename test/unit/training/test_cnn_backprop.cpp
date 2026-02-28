@@ -29,6 +29,7 @@
 #include "training/nimcp_cnn_training.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Test Fixture
@@ -71,7 +72,7 @@ protected:
                     nimcp_tensor_destroy(fwd_result.activations[i]);
                 }
             }
-            free(fwd_result.activations);
+            nimcp_free(fwd_result.activations);
         }
 
         if (input) {
@@ -189,9 +190,10 @@ TEST_F(CNNBackpropTest, Conv2DBackward_WeightGradComputed) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    // TODO: Add API to retrieve layer gradients for verification
-    // For now, we verify backward doesn't crash and returns success
-    SUCCEED() << "Conv2D backward pass completed successfully";
+    // TODO: Add API to retrieve per-layer gradients for full verification.
+    // The trainer API does not yet expose individual layer gradient tensors,
+    // so we cannot call VerifyGradientNonZero/VerifyGradientShape here.
+    GTEST_SKIP() << "Conv2D layer gradient accessors not yet exposed — backward pass succeeded without crash";
 }
 
 TEST_F(CNNBackpropTest, Conv2DBackward_BiasGradComputed) {
@@ -236,7 +238,7 @@ TEST_F(CNNBackpropTest, Conv2DBackward_BiasGradComputed) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    SUCCEED() << "Conv2D bias gradient computation successful";
+    GTEST_SKIP() << "Conv2D bias gradient accessors not yet exposed — backward pass succeeded without crash";
 }
 
 //=============================================================================
@@ -286,7 +288,7 @@ TEST_F(CNNBackpropTest, FlattenBackward_GradientShape) {
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
     // Gradient should propagate through flatten correctly
-    SUCCEED() << "Flatten backward gradient shape preserved";
+    GTEST_SKIP() << "Flatten layer gradient accessors not yet exposed — backward pass succeeded without crash";
 }
 
 //=============================================================================
@@ -347,7 +349,7 @@ TEST_F(CNNBackpropTest, MaxPoolBackward_GradientRouting) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    SUCCEED() << "MaxPool backward gradient routing successful";
+    GTEST_SKIP() << "MaxPool layer gradient accessors not yet exposed — backward pass succeeded without crash";
 }
 
 //=============================================================================
@@ -407,7 +409,7 @@ TEST_F(CNNBackpropTest, AvgPoolBackward_GradientDistribution) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    SUCCEED() << "AvgPool backward gradient distribution successful";
+    GTEST_SKIP() << "AvgPool layer gradient accessors not yet exposed — backward pass succeeded without crash";
 }
 
 //=============================================================================
@@ -463,7 +465,7 @@ TEST_F(CNNBackpropTest, DropoutBackward_TrainingScaling) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    SUCCEED() << "Dropout backward scaling successful";
+    GTEST_SKIP() << "Dropout layer gradient accessors not yet exposed — backward pass succeeded without crash";
 }
 
 //=============================================================================
@@ -521,7 +523,7 @@ TEST_F(CNNBackpropTest, BatchNormBackward_GammaGradComputed) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    SUCCEED() << "BatchNorm gamma gradient computation successful";
+    GTEST_SKIP() << "BatchNorm gamma gradient accessors not yet exposed — backward pass succeeded without crash";
 }
 
 TEST_F(CNNBackpropTest, BatchNormBackward_BetaGradComputed) {
@@ -575,7 +577,7 @@ TEST_F(CNNBackpropTest, BatchNormBackward_BetaGradComputed) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    SUCCEED() << "BatchNorm beta gradient computation successful";
+    GTEST_SKIP() << "BatchNorm beta gradient accessors not yet exposed — backward pass succeeded without crash";
 }
 
 //=============================================================================
@@ -611,7 +613,7 @@ TEST_F(CNNBackpropTest, DenseBackward_WeightGradComputed) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    SUCCEED() << "Dense weight gradient computation successful";
+    GTEST_SKIP() << "Dense weight gradient accessors not yet exposed — backward pass succeeded without crash";
 }
 
 TEST_F(CNNBackpropTest, DenseBackward_BiasGradComputed) {
@@ -642,7 +644,7 @@ TEST_F(CNNBackpropTest, DenseBackward_BiasGradComputed) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    SUCCEED() << "Dense bias gradient computation successful";
+    GTEST_SKIP() << "Dense bias gradient accessors not yet exposed — backward pass succeeded without crash";
 }
 
 //=============================================================================
@@ -756,7 +758,7 @@ TEST_F(CNNBackpropTest, GradientAccumulation_TwoBackwardCalls) {
                 nimcp_tensor_destroy(fwd_result.activations[i]);
             }
         }
-        free(fwd_result.activations);
+        nimcp_free(fwd_result.activations);
     }
     memset(&fwd_result, 0, sizeof(fwd_result));
 
@@ -768,7 +770,7 @@ TEST_F(CNNBackpropTest, GradientAccumulation_TwoBackwardCalls) {
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
     // TODO: Verify gradients are accumulated (need API to retrieve gradients)
-    SUCCEED() << "Gradient accumulation successful";
+    GTEST_SKIP() << "Gradient accumulation verification requires gradient accessor API — backward pass succeeded without crash";
 }
 
 TEST_F(CNNBackpropTest, GradientAccumulation_StepClearsGradients) {
@@ -814,7 +816,7 @@ TEST_F(CNNBackpropTest, GradientAccumulation_StepClearsGradients) {
                 nimcp_tensor_destroy(fwd_result.activations[i]);
             }
         }
-        free(fwd_result.activations);
+        nimcp_free(fwd_result.activations);
     }
     memset(&fwd_result, 0, sizeof(fwd_result));
 
@@ -825,7 +827,7 @@ TEST_F(CNNBackpropTest, GradientAccumulation_StepClearsGradients) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    SUCCEED() << "Gradient reset after step successful";
+    GTEST_SKIP() << "Gradient reset verification requires gradient accessor API — step succeeded without crash";
 }
 
 //=============================================================================
@@ -915,7 +917,7 @@ TEST_F(CNNBackpropTest, MultiLayerBackward_ComplexNetwork) {
     err = cnn_trainer_backward(trainer, target, &fwd_result);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    SUCCEED() << "Multi-layer backward propagation successful";
+    GTEST_SKIP() << "Multi-layer gradient verification requires gradient accessor API — backward pass succeeded without crash";
 }
 
 //=============================================================================

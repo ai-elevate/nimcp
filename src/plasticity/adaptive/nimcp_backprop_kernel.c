@@ -32,6 +32,10 @@
 // H-4: Atomic flag to prevent use-after-free during cleanup
 static _Atomic bool g_bp_shutting_down = false;
 
+// H-3: Atomic reference counter — tracks in-flight backprop_sparse_full calls.
+// backprop_kernel_cleanup spins until this reaches zero before destroying pools.
+static _Atomic uint32_t g_bp_refcount = 0;
+
 //=============================================================================
 // Constants
 //=============================================================================
@@ -108,6 +112,13 @@ void backprop_kernel_cleanup(void) {
     // H-4: Signal shutdown to prevent new backprop_sparse_full calls from racing
     atomic_store(&g_bp_shutting_down, true);
 
+    // H-3 / H-7: Spin until all in-flight backprop_sparse_full calls have exited.
+    // This prevents destroying the thread pool or memory pool while workers are
+    // still using them.
+    while (atomic_load(&g_bp_refcount) > 0) {
+        // Busy-wait — shutdown is rare and refcount drains quickly
+    }
+
     nimcp_thread_pool_t* pool = atomic_load(&g_bp_thread_pool);
     if (pool) {
         nimcp_pool_destroy(pool);
@@ -121,6 +132,10 @@ void backprop_kernel_cleanup(void) {
         atomic_store(&g_bp_pool, (memory_pool_t)NULL);
     }
     g_bp_pool_once = NIMCP_PLATFORM_ONCE_INIT;
+
+    // C-2: Reset shutdown flag so backprop kernel can be re-initialized after
+    // nimcp_shutdown() + nimcp_init() cycle
+    atomic_store(&g_bp_shutting_down, false);
 }
 
 //=============================================================================
@@ -368,17 +383,24 @@ int backprop_sparse_full(
     float max_grad_norm,
     float* out_grad_norm)
 {
-    // H-4: Reject if kernel is shutting down to prevent use-after-free
-    if (atomic_load(&g_bp_shutting_down)) return -1;
-
     if (!net || num_layers < 2 || !layer_sizes || !target || !output || !out_grad_norm)
         return -1;
+
+    // C1-FIX: Increment refcount FIRST, then check shutdown flag.
+    // Old order (check flag → increment refcount) had a TOCTOU race: cleanup could
+    // run between the flag check and the increment, see refcount=0, and free resources
+    // that this thread is about to use.
+    atomic_fetch_add(&g_bp_refcount, 1);
+    if (atomic_load(&g_bp_shutting_down)) {
+        atomic_fetch_sub(&g_bp_refcount, 1);
+        return -1;
+    }
 
     double grad_norm_sq = 0.0;
 
     // Compute layer offsets
     uint32_t* layer_offsets = (uint32_t*)nimcp_malloc(num_layers * sizeof(uint32_t));
-    if (!layer_offsets) return -1;
+    if (!layer_offsets) { atomic_fetch_sub(&g_bp_refcount, 1); return -1; }
     layer_offsets[0] = 0;
     for (uint32_t l = 1; l < num_layers; l++)
         layer_offsets[l] = layer_offsets[l - 1] + layer_sizes[l - 1];
@@ -390,6 +412,14 @@ int backprop_sparse_full(
     for (uint32_t l = 0; l < num_layers; l++)
         if (layer_sizes[l] > max_layer) max_layer = layer_sizes[l];
 
+    // M1-FIX: Guard against zero-size layers causing malloc(0)
+    if (max_layer == 0) {
+        nimcp_free(layer_offsets);
+        *out_grad_norm = 0.0f;
+        atomic_fetch_sub(&g_bp_refcount, 1);
+        return 0;
+    }
+
     // Allocate delta buffers
     float* delta_cur = (float*)bp_alloc_hot_buffer(max_layer * sizeof(float));
     float* delta_prev = (float*)bp_alloc_hot_buffer(max_layer * sizeof(float));
@@ -397,6 +427,7 @@ int backprop_sparse_full(
         if (delta_cur) bp_free_hot_buffer(delta_cur);
         if (delta_prev) bp_free_hot_buffer(delta_prev);
         nimcp_free(layer_offsets);
+        atomic_fetch_sub(&g_bp_refcount, 1);
         return -1;
     }
 
@@ -412,6 +443,7 @@ int backprop_sparse_full(
         bp_free_hot_buffer(delta_cur);
         bp_free_hot_buffer(delta_prev);
         nimcp_free(layer_offsets);
+        atomic_fetch_sub(&g_bp_refcount, 1);
         return -1;
     }
 
@@ -471,6 +503,9 @@ int backprop_sparse_full(
             if (nw > BP_MAX_WORKERS) nw = BP_MAX_WORKERS;
             if (nw < 2) nw = 2;
 
+            // M-9 TODO: Per-worker arrays are heap-allocated every call. Consider
+            // pre-allocating per-worker buffers in thread-local storage or a pool
+            // to eliminate hot-path heap allocations.
             // Allocate per-worker arrays
             backprop_worker_arg_t* workers = (backprop_worker_arg_t*)
                 nimcp_calloc(nw, sizeof(backprop_worker_arg_t));
@@ -738,7 +773,16 @@ after_act_deriv:
     nimcp_free(sparse_dedup);
     nimcp_free(layer_offsets);
 
-    *out_grad_norm = sqrtf((float)grad_norm_sq);
+    // M-FIX: Guard against NaN/Inf in gradient norm output.
+    // If extreme weight values cause grad_norm_sq to overflow to +Inf,
+    // sqrtf(+Inf) = +Inf which would poison the caller's EMA tracking.
+    {
+        float norm = sqrtf((float)grad_norm_sq);
+        *out_grad_norm = isfinite(norm) ? norm : 0.0f;
+    }
+
+    // H-3: Decrement refcount so cleanup knows we're done
+    atomic_fetch_sub(&g_bp_refcount, 1);
     return 0;
 }
 
