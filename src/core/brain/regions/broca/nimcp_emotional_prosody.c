@@ -88,7 +88,7 @@ emotional_prosody_t* emotional_prosody_create(const emotional_prosody_config_t* 
     emotional_prosody_t* processor = (emotional_prosody_t*)nimcp_calloc(1, sizeof(emotional_prosody_t));
     if (!processor) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotional_prosody_create: failed to allocate processor");
 
         return NULL;
 

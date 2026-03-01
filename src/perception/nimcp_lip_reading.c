@@ -1118,9 +1118,10 @@ bool lip_reading_classify_viseme(
 
     system->status = LIP_READING_STATUS_VISEME_CLASSIFIED;
     system->stats.visemes_classified++;
-    system->stats.avg_viseme_confidence =
+    float new_avg_vc =
         (system->stats.avg_viseme_confidence * (system->stats.visemes_classified - 1) +
          result->confidence) / system->stats.visemes_classified;
+    if (isfinite(new_avg_vc)) system->stats.avg_viseme_confidence = new_avg_vc;
 
     return true;
 }
@@ -1422,9 +1423,10 @@ finish:
 
     /* Update statistics */
     system->stats.audiovisual_fusions++;
-    system->stats.avg_fusion_confidence =
+    float new_avg_fc =
         (system->stats.avg_fusion_confidence * (system->stats.audiovisual_fusions - 1) +
          result->fusion_confidence) / system->stats.audiovisual_fusions;
+    if (isfinite(new_avg_fc)) system->stats.avg_fusion_confidence = new_avg_fc;
 
     system->status = LIP_READING_STATUS_AUDIO_INTEGRATED;
     system->av_integrator->last_result = *result;
@@ -1670,8 +1672,10 @@ bool lip_reading_update_speaker_profile(
 
     /* Update running statistics */
     float n = (float)s->profile.frames_observed;
-    s->profile.avg_lip_width = (s->profile.avg_lip_width * n + features->lip_width) / (n + 1);
-    s->profile.avg_lip_height = (s->profile.avg_lip_height * n + features->lip_height) / (n + 1);
+    float new_avg_lw = (s->profile.avg_lip_width * n + features->lip_width) / (n + 1);
+    float new_avg_lh = (s->profile.avg_lip_height * n + features->lip_height) / (n + 1);
+    if (isfinite(new_avg_lw)) s->profile.avg_lip_width = new_avg_lw;
+    if (isfinite(new_avg_lh)) s->profile.avg_lip_height = new_avg_lh;
 
     /* Update range */
     if (s->profile.frames_observed == 0) {
@@ -1787,9 +1791,10 @@ lip_reading_status_t lip_reading_process_frame(
     }
 
     double face_time = (get_timestamp_ms_precise() - start_time);
-    system->stats.avg_face_detection_ms =
+    double new_avg_fd =
         (system->stats.avg_face_detection_ms * system->stats.frames_processed +
          face_time) / (system->stats.frames_processed + 1);
+    if (isfinite(new_avg_fd)) system->stats.avg_face_detection_ms = new_avg_fd;
 
     /* 2. Extract mouth ROI */
     if (!lip_reading_extract_mouth_roi(system, image, width, height, channels,
@@ -1832,16 +1837,18 @@ lip_reading_status_t lip_reading_process_frame(
     }
 
     double class_time = (get_timestamp_ms_precise() - class_start);
-    system->stats.avg_viseme_classification_ms =
+    double new_avg_vc_ms =
         (system->stats.avg_viseme_classification_ms * system->stats.frames_processed +
          class_time) / (system->stats.frames_processed + 1);
+    if (isfinite(new_avg_vc_ms)) system->stats.avg_viseme_classification_ms = new_avg_vc_ms;
 
     /* Update frame counter and timing */
     system->stats.frames_processed++;
     double total_time = (get_timestamp_ms_precise() - start_time);
-    system->stats.avg_total_processing_ms =
+    double new_avg_tp =
         (system->stats.avg_total_processing_ms * (system->stats.frames_processed - 1) +
          total_time) / system->stats.frames_processed;
+    if (isfinite(new_avg_tp)) system->stats.avg_total_processing_ms = new_avg_tp;
 
     system->last_frame_time_ms = get_timestamp_ms();
 
@@ -1890,9 +1897,10 @@ lip_reading_status_t lip_reading_process_frame_with_audio(
     }
 
     double av_time = (get_timestamp_ms() - av_start);
-    system->stats.avg_audiovisual_fusion_ms =
+    double new_avg_av =
         (system->stats.avg_audiovisual_fusion_ms * system->stats.audiovisual_fusions +
          av_time) / (system->stats.audiovisual_fusions + 1);
+    if (isfinite(new_avg_av)) system->stats.avg_audiovisual_fusion_ms = new_avg_av;
 
     return system->status;
 }

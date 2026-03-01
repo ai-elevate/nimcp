@@ -12,6 +12,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <math.h>
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
@@ -46,12 +47,11 @@ visual_thalamic_bridge_t* visual_thalamic_bridge_create(void* visual,
                                                          const visual_thalamic_config_t* config) {
     visual_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(visual_thalamic_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_thalamic_bridge_create: allocation failed");
         return NULL;
-
     }
+
+    bridge_base_init(&bridge->base, 0, "visual_thalamic");
 
     bridge->visual = visual;
     bridge->router = router;
@@ -63,7 +63,10 @@ visual_thalamic_bridge_t* visual_thalamic_bridge_create(void* visual,
 }
 
 void visual_thalamic_bridge_destroy(visual_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (bridge) {
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+    }
 }
 
 int visual_thalamic_bridge_reset(visual_thalamic_bridge_t* bridge) {
@@ -91,9 +94,11 @@ int visual_thalamic_route_signal(visual_thalamic_bridge_t* bridge,
     bridge->stats.signals_relayed++;
 
     float alpha = 0.1f;
-    bridge->stats.avg_visual_salience =
-        (1.0f - alpha) * bridge->stats.avg_visual_salience +
-        alpha * signal->visual_salience;
+    {
+        float new_sal = (1.0f - alpha) * bridge->stats.avg_visual_salience +
+                        alpha * signal->visual_salience;
+        if (isfinite(new_sal)) bridge->stats.avg_visual_salience = new_sal;
+    }
 
     if (signal->signal_type == VISUAL_SIGNAL_FEATURE) {
         bridge->stats.features_routed++;

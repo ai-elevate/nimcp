@@ -157,7 +157,7 @@ static void apply_intonation_pattern(prosody_curve_t* prosody,
     float range = prosody->f0_range;
 
     for (uint32_t i = 0; i < num_phonemes; i++) {
-        float t = (float)i / (float)(num_phonemes - 1);  /* Normalized position [0-1] */
+        float t = (num_phonemes > 1) ? (float)i / (float)(num_phonemes - 1) : 0.0F;  /* Normalized position [0-1] */
 
         switch (pattern) {
             case INTONATION_PATTERN_FLAT:
@@ -227,7 +227,7 @@ phonological_processor_t* phonological_create(const phonological_config_t* confi
     phonological_processor_t* proc = (phonological_processor_t*)nimcp_calloc(1, sizeof(phonological_processor_t));
     if (!proc) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "proc is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phonological_create: failed to allocate processor");
 
         return NULL;
 

@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <math.h>
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
@@ -63,6 +64,8 @@ somatosensory_thalamic_bridge_t* somatosensory_thalamic_bridge_create(void* soma
         return NULL;
     }
 
+    bridge_base_init(&bridge->base, 0, "somatosensory_thalamic");
+
     bridge->somatosensory = somatosensory;
     bridge->router = router;
     bridge->attention_weight = 1.0f;
@@ -80,6 +83,7 @@ somatosensory_thalamic_bridge_t* somatosensory_thalamic_bridge_create(void* soma
 
 void somatosensory_thalamic_bridge_destroy(somatosensory_thalamic_bridge_t* bridge) {
     if (bridge) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
     }
 }
@@ -122,9 +126,11 @@ int somatosensory_thalamic_route_signal(somatosensory_thalamic_bridge_t* bridge,
     bridge->stats.signals_relayed++;
 
     float alpha = 0.1f;
-    bridge->stats.avg_somatosensory_salience =
-        (1.0f - alpha) * bridge->stats.avg_somatosensory_salience +
-        alpha * signal->somatosensory_salience;
+    {
+        float new_sal = (1.0f - alpha) * bridge->stats.avg_somatosensory_salience +
+                        alpha * signal->somatosensory_salience;
+        if (isfinite(new_sal)) bridge->stats.avg_somatosensory_salience = new_sal;
+    }
 
     if (signal->signal_type == SOMATOSENSORY_SIGNAL_PAIN) {
         bridge->stats.pain_signals++;

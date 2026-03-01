@@ -48,7 +48,7 @@ struct cortical_immune_system {
     cortical_immune_stats_t stats;
 
     /* Thread safety */
-    void* mutex;
+    nimcp_platform_mutex_t* mutex;
 
     /* State */
     uint64_t start_time;
@@ -246,7 +246,7 @@ cortical_immune_system_t* cortical_immune_create(
     /* Create mutex */
     system->mutex = nimcp_platform_mutex_create();
     if (!system->mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_create: system->mutex is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_immune_create: mutex creation failed");
         goto cleanup;
     }
 

@@ -158,7 +158,7 @@ cortical_column_sleep_bridge_t cortical_column_sleep_bridge_create(
     /* Guard clauses: Validate required parameters */
     if (!hypercolumn || !sleep) {
         NIMCP_LOGGING_ERROR("NULL hypercolumn or sleep system in bridge create");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_sleep_bridge_create: required parameter is NULL (hypercolumn, sleep)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_column_sleep_bridge_create: required parameter is NULL (hypercolumn, sleep)");
         return NULL;
     }
 
@@ -277,25 +277,21 @@ int cortical_column_sleep_apply_modulation(cortical_column_sleep_bridge_t bridge
         return -1;
     }
 
+    /* Copy state under lock, then call external functions outside lock
+     * to avoid potential deadlock if external code acquires other locks */
     nimcp_mutex_lock(bridge->base.mutex);
 
     hypercolumn_t* hcol = bridge->hypercolumn;
-
-    /* Apply competition mode and temperature */
-    if (bridge->config.enable_competition_modulation) {
-        hypercolumn_run_competition(
-            hcol,
-            bridge->effects.competition_mode,
-            bridge->effects.competition_temperature);
-    }
-
-    /* Note: Lateral inhibition and RF gain would be applied during
-     * hypercolumn_compute() by modifying minicolumn parameters.
-     * This would require additional API functions in nimcp_cortical_column.h
-     * to set inhibition strength and RF gain multipliers.
-     */
+    bool do_competition = bridge->config.enable_competition_modulation;
+    cc_competition_mode_t comp_mode = bridge->effects.competition_mode;
+    float comp_temp = bridge->effects.competition_temperature;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Apply competition mode and temperature (outside lock) */
+    if (do_competition) {
+        hypercolumn_run_competition(hcol, comp_mode, comp_temp);
+    }
 
     return 0;
 }

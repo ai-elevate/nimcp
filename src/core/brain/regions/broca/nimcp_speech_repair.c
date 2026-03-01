@@ -65,8 +65,7 @@ static const char* REPAIR_CUE_PHRASES[] = {
 
 static bool str_contains_word(const char* text, const char* word) {
     if (!text || !word) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str_contains_word: required parameter is NULL (text, word)");
-        return false;
+        return false; /* NULL inputs to helper — just return false */
     }
 
     const char* p = text;
@@ -112,7 +111,7 @@ speech_repair_t* speech_repair_create(const speech_repair_config_t* config) {
     speech_repair_t* processor = (speech_repair_t*)nimcp_calloc(1, sizeof(speech_repair_t));
     if (!processor) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "speech_repair_create: failed to allocate processor");
 
         return NULL;
 

@@ -172,14 +172,7 @@ static sense_entry_t* get_sense_entry(
     }
 
     if (!create) {
-
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create is NULL");
-
-
-        return NULL;
-
-
+        return NULL;  /* Not found and create=false — normal lookup miss */
     }
 
     /* Create new entry */

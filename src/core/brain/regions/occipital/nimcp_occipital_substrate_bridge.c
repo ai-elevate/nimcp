@@ -63,7 +63,8 @@ static float lerp(float a, float b, float t) {
  * @brief Update running average statistic
  */
 static float update_avg(float old_avg, float new_val, float alpha) {
-    return (1.0f - alpha) * old_avg + alpha * new_val;
+    float result = (1.0f - alpha) * old_avg + alpha * new_val;
+    return isfinite(result) ? result : old_avg;
 }
 
 /**
@@ -369,6 +370,8 @@ occipital_substrate_bridge_t* occipital_substrate_bridge_create(
         return NULL;
     }
 
+    if (bridge_base_init(&bridge->base, 0, "occipital_substrate") != 0) { nimcp_free(bridge); return NULL; }
+
     bridge->occipital = occipital;
     bridge->substrate = substrate;
     bridge->config = config ? *config : occipital_substrate_default_config();
@@ -408,6 +411,7 @@ occipital_substrate_bridge_t* occipital_substrate_bridge_create(
 
 void occipital_substrate_bridge_destroy(occipital_substrate_bridge_t* bridge) {
     if (bridge) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
     }
 }

@@ -195,7 +195,7 @@ cc_ternary_connectivity_t* cc_ternary_connectivity_clone(
     dst->weights = trit_matrix_clone(src->weights);
     if (!dst->weights) {
         nimcp_free(dst);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc_ternary_connectivity_clone: dst->weights is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cc_ternary_connectivity_clone: dst->weights is NULL");
         return NULL;
     }
 

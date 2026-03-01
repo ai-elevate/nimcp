@@ -655,8 +655,7 @@ bool broca_lookup_word(const broca_adapter_t* adapter,
                                          adapter->lexical_user_data);
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_reset: validation failed");
-    return false;
+    return false; /* Word not found in lexicon or via callback */
 }
 
 bool broca_set_lexical_callback(broca_adapter_t* adapter,
@@ -895,8 +894,7 @@ bool broca_get_next_command(broca_adapter_t* adapter,
     }
 
     if (adapter->output_head >= adapter->output_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "broca_add_word: capacity exceeded");
-        return false;  /* No more commands */
+        return false;  /* No more commands - normal end condition */
     }
 
     *command = adapter->output_commands[adapter->output_head];
@@ -1082,8 +1080,7 @@ bool broca_train_phonemes(broca_adapter_t* adapter,
         return false;
     }
     if (!adapter->config.enable_training) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_wm_pop: adapter->config is NULL");
-        return false;
+        return false; /* Training not enabled - not an error condition */
     }
 
     /* Simple training: compare output phonemes to target and adjust */

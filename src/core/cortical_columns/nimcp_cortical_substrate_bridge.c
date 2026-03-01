@@ -112,7 +112,7 @@ cortical_substrate_bridge_t* cortical_substrate_bridge_create(
         (cortical_substrate_bridge_t*)nimcp_malloc(sizeof(cortical_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate cortical substrate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate cortical substrate bridge");
 
         return NULL;
     }
@@ -130,19 +130,17 @@ cortical_substrate_bridge_t* cortical_substrate_bridge_create(
         cortical_substrate_default_config(&bridge->config);
     }
 
-    /* Initialize mutex */
-    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex for cortical substrate bridge");
+    /* Initialize bridge base (creates mutex) */
+    if (bridge_base_init(&bridge->base, 0, "cortical_substrate") != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize bridge base for cortical substrate bridge");
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_substrate_bridge_create: bridge->base is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_substrate_bridge_create: bridge_base_init failed");
         return NULL;
     }
-
-    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize mutex for cortical substrate bridge");
+    if (!bridge->base.mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex for cortical substrate bridge");
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_substrate_bridge_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_substrate_bridge_create: mutex is NULL");
         return NULL;
     }
 
@@ -177,11 +175,9 @@ void cortical_substrate_bridge_destroy(cortical_substrate_bridge_t* bridge)
         cortical_substrate_disconnect_bio_async(bridge);
     }
 
-    /* Destroy mutex */
+    /* Destroy bridge base (cleans up mutex) */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free bridge */
@@ -313,7 +309,7 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get substrate state using proper API */
     substrate_metabolic_state_t metabolic;
@@ -321,13 +317,13 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
 
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         NIMCP_LOGGING_ERROR("Failed to get metabolic state from substrate");
-        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     if (substrate_get_physical_state(bridge->substrate, &physical) != 0) {
         NIMCP_LOGGING_ERROR("Failed to get physical state from substrate");
-        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -524,18 +520,21 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
 
     /* Running averages (exponential moving average with alpha = 0.01) */
     float alpha = 0.01f;
-    bridge->stats.avg_column_fidelity =
-        update_running_avg(bridge->stats.avg_column_fidelity,
+    float new_fidelity = update_running_avg(bridge->stats.avg_column_fidelity,
                           bridge->effects.column_fidelity, alpha);
-    bridge->stats.avg_competition_efficiency =
-        update_running_avg(bridge->stats.avg_competition_efficiency,
+    if (isfinite(new_fidelity)) bridge->stats.avg_column_fidelity = new_fidelity;
+
+    float new_comp = update_running_avg(bridge->stats.avg_competition_efficiency,
                           bridge->effects.competition_efficiency, alpha);
-    bridge->stats.avg_sparsity_modulation =
-        update_running_avg(bridge->stats.avg_sparsity_modulation,
+    if (isfinite(new_comp)) bridge->stats.avg_competition_efficiency = new_comp;
+
+    float new_sparsity = update_running_avg(bridge->stats.avg_sparsity_modulation,
                           bridge->effects.sparsity_modulation, alpha);
-    bridge->stats.avg_hierarchical_depth =
-        update_running_avg(bridge->stats.avg_hierarchical_depth,
+    if (isfinite(new_sparsity)) bridge->stats.avg_sparsity_modulation = new_sparsity;
+
+    float new_depth = update_running_avg(bridge->stats.avg_hierarchical_depth,
                           bridge->effects.hierarchical_depth, alpha);
+    if (isfinite(new_depth)) bridge->stats.avg_hierarchical_depth = new_depth;
 
     /* Track min/max fidelity */
     if (bridge->effects.column_fidelity < bridge->stats.min_fidelity_observed) {
@@ -545,7 +544,7 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
         bridge->stats.max_fidelity_observed = bridge->effects.column_fidelity;
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

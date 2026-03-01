@@ -93,12 +93,11 @@ int olfact_quantum_default_config(olfact_quantum_config_t* config) {
 olfact_quantum_bridge_t* olfact_quantum_bridge_create(const olfact_quantum_config_t* config) {
     olfact_quantum_bridge_t* bridge = (olfact_quantum_bridge_t*)nimcp_calloc(1, sizeof(olfact_quantum_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_quantum_bridge_create: allocation failed");
         return NULL;
-
     }
+
+    bridge_base_init(&bridge->base, 0, "olfact_quantum");
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(olfact_quantum_config_t));
@@ -116,6 +115,7 @@ olfact_quantum_bridge_t* olfact_quantum_bridge_create(const olfact_quantum_confi
 void olfact_quantum_bridge_destroy(olfact_quantum_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "olfact_quantum");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -169,8 +169,7 @@ int olfact_quantum_estimate_binding(olfact_quantum_bridge_t* bridge,
         return -1;
     }
     if (!bridge->config.enable_qmc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     bridge->status = OLFACT_QUANTUM_STATUS_COMPUTING;
@@ -252,8 +251,7 @@ int olfact_quantum_search_similar(olfact_quantum_bridge_t* bridge,
         return -1;
     }
     if (!bridge->config.enable_walks) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     bridge->status = OLFACT_QUANTUM_STATUS_COMPUTING;
@@ -303,7 +301,7 @@ int olfact_quantum_search_memory(olfact_quantum_bridge_t* bridge,
                                  uint32_t dim,
                                  uint32_t* memory_id) {
     if (!bridge || !odor || !memory_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_quantum_get_status: required parameter is NULL (bridge, odor, memory_id)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_search_memory: required parameter is NULL");
         return -1;
     }
     (void)dim;
@@ -355,8 +353,7 @@ int olfact_quantum_classify_odor(olfact_quantum_bridge_t* bridge,
         return -1;
     }
     if (!bridge->config.enable_annealing) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     bridge->status = OLFACT_QUANTUM_STATUS_COMPUTING;

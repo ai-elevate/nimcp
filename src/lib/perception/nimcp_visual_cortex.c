@@ -763,7 +763,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
 
     visual_cortex_t* cortex = (visual_cortex_t*)nimcp_calloc(1, sizeof(visual_cortex_t));
     if (!cortex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_create: cortex allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_create: cortex allocation failed");
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate visual cortex");
         return NULL;
     }
@@ -1147,7 +1147,7 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
 
     // === Destroy Memory Pool Mutex ===
     if (cortex->memory_pool_mutex) {
-        nimcp_mutex_free(cortex->memory_pool_mutex);
+        nimcp_mutex_destroy(cortex->memory_pool_mutex);
 
     }
 

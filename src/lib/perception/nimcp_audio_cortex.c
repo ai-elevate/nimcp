@@ -165,7 +165,10 @@ static void update_phasic_tonic(phasic_tonic_state_t* state, float dt)
     float decay_factor = expf(-decay_rate * dt);
     float phasic = phasic_tonic_get_phasic_burst(state);
     float tonic = phasic_tonic_get_tonic_level(state);
-    phasic_tonic_set_phasic_burst(state, phasic * decay_factor + tonic * (1.0F - decay_factor));
+    float updated_phasic = phasic * decay_factor + tonic * (1.0F - decay_factor);
+    if (isfinite(updated_phasic)) {
+        phasic_tonic_set_phasic_burst(state, updated_phasic);
+    }
 }
 
 /**
@@ -882,7 +885,7 @@ void audio_cortex_destroy(audio_cortex_t* cortex)
 
     // === Destroy Memory Pool Mutex ===
     if (cortex->memory_pool_mutex) {
-        nimcp_mutex_free(cortex->memory_pool_mutex);
+        nimcp_mutex_destroy(cortex->memory_pool_mutex);
 
     }
 

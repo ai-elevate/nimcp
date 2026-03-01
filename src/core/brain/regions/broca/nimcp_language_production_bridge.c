@@ -321,6 +321,13 @@ language_production_bridge_t* lpb_create(const lpb_config_t* config,
         return NULL;
     }
 
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "language_production") != 0) {
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lpb_create: bridge_base_init failed");
+        return NULL;
+    }
+
     /* Apply configuration */
     if (config) {
         bridge->config = *config;
@@ -334,8 +341,9 @@ language_production_bridge_t* lpb_create(const lpb_config_t* config,
     /* Allocate buffers */
     bridge->token_buffer = nimcp_calloc(bridge->config.max_tokens, sizeof(lpb_token_t));
     if (!bridge->token_buffer) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lpb_default_config: bridge->token_buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lpb_create: bridge->token_buffer is NULL");
         return NULL;
     }
 
@@ -344,8 +352,9 @@ language_production_bridge_t* lpb_create(const lpb_config_t* config,
     bridge->phoneme_buffer = nimcp_calloc(phoneme_capacity, sizeof(uint8_t));
     if (!bridge->phoneme_buffer) {
         nimcp_free(bridge->token_buffer);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lpb_default_config: bridge->phoneme_buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lpb_create: bridge->phoneme_buffer is NULL");
         return NULL;
     }
 
@@ -411,6 +420,7 @@ void lpb_destroy(language_production_bridge_t* bridge) {
     /* Note: We don't destroy broca, speech_cortex, nlp, or wm
      * as they are owned externally */
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -483,8 +493,7 @@ bool lpb_connect_working_memory(language_production_bridge_t* bridge,
     }
 
     if (!bridge->config.enable_working_memory) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lpb_reset: bridge->config is NULL");
-        return false;
+        return lpb_set_error(bridge, LPB_ERROR_INVALID_INPUT);
     }
 
     bridge->wm = wm;
@@ -663,14 +672,16 @@ bool lpb_produce_from_intent(language_production_bridge_t* bridge,
 
     /* Track modulated production delay */
     float actual_delay = bridge->config.production_delay_ms * production_delay_modulation;
-    bridge->stats.avg_production_latency_ms =
+    float new_avg_latency =
         (bridge->stats.avg_production_latency_ms * (bridge->stats.productions_successful - 1) +
          actual_delay) / bridge->stats.productions_successful;
+    if (isfinite(new_avg_latency)) bridge->stats.avg_production_latency_ms = new_avg_latency;
 
     if (result) {
-        bridge->stats.avg_fluency_score =
+        float new_avg_fluency =
             (bridge->stats.avg_fluency_score * (bridge->stats.productions_successful - 1) +
              result->fluency_score) / bridge->stats.productions_successful;
+        if (isfinite(new_avg_fluency)) bridge->stats.avg_fluency_score = new_avg_fluency;
     }
 
     return true;
@@ -1056,8 +1067,7 @@ bool language_production_set_pe_config(
 
     if (!bridge->config.enable_positional_encoding) {
         LOG_MODULE_WARN(LOG_MODULE, "%s", "Positional encoding not enabled in config");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_get_config: bridge->config is NULL");
-        return false;
+        return lpb_set_error(bridge, LPB_ERROR_INVALID_INPUT);
     }
 
     /* Update configuration */
@@ -1340,7 +1350,6 @@ bool lpb_trigger_receptor(language_production_bridge_t* bridge,
 
     if (!bridge->second_messengers || !bridge->config.enable_second_messengers) {
         LOG_MODULE_WARN(LOG_MODULE, "%s", "Second messenger system not enabled");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge->second_messengers, bridge->config)");
         return false;
     }
 

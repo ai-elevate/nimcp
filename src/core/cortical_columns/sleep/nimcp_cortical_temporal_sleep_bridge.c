@@ -74,7 +74,7 @@ cortical_temporal_sleep_bridge_t cortical_temporal_sleep_bridge_create(
     sleep_system_t sleep)
 {
     if (!temporal_module || !sleep) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_temporal_sleep_bridge_create: required parameter is NULL (temporal_module, sleep)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_temporal_sleep_bridge_create: required parameter is NULL (temporal_module, sleep)");
         return NULL;
     }
 
@@ -83,10 +83,8 @@ cortical_temporal_sleep_bridge_t cortical_temporal_sleep_bridge_create(
             sizeof(struct cortical_temporal_sleep_bridge_struct));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_temporal_sleep_bridge_create: allocation failed");
         return NULL;
-
     }
 
     memset(bridge, 0, sizeof(struct cortical_temporal_sleep_bridge_struct));

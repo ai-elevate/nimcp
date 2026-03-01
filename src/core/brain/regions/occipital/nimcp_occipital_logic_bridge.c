@@ -190,7 +190,7 @@ static bool predicate_exists(const occipital_logic_bridge_t* bridge,
 static int add_predicate(occipital_logic_bridge_t* bridge,
                          const visual_predicate_t* pred) {
     if (bridge->predicate_count >= bridge->config.max_predicates) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_time_us: capacity exceeded");
+        /* Predicate capacity reached — normal operational limit, not immune-worthy */
         return -1;
     }
 
@@ -590,12 +590,13 @@ occipital_logic_bridge_t* occipital_logic_bridge_create(
         (occipital_logic_bridge_t*)nimcp_malloc(sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR(LOGIC_BRIDGE_LOG_MODULE, "Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_logic_bridge_create: allocation failed");
         return NULL;
     }
 
     memset(bridge, 0, sizeof(*bridge));
+
+    if (bridge_base_init(&bridge->base, 0, "occipital_logic") != 0) { nimcp_free(bridge); return NULL; }
 
     if (config) {
         bridge->config = *config;
@@ -621,6 +622,7 @@ void occipital_logic_bridge_destroy(occipital_logic_bridge_t* bridge) {
 
     LOG_INFO(LOGIC_BRIDGE_LOG_MODULE, "Destroying logic bridge");
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -842,11 +844,10 @@ int occipital_logic_query_predicate(
         }
     }
 
-    /* Not found */
+    /* Not found - this is a normal query result, not an error */
     if (truth_value) *truth_value = 0.0f;
     if (confidence) *confidence = 0.0f;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_ground_predicates: validation failed");
     return -1;
 }
 

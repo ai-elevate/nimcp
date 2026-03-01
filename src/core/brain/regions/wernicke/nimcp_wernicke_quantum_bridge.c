@@ -155,9 +155,10 @@ static float compute_speedup(uint32_t classical_ops, uint32_t quantum_ops) {
  * @brief Update running average
  */
 static float update_avg(float current_avg, float new_value, uint64_t count) {
-    if (count == 0) return new_value;
+    if (count == 0) return isfinite(new_value) ? new_value : 0.0f;
     float n = (float)count;
-    return ((n - 1.0f) * current_avg + new_value) / n;
+    float result = ((n - 1.0f) * current_avg + new_value) / n;
+    return isfinite(result) ? result : current_avg;
 }
 
 /*=============================================================================
@@ -224,6 +225,12 @@ wernicke_quantum_bridge_t* wernicke_quantum_bridge_create(
         wernicke_quantum_default_config(&bridge->config);
     }
 
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "wernicke_quantum") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     bridge->wernicke = wernicke;
     bridge->enabled = true;
     bridge->seed = 42;
@@ -234,6 +241,7 @@ wernicke_quantum_bridge_t* wernicke_quantum_bridge_create(
 void wernicke_quantum_bridge_destroy(wernicke_quantum_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "wernicke_quantum");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

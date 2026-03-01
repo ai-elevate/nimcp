@@ -153,8 +153,7 @@ static bool queue_enqueue(wbb_queue_t* queue, const wbb_message_t* message) {
 
 static bool queue_dequeue(wbb_queue_t* queue, wbb_message_t* message) {
     if (!queue->head) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_dequeue: queue->head is NULL");
-        return false;  /* Queue empty */
+        return false;  /* Queue empty — normal condition */
     }
 
     wbb_queue_node_t* node = queue->head;
@@ -172,8 +171,7 @@ static bool queue_dequeue(wbb_queue_t* queue, wbb_message_t* message) {
 
 static bool queue_peek(const wbb_queue_t* queue, wbb_message_t* message) {
     if (!queue->head) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_peek: queue->head is NULL");
-        return false;
+        return false;  /* Queue empty — normal condition */
     }
     *message = queue->head->message;
     return true;
@@ -312,6 +310,12 @@ wernicke_broca_bridge_t* wbb_create(
         return NULL;
     }
 
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "wernicke_broca") != 0) {
+        wbb_destroy(bridge);
+        return NULL;
+    }
+
     /* Initialize state */
     bridge->has_last_comprehension = false;
     bridge->has_last_efference = false;
@@ -323,6 +327,9 @@ wernicke_broca_bridge_t* wbb_create(
 
 void wbb_destroy(wernicke_broca_bridge_t* bridge) {
     if (!bridge) return;
+
+    /* Cleanup bridge base */
+    bridge_base_cleanup(&bridge->base);
 
     /* Destroy queues */
     queue_destroy(&bridge->to_broca_queue);
@@ -434,12 +441,10 @@ int wbb_forward_comprehension(
 
     /* Check stream availability */
     if (stream == WBB_STREAM_DORSAL && !bridge->config.enable_dorsal_stream) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_forward_comprehension: bridge->config is NULL");
-        return -1;
+        return -1;  /* Dorsal stream disabled — not an error */
     }
     if (stream == WBB_STREAM_VENTRAL && !bridge->config.enable_ventral_stream) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_forward_comprehension: bridge->config is NULL");
-        return -1;
+        return -1;  /* Ventral stream disabled — not an error */
     }
 
     /* Create message */
@@ -508,8 +513,7 @@ int wbb_request_repetition(
     }
 
     if (!bridge->config.enable_dorsal_stream) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_request_repetition: bridge->config is NULL");
-        return -1;  /* Dorsal stream required for repetition */
+        return -1;  /* Dorsal stream disabled — required for repetition */
     }
 
     /* Create comprehension with phonemes only */
@@ -555,8 +559,7 @@ int wbb_send_response_intent(
     }
 
     if (!bridge->config.enable_ventral_stream) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_send_response_intent: bridge->config is NULL");
-        return -1;  /* Ventral stream required for semantic production */
+        return -1;  /* Ventral stream disabled — required for semantic production */
     }
 
     /* Create comprehension with semantic only */
@@ -697,8 +700,7 @@ int wbb_send_error_signal(
     }
 
     if (!bridge->config.enable_error_correction) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_send_error_signal: bridge->config is NULL");
-        return -1;  /* Error correction disabled */
+        return -1;  /* Error correction disabled — not an error */
     }
 
     /* Create error message */
@@ -755,8 +757,7 @@ int wbb_request_rehearsal(
     }
 
     if (!bridge->config.enable_working_memory) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wbb_request_rehearsal: bridge->config is NULL");
-        return -1;  /* Working memory disabled */
+        return -1;  /* Working memory disabled — not an error */
     }
 
     /* Create rehearsal request */

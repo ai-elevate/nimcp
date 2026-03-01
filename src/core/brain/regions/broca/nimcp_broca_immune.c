@@ -172,7 +172,7 @@ broca_immune_bridge_t* broca_immune_bridge_create(
     /* Guard clauses */
     if (!immune_system || !broca_adapter) {
         NIMCP_LOGGING_ERROR("broca_immune_bridge_create: NULL required parameter");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_immune_bridge_create: required parameter is NULL (immune_system, broca_adapter)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_bridge_create: required parameter is NULL (immune_system, broca_adapter)");
         return NULL;
     }
 
@@ -181,7 +181,7 @@ broca_immune_bridge_t* broca_immune_bridge_create(
         sizeof(broca_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("broca_immune_bridge_create: Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -374,9 +374,12 @@ int broca_immune_compute_impairment(
 
 int broca_immune_apply_inflammation_effects(broca_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->config.enable_inflammation_impairment) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->config)");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_apply_inflammation_effects: bridge is NULL");
         return -1;
+    }
+    if (!bridge->config.enable_inflammation_impairment) {
+        return 0; /* Feature disabled, not an error */
     }
 
     /* Compute current impairment */
@@ -439,9 +442,12 @@ int broca_immune_apply_inflammation_effects(broca_immune_bridge_t* bridge)
 
 int broca_immune_apply_cytokine_effects(broca_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->config.enable_cytokine_modulation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->config)");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_apply_cytokine_effects: bridge is NULL");
         return -1;
+    }
+    if (!bridge->config.enable_cytokine_modulation) {
+        return 0; /* Feature disabled, not an error */
     }
 
     /* Reset cytokine effects */
@@ -635,9 +641,12 @@ int broca_immune_analyze_error_patterns(
 
 int broca_immune_trigger_from_errors(broca_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->config.enable_error_immune_trigger) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_trigger_from_errors: required parameter is NULL (bridge, bridge->config)");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_trigger_from_errors: bridge is NULL");
         return -1;
+    }
+    if (!bridge->config.enable_error_immune_trigger) {
+        return 0; /* Feature disabled, not an error */
     }
 
     /* Analyze error patterns */
@@ -650,8 +659,7 @@ int broca_immune_trigger_from_errors(broca_immune_bridge_t* bridge)
 
     /* Check if exceeds threshold */
     if (max_damage < bridge->config.error_trigger_threshold) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_immune_trigger_from_errors: validation failed");
-        return -1; /* No trigger needed */
+        return 0; /* Below threshold, no trigger needed */
     }
 
     /* Create epitope from error pattern */
@@ -700,9 +708,12 @@ int broca_immune_bridge_update(
     broca_immune_bridge_t* bridge,
     uint64_t current_time_ms)
 {
-    if (!bridge || !bridge->running) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_bridge_update: required parameter is NULL (bridge, bridge->running)");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_bridge_update: bridge is NULL");
         return -1;
+    }
+    if (!bridge->running) {
+        return 0; /* Bridge not running, not an error */
     }
 
     bridge->last_update_time_ms = current_time_ms;

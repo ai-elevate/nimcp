@@ -238,7 +238,7 @@ topographic_map_t* topographic_map_create(const topographic_map_config_t* config
     map->transform_offset_y = config->cortical_range[2];
 
     /* Create mutex */
-    map->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    map->mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!map->mutex) {
         /* Free somatotopic regions if we deep-copied them */
         if (config->type == TOPOGRAPHIC_SOMATOTOPIC && map->config.somatotopic.regions) {
@@ -394,7 +394,7 @@ topographic_map_t* topographic_map_create_somatotopic(uint32_t num_body_regions)
     /* Guard: Validate input */
     if (num_body_regions == 0) {
         TOPO_LOG_ERROR("[TopographicMaps] Invalid number of body regions");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topographic_map_create_somatotopic: num_body_regions is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topographic_map_create_somatotopic: num_body_regions is zero");
         return NULL;
     }
 
@@ -1002,7 +1002,7 @@ bool topographic_map_validate_config(const topographic_map_config_t* config)
     /* Check dimensions */
     if (config->input_dims == 0 || config->input_dims > 3 ||
         config->cortical_dims == 0 || config->cortical_dims > 2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "topographic_map_validate_config: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topographic_map_validate_config: invalid dimensions");
         return false;
     }
 

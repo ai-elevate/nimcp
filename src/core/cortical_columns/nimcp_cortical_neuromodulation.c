@@ -132,7 +132,7 @@ cortical_neuromod_system_t* cortical_neuromod_create(
         (cortical_neuromod_system_t*)nimcp_calloc(1, sizeof(cortical_neuromod_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate neuromod system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_neuromod_create: system alloc failed");
 
         return NULL;
     }
@@ -167,7 +167,7 @@ cortical_neuromod_system_t* cortical_neuromod_create(
     system->state.last_update_time_us = get_timestamp_us();
 
     /* Create and initialize mutex */
-    system->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    system->mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_neuromod_create: mutex allocation failed");

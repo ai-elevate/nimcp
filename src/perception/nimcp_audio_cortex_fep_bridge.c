@@ -269,8 +269,8 @@ int audio_cortex_fep_compute_prediction_error(
 
     /* Update state */
     bridge->state.current_auditory_pe = *prediction_error;
-    bridge->state.avg_auditory_pe =
-        0.9f * bridge->state.avg_auditory_pe + 0.1f * (*prediction_error);
+    float new_avg_aud_pe = 0.9f * bridge->state.avg_auditory_pe + 0.1f * (*prediction_error);
+    if (isfinite(new_avg_aud_pe)) bridge->state.avg_auditory_pe = new_avg_aud_pe;
 
     if (*prediction_error > bridge->state.max_auditory_pe) {
         bridge->state.max_auditory_pe = *prediction_error;

@@ -78,7 +78,7 @@ incremental_processor_t* incremental_create(const incremental_config_t* config) 
     incremental_processor_t* processor = (incremental_processor_t*)nimcp_calloc(1, sizeof(incremental_processor_t));
     if (!processor) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "incremental_create: failed to allocate processor");
 
         return NULL;
 
@@ -103,7 +103,7 @@ incremental_processor_t* incremental_create(const incremental_config_t* config) 
         nimcp_free(processor->output_buffer);
         nimcp_free(processor->revisions);
         nimcp_free(processor);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "incremental_create: required parameter is NULL (processor->input_buffer, processor->output_buffer, processor->revisions)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "incremental_create: failed to allocate buffers");
         return NULL;
     }
 

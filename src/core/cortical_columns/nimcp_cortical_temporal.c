@@ -19,6 +19,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -51,7 +52,7 @@ struct cortical_temporal_system {
     bool bio_async_enabled;
 
     /** Thread safety */
-    void* mutex;
+    nimcp_platform_mutex_t* mutex;
 
     /** Magic number for validation */
     uint32_t magic;
@@ -197,7 +198,7 @@ static int initialize_temporal_state(
                 nimcp_free(state->layer_activities[j]);
             }
             nimcp_free(state->layer_activities);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_temporal_state: state->layer_activities is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "initialize_temporal_state: layer_activities alloc failed");
             return -1;
         }
     }
@@ -212,7 +213,7 @@ static int initialize_temporal_state(
             nimcp_free(state->layer_activities[layer]);
         }
         nimcp_free(state->layer_activities);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_temporal_state: state->adaptation_states is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "initialize_temporal_state: adaptation_states alloc failed");
         return -1;
     }
 
@@ -227,7 +228,7 @@ static int initialize_temporal_state(
             nimcp_free(state->layer_activities[layer]);
         }
         nimcp_free(state->layer_activities);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_temporal_state: state->habituation_states is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "initialize_temporal_state: habituation_states alloc failed");
         return -1;
     }
 
@@ -337,7 +338,7 @@ cortical_temporal_system_t* cortical_temporal_create(
             }
             free_temporal_state(&system->state);
             nimcp_free(system);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_temporal_create: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_temporal_create: TRF init failed");
             return NULL;
         }
     }
@@ -709,7 +710,7 @@ sequence_detector_t* cortical_temporal_create_sequence_detector(
     }
     if (detection_threshold < 0.0f || detection_threshold > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid threshold: %.2f", detection_threshold);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_temporal_create_sequence_detector: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_create_sequence_detector: threshold out of range [0,1]");
         return NULL;
     }
 
@@ -966,9 +967,8 @@ int cortical_temporal_connect_bio_async(
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return 0;
     } else {
-        NIMCP_LOGGING_WARN("Bio-async router not available");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_connect_bio_async: validation failed");
-        return -1;
+        NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+        return 0;
     }
 }
 

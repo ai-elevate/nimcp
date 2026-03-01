@@ -187,7 +187,7 @@ syntax_processor_t* syntax_create(const syntax_config_t* config) {
             nimcp_free(processor->rules);
             nimcp_free(processor->units);
             nimcp_free(processor);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "syntax_create: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "syntax_create: failed to allocate chart row");
             return NULL;
         }
     }
@@ -1051,7 +1051,7 @@ static syntax_tree_node_t* build_tree_recursive(
     /* Allocate new node - Phase 1.5 O(1) pool allocation */
     syntax_tree_node_t* node = (syntax_tree_node_t*)memory_pool_acquire(processor->tree_node_pool);
     if (!node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_tree_recursive: failed to acquire tree node from pool");
 
         return NULL;
     }

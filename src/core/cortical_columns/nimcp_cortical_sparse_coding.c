@@ -328,7 +328,7 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
     system->stats.total_columns = config->num_columns;
 
     /* Create mutex */
-    system->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    system->mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_sparse_create: system->mutex is NULL");
@@ -912,7 +912,7 @@ int cortical_sparse_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
-    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_SUPPORTED, "Bio-async router not available");
+    return NIMCP_SUCCESS;
 }
 
 int cortical_sparse_disconnect_bio_async(
@@ -1184,7 +1184,7 @@ trit_vector_t* cortical_sparse_create_ternary_vector(
         system->config.ternary_pack_mode
     );
     if (!vec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_sparse_create_ternary_vector: trit_vector_create failed");
 
         return NULL;
     }

@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <math.h>
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
@@ -63,6 +64,8 @@ occipital_thalamic_bridge_t* occipital_thalamic_bridge_create(void* occipital,
         return NULL;
     }
 
+    if (bridge_base_init(&bridge->base, 0, "occipital_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     bridge->occipital = occipital;
     bridge->router = router;
     bridge->attention_weight = 1.0f;
@@ -80,6 +83,7 @@ occipital_thalamic_bridge_t* occipital_thalamic_bridge_create(void* occipital,
 
 void occipital_thalamic_bridge_destroy(occipital_thalamic_bridge_t* bridge) {
     if (bridge) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
     }
 }
@@ -119,9 +123,11 @@ int occipital_thalamic_route_signal(occipital_thalamic_bridge_t* bridge,
 
     /* Update statistics - routing is handled externally if router is connected */
     float alpha = 0.1f;
-    bridge->stats.avg_visual_intensity =
-        (1.0f - alpha) * bridge->stats.avg_visual_intensity +
+    float new_avg = (1.0f - alpha) * bridge->stats.avg_visual_intensity +
         alpha * signal->visual_intensity;
+    if (isfinite(new_avg)) {
+        bridge->stats.avg_visual_intensity = new_avg;
+    }
 
     if (signal->signal_type == OCCIPITAL_SIGNAL_V1) {
         bridge->stats.v1_signals_routed++;

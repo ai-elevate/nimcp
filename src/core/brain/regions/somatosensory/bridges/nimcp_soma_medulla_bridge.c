@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include <stdatomic.h>
 
 //=============================================================================
@@ -89,12 +90,11 @@ int soma_medulla_default_config(soma_medulla_config_t* config) {
 soma_medulla_bridge_t* soma_medulla_bridge_create(const soma_medulla_config_t* config) {
     soma_medulla_bridge_t* bridge = (soma_medulla_bridge_t*)nimcp_calloc(1, sizeof(soma_medulla_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_medulla_bridge_create: allocation failed");
         return NULL;
-
     }
+
+    bridge_base_init(&bridge->base, 0, "soma_medulla");
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(soma_medulla_config_t));
@@ -113,6 +113,7 @@ soma_medulla_bridge_t* soma_medulla_bridge_create(const soma_medulla_config_t* c
 void soma_medulla_bridge_destroy(soma_medulla_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "soma_medulla");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -189,8 +190,7 @@ int soma_medulla_request_withdrawal(soma_medulla_bridge_t* bridge, body_segment_
         return -1;
     }
     if (!bridge->config.enable_withdrawal_reflex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_request_withdrawal: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     bridge->active_reflex.type = SOMA_MEDULLA_REFLEX_WITHDRAWAL;
@@ -222,9 +222,11 @@ int soma_medulla_check_reflex_status(soma_medulla_bridge_t* bridge,
         bridge->status = SOMA_MEDULLA_STATUS_IDLE;
 
         /* Update average latency */
-        bridge->stats.avg_reflex_latency_ms =
-            bridge->stats.avg_reflex_latency_ms * 0.9f +
+        float new_latency = bridge->stats.avg_reflex_latency_ms * 0.9f +
             (float)bridge->config.reflex_latency_ms * 0.1f;
+        if (isfinite(new_latency)) {
+            bridge->stats.avg_reflex_latency_ms = new_latency;
+        }
     } else {
         memset(response, 0, sizeof(soma_medulla_reflex_response_t));
     }
@@ -286,8 +288,7 @@ int soma_medulla_trigger_autonomic(soma_medulla_bridge_t* bridge,
         return -1;
     }
     if (!bridge->config.enable_autonomic_response) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_request_thermoregulation: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     memcpy(&bridge->current_autonomic, adj, sizeof(soma_medulla_autonomic_t));

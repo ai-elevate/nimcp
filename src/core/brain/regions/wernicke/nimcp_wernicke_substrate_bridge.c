@@ -292,6 +292,12 @@ wernicke_substrate_bridge_t* wernicke_substrate_bridge_create(
     bridge->effects_valid = false;
     bridge->use_manual_state = false;
 
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "wernicke_substrate") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     /* Compute initial effects */
     compute_effects(bridge);
 
@@ -299,6 +305,8 @@ wernicke_substrate_bridge_t* wernicke_substrate_bridge_create(
 }
 
 void wernicke_substrate_bridge_destroy(wernicke_substrate_bridge_t* bridge) {
+    if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -332,14 +340,14 @@ int wernicke_substrate_bridge_update(wernicke_substrate_bridge_t* bridge) {
         bridge->stats.high_fatigue_events++;
     }
 
-    /* Running averages */
+    /* Running averages with isfinite guards */
     float n = (float)bridge->stats.updates_processed;
-    bridge->stats.avg_comprehension =
-        ((n - 1.0f) * bridge->stats.avg_comprehension +
-         bridge->effects.overall_comprehension) / n;
-    bridge->stats.avg_wm_span =
-        ((n - 1.0f) * bridge->stats.avg_wm_span +
-         bridge->effects.working_memory_span) / n;
+    float new_avg_comp = ((n - 1.0f) * bridge->stats.avg_comprehension +
+                          bridge->effects.overall_comprehension) / n;
+    if (isfinite(new_avg_comp)) bridge->stats.avg_comprehension = new_avg_comp;
+    float new_avg_wm = ((n - 1.0f) * bridge->stats.avg_wm_span +
+                         bridge->effects.working_memory_span) / n;
+    if (isfinite(new_avg_wm)) bridge->stats.avg_wm_span = new_avg_wm;
 
     if (bridge->effects.overall_comprehension < bridge->stats.min_observed_capacity ||
         bridge->stats.updates_processed == 1) {

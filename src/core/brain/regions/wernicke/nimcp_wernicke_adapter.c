@@ -205,8 +205,7 @@ wernicke_adapter_t* wernicke_create(const wernicke_config_t* config)
     /* Allocate adapter */
     wernicke_adapter_t* adapter = (wernicke_adapter_t*)nimcp_calloc(1, sizeof(wernicke_adapter_t));
     if (!adapter) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_create: failed to allocate adapter");
         return NULL;
     }
 
@@ -240,7 +239,7 @@ wernicke_adapter_t* wernicke_create(const wernicke_config_t* config)
     if (!adapter->phoneme_buffer.events) {
         if (adapter->lexicon_table) nimcp_free(adapter->lexicon_table);
         nimcp_free(adapter);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_create: failed to allocate phoneme buffer");
         return NULL;
     }
     adapter->phoneme_buffer.count = 0;
@@ -452,11 +451,10 @@ bool wernicke_recognize_word(
         entry = entry->next;
     }
 
-    /* Word not found */
+    /* Word not found — normal lookup miss, not an error */
     adapter->last_error = WERNICKE_ERROR_WORD_NOT_FOUND;
     adapter->stats.lexical_misses++;
     adapter->status = WERNICKE_STATUS_IDLE;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_recognize_word: operation failed");
     return false;
 }
 
@@ -528,7 +526,7 @@ bool wernicke_lookup_word(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_lookup_word: validation failed");
+    /* Word not found — normal lookup miss, not an error */
     return false;
 }
 
@@ -1169,7 +1167,6 @@ nimcp_bio_future_t wernicke_request_word_async(
     }
 
     /* Phase 3 will implement async word recognition */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_request_word_async: required parameter is NULL (adapter, phonemes)");
     return NULL;
 }
 

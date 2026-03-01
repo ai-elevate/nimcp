@@ -17,7 +17,6 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/math/nimcp_math_helpers.h"
 
@@ -240,7 +239,7 @@ int visual_immune_apply_cytokine_effects(visual_immune_bridge_t* bridge) {
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_apply_cytokine_effects: NULL immune_system");
     NIMCP_API_CHECK_NULL(bridge->visual_cortex, -1, "visual_immune_apply_cytokine_effects: NULL visual_cortex");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute cytokine effects from immune system */
     /* Note: In full implementation, would query actual cytokine levels */
@@ -275,7 +274,7 @@ int visual_immune_apply_cytokine_effects(visual_immune_bridge_t* bridge) {
         compute_sickness_behavior(bridge->immune_system);
 
     bridge->cytokine_modulations++;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -285,7 +284,7 @@ int visual_immune_apply_inflammation_effects(visual_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_visual_impairment) return 0;
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_apply_inflammation_effects: NULL immune_system");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -327,7 +326,7 @@ int visual_immune_apply_inflammation_effects(visual_immune_bridge_t* bridge) {
     bridge->inflammation_state.gabor_filter_gain_reduction = impairment * 0.5f;
     bridge->inflammation_state.feature_extraction_noise = impairment * 0.3f;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -337,7 +336,7 @@ int visual_immune_apply_sickness_effects(visual_immune_bridge_t* bridge) {
     if (!bridge->enable_sickness_visual_reduction) return 0;
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_apply_sickness_effects: NULL immune_system");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get sickness behavior level */
     float sickness = compute_sickness_behavior(bridge->immune_system);
@@ -364,7 +363,7 @@ int visual_immune_apply_sickness_effects(visual_immune_bridge_t* bridge) {
     bridge->sickness_effects.attention_to_novelty_reduction =
         sickness * 0.7f; /* 70% reduction in novelty seeking */
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -421,7 +420,13 @@ int visual_immune_trigger_from_threat(
     NIMCP_API_CHECK(num_features > 0, -1, "visual_immune_trigger_from_threat: num_features is 0");
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_trigger_from_threat: NULL immune_system");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    /* Prepare antigen data outside lock scope */
+    bool should_trigger = false;
+    uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
+    size_t epitope_len = 0;
+    uint32_t severity = 0;
+
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update visual trigger state */
     bridge->visual_trigger.threat_salience = salience;
@@ -433,8 +438,7 @@ int visual_immune_trigger_from_threat(
 
         /* Create antigen from visual threat */
         /* Convert features to epitope (use first features as signature) */
-        uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
-        size_t epitope_len = (num_features < BRAIN_IMMUNE_EPITOPE_SIZE) ?
+        epitope_len = (num_features < BRAIN_IMMUNE_EPITOPE_SIZE) ?
             num_features : BRAIN_IMMUNE_EPITOPE_SIZE;
 
         for (size_t i = 0; i < epitope_len; i++) {
@@ -442,9 +446,15 @@ int visual_immune_trigger_from_threat(
             epitope[i] = (uint8_t)(nimcp_clampf(threat_features[i], 0.0f, 1.0f) * 255.0f);
         }
 
-        /* Present antigen to immune system */
+        severity = (uint32_t)(salience * 10.0f); /* Map to 1-10 */
+        should_trigger = true;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Present antigen to immune system OUTSIDE lock */
+    if (should_trigger) {
         uint32_t antigen_id;
-        uint32_t severity = (uint32_t)(salience * 10.0f); /* Map to 1-10 */
         int result = brain_immune_present_antigen(
             bridge->immune_system,
             ANTIGEN_SOURCE_MANUAL,
@@ -456,12 +466,13 @@ int visual_immune_trigger_from_threat(
         );
 
         if (result == 0) {
+            nimcp_mutex_lock(bridge->base.mutex);
             bridge->visual_triggered_responses++;
             bridge->threat_detections++;
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -474,7 +485,12 @@ int visual_immune_trigger_from_anomaly(
     if (!bridge->enable_visual_immune_trigger) return 0;
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_trigger_from_anomaly: NULL immune_system");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    /* Prepare antigen data outside lock scope */
+    bool should_trigger_anomaly = false;
+    uint8_t anomaly_epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
+    uint32_t anomaly_severity = 0;
+
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update visual trigger state */
     bridge->visual_trigger.pattern_corruption_level = anomaly_score;
@@ -487,31 +503,37 @@ int visual_immune_trigger_from_anomaly(
         bridge->visual_trigger.immune_activation_level = effective_severity;
 
         /* Create anomaly epitope (simple pattern corruption signature) */
-        uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
-        memset(epitope, 0, BRAIN_IMMUNE_EPITOPE_SIZE);
-        epitope[0] = 0xFF; /* Marker for visual anomaly */
-        epitope[1] = (uint8_t)(anomaly_score * 255.0f);
+        memset(anomaly_epitope, 0, BRAIN_IMMUNE_EPITOPE_SIZE);
+        anomaly_epitope[0] = 0xFF; /* Marker for visual anomaly */
+        anomaly_epitope[1] = (uint8_t)(anomaly_score * 255.0f);
 
-        /* Present to immune system */
+        anomaly_severity = (uint32_t)(effective_severity * 10.0f);
+        should_trigger_anomaly = true;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Present to immune system OUTSIDE lock */
+    if (should_trigger_anomaly) {
         uint32_t antigen_id;
-        uint32_t severity = (uint32_t)(effective_severity * 10.0f);
         int result = brain_immune_present_antigen(
             bridge->immune_system,
             ANTIGEN_SOURCE_ANOMALY,
-            epitope,
+            anomaly_epitope,
             32, /* Use partial epitope */
-            severity,
+            anomaly_severity,
             0,
             &antigen_id
         );
 
         if (result == 0) {
+            nimcp_mutex_lock(bridge->base.mutex);
             bridge->visual_triggered_responses++;
             bridge->anomaly_detections++;
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -521,7 +543,12 @@ int visual_immune_trigger_from_visual_stress(visual_immune_bridge_t* bridge) {
     if (!bridge->enable_visual_immune_trigger) return 0;
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_trigger_from_visual_stress: NULL immune_system");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    /* Prepare stress data outside lock scope */
+    bool should_trigger_stress = false;
+    uint8_t stress_epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
+    uint32_t stress_severity = 0;
+
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check visual stress duration */
     float stress_duration = bridge->visual_trigger.visual_stress_duration_sec;
@@ -532,28 +559,34 @@ int visual_immune_trigger_from_visual_stress(visual_immune_bridge_t* bridge) {
         bridge->visual_trigger.chronic_overstimulation = chronic_level;
 
         /* Create stress epitope */
-        uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
-        memset(epitope, 0, BRAIN_IMMUNE_EPITOPE_SIZE);
-        epitope[0] = 0xFE; /* Marker for visual stress */
-        epitope[1] = (uint8_t)(chronic_level * 255.0f);
+        memset(stress_epitope, 0, BRAIN_IMMUNE_EPITOPE_SIZE);
+        stress_epitope[0] = 0xFE; /* Marker for visual stress */
+        stress_epitope[1] = (uint8_t)(chronic_level * 255.0f);
 
-        /* Present to immune system */
+        stress_severity = 3 + (uint32_t)(chronic_level * 5.0f); /* 3-8 severity */
+        should_trigger_stress = true;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Present to immune system OUTSIDE lock */
+    if (should_trigger_stress) {
         uint32_t antigen_id;
-        uint32_t severity = 3 + (uint32_t)(chronic_level * 5.0f); /* 3-8 severity */
         brain_immune_present_antigen(
             bridge->immune_system,
             ANTIGEN_SOURCE_MANUAL,
-            epitope,
+            stress_epitope,
             16,
-            severity,
+            stress_severity,
             0,
             &antigen_id
         );
 
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->visual_triggered_responses++;
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -594,9 +627,9 @@ int visual_immune_get_cytokine_effects(
     NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_get_cytokine_effects: NULL bridge");
     NIMCP_API_CHECK_NULL(effects, -1, "visual_immune_get_cytokine_effects: NULL effects");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -608,9 +641,9 @@ int visual_immune_get_inflammation_state(
     NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_get_inflammation_state: NULL bridge");
     NIMCP_API_CHECK_NULL(state, -1, "visual_immune_get_inflammation_state: NULL state");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->inflammation_state;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

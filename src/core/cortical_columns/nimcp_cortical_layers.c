@@ -256,14 +256,14 @@ static void cleanup_layer_state(layer_state_t* layer) {
  * HOW:  Online algorithm for running statistics
  */
 static void update_layer_stats(layer_state_t* layer) {
-    if (!layer || !layer->neurons) return;
+    if (!layer || !layer->neurons || layer->neuron_count == 0) return;
 
     // Compute mean
     float sum = 0.0F;
     for (uint32_t i = 0; i < layer->neuron_count; i++) {
         sum += layer->neurons[i];
     }
-    layer->mean_activation = sum / layer->neuron_count;
+    layer->mean_activation = sum / (float)layer->neuron_count;
 
     // Compute variance
     float var_sum = 0.0F;
@@ -271,7 +271,7 @@ static void update_layer_stats(layer_state_t* layer) {
         float diff = layer->neurons[i] - layer->mean_activation;
         var_sum += diff * diff;
     }
-    layer->variance_activation = var_sum / layer->neuron_count;
+    layer->variance_activation = var_sum / (float)layer->neuron_count;
 }
 
 //=============================================================================
@@ -977,14 +977,16 @@ void laminar_get_profile(laminar_structure_t* ls,
         for (uint32_t j = 0; j < ls->layers[i].neuron_count; j++) {
             input_sum += ls->layers[i].inputs[j];
         }
-        profile->layer_inputs[i] = input_sum / ls->layers[i].neuron_count;
+        profile->layer_inputs[i] = (ls->layers[i].neuron_count > 0)
+            ? input_sum / (float)ls->layers[i].neuron_count : 0.0F;
 
         // Compute mean output
         float output_sum = 0.0F;
         for (uint32_t j = 0; j < ls->layers[i].neuron_count; j++) {
             output_sum += ls->layers[i].outputs[j];
         }
-        profile->layer_outputs[i] = output_sum / ls->layers[i].neuron_count;
+        profile->layer_outputs[i] = (ls->layers[i].neuron_count > 0)
+            ? output_sum / (float)ls->layers[i].neuron_count : 0.0F;
     }
 
     profile->timestamp = (uint64_t)time(NULL);

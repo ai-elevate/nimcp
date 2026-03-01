@@ -84,11 +84,7 @@ struct gust_bio_async_bridge_struct {
  */
 static gust_bio_subscription_t* find_subscription(gust_bio_async_bridge_t* bridge, uint32_t module_id) {
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return NULL;
-
     }
 
     for (uint32_t i = 0; i < bridge->num_subscriptions; i++) {
@@ -97,8 +93,7 @@ static gust_bio_subscription_t* find_subscription(gust_bio_async_bridge_t* bridg
             return &bridge->subscriptions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: operation failed");
-    return NULL;
+    return NULL;  /* Not found is a normal condition */
 }
 
 /**
@@ -148,12 +143,11 @@ int gust_bio_async_default_config(gust_bio_async_config_t* config) {
 gust_bio_async_bridge_t* gust_bio_async_bridge_create(const gust_bio_async_config_t* config) {
     gust_bio_async_bridge_t* bridge = (gust_bio_async_bridge_t*)nimcp_calloc(1, sizeof(gust_bio_async_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gust_bio_async_bridge_create: allocation failed");
         return NULL;
-
     }
+
+    bridge_base_init(&bridge->base, 0, "gust_bio_async");
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(gust_bio_async_config_t));
@@ -181,6 +175,7 @@ void gust_bio_async_bridge_destroy(gust_bio_async_bridge_t* bridge) {
         gust_bio_async_disconnect(bridge);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

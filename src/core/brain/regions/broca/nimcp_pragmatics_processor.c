@@ -153,7 +153,6 @@ static const scalar_pair_t SCALAR_PAIRS[] = {
  */
 static bool contains_ci(const char* haystack, const char* needle) {
     if (!haystack || !needle) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_ci: required parameter is NULL (haystack, needle)");
         return false;
     }
 
@@ -161,8 +160,7 @@ static bool contains_ci(const char* haystack, const char* needle) {
     size_t n_len = strlen(needle);
 
     if (n_len > h_len) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_ci: validation failed");
-        return false;
+        return false; /* Needle longer than haystack - normal not-found case */
     }
 
     for (size_t i = 0; i <= h_len - n_len; i++) {
@@ -183,12 +181,10 @@ static bool contains_ci(const char* haystack, const char* needle) {
  */
 static bool ends_with_question(const char* utterance) {
     if (!utterance) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ends_with_question: utterance is NULL");
         return false;
     }
     size_t len = strlen(utterance);
     if (len == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ends_with_question: len is zero");
         return false;
     }
 
@@ -239,7 +235,7 @@ pragmatics_processor_t* pragmatics_create(const pragmatics_config_t* config) {
         1, sizeof(pragmatics_processor_t));
     if (!processor) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pragmatics_create: failed to allocate processor");
 
         return NULL;
 
@@ -671,8 +667,7 @@ bool pragmatics_detect_scalar_implicature(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pragmatics_grice_maxim_name: operation failed");
-    return false;
+    return false; /* No scalar implicature found - normal case */
 }
 
 /*=============================================================================

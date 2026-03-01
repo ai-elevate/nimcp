@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "constants/nimcp_math_constants.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -96,7 +97,7 @@ typedef struct {
     float max_response;            /**< Maximum response amplitude */
 
     /* Thread safety */
-    void* mutex;                   /**< Platform-specific mutex (nimcp_platform_mutex_t*) */
+    nimcp_platform_mutex_t* mutex; /**< Thread safety mutex */
 } orientation_column_t;
 
 /**
@@ -125,7 +126,7 @@ typedef struct {
     float normalization_constant;   /**< Divisive normalization constant */
 
     /* Thread safety */
-    void* mutex;                    /**< Platform-specific mutex (nimcp_platform_mutex_t*) */
+    nimcp_platform_mutex_t* mutex;  /**< Thread safety mutex */
 } orientation_hypercolumn_t;
 
 /**

@@ -13,6 +13,7 @@
  * @date 2026-01-04
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -118,9 +119,10 @@ static float compute_pe(const float* expected, const float* observed,
  * @brief Update running average
  */
 static float update_avg(float current_avg, float new_value, uint64_t count) {
-    if (count == 0) return new_value;
+    if (count == 0) return isfinite(new_value) ? new_value : 0.0f;
     float n = (float)count;
-    return ((n - 1.0f) * current_avg + new_value) / n;
+    float result = ((n - 1.0f) * current_avg + new_value) / n;
+    return isfinite(result) ? result : current_avg;
 }
 
 /**
@@ -282,6 +284,14 @@ omni_wernicke_bridge_t* omni_wernicke_bridge_create(
         return NULL;
     }
 
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "omni_wernicke") != 0) {
+        nimcp_free(bridge->word_context);
+        nimcp_free(bridge->phoneme_history);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     /* Initialize structures */
     init_predictions(bridge);
     init_wernicke_effects(bridge);
@@ -297,6 +307,9 @@ omni_wernicke_bridge_t* omni_wernicke_bridge_create(
 void omni_wernicke_bridge_destroy(omni_wernicke_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_wernicke");
+
+    /* Cleanup bridge base */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free phoneme prediction */
     nimcp_free(bridge->omni_effects.phoneme_pred.phoneme_probs);

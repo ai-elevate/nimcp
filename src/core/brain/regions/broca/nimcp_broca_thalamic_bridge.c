@@ -12,6 +12,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <math.h>
 
 //=============================================================================
 #include <stddef.h>
@@ -75,6 +76,13 @@ broca_thalamic_bridge_t* broca_thalamic_bridge_create(
 
     }
 
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "broca_thalamic") != 0) {
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_thalamic_bridge_create: bridge_base_init failed");
+        return NULL;
+    }
+
     bridge->broca = broca;
     bridge->router = router;
     bridge->config = config ? *config : broca_thalamic_default_config();
@@ -90,6 +98,7 @@ broca_thalamic_bridge_t* broca_thalamic_bridge_create(
 
 void broca_thalamic_bridge_destroy(broca_thalamic_bridge_t* bridge) {
     if (bridge) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
     }
 }
@@ -185,9 +194,10 @@ int broca_thalamic_route_signal(
                              bridge->stats.lexical_requests;
 
     if (total_signals > 0) {
-        bridge->stats.avg_speech_urgency =
+        float new_avg_urgency =
             (bridge->stats.avg_speech_urgency * (total_signals - 1) +
              signal->speech_urgency) / total_signals;
+        if (isfinite(new_avg_urgency)) bridge->stats.avg_speech_urgency = new_avg_urgency;
     }
 
     /*

@@ -54,11 +54,8 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
 
     nimcp_gustatory_t* gust = (nimcp_gustatory_t*)nimcp_calloc(1, sizeof(nimcp_gustatory_t));
     if (!gust) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gust_create: allocation failed");
         return NULL;
-
     }
 
     memcpy(&gust->config, config, sizeof(gust_config_t));
@@ -678,11 +675,8 @@ nimcp_gustatory_t* gust_deserialize(const uint8_t* buffer, size_t size, size_t* 
 
     nimcp_gustatory_t* gust = gust_create(&config);
     if (!gust) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gust_deserialize: allocation failed");
         return NULL;
-
     }
 
     memcpy(gust->learned_preferences, buffer + offset, sizeof(float) * TASTE_COUNT);

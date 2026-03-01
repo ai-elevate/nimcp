@@ -81,12 +81,11 @@ int soma_cereb_default_config(soma_cereb_config_t* config) {
 soma_cereb_bridge_t* soma_cereb_bridge_create(const soma_cereb_config_t* config) {
     soma_cereb_bridge_t* bridge = (soma_cereb_bridge_t*)nimcp_calloc(1, sizeof(soma_cereb_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_cereb_bridge_create: allocation failed");
         return NULL;
-
     }
+
+    bridge_base_init(&bridge->base, 0, "soma_cerebellum");
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(soma_cereb_config_t));
@@ -124,6 +123,7 @@ void soma_cereb_bridge_destroy(soma_cereb_bridge_t* bridge) {
 
     nimcp_free(bridge->joint_states);
     nimcp_free(bridge->prediction_buffer);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -226,8 +226,12 @@ int soma_cereb_send_prediction_error(soma_cereb_bridge_t* bridge,
     }
 
     bridge->stats.prediction_errors++;
-    bridge->stats.avg_prediction_error =
-        bridge->stats.avg_prediction_error * 0.9f + error->error_magnitude * 0.1f;
+    {
+        float new_avg = bridge->stats.avg_prediction_error * 0.9f + error->error_magnitude * 0.1f;
+        if (isfinite(new_avg)) {
+            bridge->stats.avg_prediction_error = new_avg;
+        }
+    }
 
     if (bridge->config.enable_adaptation) {
         bridge->stats.adaptation_progress += bridge->config.adaptation_rate;
@@ -259,8 +263,7 @@ int soma_cereb_compute_prediction(soma_cereb_bridge_t* bridge,
         return -1;
     }
     if (!bridge->config.enable_prediction) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_is_connected: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     /* Simple forward model prediction */

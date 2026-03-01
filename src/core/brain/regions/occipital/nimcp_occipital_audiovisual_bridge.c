@@ -452,12 +452,13 @@ occipital_audiovisual_bridge_t* occipital_av_bridge_create(
         (occipital_audiovisual_bridge_t*)nimcp_malloc(sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR(AV_BRIDGE_LOG_MODULE, "Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_av_bridge_create: allocation failed");
         return NULL;
     }
 
     memset(bridge, 0, sizeof(*bridge));
+
+    if (bridge_base_init(&bridge->base, 0, "occipital_audiovisual") != 0) { nimcp_free(bridge); return NULL; }
 
     /* Set configuration */
     if (config) {
@@ -490,6 +491,7 @@ void occipital_av_bridge_destroy(occipital_audiovisual_bridge_t* bridge) {
 
     LOG_INFO(AV_BRIDGE_LOG_MODULE, "Destroying audiovisual bridge");
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -750,7 +752,10 @@ int occipital_av_bridge_update(occipital_audiovisual_bridge_t* bridge) {
     if (error_count > 0) {
         float avg_error = total_error / (float)error_count;
         /* Convert error to accuracy (100ms error = 0.5 accuracy) */
-        bridge->effects.prediction_accuracy = expf(-avg_error / 100.0f);
+        float new_accuracy = expf(-avg_error / 100.0f);
+        if (isfinite(new_accuracy)) {
+            bridge->effects.prediction_accuracy = new_accuracy;
+        }
     }
 
     /* Decay old bindings */
@@ -838,8 +843,8 @@ int occipital_av_predict_audio_timing(
 
     }
     if (!bridge->config.enable_temporal_prediction) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_av_bridge_apply_effects: bridge->config is NULL");
-        return -1;
+        /* Feature disabled by config — not an error, just return gracefully */
+        return 0;
     }
 
     /* Use lip velocity to predict timing */

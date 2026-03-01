@@ -153,8 +153,7 @@ cortical_attention_gain_t* cortical_attention_create(
         (cortical_attention_gain_t*)nimcp_calloc(1, sizeof(cortical_attention_gain_t));
     if (!attention) {
         NIMCP_LOGGING_ERROR("cortical_attention_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_attention_create: allocation failed");
         return NULL;
     }
 
@@ -983,8 +982,7 @@ int cortical_attention_connect_bio_async(cortical_attention_gain_t* attention) {
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_attention_connect_bio_async: validation failed");
-        return -1;
+        return 0;
     }
 }
 

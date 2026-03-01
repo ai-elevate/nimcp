@@ -223,7 +223,7 @@ static bool compute_lpc(const float* signal, uint32_t length, float* coeffs, uin
         nimcp_free(r);
         if (a) nimcp_free(a);
         if (a_prev) nimcp_free(a_prev);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_lpc: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_lpc: failed to allocate LPC work buffers");
         return false;
     }
 
@@ -361,11 +361,8 @@ phonological_analyzer_t* wernicke_phonological_create(const phonological_config_
 
     phonological_analyzer_t* analyzer = (phonological_analyzer_t*)nimcp_calloc(1, sizeof(phonological_analyzer_t));
     if (!analyzer) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analyzer is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_phonological_create: failed to allocate analyzer");
         return NULL;
-
     }
 
     analyzer->config = cfg;
@@ -385,7 +382,7 @@ phonological_analyzer_t* wernicke_phonological_create(const phonological_config_
     if (!analyzer->window || !analyzer->fft_buffer ||
         !analyzer->power_spectrum || !analyzer->lpc_coeffs) {
         wernicke_phonological_destroy(analyzer);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_phonological_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_phonological_create: failed to allocate buffers");
         return NULL;
     }
 
@@ -644,7 +641,7 @@ bool phonological_analyze(
                                                  analyzer->config.max_phonemes,
                                                  &result->num_phonemes);
     if (!success) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_analyze: success is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_analyze: phoneme detection failed");
         return false;
     }
 
@@ -991,11 +988,8 @@ phonological_result_t* phonological_result_alloc(
 {
     phonological_result_t* result = (phonological_result_t*)nimcp_calloc(1, sizeof(phonological_result_t));
     if (!result) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phonological_result_alloc: failed to allocate result");
         return NULL;
-
     }
 
     result->phonemes = (phoneme_event_t*)nimcp_calloc(max_phonemes, sizeof(phoneme_event_t));
@@ -1006,7 +1000,7 @@ phonological_result_t* phonological_result_alloc(
     if (!result->phonemes || !result->syllables ||
         !result->prosody.pitch_contour || !result->prosody.intensity_contour) {
         phonological_result_free(result);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_result_alloc: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phonological_result_alloc: failed to allocate sub-buffers");
         return NULL;
     }
 

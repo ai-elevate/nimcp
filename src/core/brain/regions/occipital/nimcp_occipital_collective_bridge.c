@@ -315,8 +315,7 @@ static int find_instance_index(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_instance_index: validation failed");
-    return -1;
+    return -1;  /* Not found is a normal search result */
 }
 
 static int find_target_index(
@@ -328,8 +327,7 @@ static int find_target_index(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_target_index: validation failed");
-    return -1;
+    return -1;  /* Not found is a normal search result */
 }
 
 static void update_local_visual_state(occipital_collective_bridge_t* bridge) {
@@ -399,9 +397,9 @@ static void compute_attention_coherence(occipital_collective_bridge_t* bridge) {
     if (bridge->attention_coherence < 0.0f) bridge->attention_coherence = 0.0f;
     if (bridge->attention_coherence > 1.0f) bridge->attention_coherence = 1.0f;
 
-    bridge->stats.avg_attention_coherence =
-        (bridge->stats.avg_attention_coherence * 0.9f) +
+    float new_avg = (bridge->stats.avg_attention_coherence * 0.9f) +
         (bridge->attention_coherence * 0.1f);
+    if (isfinite(new_avg)) bridge->stats.avg_attention_coherence = new_avg;
 }
 
 static void prune_stale_targets(occipital_collective_bridge_t* bridge) {
@@ -607,8 +605,7 @@ static nimcp_error_t occipital_collective_message_handler(
         }
         default:
             LOG_DEBUG("Unknown message type: 0x%04X", header->type);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_message_handler: capacity exceeded");
-            return -1;
+            return 0;  /* Unknown message type is not an error worth throwing */
     }
 }
 
@@ -687,7 +684,7 @@ int occipital_collective_initiate_attention(
     if (bridge->target_count >= OCCIPITAL_COLLECTIVE_MAX_TARGETS) {
         nimcp_mutex_unlock(bridge->base.mutex);
         LOG_WARNING("Cannot initiate attention: max targets reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "occipital_collective_initiate_attention: capacity exceeded");
+        /* Capacity limit — normal operational bound, not immune-worthy */
         return -1;
     }
 
@@ -760,7 +757,7 @@ int occipital_collective_follow_attention(
     if (idx < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
         LOG_WARNING("Cannot follow attention: target %u not found", target_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_follow_attention: validation failed");
+        /* Target not found — normal search miss, not immune-worthy */
         return -1;
     }
 
@@ -798,7 +795,7 @@ int occipital_collective_release_attention(
     int idx = find_target_index(bridge, target_id);
     if (idx < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_release_attention: validation failed");
+        /* Target not found — may have been pruned, not immune-worthy */
         return -1;
     }
 
@@ -1063,7 +1060,7 @@ int occipital_collective_get_instance_state(
     int idx = find_instance_index(bridge, instance_id);
     if (idx < 0) {
         nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_get_instance_state: validation failed");
+        /* Instance not found — normal query miss, not immune-worthy */
         return -1;
     }
 

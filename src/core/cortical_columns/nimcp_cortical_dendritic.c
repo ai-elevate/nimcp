@@ -236,7 +236,7 @@ static bool generate_calcium_spike_if_threshold_crossed(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_calcium_spike_if_threshold_crossed: cell->calcium_spike_active is NULL");
+    // Normal: voltage below threshold or spike already active — no new spike generated
     return false;
 }
 

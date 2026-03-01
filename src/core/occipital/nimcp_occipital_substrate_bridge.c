@@ -119,17 +119,18 @@ int occipital_substrate_bridge_update(occipital_substrate_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     occipital_substrate_bridge_heartbeat("occipital_sub_update", 0.0f);
 
-    nimcp_mutex_lock(bridge->base.mutex);
-
+    /* Read metabolic state OUTSIDE mutex (external call) */
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
-        nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_substrate_bridge_update: validation failed");
         return -1;
     }
 
     float atp = metabolic.atp_level;
     float metabolic_cap = metabolic.metabolic_capacity;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
     float min_cap = bridge->config.min_capacity;
 
     /*
@@ -199,9 +200,7 @@ int occipital_substrate_bridge_apply_effects(occipital_substrate_bridge_t* bridg
     /* Phase 8: Heartbeat at operation start */
     occipital_substrate_bridge_heartbeat("occipital_sub_apply_effects", 0.0f);
 
-    nimcp_mutex_lock(bridge->base.mutex);
-
-    /* Read current metabolic state for broadcast */
+    /* Read current metabolic state OUTSIDE mutex (external call) */
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f;
     float fatigue_level = 0.0f;
@@ -210,7 +209,9 @@ int occipital_substrate_bridge_apply_effects(occipital_substrate_bridge_t* bridg
         fatigue_level = 1.0f - metabolic.metabolic_capacity;
     }
 
-    /* Broadcast substrate modulation message */
+    /* Take snapshot of effects under lock */
+    nimcp_mutex_lock(bridge->base.mutex);
+
     bio_msg_substrate_modulation_t msg;
     memset(&msg, 0, sizeof(msg));
     bio_msg_init_header(&msg.header, BIO_MSG_SUBSTRATE_MODULATION,
@@ -227,12 +228,12 @@ int occipital_substrate_bridge_apply_effects(occipital_substrate_bridge_t* bridg
     msg.fatigue_level = fatigue_level;
     msg.update_count = bridge->update_count;
     msg.critical_low = (atp_level < bridge->config.min_capacity);
-    bio_router_broadcast(bridge->ctx, &msg, sizeof(msg));
 
-    /* Send capacity update if significant change occurred */
+    /* Check if capacity update needed */
     float delta = bridge->effects.overall_capacity - bridge->prev_overall_capacity;
-    if (delta < -0.1f || delta > 0.1f) {
-        bio_msg_substrate_capacity_update_t update_msg;
+    bool need_capacity_update = (delta < -0.1f || delta > 0.1f);
+    bio_msg_substrate_capacity_update_t update_msg;
+    if (need_capacity_update) {
         memset(&update_msg, 0, sizeof(update_msg));
         bio_msg_init_header(&update_msg.header, BIO_MSG_SUBSTRATE_CAPACITY_UPDATE,
                             BIO_MODULE_SUBSTRATE_OCCIPITAL, 0, sizeof(update_msg));
@@ -241,11 +242,18 @@ int occipital_substrate_bridge_apply_effects(occipital_substrate_bridge_t* bridg
         update_msg.new_capacity = bridge->effects.overall_capacity;
         update_msg.delta = delta;
         update_msg.significant_change = true;
-        bio_router_broadcast(bridge->ctx, &update_msg, sizeof(update_msg));
     }
     bridge->prev_overall_capacity = bridge->effects.overall_capacity;
+    bio_module_context_t ctx_copy = bridge->ctx;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Broadcast OUTSIDE mutex (external calls) */
+    bio_router_broadcast(ctx_copy, &msg, sizeof(msg));
+    if (need_capacity_update) {
+        bio_router_broadcast(ctx_copy, &update_msg, sizeof(update_msg));
+    }
+
     return 0;
 }
 

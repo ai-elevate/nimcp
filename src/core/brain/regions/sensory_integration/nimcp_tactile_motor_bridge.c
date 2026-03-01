@@ -90,12 +90,11 @@ int tactile_motor_default_config(tactile_motor_config_t* config) {
 tactile_motor_bridge_t* tactile_motor_bridge_create(const tactile_motor_config_t* config) {
     tactile_motor_bridge_t* bridge = (tactile_motor_bridge_t*)nimcp_calloc(1, sizeof(tactile_motor_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tactile_motor_bridge_create: allocation failed");
         return NULL;
-
     }
+
+    bridge_base_init(&bridge->base, 0, "tactile_motor");
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(tactile_motor_config_t));
@@ -114,6 +113,7 @@ tactile_motor_bridge_t* tactile_motor_bridge_create(const tactile_motor_config_t
 void tactile_motor_bridge_destroy(tactile_motor_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "tactile_motor");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -184,8 +184,7 @@ int tactile_motor_update_grip(tactile_motor_bridge_t* bridge, const touch_event_
         return -1;
     }
     if (!bridge->config.enable_force_control) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_init_grasp: bridge->config is NULL");
-        return -1;
+        return -1;  /* Feature disabled, not an error worth reporting to immune */
     }
 
     /* Update grip based on tactile feedback */
@@ -226,8 +225,11 @@ int tactile_motor_update_grip(tactile_motor_bridge_t* bridge, const touch_event_
     memcpy(grip, &bridge->current_grip, sizeof(tactile_motor_grip_t));
 
     bridge->stats.feedback_received++;
-    bridge->stats.avg_grip_force = bridge->stats.avg_grip_force * 0.95f +
-                                   bridge->current_grip.grip_force * 0.05f;
+    {
+        float new_force = bridge->stats.avg_grip_force * 0.95f +
+                          bridge->current_grip.grip_force * 0.05f;
+        if (isfinite(new_force)) bridge->stats.avg_grip_force = new_force;
+    }
 
     return 0;
 }
@@ -324,8 +326,11 @@ int tactile_motor_compute_prediction_error(tactile_motor_bridge_t* bridge,
         }
         cmd->prediction_error = sqrtf(error / cmd->command_dim);
 
-        bridge->stats.avg_prediction_error = bridge->stats.avg_prediction_error * 0.9f +
-                                             cmd->prediction_error * 0.1f;
+        {
+            float new_err = bridge->stats.avg_prediction_error * 0.9f +
+                            cmd->prediction_error * 0.1f;
+            if (isfinite(new_err)) bridge->stats.avg_prediction_error = new_err;
+        }
     }
 
     return 0;
@@ -342,8 +347,7 @@ int tactile_motor_start_exploration(tactile_motor_bridge_t* bridge, const float*
         return -1;
     }
     if (!bridge->config.enable_exploration) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_send_command: bridge->config is NULL");
-        return -1;
+        return -1;  /* Feature disabled, not an error worth reporting to immune */
     }
     (void)start_pos;
     (void)bounds;

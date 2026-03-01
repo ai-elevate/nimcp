@@ -363,7 +363,7 @@ columnar_connectivity_t* columnar_connectivity_create(uint32_t max_connections) 
     // Guard: validate parameters
     if (max_connections == 0) {
         LOG_ERROR("max_connections must be > 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "columnar_connectivity_create: max_connections is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "columnar_connectivity_create: max_connections is zero");
         return NULL;
     }
 

@@ -136,7 +136,7 @@ cortical_plasticity_bridge_t* cortical_plasticity_bridge_create(
     } else {
         if (cortical_plasticity_default_config(&bridge->config) != 0) {
             nimcp_free(bridge);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_bridge_create: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_plasticity_bridge_create: default config failed");
             return NULL;
         }
     }
@@ -252,7 +252,7 @@ int cortical_plasticity_connect_coordinator(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->coordinator = coordinator;
 
@@ -282,7 +282,7 @@ int cortical_plasticity_connect_coordinator(
         bridge->eligibility_mechanism_id = 4;
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected to plasticity coordinator");
     return 0;
@@ -297,7 +297,7 @@ int cortical_plasticity_disconnect_coordinator(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Unregister mechanisms */
     if (bridge->coordinator) {
@@ -311,7 +311,7 @@ int cortical_plasticity_disconnect_coordinator(
 
     bridge->coordinator = NULL;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Disconnected from plasticity coordinator");
     return 0;
@@ -338,13 +338,13 @@ int cortical_plasticity_add_column(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check capacity */
     if (bridge->num_columns >= bridge->column_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Column capacity exceeded");
-        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_ERROR("Column capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Column capacity exceeded");
         return -1;
     }
 
@@ -370,7 +370,7 @@ int cortical_plasticity_add_column(
         *column_id_out = column_id;
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Added cortical column ID %u", column_id);
     return 0;
@@ -390,7 +390,7 @@ int cortical_plasticity_remove_column(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Free eligibility traces if allocated */
     if (bridge->column_states[column_id].eligibility_traces) {
@@ -406,7 +406,7 @@ int cortical_plasticity_remove_column(
 
     bridge->num_columns--;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Removed cortical column ID %u", column_id);
     return 0;
@@ -436,7 +436,7 @@ int cortical_plasticity_apply_stdp(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Calculate spike timing difference */
     float dt = post_spike_time - pre_spike_time;
@@ -462,7 +462,7 @@ int cortical_plasticity_apply_stdp(
     bridge->total_stdp_updates++;
     state->total_updates++;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -490,7 +490,7 @@ int cortical_plasticity_update_bcm_threshold(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update average activity */
     float alpha = dt / bridge->config.bcm_tau_theta;
@@ -511,7 +511,7 @@ int cortical_plasticity_update_bcm_threshold(
     bridge->total_bcm_updates++;
     state->total_updates++;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -556,7 +556,7 @@ int cortical_plasticity_apply_homeostatic_scaling(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update current firing rate */
     state->current_firing_rate = current_rate;
@@ -582,7 +582,7 @@ int cortical_plasticity_apply_homeostatic_scaling(
     bridge->total_homeostatic_updates++;
     state->total_updates++;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -618,11 +618,11 @@ int cortical_plasticity_set_critical_period(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->config.in_critical_period = in_critical_period;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Critical period %s",
         in_critical_period ? "ENABLED" : "DISABLED");
@@ -661,7 +661,7 @@ int cortical_plasticity_update_eligibility(
     }
     if (!state->eligibility_traces) return 0;  /* No traces allocated */
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay eligibility traces */
     float tau_eligibility = 1000.0f;  /* 1 second */
@@ -674,7 +674,7 @@ int cortical_plasticity_update_eligibility(
     bridge->total_eligibility_updates++;
     state->total_updates++;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -698,7 +698,7 @@ int cortical_plasticity_apply_reward(
     }
     if (!state->eligibility_traces) return 0;
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Convert eligibility to weight changes */
     for (uint32_t i = 0; i < state->num_synapses; i++) {
@@ -706,7 +706,7 @@ int cortical_plasticity_apply_reward(
         (void)dw;  /* Placeholder - would apply to actual synapse */
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -789,8 +789,7 @@ int cortical_plasticity_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_plasticity_connect_bio_async: validation failed");
-    return -1;
+    return 0;  /* Not an error - bio-async is optional */
 }
 
 int cortical_plasticity_disconnect_bio_async(

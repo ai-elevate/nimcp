@@ -148,8 +148,7 @@ static int enqueue_event(occipital_cognitive_bridge_t* bridge,
     uint32_t next_tail = (bridge->event_queue_tail + 1) % MAX_PENDING_EVENTS;
 
     if (next_tail == bridge->event_queue_head) {
-        /* Queue full */
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_time_us: validation failed");
+        /* Queue full — normal capacity limit, not an error worth alerting immune */
         return -1;
     }
 
@@ -168,7 +167,7 @@ static int enqueue_modulation(occipital_cognitive_bridge_t* bridge,
     uint32_t next_tail = (bridge->mod_queue_tail + 1) % MAX_PENDING_MODULATIONS;
 
     if (next_tail == bridge->mod_queue_head) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_time_us: validation failed");
+        /* Queue full — normal capacity limit, not an error worth alerting immune */
         return -1;
     }
 
@@ -311,12 +310,13 @@ occipital_cognitive_bridge_t* occipital_cognitive_bridge_create(
         (occipital_cognitive_bridge_t*)nimcp_malloc(sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR(COG_BRIDGE_LOG_MODULE, "Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_cognitive_bridge_create: allocation failed");
         return NULL;
     }
 
     memset(bridge, 0, sizeof(*bridge));
+
+    if (bridge_base_init(&bridge->base, 0, "occipital_cognitive") != 0) { nimcp_free(bridge); return NULL; }
 
     if (config) {
         bridge->config = *config;
@@ -350,6 +350,7 @@ void occipital_cognitive_bridge_destroy(occipital_cognitive_bridge_t* bridge) {
 
     LOG_INFO(COG_BRIDGE_LOG_MODULE, "Destroying cognitive bridge");
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

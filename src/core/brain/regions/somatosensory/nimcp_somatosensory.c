@@ -194,11 +194,8 @@ nimcp_somatosensory_t* soma_create(const soma_config_t* config) {
 
     nimcp_somatosensory_t* soma = (nimcp_somatosensory_t*)nimcp_calloc(1, sizeof(nimcp_somatosensory_t));
     if (!soma) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_create: allocation failed");
         return NULL;
-
     }
 
     memcpy(&soma->config, config, sizeof(soma_config_t));
@@ -251,7 +248,7 @@ nimcp_somatosensory_t* soma_create(const soma_config_t* config) {
     if (!soma->area_3a_activation || !soma->area_3b_activation ||
         !soma->area_1_activation || !soma->area_2_activation || !soma->s2_activation) {
         soma_destroy(soma);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_create: activation buffer allocation failed");
         return NULL;
     }
 
@@ -1217,27 +1214,34 @@ int soma_init_all_bridges(nimcp_somatosensory_t* soma, void** bridge_contexts) {
     }
 
     if (bridge_contexts) {
-        /* Initialize all bridges from context array */
+        /* Initialize all bridges from context array.
+         * Note: avoid multiple i++ in a single function call (undefined behavior). */
         int i = 0;
-        soma_init_prime_resonance_bridge(soma, bridge_contexts[i++]);
-        soma_init_immune_bridge(soma, bridge_contexts[i++]);
-        soma_init_bio_async_bridge(soma, bridge_contexts[i++]);
-        soma_init_brain_init_bridge(soma, bridge_contexts[i++]);
-        soma_init_security_bridge(soma, bridge_contexts[i++], bridge_contexts[i++]);
-        soma_init_logging_bridge(soma, bridge_contexts[i++]);
-        soma_init_cognitive_bridge(soma, bridge_contexts[i++]);
-        soma_init_training_bridge(soma, bridge_contexts[i++]);
-        soma_init_omni_bridge(soma, bridge_contexts[i++]);
-        soma_init_hypothalamus_bridge(soma, bridge_contexts[i++]);
-        soma_init_substrate_bridge(soma, bridge_contexts[i++]);
-        soma_init_thalamus_bridge(soma, bridge_contexts[i++]);
-        soma_init_motor_bridge(soma, bridge_contexts[i++]);
-        soma_init_parietal_bridge(soma, bridge_contexts[i++]);
-        soma_init_snn_bridge(soma, bridge_contexts[i++]);
-        soma_init_plasticity_bridge(soma, bridge_contexts[i++], bridge_contexts[i++]);
-        soma_init_portia_bridge(soma, bridge_contexts[i++]);
-        soma_init_dragonfly_bridge(soma, bridge_contexts[i++]);
-        soma_init_perception_bridge(soma, bridge_contexts[i++]);
+        soma_init_prime_resonance_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_immune_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_bio_async_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_brain_init_bridge(soma, bridge_contexts[i]); i++;
+        /* security_bridge takes 2 context args */
+        void* sec_ctx = bridge_contexts[i]; i++;
+        void* sec_ops = bridge_contexts[i]; i++;
+        soma_init_security_bridge(soma, sec_ctx, sec_ops);
+        soma_init_logging_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_cognitive_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_training_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_omni_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_hypothalamus_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_substrate_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_thalamus_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_motor_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_parietal_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_snn_bridge(soma, bridge_contexts[i]); i++;
+        /* plasticity_bridge takes 2 context args */
+        void* plast_ctx = bridge_contexts[i]; i++;
+        void* stdp_ctx = bridge_contexts[i]; i++;
+        soma_init_plasticity_bridge(soma, plast_ctx, stdp_ctx);
+        soma_init_portia_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_dragonfly_bridge(soma, bridge_contexts[i]); i++;
+        soma_init_perception_bridge(soma, bridge_contexts[i]); i++;
     } else {
         /* Initialize all bridges with NULL contexts */
         soma_init_prime_resonance_bridge(soma, NULL);
@@ -1339,11 +1343,16 @@ int soma_get_stats(nimcp_somatosensory_t* soma, soma_stats_t* stats) {
         total_s2 += soma->s2_activation[i];
     }
 
-    stats->area_3a_activity = total_3a / soma->config.num_area_3a_neurons;
-    stats->area_3b_activity = total_3b / soma->config.num_area_3b_neurons;
-    stats->area_1_activity = total_1 / soma->config.num_area_1_neurons;
-    stats->area_2_activity = total_2 / soma->config.num_area_2_neurons;
-    stats->s2_activity = total_s2 / soma->config.num_s2_neurons;
+    stats->area_3a_activity = (soma->config.num_area_3a_neurons > 0) ?
+        total_3a / soma->config.num_area_3a_neurons : 0.0f;
+    stats->area_3b_activity = (soma->config.num_area_3b_neurons > 0) ?
+        total_3b / soma->config.num_area_3b_neurons : 0.0f;
+    stats->area_1_activity = (soma->config.num_area_1_neurons > 0) ?
+        total_1 / soma->config.num_area_1_neurons : 0.0f;
+    stats->area_2_activity = (soma->config.num_area_2_neurons > 0) ?
+        total_2 / soma->config.num_area_2_neurons : 0.0f;
+    stats->s2_activity = (soma->config.num_s2_neurons > 0) ?
+        total_s2 / soma->config.num_s2_neurons : 0.0f;
 
     return 0;
 }
@@ -1512,11 +1521,8 @@ nimcp_somatosensory_t* soma_deserialize(const uint8_t* buffer, size_t size, size
 
     nimcp_somatosensory_t* soma = soma_create(&config);
     if (!soma) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_deserialize: allocation failed");
         return NULL;
-
     }
 
     *bytes_read = sizeof(soma_config_t);

@@ -527,8 +527,7 @@ int wernicke_immune_trigger_from_errors(wernicke_immune_bridge_t* bridge) {
     float max_damage = fmaxf(fmaxf(phon_dmg, lex_dmg), fmaxf(sem_dmg, syn_dmg));
 
     if (max_damage < bridge->config.error_trigger_threshold) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_immune_trigger_from_errors: validation failed");
-        return -1;  /* No trigger needed */
+        return 0;  /* Below threshold — no trigger needed, this is normal */
     }
 
     /* Trigger immune response */

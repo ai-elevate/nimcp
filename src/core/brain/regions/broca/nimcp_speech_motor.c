@@ -425,7 +425,7 @@ speech_motor_planner_t* speech_motor_create(const speech_motor_config_t* config)
 
     // Validate configuration
     if (!speech_motor_validate_config(config)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_motor_create: speech_motor_validate_config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_create: invalid config");
         return NULL;
     }
 
@@ -433,7 +433,7 @@ speech_motor_planner_t* speech_motor_create(const speech_motor_config_t* config)
     speech_motor_planner_t* planner =
         (speech_motor_planner_t*)nimcp_calloc(1, sizeof(speech_motor_planner_t));
     if (!planner) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "speech_motor_create: failed to allocate planner");
 
         return NULL;
     }

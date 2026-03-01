@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <math.h>
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
@@ -63,6 +64,8 @@ auditory_thalamic_bridge_t* auditory_thalamic_bridge_create(void* auditory,
         return NULL;
     }
 
+    bridge_base_init(&bridge->base, 0, "auditory_thalamic");
+
     bridge->auditory = auditory;
     bridge->router = router;
     bridge->attention_weight = 1.0f;
@@ -80,6 +83,7 @@ auditory_thalamic_bridge_t* auditory_thalamic_bridge_create(void* auditory,
 
 void auditory_thalamic_bridge_destroy(auditory_thalamic_bridge_t* bridge) {
     if (bridge) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
     }
 }
@@ -121,9 +125,11 @@ int auditory_thalamic_route_signal(auditory_thalamic_bridge_t* bridge,
     bridge->stats.signals_relayed++;
 
     float alpha = 0.1f;
-    bridge->stats.avg_auditory_salience =
-        (1.0f - alpha) * bridge->stats.avg_auditory_salience +
-        alpha * signal->auditory_salience;
+    {
+        float new_sal = (1.0f - alpha) * bridge->stats.avg_auditory_salience +
+                        alpha * signal->auditory_salience;
+        if (isfinite(new_sal)) bridge->stats.avg_auditory_salience = new_sal;
+    }
 
     if (signal->signal_type == AUDITORY_SIGNAL_SPEECH) {
         bridge->stats.speech_processed++;

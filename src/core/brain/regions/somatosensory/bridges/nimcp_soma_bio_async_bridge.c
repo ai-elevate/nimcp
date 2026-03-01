@@ -5,6 +5,7 @@
  * @date 2026-01-12
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/somatosensory/bridges/nimcp_soma_bio_async_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -33,6 +34,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(soma_bio_async_bridge, MESH_ADAPTER_CATEGORY_COGNIT
  * ============================================================================ */
 
 struct soma_bio_router_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     soma_bio_async_config_t config;
     nimcp_somatosensory_t* soma;
     bio_router_t router;
@@ -65,8 +67,7 @@ static soma_bio_subscription_t* find_subscription(soma_bio_router_t* b, uint32_t
             return &b->subscriptions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: validation failed");
-    return NULL;
+    return NULL;  /* Not found is a normal condition */
 }
 
 static int count_subscribers_for_type(const soma_bio_router_t* b, soma_bio_msg_type_t type) {
@@ -120,6 +121,8 @@ soma_bio_router_t* soma_bio_async_bridge_create(const soma_bio_async_config_t* c
 
     }
 
+    bridge_base_init(&bridge->base, 0, "soma_bio_async");
+
     if (config) {
         bridge->config = *config;
     } else {
@@ -129,6 +132,7 @@ soma_bio_router_t* soma_bio_async_bridge_create(const soma_bio_async_config_t* c
     bridge->subscription_capacity = bridge->config.max_subscriptions;
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity, sizeof(soma_bio_subscription_t));
     if (!bridge->subscriptions) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
@@ -148,6 +152,7 @@ void soma_bio_async_bridge_destroy(soma_bio_router_t* bridge) {
     }
 
     nimcp_free(bridge->subscriptions);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

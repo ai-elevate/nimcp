@@ -330,14 +330,14 @@ int omni_broca_update(omni_broca_bridge_t* bridge) {
     }
 
     float n = (float)bridge->stats.total_updates;
-    bridge->stats.avg_syntax_pe =
-        (bridge->stats.avg_syntax_pe * (n - 1) + syntax_pe) / n;
-    bridge->stats.avg_motor_pe =
-        (bridge->stats.avg_motor_pe * (n - 1) + motor_pe) / n;
-    bridge->stats.avg_wm_load =
-        (bridge->stats.avg_wm_load * (n - 1) + omni_broca_wm_get_load(bridge)) / n;
-    bridge->stats.avg_free_energy =
-        (bridge->stats.avg_free_energy * (n - 1) + bridge->broca_effects.free_energy) / n;
+    float new_syntax_pe = (bridge->stats.avg_syntax_pe * (n - 1) + syntax_pe) / n;
+    if (isfinite(new_syntax_pe)) bridge->stats.avg_syntax_pe = new_syntax_pe;
+    float new_motor_pe = (bridge->stats.avg_motor_pe * (n - 1) + motor_pe) / n;
+    if (isfinite(new_motor_pe)) bridge->stats.avg_motor_pe = new_motor_pe;
+    float new_wm_load = (bridge->stats.avg_wm_load * (n - 1) + omni_broca_wm_get_load(bridge)) / n;
+    if (isfinite(new_wm_load)) bridge->stats.avg_wm_load = new_wm_load;
+    float new_free_energy = (bridge->stats.avg_free_energy * (n - 1) + bridge->broca_effects.free_energy) / n;
+    if (isfinite(new_free_energy)) bridge->stats.avg_free_energy = new_free_energy;
 
     nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
@@ -588,9 +588,9 @@ int omni_broca_get_omni_effects(const omni_broca_bridge_t* bridge,
                                  omni_to_broca_effects_t* effects) {
     NIMCP_CHECK_THROW(bridge != NULL && effects != NULL,
                       NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_omni_effects");
-    nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->base.mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_broca_effects_t));
-    nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -598,9 +598,9 @@ int omni_broca_get_broca_effects(const omni_broca_bridge_t* bridge,
                                   broca_to_omni_effects_t* effects) {
     NIMCP_CHECK_THROW(bridge != NULL && effects != NULL,
                       NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_broca_effects");
-    nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->base.mutex);
     memcpy(effects, &bridge->broca_effects, sizeof(broca_to_omni_effects_t));
-    nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -608,9 +608,9 @@ int omni_broca_get_stats(const omni_broca_bridge_t* bridge,
                           omni_broca_stats_t* stats) {
     NIMCP_CHECK_THROW(bridge != NULL && stats != NULL,
                       NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_stats");
-    nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_broca_stats_t));
-    nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 

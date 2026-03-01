@@ -305,7 +305,7 @@ cortical_layers_sleep_bridge_t cortical_layers_sleep_bridge_create(
     /* Guard clauses: Validate required parameters */
     if (!layers || !sleep) {
         NIMCP_LOGGING_ERROR("NULL layers or sleep system in bridge create");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_layers_sleep_bridge_create: required parameter is NULL (layers, sleep)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_layers_sleep_bridge_create: required parameter is NULL (layers, sleep)");
         return NULL;
     }
 
@@ -441,37 +441,42 @@ int cortical_layers_sleep_apply_modulation(cortical_layers_sleep_bridge_t bridge
         return -1;
     }
 
+    /* Copy state under lock, then call external functions outside lock
+     * to avoid potential deadlock if external code acquires other locks */
     nimcp_mutex_lock(bridge->base.mutex);
 
     laminar_structure_t* layers = bridge->layers;
-
-    /* Apply feedforward modulation */
-    if (bridge->config.enable_connectivity_modulation) {
-        /* Layer IV → Layer II/III */
-        laminar_connect_feedforward(layers, CC_LAYER_IV, CC_LAYER_II_III,
-                                    1.0f * bridge->effects.feedforward_balance);
-
-        /* Layer II/III → Layer V */
-        laminar_connect_feedforward(layers, CC_LAYER_II_III, CC_LAYER_V,
-                                    0.8f * bridge->effects.feedforward_balance);
-
-        /* Layer V → Layer VI */
-        laminar_connect_feedforward(layers, CC_LAYER_V, CC_LAYER_VI,
-                                    0.7f * bridge->effects.feedforward_balance);
-    }
-
-    /* Apply feedback modulation */
-    if (bridge->config.enable_connectivity_modulation) {
-        /* Layer VI → Layer IV */
-        laminar_connect_feedback(layers, CC_LAYER_VI, CC_LAYER_IV,
-                                0.5f * bridge->effects.feedback_balance);
-
-        /* Layer I → Layer II/III */
-        laminar_connect_feedback(layers, CC_LAYER_I, CC_LAYER_II_III,
-                                0.4f * bridge->effects.feedback_balance);
-    }
+    bool do_connectivity = bridge->config.enable_connectivity_modulation;
+    float ff_balance = bridge->effects.feedforward_balance;
+    float fb_balance = bridge->effects.feedback_balance;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Apply feedforward modulation (outside lock) */
+    if (do_connectivity) {
+        /* Layer IV -> Layer II/III */
+        laminar_connect_feedforward(layers, CC_LAYER_IV, CC_LAYER_II_III,
+                                    1.0f * ff_balance);
+
+        /* Layer II/III -> Layer V */
+        laminar_connect_feedforward(layers, CC_LAYER_II_III, CC_LAYER_V,
+                                    0.8f * ff_balance);
+
+        /* Layer V -> Layer VI */
+        laminar_connect_feedforward(layers, CC_LAYER_V, CC_LAYER_VI,
+                                    0.7f * ff_balance);
+    }
+
+    /* Apply feedback modulation (outside lock) */
+    if (do_connectivity) {
+        /* Layer VI -> Layer IV */
+        laminar_connect_feedback(layers, CC_LAYER_VI, CC_LAYER_IV,
+                                0.5f * fb_balance);
+
+        /* Layer I -> Layer II/III */
+        laminar_connect_feedback(layers, CC_LAYER_I, CC_LAYER_II_III,
+                                0.4f * fb_balance);
+    }
 
     return 0;
 }

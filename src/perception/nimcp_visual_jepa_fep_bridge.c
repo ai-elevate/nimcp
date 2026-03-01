@@ -407,8 +407,8 @@ int visual_jepa_fep_report_prediction_error(
     bridge->signals.total_prediction_error = pe_magnitude;
 
     /* Update stats */
-    bridge->state.avg_prediction_error = 0.9f * bridge->state.avg_prediction_error +
-                                          0.1f * pe_magnitude;
+    float new_avg_pe = 0.9f * bridge->state.avg_prediction_error + 0.1f * pe_magnitude;
+    if (isfinite(new_avg_pe)) bridge->state.avg_prediction_error = new_avg_pe;
 
     if (pe_magnitude < bridge->stats.min_pe) {
         bridge->stats.min_pe = pe_magnitude;
@@ -500,8 +500,9 @@ int visual_jepa_fep_bridge_update(
     bridge->precision.global_precision = (float)(sum_prec / bridge->precision.num_patches);
 
     /* Update running average precision */
-    bridge->state.avg_precision = 0.99f * bridge->state.avg_precision +
-                                   0.01f * bridge->precision.global_precision;
+    float new_avg_prec = 0.99f * bridge->state.avg_precision +
+                         0.01f * bridge->precision.global_precision;
+    if (isfinite(new_avg_prec)) bridge->state.avg_precision = new_avg_prec;
 
     /* Decay precision slightly (regression to mean) */
     float decay = bridge->config.precision_decay;
@@ -544,6 +545,7 @@ int visual_jepa_fep_update_precision(
 
     for (uint32_t i = 0; i < count; i++) {
         float pe = prediction_errors[i];
+        if (!isfinite(pe)) continue;  /* Skip NaN/Inf prediction errors */
         bridge->signals.prediction_errors[i] = pe;
 
         /* Precision = inverse variance of prediction errors */
@@ -560,9 +562,11 @@ int visual_jepa_fep_update_precision(
         }
 
         /* EMA update */
-        bridge->precision.patch_precision[i] =
-            (1.0f - lr) * bridge->precision.patch_precision[i] +
+        float updated = (1.0f - lr) * bridge->precision.patch_precision[i] +
             lr * new_precision;
+        if (isfinite(updated)) {
+            bridge->precision.patch_precision[i] = updated;
+        }
     }
 
     return 0;

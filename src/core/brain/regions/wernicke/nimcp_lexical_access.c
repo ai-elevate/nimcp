@@ -140,7 +140,7 @@ static bool trie_insert(trie_node_t* root, const uint8_t* phonemes,
         if (!current->children[p]) {
             current->children[p] = trie_create_node();
             if (!current->children[p]) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trie_insert: current->children is NULL");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "trie_insert: failed to allocate trie child node");
                 return false;
             }
         }
@@ -194,8 +194,7 @@ static trie_node_t* trie_traverse(trie_node_t* root, const uint8_t* phonemes,
         }
 
         if (!current->children[p]) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trie_traverse: current->children is NULL");
-            return NULL;
+            return NULL;  /* Phoneme path not found — normal lookup miss */
         }
         current = current->children[p];
     }
@@ -240,11 +239,8 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
 
     lexical_access_t* lex = (lexical_access_t*)nimcp_calloc(1, sizeof(lexical_access_t));
     if (!lex) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lexical_create: failed to allocate lexical_access");
         return NULL;
-
     }
 
     lex->config = cfg;
@@ -287,7 +283,7 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
         nimcp_free(lex->entries);
         nimcp_free(lex->hash_table);
         nimcp_free(lex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lexical_create: lex->cohort is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lexical_create: failed to allocate cohort members");
         return NULL;
     }
 
@@ -300,7 +296,7 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
         nimcp_free(lex->entries);
         nimcp_free(lex->hash_table);
         nimcp_free(lex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lexical_create: lex->current_phonemes is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lexical_create: failed to allocate phoneme buffer");
         return NULL;
     }
 
@@ -924,12 +920,14 @@ bool lexical_recognize_word(
     /* Update stats */
     if (result->word_recognized) {
         lex->stats.hits++;
-        lex->stats.avg_recognition_point =
+        float new_avg_recog =
             (lex->stats.avg_recognition_point * (lex->stats.hits - 1) +
              result->recognition_point) / lex->stats.hits;
-        lex->stats.avg_confidence =
+        if (isfinite(new_avg_recog)) lex->stats.avg_recognition_point = new_avg_recog;
+        float new_avg_conf =
             (lex->stats.avg_confidence * (lex->stats.hits - 1) +
              result->confidence) / lex->stats.hits;
+        if (isfinite(new_avg_conf)) lex->stats.avg_confidence = new_avg_conf;
     } else {
         lex->stats.misses++;
     }

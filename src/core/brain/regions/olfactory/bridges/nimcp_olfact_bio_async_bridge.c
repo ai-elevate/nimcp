@@ -66,8 +66,7 @@ static olfact_bio_subscription_t* find_subscription(olfact_bio_async_bridge_t* b
             return &b->subscriptions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: validation failed");
-    return NULL;
+    return NULL;  /* Not found is a normal condition */
 }
 
 static int count_subscribers_for_type(const olfact_bio_async_bridge_t* b, olfact_bio_msg_type_t type) {
@@ -119,6 +118,8 @@ olfact_bio_async_bridge_t* olfact_bio_async_bridge_create(const olfact_bio_async
 
     }
 
+    bridge_base_init(&bridge->base, 0, "olfact_bio_async");
+
     if (config) {
         bridge->config = *config;
     } else {
@@ -128,6 +129,7 @@ olfact_bio_async_bridge_t* olfact_bio_async_bridge_create(const olfact_bio_async
     bridge->subscription_capacity = bridge->config.max_subscriptions;
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity, sizeof(olfact_bio_subscription_t));
     if (!bridge->subscriptions) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
@@ -148,6 +150,7 @@ void olfact_bio_async_bridge_destroy(olfact_bio_async_bridge_t* bridge) {
     }
 
     nimcp_free(bridge->subscriptions);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

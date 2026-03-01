@@ -309,8 +309,8 @@ int speech_cortex_fep_compute_phoneme_prediction_error(
 
     /* Update state */
     bridge->state.current_phoneme_pe = *prediction_error;
-    bridge->state.avg_phoneme_pe =
-        0.9f * bridge->state.avg_phoneme_pe + 0.1f * (*prediction_error);
+    float new_avg_ph_pe = 0.9f * bridge->state.avg_phoneme_pe + 0.1f * (*prediction_error);
+    if (isfinite(new_avg_ph_pe)) bridge->state.avg_phoneme_pe = new_avg_ph_pe;
 
     if (*prediction_error > bridge->state.max_phoneme_pe) {
         bridge->state.max_phoneme_pe = *prediction_error;

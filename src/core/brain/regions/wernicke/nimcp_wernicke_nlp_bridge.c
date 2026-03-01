@@ -172,8 +172,8 @@ static int perform_lexical_access(
     /* Update statistics */
     uint64_t elapsed = nimcp_time_get_ms() - start;
     bridge->stats.words_recognized += *word_count;
-    bridge->stats.avg_lexical_time_ms =
-        (bridge->stats.avg_lexical_time_ms * 0.9f) + (elapsed * 0.1f);
+    float new_lex_time = (bridge->stats.avg_lexical_time_ms * 0.9f) + (elapsed * 0.1f);
+    if (isfinite(new_lex_time)) bridge->stats.avg_lexical_time_ms = new_lex_time;
 
     return 0;
 }
@@ -228,10 +228,10 @@ static int perform_semantic_integration(
     /* Update statistics */
     uint64_t elapsed = nimcp_time_get_ms() - start;
     bridge->stats.concepts_activated += *concept_count;
-    bridge->stats.avg_semantic_time_ms =
-        (bridge->stats.avg_semantic_time_ms * 0.9f) + (elapsed * 0.1f);
-    bridge->stats.avg_semantic_coherence =
-        (bridge->stats.avg_semantic_coherence * 0.9f) + (*coherence * 0.1f);
+    float new_sem_time = (bridge->stats.avg_semantic_time_ms * 0.9f) + (elapsed * 0.1f);
+    if (isfinite(new_sem_time)) bridge->stats.avg_semantic_time_ms = new_sem_time;
+    float new_sem_coh = (bridge->stats.avg_semantic_coherence * 0.9f) + (*coherence * 0.1f);
+    if (isfinite(new_sem_coh)) bridge->stats.avg_semantic_coherence = new_sem_coh;
 
     return 0;
 }
@@ -280,8 +280,8 @@ static int perform_syntactic_parsing(
     }
 
     bridge->stats.sentences_parsed++;
-    bridge->stats.avg_syntactic_score =
-        (bridge->stats.avg_syntactic_score * 0.9f) + (*wellformedness * 0.1f);
+    float new_syn_score = (bridge->stats.avg_syntactic_score * 0.9f) + (*wellformedness * 0.1f);
+    if (isfinite(new_syn_score)) bridge->stats.avg_syntactic_score = new_syn_score;
 
     return 0;
 }
@@ -372,6 +372,13 @@ wernicke_nlp_bridge_t* wernicke_nlp_bridge_create(
         return NULL;
     }
 
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "wernicke_nlp") != 0) {
+        free_buffers(bridge);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     /* Initialize state */
     bridge->state = WERNICKE_NLP_STATE_IDLE;
     bridge->mode = bridge->config.default_mode;
@@ -385,6 +392,7 @@ void wernicke_nlp_bridge_destroy(wernicke_nlp_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "wernicke_nlp");
 
+    bridge_base_cleanup(&bridge->base);
     free_buffers(bridge);
     nimcp_free(bridge);
 
@@ -642,10 +650,10 @@ int wernicke_nlp_process_phonemes(
     result->processing_time_ms = (float)(nimcp_time_get_ms() - start);
 
     /* Update statistics */
-    bridge->stats.avg_total_time_ms =
-        (bridge->stats.avg_total_time_ms * 0.9f) + (result->processing_time_ms * 0.1f);
-    bridge->stats.avg_lexical_confidence =
-        (bridge->stats.avg_lexical_confidence * 0.9f) + (result->lexical_confidence * 0.1f);
+    float new_total_time = (bridge->stats.avg_total_time_ms * 0.9f) + (result->processing_time_ms * 0.1f);
+    if (isfinite(new_total_time)) bridge->stats.avg_total_time_ms = new_total_time;
+    float new_lex_conf = (bridge->stats.avg_lexical_confidence * 0.9f) + (result->lexical_confidence * 0.1f);
+    if (isfinite(new_lex_conf)) bridge->stats.avg_lexical_confidence = new_lex_conf;
 
     bridge->state = WERNICKE_NLP_STATE_COMPLETE;
 

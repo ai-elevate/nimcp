@@ -419,12 +419,13 @@ occipital_cortical_bridge_t* occipital_cortical_bridge_create(
         (occipital_cortical_bridge_t*)nimcp_malloc(sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR(CORTICAL_BRIDGE_LOG_MODULE, "Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_cortical_bridge_create: allocation failed");
         return NULL;
     }
 
     memset(bridge, 0, sizeof(*bridge));
+
+    if (bridge_base_init(&bridge->base, 0, "occipital_cortical") != 0) { nimcp_free(bridge); return NULL; }
 
     /* Set configuration */
     if (config) {
@@ -442,8 +443,9 @@ occipital_cortical_bridge_t* occipital_cortical_bridge_create(
     /* Initialize retinotopic map */
     if (init_retinotopic_map(bridge) != 0) {
         LOG_ERROR(CORTICAL_BRIDGE_LOG_MODULE, "Failed to init retinotopic map");
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "occipital_cortical_default_config: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_cortical_bridge_create: retinotopic map init failed");
         return NULL;
     }
 
@@ -471,6 +473,7 @@ void occipital_cortical_bridge_destroy(occipital_cortical_bridge_t* bridge) {
         nimcp_free(bridge->retinotopic_map);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

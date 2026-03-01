@@ -53,6 +53,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -216,7 +217,7 @@ struct omni_cortical_columns_bridge {
     bool bio_async_connected;        /**< Bio-async connection state */
 
     /* Thread safety */
-    void* mutex;
+    nimcp_platform_mutex_t* mutex;
 };
 
 /* ============================================================================

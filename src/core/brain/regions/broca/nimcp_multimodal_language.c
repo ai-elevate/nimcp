@@ -61,7 +61,7 @@ multimodal_language_t* multimodal_lang_create(const multimodal_config_t* config)
     multimodal_language_t* processor = (multimodal_language_t*)nimcp_calloc(1, sizeof(multimodal_language_t));
     if (!processor) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_lang_create: failed to allocate processor");
 
         return NULL;
 
@@ -411,7 +411,6 @@ static const char* DEICTIC_TRIGGERS[] = {
 
 static bool contains_word(const char* text, const char* word) {
     if (!text || !word) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_word: required parameter is NULL (text, word)");
         return false;
     }
 

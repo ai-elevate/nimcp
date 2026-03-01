@@ -335,7 +335,7 @@ static v1_processor_t* v1_create(uint32_t num_orientations, uint32_t num_scales,
         if (v1->contrast_map) nimcp_free(v1->contrast_map);
         if (v1->edges) nimcp_free(v1->edges);
         nimcp_free(v1);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "set_error: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "v1_create: allocation failed");
         return NULL;
     }
 
@@ -652,7 +652,7 @@ static v5_mt_processor_t* v5_create(uint32_t width, uint32_t height, uint32_t nu
         if (v5->optic_flow_x) nimcp_free(v5->optic_flow_x);
         if (v5->optic_flow_y) nimcp_free(v5->optic_flow_y);
         nimcp_free(v5);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v5_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "v5_create: allocation failed");
         return NULL;
     }
 
@@ -1204,7 +1204,7 @@ bool occipital_process(occipital_adapter_t* adapter, visual_processing_result_t*
 
     if (!adapter->has_input) {
         set_error(adapter, OCCIPITAL_ERROR_NO_INPUT);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_process: adapter->has_input is NULL");
+        /* No input available — caller should set input first, not immune-worthy */
         return false;
     }
 

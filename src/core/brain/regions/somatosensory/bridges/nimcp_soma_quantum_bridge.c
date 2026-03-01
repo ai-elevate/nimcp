@@ -102,11 +102,14 @@ int soma_quantum_default_config(soma_quantum_config_t* config) {
 soma_quantum_bridge_t* soma_quantum_bridge_create(const soma_quantum_config_t* config) {
     soma_quantum_bridge_t* bridge = (soma_quantum_bridge_t*)nimcp_calloc(1, sizeof(soma_quantum_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_quantum_bridge_create: allocation failed");
         return NULL;
+    }
 
+    if (bridge_base_init(&bridge->base, 0, "soma_quantum") != 0) {
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_quantum_bridge_create: bridge_base_init failed");
+        return NULL;
     }
 
     if (config) {
@@ -125,6 +128,7 @@ soma_quantum_bridge_t* soma_quantum_bridge_create(const soma_quantum_config_t* c
 void soma_quantum_bridge_destroy(soma_quantum_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "soma_quantum");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -178,8 +182,7 @@ int soma_quantum_optimize_thresholds(soma_quantum_bridge_t* bridge,
         return -1;
     }
     if (!bridge->config.enable_qmc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_status: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     bridge->status = SOMA_QUANTUM_STATUS_COMPUTING;
@@ -197,10 +200,19 @@ int soma_quantum_optimize_thresholds(soma_quantum_bridge_t* bridge,
     /* Classical fallback: simple Monte Carlo optimization */
     float best_energy = 1e10f;
 
+    /* Heap-allocate candidate buffer (alloca inside loop risks stack overflow) */
+    float* candidate = (float*)nimcp_calloc(spec->num_thresholds, sizeof(float));
+    if (!candidate) {
+        nimcp_free(result->optimal_thresholds);
+        result->optimal_thresholds = NULL;
+        bridge->status = SOMA_QUANTUM_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_quantum_optimize_thresholds: candidate allocation failed");
+        return -1;
+    }
+
     for (uint32_t s = 0; s < bridge->config.qmc_samples; s++) {
         /* Sample thresholds */
         float energy = 0.0f;
-        float* candidate = (float*)alloca(spec->num_thresholds * sizeof(float));
 
         for (uint32_t i = 0; i < spec->num_thresholds; i++) {
             /* Perturb current threshold */
@@ -226,6 +238,8 @@ int soma_quantum_optimize_thresholds(soma_quantum_bridge_t* bridge,
                    spec->num_thresholds * sizeof(float));
         }
     }
+
+    nimcp_free(candidate);
 
     result->energy = best_energy;
     result->variance = 0.1f;  /* Placeholder */
@@ -282,8 +296,7 @@ int soma_quantum_search_body_map(soma_quantum_bridge_t* bridge,
         return -1;
     }
     if (!bridge->config.enable_walks) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_status: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     bridge->status = SOMA_QUANTUM_STATUS_COMPUTING;
@@ -386,12 +399,11 @@ int soma_quantum_optimize_attention(soma_quantum_bridge_t* bridge,
                                     const soma_attention_alloc_spec_t* spec,
                                     soma_quantum_anneal_result_t* result) {
     if (!bridge || !spec || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_quantum_get_status: required parameter is NULL (bridge, spec, result)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_optimize_attention: required parameter is NULL");
         return -1;
     }
     if (!bridge->config.enable_annealing) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_quantum_get_status: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     bridge->status = SOMA_QUANTUM_STATUS_COMPUTING;
@@ -404,8 +416,15 @@ int soma_quantum_optimize_attention(soma_quantum_bridge_t* bridge,
     }
     result->solution_dim = spec->num_regions;
 
-    /* Classical simulated annealing fallback */
-    float* current = (float*)alloca(spec->num_regions * sizeof(float));
+    /* Classical simulated annealing fallback — use heap to avoid stack overflow */
+    float* current = (float*)nimcp_calloc(spec->num_regions, sizeof(float));
+    if (!current) {
+        nimcp_free(result->solution_vector);
+        result->solution_vector = NULL;
+        bridge->status = SOMA_QUANTUM_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_quantum_optimize_attention: current allocation failed");
+        return -1;
+    }
     memcpy(current, spec->current_allocation, spec->num_regions * sizeof(float));
 
     float temperature = bridge->config.anneal_initial_temp;
@@ -452,6 +471,8 @@ int soma_quantum_optimize_attention(soma_quantum_bridge_t* bridge,
     }
 
     memcpy(result->solution_vector, current, spec->num_regions * sizeof(float));
+    nimcp_free(current);
+
     result->final_energy = current_energy;
     result->temperature_final = temperature;
     result->converged = true;
@@ -493,8 +514,10 @@ int soma_quantum_bind_features(soma_quantum_bridge_t* bridge,
         binding_weights[i] = expf(features[i]);
         sum += binding_weights[i];
     }
-    for (uint32_t i = 0; i < num_features; i++) {
-        binding_weights[i] /= sum;
+    if (sum > 0.0f) {
+        for (uint32_t i = 0; i < num_features; i++) {
+            binding_weights[i] /= sum;
+        }
     }
 
     return 0;
@@ -532,11 +555,15 @@ int soma_quantum_mcts_evaluate(soma_quantum_bridge_t* bridge,
     }
 
     /* Placeholder - average of state */
+    if (state_dim == 0) {
+        *value = 0.0f;
+        return 0;
+    }
     float sum = 0.0f;
     for (uint32_t i = 0; i < state_dim; i++) {
         sum += state[i];
     }
-    *value = sum / state_dim;
+    *value = sum / (float)state_dim;
 
     return 0;
 }

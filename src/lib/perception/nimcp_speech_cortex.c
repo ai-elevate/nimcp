@@ -418,7 +418,6 @@ bool speech_cortex_request_frequency_boost(speech_cortex_t* cortex,
     }
     if (target_freq_hz) *target_freq_hz = 0.0f;
     if (bandwidth_hz) *bandwidth_hz = 0.0f;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_cortex_request_frequency_boost: validation failed");
     return false;  /* No boost needed in stub */
 }
 
@@ -533,8 +532,7 @@ bool speech_cortex_get_second_messenger_state(
         return false;
     }
     (void)neuron_id;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_get_second_messenger_state: required parameter is NULL (cortex, state)");
-    return false;
+    return false;  /* Second messenger system not implemented in stub */
 }
 
 /* ============================================================================

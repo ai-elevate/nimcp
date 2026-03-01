@@ -120,7 +120,7 @@ omni_cortical_columns_bridge_t* omni_cc_bridge_create(
         nimcp_calloc(1, sizeof(omni_cortical_columns_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate omni cortical columns bridge");
 
         return NULL;
 
@@ -141,12 +141,16 @@ omni_cortical_columns_bridge_t* omni_cc_bridge_create(
 
     /* Initialize layer modulation */
     bridge->omni_effects.layer_modulation = nimcp_calloc(6, sizeof(float));
-    if (bridge->omni_effects.layer_modulation) {
-        bridge->omni_effects.layer_modulation[2] = bridge->config.layer_2_3_weight;
-        bridge->omni_effects.layer_modulation[3] = bridge->config.layer_2_3_weight;
-        bridge->omni_effects.layer_modulation[4] = bridge->config.layer_4_weight;
-        bridge->omni_effects.layer_modulation[5] = bridge->config.layer_5_weight;
+    if (!bridge->omni_effects.layer_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_cc_bridge_create: layer_modulation alloc failed");
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+        return NULL;
     }
+    bridge->omni_effects.layer_modulation[2] = bridge->config.layer_2_3_weight;
+    bridge->omni_effects.layer_modulation[3] = bridge->config.layer_2_3_weight;
+    bridge->omni_effects.layer_modulation[4] = bridge->config.layer_4_weight;
+    bridge->omni_effects.layer_modulation[5] = bridge->config.layer_5_weight;
 
     memset(&bridge->stats, 0, sizeof(omni_cc_stats_t));
 
@@ -256,14 +260,21 @@ int omni_cc_update(omni_cortical_columns_bridge_t* bridge) {
     /* Update statistics */
     bridge->stats.total_updates++;
     float n = (float)bridge->stats.total_updates;
-    bridge->stats.avg_sparsity =
-        (bridge->stats.avg_sparsity * (n - 1) + bridge->column_effects.sparsity) / n;
-    bridge->stats.avg_competition_entropy =
-        (bridge->stats.avg_competition_entropy * (n - 1) +
-         bridge->column_effects.competition_entropy) / n;
-    bridge->stats.avg_bias_strength =
-        (bridge->stats.avg_bias_strength * (n - 1) +
-         bridge->omni_effects.bias_strength) / n;
+    if (n > 0.0f) {
+        float new_avg_sparsity =
+            (bridge->stats.avg_sparsity * (n - 1) + bridge->column_effects.sparsity) / n;
+        if (isfinite(new_avg_sparsity)) bridge->stats.avg_sparsity = new_avg_sparsity;
+
+        float new_avg_entropy =
+            (bridge->stats.avg_competition_entropy * (n - 1) +
+             bridge->column_effects.competition_entropy) / n;
+        if (isfinite(new_avg_entropy)) bridge->stats.avg_competition_entropy = new_avg_entropy;
+
+        float new_avg_bias =
+            (bridge->stats.avg_bias_strength * (n - 1) +
+             bridge->omni_effects.bias_strength) / n;
+        if (isfinite(new_avg_bias)) bridge->stats.avg_bias_strength = new_avg_bias;
+    }
 
     nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
@@ -320,7 +331,7 @@ int omni_cc_get_hypercolumn_bias(const omni_cortical_columns_bridge_t* bridge,
                                   uint32_t* num_minicolumns) {
     NIMCP_CHECK_THROW(bridge && bias && num_minicolumns, NIMCP_ERROR_INVALID_PARAM, "bridge, bias, or num_minicolumns is NULL");
 
-    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
 
     if (bridge->omni_effects.prediction_bias) {
         *num_minicolumns = bridge->omni_effects.num_minicolumns;
@@ -330,7 +341,7 @@ int omni_cc_get_hypercolumn_bias(const omni_cortical_columns_bridge_t* bridge,
         *num_minicolumns = 0;
     }
 
-    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -395,7 +406,7 @@ int omni_cc_get_winners(const omni_cortical_columns_bridge_t* bridge,
                          uint32_t* num_winners) {
     NIMCP_CHECK_THROW(bridge && winner_indices && winner_activations && num_winners, NIMCP_ERROR_INVALID_PARAM, "bridge, winner_indices, winner_activations, or num_winners is NULL");
 
-    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
 
     if (bridge->column_effects.winner_indices &&
         bridge->column_effects.winner_activations) {
@@ -408,7 +419,7 @@ int omni_cc_get_winners(const omni_cortical_columns_bridge_t* bridge,
         *num_winners = 0;
     }
 
-    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -461,12 +472,12 @@ int omni_cc_get_layer_pe(const omni_cortical_columns_bridge_t* bridge,
                           float* pe) {
     NIMCP_CHECK_THROW(bridge && pe, NIMCP_ERROR_INVALID_PARAM, "bridge or pe is NULL");
 
-    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
 
     /* Placeholder - would need to compute layer-specific PE */
     *pe = 0.0f;
 
-    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -477,27 +488,27 @@ int omni_cc_get_layer_pe(const omni_cortical_columns_bridge_t* bridge,
 int omni_cc_get_omni_effects(const omni_cortical_columns_bridge_t* bridge,
                               omni_to_columns_effects_t* effects) {
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
-    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_columns_effects_t));
-    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_cc_get_column_effects(const omni_cortical_columns_bridge_t* bridge,
                                 columns_to_omni_effects_t* effects) {
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
-    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
     memcpy(effects, &bridge->column_effects, sizeof(columns_to_omni_effects_t));
-    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_cc_get_stats(const omni_cortical_columns_bridge_t* bridge,
                        omni_cc_stats_t* stats) {
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM, "bridge or stats is NULL");
-    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_cc_stats_t));
-    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_cortical_columns_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 

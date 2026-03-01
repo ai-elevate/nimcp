@@ -79,8 +79,7 @@ static sensory_swarm_node_t* find_node(sensory_swarm_bridge_t* bridge, uint32_t 
             return &bridge->nodes[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_node: validation failed");
-    return NULL;
+    return NULL;  /* Not found is a normal condition */
 }
 
 static sensory_swarm_task_t* find_task(sensory_swarm_bridge_t* bridge, uint32_t task_id) {
@@ -89,8 +88,7 @@ static sensory_swarm_task_t* find_task(sensory_swarm_bridge_t* bridge, uint32_t 
             return &bridge->tasks[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_task: validation failed");
-    return NULL;
+    return NULL;  /* Not found is a normal condition */
 }
 
 /* ============================================================================
@@ -126,12 +124,11 @@ int sensory_swarm_default_config(sensory_swarm_config_t* config) {
 sensory_swarm_bridge_t* sensory_swarm_bridge_create(const sensory_swarm_config_t* config) {
     sensory_swarm_bridge_t* bridge = (sensory_swarm_bridge_t*)nimcp_calloc(1, sizeof(sensory_swarm_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_swarm_bridge_create: allocation failed");
         return NULL;
-
     }
+
+    bridge_base_init(&bridge->base, 0, "sensory_swarm");
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(sensory_swarm_config_t));
@@ -145,8 +142,9 @@ sensory_swarm_bridge_t* sensory_swarm_bridge_create(const sensory_swarm_config_t
     if (!bridge->nodes || !bridge->tasks) {
         nimcp_free(bridge->nodes);
         nimcp_free(bridge->tasks);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_bridge_create: required parameter is NULL (bridge->nodes, bridge->tasks)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_swarm_bridge_create: sub-allocation failed");
         return NULL;
     }
 
@@ -172,6 +170,7 @@ void sensory_swarm_bridge_destroy(sensory_swarm_bridge_t* bridge) {
 
     nimcp_free(bridge->nodes);
     nimcp_free(bridge->tasks);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -249,8 +248,7 @@ int sensory_swarm_remove_node(sensory_swarm_bridge_t* bridge, uint32_t node_id) 
 
     sensory_swarm_node_t* node = find_node(bridge, node_id);
     if (!node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_remove_node: node is NULL");
-        return -1;
+        return -1;  /* Node not found is not an immune-worthy error */
     }
 
     node->active = false;
@@ -268,8 +266,7 @@ int sensory_swarm_update_node(sensory_swarm_bridge_t* bridge, uint32_t node_id,
 
     sensory_swarm_node_t* node = find_node(bridge, node_id);
     if (!node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_remove_node: node is NULL");
-        return -1;
+        return -1;  /* Node not found is not an immune-worthy error */
     }
 
     node->sensory_value = sensory_value;
@@ -317,10 +314,13 @@ int sensory_swarm_submit_task(sensory_swarm_bridge_t* bridge, sensory_swarm_task
 
     if (input && input_dim > 0) {
         task->input_data = (float*)nimcp_calloc(input_dim, sizeof(float));
-        if (task->input_data) {
-            memcpy(task->input_data, input, input_dim * sizeof(float));
-            task->input_dim = input_dim;
+        if (!task->input_data) {
+            bridge->num_tasks--;  /* Roll back task slot */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_swarm_submit_task: input_data allocation failed");
+            return -1;
         }
+        memcpy(task->input_data, input, input_dim * sizeof(float));
+        task->input_dim = input_dim;
     }
 
     /* Assign nodes of matching modality */
@@ -374,8 +374,7 @@ int sensory_swarm_get_task_status(sensory_swarm_bridge_t* bridge, uint32_t task_
 
     sensory_swarm_task_t* task = find_task(bridge, task_id);
     if (!task) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_get_node_count: task is NULL");
-        return -1;
+        return -1;  /* Task not found is not an immune-worthy error */
     }
 
     *status = task->status;
@@ -391,8 +390,7 @@ int sensory_swarm_get_task_result(sensory_swarm_bridge_t* bridge, uint32_t task_
 
     sensory_swarm_task_t* task = find_task(bridge, task_id);
     if (!task) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_get_node_count: task is NULL");
-        return -1;
+        return -1;  /* Task not found is not an immune-worthy error */
     }
     if (task->status != SENSORY_SWARM_STATUS_COMPLETE) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_swarm_get_node_count: validation failed");
@@ -413,8 +411,7 @@ int sensory_swarm_cancel_task(sensory_swarm_bridge_t* bridge, uint32_t task_id) 
 
     sensory_swarm_task_t* task = find_task(bridge, task_id);
     if (!task) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_cancel_task: task is NULL");
-        return -1;
+        return -1;  /* Task not found is not an immune-worthy error */
     }
 
     task->status = SENSORY_SWARM_STATUS_FAILED;
@@ -435,8 +432,7 @@ int sensory_swarm_explore_tactile(sensory_swarm_bridge_t* bridge, const float* b
         return -1;
     }
     if (!bridge->config.enable_touch_swarm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_cancel_task: bridge->config is NULL");
-        return -1;
+        return -1;  /* Feature disabled, not an error worth reporting to immune */
     }
     (void)bounds;
 
@@ -487,8 +483,7 @@ int sensory_swarm_explore_olfactory(sensory_swarm_bridge_t* bridge, const float*
         return -1;
     }
     if (!bridge->config.enable_smell_swarm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_cancel_task: bridge->config is NULL");
-        return -1;
+        return -1;  /* Feature disabled, not an error worth reporting to immune */
     }
     (void)bounds;
 
@@ -528,8 +523,7 @@ int sensory_swarm_track_odor(sensory_swarm_bridge_t* bridge, const float* initia
         return -1;
     }
     if (!bridge->config.enable_smell_swarm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_cancel_task: bridge->config is NULL");
-        return -1;
+        return -1;  /* Feature disabled, not an error worth reporting to immune */
     }
 
     memset(result, 0, sizeof(sensory_swarm_tracking_t));
@@ -560,8 +554,7 @@ int sensory_swarm_track_texture(sensory_swarm_bridge_t* bridge, float target_tex
         return -1;
     }
     if (!bridge->config.enable_touch_swarm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_cancel_task: bridge->config is NULL");
-        return -1;
+        return -1;  /* Feature disabled, not an error worth reporting to immune */
     }
     (void)target_texture;
 
@@ -614,8 +607,10 @@ int sensory_swarm_build_consensus(sensory_swarm_bridge_t* bridge, sensory_swarm_
         *confidence = 0.0f;
     }
 
-    bridge->stats.avg_consensus_confidence =
-        bridge->stats.avg_consensus_confidence * 0.9f + *confidence * 0.1f;
+    {
+        float new_conf = bridge->stats.avg_consensus_confidence * 0.9f + *confidence * 0.1f;
+        if (isfinite(new_conf)) bridge->stats.avg_consensus_confidence = new_conf;
+    }
 
     return 0;
 }
@@ -627,8 +622,7 @@ int sensory_swarm_evaluate_food(sensory_swarm_bridge_t* bridge, const taste_stim
         return -1;
     }
     if (!bridge->config.enable_taste_swarm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_swarm_cancel_task: bridge->config is NULL");
-        return -1;
+        return -1;  /* Feature disabled, not an error worth reporting to immune */
     }
 
     /* Compute quality from taste profile */

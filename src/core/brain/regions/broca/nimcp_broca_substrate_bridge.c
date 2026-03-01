@@ -11,6 +11,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <math.h>
 
 //=============================================================================
 #include <stddef.h>
@@ -84,6 +85,13 @@ broca_substrate_bridge_t* broca_substrate_bridge_create(
 
     }
 
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "broca_substrate") != 0) {
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_substrate_bridge_create: bridge_base_init failed");
+        return NULL;
+    }
+
     bridge->broca = broca;
     bridge->substrate = substrate;
     bridge->config = config ? *config : broca_substrate_default_config();
@@ -106,6 +114,7 @@ broca_substrate_bridge_t* broca_substrate_bridge_create(
 
 void broca_substrate_bridge_destroy(broca_substrate_bridge_t* bridge) {
     if (bridge) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
     }
 }
@@ -191,12 +200,14 @@ int broca_substrate_bridge_update(broca_substrate_bridge_t* bridge) {
     bridge->stats.updates_processed++;
 
     float prev_avg_fluency = bridge->stats.avg_speech_fluency;
-    bridge->stats.avg_speech_fluency = (prev_avg_fluency * (bridge->stats.updates_processed - 1) +
-                                        bridge->effects.speech_fluency) / bridge->stats.updates_processed;
+    float new_avg_fluency = (prev_avg_fluency * (bridge->stats.updates_processed - 1) +
+                             bridge->effects.speech_fluency) / bridge->stats.updates_processed;
+    if (isfinite(new_avg_fluency)) bridge->stats.avg_speech_fluency = new_avg_fluency;
 
     float prev_avg_syntax = bridge->stats.avg_syntax_complexity;
-    bridge->stats.avg_syntax_complexity = (prev_avg_syntax * (bridge->stats.updates_processed - 1) +
-                                           bridge->effects.syntax_complexity) / bridge->stats.updates_processed;
+    float new_avg_syntax = (prev_avg_syntax * (bridge->stats.updates_processed - 1) +
+                            bridge->effects.syntax_complexity) / bridge->stats.updates_processed;
+    if (isfinite(new_avg_syntax)) bridge->stats.avg_syntax_complexity = new_avg_syntax;
 
     if (bridge->effects.overall_capacity < bridge->stats.min_observed_capacity) {
         bridge->stats.min_observed_capacity = bridge->effects.overall_capacity;

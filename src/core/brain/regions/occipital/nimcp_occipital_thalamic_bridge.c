@@ -58,7 +58,8 @@ struct occipital_thalamic_bridge {
  * @brief Update running average statistic
  */
 static float update_avg(float old_avg, float new_val, float alpha) {
-    return (1.0f - alpha) * old_avg + alpha * new_val;
+    float result = (1.0f - alpha) * old_avg + alpha * new_val;
+    return isfinite(result) ? result : old_avg;
 }
 
 /**
@@ -293,6 +294,8 @@ occipital_thalamic_bridge_t* occipital_thalamic_bridge_create(
         return NULL;
     }
 
+    if (bridge_base_init(&bridge->base, 0, "occipital_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     bridge->occipital = occipital;
     bridge->router = router;
     bridge->config = config ? *config : occipital_thalamic_default_config();
@@ -333,6 +336,7 @@ void occipital_thalamic_bridge_destroy(occipital_thalamic_bridge_t* bridge) {
         if (bridge->feedback_buffer) {
             nimcp_free(bridge->feedback_buffer);
         }
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
     }
 }

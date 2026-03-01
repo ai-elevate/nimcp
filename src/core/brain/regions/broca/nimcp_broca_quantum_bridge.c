@@ -95,6 +95,13 @@ broca_quantum_bridge_t* broca_quantum_bridge_create(
 
     }
 
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "broca_quantum") != 0) {
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_quantum_bridge_create: bridge_base_init failed");
+        return NULL;
+    }
+
     bridge->broca = broca;
     bridge->config = config ? *config : broca_quantum_default_config();
 
@@ -107,6 +114,7 @@ broca_quantum_bridge_t* broca_quantum_bridge_create(
 
     bridge->quantum_reasoner = qreason_create(&qconfig);
     if (!bridge->quantum_reasoner) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_quantum_bridge_create: bridge->quantum_reasoner is NULL");
         return NULL;
@@ -147,6 +155,7 @@ void broca_quantum_bridge_destroy(broca_quantum_bridge_t* bridge) {
         qreason_destroy(bridge->quantum_reasoner);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -249,12 +258,14 @@ int broca_quantum_search_lexicon(
 
     /* Update statistics */
     bridge->stats.lexical_searches++;
-    bridge->stats.avg_lexical_speedup =
+    float new_avg_speedup =
         (bridge->stats.avg_lexical_speedup * (bridge->stats.lexical_searches - 1) +
          result->search_speedup) / bridge->stats.lexical_searches;
-    bridge->stats.avg_satisfaction_prob =
+    if (isfinite(new_avg_speedup)) bridge->stats.avg_lexical_speedup = new_avg_speedup;
+    float new_avg_sat =
         (bridge->stats.avg_satisfaction_prob * (bridge->stats.lexical_searches - 1) +
          result->satisfaction_probability) / bridge->stats.lexical_searches;
+    if (isfinite(new_avg_sat)) bridge->stats.avg_satisfaction_prob = new_avg_sat;
 
     if (best && best->combined_score >= bridge->config.min_expression_confidence) {
         bridge->stats.successful_searches++;

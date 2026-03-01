@@ -118,6 +118,8 @@ occipital_quantum_bridge_t* occipital_quantum_bridge_create(
 
     }
 
+    if (bridge_base_init(&bridge->base, 0, "occipital_quantum") != 0) { nimcp_free(bridge); return NULL; }
+
     bridge->occipital = occipital;
     bridge->config = config ? *config : occipital_quantum_default_config();
 
@@ -190,6 +192,7 @@ void occipital_quantum_bridge_destroy(occipital_quantum_bridge_t* bridge) {
         qreason_destroy(bridge->quantum_reasoner);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -323,12 +326,14 @@ int occipital_quantum_visual_search(
 
     /* Update statistics */
     bridge->stats.visual_searches++;
-    bridge->stats.avg_search_speedup =
+    float new_speedup =
         (bridge->stats.avg_search_speedup * (bridge->stats.visual_searches - 1) +
          result->search_speedup) / bridge->stats.visual_searches;
-    bridge->stats.avg_satisfaction_prob =
+    if (isfinite(new_speedup)) bridge->stats.avg_search_speedup = new_speedup;
+    float new_sat_prob =
         (bridge->stats.avg_satisfaction_prob * (bridge->stats.visual_searches - 1) +
          result->satisfaction_probability) / bridge->stats.visual_searches;
+    if (isfinite(new_sat_prob)) bridge->stats.avg_satisfaction_prob = new_sat_prob;
 
     if (result->target_found) {
         bridge->stats.successful_searches++;
@@ -443,9 +448,10 @@ int occipital_quantum_feature_binding(
 
     /* Update statistics */
     bridge->stats.binding_operations++;
-    bridge->stats.avg_binding_coherence =
+    float new_coherence =
         (bridge->stats.avg_binding_coherence * (bridge->stats.binding_operations - 1) +
          (best ? best->coherence : 0.0f)) / bridge->stats.binding_operations;
+    if (isfinite(new_coherence)) bridge->stats.avg_binding_coherence = new_coherence;
 
     return 0;
 }

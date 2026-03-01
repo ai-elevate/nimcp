@@ -78,7 +78,7 @@ cortical_attention_gain_sleep_bridge_t cortical_attention_gain_sleep_bridge_crea
     sleep_system_t sleep)
 {
     if (!attention_gain_module || !sleep) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_attention_gain_sleep_bridge_create: required parameter is NULL (attention_gain_module, sleep)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_gain_sleep_bridge_create: required parameter is NULL (attention_gain_module, sleep)");
         return NULL;
     }
 
@@ -87,10 +87,8 @@ cortical_attention_gain_sleep_bridge_t cortical_attention_gain_sleep_bridge_crea
             sizeof(struct cortical_attention_gain_sleep_bridge_struct));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_attention_gain_sleep_bridge_create: allocation failed");
         return NULL;
-
     }
 
     memset(bridge, 0, sizeof(struct cortical_attention_gain_sleep_bridge_struct));

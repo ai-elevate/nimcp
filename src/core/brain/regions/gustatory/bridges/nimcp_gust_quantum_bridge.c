@@ -93,12 +93,11 @@ int gust_quantum_default_config(gust_quantum_config_t* config) {
 gust_quantum_bridge_t* gust_quantum_bridge_create(const gust_quantum_config_t* config) {
     gust_quantum_bridge_t* bridge = (gust_quantum_bridge_t*)nimcp_calloc(1, sizeof(gust_quantum_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gust_quantum_bridge_create: allocation failed");
         return NULL;
-
     }
+
+    bridge_base_init(&bridge->base, 0, "gust_quantum");
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(gust_quantum_config_t));
@@ -116,6 +115,7 @@ gust_quantum_bridge_t* gust_quantum_bridge_create(const gust_quantum_config_t* c
 void gust_quantum_bridge_destroy(gust_quantum_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "gust_quantum");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -169,8 +169,7 @@ int gust_quantum_calibrate_thresholds(gust_quantum_bridge_t* bridge,
         return -1;
     }
     if (!bridge->config.enable_qmc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     bridge->status = GUST_QUANTUM_STATUS_COMPUTING;
@@ -262,8 +261,7 @@ int gust_quantum_search_flavors(gust_quantum_bridge_t* bridge,
         return -1;
     }
     if (!bridge->config.enable_walks) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     bridge->status = GUST_QUANTUM_STATUS_COMPUTING;
@@ -363,8 +361,7 @@ int gust_quantum_optimize_preferences(gust_quantum_bridge_t* bridge,
         return -1;
     }
     if (!bridge->config.enable_annealing) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: bridge->config is NULL");
-        return -1;
+        return 0;  /* Feature disabled, not an error */
     }
 
     bridge->status = GUST_QUANTUM_STATUS_COMPUTING;

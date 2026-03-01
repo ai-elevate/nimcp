@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "utils/platform/nimcp_platform_mutex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -104,7 +105,7 @@ typedef struct feature_hypercolumn {
     uint32_t total_columns;            /**< Product of dimension sizes */
     float position[3];                 /**< Spatial location (x, y, z) */
     float receptive_field_size;        /**< Spatial extent */
-    void* mutex;                       /**< Thread safety lock */
+    nimcp_platform_mutex_t* mutex;     /**< Thread safety lock */
 } feature_hypercolumn_t;
 
 /* ============================================================================

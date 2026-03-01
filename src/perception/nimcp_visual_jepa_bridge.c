@@ -696,8 +696,8 @@ int visual_jepa_bridge_train_step(
 
     /* Update statistics */
     bridge->stats.predictions_made += num_targets;
-    bridge->stats.avg_prediction_loss = 0.9f * bridge->stats.avg_prediction_loss +
-                                         0.1f * total_loss;
+    float new_avg_loss = 0.9f * bridge->stats.avg_prediction_loss + 0.1f * total_loss;
+    if (isfinite(new_avg_loss)) bridge->stats.avg_prediction_loss = new_avg_loss;
     if (total_loss < bridge->stats.min_loss) {
         bridge->stats.min_loss = total_loss;
     }

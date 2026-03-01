@@ -52,11 +52,8 @@ nimcp_olfactory_t* olfact_create(const olfact_config_t* config) {
 
     nimcp_olfactory_t* olfact = (nimcp_olfactory_t*)nimcp_calloc(1, sizeof(nimcp_olfactory_t));
     if (!olfact) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_create: allocation failed");
         return NULL;
-
     }
 
     memcpy(&olfact->config, config, sizeof(olfact_config_t));
@@ -101,7 +98,7 @@ nimcp_olfactory_t* olfact_create(const olfact_config_t* config) {
         nimcp_free(olfact->mitral_cells);
         nimcp_free(olfact->glomeruli);
         nimcp_free(olfact);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_create: olfact->odor_memories is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_create: odor_memories allocation failed");
         return NULL;
     }
     olfact->num_memories = 0;
@@ -247,7 +244,7 @@ int olfact_process_odor(nimcp_olfactory_t* olfact,
         for (uint32_t j = start; j < end; j++) {
             input += olfact->mitral_cells[j].output_to_piriform;
         }
-        olfact->piriform_activation[i] += input / (float)(end - start);
+        olfact->piriform_activation[i] += (end > start) ? input / (float)(end - start) : 0.0f;
         if (olfact->piriform_activation[i] > 1.0f) {
             olfact->piriform_activation[i] = 1.0f;
         }
@@ -739,11 +736,8 @@ nimcp_olfactory_t* olfact_deserialize(const uint8_t* buffer, size_t size, size_t
 
     nimcp_olfactory_t* olfact = olfact_create(&config);
     if (!olfact) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_deserialize: allocation failed");
         return NULL;
-
     }
 
     if (num_memories > 0 && num_memories <= olfact->max_memories) {

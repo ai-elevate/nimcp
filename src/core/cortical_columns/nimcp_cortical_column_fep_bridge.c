@@ -57,7 +57,7 @@ cortical_column_fep_bridge_t* cortical_column_fep_create(
         nimcp_malloc(sizeof(cortical_column_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate cortical column FEP bridge");
 
         return NULL;
 
@@ -115,7 +115,14 @@ cortical_column_fep_bridge_t* cortical_column_fep_create(
     bridge->state.prior_precision = FEP_DEFAULT_PRECISION;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "cortical_column_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "cortical_column_fep") != 0) {
+        if (bridge->state.minicolumn_states) nimcp_free(bridge->state.minicolumn_states);
+        if (bridge->state.belief_distribution) nimcp_free(bridge->state.belief_distribution);
+        if (bridge->state.prior_distribution) nimcp_free(bridge->state.prior_distribution);
+        if (bridge->state.prediction_errors) nimcp_free(bridge->state.prediction_errors);
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         cortical_column_fep_destroy(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_fep_create: bridge->base is NULL");
@@ -151,13 +158,13 @@ void cortical_column_fep_destroy(cortical_column_fep_bridge_t* bridge) {
 int cortical_column_fep_update(cortical_column_fep_bridge_t* bridge) {
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get hypercolumn distribution */
     float* activations = (float*)nimcp_malloc(sizeof(float) * bridge->state.num_minicolumns);
     if (!activations) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate activations array");
-        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -189,7 +196,7 @@ int cortical_column_fep_update(cortical_column_fep_bridge_t* bridge) {
     nimcp_free(activations);
 
     bridge->stats.total_updates++;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -278,7 +285,7 @@ int cortical_column_fep_update_beliefs(
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_FEP_CHECK_THROW(observation, NIMCP_ERROR_NULL_POINTER, "observation is NULL");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Simple belief update: increase belief for active minicolumns */
     for (uint32_t i = 0; i < bridge->state.num_minicolumns && i < observation_dim; i++) {
@@ -304,7 +311,7 @@ int cortical_column_fep_update_beliefs(
     }
 
     bridge->stats.belief_updates++;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -313,13 +320,17 @@ int cortical_column_fep_update_precision(cortical_column_fep_bridge_t* bridge) {
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_precision_learning) return 0;
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Adapt precision based on prediction error variance */
     float error_variance = 0.0f;
     for (uint32_t i = 0; i < bridge->state.num_minicolumns; i++) {
         float err = bridge->state.prediction_errors[i];
         error_variance += err * err;
+    }
+    if (bridge->state.num_minicolumns == 0) {
+        nimcp_mutex_unlock(bridge->base.mutex);
+        return 0;
     }
     error_variance /= bridge->state.num_minicolumns;
 
@@ -340,7 +351,7 @@ int cortical_column_fep_update_precision(cortical_column_fep_bridge_t* bridge) {
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -350,10 +361,10 @@ int cortical_column_fep_set_precision(
 {
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.sensory_precision = fmaxf(FEP_MIN_PRECISION,
                                             fminf(FEP_MAX_PRECISION, precision));
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

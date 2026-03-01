@@ -210,7 +210,7 @@ int visual_substrate_bridge_apply_effects(visual_substrate_bridge_t* bridge) {
         fatigue_level = 1.0f - metabolic.metabolic_capacity;
     }
 
-    /* Broadcast substrate modulation message */
+    /* Prepare broadcast messages while holding lock */
     bio_msg_substrate_modulation_t msg;
     memset(&msg, 0, sizeof(msg));
     bio_msg_init_header(&msg.header, BIO_MSG_SUBSTRATE_MODULATION,
@@ -227,12 +227,12 @@ int visual_substrate_bridge_apply_effects(visual_substrate_bridge_t* bridge) {
     msg.fatigue_level = fatigue_level;
     msg.update_count = bridge->update_count;
     msg.critical_low = (atp_level < bridge->config.min_capacity);
-    bio_router_broadcast(bridge->ctx, &msg, sizeof(msg));
 
-    /* Send capacity update if significant change occurred */
+    /* Check for significant capacity change */
     float delta = bridge->effects.overall_capacity - bridge->prev_overall_capacity;
-    if (delta < -0.1f || delta > 0.1f) {
-        bio_msg_substrate_capacity_update_t update_msg;
+    bool send_capacity_update = (delta < -0.1f || delta > 0.1f);
+    bio_msg_substrate_capacity_update_t update_msg;
+    if (send_capacity_update) {
         memset(&update_msg, 0, sizeof(update_msg));
         bio_msg_init_header(&update_msg.header, BIO_MSG_SUBSTRATE_CAPACITY_UPDATE,
                             BIO_MODULE_SUBSTRATE_VISUAL, 0, sizeof(update_msg));
@@ -241,11 +241,18 @@ int visual_substrate_bridge_apply_effects(visual_substrate_bridge_t* bridge) {
         update_msg.new_capacity = bridge->effects.overall_capacity;
         update_msg.delta = delta;
         update_msg.significant_change = true;
-        bio_router_broadcast(bridge->ctx, &update_msg, sizeof(update_msg));
     }
     bridge->prev_overall_capacity = bridge->effects.overall_capacity;
+    void* ctx = bridge->ctx;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Broadcast outside lock to avoid callback-under-mutex deadlock */
+    bio_router_broadcast(ctx, &msg, sizeof(msg));
+    if (send_capacity_update) {
+        bio_router_broadcast(ctx, &update_msg, sizeof(update_msg));
+    }
+
     return 0;
 }
 

@@ -91,7 +91,7 @@ cortical_predictive_coding_sleep_bridge_t cortical_predictive_coding_sleep_bridg
     sleep_system_t sleep)
 {
     if (!predictive_coding_module || !sleep) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_predictive_coding_sleep_bridge_create: required parameter is NULL (predictive_coding_module, sleep)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_predictive_coding_sleep_bridge_create: required parameter is NULL (predictive_coding_module, sleep)");
         return NULL;
     }
 
@@ -100,10 +100,8 @@ cortical_predictive_coding_sleep_bridge_t cortical_predictive_coding_sleep_bridg
             sizeof(struct cortical_predictive_coding_sleep_bridge_struct));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_predictive_coding_sleep_bridge_create: allocation failed");
         return NULL;
-
     }
 
     memset(bridge, 0, sizeof(struct cortical_predictive_coding_sleep_bridge_struct));

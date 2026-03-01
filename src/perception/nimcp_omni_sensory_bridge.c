@@ -392,15 +392,15 @@ int omni_sensory_update(omni_sensory_bridge_t* bridge) {
     /* Update statistics */
     bridge->stats.total_updates++;
     float n = (float)bridge->stats.total_updates;
-    bridge->stats.avg_audio_pe =
-        (bridge->stats.avg_audio_pe * (n - 1) + bridge->sensory_effects.audio_pe) / n;
-    bridge->stats.avg_visual_pe =
-        (bridge->stats.avg_visual_pe * (n - 1) + bridge->sensory_effects.visual_pe) / n;
-    bridge->stats.avg_speech_pe =
-        (bridge->stats.avg_speech_pe * (n - 1) + bridge->sensory_effects.speech_pe) / n;
-    bridge->stats.avg_free_energy =
-        (bridge->stats.avg_free_energy * (n - 1) +
+    float new_avg_audio = (bridge->stats.avg_audio_pe * (n - 1) + bridge->sensory_effects.audio_pe) / n;
+    float new_avg_visual = (bridge->stats.avg_visual_pe * (n - 1) + bridge->sensory_effects.visual_pe) / n;
+    float new_avg_speech = (bridge->stats.avg_speech_pe * (n - 1) + bridge->sensory_effects.speech_pe) / n;
+    float new_avg_fe = (bridge->stats.avg_free_energy * (n - 1) +
          bridge->sensory_effects.combined_free_energy) / n;
+    if (isfinite(new_avg_audio))  bridge->stats.avg_audio_pe = new_avg_audio;
+    if (isfinite(new_avg_visual)) bridge->stats.avg_visual_pe = new_avg_visual;
+    if (isfinite(new_avg_speech)) bridge->stats.avg_speech_pe = new_avg_speech;
+    if (isfinite(new_avg_fe))     bridge->stats.avg_free_energy = new_avg_fe;
 
     nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;

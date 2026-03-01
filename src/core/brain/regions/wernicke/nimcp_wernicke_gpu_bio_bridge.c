@@ -248,6 +248,12 @@ wernicke_gpu_bio_bridge_t* wernicke_gpu_bio_create(
         return NULL;
     }
 
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "wernicke_gpu_bio") != 0) {
+        wernicke_gpu_bio_destroy(bridge);
+        return NULL;
+    }
+
     LOG_INFO("Created Wernicke GPU bio bridge");
     return bridge;
 }
@@ -255,6 +261,9 @@ wernicke_gpu_bio_bridge_t* wernicke_gpu_bio_create(
 void wernicke_gpu_bio_destroy(wernicke_gpu_bio_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "wernicke_gpu_bio");
+
+    /* Cleanup bridge base */
+    bridge_base_cleanup(&bridge->base);
 
     /* Disconnect bio-async */
     if (bridge->bio_connected) {
@@ -415,7 +424,7 @@ int wernicke_gpu_bio_process_batch(wernicke_gpu_bio_bridge_t* bridge) {
     if (!success) {
         LOG_WARN("GPU comprehension failed for batch of %u frames", bridge->batch_count);
         bridge->batch_count = 0;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_bio_process_batch: success is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_gpu_bio_process_batch: GPU comprehension failed");
         return -1;
     }
 

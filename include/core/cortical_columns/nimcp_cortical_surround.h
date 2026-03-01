@@ -83,6 +83,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "constants/nimcp_math_constants.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -206,7 +207,7 @@ typedef struct {
     bool bio_async_enabled;           /**< Bio-async active flag */
 
     /* Thread safety */
-    void* mutex;                      /**< Platform-specific mutex */
+    nimcp_platform_mutex_t* mutex;    /**< Thread safety mutex */
 } cortical_surround_t;
 
 /**

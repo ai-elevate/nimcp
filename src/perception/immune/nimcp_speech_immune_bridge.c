@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/math/nimcp_math_helpers.h"
 
@@ -203,7 +202,7 @@ int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "speech_immune_apply_cytokine_effects: NULL immune_system");
     NIMCP_API_CHECK_NULL(bridge->speech_cortex, -1, "speech_immune_apply_cytokine_effects: NULL speech_cortex");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query cytokine levels from immune system */
     /* In a full implementation, we'd query actual cytokine concentrations */
@@ -273,7 +272,7 @@ int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
         nimcp_clampf(-bridge->cytokine_effects.ifn_gamma_prosody_reduction, 0.0f, 0.8f);
 
     bridge->cytokine_modulations++;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -284,7 +283,7 @@ int speech_immune_apply_inflammation_effects(speech_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_impairment) return 0;
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "speech_immune_apply_inflammation_effects: NULL immune_system");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -344,7 +343,7 @@ int speech_immune_apply_inflammation_effects(speech_immune_bridge_t* bridge) {
     bridge->inflammation_state.working_memory_capacity =
         1.0f - (inflammation_factor * 0.4f);  /* Max 40% reduction */
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -400,11 +399,16 @@ int speech_immune_trigger_from_effort(speech_immune_bridge_t* bridge) {
     NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "speech_immune_trigger_from_effort: NULL immune_system");
     NIMCP_API_CHECK_NULL(bridge->speech_cortex, -1, "speech_immune_trigger_from_effort: NULL speech_cortex");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    /* Prepare data outside lock */
+    bool do_effort_trigger = false;
+    uint8_t effort_epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
+    float frustration = 0.0f;
+
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if speech effort exceeds threshold */
     if (bridge->speech_trigger.speech_effort_level < SPEECH_EFFORT_IMMUNE_TRIGGER) {
-        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -413,35 +417,39 @@ int speech_immune_trigger_from_effort(speech_immune_bridge_t* bridge) {
     bridge->speech_trigger.immune_suppression =
         bridge->speech_trigger.speech_effort_level * 0.3f;
 
-    /* Present antigen to immune system (stress-induced inflammation) */
-    uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
-    memset(epitope, 0, BRAIN_IMMUNE_EPITOPE_SIZE);
-    snprintf((char*)epitope, BRAIN_IMMUNE_EPITOPE_SIZE, "speech_effort_stress");
-
-    uint32_t antigen_id;
-    brain_immune_present_antigen(
-        bridge->immune_system,
-        ANTIGEN_SOURCE_MANUAL,
-        epitope,
-        strlen((char*)epitope),
-        3,  /* Moderate severity */
-        0,  /* No specific node */
-        &antigen_id
-    );
-
-    /* Release IL-6 (stress cytokine) */
-    uint32_t cytokine_id;
-    brain_immune_release_cytokine(
-        bridge->immune_system,
-        BRAIN_CYTOKINE_IL6,
-        0,  /* No specific source cell */
-        bridge->speech_trigger.frustration_level,
-        0,  /* Broadcast */
-        &cytokine_id
-    );
+    /* Prepare antigen data */
+    memset(effort_epitope, 0, BRAIN_IMMUNE_EPITOPE_SIZE);
+    snprintf((char*)effort_epitope, BRAIN_IMMUNE_EPITOPE_SIZE, "speech_effort_stress");
+    frustration = bridge->speech_trigger.frustration_level;
+    do_effort_trigger = true;
 
     bridge->speech_triggered_responses++;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Present antigen to immune system OUTSIDE lock */
+    if (do_effort_trigger) {
+        uint32_t antigen_id;
+        brain_immune_present_antigen(
+            bridge->immune_system,
+            ANTIGEN_SOURCE_MANUAL,
+            effort_epitope,
+            strlen((char*)effort_epitope),
+            3,  /* Moderate severity */
+            0,  /* No specific node */
+            &antigen_id
+        );
+
+        /* Release IL-6 (stress cytokine) */
+        uint32_t cytokine_id;
+        brain_immune_release_cytokine(
+            bridge->immune_system,
+            BRAIN_CYTOKINE_IL6,
+            0,  /* No specific source cell */
+            frustration,
+            0,  /* Broadcast */
+            &cytokine_id
+        );
+    }
 
     LOG_MODULE_INFO("speech_immune_bridge",
                   "Speech effort triggered immune response");
@@ -464,46 +472,58 @@ int speech_immune_detect_distress_vocalization(
      * - Tremor in voice (anxiety/pain)
      */
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    /* Prepare data outside lock */
+    bool do_distress_trigger = false;
+    uint8_t distress_epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
+    float distress_intensity_val = 0.0f;
+
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Simplified distress detection */
     bool distress_detected = bridge->speech_trigger.distress_intensity > DISTRESS_VOCALIZATION_THRESHOLD;
 
     if (distress_detected) {
         bridge->speech_trigger.distress_detected = true;
+        distress_intensity_val = bridge->speech_trigger.distress_intensity;
 
-        /* Distress triggers HPA axis → cortisol → immune activation */
-        uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
-        snprintf((char*)epitope, BRAIN_IMMUNE_EPITOPE_SIZE, "distress_vocalization");
+        /* Prepare antigen data */
+        snprintf((char*)distress_epitope, BRAIN_IMMUNE_EPITOPE_SIZE, "distress_vocalization");
+        do_distress_trigger = true;
 
+        bridge->distress_events++;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Present antigen and release cytokine OUTSIDE lock */
+    if (do_distress_trigger) {
+        /* Distress triggers HPA axis - cortisol - immune activation */
         uint32_t antigen_id;
         brain_immune_present_antigen(
             bridge->immune_system,
             ANTIGEN_SOURCE_MANUAL,
-            epitope,
-            strlen((char*)epitope),
+            distress_epitope,
+            strlen((char*)distress_epitope),
             5,  /* Higher severity */
             0,
             &antigen_id
         );
 
-        /* Release TNF-α (acute stress response) */
+        /* Release TNF-alpha (acute stress response) */
         uint32_t cytokine_id;
         brain_immune_release_cytokine(
             bridge->immune_system,
             BRAIN_CYTOKINE_TNF,
             0,
-            bridge->speech_trigger.distress_intensity,
+            distress_intensity_val,
             0,
             &cytokine_id
         );
 
-        bridge->distress_events++;
         LOG_MODULE_INFO("speech_immune_bridge",
                   "Distress vocalization triggered immune response");
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -516,10 +536,7 @@ int speech_immune_trigger_from_illness_expression(
     if (!bridge->enable_speech_immune_trigger) return 0;
     if (!word || !is_illness_word(word)) return 0;
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    /* Verbalizing illness modulates immune response (Pennebaker 1997) */
-    /* Release IL-10 (anti-inflammatory, associated with expression/disclosure) */
+    /* Release IL-10 OUTSIDE lock (Pennebaker 1997 - verbalizing illness modulates immune) */
     uint32_t cytokine_id;
     brain_immune_release_cytokine(
         bridge->immune_system,
@@ -529,8 +546,6 @@ int speech_immune_trigger_from_illness_expression(
         0,
         &cytokine_id
     );
-
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     LOG_MODULE_DEBUG("speech_immune_bridge",
                   "Illness word '%s' modulated immune response", word);
@@ -547,9 +562,9 @@ int speech_immune_bridge_update(
 ) {
     NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_bridge_update: NULL bridge");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->total_updates++;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Apply immune effects to speech */
     speech_immune_apply_cytokine_effects(bridge);
@@ -587,9 +602,9 @@ int speech_immune_get_cytokine_effects(
     NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_get_cytokine_effects: NULL bridge");
     NIMCP_API_CHECK_NULL(effects, -1, "speech_immune_get_cytokine_effects: NULL effects");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_speech_effects_t));
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -601,9 +616,9 @@ int speech_immune_get_inflammation_state(
     NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_get_inflammation_state: NULL bridge");
     NIMCP_API_CHECK_NULL(state, -1, "speech_immune_get_inflammation_state: NULL state");
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_speech_state_t));
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

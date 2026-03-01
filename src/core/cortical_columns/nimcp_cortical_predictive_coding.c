@@ -221,6 +221,7 @@ cortical_predictive_t* cortical_predictive_create(const predictive_config_t* con
 
     if (nimcp_mutex_init(pc->mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
+        nimcp_free(pc->mutex);
         nimcp_free(pc);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_predictive_create: validation failed");
         return NULL;
@@ -266,7 +267,8 @@ void cortical_predictive_destroy(cortical_predictive_t* pc) {
 
     /* Destroy mutex */
     if (pc->mutex) {
-        nimcp_mutex_free(pc->mutex);
+        nimcp_mutex_destroy(pc->mutex);
+        nimcp_free(pc->mutex);
     }
 
     nimcp_free(pc);

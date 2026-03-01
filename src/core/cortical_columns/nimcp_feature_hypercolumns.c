@@ -427,9 +427,8 @@ void feature_hypercolumn_destroy(feature_hypercolumn_t* hcol) {
     }
 
     if (hcol->mutex) {
-        nimcp_platform_mutex_t* mutex = (nimcp_platform_mutex_t*)hcol->mutex;
-        nimcp_platform_mutex_destroy(mutex);
-        nimcp_free(mutex);
+        nimcp_platform_mutex_destroy(hcol->mutex);
+        nimcp_free(hcol->mutex);
     }
 
     if (hcol->columns) {
@@ -457,7 +456,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_orientation(
 ) {
     if (num_orientations == 0) {
         LOG_ERROR(LOG_MODULE, "Invalid orientation count");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create_orientation: num_orientations is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_hypercolumn_create_orientation: num_orientations is zero");
         return NULL;
     }
 
@@ -475,7 +474,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_direction(
 ) {
     if (num_directions == 0) {
         LOG_ERROR(LOG_MODULE, "Invalid direction count");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create_direction: num_directions is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_hypercolumn_create_direction: num_directions is zero");
         return NULL;
     }
 
@@ -581,14 +580,14 @@ void feature_hypercolumn_process(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     // Process each column
     uint32_t* indices = (uint32_t*)nimcp_malloc(
         hcol->num_dimensions * sizeof(uint32_t)
     );
     if (!indices) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+        nimcp_platform_mutex_unlock(hcol->mutex);
         return;
     }
 
@@ -633,7 +632,7 @@ void feature_hypercolumn_process(
     }
 
     nimcp_free(indices);
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 void feature_hypercolumn_process_with_input(
@@ -646,7 +645,7 @@ void feature_hypercolumn_process_with_input(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     // Ensure columns have weights
     bool weights_exist = (hcol->columns[0].weights != NULL);
@@ -658,7 +657,7 @@ void feature_hypercolumn_process_with_input(
                 input_size * sizeof(float)
             );
             if (!hcol->columns[i].weights) {
-                nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+                nimcp_platform_mutex_unlock(hcol->mutex);
                 return;
             }
 
@@ -687,7 +686,7 @@ void feature_hypercolumn_process_with_input(
         col->activation = fmaxf(0.0F, weighted_sum);
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 /* ============================================================================
@@ -700,7 +699,7 @@ void feature_hypercolumn_normalize(feature_hypercolumn_t* hcol) {
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     float sum = 0.0F;
     for (uint32_t i = 0; i < hcol->total_columns; i++) {
@@ -713,7 +712,7 @@ void feature_hypercolumn_normalize(feature_hypercolumn_t* hcol) {
         }
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 void feature_hypercolumn_softmax(
@@ -730,7 +729,7 @@ void feature_hypercolumn_softmax(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     // Find max for numerical stability
     float max_activation = -FLT_MAX;
@@ -756,7 +755,7 @@ void feature_hypercolumn_softmax(
         }
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 /**
@@ -785,14 +784,14 @@ void feature_hypercolumn_k_winners(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     // Copy activations for sorting
     float* sorted_acts = (float*)nimcp_malloc(
         hcol->total_columns * sizeof(float)
     );
     if (!sorted_acts) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+        nimcp_platform_mutex_unlock(hcol->mutex);
         return;
     }
 
@@ -814,7 +813,7 @@ void feature_hypercolumn_k_winners(
         }
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 void feature_hypercolumn_threshold(
@@ -826,7 +825,7 @@ void feature_hypercolumn_threshold(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     for (uint32_t i = 0; i < hcol->total_columns; i++) {
         if (hcol->columns[i].activation < threshold) {
@@ -834,7 +833,7 @@ void feature_hypercolumn_threshold(
         }
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 /* ============================================================================
@@ -867,7 +866,7 @@ float feature_hypercolumn_decode_single(
         return 0.0F;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     float weighted_sum = 0.0F;
     float weight_total = 0.0F;
@@ -876,7 +875,7 @@ float feature_hypercolumn_decode_single(
         hcol->num_dimensions * sizeof(uint32_t)
     );
     if (!indices) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+        nimcp_platform_mutex_unlock(hcol->mutex);
         return 0.0F;
     }
 
@@ -899,7 +898,7 @@ float feature_hypercolumn_decode_single(
     }
 
     nimcp_free(indices);
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     if (weight_total > EPSILON) {
         return weighted_sum / weight_total;
@@ -917,7 +916,7 @@ void feature_hypercolumn_decode_population_vector(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     for (uint32_t dim = 0; dim < hcol->num_dimensions; dim++) {
         decoded_features[dim] = 0.0F;
@@ -927,7 +926,7 @@ void feature_hypercolumn_decode_population_vector(
         hcol->num_dimensions * sizeof(float)
     );
     if (!weight_totals) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+        nimcp_platform_mutex_unlock(hcol->mutex);
         return;
     }
 
@@ -940,7 +939,7 @@ void feature_hypercolumn_decode_population_vector(
     );
     if (!indices) {
         nimcp_free(weight_totals);
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+        nimcp_platform_mutex_unlock(hcol->mutex);
         return;
     }
 
@@ -973,7 +972,7 @@ void feature_hypercolumn_decode_population_vector(
 
     nimcp_free(indices);
     nimcp_free(weight_totals);
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 /* ============================================================================
@@ -994,9 +993,9 @@ float feature_hypercolumn_get_activation(
         return 0.0F;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
     float activation = hcol->columns[column_idx].activation;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return activation;
 }
@@ -1010,13 +1009,13 @@ void feature_hypercolumn_get_all_activations(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     for (uint32_t i = 0; i < hcol->total_columns; i++) {
         activations[i] = hcol->columns[i].activation;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 uint32_t feature_hypercolumn_get_winner(feature_hypercolumn_t* hcol) {
@@ -1025,7 +1024,7 @@ uint32_t feature_hypercolumn_get_winner(feature_hypercolumn_t* hcol) {
         return 0;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     uint32_t winner_idx = 0;
     float max_activation = hcol->columns[0].activation;
@@ -1037,7 +1036,7 @@ uint32_t feature_hypercolumn_get_winner(feature_hypercolumn_t* hcol) {
         }
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return winner_idx;
 }
@@ -1082,14 +1081,14 @@ void feature_hypercolumn_get_top_k(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     // Create pairs
     index_activation_pair_t* pairs = (index_activation_pair_t*)nimcp_malloc(
         hcol->total_columns * sizeof(index_activation_pair_t)
     );
     if (!pairs) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+        nimcp_platform_mutex_unlock(hcol->mutex);
         return;
     }
 
@@ -1109,7 +1108,7 @@ void feature_hypercolumn_get_top_k(
     }
 
     nimcp_free(pairs);
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 /* ============================================================================
@@ -1131,7 +1130,7 @@ void feature_hypercolumn_learn_hebbian(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     for (uint32_t col_idx = 0; col_idx < hcol->total_columns; col_idx++) {
         feature_column_t* col = &hcol->columns[col_idx];
@@ -1161,7 +1160,7 @@ void feature_hypercolumn_learn_hebbian(
         }
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 void feature_hypercolumn_learn_competitive(
@@ -1180,7 +1179,7 @@ void feature_hypercolumn_learn_competitive(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     // Find winner
     uint32_t winner_idx = 0;
@@ -1226,7 +1225,7 @@ void feature_hypercolumn_learn_competitive(
         }
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 /* ============================================================================
@@ -1254,7 +1253,7 @@ void feature_hypercolumn_get_tuning_curve(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     feature_dimension_t* dim = &hcol->dimensions[dimension];
 
@@ -1290,7 +1289,7 @@ void feature_hypercolumn_get_tuning_curve(
         }
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 /* ============================================================================
@@ -1353,7 +1352,7 @@ void feature_hypercolumn_get_stats(
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     float sum = 0.0F;
     float max_act = -FLT_MAX;
@@ -1398,7 +1397,7 @@ void feature_hypercolumn_get_stats(
     }
     stats->entropy = entropy;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 }
 
 float feature_hypercolumn_compute_sparsity(feature_hypercolumn_t* hcol) {
@@ -1407,7 +1406,7 @@ float feature_hypercolumn_compute_sparsity(feature_hypercolumn_t* hcol) {
         return 0.0F;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     uint32_t num_active = 0;
     for (uint32_t i = 0; i < hcol->total_columns; i++) {
@@ -1418,7 +1417,7 @@ float feature_hypercolumn_compute_sparsity(feature_hypercolumn_t* hcol) {
 
     float sparsity = 1.0F - ((float)num_active / hcol->total_columns);
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return sparsity;
 }
@@ -1429,7 +1428,7 @@ float feature_hypercolumn_compute_selectivity(feature_hypercolumn_t* hcol) {
         return 0.0F;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     float sum = 0.0F;
     float max_act = -FLT_MAX;
@@ -1449,7 +1448,7 @@ float feature_hypercolumn_compute_selectivity(feature_hypercolumn_t* hcol) {
         selectivity = max_act / mean;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return selectivity;
 }

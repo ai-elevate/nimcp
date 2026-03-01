@@ -254,7 +254,7 @@ orientation_column_t* orientation_column_create(
     /* Guard clauses */
     if (tuning_width <= 0.0F || spatial_frequency <= 0.0F) {
         LOG_ERROR("Invalid parameters: tuning_width and spatial_frequency must be > 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_column_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "orientation_column_create: tuning_width and spatial_frequency must be > 0");
         return NULL;
     }
 
@@ -264,8 +264,7 @@ orientation_column_t* orientation_column_create(
     );
     if (!col) {
         LOG_ERROR("Failed to allocate orientation column");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "col is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orientation_column_create: allocation failed");
         return NULL;
     }
 
@@ -301,8 +300,9 @@ orientation_column_t* orientation_column_create(
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init((nimcp_platform_mutex_t*)col->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init(col->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize mutex for orientation column");
+        nimcp_free(col->mutex);
         nimcp_free(col);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "orientation_column_create: validation failed");
         return NULL;
@@ -320,7 +320,7 @@ void orientation_column_destroy(orientation_column_t* col) {
     }
 
     if (col->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)col->mutex);
+        nimcp_platform_mutex_destroy(col->mutex);
         nimcp_free(col->mutex);
         col->mutex = NULL;
     }
@@ -338,9 +338,9 @@ bool orientation_column_set_gabor(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)col->mutex);
+    nimcp_platform_mutex_lock(col->mutex);
     memcpy(&col->gabor_params, params, sizeof(cc_gabor_params_t));
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)col->mutex);
+    nimcp_platform_mutex_unlock(col->mutex);
 
     return true;
 }
@@ -357,7 +357,7 @@ float orientation_column_apply_gabor(
         return 0.0F;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)col->mutex);
+    nimcp_platform_mutex_lock(col->mutex);
 
     float response = 0.0F;
     int32_t center_x = patch_width / 2;
@@ -393,7 +393,7 @@ float orientation_column_apply_gabor(
     }
 
     col->activation = response;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)col->mutex);
+    nimcp_platform_mutex_unlock(col->mutex);
 
     return response;
 }
@@ -410,7 +410,7 @@ float orientation_column_compute_energy(
         return 0.0F;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)col->mutex);
+    nimcp_platform_mutex_lock(col->mutex);
 
     /* Create even and odd phase Gabor filters (quadrature pair) */
     cc_gabor_params_t even_params = col->gabor_params;
@@ -462,7 +462,7 @@ float orientation_column_compute_energy(
     );
 
     col->activation = energy;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)col->mutex);
+    nimcp_platform_mutex_unlock(col->mutex);
 
     return energy;
 }
@@ -476,7 +476,7 @@ float orientation_column_get_response(
         return 0.0F;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)col->mutex);
+    nimcp_platform_mutex_lock(col->mutex);
 
     float normalized_stim = normalize_orientation(stimulus_orientation);
 
@@ -488,7 +488,7 @@ float orientation_column_get_response(
                         col->kappa
                     );
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)col->mutex);
+    nimcp_platform_mutex_unlock(col->mutex);
 
     return response;
 }
@@ -526,7 +526,7 @@ bool orientation_column_get_stats(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)col->mutex);
+    nimcp_platform_mutex_lock(col->mutex);
 
     memset(stats, 0, sizeof(orientation_stats_t));
     stats->mean_activation = col->activation;
@@ -535,7 +535,7 @@ bool orientation_column_get_stats(
     stats->tuning_sharpness = col->kappa;
     stats->total_activations = 1;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)col->mutex);
+    nimcp_platform_mutex_unlock(col->mutex);
 
     return true;
 }
@@ -559,7 +559,7 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
 
     if (spatial_frequency <= 0.0F || tuning_width <= 0.0F) {
         LOG_ERROR("Invalid parameters: spatial_frequency and tuning_width must be > 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_hypercolumn_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "orientation_hypercolumn_create: spatial_frequency and tuning_width must be > 0");
         return NULL;
     }
 
@@ -569,8 +569,7 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
     );
     if (!hcol) {
         LOG_ERROR("Failed to allocate hypercolumn");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hcol is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orientation_hypercolumn_create: allocation failed");
         return NULL;
     }
 
@@ -633,10 +632,9 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
         LOG_ERROR("Failed to allocate mutex for hypercolumn");
         for (uint32_t i = 0; i < num_orientations; i++) {
             if (hcol->columns[i].mutex) {
-                nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)hcol->columns[i].mutex);
+                nimcp_platform_mutex_destroy(hcol->columns[i].mutex);
                 nimcp_free(hcol->columns[i].mutex);
                 hcol->columns[i].mutex = NULL;
-                nimcp_free(hcol->columns[i].mutex);
             }
         }
         nimcp_free(hcol->columns);
@@ -645,16 +643,16 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
         return NULL;
     }
 
-    if (nimcp_platform_mutex_init((nimcp_platform_mutex_t*)hcol->mutex, false) != 0) {
+    if (nimcp_platform_mutex_init(hcol->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize mutex for hypercolumn");
         for (uint32_t i = 0; i < num_orientations; i++) {
             if (hcol->columns[i].mutex) {
-                nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)hcol->columns[i].mutex);
+                nimcp_platform_mutex_destroy(hcol->columns[i].mutex);
                 nimcp_free(hcol->columns[i].mutex);
                 hcol->columns[i].mutex = NULL;
-                nimcp_free(hcol->columns[i].mutex);
             }
         }
+        nimcp_free(hcol->mutex);
         nimcp_free(hcol->columns);
         nimcp_free(hcol);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "orientation_hypercolumn_create: validation failed");
@@ -675,17 +673,16 @@ void orientation_hypercolumn_destroy(orientation_hypercolumn_t* hcol) {
     if (hcol->columns) {
         for (uint32_t i = 0; i < hcol->num_orientations; i++) {
             if (hcol->columns[i].mutex) {
-                nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)hcol->columns[i].mutex);
+                nimcp_platform_mutex_destroy(hcol->columns[i].mutex);
                 nimcp_free(hcol->columns[i].mutex);
                 hcol->columns[i].mutex = NULL;
-                nimcp_free(hcol->columns[i].mutex);
             }
         }
         nimcp_free(hcol->columns);
     }
 
     if (hcol->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)hcol->mutex);
+        nimcp_platform_mutex_destroy(hcol->mutex);
         nimcp_free(hcol->mutex);
         hcol->mutex = NULL;
     }
@@ -711,7 +708,7 @@ bool orientation_hypercolumn_process(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     /* Compute energy response for each orientation */
     for (uint32_t i = 0; i < hcol->num_orientations; i++) {
@@ -738,7 +735,7 @@ bool orientation_hypercolumn_process(
 
     hcol->dominant_orientation = hcol->columns[max_idx].preferred_orientation;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return true;
 }
@@ -751,7 +748,7 @@ float orientation_hypercolumn_get_dominant(
         return -1.0F;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     float max_activation = -FLT_MAX;
     uint32_t max_idx = 0;
@@ -765,7 +762,7 @@ float orientation_hypercolumn_get_dominant(
 
     float dominant = hcol->columns[max_idx].preferred_orientation;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return dominant;
 }
@@ -783,7 +780,7 @@ bool orientation_hypercolumn_get_distribution(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     for (uint32_t i = 0; i < hcol->num_orientations; i++) {
         orientations[i] = hcol->columns[i].preferred_orientation;
@@ -792,7 +789,7 @@ bool orientation_hypercolumn_get_distribution(
 
     *num_orientations = hcol->num_orientations;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return true;
 }
@@ -806,7 +803,7 @@ bool orientation_hypercolumn_normalize(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     /* Compute total activity: σ + Σ(R_j) */
     float total_activity = hcol->normalization_constant;
@@ -817,7 +814,7 @@ bool orientation_hypercolumn_normalize(
 
     /* Avoid division by zero */
     if (total_activity < EPSILON) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+        nimcp_platform_mutex_unlock(hcol->mutex);
         return true;
     }
 
@@ -826,7 +823,7 @@ bool orientation_hypercolumn_normalize(
         hcol->columns[i].activation /= total_activity;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return true;
 }
@@ -848,7 +845,7 @@ bool orientation_hypercolumn_apply_inhibition(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     /* Allocate temporary array for new activations */
     float* new_activations = (float*)nimcp_malloc(
@@ -856,7 +853,7 @@ bool orientation_hypercolumn_apply_inhibition(
     );
     if (!new_activations) {
         LOG_ERROR("Failed to allocate temporary activation array");
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+        nimcp_platform_mutex_unlock(hcol->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orientation_hypercolumn_apply_inhibition: new_activations is NULL");
         return false;
     }
@@ -900,21 +897,15 @@ bool orientation_hypercolumn_apply_inhibition(
     }
 
     nimcp_free(new_activations);
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return true;
 }
 
-float orientation_hypercolumn_compute_osi(
-    orientation_hypercolumn_t* hcol
-) {
-    if (!hcol) {
-        LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_compute_osi");
-        return -1.0F;
-    }
-
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
-
+/**
+ * @brief Compute OSI without locking (caller must hold mutex)
+ */
+static float compute_osi_unlocked(orientation_hypercolumn_t* hcol) {
     /* Find preferred orientation (maximum response) */
     float max_response = -FLT_MAX;
     uint32_t max_idx = 0;
@@ -960,22 +951,13 @@ float orientation_hypercolumn_compute_osi(
     }
 
     hcol->selectivity_index = osi;
-
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
-
     return osi;
 }
 
-float orientation_hypercolumn_compute_circular_variance(
-    orientation_hypercolumn_t* hcol
-) {
-    if (!hcol) {
-        LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_compute_circular_variance");
-        return -1.0F;
-    }
-
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
-
+/**
+ * @brief Compute circular variance without locking (caller must hold mutex)
+ */
+static float compute_circular_variance_unlocked(orientation_hypercolumn_t* hcol) {
     /* Compute complex vector sum: Σ(R_i × e^(2iθ_i)) */
     float sum_real = 0.0F;
     float sum_imag = 0.0F;
@@ -1003,8 +985,35 @@ float orientation_hypercolumn_compute_circular_variance(
     }
 
     hcol->circular_variance = cv;
+    return cv;
+}
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+float orientation_hypercolumn_compute_osi(
+    orientation_hypercolumn_t* hcol
+) {
+    if (!hcol) {
+        LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_compute_osi");
+        return -1.0F;
+    }
+
+    nimcp_platform_mutex_lock(hcol->mutex);
+    float osi = compute_osi_unlocked(hcol);
+    nimcp_platform_mutex_unlock(hcol->mutex);
+
+    return osi;
+}
+
+float orientation_hypercolumn_compute_circular_variance(
+    orientation_hypercolumn_t* hcol
+) {
+    if (!hcol) {
+        LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_compute_circular_variance");
+        return -1.0F;
+    }
+
+    nimcp_platform_mutex_lock(hcol->mutex);
+    float cv = compute_circular_variance_unlocked(hcol);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return cv;
 }
@@ -1020,12 +1029,12 @@ bool orientation_hypercolumn_set_pinwheel(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     hcol->pinwheel_center_x = center_x;
     hcol->pinwheel_center_y = center_y;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     LOG_DEBUG("Set pinwheel center to (%.2f, %.2f)", center_x, center_y);
 
@@ -1042,7 +1051,7 @@ float orientation_hypercolumn_get_local_orientation(
         return -1.0F;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     /* Compute angle from pinwheel center: θ(x,y) = atan2(y - y₀, x - x₀) */
     float dx = x - hcol->pinwheel_center_x;
@@ -1054,7 +1063,7 @@ float orientation_hypercolumn_get_local_orientation(
     /* Normalize to 0-180 range */
     angle_deg = normalize_orientation(angle_deg);
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return angle_deg;
 }
@@ -1069,13 +1078,13 @@ bool orientation_hypercolumn_get_stats(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_lock(hcol->mutex);
 
     memset(stats, 0, sizeof(orientation_hypercolumn_stats_t));
 
-    /* Compute OSI and circular variance */
-    stats->mean_osi = orientation_hypercolumn_compute_osi(hcol);
-    stats->mean_circular_variance = orientation_hypercolumn_compute_circular_variance(hcol);
+    /* Compute OSI and circular variance (use unlocked helpers to avoid deadlock) */
+    stats->mean_osi = compute_osi_unlocked(hcol);
+    stats->mean_circular_variance = compute_circular_variance_unlocked(hcol);
 
     /* Count active columns and compute total activation */
     uint32_t num_active = 0;
@@ -1105,7 +1114,7 @@ bool orientation_hypercolumn_get_stats(
     stats->coverage_uniformity = (variance < EPSILON) ? 1.0F :
         1.0F / (1.0F + sqrtf(variance));
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+    nimcp_platform_mutex_unlock(hcol->mutex);
 
     return true;
 }

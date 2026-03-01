@@ -94,7 +94,7 @@ cortical_neuromodulation_sleep_bridge_t cortical_neuromodulation_sleep_bridge_cr
     sleep_system_t sleep)
 {
     if (!neuromodulation_module || !sleep) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_neuromodulation_sleep_bridge_create: required parameter is NULL (neuromodulation_module, sleep)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromodulation_sleep_bridge_create: required parameter is NULL (neuromodulation_module, sleep)");
         return NULL;
     }
 
@@ -103,10 +103,8 @@ cortical_neuromodulation_sleep_bridge_t cortical_neuromodulation_sleep_bridge_cr
             sizeof(struct cortical_neuromodulation_sleep_bridge_struct));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_neuromodulation_sleep_bridge_create: allocation failed");
         return NULL;
-
     }
 
     memset(bridge, 0, sizeof(struct cortical_neuromodulation_sleep_bridge_struct));

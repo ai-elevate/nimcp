@@ -153,7 +153,7 @@ cortical_oscillation_integration_t* cortical_oscillation_create(
         (cortical_oscillation_integration_t*)nimcp_malloc(sizeof(cortical_oscillation_integration_t));
     if (!integration) {
         NIMCP_LOGGING_ERROR("Failed to allocate integration structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_oscillation_create: integration alloc failed");
 
         return NULL;
     }
@@ -421,8 +421,7 @@ bool cortical_oscillation_gate_competition(
     if (integration->gating_state.last_competition_us > 0) {
         uint64_t elapsed = current_time - integration->gating_state.last_competition_us;
         if (elapsed < min_interval_us) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_oscillation_gate_competition: validation failed");
-            return false;
+            return false;  /* Normal flow: competition interval not yet met */
         }
     }
 

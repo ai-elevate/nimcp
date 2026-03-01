@@ -179,7 +179,10 @@ speech_jepa_bridge_t* speech_jepa_bridge_create(
     }
 
     /* Initialize bridge base */
-    bridge_base_init(&bridge->base, BIO_MODULE_SPEECH_JEPA, "speech_jepa");
+    if (bridge_base_init(&bridge->base, BIO_MODULE_SPEECH_JEPA, "speech_jepa") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
     bridge->base.bridge_active = false;
 
     /* P1 fix: Validate output_dim fits in stack encoding buffers */
@@ -290,6 +293,9 @@ void speech_jepa_bridge_destroy(speech_jepa_bridge_t* bridge)
 
     /* Free sequence */
     speech_jepa_sequence_destroy(bridge->current_sequence);
+
+    /* Cleanup bridge base (mutex, bio-async context) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge */
     nimcp_free(bridge);
@@ -829,9 +835,10 @@ int speech_jepa_bridge_train_step(
     /* Update stats */
     bridge->training_step++;
     bridge->stats.predictions_made++;
-    bridge->stats.avg_prediction_loss =
+    float new_avg_pred_loss =
         (bridge->stats.avg_prediction_loss * (bridge->training_step - 1) + *loss) /
         bridge->training_step;
+    if (isfinite(new_avg_pred_loss)) bridge->stats.avg_prediction_loss = new_avg_pred_loss;
     if (*loss < bridge->stats.min_loss || bridge->training_step == 1) {
         bridge->stats.min_loss = *loss;
     }
