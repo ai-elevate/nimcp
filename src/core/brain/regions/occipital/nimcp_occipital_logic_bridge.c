@@ -581,8 +581,6 @@ occipital_logic_bridge_t* occipital_logic_bridge_create(
     if (!occipital) {
         LOG_ERROR(LOGIC_BRIDGE_LOG_MODULE, "NULL occipital adapter");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital is NULL");
-
-
         return NULL;
     }
 
@@ -662,14 +660,8 @@ int occipital_logic_connect_brain(
     brain_t brain) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     bridge->brain = brain;
@@ -684,14 +676,8 @@ int occipital_logic_connect_network(
     neural_logic_network_t* network) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     bridge->logic_network = network;
@@ -706,14 +692,8 @@ int occipital_logic_bridge_register_bio_async(
     struct bio_router_struct* router) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     bridge->router = router;
@@ -821,14 +801,8 @@ int occipital_logic_query_predicate(
     float* confidence) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     bridge->stats.queries_processed++;

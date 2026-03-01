@@ -443,8 +443,6 @@ occipital_audiovisual_bridge_t* occipital_av_bridge_create(
     if (!occipital) {
         LOG_ERROR(AV_BRIDGE_LOG_MODULE, "NULL occipital adapter");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital is NULL");
-
-
         return NULL;
     }
 
@@ -544,14 +542,8 @@ int occipital_av_connect_audio_cortex(
     audio_cortex_t* audio) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     bridge->audio_cortex = audio;
@@ -566,14 +558,8 @@ int occipital_av_connect_broca(
     broca_adapter_t* broca) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     bridge->broca = broca;
@@ -588,14 +574,8 @@ int occipital_av_connect_speech_cortex(
     speech_cortex_t* speech) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     bridge->speech_cortex = speech;
@@ -610,14 +590,8 @@ int occipital_av_bridge_register_bio_async(
     struct bio_router_struct* router) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     bridge->router = router;
@@ -833,14 +807,8 @@ int occipital_av_predict_audio_timing(
     float* confidence) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
     if (!bridge->config.enable_temporal_prediction) {
         /* Feature disabled by config — not an error, just return gracefully */
@@ -895,14 +863,8 @@ int occipital_av_report_audio_event(
     uint32_t actual_phoneme_id) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     uint64_t now = get_time_us();

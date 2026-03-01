@@ -667,9 +667,9 @@ int speech_cortical_process(
 
     uint64_t end_time = get_time_ns();
     float process_time_ms = (float)(end_time - start_time) / 1000000.0f;
-    bridge->stats.avg_processing_time_ms =
-        (bridge->stats.avg_processing_time_ms * (bridge->stats.frames_processed - 1) +
+    float updated = (bridge->stats.avg_processing_time_ms * (bridge->stats.frames_processed - 1) +
          process_time_ms) / (float)bridge->stats.frames_processed;
+    if (isfinite(updated)) bridge->stats.avg_processing_time_ms = updated;
 
     bridge->last_process_time_ns = end_time;
     bridge->state = SPEECH_CORTICAL_STATE_READY;

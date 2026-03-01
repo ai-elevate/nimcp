@@ -301,8 +301,6 @@ occipital_cognitive_bridge_t* occipital_cognitive_bridge_create(
     if (!occipital) {
         LOG_ERROR(COG_BRIDGE_LOG_MODULE, "NULL occipital adapter");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital is NULL");
-
-
         return NULL;
     }
 
@@ -397,14 +395,8 @@ int occipital_cognitive_connect_module(
     void* module_handle) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
     if (type >= COG_MODULE_COUNT) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "occipital_cognitive_bridge_reset: capacity exceeded");
@@ -425,14 +417,8 @@ int occipital_cognitive_disconnect_module(
     cognitive_module_type_t type) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
     if (type >= COG_MODULE_COUNT) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "occipital_cognitive_bridge_reset: capacity exceeded");
@@ -452,14 +438,8 @@ int occipital_cognitive_bridge_register_bio_async(
     struct bio_router_struct* router) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     bridge->router = router;
@@ -476,14 +456,8 @@ int occipital_cognitive_connect_substrate(
     neural_substrate_t* substrate) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     bridge->substrate = substrate;
@@ -722,14 +696,8 @@ int occipital_cognitive_send_emotion_cue(
     float confidence) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     visual_cognitive_event_t event = {
@@ -751,14 +719,8 @@ int occipital_cognitive_report_salience(
     uint32_t feature_type) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     visual_cognitive_event_t event = {
@@ -814,14 +776,8 @@ int occipital_cognitive_report_novelty(
     uint32_t feature_count) {
 
     if (!bridge) {
-
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
         return -1;
-
-
     }
 
     visual_cognitive_event_t event = {

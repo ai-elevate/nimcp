@@ -543,9 +543,9 @@ int audio_cortical_process(
     uint64_t end_time = get_time_ns();
     float process_time_ms = (float)(end_time - start_time) / 1000000.0f;
     if (bridge->stats.frames_processed > 1) {
-        bridge->stats.avg_processing_time_ms =
-            (bridge->stats.avg_processing_time_ms * (bridge->stats.frames_processed - 1) +
+        float updated = (bridge->stats.avg_processing_time_ms * (bridge->stats.frames_processed - 1) +
              process_time_ms) / (float)bridge->stats.frames_processed;
+        if (isfinite(updated)) bridge->stats.avg_processing_time_ms = updated;
     } else {
         bridge->stats.avg_processing_time_ms = process_time_ms;
     }
@@ -676,9 +676,9 @@ int audio_cortical_process_spectrogram(
     uint64_t end_time = get_time_ns();
     float process_time_ms = (float)(end_time - start_time) / 1000000.0f;
     if (bridge->stats.frames_processed > 1) {
-        bridge->stats.avg_processing_time_ms =
-            (bridge->stats.avg_processing_time_ms * (bridge->stats.frames_processed - 1) +
+        float updated = (bridge->stats.avg_processing_time_ms * (bridge->stats.frames_processed - 1) +
              process_time_ms) / (float)bridge->stats.frames_processed;
+        if (isfinite(updated)) bridge->stats.avg_processing_time_ms = updated;
     } else {
         bridge->stats.avg_processing_time_ms = process_time_ms;
     }

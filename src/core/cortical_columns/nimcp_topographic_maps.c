@@ -1508,6 +1508,11 @@ static void column_id_to_coords(
     uint32_t* x,
     uint32_t* y)
 {
+    if (width == 0) {
+        if (x) *x = 0;
+        if (y) *y = 0;
+        return;
+    }
     if (x) *x = id % width;
     if (y) *y = id / width;
 }
