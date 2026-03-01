@@ -1213,17 +1213,33 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sparse_synapse)
 #define SYNAPSE_METADATA_POOL_DEFAULT_SIZE 10000
 #define SYNAPSE_METADATA_POOL_MAGIC 0x534D5054  // 'SMPT'
 
+// Chunked block allocator constants — blocks never move, so pointers stay stable
+#define SYNAPSE_METADATA_BLOCK_SHIFT 16
+#define SYNAPSE_METADATA_BLOCK_SIZE  (1u << SYNAPSE_METADATA_BLOCK_SHIFT)  // 65536
+#define SYNAPSE_METADATA_BLOCK_MASK  (SYNAPSE_METADATA_BLOCK_SIZE - 1)
+#define SYNAPSE_METADATA_INITIAL_MAX_BLOCKS 16
+
 /**
  * @brief Synapse metadata pool internal structure
+ *
+ * Uses a chunked block allocator: synapse_t objects are stored in fixed-size
+ * blocks that are never moved or reallocated. This guarantees that pointers
+ * obtained via synapse_metadata_pool_get() remain valid even after the pool
+ * grows. Index decomposition: block = idx >> 16, offset = idx & 0xFFFF.
  */
 typedef struct synapse_metadata_pool_struct {
     uint32_t magic;                     /**< Magic number for validation */
     synapse_metadata_pool_config_t config;
 
-    // Synapse array
-    synapse_t* synapses;                /**< Array of synapse_t objects */
+    // Chunked block storage — blocks never move, pointers stay stable
+    synapse_t** blocks;                 /**< Array of block pointers */
+    uint32_t num_blocks;                /**< Number of allocated blocks */
+    uint32_t max_blocks;                /**< Capacity of blocks pointer array */
+
+    // Free-list allocator
     uint32_t* free_list;                /**< Free indices (stack-based) */
     uint32_t free_count;                /**< Number of free slots */
+    uint32_t free_list_capacity;        /**< Allocated capacity of free_list */
     uint32_t pool_size;                 /**< Total pool capacity */
 
     // Statistics
@@ -1272,47 +1288,79 @@ synapse_metadata_pool_t synapse_metadata_pool_create(
         nimcp_calloc(1, sizeof(synapse_metadata_pool_struct_t));
     if (pool == NULL) {
         LOG_ERROR("Failed to allocate metadata pool structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_metadata_pool_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_metadata_pool_create: alloc failed");
         return NULL;
     }
 
     pool->magic = SYNAPSE_METADATA_POOL_MAGIC;
     pool->config = cfg;
-    pool->pool_size = (uint32_t)cfg.pool_size;
 
-    // Allocate synapse array
-    pool->synapses = (synapse_t*)nimcp_calloc(cfg.pool_size, sizeof(synapse_t));
-    if (pool->synapses == NULL) {
-        LOG_ERROR("Failed to allocate synapse array");
+    // Compute number of blocks needed (round up to full blocks)
+    uint32_t num_blocks = ((uint32_t)cfg.pool_size + SYNAPSE_METADATA_BLOCK_SIZE - 1)
+                          >> SYNAPSE_METADATA_BLOCK_SHIFT;
+    if (num_blocks == 0) num_blocks = 1;
+    uint32_t actual_pool_size = num_blocks * SYNAPSE_METADATA_BLOCK_SIZE;
+
+    // Allocate blocks pointer array
+    pool->max_blocks = num_blocks < SYNAPSE_METADATA_INITIAL_MAX_BLOCKS
+                       ? SYNAPSE_METADATA_INITIAL_MAX_BLOCKS
+                       : num_blocks * 2;
+    pool->blocks = (synapse_t**)nimcp_calloc(pool->max_blocks, sizeof(synapse_t*));
+    if (pool->blocks == NULL) {
+        LOG_ERROR("Failed to allocate blocks array");
         nimcp_free(pool);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_metadata_pool_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_metadata_pool_create: blocks alloc failed");
         return NULL;
     }
 
+    // Allocate each block
+    for (uint32_t b = 0; b < num_blocks; b++) {
+        pool->blocks[b] = (synapse_t*)nimcp_calloc(SYNAPSE_METADATA_BLOCK_SIZE, sizeof(synapse_t));
+        if (pool->blocks[b] == NULL) {
+            LOG_ERROR("Failed to allocate metadata block %u", b);
+            for (uint32_t j = 0; j < b; j++) {
+                nimcp_free(pool->blocks[j]);
+            }
+            nimcp_free(pool->blocks);
+            nimcp_free(pool);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_metadata_pool_create: block alloc failed");
+            return NULL;
+        }
+    }
+    pool->num_blocks = num_blocks;
+    pool->pool_size = actual_pool_size;
+
     // Allocate free list
-    pool->free_list = (uint32_t*)nimcp_malloc(cfg.pool_size * sizeof(uint32_t));
+    pool->free_list_capacity = actual_pool_size;
+    pool->free_list = (uint32_t*)nimcp_malloc(actual_pool_size * sizeof(uint32_t));
     if (pool->free_list == NULL) {
         LOG_ERROR("Failed to allocate free list");
-        nimcp_free(pool->synapses);
+        for (uint32_t b = 0; b < num_blocks; b++) {
+            nimcp_free(pool->blocks[b]);
+        }
+        nimcp_free(pool->blocks);
         nimcp_free(pool);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_metadata_pool_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_metadata_pool_create: free_list alloc failed");
         return NULL;
     }
 
     // Initialize free list (all slots free, in reverse order for LIFO)
-    for (uint32_t i = 0; i < pool->pool_size; i++) {
-        pool->free_list[i] = pool->pool_size - 1 - i;
+    for (uint32_t i = 0; i < actual_pool_size; i++) {
+        pool->free_list[i] = actual_pool_size - 1 - i;
     }
-    pool->free_count = pool->pool_size;
+    pool->free_count = actual_pool_size;
 
     // Initialize mutex if thread-safe
     if (cfg.thread_safe) {
         if (nimcp_mutex_init(&pool->mutex, NULL) != 0) {
             LOG_ERROR("Failed to initialize metadata pool mutex");
             nimcp_free(pool->free_list);
-            nimcp_free(pool->synapses);
+            for (uint32_t b = 0; b < num_blocks; b++) {
+                nimcp_free(pool->blocks[b]);
+            }
+            nimcp_free(pool->blocks);
             nimcp_free(pool);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "synapse_metadata_pool_create: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "synapse_metadata_pool_create: mutex init failed");
             return NULL;
         }
     }
@@ -1323,8 +1371,8 @@ synapse_metadata_pool_t synapse_metadata_pool_create(
     atomic_store(&pool->failed_allocations, 0);
     atomic_store(&pool->peak_usage, 0);
 
-    LOG_INFO("Created synapse metadata pool with %u slots (%.2f MB)",
-             pool->pool_size,
+    LOG_INFO("Created synapse metadata pool with %u slots in %u blocks (%.2f MB)",
+             pool->pool_size, pool->num_blocks,
              (pool->pool_size * sizeof(synapse_t)) / (1024.0 * 1024.0));
 
     return pool;
@@ -1340,12 +1388,19 @@ void synapse_metadata_pool_destroy(synapse_metadata_pool_t pool) {
         nimcp_mutex_destroy(&pool->mutex);
     }
 
-    // Free memory
+    // Free all blocks
+    if (pool->blocks != NULL) {
+        for (uint32_t b = 0; b < pool->num_blocks; b++) {
+            if (pool->blocks[b] != NULL) {
+                nimcp_free(pool->blocks[b]);
+            }
+        }
+        nimcp_free(pool->blocks);
+    }
+
+    // Free the free list
     if (pool->free_list != NULL) {
         nimcp_free(pool->free_list);
-    }
-    if (pool->synapses != NULL) {
-        nimcp_free(pool->synapses);
     }
 
     pool->magic = 0;  // Invalidate
@@ -1364,17 +1419,82 @@ uint32_t synapse_metadata_pool_allocate(synapse_metadata_pool_t pool) {
         nimcp_mutex_lock(&pool->mutex);
     }
 
-    // Check if any slots available
+    // Grow pool by adding a new block if exhausted
     if (pool->free_count == 0) {
-        if (pool->config.thread_safe) {
-            nimcp_mutex_unlock(&pool->mutex);
+        uint32_t new_pool_size = pool->pool_size + SYNAPSE_METADATA_BLOCK_SIZE;
+        if (new_pool_size > SPARSE_SYNAPSE_MAX_POOL_SIZE) {
+            if (pool->config.thread_safe) {
+                nimcp_mutex_unlock(&pool->mutex);
+            }
+            atomic_fetch_add(&pool->failed_allocations, 1);
+            LOG_WARN("Metadata pool at maximum capacity (%u)", pool->pool_size);
+            return SPARSE_SYNAPSE_NO_METADATA;
         }
-        uint64_t fails = atomic_fetch_add(&pool->failed_allocations, 1);
-        if (fails < 3 || (fails & (fails - 1)) == 0) {
-            /* Log first 3, then powers of 2 only to avoid million-line spam */
-            LOG_WARN("Metadata pool exhausted (failure #%llu)", (unsigned long long)(fails + 1));
+
+        // Grow blocks pointer array if needed (safe — no one holds ptrs into it)
+        if (pool->num_blocks >= pool->max_blocks) {
+            uint32_t new_max = pool->max_blocks * 2;
+            synapse_t** new_blocks = (synapse_t**)nimcp_realloc(
+                pool->blocks, new_max * sizeof(synapse_t*));
+            if (new_blocks == NULL) {
+                if (pool->config.thread_safe) {
+                    nimcp_mutex_unlock(&pool->mutex);
+                }
+                atomic_fetch_add(&pool->failed_allocations, 1);
+                LOG_WARN("Metadata pool grow failed (blocks array OOM)");
+                return SPARSE_SYNAPSE_NO_METADATA;
+            }
+            memset(&new_blocks[pool->max_blocks], 0,
+                   (new_max - pool->max_blocks) * sizeof(synapse_t*));
+            pool->blocks = new_blocks;
+            pool->max_blocks = new_max;
         }
-        return SPARSE_SYNAPSE_NO_METADATA;
+
+        // Allocate new block (never moved after creation — pointers stay stable)
+        synapse_t* new_block = (synapse_t*)nimcp_calloc(
+            SYNAPSE_METADATA_BLOCK_SIZE, sizeof(synapse_t));
+        if (new_block == NULL) {
+            if (pool->config.thread_safe) {
+                nimcp_mutex_unlock(&pool->mutex);
+            }
+            atomic_fetch_add(&pool->failed_allocations, 1);
+            LOG_WARN("Metadata pool grow failed (block alloc OOM at %u slots)",
+                     pool->pool_size);
+            return SPARSE_SYNAPSE_NO_METADATA;
+        }
+        pool->blocks[pool->num_blocks] = new_block;
+        pool->num_blocks++;
+
+        // Grow free list (safe — no one holds ptrs into it, only uint32 indices)
+        uint32_t new_fl_cap = pool->free_list_capacity + SYNAPSE_METADATA_BLOCK_SIZE;
+        uint32_t* new_fl = (uint32_t*)nimcp_realloc(
+            pool->free_list, new_fl_cap * sizeof(uint32_t));
+        if (new_fl == NULL) {
+            // Undo the block allocation
+            nimcp_free(new_block);
+            pool->blocks[--pool->num_blocks] = NULL;
+            if (pool->config.thread_safe) {
+                nimcp_mutex_unlock(&pool->mutex);
+            }
+            atomic_fetch_add(&pool->failed_allocations, 1);
+            LOG_WARN("Metadata pool grow failed (free list OOM)");
+            return SPARSE_SYNAPSE_NO_METADATA;
+        }
+        pool->free_list = new_fl;
+        pool->free_list_capacity = new_fl_cap;
+
+        // Add new block's indices to free list (reverse order for LIFO)
+        uint32_t old_size = pool->pool_size;
+        for (uint32_t i = 0; i < SYNAPSE_METADATA_BLOCK_SIZE; i++) {
+            pool->free_list[i] = old_size + SYNAPSE_METADATA_BLOCK_SIZE - 1 - i;
+        }
+        pool->free_count = SYNAPSE_METADATA_BLOCK_SIZE;
+        pool->pool_size = new_pool_size;
+        pool->config.pool_size = new_pool_size;
+
+        LOG_INFO("Metadata pool grew: added block %u (%u total slots, %.2f MB total)",
+                 pool->num_blocks - 1, pool->pool_size,
+                 (pool->pool_size * sizeof(synapse_t)) / (1024.0 * 1024.0));
     }
 
     // Pop from free list
@@ -1394,8 +1514,10 @@ uint32_t synapse_metadata_pool_allocate(synapse_metadata_pool_t pool) {
         nimcp_mutex_unlock(&pool->mutex);
     }
 
-    // Initialize synapse to defaults
-    memset(&pool->synapses[index], 0, sizeof(synapse_t));
+    // Initialize synapse to defaults (chunked access)
+    uint32_t blk = index >> SYNAPSE_METADATA_BLOCK_SHIFT;
+    uint32_t off = index & SYNAPSE_METADATA_BLOCK_MASK;
+    memset(&pool->blocks[blk][off], 0, sizeof(synapse_t));
 
     LOG_DEBUG("Allocated metadata slot %u (%u remaining)", index, pool->free_count);
     return index;
@@ -1451,7 +1573,10 @@ synapse_t* synapse_metadata_pool_get(
         return NULL;
     }
 
-    return &pool->synapses[index];
+    // Chunked access — block never moves, returned pointer stays stable
+    uint32_t blk = index >> SYNAPSE_METADATA_BLOCK_SHIFT;
+    uint32_t off = index & SYNAPSE_METADATA_BLOCK_MASK;
+    return &pool->blocks[blk][off];
 }
 
 float synapse_metadata_pool_utilization(synapse_metadata_pool_t pool) {

@@ -813,14 +813,17 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
         return false;
     }
 
-    // Handle case where there are no labels
-    if (brain->num_output_labels == 0) {
+    // Allocate output_labels with full num_outputs capacity (same as fresh brain)
+    // so that get_or_create_label_index can add new labels after checkpoint load
+    uint32_t label_capacity = brain->config.num_outputs > brain->num_output_labels
+                              ? brain->config.num_outputs : brain->num_output_labels;
+    if (label_capacity == 0) {
         brain->output_labels = NULL;
         fclose(meta_file);
         return true;
     }
 
-    brain->output_labels = nimcp_malloc(brain->num_output_labels * sizeof(char*));
+    brain->output_labels = nimcp_calloc(label_capacity, sizeof(char*));
     if (!brain->output_labels) {
         fprintf(stderr, "ERROR: Failed to allocate output_labels array\n");
         fclose(meta_file);
