@@ -270,6 +270,11 @@ void joy_system_reset(joy_system_t* system) {
     bool integrate_eth = system->integrate_with_ethics;
     bool integrate_learn = system->integrate_with_learning;
 
+    // Unregister from bio-router before zeroing (prevents stale registration)
+    if (system->bio_async_enabled && system->bio_ctx_ptr) {
+        bio_router_unregister_module(system->bio_ctx_ptr);
+    }
+
     // Zero everything
     memset(system, 0, sizeof(joy_system_t));
 

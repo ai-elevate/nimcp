@@ -108,7 +108,7 @@ tom_fep_bridge_t* tom_fep_bridge_create(const tom_fep_config_t* config) {
         (tom_fep_bridge_t*)nimcp_malloc(sizeof(tom_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -607,7 +607,6 @@ int tom_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
  * ============================================================================ */
 void tom_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_tom_fep_bridge_health_agent = agent;
     }
 }
@@ -625,7 +624,7 @@ int tom_fep_bridge_training_begin(void* instance) {
                               "tom_fep_bridge_training_begin: NULL argument");
         return -1;
     }
-    tom_fep_bridge_heartbeat_instance(NULL, "tom_fep_bridge_training_begin", 0.0f);
+    tom_fep_bridge_heartbeat("tom_fep_bridge_training_begin", 0.0f);
     return 0;
 }
 
@@ -635,7 +634,7 @@ int tom_fep_bridge_training_end(void* instance) {
                               "tom_fep_bridge_training_end: NULL argument");
         return -1;
     }
-    tom_fep_bridge_heartbeat_instance(NULL, "tom_fep_bridge_training_end", 1.0f);
+    tom_fep_bridge_heartbeat("tom_fep_bridge_training_end", 1.0f);
     return 0;
 }
 
@@ -645,6 +644,6 @@ int tom_fep_bridge_training_step(void* instance, float progress) {
                               "tom_fep_bridge_training_step: NULL argument");
         return -1;
     }
-    tom_fep_bridge_heartbeat_instance(NULL, "tom_fep_bridge_training_step", progress);
+    tom_fep_bridge_heartbeat("tom_fep_bridge_training_step", progress);
     return 0;
 }

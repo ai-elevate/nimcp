@@ -2109,7 +2109,6 @@ int intuitive_reasoning_query_self_knowledge(kg_reader_t* kg) {
 
 void intuitive_reasoning_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_intuitive_reasoning_health_agent = agent;
     }
 }
@@ -2124,7 +2123,7 @@ int intuitive_reasoning_training_begin(void* instance) {
                               "intuitive_reasoning_training_begin: NULL argument");
         return -1;
     }
-    intuitive_reasoning_heartbeat_instance(NULL, "intuitive_reasoning_training_begin", 0.0f);
+    intuitive_reasoning_heartbeat_instance(g_intuitive_reasoning_health_agent, "intuitive_reasoning_training_begin", 0.0f);
     intuitive_engine_t* eng = (intuitive_engine_t*)instance;
     eng->stats.hunches_formed = 0;
     eng->stats.hunches_verified = 0;
@@ -2151,7 +2150,7 @@ int intuitive_reasoning_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    intuitive_reasoning_heartbeat_instance(NULL, "intuitive_reasoning_training_step", progress);
+    intuitive_reasoning_heartbeat_instance(g_intuitive_reasoning_health_agent, "intuitive_reasoning_training_step", progress);
     intuitive_engine_t* eng = (intuitive_engine_t*)instance;
     eng->stats.hunches_formed++;
     /* Progressively sharpen pattern matching sensitivity */
@@ -2174,7 +2173,7 @@ int intuitive_reasoning_training_end(void* instance) {
                               "intuitive_reasoning_training_end: NULL argument");
         return -1;
     }
-    intuitive_reasoning_heartbeat_instance(NULL, "intuitive_reasoning_training_end", 1.0f);
+    intuitive_reasoning_heartbeat_instance(g_intuitive_reasoning_health_agent, "intuitive_reasoning_training_end", 1.0f);
     intuitive_engine_t* eng = (intuitive_engine_t*)instance;
     float accuracy = 0.0f;
     if (eng->stats.hunches_formed > 0) {

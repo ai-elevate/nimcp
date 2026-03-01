@@ -271,7 +271,7 @@ void surprise_pink_noise_bridge_destroy(surprise_pink_noise_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
     }
     nimcp_free(bridge);
     bridge = NULL;
@@ -610,7 +610,6 @@ int surprise_pink_noise_bridge_set_health_agent(
 
 void surprise_pink_noise_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_surprise_pink_noise_health_agent = agent;
     }
 }

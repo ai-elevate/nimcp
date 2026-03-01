@@ -110,6 +110,9 @@ game_theory_thalamic_bridge_t* game_theory_thalamic_bridge_create(void* game_the
     bridge->config = config ? *config : game_theory_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    if (bridge_base_init(&bridge->base, 0, "game_theory_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     NIMCP_LOGGING_INFO("Created %s bridge", "game_theory_thalamic");
     return bridge;
 }
@@ -118,8 +121,9 @@ void game_theory_thalamic_bridge_destroy(game_theory_thalamic_bridge_t* bridge) 
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__destroy", 0.0f);
 
-
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
 }
 
 int game_theory_thalamic_bridge_reset(game_theory_thalamic_bridge_t* bridge) {
@@ -130,9 +134,10 @@ int game_theory_thalamic_bridge_reset(game_theory_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__reset", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -145,12 +150,15 @@ int game_theory_thalamic_route_strategy(game_theory_thalamic_bridge_t* bridge, c
     game_theory_thalamic_bridge_heartbeat("game_theory__game_theory_thalamic", 0.0f);
 
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->stakes_level < bridge->config.min_stakes_threshold) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.strategies_routed++;
     bridge->stats.avg_stakes_level = (bridge->stats.avg_stakes_level * (bridge->stats.strategies_routed - 1) +
                                       signal->stakes_level) / bridge->stats.strategies_routed;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -162,8 +170,9 @@ int game_theory_thalamic_route_outcome(game_theory_thalamic_bridge_t* bridge, co
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__game_theory_thalamic", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.outcomes_processed++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -175,8 +184,9 @@ int game_theory_thalamic_set_attention(game_theory_thalamic_bridge_t* bridge, fl
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__game_theory_thalamic", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -185,7 +195,9 @@ int game_theory_thalamic_get_attention(const game_theory_thalamic_bridge_t* brid
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__game_theory_thalamic", 0.0f);
 
@@ -198,7 +210,9 @@ int game_theory_thalamic_bridge_get_stats(const game_theory_thalamic_bridge_t* b
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__get_stats", 0.0f);
 

@@ -246,8 +246,7 @@ static const anomaly_error_mapping_t* find_anomaly_mapping(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_anomaly_mapping: validation failed");
-    return NULL;
+    return NULL;  // No mapping found
 }
 
 /**
@@ -283,8 +282,7 @@ static const agent_error_mapping_t* find_agent_mapping(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_mapping: validation failed");
-    return NULL;
+    return NULL;  // No mapping found
 }
 
 /**
@@ -324,8 +322,7 @@ static int capture_stack_trace(diagnostic_result_t* result) {
     void* buffer[MAX_STACK_DEPTH];
     int depth = backtrace(buffer, MAX_STACK_DEPTH);
     if (depth <= 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capture_stack_trace: validation failed");
-        return -1;
+        return -1;  // No stack trace available
     }
 
     result->stack_depth = (uint32_t)depth;
@@ -449,7 +446,7 @@ health_diag_bridge_t* health_diag_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "health_diagnostic") != 0) {
         health_diag_bridge_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_diag_bridge_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "health_diag_bridge_create: bridge_base_init failed");
         return NULL;
     }
 
@@ -520,8 +517,7 @@ int health_diag_bridge_convert_anomaly(
 
     /* Check minimum severity filter (not an error — intentional filtering) */
     if (anomaly->severity < bridge->config.min_severity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_diag_bridge_convert_anomaly: validation failed");
-        return -1;
+        return -1;  // Filtered by severity threshold
     }
 
     uint64_t start_time = nimcp_time_get_us();
@@ -680,8 +676,7 @@ int health_diag_bridge_convert_agent_message(
 
     /* Check minimum severity filter (not an error — intentional filtering) */
     if (message->severity < bridge->config.min_agent_severity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_diag_bridge_convert_agent_message: validation failed");
-        return -1;
+        return -1;  // Filtered by severity threshold
     }
 
     uint64_t start_time = nimcp_time_get_us();
@@ -1035,9 +1030,9 @@ int health_diag_bridge_get_stats(
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_g", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

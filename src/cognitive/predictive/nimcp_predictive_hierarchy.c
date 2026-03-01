@@ -51,11 +51,8 @@ static pred_level_t* create_level(const pred_level_config_t* config,
     level->gen_hidden_dim = config->gen_hidden_dim;
 
     level->state = nimcp_calloc(config->dim, sizeof(float));
-    if (!level->state) return NULL;
     level->prediction = nimcp_calloc(config->dim, sizeof(float));
-    if (!level->prediction) return NULL;
     level->prediction_error = nimcp_calloc(config->dim, sizeof(float));
-    if (!level->prediction_error) return NULL;
     level->precision = nimcp_calloc(config->dim, sizeof(float));
 
     if (!level->state || !level->prediction ||
@@ -75,11 +72,8 @@ static pred_level_t* create_level(const pred_level_config_t* config,
 
     if (config->gen_type == PRED_HIER_GEN_LINEAR && level_index > 0) {
         level->gen_weights = nimcp_calloc(config->dim * config->dim, sizeof(float));
-        if (!level->gen_weights) return NULL;
         level->gen_bias = nimcp_calloc(config->dim, sizeof(float));
-        if (!level->gen_bias) return NULL;
         level->grad_gen_weights = nimcp_calloc(config->dim * config->dim, sizeof(float));
-        if (!level->grad_gen_weights) return NULL;
         level->grad_gen_bias = nimcp_calloc(config->dim, sizeof(float));
 
         if (!level->gen_weights || !level->gen_bias ||
@@ -117,7 +111,7 @@ error:
     if (level->grad_gen_bias) nimcp_free(level->grad_gen_bias);
     nimcp_free(level);
     level = NULL;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_hierarchy_heartbeat_instance: validation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_level: memory allocation failed");
     return NULL;
 }
 
@@ -421,7 +415,7 @@ predictive_hierarchy_t* pred_hier_create(const pred_hier_config_t* config) {
 
 error:
     pred_hier_destroy(hier);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pred_hier_create: operation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pred_hier_create: resource allocation failed");
     return NULL;
 }
 
@@ -461,7 +455,7 @@ void pred_hier_destroy(predictive_hierarchy_t* hier) {
 #endif
 
     if (hier->mutex) {
-        nimcp_mutex_free(hier->mutex);
+        nimcp_mutex_destroy(hier->mutex);
     }
 
     nimcp_free(hier);
@@ -1246,7 +1240,6 @@ const char* pred_hier_gen_model_to_string(pred_hier_gen_model_t type) {
  * ============================================================================ */
 void predictive_hierarchy_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_predictive_hierarchy_health_agent = agent;
     }
 }
@@ -1260,7 +1253,7 @@ int predictive_hierarchy_training_begin(void* instance) {
                               "predictive_hierarchy_training_begin: NULL argument");
         return -1;
     }
-    predictive_hierarchy_heartbeat_instance(NULL, "predictive_hierarchy_training_begin", 0.0f);
+    predictive_hierarchy_heartbeat("predictive_hierarchy_training_begin", 0.0f);
     return 0;
 }
 
@@ -1270,7 +1263,7 @@ int predictive_hierarchy_training_end(void* instance) {
                               "predictive_hierarchy_training_end: NULL argument");
         return -1;
     }
-    predictive_hierarchy_heartbeat_instance(NULL, "predictive_hierarchy_training_end", 1.0f);
+    predictive_hierarchy_heartbeat("predictive_hierarchy_training_end", 1.0f);
     return 0;
 }
 
@@ -1280,6 +1273,6 @@ int predictive_hierarchy_training_step(void* instance, float progress) {
                               "predictive_hierarchy_training_step: NULL argument");
         return -1;
     }
-    predictive_hierarchy_heartbeat_instance(NULL, "predictive_hierarchy_training_step", progress);
+    predictive_hierarchy_heartbeat("predictive_hierarchy_training_step", progress);
     return 0;
 }

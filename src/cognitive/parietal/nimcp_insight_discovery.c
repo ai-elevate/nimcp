@@ -849,7 +849,6 @@ int insight_discovery_query_self_knowledge(kg_reader_t* kg) {
 
 void insight_discovery_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_insight_discovery_health_agent = agent;
     }
 }
@@ -864,7 +863,7 @@ int insight_discovery_training_begin(void* instance) {
                               "insight_discovery_training_begin: NULL argument");
         return -1;
     }
-    insight_discovery_heartbeat_instance(NULL, "insight_discovery_training_begin", 0.0f);
+    insight_discovery_heartbeat_instance(g_insight_discovery_health_agent, "insight_discovery_training_begin", 0.0f);
     insight_engine_t* eng = (insight_engine_t*)instance;
     eng->stats.problems_processed = 0;
     eng->stats.insights_generated = 0;
@@ -888,7 +887,7 @@ int insight_discovery_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    insight_discovery_heartbeat_instance(NULL, "insight_discovery_training_step", progress);
+    insight_discovery_heartbeat_instance(g_insight_discovery_health_agent, "insight_discovery_training_step", progress);
     insight_engine_t* eng = (insight_engine_t*)instance;
     eng->stats.problems_processed++;
     /* Progressive incubation rate adaptation */
@@ -912,7 +911,7 @@ int insight_discovery_training_end(void* instance) {
                               "insight_discovery_training_end: NULL argument");
         return -1;
     }
-    insight_discovery_heartbeat_instance(NULL, "insight_discovery_training_end", 1.0f);
+    insight_discovery_heartbeat_instance(g_insight_discovery_health_agent, "insight_discovery_training_end", 1.0f);
     insight_engine_t* eng = (insight_engine_t*)instance;
     float success_rate = 0.0f;
     if (eng->stats.problems_processed > 0) {

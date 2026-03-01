@@ -591,8 +591,11 @@ float reasoning_substrate_get_inference_depth(const reasoning_substrate_bridge_t
     /* Phase 8: Heartbeat at operation start */
     reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
 
-
-    return bridge->effects.inference_depth;
+    float result;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    result = bridge->effects.inference_depth;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 float reasoning_substrate_get_logical_accuracy(const reasoning_substrate_bridge_t* bridge)
@@ -605,8 +608,11 @@ float reasoning_substrate_get_logical_accuracy(const reasoning_substrate_bridge_
     /* Phase 8: Heartbeat at operation start */
     reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
 
-
-    return bridge->effects.logical_accuracy;
+    float result;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    result = bridge->effects.logical_accuracy;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 float reasoning_substrate_get_processing_speed(const reasoning_substrate_bridge_t* bridge)
@@ -619,8 +625,11 @@ float reasoning_substrate_get_processing_speed(const reasoning_substrate_bridge_
     /* Phase 8: Heartbeat at operation start */
     reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
 
-
-    return bridge->effects.processing_speed;
+    float result;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    result = bridge->effects.processing_speed;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 float reasoning_substrate_get_abstraction_capacity(const reasoning_substrate_bridge_t* bridge)
@@ -633,24 +642,27 @@ float reasoning_substrate_get_abstraction_capacity(const reasoning_substrate_bri
     /* Phase 8: Heartbeat at operation start */
     reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
 
-
-    return bridge->effects.abstraction_capacity;
+    float result;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    result = bridge->effects.abstraction_capacity;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
+/* NOTE: This function returns an interior pointer — callers must not hold the
+ * pointer across concurrent updates. Use reasoning_substrate_get_effects_copy()
+ * for safe concurrent access. Kept for backward compatibility only. */
 const reasoning_substrate_effects_t* reasoning_substrate_get_effects(
     const reasoning_substrate_bridge_t* bridge
 )
 {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot get effects: NULL bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return NULL;
     }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
-
 
     return &bridge->effects;
 }
@@ -664,24 +676,26 @@ bool reasoning_substrate_is_impaired(const reasoning_substrate_bridge_t* bridge)
     /* Phase 8: Heartbeat at operation start */
     reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
 
-
-    return bridge->effects.is_impaired;
+    bool result;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    result = bridge->effects.is_impaired;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
+/* NOTE: This function returns an interior pointer — callers must not hold the
+ * pointer across concurrent updates. Kept for backward compatibility only. */
 const reasoning_substrate_stats_t* reasoning_substrate_get_stats(
     const reasoning_substrate_bridge_t* bridge
 )
 {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot get stats: NULL bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return NULL;
     }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
-
 
     return &bridge->stats;
 }
@@ -718,7 +732,6 @@ int reasoning_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void reasoning_substrate_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_reasoning_substrate_bridge_health_agent = agent;
     }
 }

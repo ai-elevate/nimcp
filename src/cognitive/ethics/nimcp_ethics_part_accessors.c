@@ -156,7 +156,6 @@ void ethics_engine_set_asimov_hash(ethics_engine_t engine, const uint8_t* hash) 
 
 void ethics_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_ethics_health_agent = agent;
     }
 }

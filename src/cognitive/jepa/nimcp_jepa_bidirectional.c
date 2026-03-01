@@ -325,7 +325,7 @@ void jepa_bidirectional_destroy(jepa_bidirectional_t* bidir) {
 #endif
 
     if (bidir->mutex) {
-        nimcp_mutex_free(bidir->mutex);
+        nimcp_mutex_destroy(bidir->mutex);
     }
 
     nimcp_free(bidir);

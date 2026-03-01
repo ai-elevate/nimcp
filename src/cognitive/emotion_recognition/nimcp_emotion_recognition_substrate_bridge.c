@@ -10,6 +10,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -123,6 +124,7 @@ emotion_recognition_substrate_bridge_t* emotion_recognition_substrate_bridge_cre
     bridge->effects.subtle_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->effects.context_integration = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    if (bridge_base_init(&bridge->base, 0, "emotion_recognition_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "emotion_recognition_substrate");
     return bridge;
 }
@@ -137,6 +139,7 @@ void emotion_recognition_substrate_bridge_destroy(emotion_recognition_substrate_
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -156,6 +159,7 @@ int emotion_recognition_substrate_bridge_update(emotion_recognition_substrate_br
         return -1;
     }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* ATP enables recognition accuracy and subtle sensitivity */
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.recognition_accuracy = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -169,6 +173,7 @@ int emotion_recognition_substrate_bridge_update(emotion_recognition_substrate_br
     bridge->effects.overall_capacity = (bridge->effects.recognition_accuracy + bridge->effects.detection_speed +
                                         bridge->effects.subtle_sensitivity + bridge->effects.context_integration) / 4.0f;
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -177,7 +182,9 @@ int emotion_recognition_substrate_bridge_get_effects(const emotion_recognition_s
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_substrate_bridge_heartbeat("emotion_reco_get_effects", 0.0f);
 

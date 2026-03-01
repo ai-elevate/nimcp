@@ -79,7 +79,7 @@ bool ethics_validate_learning_inputs(ethics_engine_t engine, const action_contex
 
     // Guard clause: Check if learning enabled
     if (!ethics_engine_is_learning_enabled(engine)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_validate_learning_inputs: ethics_engine_is_learning_enabled is NULL");
+        NIMCP_LOGGING_WARN("ethics_validate_learning_inputs: learning is not enabled in this engine");
         return false;
     }
 
@@ -245,7 +245,6 @@ int ethics_learning_query_self_knowledge(kg_reader_t* kg) {
 
 void ethics_learning_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_ethics_learning_health_agent = agent;
     }
 }

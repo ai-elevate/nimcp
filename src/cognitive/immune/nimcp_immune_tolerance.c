@@ -169,7 +169,7 @@ tolerance_system_t* tolerance_create(
     tolerance_system_t* sys = nimcp_calloc(1, sizeof(tolerance_system_t));
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate tolerance system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tolerance_create: sys is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tolerance_create: sys is NULL");
         return NULL;
     }
 
@@ -252,7 +252,7 @@ void tolerance_destroy(tolerance_system_t* system) {
 
 
     if (system->config.thread_safe && system->mutex) {
-        nimcp_mutex_free(system->mutex);
+        nimcp_mutex_destroy(system->mutex);
     }
 
     if (system->self_patterns) {
@@ -1289,7 +1289,6 @@ int tolerance_query_self_knowledge(kg_reader_t* kg) {
 
 void immune_tolerance_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_immune_tolerance_health_agent = agent;
     }
 }

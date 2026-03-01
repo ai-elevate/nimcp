@@ -155,11 +155,7 @@ void fep_neuromod_destroy(fep_neuromod_system_t* sys) {
 
 int fep_neuromod_update(fep_neuromod_system_t* sys, uint64_t delta_ms) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -217,11 +213,7 @@ int fep_neuromod_release(
     float amount
 ) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
     if (type >= FEP_NEUROMOD_COUNT) return -1;
 
@@ -261,11 +253,7 @@ int fep_neuromod_set_level(
     float level
 ) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
     if (type >= FEP_NEUROMOD_COUNT) return -1;
 
@@ -296,8 +284,10 @@ float fep_neuromod_get_level(
     /* Phase 8: Heartbeat at operation start */
     fep_neuromod_heartbeat("fep_neuromod_get_level", 0.0f);
 
-
-    return sys->state.levels[type];
+    nimcp_platform_mutex_lock(((fep_neuromod_system_t*)sys)->mutex);
+    float level = sys->state.levels[type];
+    nimcp_platform_mutex_unlock(((fep_neuromod_system_t*)sys)->mutex);
+    return level;
 }
 
 /* ============================================================================
@@ -379,11 +369,7 @@ int fep_neuromod_on_prediction_error(
     float error_magnitude
 ) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
 
     /* Large errors indicate unreliable predictions → decrease ACh */
@@ -402,11 +388,7 @@ int fep_neuromod_on_surprise(
     float surprise
 ) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
 
     /* Surprise → NE release */
@@ -423,11 +405,7 @@ int fep_neuromod_on_reward(
     float reward
 ) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
 
     /* Reward prediction error → DA release (can be negative) */
@@ -444,11 +422,7 @@ int fep_neuromod_on_uncertainty(
     float uncertainty
 ) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
 
     /* High uncertainty → decrease ACh (predictions unreliable) */
@@ -472,10 +446,12 @@ int fep_neuromod_get_state(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_neuromod_get_state: required parameter is NULL (sys, state)");
         return -1;
     }
-    *state = sys->state;
     /* Phase 8: Heartbeat at operation start */
     fep_neuromod_heartbeat("fep_neuromod_get_state", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_neuromod_system_t*)sys)->mutex);
+    *state = sys->state;
+    nimcp_platform_mutex_unlock(((fep_neuromod_system_t*)sys)->mutex);
 
     return 0;
 }
@@ -511,11 +487,7 @@ int fep_neuromod_connect(
 
 int fep_neuromod_connect_bio_async(fep_neuromod_system_t* sys) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
     if (sys->bio_async_enabled) return 0;
 
@@ -542,11 +514,7 @@ int fep_neuromod_connect_bio_async(fep_neuromod_system_t* sys) {
 
 int fep_neuromod_disconnect_bio_async(fep_neuromod_system_t* sys) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
     if (!sys->bio_async_enabled) return 0;
 
@@ -627,7 +595,6 @@ int fep_neuromod_query_self_knowledge(kg_reader_t* kg) {
 
 void fep_neuromod_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_fep_neuromod_health_agent = agent;
     }
 }
@@ -642,7 +609,7 @@ int fep_neuromod_training_begin(void* instance) {
                               "fep_neuromod_training_begin: NULL argument");
         return -1;
     }
-    fep_neuromod_heartbeat_instance(NULL, "fep_neuromod_training_begin", 0.0f);
+    fep_neuromod_heartbeat_instance(g_fep_neuromod_health_agent, "fep_neuromod_training_begin", 0.0f);
     return 0;
 }
 
@@ -652,7 +619,7 @@ int fep_neuromod_training_end(void* instance) {
                               "fep_neuromod_training_end: NULL argument");
         return -1;
     }
-    fep_neuromod_heartbeat_instance(NULL, "fep_neuromod_training_end", 1.0f);
+    fep_neuromod_heartbeat_instance(g_fep_neuromod_health_agent, "fep_neuromod_training_end", 1.0f);
     return 0;
 }
 
@@ -664,6 +631,6 @@ int fep_neuromod_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    fep_neuromod_heartbeat_instance(NULL, "fep_neuromod_training_step", progress);
+    fep_neuromod_heartbeat_instance(g_fep_neuromod_health_agent, "fep_neuromod_training_step", progress);
     return 0;
 }

@@ -465,7 +465,6 @@ int inner_dialogue_convergence_analyse(
 
 void convergence_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_convergence_health_agent = agent;
     }
 }

@@ -252,7 +252,7 @@ void scientific_reasoning_destroy(scientific_reasoning_t* sr) {
     nimcp_free(sr->hypotheses);
 
     if (sr->lock) {
-        nimcp_mutex_free(sr->lock);
+        nimcp_mutex_destroy(sr->lock);
     }
 
     nimcp_free(sr);
@@ -1358,7 +1358,6 @@ int scientific_reasoning_query_self_knowledge(kg_reader_t* kg) {
 
 void scientific_reasoning_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_scientific_reasoning_health_agent = agent;
     }
 }
@@ -1373,7 +1372,7 @@ int scientific_reasoning_training_begin(void* instance) {
                               "scientific_reasoning_training_begin: NULL argument");
         return -1;
     }
-    scientific_reasoning_heartbeat_instance(NULL, "scientific_reasoning_training_begin", 0.0f);
+    scientific_reasoning_heartbeat_instance(g_scientific_reasoning_health_agent, "scientific_reasoning_training_begin", 0.0f);
     (void)(struct scientific_reasoning*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1384,7 +1383,7 @@ int scientific_reasoning_training_end(void* instance) {
                               "scientific_reasoning_training_end: NULL argument");
         return -1;
     }
-    scientific_reasoning_heartbeat_instance(NULL, "scientific_reasoning_training_end", 1.0f);
+    scientific_reasoning_heartbeat_instance(g_scientific_reasoning_health_agent, "scientific_reasoning_training_end", 1.0f);
     (void)(struct scientific_reasoning*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1397,7 +1396,7 @@ int scientific_reasoning_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    scientific_reasoning_heartbeat_instance(NULL, "scientific_reasoning_training_step", progress);
+    scientific_reasoning_heartbeat_instance(g_scientific_reasoning_health_agent, "scientific_reasoning_training_step", progress);
     (void)(struct scientific_reasoning*)instance; /* Module state available for step adaptation */
     return 0;
 }

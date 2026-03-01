@@ -1489,7 +1489,6 @@ int analogical_reasoning_query_self_knowledge(kg_reader_t* kg) {
 
 void analogical_reasoning_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_analogical_reasoning_health_agent = agent;
     }
 }
@@ -1504,7 +1503,7 @@ int analogical_reasoning_training_begin(void* instance) {
                               "analogical_reasoning_training_begin: NULL argument");
         return -1;
     }
-    analogical_reasoning_heartbeat_instance(NULL, "analogical_reasoning_training_begin", 0.0f);
+    analogical_reasoning_heartbeat_instance(g_analogical_reasoning_health_agent, "analogical_reasoning_training_begin", 0.0f);
     (void)(struct analogical_engine*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1515,7 +1514,7 @@ int analogical_reasoning_training_end(void* instance) {
                               "analogical_reasoning_training_end: NULL argument");
         return -1;
     }
-    analogical_reasoning_heartbeat_instance(NULL, "analogical_reasoning_training_end", 1.0f);
+    analogical_reasoning_heartbeat_instance(g_analogical_reasoning_health_agent, "analogical_reasoning_training_end", 1.0f);
     (void)(struct analogical_engine*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1528,7 +1527,7 @@ int analogical_reasoning_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    analogical_reasoning_heartbeat_instance(NULL, "analogical_reasoning_training_step", progress);
+    analogical_reasoning_heartbeat_instance(g_analogical_reasoning_health_agent, "analogical_reasoning_training_step", progress);
     (void)(struct analogical_engine*)instance; /* Module state available for step adaptation */
     return 0;
 }

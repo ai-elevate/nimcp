@@ -100,7 +100,6 @@ NIMCP_API void genius_gt_bridge_destroy(genius_gt_bridge_t* bridge) {
 
 void genius_game_theory_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_genius_game_theory_bridge_health_agent = agent;
     }
 }

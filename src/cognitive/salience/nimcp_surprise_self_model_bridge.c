@@ -271,7 +271,7 @@ surprise_self_model_bridge_t* surprise_self_model_bridge_create(
         NIMCP_THROW_MEMORY(NIMCP_SURPRISE_SELF_MODEL_ERROR_NO_MEMORY,
                            bridge->config.max_tracked_capabilities * sizeof(capability_entry_t),
                            "surprise_self_model_bridge capabilities allocation failed");
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
         nimcp_free(bridge);
         bridge = NULL;
         return NULL;
@@ -313,7 +313,7 @@ void surprise_self_model_bridge_destroy(surprise_self_model_bridge_t* bridge) {
         nimcp_free(bridge->capabilities);
     }
     if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
     }
     nimcp_free(bridge);
     bridge = NULL;
@@ -806,7 +806,6 @@ int surprise_self_model_bridge_set_health_agent(
 
 void surprise_self_model_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_surprise_self_model_health_agent = agent;
     }
 }

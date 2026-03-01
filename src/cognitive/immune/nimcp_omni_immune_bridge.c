@@ -607,7 +607,6 @@ const char* omni_immune_response_to_string(omni_immune_response_t response) {
 
 void omni_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_omni_immune_bridge_health_agent = agent;
     }
 }

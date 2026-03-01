@@ -334,7 +334,7 @@ void sac_destroy(self_awareness_coordinator_t* coord) {
 
     /* Destroy mutex */
     if (coord->mutex) {
-        nimcp_mutex_free(coord->mutex);
+        nimcp_mutex_destroy(coord->mutex);
     }
 
     /* Free coordinator */
@@ -1047,7 +1047,6 @@ int self_awareness_coordinator_query_self_knowledge(kg_reader_t* kg) {
 
 void self_awareness_coordinator_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_self_awareness_coordinator_health_agent = agent;
     }
 }

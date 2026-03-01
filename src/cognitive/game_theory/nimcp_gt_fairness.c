@@ -504,8 +504,7 @@ bool nimcp_fairness_is_ef1(const float* const* valuations,
             }
 
             if (!can_eliminate_envy) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fairness_coefficient_variation: can_eliminate_envy is NULL");
-                return false;  // i envies j even after removing any item
+                return false;  // i envies j even after removing any item — normal fairness result
             }
         }
     }
@@ -1232,11 +1231,11 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
 
 
     if (num_players == 0 || num_items == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_allocation_create: num_players is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_allocation_create: num_players or num_items is zero");
         return NULL;
     }
     if (num_players > NIMCP_GT_MAX_PLAYERS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_allocation_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_allocation_create: num_players exceeds maximum");
         return NULL;
     }
 
@@ -1292,7 +1291,7 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
             nimcp_free(alloc->assignment);
             nimcp_free(alloc);
             alloc = NULL;
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_allocation_create: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_allocation_create: failed to allocate valuation row");
             return NULL;
         }
     }
@@ -1313,7 +1312,7 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
         nimcp_free(alloc->assignment);
         nimcp_free(alloc);
         alloc = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_allocation_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_allocation_create: failed to allocate bundle_values");
         return NULL;
     }
 
@@ -1566,7 +1565,6 @@ int fairness_query_self_knowledge(kg_reader_t* kg) {
 
 void gt_fairness_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gt_fairness_health_agent = agent;
     }
 }

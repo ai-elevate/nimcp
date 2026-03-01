@@ -1138,7 +1138,6 @@ void collective_health_init_swarm_request(swarm_immune_request_t* request) {
 
 void collective_health_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_collective_health_health_agent = agent;
     }
 }

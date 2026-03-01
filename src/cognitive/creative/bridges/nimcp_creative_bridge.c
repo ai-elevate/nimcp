@@ -160,6 +160,10 @@ creative_bridge_t* creative_bridge_create(const creative_bridge_config_t* config
     /* Apply config */
     if (config) {
         bridge->config = *config;
+        /* Deep-copy heap-owned string fields to avoid freeing caller's pointer */
+        if (config->copyright_db_path) {
+            bridge->config.copyright_db_path = nimcp_strdup(config->copyright_db_path);
+        }
     } else {
         creative_bridge_config_defaults(&bridge->config);
     }
@@ -169,7 +173,11 @@ creative_bridge_t* creative_bridge_create(const creative_bridge_config_t* config
     if (db) {
         db->capacity = 1000;
         db->entries = nimcp_calloc(db->capacity, sizeof(copyright_entry_t));
-        if (!db->entries) return NULL;
+        if (!db->entries) {
+            nimcp_free(db);
+            nimcp_free(bridge);
+            return NULL;
+        }
         db->num_entries = 0;
     }
     bridge->copyright_db = db;

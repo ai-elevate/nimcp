@@ -273,7 +273,7 @@ fault_attention_t* fault_attention_create_custom(
     } else {
         // Validate provided config
         if (!validate_config_internal(config)) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_create_custom: validate_config_internal is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fault_attention_create_custom: invalid config");
             return NULL;
         }
         final_config = *config;
@@ -290,7 +290,7 @@ fault_attention_t* fault_attention_create_custom(
         nimcp_log(LOG_LEVEL_ERROR,
                   "Failed to allocate fault_attention_t (%zu bytes)",
                   sizeof(fault_attention_t));
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fault_attention_create_custom: failed to allocate attention");
 
 
         return NULL;
@@ -691,7 +691,7 @@ bool fault_attention_get_focused_index(
     }
 
     if (!attention->has_focus || attention->fault_count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_focused_index: attention->has_focus is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "fault_attention_get_focused_index: no focus set");
         return false;
     }
 
@@ -723,7 +723,7 @@ bool fault_attention_get_focused_fault(
     }
 
     if (!attention->has_focus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_focused_fault: attention->has_focus is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "fault_attention_get_focused_fault: no focus set");
         return false;
     }
 
@@ -942,7 +942,7 @@ bool fault_attention_set_config(
     }
 
     if (!validate_config_internal(config)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fault_attention_set_config: validate_config_internal is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fault_attention_set_config: invalid config");
         return false;
     }
 
@@ -1059,7 +1059,6 @@ int fault_attention_query_self_knowledge(kg_reader_t* kg) {
  * ============================================================================ */
 void fault_attention_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)instance;
         g_fault_attention_health_agent = agent;
     }
 }

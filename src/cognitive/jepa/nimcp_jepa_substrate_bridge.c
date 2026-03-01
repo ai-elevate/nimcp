@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -125,6 +126,7 @@ jepa_substrate_bridge_t* jepa_substrate_bridge_create(void* jepa, neural_substra
     bridge->effects.embedding_quality = 1.0f;
     bridge->effects.update_rate = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    if (bridge_base_init(&bridge->base, 0, "jepa_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "jepa_substrate");
     return bridge;
 }
@@ -139,6 +141,7 @@ void jepa_substrate_bridge_destroy(jepa_substrate_bridge_t* bridge) {
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -152,6 +155,7 @@ int jepa_substrate_bridge_update(jepa_substrate_bridge_t* bridge) {
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* ATP enables longer prediction horizons and better model precision */
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.prediction_horizon = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -165,6 +169,7 @@ int jepa_substrate_bridge_update(jepa_substrate_bridge_t* bridge) {
     bridge->effects.overall_capacity = (bridge->effects.prediction_horizon + bridge->effects.model_precision +
                                         bridge->effects.embedding_quality + bridge->effects.update_rate) / 4.0f;
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -174,7 +179,9 @@ int jepa_substrate_bridge_get_effects(const jepa_substrate_bridge_t* bridge, jep
 
 
     NIMCP_CHECK_THROW(bridge && effects, -1, "bridge or effects is NULL");
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -359,6 +366,7 @@ int jepa_substrate_bridge_training_step(jepa_substrate_bridge_t* bridge, uint32_
             float cap = metabolic.metabolic_capacity;
             float min = bridge->config.min_capacity;
 
+            nimcp_platform_mutex_lock(bridge->base.mutex);
             /* Modulate training effects based on metabolic state */
             if (bridge->config.enable_atp_modulation) {
                 bridge->effects.prediction_horizon =
@@ -376,6 +384,7 @@ int jepa_substrate_bridge_training_step(jepa_substrate_bridge_t* bridge, uint32_
             bridge->effects.overall_capacity =
                 (bridge->effects.prediction_horizon + bridge->effects.model_precision +
                  bridge->effects.embedding_quality + bridge->effects.update_rate) / 4.0f;
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
         }
     }
 

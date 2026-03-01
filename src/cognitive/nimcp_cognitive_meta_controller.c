@@ -1375,7 +1375,6 @@ int cognitive_meta_controller_query_self_knowledge(kg_reader_t* kg) {
 
 void cognitive_meta_controller_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_cognitive_meta_controller_health_agent = agent;
     }
 }

@@ -1124,7 +1124,6 @@ void meta_health_dump_reflection(const meta_health_reflection_result_t* result) 
 
 void meta_health_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_meta_health_health_agent = agent;
     }
 }

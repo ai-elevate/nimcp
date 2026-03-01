@@ -1468,7 +1468,6 @@ bool wm_plasticity_is_bio_async_connected(const wm_plasticity_bridge_t* bridge) 
 
 void working_memory_plasticity_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_working_memory_plasticity_bridge_health_agent = agent;
     }
 }

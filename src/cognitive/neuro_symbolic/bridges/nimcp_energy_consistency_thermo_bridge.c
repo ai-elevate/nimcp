@@ -137,7 +137,6 @@ NIMCP_API double energy_thermo_bridge_landauer_proof_cost(
 
 void energy_consistency_thermo_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_energy_consistency_thermo_bridge_health_agent = agent;
     }
 }

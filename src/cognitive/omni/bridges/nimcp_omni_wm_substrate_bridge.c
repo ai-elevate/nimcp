@@ -116,8 +116,7 @@ int omni_wm_substrate_bridge_training_begin(omni_wm_substrate_bridge_t* bridge) 
                               "omni_wm_substrate_bridge_training_begin: NULL argument");
         return -1;
     }
-    omni_wm_substrate_bridge_heartbeat_instance(g_omni_wm_substrate_bridge_health_agent, "training_begin", 0.0f);
-    (void)bridge;
+    omni_wm_substrate_bridge_heartbeat_instance(bridge->health_agent, "training_begin", 0.0f);
     return 0;
 }
 
@@ -129,8 +128,7 @@ int omni_wm_substrate_bridge_training_step(omni_wm_substrate_bridge_t* bridge, f
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    omni_wm_substrate_bridge_heartbeat_instance(g_omni_wm_substrate_bridge_health_agent, "training_step", progress);
-    (void)bridge;
+    omni_wm_substrate_bridge_heartbeat_instance(bridge->health_agent, "training_step", progress);
     return 0;
 }
 
@@ -140,8 +138,7 @@ int omni_wm_substrate_bridge_training_end(omni_wm_substrate_bridge_t* bridge) {
                               "omni_wm_substrate_bridge_training_end: NULL argument");
         return -1;
     }
-    omni_wm_substrate_bridge_heartbeat_instance(g_omni_wm_substrate_bridge_health_agent, "training_end", 1.0f);
-    (void)bridge;
+    omni_wm_substrate_bridge_heartbeat_instance(bridge->health_agent, "training_end", 1.0f);
     return 0;
 }
 
@@ -198,9 +195,15 @@ static nimcp_error_t update_metabolic_availability(omni_wm_substrate_bridge_t* b
 
     /* Get state from substrate if connected */
     if (bridge->substrate) {
-        /* Query substrate for metabolic state */
-        /* In full implementation, would call substrate_get_metabolic_state() */
-        /* For now, use placeholder values or direct field access */
+        /* TODO: Query actual metabolic state via substrate_get_metabolic_state().
+         * Currently using placeholder values — real substrate API integration pending.
+         * These hardcoded values make the metabolic pipeline a no-op; tracked as HIGH bug. */
+        static bool warned = false;
+        if (!warned) {
+            NIMCP_LOGGING_WARN("omni_wm_substrate_bridge: Using placeholder metabolic values "
+                               "(atp=0.9, o2=0.95, glucose=0.85) — substrate API not yet integrated");
+            warned = true;
+        }
         avail->atp_level = 0.9f;          /* Default healthy values */
         avail->oxygen_saturation = 0.95f;
         avail->glucose_level = 0.85f;

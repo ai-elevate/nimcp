@@ -115,6 +115,8 @@ symbolic_logic_thalamic_bridge_t* symbolic_logic_thalamic_bridge_create(
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
+    if (bridge_base_init(&bridge->base, 0, "symbolic_logic_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     return bridge;
 }
 
@@ -122,8 +124,9 @@ void symbolic_logic_thalamic_bridge_destroy(symbolic_logic_thalamic_bridge_t* br
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_destroy", 0.0f);
 
-
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
 }
 
 int symbolic_logic_thalamic_bridge_reset(symbolic_logic_thalamic_bridge_t* bridge) {
@@ -134,9 +137,10 @@ int symbolic_logic_thalamic_bridge_reset(symbolic_logic_thalamic_bridge_t* bridg
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_reset", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -153,6 +157,7 @@ int symbolic_logic_thalamic_route_signal(
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_symbolic_logic_thala", 0.0f);
 
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating) {
         float effective_urgency = signal->logic_urgency * bridge->attention_weight;
 
@@ -163,6 +168,7 @@ int symbolic_logic_thalamic_route_signal(
 
         if (effective_urgency < bridge->config.min_urgency_threshold) {
             bridge->stats.signals_gated++;
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
@@ -181,6 +187,7 @@ int symbolic_logic_thalamic_route_signal(
             bridge->stats.proof_steps++;
             break;
         default:
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_thalamic_route_signal: operation failed");
             return -1;
     }
@@ -193,6 +200,7 @@ int symbolic_logic_thalamic_route_signal(
         bridge->stats.avg_proof_depth =
             (bridge->stats.avg_proof_depth * (total - 1) + signal->proof_depth) / total;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -233,8 +241,9 @@ int symbolic_logic_thalamic_set_attention(symbolic_logic_thalamic_bridge_t* brid
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_symbolic_logic_thala", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -243,7 +252,9 @@ int symbolic_logic_thalamic_get_attention(const symbolic_logic_thalamic_bridge_t
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_symbolic_logic_thala", 0.0f);
 
@@ -259,7 +270,9 @@ int symbolic_logic_thalamic_bridge_get_stats(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_get_stats", 0.0f);
 

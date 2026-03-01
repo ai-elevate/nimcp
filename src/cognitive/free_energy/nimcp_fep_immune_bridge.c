@@ -471,6 +471,7 @@ int fep_immune_get_precision_modifier(
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_get_preci", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_immune_bridge_t*)bridge)->base.mutex);
 
     float base = get_inflammation_precision_factor(bridge->state.inflammation_level);
 
@@ -483,6 +484,8 @@ int fep_immune_get_precision_modifier(
         bridge->cytokine_effects.il10_precision_boost;
 
     *modifier = nimcp_clampf(base + cytokine_effect, 0.1f, 1.5f);
+
+    nimcp_platform_mutex_unlock(((fep_immune_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -498,6 +501,7 @@ int fep_immune_get_learning_modifier(
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_get_learn", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_immune_bridge_t*)bridge)->base.mutex);
 
     float base = get_inflammation_lr_factor(bridge->state.inflammation_level);
 
@@ -509,6 +513,8 @@ int fep_immune_get_learning_modifier(
         bridge->cytokine_effects.il10_learning_boost;
 
     *modifier = nimcp_clampf(base + cytokine_effect, 0.1f, 1.5f);
+
+    nimcp_platform_mutex_unlock(((fep_immune_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -532,7 +538,8 @@ int fep_immune_update_cytokine_effects(fep_immune_bridge_t* bridge) {
      * query individual cytokine levels from the immune system */
     if (bridge->immune_system) {
         float sensitivity = bridge->config.cytokine_sensitivity;
-        float base_level = bridge->state.inflammation_level;
+        /* Normalize inflammation level to 0.0-1.0 range (enum: 0=NONE..4=STORM) */
+        float base_level = (float)bridge->state.inflammation_level / (float)INFLAMMATION_STORM;
 
         /* Compute cytokine effects based on inflammation level */
         bridge->cytokine_effects.il6_precision_reduction =
@@ -761,10 +768,12 @@ int fep_immune_bridge_get_state(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_immune_bridge_get_state: required parameter is NULL (bridge, state)");
         return -1;
     }
-    *state = bridge->state;
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_get_state", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_immune_bridge_t*)bridge)->base.mutex);
+    *state = bridge->state;
+    nimcp_platform_mutex_unlock(((fep_immune_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -777,10 +786,12 @@ int fep_immune_bridge_get_stats(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_immune_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
-    *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_get_stats", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_immune_bridge_t*)bridge)->base.mutex);
+    *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(((fep_immune_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -789,8 +800,11 @@ bool fep_immune_is_sickness_active(const fep_immune_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_is_sickne", 0.0f);
 
-
-    return bridge && bridge->state.sickness_behavior_active;
+    if (!bridge) return false;
+    nimcp_platform_mutex_lock(((fep_immune_bridge_t*)bridge)->base.mutex);
+    bool active = bridge->state.sickness_behavior_active;
+    nimcp_platform_mutex_unlock(((fep_immune_bridge_t*)bridge)->base.mutex);
+    return active;
 }
 
 brain_inflammation_level_t fep_immune_get_inflammation_level(
@@ -799,8 +813,11 @@ brain_inflammation_level_t fep_immune_get_inflammation_level(
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_get_infla", 0.0f);
 
-
-    return bridge ? bridge->state.inflammation_level : INFLAMMATION_NONE;
+    if (!bridge) return INFLAMMATION_NONE;
+    nimcp_platform_mutex_lock(((fep_immune_bridge_t*)bridge)->base.mutex);
+    brain_inflammation_level_t level = bridge->state.inflammation_level;
+    nimcp_platform_mutex_unlock(((fep_immune_bridge_t*)bridge)->base.mutex);
+    return level;
 }
 
 /* ============================================================================

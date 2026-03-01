@@ -607,8 +607,7 @@ int gt_fep_update_callback(void* handle) {
     /* Ensure we're registered */
     if (!bridge->registered) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_update_callback: bridge->registered is NULL");
-        return -1;
+        return -1;  /* Not registered — normal condition during teardown */
     }
 
     uint64_t start_us = get_time_us();
@@ -672,10 +671,11 @@ int gt_fep_update_callback(void* handle) {
     /* Update statistics */
     update_stats(bridge, update_time_us);
 
-    /* Check and trigger callbacks */
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Check and trigger callbacks outside mutex to prevent deadlock */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -719,10 +719,11 @@ int gt_fep_bridge_force_update(gt_fep_bridge_t* bridge) {
     /* Update statistics */
     update_stats(bridge, update_time_us);
 
-    /* Check and trigger callbacks */
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Check and trigger callbacks outside mutex to prevent deadlock */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

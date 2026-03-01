@@ -417,7 +417,7 @@ NIMCP_EXPORT bool combinatorial_enable_pink_noise(
     if (!detector->pink_monitor) {
         NIMCP_LOGGING_WARN("Failed to create pink noise monitor, using fallback");
         nimcp_platform_mutex_unlock(&detector->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_enable_pink_noise: detector->pink_monitor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "combinatorial_enable_pink_noise: pink_monitor_create failed");
         return false;
     }
 
@@ -1955,7 +1955,7 @@ NIMCP_EXPORT const nimcp_directive_system_t* combinatorial_get_directive_system(
     combinatorial_harm_detector_t detector
 ) {
     if (!detector || !detector->patterns_mprotect_locked) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_get_directive_system: required parameter is NULL (detector, detector->patterns_mprotect_locked)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "combinatorial_get_directive_system: detector is NULL or patterns not mprotect-locked");
         return NULL;
     }
     return detector->directive_system;
@@ -2001,7 +2001,6 @@ int combinatorial_harm_query_self_knowledge(kg_reader_t* kg) {
 
 void combinatorial_harm_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_combinatorial_harm_health_agent = agent;
     }
 }

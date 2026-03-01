@@ -2207,7 +2207,6 @@ uint64_t gist_current_time_ms(void) {
 
 void gist_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gist_health_agent = agent;
     }
 }

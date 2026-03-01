@@ -517,7 +517,7 @@ NIMCP_EXPORT bool asimov_laws_lock(ethics_engine_t engine)
 
     // Already locked?
     if (ethics_engine_is_asimov_locked(engine)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "asimov_laws_lock: validation failed");
+        NIMCP_LOGGING_WARN("asimov_laws_lock: laws are already locked");
         return false;
     }
 
@@ -605,7 +605,6 @@ int ethics_asimov_query_self_knowledge(kg_reader_t* kg) {
 
 void ethics_asimov_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_ethics_asimov_health_agent = agent;
     }
 }

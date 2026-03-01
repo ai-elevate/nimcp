@@ -254,7 +254,7 @@ void number_sense_destroy(number_sense_t* ns) {
 
 
     if (ns->lock) {
-        nimcp_mutex_free(ns->lock);
+        nimcp_mutex_destroy(ns->lock);
     }
 
     nimcp_free(ns);
@@ -899,7 +899,6 @@ int number_sense_query_self_knowledge(kg_reader_t* kg) {
 
 void number_sense_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_number_sense_health_agent = agent;
     }
 }
@@ -914,7 +913,7 @@ int number_sense_training_begin(void* instance) {
                               "number_sense_training_begin: NULL argument");
         return -1;
     }
-    number_sense_heartbeat_instance(NULL, "number_sense_training_begin", 0.0f);
+    number_sense_heartbeat_instance(g_number_sense_health_agent, "number_sense_training_begin", 0.0f);
     number_sense_t* ns = (number_sense_t*)instance;
     ns->estimates_performed = 0;
     ns->subitizing_count = 0;
@@ -936,7 +935,7 @@ int number_sense_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    number_sense_heartbeat_instance(NULL, "number_sense_training_step", progress);
+    number_sense_heartbeat_instance(g_number_sense_health_agent, "number_sense_training_step", progress);
     number_sense_t* ns = (number_sense_t*)instance;
     ns->estimates_performed++;
     /* Sharpen Weber fraction with training (better discrimination) */
@@ -962,7 +961,7 @@ int number_sense_training_end(void* instance) {
                               "number_sense_training_end: NULL argument");
         return -1;
     }
-    number_sense_heartbeat_instance(NULL, "number_sense_training_end", 1.0f);
+    number_sense_heartbeat_instance(g_number_sense_health_agent, "number_sense_training_end", 1.0f);
     number_sense_t* ns = (number_sense_t*)instance;
     float avg_error = (ns->estimates_performed > 0)
         ? (float)(ns->total_estimation_error / (double)ns->estimates_performed)

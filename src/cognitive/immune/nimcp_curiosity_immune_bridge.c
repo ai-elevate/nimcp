@@ -357,10 +357,15 @@ int curiosity_immune_update_sickness_behavior(curiosity_immune_bridge_t* bridge)
     curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_upd", 0.0f);
 
 
+    /* Compute sickness level before acquiring lock (accesses immune_system->cytokines) */
+    float sickness = curiosity_immune_compute_sickness_level(bridge);
+
+    float adjusted_curiosity = -1.0f; /* -1 means no set needed */
+    bool do_suppress = false;
+    bool do_restore = false;
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    /* Compute current sickness level */
-    float sickness = curiosity_immune_compute_sickness_level(bridge);
     bridge->current_sickness_level = sickness;
 
     /* Check if entering sickness state */
@@ -377,17 +382,38 @@ int curiosity_immune_update_sickness_behavior(curiosity_immune_bridge_t* bridge)
         LOG_MODULE_INFO(LOG_MODULE, "Exiting sickness state");
     }
 
-    /* Apply suppression if in sickness state */
+    /* Compute adjusted_curiosity inside lock, apply externally outside lock */
     if (bridge->in_sickness_state) {
-        curiosity_immune_apply_suppression(bridge, sickness);
-    } else {
-        /* Gradually restore curiosity */
-        if (bridge->curiosity_suppression_factor < 1.0f) {
-            curiosity_immune_restore_curiosity(bridge);
+        float suppression_factor = 1.0f - (sickness * 0.9f);
+        suppression_factor = clamp_f(suppression_factor, MAX_CURIOSITY_SUPPRESSION, 1.0f);
+        bridge->curiosity_suppression_factor = suppression_factor;
+        if (suppression_factor < bridge->max_suppression_observed) {
+            bridge->max_suppression_observed = suppression_factor;
         }
+        adjusted_curiosity = bridge->baseline_curiosity_backup * suppression_factor;
+        do_suppress = true;
+    } else if (bridge->curiosity_suppression_factor < 1.0f) {
+        float recovery_rate = 0.1f;
+        bridge->curiosity_suppression_factor +=
+            (1.0f - bridge->curiosity_suppression_factor) * recovery_rate;
+        bridge->curiosity_suppression_factor =
+            clamp_f(bridge->curiosity_suppression_factor, 0.0f, 1.0f);
+        adjusted_curiosity = bridge->baseline_curiosity_backup * bridge->curiosity_suppression_factor;
+        do_restore = true;
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Apply to curiosity engine outside lock to avoid deadlock */
+    if (adjusted_curiosity >= 0.0f) {
+        curiosity_set_baseline(bridge->curiosity_engine, adjusted_curiosity);
+        if (do_suppress) {
+            LOG_MODULE_DEBUG(LOG_MODULE, "Applied curiosity suppression: adjusted=%.2f", adjusted_curiosity);
+        } else if (do_restore) {
+            LOG_MODULE_DEBUG(LOG_MODULE, "Restoring curiosity: adjusted=%.2f", adjusted_curiosity);
+        }
+    }
+
     return 0;
 }
 
@@ -616,10 +642,11 @@ int curiosity_immune_update_novelty_vigilance(curiosity_immune_bridge_t* bridge)
     curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_upd", 0.0f);
 
 
+    /* Get current curiosity drive before acquiring lock (external call) */
+    float curiosity_drive = curiosity_get_drive(bridge->curiosity_engine);
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    /* Get current curiosity drive as proxy for novelty seeking */
-    float curiosity_drive = curiosity_get_drive(bridge->curiosity_engine);
     bridge->current_novelty_level = curiosity_drive;
 
     /* Trigger vigilance if above threshold */
@@ -929,7 +956,6 @@ int curiosity_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void curiosity_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_curiosity_immune_bridge_health_agent = agent;
     }
 }

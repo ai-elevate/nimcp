@@ -232,7 +232,7 @@ void consolidation_pink_noise_destroy(consolidation_pink_noise_bridge_t* bridge)
 
 
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        nimcp_mutex_destroy(bridge->base.mutex);
         bridge->base.mutex = NULL;
     }
 
@@ -709,7 +709,6 @@ int consolidation_pink_noise_query_self_knowledge(kg_reader_t* kg) {
 
 void systems_consolidation_pink_noise_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_systems_consolidation_pink_noise_bridge_health_agent = agent;
     }
 }

@@ -175,7 +175,33 @@ static void compute_free_energy(imag_reason_fep_bridge_t* bridge) {
 /**
  * @brief Check and trigger callbacks
  */
-static void check_callbacks(imag_reason_fep_bridge_t* bridge) {
+/**
+ * @brief Deferred callback info -- filled under lock, invoked after unlock
+ */
+typedef struct {
+    void (*high_fe_cb)(imag_reason_fep_bridge_t*, float, void*);
+    float high_fe_value;
+    void* high_fe_ud;
+
+    void (*surprise_cb)(imag_reason_fep_bridge_t*, float, const char*, void*);
+    float surprise_value;
+    const char* surprise_source;
+    void* surprise_ud;
+
+    void (*metrics_cb)(imag_reason_fep_bridge_t*, const imag_reason_fep_metrics_t*, void*);
+    imag_reason_fep_metrics_t metrics_snap;
+    void* metrics_ud;
+
+    imag_reason_fep_bridge_t* bridge;
+} ir_fep_deferred_cbs_t;
+
+/**
+ * @brief Check thresholds and stage callbacks (MUST be called under lock).
+ */
+static void check_callbacks_locked(imag_reason_fep_bridge_t* bridge, ir_fep_deferred_cbs_t* out) {
+    memset(out, 0, sizeof(*out));
+    out->bridge = bridge;
+
     imag_reason_fep_metrics_t* m = &bridge->metrics;
     const imag_reason_fep_config_t* cfg = &bridge->config;
 
@@ -186,8 +212,9 @@ static void check_callbacks(imag_reason_fep_bridge_t* bridge) {
             bridge->stats.degraded_mode_entries++;
 
             if (bridge->high_fe_callback) {
-                bridge->high_fe_callback(bridge, m->free_energy,
-                                         bridge->high_fe_user_data);
+                out->high_fe_cb = bridge->high_fe_callback;
+                out->high_fe_value = m->free_energy;
+                out->high_fe_ud = bridge->high_fe_user_data;
             }
         }
     } else if (bridge->state == IMAG_REASON_FEP_STATE_DEGRADED) {
@@ -208,8 +235,10 @@ static void check_callbacks(imag_reason_fep_bridge_t* bridge) {
             } else {
                 source = "counterfactual";
             }
-            bridge->surprise_callback(bridge, m->surprise, source,
-                                      bridge->surprise_user_data);
+            out->surprise_cb = bridge->surprise_callback;
+            out->surprise_value = m->surprise;
+            out->surprise_source = source;
+            out->surprise_ud = bridge->surprise_user_data;
         }
     }
 
@@ -220,7 +249,25 @@ static void check_callbacks(imag_reason_fep_bridge_t* bridge) {
 
     /* Metrics callback */
     if (bridge->metrics_callback) {
-        bridge->metrics_callback(bridge, m, bridge->metrics_user_data);
+        out->metrics_cb = bridge->metrics_callback;
+        out->metrics_snap = *m;
+        out->metrics_ud = bridge->metrics_user_data;
+    }
+}
+
+/**
+ * @brief Fire deferred callbacks outside the lock.
+ */
+static void ir_fire_deferred_callbacks(const ir_fep_deferred_cbs_t* d) {
+    if (d->high_fe_cb) {
+        d->high_fe_cb(d->bridge, d->high_fe_value, d->high_fe_ud);
+    }
+    if (d->surprise_cb) {
+        d->surprise_cb(d->bridge, d->surprise_value, d->surprise_source,
+                        d->surprise_ud);
+    }
+    if (d->metrics_cb) {
+        d->metrics_cb(d->bridge, &d->metrics_snap, d->metrics_ud);
     }
 }
 
@@ -636,10 +683,13 @@ int imag_reason_fep_update_callback(void* handle) {
     /* Update statistics */
     update_stats(bridge, update_time_us);
 
-    /* Check and trigger callbacks */
-    check_callbacks(bridge);
+    /* Stage callbacks under lock, fire after unlock */
+    ir_fep_deferred_cbs_t deferred;
+    check_callbacks_locked(bridge, &deferred);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    ir_fire_deferred_callbacks(&deferred);
     return 0;
 }
 
@@ -683,10 +733,13 @@ int imag_reason_fep_bridge_force_update(imag_reason_fep_bridge_t* bridge) {
     /* Update statistics */
     update_stats(bridge, update_time_us);
 
-    /* Check and trigger callbacks */
-    check_callbacks(bridge);
+    /* Stage callbacks under lock, fire after unlock */
+    ir_fep_deferred_cbs_t deferred2;
+    check_callbacks_locked(bridge, &deferred2);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    ir_fire_deferred_callbacks(&deferred2);
     return 0;
 }
 

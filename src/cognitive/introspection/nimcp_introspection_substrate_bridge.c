@@ -796,9 +796,11 @@ int introspection_substrate_bridge_training_begin(introspection_substrate_bridge
     }
     introspection_substrate_bridge_heartbeat_instance(bridge->health_agent,
         "intro_sub_training_begin", 0.0f);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.update_count = 0;
     bridge->stats.avg_atp = 0.0f;
     bridge->effects.self_awareness_depth = 0.5f;
+    nimcp_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("[INTRO_SUBSTRATE] Training begin: counters reset, baseline state initialized");
     return 0;
 }
@@ -813,6 +815,7 @@ int introspection_substrate_bridge_training_step(introspection_substrate_bridge_
     if (progress > 1.0f) progress = 1.0f;
     introspection_substrate_bridge_heartbeat_instance(bridge->health_agent,
         "intro_sub_training_step", progress);
+    nimcp_mutex_lock(bridge->base.mutex);
     float lr = bridge->config.atp_sensitivity;
     float adaptation = lr * (1.0f - progress) * 0.1f;
     bridge->config.atp_sensitivity = lr + adaptation;
@@ -820,6 +823,7 @@ int introspection_substrate_bridge_training_step(introspection_substrate_bridge_
     if (bridge->config.atp_sensitivity < 0.001f) bridge->config.atp_sensitivity = 0.001f;
     bridge->effects.self_awareness_depth = bridge->effects.self_awareness_depth * 0.99f + progress * 0.01f;
     bridge->stats.update_count++;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -831,9 +835,13 @@ int introspection_substrate_bridge_training_end(introspection_substrate_bridge_t
     }
     introspection_substrate_bridge_heartbeat_instance(bridge->health_agent,
         "intro_sub_training_end", 1.0f);
+    nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->effects.self_awareness_depth < 0.0f) bridge->effects.self_awareness_depth = 0.0f;
     if (bridge->effects.self_awareness_depth > 1.0f) bridge->effects.self_awareness_depth = 1.0f;
+    float depth_snap = bridge->effects.self_awareness_depth;
+    uint32_t steps_snap = bridge->stats.update_count;
+    nimcp_mutex_unlock(bridge->base.mutex);
     NIMCP_LOGGING_INFO("[INTRO_SUBSTRATE] Training end: depth=%.3f, steps=%u",
-        bridge->effects.self_awareness_depth, bridge->stats.update_count);
+        depth_snap, steps_snap);
     return 0;
 }

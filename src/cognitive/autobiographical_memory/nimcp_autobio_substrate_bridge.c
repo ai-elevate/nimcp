@@ -10,6 +10,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -79,6 +80,7 @@ autobio_substrate_bridge_t* autobio_substrate_bridge_create(void* autobio, neura
     bridge->effects.temporal_accuracy = 1.0f;
     bridge->effects.narrative_coherence = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    if (bridge_base_init(&bridge->base, 0, "autobio_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "autobio_substrate");
     return bridge;
 }
@@ -93,6 +95,7 @@ void autobio_substrate_bridge_destroy(autobio_substrate_bridge_t* bridge) {
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -112,6 +115,8 @@ int autobio_substrate_bridge_update(autobio_substrate_bridge_t* bridge) {
         return -1;
     }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
+
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* ATP enables vivid recall and detail resolution */
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.recall_vividness = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -125,6 +130,7 @@ int autobio_substrate_bridge_update(autobio_substrate_bridge_t* bridge) {
     bridge->effects.overall_capacity = (bridge->effects.recall_vividness + bridge->effects.detail_resolution +
                                         bridge->effects.temporal_accuracy + bridge->effects.narrative_coherence) / 4.0f;
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -133,7 +139,9 @@ int autobio_substrate_bridge_get_effects(const autobio_substrate_bridge_t* bridg
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     autobio_substrate_bridge_heartbeat("autobio_subs_get_effects", 0.0f);
 

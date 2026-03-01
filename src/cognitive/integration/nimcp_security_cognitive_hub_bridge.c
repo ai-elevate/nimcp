@@ -232,21 +232,22 @@ static int security_query_handler(
     BRIDGE_LOCK(bridge);
     bridge->stats.security_queries_handled++;
 
-    /* Stack-local result data for each query type (was static — thread-unsafe) */
-    struct {
+    /* Result data struct definitions (heap-allocated to avoid UAF — stack-local
+     * pointers become dangling after this function returns) */
+    typedef struct {
         bool is_active;
         uint32_t state_code;
-    } status_result;
+    } status_result_t;
 
-    struct {
+    typedef struct {
         float threat_level;
         bool in_lockdown;
-    } state_result;
+    } state_result_t;
 
-    struct {
+    typedef struct {
         uint64_t threats_detected;
         uint64_t attacks_blocked;
-    } metrics_result;
+    } metrics_result_t;
 
     /* Handle different query types */
     switch (query->query_type) {
@@ -255,11 +256,16 @@ static int security_query_handler(
             security_orch_state_t orch_state;
             if (bridge->security_orch) {
                 security_orch_get_state(bridge->security_orch, &orch_state);
+                status_result_t* heap_status = (status_result_t*)nimcp_calloc(1, sizeof(status_result_t));
+                if (!heap_status) {
+                    BRIDGE_UNLOCK(bridge);
+                    return -1;
+                }
                 result->status = 0;
-                status_result.is_active = (orch_state != SEC_ORCH_STATE_ERROR);
-                status_result.state_code = (uint32_t)orch_state;
-                result->result_data = &status_result;
-                result->result_size = sizeof(status_result);
+                heap_status->is_active = (orch_state != SEC_ORCH_STATE_ERROR);
+                heap_status->state_code = (uint32_t)orch_state;
+                result->result_data = heap_status;
+                result->result_size = sizeof(status_result_t);
             }
             break;
         }
@@ -269,11 +275,16 @@ static int security_query_handler(
             if (bridge->security_orch) {
                 float threat_level = 0.0f;
                 security_orch_get_threat_level(bridge->security_orch, &threat_level);
+                state_result_t* heap_state = (state_result_t*)nimcp_calloc(1, sizeof(state_result_t));
+                if (!heap_state) {
+                    BRIDGE_UNLOCK(bridge);
+                    return -1;
+                }
                 result->status = 0;
-                state_result.threat_level = threat_level;
-                state_result.in_lockdown = bridge->in_lockdown;
-                result->result_data = &state_result;
-                result->result_size = sizeof(state_result);
+                heap_state->threat_level = threat_level;
+                heap_state->in_lockdown = bridge->in_lockdown;
+                result->result_data = heap_state;
+                result->result_size = sizeof(state_result_t);
             }
             break;
         }
@@ -283,11 +294,16 @@ static int security_query_handler(
             if (bridge->security_orch) {
                 security_orch_stats_t stats;
                 security_orch_get_stats(bridge->security_orch, &stats);
+                metrics_result_t* heap_metrics = (metrics_result_t*)nimcp_calloc(1, sizeof(metrics_result_t));
+                if (!heap_metrics) {
+                    BRIDGE_UNLOCK(bridge);
+                    return -1;
+                }
                 result->status = 0;
-                metrics_result.threats_detected = stats.threats_detected;
-                metrics_result.attacks_blocked = stats.attacks_blocked;
-                result->result_data = &metrics_result;
-                result->result_size = sizeof(metrics_result);
+                heap_metrics->threats_detected = stats.threats_detected;
+                heap_metrics->attacks_blocked = stats.attacks_blocked;
+                result->result_data = heap_metrics;
+                result->result_size = sizeof(metrics_result_t);
             }
             break;
         }

@@ -2025,9 +2025,8 @@ def main() -> int:
             learning_rate=0.001,
             weight_decay=0.0001,
             gradient_clip=1.0,
-            scheduler="cosine",
         )
-        logger.log("Configured training pipeline (Adam, cosine LR, L2=0.0001, grad_clip=1.0)")
+        logger.log("Configured training pipeline (LR=0.001, L2=0.0001, grad_clip=1.0)")
     except Exception as e:
         logger.log(f"Training pipeline configuration failed: {e}")
 

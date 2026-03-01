@@ -108,11 +108,15 @@ tom_thalamic_bridge_t* tom_thalamic_bridge_create(
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
+    if (bridge_base_init(&bridge->base, 0, "tom_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     return bridge;
 }
 
 void tom_thalamic_bridge_destroy(tom_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
 }
 
 int tom_thalamic_bridge_reset(tom_thalamic_bridge_t* bridge) {
@@ -120,8 +124,10 @@ int tom_thalamic_bridge_reset(tom_thalamic_bridge_t* bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_thalamic_bridge_reset: bridge is NULL");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -134,6 +140,7 @@ int tom_thalamic_route_signal(
         return -1;
     }
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating) {
         float effective_urgency = signal->tom_urgency * bridge->attention_weight;
 
@@ -145,6 +152,7 @@ int tom_thalamic_route_signal(
 
         if (effective_urgency < bridge->config.min_urgency_threshold) {
             bridge->stats.signals_gated++;
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
@@ -163,6 +171,7 @@ int tom_thalamic_route_signal(
             bridge->stats.perspective_takes++;
             break;
         default:
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_thalamic_route_signal: operation failed");
             return -1;
     }
@@ -175,6 +184,7 @@ int tom_thalamic_route_signal(
         bridge->stats.avg_confidence =
             (bridge->stats.avg_confidence * (total - 1) + signal->confidence) / total;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -232,10 +242,12 @@ int tom_thalamic_route_inference(tom_thalamic_bridge_t* bridge, const tom_thalam
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_thalamic_route_inference: required parameter is NULL (bridge, signal)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* Apply attention gating */
     if (bridge->config.enable_attention_gating &&
         signal->social_relevance < bridge->config.min_urgency_threshold) {
         bridge->stats.signals_gated++;
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     /* Count the inference based on signal type */
@@ -260,6 +272,7 @@ int tom_thalamic_route_inference(tom_thalamic_bridge_t* bridge, const tom_thalam
         bridge->stats.avg_confidence = (bridge->stats.avg_confidence * (total - 1) +
                                         signal->confidence) / total;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -268,7 +281,9 @@ int tom_thalamic_set_attention(tom_thalamic_bridge_t* bridge, float attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_thalamic_set_attention: bridge is NULL");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -277,7 +292,9 @@ int tom_thalamic_get_attention(const tom_thalamic_bridge_t* bridge, float* atten
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -289,7 +306,9 @@ int tom_thalamic_bridge_get_stats(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

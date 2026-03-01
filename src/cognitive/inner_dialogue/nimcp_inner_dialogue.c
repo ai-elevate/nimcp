@@ -823,6 +823,10 @@ int inner_dialogue_engine_start(inner_dialogue_engine_t* engine,
     engine->state = DIALOGUE_STATE_INITIATED;
     engine->stats.conversations_started++;
 
+    /* Capture values before unlocking to avoid data race */
+    uint32_t conv_id = engine->conversation_id;
+    uint32_t num_perspectives = engine->registry.count;
+
     if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
 
     /* Bio-async: conversation start */
@@ -830,15 +834,15 @@ int inner_dialogue_engine_start(inner_dialogue_engine_t* engine,
         uint32_t conversation_id;
         uint32_t num_perspectives;
     } start_payload = {
-        engine->conversation_id,
-        engine->registry.count
+        conv_id,
+        num_perspectives
     };
     send_bio_message(engine, BIO_MSG_INNER_DIALOGUE_START,
                      &start_payload, sizeof(start_payload));
 
     engine_heartbeat(engine, "conversation_start", 0.0f);
     NIMCP_LOGGING_INFO("inner_dialogue: conversation #%u started — topic='%s', perspectives=%u",
-                       engine->conversation_id, engine->topic, engine->registry.count);
+                       conv_id, engine->topic, num_perspectives);
     return 0;
 }
 
@@ -981,16 +985,38 @@ int inner_dialogue_engine_step(inner_dialogue_engine_t* engine,
     }
     engine_heartbeat(engine, "step_record", 0.6f);
 
-    /* 10. Notify all perspectives via observe() */
+    /* 10. Notify all perspectives via observe()
+     * Copy callback data under lock, release lock, invoke callbacks,
+     * then re-acquire lock — avoids holding mutex during user callbacks.
+     */
+    inner_dialogue_turn_t recorded_copy;
     const inner_dialogue_turn_t* recorded = inner_dialogue_turn_history_get_latest(engine->history);
+    if (recorded) {
+        memcpy(&recorded_copy, recorded, sizeof(inner_dialogue_turn_t));
+    }
+
+    struct { perspective_observe_fn fn; void* user_data; } observers[INNER_DIALOGUE_MAX_PERSPECTIVES];
+    uint32_t num_observers = 0;
     for (uint32_t i = 0; i < INNER_DIALOGUE_MAX_PERSPECTIVES; i++) {
         if (engine->registry.entries[i].registered &&
             engine->registry.entries[i].desc.observe &&
             (int)i != persp_idx) {
-            engine->registry.entries[i].desc.observe(
-                recorded, engine->registry.entries[i].desc.user_data);
+            observers[num_observers].fn = engine->registry.entries[i].desc.observe;
+            observers[num_observers].user_data = engine->registry.entries[i].desc.user_data;
+            num_observers++;
         }
     }
+
+    if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+
+    /* Invoke callbacks outside the lock */
+    if (recorded) {
+        for (uint32_t i = 0; i < num_observers; i++) {
+            observers[i].fn(&recorded_copy, observers[i].user_data);
+        }
+    }
+
+    if (engine->mutex) nimcp_mutex_lock(engine->mutex);
 
     /* 11. Bio-async turn event */
     struct {
@@ -1283,7 +1309,6 @@ int inner_dialogue_engine_get_stats(const inner_dialogue_engine_t* engine,
 
 void engine_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_inner_dialogue_health_agent = agent;
     }
 }

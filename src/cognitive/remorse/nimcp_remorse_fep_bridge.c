@@ -271,17 +271,12 @@ int remorse_fep_compute_counterfactual_pe(
     return 0;
 }
 
-int remorse_fep_modulate_policy_learning(
-    remorse_fep_bridge_t* bridge
-) {
-    /* Phase 8: Heartbeat at operation start */
-    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_modulate", 0.0f);
-
-
-    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+/**
+ * @brief Internal unlocked version of policy learning modulation.
+ * Caller MUST hold bridge->base.mutex.
+ */
+static int remorse_fep_modulate_policy_learning_unlocked(remorse_fep_bridge_t* bridge) {
     if (!bridge->config.enable_remorse_policy_learning) return 0;
-
-    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Remorse strongly affects policy learning
      * The brain learns to avoid actions that led to remorse
@@ -302,11 +297,25 @@ int remorse_fep_modulate_policy_learning(
     float avoidance_precision = 1.0f + (remorse_level * 0.5f) + (guilt_level * 0.5f);
     bridge->emotion_effects.avoidance_precision = avoidance_precision;
 
-    nimcp_mutex_unlock(bridge->base.mutex);
-
     NIMCP_LOGGING_DEBUG("Modulated policy learning: modifier=%f, aversion=%f, avoidance=%f",
                         policy_modifier, aversion, avoidance_precision);
     return 0;
+}
+
+int remorse_fep_modulate_policy_learning(
+    remorse_fep_bridge_t* bridge
+) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_modulate", 0.0f);
+
+
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    int rc = remorse_fep_modulate_policy_learning_unlocked(bridge);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    return rc;
 }
 
 /* ============================================================================
@@ -323,10 +332,10 @@ int remorse_fep_update(
 
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    /* Apply policy learning modulation */
-    remorse_fep_modulate_policy_learning(bridge);
-
     nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Apply policy learning modulation (unlocked — we already hold the mutex) */
+    remorse_fep_modulate_policy_learning_unlocked(bridge);
 
     /* Remorse decays moderately - lessons are remembered */
     float remorse_decay = 0.998f;
@@ -349,7 +358,7 @@ int remorse_fep_update(
  * ============================================================================ */
 
 int remorse_fep_get_state(
-    const remorse_fep_bridge_t* bridge,
+    remorse_fep_bridge_t* bridge,
     remorse_fep_state_t* state
 ) {
     /* Phase 8: Heartbeat at operation start */
@@ -366,7 +375,7 @@ int remorse_fep_get_state(
 }
 
 int remorse_fep_get_stats(
-    const remorse_fep_bridge_t* bridge,
+    remorse_fep_bridge_t* bridge,
     remorse_fep_stats_t* stats
 ) {
     /* Phase 8: Heartbeat at operation start */

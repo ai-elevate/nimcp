@@ -10,6 +10,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -115,6 +116,7 @@ shadow_emotions_substrate_bridge_t* shadow_emotions_substrate_bridge_create(void
     bridge->effects.regulation_capacity = 1.0f;
     bridge->effects.integration_ability = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    if (bridge_base_init(&bridge->base, 0, "shadow_emotions_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "shadow_emotions_substrate");
     return bridge;
 }
@@ -125,6 +127,7 @@ void shadow_emotions_substrate_bridge_destroy(shadow_emotions_substrate_bridge_t
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -140,6 +143,7 @@ int shadow_emotions_substrate_bridge_update(shadow_emotions_substrate_bridge_t* 
         return -1;
     }
     float atp = metabolic.atp_level, fatigue = 1.0f - metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* ATP enables suppression and regulation - low ATP allows emergence */
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.suppression_strength = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -153,6 +157,7 @@ int shadow_emotions_substrate_bridge_update(shadow_emotions_substrate_bridge_t* 
     bridge->effects.overall_capacity = (bridge->effects.suppression_strength + bridge->effects.regulation_capacity +
                                         bridge->effects.integration_ability) / 3.0f;
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -161,7 +166,9 @@ int shadow_emotions_substrate_bridge_get_effects(const shadow_emotions_substrate
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_emotions_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

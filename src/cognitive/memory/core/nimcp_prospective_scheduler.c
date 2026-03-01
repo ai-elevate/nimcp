@@ -2541,7 +2541,6 @@ reminder_level_t pr_sched_compute_reminder_level(
 
 void prospective_scheduler_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_prospective_scheduler_health_agent = agent;
     }
 }

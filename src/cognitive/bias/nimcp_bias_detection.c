@@ -101,8 +101,7 @@ static int find_group_index(bias_detection_system_t* system, const social_group_
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_group_index: validation failed");
-    return -1;
+    return -1;  /* Group not found — normal condition */
 }
 
 //=============================================================================
@@ -823,8 +822,7 @@ bool bias_get_detected_in_other(const bias_detection_system_t* system,
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
-    return false;
+    return false;  /* Person not found — normal condition */
 }
 
 bool bias_should_educate(const bias_detection_system_t* system, uint32_t person_id) {
@@ -900,8 +898,7 @@ bool bias_apply_intervention(bias_detection_system_t* system,
 
     int idx = find_group_index(system, group);
     if (idx < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_should_disengage: validation failed");
-        return false;
+        return false;  /* Group not found — normal condition */
     }
 
     implicit_bias_t* implicit = &system->implicit_biases[idx];
@@ -997,8 +994,7 @@ bool bias_auto_debias(bias_detection_system_t* system, uint64_t current_time) {
     }
 
     if (max_idx < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_auto_debias: validation failed");
-        return false;
+        return false;  /* No biases to debias — normal condition */
     }
 
     // Use mindfulness as default strategy
@@ -1124,7 +1120,6 @@ int bias_detection_query_self_knowledge(kg_reader_t* kg) {
 
 void bias_detection_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_bias_detection_health_agent = agent;
     }
 }

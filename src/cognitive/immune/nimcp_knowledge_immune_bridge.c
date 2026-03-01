@@ -277,7 +277,7 @@ knowledge_immune_bridge_t* knowledge_immune_bridge_create(
     if (!immune_system || !knowledge_system) {
         LOG_MODULE_ERROR("knowledge_immune_bridge",
                   "Cannot create bridge without immune and knowledge systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_immune_bridge_create: required parameter is NULL (immune_system, knowledge_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_bridge_create: required parameter is NULL (immune_system, knowledge_system)");
         return NULL;
     }
 
@@ -290,7 +290,7 @@ knowledge_immune_bridge_t* knowledge_immune_bridge_create(
         nimcp_malloc(sizeof(knowledge_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("knowledge_immune_bridge", "Allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_immune_bridge_create: malloc returned NULL");
 
         return NULL;
     }
@@ -376,7 +376,7 @@ int knowledge_immune_apply_cytokine_effects(knowledge_immune_bridge_t* bridge) {
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_app", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get cytokine levels */
     float il1 = get_cytokine_level(bridge->immune_system, BRAIN_CYTOKINE_IL1);
@@ -421,7 +421,7 @@ int knowledge_immune_apply_cytokine_effects(knowledge_immune_bridge_t* bridge) {
         bridge->baseline_retrieval_latency_ms * bridge->cytokine_effects.total_latency_multiplier;
 
     bridge->cytokine_modulations++;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -445,7 +445,7 @@ int knowledge_immune_apply_inflammation_encoding(knowledge_immune_bridge_t* brid
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_app", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -496,7 +496,7 @@ int knowledge_immune_apply_inflammation_encoding(knowledge_immune_bridge_t* brid
         bridge->inflammation_state.is_chronic ? bridge->inflammation_state.cognitive_decline : 0.0f;
 
     bridge->inflammation_impairments++;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -542,7 +542,7 @@ int knowledge_immune_apply_sickness_learning_impairment(
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_app", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute sickness behavior level */
     float sickness = compute_sickness_behavior(bridge->immune_system);
@@ -557,7 +557,7 @@ int knowledge_immune_apply_sickness_learning_impairment(
         bridge->inflammation_state.learning_motivation = 1.0f;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -584,7 +584,7 @@ int knowledge_immune_prime_from_health_knowledge(knowledge_immune_bridge_t* brid
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_pri", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query health domain knowledge coverage */
     domain_knowledge_t health_assessment;
@@ -609,7 +609,7 @@ int knowledge_immune_prime_from_health_knowledge(knowledge_immune_bridge_t* brid
         bridge->knowledge_priming_events++;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -632,7 +632,7 @@ int knowledge_immune_assess_threat(
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_ass", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Try to retrieve knowledge about threat */
     knowledge_item_t threat_knowledge;
@@ -657,7 +657,7 @@ int knowledge_immune_assess_threat(
 
     *assessed_severity = clamp_f(*assessed_severity, 1.0f, 10.0f);
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -676,7 +676,7 @@ int knowledge_immune_trigger_from_threat_learning(
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_tri", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if learned concept is health/threat related */
     if (is_health_concept(learned_concept)) {
@@ -688,7 +688,7 @@ int knowledge_immune_trigger_from_threat_learning(
         bridge->knowledge_priming_events++;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -713,7 +713,7 @@ int knowledge_immune_prioritize_health_knowledge(
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_pri", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if experiencing sickness behavior */
     float sickness = compute_sickness_behavior(bridge->immune_system);
@@ -740,7 +740,7 @@ int knowledge_immune_prioritize_health_knowledge(
         bridge->illness_priority.num_prioritized_domains = 0;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -827,9 +827,9 @@ int knowledge_immune_get_cytokine_effects(
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -847,9 +847,9 @@ int knowledge_immune_get_inflammation_state(
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->inflammation_state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1023,7 +1023,6 @@ int knowledge_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void knowledge_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_knowledge_immune_bridge_health_agent = agent;
     }
 }
@@ -1038,6 +1037,7 @@ int knowledge_immune_bridge_training_begin(void* instance) {
                               "knowledge_immune_bridge_training_begin: NULL argument");
         return -1;
     }
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     knowledge_immune_bridge_heartbeat_instance(NULL, "knowledge_immune_bridge_training_begin", 0.0f);
     return 0;
 }
@@ -1048,6 +1048,7 @@ int knowledge_immune_bridge_training_end(void* instance) {
                               "knowledge_immune_bridge_training_end: NULL argument");
         return -1;
     }
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     knowledge_immune_bridge_heartbeat_instance(NULL, "knowledge_immune_bridge_training_end", 1.0f);
     return 0;
 }
@@ -1060,6 +1061,7 @@ int knowledge_immune_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     knowledge_immune_bridge_heartbeat_instance(NULL, "knowledge_immune_bridge_training_step", progress);
     return 0;
 }

@@ -131,7 +131,6 @@ static inline uint32_t brain_get_num_communities(brain_t brain) {
  */
 static inline uint32_t* brain_get_community_sizes(brain_t brain) {
     (void)brain;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_community_sizes: operation failed");
     return NULL;  /* Full implementation requires community detection results */
 }
 
@@ -141,7 +140,6 @@ static inline uint32_t* brain_get_community_sizes(brain_t brain) {
 static inline uint32_t* brain_get_hub_ids(brain_t brain, uint32_t* num_hubs) {
     (void)brain;
     if (num_hubs) *num_hubs = 0;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_hub_ids: validation failed");
     return NULL;  /* Full implementation requires centrality computation */
 }
 
@@ -151,7 +149,6 @@ static inline uint32_t* brain_get_hub_ids(brain_t brain, uint32_t* num_hubs) {
 static inline float* brain_get_hub_centrality(brain_t brain, uint32_t* num_hubs) {
     (void)brain;
     if (num_hubs) *num_hubs = 0;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_hub_centrality: validation failed");
     return NULL;  /* Full implementation requires centrality computation */
 }
 
@@ -922,8 +919,7 @@ bool brain_get_connectivity_health(
 
 
     if (brain->last_connectivity_assessment_time_ms == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_connectivity_health: brain->last_connectivity_assessment_time_ms is zero");
-        return false;  /* Never assessed */
+        return false;  /* Never assessed - normal condition */
     }
 
     *health = brain->last_connectivity_health;

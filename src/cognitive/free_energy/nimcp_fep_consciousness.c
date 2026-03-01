@@ -342,12 +342,27 @@ int fep_consciousness_assess_model_quality(
 
 
     NIMCP_CHECK_THROW(bridge && quality, NIMCP_ERROR_NULL_POINTER, "bridge or quality is NULL");
-    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
+    /* Check fep_system inside the lock to avoid TOCTOU race */
+    if (!bridge->fep_system) {
+        *quality = 0.5f;
+        bridge->state.metacognitive_confidence = *quality;
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        return -1;
+    }
+
     /* Assess quality based on prediction error and free energy */
     fep_system_t* fep = bridge->fep_system;
+
+    /* Guard against division by zero when no levels are configured */
+    if (fep->num_levels == 0) {
+        *quality = 0.5f;  /* Default quality when no levels to assess */
+        bridge->state.metacognitive_confidence = *quality;
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        return 0;
+    }
 
     float total_error = 0.0f;
     for (uint32_t l = 0; l < fep->num_levels; l++) {
@@ -476,7 +491,10 @@ int fep_consciousness_get_state(
 
 
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
+
+    nimcp_platform_mutex_lock(((fep_consciousness_bridge_t*)bridge)->base.mutex);
     *state = bridge->state;
+    nimcp_platform_mutex_unlock(((fep_consciousness_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -529,14 +547,8 @@ bool fep_consciousness_is_bio_async_connected(
     const fep_consciousness_bridge_t* bridge
 ) {
     if (!bridge) {
-
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "fep_consciousness_is_bio_async_connected: bridge is NULL");
-
-            return false;
-
-        }
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     fep_consciousness_heartbeat("fep_consciou_is_bio_async_connect", 0.0f);
 

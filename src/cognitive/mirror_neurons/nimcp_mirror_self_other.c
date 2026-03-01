@@ -252,7 +252,7 @@ void self_other_destroy(self_other_system_t* system) {
     }
 
     if (system->mutex) {
-        nimcp_mutex_free(system->mutex);
+        nimcp_mutex_destroy(system->mutex);
     }
 
     nimcp_free(system);
@@ -956,7 +956,6 @@ void self_other_reset_stats(self_other_system_t* system) {
  * ============================================================================ */
 void mirror_self_other_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mirror_self_other_health_agent = agent;
     }
 }

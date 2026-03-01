@@ -1007,10 +1007,13 @@ int creative_extract_style(creative_orchestrator_t* orchestrator,
     } else {
         /* Visual/other - hash pixel data */
         const visual_image_t* img = (const visual_image_t*)content;
-        size_t total = (size_t)img->width * img->height * img->channels;
-        sample_bytes = (total > 4096) ? 4096 : total;
-        for (size_t i = 0; i < sample_bytes; i++) {
-            hash = ((hash << 5) + hash) + (uint32_t)(data[i]);
+        if (img->pixels) {
+            const uint8_t* pixels = (const uint8_t*)img->pixels;
+            size_t total = (size_t)img->width * img->height * img->channels;
+            sample_bytes = (total > 4096) ? 4096 : total;
+            for (size_t i = 0; i < sample_bytes; i++) {
+                hash = ((hash << 5) + hash) + (uint32_t)(pixels[i]);
+            }
         }
         for (uint32_t d = 0; d < embed_dim; d++) {
             hash = ((hash << 5) + hash) + d;
@@ -1112,9 +1115,9 @@ int creative_blend_influences(creative_orchestrator_t* orchestrator,
     out->originality = out->novelty_score;
     out->is_valid = true;
 
-    /* Copy to alias field */
+    /* Copy to alias field — must not alias blended_style's heap pointer */
     if (style_embedding_clone(&out->blended_style, &out->style) != 0) {
-        out->style = out->blended_style;  /* Shallow fallback */
+        memset(&out->style, 0, sizeof(out->style));  /* Zero rather than shallow-alias to prevent double-free */
     }
 
     creative_heartbeat("creative_blend_influences", 1.0f);

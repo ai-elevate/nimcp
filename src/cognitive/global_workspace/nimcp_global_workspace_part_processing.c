@@ -46,7 +46,7 @@ int global_workspace_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    global_workspace_heartbeat_instance(NULL, "global_workspace_training_step", progress);
+    global_workspace_heartbeat_instance(g_global_workspace_health_agent, "global_workspace_training_step", progress);
     (void)(struct global_workspace_struct*)instance; /* Module state available for step adaptation */
     return 0;
 }

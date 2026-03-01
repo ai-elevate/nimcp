@@ -803,9 +803,9 @@ int financial_explanations_bridge_get_stats(
 
     fin_expl_heartbeat("fin_expl_get_stats", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_EXPL_ERR_OK;
 }
@@ -833,9 +833,9 @@ uint64_t financial_explanations_bridge_get_audit_count(
         return 0;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     uint64_t count = bridge->audit_count;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return count;
 }
@@ -850,10 +850,10 @@ int financial_explanations_bridge_get_audit_entry(
         return FIN_EXPL_ERR_NULL;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->audit_buffer || index >= bridge->audit_count) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         set_error("Invalid audit entry index");
         return FIN_EXPL_ERR_INVALID_PARAM;
     }
@@ -863,7 +863,7 @@ int financial_explanations_bridge_get_audit_entry(
                               bridge->config.max_audit_entries : bridge->audit_count;
 
     if (index >= actual_entries) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         set_error("Audit entry index out of range");
         return FIN_EXPL_ERR_INVALID_PARAM;
     }
@@ -875,7 +875,7 @@ int financial_explanations_bridge_get_audit_entry(
     uint64_t buf_idx = (oldest + index) % bridge->config.max_audit_entries;
     *entry = bridge->audit_buffer[buf_idx];
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_EXPL_ERR_OK;
 }

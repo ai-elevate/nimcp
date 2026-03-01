@@ -450,7 +450,7 @@ health_self_repair_bridge_t* health_self_repair_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "health_self_repair") != 0) {
         health_self_repair_bridge_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_self_repair_bridge_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "health_self_repair_bridge_create: bridge_base_init failed");
         return NULL;
     }
 
@@ -566,7 +566,7 @@ int health_self_repair_bridge_process_anomaly(
     }
 
     if (!bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_process_anomaly: bridge->initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "health_self_repair_bridge_process_anomaly: bridge not initialized");
         return -1;
     }
 
@@ -604,7 +604,7 @@ int health_self_repair_bridge_process_agent_message(
     }
 
     if (!bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_process_agent_message: bridge->initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "health_self_repair_bridge_process_agent_message: bridge not initialized");
         return -1;
     }
 
@@ -643,7 +643,7 @@ int health_self_repair_bridge_trigger_from_diagnostic(
     }
 
     if (!bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_trigger_from_diagnostic: bridge->initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "health_self_repair_bridge_trigger_from_diagnostic: bridge not initialized");
         return -1;
     }
 
@@ -757,7 +757,7 @@ int health_self_repair_bridge_force_trigger(
     }
 
     if (!bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_force_trigger: bridge->initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "health_self_repair_bridge_force_trigger: bridge not initialized");
         return -1;
     }
 
@@ -868,7 +868,7 @@ const health_repair_tracking_t* health_self_repair_bridge_get_tracking(
     uint64_t request_id
 ) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_get_tracking: required parameter is NULL (bridge, bridge->initialized)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "health_self_repair_bridge_get_tracking: bridge not initialized");
         return NULL;
     }
 

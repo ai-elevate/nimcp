@@ -12,6 +12,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -137,6 +138,7 @@ grief_substrate_bridge_t* grief_substrate_bridge_create(void* grief, neural_subs
     bridge->effects.adaptation_rate = 1.0f;
     bridge->effects.resilience_level = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    if (bridge_base_init(&bridge->base, 0, "grief_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "grief_substrate");
     return bridge;
 }
@@ -151,6 +153,7 @@ void grief_substrate_bridge_destroy(grief_substrate_bridge_t* bridge) {
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -179,6 +182,7 @@ int grief_substrate_bridge_update(grief_substrate_bridge_t* bridge) {
     metabolic_effects_t generic_effects;
     metabolic_effects_init_full(&generic_effects);
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (metabolic_compute_effects(&input, &bridge->metabolic_config, &generic_effects) == 0) {
         /* Map generic effects to grief-specific effect names */
         bridge->effects.processing_capacity = generic_effects.primary_atp;
@@ -189,6 +193,7 @@ int grief_substrate_bridge_update(grief_substrate_bridge_t* bridge) {
     }
 
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -197,7 +202,9 @@ int grief_substrate_bridge_get_effects(const grief_substrate_bridge_t* bridge, g
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grief_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     grief_substrate_bridge_heartbeat("grief_substr_get_effects", 0.0f);
 

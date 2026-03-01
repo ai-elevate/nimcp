@@ -107,7 +107,8 @@ const char* complement_mac_state_to_string(mac_state_t state) {
 static uint64_t get_timestamp_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+    /* FIX HIGH:110 — cast before multiply to avoid signed 32-bit overflow */
+    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
 }
 
 /**
@@ -170,11 +171,13 @@ static complement_mac_t* find_mac_by_id(complement_system_t* system, uint32_t id
 static int generate_c3b(complement_system_t* system, uint32_t target_id,
                         complement_pathway_t pathway) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_mac_by_id: system is NULL");
+        /* FIX HIGH:173 — wrong error code (NO_MEMORY→NULL_POINTER) and wrong function name */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_c3b: system is NULL");
         return -1;
     }
     if (system->c3b_count >= system->c3b_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_mac_by_id: capacity exceeded");
+        /* FIX MEDIUM:177 — wrong function name in error message */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "generate_c3b: capacity exceeded");
         return -1;
     }
 
@@ -204,11 +207,12 @@ static int generate_c3b(complement_system_t* system, uint32_t target_id,
 static int generate_c5b(complement_system_t* system, uint32_t target_id,
                         uint32_t parent_c3b_id) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_mac_by_id: system is NULL");
+        /* stale function name fix: generate_c5b, not find_mac_by_id */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_c5b: system is NULL");
         return -1;
     }
     if (system->c5b_count >= system->c5b_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_mac_by_id: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "generate_c5b: capacity exceeded");
         return -1;
     }
 
@@ -477,7 +481,7 @@ void complement_destroy(complement_system_t* system) {
                           (unsigned long long)system->stats.macs_formed);
     }
 
-    if (system->mutex) nimcp_mutex_free(system->mutex);
+    if (system->mutex) nimcp_mutex_destroy(system->mutex);
     if (system->c3b_pool) nimcp_free(system->c3b_pool);
     if (system->c5b_pool) nimcp_free(system->c5b_pool);
     if (system->mac_pool) nimcp_free(system->mac_pool);
@@ -1098,7 +1102,6 @@ int complement_query_self_knowledge(kg_reader_t* kg) {
 
 void complement_system_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_complement_system_health_agent = agent;
     }
 }

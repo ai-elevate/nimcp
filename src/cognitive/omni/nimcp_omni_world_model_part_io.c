@@ -52,6 +52,14 @@ size_t omni_wm_serialize(const omni_world_model_t* wm,
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_serialize", 0.0f);
 
+    /* Two-pass pattern: if buffer is non-NULL, first compute the required size
+     * with a NULL-buffer dry run, then verify it fits before writing. */
+    if (buffer) {
+        size_t required = omni_wm_serialize(wm, NULL, 0);
+        if (required == 0 || required > buffer_size) {
+            return 0;  /* Buffer too small (or serialization error) */
+        }
+    }
 
     size_t pos = 0;
 
@@ -147,11 +155,7 @@ size_t omni_wm_serialize(const omni_world_model_t* wm,
         pos += 4; /* Reserve space for checksum */
     }
 
-    /* Verify buffer size if buffer provided */
-    if (buffer && pos > buffer_size) {
-        return 0; /* Buffer too small */
-    }
-
+    /* Size already verified upfront for non-NULL buffer via dry-run. */
     return pos;
 }
 

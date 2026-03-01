@@ -295,7 +295,7 @@ void omni_precision_destroy(omni_precision_ctx_t* ctx) {
     }
 
     if (ctx->mutex) {
-        nimcp_mutex_free(ctx->mutex);
+        nimcp_mutex_destroy(ctx->mutex);
     }
 
     nimcp_free(ctx);

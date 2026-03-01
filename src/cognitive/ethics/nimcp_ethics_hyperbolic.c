@@ -427,7 +427,6 @@ int ethics_hyperbolic_query_self_knowledge(kg_reader_t* kg) {
 
 void ethics_hyperbolic_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_ethics_hyperbolic_health_agent = agent;
     }
 }

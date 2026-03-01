@@ -399,7 +399,7 @@ imagination_engine_t* imagination_engine_create(
 
 error:
     imagination_engine_destroy(engine);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_default_config: operation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_engine_create: resource allocation failed");
     return NULL;
 }
 
@@ -434,8 +434,30 @@ void imagination_engine_destroy(imagination_engine_t* engine) {
                 if (scenario->visual_buffer) nimcp_tensor_destroy(scenario->visual_buffer);
                 if (scenario->audio_buffer) nimcp_tensor_destroy(scenario->audio_buffer);
                 if (scenario->semantic_buffer) nimcp_tensor_destroy(scenario->semantic_buffer);
-                if (scenario->trajectory) nimcp_darray_destroy(scenario->trajectory);
-                if (scenario->elements) nimcp_darray_destroy(scenario->elements);
+                /* Free trajectory tensor entries before destroying darray */
+                if (scenario->trajectory) {
+                    size_t traj_count = nimcp_darray_size(scenario->trajectory);
+                    for (size_t j = 0; j < traj_count; j++) {
+                        nimcp_tensor_t** state_ptr =
+                            (nimcp_tensor_t**)nimcp_darray_at(scenario->trajectory, j);
+                        if (state_ptr && *state_ptr) nimcp_tensor_destroy(*state_ptr);
+                    }
+                    nimcp_darray_destroy(scenario->trajectory);
+                }
+                /* Free element entries before destroying darray */
+                if (scenario->elements) {
+                    size_t elem_count = nimcp_darray_size(scenario->elements);
+                    for (size_t j = 0; j < elem_count; j++) {
+                        imagination_element_t** elem_ptr =
+                            (imagination_element_t**)nimcp_darray_at(scenario->elements, j);
+                        if (elem_ptr && *elem_ptr) {
+                            imagination_element_t* elem = *elem_ptr;
+                            if (elem->features) nimcp_tensor_destroy(elem->features);
+                            nimcp_free(elem);
+                        }
+                    }
+                    nimcp_darray_destroy(scenario->elements);
+                }
                 if (scenario->active_goal) nimcp_free(scenario->active_goal);
                 nimcp_free(scenario);
                 scenario = NULL;
@@ -451,11 +473,10 @@ void imagination_engine_destroy(imagination_engine_t* engine) {
 
     /* Destroy mutex */
     if (engine->mutex) {
-        nimcp_mutex_free(engine->mutex);
+        nimcp_mutex_destroy(engine->mutex);
     }
 
     nimcp_free(engine);
-    engine = NULL;
 }
 
 int imagination_engine_reset(imagination_engine_t* engine) {
@@ -492,8 +513,30 @@ int imagination_engine_reset(imagination_engine_t* engine) {
                 if (scenario->visual_buffer) nimcp_tensor_destroy(scenario->visual_buffer);
                 if (scenario->audio_buffer) nimcp_tensor_destroy(scenario->audio_buffer);
                 if (scenario->semantic_buffer) nimcp_tensor_destroy(scenario->semantic_buffer);
-                if (scenario->trajectory) nimcp_darray_destroy(scenario->trajectory);
-                if (scenario->elements) nimcp_darray_destroy(scenario->elements);
+                /* Free trajectory tensor entries before destroying darray */
+                if (scenario->trajectory) {
+                    size_t traj_count = nimcp_darray_size(scenario->trajectory);
+                    for (size_t j = 0; j < traj_count; j++) {
+                        nimcp_tensor_t** state_ptr =
+                            (nimcp_tensor_t**)nimcp_darray_at(scenario->trajectory, j);
+                        if (state_ptr && *state_ptr) nimcp_tensor_destroy(*state_ptr);
+                    }
+                    nimcp_darray_destroy(scenario->trajectory);
+                }
+                /* Free element entries before destroying darray */
+                if (scenario->elements) {
+                    size_t elem_count = nimcp_darray_size(scenario->elements);
+                    for (size_t j = 0; j < elem_count; j++) {
+                        imagination_element_t** elem_ptr =
+                            (imagination_element_t**)nimcp_darray_at(scenario->elements, j);
+                        if (elem_ptr && *elem_ptr) {
+                            imagination_element_t* elem = *elem_ptr;
+                            if (elem->features) nimcp_tensor_destroy(elem->features);
+                            nimcp_free(elem);
+                        }
+                    }
+                    nimcp_darray_destroy(scenario->elements);
+                }
                 if (scenario->active_goal) nimcp_free(scenario->active_goal);
                 nimcp_free(scenario);
                 scenario = NULL;
@@ -570,7 +613,7 @@ imagination_engine_t* brain_get_imagination_engine(brain_t brain) {
     imagination_engine_heartbeat("imagination__brain_get_imaginatio", 0.0f);
 
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: operation failed");
+    /* TODO: brain_get_imagination_engine not yet implemented */
     return NULL;
 }
 
@@ -1311,7 +1354,19 @@ error:
     if (scenario->latent_previous) nimcp_tensor_destroy(scenario->latent_previous);
     if (scenario->trajectory) nimcp_darray_destroy(scenario->trajectory);
     if (scenario->elements) nimcp_darray_destroy(scenario->elements);
-    if (scenario->active_goal) nimcp_free(scenario->active_goal);
+    if (scenario->active_goal) {
+        /* Free any deep-copied goal tensors before freeing the goal struct */
+        if (scenario->active_goal->target_features) {
+            nimcp_tensor_destroy(scenario->active_goal->target_features);
+        }
+        if (scenario->active_goal->constraints) {
+            nimcp_tensor_destroy(scenario->active_goal->constraints);
+        }
+        if (scenario->active_goal->avoid) {
+            nimcp_tensor_destroy(scenario->active_goal->avoid);
+        }
+        nimcp_free(scenario->active_goal);
+    }
     nimcp_free(scenario);
     scenario = NULL;
     imagination_workspace_release_scenario(engine->workspace, slot_id);
@@ -1621,7 +1676,7 @@ int imagination_generate_visual(
         scenario->visual_buffer = nimcp_tensor_create(dims, 3, NIMCP_DTYPE_F32);
         if (!scenario->visual_buffer) {
             nimcp_mutex_unlock(engine->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_generate_visual: scenario->visual_buffer is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_generate_visual: tensor allocation failed");
             return -1;
         }
     }
@@ -1677,7 +1732,7 @@ int imagination_generate_audio(
         scenario->audio_buffer = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
         if (!scenario->audio_buffer) {
             nimcp_mutex_unlock(engine->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_generate_audio: scenario->audio_buffer is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_generate_audio: tensor allocation failed");
             return -1;
         }
     }
@@ -3797,7 +3852,6 @@ int imagination_search_goal_mcts(
 
 void imagination_engine_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_imagination_engine_health_agent = agent;
     }
 }
@@ -3812,7 +3866,7 @@ int imagination_engine_training_begin(void* instance) {
                               "imagination_engine_training_begin: NULL argument");
         return -1;
     }
-    imagination_engine_heartbeat_instance(NULL, "imagination_engine_training_begin", 0.0f);
+    imagination_engine_heartbeat("imagination_engine_training_begin", 0.0f);
     (void)(imag_mcts_state_t*)instance; /* Module state available for reset */
     return 0;
 }
@@ -3823,7 +3877,7 @@ int imagination_engine_training_end(void* instance) {
                               "imagination_engine_training_end: NULL argument");
         return -1;
     }
-    imagination_engine_heartbeat_instance(NULL, "imagination_engine_training_end", 1.0f);
+    imagination_engine_heartbeat("imagination_engine_training_end", 1.0f);
     (void)(imag_mcts_state_t*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -3836,7 +3890,7 @@ int imagination_engine_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    imagination_engine_heartbeat_instance(NULL, "imagination_engine_training_step", progress);
+    imagination_engine_heartbeat("imagination_engine_training_step", progress);
     (void)(imag_mcts_state_t*)instance; /* Module state available for step adaptation */
     return 0;
 }

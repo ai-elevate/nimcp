@@ -54,6 +54,9 @@ struct fep_context_system {
     /* ID generation */
     uint32_t next_context_id;
 
+    /* Training step counter (separate from num_contexts to avoid corruption) */
+    uint32_t training_step_count;
+
     /* Bio-async */
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
@@ -81,11 +84,7 @@ static uint64_t get_time_ms(void) {
 /* Find context by ID */
 static fep_context_t* find_context(fep_context_system_t* sys, uint32_t id) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return NULL;
-
     }
 
     for (uint32_t i = 0; i < sys->num_contexts; i++) {
@@ -99,7 +98,7 @@ static fep_context_t* find_context(fep_context_system_t* sys, uint32_t id) {
             return &sys->contexts[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_context: validation failed");
+    /* Not found is normal control flow — no immune throw */
     return NULL;
 }
 
@@ -336,7 +335,7 @@ int fep_context_remove(fep_context_system_t* sys, uint32_t context_id) {
 
     if (found_idx < 0) {
         nimcp_platform_mutex_unlock(sys->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_context_remove: validation failed");
+        NIMCP_LOGGING_ERROR("fep_context_remove: context id=%u not found", context_id);
         return -1;
     }
 
@@ -381,7 +380,40 @@ int fep_context_get(
         return -1;
     }
 
+    /* Deep copy: copy scalar fields first, then duplicate pointer fields */
     *context = *ctx;
+
+    /* Duplicate prior_beliefs to avoid exposing internal pointer */
+    if (ctx->prior_beliefs && ctx->belief_dim > 0) {
+        context->prior_beliefs = (float*)nimcp_calloc(ctx->belief_dim, sizeof(float));
+        if (!context->prior_beliefs) {
+            nimcp_platform_mutex_unlock(((fep_context_system_t*)sys)->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "fep_context_get: failed to allocate prior_beliefs copy");
+            return -1;
+        }
+        memcpy(context->prior_beliefs, ctx->prior_beliefs, ctx->belief_dim * sizeof(float));
+    } else {
+        context->prior_beliefs = NULL;
+    }
+
+    /* Duplicate transition_matrix to avoid exposing internal pointer */
+    if (ctx->transition_matrix && ctx->belief_dim > 0) {
+        size_t matrix_size = (size_t)ctx->belief_dim * (size_t)ctx->belief_dim;
+        context->transition_matrix = (float*)nimcp_calloc(matrix_size, sizeof(float));
+        if (!context->transition_matrix) {
+            nimcp_free(context->prior_beliefs);
+            context->prior_beliefs = NULL;
+            nimcp_platform_mutex_unlock(((fep_context_system_t*)sys)->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "fep_context_get: failed to allocate transition_matrix copy");
+            return -1;
+        }
+        memcpy(context->transition_matrix, ctx->transition_matrix, matrix_size * sizeof(float));
+    } else {
+        context->transition_matrix = NULL;
+    }
+
     nimcp_platform_mutex_unlock(((fep_context_system_t*)sys)->mutex);
     return 0;
 }
@@ -536,7 +568,7 @@ int fep_context_infer(
         return -1;
     }
     if (sys->num_contexts == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_context_infer: sys->num_contexts is zero");
+        NIMCP_LOGGING_DEBUG("fep_context_infer: no contexts available");
         return -1;
     }
 
@@ -795,12 +827,12 @@ int fep_context_create_from_current(
         return -1;
     }
     if (!sys->config.enable_context_creation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_create_from_current: sys->config is NULL");
+        NIMCP_LOGGING_DEBUG("fep_context_create_from_current: context creation disabled");
         return -1;
     }
 
     if (fep->num_levels == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_context_create_from_current: fep->num_levels is zero");
+        NIMCP_LOGGING_ERROR("fep_context_create_from_current: fep has no levels configured");
         return -1;
     }
 
@@ -830,11 +862,12 @@ int fep_context_get_state(
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_get_state", 0.0f);
 
-
+    nimcp_platform_mutex_lock(((fep_context_system_t*)sys)->mutex);
     state->active_context_id = sys->active_context_id;
     state->active_context_confidence = sys->active_confidence;
     state->num_contexts = sys->num_contexts;
     state->switching_in_progress = sys->switching_in_progress;
+    nimcp_platform_mutex_unlock(((fep_context_system_t*)sys)->mutex);
 
     return 0;
 }
@@ -847,10 +880,12 @@ int fep_context_get_active(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_get_active: required parameter is NULL (sys, context_id)");
         return -1;
     }
-    *context_id = sys->active_context_id;
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_get_active", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_context_system_t*)sys)->mutex);
+    *context_id = sys->active_context_id;
+    nimcp_platform_mutex_unlock(((fep_context_system_t*)sys)->mutex);
 
     return 0;
 }
@@ -883,7 +918,6 @@ int fep_context_connect(fep_context_system_t* context, fep_system_t* fep) {
 
 int fep_context_connect_bio_async(fep_context_system_t* sys) {
     if (!sys) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_connect_bio_async: sys is NULL");
         return -1;
     }
     if (sys->bio_async_enabled) return 0;
@@ -911,7 +945,6 @@ int fep_context_connect_bio_async(fep_context_system_t* sys) {
 
 int fep_context_disconnect_bio_async(fep_context_system_t* sys) {
     if (!sys) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_disconnect_bio_async: sys is NULL");
         return -1;
     }
     if (!sys->bio_async_enabled) return 0;
@@ -977,7 +1010,7 @@ int fep_context_query_self_knowledge(kg_reader_t* kg) {
  * Phase 8: Instance-level health agent setter
  * ============================================================================ */
 void fep_context_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
-    (void)ctx;
+    (void)ctx;  /* context pointer not used for global singleton */
     g_fep_context_instance_health_agent = agent;
 }
 
@@ -991,7 +1024,8 @@ int fep_context_training_begin(void* ctx) {
     }
     fep_context_instance_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_begin", 0.0f);
     struct fep_context_system* s = (struct fep_context_system*)ctx;
-    s->num_contexts = 0;
+    /* Reset training step counter, NOT num_contexts (which tracks the context library) */
+    s->training_step_count = 0;
     s->active_confidence = (s->active_confidence > 0.0f) ? s->active_confidence : 0.5f;
     s->blend_alpha = (s->blend_alpha > 0.0f) ? s->blend_alpha : 0.5f;
     NIMCP_LOGGING_INFO("fep_context: training begun, counters reset");
@@ -1013,7 +1047,7 @@ int fep_context_training_step(void* ctx, float progress) {
     s->blend_alpha += (1.0f - p) * 0.001f;
     if (s->blend_alpha > 2.0f) s->blend_alpha = 2.0f;
     if (s->blend_alpha < 0.0f) s->blend_alpha = 0.0f;
-    s->num_contexts++;
+    s->training_step_count++;
     return 0;
 }
 

@@ -864,7 +864,7 @@ bool epistemic_update_source(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "epistemic_update_source: operation failed");
+    NIMCP_LOGGING_WARN("epistemic_update_source: source table full, cannot add new source");
     return false;
 }
 
@@ -954,7 +954,6 @@ int epistemic_filter_query_self_knowledge(kg_reader_t* kg) {
 
 void epistemic_filter_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_epistemic_filter_health_agent = agent;
     }
 }

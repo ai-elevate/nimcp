@@ -110,6 +110,9 @@ curiosity_thalamic_bridge_t* curiosity_thalamic_bridge_create(void* curiosity, t
     bridge->config = config ? *config : curiosity_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    if (bridge_base_init(&bridge->base, 0, "curiosity_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     NIMCP_LOGGING_INFO("Created %s bridge", "curiosity_thalamic");
     return bridge;
 }
@@ -119,7 +122,9 @@ void curiosity_thalamic_bridge_destroy(curiosity_thalamic_bridge_t* bridge) {
     curiosity_thalamic_bridge_heartbeat("curiosity_th_destroy", 0.0f);
 
 
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
 }
 
 int curiosity_thalamic_bridge_reset(curiosity_thalamic_bridge_t* bridge) {
@@ -130,9 +135,10 @@ int curiosity_thalamic_bridge_reset(curiosity_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     curiosity_thalamic_bridge_heartbeat("curiosity_th_reset", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -145,7 +151,9 @@ int curiosity_thalamic_route_novelty(curiosity_thalamic_bridge_t* bridge, const 
     curiosity_thalamic_bridge_heartbeat("curiosity_th_curiosity_thalamic_r", 0.0f);
 
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->novelty_value < bridge->config.min_novelty_threshold) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.novelties_detected++;
@@ -154,6 +162,7 @@ int curiosity_thalamic_route_novelty(curiosity_thalamic_bridge_t* bridge, const 
     if (signal->signal_type == CURIOSITY_SIGNAL_INFORMATION) {
         bridge->stats.information_gains++;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -166,9 +175,11 @@ int curiosity_thalamic_route_exploration(curiosity_thalamic_bridge_t* bridge, co
     curiosity_thalamic_bridge_heartbeat("curiosity_th_curiosity_thalamic_r", 0.0f);
 
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (drive >= bridge->config.exploration_threshold) {
         bridge->stats.explorations_initiated++;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -180,8 +191,9 @@ int curiosity_thalamic_set_attention(curiosity_thalamic_bridge_t* bridge, float 
     /* Phase 8: Heartbeat at operation start */
     curiosity_thalamic_bridge_heartbeat("curiosity_th_curiosity_thalamic_s", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -190,7 +202,9 @@ int curiosity_thalamic_get_attention(const curiosity_thalamic_bridge_t* bridge, 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     curiosity_thalamic_bridge_heartbeat("curiosity_th_curiosity_thalamic_g", 0.0f);
 
@@ -203,7 +217,9 @@ int curiosity_thalamic_bridge_get_stats(const curiosity_thalamic_bridge_t* bridg
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     curiosity_thalamic_bridge_heartbeat("curiosity_th_get_stats", 0.0f);
 

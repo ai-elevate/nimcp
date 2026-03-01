@@ -197,7 +197,7 @@ void software_eng_destroy(software_eng_t* se) {
 
 
     if (se->lock) {
-        nimcp_mutex_free(se->lock);
+        nimcp_mutex_destroy(se->lock);
     }
     nimcp_free(se);
     se = NULL;
@@ -1362,7 +1362,6 @@ int software_engineering_query_self_knowledge(kg_reader_t* kg) {
 
 void software_engineering_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_software_engineering_health_agent = agent;
     }
 }
@@ -1377,7 +1376,7 @@ int software_engineering_training_begin(void* instance) {
                               "software_engineering_training_begin: NULL argument");
         return -1;
     }
-    software_engineering_heartbeat_instance(NULL, "software_engineering_training_begin", 0.0f);
+    software_engineering_heartbeat_instance(g_software_engineering_health_agent, "software_engineering_training_begin", 0.0f);
     (void)(struct software_eng*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1388,7 +1387,7 @@ int software_engineering_training_end(void* instance) {
                               "software_engineering_training_end: NULL argument");
         return -1;
     }
-    software_engineering_heartbeat_instance(NULL, "software_engineering_training_end", 1.0f);
+    software_engineering_heartbeat_instance(g_software_engineering_health_agent, "software_engineering_training_end", 1.0f);
     (void)(struct software_eng*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1401,7 +1400,7 @@ int software_engineering_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    software_engineering_heartbeat_instance(NULL, "software_engineering_training_step", progress);
+    software_engineering_heartbeat_instance(g_software_engineering_health_agent, "software_engineering_training_step", progress);
     (void)(struct software_eng*)instance; /* Module state available for step adaptation */
     return 0;
 }

@@ -79,7 +79,8 @@ brain_immune_system_t* brain_immune_create(const brain_immune_config_t* config) 
 
 cleanup:
     brain_immune_destroy(system);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_create: validation failed");
+    /* FIX HIGH:82 — cleanup is reached on allocation failure, use NO_MEMORY not NULL_POINTER */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_create: allocation failed");
     return NULL;
 }
 
@@ -97,7 +98,8 @@ void brain_immune_destroy(brain_immune_system_t* system) {
     brain_immune_stop(system);
 
     if (system->mutex) {
-        nimcp_mutex_free(system->mutex);
+        /* FIX HIGH:100 — use nimcp_mutex_destroy (handles destroy+free+NULL), not nimcp_mutex_free */
+        nimcp_mutex_destroy(system->mutex);
     }
 
     nimcp_free(system->antigens);
@@ -107,7 +109,7 @@ void brain_immune_destroy(brain_immune_system_t* system) {
     nimcp_free(system->cytokines);
     nimcp_free(system->inflammation_sites);
     nimcp_free(system);
-    system = NULL;
+    /* FIX LOW:110 — removed dead code: system = NULL after nimcp_free(system) has no effect */
 }
 
 

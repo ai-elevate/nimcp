@@ -640,7 +640,6 @@ int civil_engineering_query_self_knowledge(kg_reader_t* kg) {
 
 void civil_engineering_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_civil_engineering_health_agent = agent;
     }
 }
@@ -655,7 +654,7 @@ int civil_engineering_training_begin(void* instance) {
                               "civil_engineering_training_begin: NULL argument");
         return -1;
     }
-    civil_engineering_heartbeat_instance(NULL, "civil_engineering_training_begin", 0.0f);
+    civil_engineering_heartbeat_instance(g_civil_engineering_health_agent, "civil_engineering_training_begin", 0.0f);
     (void)(struct civil_eng*)instance; /* Module state available for reset */
     return 0;
 }
@@ -666,7 +665,7 @@ int civil_engineering_training_end(void* instance) {
                               "civil_engineering_training_end: NULL argument");
         return -1;
     }
-    civil_engineering_heartbeat_instance(NULL, "civil_engineering_training_end", 1.0f);
+    civil_engineering_heartbeat_instance(g_civil_engineering_health_agent, "civil_engineering_training_end", 1.0f);
     (void)(struct civil_eng*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -679,7 +678,7 @@ int civil_engineering_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    civil_engineering_heartbeat_instance(NULL, "civil_engineering_training_step", progress);
+    civil_engineering_heartbeat_instance(g_civil_engineering_health_agent, "civil_engineering_training_step", progress);
     (void)(struct civil_eng*)instance; /* Module state available for step adaptation */
     return 0;
 }

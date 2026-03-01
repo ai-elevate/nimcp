@@ -644,7 +644,6 @@ int electrical_engineering_query_self_knowledge(kg_reader_t* kg) {
 
 void electrical_engineering_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_electrical_engineering_health_agent = agent;
     }
 }
@@ -659,7 +658,7 @@ int electrical_engineering_training_begin(void* instance) {
                               "electrical_engineering_training_begin: NULL argument");
         return -1;
     }
-    electrical_engineering_heartbeat_instance(NULL, "electrical_engineering_training_begin", 0.0f);
+    electrical_engineering_heartbeat_instance(g_electrical_engineering_health_agent, "electrical_engineering_training_begin", 0.0f);
     (void)(struct electrical_eng*)instance; /* Module state available for reset */
     return 0;
 }
@@ -670,7 +669,7 @@ int electrical_engineering_training_end(void* instance) {
                               "electrical_engineering_training_end: NULL argument");
         return -1;
     }
-    electrical_engineering_heartbeat_instance(NULL, "electrical_engineering_training_end", 1.0f);
+    electrical_engineering_heartbeat_instance(g_electrical_engineering_health_agent, "electrical_engineering_training_end", 1.0f);
     (void)(struct electrical_eng*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -683,7 +682,7 @@ int electrical_engineering_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    electrical_engineering_heartbeat_instance(NULL, "electrical_engineering_training_step", progress);
+    electrical_engineering_heartbeat_instance(g_electrical_engineering_health_agent, "electrical_engineering_training_step", progress);
     (void)(struct electrical_eng*)instance; /* Module state available for step adaptation */
     return 0;
 }

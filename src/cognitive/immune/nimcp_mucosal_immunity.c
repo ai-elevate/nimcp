@@ -268,7 +268,7 @@ void mucosal_destroy(mucosal_system_t* system) {
     if (system->siga_antibodies) nimcp_free(system->siga_antibodies);
     if (system->tolerances) nimcp_free(system->tolerances);
     if (system->m_cell_samples) nimcp_free(system->m_cell_samples);
-    if (system->mutex) nimcp_mutex_free(system->mutex);
+    if (system->mutex) nimcp_mutex_destroy(system->mutex);
 
     nimcp_free(system);
     system = NULL;
@@ -1162,7 +1162,6 @@ int mucosal_query_self_knowledge(kg_reader_t* kg) {
 
 void mucosal_immunity_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mucosal_immunity_health_agent = agent;
     }
 }

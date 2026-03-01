@@ -370,7 +370,6 @@ int substrate_wellbeing_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void wellbeing_substrate_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_wellbeing_substrate_bridge_health_agent = agent;
     }
 }
@@ -385,7 +384,7 @@ int wellbeing_substrate_bridge_training_begin(void* instance) {
                               "wellbeing_substrate_bridge_training_begin: NULL argument");
         return -1;
     }
-    wellbeing_substrate_bridge_heartbeat_instance(NULL, "wellbeing_substrate_bridge_training_begin", 0.0f);
+    wellbeing_substrate_bridge_heartbeat_instance(g_wellbeing_substrate_bridge_health_agent, "wellbeing_substrate_bridge_training_begin", 0.0f);
     return 0;
 }
 
@@ -395,7 +394,7 @@ int wellbeing_substrate_bridge_training_end(void* instance) {
                               "wellbeing_substrate_bridge_training_end: NULL argument");
         return -1;
     }
-    wellbeing_substrate_bridge_heartbeat_instance(NULL, "wellbeing_substrate_bridge_training_end", 1.0f);
+    wellbeing_substrate_bridge_heartbeat_instance(g_wellbeing_substrate_bridge_health_agent, "wellbeing_substrate_bridge_training_end", 1.0f);
     return 0;
 }
 
@@ -407,6 +406,6 @@ int wellbeing_substrate_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    wellbeing_substrate_bridge_heartbeat_instance(NULL, "wellbeing_substrate_bridge_training_step", progress);
+    wellbeing_substrate_bridge_heartbeat_instance(g_wellbeing_substrate_bridge_health_agent, "wellbeing_substrate_bridge_training_step", progress);
     return 0;
 }

@@ -1153,7 +1153,6 @@ void rcog_health_dump_answer(const rcog_health_answer_t* answer) {
 
 void rcog_health_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_rcog_health_health_agent = agent;
     }
 }

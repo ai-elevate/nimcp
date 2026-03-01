@@ -670,7 +670,6 @@ uint32_t* nimcp_gt_get_mc_seed(void) {
 
 void game_theory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_game_theory_health_agent = agent;
     }
 }

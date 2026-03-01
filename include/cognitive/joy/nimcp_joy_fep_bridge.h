@@ -95,8 +95,8 @@ int joy_fep_process_positive_pe(joy_fep_bridge_t* bridge, float pe_magnitude);
 int joy_fep_boost_learning_rate(joy_fep_bridge_t* bridge);
 int joy_fep_update(joy_fep_bridge_t* bridge, uint64_t delta_ms);
 
-int joy_fep_get_state(const joy_fep_bridge_t* bridge, joy_fep_state_t* state);
-int joy_fep_get_stats(const joy_fep_bridge_t* bridge, joy_fep_stats_t* stats);
+int joy_fep_get_state(joy_fep_bridge_t* bridge, joy_fep_state_t* state);
+int joy_fep_get_stats(joy_fep_bridge_t* bridge, joy_fep_stats_t* stats);
 
 int joy_fep_connect_bio_async(joy_fep_bridge_t* bridge);
 int joy_fep_disconnect_bio_async(joy_fep_bridge_t* bridge);

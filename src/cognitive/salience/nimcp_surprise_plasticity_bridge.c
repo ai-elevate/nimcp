@@ -236,7 +236,7 @@ surprise_plasticity_bridge_t* surprise_plasticity_bridge_create(
         NIMCP_THROW_MEMORY(NIMCP_SURPRISE_PLASTICITY_ERROR_NO_MEMORY,
                            bridge->config.max_tracked_sources * sizeof(habituation_entry_t),
                            "surprise_plasticity_bridge sources allocation failed");
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
         nimcp_free(bridge);
         bridge = NULL;
         return NULL;
@@ -284,7 +284,7 @@ void surprise_plasticity_bridge_destroy(surprise_plasticity_bridge_t* bridge) {
         nimcp_free(bridge->sources);
     }
     if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
     }
     nimcp_free(bridge);
     bridge = NULL;
@@ -761,7 +761,6 @@ int surprise_plasticity_bridge_set_health_agent(
 
 void surprise_plasticity_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_surprise_plasticity_health_agent = agent;
     }
 }

@@ -971,7 +971,6 @@ const char* wm_modality_string(wm_modality_t modality) {
 
 void world_model_multimodal_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_world_model_multimodal_health_agent = agent;
     }
 }

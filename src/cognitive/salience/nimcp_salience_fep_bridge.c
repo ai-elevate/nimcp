@@ -193,7 +193,7 @@ salience_fep_bridge_t* salience_fep_bridge_create(const salience_fep_config_t* c
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
         bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_fep_bridge_create: bridge->base is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "salience_fep_bridge_create: bridge_base_init failed, no mutex");
         return NULL;
     }
 
@@ -259,9 +259,9 @@ int salience_fep_bridge_connect_fep(
     salience_fep_bridge_heartbeat("salience_fep_connect_fep", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected FEP system to salience bridge");
     return 0;
@@ -288,9 +288,9 @@ int salience_fep_bridge_connect_salience(
     salience_fep_bridge_heartbeat("salience_fep_connect_salience", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->salience_evaluator = salience;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected salience evaluator to FEP bridge");
     return 0;
@@ -330,7 +330,7 @@ int salience_fep_modulate_precision_by_salience(salience_fep_bridge_t* bridge) {
     salience_fep_bridge_heartbeat("salience_fep_salience_fep_modulat", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current salience score */
     float salience = bridge->state.current_salience;
@@ -355,7 +355,7 @@ int salience_fep_modulate_precision_by_salience(salience_fep_bridge_t* bridge) {
              precision_boost) / bridge->stats.total_precision_boosts;
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Modulated precision by salience: boost=%f", precision_boost);
     return 0;
@@ -400,7 +400,7 @@ int salience_fep_compute_salience_from_pe(salience_fep_bridge_t* bridge) {
     salience_fep_bridge_heartbeat("salience_fep_salience_fep_compute", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
 
@@ -471,7 +471,7 @@ int salience_fep_compute_salience_from_pe(salience_fep_bridge_t* bridge) {
     bridge->stats.avg_salience =
         0.95f * bridge->stats.avg_salience + 0.05f * salience;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Computed salience from PE: salience=%f (surprise=%f, urgency=%f, novelty=%f)",
                         salience, surprise, urgency, novelty);
@@ -508,7 +508,7 @@ int salience_fep_gate_by_salience(salience_fep_bridge_t* bridge) {
     salience_fep_bridge_heartbeat("salience_fep_salience_fep_gate_by", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current salience */
     float salience = bridge->state.current_salience;
@@ -522,7 +522,7 @@ int salience_fep_gate_by_salience(salience_fep_bridge_t* bridge) {
     /* Update statistics */
     bridge->stats.total_salience_gates++;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Applied salience gating: factor=%f", gating_factor);
     return 0;
@@ -588,9 +588,9 @@ int salience_fep_bridge_get_state(
     salience_fep_bridge_heartbeat("salience_fep_get_state", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -615,9 +615,9 @@ int salience_fep_bridge_get_stats(
     salience_fep_bridge_heartbeat("salience_fep_get_stats", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -757,7 +757,6 @@ int salience_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void salience_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_salience_fep_bridge_health_agent = agent;
     }
 }

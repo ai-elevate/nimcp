@@ -297,7 +297,7 @@ int game_theory_plasticity_register_synapse(
     synapse_entry_t* slot = find_free_slot(bridge);
     if (!slot) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_plasticity_register_synapse: slot is NULL");
+        NIMCP_LOGGING_WARN("game_theory_plasticity_register_synapse: synapse capacity full");
         return -1;
     }
 
@@ -341,8 +341,7 @@ int game_theory_plasticity_unregister_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_plasticity_unregister_synapse: entry is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     entry->in_use = false;
@@ -371,8 +370,7 @@ int game_theory_plasticity_get_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_plasticity_get_synapse: entry is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     *synapse = entry->synapse;
@@ -400,8 +398,7 @@ int game_theory_plasticity_protect_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_plasticity_protect_synapse: entry is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     entry->synapse.is_protected = protect;
@@ -437,8 +434,7 @@ int game_theory_plasticity_learn(
     if (!entry) {
         bridge->state = GT_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_plasticity_learn: entry is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     /* Check protection */
@@ -526,13 +522,17 @@ int game_theory_plasticity_learn(
         (bridge->stats.mean_weight_change * (bridge->stats.weight_updates - 1) +
          fabsf(actual_change)) / bridge->stats.weight_updates;
 
-    /* Invoke callback */
-    if (bridge->learn_callback) {
-        bridge->learn_callback(bridge, event, magnitude, bridge->learn_callback_data);
-    }
+    /* Invoke callback outside mutex to prevent deadlock */
+    game_theory_plasticity_learn_callback_t cb = bridge->learn_callback;
+    void* cb_data = bridge->learn_callback_data;
 
     bridge->state = GT_PLASTICITY_STATE_IDLE;
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    if (cb) {
+        cb(bridge, event, magnitude, cb_data);
+    }
+
     return 0;
 }
 
@@ -1042,7 +1042,7 @@ int game_theory_plasticity_bio_async_connect(game_theory_plasticity_bridge_t* br
         return -1;
     }
     if (!bridge->config.enable_bio_async) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_plasticity_bio_async_connect: bridge->config is NULL");
+        NIMCP_LOGGING_WARN("game_theory_plasticity_bio_async_connect: bio_async not enabled in config");
         return -1;
     }
 

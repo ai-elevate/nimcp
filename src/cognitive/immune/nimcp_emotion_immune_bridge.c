@@ -18,6 +18,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include <time.h>
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
@@ -101,10 +102,25 @@ static inline float clamp_f(float value, float min, float max) {
 static float compute_sickness_behavior(const brain_immune_system_t* immune) {
     if (!immune) return 0.0f;
 
-    /* Query cytokine concentrations (would need actual implementation) */
+    /* Query cytokine concentrations from immune system */
     float il1_level = 0.0f;
     float il6_level = 0.0f;
     float tnf_level = 0.0f;
+
+    if (immune->cytokines) {
+        for (size_t i = 0; i < immune->cytokine_count; i++) {
+            float conc = immune->cytokines[i].concentration;
+            switch (immune->cytokines[i].type) {
+                case BRAIN_CYTOKINE_IL1: il1_level += conc; break;
+                case BRAIN_CYTOKINE_IL6: il6_level += conc; break;
+                case BRAIN_CYTOKINE_TNF: tnf_level += conc; break;
+                default: break;
+            }
+        }
+        il1_level = clamp_f(il1_level / 5.0f, 0.0f, 1.0f);
+        il6_level = clamp_f(il6_level / 5.0f, 0.0f, 1.0f);
+        tnf_level = clamp_f(tnf_level / 5.0f, 0.0f, 1.0f);
+    }
 
     /* Sickness behavior is weighted combination */
     float sickness = (il1_level * 0.4f) + (il6_level * 0.3f) + (tnf_level * 0.3f);
@@ -119,10 +135,24 @@ static float compute_sickness_behavior(const brain_immune_system_t* immune) {
  * HOW:  Find oldest active inflammation site, compute duration
  */
 static float get_inflammation_duration_sec(const brain_immune_system_t* immune) {
-    if (!immune) return 0.0f;
+    if (!immune || !immune->inflammation_sites || immune->inflammation_count == 0) return 0.0f;
 
-    /* Would query immune system for inflammation sites */
-    /* For now, return 0 - actual implementation would check inflammation_sites array */
+    /* Find oldest inflammation site */
+    uint64_t oldest_start = UINT64_MAX;
+    for (size_t i = 0; i < immune->inflammation_count; i++) {
+        if (immune->inflammation_sites[i].start_time < oldest_start) {
+            oldest_start = immune->inflammation_sites[i].start_time;
+        }
+    }
+
+    if (oldest_start == UINT64_MAX) return 0.0f;
+
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t current_time = (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
+    if (current_time > oldest_start) {
+        return (float)(current_time - oldest_start) / 1000.0f; /* ms to sec */
+    }
     return 0.0f;
 }
 
@@ -136,10 +166,15 @@ static float get_inflammation_duration_sec(const brain_immune_system_t* immune) 
 static brain_inflammation_level_t get_max_inflammation_level(
     const brain_immune_system_t* immune
 ) {
-    if (!immune) return INFLAMMATION_NONE;
+    if (!immune || !immune->inflammation_sites || immune->inflammation_count == 0) return INFLAMMATION_NONE;
 
-    /* Would query immune system inflammation_sites */
-    return INFLAMMATION_NONE;
+    brain_inflammation_level_t max_level = INFLAMMATION_NONE;
+    for (size_t i = 0; i < immune->inflammation_count; i++) {
+        if (immune->inflammation_sites[i].level > max_level) {
+            max_level = immune->inflammation_sites[i].level;
+        }
+    }
+    return max_level;
 }
 
 /* ============================================================================
@@ -189,7 +224,7 @@ emotion_immune_bridge_t* emotion_immune_bridge_create(
     if (!immune_system || !emotion_system) {
         LOG_MODULE_ERROR("emotion_immune_bridge",
                   "Cannot create bridge without immune and emotion systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_immune_bridge_create: required parameter is NULL (immune_system, emotion_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_bridge_create: required parameter is NULL (immune_system, emotion_system)");
         return NULL;
     }
 
@@ -202,7 +237,7 @@ emotion_immune_bridge_t* emotion_immune_bridge_create(
         nimcp_malloc(sizeof(emotion_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("emotion_immune_bridge", "Allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_immune_bridge_create: malloc returned NULL");
 
         return NULL;
     }
@@ -285,7 +320,11 @@ int emotion_immune_apply_cytokine_effects(emotion_immune_bridge_t* bridge) {
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_apply", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    /* Get current emotion state before acquiring lock (external call) */
+    emotion_state_t pre_lock_emotion;
+    bool got_emotion = emotion_system_get_state(bridge->emotion_system, &pre_lock_emotion);
+
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_emotion_effects_t* effects = &bridge->cytokine_effects;
@@ -320,24 +359,24 @@ int emotion_immune_apply_cytokine_effects(emotion_immune_bridge_t* bridge) {
     /* Fatigue */
     effects->fatigue_level = clamp_f(proinflam_total * 0.8f, 0.0f, 1.0f);
 
-    /* Apply to emotional system */
-    emotion_state_t current_emotion;
-    if (emotion_system_get_state(bridge->emotion_system, &current_emotion)) {
-        /* Modulate valence */
-        float new_valence = current_emotion.valence + effects->total_valence_shift;
-        new_valence = clamp_f(new_valence, -1.0f, 1.0f);
-
-        /* Reduce arousal if sickness behavior high */
+    /* Compute desired emotional state changes */
+    bool do_set_emotion = false;
+    float new_valence = 0.0f;
+    float new_arousal = 0.0f;
+    if (got_emotion) {
+        new_valence = clamp_f(pre_lock_emotion.valence + effects->total_valence_shift, -1.0f, 1.0f);
         float arousal_reduction = effects->sickness_behavior_level * 0.3f;
-        float new_arousal = current_emotion.arousal - arousal_reduction;
-        new_arousal = clamp_f(new_arousal, 0.0f, 1.0f);
-
-        /* Update emotional system */
-        emotion_system_set_state(bridge->emotion_system, new_valence, new_arousal, 0);
+        new_arousal = clamp_f(pre_lock_emotion.arousal - arousal_reduction, 0.0f, 1.0f);
+        do_set_emotion = true;
     }
 
     bridge->cytokine_modulations++;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Apply to emotional system outside lock to avoid deadlock */
+    if (do_set_emotion) {
+        emotion_system_set_state(bridge->emotion_system, new_valence, new_arousal, 0);
+    }
     return 0;
 }
 
@@ -360,7 +399,7 @@ int emotion_immune_apply_inflammation_effects(emotion_immune_bridge_t* bridge) {
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_apply", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     inflammation_emotion_state_t* state = &bridge->inflammation_state;
 
@@ -388,7 +427,7 @@ int emotion_immune_apply_inflammation_effects(emotion_immune_bridge_t* bridge) {
     state->fatigue_severity = clamp_f(inflammation_intensity * 0.9f, 0.0f, 1.0f);
     state->motivation_impairment = clamp_f(inflammation_intensity * 0.6f, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -431,17 +470,16 @@ int emotion_immune_trigger_from_stress(emotion_immune_bridge_t* bridge) {
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_trigg", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
-
-    emotion_immune_trigger_t* trigger = &bridge->emotion_trigger;
-
-    /* Get current emotional state */
+    /* Get current emotional state before acquiring lock (external call) */
     emotion_state_t emotion;
     if (!emotion_system_get_state(bridge->emotion_system, &emotion)) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_immune_trigger_from_stress: emotion_system_get_state is NULL");
         return -1;
     }
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    emotion_immune_trigger_t* trigger = &bridge->emotion_trigger;
 
     /* Compute stress level */
     trigger->negative_valence = (emotion.valence < 0) ? fabs(emotion.valence) : 0.0f;
@@ -467,7 +505,7 @@ int emotion_immune_trigger_from_stress(emotion_immune_bridge_t* bridge) {
         trigger->inflammatory_rebound = false;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -490,16 +528,13 @@ int emotion_immune_amplify_grief_inflammation(emotion_immune_bridge_t* bridge) {
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_ampli", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
-
-    /* Check if currently grieving */
+    /* Check grief state before acquiring lock (external calls) */
     if (!grief_is_grieving(bridge->grief_system)) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         return 0;
     }
-
-    /* Get grief pain intensity */
     float grief_pain = grief_get_pain_intensity(bridge->grief_system);
+
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Grief amplifies inflammatory response */
     float amplification = 1.0f + (grief_pain * (GRIEF_INFLAMMATION_MULTIPLIER - 1.0f));
@@ -511,7 +546,7 @@ int emotion_immune_amplify_grief_inflammation(emotion_immune_bridge_t* bridge) {
     bridge->inflammation_state.grief_amplification = amplification;
     bridge->inflammation_state.grief_prolongation = grief_pain * 0.5f;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -534,24 +569,26 @@ int emotion_immune_boost_from_positive_affect(emotion_immune_bridge_t* bridge) {
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_boost", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    /* Get joy/positive emotion state before acquiring lock (external calls) */
+    float joy_intensity = joy_is_joyful(bridge->joy_system) ? joy_get_valence(bridge->joy_system) : 0.0f;
 
-    positive_emotion_immune_boost_t* boost = &bridge->positive_boost;
-
-    /* Get joy/positive emotion state */
-    boost->joy_intensity = joy_is_joyful(bridge->joy_system) ? joy_get_valence(bridge->joy_system) : 0.0f;
-    boost->positive_valence = boost->joy_intensity;
-
-    /* Get calm level from emotional system */
+    /* Get calm level from emotional system before acquiring lock (external call) */
+    float calm_level = 0.0f;
     emotion_state_t emotion;
     if (emotion_system_get_state(bridge->emotion_system, &emotion)) {
         /* Calm = low arousal + neutral/positive valence */
         if (emotion.arousal < 0.3f && emotion.valence >= 0.0f) {
-            boost->calm_level = (0.3f - emotion.arousal) / 0.3f;
-        } else {
-            boost->calm_level = 0.0f;
+            calm_level = (0.3f - emotion.arousal) / 0.3f;
         }
     }
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    positive_emotion_immune_boost_t* boost = &bridge->positive_boost;
+
+    boost->joy_intensity = joy_intensity;
+    boost->positive_valence = joy_intensity;
+    boost->calm_level = calm_level;
 
     /* Positive emotions enhance immune function */
     boost->immune_enhancement = clamp_f((boost->joy_intensity + boost->calm_level) * 0.5f, 0.0f, 0.5f);
@@ -573,7 +610,7 @@ int emotion_immune_boost_from_positive_affect(emotion_immune_bridge_t* bridge) {
         bridge->positive_boosts++;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -629,9 +666,9 @@ int emotion_immune_get_cytokine_effects(
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_get_c", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_emotion_effects_t));
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -649,9 +686,9 @@ int emotion_immune_get_inflammation_state(
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_get_i", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_emotion_state_t));
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -813,7 +850,6 @@ int emotion_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void emotion_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_emotion_immune_bridge_health_agent = agent;
     }
 }
@@ -828,6 +864,7 @@ int emotion_immune_bridge_training_begin(void* instance) {
                               "emotion_immune_bridge_training_begin: NULL argument");
         return -1;
     }
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     emotion_immune_bridge_heartbeat_instance(NULL, "emotion_immune_bridge_training_begin", 0.0f);
     return 0;
 }
@@ -838,6 +875,7 @@ int emotion_immune_bridge_training_end(void* instance) {
                               "emotion_immune_bridge_training_end: NULL argument");
         return -1;
     }
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     emotion_immune_bridge_heartbeat_instance(NULL, "emotion_immune_bridge_training_end", 1.0f);
     return 0;
 }
@@ -850,6 +888,7 @@ int emotion_immune_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     emotion_immune_bridge_heartbeat_instance(NULL, "emotion_immune_bridge_training_step", progress);
     return 0;
 }

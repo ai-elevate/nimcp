@@ -718,7 +718,6 @@ int knowledge_base_interface_query_self_knowledge(kg_reader_t* kg) {
 
 void knowledge_base_interface_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_knowledge_base_interface_health_agent = agent;
     }
 }

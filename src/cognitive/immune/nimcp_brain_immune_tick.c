@@ -1803,7 +1803,6 @@ int brain_immune_tick_set_config(brain_immune_system_t* immune,
 
 void brain_immune_tick_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_brain_immune_tick_health_agent = agent;
     }
 }

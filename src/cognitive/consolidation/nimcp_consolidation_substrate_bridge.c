@@ -83,24 +83,7 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(void* co
     bridge->substrate = substrate;
     bridge->config = config ? *config : consolidation_substrate_default_config();
 
-    /* Initialize mutex */
-    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex for consolidation substrate bridge");
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_substrate_bridge_create: bridge->base is NULL");
-        return NULL;
-    }
-
-    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize mutex for consolidation substrate bridge");
-        nimcp_free(bridge->base.mutex);
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_substrate_bridge_create: validation failed");
-        return NULL;
-    }
+    if (bridge_base_init(&bridge->base, 0, "consolidation_substrate") != 0) { nimcp_free(bridge); return NULL; }
 
     bridge->effects.consolidation_rate = 1.0f;
     bridge->effects.encoding_fidelity = 1.0f;
@@ -114,17 +97,10 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(void* co
 void consolidation_substrate_bridge_destroy(consolidation_substrate_bridge_t* bridge) {
     if (!bridge) return;
 
-    /* Destroy mutex */
     /* Phase 8: Heartbeat at operation start */
     consolidation_substrate_bridge_heartbeat("consolidatio_destroy", 0.0f);
 
-
-    if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
-
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -181,7 +157,10 @@ int consolidation_substrate_bridge_get_effects(const consolidation_substrate_bri
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    /* Lock to prevent torn reads while update() writes under lock */
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     consolidation_substrate_bridge_heartbeat("consolidatio_get_effects", 0.0f);
 

@@ -283,7 +283,7 @@ int brain_immune_sync_memory_to_swarm(
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
     if (!b_cell || b_cell->state != B_CELL_MEMORY) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_sync_memory_to_swarm: b_cell is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_sync_memory_to_swarm: b_cell is NULL");
         return -1;
     }
 
@@ -589,7 +589,7 @@ int brain_immune_propagate_secondary_response(
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, memory_b_cell_id);
     if (!b_cell || b_cell->state != B_CELL_MEMORY) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_propagate_secondary_response: b_cell is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_propagate_secondary_response: b_cell is NULL");
         return -1;
     }
 
@@ -1754,7 +1754,7 @@ int brain_immune_secondary_response(
 
     brain_b_cell_t* memory = find_b_cell_by_id(system, memory_b_cell_id);
     if (!memory || memory->state != B_CELL_MEMORY) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_secondary_response: memory is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_secondary_response: memory is NULL");
         return -1;
     }
 

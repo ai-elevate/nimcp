@@ -404,7 +404,11 @@ sleep_state_t sleep_get_current_state(const sleep_system_t sleep)
         return SLEEP_STATE_AWAKE;
     }
 
-    return sleep->current_state;
+    nimcp_mutex_lock((nimcp_mutex_t*)&sleep->lock);
+    sleep_state_t state = sleep->current_state;
+    nimcp_mutex_unlock((nimcp_mutex_t*)&sleep->lock);
+
+    return state;
 }
 
 /**
@@ -1018,7 +1022,6 @@ int sleep_wake_query_self_knowledge(kg_reader_t* kg) {
 
 void sleep_wake_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_sleep_wake_health_agent = agent;
     }
 }

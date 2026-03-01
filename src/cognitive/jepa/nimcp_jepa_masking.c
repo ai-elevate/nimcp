@@ -1089,7 +1089,6 @@ int jepa_masking_query_self_knowledge(kg_reader_t* kg) {
 
 void jepa_masking_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_jepa_masking_health_agent = agent;
     }
 }
@@ -1104,7 +1103,7 @@ int jepa_masking_training_begin(void* instance) {
                               "jepa_masking_training_begin: NULL argument");
         return -1;
     }
-    jepa_masking_heartbeat_instance(NULL, "jepa_masking_training_begin", 0.0f);
+    jepa_masking_heartbeat("jepa_masking_training_begin", 0.0f);
     (void)(mask_block_t*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1115,7 +1114,7 @@ int jepa_masking_training_end(void* instance) {
                               "jepa_masking_training_end: NULL argument");
         return -1;
     }
-    jepa_masking_heartbeat_instance(NULL, "jepa_masking_training_end", 1.0f);
+    jepa_masking_heartbeat("jepa_masking_training_end", 1.0f);
     (void)(mask_block_t*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1128,7 +1127,7 @@ int jepa_masking_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    jepa_masking_heartbeat_instance(NULL, "jepa_masking_training_step", progress);
+    jepa_masking_heartbeat("jepa_masking_training_step", progress);
     (void)(mask_block_t*)instance; /* Module state available for step adaptation */
     return 0;
 }

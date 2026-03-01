@@ -1040,9 +1040,9 @@ int financial_ethics_bridge_get_stats(
 
     fin_ethics_heartbeat("fin_ethics_get_stats", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_ETHICS_ERR_OK;
 }

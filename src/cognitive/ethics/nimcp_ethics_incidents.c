@@ -129,7 +129,7 @@ bool ethics_init_incident_logging(ethics_engine_t engine)
                                          free_incident_data);
     if (!storage->incident_btree) {
         nimcp_free(storage->incident_history);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_init_incident_logging: storage->incident_btree is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_init_incident_logging: btree_create failed for incident_btree");
         return false;
     }
 
@@ -145,7 +145,7 @@ bool ethics_init_incident_logging(ethics_engine_t engine)
     if (!storage->incident_by_type) {
         btree_destroy(storage->incident_btree);
         nimcp_free(storage->incident_history);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_init_incident_logging: storage->incident_by_type is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_init_incident_logging: hash_table_create failed for incident_by_type");
         return false;
     }
 
@@ -771,7 +771,6 @@ int ethics_incidents_query_self_knowledge(kg_reader_t* kg) {
 
 void ethics_incidents_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_ethics_incidents_health_agent = agent;
     }
 }

@@ -169,7 +169,7 @@ empathetic_response_engine_t empathetic_response_create(
     engine->responses_generated = 0;
     engine->avg_effectiveness = 0.0F;
 
-    
+
     // Bio-async registration
     engine->bio_ctx = NULL;
     engine->bio_async_enabled = false;
@@ -236,19 +236,18 @@ bool empathetic_response_detect_crisis(
     uint32_t* crisis_flags,
     float* confidence)
 {
+    // Guard: NULL checks FIRST before any dereference
+    if (!engine || !text || !crisis_flags || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_detect_crisis: required parameter is NULL (engine, text, crisis_flags, confidence)");
+        return false;
+    }
+
     // Process pending bio-async messages
     /* Phase 8: Heartbeat at operation start */
     empathetic_response_heartbeat("empathetic_r_detect_crisis", 0.0f);
 
-
-    if (engine && engine->bio_ctx) {
+    if (engine->bio_ctx) {
         bio_router_process_inbox(engine->bio_ctx, 5);
-    }
-
-    // Guard: NULL checks
-    if (!engine || !text || !crisis_flags || !confidence) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_detect_crisis: required parameter is NULL (engine, text, crisis_flags, confidence)");
-        return false;
     }
 
     *crisis_flags = CRISIS_NONE;
@@ -275,7 +274,7 @@ bool empathetic_response_detect_crisis(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "empathetic_response_detect_crisis: validation failed");
+    /* No crisis keywords found - this is a normal return path, not an error */
     return false;
 }
 

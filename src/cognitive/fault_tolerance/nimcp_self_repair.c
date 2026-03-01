@@ -180,7 +180,7 @@ self_repair_coordinator_t* self_repair_create_with_deps(
     coord->record_capacity = SELF_REPAIR_MAX_HISTORY;
     coord->records = nimcp_calloc(coord->record_capacity, sizeof(self_repair_record_t));
     if (!coord->records) {
-        nimcp_mutex_free(coord->mutex);
+        nimcp_mutex_destroy(coord->mutex);
         nimcp_free(coord);
         coord = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_repair_create_with_deps: coord->records is NULL");
@@ -266,7 +266,7 @@ void self_repair_destroy(self_repair_coordinator_t* coordinator) {
         nimcp_free(coordinator->records);
     }
     if (coordinator->mutex) {
-        nimcp_mutex_free(coordinator->mutex);
+        nimcp_mutex_destroy(coordinator->mutex);
     }
 
     nimcp_free(coordinator);

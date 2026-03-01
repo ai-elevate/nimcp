@@ -374,8 +374,8 @@ int health_emotion_get_state(
     /* Query emotion system - in real implementation, this would call
      * emotion_system_get_state() or similar */
 
-    /* For now, return moderate defaults
-     * This will be replaced with actual emotion system API calls */
+    /* TODO: call emotion_system_get_state(emotion_system, &raw_state) once the API
+     * signature is finalized. Using neutral defaults until then. */
     state->valence = 0.0f;
     state->arousal = 0.4f;
     state->stability = 0.7f;

@@ -569,7 +569,7 @@ recovery_executive_t* recovery_executive_create(
     // GUARD: NULL config check
     if (!config) {
         LOG_ERROR("NULL config in recovery_executive_create");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_executive_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_create: config is NULL");
         return NULL;
     }
 
@@ -768,13 +768,13 @@ recovery_plan_t* recovery_executive_create_plan_with_brain_input(
     // GUARD: Parameter validation
     if (!exec) {
         LOG_ERROR("NULL exec in create_plan");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_executive_create_plan_with_brain_input: exec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_create_plan_with_brain_input: exec is NULL");
         return NULL;
     }
 
     if (!diagnosis) {
         LOG_ERROR("NULL diagnosis in create_plan");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_executive_create_plan_with_brain_input: diagnosis is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_create_plan_with_brain_input: diagnosis is NULL");
         return NULL;
     }
 
@@ -1048,7 +1048,7 @@ recovery_plan_t* recovery_executive_replan(
     // Must have stored diagnosis for replanning
     if (!exec->has_diagnosis) {
         LOG_ERROR("No stored diagnosis for replanning");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_replan: exec->has_diagnosis is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "recovery_executive_replan: no stored diagnosis");
         return NULL;
     }
 
@@ -1108,7 +1108,7 @@ recovery_plan_t* recovery_executive_replan_with_brain_input(
 
     if (!exec->has_diagnosis) {
         LOG_ERROR("No stored diagnosis for replanning");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_replan_with_brain_input: exec->has_diagnosis is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "recovery_executive_replan_with_brain_input: no stored diagnosis");
         return NULL;
     }
 

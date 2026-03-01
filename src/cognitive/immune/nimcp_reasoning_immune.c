@@ -19,6 +19,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include <time.h>
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
@@ -97,12 +98,12 @@ static inline float clamp_f(float value, float min, float max) {
  *
  * WHAT: Get monotonic timestamp
  * WHY:  Track failure windows
- * HOW:  Use nimcp_time if available, else estimate
+ * HOW:  Use clock_gettime(CLOCK_MONOTONIC)
  */
 static uint64_t get_time_ms(void) {
-    /* Would use nimcp_time_get_monotonic_ms() if available */
-    /* For now, return 0 - actual implementation would use time API */
-    return 0;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
 }
 
 /**
@@ -128,16 +129,20 @@ static bool is_window_expired(const reasoning_immune_bridge_t* bridge) {
  *
  * WHAT: Query current concentration of specific cytokine
  * WHY:  Compute cytokine-based impairment
- * HOW:  Interface with brain_immune system (stub for now)
+ * HOW:  Iterate immune system cytokines array for matching type
  */
 static float get_cytokine_level(
     const brain_immune_system_t* immune,
     brain_cytokine_type_t type
 ) {
     if (!immune) return 0.0f;
-    /* Would call brain_immune_get_cytokine_level(immune, type) */
-    /* For now, return 0.0 - actual implementation would query immune system */
-    return 0.0f;
+    float total = 0.0f;
+    for (size_t i = 0; i < immune->cytokine_count; i++) {
+        if (immune->cytokines[i].type == type) {
+            total += immune->cytokines[i].concentration;
+        }
+    }
+    return total;
 }
 
 /**
@@ -145,14 +150,19 @@ static float get_cytokine_level(
  *
  * WHAT: Query highest inflammation level in system
  * WHY:  Max inflammation determines cognitive impact
- * HOW:  Interface with brain_immune system
+ * HOW:  Iterate inflammation_sites array for maximum level
  */
 static brain_inflammation_level_t get_max_inflammation(
     const brain_immune_system_t* immune
 ) {
     if (!immune) return INFLAMMATION_NONE;
-    /* Would call brain_immune_get_max_inflammation_level(immune) */
-    return INFLAMMATION_NONE;
+    brain_inflammation_level_t max_level = INFLAMMATION_NONE;
+    for (size_t i = 0; i < immune->inflammation_count; i++) {
+        if (immune->inflammation_sites[i].level > max_level) {
+            max_level = immune->inflammation_sites[i].level;
+        }
+    }
+    return max_level;
 }
 
 /**
@@ -301,7 +311,7 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
     if (!immune_system || !reasoning_integration) {
         LOG_MODULE_ERROR("reasoning_immune_bridge",
                   "Cannot create bridge without immune and reasoning systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_immune_bridge_create: required parameter is NULL (immune_system, reasoning_integration)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_immune_bridge_create: required parameter is NULL (immune_system, reasoning_integration)");
         return NULL;
     }
 
@@ -314,7 +324,7 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
         nimcp_malloc(sizeof(reasoning_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("reasoning_immune_bridge", "Allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge allocation failed");
 
         return NULL;
     }
@@ -962,7 +972,6 @@ int reasoning_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void reasoning_immune_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_reasoning_immune_health_agent = agent;
     }
 }
@@ -977,6 +986,7 @@ int reasoning_immune_training_begin(void* instance) {
                               "reasoning_immune_training_begin: NULL argument");
         return -1;
     }
+    /* TODO: Pass bridge instance as health agent when instance tracking is implemented */
     reasoning_immune_heartbeat_instance(NULL, "reasoning_immune_training_begin", 0.0f);
     (void)(struct reasoning_immune_bridge*)instance; /* Module state available for reset */
     return 0;
@@ -988,6 +998,7 @@ int reasoning_immune_training_end(void* instance) {
                               "reasoning_immune_training_end: NULL argument");
         return -1;
     }
+    /* TODO: Pass bridge instance as health agent when instance tracking is implemented */
     reasoning_immune_heartbeat_instance(NULL, "reasoning_immune_training_end", 1.0f);
     (void)(struct reasoning_immune_bridge*)instance; /* Module state available for finalization */
     return 0;
@@ -1001,6 +1012,7 @@ int reasoning_immune_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
+    /* TODO: Pass bridge instance as health agent when instance tracking is implemented */
     reasoning_immune_heartbeat_instance(NULL, "reasoning_immune_training_step", progress);
     (void)(struct reasoning_immune_bridge*)instance; /* Module state available for step adaptation */
     return 0;

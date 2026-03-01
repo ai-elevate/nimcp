@@ -274,7 +274,7 @@ int visual_generate(visual_generator_t* gen,
     result->image.width = width;
     result->image.height = height;
     result->image.channels = 3;
-    result->image.pixels = nimcp_calloc(width * height * 3, sizeof(uint8_t));
+    result->image.pixels = nimcp_calloc((size_t)width * (size_t)height * 3, sizeof(uint8_t));
     if (!result->image.pixels) {
         result->success = false;
         strncpy(result->error_message, "Failed to allocate image buffer",

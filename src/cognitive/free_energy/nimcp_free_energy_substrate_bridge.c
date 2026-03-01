@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -133,6 +134,8 @@ free_energy_substrate_bridge_t* free_energy_substrate_bridge_create(void* free_e
     bridge->effects.model_complexity = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    if (bridge_base_init(&bridge->base, 0, "free_energy_substrate") != 0) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "free_energy_substrate");
     return bridge;
 }
 
@@ -141,7 +144,10 @@ void free_energy_substrate_bridge_destroy(free_energy_substrate_bridge_t* bridge
     free_energy_substrate_bridge_heartbeat("free_energy__destroy", 0.0f);
 
 
-    if (bridge) nimcp_free(bridge);
+    if (bridge) {
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+    }
 }
 
 int free_energy_substrate_bridge_update(free_energy_substrate_bridge_t* bridge) {
@@ -164,6 +170,7 @@ int free_energy_substrate_bridge_update(free_energy_substrate_bridge_t* bridge) 
     float metabolic_cap = metabolic.metabolic_capacity;
     float min_cap = bridge->config.min_capacity;
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_atp_modulation) {
         /* Precision weighting requires stable neural resources */
         bridge->effects.precision_weighting = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -184,6 +191,7 @@ int free_energy_substrate_bridge_update(free_energy_substrate_bridge_t* bridge) 
                                         bridge->effects.model_complexity) / 4.0f;
 
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -192,7 +200,9 @@ int free_energy_substrate_bridge_get_effects(const free_energy_substrate_bridge_
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     free_energy_substrate_bridge_heartbeat("free_energy__get_effects", 0.0f);
 
@@ -379,6 +389,7 @@ int free_energy_substrate_bridge_training_step(free_energy_substrate_bridge_t* b
     free_energy_substrate_bridge_heartbeat_instance(bridge->health_agent, "fe_sub_training_step", clamped);
     struct free_energy_substrate_bridge* b = (struct free_energy_substrate_bridge*)bridge;
     float p = clamped;
+    nimcp_platform_mutex_lock(b->base.mutex);
     b->effects.precision_weighting += (1.0f - p) * 0.001f;
     if (b->effects.precision_weighting > 2.0f) b->effects.precision_weighting = 2.0f;
     if (b->effects.precision_weighting < 0.0f) b->effects.precision_weighting = 0.0f;
@@ -395,6 +406,7 @@ int free_energy_substrate_bridge_training_step(free_energy_substrate_bridge_t* b
     if (b->effects.overall_capacity > 2.0f) b->effects.overall_capacity = 2.0f;
     if (b->effects.overall_capacity < 0.0f) b->effects.overall_capacity = 0.0f;
     b->update_count++;
+    nimcp_platform_mutex_unlock(b->base.mutex);
     return 0;
 }
 

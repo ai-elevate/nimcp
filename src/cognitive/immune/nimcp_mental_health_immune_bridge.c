@@ -224,7 +224,7 @@ mental_health_immune_bridge_t* mental_health_immune_bridge_create(
     if (!immune_system || !mental_health_monitor) {
         LOG_MODULE_ERROR("mental_health_immune_bridge",
                   "Cannot create bridge without immune and mental health systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_immune_bridge_create: required parameter is NULL (immune_system, mental_health_monitor)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_bridge_create: required parameter is NULL (immune_system, mental_health_monitor)");
         return NULL;
     }
 
@@ -237,7 +237,7 @@ mental_health_immune_bridge_t* mental_health_immune_bridge_create(
         nimcp_malloc(sizeof(mental_health_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("mental_health_immune_bridge", "Allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_immune_bridge_create: malloc returned NULL");
 
         return NULL;
     }
@@ -320,7 +320,7 @@ int mental_health_immune_apply_cytokine_effects(mental_health_immune_bridge_t* b
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_mental_health_effects_t* effects = &bridge->cytokine_effects;
@@ -365,7 +365,7 @@ int mental_health_immune_apply_cytokine_effects(mental_health_immune_bridge_t* b
     effects->neurotransmitter_suppression = clamp_f(proinflam_total * 0.3f, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -384,7 +384,7 @@ int mental_health_immune_apply_inflammation_effects(mental_health_immune_bridge_
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     inflammation_mental_health_state_t* state = &bridge->inflammation_state;
 
@@ -440,7 +440,7 @@ int mental_health_immune_apply_inflammation_effects(mental_health_immune_bridge_
     state->serotonin_suppression = clamp_f(inflammation_intensity * 0.5f, 0.0f, 1.0f);
     state->dopamine_suppression = clamp_f(inflammation_intensity * 0.4f, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -516,35 +516,26 @@ int mental_health_immune_trigger_from_depression(mental_health_immune_bridge_t* 
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     mental_disorder_immune_trigger_t* trigger = &bridge->disorder_trigger;
 
     /* Get depression severity from mental health monitor */
-    /* Note: Would need actual API to query disorder scores */
-    /* For now, use placeholder */
+    /* TODO: replace placeholder with actual mental_health_check_specific() query once API is available */
     trigger->depression_severity = 0.0f; /* Would query mental_health_check_specific() */
+
+    bool do_release_cytokines = false;
+    float il6_amount = 0.0f;
+    float tnf_amount = 0.0f;
 
     /* High depression triggers immune response */
     if (trigger->depression_severity >= DEPRESSION_IMMUNE_TRIGGER_THRESHOLD) {
         trigger->depression_triggered = true;
 
         /* Depression → increased pro-inflammatory cytokines */
-        /* Release IL-6 and TNF-α */
-        uint32_t cytokine_id = 0;
-        brain_immune_release_cytokine(bridge->immune_system,
-                                     BRAIN_CYTOKINE_IL6,
-                                     0, /* source cell */
-                                     trigger->depression_severity * 0.6f,
-                                     0, /* broadcast */
-                                     &cytokine_id);
-
-        brain_immune_release_cytokine(bridge->immune_system,
-                                     BRAIN_CYTOKINE_TNF,
-                                     0,
-                                     trigger->depression_severity * 0.5f,
-                                     0,
-                                     &cytokine_id);
+        il6_amount = trigger->depression_severity * 0.6f;
+        tnf_amount = trigger->depression_severity * 0.5f;
+        do_release_cytokines = true;
 
         bridge->depression_triggers++;
         bridge->disorder_triggered_responses++;
@@ -552,7 +543,25 @@ int mental_health_immune_trigger_from_depression(mental_health_immune_bridge_t* 
         trigger->depression_triggered = false;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Release cytokines outside lock to avoid deadlock */
+    if (do_release_cytokines) {
+        uint32_t cytokine_id = 0;
+        brain_immune_release_cytokine(bridge->immune_system,
+                                     BRAIN_CYTOKINE_IL6,
+                                     0, /* source cell */
+                                     il6_amount,
+                                     0, /* broadcast */
+                                     &cytokine_id);
+
+        brain_immune_release_cytokine(bridge->immune_system,
+                                     BRAIN_CYTOKINE_TNF,
+                                     0,
+                                     tnf_amount,
+                                     0,
+                                     &cytokine_id);
+    }
     return 0;
 }
 
@@ -575,12 +584,16 @@ int mental_health_immune_trigger_from_anxiety(mental_health_immune_bridge_t* bri
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     mental_disorder_immune_trigger_t* trigger = &bridge->disorder_trigger;
 
     /* Get anxiety severity */
+    /* TODO: replace placeholder with actual mental_health_check_specific() query once API is available */
     trigger->anxiety_severity = 0.0f; /* Would query mental_health_check_specific() */
+
+    bool do_release_il6 = false;
+    float il6_amount = 0.0f;
 
     /* High anxiety triggers HPA axis and immune response */
     if (trigger->anxiety_severity >= ANXIETY_IMMUNE_TRIGGER_THRESHOLD) {
@@ -593,14 +606,9 @@ int mental_health_immune_trigger_from_anxiety(mental_health_immune_bridge_t* bri
         /* Followed by inflammatory rebound */
         trigger->inflammatory_rebound = trigger->anxiety_severity * 0.5f;
 
-        /* Release inflammatory cytokines (rebound effect) */
-        uint32_t cytokine_id = 0;
-        brain_immune_release_cytokine(bridge->immune_system,
-                                     BRAIN_CYTOKINE_IL6,
-                                     0,
-                                     trigger->inflammatory_rebound,
-                                     0,
-                                     &cytokine_id);
+        /* Prepare cytokine release (rebound effect) - applied outside lock */
+        il6_amount = trigger->inflammatory_rebound;
+        do_release_il6 = true;
 
         bridge->anxiety_triggers++;
         bridge->disorder_triggered_responses++;
@@ -608,7 +616,18 @@ int mental_health_immune_trigger_from_anxiety(mental_health_immune_bridge_t* bri
         trigger->anxiety_triggered = false;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Release cytokines outside lock to avoid deadlock */
+    if (do_release_il6) {
+        uint32_t cytokine_id = 0;
+        brain_immune_release_cytokine(bridge->immune_system,
+                                     BRAIN_CYTOKINE_IL6,
+                                     0,
+                                     il6_amount,
+                                     0,
+                                     &cytokine_id);
+    }
     return 0;
 }
 
@@ -631,12 +650,16 @@ int mental_health_immune_trigger_from_ptsd(mental_health_immune_bridge_t* bridge
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     mental_disorder_immune_trigger_t* trigger = &bridge->disorder_trigger;
 
     /* Get PTSD severity */
+    /* TODO: replace placeholder with actual mental_health_check_specific() query once API is available */
     trigger->ptsd_severity = 0.0f; /* Would query mental_health_check_specific() */
+
+    bool do_release_ptsd_cytokines = false;
+    float ptsd_cytokine_level = 0.0f;
 
     /* High PTSD triggers chronic inflammation */
     if (trigger->ptsd_severity >= PTSD_IMMUNE_TRIGGER_THRESHOLD) {
@@ -644,22 +667,8 @@ int mental_health_immune_trigger_from_ptsd(mental_health_immune_bridge_t* bridge
 
         /* PTSD → chronic inflammatory state */
         trigger->chronic_inflammation_level = trigger->ptsd_severity * 0.7f;
-
-        /* Release multiple pro-inflammatory cytokines */
-        uint32_t cytokine_id = 0;
-        brain_immune_release_cytokine(bridge->immune_system,
-                                     BRAIN_CYTOKINE_IL1,
-                                     0,
-                                     trigger->chronic_inflammation_level,
-                                     0,
-                                     &cytokine_id);
-
-        brain_immune_release_cytokine(bridge->immune_system,
-                                     BRAIN_CYTOKINE_IL6,
-                                     0,
-                                     trigger->chronic_inflammation_level,
-                                     0,
-                                     &cytokine_id);
+        ptsd_cytokine_level = trigger->chronic_inflammation_level;
+        do_release_ptsd_cytokines = true;
 
         bridge->ptsd_triggers++;
         bridge->disorder_triggered_responses++;
@@ -667,7 +676,25 @@ int mental_health_immune_trigger_from_ptsd(mental_health_immune_bridge_t* bridge
         trigger->ptsd_triggered = false;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Release cytokines outside lock to avoid deadlock */
+    if (do_release_ptsd_cytokines) {
+        uint32_t cytokine_id = 0;
+        brain_immune_release_cytokine(bridge->immune_system,
+                                     BRAIN_CYTOKINE_IL1,
+                                     0,
+                                     ptsd_cytokine_level,
+                                     0,
+                                     &cytokine_id);
+
+        brain_immune_release_cytokine(bridge->immune_system,
+                                     BRAIN_CYTOKINE_IL6,
+                                     0,
+                                     ptsd_cytokine_level,
+                                     0,
+                                     &cytokine_id);
+    }
     return 0;
 }
 
@@ -690,7 +717,7 @@ int mental_health_immune_boost_from_recovery(mental_health_immune_bridge_t* brid
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     recovery_immune_enhancement_t* boost = &bridge->recovery_boost;
 
@@ -699,20 +726,17 @@ int mental_health_immune_boost_from_recovery(mental_health_immune_bridge_t* brid
     /* For now, assume no recent intervention */
     boost->recent_intervention = false;
 
+    bool do_release_il10 = false;
+    float il10_amount = 0.0f;
+
     if (boost->recent_intervention && boost->intervention_effectiveness > 0.5f) {
         /* Successful intervention → immune normalization */
         boost->immune_normalization = boost->intervention_effectiveness * 0.6f;
 
         /* Release IL-10 (anti-inflammatory) */
         boost->il10_release_boost = RECOVERY_IL10_BOOST * boost->intervention_effectiveness;
-
-        uint32_t cytokine_id = 0;
-        brain_immune_release_cytokine(bridge->immune_system,
-                                     BRAIN_CYTOKINE_IL10,
-                                     0,
-                                     boost->il10_release_boost,
-                                     0,
-                                     &cytokine_id);
+        il10_amount = boost->il10_release_boost;
+        do_release_il10 = true;
 
         /* Reduce inflammation */
         boost->inflammation_reduction = boost->intervention_effectiveness * 0.5f;
@@ -723,7 +747,18 @@ int mental_health_immune_boost_from_recovery(mental_health_immune_bridge_t* brid
         bridge->recovery_boosts++;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Release cytokines outside lock to avoid deadlock */
+    if (do_release_il10) {
+        uint32_t cytokine_id = 0;
+        brain_immune_release_cytokine(bridge->immune_system,
+                                     BRAIN_CYTOKINE_IL10,
+                                     0,
+                                     il10_amount,
+                                     0,
+                                     &cytokine_id);
+    }
     return 0;
 }
 
@@ -783,9 +818,9 @@ int mental_health_immune_get_cytokine_effects(
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_mental_health_effects_t));
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -803,9 +838,9 @@ int mental_health_immune_get_inflammation_state(
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_mental_health_state_t));
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -850,13 +885,13 @@ int mental_health_immune_get_stats(
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (total_updates) *total_updates = bridge->total_updates;
     if (depression_triggers) *depression_triggers = bridge->depression_triggers;
     if (anxiety_triggers) *anxiety_triggers = bridge->anxiety_triggers;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -987,7 +1022,6 @@ int mental_health_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void mental_health_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mental_health_immune_bridge_health_agent = agent;
     }
 }
@@ -1002,6 +1036,7 @@ int mental_health_immune_bridge_training_begin(void* instance) {
                               "mental_health_immune_bridge_training_begin: NULL argument");
         return -1;
     }
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     mental_health_immune_bridge_heartbeat_instance(NULL, "mental_health_immune_bridge_training_begin", 0.0f);
     return 0;
 }
@@ -1012,6 +1047,7 @@ int mental_health_immune_bridge_training_end(void* instance) {
                               "mental_health_immune_bridge_training_end: NULL argument");
         return -1;
     }
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     mental_health_immune_bridge_heartbeat_instance(NULL, "mental_health_immune_bridge_training_end", 1.0f);
     return 0;
 }
@@ -1024,6 +1060,7 @@ int mental_health_immune_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     mental_health_immune_bridge_heartbeat_instance(NULL, "mental_health_immune_bridge_training_step", progress);
     return 0;
 }

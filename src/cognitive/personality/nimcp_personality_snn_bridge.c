@@ -260,13 +260,9 @@ personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t*
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
-    if (!bridge->encoding_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return NULL;
     bridge->tendency_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->tendency_buffer) return NULL;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->prev_state) return NULL;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->tendency_buffer || !bridge->prev_state) {
@@ -445,7 +441,7 @@ int personality_snn_encode_state(
                                  (float)(n + 1) / (float)neurons_per_dim);
             }
 
-            float preferred = (float)n / (neurons_per_dim - 1);
+            float preferred = (neurons_per_dim <= 1) ? 0.5f : (float)n / (float)(neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
             uint32_t idx = d * neurons_per_dim + n;
@@ -1122,7 +1118,7 @@ int personality_snn_bio_async_connect(personality_snn_bridge_t* bridge) {
         return -1;
     }
     if (!bridge->config.enable_bio_async) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_bio_async_connect: bridge->config is NULL");
+        NIMCP_LOGGING_WARN("personality_snn_bio_async_connect: bio_async not enabled in config");
         return -1;
     }
 

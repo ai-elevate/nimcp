@@ -377,7 +377,7 @@ void hopfield_memory_destroy(hopfield_memory_t* memory) {
         nimcp_free(memory->attention_buffer);
     }
     if (memory->mutex) {
-        nimcp_mutex_free(memory->mutex);
+        nimcp_mutex_destroy(memory->mutex);
     }
 
     nimcp_free(memory);
@@ -1238,7 +1238,6 @@ const char* hopfield_store_mode_to_string(hopfield_store_mode_t mode) {
 
 void hopfield_memory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_hopfield_memory_health_agent = agent;
     }
 }

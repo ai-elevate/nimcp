@@ -10,6 +10,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -123,6 +124,7 @@ remorse_substrate_bridge_t* remorse_substrate_bridge_create(void* remorse, neura
     bridge->effects.moral_learning = 1.0f;
     bridge->effects.self_forgiveness = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    if (bridge_base_init(&bridge->base, 0, "remorse_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "remorse_substrate");
     return bridge;
 }
@@ -137,6 +139,7 @@ void remorse_substrate_bridge_destroy(remorse_substrate_bridge_t* bridge) {
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -156,6 +159,7 @@ int remorse_substrate_bridge_update(remorse_substrate_bridge_t* bridge) {
         return -1;
     }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* ATP enables guilt processing and repair motivation */
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.guilt_processing = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -169,6 +173,7 @@ int remorse_substrate_bridge_update(remorse_substrate_bridge_t* bridge) {
     bridge->effects.overall_capacity = (bridge->effects.guilt_processing + bridge->effects.repair_motivation +
                                         bridge->effects.moral_learning + bridge->effects.self_forgiveness) / 4.0f;
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -177,7 +182,9 @@ int remorse_substrate_bridge_get_effects(const remorse_substrate_bridge_t* bridg
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     remorse_substrate_bridge_heartbeat("remorse_subs_get_effects", 0.0f);
 

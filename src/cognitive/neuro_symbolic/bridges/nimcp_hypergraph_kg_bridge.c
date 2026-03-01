@@ -50,7 +50,6 @@ NIMCP_API void hypergraph_kg_bridge_destroy(hypergraph_kg_bridge_t* bridge) {
 
 void hypergraph_kg_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_hypergraph_kg_bridge_health_agent = agent;
     }
 }

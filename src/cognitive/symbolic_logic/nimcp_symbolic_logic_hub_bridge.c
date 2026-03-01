@@ -144,7 +144,7 @@ symbolic_logic_hub_bridge_t* symbolic_logic_hub_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_hub_bridge_create: bridge->base is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "symbolic_logic_hub_bridge_create: bridge_base_init failed, no mutex");
         return NULL;
     }
 
@@ -627,7 +627,6 @@ static int on_learning_complete(const cognitive_event_data_t* event, void* user_
  * ============================================================================ */
 void symbolic_logic_hub_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_symbolic_logic_hub_bridge_health_agent = agent;
     }
 }

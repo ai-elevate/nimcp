@@ -34,7 +34,7 @@ rcog_engine_t* rcog_engine_create(const rcog_engine_config_t* config) {
     /* Initialize condition variable for request completion */
     engine->request_cond = nimcp_calloc(1, sizeof(nimcp_cond_t));
     if (!engine->request_cond) {
-        nimcp_mutex_free(engine->mutex);
+        nimcp_mutex_destroy(engine->mutex);
         nimcp_free(engine);
         engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_engine_create: engine->request_cond is NULL");
@@ -284,7 +284,7 @@ void rcog_engine_destroy(rcog_engine_t* engine) {
     }
 
     if (engine->mutex) {
-        nimcp_mutex_free(engine->mutex);
+        nimcp_mutex_destroy(engine->mutex);
         engine->mutex = NULL;
     }
 

@@ -424,8 +424,7 @@ int genius_plasticity_unregister_synapse(genius_plasticity_bridge_t* bridge, uin
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_plasticity_unregister_synapse: validation failed");
-    return -1;
+    return -1;  /* Synapse not found — normal condition */
 }
 
 int genius_plasticity_get_synapse(genius_plasticity_bridge_t* bridge,
@@ -451,8 +450,7 @@ int genius_plasticity_get_synapse(genius_plasticity_bridge_t* bridge,
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_plasticity_unregister_synapse: validation failed");
-    return -1;
+    return -1;  /* Synapse not found — normal condition */
 }
 
 int genius_plasticity_protect_synapse(genius_plasticity_bridge_t* bridge,
@@ -477,8 +475,7 @@ int genius_plasticity_protect_synapse(genius_plasticity_bridge_t* bridge,
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_plasticity_unregister_synapse: validation failed");
-    return -1;
+    return -1;  /* Synapse not found — normal condition */
 }
 
 //=============================================================================
@@ -506,9 +503,7 @@ int genius_plasticity_learn(genius_plasticity_bridge_t* bridge,
     genius_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND,
-            "genius_plasticity_learn: synapse %u not found", synapse_id);
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     magnitude = nimcp_myelin_clamp(magnitude, 0.0f, 1.0f);
@@ -608,12 +603,16 @@ int genius_plasticity_learn(genius_plasticity_bridge_t* bridge,
         bridge->stats.total_depression += fabsf(dw);
     }
 
-    /* Invoke callback */
-    if (bridge->learn_callback) {
-        bridge->learn_callback(bridge, event, magnitude, bridge->learn_callback_data);
-    }
+    /* Invoke callback outside mutex to prevent deadlock */
+    genius_plasticity_learn_callback_t cb = bridge->learn_callback;
+    void* cb_data = bridge->learn_callback_data;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    if (cb) {
+        cb(bridge, event, magnitude, cb_data);
+    }
+
     return 0;
 }
 
@@ -1208,9 +1207,9 @@ int genius_plasticity_send_heartbeat(genius_plasticity_bridge_t* bridge) {
 uint64_t genius_plasticity_get_last_heartbeat(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     uint64_t last_hb = bridge->last_heartbeat_us;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return last_hb;
 }
 

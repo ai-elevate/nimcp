@@ -1207,9 +1207,9 @@ int financial_mental_health_bridge_get_state(
 
     fin_mh_heartbeat("fin_mh_get_state", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->current_state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_MENTAL_HEALTH_ERR_OK;
 }
@@ -1246,9 +1246,9 @@ int financial_mental_health_bridge_get_stats(
 
     fin_mh_heartbeat("fin_mh_get_stats", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_MENTAL_HEALTH_ERR_OK;
 }

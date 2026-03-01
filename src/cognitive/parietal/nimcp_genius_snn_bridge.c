@@ -245,13 +245,9 @@ genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
     uint32_t output_dim = 8; /* insight, elegance, pattern, conjecture, gauss, newton, erdos, creativity */
 
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
-    if (!bridge->encoding_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return NULL;
     bridge->mode_buffer = nimcp_calloc(GENIUS_MODE_COUNT, sizeof(float));
-    if (!bridge->mode_buffer) return NULL;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->prev_state) return NULL;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->mode_buffer || !bridge->prev_state) {
@@ -976,9 +972,9 @@ int genius_snn_send_heartbeat(genius_snn_bridge_t* bridge) {
 uint64_t genius_snn_get_last_heartbeat(genius_snn_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     uint64_t last_hb = bridge->last_heartbeat_us;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return last_hb;
 }
 

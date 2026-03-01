@@ -94,7 +94,7 @@ perception_immune_context_t* perception_immune_create(
     /* Guard: validate immune system */
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("perception_immune", "Cannot create with NULL immune system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perception_immune_create: immune_system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_create: immune_system is NULL");
         return NULL;
     }
 
@@ -333,7 +333,7 @@ int perception_immune_report_audio_anomaly(
     anomaly->modality = PERCEPTION_AUDIO;
     anomaly->severity = severity;
     anomaly->confidence = confidence;
-    anomaly->timestamp_ms = 0;
+    anomaly->timestamp_ms = nimcp_time_get_ms();
     anomaly->immune_responded = false;
 
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
@@ -399,7 +399,7 @@ int perception_immune_report_speech_anomaly(
     anomaly->modality = PERCEPTION_SPEECH;
     anomaly->severity = severity;
     anomaly->confidence = confidence;
-    anomaly->timestamp_ms = 0;
+    anomaly->timestamp_ms = nimcp_time_get_ms();
     anomaly->immune_responded = false;
 
     /* Use phoneme data as epitope */
@@ -833,8 +833,7 @@ const perception_anomaly_t* perception_immune_get_anomaly(
             return &ctx->anomalies[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_get_anomaly: validation failed");
-    return NULL;
+    return NULL; /* anomaly_id not found - not an error worth throwing */
 }
 
 bool perception_immune_is_protected(
@@ -968,7 +967,6 @@ int perception_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void perception_immune_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_perception_immune_health_agent = agent;
     }
 }

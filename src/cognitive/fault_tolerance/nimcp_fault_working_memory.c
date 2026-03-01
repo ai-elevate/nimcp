@@ -204,7 +204,7 @@ fault_working_memory_t* fault_working_memory_create_custom(
 
     if (!config) {
         LOG_ERROR("NULL config in fault_working_memory_create_custom");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fault_working_memory_create_custom: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_working_memory_create_custom: config is NULL");
         return NULL;
     }
 
@@ -525,8 +525,7 @@ active_fault_t* fault_working_memory_get_priority_fault(
 
 
     if (wm->count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fault_working_memory_get_priority_fault: wm->count is zero");
-        return NULL;
+        return NULL;  // Empty - no priority fault
     }
 
     return &wm->faults[wm->priority_fault_idx];

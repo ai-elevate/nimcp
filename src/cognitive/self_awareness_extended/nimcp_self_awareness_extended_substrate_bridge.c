@@ -118,24 +118,7 @@ self_awareness_ext_substrate_bridge_t* self_awareness_ext_substrate_bridge_creat
     bridge->substrate = substrate;
     bridge->config = config ? *config : self_awareness_ext_substrate_default_config();
 
-    /* Initialize mutex */
-    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex for self awareness ext substrate bridge");
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_awareness_ext_substrate_bridge_create: bridge->base is NULL");
-        return NULL;
-    }
-
-    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize mutex for self awareness ext substrate bridge");
-        nimcp_free(bridge->base.mutex);
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_awareness_ext_substrate_bridge_create: validation failed");
-        return NULL;
-    }
+    if (bridge_base_init(&bridge->base, 0, "self_awareness_ext_substrate") != 0) { nimcp_free(bridge); return NULL; }
 
     bridge->effects.metacognitive_depth = 1.0f;
     bridge->effects.temporal_self_coherence = 1.0f;
@@ -149,13 +132,7 @@ self_awareness_ext_substrate_bridge_t* self_awareness_ext_substrate_bridge_creat
 void self_awareness_ext_substrate_bridge_destroy(self_awareness_ext_substrate_bridge_t* bridge) {
     if (!bridge) return;
 
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
-
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -264,7 +241,6 @@ int self_awareness_ext_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void self_awareness_extended_substrate_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_self_awareness_extended_substrate_bridge_health_agent = agent;
     }
 }

@@ -128,24 +128,7 @@ emotion_tensor_substrate_bridge_t* emotion_tensor_substrate_bridge_create(void* 
     bridge->substrate = substrate;
     bridge->config = config ? *config : emotion_tensor_substrate_default_config();
 
-    /* Initialize mutex */
-    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex for emotion tensor substrate bridge");
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_tensor_substrate_bridge_create: bridge->base is NULL");
-        return NULL;
-    }
-
-    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize mutex for emotion tensor substrate bridge");
-        nimcp_free(bridge->base.mutex);
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_tensor_substrate_bridge_create: validation failed");
-        return NULL;
-    }
+    if (bridge_base_init(&bridge->base, 0, "emotion_tensor_substrate") != 0) { nimcp_free(bridge); return NULL; }
 
     bridge->effects.intensity_capacity = 1.0f;
     bridge->effects.valence_resolution = 1.0f;
@@ -159,17 +142,10 @@ emotion_tensor_substrate_bridge_t* emotion_tensor_substrate_bridge_create(void* 
 void emotion_tensor_substrate_bridge_destroy(emotion_tensor_substrate_bridge_t* bridge) {
     if (!bridge) return;
 
-    /* Destroy mutex */
     /* Phase 8: Heartbeat at operation start */
     emotion_tensor_substrate_bridge_heartbeat("emotion_tens_destroy", 0.0f);
 
-
-    if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
-
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }

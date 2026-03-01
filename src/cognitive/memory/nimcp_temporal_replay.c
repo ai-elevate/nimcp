@@ -391,7 +391,7 @@ void temporal_replay_destroy(temporal_replay_t* replay) {
 #endif
 
     if (replay->mutex) {
-        nimcp_mutex_free(replay->mutex);
+        nimcp_mutex_destroy(replay->mutex);
     }
 
     nimcp_free(replay);
@@ -1266,7 +1266,6 @@ const char* replay_seq_state_to_string(replay_seq_state_t state) {
 
 void temporal_replay_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_temporal_replay_health_agent = agent;
     }
 }

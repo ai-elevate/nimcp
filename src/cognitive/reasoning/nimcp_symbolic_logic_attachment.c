@@ -221,7 +221,6 @@ int symbolic_logic_attachment_query_self_knowledge(kg_reader_t* kg) {
 
 void symbolic_logic_attachment_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_symbolic_logic_attachment_health_agent = agent;
     }
 }

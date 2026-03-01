@@ -109,6 +109,9 @@ ethics_thalamic_bridge_t* ethics_thalamic_bridge_create(void* ethics, thalamic_r
     bridge->config = config ? *config : ethics_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    if (bridge_base_init(&bridge->base, 0, "ethics_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     NIMCP_LOGGING_INFO("Created %s bridge", "ethics_thalamic");
     return bridge;
 }
@@ -117,8 +120,9 @@ void ethics_thalamic_bridge_destroy(ethics_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     ethics_thalamic_bridge_heartbeat("ethics_thala_destroy", 0.0f);
 
-
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
 }
 
 int ethics_thalamic_bridge_reset(ethics_thalamic_bridge_t* bridge) {
@@ -129,9 +133,10 @@ int ethics_thalamic_bridge_reset(ethics_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     ethics_thalamic_bridge_heartbeat("ethics_thala_reset", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -144,12 +149,15 @@ int ethics_thalamic_route_judgment(ethics_thalamic_bridge_t* bridge, const ethic
     ethics_thalamic_bridge_heartbeat("ethics_thala_ethics_thalamic_rout", 0.0f);
 
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->moral_salience < bridge->config.min_moral_salience) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.judgments_routed++;
     bridge->stats.avg_moral_salience = (bridge->stats.avg_moral_salience * (bridge->stats.judgments_routed - 1) +
                                         signal->moral_salience) / bridge->stats.judgments_routed;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -161,8 +169,9 @@ int ethics_thalamic_route_violation(ethics_thalamic_bridge_t* bridge, const void
     /* Phase 8: Heartbeat at operation start */
     ethics_thalamic_bridge_heartbeat("ethics_thala_ethics_thalamic_rout", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.violations_flagged++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -174,8 +183,9 @@ int ethics_thalamic_set_attention(ethics_thalamic_bridge_t* bridge, float attent
     /* Phase 8: Heartbeat at operation start */
     ethics_thalamic_bridge_heartbeat("ethics_thala_ethics_thalamic_set_", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -184,7 +194,9 @@ int ethics_thalamic_get_attention(const ethics_thalamic_bridge_t* bridge, float*
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     ethics_thalamic_bridge_heartbeat("ethics_thala_ethics_thalamic_get_", 0.0f);
 
@@ -197,7 +209,9 @@ int ethics_thalamic_bridge_get_stats(const ethics_thalamic_bridge_t* bridge, eth
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     ethics_thalamic_bridge_heartbeat("ethics_thala_get_stats", 0.0f);
 

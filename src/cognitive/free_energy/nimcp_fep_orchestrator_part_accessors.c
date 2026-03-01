@@ -363,7 +363,6 @@ fep_orchestrator_state_t fep_orchestrator_get_state(
 
 void fep_orchestrator_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_fep_orchestrator_health_agent = agent;
     }
 }

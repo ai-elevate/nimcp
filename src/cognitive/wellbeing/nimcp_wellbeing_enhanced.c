@@ -663,15 +663,15 @@ static int predict_distress_trajectory(enhanced_wellbeing_system_t* system) {
     pred->trajectory_slope = slope;
     pred->trajectory_confidence = 0.7f; /* Placeholder - would compute R^2 */
 
-    /* Classify trajectory */
+    /* Classify trajectory (check CRITICAL before WORSENING since 5x > 2x) */
     if (fabsf(slope) < TRAJECTORY_THRESHOLD) {
         pred->trajectory = TRAJECTORY_STABLE;
     } else if (slope < -TRAJECTORY_THRESHOLD * 2.0f) {
         pred->trajectory = TRAJECTORY_IMPROVING;
-    } else if (slope > TRAJECTORY_THRESHOLD * 2.0f) {
-        pred->trajectory = TRAJECTORY_WORSENING;
     } else if (slope > TRAJECTORY_THRESHOLD * 5.0f) {
         pred->trajectory = TRAJECTORY_CRITICAL;
+    } else if (slope > TRAJECTORY_THRESHOLD * 2.0f) {
+        pred->trajectory = TRAJECTORY_WORSENING;
     }
 
     /* Predict time to critical (if worsening) */
@@ -1052,7 +1052,7 @@ void enhanced_wellbeing_destroy(enhanced_wellbeing_system_t* system) {
 
     /* Destroy mutex */
     if (system->mutex) {
-        nimcp_mutex_free((nimcp_mutex_t*)system->mutex);
+        nimcp_mutex_destroy((nimcp_mutex_t*)system->mutex);
     }
 
     /* Free prediction strings */
@@ -1319,8 +1319,12 @@ bool enhanced_wellbeing_is_bio_async_connected(
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_i", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
+    bool connected = system->bio_async_enabled;
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
-    return system->bio_async_enabled;
+    return connected;
 }
 
 /* ============================================================================
@@ -2203,7 +2207,6 @@ int wellbeing_enhanced_query_self_knowledge(kg_reader_t* kg) {
 
 void wellbeing_enhanced_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_wellbeing_enhanced_health_agent = agent;
     }
 }
@@ -2218,7 +2221,7 @@ int wellbeing_enhanced_training_begin(void* instance) {
                               "wellbeing_enhanced_training_begin: NULL argument");
         return -1;
     }
-    wellbeing_enhanced_heartbeat_instance(NULL, "wellbeing_enhanced_training_begin", 0.0f);
+    wellbeing_enhanced_heartbeat_instance(g_wellbeing_enhanced_health_agent, "wellbeing_enhanced_training_begin", 0.0f);
     return 0;
 }
 
@@ -2228,7 +2231,7 @@ int wellbeing_enhanced_training_end(void* instance) {
                               "wellbeing_enhanced_training_end: NULL argument");
         return -1;
     }
-    wellbeing_enhanced_heartbeat_instance(NULL, "wellbeing_enhanced_training_end", 1.0f);
+    wellbeing_enhanced_heartbeat_instance(g_wellbeing_enhanced_health_agent, "wellbeing_enhanced_training_end", 1.0f);
     return 0;
 }
 
@@ -2240,6 +2243,6 @@ int wellbeing_enhanced_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    wellbeing_enhanced_heartbeat_instance(NULL, "wellbeing_enhanced_training_step", progress);
+    wellbeing_enhanced_heartbeat_instance(g_wellbeing_enhanced_health_agent, "wellbeing_enhanced_training_step", progress);
     return 0;
 }

@@ -2135,7 +2135,6 @@ NIMCP_EXPORT uint64_t transactive_current_time_ms(void) {
 
 void transactive_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_transactive_health_agent = agent;
     }
 }

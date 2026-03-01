@@ -942,7 +942,6 @@ void social_modulation_print(const social_modulation_t* modulation,
  * ============================================================================ */
 void mirror_social_context_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mirror_social_context_health_agent = agent;
     }
 }

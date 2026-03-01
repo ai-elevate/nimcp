@@ -10,6 +10,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -78,6 +79,7 @@ emotional_tagging_substrate_bridge_t* emotional_tagging_substrate_bridge_create(
     bridge->effects.consolidation_quality = 1.0f;
     bridge->effects.retrieval_accuracy = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    if (bridge_base_init(&bridge->base, 0, "emotional_tagging_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "emotional_tagging_substrate");
     return bridge;
 }
@@ -92,6 +94,7 @@ void emotional_tagging_substrate_bridge_destroy(emotional_tagging_substrate_brid
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -111,6 +114,7 @@ int emotional_tagging_substrate_bridge_update(emotional_tagging_substrate_bridge
         return -1;
     }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* ATP enables tagging strength and consolidation */
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.tagging_strength = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -124,6 +128,7 @@ int emotional_tagging_substrate_bridge_update(emotional_tagging_substrate_bridge
     bridge->effects.overall_capacity = (bridge->effects.tagging_strength + bridge->effects.tag_specificity +
                                         bridge->effects.consolidation_quality + bridge->effects.retrieval_accuracy) / 4.0f;
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -132,7 +137,9 @@ int emotional_tagging_substrate_bridge_get_effects(const emotional_tagging_subst
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     emotional_tagging_substrate_bridge_heartbeat("emotional_ta_get_effects", 0.0f);
 

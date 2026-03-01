@@ -64,6 +64,9 @@ autobio_thalamic_bridge_t* autobio_thalamic_bridge_create(void* autobio, thalami
     bridge->config = config ? *config : autobio_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    if (bridge_base_init(&bridge->base, 0, "autobio_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     NIMCP_LOGGING_INFO("Created %s bridge", "autobio_thalamic");
     return bridge;
 }
@@ -72,8 +75,9 @@ void autobio_thalamic_bridge_destroy(autobio_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     autobio_thalamic_bridge_heartbeat("autobio_thal_destroy", 0.0f);
 
-
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
 }
 
 int autobio_thalamic_bridge_reset(autobio_thalamic_bridge_t* bridge) {
@@ -84,9 +88,10 @@ int autobio_thalamic_bridge_reset(autobio_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     autobio_thalamic_bridge_heartbeat("autobio_thal_reset", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -99,7 +104,9 @@ int autobio_thalamic_route_recall(autobio_thalamic_bridge_t* bridge, const autob
     autobio_thalamic_bridge_heartbeat("autobio_thal_autobio_thalamic_rou", 0.0f);
 
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->vividness < bridge->config.min_vividness_threshold) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.recalls_routed++;
@@ -108,6 +115,7 @@ int autobio_thalamic_route_recall(autobio_thalamic_bridge_t* bridge, const autob
     if (signal->signal_type == AUTOBIO_SIGNAL_NARRATIVE) {
         bridge->stats.narrative_updates++;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -119,8 +127,9 @@ int autobio_thalamic_route_encoding(autobio_thalamic_bridge_t* bridge, const voi
     /* Phase 8: Heartbeat at operation start */
     autobio_thalamic_bridge_heartbeat("autobio_thal_autobio_thalamic_rou", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.encodings_routed++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -132,8 +141,9 @@ int autobio_thalamic_set_attention(autobio_thalamic_bridge_t* bridge, float atte
     /* Phase 8: Heartbeat at operation start */
     autobio_thalamic_bridge_heartbeat("autobio_thal_autobio_thalamic_set", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -142,7 +152,9 @@ int autobio_thalamic_get_attention(const autobio_thalamic_bridge_t* bridge, floa
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     autobio_thalamic_bridge_heartbeat("autobio_thal_autobio_thalamic_get", 0.0f);
 
@@ -155,7 +167,9 @@ int autobio_thalamic_bridge_get_stats(const autobio_thalamic_bridge_t* bridge, a
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     autobio_thalamic_bridge_heartbeat("autobio_thal_get_stats", 0.0f);
 
@@ -225,8 +239,10 @@ int autobio_thalamic_bridge_training_begin(autobio_thalamic_bridge_t* bridge) {
     }
     autobio_thalamic_bridge_heartbeat_instance(bridge->health_agent, "autobio_thl_training_begin", 0.0f);
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->attention_weight = 1.0f;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("autobio_thalamic_bridge: training session begun, stats reset");
     return 0;
@@ -240,10 +256,13 @@ int autobio_thalamic_bridge_training_end(autobio_thalamic_bridge_t* bridge) {
     }
     autobio_thalamic_bridge_heartbeat_instance(bridge->health_agent, "autobio_thl_training_end", 1.0f);
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float avg_attention = bridge->attention_weight;
+    uint32_t recalls_routed = bridge->stats.recalls_routed;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("autobio_thalamic_bridge: training ended, routed=%u avg_attention=%.3f threshold=%.3f",
-                       bridge->stats.recalls_routed,
+                       recalls_routed,
                        avg_attention,
                        bridge->config.min_vividness_threshold);
     return 0;
@@ -259,9 +278,11 @@ int autobio_thalamic_bridge_training_step(autobio_thalamic_bridge_t* bridge, flo
     float p = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
     autobio_thalamic_bridge_heartbeat_instance(bridge->health_agent, "autobio_thl_training_step", p);
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     float base_threshold = 0.3f;
     bridge->config.min_vividness_threshold = base_threshold * (1.0f - 0.15f * p);
     bridge->attention_weight = 1.0f - 0.1f * (1.0f - p);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

@@ -226,7 +226,33 @@ static void compute_free_energy(sa_fep_bridge_t* bridge) {
 /**
  * @brief Check and trigger callbacks
  */
-static void check_callbacks(sa_fep_bridge_t* bridge) {
+/**
+ * @brief Deferred callback info -- filled under lock, invoked after unlock
+ */
+typedef struct {
+    void (*high_fe_cb)(sa_fep_bridge_t*, float, void*);
+    float high_fe_value;
+    void* high_fe_ud;
+
+    void (*surprise_cb)(sa_fep_bridge_t*, float, const char*, void*);
+    float surprise_value;
+    const char* surprise_source;
+    void* surprise_ud;
+
+    void (*metrics_cb)(sa_fep_bridge_t*, const sa_fep_metrics_t*, void*);
+    sa_fep_metrics_t metrics_snap;
+    void* metrics_ud;
+
+    sa_fep_bridge_t* bridge;
+} sa_fep_deferred_cbs_t;
+
+/**
+ * @brief Check thresholds and stage callbacks (MUST be called under lock).
+ */
+static void check_callbacks_locked(sa_fep_bridge_t* bridge, sa_fep_deferred_cbs_t* out) {
+    memset(out, 0, sizeof(*out));
+    out->bridge = bridge;
+
     sa_fep_metrics_t* m = &bridge->metrics;
     const sa_fep_config_t* cfg = &bridge->config;
 
@@ -237,8 +263,9 @@ static void check_callbacks(sa_fep_bridge_t* bridge) {
             bridge->stats.degraded_mode_entries++;
 
             if (bridge->high_fe_callback) {
-                bridge->high_fe_callback(bridge, m->free_energy,
-                                         bridge->high_fe_user_data);
+                out->high_fe_cb = bridge->high_fe_callback;
+                out->high_fe_value = m->free_energy;
+                out->high_fe_ud = bridge->high_fe_user_data;
             }
         }
     } else if (bridge->state == SA_FEP_STATE_DEGRADED) {
@@ -259,8 +286,10 @@ static void check_callbacks(sa_fep_bridge_t* bridge) {
             } else {
                 source = "priority";
             }
-            bridge->surprise_callback(bridge, m->surprise, source,
-                                      bridge->surprise_user_data);
+            out->surprise_cb = bridge->surprise_callback;
+            out->surprise_value = m->surprise;
+            out->surprise_source = source;
+            out->surprise_ud = bridge->surprise_user_data;
         }
     }
 
@@ -271,7 +300,25 @@ static void check_callbacks(sa_fep_bridge_t* bridge) {
 
     /* Metrics callback */
     if (bridge->metrics_callback) {
-        bridge->metrics_callback(bridge, m, bridge->metrics_user_data);
+        out->metrics_cb = bridge->metrics_callback;
+        out->metrics_snap = *m;
+        out->metrics_ud = bridge->metrics_user_data;
+    }
+}
+
+/**
+ * @brief Fire deferred callbacks outside the lock.
+ */
+static void sa_fire_deferred_callbacks(const sa_fep_deferred_cbs_t* d) {
+    if (d->high_fe_cb) {
+        d->high_fe_cb(d->bridge, d->high_fe_value, d->high_fe_ud);
+    }
+    if (d->surprise_cb) {
+        d->surprise_cb(d->bridge, d->surprise_value, d->surprise_source,
+                        d->surprise_ud);
+    }
+    if (d->metrics_cb) {
+        d->metrics_cb(d->bridge, &d->metrics_snap, d->metrics_ud);
     }
 }
 
@@ -500,13 +547,13 @@ int sa_fep_bridge_register(
         return 0;  /* Already registered, success */
     }
 
-    /* Store references */
+    /* Store references under lock before registration attempt */
     bridge->orchestrator = orchestrator;
     bridge->sa_bridge = sa_bridge;
 
-    nimcp_mutex_unlock(bridge->base.mutex);
-
-    /* Register with FEP orchestrator */
+    /* Register with FEP orchestrator while holding lock.
+     * Keeps refs + registered flag consistent (fixes TOCTOU where another
+     * thread could see orchestrator set but registered still false). */
     uint32_t assigned_id = 0;
     int ret = fep_orchestrator_register_bridge(
         orchestrator,
@@ -519,7 +566,6 @@ int sa_fep_bridge_register(
     );
 
     if (ret != 0) {
-        nimcp_mutex_lock(bridge->base.mutex);
         bridge->orchestrator = NULL;
         bridge->sa_bridge = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
@@ -527,7 +573,6 @@ int sa_fep_bridge_register(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bridge_id = assigned_id;
     bridge->registered = true;
     bridge->state = SA_FEP_STATE_ACTIVE;
@@ -706,10 +751,13 @@ int sa_fep_update_callback(void* handle) {
     /* Update statistics */
     update_stats(bridge, update_time_us);
 
-    /* Check and trigger callbacks */
-    check_callbacks(bridge);
+    /* Stage callbacks under lock, fire after unlock */
+    sa_fep_deferred_cbs_t deferred;
+    check_callbacks_locked(bridge, &deferred);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    sa_fire_deferred_callbacks(&deferred);
     return 0;
 }
 
@@ -754,10 +802,13 @@ int sa_fep_bridge_force_update(sa_fep_bridge_t* bridge) {
     /* Update statistics */
     update_stats(bridge, update_time_us);
 
-    /* Check and trigger callbacks */
-    check_callbacks(bridge);
+    /* Stage callbacks under lock, fire after unlock */
+    sa_fep_deferred_cbs_t deferred2;
+    check_callbacks_locked(bridge, &deferred2);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    sa_fire_deferred_callbacks(&deferred2);
     return 0;
 }
 

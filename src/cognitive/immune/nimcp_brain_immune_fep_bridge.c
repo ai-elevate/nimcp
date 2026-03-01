@@ -41,8 +41,8 @@ static mesh_participant_id_t g_brain_immune_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_brain_immune_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t brain_immune_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return -1;
-    if (g_brain_immune_fep_bridge_mesh_id != 0) return 0;
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_brain_immune_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "brain_immune_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -232,7 +232,7 @@ brain_immune_fep_bridge_t* brain_immune_fep_create(
 ) {
     if (!immune_system || !fep_system) {
         NIMCP_LOGGING_ERROR("Cannot create bridge: null immune or FEP system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_fep_create: required parameter is NULL (immune_system, fep_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_fep_create: required parameter is NULL (immune_system, fep_system)");
         return NULL;
     }
 
@@ -464,6 +464,10 @@ int brain_immune_fep_assess_threat(
     NIMCP_FEP_CHECK_THROW(bridge && threat_prob, NIMCP_ERROR_NULL_POINTER, "bridge or threat_prob is NULL");
     NIMCP_FEP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system is NULL");
 
+    /* Get antigen outside lock to avoid external call under lock */
+    const brain_antigen_t* antigen = bridge->immune_system ?
+        brain_immune_get_antigen(bridge->immune_system, antigen_id) : NULL;
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current free energy as basis for threat assessment */
@@ -478,8 +482,6 @@ int brain_immune_fep_assess_threat(
     *threat_prob = fmaxf(0.0f, fminf(1.0f, *threat_prob));
 
     /* Adjust based on antigen if we can access it */
-    const brain_antigen_t* antigen = brain_immune_get_antigen(
-        bridge->immune_system, antigen_id);
     if (antigen) {
         /* Higher severity antigens get boosted threat probability */
         *threat_prob = fmaxf(*threat_prob, antigen->severity / 10.0f);
@@ -620,7 +622,6 @@ int brain_immune_fep_query_self_knowledge(kg_reader_t* kg) {
 
 void brain_immune_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_brain_immune_fep_bridge_health_agent = agent;
     }
 }
@@ -635,6 +636,7 @@ int brain_immune_fep_bridge_training_begin(void* instance) {
                               "brain_immune_fep_bridge_training_begin: NULL argument");
         return -1;
     }
+    /* TODO: Pass bridge instance as health agent when instance tracking is implemented */
     brain_immune_fep_bridge_heartbeat_instance(NULL, "brain_immune_fep_bridge_training_begin", 0.0f);
     return 0;
 }
@@ -645,6 +647,7 @@ int brain_immune_fep_bridge_training_end(void* instance) {
                               "brain_immune_fep_bridge_training_end: NULL argument");
         return -1;
     }
+    /* TODO: Pass bridge instance as health agent when instance tracking is implemented */
     brain_immune_fep_bridge_heartbeat_instance(NULL, "brain_immune_fep_bridge_training_end", 1.0f);
     return 0;
 }
@@ -657,6 +660,7 @@ int brain_immune_fep_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
+    /* TODO: Pass bridge instance as health agent when instance tracking is implemented */
     brain_immune_fep_bridge_heartbeat_instance(NULL, "brain_immune_fep_bridge_training_step", progress);
     return 0;
 }

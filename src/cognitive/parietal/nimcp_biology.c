@@ -243,7 +243,7 @@ void biology_destroy(biology_t* bio) {
 
 
     if (bio->lock) {
-        nimcp_mutex_free(bio->lock);
+        nimcp_mutex_destroy(bio->lock);
     }
     nimcp_free(bio);
     bio = NULL;
@@ -1201,7 +1201,6 @@ int biology_query_self_knowledge(kg_reader_t* kg) {
 
 void biology_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_biology_health_agent = agent;
     }
 }
@@ -1216,7 +1215,7 @@ int biology_training_begin(void* instance) {
                               "biology_training_begin: NULL argument");
         return -1;
     }
-    biology_heartbeat_instance(NULL, "biology_training_begin", 0.0f);
+    biology_heartbeat_instance(g_biology_health_agent, "biology_training_begin", 0.0f);
     (void)(struct biology*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1227,7 +1226,7 @@ int biology_training_end(void* instance) {
                               "biology_training_end: NULL argument");
         return -1;
     }
-    biology_heartbeat_instance(NULL, "biology_training_end", 1.0f);
+    biology_heartbeat_instance(g_biology_health_agent, "biology_training_end", 1.0f);
     (void)(struct biology*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1240,7 +1239,7 @@ int biology_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    biology_heartbeat_instance(NULL, "biology_training_step", progress);
+    biology_heartbeat_instance(g_biology_health_agent, "biology_training_step", progress);
     (void)(struct biology*)instance; /* Module state available for step adaptation */
     return 0;
 }

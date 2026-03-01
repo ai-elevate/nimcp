@@ -254,13 +254,9 @@ tom_snn_bridge_t* tom_snn_create(const tom_snn_config_t* config) {
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
-    if (!bridge->encoding_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return NULL;
     bridge->inference_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->inference_buffer) return NULL;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->prev_state) return NULL;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->inference_buffer || !bridge->prev_state) {
@@ -438,7 +434,7 @@ int tom_snn_encode_context(
                                  (float)(n + 1) / (float)neurons_per_dim);
             }
 
-            float preferred = (float)n / (neurons_per_dim - 1);
+            float preferred = (neurons_per_dim <= 1) ? 0.5f : (float)n / (float)(neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
             uint32_t idx = d * neurons_per_dim + n;
@@ -1122,7 +1118,6 @@ bool tom_snn_is_bio_async_connected(tom_snn_bridge_t* bridge) {
  * ============================================================================ */
 void tom_snn_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_tom_snn_bridge_health_agent = agent;
     }
 }
@@ -1140,7 +1135,7 @@ int tom_snn_bridge_training_begin(void* instance) {
                               "tom_snn_bridge_training_begin: NULL argument");
         return -1;
     }
-    tom_snn_bridge_heartbeat_instance(NULL, "tom_snn_bridge_training_begin", 0.0f);
+    tom_snn_bridge_heartbeat("tom_snn_bridge_training_begin", 0.0f);
     return 0;
 }
 
@@ -1150,7 +1145,7 @@ int tom_snn_bridge_training_end(void* instance) {
                               "tom_snn_bridge_training_end: NULL argument");
         return -1;
     }
-    tom_snn_bridge_heartbeat_instance(NULL, "tom_snn_bridge_training_end", 1.0f);
+    tom_snn_bridge_heartbeat("tom_snn_bridge_training_end", 1.0f);
     return 0;
 }
 
@@ -1160,6 +1155,6 @@ int tom_snn_bridge_training_step(void* instance, float progress) {
                               "tom_snn_bridge_training_step: NULL argument");
         return -1;
     }
-    tom_snn_bridge_heartbeat_instance(NULL, "tom_snn_bridge_training_step", progress);
+    tom_snn_bridge_heartbeat("tom_snn_bridge_training_step", progress);
     return 0;
 }

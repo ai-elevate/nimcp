@@ -227,7 +227,7 @@ NIMCP_API void quantum_mcts_destroy(quantum_mcts_t* qmcts)
     }
 
     if (qmcts->mutex) {
-        nimcp_mutex_free(qmcts->mutex);
+        nimcp_mutex_destroy(qmcts->mutex);
     }
 
     nimcp_free(qmcts);
@@ -1547,7 +1547,6 @@ static void cache_insert(quantum_mcts_t* qmcts, uint64_t hash,
 
 void quantum_mcts_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_quantum_mcts_health_agent = agent;
     }
 }

@@ -283,7 +283,21 @@ int jepa_imagination_reset(jepa_imagination_bridge_t* bridge) {
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    /* Clear effects */
+    /* Free tensor pointers in effects BEFORE memset zeroes them */
+    if (bridge->jepa_to_imag.predicted_latents) {
+        nimcp_tensor_destroy(bridge->jepa_to_imag.predicted_latents);
+    }
+    if (bridge->jepa_to_imag.outcome_embedding) {
+        nimcp_tensor_destroy(bridge->jepa_to_imag.outcome_embedding);
+    }
+    if (bridge->imag_to_jepa.target_embedding) {
+        nimcp_tensor_destroy(bridge->imag_to_jepa.target_embedding);
+    }
+    if (bridge->imag_to_jepa.context_embedding) {
+        nimcp_tensor_destroy(bridge->imag_to_jepa.context_embedding);
+    }
+
+    /* Clear effects (now safe - tensor pointers already freed) */
     memset(&bridge->jepa_to_imag, 0, sizeof(bridge->jepa_to_imag));
     memset(&bridge->imag_to_jepa, 0, sizeof(bridge->imag_to_jepa));
 
@@ -688,12 +702,12 @@ int jepa_imagination_get_jepa_effects(
         return -1;
     }
 
-    *effects = bridge->jepa_to_imag;
     /* Phase 8: Heartbeat at operation start */
     jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_get", 0.0f);
 
-
-    nimcp_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_lock(((jepa_imagination_bridge_t*)bridge)->base.mutex);
+    *effects = bridge->jepa_to_imag;
+    nimcp_mutex_unlock(((jepa_imagination_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -706,12 +720,12 @@ int jepa_imagination_get_imagination_effects(
         return -1;
     }
 
-    *effects = bridge->imag_to_jepa;
     /* Phase 8: Heartbeat at operation start */
     jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_get", 0.0f);
 
-
-    nimcp_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_lock(((jepa_imagination_bridge_t*)bridge)->base.mutex);
+    *effects = bridge->imag_to_jepa;
+    nimcp_mutex_unlock(((jepa_imagination_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -894,7 +908,6 @@ int jepa_imagination_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void jepa_imagination_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_jepa_imagination_bridge_health_agent = agent;
     }
 }
@@ -909,7 +922,7 @@ int jepa_imagination_bridge_training_begin(void* instance) {
                               "jepa_imagination_bridge_training_begin: NULL argument");
         return -1;
     }
-    jepa_imagination_bridge_heartbeat_instance(NULL, "jepa_imagination_bridge_training_begin", 0.0f);
+    jepa_imagination_bridge_heartbeat("jepa_imagination_bridge_training_begin", 0.0f);
     return 0;
 }
 
@@ -919,7 +932,7 @@ int jepa_imagination_bridge_training_end(void* instance) {
                               "jepa_imagination_bridge_training_end: NULL argument");
         return -1;
     }
-    jepa_imagination_bridge_heartbeat_instance(NULL, "jepa_imagination_bridge_training_end", 1.0f);
+    jepa_imagination_bridge_heartbeat("jepa_imagination_bridge_training_end", 1.0f);
     return 0;
 }
 
@@ -931,6 +944,6 @@ int jepa_imagination_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    jepa_imagination_bridge_heartbeat_instance(NULL, "jepa_imagination_bridge_training_step", progress);
+    jepa_imagination_bridge_heartbeat("jepa_imagination_bridge_training_step", progress);
     return 0;
 }

@@ -279,7 +279,7 @@ void surprise_thalamic_bridge_destroy(surprise_thalamic_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
     }
     nimcp_free(bridge);
     bridge = NULL;
@@ -575,7 +575,6 @@ int surprise_thalamic_bridge_set_health_agent(
 
 void surprise_thalamic_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_surprise_thalamic_health_agent = agent;
     }
 }

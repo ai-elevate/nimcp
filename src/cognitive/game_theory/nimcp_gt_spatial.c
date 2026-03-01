@@ -1262,7 +1262,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
     nimcp_error_t err = build_network(ctx);
     if (err != NIMCP_SUCCESS) {
         nimcp_spatial_destroy(ctx);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_spatial_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_spatial_create: build_network failed");
         return NULL;
     }
 
@@ -2626,7 +2626,6 @@ int spatial_query_self_knowledge(kg_reader_t* kg) {
 
 void gt_spatial_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gt_spatial_health_agent = agent;
     }
 }

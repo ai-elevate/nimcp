@@ -339,8 +339,7 @@ int wellbeing_plasticity_unregister_synapse(
 
     if (found_idx < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wellbeing_plasticity_unregister_synapse: validation failed");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     /* Shift remaining synapses */
@@ -372,8 +371,7 @@ int wellbeing_plasticity_get_synapse(
     wellbeing_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_plasticity_get_synapse: syn is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     *synapse = *syn;
@@ -400,8 +398,7 @@ int wellbeing_plasticity_protect_synapse(
     wellbeing_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_plasticity_protect_synapse: syn is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     syn->is_protected = protect;
@@ -436,8 +433,7 @@ int wellbeing_plasticity_learn(
     if (!syn) {
         bridge->state = WELLBEING_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_plasticity_learn: syn is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     /* Check protection */
@@ -545,12 +541,16 @@ int wellbeing_plasticity_learn(
     bridge->foundation.last_learning_us = bridge->current_time_us;
     bridge->state = WELLBEING_PLASTICITY_STATE_IDLE;
 
-    /* Invoke callback */
-    if (bridge->learn_callback) {
-        bridge->learn_callback(bridge, event, magnitude, bridge->learn_callback_data);
-    }
+    /* Invoke callback outside mutex to prevent deadlock */
+    wellbeing_plasticity_learn_callback_t cb = bridge->learn_callback;
+    void* cb_data = bridge->learn_callback_data;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    if (cb) {
+        cb(bridge, event, magnitude, cb_data);
+    }
+
     return 0;
 }
 

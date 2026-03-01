@@ -543,13 +543,18 @@ int fep_plasticity_learn(
     bridge->inference_state.model_complexity =
         nimcp_clampf(bridge->inference_state.model_complexity, 0.0f, 1.0f);
 
-    /* Invoke callback */
-    if (bridge->learn_callback) {
-        bridge->learn_callback(bridge, event, magnitude, bridge->learn_callback_data);
-    }
+    /* Copy callback ptr and data under lock, invoke outside lock to prevent deadlock */
+    fep_plasticity_learn_callback_t cb = bridge->learn_callback;
+    void* cb_data = bridge->learn_callback_data;
 
     bridge->state = FEP_PLASTICITY_STATE_IDLE;
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callback outside lock */
+    if (cb) {
+        cb(bridge, event, magnitude, cb_data);
+    }
+
     return 0;
 }
 
@@ -883,10 +888,13 @@ int fep_plasticity_consolidate(fep_plasticity_bridge_t* bridge) {
 
     bridge->inference_state.free_energy_trend = current_free_energy - bridge->prev_free_energy;
 
-    /* Invoke inference callback if free energy changed significantly */
+    /* Copy callback ptr and data under lock, invoke outside lock to prevent deadlock */
+    fep_plasticity_inference_callback_t inf_cb = NULL;
+    void* inf_cb_data = NULL;
+    float prev_fe = bridge->prev_free_energy;
     if (bridge->inference_callback && fabsf(bridge->inference_state.free_energy_trend) > 0.05f) {
-        bridge->inference_callback(bridge, bridge->prev_free_energy, current_free_energy,
-                                   bridge->inference_callback_data);
+        inf_cb = bridge->inference_callback;
+        inf_cb_data = bridge->inference_callback_data;
     }
 
     bridge->prev_free_energy = current_free_energy;
@@ -894,6 +902,12 @@ int fep_plasticity_consolidate(fep_plasticity_bridge_t* bridge) {
     bridge->state = FEP_PLASTICITY_STATE_IDLE;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke inference callback outside lock */
+    if (inf_cb) {
+        inf_cb(bridge, prev_fe, current_free_energy, inf_cb_data);
+    }
+
     return 0;
 }
 

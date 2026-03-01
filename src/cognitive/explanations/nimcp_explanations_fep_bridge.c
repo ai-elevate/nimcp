@@ -317,8 +317,6 @@ int explanations_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
  * ============================================================================ */
 void explanations_fep_bridge_set_instance_health_agent(explanations_fep_bridge_t* bridge, nimcp_health_agent_t* agent) {
     if (bridge) {
-        /* Opaque struct: use global agent as fallback */
-        (void)agent;
         g_explanations_fep_bridge_health_agent = agent;
     }
 }

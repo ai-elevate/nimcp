@@ -404,7 +404,7 @@ int bridge_base_set_coordinator(bridge_base_t* base, brain_cycle_coordinator_t* 
  * Security Validation Helpers
  * ============================================================================ */
 
-bool bridge_base_validate_bbb(bridge_base_t* base, const void* data, size_t len) {
+bool bridge_base_validate_bbb(const bridge_base_t* base, const void* data, size_t len) {
     if (!base || !base->enable_bbb_validation || !base->bbb) {
         return true;  /* No BBB configured — pass through */
     }

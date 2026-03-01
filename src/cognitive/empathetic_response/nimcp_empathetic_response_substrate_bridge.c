@@ -128,23 +128,7 @@ empathetic_response_substrate_bridge_t* empathetic_response_substrate_bridge_cre
     bridge->substrate = substrate;
     bridge->config = config ? *config : empathetic_response_substrate_default_config();
 
-    /* Initialize mutex */
-    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex for empathetic response substrate bridge");
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "empathetic_response_substrate_bridge_create: bridge->base is NULL");
-        return NULL;
-    }
-
-    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize mutex for empathetic response substrate bridge");
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "empathetic_response_substrate_bridge_create: validation failed");
-        return NULL;
-    }
+    if (bridge_base_init(&bridge->base, 0, "empathetic_response_substrate") != 0) { nimcp_free(bridge); return NULL; }
 
     bridge->effects.empathic_accuracy = 1.0f;
     bridge->effects.response_depth = 1.0f;
@@ -158,17 +142,10 @@ empathetic_response_substrate_bridge_t* empathetic_response_substrate_bridge_cre
 void empathetic_response_substrate_bridge_destroy(empathetic_response_substrate_bridge_t* bridge) {
     if (!bridge) return;
 
-    /* Destroy mutex */
     /* Phase 8: Heartbeat at operation start */
     empathetic_response_substrate_bridge_heartbeat("empathetic_r_destroy", 0.0f);
 
-
-    if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
-
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }

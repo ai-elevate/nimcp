@@ -703,7 +703,6 @@ mirror_hierarchy_t mirror_neurons_get_hierarchy(mirror_neurons_t mirror)
  * ============================================================================ */
 void mirror_neurons_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mirror_neurons_health_agent = agent;
     }
 }

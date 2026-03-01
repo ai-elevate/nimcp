@@ -708,8 +708,42 @@ int style_perception_get_evolution(const style_perception_t* perc,
         return -1;
     }
 
-    *out = *perc->current_evolution;
-    /* Note: This is a shallow copy. Caller should not free timeline/timestamps */
+    const style_evolution_t* src = perc->current_evolution;
+
+    /* Deep copy scalar fields */
+    out->num_points = src->num_points;
+    out->total_drift = src->total_drift;
+    out->drift_rate = src->drift_rate;
+    out->has_dramatic_shift = src->has_dramatic_shift;
+    out->shift_point = src->shift_point;
+    out->timeline = NULL;
+    out->timestamps = NULL;
+
+    /* Deep copy timeline (array of style_embedding_t, each with float* embedding) */
+    if (src->timeline && src->num_points > 0) {
+        out->timeline = nimcp_calloc(src->num_points, sizeof(style_embedding_t));
+        if (!out->timeline) return -1;
+        for (uint32_t i = 0; i < src->num_points; i++) {
+            style_embedding_clone(&src->timeline[i], &out->timeline[i]);
+        }
+    }
+
+    /* Deep copy timestamps */
+    if (src->timestamps && src->num_points > 0) {
+        out->timestamps = nimcp_calloc(src->num_points, sizeof(float));
+        if (!out->timestamps) {
+            /* Clean up already-cloned timeline on failure */
+            if (out->timeline) {
+                for (uint32_t i = 0; i < src->num_points; i++) {
+                    style_embedding_destroy(&out->timeline[i]);
+                }
+                nimcp_free(out->timeline);
+                out->timeline = NULL;
+            }
+            return -1;
+        }
+        memcpy(out->timestamps, src->timestamps, src->num_points * sizeof(float));
+    }
 
     return 0;
 }

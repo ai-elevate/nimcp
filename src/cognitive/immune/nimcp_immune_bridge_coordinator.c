@@ -580,7 +580,9 @@ const immune_bridge_entry_t* immune_bridge_coordinator_get_bridge(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_bridge_coordinator_get_bridge: validation failed");
+    /* FIX HIGH:583 — spurious THROW_TO_IMMUNE when bridge_id not found.
+     * Not-found is a normal lookup result, not an immune exception. */
+    LOG_MODULE_WARN("immune_bridge_coordinator", "bridge_id %u not found in coordinator", bridge_id);
     return NULL;
 }
 
@@ -626,6 +628,20 @@ int immune_bridge_coordinator_update(
 
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
+    /* FIX CRIT:629 — collect entries while holding the lock, then call each
+     * update_fn WITHOUT the lock to prevent callbacks under mutex (deadlock risk).
+     * Re-acquire lock afterward to update statistics. */
+
+    /* Local snapshot of entries to call */
+    typedef struct {
+        immune_bridge_update_fn_t update_fn;
+        immune_bridge_handle_t handle;
+        uint32_t index;  /* Index into coordinator->bridges for stats update */
+    } pending_update_t;
+
+    pending_update_t pending[IMMUNE_COORDINATOR_MAX_BRIDGES];
+    uint32_t pending_count = 0;
+
     nimcp_platform_mutex_lock(coordinator->mutex);
 
     if (coordinator->state != IMMUNE_COORDINATOR_RUNNING) {
@@ -634,26 +650,47 @@ int immune_bridge_coordinator_update(
     }
 
     uint64_t cycle_start = get_time_us();
-    uint32_t updated_count = 0;
     uint32_t max_updates = coordinator->config.max_updates_per_cycle;
     if (max_updates == 0) {
         max_updates = coordinator->bridge_count;
     }
 
-    /* Update enabled bridges */
-    for (uint32_t i = 0; i < coordinator->bridge_count && updated_count < max_updates; i++) {
+    /* Collect enabled bridges while holding the lock */
+    for (uint32_t i = 0; i < coordinator->bridge_count && pending_count < max_updates; i++) {
         immune_bridge_entry_t* entry = &coordinator->bridges[i];
-
         if (!entry->enabled || !entry->update_fn) {
             continue;
         }
+        pending[pending_count].update_fn = entry->update_fn;
+        pending[pending_count].handle    = entry->handle;
+        pending[pending_count].index     = i;
+        pending_count++;
+    }
 
-        /* Call update function */
+    /* Unlock before calling any update functions */
+    nimcp_platform_mutex_unlock(coordinator->mutex);
+
+    /* Call each update function WITHOUT holding the lock */
+    int results[IMMUNE_COORDINATOR_MAX_BRIDGES];
+    uint64_t update_times[IMMUNE_COORDINATOR_MAX_BRIDGES];
+    for (uint32_t p = 0; p < pending_count; p++) {
         uint64_t update_start = get_time_us();
-        int result = entry->update_fn(entry->handle);
-        uint64_t update_time = get_time_us() - update_start;
+        results[p] = pending[p].update_fn(pending[p].handle);
+        update_times[p] = get_time_us() - update_start;
+    }
 
-        /* Update statistics */
+    /* Re-lock to update statistics */
+    nimcp_platform_mutex_lock(coordinator->mutex);
+
+    for (uint32_t p = 0; p < pending_count; p++) {
+        uint32_t i = pending[p].index;
+        /* Guard: bridge may have been removed while we were unlocked */
+        if (i >= coordinator->bridge_count) continue;
+        immune_bridge_entry_t* entry = &coordinator->bridges[i];
+
+        int result = results[p];
+        uint64_t update_time = update_times[p];
+
         entry->update_count++;
         entry->total_update_time_us += update_time;
         entry->last_update_time = current_time_ms;
@@ -692,8 +729,6 @@ int immune_bridge_coordinator_update(
                 coordinator->stats.categories[entry->category].max_update_time_us = (float)update_time;
             }
         }
-
-        updated_count++;
     }
 
     /* Update global statistics */
@@ -714,7 +749,7 @@ int immune_bridge_coordinator_update(
 
     nimcp_platform_mutex_unlock(coordinator->mutex);
 
-    return (int)updated_count;
+    return (int)pending_count;
 }
 
 int immune_bridge_coordinator_update_category(
@@ -1211,90 +1246,4 @@ const char* immune_coordinator_state_to_string(immune_coordinator_state_t state)
         case IMMUNE_COORDINATOR_ERROR:    return "error";
         default:                           return "unknown";
     }
-}
-
-/* ============================================================================
- * Knowledge Graph Self-Awareness Integration
- * ============================================================================ */
-
-/**
- * @brief Query self-knowledge from knowledge graph
- *
- * WHAT: Query KG for module self-awareness information
- * WHY:  Enable introspective self-knowledge about immune bridge coordinator
- * HOW:  Look up entity and relations in KG
- *
- * @param kg Knowledge graph reader handle
- * @return 1 if self-knowledge found, 0 otherwise
- */
-int immune_bridge_coordinator_query_self_knowledge(kg_reader_t* kg) {
-    if (!kg) return 0;
-    /* Phase 8: Heartbeat at operation start */
-    immune_bridge_coordinator_heartbeat("immune_bridg_query_self_knowledge", 0.0f);
-
-
-    const kg_entity_t* self = kg_reader_get_entity(kg, "Immune_Bridge_Coordinator");
-    if (self) {
-        for (uint32_t i = 0; i < self->num_observations; i++) {
-            /* Phase 8: Loop progress heartbeat */
-            if ((i & 0xFF) == 0 && self->num_observations > 256) {
-                immune_bridge_coordinator_heartbeat("immune_bridg_loop",
-                                 (float)(i + 1) / (float)self->num_observations);
-            }
-
-            NIMCP_LOGGING_DEBUG("Immune bridge coordinator self-knowledge: %s", self->observations[i]);
-        }
-    }
-    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Immune_Bridge_Coordinator");
-    if (connections) { kg_relation_list_destroy(connections); }
-    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Immune_Bridge_Coordinator");
-    if (incoming) { kg_relation_list_destroy(incoming); }
-    return self ? 1 : 0;
-}
-
-/* ============================================================================
- * Phase 8: Instance-Level Health Agent
- * ============================================================================ */
-
-void immune_bridge_coordinator_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
-    if (instance) {
-        (void)agent;
-        g_immune_bridge_coordinator_health_agent = agent;
-    }
-}
-
-/* ============================================================================
- * Phase 8: Training Integration (Full Implementation)
- * ============================================================================ */
-
-int immune_bridge_coordinator_training_begin(void* instance) {
-    if (!instance) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-                              "immune_bridge_coordinator_training_begin: NULL argument");
-        return -1;
-    }
-    immune_bridge_coordinator_heartbeat_instance(NULL, "immune_bridge_coordinator_training_begin", 0.0f);
-    return 0;
-}
-
-int immune_bridge_coordinator_training_end(void* instance) {
-    if (!instance) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-                              "immune_bridge_coordinator_training_end: NULL argument");
-        return -1;
-    }
-    immune_bridge_coordinator_heartbeat_instance(NULL, "immune_bridge_coordinator_training_end", 1.0f);
-    return 0;
-}
-
-int immune_bridge_coordinator_training_step(void* instance, float progress) {
-    if (!instance) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-                              "immune_bridge_coordinator_training_step: NULL argument");
-        return -1;
-    }
-    if (progress < 0.0f) progress = 0.0f;
-    if (progress > 1.0f) progress = 1.0f;
-    immune_bridge_coordinator_heartbeat_instance(NULL, "immune_bridge_coordinator_training_step", progress);
-    return 0;
 }

@@ -1689,7 +1689,6 @@ NIMCP_EXPORT void collective_memory_print_summary(
 
 void collective_memory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_collective_memory_health_agent = agent;
     }
 }

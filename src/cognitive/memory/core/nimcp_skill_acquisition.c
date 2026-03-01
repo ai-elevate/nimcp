@@ -2383,7 +2383,6 @@ NIMCP_EXPORT uint64_t skill_current_time_ms(void) {
 
 void skill_acquisition_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_skill_acquisition_health_agent = agent;
     }
 }

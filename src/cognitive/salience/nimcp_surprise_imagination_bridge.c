@@ -250,7 +250,7 @@ surprise_imagination_bridge_t* surprise_imagination_bridge_create(
         NIMCP_THROW_MEMORY(NIMCP_SURPRISE_IMAGINATION_ERROR_NO_MEMORY,
                            bridge->config.max_scenarios * sizeof(surprise_imagination_scenario_t),
                            "surprise_imagination_bridge scenarios allocation failed");
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
         nimcp_free(bridge);
         bridge = NULL;
         return NULL;
@@ -287,7 +287,7 @@ void surprise_imagination_bridge_destroy(surprise_imagination_bridge_t* bridge) 
         nimcp_free(bridge->scenarios);
     }
     if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
     }
     nimcp_free(bridge);
     bridge = NULL;
@@ -710,7 +710,6 @@ int surprise_imagination_bridge_set_health_agent(
 
 void surprise_imagination_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_surprise_imagination_health_agent = agent;
     }
 }

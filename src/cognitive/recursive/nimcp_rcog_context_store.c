@@ -504,7 +504,7 @@ void rcog_context_store_destroy(rcog_context_store_t* store)
 
     /* Destroy mutex */
     if (store->mutex) {
-        nimcp_mutex_free(store->mutex);
+        nimcp_mutex_destroy(store->mutex);
     }
 
     nimcp_free(store);
@@ -993,13 +993,23 @@ rcog_error_t rcog_context_store_exec(
     var->accessed_ms = get_current_time_ms();
     var->access_count++;
 
-    /* Call helper function */
-    rcog_error_t err = helper(var->data, var->size, var->dtype,
-                               helper_context, result);
-
-    store->query_count++;
+    /* Capture variable fields before releasing the lock to avoid
+     * calling the user-supplied callback while holding the mutex,
+     * which would risk deadlock if the callback re-enters the store. */
+    void* var_data = var->data;
+    size_t var_size = var->size;
+    rcog_data_type_t var_dtype = var->dtype;
 
     nimcp_mutex_unlock(store->mutex);
+
+    /* Call helper function outside the lock */
+    rcog_error_t err = helper(var_data, var_size, var_dtype,
+                               helper_context, result);
+
+    nimcp_mutex_lock(store->mutex);
+    store->query_count++;
+    nimcp_mutex_unlock(store->mutex);
+
     return err;
 }
 
@@ -1220,7 +1230,7 @@ rcog_error_t rcog_context_store_lock(rcog_context_store_t* store)
 
 
     nimcp_mutex_lock(store->mutex);
-    nimcp_mutex_unlock(store->mutex);
+    /* Caller is responsible for calling rcog_context_store_unlock() */
     return RCOG_OK;
 }
 

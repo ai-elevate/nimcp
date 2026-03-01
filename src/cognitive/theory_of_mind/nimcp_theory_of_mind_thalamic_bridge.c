@@ -68,7 +68,6 @@ static inline void theory_of_mind_thalamic_bridge_heartbeat_instance(
  * ============================================================================ */
 void theory_of_mind_thalamic_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_theory_of_mind_thalamic_bridge_health_agent = agent;
     }
 }
@@ -86,7 +85,7 @@ int theory_of_mind_thalamic_bridge_training_begin(void* instance) {
                               "theory_of_mind_thalamic_bridge_training_begin: NULL argument");
         return -1;
     }
-    theory_of_mind_thalamic_bridge_heartbeat_instance(NULL, "theory_of_mind_thalamic_bridge_training_begin", 0.0f);
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mind_thalamic_bridge_training_begin", 0.0f);
     return 0;
 }
 
@@ -96,7 +95,7 @@ int theory_of_mind_thalamic_bridge_training_end(void* instance) {
                               "theory_of_mind_thalamic_bridge_training_end: NULL argument");
         return -1;
     }
-    theory_of_mind_thalamic_bridge_heartbeat_instance(NULL, "theory_of_mind_thalamic_bridge_training_end", 1.0f);
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mind_thalamic_bridge_training_end", 1.0f);
     return 0;
 }
 
@@ -106,6 +105,6 @@ int theory_of_mind_thalamic_bridge_training_step(void* instance, float progress)
                               "theory_of_mind_thalamic_bridge_training_step: NULL argument");
         return -1;
     }
-    theory_of_mind_thalamic_bridge_heartbeat_instance(NULL, "theory_of_mind_thalamic_bridge_training_step", progress);
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mind_thalamic_bridge_training_step", progress);
     return 0;
 }

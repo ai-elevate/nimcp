@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -129,12 +130,16 @@ self_awareness_substrate_bridge_t* self_awareness_substrate_bridge_create(void* 
     bridge->effects.identity_coherence = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    if (bridge_base_init(&bridge->base, 0, "self_awareness_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "self_awareness_substrate");
     return bridge;
 }
 
 void self_awareness_substrate_bridge_destroy(self_awareness_substrate_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (bridge) {
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+    }
 }
 
 int self_awareness_substrate_bridge_update(self_awareness_substrate_bridge_t* bridge) {
@@ -153,6 +158,7 @@ int self_awareness_substrate_bridge_update(self_awareness_substrate_bridge_t* br
     float metabolic_cap = metabolic.metabolic_capacity;
     float min_cap = bridge->config.min_capacity;
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.introspection_depth = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         bridge->effects.metacognitive_accuracy = nimcp_clampf(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -169,6 +175,7 @@ int self_awareness_substrate_bridge_update(self_awareness_substrate_bridge_t* br
                                         bridge->effects.identity_coherence) / 4.0f;
 
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -177,7 +184,9 @@ int self_awareness_substrate_bridge_get_effects(const self_awareness_substrate_b
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

@@ -126,9 +126,9 @@ int ethics_fep_bridge_connect_fep(ethics_fep_bridge_t* bridge, fep_system_t* fep
 
 
     NIMCP_FEP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -138,9 +138,9 @@ int ethics_fep_bridge_connect_ethics(ethics_fep_bridge_t* bridge, void* ethics) 
 
 
     NIMCP_FEP_CHECK_THROW(bridge && ethics, NIMCP_ERROR_NULL_POINTER, "bridge or ethics is NULL");
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->ethics_system = ethics;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -151,10 +151,10 @@ int ethics_fep_apply_value_priors(ethics_fep_bridge_t* bridge) {
 
     NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_value_priors) return 0;
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.value_prior = bridge->config.value_prior_weight;
     NIMCP_LOGGING_DEBUG(LOG_MODULE_ETHICS_FEP " Applied value priors to FEP");
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -165,7 +165,7 @@ int ethics_fep_constrain_policy(ethics_fep_bridge_t* bridge, bool is_ethical) {
 
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_deontological_constraints) return 0;
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     if (!is_ethical) {
         bridge->effects.ethical_constraint_active = true;
         bridge->state.harmful_actions_blocked++;
@@ -175,7 +175,7 @@ int ethics_fep_constrain_policy(ethics_fep_bridge_t* bridge, bool is_ethical) {
         bridge->state.ethical_policies_selected++;
         bridge->stats.ethical_selections_total++;
     }
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -186,12 +186,12 @@ int ethics_fep_predict_harm(ethics_fep_bridge_t* bridge, float* harm_score) {
 
     NIMCP_FEP_CHECK_THROW(bridge && harm_score, NIMCP_ERROR_NULL_POINTER, "bridge or harm_score is NULL");
     if (!bridge->config.enable_harm_prediction) return 0;
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *harm_score = bridge->effects.harm_prediction;
     if (*harm_score > bridge->config.harm_threshold) {
         NIMCP_LOGGING_WARN(LOG_MODULE_ETHICS_FEP " High harm predicted (%.2f)", *harm_score);
     }
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -201,7 +201,7 @@ int ethics_fep_bridge_update(ethics_fep_bridge_t* bridge, uint64_t delta_ms) {
 
 
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->state.ethical_policies_selected > 0) {
         float total = bridge->state.ethical_policies_selected + bridge->state.harmful_actions_blocked;
         bridge->state.current_value_alignment = bridge->state.ethical_policies_selected / (fabsf(total) > 1e-7f ? total : 1e-7f);
@@ -209,7 +209,7 @@ int ethics_fep_bridge_update(ethics_fep_bridge_t* bridge, uint64_t delta_ms) {
     bridge->stats.avg_value_alignment = (bridge->stats.avg_value_alignment * 0.99f) +
         (bridge->state.current_value_alignment * 0.01f);
     bridge->effects.ethical_constraint_active = false;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -219,9 +219,9 @@ int ethics_fep_bridge_get_state(ethics_fep_bridge_t* bridge, ethics_fep_state_t*
 
 
     NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -231,9 +231,9 @@ int ethics_fep_bridge_get_stats(ethics_fep_bridge_t* bridge, ethics_fep_stats_t*
 
 
     NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -253,10 +253,10 @@ int ethics_fep_bridge_connect_bio_async(ethics_fep_bridge_t* bridge) {
     bridge->base.bio_ctx = bio_router_register_module(&info);
     if (bridge->base.bio_ctx) {
         bridge->base.bio_async_enabled = true;
-        return 0;
+    } else {
+        NIMCP_LOGGING_WARN("ethics_fep_bridge: bio-async router not available");
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_fep_bridge_connect_bio_async: validation failed");
-    return -1;
+    return 0;
 }
 
 int ethics_fep_bridge_disconnect_bio_async(ethics_fep_bridge_t* bridge) {
@@ -318,7 +318,6 @@ int ethics_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void ethics_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_ethics_fep_bridge_health_agent = agent;
     }
 }

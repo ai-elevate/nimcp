@@ -274,17 +274,12 @@ int grief_fep_process_persistent_pe(
     return 0;
 }
 
-int grief_fep_modulate_learning_rate(
-    grief_fep_bridge_t* bridge
-) {
-    /* Phase 8: Heartbeat at operation start */
-    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_modulate_l", 0.0f);
-
-
-    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+/**
+ * @brief Internal unlocked version of learning rate modulation.
+ * Caller MUST hold bridge->base.mutex.
+ */
+static int grief_fep_modulate_learning_rate_unlocked(grief_fep_bridge_t* bridge) {
     if (!bridge->config.enable_grief_learning_slowdown) return 0;
-
-    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Grief slows learning rate
      * This models the biological phenomenon where grief suppresses
@@ -308,11 +303,25 @@ int grief_fep_modulate_learning_rate(
                                    bridge->config.emotional_pain_precision_gain);
     bridge->emotion_effects.pain_precision_weight = pain_precision;
 
-    nimcp_mutex_unlock(bridge->base.mutex);
-
     NIMCP_LOGGING_DEBUG("Modulated learning rate: modifier=%f, resistance=%f",
                         learning_modifier, bridge->emotion_effects.model_update_resistance);
     return 0;
+}
+
+int grief_fep_modulate_learning_rate(
+    grief_fep_bridge_t* bridge
+) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_modulate_l", 0.0f);
+
+
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    int rc = grief_fep_modulate_learning_rate_unlocked(bridge);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    return rc;
 }
 
 /* ============================================================================
@@ -329,10 +338,10 @@ int grief_fep_update(
 
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    /* Apply learning rate modulation */
-    grief_fep_modulate_learning_rate(bridge);
-
     nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Apply learning rate modulation (unlocked — we already hold the mutex) */
+    grief_fep_modulate_learning_rate_unlocked(bridge);
 
     /* Grief naturally decays over time (healthy grief resolution)
      * But decay is slow - grief persists
@@ -355,7 +364,7 @@ int grief_fep_update(
  * ============================================================================ */
 
 int grief_fep_get_state(
-    const grief_fep_bridge_t* bridge,
+    grief_fep_bridge_t* bridge,
     grief_fep_state_t* state
 ) {
     /* Phase 8: Heartbeat at operation start */
@@ -372,7 +381,7 @@ int grief_fep_get_state(
 }
 
 int grief_fep_get_stats(
-    const grief_fep_bridge_t* bridge,
+    grief_fep_bridge_t* bridge,
     grief_fep_stats_t* stats
 ) {
     /* Phase 8: Heartbeat at operation start */

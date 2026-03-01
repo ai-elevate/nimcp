@@ -1369,8 +1369,11 @@ uint32_t synapse_metadata_pool_allocate(synapse_metadata_pool_t pool) {
         if (pool->config.thread_safe) {
             nimcp_mutex_unlock(&pool->mutex);
         }
-        atomic_fetch_add(&pool->failed_allocations, 1);
-        LOG_WARN("Metadata pool exhausted");
+        uint64_t fails = atomic_fetch_add(&pool->failed_allocations, 1);
+        if (fails < 3 || (fails & (fails - 1)) == 0) {
+            /* Log first 3, then powers of 2 only to avoid million-line spam */
+            LOG_WARN("Metadata pool exhausted (failure #%llu)", (unsigned long long)(fails + 1));
+        }
         return SPARSE_SYNAPSE_NO_METADATA;
     }
 
@@ -1436,9 +1439,8 @@ synapse_t* synapse_metadata_pool_get(
         return NULL;
     }
 
-    // Handle no-metadata sentinel
+    // Handle no-metadata sentinel — normal for synapses created after pool exhaustion
     if (index == SPARSE_SYNAPSE_NO_METADATA) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "synapse_metadata_pool_get: validation failed");
         return NULL;
     }
 
@@ -1494,8 +1496,9 @@ int sparse_synapse_add_with_metadata(
     // Allocate metadata slot first
     uint32_t metadata_index = synapse_metadata_pool_allocate(metadata_pool);
     if (metadata_index == SPARSE_SYNAPSE_NO_METADATA) {
-        LOG_ERROR("Failed to allocate metadata slot for synapse");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sparse_synapse_add_with_metadata: validation failed");
+        /* Pool exhaustion is normal at scale (1.5M neurons) — not an error.
+         * Synapse still works without metadata (plasticity/STDP disabled).
+         * Logging handled by pool_allocate with rate limiting. */
         return -1;
     }
 

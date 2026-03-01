@@ -576,7 +576,7 @@ self_awareness_system_t self_awareness_create(const char* name,
     struct self_awareness_system* system =
         nimcp_calloc(1, sizeof(struct self_awareness_system));
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_awareness_create: allocation failed");
 
         return NULL;
     }
@@ -667,12 +667,12 @@ bool self_awareness_reflect(self_awareness_system_t system,
         return false;
     }
 
-    // Process pending bio-async messages
+    nimcp_mutex_lock(&system->mutex);
+
+    // Process pending bio-async messages (under lock for thread safety)
     if (system->bio_async_enabled && system->bio_ctx) {
         bio_router_process_inbox(system->bio_ctx, 5);
     }
-
-    nimcp_mutex_lock(&system->mutex);
 
     // Store introspection reference
     system->introspection = introspection;
@@ -779,7 +779,6 @@ int self_awareness_extended_query_self_knowledge(kg_reader_t* kg) {
  * ============================================================================ */
 void self_awareness_extended_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_self_awareness_extended_health_agent = agent;
     }
 }
@@ -797,7 +796,7 @@ int self_awareness_extended_training_begin(void* instance) {
                               "self_awareness_extended_training_begin: NULL argument");
         return -1;
     }
-    self_awareness_extended_heartbeat_instance(NULL, "self_awareness_extended_training_begin", 0.0f);
+    self_awareness_extended_heartbeat("self_awareness_extended_training_begin", 0.0f);
     return 0;
 }
 
@@ -807,7 +806,7 @@ int self_awareness_extended_training_end(void* instance) {
                               "self_awareness_extended_training_end: NULL argument");
         return -1;
     }
-    self_awareness_extended_heartbeat_instance(NULL, "self_awareness_extended_training_end", 1.0f);
+    self_awareness_extended_heartbeat("self_awareness_extended_training_end", 1.0f);
     return 0;
 }
 
@@ -817,6 +816,6 @@ int self_awareness_extended_training_step(void* instance, float progress) {
                               "self_awareness_extended_training_step: NULL argument");
         return -1;
     }
-    self_awareness_extended_heartbeat_instance(NULL, "self_awareness_extended_training_step", progress);
+    self_awareness_extended_heartbeat("self_awareness_extended_training_step", progress);
     return 0;
 }

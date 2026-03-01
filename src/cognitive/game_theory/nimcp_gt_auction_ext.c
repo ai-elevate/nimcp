@@ -209,7 +209,7 @@ nimcp_combo_auction_t nimcp_combo_auction_create(
 ) {
     if (!config || config->num_items == 0 ||
         config->num_items > NIMCP_GT_MAX_COMBO_ITEMS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_combo_auction_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_combo_auction_create: config is NULL or num_items invalid");
         return NULL;
     }
 
@@ -1638,7 +1638,6 @@ int gt_auction_ext_query_self_knowledge(kg_reader_t* kg) {
 
 void gt_auction_ext_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gt_auction_ext_health_agent = agent;
     }
 }

@@ -360,7 +360,7 @@ surprise_snn_bridge_t* surprise_snn_bridge_create(
         NIMCP_THROW_MEMORY(NIMCP_SURPRISE_SNN_ERROR_NO_MEMORY,
                            bridge->total_neurons * sizeof(snn_neuron_t),
                            "surprise_snn_bridge neurons allocation failed");
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
         nimcp_free(bridge);
         bridge = NULL;
         return NULL;
@@ -395,7 +395,7 @@ void surprise_snn_bridge_destroy(surprise_snn_bridge_t* bridge) {
         nimcp_free(bridge->neurons);
     }
     if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
     }
     nimcp_free(bridge);
     bridge = NULL;
@@ -824,7 +824,6 @@ int surprise_snn_bridge_set_health_agent(
 
 void surprise_snn_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_surprise_snn_health_agent = agent;
     }
 }

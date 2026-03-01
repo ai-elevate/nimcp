@@ -267,7 +267,7 @@ static void destroy_worker_queue(rcog_worker_queue_t* queue) {
     queue->count = 0;
 
     if (queue->mutex) {
-        nimcp_mutex_free(queue->mutex);
+        nimcp_mutex_destroy(queue->mutex);
         queue->mutex = NULL;
     }
 }
@@ -503,7 +503,7 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
     /* Create workers */
     pool->workers = nimcp_calloc(pool->num_workers, sizeof(rcog_worker_t));
     if (!pool->workers) {
-        nimcp_mutex_free(pool->mutex);
+        nimcp_mutex_destroy(pool->mutex);
         nimcp_free(pool);
         pool = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_delegation_pool_create: pool->workers is NULL");
@@ -599,7 +599,7 @@ void rcog_delegation_pool_destroy(rcog_delegation_pool_t* pool) {
         nimcp_free(pool->completed);
     }
     if (pool->completed_mutex) {
-        nimcp_mutex_free(pool->completed_mutex);
+        nimcp_mutex_destroy(pool->completed_mutex);
     }
 
     /* Free batch handles */
@@ -618,12 +618,12 @@ void rcog_delegation_pool_destroy(rcog_delegation_pool_t* pool) {
         nimcp_free(pool->batches);
     }
     if (pool->batches_mutex) {
-        nimcp_mutex_free(pool->batches_mutex);
+        nimcp_mutex_destroy(pool->batches_mutex);
     }
 
     /* Destroy main mutex */
     if (pool->mutex) {
-        nimcp_mutex_free(pool->mutex);
+        nimcp_mutex_destroy(pool->mutex);
     }
 
     nimcp_free(pool);
@@ -1189,7 +1189,7 @@ void rcog_delegation_pool_free_batch_handle(rcog_batch_handle_t* handle) {
 
     if (handle->task_ids) nimcp_free(handle->task_ids);
     if (handle->statuses) nimcp_free(handle->statuses);
-    if (handle->mutex) nimcp_mutex_free(handle->mutex);
+    if (handle->mutex) nimcp_mutex_destroy(handle->mutex);
     if (handle->cond) {
         nimcp_cond_destroy(handle->cond);
         nimcp_free(handle->cond);

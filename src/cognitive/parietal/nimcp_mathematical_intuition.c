@@ -406,7 +406,7 @@ void math_intuition_destroy(math_intuition_t* mi) {
 
 
     if (mi->lock) {
-        nimcp_mutex_free(mi->lock);
+        nimcp_mutex_destroy(mi->lock);
     }
 
     nimcp_free(mi);
@@ -1506,7 +1506,6 @@ int mathematical_intuition_query_self_knowledge(kg_reader_t* kg) {
 
 void mathematical_intuition_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mathematical_intuition_health_agent = agent;
     }
 }
@@ -1521,7 +1520,7 @@ int mathematical_intuition_training_begin(void* instance) {
                               "mathematical_intuition_training_begin: NULL argument");
         return -1;
     }
-    mathematical_intuition_heartbeat_instance(NULL, "mathematical_intuition_training_begin", 0.0f);
+    mathematical_intuition_heartbeat_instance(g_mathematical_intuition_health_agent, "mathematical_intuition_training_begin", 0.0f);
     math_intuition_t* mi = (math_intuition_t*)instance;
     mi->patterns_detected = 0;
     mi->symmetries_detected = 0;
@@ -1541,7 +1540,7 @@ int mathematical_intuition_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    mathematical_intuition_heartbeat_instance(NULL, "mathematical_intuition_training_step", progress);
+    mathematical_intuition_heartbeat_instance(g_mathematical_intuition_health_agent, "mathematical_intuition_training_step", progress);
     math_intuition_t* mi = (math_intuition_t*)instance;
     mi->patterns_detected++;
     /* Sharpen pattern confidence threshold with training */
@@ -1566,7 +1565,7 @@ int mathematical_intuition_training_end(void* instance) {
                               "mathematical_intuition_training_end: NULL argument");
         return -1;
     }
-    mathematical_intuition_heartbeat_instance(NULL, "mathematical_intuition_training_end", 1.0f);
+    mathematical_intuition_heartbeat_instance(g_mathematical_intuition_health_agent, "mathematical_intuition_training_end", 1.0f);
     math_intuition_t* mi = (math_intuition_t*)instance;
     float avg_pattern_conf = (mi->patterns_detected > 0)
         ? (float)(mi->total_pattern_confidence / (double)mi->patterns_detected)

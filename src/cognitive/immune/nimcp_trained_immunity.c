@@ -780,7 +780,6 @@ int trained_immunity_query_self_knowledge(kg_reader_t* kg) {
 
 void trained_immunity_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_trained_immunity_health_agent = agent;
     }
 }

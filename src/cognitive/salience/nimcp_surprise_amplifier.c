@@ -58,7 +58,6 @@ BRIDGE_DEFINE_MESH_REGISTRATION(surprise_amplifier, MESH_ADAPTER_CATEGORY_COGNIT
 
 /* Stub for migration compatibility */
 static inline void surprise_amplifier_set_health_agent_internal(nimcp_health_agent_t* agent) {
-    (void)agent;
 }
 /* Stub heartbeat for migration compatibility */
 static inline void surprise_amplifier_heartbeat(const char* op, float progress) {
@@ -564,7 +563,7 @@ void surprise_amplifier_destroy(surprise_amplifier_t* amp) {
 
     /* Destroy mutex */
     if (amp->mutex) {
-        nimcp_mutex_free(amp->mutex);
+        nimcp_mutex_destroy(amp->mutex);
         amp->mutex = NULL;
     }
 
@@ -1160,7 +1159,6 @@ int surprise_amplifier_query_self_knowledge(kg_reader_t* kg) {
 
 void surprise_amplifier_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_surprise_amplifier_health_agent = agent;
     }
 }

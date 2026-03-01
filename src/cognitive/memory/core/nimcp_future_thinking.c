@@ -2237,7 +2237,6 @@ NIMCP_EXPORT const char* future_thinking_get_last_error(void) {
 
 void future_thinking_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_future_thinking_health_agent = agent;
     }
 }

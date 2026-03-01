@@ -503,7 +503,7 @@ void cognitive_hub_destroy(cognitive_integration_hub_t hub) {
 
     /* Destroy mutex */
     if (hub->mutex) {
-        nimcp_mutex_free(hub->mutex);
+        nimcp_mutex_destroy(hub->mutex);
     }
 
     /* Free hub structure */
@@ -1136,7 +1136,6 @@ uint32_t cognitive_hub_get_async_queue_depth(cognitive_integration_hub_t hub) {
 
 void cognitive_integration_hub_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_cognitive_integration_hub_health_agent = agent;
     }
 }
@@ -1151,7 +1150,8 @@ int cognitive_integration_hub_training_begin(void* instance) {
                               "cognitive_integration_hub_training_begin: NULL argument");
         return -1;
     }
-    cognitive_integration_hub_heartbeat_instance(NULL, "cognitive_integration_hub_training_begin", 0.0f);
+    cognitive_integration_hub_heartbeat_instance(g_cognitive_integration_hub_health_agent,
+                                                  "cognitive_integration_hub_training_begin", 0.0f);
     (void)(struct subscription*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1162,7 +1162,8 @@ int cognitive_integration_hub_training_end(void* instance) {
                               "cognitive_integration_hub_training_end: NULL argument");
         return -1;
     }
-    cognitive_integration_hub_heartbeat_instance(NULL, "cognitive_integration_hub_training_end", 1.0f);
+    cognitive_integration_hub_heartbeat_instance(g_cognitive_integration_hub_health_agent,
+                                                  "cognitive_integration_hub_training_end", 1.0f);
     (void)(struct subscription*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1175,7 +1176,7 @@ int cognitive_integration_hub_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    cognitive_integration_hub_heartbeat_instance(NULL, "cognitive_integration_hub_training_step", progress);
+    cognitive_integration_hub_heartbeat_instance(g_cognitive_integration_hub_health_agent, "cognitive_integration_hub_training_step", progress);
     (void)(struct subscription*)instance; /* Module state available for step adaptation */
     return 0;
 }

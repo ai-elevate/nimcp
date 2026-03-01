@@ -2223,7 +2223,6 @@ NIMCP_EXPORT void prospective_init_activity_trigger(
 
 void prospective_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_prospective_health_agent = agent;
     }
 }

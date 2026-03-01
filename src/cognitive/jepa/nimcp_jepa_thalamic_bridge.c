@@ -120,6 +120,8 @@ jepa_thalamic_bridge_t* jepa_thalamic_bridge_create(void* jepa, thalamic_router_
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
+    if (bridge_base_init(&bridge->base, 0, "jepa_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     /* Register with bio-async if enabled */
     if (bridge->config.bio_async_enabled) {
         jepa_thalamic_bridge_register_bio_async(bridge);
@@ -141,6 +143,7 @@ void jepa_thalamic_bridge_destroy(jepa_thalamic_bridge_t* bridge) {
         jepa_thalamic_bridge_unregister_bio_async(bridge);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -149,10 +152,11 @@ int jepa_thalamic_bridge_reset(jepa_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     jepa_thalamic_bridge_heartbeat("jepa_thalami_reset", 0.0f);
 
-
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -162,10 +166,13 @@ int jepa_thalamic_route_prediction(jepa_thalamic_bridge_t* bridge, const jepa_th
 
 
     NIMCP_CHECK_THROW(bridge && signal, -1, "bridge or signal is NULL");
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->prediction_confidence < bridge->config.min_prediction_confidence) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     if (signal->temporal_horizon > bridge->config.max_temporal_horizon) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.predictions_routed++;
@@ -174,6 +181,7 @@ int jepa_thalamic_route_prediction(jepa_thalamic_bridge_t* bridge, const jepa_th
     if (signal->signal_type == JEPA_SIGNAL_EMBEDDING) {
         bridge->stats.embeddings_updated++;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -183,7 +191,9 @@ int jepa_thalamic_route_error(jepa_thalamic_bridge_t* bridge, const void* error,
 
 
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.errors_propagated++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -191,9 +201,10 @@ int jepa_thalamic_set_attention(jepa_thalamic_bridge_t* bridge, float attention)
     /* Phase 8: Heartbeat at operation start */
     jepa_thalamic_bridge_heartbeat("jepa_thalami_jepa_thalamic_set_at", 0.0f);
 
-
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -203,7 +214,9 @@ int jepa_thalamic_get_attention(const jepa_thalamic_bridge_t* bridge, float* att
 
 
     NIMCP_CHECK_THROW(bridge && attention, -1, "bridge or attention is NULL");
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -213,7 +226,9 @@ int jepa_thalamic_bridge_get_stats(const jepa_thalamic_bridge_t* bridge, jepa_th
 
 
     NIMCP_CHECK_THROW(bridge && stats, -1, "bridge or stats is NULL");
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -295,11 +310,13 @@ int jepa_thalamic_bridge_training_begin(jepa_thalamic_bridge_t* bridge) {
     jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
                                              "jepa_thalami_training_begin", 0.0f);
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* Reset attention weight to full for training */
     bridge->attention_weight = 1.0f;
 
     /* Clear routing statistics for training epoch */
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
                                              "jepa_thalami_training_begin", 1.0f);
@@ -315,6 +332,7 @@ int jepa_thalamic_bridge_training_end(jepa_thalamic_bridge_t* bridge) {
     jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
                                              "jepa_thalami_training_end", 0.0f);
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* Compute average prediction confidence from training */
     if (bridge->stats.predictions_routed > 0) {
         bridge->stats.avg_prediction_confidence /= (float)bridge->stats.predictions_routed;
@@ -327,6 +345,7 @@ int jepa_thalamic_bridge_training_end(jepa_thalamic_bridge_t* bridge) {
     if (error_rate > 0.5f) {
         bridge->attention_weight *= 0.9f;  /* Reduce attention if many errors */
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
                                              "jepa_thalami_training_end", 1.0f);
@@ -343,6 +362,7 @@ int jepa_thalamic_bridge_training_step(jepa_thalamic_bridge_t* bridge, uint32_t 
     jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
                                              "jepa_thalami_training_step", progress);
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* Adapt attention gating threshold during training */
     if (bridge->config.enable_attention_gating) {
         /* Gradually tighten confidence threshold as training progresses */
@@ -359,6 +379,7 @@ int jepa_thalamic_bridge_training_step(jepa_thalamic_bridge_t* bridge, uint32_t 
     if (bridge->attention_weight < 0.1f) {
         bridge->attention_weight = 0.1f;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
                                              "jepa_thalami_training_step", 1.0f);

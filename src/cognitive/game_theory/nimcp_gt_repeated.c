@@ -367,7 +367,7 @@ nimcp_repeated_game_t nimcp_repeated_create(
 ) {
     if (!stage_payoffs || !num_actions || num_players == 0 ||
         num_players > NIMCP_GT_MAX_PLAYERS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_repeated_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_repeated_create: NULL payoffs/actions or invalid player count");
         return NULL;
     }
 
@@ -1425,7 +1425,6 @@ int gt_repeated_query_self_knowledge(kg_reader_t* kg) {
 
 void gt_repeated_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gt_repeated_health_agent = agent;
     }
 }

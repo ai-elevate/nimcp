@@ -1012,7 +1012,6 @@ BRIDGE_DEFINE_BIO_ASYNC_FUNCS_TYPE(mirror_motor_bridge, mirror_motor_bridge_t)
 
 void mirror_motor_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mirror_motor_bridge_health_agent = agent;
     }
 }

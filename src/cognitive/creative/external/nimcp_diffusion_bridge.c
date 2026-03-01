@@ -403,7 +403,7 @@ int diffusion_text_to_image(diffusion_bridge_t* bridge,
     output->width = width;
     output->height = height;
     output->channels = 3;
-    output->pixels = nimcp_calloc(width * height * 3, sizeof(uint8_t));
+    output->pixels = nimcp_calloc((size_t)width * (size_t)height * 3, sizeof(uint8_t));
     if (!output->pixels) {
         set_diffusion_error("Failed to allocate output image");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "diffusion_text_to_image: output->pixels is NULL");

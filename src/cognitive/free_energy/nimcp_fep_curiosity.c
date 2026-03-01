@@ -215,11 +215,7 @@ void fep_curiosity_destroy(fep_curiosity_system_t* sys) {
 
 int fep_curiosity_reset(fep_curiosity_system_t* sys) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -549,10 +545,12 @@ int fep_curiosity_get_state(
         return -1;
     }
 
-    *state = sys->state;
     /* Phase 8: Heartbeat at operation start */
     fep_curiosity_instance_heartbeat("fep_curiosit_get_state", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_curiosity_system_t*)sys)->mutex);
+    *state = sys->state;
+    nimcp_platform_mutex_unlock(((fep_curiosity_system_t*)sys)->mutex);
 
     return 0;
 }
@@ -566,15 +564,17 @@ int fep_curiosity_get_stats(
         return -1;
     }
 
-    *stats = sys->stats;
     /* Phase 8: Heartbeat at operation start */
     fep_curiosity_instance_heartbeat("fep_curiosit_get_stats", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_curiosity_system_t*)sys)->mutex);
+    *stats = sys->stats;
 
     if (sys->stats.observations_processed > 0) {
         stats->avg_epistemic_value = sys->stats.total_information_gain /
                                       (float)sys->stats.observations_processed;
     }
+    nimcp_platform_mutex_unlock(((fep_curiosity_system_t*)sys)->mutex);
     return 0;
 }
 
@@ -594,19 +594,16 @@ int fep_curiosity_connect(
     /* Phase 8: Heartbeat at operation start */
     fep_curiosity_instance_heartbeat("fep_curiosit_connect", 0.0f);
 
-
+    nimcp_platform_mutex_lock(curiosity->mutex);
     curiosity->fep_system = fep;
+    nimcp_platform_mutex_unlock(curiosity->mutex);
     NIMCP_LOGGING_INFO("Curiosity connected to FEP system");
     return 0;
 }
 
 int fep_curiosity_disconnect(fep_curiosity_system_t* curiosity) {
     if (!curiosity) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity is NULL");
-
         return -1;
-
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -623,11 +620,7 @@ int fep_curiosity_disconnect(fep_curiosity_system_t* curiosity) {
 
 int fep_curiosity_connect_bio_async(fep_curiosity_system_t* sys) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
     if (sys->bio_async_enabled) return 0;
 
@@ -652,11 +645,7 @@ int fep_curiosity_connect_bio_async(fep_curiosity_system_t* sys) {
 
 int fep_curiosity_disconnect_bio_async(fep_curiosity_system_t* sys) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
     if (!sys->bio_async_enabled) return 0;
 
@@ -761,21 +750,18 @@ int fep_curiosity_clear_memory(fep_curiosity_system_t* sys) {
 
 int fep_curiosity_update(fep_curiosity_system_t* sys, uint64_t delta_ms) {
     if (!sys) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
-
         return -1;
-
     }
 
     /* Update exploration drive based on recent novelty */
     /* Phase 8: Heartbeat at operation start */
     fep_curiosity_instance_heartbeat("fep_curiosit_update", 0.0f);
 
-
+    nimcp_platform_mutex_lock(sys->mutex);
     float decay = expf(-(float)delta_ms / 10000.0f);
     sys->state.exploration_drive = sys->state.exploration_drive * decay +
                                     sys->state.novelty_score * (1.0f - decay);
+    nimcp_platform_mutex_unlock(sys->mutex);
     return 0;
 }
 
@@ -847,7 +833,7 @@ int fep_curiosity_query_self_knowledge(kg_reader_t* kg) {
  * Phase 8: Instance-level health agent setter
  * ============================================================================ */
 void fep_curiosity_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
-    (void)ctx;
+    (void)ctx;  /* context pointer not used for global singleton */
     g_fep_curiosity_instance_health_agent = agent;
 }
 

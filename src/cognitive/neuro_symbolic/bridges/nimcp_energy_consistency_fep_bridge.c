@@ -451,7 +451,6 @@ NIMCP_API nimcp_error_t energy_fep_bridge_unregister_bio_async(
 
 void energy_consistency_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_energy_consistency_fep_bridge_health_agent = agent;
     }
 }

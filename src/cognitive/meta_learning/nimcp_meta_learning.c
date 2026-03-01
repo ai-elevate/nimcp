@@ -614,14 +614,12 @@ bool meta_maml_outer_loop(meta_learner_t meta, brain_t brain,
 
         if (tasks[i]) {
             // Update task history for transfer learning
+            // Note: add_task_to_history() increments num_tasks_seen internally
             add_task_to_history(meta, tasks[i]);
 
             // Track task difficulty
             total_task_loss += tasks[i]->average_loss;
             successful_adaptations++;
-
-            // Update meta-learner statistics
-            meta->num_tasks_seen++;
         }
     }
 
@@ -1404,7 +1402,6 @@ int meta_learning_query_self_knowledge(kg_reader_t* kg) {
 
 void meta_learning_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_meta_learning_health_agent = agent;
     }
 }

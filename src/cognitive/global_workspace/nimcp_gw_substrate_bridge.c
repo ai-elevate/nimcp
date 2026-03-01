@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -139,6 +140,7 @@ gw_substrate_bridge_t* gw_substrate_bridge_create(void* gw, neural_substrate_t* 
     bridge->effects.processing_depth = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    if (bridge_base_init(&bridge->base, 0, "gw_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "gw_substrate");
     return bridge;
 }
@@ -148,7 +150,10 @@ void gw_substrate_bridge_destroy(gw_substrate_bridge_t* bridge) {
     gw_substrate_bridge_heartbeat("gw_substrate_destroy", 0.0f);
 
 
-    if (bridge) nimcp_free(bridge);
+    if (bridge) {
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+    }
 }
 
 int gw_substrate_bridge_update(gw_substrate_bridge_t* bridge) {
@@ -171,6 +176,7 @@ int gw_substrate_bridge_update(gw_substrate_bridge_t* bridge) {
     float metabolic_cap = metabolic.metabolic_capacity;
     float min_cap = bridge->config.min_capacity;
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.broadcast_reach = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         bridge->effects.processing_depth = nimcp_clampf(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -189,6 +195,7 @@ int gw_substrate_bridge_update(gw_substrate_bridge_t* bridge) {
     float alpha = 0.01f;
     bridge->stats.avg_broadcast_reach = (1.0f - alpha) * bridge->stats.avg_broadcast_reach + alpha * bridge->effects.broadcast_reach;
     bridge->stats.avg_coherence = (1.0f - alpha) * bridge->stats.avg_coherence + alpha * bridge->effects.coherence;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -198,7 +205,9 @@ int gw_substrate_bridge_get_effects(const gw_substrate_bridge_t* bridge, gw_subs
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     gw_substrate_bridge_heartbeat("gw_substrate_get_effects", 0.0f);
 

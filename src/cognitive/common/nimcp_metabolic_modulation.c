@@ -781,7 +781,6 @@ int metabolic_modulation_query_self_knowledge(kg_reader_t* kg) {
 
 void metabolic_modulation_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_metabolic_modulation_health_agent = agent;
     }
 }

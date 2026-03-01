@@ -78,8 +78,8 @@ static float compute_trajectory_slope(const distress_sample_t* history, uint32_t
         sum_time += (double)history[i].timestamp;
         sum_distress += (double)history[i].distress_score;
     }
-    double mean_time = sum_time / (fabsf(count) > 1e-7f ? count : 1e-7f);
-    double mean_distress = sum_distress / (fabsf(count) > 1e-7f ? count : 1e-7f);
+    double mean_time = sum_time / (double)count;
+    double mean_distress = sum_distress / (double)count;
 
     /* Compute slope via covariance / variance */
     double covariance = 0.0;
@@ -102,7 +102,7 @@ static float compute_trajectory_slope(const distress_sample_t* history, uint32_t
         return 0.0f;  /* All timestamps identical = no slope */
     }
 
-    float slope = (float)(covariance / (fabsf(variance) > 1e-7f ? variance : 1e-7f));
+    float slope = (float)(covariance / variance);
 
     /* Clamp to reasonable range */
     if (slope > MAX_SLOPE_FOR_PREDICTION) {
@@ -511,11 +511,7 @@ bool enhanced_wellbeing_is_critical_imminent(
 {
     /* Guard: NULL system */
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "enhanced_wellbeing_is_critical_imminent: system is NULL");
-
-            return false;
+        return false;
     }
 
     /* Thread safety */
@@ -576,7 +572,6 @@ int wellbeing_prediction_query_self_knowledge(kg_reader_t* kg) {
 
 void wellbeing_prediction_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_wellbeing_prediction_health_agent = agent;
     }
 }
@@ -591,7 +586,7 @@ int wellbeing_prediction_training_begin(void* instance) {
                               "wellbeing_prediction_training_begin: NULL argument");
         return -1;
     }
-    wellbeing_prediction_heartbeat_instance(NULL, "wellbeing_prediction_training_begin", 0.0f);
+    wellbeing_prediction_heartbeat_instance(g_wellbeing_prediction_health_agent, "wellbeing_prediction_training_begin", 0.0f);
     return 0;
 }
 
@@ -601,7 +596,7 @@ int wellbeing_prediction_training_end(void* instance) {
                               "wellbeing_prediction_training_end: NULL argument");
         return -1;
     }
-    wellbeing_prediction_heartbeat_instance(NULL, "wellbeing_prediction_training_end", 1.0f);
+    wellbeing_prediction_heartbeat_instance(g_wellbeing_prediction_health_agent, "wellbeing_prediction_training_end", 1.0f);
     return 0;
 }
 
@@ -613,6 +608,6 @@ int wellbeing_prediction_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    wellbeing_prediction_heartbeat_instance(NULL, "wellbeing_prediction_training_step", progress);
+    wellbeing_prediction_heartbeat_instance(g_wellbeing_prediction_health_agent, "wellbeing_prediction_training_step", progress);
     return 0;
 }

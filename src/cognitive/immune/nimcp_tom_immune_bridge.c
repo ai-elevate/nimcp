@@ -225,7 +225,7 @@ tom_immune_bridge_t* tom_immune_bridge_create(
     if (!tom_system || !immune_system) {
         LOG_MODULE_ERROR("tom_immune_bridge",
                   "Cannot create bridge without ToM and immune systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tom_immune_bridge_create: required parameter is NULL (tom_system, immune_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_bridge_create: required parameter is NULL (tom_system, immune_system)");
         return NULL;
     }
 
@@ -321,7 +321,7 @@ int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_apply_cyt", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute cytokine effects */
     cytokine_tom_effects_t* effects = &bridge->cytokine_effects;
@@ -359,7 +359,7 @@ int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
     effects->mentalizing_accuracy_loss = clamp_f(proinflam_total * 0.8f, 0.0f, 1.0f);
 
     bridge->cytokine_impairments++;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -382,7 +382,7 @@ int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_apply_inf", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     inflammation_tom_state_t* state = &bridge->inflammation_state;
 
@@ -417,7 +417,7 @@ int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
     state->goal_inference_impairment = clamp_f(inflammation_intensity * 0.70f, 0.0f, 1.0f);
     state->intention_inference_impairment = clamp_f(inflammation_intensity * 0.60f, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -521,17 +521,26 @@ int tom_immune_trigger_from_rejection(
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update social stress state */
     bridge->social_stress_trigger.rejection_severity = rejection_severity;
     bridge->social_stress_trigger.cortisol_triggered = true;
 
     /* Social rejection triggers IL-6 release */
-    if (rejection_severity >= SOCIAL_STRESS_IMMUNE_THRESHOLD) {
-        float il6_concentration = rejection_severity * REJECTION_INFLAMMATION_MULTIPLIER;
-        il6_concentration = clamp_f(il6_concentration, 0.0f, 1.0f);
+    bool do_release = (rejection_severity >= SOCIAL_STRESS_IMMUNE_THRESHOLD);
+    float il6_concentration = 0.0f;
+    if (do_release) {
+        il6_concentration = clamp_f(rejection_severity * REJECTION_INFLAMMATION_MULTIPLIER, 0.0f, 1.0f);
+        bridge->social_stress_trigger.inflammatory_response = true;
+        bridge->rejection_inflammations++;
+    }
 
+    bridge->social_stress_triggers++;
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Release cytokine outside lock to avoid deadlock */
+    if (do_release) {
         uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             bridge->immune_system,
@@ -541,13 +550,8 @@ int tom_immune_trigger_from_rejection(
             0,  /* Broadcast */
             &cytokine_id
         );
-
-        bridge->social_stress_trigger.inflammatory_response = true;
-        bridge->rejection_inflammations++;
     }
 
-    bridge->social_stress_triggers++;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -577,15 +581,23 @@ int tom_immune_trigger_from_prediction_error(
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update social stress state */
     bridge->social_stress_trigger.prediction_error = prediction_error;
 
     /* Prediction errors trigger IL-1β release */
-    if (prediction_error >= SOCIAL_STRESS_IMMUNE_THRESHOLD) {
-        float il1_concentration = prediction_error * 0.8f;
+    bool do_il1_release = (prediction_error >= SOCIAL_STRESS_IMMUNE_THRESHOLD);
+    float il1_concentration = prediction_error * 0.8f;
+    if (do_il1_release) {
+        bridge->social_stress_trigger.inflammatory_response = true;
+        bridge->social_stress_triggers++;
+    }
 
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Release cytokine outside lock to avoid deadlock */
+    if (do_il1_release) {
         uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             bridge->immune_system,
@@ -595,12 +607,7 @@ int tom_immune_trigger_from_prediction_error(
             0,
             &cytokine_id
         );
-
-        bridge->social_stress_trigger.inflammatory_response = true;
-        bridge->social_stress_triggers++;
     }
-
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -630,7 +637,7 @@ int tom_immune_trigger_from_isolation(
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update isolation state */
     bridge->social_stress_trigger.isolation_duration_sec = isolation_duration_sec;
@@ -638,13 +645,22 @@ int tom_immune_trigger_from_isolation(
         (isolation_duration_sec >= ISOLATION_CHRONIC_THRESHOLD);
 
     /* Chronic isolation triggers sustained inflammation */
-    if (bridge->social_stress_trigger.is_chronic_isolation) {
-        float duration_factor = clamp_f(
+    bool do_chronic_release = bridge->social_stress_trigger.is_chronic_isolation;
+    float duration_factor = 0.0f;
+    if (do_chronic_release) {
+        duration_factor = clamp_f(
             isolation_duration_sec / (ISOLATION_CHRONIC_THRESHOLD * 2.0f),
             0.0f, 1.0f
         );
+        bridge->social_stress_trigger.chronic_inflammation_risk = duration_factor;
+        bridge->social_stress_trigger.gene_expression_changes = duration_factor * 0.8f;
+        bridge->isolation_inflammations++;
+    }
 
-        /* Release multiple pro-inflammatory cytokines */
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Release cytokines outside lock to avoid deadlock */
+    if (do_chronic_release) {
         uint32_t cytokine_id = 0;
 
         /* IL-6 (chronic inflammation marker) */
@@ -668,13 +684,7 @@ int tom_immune_trigger_from_isolation(
                 &cytokine_id
             );
         }
-
-        bridge->social_stress_trigger.chronic_inflammation_risk = duration_factor;
-        bridge->social_stress_trigger.gene_expression_changes = duration_factor * 0.8f;
-        bridge->isolation_inflammations++;
     }
-
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -704,7 +714,7 @@ int tom_immune_boost_from_social_connection(
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_boost_fro", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update social connection state */
     bridge->social_connection_boost.social_bond_strength = connection_strength;
@@ -712,9 +722,21 @@ int tom_immune_boost_from_social_connection(
     bridge->social_connection_boost.empathy_engagement = connection_strength * 0.85f;
 
     /* Strong social connection releases IL-10 (anti-inflammatory) */
-    if (connection_strength >= 0.6f) {
-        float il10_concentration = connection_strength * 0.5f;
+    bool do_il10_release = (connection_strength >= 0.6f);
+    float il10_concentration = connection_strength * 0.5f;
+    if (do_il10_release) {
+        bridge->social_connection_boost.immune_enhancement = connection_strength * 0.4f;
+        bridge->social_connection_boost.il10_release_boost = il10_concentration;
+        bridge->social_connection_boost.inflammation_reduction = connection_strength * 0.3f;
+        bridge->social_connection_boost.stress_resistance = connection_strength * 0.5f;
 
+        bridge->social_connection_boosts++;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Release cytokine outside lock to avoid deadlock */
+    if (do_il10_release) {
         uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             bridge->immune_system,
@@ -724,16 +746,7 @@ int tom_immune_boost_from_social_connection(
             0,
             &cytokine_id
         );
-
-        bridge->social_connection_boost.immune_enhancement = connection_strength * 0.4f;
-        bridge->social_connection_boost.il10_release_boost = il10_concentration;
-        bridge->social_connection_boost.inflammation_reduction = connection_strength * 0.3f;
-        bridge->social_connection_boost.stress_resistance = connection_strength * 0.5f;
-
-        bridge->social_connection_boosts++;
     }
-
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
@@ -989,7 +1002,6 @@ int tom_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void tom_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_tom_immune_bridge_health_agent = agent;
     }
 }
@@ -1004,6 +1016,7 @@ int tom_immune_bridge_training_begin(void* instance) {
                               "tom_immune_bridge_training_begin: NULL argument");
         return -1;
     }
+    /* TODO: Pass instance cast to (tom_immune_bridge_t*)->health_agent once instance health agent is stored per-instance */
     tom_immune_bridge_heartbeat_instance(NULL, "tom_immune_bridge_training_begin", 0.0f);
     return 0;
 }
@@ -1014,6 +1027,7 @@ int tom_immune_bridge_training_end(void* instance) {
                               "tom_immune_bridge_training_end: NULL argument");
         return -1;
     }
+    /* TODO: Pass instance cast to (tom_immune_bridge_t*)->health_agent once instance health agent is stored per-instance */
     tom_immune_bridge_heartbeat_instance(NULL, "tom_immune_bridge_training_end", 1.0f);
     return 0;
 }
@@ -1026,6 +1040,7 @@ int tom_immune_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
+    /* TODO: Pass instance cast to (tom_immune_bridge_t*)->health_agent once instance health agent is stored per-instance */
     tom_immune_bridge_heartbeat_instance(NULL, "tom_immune_bridge_training_step", progress);
     return 0;
 }

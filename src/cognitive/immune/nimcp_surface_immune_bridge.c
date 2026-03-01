@@ -729,7 +729,9 @@ int surface_immune_resolve_antigen(
     if (ag) {
         ag->active = false;
         ag->duration_ms = nimcp_time_monotonic_ms() - ag->timestamp_ms;
-        bridge->num_active_antigens--;
+        if (bridge->num_active_antigens > 0) {
+            bridge->num_active_antigens--;
+        }
         bridge->stats.anomalies_resolved++;
         bridge->stats.active_antigens = bridge->num_active_antigens;
     }
@@ -1019,7 +1021,9 @@ int surface_immune_get_stats(
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(stats);
 
+    BRIDGE_LOCK(bridge);
     memcpy(stats, &bridge->stats, sizeof(*stats));
+    BRIDGE_UNLOCK(bridge);
     return 0;
 }
 
@@ -1069,7 +1073,6 @@ const char* surface_antigen_severity_name(surface_antigen_severity_t severity) {
 
 void surface_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_surface_immune_bridge_health_agent = agent;
     }
 }

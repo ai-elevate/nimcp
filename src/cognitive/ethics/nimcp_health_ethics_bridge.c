@@ -761,7 +761,7 @@ bool health_psych_needs_human_help(
         return false;
     }
     if (config && !config->enable_human_escalation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_psych_needs_human_help: config->enable_human_escalation is NULL");
+        NIMCP_LOGGING_WARN("health_psych_needs_human_help: human escalation not enabled in config");
         return false;
     }
 
@@ -782,8 +782,7 @@ bool health_psych_needs_human_help(
     /* Very high stress requires help */
     if (state->stress_level > 0.9f) return true;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_psych_needs_human_help: validation failed");
-    return false;
+    return false;  /* No escalation criteria met */
 }
 
 bool health_psych_permits_action(
@@ -855,7 +854,6 @@ float health_psych_get_confidence_threshold(
 
 void health_ethics_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_health_ethics_bridge_health_agent = agent;
     }
 }

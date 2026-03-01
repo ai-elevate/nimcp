@@ -286,7 +286,8 @@ int brain_immune_get_checkpoint_state(brain_immune_system_t* system, void* state
     brain_immune_heartbeat("brain_immune_get_checkpoint_state", 0.0f);
 
 
-    #include "utils/fault_tolerance/nimcp_byzantine_fault_tolerance.h"
+    /* NOTE: bft_immune_state_t is defined in nimcp_byzantine_fault_tolerance.h,
+     * which is already included transitively via nimcp_brain_immune.h */
     bft_immune_state_t* immune_state = (bft_immune_state_t*)state;
 
     nimcp_mutex_lock(system->mutex);
@@ -406,7 +407,8 @@ float brain_immune_get_cytokine_level(
     brain_immune_heartbeat("brain_immune_get_cytokine_level", 0.0f);
 
 
-    nimcp_platform_mutex_lock(system->mutex);
+    /* FIX MEDIUM:409 — use thread-layer mutex API, not platform layer */
+    nimcp_mutex_lock(system->mutex);
 
     float level = 0.0f;
     switch (type) {
@@ -430,7 +432,7 @@ float brain_immune_get_cytokine_level(
             break;
     }
 
-    nimcp_platform_mutex_unlock(system->mutex);
+    nimcp_mutex_unlock(system->mutex);
     return level;
 }
 
@@ -463,7 +465,8 @@ float brain_immune_get_inflammation_level_continuous(
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_get_inflammation_con", 0.0f);
 
-    nimcp_platform_mutex_lock(system->mutex);
+    /* FIX MEDIUM:409 — use thread-layer mutex API, not platform layer */
+    nimcp_mutex_lock(system->mutex);
 
     float max_level = 0.0f;
     for (size_t i = 0; i < system->inflammation_count; i++) {
@@ -482,7 +485,7 @@ float brain_immune_get_inflammation_level_continuous(
         }
     }
 
-    nimcp_platform_mutex_unlock(system->mutex);
+    nimcp_mutex_unlock(system->mutex);
 
     return max_level;
 }
@@ -504,6 +507,10 @@ int brain_immune_get_inflammation_effects(
 
 /**
  * @brief Set exception presentation callback
+ *
+ * NOTE: The callback is stored globally (not per-instance) for simplicity.
+ * The system parameter is validated as a NULL guard but not stored; global
+ * storage is intentional design here.
  */
 int brain_immune_set_exception_callback(
     brain_immune_system_t* system,
@@ -513,8 +520,13 @@ int brain_immune_set_exception_callback(
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_set_exception_callba", 0.0f);
 
-
-    (void)system;  /* Callback stored globally for simplicity */
+    /* FIX MEDIUM:517 — removed (void)system suppression; system is intentionally
+     * unused here because this callback is stored globally. The NULL check below
+     * serves as a guard. */
+    if (!system) {
+        /* system is unused but validate it to prevent accidental misuse */
+        return -1;
+    }
     g_exception_callback = callback;
     g_exception_callback_data = user_data;
     return 0;
@@ -523,6 +535,10 @@ int brain_immune_set_exception_callback(
 
 /**
  * @brief Set recovery completion callback
+ *
+ * NOTE: The callback is stored globally (not per-instance) for simplicity.
+ * The system parameter is validated as a NULL guard but not stored; global
+ * storage is intentional design here.
  */
 int brain_immune_set_recovery_callback(
     brain_immune_system_t* system,
@@ -532,8 +548,13 @@ int brain_immune_set_recovery_callback(
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_set_recovery_callbac", 0.0f);
 
-
-    (void)system;  /* Callback stored globally for simplicity */
+    /* FIX MEDIUM:536 — removed (void)system suppression; system is intentionally
+     * unused here because this callback is stored globally. The NULL check below
+     * serves as a guard. */
+    if (!system) {
+        /* system is unused but validate it to prevent accidental misuse */
+        return -1;
+    }
     g_recovery_callback = callback;
     g_recovery_callback_data = user_data;
     return 0;
@@ -632,8 +653,8 @@ int brain_immune_get_recovery_recommendation(
  * ============================================================================ */
 
 void brain_immune_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
-    if (instance) {
-        (void)agent;
-        g_brain_immune_health_agent = agent;
-    }
+    /* FIX HIGH:634 — the health agent is stored globally (intentional design);
+     * the instance parameter is intentionally unused. Suppress instance, not agent. */
+    (void)instance;  /* Global storage is intentional - instance is not used */
+    g_brain_immune_health_agent = agent;
 }

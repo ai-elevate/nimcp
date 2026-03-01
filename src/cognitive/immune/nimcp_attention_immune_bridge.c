@@ -153,7 +153,7 @@ attention_immune_bridge_t* attention_immune_bridge_create(
     /* Guard: require immune system */
     if (!immune_system) {
         LOG_ERROR("attention_immune_bridge_create: immune_system required");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_immune_bridge_create: immune_system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_bridge_create: immune_system is NULL");
         return NULL;
     }
 
@@ -241,11 +241,11 @@ int attention_immune_apply_cytokine_effects(attention_immune_bridge_t* bridge) {
     attention_immune_bridge_heartbeat("attention_im_attention_immune_app", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    /* Get immune stats */
+    /* Get immune stats before acquiring lock to avoid external call under lock */
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
+
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Reset effects */
     memset(&bridge->cytokine_effects, 0, sizeof(cytokine_attention_effects_t));
@@ -297,11 +297,11 @@ int attention_immune_apply_inflammation_effects(attention_immune_bridge_t* bridg
     attention_immune_bridge_heartbeat("attention_im_attention_immune_app", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    /* Get immune stats */
+    /* Get immune stats before acquiring lock to avoid external call under lock */
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
+
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Use continuous inflammation level from immune stats */
     float cont_level = stats.inflammation_level_continuous;
@@ -396,16 +396,15 @@ int attention_immune_boost_from_threat_focus(attention_immune_bridge_t* bridge) 
     attention_immune_bridge_heartbeat("attention_im_attention_immune_boo", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    /* Get attention state (from emotion-attention if available) */
+    /* Get attention state before lock to avoid external call under lock */
     float threat_focus = 0.0f;
-
     if (bridge->emotion_attention) {
         /* Query emotion-attention width (narrowed = threat-focused) */
         float width = emotion_attention_get_width(bridge->emotion_attention);
         threat_focus = 1.0f - width;  /* Narrow = high threat focus */
     }
+
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->attention_modulation.threat_focus_level = threat_focus;
 
@@ -487,17 +486,28 @@ int attention_immune_release_il10_from_mindfulness(attention_immune_bridge_t* br
     float mindful = bridge->attention_modulation.mindful_attention_level;
     float sustained_sec = bridge->attention_modulation.sustained_duration_sec;
 
+    float il10_boost = 0.0f;
+    bool do_cytokine_release = false;
+
     /* If sustained mindful attention, release IL-10 */
     if (mindful > 0.5f && sustained_sec > SUSTAINED_ATTENTION_DURATION_SEC) {
-        float il10_boost = MINDFUL_ATTENTION_IL10_BOOST * mindful;
+        il10_boost = MINDFUL_ATTENTION_IL10_BOOST * mindful;
         bridge->attention_modulation.il10_release_from_mindfulness = il10_boost;
 
         /* Reduce inflammation */
         bridge->attention_modulation.inflammation_reduction = il10_boost * 0.6f;
 
         bridge->mindful_boosts++;
+        do_cytokine_release = true;
+    } else {
+        bridge->attention_modulation.il10_release_from_mindfulness = 0.0f;
+        bridge->attention_modulation.inflammation_reduction = 0.0f;
+    }
 
-        /* Actually release IL-10 via immune system */
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Release IL-10 outside lock to avoid external call under lock */
+    if (do_cytokine_release) {
         uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             bridge->immune_system,
@@ -507,12 +517,7 @@ int attention_immune_release_il10_from_mindfulness(attention_immune_bridge_t* br
             0,  /* broadcast */
             &cytokine_id
         );
-    } else {
-        bridge->attention_modulation.il10_release_from_mindfulness = 0.0f;
-        bridge->attention_modulation.inflammation_reduction = 0.0f;
     }
-
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -676,9 +681,7 @@ int attention_immune_connect_bio_async(attention_immune_bridge_t* bridge) {
         .user_data = bridge
     };
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    /* Register with router */
+    /* Register with router outside lock to avoid external call under lock */
     bridge->base.bio_ctx = bio_router_register_module(&info);
     if (bridge->base.bio_ctx) {
         bridge->base.bio_async_enabled = true;
@@ -687,8 +690,6 @@ int attention_immune_connect_bio_async(attention_immune_bridge_t* bridge) {
         LOG_MODULE_WARN(ATTENTION_IMMUNE_MODULE_NAME,
             "Bio-async router not available, skipping registration");
     }
-
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -789,7 +790,6 @@ int attention_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void attention_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_attention_immune_bridge_health_agent = agent;
     }
 }
@@ -804,6 +804,7 @@ int attention_immune_bridge_training_begin(void* instance) {
                               "attention_immune_bridge_training_begin: NULL argument");
         return -1;
     }
+    /* TODO: Pass bridge instance as health agent when instance tracking is implemented */
     attention_immune_bridge_heartbeat_instance(NULL, "attention_immune_bridge_training_begin", 0.0f);
     return 0;
 }
@@ -814,6 +815,7 @@ int attention_immune_bridge_training_end(void* instance) {
                               "attention_immune_bridge_training_end: NULL argument");
         return -1;
     }
+    /* TODO: Pass bridge instance as health agent when instance tracking is implemented */
     attention_immune_bridge_heartbeat_instance(NULL, "attention_immune_bridge_training_end", 1.0f);
     return 0;
 }
@@ -826,6 +828,7 @@ int attention_immune_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
+    /* TODO: Pass bridge instance as health agent when instance tracking is implemented */
     attention_immune_bridge_heartbeat_instance(NULL, "attention_immune_bridge_training_step", progress);
     return 0;
 }

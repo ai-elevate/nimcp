@@ -1721,7 +1721,6 @@ static void close_reconsolidation_window(flashbulb_memory_t* fb) {
 
 void flashbulb_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_flashbulb_health_agent = agent;
     }
 }

@@ -177,20 +177,11 @@ wm_substrate_bridge_t* wm_substrate_bridge_create(
     bridge->base.bio_async_enabled = false;
     bridge->base.bio_ctx = NULL;
 
-    /* WHAT: Initialize mutex for thread safety
+    /* WHAT: Initialize bridge base (mutex + infrastructure)
      * WHY: Allow concurrent access from WM and substrate threads
-     * HOW: Allocate and initialize platform mutex
+     * HOW: Use bridge_base_init for consistent initialization
      */
-    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (bridge->base.mutex) {
-        if (nimcp_platform_mutex_init(bridge->base.mutex, false) == 0) {
-        } else {
-            NIMCP_LOGGING_WARN("Failed to initialize mutex for WM-substrate bridge");
-            bridge->base.mutex = NULL;
-        }
-    } else {
-        NIMCP_LOGGING_WARN("Failed to allocate mutex for WM-substrate bridge");
-    }
+    if (bridge_base_init(&bridge->base, 0, "working_memory_substrate") != 0) { nimcp_free(bridge); return NULL; }
 
     NIMCP_LOGGING_INFO("Created WM-substrate bridge");
     return bridge;
@@ -211,15 +202,11 @@ void wm_substrate_bridge_destroy(wm_substrate_bridge_t* bridge)
         wm_substrate_disconnect_bio_async(bridge);
     }
 
-    /* WHAT: Destroy mutex if initialized
+    /* WHAT: Clean up bridge base (mutex + infrastructure)
      * WHY: Release mutex resources
-     * HOW: Platform mutex destroy and free
+     * HOW: bridge_base_cleanup handles all base teardown
      */
-    if ((bridge->base.mutex != NULL) && bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
+    bridge_base_cleanup(&bridge->base);
 
     /* WHAT: Free bridge structure
      * WHY: Release memory
@@ -512,7 +499,6 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);
-    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -703,7 +689,6 @@ int wm_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void working_memory_substrate_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_working_memory_substrate_bridge_health_agent = agent;
     }
 }

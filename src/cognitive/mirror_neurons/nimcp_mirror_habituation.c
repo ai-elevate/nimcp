@@ -293,7 +293,7 @@ void habituation_destroy(habituation_system_t* system) {
     }
 
     if (system->mutex) {
-        nimcp_mutex_free(system->mutex);
+        nimcp_mutex_destroy(system->mutex);
     }
 
     nimcp_free(system);
@@ -934,7 +934,6 @@ void habituation_reset_stats(habituation_system_t* system) {
  * ============================================================================ */
 void mirror_habituation_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mirror_habituation_health_agent = agent;
     }
 }

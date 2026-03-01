@@ -341,7 +341,7 @@ int recovery_executive_attach_parietal(
 
     recovery_parietal_bridge_t* bridge = recovery_parietal_bridge_create(parietal, NULL);
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate bridge");
 
         return -1;
     }
@@ -365,8 +365,7 @@ parietal_lobe_t* recovery_executive_get_parietal(const recovery_executive_t* exe
 
 
     (void)exec;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_get_parietal: operation failed");
-    return NULL;
+    return NULL;  // Not implemented: parietal retrieval
 }
 
 //=============================================================================
@@ -384,7 +383,7 @@ int recovery_parietal_analyze_code(
     }
 
     if (!recovery_parietal_bridge_is_ready(bridge)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_parietal_analyze_code: recovery_parietal_bridge_is_ready is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "recovery_parietal_analyze_code: bridge not ready");
         return -1;
     }
 
@@ -524,7 +523,7 @@ int recovery_parietal_analyze_impact(
     }
 
     if (!recovery_parietal_bridge_is_ready(bridge)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_parietal_analyze_impact: recovery_parietal_bridge_is_ready is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "recovery_parietal_analyze_impact: bridge not ready");
         return -1;
     }
 
@@ -564,7 +563,7 @@ int recovery_parietal_detect_smells(
     }
 
     if (!recovery_parietal_bridge_is_ready(bridge)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_parietal_detect_smells: recovery_parietal_bridge_is_ready is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "recovery_parietal_detect_smells: bridge not ready");
         return -1;
     }
 
@@ -575,7 +574,7 @@ int recovery_parietal_detect_smells(
 
     software_eng_t* se = software_eng_create();
     if (!se) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "se is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate software_eng_t");
 
         return -1;
     }
@@ -850,7 +849,7 @@ recovery_plan_t* recovery_parietal_create_enhanced_plan(
     recovery_enhancement_t enhancement;
     int ret = recovery_parietal_enhance_plan(bridge, exec, diagnosis, location, &enhancement);
     if (ret != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_create_enhanced_plan: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "recovery_parietal_create_enhanced_plan: enhancement failed");
         return NULL;
     }
 
@@ -864,7 +863,7 @@ recovery_plan_t* recovery_parietal_create_enhanced_plan(
     /* Create plan using executive */
     recovery_plan_t* plan = recovery_executive_create_plan(exec, diagnosis, effective_goal);
     if (!plan) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plan is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to create recovery plan");
 
         return NULL;
     }
@@ -1111,7 +1110,7 @@ int recovery_parietal_generate_fix(
     }
 
     if (!bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_generate_fix: bridge->initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "recovery_parietal_generate_fix: bridge not initialized");
         return -1;
     }
 

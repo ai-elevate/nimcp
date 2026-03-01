@@ -36,6 +36,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
@@ -137,12 +138,29 @@ typedef struct {
     shannon_workspace_state_t* state;
 } shannon_workspace_mapping_t;
 
-/* NOTE: g_shannon_mappings + g_num_mappings form a compound operation that ideally
- * needs a mutex for full thread safety. Making the counter atomic prevents torn
- * reads/writes on the counter itself (P1 data race), but callers that modify the
- * array + counter together should still serialize externally for correctness. */
+/* Mutex protects compound array+counter operations on g_shannon_mappings.
+ * The atomic counter alone cannot protect the array writes/reads from races
+ * (e.g., disable compacting while enable is writing, or get_shannon_state
+ * reading while another thread compacts). */
 static shannon_workspace_mapping_t g_shannon_mappings[MAX_SHANNON_WORKSPACES];
 static _Atomic uint32_t g_num_mappings = 0;
+static nimcp_mutex_t* g_shannon_mapping_mutex = NULL;
+
+/* Lazy-init the mapping mutex (double-checked locking with atomic flag) */
+static _Atomic bool g_shannon_mutex_initialized = false;
+static void ensure_shannon_mutex(void) {
+    if (atomic_load(&g_shannon_mutex_initialized)) return;
+    /* Race on first call is benign: nimcp_mutex_create is idempotent and we
+     * only ever store one winner. Worst case: a leaked mutex on first init. */
+    nimcp_mutex_t* m = nimcp_mutex_create(NULL);
+    if (!m) return;
+    nimcp_mutex_t* expected = NULL;
+    if (!atomic_compare_exchange_strong((_Atomic(nimcp_mutex_t*)*)&g_shannon_mapping_mutex,
+                                         &expected, m)) {
+        nimcp_mutex_destroy(m);  /* Another thread won the race */
+    }
+    atomic_store(&g_shannon_mutex_initialized, true);
+}
 
 //=============================================================================
 // Internal Helper Functions
@@ -162,26 +180,30 @@ static _Atomic uint32_t g_num_mappings = 0;
  */
 static shannon_workspace_state_t* get_shannon_state(const global_workspace_t* workspace) {
     if (!workspace) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "workspace is NULL");
-
         return NULL;
-
     }
 
-    for (uint32_t i = 0; i < g_num_mappings; i++) {
+    ensure_shannon_mutex();
+    if (g_shannon_mapping_mutex) nimcp_mutex_lock(g_shannon_mapping_mutex);
+
+    uint32_t count = atomic_load(&g_num_mappings);
+    shannon_workspace_state_t* result = NULL;
+
+    for (uint32_t i = 0; i < count; i++) {
         /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && g_num_mappings > 256) {
+        if ((i & 0xFF) == 0 && count > 256) {
             global_workspace_shannon_heartbeat("global_works_loop",
-                             (float)(i + 1) / (float)g_num_mappings);
+                             (float)(i + 1) / (float)count);
         }
 
         if (g_shannon_mappings[i].workspace == workspace) {
-            return g_shannon_mappings[i].state;
+            result = g_shannon_mappings[i].state;
+            break;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_shannon_state: validation failed");
-    return NULL;
+
+    if (g_shannon_mapping_mutex) nimcp_mutex_unlock(g_shannon_mapping_mutex);
+    return result;  /* NULL when not found is normal — not an error */
 }
 
 /**
@@ -213,11 +235,7 @@ static subscriber_shannon_state_t* find_subscriber(
     cognitive_module_t module
 ) {
     if (!state) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
-
         return NULL;
-
     }
 
     for (uint32_t i = 0; i < state->num_subscribers; i++) {
@@ -297,8 +315,11 @@ bool global_workspace_enable_shannon(
     /* Phase 8: Heartbeat at operation start */
     global_workspace_shannon_heartbeat("global_works_global_workspace_ena", 0.0f);
 
+    ensure_shannon_mutex();
+    if (g_shannon_mapping_mutex) nimcp_mutex_lock(g_shannon_mapping_mutex);
 
     if (g_num_mappings >= MAX_SHANNON_WORKSPACES) {
+        if (g_shannon_mapping_mutex) nimcp_mutex_unlock(g_shannon_mapping_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "global_workspace_enable_shannon: capacity exceeded");
         return false;  /* Too many workspaces */
     }
@@ -307,6 +328,7 @@ bool global_workspace_enable_shannon(
     shannon_workspace_state_t* state =
         (shannon_workspace_state_t*)nimcp_calloc(1, sizeof(shannon_workspace_state_t));
     if (!state) {
+        if (g_shannon_mapping_mutex) nimcp_mutex_unlock(g_shannon_mapping_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_enable_shannon: state is NULL");
         return false;  /* Allocation failed */
     }
@@ -334,11 +356,13 @@ bool global_workspace_enable_shannon(
     memset(&state->stats, 0, sizeof(shannon_workspace_stats_t));
     state->stats.current_broadcast_rate = 1.0F;
 
-    /* Register mapping */
+    /* Register mapping (under mutex — array write + counter increment are atomic together) */
     uint32_t idx = atomic_load(&g_num_mappings);
     g_shannon_mappings[idx].workspace = workspace;
     g_shannon_mappings[idx].state = state;
     atomic_fetch_add(&g_num_mappings, 1);
+
+    if (g_shannon_mapping_mutex) nimcp_mutex_unlock(g_shannon_mapping_mutex);
 
     return true;
 }
@@ -353,12 +377,15 @@ void global_workspace_disable_shannon(global_workspace_t* workspace) {
     /* Phase 8: Heartbeat at operation start */
     global_workspace_shannon_heartbeat("global_works_global_workspace_dis", 0.0f);
 
+    ensure_shannon_mutex();
+    if (g_shannon_mapping_mutex) nimcp_mutex_lock(g_shannon_mapping_mutex);
 
-    for (uint32_t i = 0; i < g_num_mappings; i++) {
+    uint32_t count = atomic_load(&g_num_mappings);
+    for (uint32_t i = 0; i < count; i++) {
         /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && g_num_mappings > 256) {
+        if ((i & 0xFF) == 0 && count > 256) {
             global_workspace_shannon_heartbeat("global_works_loop",
-                             (float)(i + 1) / (float)g_num_mappings);
+                             (float)(i + 1) / (float)count);
         }
 
         if (g_shannon_mappings[i].workspace == workspace) {
@@ -368,14 +395,19 @@ void global_workspace_disable_shannon(global_workspace_t* workspace) {
             }
 
             /* Compact array (move last to this slot) */
-            uint32_t last = atomic_load(&g_num_mappings) - 1;
+            uint32_t last = count - 1;
             if (i < last) {
                 g_shannon_mappings[i] = g_shannon_mappings[last];
             }
+            memset(&g_shannon_mappings[last], 0, sizeof(shannon_workspace_mapping_t));
             atomic_fetch_sub(&g_num_mappings, 1);
+
+            if (g_shannon_mapping_mutex) nimcp_mutex_unlock(g_shannon_mapping_mutex);
             return;
         }
     }
+
+    if (g_shannon_mapping_mutex) nimcp_mutex_unlock(g_shannon_mapping_mutex);
 }
 
 bool global_workspace_is_shannon_enabled(const global_workspace_t* workspace) {
@@ -1166,7 +1198,6 @@ int global_workspace_shannon_query_self_knowledge(kg_reader_t* kg) {
 
 void global_workspace_shannon_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_global_workspace_shannon_health_agent = agent;
     }
 }
@@ -1181,7 +1212,8 @@ int global_workspace_shannon_training_begin(void* instance) {
                               "global_workspace_shannon_training_begin: NULL argument");
         return -1;
     }
-    global_workspace_shannon_heartbeat_instance(NULL, "global_workspace_shannon_training_begin", 0.0f);
+    global_workspace_shannon_heartbeat_instance(g_global_workspace_shannon_health_agent,
+                                                "global_workspace_shannon_training_begin", 0.0f);
     (void)(struct shannon_workspace_state*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1192,7 +1224,8 @@ int global_workspace_shannon_training_end(void* instance) {
                               "global_workspace_shannon_training_end: NULL argument");
         return -1;
     }
-    global_workspace_shannon_heartbeat_instance(NULL, "global_workspace_shannon_training_end", 1.0f);
+    global_workspace_shannon_heartbeat_instance(g_global_workspace_shannon_health_agent,
+                                                "global_workspace_shannon_training_end", 1.0f);
     (void)(struct shannon_workspace_state*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1205,7 +1238,8 @@ int global_workspace_shannon_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    global_workspace_shannon_heartbeat_instance(NULL, "global_workspace_shannon_training_step", progress);
+    global_workspace_shannon_heartbeat_instance(g_global_workspace_shannon_health_agent,
+                                                "global_workspace_shannon_training_step", progress);
     (void)(struct shannon_workspace_state*)instance; /* Module state available for step adaptation */
     return 0;
 }

@@ -242,30 +242,26 @@ void self_model_destroy(self_model_system_t system)
 
     nimcp_mutex_destroy(&system->mutex);
     nimcp_free(system);
-    system = NULL;
 }
 
 bool self_model_get(self_model_system_t system, self_model_t* model)
 {
-    // Process pending bio-async messages
     /* Phase 8: Heartbeat at operation start */
     self_model_heartbeat("self_model_get", 0.0f);
 
-
-    if (system && system->bio_ctx) {
-        bio_router_process_inbox(system->bio_ctx, 5);
-    }
-
-    // Guard: NULL checks
+    // Guard: NULL checks (before any field access)
     if (!system || !model) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "if: invalid parameters");
-
-            return false;
+                "self_model_get: invalid parameters");
+        return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
+
+    // Process pending bio-async messages (under lock for thread safety)
+    if (system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
 
     // Update current timestamp
     system->model.current_timestamp_ms = get_current_time_ms();
@@ -298,7 +294,7 @@ bool self_model_add_belief(self_model_system_t system, const self_belief_t* beli
     // Guard: Check capacity
     if (system->model.num_beliefs >= SELF_MAX_BELIEFS) {
         nimcp_mutex_unlock(&system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "self_model_add_belief: capacity exceeded");
+        LOG_WARN("self_model_add_belief: belief capacity exceeded (max %u)", SELF_MAX_BELIEFS);
         return false;
     }
 
@@ -611,7 +607,7 @@ bool self_model_generate_summary(self_model_system_t system,
 
     if (written < 0 || (size_t)written >= summary_len) {
         nimcp_mutex_unlock(&system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_model_generate_summary: capacity exceeded");
+        LOG_WARN("self_model_generate_summary: buffer capacity exceeded");
         return false;
     }
 
@@ -864,8 +860,8 @@ bool self_model_update_topology_awareness(self_model_system_t system)
     /* Check if KG is connected */
     if (!system->kg_connected || !kg_is_available(&system->kg_context)) {
         nimcp_mutex_unlock(&system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_update_topology_awareness: required parameter is NULL (system->kg_connected, kg_is_available)");
-        return false;
+        /* KG not available - graceful degradation, not an error */
+        return true;
     }
 
     /* Query KG for all active nodes */
@@ -1061,7 +1057,6 @@ int self_model_query_self_knowledge(kg_reader_t* kg) {
 
 void self_model_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_self_model_health_agent = agent;
     }
 }
@@ -1076,7 +1071,7 @@ int self_model_training_begin(void* instance) {
                               "self_model_training_begin: NULL argument");
         return -1;
     }
-    self_model_heartbeat_instance(NULL, "self_model_training_begin", 0.0f);
+    self_model_heartbeat("self_model_training_begin", 0.0f);
     (void)(struct self_model_system*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1087,7 +1082,7 @@ int self_model_training_end(void* instance) {
                               "self_model_training_end: NULL argument");
         return -1;
     }
-    self_model_heartbeat_instance(NULL, "self_model_training_end", 1.0f);
+    self_model_heartbeat("self_model_training_end", 1.0f);
     (void)(struct self_model_system*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1100,7 +1095,7 @@ int self_model_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    self_model_heartbeat_instance(NULL, "self_model_training_step", progress);
+    self_model_heartbeat("self_model_training_step", progress);
     (void)(struct self_model_system*)instance; /* Module state available for step adaptation */
     return 0;
 }

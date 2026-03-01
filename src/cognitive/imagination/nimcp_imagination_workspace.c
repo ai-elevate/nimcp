@@ -417,7 +417,7 @@ void imagination_workspace_destroy(imagination_workspace_t* workspace) {
     if (workspace->temp_audio) nimcp_tensor_destroy(workspace->temp_audio);
 
     /* Destroy mutex */
-    if (workspace->mutex) nimcp_mutex_free(workspace->mutex);
+    if (workspace->mutex) nimcp_mutex_destroy(workspace->mutex);
 
     nimcp_free(workspace);
     workspace = NULL;
@@ -780,7 +780,6 @@ int imagination_workspace_query_self_knowledge(kg_reader_t* kg) {
 
 void imagination_workspace_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_imagination_workspace_health_agent = agent;
     }
 }
@@ -795,7 +794,7 @@ int imagination_workspace_training_begin(void* instance) {
                               "imagination_workspace_training_begin: NULL argument");
         return -1;
     }
-    imagination_workspace_heartbeat_instance(NULL, "imagination_workspace_training_begin", 0.0f);
+    imagination_workspace_heartbeat("imagination_workspace_training_begin", 0.0f);
     (void)(struct scenario_slot*)instance; /* Module state available for reset */
     return 0;
 }
@@ -806,7 +805,7 @@ int imagination_workspace_training_end(void* instance) {
                               "imagination_workspace_training_end: NULL argument");
         return -1;
     }
-    imagination_workspace_heartbeat_instance(NULL, "imagination_workspace_training_end", 1.0f);
+    imagination_workspace_heartbeat("imagination_workspace_training_end", 1.0f);
     (void)(struct scenario_slot*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -819,7 +818,7 @@ int imagination_workspace_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    imagination_workspace_heartbeat_instance(NULL, "imagination_workspace_training_step", progress);
+    imagination_workspace_heartbeat("imagination_workspace_training_step", progress);
     (void)(struct scenario_slot*)instance; /* Module state available for step adaptation */
     return 0;
 }

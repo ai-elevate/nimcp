@@ -414,6 +414,6 @@ int fep_orchestrator_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    fep_orchestrator_heartbeat_instance(NULL, "fep_orchestrator_training_step", progress);
+    fep_orchestrator_heartbeat_instance(g_fep_orchestrator_health_agent, "fep_orchestrator_training_step", progress);
     return 0;
 }

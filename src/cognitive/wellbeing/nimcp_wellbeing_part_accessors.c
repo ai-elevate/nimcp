@@ -504,7 +504,6 @@ bool wellbeing_get_performance_stats(uint32_t window_ms,
 
 void wellbeing_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_wellbeing_health_agent = agent;
     }
 }

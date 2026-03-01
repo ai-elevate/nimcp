@@ -264,17 +264,12 @@ int joy_fep_process_positive_pe(
     return 0;
 }
 
-int joy_fep_boost_learning_rate(
-    joy_fep_bridge_t* bridge
-) {
-    /* Phase 8: Heartbeat at operation start */
-    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_boost_learni", 0.0f);
-
-
-    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+/**
+ * @brief Internal unlocked version of learning rate boost.
+ * Caller MUST hold bridge->base.mutex.
+ */
+static int joy_fep_boost_learning_rate_unlocked(joy_fep_bridge_t* bridge) {
     if (!bridge->config.enable_joy_learning_boost) return 0;
-
-    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Joy enhances learning rate
      * Positive affect facilitates encoding of successful behaviors
@@ -293,11 +288,25 @@ int joy_fep_boost_learning_rate(
     float value_gain = 1.0f + (joy_intensity * 0.5f);
     bridge->emotion_effects.value_update_gain = value_gain;
 
-    nimcp_mutex_unlock(bridge->base.mutex);
-
     NIMCP_LOGGING_DEBUG("Boosted learning: rate=%f, dopamine=%f, value_gain=%f",
                         learning_boost, dopamine, value_gain);
     return 0;
+}
+
+int joy_fep_boost_learning_rate(
+    joy_fep_bridge_t* bridge
+) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_boost_learni", 0.0f);
+
+
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    int rc = joy_fep_boost_learning_rate_unlocked(bridge);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    return rc;
 }
 
 /* ============================================================================
@@ -314,10 +323,10 @@ int joy_fep_update(
 
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    /* Apply learning rate boost */
-    joy_fep_boost_learning_rate(bridge);
-
     nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Apply learning rate boost (unlocked — we already hold the mutex) */
+    joy_fep_boost_learning_rate_unlocked(bridge);
 
     /* Joy decays relatively quickly compared to grief
      * This models the transient nature of positive affect
@@ -343,7 +352,7 @@ int joy_fep_update(
  * ============================================================================ */
 
 int joy_fep_get_state(
-    const joy_fep_bridge_t* bridge,
+    joy_fep_bridge_t* bridge,
     joy_fep_state_t* state
 ) {
     /* Phase 8: Heartbeat at operation start */
@@ -360,7 +369,7 @@ int joy_fep_get_state(
 }
 
 int joy_fep_get_stats(
-    const joy_fep_bridge_t* bridge,
+    joy_fep_bridge_t* bridge,
     joy_fep_stats_t* stats
 ) {
     /* Phase 8: Heartbeat at operation start */

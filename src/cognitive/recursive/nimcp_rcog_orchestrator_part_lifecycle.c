@@ -101,7 +101,7 @@ void rcog_orchestrator_destroy(rcog_orchestrator_t* orch) {
     }
 
     if (orch->mutex) {
-        nimcp_mutex_free(orch->mutex);
+        nimcp_mutex_destroy(orch->mutex);
     }
 
     nimcp_free(orch);

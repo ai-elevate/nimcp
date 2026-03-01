@@ -127,24 +127,7 @@ fault_tolerance_substrate_bridge_t* fault_tolerance_substrate_bridge_create(void
     bridge->substrate = substrate;
     bridge->config = config ? *config : fault_tolerance_substrate_default_config();
 
-    /* Initialize mutex */
-    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex for fault tolerance substrate bridge");
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fault_tolerance_substrate_bridge_create: bridge->base is NULL");
-        return NULL;
-    }
-
-    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize mutex for fault tolerance substrate bridge");
-        nimcp_free(bridge->base.mutex);
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "fault_tolerance_substrate_bridge_create: validation failed");
-        return NULL;
-    }
+    if (bridge_base_init(&bridge->base, 0, "fault_tolerance_substrate") != 0) { nimcp_free(bridge); return NULL; }
 
     bridge->effects.detection_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->effects.recovery_speed = 1.0f;
@@ -158,17 +141,10 @@ fault_tolerance_substrate_bridge_t* fault_tolerance_substrate_bridge_create(void
 void fault_tolerance_substrate_bridge_destroy(fault_tolerance_substrate_bridge_t* bridge) {
     if (!bridge) return;
 
-    /* Destroy mutex */
     /* Phase 8: Heartbeat at operation start */
     fault_tolerance_substrate_bridge_heartbeat("fault_tolera_destroy", 0.0f);
 
-
-    if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
-
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }

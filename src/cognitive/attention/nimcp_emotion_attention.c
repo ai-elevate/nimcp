@@ -1057,7 +1057,6 @@ int emotion_attention_query_self_knowledge(kg_reader_t* kg) {
 
 void emotion_attention_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_emotion_attention_health_agent = agent;
     }
 }

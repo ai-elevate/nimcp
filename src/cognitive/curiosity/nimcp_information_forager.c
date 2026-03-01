@@ -595,29 +595,38 @@ static int tick_evaluating(information_forager_t f)
         return 0;
     }
 
-    /* If we have a data callback, use it */
+    /* If we have a data callback, invoke it OUTSIDE the lock to avoid
+     * blocking other threads. Copy needed data under lock first. */
     if (f->data_callback) {
-        char* result_text = NULL;
-        size_t result_len = 0;
+        char query_copy[FORAGER_MAX_QUERY_LEN];
+        char hint_copy[FORAGER_MAX_SOURCE_HINT_LEN];
+        forager_data_callback_t cb = f->data_callback;
+        void* cb_data = f->callback_user_data;
 
+        snprintf(query_copy, sizeof(query_copy), "%s", top->query);
+        snprintf(hint_copy, sizeof(hint_copy), "%s", top->source_hint);
         f->stats.data_callbacks_made++;
         top->attempts++;
+        uint32_t target_id = top->target_id;
+        float expected_ig = top->expected_ig;
 
-        int rc = f->data_callback(
-            top->query,
-            top->source_hint,
-            f->callback_user_data,
-            &result_text,
-            &result_len
-        );
+        /* Release lock before invoking external callback */
+        nimcp_mutex_unlock(f->mutex);
+
+        char* result_text = NULL;
+        size_t result_len = 0;
+        int rc = cb(query_copy, hint_copy, cb_data, &result_text, &result_len);
+
+        /* Re-acquire lock to update state */
+        nimcp_mutex_lock(f->mutex);
 
         if (rc == 0 && result_text && result_len > 0) {
             /* Got data — store and move to LEARNING */
-            f->current_target_id = top->target_id;
+            f->current_target_id = target_id;
             f->pending_text = result_text;
             f->pending_text_len = result_len;
             f->pending_quality = 0.5f; /* Unknown quality */
-            f->last_expected_ig = top->expected_ig;
+            f->last_expected_ig = expected_ig;
             transition_state(f, FORAGER_STATE_LEARNING);
             return 1;
         }

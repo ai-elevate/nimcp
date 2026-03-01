@@ -40,7 +40,7 @@ BRIDGE_BOILERPLATE(brain_immune_plasticity, MESH_ADAPTER_CATEGORY_SECURITY)
  * ============================================================================ */
 
 static immune_plasticity_stats_t g_stats = {0};
-static nimcp_platform_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* ============================================================================
  * Configuration API
@@ -1069,7 +1069,6 @@ int brain_immune_plasticity_query_self_knowledge(kg_reader_t* kg) {
 
 void brain_immune_plasticity_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_brain_immune_plasticity_health_agent = agent;
     }
 }

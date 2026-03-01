@@ -208,13 +208,9 @@ knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* confi
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
-    if (!bridge->encoding_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return NULL;
     bridge->retrieval_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->retrieval_buffer) return NULL;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->prev_state) return NULL;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->retrieval_buffer || !bridge->prev_state) {

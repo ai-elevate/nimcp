@@ -1496,7 +1496,6 @@ int intuition_integrations_query_self_knowledge(kg_reader_t* kg) {
 
 void intuition_integrations_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_intuition_integrations_health_agent = agent;
     }
 }
@@ -1511,7 +1510,7 @@ int intuition_integrations_training_begin(void* instance) {
                               "intuition_integrations_training_begin: NULL argument");
         return -1;
     }
-    intuition_integrations_heartbeat_instance(NULL, "intuition_integrations_training_begin", 0.0f);
+    intuition_integrations_heartbeat_instance(g_intuition_integrations_health_agent, "intuition_integrations_training_begin", 0.0f);
     intuition_system_t* sys = (intuition_system_t*)instance;
     sys->stats.extrapolations_performed = 0;
     sys->stats.successful_extrapolations = 0;
@@ -1538,7 +1537,7 @@ int intuition_integrations_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    intuition_integrations_heartbeat_instance(NULL, "intuition_integrations_training_step", progress);
+    intuition_integrations_heartbeat_instance(g_intuition_integrations_health_agent, "intuition_integrations_training_step", progress);
     intuition_system_t* sys = (intuition_system_t*)instance;
     sys->stats.intuitions_trained++;
     /* Reduce inflammation sensitivity as integration strengthens */
@@ -1560,7 +1559,7 @@ int intuition_integrations_training_end(void* instance) {
                               "intuition_integrations_training_end: NULL argument");
         return -1;
     }
-    intuition_integrations_heartbeat_instance(NULL, "intuition_integrations_training_end", 1.0f);
+    intuition_integrations_heartbeat_instance(g_intuition_integrations_health_agent, "intuition_integrations_training_end", 1.0f);
     intuition_system_t* sys = (intuition_system_t*)instance;
     float accuracy = 0.0f;
     if (sys->stats.intuitions_trained > 0) {

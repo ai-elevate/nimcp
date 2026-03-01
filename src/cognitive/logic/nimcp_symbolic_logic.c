@@ -457,7 +457,6 @@ bool symbolic_logic_backward_chain(
     }
 
     LOG_DEBUG("Goal could not be proven");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_backward_chain: operation failed");
     return false;
 }
 
@@ -479,7 +478,6 @@ bool symbolic_logic_resolve(
     *derived_empty = false;
 
     // Simple stub - resolution is complex, return false for now
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_resolve: required parameter is NULL (logic, negated_goal, derived_empty)");
     return false;
 }
 
@@ -1217,8 +1215,7 @@ bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iteratio
     }
 
     if (!logic->config.enable_forward_chaining) {
-        LOG_ERROR("Forward chaining not enabled");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_forward_chain: logic->config is NULL");
+        LOG_DEBUG("Forward chaining not enabled in config");
         return false;
     }
 
@@ -1455,13 +1452,12 @@ bool symbolic_logic_consolidate_memory(symbolic_logic_t* logic, logic_clause_t* 
     }
 
     if (!logic->config.enable_memory_consolidation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_consolidate_memory: logic->config is NULL");
-        return false;
+        return false;  // Memory consolidation disabled in config
     }
 
     // Add fact with context
     if (!symbolic_logic_add_fact(logic, clause, salience)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_consolidate_memory: symbolic_logic_add_fact is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "symbolic_logic_consolidate_memory: add_fact failed");
         return false;
     }
 
@@ -1601,7 +1597,6 @@ int symbolic_logic_query_self_knowledge(kg_reader_t* kg) {
 
 void symbolic_logic_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_symbolic_logic_health_agent = agent;
     }
 }

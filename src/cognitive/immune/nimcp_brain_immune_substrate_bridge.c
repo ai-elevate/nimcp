@@ -16,6 +16,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -134,6 +135,8 @@ brain_immune_substrate_bridge_t* brain_immune_substrate_bridge_create(void* brai
     bridge->effects.cytokine_regulation = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    if (bridge_base_init(&bridge->base, 0, "brain_immune_substrate") != 0) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "brain_immune_substrate");
     return bridge;
 }
 
@@ -146,6 +149,7 @@ void brain_immune_substrate_bridge_destroy(brain_immune_substrate_bridge_t* brid
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -170,6 +174,7 @@ int brain_immune_substrate_bridge_update(brain_immune_substrate_bridge_t* bridge
     float metabolic_cap = metabolic.metabolic_capacity;
     float min_cap = bridge->config.min_capacity;
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_atp_modulation) {
         /* Response strength scales with ATP (immune activation is costly) */
         bridge->effects.response_strength = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -190,6 +195,7 @@ int brain_immune_substrate_bridge_update(brain_immune_substrate_bridge_t* bridge
                                         bridge->effects.cytokine_regulation) / 4.0f;
 
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -198,7 +204,9 @@ int brain_immune_substrate_bridge_get_effects(const brain_immune_substrate_bridg
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     brain_immune_substrate_bridge_heartbeat("brain_immune_get_effects", 0.0f);
 

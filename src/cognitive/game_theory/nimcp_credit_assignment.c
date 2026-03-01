@@ -807,7 +807,6 @@ int credit_assignment_query_self_knowledge(kg_reader_t* kg) {
 
 void credit_assignment_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_credit_assignment_health_agent = agent;
     }
 }

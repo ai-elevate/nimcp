@@ -10,6 +10,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -116,6 +117,7 @@ sleep_wake_substrate_bridge_t* sleep_wake_substrate_bridge_create(void* sleep_wa
     bridge->effects.circadian_phase = 1.0f;
     bridge->effects.recovery_rate = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    if (bridge_base_init(&bridge->base, 0, "sleep_wake_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "sleep_wake_substrate");
     return bridge;
 }
@@ -126,6 +128,7 @@ void sleep_wake_substrate_bridge_destroy(sleep_wake_substrate_bridge_t* bridge) 
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -141,6 +144,7 @@ int sleep_wake_substrate_bridge_update(sleep_wake_substrate_bridge_t* bridge) {
         return -1;
     }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* ATP depletion increases sleep pressure */
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.arousal_level = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -153,6 +157,7 @@ int sleep_wake_substrate_bridge_update(sleep_wake_substrate_bridge_t* bridge) {
     }
     bridge->effects.overall_capacity = bridge->effects.arousal_level;
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -161,7 +166,9 @@ int sleep_wake_substrate_bridge_get_effects(const sleep_wake_substrate_bridge_t*
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

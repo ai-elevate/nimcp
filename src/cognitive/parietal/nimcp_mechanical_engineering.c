@@ -647,7 +647,6 @@ int mechanical_engineering_query_self_knowledge(kg_reader_t* kg) {
 
 void mechanical_engineering_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mechanical_engineering_health_agent = agent;
     }
 }
@@ -662,7 +661,7 @@ int mechanical_engineering_training_begin(void* instance) {
                               "mechanical_engineering_training_begin: NULL argument");
         return -1;
     }
-    mechanical_engineering_heartbeat_instance(NULL, "mechanical_engineering_training_begin", 0.0f);
+    mechanical_engineering_heartbeat_instance(g_mechanical_engineering_health_agent, "mechanical_engineering_training_begin", 0.0f);
     mechanical_eng_t* me = (mechanical_eng_t*)instance;
     memset(&me->stats, 0, sizeof(me->stats));
     NIMCP_LOGGING_INFO("Mechanical engineering training begin: stats reset");
@@ -677,7 +676,7 @@ int mechanical_engineering_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    mechanical_engineering_heartbeat_instance(NULL, "mechanical_engineering_training_step", progress);
+    mechanical_engineering_heartbeat_instance(g_mechanical_engineering_health_agent, "mechanical_engineering_training_step", progress);
     mechanical_eng_t* me = (mechanical_eng_t*)instance;
     me->stats.structural_analyses++;
     /* Tighten convergence tolerance as training progresses */
@@ -703,7 +702,7 @@ int mechanical_engineering_training_end(void* instance) {
                               "mechanical_engineering_training_end: NULL argument");
         return -1;
     }
-    mechanical_engineering_heartbeat_instance(NULL, "mechanical_engineering_training_end", 1.0f);
+    mechanical_engineering_heartbeat_instance(g_mechanical_engineering_health_agent, "mechanical_engineering_training_end", 1.0f);
     mechanical_eng_t* me = (mechanical_eng_t*)instance;
     NIMCP_LOGGING_INFO("Mechanical engineering training end: %lu structural, %lu vibration, "
                        "%lu thermal, %lu fatigue analyses, convergence_tol=%.2e",

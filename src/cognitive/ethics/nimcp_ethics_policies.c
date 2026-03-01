@@ -457,7 +457,6 @@ int ethics_policies_query_self_knowledge(kg_reader_t* kg) {
 
 void ethics_policies_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_ethics_policies_health_agent = agent;
     }
 }

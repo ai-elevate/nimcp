@@ -217,7 +217,7 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
         bridge->config.num_dimensions > ETHICS_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
         bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_snn_create: num_dimensions out of range");
         return NULL;
     }
 
@@ -251,7 +251,6 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return NULL;
     bridge->judgment_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
 
     if (!bridge->encoding_buffer || !bridge->output_buffer || !bridge->judgment_buffer) {
@@ -1104,7 +1103,7 @@ int ethics_snn_bio_async_connect(ethics_snn_bridge_t* bridge) {
         return -1;
     }
     if (!bridge->config.enable_bio_async) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_bio_async_connect: bridge->config is NULL");
+        NIMCP_LOGGING_WARN("ethics_snn_bio_async_connect: bio_async not enabled in config");
         return -1;
     }
 

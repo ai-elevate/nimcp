@@ -452,8 +452,8 @@ int api_upscale_image(creative_api_client_t* client,
         response->images[0].width = new_width;
         response->images[0].height = new_height;
         response->images[0].channels = image->channels;
-        response->images[0].pixels = nimcp_calloc(new_width * new_height *
-                                                   image->channels, sizeof(uint8_t));
+        response->images[0].pixels = nimcp_calloc((size_t)new_width * (size_t)new_height *
+                                                   (size_t)image->channels, sizeof(uint8_t));
 
         if (response->images[0].pixels) {
             /* Simple nearest-neighbor upscale */
@@ -620,13 +620,17 @@ int api_generate_text_stream(creative_api_client_t* client,
 
     /* Simulate token streaming */
     if (token_callback && response.text) {
-        /* Split into "tokens" (words) */
-        char* text = response.text;
-        char* word = strtok(text, " ");
-        while (word) {
-            token_callback(word, user_data);
-            token_callback(" ", user_data);
-            word = strtok(NULL, " ");
+        /* strdup the string before tokenizing — strtok modifies in-place and
+           would corrupt the response text before the callback receives it */
+        char* text_copy = strdup(response.text);
+        if (text_copy) {
+            char* word = strtok(text_copy, " ");
+            while (word) {
+                token_callback(word, user_data);
+                token_callback(" ", user_data);
+                word = strtok(NULL, " ");
+            }
+            free(text_copy);
         }
     }
 

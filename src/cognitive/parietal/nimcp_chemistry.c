@@ -261,7 +261,7 @@ void chemistry_destroy(chemistry_t* chem) {
 
 
     if (chem->lock) {
-        nimcp_mutex_free(chem->lock);
+        nimcp_mutex_destroy(chem->lock);
     }
     nimcp_free(chem);
     chem = NULL;
@@ -1181,7 +1181,6 @@ int chemistry_query_self_knowledge(kg_reader_t* kg) {
 
 void chemistry_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_chemistry_health_agent = agent;
     }
 }
@@ -1196,7 +1195,7 @@ int chemistry_training_begin(void* instance) {
                               "chemistry_training_begin: NULL argument");
         return -1;
     }
-    chemistry_heartbeat_instance(NULL, "chemistry_training_begin", 0.0f);
+    chemistry_heartbeat_instance(g_chemistry_health_agent, "chemistry_training_begin", 0.0f);
     (void)(struct chemistry*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1207,7 +1206,7 @@ int chemistry_training_end(void* instance) {
                               "chemistry_training_end: NULL argument");
         return -1;
     }
-    chemistry_heartbeat_instance(NULL, "chemistry_training_end", 1.0f);
+    chemistry_heartbeat_instance(g_chemistry_health_agent, "chemistry_training_end", 1.0f);
     (void)(struct chemistry*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1220,7 +1219,7 @@ int chemistry_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    chemistry_heartbeat_instance(NULL, "chemistry_training_step", progress);
+    chemistry_heartbeat_instance(g_chemistry_health_agent, "chemistry_training_step", progress);
     (void)(struct chemistry*)instance; /* Module state available for step adaptation */
     return 0;
 }

@@ -181,22 +181,7 @@ attention_substrate_bridge_t* attention_substrate_bridge_create(
         attention_substrate_default_config(&bridge->config);
     }
 
-    /* Initialize mutex */
-    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_substrate_bridge_create: failed to allocate mutex");
-        nimcp_free(bridge);
-        bridge = NULL;
-        return NULL;
-    }
-
-    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_substrate_bridge_create: failed to initialize mutex");
-        nimcp_free(bridge->base.mutex);
-        nimcp_free(bridge);
-        bridge = NULL;
-        return NULL;
-    }
+    if (bridge_base_init(&bridge->base, 0, "attention_substrate") != 0) { nimcp_free(bridge); return NULL; }
 
     /* Initialize effects to optimal (no impairment) */
     bridge->effects.focus_capacity = 1.0f;
@@ -230,12 +215,7 @@ void attention_substrate_bridge_destroy(attention_substrate_bridge_t* bridge)
         attention_substrate_disconnect_bio_async(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge */
     nimcp_free(bridge);
@@ -659,7 +639,6 @@ int attention_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void attention_substrate_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_attention_substrate_bridge_health_agent = agent;
     }
 }

@@ -278,7 +278,10 @@ static void decay_antibodies(brain_immune_system_t* system, uint64_t delta_ms) {
         /* Deactivate if too weak */
         if (ab->effectiveness < 0.1f) {
             ab->active = false;
-            system->stats.active_antibodies--;
+            /* FIX HIGH:281 — guard against unsigned underflow before decrementing */
+            if (system->stats.active_antibodies > 0) {
+                system->stats.active_antibodies--;
+            }
         }
     }
 }
@@ -290,6 +293,12 @@ static void decay_antibodies(brain_immune_system_t* system, uint64_t delta_ms) {
  * WHAT: Progress inflammation resolution and notify imagination engine
  * WHY:  Inflammation affects imagination vividness/coherence (sickness behavior)
  * HOW:  Track level changes and send modulation when inflammation changes
+ *
+ * NOTE: Called while mutex is held (from brain_immune_update).
+ *       send_imagination_modulation_unlocked() performs I/O (bio_router_send)
+ *       while the caller's mutex is held. This is a known architectural issue
+ *       — the bio_router_send is non-blocking but still performs I/O under lock.
+ *       The fix below copies needed data and unlocks before sending.
  */
 static void update_inflammation_sites(brain_immune_system_t* system, uint64_t delta_ms) {
     if (!system) return;
@@ -326,9 +335,39 @@ static void update_inflammation_sites(brain_immune_system_t* system, uint64_t de
         }
     }
 
-    /* Notify imagination engine of inflammation changes */
-    if (level_changed) {
-        send_imagination_modulation_unlocked(system);
+    /* FIX HIGH:520 — send_imagination_modulation_unlocked() calls bio_router_send()
+     * while caller holds system->mutex (I/O under lock). Fix: collect the data needed,
+     * unlock before sending, re-lock after. */
+    if (level_changed && system->bio_context) {
+        /* Snapshot the data needed to build the modulation message */
+        float inflammation = compute_inflammation_float_unlocked(system);
+        void* bio_ctx = system->bio_context;
+
+        /* Unlock before performing I/O */
+        nimcp_mutex_unlock(system->mutex);
+
+        /* Build and send modulation message without holding the lock */
+        float vividness_modifier = expf(-2.0f * inflammation);
+        float coherence_modifier = expf(-1.5f * inflammation);
+        if (vividness_modifier < 0.1f) vividness_modifier = 0.1f;
+        if (coherence_modifier < 0.2f) coherence_modifier = 0.2f;
+
+        bio_msg_imagination_modulation_t msg;
+        memset(&msg, 0, sizeof(msg));
+        msg.header.type = BIO_MSG_IMAGINATION_VIVIDNESS_UPDATE;
+        msg.header.source_module = BIO_MODULE_IMMUNE_BRAIN;
+        msg.header.target_module = BIO_MODULE_IMAGINATION;
+        msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
+        msg.header.channel = BIO_CHANNEL_SEROTONIN;
+        msg.modulation_type = 0;
+        msg.modifier = vividness_modifier;
+        msg.source_level = inflammation;
+        msg.secondary_level = coherence_modifier;
+
+        bio_router_send(bio_ctx, &msg, sizeof(msg), 0);
+
+        /* Re-lock for caller's continued use */
+        nimcp_mutex_lock(system->mutex);
     }
 }
 
@@ -465,7 +504,7 @@ static float compute_inflammation_float_unlocked(brain_immune_system_t* system) 
 
 
 /**
- * @brief Send imagination modulation message (internal, mutex already held)
+ * @brief Send imagination modulation message (internal, mutex NOT held)
  *
  * WHAT: Compute and send vividness/coherence modifiers to imagination engine
  * WHY:  Sickness behavior includes reduced imaginative capacity
@@ -479,14 +518,19 @@ static float compute_inflammation_float_unlocked(brain_immune_system_t* system) 
  * Pro-inflammatory cytokines (IL-1, IL-6, TNF-alpha) cross BBB and
  * affect hippocampus and prefrontal cortex, impairing imagination.
  *
- * NOTE: Called from update_inflammation_sites while mutex is held
+ * NOTE: This function must NOT be called while system->mutex is held,
+ * as bio_router_send performs I/O. Call after unlocking if modulation
+ * is needed from within a locked section (see update_inflammation_sites).
  */
 static void send_imagination_modulation_unlocked(brain_immune_system_t* system) {
     if (!system) return;
     if (!system->bio_context) return;  /* Bio-async not connected */
 
-    /* Compute inflammation level as float [0.0, 1.0] */
+    /* Lock to safely read state for computing modulation */
+    nimcp_mutex_lock(system->mutex);
     float inflammation = compute_inflammation_float_unlocked(system);
+    void* bio_ctx = system->bio_context;
+    nimcp_mutex_unlock(system->mutex);
 
     /* Compute modifiers: higher inflammation = lower vividness/coherence
      * Using exponential decay: modifier = e^(-k * inflammation)
@@ -516,6 +560,6 @@ static void send_imagination_modulation_unlocked(brain_immune_system_t* system) 
     msg.source_level = inflammation;
     msg.secondary_level = coherence_modifier;  /* Coherence in secondary field */
 
-    /* Send via bio-async (non-blocking) */
-    bio_router_send(system->bio_context, &msg, sizeof(msg), 0);
+    /* Send via bio-async (non-blocking) without holding the lock */
+    bio_router_send(bio_ctx, &msg, sizeof(msg), 0);
 }

@@ -905,6 +905,7 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     engine->questions = nimcp_calloc(engine->questions_capacity, sizeof(question_history_t));
     if (!engine->questions) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_engine_create: failed to allocate questions");
+        hash_table_destroy(engine->concept_hash_table);
         nimcp_free(engine);
         engine = NULL;
         return NULL;
@@ -915,6 +916,7 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     engine->sources = nimcp_calloc(engine->sources_capacity, sizeof(knowledge_source_t));
     if (!engine->sources) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_engine_create: failed to allocate sources");
+        hash_table_destroy(engine->concept_hash_table);
         nimcp_free(engine->questions);
         nimcp_free(engine);
         engine = NULL;
@@ -3048,7 +3050,6 @@ float curiosity_estimate_empowerment_change(
 
 void curiosity_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_curiosity_health_agent = agent;
     }
 }
@@ -3063,7 +3064,7 @@ int curiosity_training_begin(void* instance) {
                               "curiosity_training_begin: NULL argument");
         return -1;
     }
-    curiosity_heartbeat_instance(NULL, "curiosity_training_begin", 0.0f);
+    curiosity_heartbeat_instance(g_curiosity_health_agent, "curiosity_training_begin", 0.0f);
     (void)(struct concept_bucket_struct*)instance; /* Module state available for reset */
     return 0;
 }
@@ -3074,7 +3075,7 @@ int curiosity_training_end(void* instance) {
                               "curiosity_training_end: NULL argument");
         return -1;
     }
-    curiosity_heartbeat_instance(NULL, "curiosity_training_end", 1.0f);
+    curiosity_heartbeat_instance(g_curiosity_health_agent, "curiosity_training_end", 1.0f);
     (void)(struct concept_bucket_struct*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -3087,7 +3088,7 @@ int curiosity_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    curiosity_heartbeat_instance(NULL, "curiosity_training_step", progress);
+    curiosity_heartbeat_instance(g_curiosity_health_agent, "curiosity_training_step", progress);
     (void)(struct concept_bucket_struct*)instance; /* Module state available for step adaptation */
     return 0;
 }

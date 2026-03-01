@@ -522,21 +522,21 @@ int financial_world_model_bridge_get_state(
 
     fin_world_heartbeat("fin_world_get_state", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->state_initialized) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         set_error("World state not initialized");
         return FIN_WORLD_ERR_STATE;
     }
 
     if (fin_world_state_copy(state, &bridge->current_state) != 0) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         set_error("Failed to copy state");
         return FIN_WORLD_ERR_NO_MEMORY;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_WORLD_ERR_OK;
 }
@@ -1252,9 +1252,9 @@ int financial_world_model_bridge_get_stats(
         return FIN_WORLD_ERR_NULL;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_WORLD_ERR_OK;
 }

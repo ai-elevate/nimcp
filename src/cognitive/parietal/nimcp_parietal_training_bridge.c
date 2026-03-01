@@ -723,9 +723,9 @@ int parietal_training_get_stats(
 
     BRIDGE_BBB_VALIDATE(bridge, stats, sizeof(*stats));
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

@@ -777,11 +777,25 @@ uint32_t creative_pattern_db_find_similar(const creative_pattern_extractor_t* ex
         }
     }
 
-    /* Copy top results */
+    /* Copy top results — deep-copy feature_vector to avoid aliasing extractor's heap pointer */
     uint32_t count = 0;
     for (uint32_t i = 0; i < ext->num_known_patterns && count < max_results; i++) {
         if (scores[i].sim >= ext->config.min_distinctiveness) {
-            results[count++] = ext->known_patterns[scores[i].idx];
+            const extracted_pattern_t* src = &ext->known_patterns[scores[i].idx];
+            results[count] = *src;
+            if (src->feature_vector && src->feature_dim > 0) {
+                results[count].feature_vector = nimcp_calloc(src->feature_dim, sizeof(float));
+                if (results[count].feature_vector) {
+                    memcpy(results[count].feature_vector, src->feature_vector,
+                           src->feature_dim * sizeof(float));
+                } else {
+                    results[count].feature_vector = NULL;
+                    results[count].feature_dim = 0;
+                }
+            } else {
+                results[count].feature_vector = NULL;
+            }
+            count++;
         }
     }
 
@@ -800,7 +814,22 @@ uint32_t creative_pattern_db_by_category(const creative_pattern_extractor_t* ext
     uint32_t count = 0;
     for (uint32_t i = 0; i < ext->num_known_patterns && count < max_results; i++) {
         if (ext->known_patterns[i].category == category) {
-            results[count++] = ext->known_patterns[i];
+            const extracted_pattern_t* src = &ext->known_patterns[i];
+            results[count] = *src;
+            /* Deep-copy feature_vector to avoid aliasing extractor's heap pointer */
+            if (src->feature_vector && src->feature_dim > 0) {
+                results[count].feature_vector = nimcp_calloc(src->feature_dim, sizeof(float));
+                if (results[count].feature_vector) {
+                    memcpy(results[count].feature_vector, src->feature_vector,
+                           src->feature_dim * sizeof(float));
+                } else {
+                    results[count].feature_vector = NULL;
+                    results[count].feature_dim = 0;
+                }
+            } else {
+                results[count].feature_vector = NULL;
+            }
+            count++;
         }
     }
 

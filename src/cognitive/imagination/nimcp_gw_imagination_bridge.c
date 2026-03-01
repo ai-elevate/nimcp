@@ -248,7 +248,6 @@ void gw_imagination_bridge_destroy(gw_imagination_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
-    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed GW-imagination bridge");
 }
 
@@ -695,13 +694,19 @@ bool gw_imagination_is_broadcasting(const gw_imagination_bridge_t* bridge) {
     }
 
     /* Check if imagination module is currently broadcasting */
-    /* In full implementation, would check global_workspace_get_broadcast_source() */
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_is_br", 0.0f);
 
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_is_broadcasting: required parameter is NULL (bridge, bridge->global_workspace)");
-    return false;  /* Placeholder */
+    /* Check if the global workspace has an active broadcast from imagination */
+    bool has_broadcast = global_workspace_has_broadcast(bridge->global_workspace);
+    if (!has_broadcast) {
+        return false;
+    }
+
+    /* Check if the broadcast source is from the imagination module */
+    uint32_t source = (uint32_t)global_workspace_get_broadcast_source(bridge->global_workspace);
+    return (source == BIO_MODULE_IMAGINATION_GW || source == BIO_MODULE_IMAGINATION);
 }
 
 float gw_imagination_get_broadcast_strength(const gw_imagination_bridge_t* bridge) {
@@ -726,10 +731,12 @@ int gw_imagination_get_gw_effects(
         return -1;
     }
 
-    *effects = bridge->gw_to_imag;
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_get_g", 0.0f);
 
+    nimcp_mutex_lock(((gw_imagination_bridge_t*)bridge)->base.mutex);
+    *effects = bridge->gw_to_imag;
+    nimcp_mutex_unlock(((gw_imagination_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -743,10 +750,12 @@ int gw_imagination_get_imag_effects(
         return -1;
     }
 
-    *effects = bridge->imag_to_gw;
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_get_i", 0.0f);
 
+    nimcp_mutex_lock(((gw_imagination_bridge_t*)bridge)->base.mutex);
+    *effects = bridge->imag_to_gw;
+    nimcp_mutex_unlock(((gw_imagination_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -760,10 +769,12 @@ int gw_imagination_get_stats(
         return -1;
     }
 
-    *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_get_s", 0.0f);
 
+    nimcp_mutex_lock(((gw_imagination_bridge_t*)bridge)->base.mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(((gw_imagination_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -910,7 +921,6 @@ int gw_imagination_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void gw_imagination_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gw_imagination_bridge_health_agent = agent;
     }
 }
@@ -925,7 +935,7 @@ int gw_imagination_bridge_training_begin(void* instance) {
                               "gw_imagination_bridge_training_begin: NULL argument");
         return -1;
     }
-    gw_imagination_bridge_heartbeat_instance(NULL, "gw_imagination_bridge_training_begin", 0.0f);
+    gw_imagination_bridge_heartbeat("gw_imagination_bridge_training_begin", 0.0f);
     return 0;
 }
 
@@ -935,7 +945,7 @@ int gw_imagination_bridge_training_end(void* instance) {
                               "gw_imagination_bridge_training_end: NULL argument");
         return -1;
     }
-    gw_imagination_bridge_heartbeat_instance(NULL, "gw_imagination_bridge_training_end", 1.0f);
+    gw_imagination_bridge_heartbeat("gw_imagination_bridge_training_end", 1.0f);
     return 0;
 }
 
@@ -947,6 +957,6 @@ int gw_imagination_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    gw_imagination_bridge_heartbeat_instance(NULL, "gw_imagination_bridge_training_step", progress);
+    gw_imagination_bridge_heartbeat("gw_imagination_bridge_training_step", progress);
     return 0;
 }

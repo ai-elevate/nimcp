@@ -105,8 +105,7 @@ static bias_type_learning_t* find_type_learning(
             return &bridge->type_learning[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_type_learning: validation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static void apply_weight_bounds(
@@ -339,8 +338,7 @@ int bias_plasticity_unregister_synapse(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_plasticity_unregister_synapse: validation failed");
-    return -1;
+    return -1;  /* Synapse not found */
 }
 
 int bias_plasticity_get_synapse(
@@ -359,8 +357,7 @@ int bias_plasticity_get_synapse(
 
     bias_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
     if (!found) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_get_synapse: found is NULL");
-        return -1;
+        return -1;  /* Synapse not found */
     }
 
     *synapse = *found;
@@ -904,8 +901,7 @@ int bias_plasticity_get_type_learning(
 
     bias_type_learning_t* type_learn = find_type_learning(bridge, bias_type);
     if (!type_learn) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_get_type_learning: type_learn is NULL");
-        return -1;
+        return -1;  /* Type not found */
     }
 
     *learning = *type_learn;

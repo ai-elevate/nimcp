@@ -17,6 +17,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -157,6 +158,7 @@ personality_substrate_bridge_t* personality_substrate_bridge_create(void* person
     bridge->effects.social_energy = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    if (bridge_base_init(&bridge->base, 0, "personality_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "personality_substrate");
     return bridge;
 }
@@ -171,6 +173,7 @@ void personality_substrate_bridge_destroy(personality_substrate_bridge_t* bridge
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -199,6 +202,7 @@ int personality_substrate_bridge_update(personality_substrate_bridge_t* bridge) 
     metabolic_effects_t generic_effects;
     metabolic_effects_init_full(&generic_effects);
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (metabolic_compute_effects(&input, &bridge->metabolic_config, &generic_effects) == 0) {
         /* Map generic effects to personality-specific effect names */
         /* ATP depletion reduces self-control (ego depletion) */
@@ -211,6 +215,7 @@ int personality_substrate_bridge_update(personality_substrate_bridge_t* bridge) 
     }
 
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -219,7 +224,9 @@ int personality_substrate_bridge_get_effects(const personality_substrate_bridge_
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     personality_substrate_bridge_heartbeat("personality__get_effects", 0.0f);
 

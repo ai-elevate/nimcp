@@ -291,7 +291,6 @@ uint32_t knowledge_get_all_ordered_by_confidence(knowledge_system_t system,
 
 void knowledge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_knowledge_health_agent = agent;
     }
 }

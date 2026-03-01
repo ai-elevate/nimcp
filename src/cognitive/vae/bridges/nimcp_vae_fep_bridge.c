@@ -1244,7 +1244,6 @@ void vae_fep_bridge_set_health_agent(vae_fep_bridge_t* bridge,
     if (!bridge) return;
 
     /* Health agent integration placeholder */
-    (void)agent;
 
     NIMCP_LOG_DEBUG("VAE-FEP Bridge: Health agent set");
 }

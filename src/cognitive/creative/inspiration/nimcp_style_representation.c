@@ -609,8 +609,23 @@ int style_repr_get_archetype_info(const style_representer_t* repr,
         return -1;
     }
 
-    /* Copy info (shallow copy of embedding) */
+    /* Deep-copy archetype info; clone the canonical embedding to avoid pointer aliasing */
     *out = archetypes[archetype_id];
+    if (archetypes[archetype_id].canonical.embedding &&
+        archetypes[archetype_id].canonical.embedding_dim > 0) {
+        uint32_t dim = archetypes[archetype_id].canonical.embedding_dim;
+        out->canonical.embedding = nimcp_calloc(dim, sizeof(float));
+        if (out->canonical.embedding) {
+            memcpy(out->canonical.embedding,
+                   archetypes[archetype_id].canonical.embedding,
+                   dim * sizeof(float));
+        } else {
+            out->canonical.embedding = NULL;
+            out->canonical.embedding_dim = 0;
+        }
+    } else {
+        out->canonical.embedding = NULL;
+    }
 
     return 0;
 }
@@ -675,7 +690,23 @@ uint32_t style_repr_list_archetypes(const style_representer_t* repr,
     if (!archetypes) return 0;
 
     uint32_t copy_count = count < max_count ? count : max_count;
-    memcpy(out, archetypes, copy_count * sizeof(archetype_info_t));
+    for (uint32_t i = 0; i < copy_count; i++) {
+        out[i] = archetypes[i];
+        /* Deep-copy canonical embedding to avoid aliasing the representer's heap pointer */
+        if (archetypes[i].canonical.embedding && archetypes[i].canonical.embedding_dim > 0) {
+            uint32_t dim = archetypes[i].canonical.embedding_dim;
+            out[i].canonical.embedding = nimcp_calloc(dim, sizeof(float));
+            if (out[i].canonical.embedding) {
+                memcpy(out[i].canonical.embedding, archetypes[i].canonical.embedding,
+                       dim * sizeof(float));
+            } else {
+                out[i].canonical.embedding = NULL;
+                out[i].canonical.embedding_dim = 0;
+            }
+        } else {
+            out[i].canonical.embedding = NULL;
+        }
+    }
 
     return copy_count;
 }
@@ -714,6 +745,20 @@ int style_repr_find_archetype_by_name(const style_representer_t* repr,
     for (uint32_t i = 0; i < count; i++) {
         if (strcasecmp(archetypes[i].name, name) == 0) {
             *out = archetypes[i];
+            /* Deep-copy canonical embedding to avoid aliasing the representer's heap pointer */
+            if (archetypes[i].canonical.embedding && archetypes[i].canonical.embedding_dim > 0) {
+                uint32_t dim = archetypes[i].canonical.embedding_dim;
+                out->canonical.embedding = nimcp_calloc(dim, sizeof(float));
+                if (out->canonical.embedding) {
+                    memcpy(out->canonical.embedding, archetypes[i].canonical.embedding,
+                           dim * sizeof(float));
+                } else {
+                    out->canonical.embedding = NULL;
+                    out->canonical.embedding_dim = 0;
+                }
+            } else {
+                out->canonical.embedding = NULL;
+            }
             return 0;
         }
     }

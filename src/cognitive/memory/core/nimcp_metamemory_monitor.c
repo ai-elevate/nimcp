@@ -1825,7 +1825,6 @@ static float linear_regression_slope(const float* values, size_t count) {
 
 void metamemory_monitor_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_metamemory_monitor_health_agent = agent;
     }
 }

@@ -202,7 +202,7 @@ void equation_engine_destroy(equation_engine_t* eq) {
 
 
     if (eq->lock) {
-        nimcp_mutex_free(eq->lock);
+        nimcp_mutex_destroy(eq->lock);
     }
 
     nimcp_free(eq);
@@ -1550,7 +1550,6 @@ int equation_manipulation_query_self_knowledge(kg_reader_t* kg) {
 
 void equation_manipulation_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_equation_manipulation_health_agent = agent;
     }
 }
@@ -1565,7 +1564,7 @@ int equation_manipulation_training_begin(void* instance) {
                               "equation_manipulation_training_begin: NULL argument");
         return -1;
     }
-    equation_manipulation_heartbeat_instance(NULL, "equation_manipulation_training_begin", 0.0f);
+    equation_manipulation_heartbeat_instance(g_equation_manipulation_health_agent, "equation_manipulation_training_begin", 0.0f);
     (void)(struct equation_engine*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1576,7 +1575,7 @@ int equation_manipulation_training_end(void* instance) {
                               "equation_manipulation_training_end: NULL argument");
         return -1;
     }
-    equation_manipulation_heartbeat_instance(NULL, "equation_manipulation_training_end", 1.0f);
+    equation_manipulation_heartbeat_instance(g_equation_manipulation_health_agent, "equation_manipulation_training_end", 1.0f);
     (void)(struct equation_engine*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1589,7 +1588,7 @@ int equation_manipulation_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    equation_manipulation_heartbeat_instance(NULL, "equation_manipulation_training_step", progress);
+    equation_manipulation_heartbeat_instance(g_equation_manipulation_health_agent, "equation_manipulation_training_step", progress);
     (void)(struct equation_engine*)instance; /* Module state available for step adaptation */
     return 0;
 }

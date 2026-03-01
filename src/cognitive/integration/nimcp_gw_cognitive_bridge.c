@@ -360,21 +360,24 @@ int gw_cognitive_broadcast(
     bridge->current_content.content_type = content_type;
     bridge->current_content.timestamp = get_timestamp_ms();
 
-    /* Iterate all active receivers and call their callbacks */
-    for (size_t i = 0; i < bridge->receiver_capacity; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && bridge->receiver_capacity > 256) {
-            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
-                             (float)(i + 1) / (float)bridge->receiver_capacity);
-        }
+    /* Snapshot active receivers under lock, then invoke callbacks outside lock
+     * to avoid deadlock/priority-inversion from user callbacks. */
+    size_t recv_cap = bridge->receiver_capacity;
+    size_t snap_count = 0;
 
-        if (bridge->receivers[i].active && bridge->receivers[i].callback) {
-            bridge->receivers[i].callback(
-                content_type,
-                content_data,
-                content_size,
-                bridge->receivers[i].user_data
-            );
+    /* Stack-allocate snapshot array for typical small receiver lists.
+     * Use heap for large lists (>64 receivers). */
+    broadcast_receiver_t stack_snap[64];
+    broadcast_receiver_t* snap = (recv_cap <= 64) ? stack_snap : NULL;
+    if (!snap && recv_cap > 0) {
+        snap = (broadcast_receiver_t*)nimcp_malloc(recv_cap * sizeof(broadcast_receiver_t));
+    }
+
+    if (snap) {
+        for (size_t i = 0; i < recv_cap; i++) {
+            if (bridge->receivers[i].active && bridge->receivers[i].callback) {
+                snap[snap_count++] = bridge->receivers[i];
+            }
         }
     }
 
@@ -382,6 +385,27 @@ int gw_cognitive_broadcast(
     bridge->stats.broadcasts_sent++;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside the lock */
+    if (snap) {
+        for (size_t i = 0; i < snap_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && snap_count > 256) {
+                gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                                 (float)(i + 1) / (float)snap_count);
+            }
+
+            snap[i].callback(
+                content_type,
+                content_data,
+                content_size,
+                snap[i].user_data
+            );
+        }
+        if (snap != stack_snap) {
+            nimcp_free(snap);
+        }
+    }
 
     return 0;
 }
@@ -403,17 +427,15 @@ int gw_cognitive_compete_for_access(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    /* Check if priority meets threshold */
+    /* Check if priority meets threshold (normal rejection — not an error) */
     if (priority < bridge->config.broadcast_threshold) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_cognitive_compete_for_access: validation failed");
         return -1;  /* Rejected - priority too low */
     }
 
-    /* Check if priority meets minimum competition priority */
+    /* Check if priority meets minimum competition priority (normal rejection) */
     if (priority < bridge->config.min_competition_priority) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_cognitive_compete_for_access: validation failed");
         return -1;  /* Rejected */
     }
 
@@ -454,7 +476,6 @@ int gw_cognitive_compete_for_access(
     if (slot < 0) {
         /* No room for new competitors */
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_cognitive_compete_for_access: validation failed");
         return -1;  /* Rejected - competition full */
     }
 
@@ -575,7 +596,6 @@ int gw_cognitive_register_receiver(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_cognitive_register_receiver: operation failed");
     return -1;  /* No room for more receivers */
 }
 
@@ -617,7 +637,6 @@ int gw_cognitive_unregister_receiver(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_cognitive_unregister_receiver: operation failed");
     return -1;  /* Not found */
 }
 
@@ -636,11 +655,10 @@ int gw_cognitive_get_conscious_content(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    /* Check if there is content */
+    /* Check if there is content (normal: workspace may be empty) */
     if (!bridge->current_content.data && bridge->current_content.data_size == 0) {
         content_out->has_content = false;
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_get_conscious_content: bridge->current_content is NULL");
         return -1;  /* No content */
     }
 
@@ -770,26 +788,49 @@ int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge) {
     bridge->competitor_count = 0;
     bridge->stats.active_competitors = 0;
 
-    /* Broadcast to all receivers (still under lock for consistency) */
-    for (size_t i = 0; i < bridge->receiver_capacity; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && bridge->receiver_capacity > 256) {
-            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
-                             (float)(i + 1) / (float)bridge->receiver_capacity);
-        }
+    /* Snapshot active receivers under lock, then invoke outside lock
+     * to avoid deadlock/priority-inversion from user callbacks. */
+    size_t recv_cap2 = bridge->receiver_capacity;
+    size_t snap_count2 = 0;
 
-        if (bridge->receivers[i].active && bridge->receivers[i].callback) {
-            bridge->receivers[i].callback(
-                broadcast_type,
-                broadcast_data,
-                broadcast_size,
-                bridge->receivers[i].user_data
-            );
+    broadcast_receiver_t stack_snap2[64];
+    broadcast_receiver_t* snap2 = (recv_cap2 <= 64) ? stack_snap2 : NULL;
+    if (!snap2 && recv_cap2 > 0) {
+        snap2 = (broadcast_receiver_t*)nimcp_malloc(recv_cap2 * sizeof(broadcast_receiver_t));
+    }
+
+    if (snap2) {
+        for (size_t i = 0; i < recv_cap2; i++) {
+            if (bridge->receivers[i].active && bridge->receivers[i].callback) {
+                snap2[snap_count2++] = bridge->receivers[i];
+            }
         }
     }
+
     bridge->stats.broadcasts_sent++;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside the lock */
+    if (snap2) {
+        for (size_t i = 0; i < snap_count2; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && snap_count2 > 256) {
+                gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                                 (float)(i + 1) / (float)snap_count2);
+            }
+
+            snap2[i].callback(
+                broadcast_type,
+                broadcast_data,
+                broadcast_size,
+                snap2[i].user_data
+            );
+        }
+        if (snap2 != stack_snap2) {
+            nimcp_free(snap2);
+        }
+    }
 
     /* Free temporary broadcast data */
     if (broadcast_data) {

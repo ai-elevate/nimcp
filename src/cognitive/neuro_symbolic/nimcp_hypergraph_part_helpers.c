@@ -148,7 +148,6 @@ static int find_edge_index(const nimcp_hypergraph_t* hg, uint32_t edge_id)
 
 void hypergraph_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_hypergraph_health_agent = agent;
     }
 }

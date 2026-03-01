@@ -1281,7 +1281,6 @@ NIMCP_EXPORT void metamemory_stats_print(const metamemory_stats_t* stats) {
 
 void metamemory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_metamemory_health_agent = agent;
     }
 }

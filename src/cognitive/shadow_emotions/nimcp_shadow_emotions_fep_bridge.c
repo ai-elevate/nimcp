@@ -109,8 +109,12 @@ int shadow_emotions_fep_bridge_disconnect(shadow_emotions_fep_bridge_t* bridge) 
 int shadow_emotions_fep_detect_dysregulation(shadow_emotions_fep_bridge_t* bridge) {
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->shadow_effects.shadow_pattern_detected = true;
-    bridge->stats.pattern_detections++;
+    float dysregulation_score = bridge->state.current_dysregulation;
+    bool detected = (dysregulation_score > 0.5f);
+    bridge->shadow_effects.shadow_pattern_detected = detected;
+    if (detected) {
+        bridge->stats.pattern_detections++;
+    }
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
@@ -158,9 +162,12 @@ int shadow_emotions_fep_update_beliefs_from_correction(shadow_emotions_fep_bridg
 
 int shadow_emotions_fep_bridge_update(shadow_emotions_fep_bridge_t* bridge, uint64_t delta_ms) {
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    (void)delta_ms;
     shadow_emotions_fep_detect_dysregulation(bridge);
     shadow_emotions_fep_recalibrate_precision(bridge);
-    shadow_emotions_fep_apply_shadow_diagnostic(bridge);
+    if (bridge->fep_system) {
+        shadow_emotions_fep_apply_shadow_diagnostic(bridge);
+    }
     return 0;
 }
 

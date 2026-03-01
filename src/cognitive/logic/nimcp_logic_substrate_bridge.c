@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -127,6 +128,7 @@ logic_substrate_bridge_t* logic_substrate_bridge_create(void* logic, neural_subs
     bridge->effects.abstraction_capacity = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    if (bridge_base_init(&bridge->base, 0, "logic_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "logic_substrate");
     return bridge;
 }
@@ -136,7 +138,10 @@ void logic_substrate_bridge_destroy(logic_substrate_bridge_t* bridge) {
     logic_substrate_bridge_heartbeat("logic_substr_destroy", 0.0f);
 
 
-    if (bridge) nimcp_free(bridge);
+    if (bridge) {
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+    }
 }
 
 int logic_substrate_bridge_update(logic_substrate_bridge_t* bridge) {
@@ -159,6 +164,7 @@ int logic_substrate_bridge_update(logic_substrate_bridge_t* bridge) {
     float metabolic_cap = metabolic.metabolic_capacity;
     float min_cap = bridge->config.min_capacity;
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.inference_depth = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         bridge->effects.logical_accuracy = nimcp_clampf(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -175,6 +181,7 @@ int logic_substrate_bridge_update(logic_substrate_bridge_t* bridge) {
                                         bridge->effects.abstraction_capacity) / 4.0f;
 
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -183,7 +190,9 @@ int logic_substrate_bridge_get_effects(const logic_substrate_bridge_t* bridge, l
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     logic_substrate_bridge_heartbeat("logic_substr_get_effects", 0.0f);
 

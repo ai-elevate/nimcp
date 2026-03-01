@@ -209,13 +209,9 @@ meta_learning_snn_bridge_t* meta_learning_snn_create(const meta_learning_snn_con
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
-    if (!bridge->encoding_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
-    if (!bridge->output_buffer) return NULL;
     bridge->insight_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->insight_buffer) return NULL;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
-    if (!bridge->prev_state) return NULL;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->insight_buffer || !bridge->prev_state) {
@@ -389,7 +385,7 @@ int meta_learning_snn_encode_state(
                                  (float)(n + 1) / (float)neurons_per_dim);
             }
 
-            float preferred = (float)n / (neurons_per_dim - 1);
+            float preferred = (neurons_per_dim <= 1) ? 0.5f : (float)n / (float)(neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
             uint32_t idx = d * neurons_per_dim + n;

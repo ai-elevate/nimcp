@@ -129,7 +129,6 @@ NIMCP_API float qmcts_fep_bridge_expected_value(
 
 void quantum_mcts_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_quantum_mcts_fep_bridge_health_agent = agent;
     }
 }

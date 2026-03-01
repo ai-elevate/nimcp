@@ -2397,7 +2397,6 @@ const char* fractal_classify_noise(float dfa_exponent) {
 
 void fractal_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_fractal_health_agent = agent;
     }
 }

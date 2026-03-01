@@ -291,7 +291,7 @@ void omni_wm_destroy(omni_world_model_t* wm) {
     checkpoint_store_destroy_internal(wm->checkpoint_store);
 
     if (wm->mutex) {
-        nimcp_mutex_free(wm->mutex);
+        nimcp_mutex_destroy(wm->mutex);
     }
 
     nimcp_free(wm);

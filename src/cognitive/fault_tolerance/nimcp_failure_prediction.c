@@ -263,7 +263,7 @@ failure_predictor_t* failure_predictor_create_custom(
 
     if (!config) {
         LOG_ERROR("NULL config in failure_predictor_create_custom");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failure_predictor_create_custom: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_create_custom: config is NULL");
         return NULL;
     }
 
@@ -281,7 +281,7 @@ failure_predictor_t* failure_predictor_create_custom(
     if (config->prediction_threshold < 0.0F || config->prediction_threshold > 1.0F) {
         LOG_ERROR("Invalid prediction_threshold: %.2f (must be [0,1])",
                   config->prediction_threshold);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_create_custom: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "failure_predictor_create_custom: validation failed");
         return NULL;
     }
 

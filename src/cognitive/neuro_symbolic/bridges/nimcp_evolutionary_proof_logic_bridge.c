@@ -100,7 +100,6 @@ NIMCP_API void evoproof_logic_bridge_destroy(evoproof_logic_bridge_t* bridge) {
 
 void evolutionary_proof_logic_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_evolutionary_proof_logic_bridge_health_agent = agent;
     }
 }

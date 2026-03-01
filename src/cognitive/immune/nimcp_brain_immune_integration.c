@@ -344,7 +344,8 @@ nimcp_immune_integration_t* nimcp_immune_integration_create(
 
 cleanup:
     nimcp_immune_integration_destroy(integration);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_create: validation failed");
+    /* FIX HIGH:347 — cleanup reached on alloc/init failure: use NO_MEMORY not NULL_POINTER */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_immune_integration_create: initialization failed");
     return NULL;
 }
 
@@ -385,7 +386,7 @@ void nimcp_immune_integration_destroy(nimcp_immune_integration_t* integration) {
 
     /* Free integration structure */
     nimcp_free(integration);
-    integration = NULL;
+    /* FIX LOW:388 — removed dead code: integration = NULL has no effect on caller */
 }
 
 int nimcp_immune_integration_start(nimcp_immune_integration_t* integration) {
@@ -455,7 +456,8 @@ int nimcp_immune_integration_tick(
         return -1;
     }
     if (!integration->running) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_tick: integration->running is NULL");
+        /* FIX MEDIUM:458 — running is a bool, not a pointer; "is NULL" is misleading */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_tick: integration is not running");
         return -1;
     }
 
@@ -749,7 +751,6 @@ void nimcp_immune_integration_log_state(
 
 void brain_immune_integration_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_brain_immune_integration_health_agent = agent;
     }
 }

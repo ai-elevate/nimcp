@@ -330,7 +330,7 @@ int somato_logic_ground_observation(
             break;
 
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "somato_logic_ground_observation: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "somato_logic_ground_observation: unknown observation type");
             return -1;
     }
 
@@ -676,7 +676,6 @@ int somato_logic_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void somatosensory_logic_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_somatosensory_logic_bridge_health_agent = agent;
     }
 }

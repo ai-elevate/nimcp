@@ -567,7 +567,7 @@ void code_immune_destroy(code_immune_system_t* system) {
     }
 
     if (system->mutex) {
-        nimcp_mutex_free(system->mutex);
+        nimcp_mutex_destroy(system->mutex);
     }
 
     nimcp_free(system->antigens);
@@ -3681,7 +3681,6 @@ int code_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void code_immune_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_code_immune_health_agent = agent;
     }
 }

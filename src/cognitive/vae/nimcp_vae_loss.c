@@ -581,8 +581,8 @@ float vae_loss_compute(vae_loss_ctx_t* ctx,
     /* Compute total loss (negative ELBO) */
     float total_loss = recon_loss + kl_weighted;
 
-    /* Check for numerical issues */
-    if (is_invalid(total_loss)) {
+    /* Check for numerical issues — skip EMA update if invalid to avoid corruption */
+    if (is_invalid(total_loss) || is_invalid(recon_loss) || is_invalid(kl_raw)) {
         ctx->nan_count += isnan(total_loss) ? 1 : 0;
         ctx->inf_count += isinf(total_loss) ? 1 : 0;
 
@@ -590,9 +590,12 @@ float vae_loss_compute(vae_loss_ctx_t* ctx,
                        recon_loss, kl_raw);
         NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_VAE_LOSS_NAN,
                              "Invalid loss value (NaN/Inf)");
+        /* Do NOT update EMA — NaN/Inf would corrupt the running average permanently */
+        nimcp_mutex_unlock(ctx->mutex);
+        return NAN;
     }
 
-    /* Update EMA statistics */
+    /* Update EMA statistics — only reached when loss is finite */
     if (ctx->loss_computations == 0) {
         ctx->ema_recon = recon_loss;
         ctx->ema_kl = kl_raw;
@@ -1067,7 +1070,6 @@ void vae_loss_set_health_agent(vae_loss_ctx_t* ctx,
 
     /* Health agent integration placeholder */
     /* In full implementation, would register heartbeat callback */
-    (void)agent;
 
     NIMCP_LOG_DEBUG("VAE Loss: Health agent set");
 }

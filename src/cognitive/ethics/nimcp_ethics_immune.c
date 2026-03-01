@@ -224,8 +224,12 @@ bool ethics_trigger_immune_response(ethics_engine_t engine,
     }
 
     // Guard: Immune integration not enabled
-    if (!engine->immune_integration_enabled || !engine->immune_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_trigger_immune_response: required parameter is NULL (engine->immune_integration_enabled, engine->immune_system)");
+    if (!engine->immune_integration_enabled) {
+        NIMCP_LOGGING_WARN("ethics_trigger_immune_response: immune integration not enabled");
+        return false;
+    }
+    if (!engine->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_trigger_immune_response: engine->immune_system is NULL");
         return false;
     }
 
@@ -369,7 +373,6 @@ int ethics_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void ethics_immune_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_ethics_immune_health_agent = agent;
     }
 }

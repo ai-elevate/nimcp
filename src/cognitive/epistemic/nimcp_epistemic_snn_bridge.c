@@ -254,13 +254,9 @@ epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* confi
     bridge->num_output_neurons = config->neurons_per_dim * 2;
 
     bridge->evidence_neurons = nimcp_calloc(bridge->num_evidence_neurons, sizeof(epistemic_neuron_t));
-    if (!bridge->evidence_neurons) return NULL;
     bridge->reliability_neurons = nimcp_calloc(bridge->num_reliability_neurons, sizeof(epistemic_neuron_t));
-    if (!bridge->reliability_neurons) return NULL;
     bridge->bias_neurons = nimcp_calloc(bridge->num_bias_neurons, sizeof(epistemic_neuron_t));
-    if (!bridge->bias_neurons) return NULL;
     bridge->output_neurons = nimcp_calloc(bridge->num_output_neurons, sizeof(epistemic_neuron_t));
-    if (!bridge->output_neurons) return NULL;
 
     if (!bridge->evidence_neurons || !bridge->reliability_neurons ||
         !bridge->bias_neurons || !bridge->output_neurons) {

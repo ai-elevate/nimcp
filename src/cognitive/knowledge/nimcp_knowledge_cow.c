@@ -492,7 +492,6 @@ int knowledge_cow_query_self_knowledge(kg_reader_t* kg) {
 
 void knowledge_cow_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_knowledge_cow_health_agent = agent;
     }
 }

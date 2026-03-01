@@ -1607,7 +1607,6 @@ theta_op_type_t theta_gamma_window_to_op(theta_phase_window_t window) {
 
 void theta_gamma_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_theta_gamma_health_agent = agent;
     }
 }

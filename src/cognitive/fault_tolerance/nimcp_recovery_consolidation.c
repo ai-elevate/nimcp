@@ -248,7 +248,7 @@ static void* background_consolidation_thread(void* arg) {
     recovery_consolidation_t* cons = (recovery_consolidation_t*)arg;
     if (!cons) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cons is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "background_consolidation_thread: NULL cons pointer");
 
         return NULL;
 
@@ -269,7 +269,6 @@ static void* background_consolidation_thread(void* arg) {
     }
 
     LOG_INFO("Background consolidation thread stopped");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "background_consolidation_thread: operation failed");
     return NULL;
 }
 
@@ -380,7 +379,7 @@ recovery_consolidation_t* consolidation_create_custom(
         nimcp_free(cons->episodes);
         nimcp_free(cons);
         cons = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_create_custom: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "consolidation_create_custom: mutex init failed");
         return NULL;
     }
 
@@ -757,7 +756,6 @@ semantic_rule_t* recovery_consolidation_get_rule(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_consolidation_get_rule: validation failed");
     return NULL;  // Not found
 }
 
@@ -928,14 +926,12 @@ bool consolidation_start_background(
 
     if (consolidation->background_running) {
         LOG_WARNING("Background consolidation already running");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_start_background: validation failed");
         return false;
     }
 
     // GUARD: Check if enabled
     if (!consolidation->config.enable_background_consolidation) {
         LOG_WARNING("Background consolidation not enabled in config");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_start_background: consolidation->config is NULL");
         return false;
     }
 
@@ -951,7 +947,7 @@ bool consolidation_start_background(
 
     if (result != 0) {
         LOG_ERROR("Failed to create background thread");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_start_background: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "consolidation_start_background: thread creation failed");
         return false;
     }
 

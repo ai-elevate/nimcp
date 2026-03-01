@@ -631,9 +631,9 @@ int financial_emotion_bridge_get_state(
 
     fin_emotion_heartbeat("fin_emotion_get_state", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->current_state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_EMOTION_ERR_OK;
 }
@@ -650,7 +650,7 @@ int financial_emotion_bridge_get_dominant(
 
     fin_emotion_heartbeat("fin_emotion_get_dominant", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     const fin_emotion_state_t* s = &bridge->current_state;
 
     /* Find max among primary emotions */
@@ -702,7 +702,7 @@ int financial_emotion_bridge_get_dominant(
         result->dominant = (fin_dominant_emotion_t)(FIN_DOMINANT_JOY + max_primary_idx);
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_EMOTION_ERR_OK;
 }
@@ -773,7 +773,7 @@ int financial_emotion_bridge_modulate_decision(
 
     fin_emotion_heartbeat("fin_emotion_modulate", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     const fin_emotion_state_t* s = &bridge->current_state;
 
     memset(modulation, 0, sizeof(*modulation));
@@ -867,7 +867,7 @@ int financial_emotion_bridge_modulate_decision(
                  "Emotional state within normal range.");
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Update stats */
     ((financial_emotion_bridge_t*)bridge)->stats.modulations++;
@@ -897,7 +897,7 @@ int financial_emotion_bridge_detect_bias(
 
     fin_emotion_heartbeat("fin_emotion_detect_bias", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     const fin_emotion_state_t* s = &bridge->current_state;
     const fin_emotion_config_t* cfg = &bridge->config;
 
@@ -1005,7 +1005,7 @@ int financial_emotion_bridge_detect_bias(
                  "No significant emotional bias detected. Emotional state is balanced.");
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Update stats */
     ((financial_emotion_bridge_t*)bridge)->stats.bias_detections++;
@@ -1047,9 +1047,9 @@ int financial_emotion_bridge_get_stats(
 
     fin_emotion_heartbeat("fin_emotion_get_stats", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_EMOTION_ERR_OK;
 }

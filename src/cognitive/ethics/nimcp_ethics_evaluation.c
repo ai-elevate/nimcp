@@ -261,7 +261,7 @@ empathy_network_t empathy_network_create(const empathy_config_t* config)
     if (!network->perspective_network) {
         nimcp_free(network);
         network = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathy_network_create: network->perspective_network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "empathy_network_create: brain_create_minimal failed for perspective_network");
         return NULL;
     }
 
@@ -487,7 +487,6 @@ int ethics_evaluation_query_self_knowledge(kg_reader_t* kg) {
 
 void ethics_evaluation_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_ethics_evaluation_health_agent = agent;
     }
 }

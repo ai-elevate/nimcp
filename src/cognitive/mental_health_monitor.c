@@ -4,6 +4,16 @@
  * @version 1.0.0
  * @date 2025-01-09
  *
+ * @deprecated This file is DEAD CODE as of 2026-02-28. It is NOT in
+ *             src/lib/CMakeLists.txt and is NOT compiled. The active
+ *             implementation is in cognitive/mental_health/nimcp_mental_health.c.
+ *
+ *             WARNING - ODR VIOLATION: This file defines `struct mental_health_monitor`
+ *             with a DIFFERENT layout than nimcp_mental_health.c. If ever re-enabled
+ *             in the build, one of the two definitions must be removed or they must
+ *             be unified into a shared header. The canonical definition is the one in
+ *             cognitive/mental_health/nimcp_mental_health.c.
+ *
  * WHAT: Full implementation of mental health monitoring with 10 disorder detectors
  * WHY:  Safety-critical AI monitoring to detect harmful behavioral patterns
  * HOW:  Continuous behavioral marker collection → Pattern detection → Intervention
@@ -571,7 +581,11 @@ static void collect_behavioral_markers(
     }
 
     // Decision quality markers
-    m->decision_accuracy = decision->confidence;
+    // BUG FIX: Use EMA for decision_accuracy so it reflects historical average,
+    // not the current value. Previously decision_accuracy was set to confidence
+    // and then decision_variance was fabsf(confidence - decision_accuracy) = always 0.
+    // This broke schizophrenia detection which weights decision_variance at 25%.
+    m->decision_accuracy = 0.9f * m->decision_accuracy + 0.1f * decision->confidence;
     m->decision_variance = fabsf(decision->confidence - m->decision_accuracy);
 
     // Risk assessment
@@ -1208,7 +1222,6 @@ int mental_health_monitor_query_self_knowledge(kg_reader_t* kg) {
 
 void mental_health_monitor_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mental_health_monitor_health_agent = agent;
     }
 }

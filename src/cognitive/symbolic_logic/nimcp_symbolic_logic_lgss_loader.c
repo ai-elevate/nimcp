@@ -1545,7 +1545,6 @@ int symbolic_logic_lgss_export(
  * ============================================================================ */
 void symbolic_logic_lgss_loader_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_symbolic_logic_lgss_loader_health_agent = agent;
     }
 }

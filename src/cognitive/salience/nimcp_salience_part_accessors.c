@@ -378,7 +378,6 @@ bool salience_set_fusion_strategy(salience_evaluator_t evaluator,
 
 void salience_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_salience_health_agent = agent;
     }
 }

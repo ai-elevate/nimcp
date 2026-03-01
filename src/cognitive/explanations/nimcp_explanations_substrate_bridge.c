@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -123,6 +124,7 @@ explanations_substrate_bridge_t* explanations_substrate_bridge_create(void* expl
     bridge->effects.abstraction_level = 1.0f;
     bridge->effects.integration_breadth = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    if (bridge_base_init(&bridge->base, 0, "explanations_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "explanations_substrate");
     return bridge;
 }
@@ -137,6 +139,7 @@ void explanations_substrate_bridge_destroy(explanations_substrate_bridge_t* brid
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -156,6 +159,7 @@ int explanations_substrate_bridge_update(explanations_substrate_bridge_t* bridge
         return -1;
     }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.explanation_depth = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         bridge->effects.abstraction_level = nimcp_clampf(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -167,6 +171,7 @@ int explanations_substrate_bridge_update(explanations_substrate_bridge_t* bridge
     bridge->effects.overall_capacity = (bridge->effects.explanation_depth + bridge->effects.coherence_quality +
                                         bridge->effects.abstraction_level + bridge->effects.integration_breadth) / 4.0f;
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -175,7 +180,9 @@ int explanations_substrate_bridge_get_effects(const explanations_substrate_bridg
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "explanations_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     explanations_substrate_bridge_heartbeat("explanations_get_effects", 0.0f);
 
@@ -310,8 +317,7 @@ int explanations_substrate_bridge_training_begin(explanations_substrate_bridge_t
                               "explanations_substrate_bridge_training_begin: NULL argument");
         return -1;
     }
-    explanations_substrate_bridge_heartbeat_instance(bridge, "expl_sub_train_begin", 0.0f);
-    (void)bridge;
+    explanations_substrate_bridge_heartbeat("expl_sub_train_begin", 0.0f);
     return 0;
 }
 
@@ -323,8 +329,7 @@ int explanations_substrate_bridge_training_step(explanations_substrate_bridge_t*
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    explanations_substrate_bridge_heartbeat_instance(bridge, "expl_sub_train_step", progress);
-    (void)bridge;
+    explanations_substrate_bridge_heartbeat("expl_sub_train_step", progress);
     return 0;
 }
 
@@ -334,7 +339,6 @@ int explanations_substrate_bridge_training_end(explanations_substrate_bridge_t* 
                               "explanations_substrate_bridge_training_end: NULL argument");
         return -1;
     }
-    explanations_substrate_bridge_heartbeat_instance(bridge, "expl_sub_train_end", 1.0f);
-    (void)bridge;
+    explanations_substrate_bridge_heartbeat("expl_sub_train_end", 1.0f);
     return 0;
 }

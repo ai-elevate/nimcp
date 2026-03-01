@@ -248,7 +248,7 @@ safety_kb_t* symbolic_logic_safety_kb_create(uint32_t max_rules) {
         LOG_ERROR("Failed to mmap safety KB region: %zu bytes", mmap_size);
         nimcp_free(kb);
         kb = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_kb_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_safety_kb_create: mmap failed");
         return NULL;
     }
 
@@ -386,7 +386,6 @@ bool symbolic_logic_safety_remove_rule(safety_kb_t* kb, uint32_t rule_id) {
 
     if (found_idx < 0) {
         LOG_ERROR("symbolic_logic_safety_remove_rule: rule_id %u not found", rule_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_remove_rule: validation failed");
         return false;
     }
 
@@ -410,7 +409,9 @@ bool symbolic_logic_safety_remove_rule(safety_kb_t* kb, uint32_t rule_id) {
 
 const safety_rule_t* symbolic_logic_safety_get_rule(const safety_kb_t* kb, uint32_t rule_id) {
     if (!kb || rule_id == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_get_rule: kb is NULL");
+        if (!kb) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_get_rule: kb is NULL");
+        }
         return NULL;
     }
 
@@ -1260,7 +1261,6 @@ void symbolic_logic_safety_print_evaluation(const safety_evaluation_t* result) {
 
 void symbolic_logic_safety_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_symbolic_logic_safety_health_agent = agent;
     }
 }

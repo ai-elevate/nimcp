@@ -167,7 +167,6 @@ int social_bond_fep_modulate_trust_by_precision(social_bond_fep_bridge_t* bridge
     NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_trust_precision) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->fep_effects.num_relationships_tracked = 0;
     for (uint32_t i = 0; i < SOCIAL_FEP_MAX_RELATIONSHIPS && i < bridge->fep_effects.num_relationships_tracked; i++) {
         bridge->fep_effects.relationship_precision[i] = bridge->config.trust_precision_factor;
     }

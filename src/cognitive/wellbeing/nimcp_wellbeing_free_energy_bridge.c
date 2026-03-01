@@ -458,13 +458,13 @@ int free_energy_bridge_get_effects(
 
 
     if (bridge->base.mutex) {
-        nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     *effects = bridge->effects;
 
     if (bridge->base.mutex) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -619,7 +619,6 @@ int free_energy_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void wellbeing_free_energy_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_wellbeing_free_energy_bridge_health_agent = agent;
     }
 }
@@ -634,7 +633,7 @@ int wellbeing_free_energy_bridge_training_begin(void* instance) {
                               "wellbeing_free_energy_bridge_training_begin: NULL argument");
         return -1;
     }
-    wellbeing_free_energy_bridge_heartbeat_instance(NULL, "wellbeing_free_energy_bridge_training_begin", 0.0f);
+    wellbeing_free_energy_bridge_heartbeat_instance(g_wellbeing_free_energy_bridge_health_agent, "wellbeing_free_energy_bridge_training_begin", 0.0f);
     return 0;
 }
 
@@ -644,7 +643,7 @@ int wellbeing_free_energy_bridge_training_end(void* instance) {
                               "wellbeing_free_energy_bridge_training_end: NULL argument");
         return -1;
     }
-    wellbeing_free_energy_bridge_heartbeat_instance(NULL, "wellbeing_free_energy_bridge_training_end", 1.0f);
+    wellbeing_free_energy_bridge_heartbeat_instance(g_wellbeing_free_energy_bridge_health_agent, "wellbeing_free_energy_bridge_training_end", 1.0f);
     return 0;
 }
 
@@ -656,6 +655,6 @@ int wellbeing_free_energy_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    wellbeing_free_energy_bridge_heartbeat_instance(NULL, "wellbeing_free_energy_bridge_training_step", progress);
+    wellbeing_free_energy_bridge_heartbeat_instance(g_wellbeing_free_energy_bridge_health_agent, "wellbeing_free_energy_bridge_training_step", progress);
     return 0;
 }

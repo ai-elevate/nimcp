@@ -293,14 +293,29 @@ static int blend_adaptive(influence_blender_t* blender,
         return -1;
     }
 
-    memcpy(adj_influences, influences, num_influences * sizeof(creative_influence_t));
+    /* Deep-copy influences to avoid shared ownership of style.embedding pointers */
     for (uint32_t i = 0; i < num_influences; i++) {
+        adj_influences[i] = influences[i];
         adj_influences[i].weight = adjusted_weights[i];
+        /* Deep-copy the embedding pointer */
+        if (influences[i].style.embedding && influences[i].style.embedding_dim > 0) {
+            adj_influences[i].style.embedding =
+                nimcp_calloc(influences[i].style.embedding_dim, sizeof(float));
+            if (adj_influences[i].style.embedding) {
+                memcpy(adj_influences[i].style.embedding,
+                       influences[i].style.embedding,
+                       influences[i].style.embedding_dim * sizeof(float));
+            }
+        }
     }
 
     /* Blend with linear method using adjusted weights */
     int result = blend_linear(adj_influences, num_influences, out);
 
+    /* Free deep-copied embeddings */
+    for (uint32_t i = 0; i < num_influences; i++) {
+        nimcp_free(adj_influences[i].style.embedding);
+    }
     nimcp_free(adj_influences);
     adj_influences = NULL;
     nimcp_free(adjusted_weights);

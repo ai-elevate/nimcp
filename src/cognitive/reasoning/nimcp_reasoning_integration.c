@@ -1467,7 +1467,6 @@ bool reasoning_integration_query_self_knowledge(reasoning_integration_t* integra
 
 void reasoning_integration_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_reasoning_integration_health_agent = agent;
     }
 }

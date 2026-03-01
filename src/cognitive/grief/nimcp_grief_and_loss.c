@@ -244,6 +244,11 @@ void grief_system_reset(grief_system_t* system) {
     bool integrate_mem = system->integrate_with_memory;
     bool integrate_wb = system->integrate_with_wellbeing;
 
+    // Unregister from bio-router before zeroing (prevents stale registration)
+    if (system->bio_async_enabled && system->bio_ctx_ptr) {
+        bio_router_unregister_module(system->bio_ctx_ptr);
+    }
+
     // Zero everything
     memset(system, 0, sizeof(grief_system_t));
 

@@ -722,14 +722,14 @@ int financial_emo_attention_bridge_get_state(
 
     fin_emo_attn_heartbeat("fin_emo_attn_get_state", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->attention_width = bridge->current_width;
     state->tunnel_vision = bridge->tunnel_vision_active;
     state->num_stimuli = FIN_STIMULUS_COUNT;
     state->stimulus_boosts = NULL;  /* Caller must allocate if needed */
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_EMO_ATTN_ERR_OK;
 }
@@ -741,9 +741,9 @@ float financial_emo_attention_bridge_get_width(
         return -1.0f;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float width = bridge->current_width;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return width;
 }
@@ -818,9 +818,9 @@ int financial_emo_attention_bridge_get_stats(
 
     fin_emo_attn_heartbeat("fin_emo_attn_get_stats", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_EMO_ATTN_ERR_OK;
 }

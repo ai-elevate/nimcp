@@ -107,11 +107,15 @@ shadow_emotions_thalamic_bridge_t* shadow_emotions_thalamic_bridge_create(
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
+    if (bridge_base_init(&bridge->base, 0, "shadow_emotions_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     return bridge;
 }
 
 void shadow_emotions_thalamic_bridge_destroy(shadow_emotions_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
 }
 
 int shadow_emotions_thalamic_bridge_reset(shadow_emotions_thalamic_bridge_t* bridge) {
@@ -119,8 +123,10 @@ int shadow_emotions_thalamic_bridge_reset(shadow_emotions_thalamic_bridge_t* bri
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_emotions_thalamic_bridge_reset: bridge is NULL");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -133,6 +139,7 @@ int shadow_emotions_thalamic_route_signal(
         return -1;
     }
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating) {
         float effective_urgency = signal->shadow_urgency * bridge->attention_weight;
 
@@ -145,6 +152,7 @@ int shadow_emotions_thalamic_route_signal(
 
         if (effective_urgency < bridge->config.min_urgency_threshold) {
             bridge->stats.signals_gated++;
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
@@ -163,6 +171,7 @@ int shadow_emotions_thalamic_route_signal(
             bridge->stats.projections++;
             break;
         default:
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shadow_emotions_thalamic_route_signal: operation failed");
             return -1;
     }
@@ -175,6 +184,7 @@ int shadow_emotions_thalamic_route_signal(
         bridge->stats.avg_emergence_pressure =
             (bridge->stats.avg_emergence_pressure * (total - 1) + signal->emergence_pressure) / total;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -208,7 +218,9 @@ int shadow_emotions_thalamic_set_attention(shadow_emotions_thalamic_bridge_t* br
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_emotions_thalamic_set_attention: bridge is NULL");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -217,7 +229,9 @@ int shadow_emotions_thalamic_get_attention(const shadow_emotions_thalamic_bridge
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_emotions_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -229,7 +243,9 @@ int shadow_emotions_thalamic_bridge_get_stats(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_emotions_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

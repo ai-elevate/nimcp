@@ -25,6 +25,33 @@
 #include "utils/math/nimcp_math_helpers.h"
 
 /* ============================================================================
+ * Module-level mutex for thread safety (VAE bridge has no bridge_base_t)
+ * All public functions that read or write shared bridge state must lock/unlock.
+ * ============================================================================ */
+static nimcp_mutex_t* g_vae_substrate_mutex = NULL;
+
+__attribute__((constructor))
+static void vae_substrate_mutex_init(void) {
+    g_vae_substrate_mutex = nimcp_mutex_create(NULL);
+}
+
+__attribute__((destructor))
+static void vae_substrate_mutex_fini(void) {
+    if (g_vae_substrate_mutex) {
+        nimcp_mutex_destroy(g_vae_substrate_mutex);
+        g_vae_substrate_mutex = NULL;
+    }
+}
+
+static inline void vae_sub_lock(void) {
+    if (g_vae_substrate_mutex) nimcp_mutex_lock(g_vae_substrate_mutex);
+}
+
+static inline void vae_sub_unlock(void) {
+    if (g_vae_substrate_mutex) nimcp_mutex_unlock(g_vae_substrate_mutex);
+}
+
+/* ============================================================================
  * Module Constants
  * ============================================================================ */
 
@@ -186,8 +213,9 @@ static void update_stats(vae_substrate_bridge_t* bridge)
         bridge->stats.min_temp_observed = bridge->current_state.temperature_c;
     }
 
-    /* Track time in emergency */
-    if (bridge->in_emergency_mode) {
+    /* Track time in emergency — guard against bogus delta on first call
+     * when last_update_us is 0 (epoch-zero) */
+    if (bridge->in_emergency_mode && bridge->stats.last_update_us > 0) {
         uint64_t now = get_timestamp_us();
         bridge->stats.time_in_emergency_us += now - bridge->stats.last_update_us;
     }
@@ -309,6 +337,7 @@ vae_substrate_bridge_t* vae_substrate_bridge_create(const vae_substrate_bridge_c
     bridge->stats.max_temp_observed = VAE_SUBSTRATE_NORMAL_TEMP;
     bridge->stats.min_temp_observed = VAE_SUBSTRATE_NORMAL_TEMP;
     bridge->stats.creation_time_us = bridge->creation_time_us;
+    /* last_update_us starts at 0; update_stats guards against zero-delta emergency accounting */
 
     bridge->is_initialized = true;
 
@@ -338,6 +367,7 @@ int vae_substrate_bridge_connect_vae(vae_substrate_bridge_t* bridge, vae_system_
     if (!bridge) return NIMCP_ERROR_VAE_SUB_NULL;
     if (!vae) return NIMCP_ERROR_VAE_SUB_NULL;
 
+    vae_sub_lock();
     bridge->vae = vae;
 
     /* Get VAE latent dimension for modulation buffer */
@@ -345,7 +375,10 @@ int vae_substrate_bridge_connect_vae(vae_substrate_bridge_t* bridge, vae_system_
     if (latent_dim > 0) {
         nimcp_free(bridge->modulation_buffer);
         bridge->modulation_buffer = nimcp_calloc(latent_dim, sizeof(float));
-        if (!bridge->modulation_buffer) return NIMCP_ERROR_VAE_SUB_NO_MEMORY;
+        if (!bridge->modulation_buffer) {
+            vae_sub_unlock();
+            return NIMCP_ERROR_VAE_SUB_NO_MEMORY;
+        }
 
         /* Initialize to 1.0 (no modulation) */
         for (uint32_t i = 0; i < latent_dim; i++) {
@@ -356,6 +389,7 @@ int vae_substrate_bridge_connect_vae(vae_substrate_bridge_t* bridge, vae_system_
     if (bridge->substrate_system) {
         bridge->state = VAE_SUBSTRATE_STATE_CONNECTED;
     }
+    vae_sub_unlock();
 
     if (bridge->config.enable_logging) {
         nimcp_log_info(VAE_SUB_MODULE_ID, "VAE connected (latent_dim=%u)", latent_dim);
@@ -368,11 +402,13 @@ int vae_substrate_bridge_connect_substrate(vae_substrate_bridge_t* bridge, void*
 {
     if (!bridge) return NIMCP_ERROR_VAE_SUB_NULL;
 
+    vae_sub_lock();
     bridge->substrate_system = substrate;
 
     if (bridge->vae) {
         bridge->state = VAE_SUBSTRATE_STATE_CONNECTED;
     }
+    vae_sub_unlock();
 
     if (bridge->config.enable_logging) {
         nimcp_log_info(VAE_SUB_MODULE_ID, "Substrate system connected");
@@ -385,9 +421,11 @@ int vae_substrate_bridge_disconnect(vae_substrate_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_VAE_SUB_NULL;
 
+    vae_sub_lock();
     bridge->vae = NULL;
     bridge->substrate_system = NULL;
     bridge->state = VAE_SUBSTRATE_STATE_DISCONNECTED;
+    vae_sub_unlock();
 
     return 0;
 }
@@ -397,9 +435,12 @@ bool vae_substrate_bridge_is_connected(const vae_substrate_bridge_t* bridge)
     if (!bridge) {
         return false;
     }
-    return bridge->state == VAE_SUBSTRATE_STATE_CONNECTED ||
-           bridge->state == VAE_SUBSTRATE_STATE_MONITORING ||
-           bridge->state == VAE_SUBSTRATE_STATE_ADAPTING;
+    vae_sub_lock();
+    bool result = bridge->state == VAE_SUBSTRATE_STATE_CONNECTED ||
+                  bridge->state == VAE_SUBSTRATE_STATE_MONITORING ||
+                  bridge->state == VAE_SUBSTRATE_STATE_ADAPTING;
+    vae_sub_unlock();
+    return result;
 }
 
 /* ============================================================================
@@ -410,6 +451,7 @@ int vae_substrate_update_state(vae_substrate_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_VAE_SUB_NULL;
 
+    vae_sub_lock();
     bridge->state = VAE_SUBSTRATE_STATE_MONITORING;
 
     /* In a full implementation, this would query the actual substrate system
@@ -461,19 +503,23 @@ int vae_substrate_update_state(vae_substrate_bridge_t* bridge)
     update_history(bridge);
 
     /* Check for emergency transitions */
-    if (bridge->current_health == VAE_SUBSTRATE_CRITICAL && !bridge->in_emergency_mode) {
-        vae_substrate_enter_emergency(bridge);
-    } else if (bridge->in_emergency_mode) {
-        /* Check for recovery */
-        if (bridge->current_state.atp_level > bridge->config.recovery_threshold &&
-            bridge->current_state.o2_saturation > bridge->config.recovery_threshold) {
-            vae_substrate_exit_emergency(bridge);
-        }
-    }
+    bool do_enter_emergency = (bridge->current_health == VAE_SUBSTRATE_CRITICAL && !bridge->in_emergency_mode);
+    bool do_exit_emergency = bridge->in_emergency_mode &&
+        bridge->current_state.atp_level > bridge->config.recovery_threshold &&
+        bridge->current_state.o2_saturation > bridge->config.recovery_threshold;
 
     update_stats(bridge);
 
     bridge->state = VAE_SUBSTRATE_STATE_CONNECTED;
+    vae_sub_unlock();
+
+    /* Call emergency transitions outside the lock to avoid callback-under-lock */
+    if (do_enter_emergency) {
+        vae_substrate_enter_emergency(bridge);
+    } else if (do_exit_emergency) {
+        vae_substrate_exit_emergency(bridge);
+    }
+
     return 0;
 }
 
@@ -481,21 +527,28 @@ int vae_substrate_get_metabolic_state(const vae_substrate_bridge_t* bridge,
                                        vae_substrate_metabolic_state_t* state)
 {
     if (!bridge || !state) return NIMCP_ERROR_VAE_SUB_NULL;
+    vae_sub_lock();
     *state = bridge->current_state;
+    vae_sub_unlock();
     return 0;
 }
 
 vae_substrate_health_t vae_substrate_assess_health(const vae_substrate_bridge_t* bridge)
 {
     if (!bridge) return VAE_SUBSTRATE_FAILURE;
-    return bridge->current_health;
+    vae_sub_lock();
+    vae_substrate_health_t h = bridge->current_health;
+    vae_sub_unlock();
+    return h;
 }
 
 int vae_substrate_get_modulation(const vae_substrate_bridge_t* bridge,
                                   vae_substrate_modulation_t* modulation)
 {
     if (!bridge || !modulation) return NIMCP_ERROR_VAE_SUB_NULL;
+    vae_sub_lock();
     *modulation = bridge->current_modulation;
+    vae_sub_unlock();
     return 0;
 }
 
@@ -508,6 +561,7 @@ int vae_substrate_adapt(vae_substrate_bridge_t* bridge,
 {
     if (!bridge || !result) return NIMCP_ERROR_VAE_SUB_NULL;
 
+    vae_sub_lock();
     uint64_t start_us = get_timestamp_us();
     bridge->state = VAE_SUBSTRATE_STATE_ADAPTING;
 
@@ -558,6 +612,8 @@ int vae_substrate_adapt(vae_substrate_bridge_t* bridge,
     }
 
     result->latent_dim_after = bridge->current_latent_dim;
+    /* Guard: prevent division by zero if latent_dim_after is 0 (e.g. min_latent_dim=0) */
+    if (result->latent_dim_after == 0) result->latent_dim_after = 1;
     result->compression_ratio = (float)result->latent_dim_before /
                                (float)result->latent_dim_after;
 
@@ -573,6 +629,7 @@ int vae_substrate_adapt(vae_substrate_bridge_t* bridge,
 
     bridge->stats.adaptations_triggered++;
     bridge->state = VAE_SUBSTRATE_STATE_CONNECTED;
+    vae_sub_unlock();
 
     if (bridge->config.enable_logging) {
         nimcp_log_info(VAE_SUB_MODULE_ID,
@@ -588,7 +645,8 @@ int vae_substrate_enter_emergency(vae_substrate_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_VAE_SUB_NULL;
 
-    if (bridge->in_emergency_mode) return 0; /* Already in emergency */
+    vae_sub_lock();
+    if (bridge->in_emergency_mode) { vae_sub_unlock(); return 0; } /* Already in emergency */
 
     bridge->in_emergency_mode = true;
     bridge->emergency_start_us = get_timestamp_us();
@@ -601,11 +659,15 @@ int vae_substrate_enter_emergency(vae_substrate_bridge_t* bridge)
     /* Increase variance for uncertainty */
     bridge->current_variance_scale = bridge->config.stress_variance_scale;
 
+    float atp_snap = bridge->current_state.atp_level;
+    float o2_snap = bridge->current_state.o2_saturation;
+    vae_sub_unlock();
+
     if (bridge->config.enable_logging) {
         nimcp_log_warning(VAE_SUB_MODULE_ID,
                          "EMERGENCY MODE ENTERED - ATP=%.2f, O2=%.2f",
-                         bridge->current_state.atp_level,
-                         bridge->current_state.o2_saturation);
+                         atp_snap,
+                         o2_snap);
     }
 
     return 0;
@@ -615,11 +677,13 @@ int vae_substrate_exit_emergency(vae_substrate_bridge_t* bridge)
 {
     if (!bridge) return NIMCP_ERROR_VAE_SUB_NULL;
 
-    if (!bridge->in_emergency_mode) return 0;
+    vae_sub_lock();
+    if (!bridge->in_emergency_mode) { vae_sub_unlock(); return 0; }
 
     /* Ensure sufficient recovery time */
     uint64_t now = get_timestamp_us();
     if (now - bridge->emergency_start_us < VAE_SUB_EMERGENCY_RECOVERY_US) {
+        vae_sub_unlock();
         return 0; /* Not enough time for stable recovery */
     }
 
@@ -629,6 +693,7 @@ int vae_substrate_exit_emergency(vae_substrate_bridge_t* bridge)
     /* Restore normal latent dimension */
     bridge->current_latent_dim = bridge->config.compression.normal_latent_dim;
     bridge->current_variance_scale = 1.0f;
+    vae_sub_unlock();
 
     if (bridge->config.enable_logging) {
         nimcp_log_info(VAE_SUB_MODULE_ID,
@@ -642,9 +707,12 @@ int vae_substrate_set_latent_dim(vae_substrate_bridge_t* bridge, uint32_t dim)
 {
     if (!bridge) return NIMCP_ERROR_VAE_SUB_NULL;
 
-    dim = nimcp_clampf(dim, bridge->config.compression.min_latent_dim,
-                 bridge->config.compression.normal_latent_dim);
+    vae_sub_lock();
+    dim = (uint32_t)nimcp_clampf((float)dim,
+                                 (float)bridge->config.compression.min_latent_dim,
+                                 (float)bridge->config.compression.normal_latent_dim);
     bridge->current_latent_dim = dim;
+    vae_sub_unlock();
 
     return 0;
 }
@@ -683,9 +751,12 @@ float vae_substrate_estimate_cost(const vae_substrate_bridge_t* bridge,
             break;
     }
 
-    /* Scale by current latent dimension */
-    float dim_scale = (float)bridge->current_latent_dim /
-                     (float)bridge->config.compression.normal_latent_dim;
+    vae_sub_lock();
+    /* Guard: prevent divide-by-zero if normal_latent_dim is 0 */
+    float dim_scale = (bridge->config.compression.normal_latent_dim > 0)
+        ? (float)bridge->current_latent_dim / (float)bridge->config.compression.normal_latent_dim
+        : 1.0f;
+    vae_sub_unlock();
 
     return base_cost * dim_scale;
 }
@@ -698,8 +769,10 @@ bool vae_substrate_can_afford(const vae_substrate_bridge_t* bridge,
     }
 
     float cost = vae_substrate_estimate_cost(bridge, category);
+    vae_sub_lock();
     float available = bridge->current_state.atp_level *
                      (1.0f - bridge->config.energy_budget.reserve_fraction);
+    vae_sub_unlock();
 
     return cost <= available;
 }
@@ -721,7 +794,8 @@ int vae_substrate_consume_energy(vae_substrate_bridge_t* bridge,
         return NIMCP_ERROR_VAE_SUB_CRITICAL;
     }
 
-    /* Consume energy */
+    /* Consume energy — lock for shared state mutation */
+    vae_sub_lock();
     bridge->atp_consumed_session += cost;
     bridge->glucose_consumed_session += cost * 0.5f; /* Glucose -> ATP conversion */
 
@@ -737,6 +811,7 @@ int vae_substrate_consume_energy(vae_substrate_bridge_t* bridge,
 
     /* Update total ATP consumed */
     bridge->stats.total_atp_consumed += cost;
+    vae_sub_unlock();
 
     return 0;
 }
@@ -744,7 +819,10 @@ int vae_substrate_consume_energy(vae_substrate_bridge_t* bridge,
 float vae_substrate_get_efficiency(const vae_substrate_bridge_t* bridge)
 {
     if (!bridge) return 0.0f;
-    return bridge->current_modulation.energy_efficiency;
+    vae_sub_lock();
+    float eff = bridge->current_modulation.energy_efficiency;
+    vae_sub_unlock();
+    return eff;
 }
 
 /* ============================================================================
@@ -757,9 +835,12 @@ float vae_substrate_q10_scale(const vae_substrate_bridge_t* bridge,
 {
     if (!bridge) return base_rate;
 
-    return q10_scale(base_rate, q10_coefficient,
-                    bridge->current_state.temperature_c,
-                    bridge->config.temperature.reference_temp_c);
+    vae_sub_lock();
+    float temp_c = bridge->current_state.temperature_c;
+    float ref_c = bridge->config.temperature.reference_temp_c;
+    vae_sub_unlock();
+
+    return q10_scale(base_rate, q10_coefficient, temp_c, ref_c);
 }
 
 float vae_substrate_get_temp_modulated_lr(const vae_substrate_bridge_t* bridge,
@@ -782,14 +863,19 @@ float vae_substrate_get_temp_modulated_lr(const vae_substrate_bridge_t* bridge,
 vae_substrate_bridge_state_t vae_substrate_bridge_get_state(const vae_substrate_bridge_t* bridge)
 {
     if (!bridge) return VAE_SUBSTRATE_STATE_ERROR;
-    return bridge->state;
+    vae_sub_lock();
+    vae_substrate_bridge_state_t s = bridge->state;
+    vae_sub_unlock();
+    return s;
 }
 
 int vae_substrate_bridge_get_stats(const vae_substrate_bridge_t* bridge,
                                     vae_substrate_bridge_stats_t* stats)
 {
     if (!bridge || !stats) return NIMCP_ERROR_VAE_SUB_NULL;
+    vae_sub_lock();
     *stats = bridge->stats;
+    vae_sub_unlock();
     return 0;
 }
 

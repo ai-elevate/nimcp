@@ -355,7 +355,7 @@ static nimcp_gt_regret_table_t regret_table_create(uint32_t num_info_sets, uint3
             nimcp_free(table->entries);
             nimcp_free(table);
             table = NULL;
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "regret_table_create: required parameter is NULL (table->entries, table->entries)");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "regret_table_create: failed to allocate regret/strategy arrays");
             return NULL;
         }
     }
@@ -594,7 +594,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
         learner = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_learner_create: required parameter is NULL (learner->action_history, learner->our_action_history)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_learner_create: failed to allocate action_history buffers");
         return NULL;
     }
 
@@ -613,7 +613,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
         learner = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_learner_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gt_learner_create: mutex_init failed");
         return NULL;
     }
 
@@ -2545,7 +2545,6 @@ int gt_learning_query_self_knowledge(kg_reader_t* kg) {
 
 void gt_learning_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gt_learning_health_agent = agent;
     }
 }

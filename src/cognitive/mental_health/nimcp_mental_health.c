@@ -17,6 +17,7 @@
 #include "cognitive/nimcp_mental_health.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "core/brain/nimcp_brain.h"  // brain_decision_t for mental_health_update
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
@@ -495,7 +496,7 @@ void mental_health_destroy(mental_health_monitor_t* mon) {
     mental_health_heartbeat("mental_healt_destroy", 0.0f);
 
 
-    if (mon->lock) nimcp_mutex_free(mon->lock);
+    if (mon->lock) nimcp_mutex_destroy(mon->lock);
     mon->magic = 0;
     nimcp_free(mon);
     mon = NULL;
@@ -506,10 +507,34 @@ void mental_health_update(mental_health_monitor_t* mon, brain_t brain, const voi
     /* Phase 8: Heartbeat at operation start */
     mental_health_heartbeat("mental_healt_update", 0.0f);
 
-
-    (void)brain; (void)output;
+    (void)time;
 
     nimcp_mutex_lock(mon->lock);
+
+    /* BUG FIX: Update decision quality markers from output.
+     * WHY:  Previously (void)output discarded the decision data entirely,
+     *       leaving decision_accuracy stuck at baseline and decision_variance
+     *       permanently at 0.0. This broke schizophrenia detection which
+     *       weights decision_variance at 30% of the score.
+     * HOW:  Use EMA for decision_accuracy (reflects historical average),
+     *       then compute variance as deviation of current from running average.
+     *       The output is brain_decision_t* (cast from void*) which has
+     *       confidence as the second field after char label[64].
+     */
+    if (output) {
+        const brain_decision_t* decision = (const brain_decision_t*)output;
+        float conf = decision->confidence;
+        if (conf >= 0.0f && conf <= 1.0f) {
+            /* EMA: 90% old average + 10% new observation */
+            mon->markers.decision_accuracy =
+                0.9f * mon->markers.decision_accuracy + 0.1f * conf;
+            mon->markers.decision_variance =
+                fabsf(conf - mon->markers.decision_accuracy);
+        }
+    }
+
+    (void)brain;  /* Brain-level marker collection done in update_markers_from_immune */
+
     mon->decisions_since_check++;
     mon->stats.total_decisions++;
     if (mon->decisions_since_check >= mon->config.check_interval_decisions) {
@@ -840,7 +865,6 @@ bool mental_health_test_memory_reset(mental_health_monitor_t* mon, brain_t brain
 
 void mental_health_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mental_health_health_agent = agent;
     }
 }

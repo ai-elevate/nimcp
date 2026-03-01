@@ -716,7 +716,7 @@ int wellbeing_training_begin(void* instance) {
                               "wellbeing_training_begin: NULL argument");
         return -1;
     }
-    wellbeing_heartbeat_instance(NULL, "wellbeing_training_begin", 0.0f);
+    wellbeing_heartbeat_instance(g_wellbeing_health_agent, "wellbeing_training_begin", 0.0f);
     return 0;
 }
 
@@ -727,7 +727,7 @@ int wellbeing_training_end(void* instance) {
                               "wellbeing_training_end: NULL argument");
         return -1;
     }
-    wellbeing_heartbeat_instance(NULL, "wellbeing_training_end", 1.0f);
+    wellbeing_heartbeat_instance(g_wellbeing_health_agent, "wellbeing_training_end", 1.0f);
     return 0;
 }
 
@@ -740,6 +740,6 @@ int wellbeing_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    wellbeing_heartbeat_instance(NULL, "wellbeing_training_step", progress);
+    wellbeing_heartbeat_instance(g_wellbeing_health_agent, "wellbeing_training_step", progress);
     return 0;
 }

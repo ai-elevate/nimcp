@@ -457,7 +457,7 @@ pr_training_plasticity_t pr_training_plasticity_create(
 
     /* Allocate conversion buffers */
     if (allocate_buffers(tp) != 0) {
-        nimcp_mutex_free(tp->mutex);
+        nimcp_mutex_destroy(tp->mutex);
         nimcp_free(tp);
         tp = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_training_plasticity_create: validation failed");
@@ -500,7 +500,7 @@ void pr_training_plasticity_destroy(pr_training_plasticity_t tp) {
 
     /* Destroy mutex */
     if (tp->mutex) {
-        nimcp_mutex_free(tp->mutex);
+        nimcp_mutex_destroy(tp->mutex);
     }
 
     nimcp_free(tp);
@@ -2216,7 +2216,6 @@ size_t pr_training_get_memory_usage(pr_training_plasticity_t tp) {
 
 void pr_training_plasticity_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_pr_training_plasticity_health_agent = agent;
     }
 }

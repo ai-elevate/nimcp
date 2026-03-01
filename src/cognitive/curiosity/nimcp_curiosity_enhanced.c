@@ -366,7 +366,7 @@ static void types_init(curiosity_type_profile_t* profile,
                                  (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
             }
 
-            profile->type_intensities[i] = 1.0f / (fabsf(CURIOSITY_TYPE_COUNT) > 1e-7f ? CURIOSITY_TYPE_COUNT : 1e-7f);
+            profile->type_intensities[i] = 1.0f / (float)CURIOSITY_TYPE_COUNT;
         }
     }
 
@@ -853,7 +853,7 @@ void curiosity_enhanced_config_default(curiosity_enhanced_config_t* config) {
                              (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
         }
 
-        config->types.type_weights[i] = 1.0f / (fabsf(CURIOSITY_TYPE_COUNT) > 1e-7f ? CURIOSITY_TYPE_COUNT : 1e-7f);
+        config->types.type_weights[i] = 1.0f / (float)CURIOSITY_TYPE_COUNT;
     }
     config->types.transition_threshold = 0.3f;
     config->types.enable_dynamic_switching = true;
@@ -1090,12 +1090,16 @@ bool curiosity_enhanced_is_bored(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_is_bored", 0.0f);
 
+    /* Thread-safe read: lock, copy, unlock */
+    nimcp_platform_mutex_lock(system->mutex);
+    curiosity_boredom_state_t local_boredom = system->state.boredom;
+    nimcp_platform_mutex_unlock(system->mutex);
 
     if (state) {
-        *state = system->state.boredom;
+        *state = local_boredom;
     }
 
-    return system->state.boredom.is_bored;
+    return local_boredom.is_bored;
 }
 
 int curiosity_enhanced_report_stimulus(
@@ -1123,8 +1127,12 @@ float curiosity_enhanced_get_boredom_boost(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_boredom_boost", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    float boost = system->state.boredom.novelty_seeking_boost;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->state.boredom.novelty_seeking_boost;
+    return boost;
 }
 
 /* Interest decay functions */
@@ -1137,14 +1145,22 @@ float curiosity_enhanced_get_topic_interest(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_topic_interest", 0.0f);
 
+    /* Thread-safe read: lock during hash table access */
+    nimcp_platform_mutex_lock(system->mutex);
 
     interest_entry_t* entry = (interest_entry_t*)hash_table_lookup_string(
         system->interest_table, topic);
 
-    if (!entry) return 1.0f;  /* Unknown topic = full interest */
+    if (!entry) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return 1.0f;  /* Unknown topic = full interest */
+    }
 
-    return interest_compute_decay(&system->config.interest,
-                                 &entry->interest, get_time_ms());
+    float result = interest_compute_decay(&system->config.interest,
+                                          &entry->interest, get_time_ms());
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return result;
 }
 
 int curiosity_enhanced_record_exposure(
@@ -1189,13 +1205,21 @@ float curiosity_enhanced_compute_satiation(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_compute_satiation", 0.0f);
 
+    /* Thread-safe read: lock during hash table access */
+    nimcp_platform_mutex_lock(system->mutex);
 
     interest_entry_t* entry = (interest_entry_t*)hash_table_lookup_string(
         system->interest_table, topic);
 
-    if (!entry) return 0.0f;
+    if (!entry) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return 0.0f;
+    }
 
-    return interest_compute_satiation(&entry->interest);
+    float result = interest_compute_satiation(&entry->interest);
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return result;
 }
 
 float curiosity_enhanced_get_residual_interest(
@@ -1223,8 +1247,12 @@ curiosity_type_t curiosity_enhanced_get_dominant_type(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_dominant_type", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    curiosity_type_t type = system->state.types.dominant_type;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->state.types.dominant_type;
+    return type;
 }
 
 int curiosity_enhanced_get_type_profile(
@@ -1234,10 +1262,13 @@ int curiosity_enhanced_get_type_profile(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_type_profile", 0.0f);
 
-
     NIMCP_CHECK_THROW(system && profile, NIMCP_ERROR_NULL_ARG, "system or profile is NULL");
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
     *profile = system->state.types;
+    nimcp_platform_mutex_unlock(system->mutex);
+
     return 0;
 }
 
@@ -1323,8 +1354,12 @@ float curiosity_enhanced_get_net_motivation(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_net_motivation", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    float motivation = system->state.anxiety_balance.net_motivation;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->state.anxiety_balance.net_motivation;
+    return motivation;
 }
 
 bool curiosity_enhanced_should_explore(
@@ -1338,9 +1373,14 @@ bool curiosity_enhanced_should_explore(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_should_explore", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    float avoidance = system->state.anxiety_balance.avoidance_tendency;
+    float approach = system->state.anxiety_balance.approach_tendency;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    float adjusted_avoidance = system->state.anxiety_balance.avoidance_tendency + threat_level;
-    float net = system->state.anxiety_balance.approach_tendency - adjusted_avoidance;
+    float adjusted_avoidance = avoidance + threat_level;
+    float net = approach - adjusted_avoidance;
 
     return net > 0.0f;
 }
@@ -1461,8 +1501,12 @@ float curiosity_enhanced_get_gossip_interest(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_gossip_interest", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    float gossip = system->state.social.gossip_interest;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->state.social.gossip_interest;
+    return gossip;
 }
 
 /* Meta-curiosity functions */
@@ -1520,10 +1564,11 @@ uint32_t curiosity_enhanced_identify_blind_spots(
             if (system->state.meta.identified_blind_spots[count]) {
                 nimcp_free(system->state.meta.identified_blind_spots[count]);
             }
+            size_t alloc_size = strlen(type_str) + 32;
             system->state.meta.identified_blind_spots[count] =
-                (char*)nimcp_malloc(strlen(type_str) + 32);
+                (char*)nimcp_malloc(alloc_size);
             if (system->state.meta.identified_blind_spots[count]) {
-                snprintf(system->state.meta.identified_blind_spots[count], 256,
+                snprintf(system->state.meta.identified_blind_spots[count], alloc_size,
                         "Low curiosity in: %s", type_str);
                 count++;
             }
@@ -1543,8 +1588,12 @@ float curiosity_enhanced_get_meta_curiosity(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_meta_curiosity", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    float level = system->state.meta.meta_curiosity_level;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->state.meta.meta_curiosity_level;
+    return level;
 }
 
 /* Contagion functions */
@@ -1599,8 +1648,12 @@ float curiosity_enhanced_get_contagion_susceptibility(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_contagion_suscep", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    float susceptibility = system->state.contagion.contagion_susceptibility;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->state.contagion.contagion_susceptibility;
+    return susceptibility;
 }
 
 int curiosity_enhanced_set_contagion_susceptibility(
@@ -1646,8 +1699,12 @@ float curiosity_enhanced_get_surprise_boost(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_surprise_boost", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    float boost = system->state.surprise.learning_rate_boost;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->state.surprise.learning_rate_boost;
+    return boost;
 }
 
 float curiosity_enhanced_prioritize_surprise(
@@ -1659,10 +1716,14 @@ float curiosity_enhanced_prioritize_surprise(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_prioritize_surprise", 0.0f);
 
-
     (void)experience;  /* Could be used for more sophisticated prioritization */
 
-    return system->state.surprise.memory_consolidation_priority;
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    float priority = system->state.surprise.memory_consolidation_priority;
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return priority;
 }
 
 /* Fatigue functions */
@@ -1675,12 +1736,16 @@ float curiosity_enhanced_check_fatigue(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_check_fatigue", 0.0f);
 
+    /* Thread-safe read: lock, copy, unlock */
+    nimcp_platform_mutex_lock(system->mutex);
+    curiosity_fatigue_state_t local_fatigue = system->state.fatigue;
+    nimcp_platform_mutex_unlock(system->mutex);
 
     if (state) {
-        *state = system->state.fatigue;
+        *state = local_fatigue;
     }
 
-    return system->state.fatigue.exploration_fatigue;
+    return local_fatigue.exploration_fatigue;
 }
 
 int curiosity_enhanced_initiate_recovery(
@@ -1716,8 +1781,12 @@ bool curiosity_enhanced_needs_rest(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_needs_rest", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    bool needs = system->state.fatigue.needs_rest;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->state.fatigue.needs_rest;
+    return needs;
 }
 
 int curiosity_enhanced_end_recovery(
@@ -1799,8 +1868,12 @@ float curiosity_enhanced_get_counterfactual_curiosity(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_counterfactual_c", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    float curiosity = system->state.counterfactual.counterfactual_curiosity;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->state.counterfactual.counterfactual_curiosity;
+    return curiosity;
 }
 
 /* State and statistics functions */
@@ -1811,10 +1884,13 @@ int curiosity_enhanced_get_state(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_state", 0.0f);
 
-
     NIMCP_CHECK_THROW(system && state, NIMCP_ERROR_NULL_ARG, "system or state is NULL");
 
+    /* Thread-safe read: lock, copy, unlock */
+    nimcp_platform_mutex_lock(system->mutex);
     *state = system->state;
+    nimcp_platform_mutex_unlock(system->mutex);
+
     return 0;
 }
 
@@ -1825,10 +1901,13 @@ int curiosity_enhanced_get_stats(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_stats", 0.0f);
 
-
     NIMCP_CHECK_THROW(system && stats, NIMCP_ERROR_NULL_ARG, "system or stats is NULL");
 
+    /* Thread-safe read: lock, copy, unlock */
+    nimcp_platform_mutex_lock(system->mutex);
     *stats = system->stats;
+    nimcp_platform_mutex_unlock(system->mutex);
+
     return 0;
 }
 
@@ -1853,8 +1932,12 @@ float curiosity_enhanced_get_overall_drive(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_get_overall_drive", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    float drive = system->state.overall_curiosity_drive;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->state.overall_curiosity_drive;
+    return drive;
 }
 
 /* Bio-async functions */
@@ -1911,8 +1994,12 @@ bool curiosity_enhanced_is_bio_async_connected(
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_is_bio_async_connect", 0.0f);
 
+    /* Thread-safe read */
+    nimcp_platform_mutex_lock(system->mutex);
+    bool connected = system->bio_async_enabled;
+    nimcp_platform_mutex_unlock(system->mutex);
 
-    return system->bio_async_enabled;
+    return connected;
 }
 
 /* String conversion functions */
@@ -2950,7 +3037,6 @@ void curiosity_enhanced_reset_qmc_stats(
 
 void curiosity_enhanced_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_curiosity_enhanced_health_agent = agent;
     }
 }
@@ -2965,7 +3051,7 @@ int curiosity_enhanced_training_begin(void* instance) {
                               "curiosity_enhanced_training_begin: NULL argument");
         return -1;
     }
-    curiosity_enhanced_heartbeat_instance(NULL, "curiosity_enhanced_training_begin", 0.0f);
+    curiosity_enhanced_heartbeat_instance(g_curiosity_enhanced_health_agent, "curiosity_enhanced_training_begin", 0.0f);
     (void)(struct interest_entry_s*)instance; /* Module state available for reset */
     return 0;
 }
@@ -2976,7 +3062,7 @@ int curiosity_enhanced_training_end(void* instance) {
                               "curiosity_enhanced_training_end: NULL argument");
         return -1;
     }
-    curiosity_enhanced_heartbeat_instance(NULL, "curiosity_enhanced_training_end", 1.0f);
+    curiosity_enhanced_heartbeat_instance(g_curiosity_enhanced_health_agent, "curiosity_enhanced_training_end", 1.0f);
     (void)(struct interest_entry_s*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -2989,7 +3075,7 @@ int curiosity_enhanced_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    curiosity_enhanced_heartbeat_instance(NULL, "curiosity_enhanced_training_step", progress);
+    curiosity_enhanced_heartbeat_instance(g_curiosity_enhanced_health_agent, "curiosity_enhanced_training_step", progress);
     (void)(struct interest_entry_s*)instance; /* Module state available for step adaptation */
     return 0;
 }

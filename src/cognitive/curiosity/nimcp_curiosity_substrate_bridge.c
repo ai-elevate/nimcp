@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -124,6 +125,7 @@ curiosity_substrate_bridge_t* curiosity_substrate_bridge_create(void* curiosity,
     bridge->effects.information_gain = 1.0f;
     bridge->effects.uncertainty_tolerance = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    if (bridge_base_init(&bridge->base, 0, "curiosity_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "curiosity_substrate");
     return bridge;
 }
@@ -138,6 +140,7 @@ void curiosity_substrate_bridge_destroy(curiosity_substrate_bridge_t* bridge) {
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     bridge = NULL;
 }
@@ -157,6 +160,7 @@ int curiosity_substrate_bridge_update(curiosity_substrate_bridge_t* bridge) {
         return -1;
     }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.exploration_drive = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         bridge->effects.information_gain = nimcp_clampf(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -168,6 +172,7 @@ int curiosity_substrate_bridge_update(curiosity_substrate_bridge_t* bridge) {
     bridge->effects.overall_capacity = (bridge->effects.exploration_drive + bridge->effects.novelty_seeking +
                                         bridge->effects.information_gain + bridge->effects.uncertainty_tolerance) / 4.0f;
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -176,7 +181,9 @@ int curiosity_substrate_bridge_get_effects(const curiosity_substrate_bridge_t* b
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     curiosity_substrate_bridge_heartbeat("curiosity_su_get_effects", 0.0f);
 

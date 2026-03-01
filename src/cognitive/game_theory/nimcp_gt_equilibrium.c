@@ -277,7 +277,7 @@ nimcp_game_matrix_t* nimcp_game_matrix_create(
 ) {
     if (!strategies_per_player || num_players == 0 ||
         num_players > NIMCP_GT_MAX_PLAYERS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_game_matrix_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_game_matrix_create: invalid player count or NULL strategies");
         return NULL;
     }
 
@@ -2029,7 +2029,6 @@ int equilibrium_query_self_knowledge(kg_reader_t* kg) {
 
 void gt_equilibrium_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gt_equilibrium_health_agent = agent;
     }
 }

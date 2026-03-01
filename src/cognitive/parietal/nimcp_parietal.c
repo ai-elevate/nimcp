@@ -713,7 +713,7 @@ void parietal_destroy(parietal_lobe_t* parietal) {
     nimcp_free(parietal->pending_requests);
 
     if (parietal->lock) {
-        nimcp_mutex_free(parietal->lock);
+        nimcp_mutex_destroy(parietal->lock);
     }
 
     nimcp_free(parietal);
@@ -2456,7 +2456,6 @@ int parietal_query_self_knowledge(kg_reader_t* kg) {
 
 void parietal_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_parietal_health_agent = agent;
     }
 }
@@ -2471,7 +2470,7 @@ int parietal_training_begin(void* instance) {
                               "parietal_training_begin: NULL argument");
         return -1;
     }
-    parietal_heartbeat_instance(NULL, "parietal_training_begin", 0.0f);
+    parietal_heartbeat_instance(g_parietal_health_agent, "parietal_training_begin", 0.0f);
     parietal_lobe_t* pl = (parietal_lobe_t*)instance;
     pl->total_requests = 0;
     pl->failed_requests = 0;
@@ -2505,7 +2504,7 @@ int parietal_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    parietal_heartbeat_instance(NULL, "parietal_training_step", progress);
+    parietal_heartbeat_instance(g_parietal_health_agent, "parietal_training_step", progress);
     parietal_lobe_t* pl = (parietal_lobe_t*)instance;
     pl->total_requests++;
     pl->neural_network_activations++;
@@ -2528,7 +2527,7 @@ int parietal_training_end(void* instance) {
                               "parietal_training_end: NULL argument");
         return -1;
     }
-    parietal_heartbeat_instance(NULL, "parietal_training_end", 1.0f);
+    parietal_heartbeat_instance(g_parietal_health_agent, "parietal_training_end", 1.0f);
     parietal_lobe_t* pl = (parietal_lobe_t*)instance;
     float avg_confidence = (pl->total_requests > 0)
         ? (float)(pl->total_confidence / (double)pl->total_requests)

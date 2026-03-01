@@ -39,6 +39,7 @@
 #include "utils/time/nimcp_time.h"       // nimcp_time_monotonic_ms
 #include "utils/algorithms/nimcp_monte_carlo.h"  // Monte Carlo utilities
 #include "utils/exception/nimcp_exception_macros.h"  // NIMCP_THROW_TO_IMMUNE
+#include <stdatomic.h>  // _Atomic for thread-safe GPU init flag
 
 //=============================================================================
 // Monte Carlo Integration - GPU acceleration with CPU fallback
@@ -52,11 +53,15 @@ static _Thread_local uint32_t g_exec_mc_seed = 0;
 
 static nimcp_gpu_context_t* g_exec_gpu_ctx = NULL;
 static qmc_gpu_rng_t g_exec_gpu_rng = NULL;
-static bool g_exec_gpu_init_attempted = false;
+static _Atomic bool g_exec_gpu_init_attempted = false;
 
 static bool exec_init_gpu_mc(void) {
-    if (g_exec_gpu_init_attempted) return g_exec_gpu_rng != NULL;
-    g_exec_gpu_init_attempted = true;
+    /* TOCTOU fix: Use atomic load/store to prevent double-initialization.
+     * WHY:  Multiple threads could race on the non-atomic check, both see false,
+     *       and double-initialize GPU context (resource leak + undefined behavior).
+     */
+    if (atomic_load(&g_exec_gpu_init_attempted)) return g_exec_gpu_rng != NULL;
+    atomic_store(&g_exec_gpu_init_attempted, true);
     if (!qmc_gpu_is_available()) {
         return false;  /* GPU not available - not an error */
     }
@@ -76,7 +81,7 @@ static bool exec_init_gpu_mc(void) {
 }
 
 static inline bool exec_has_gpu_mc(void) {
-    if (!g_exec_gpu_init_attempted) exec_init_gpu_mc();
+    if (!atomic_load(&g_exec_gpu_init_attempted)) exec_init_gpu_mc();
     return g_exec_gpu_rng != NULL;
 }
 
@@ -95,7 +100,7 @@ static void exec_cleanup_gpu_mc(void) {
         nimcp_gpu_context_destroy(g_exec_gpu_ctx);
         g_exec_gpu_ctx = NULL;
     }
-    g_exec_gpu_init_attempted = false;
+    atomic_store(&g_exec_gpu_init_attempted, false);
 }
 #else
 static inline bool exec_has_gpu_mc(void) { return false; }
@@ -2103,6 +2108,14 @@ executive_controller_t* executive_load(FILE* file)
         exec->active_task->context = NULL;
     }
 
+    // THREAD SAFETY: Initialize task mutex (matches executive_create_custom)
+    // WHY:  executive_add_task/switch_task/complete_task all lock task_mutex.
+    //       Without initialization, locking an uninitialized mutex is UB.
+    if (nimcp_mutex_init(&exec->task_mutex, NULL) != 0) {
+        set_error("Failed to initialize task mutex in executive_load");
+        goto cleanup;
+    }
+
     // Brain reference must be set separately by caller
     exec->brain = NULL;
 
@@ -3265,9 +3278,9 @@ plan_t* executive_create_plan_mcts(
     g_exec_mc_seed = mcts_cfg.seed;
 
     if (mc_ret != NIMCP_MC_OK) {
-        LOG_WARN("MCTS search failed with code %d, falling back to simple plan", mc_ret);
+        LOG_WARN("MCTS search failed with code %d, returning NULL to let caller handle fallback", mc_ret);
         plan_free_state(initial, &ctx);
-        return executive_create_plan(exec, goal, config->max_depth);
+        return NULL;
     }
 
     /* Build plan from MCTS results */
@@ -3577,7 +3590,6 @@ char* executive_get_best_action_mcts(
 
 void exec_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_exec_health_agent = agent;
     }
 }

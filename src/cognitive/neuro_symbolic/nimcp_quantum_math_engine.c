@@ -317,7 +317,7 @@ NIMCP_API void qme_math_destroy(qme_math_simulation_t* sim) {
 
     /* Clean up */
     if (sim->mutex) {
-        nimcp_mutex_free(sim->mutex);
+        nimcp_mutex_destroy(sim->mutex);
     }
 
     nimcp_free(sim->proposal_mean);
@@ -1365,7 +1365,6 @@ NIMCP_API void qme_math_print_diagnostics(const qme_math_simulation_t* sim) {
 
 void quantum_math_engine_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_quantum_math_engine_health_agent = agent;
     }
 }

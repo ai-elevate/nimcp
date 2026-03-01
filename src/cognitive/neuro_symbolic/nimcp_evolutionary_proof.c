@@ -371,7 +371,7 @@ NIMCP_API void evolutionary_proof_destroy(evolutionary_proof_search_t* eps) {
     }
 
     if (eps->mutex) {
-        nimcp_mutex_free(eps->mutex);
+        nimcp_mutex_destroy(eps->mutex);
     }
 
     nimcp_free(eps->experience_buffer);
@@ -1396,7 +1396,6 @@ NIMCP_API void evolutionary_proof_print_diagnostics(
 
 void evolutionary_proof_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_evolutionary_proof_health_agent = agent;
     }
 }

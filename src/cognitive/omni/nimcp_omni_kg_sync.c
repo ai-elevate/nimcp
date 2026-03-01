@@ -32,22 +32,14 @@ void omni_kg_sync_set_instance_health_agent(void* ctx, nimcp_health_agent_t* age
  * ============================================================================ */
 
 int omni_kg_sync_training_begin(void* ctx) {
-    if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-                              "omni_kg_sync_training_begin: NULL argument");
-        return -1;
-    }
+    /* ctx is optional; NULL means no instance state — not an error */
     omni_kg_sync_heartbeat_instance(g_omni_kg_sync_health_agent, "training_begin", 0.0f);
     (void)ctx;
     return 0;
 }
 
 int omni_kg_sync_training_step(void* ctx, float progress) {
-    if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-                              "omni_kg_sync_training_step: NULL argument");
-        return -1;
-    }
+    /* ctx is optional; NULL means no instance state — not an error */
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     omni_kg_sync_heartbeat_instance(g_omni_kg_sync_health_agent, "training_step", progress);
@@ -56,11 +48,7 @@ int omni_kg_sync_training_step(void* ctx, float progress) {
 }
 
 int omni_kg_sync_training_end(void* ctx) {
-    if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-                              "omni_kg_sync_training_end: NULL argument");
-        return -1;
-    }
+    /* ctx is optional; NULL means no instance state — not an error */
     omni_kg_sync_heartbeat_instance(g_omni_kg_sync_health_agent, "training_end", 1.0f);
     (void)ctx;
     return 0;
@@ -153,8 +141,7 @@ static int find_module_index(const omni_kg_sync_t* sync, const char* name) {
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_module_index: validation failed");
-    return -1;
+    return -1;  /* Not found is a normal lookup result, not an error */
 }
 
 static int find_module_index_by_node(const omni_kg_sync_t* sync,
@@ -170,8 +157,7 @@ static int find_module_index_by_node(const omni_kg_sync_t* sync,
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_module_index: validation failed");
-    return -1;
+    return -1;  /* Not found is a normal lookup result, not an error */
 }
 
 /* ============================================================================
@@ -249,7 +235,7 @@ omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
     if (!sync->modules || !sync->node_ids) {
         if (sync->modules) nimcp_free(sync->modules);
         if (sync->node_ids) nimcp_free(sync->node_ids);
-        nimcp_mutex_free(sync->mutex);
+        nimcp_mutex_destroy(sync->mutex);
         nimcp_free(sync);
         sync = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_kg_sync_default_config: validation failed");
@@ -272,7 +258,7 @@ void omni_kg_sync_destroy(omni_kg_sync_t* sync) {
     if (sync->node_ids) nimcp_free(sync->node_ids);
 
     if (sync->mutex) {
-        nimcp_mutex_free(sync->mutex);
+        nimcp_mutex_destroy(sync->mutex);
     }
 
     nimcp_free(sync);

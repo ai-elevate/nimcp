@@ -110,6 +110,9 @@ bias_thalamic_bridge_t* bias_thalamic_bridge_create(void* bias, thalamic_router_
     bridge->config = config ? *config : bias_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    if (bridge_base_init(&bridge->base, 0, "bias_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     NIMCP_LOGGING_INFO("Created %s bridge", "bias_thalamic");
     return bridge;
 }
@@ -119,7 +122,9 @@ void bias_thalamic_bridge_destroy(bias_thalamic_bridge_t* bridge) {
     bias_thalamic_bridge_heartbeat("bias_thalami_destroy", 0.0f);
 
 
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
 }
 
 int bias_thalamic_bridge_reset(bias_thalamic_bridge_t* bridge) {
@@ -130,9 +135,10 @@ int bias_thalamic_bridge_reset(bias_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     bias_thalamic_bridge_heartbeat("bias_thalami_reset", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -145,7 +151,9 @@ int bias_thalamic_route_detection(bias_thalamic_bridge_t* bridge, const bias_tha
     bias_thalamic_bridge_heartbeat("bias_thalami_bias_thalamic_route_", 0.0f);
 
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->detection_confidence < bridge->config.min_detection_confidence) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.biases_detected++;
@@ -154,6 +162,7 @@ int bias_thalamic_route_detection(bias_thalamic_bridge_t* bridge, const bias_tha
     if (signal->signal_type == BIAS_SIGNAL_OVERRIDE) {
         bridge->stats.overrides_successful++;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -166,9 +175,11 @@ int bias_thalamic_route_correction(bias_thalamic_bridge_t* bridge, const void* c
     bias_thalamic_bridge_heartbeat("bias_thalami_bias_thalamic_route_", 0.0f);
 
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_automatic_correction && strength >= bridge->config.correction_threshold) {
         bridge->stats.corrections_applied++;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -180,8 +191,9 @@ int bias_thalamic_set_attention(bias_thalamic_bridge_t* bridge, float attention)
     /* Phase 8: Heartbeat at operation start */
     bias_thalamic_bridge_heartbeat("bias_thalami_bias_thalamic_set_at", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -190,7 +202,9 @@ int bias_thalamic_get_attention(const bias_thalamic_bridge_t* bridge, float* att
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     bias_thalamic_bridge_heartbeat("bias_thalami_bias_thalamic_get_at", 0.0f);
 
@@ -203,7 +217,9 @@ int bias_thalamic_bridge_get_stats(const bias_thalamic_bridge_t* bridge, bias_th
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     bias_thalamic_bridge_heartbeat("bias_thalami_get_stats", 0.0f);
 

@@ -277,7 +277,6 @@ int reasoning_factory_query_self_knowledge(kg_reader_t* kg) {
 
 void reasoning_factory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_reasoning_factory_health_agent = agent;
     }
 }

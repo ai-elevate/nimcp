@@ -337,8 +337,7 @@ int self_model_plasticity_unregister_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_model_plasticity_unregister_synapse: operation failed");
-    return -1;
+    return -1;  /* Synapse not found — normal condition */
 }
 
 int self_model_plasticity_get_synapse(
@@ -360,8 +359,7 @@ int self_model_plasticity_get_synapse(
     self_model_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_plasticity_get_synapse: syn is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     *synapse = *syn;
@@ -389,8 +387,7 @@ int self_model_plasticity_protect_synapse(
     self_model_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_plasticity_protect_synapse: syn is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     syn->is_protected = protect;
@@ -426,8 +423,7 @@ int self_model_plasticity_learn(
     if (!syn) {
         bridge->state = SELF_MODEL_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_plasticity_learn: syn is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     /* Check protection */
@@ -519,13 +515,17 @@ int self_model_plasticity_learn(
     syn->update_count++;
     bridge->calibration.last_learning_us = bridge->current_time_us;
 
-    /* Invoke callback */
-    if (bridge->learn_callback) {
-        bridge->learn_callback(bridge, event, magnitude, bridge->learn_callback_data);
-    }
+    /* Invoke callback outside mutex to prevent deadlock */
+    self_model_plasticity_learn_callback_t cb = bridge->learn_callback;
+    void* cb_data = bridge->learn_callback_data;
 
     bridge->state = SELF_MODEL_PLASTICITY_STATE_IDLE;
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    if (cb) {
+        cb(bridge, event, magnitude, cb_data);
+    }
+
     return 0;
 }
 
@@ -762,15 +762,17 @@ int self_model_plasticity_homeostatic_update(
     bridge->calibration.boundary_calibration =
         old_calib * agency_decay + bridge->config.target_agency * (1.0f - agency_decay);
 
-    /* Invoke calibration callback if significant change */
-    if (bridge->calibration_callback &&
-        fabsf(bridge->calibration.boundary_calibration - old_calib) > 0.01f) {
-        bridge->calibration_callback(bridge, old_calib,
-                                     bridge->calibration.boundary_calibration,
-                                     bridge->calibration_callback_data);
-    }
+    /* Copy callback pointer under lock, invoke outside mutex to prevent deadlock */
+    self_model_plasticity_calibration_callback_t cal_cb = bridge->calibration_callback;
+    void* cal_cb_data = bridge->calibration_callback_data;
+    float new_calib = bridge->calibration.boundary_calibration;
+    bool should_invoke = cal_cb && fabsf(new_calib - old_calib) > 0.01f;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    if (should_invoke) {
+        cal_cb(bridge, old_calib, new_calib, cal_cb_data);
+    }
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);

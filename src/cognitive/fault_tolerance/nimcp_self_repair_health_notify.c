@@ -416,7 +416,7 @@ void self_repair_health_notify_destroy(
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
         bridge->mutex = NULL;
     }
 
@@ -829,7 +829,6 @@ const char* self_repair_health_notify_version(void) {
 
 void self_repair_health_notify_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_self_repair_health_notify_health_agent = agent;
     }
 }

@@ -380,7 +380,7 @@ void spatial_reasoning_destroy(spatial_reasoning_t* sr) {
     nimcp_free(sr->objects);
 
     if (sr->lock) {
-        nimcp_mutex_free(sr->lock);
+        nimcp_mutex_destroy(sr->lock);
     }
 
     nimcp_free(sr);
@@ -1387,7 +1387,6 @@ int spatial_reasoning_query_self_knowledge(kg_reader_t* kg) {
 
 void spatial_reasoning_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_spatial_reasoning_health_agent = agent;
     }
 }
@@ -1402,7 +1401,7 @@ int spatial_reasoning_training_begin(void* instance) {
                               "spatial_reasoning_training_begin: NULL argument");
         return -1;
     }
-    spatial_reasoning_heartbeat_instance(NULL, "spatial_reasoning_training_begin", 0.0f);
+    spatial_reasoning_heartbeat_instance(g_spatial_reasoning_health_agent, "spatial_reasoning_training_begin", 0.0f);
     (void)(struct kd_node*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1413,7 +1412,7 @@ int spatial_reasoning_training_end(void* instance) {
                               "spatial_reasoning_training_end: NULL argument");
         return -1;
     }
-    spatial_reasoning_heartbeat_instance(NULL, "spatial_reasoning_training_end", 1.0f);
+    spatial_reasoning_heartbeat_instance(g_spatial_reasoning_health_agent, "spatial_reasoning_training_end", 1.0f);
     (void)(struct kd_node*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1426,7 +1425,7 @@ int spatial_reasoning_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    spatial_reasoning_heartbeat_instance(NULL, "spatial_reasoning_training_step", progress);
+    spatial_reasoning_heartbeat_instance(g_spatial_reasoning_health_agent, "spatial_reasoning_training_step", progress);
     (void)(struct kd_node*)instance; /* Module state available for step adaptation */
     return 0;
 }

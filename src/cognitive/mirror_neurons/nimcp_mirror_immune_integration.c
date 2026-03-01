@@ -188,7 +188,7 @@ void mirror_immune_destroy(mirror_immune_integration_t* integration) {
 
 
     if (integration->mutex) {
-        nimcp_mutex_free(integration->mutex);
+        nimcp_mutex_destroy(integration->mutex);
     }
 
     nimcp_free(integration);
@@ -901,7 +901,6 @@ int mirror_immune_query_self_knowledge(kg_reader_t* kg) {
  * ============================================================================ */
 void mirror_immune_integration_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mirror_immune_integration_health_agent = agent;
     }
 }

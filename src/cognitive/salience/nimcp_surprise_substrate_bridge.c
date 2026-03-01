@@ -227,7 +227,7 @@ void surprise_substrate_bridge_destroy(surprise_substrate_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
     }
     nimcp_free(bridge);
     bridge = NULL;
@@ -425,7 +425,9 @@ int surprise_substrate_bridge_get_effects(
                              NIMCP_SURPRISE_SUBSTRATE_ERROR_NULL_POINTER,
                              "NULL effects_out in get_effects");
 
+    nimcp_mutex_lock(bridge->mutex);
     *effects_out = bridge->effects;
+    nimcp_mutex_unlock(bridge->mutex);
     return 0;
 }
 
@@ -465,7 +467,9 @@ int surprise_substrate_bridge_get_stats(
                              NIMCP_SURPRISE_SUBSTRATE_ERROR_NULL_POINTER,
                              "NULL stats_out in get_stats");
 
+    nimcp_mutex_lock(bridge->mutex);
     *stats_out = bridge->stats;
+    nimcp_mutex_unlock(bridge->mutex);
     return 0;
 }
 
@@ -496,7 +500,6 @@ int surprise_substrate_bridge_set_health_agent(
 
 void surprise_substrate_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_surprise_substrate_health_agent = agent;
     }
 }

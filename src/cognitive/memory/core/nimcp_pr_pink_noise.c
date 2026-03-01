@@ -1442,7 +1442,6 @@ const char* pr_pink_noise_get_last_error(void) {
 
 void pr_pink_noise_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_pr_pink_noise_health_agent = agent;
     }
 }

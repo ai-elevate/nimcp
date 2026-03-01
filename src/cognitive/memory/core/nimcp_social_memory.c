@@ -3091,7 +3091,6 @@ static float compute_signature_match(const prime_signature_t* s1, const prime_si
 
 void social_memory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_social_memory_health_agent = agent;
     }
 }

@@ -96,8 +96,8 @@ int grief_fep_process_persistent_pe(grief_fep_bridge_t* bridge, float pe_magnitu
 int grief_fep_modulate_learning_rate(grief_fep_bridge_t* bridge);
 int grief_fep_update(grief_fep_bridge_t* bridge, uint64_t delta_ms);
 
-int grief_fep_get_state(const grief_fep_bridge_t* bridge, grief_fep_state_t* state);
-int grief_fep_get_stats(const grief_fep_bridge_t* bridge, grief_fep_stats_t* stats);
+int grief_fep_get_state(grief_fep_bridge_t* bridge, grief_fep_state_t* state);
+int grief_fep_get_stats(grief_fep_bridge_t* bridge, grief_fep_stats_t* stats);
 
 int grief_fep_connect_bio_async(grief_fep_bridge_t* bridge);
 int grief_fep_disconnect_bio_async(grief_fep_bridge_t* bridge);

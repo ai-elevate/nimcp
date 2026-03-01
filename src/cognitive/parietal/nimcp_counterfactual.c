@@ -463,7 +463,6 @@ int counterfactual_query_self_knowledge(kg_reader_t* kg) {
 
 void parietal_counterfactual_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_parietal_counterfactual_health_agent = agent;
     }
 }
@@ -478,7 +477,7 @@ int parietal_counterfactual_training_begin(void* instance) {
                               "parietal_counterfactual_training_begin: NULL argument");
         return -1;
     }
-    parietal_counterfactual_heartbeat_instance(NULL, "parietal_counterfactual_training_begin", 0.0f);
+    parietal_counterfactual_heartbeat_instance(g_parietal_counterfactual_health_agent, "parietal_counterfactual_training_begin", 0.0f);
     (void)instance;
     return 0;
 }
@@ -489,7 +488,7 @@ int parietal_counterfactual_training_end(void* instance) {
                               "parietal_counterfactual_training_end: NULL argument");
         return -1;
     }
-    parietal_counterfactual_heartbeat_instance(NULL, "parietal_counterfactual_training_end", 1.0f);
+    parietal_counterfactual_heartbeat_instance(g_parietal_counterfactual_health_agent, "parietal_counterfactual_training_end", 1.0f);
     (void)instance;
     return 0;
 }
@@ -502,7 +501,7 @@ int parietal_counterfactual_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    parietal_counterfactual_heartbeat_instance(NULL, "parietal_counterfactual_training_step", progress);
+    parietal_counterfactual_heartbeat_instance(g_parietal_counterfactual_health_agent, "parietal_counterfactual_training_step", progress);
     (void)instance;
     return 0;
 }

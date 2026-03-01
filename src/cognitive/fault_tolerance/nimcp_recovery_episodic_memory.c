@@ -263,7 +263,7 @@ static lsh_table_t* lsh_table_create(uint32_t num_buckets)
     lsh_table_t* table = nimcp_calloc(1, sizeof(lsh_table_t));
     if (!table) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lsh_table_create: failed to allocate table");
 
         return NULL;
 
@@ -445,7 +445,7 @@ episodic_memory_t* episodic_memory_create_custom(
     // GUARD: NULL config
     if (!config) {
         LOG_ERROR("NULL config in episodic_memory_create_custom");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_create_custom: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_create_custom: config is NULL");
         return NULL;
     }
 
@@ -527,7 +527,7 @@ episodic_memory_t* episodic_memory_create_custom(
             nimcp_free(memory->episodes);
             nimcp_free(memory);
             memory = NULL;
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_create_custom: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_create_custom: failed to create LSH table");
             return NULL;
         }
     }
@@ -704,7 +704,7 @@ bool episodic_memory_store(
     // GUARD: NULL checks
     if (!memory) {
         LOG_ERROR("NULL memory in episodic_memory_store");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_store: memory is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_store: memory is NULL");
         return false;
     }
 
@@ -854,7 +854,7 @@ recovery_episode_t** episodic_memory_recall_similar(
     // GUARD: NULL checks
     if (!memory || !query || !count) {
         LOG_ERROR("NULL parameter in episodic_memory_recall_similar");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_recall_similar: required parameter is NULL (memory, query, count)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_recall_similar: required parameter is NULL (memory, query, count)");
         return NULL;
     }
 
@@ -862,8 +862,7 @@ recovery_episode_t** episodic_memory_recall_similar(
 
     // GUARD: Empty memory
     if (memory->count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_recall_similar: memory->count is zero");
-        return NULL;
+        return NULL;  // Empty memory - nothing to recall
     }
 
     uint64_t start_time = get_current_timestamp_ms();
@@ -965,7 +964,7 @@ recovery_episode_t** episodic_memory_recall_similar(
         scores = NULL;
         nimcp_free(candidates);
         candidates = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_recall_similar: results is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_recall_similar: results is NULL");
         return NULL;
     }
 
@@ -1181,15 +1180,14 @@ recovery_episode_t** episodic_memory_get_all(
 {
     if (!memory || !count) {
         LOG_ERROR("NULL parameter in episodic_memory_get_all");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_get_all: required parameter is NULL (memory, count)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_get_all: required parameter is NULL (memory, count)");
         return NULL;
     }
 
     *count = memory->count;
 
     if (memory->count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_get_all: memory->count is zero");
-        return NULL;
+        return NULL;  // Empty memory
     }
 
     // Allocate array of pointers
@@ -1341,7 +1339,6 @@ int recovery_episodic_memory_query_self_knowledge(kg_reader_t* kg) {
 
 void recovery_episodic_memory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_recovery_episodic_memory_health_agent = agent;
     }
 }

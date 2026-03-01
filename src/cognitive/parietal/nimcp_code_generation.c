@@ -193,7 +193,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
     engine->fix_history_capacity = 256;
     engine->fix_history = nimcp_calloc(engine->fix_history_capacity, sizeof(generated_fix_t));
     if (!engine->fix_history) {
-        nimcp_mutex_free(engine->mutex);
+        nimcp_mutex_destroy(engine->mutex);
         nimcp_free(engine);
         engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->fix_history is NULL");
@@ -205,7 +205,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
     engine->learning_history = nimcp_calloc(engine->learning_history_capacity, sizeof(fix_history_entry_t));
     if (!engine->learning_history) {
         nimcp_free(engine->fix_history);
-        nimcp_mutex_free(engine->mutex);
+        nimcp_mutex_destroy(engine->mutex);
         nimcp_free(engine);
         engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->learning_history is NULL");
@@ -218,7 +218,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
     if (!engine->custom_templates) {
         nimcp_free(engine->learning_history);
         nimcp_free(engine->fix_history);
-        nimcp_mutex_free(engine->mutex);
+        nimcp_mutex_destroy(engine->mutex);
         nimcp_free(engine);
         engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->custom_templates is NULL");
@@ -230,7 +230,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
         nimcp_free(engine->custom_templates);
         nimcp_free(engine->learning_history);
         nimcp_free(engine->fix_history);
-        nimcp_mutex_free(engine->mutex);
+        nimcp_mutex_destroy(engine->mutex);
         nimcp_free(engine);
         engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "code_gen_create: validation failed");
@@ -291,7 +291,7 @@ void code_gen_destroy(code_gen_engine_t* engine) {
         nimcp_free(engine->fix_history);
     }
     if (engine->mutex) {
-        nimcp_mutex_free(engine->mutex);
+        nimcp_mutex_destroy(engine->mutex);
     }
 
     nimcp_free(engine);
@@ -1433,7 +1433,6 @@ uint32_t code_gen_process_messages(code_gen_engine_t* engine, uint32_t max_messa
 
 void code_generation_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_code_generation_health_agent = agent;
     }
 }
@@ -1448,7 +1447,7 @@ int code_generation_training_begin(void* instance) {
                               "code_generation_training_begin: NULL argument");
         return -1;
     }
-    code_generation_heartbeat_instance(NULL, "code_generation_training_begin", 0.0f);
+    code_generation_heartbeat_instance(g_code_generation_health_agent, "code_generation_training_begin", 0.0f);
     (void)(struct code_gen_engine*)instance; /* Module state available for reset */
     return 0;
 }
@@ -1459,7 +1458,7 @@ int code_generation_training_end(void* instance) {
                               "code_generation_training_end: NULL argument");
         return -1;
     }
-    code_generation_heartbeat_instance(NULL, "code_generation_training_end", 1.0f);
+    code_generation_heartbeat_instance(g_code_generation_health_agent, "code_generation_training_end", 1.0f);
     (void)(struct code_gen_engine*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -1472,7 +1471,7 @@ int code_generation_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    code_generation_heartbeat_instance(NULL, "code_generation_training_step", progress);
+    code_generation_heartbeat_instance(g_code_generation_health_agent, "code_generation_training_step", progress);
     (void)(struct code_gen_engine*)instance; /* Module state available for step adaptation */
     return 0;
 }

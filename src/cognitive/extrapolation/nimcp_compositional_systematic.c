@@ -1602,7 +1602,6 @@ const char* cs_binding_type_string(cs_binding_type_t type) {
 
 void compositional_systematic_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_compositional_systematic_health_agent = agent;
     }
 }

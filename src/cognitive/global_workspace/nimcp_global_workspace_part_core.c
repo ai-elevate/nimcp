@@ -806,7 +806,7 @@ int global_workspace_training_begin(void* instance) {
                               "global_workspace_training_begin: NULL argument");
         return -1;
     }
-    global_workspace_heartbeat_instance(NULL, "global_workspace_training_begin", 0.0f);
+    global_workspace_heartbeat_instance(g_global_workspace_health_agent, "global_workspace_training_begin", 0.0f);
     (void)(struct global_workspace_struct*)instance; /* Module state available for reset */
     return 0;
 }
@@ -818,7 +818,7 @@ int global_workspace_training_end(void* instance) {
                               "global_workspace_training_end: NULL argument");
         return -1;
     }
-    global_workspace_heartbeat_instance(NULL, "global_workspace_training_end", 1.0f);
+    global_workspace_heartbeat_instance(g_global_workspace_health_agent, "global_workspace_training_end", 1.0f);
     (void)(struct global_workspace_struct*)instance; /* Module state available for finalization */
     return 0;
 }

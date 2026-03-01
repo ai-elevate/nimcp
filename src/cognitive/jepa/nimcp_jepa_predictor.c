@@ -2687,7 +2687,6 @@ int jepa_predictor_qmc_mcts_explore(
 
 void jepa_predictor_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_jepa_predictor_health_agent = agent;
     }
 }
@@ -2702,7 +2701,7 @@ int jepa_predictor_training_begin(void* instance) {
                               "jepa_predictor_training_begin: NULL argument");
         return -1;
     }
-    jepa_predictor_heartbeat_instance(NULL, "jepa_predictor_training_begin", 0.0f);
+    jepa_predictor_heartbeat("jepa_predictor_training_begin", 0.0f);
     (void)(struct jepa_qmc_energy_ctx*)instance; /* Module state available for reset */
     return 0;
 }
@@ -2713,7 +2712,7 @@ int jepa_predictor_training_end(void* instance) {
                               "jepa_predictor_training_end: NULL argument");
         return -1;
     }
-    jepa_predictor_heartbeat_instance(NULL, "jepa_predictor_training_end", 1.0f);
+    jepa_predictor_heartbeat("jepa_predictor_training_end", 1.0f);
     (void)(struct jepa_qmc_energy_ctx*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -2726,7 +2725,7 @@ int jepa_predictor_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    jepa_predictor_heartbeat_instance(NULL, "jepa_predictor_training_step", progress);
+    jepa_predictor_heartbeat("jepa_predictor_training_step", progress);
     (void)(struct jepa_qmc_energy_ctx*)instance; /* Module state available for step adaptation */
     return 0;
 }

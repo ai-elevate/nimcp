@@ -12,6 +12,7 @@
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 
 //=============================================================================
@@ -115,6 +116,8 @@ intuition_substrate_bridge_t* intuition_substrate_bridge_create(
     bridge->effects.meta_reasoning_depth = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    if (bridge_base_init(&bridge->base, 0, "intuition_substrate") != 0) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "intuition_substrate");
     return bridge;
 }
 
@@ -123,7 +126,10 @@ void intuition_substrate_bridge_destroy(intuition_substrate_bridge_t* bridge) {
     intuition_substrate_bridge_heartbeat("intuition_su_destroy", 0.0f);
 
 
-    if (bridge) nimcp_free(bridge);
+    if (bridge) {
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+    }
 }
 
 int intuition_substrate_bridge_reset(intuition_substrate_bridge_t* bridge) {
@@ -171,6 +177,7 @@ int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
     float fatigue = 1.0f - metabolic.metabolic_capacity;
     float min_cap = bridge->config.min_capacity;
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* Track statistics */
     bridge->stats.avg_atp_level = (bridge->stats.avg_atp_level * bridge->update_count + atp) / (bridge->update_count + 1);
     bridge->stats.avg_fatigue_level = (bridge->stats.avg_fatigue_level * bridge->update_count + fatigue) / (bridge->update_count + 1);
@@ -233,6 +240,7 @@ int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
     bridge->stats.avg_capacity = (bridge->stats.avg_capacity * bridge->update_count + bridge->effects.overall_capacity) / (bridge->update_count + 1);
     bridge->update_count++;
     bridge->stats.updates++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);
@@ -247,7 +255,9 @@ int intuition_substrate_bridge_get_effects(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     intuition_substrate_bridge_heartbeat("intuition_su_get_effects", 0.0f);
 
@@ -308,7 +318,9 @@ int intuition_substrate_bridge_get_stats(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_substrate_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     intuition_substrate_bridge_heartbeat("intuition_su_get_stats", 0.0f);
 

@@ -421,7 +421,7 @@ NIMCP_EXPORT void reconsolidation_destroy(reconsolidation_system_t* system) {
     nimcp_mutex_unlock(system->mutex);
 
     // Free resources
-    nimcp_mutex_free(system->mutex);
+    nimcp_mutex_destroy(system->mutex);
     nimcp_free(system->entry_pool);
     nimcp_free(system->hash_table);
     nimcp_free(system->free_indices);
@@ -1757,7 +1757,6 @@ static float compute_quaternion_distance(nimcp_quaternion_t q1, nimcp_quaternion
 
 void reconsolidation_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_reconsolidation_health_agent = agent;
     }
 }

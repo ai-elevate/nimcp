@@ -146,7 +146,7 @@ static int generate_frame(video_generator_t* gen,
     out_frame->width = width;
     out_frame->height = height;
     out_frame->channels = 3;
-    out_frame->pixels = nimcp_calloc(width * height * 3, sizeof(uint8_t));
+    out_frame->pixels = nimcp_calloc((size_t)width * (size_t)height * 3, sizeof(uint8_t));
     if (!out_frame->pixels) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_frame: out_frame->pixels is NULL");
         return -1;
@@ -356,9 +356,9 @@ int video_generate(video_generator_t* gen,
             nimcp_free(prev_frame.pixels);
         }
         prev_frame = frame->image;
-        prev_frame.pixels = nimcp_calloc(width * height * 3, sizeof(uint8_t));
+        prev_frame.pixels = nimcp_calloc((size_t)width * (size_t)height * 3, sizeof(uint8_t));
         if (prev_frame.pixels) {
-            memcpy(prev_frame.pixels, frame->image.pixels, width * height * 3);
+            memcpy(prev_frame.pixels, frame->image.pixels, (size_t)width * (size_t)height * 3);
         }
     }
 
@@ -376,14 +376,14 @@ int video_generate(video_generator_t* gen,
             temp.width = width;
             temp.height = height;
             temp.channels = 3;
-            temp.pixels = nimcp_calloc(width * height * 3, sizeof(uint8_t));
+            temp.pixels = nimcp_calloc((size_t)width * (size_t)height * 3, sizeof(uint8_t));
 
             if (temp.pixels) {
                 apply_camera_to_frame(&result->frames[i].image, &temp,
                                      request->camera, progress);
                 /* Copy back */
                 memcpy(result->frames[i].image.pixels, temp.pixels,
-                       width * height * 3);
+                       (size_t)width * (size_t)height * 3);
                 nimcp_free(temp.pixels);
             }
         }

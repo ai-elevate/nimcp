@@ -242,8 +242,11 @@ fep_sleep_stage_t fep_sleep_get_stage(const fep_sleep_system_t* sys) {
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_get_stage", 0.0f);
 
-
-    return sys ? sys->state.current_stage : SLEEP_STAGE_WAKE;
+    if (!sys) return SLEEP_STAGE_WAKE;
+    nimcp_platform_mutex_lock(((fep_sleep_system_t*)sys)->mutex);
+    fep_sleep_stage_t stage = sys->state.current_stage;
+    nimcp_platform_mutex_unlock(((fep_sleep_system_t*)sys)->mutex);
+    return stage;
 }
 
 int fep_sleep_update(fep_sleep_system_t* sys, uint64_t delta_ms) {
@@ -370,12 +373,30 @@ int fep_sleep_add_experience(
     fep_experience_t* exp = &sys->experience_buffer[sys->buffer_count];
 
     exp->state = (float*)nimcp_calloc(dim, sizeof(float));
-    if (!exp->state) return -1;
+    if (!exp->state) {
+        nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_sleep_add_experience: state alloc failed");
+        return -1;
+    }
     exp->next_state = (float*)nimcp_calloc(dim, sizeof(float));
-    if (!exp->next_state) return -1;
+    if (!exp->next_state) {
+        nimcp_free(exp->state);
+        exp->state = NULL;
+        nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_sleep_add_experience: next_state alloc failed");
+        return -1;
+    }
     if (observation && obs_dim > 0) {
         exp->observation = (float*)nimcp_calloc(obs_dim, sizeof(float));
-        if (!exp->observation) return -1;
+        if (!exp->observation) {
+            nimcp_free(exp->state);
+            exp->state = NULL;
+            nimcp_free(exp->next_state);
+            exp->next_state = NULL;
+            nimcp_platform_mutex_unlock(sys->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_sleep_add_experience: observation alloc failed");
+            return -1;
+        }
     }
 
     if (!exp->state || !exp->next_state) {
@@ -612,10 +633,12 @@ int fep_sleep_get_state(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_get_state: required parameter is NULL (sys, state)");
         return -1;
     }
-    *state = sys->state;
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_get_state", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_sleep_system_t*)sys)->mutex);
+    *state = sys->state;
+    nimcp_platform_mutex_unlock(((fep_sleep_system_t*)sys)->mutex);
 
     return 0;
 }
@@ -628,10 +651,12 @@ int fep_sleep_get_stats(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_get_stats: required parameter is NULL (sys, stats)");
         return -1;
     }
-    *stats = sys->stats;
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_get_stats", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_sleep_system_t*)sys)->mutex);
+    *stats = sys->stats;
+    nimcp_platform_mutex_unlock(((fep_sleep_system_t*)sys)->mutex);
 
     return 0;
 }
@@ -642,8 +667,11 @@ float fep_sleep_get_precision_modifier(const fep_sleep_system_t* sys) {
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_get_precision_modifi", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_sleep_system_t*)sys)->mutex);
+    fep_sleep_stage_t stage = sys->state.current_stage;
+    nimcp_platform_mutex_unlock(((fep_sleep_system_t*)sys)->mutex);
 
-    switch (sys->state.current_stage) {
+    switch (stage) {
         case SLEEP_STAGE_WAKE: return FEP_SLEEP_WAKE_PRECISION;
         case SLEEP_STAGE_N1:   return FEP_SLEEP_N1_PRECISION;
         case SLEEP_STAGE_N2:   return FEP_SLEEP_N2_PRECISION;
@@ -874,8 +902,10 @@ float fep_sleep_get_pressure(const fep_sleep_system_t* sys) {
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_get_pressure", 0.0f);
 
-
-    return sys->pressure.sleep_pressure;
+    nimcp_platform_mutex_lock(((fep_sleep_system_t*)sys)->mutex);
+    float pressure = sys->pressure.sleep_pressure;
+    nimcp_platform_mutex_unlock(((fep_sleep_system_t*)sys)->mutex);
+    return pressure;
 }
 
 int fep_sleep_get_pressure_state(fep_sleep_system_t* sys, fep_sleep_pressure_t* pressure) {
@@ -903,8 +933,10 @@ bool fep_sleep_is_sleep_recommended(const fep_sleep_system_t* sys) {
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_is_sleep_recommended", 0.0f);
 
-
-    return sys->pressure.sleep_recommended;
+    nimcp_platform_mutex_lock(((fep_sleep_system_t*)sys)->mutex);
+    bool recommended = sys->pressure.sleep_recommended;
+    nimcp_platform_mutex_unlock(((fep_sleep_system_t*)sys)->mutex);
+    return recommended;
 }
 
 int fep_sleep_reset_pressure(fep_sleep_system_t* sys) {
@@ -1023,7 +1055,6 @@ int fep_sleep_query_self_knowledge(kg_reader_t* kg) {
 
 void fep_sleep_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_fep_sleep_health_agent = agent;
     }
 }
@@ -1038,7 +1069,7 @@ int fep_sleep_training_begin(void* instance) {
                               "fep_sleep_training_begin: NULL argument");
         return -1;
     }
-    fep_sleep_heartbeat_instance(NULL, "fep_sleep_training_begin", 0.0f);
+    fep_sleep_heartbeat_instance(g_fep_sleep_health_agent, "fep_sleep_training_begin", 0.0f);
     return 0;
 }
 
@@ -1048,7 +1079,7 @@ int fep_sleep_training_end(void* instance) {
                               "fep_sleep_training_end: NULL argument");
         return -1;
     }
-    fep_sleep_heartbeat_instance(NULL, "fep_sleep_training_end", 1.0f);
+    fep_sleep_heartbeat_instance(g_fep_sleep_health_agent, "fep_sleep_training_end", 1.0f);
     return 0;
 }
 
@@ -1060,6 +1091,6 @@ int fep_sleep_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    fep_sleep_heartbeat_instance(NULL, "fep_sleep_training_step", progress);
+    fep_sleep_heartbeat_instance(g_fep_sleep_health_agent, "fep_sleep_training_step", progress);
     return 0;
 }

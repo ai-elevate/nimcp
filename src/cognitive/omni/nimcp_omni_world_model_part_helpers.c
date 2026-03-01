@@ -56,17 +56,42 @@ static nimcp_error_t handle_omni_wm_predict(
         case OMNI_WM_DIR_BACKWARD:
             result = omni_wm_infer_backward(wm, state, &transition);
             break;
-        case OMNI_WM_DIR_LATERAL:
-            /* For lateral, use action_dim as target modality ID */
-            result = omni_wm_predict_lateral(wm, state, req->action_dim,
-                                              transition.next_state);
+        case OMNI_WM_DIR_LATERAL: {
+            /* For lateral, use action_dim as target modality ID.
+             * Allocate next_state so the predict function has somewhere to write. */
+            omni_wm_state_t* next = omni_wm_state_create(req->state_dim);
+            if (!next) {
+                omni_wm_state_destroy(state);
+                if (response_promise) {
+                    bio_msg_omni_wm_predict_response_t err_resp = {0};
+                    err_resp.prediction_error = 1.0f;
+                    nimcp_bio_promise_complete_sized(response_promise, &err_resp, sizeof(err_resp));
+                }
+                return NIMCP_ERROR_NO_MEMORY;
+            }
+            result = omni_wm_predict_lateral(wm, state, req->action_dim, next);
+            transition.next_state = next;
             break;
-        case OMNI_WM_DIR_HIERARCHICAL:
-            /* For hierarchical, use first action element as target level */
+        }
+        case OMNI_WM_DIR_HIERARCHICAL: {
+            /* For hierarchical, use first action element as target level.
+             * Allocate next_state so the predict function has somewhere to write. */
+            omni_wm_state_t* next = omni_wm_state_create(req->state_dim);
+            if (!next) {
+                omni_wm_state_destroy(state);
+                if (response_promise) {
+                    bio_msg_omni_wm_predict_response_t err_resp = {0};
+                    err_resp.prediction_error = 1.0f;
+                    nimcp_bio_promise_complete_sized(response_promise, &err_resp, sizeof(err_resp));
+                }
+                return NIMCP_ERROR_NO_MEMORY;
+            }
             result = omni_wm_predict_hierarchical(wm, state,
                                                    (uint32_t)req->action[0],
-                                                   transition.next_state);
+                                                   next);
+            transition.next_state = next;
             break;
+        }
         default:
             result = NIMCP_ERROR_INVALID_PARAM;
             break;
@@ -423,8 +448,7 @@ static size_t serialize_state(uint8_t* buf, size_t pos, const omni_wm_state_t* s
 static omni_wm_state_t* deserialize_state_from_buf(const uint8_t* buf, size_t* pos) {
     uint8_t present = read_u8(buf, pos);
     if (!present) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_state_from_buf: present is NULL");
-        return NULL;
+        return NULL;  /* Not-present marker is normal for optional fields */
     }
 
     uint32_t dim = read_u32(buf, pos);
@@ -520,8 +544,7 @@ static size_t serialize_rssm_state(uint8_t* buf, size_t pos, const omni_wm_rssm_
 static omni_wm_rssm_state_t* deserialize_rssm_state_from_buf(const uint8_t* buf, size_t* pos) {
     uint8_t present = read_u8(buf, pos);
     if (!present) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_rssm_state_from_buf: present is NULL");
-        return NULL;
+        return NULL;  /* Not-present marker is normal for optional fields */
     }
 
     uint32_t h_dim = read_u32(buf, pos);
@@ -644,8 +667,7 @@ static size_t serialize_dynamics_weights(uint8_t* buf, size_t pos, const omni_wm
 static omni_wm_dynamics_t* deserialize_dynamics_from_buf(const uint8_t* buf, size_t* pos) {
     uint8_t present = read_u8(buf, pos);
     if (!present) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_dynamics_from_buf: present is NULL");
-        return NULL;
+        return NULL;  /* Not-present marker is normal for optional fields */
     }
 
     uint32_t h_dim = read_u32(buf, pos);

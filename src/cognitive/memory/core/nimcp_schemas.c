@@ -2833,7 +2833,6 @@ uint64_t schema_current_time_ms(void) {
 
 void schemas_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_schemas_health_agent = agent;
     }
 }

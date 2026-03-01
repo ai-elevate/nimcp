@@ -865,7 +865,6 @@ void multimodal_print(const multimodal_action_features_t* features,
  * ============================================================================ */
 void mirror_multimodal_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mirror_multimodal_health_agent = agent;
     }
 }

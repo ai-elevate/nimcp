@@ -19,6 +19,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
@@ -170,7 +171,9 @@ static self_health_status_t health_score_to_status(float health_score) {
 static float get_inflammation_duration_days(const brain_immune_system_t* immune) {
     if (!immune || immune->inflammation_count == 0) return 0.0f;
 
-    uint64_t current_time = immune->start_time; /* Would use actual current time */
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t current_time = (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
     uint64_t oldest_time = current_time;
 
     for (size_t i = 0; i < immune->inflammation_count; i++) {
@@ -235,7 +238,7 @@ self_model_immune_bridge_t* self_model_immune_bridge_create(
     if (!immune_system || !self_model) {
         LOG_MODULE_ERROR("self_model_immune_bridge",
                   "Cannot create bridge without immune and self-model systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_model_immune_bridge_create: required parameter is NULL (immune_system, self_model)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_bridge_create: required parameter is NULL (immune_system, self_model)");
         return NULL;
     }
 
@@ -248,7 +251,7 @@ self_model_immune_bridge_t* self_model_immune_bridge_create(
         nimcp_malloc(sizeof(self_model_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("self_model_immune_bridge", "Allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_model_immune_bridge_create: malloc returned NULL");
 
         return NULL;
     }
@@ -331,7 +334,7 @@ int self_model_immune_generate_interoceptive_signals(
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     interoceptive_immune_signals_t* signals = &bridge->interoceptive_signals;
     brain_inflammation_level_t max_inflam = get_max_inflammation_level(bridge->immune_system);
@@ -366,7 +369,7 @@ int self_model_immune_generate_interoceptive_signals(
         (signals->sickness_intensity >= 0.5f); /* Default threshold */
 
     bridge->interoceptive_signals_sent++;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -391,7 +394,7 @@ int self_model_immune_update_health_status(
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_up", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     self_model_immune_modulation_t* updates = &bridge->self_model_updates;
 
@@ -439,7 +442,7 @@ int self_model_immune_update_health_status(
     /* Health certainty based on interoceptive signal strength */
     updates->health_certainty = bridge->interoceptive_signals.total_body_awareness;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -464,7 +467,7 @@ int self_model_immune_modulate_capabilities(
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_mo", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     self_model_immune_modulation_t* updates = &bridge->self_model_updates;
     brain_inflammation_level_t max_inflam = get_max_inflammation_level(bridge->immune_system);
@@ -489,7 +492,7 @@ int self_model_immune_modulate_capabilities(
     updates->goal_adjustment = inflammation_intensity * 0.5f;
 
     bridge->capability_modulations++;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -514,7 +517,7 @@ int self_model_immune_integrate_chronic_illness(
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_in", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     self_model_immune_modulation_t* updates = &bridge->self_model_updates;
 
@@ -547,7 +550,7 @@ int self_model_immune_integrate_chronic_illness(
         updates->body_schema_distortion = clamp_f(duration_days / 90.0f, 0.0f, 0.5f);
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -572,7 +575,7 @@ int self_model_immune_trigger_adaptive_behavior(
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_tr", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     self_awareness_immune_effects_t* effects = &bridge->self_awareness_effects;
 
@@ -591,7 +594,7 @@ int self_model_immune_trigger_adaptive_behavior(
         effects->rest_compliance = 0.0f;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -616,19 +619,22 @@ int self_model_immune_boost_from_health_beliefs(
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_bo", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     self_awareness_immune_effects_t* effects = &bridge->self_awareness_effects;
 
     /* Positive health beliefs boost immunity */
     /* Note: Would query self-model for health-related beliefs */
 
+    /* TODO: query self-model for actual perceived_immune_strength once API is available */
     /* Perceived immune strength */
     effects->perceived_immune_strength = 0.7f; /* Default - would query self-model */
 
+    /* TODO: query self-model for actual recovery_expectation once API is available */
     /* Recovery expectation */
     effects->recovery_expectation = 0.8f; /* Default - would query self-model */
 
+    /* TODO: query self-model for actual health_locus_of_control once API is available */
     /* Health locus of control (internal = higher immunity) */
     effects->health_locus_of_control = 0.7f; /* Default */
 
@@ -646,7 +652,7 @@ int self_model_immune_boost_from_health_beliefs(
         bridge->belief_immune_boosts++;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -667,7 +673,7 @@ int self_model_immune_suppress_from_health_anxiety(
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_su", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     self_awareness_immune_effects_t* effects = &bridge->self_awareness_effects;
 
@@ -685,7 +691,7 @@ int self_model_immune_suppress_from_health_anxiety(
         effects->stress_from_illness_belief = 0.0f;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -706,7 +712,7 @@ int self_model_immune_accelerate_from_acceptance(
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ac", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     self_awareness_immune_effects_t* effects = &bridge->self_awareness_effects;
 
@@ -722,7 +728,7 @@ int self_model_immune_accelerate_from_acceptance(
         /* Note: Would increase resolution_progress on inflammation sites */
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -781,9 +787,9 @@ int self_model_immune_get_interoceptive_signals(
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(signals, &bridge->interoceptive_signals, sizeof(interoceptive_immune_signals_t));
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -801,9 +807,9 @@ int self_model_immune_get_self_model_updates(
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(updates, &bridge->self_model_updates, sizeof(self_model_immune_modulation_t));
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -987,7 +993,6 @@ int self_model_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void self_model_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_self_model_immune_bridge_health_agent = agent;
     }
 }
@@ -1002,6 +1007,7 @@ int self_model_immune_bridge_training_begin(void* instance) {
                               "self_model_immune_bridge_training_begin: NULL argument");
         return -1;
     }
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     self_model_immune_bridge_heartbeat_instance(NULL, "self_model_immune_bridge_training_begin", 0.0f);
     return 0;
 }
@@ -1012,6 +1018,7 @@ int self_model_immune_bridge_training_end(void* instance) {
                               "self_model_immune_bridge_training_end: NULL argument");
         return -1;
     }
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     self_model_immune_bridge_heartbeat_instance(NULL, "self_model_immune_bridge_training_end", 1.0f);
     return 0;
 }
@@ -1024,6 +1031,7 @@ int self_model_immune_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
+    /* TODO: pass cast instance as nimcp_health_agent_t* once bridge stores per-instance agent */
     self_model_immune_bridge_heartbeat_instance(NULL, "self_model_immune_bridge_training_step", progress);
     return 0;
 }

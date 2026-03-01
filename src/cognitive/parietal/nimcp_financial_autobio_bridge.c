@@ -918,9 +918,9 @@ int financial_autobio_bridge_get_stats(
 
     /* Note: BBB validation skipped for const-qualified bridge in read-only accessor */
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_AUTOBIO_ERR_OK;
 }

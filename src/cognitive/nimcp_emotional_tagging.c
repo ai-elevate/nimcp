@@ -434,7 +434,6 @@ int cognitive_emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
 
 void emotional_tagging_module_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_emotional_tagging_health_agent = agent;
     }
 }

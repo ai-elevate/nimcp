@@ -355,7 +355,7 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
                                  brain_immune_system_t* immune_system) {
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("Immune system is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vaccine_default_config: immune_system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_default_config: immune_system is NULL");
         return NULL;
     }
 
@@ -367,7 +367,7 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
     vaccine_system_t* system = (vaccine_system_t*)nimcp_malloc(sizeof(vaccine_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate vaccine system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vaccine_default_config: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_default_config: system is NULL");
         return NULL;
     }
     memset(system, 0, sizeof(vaccine_system_t));
@@ -451,7 +451,7 @@ void vaccine_destroy(vaccine_system_t* system) {
 
     /* Free resources */
     if (system->mutex) {
-        nimcp_mutex_free(system->mutex);
+        nimcp_mutex_destroy(system->mutex);
     }
 
     if (system->schedule) {
@@ -1468,7 +1468,6 @@ int vaccine_query_self_knowledge(kg_reader_t* kg) {
 
 void immune_vaccine_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_immune_vaccine_health_agent = agent;
     }
 }

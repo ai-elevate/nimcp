@@ -95,8 +95,8 @@ int remorse_fep_compute_counterfactual_pe(remorse_fep_bridge_t* bridge, float ac
 int remorse_fep_modulate_policy_learning(remorse_fep_bridge_t* bridge);
 int remorse_fep_update(remorse_fep_bridge_t* bridge, uint64_t delta_ms);
 
-int remorse_fep_get_state(const remorse_fep_bridge_t* bridge, remorse_fep_state_t* state);
-int remorse_fep_get_stats(const remorse_fep_bridge_t* bridge, remorse_fep_stats_t* stats);
+int remorse_fep_get_state(remorse_fep_bridge_t* bridge, remorse_fep_state_t* state);
+int remorse_fep_get_stats(remorse_fep_bridge_t* bridge, remorse_fep_stats_t* stats);
 
 int remorse_fep_connect_bio_async(remorse_fep_bridge_t* bridge);
 int remorse_fep_disconnect_bio_async(remorse_fep_bridge_t* bridge);

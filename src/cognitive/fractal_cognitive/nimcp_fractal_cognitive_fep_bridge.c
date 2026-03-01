@@ -557,7 +557,6 @@ int fractal_cognitive_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void fractal_cognitive_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_fractal_cognitive_fep_bridge_health_agent = agent;
     }
 }

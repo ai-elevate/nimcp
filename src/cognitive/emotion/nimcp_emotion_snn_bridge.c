@@ -265,13 +265,9 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
 
     /* Allocate buffers */
     bridge->input_buffer = nimcp_calloc(bridge->config.input_dim, sizeof(float));
-    if (!bridge->input_buffer) return NULL;
     bridge->hidden_buffer = nimcp_calloc(bridge->config.hidden_dim, sizeof(float));
-    if (!bridge->hidden_buffer) return NULL;
     bridge->output_buffer = nimcp_calloc(bridge->config.output_dim, sizeof(float));
-    if (!bridge->output_buffer) return NULL;
     bridge->va_buffer = nimcp_calloc(bridge->config.va_dim * 2, sizeof(float));
-    if (!bridge->va_buffer) return NULL;
 
     if (!bridge->input_buffer || !bridge->hidden_buffer ||
         !bridge->output_buffer || !bridge->va_buffer) {

@@ -175,19 +175,16 @@ bool onnx_device_available(onnx_device_t device)
 
         case ONNX_DEVICE_CUDA:
             /* In production: check CUDA availability */
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_device_available: operation failed");
-            return false;  /* Placeholder */
+            return false;  /* Placeholder — not-available is normal, not an immune event */
 
         case ONNX_DEVICE_TENSORRT:
             /* In production: check TensorRT availability */
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_device_available: operation failed");
             return false;
 
         case ONNX_DEVICE_DIRECTML:
 #ifdef _WIN32
             return true;  /* Available on Windows */
 #else
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_device_available: operation failed");
             return false;
 #endif
 
@@ -195,12 +192,10 @@ bool onnx_device_available(onnx_device_t device)
 #ifdef __APPLE__
             return true;  /* Available on macOS/iOS */
 #else
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_device_available: operation failed");
             return false;
 #endif
 
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_device_available: operation failed");
             return false;
     }
 }
@@ -309,6 +304,15 @@ onnx_session_t* onnx_load_model_from_memory(creative_onnx_runtime_t* runtime,
     session->num_outputs = 1;
     session->outputs = nimcp_calloc(1, sizeof(onnx_io_info_t));
 
+    /* Bounds check before writing into session array */
+    if (runtime->num_sessions >= runtime->sessions_capacity) {
+        set_error("Session capacity exceeded");
+        nimcp_free(session->inputs);
+        nimcp_free(session->outputs);
+        nimcp_free(session);
+        return NULL;
+    }
+
     runtime->sessions[runtime->num_sessions++] = session;
 
     return session;
@@ -404,8 +408,7 @@ int32_t onnx_session_input_index(const onnx_session_t* session, const char* name
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_session_input_index: validation failed");
-    return -1;
+    return -1;  /* Not found — normal condition, not an immune event */
 }
 
 int32_t onnx_session_output_index(const onnx_session_t* session, const char* name)
@@ -421,8 +424,7 @@ int32_t onnx_session_output_index(const onnx_session_t* session, const char* nam
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_session_output_index: validation failed");
-    return -1;
+    return -1;  /* Not found — normal condition, not an immune event */
 }
 
 //=============================================================================

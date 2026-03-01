@@ -414,23 +414,7 @@ tom_substrate_bridge_t* tom_substrate_bridge_create(
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;
 
-    /* Create mutex for thread safety */
-    bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex for ToM substrate bridge");
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tom_substrate_bridge_create: bridge->base is NULL");
-        return NULL;
-    }
-
-    if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize mutex for ToM substrate bridge");
-        nimcp_free(bridge);
-        bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "tom_substrate_bridge_create: validation failed");
-        return NULL;
-    }
+    if (bridge_base_init(&bridge->base, 0, "tom_substrate") != 0) { nimcp_free(bridge); return NULL; }
 
     /* Initialize timestamp */
     bridge->last_update_time_ms = 0;
@@ -450,12 +434,7 @@ void tom_substrate_bridge_destroy(tom_substrate_bridge_t* bridge) {
         tom_substrate_disconnect_bio_async(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge structure */
     nimcp_free(bridge);
@@ -627,7 +606,11 @@ float tom_substrate_get_mentalizing_capacity(const tom_substrate_bridge_t* bridg
         return -1.0f;
     }
 
-    return bridge->effects.mentalizing_capacity;
+    float result;
+    if (bridge->base.mutex) { nimcp_platform_mutex_lock(bridge->base.mutex); }
+    result = bridge->effects.mentalizing_capacity;
+    if (bridge->base.mutex) { nimcp_platform_mutex_unlock(bridge->base.mutex); }
+    return result;
 }
 
 float tom_substrate_get_perspective_taking(const tom_substrate_bridge_t* bridge) {
@@ -637,7 +620,11 @@ float tom_substrate_get_perspective_taking(const tom_substrate_bridge_t* bridge)
         return -1.0f;
     }
 
-    return bridge->effects.perspective_taking;
+    float result;
+    if (bridge->base.mutex) { nimcp_platform_mutex_lock(bridge->base.mutex); }
+    result = bridge->effects.perspective_taking;
+    if (bridge->base.mutex) { nimcp_platform_mutex_unlock(bridge->base.mutex); }
+    return result;
 }
 
 float tom_substrate_get_belief_tracking(const tom_substrate_bridge_t* bridge) {
@@ -647,7 +634,11 @@ float tom_substrate_get_belief_tracking(const tom_substrate_bridge_t* bridge) {
         return -1.0f;
     }
 
-    return bridge->effects.belief_tracking;
+    float result;
+    if (bridge->base.mutex) { nimcp_platform_mutex_lock(bridge->base.mutex); }
+    result = bridge->effects.belief_tracking;
+    if (bridge->base.mutex) { nimcp_platform_mutex_unlock(bridge->base.mutex); }
+    return result;
 }
 
 float tom_substrate_get_empathy_factor(const tom_substrate_bridge_t* bridge) {
@@ -657,7 +648,11 @@ float tom_substrate_get_empathy_factor(const tom_substrate_bridge_t* bridge) {
         return -1.0f;
     }
 
-    return bridge->effects.empathy_factor;
+    float result;
+    if (bridge->base.mutex) { nimcp_platform_mutex_lock(bridge->base.mutex); }
+    result = bridge->effects.empathy_factor;
+    if (bridge->base.mutex) { nimcp_platform_mutex_unlock(bridge->base.mutex); }
+    return result;
 }
 
 int tom_substrate_get_effects(
@@ -675,8 +670,10 @@ int tom_substrate_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    /* Copy effects structure */
+    /* Copy effects structure under lock to prevent torn reads */
+    if (bridge->base.mutex) { nimcp_platform_mutex_lock(bridge->base.mutex); }
     memcpy(effects, &bridge->effects, sizeof(tom_substrate_effects_t));
+    if (bridge->base.mutex) { nimcp_platform_mutex_unlock(bridge->base.mutex); }
 
     return NIMCP_SUCCESS;
 }
@@ -687,7 +684,11 @@ bool tom_substrate_is_impaired(const tom_substrate_bridge_t* bridge) {
         return false;
     }
 
-    return bridge->effects.is_impaired;
+    bool result;
+    if (bridge->base.mutex) { nimcp_platform_mutex_lock(bridge->base.mutex); }
+    result = bridge->effects.is_impaired;
+    if (bridge->base.mutex) { nimcp_platform_mutex_unlock(bridge->base.mutex); }
+    return result;
 }
 
 int tom_substrate_get_stats(
@@ -705,8 +706,10 @@ int tom_substrate_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    /* Copy statistics structure */
+    /* Copy statistics structure under lock to prevent torn reads */
+    if (bridge->base.mutex) { nimcp_platform_mutex_lock(bridge->base.mutex); }
     memcpy(stats, &bridge->stats, sizeof(tom_substrate_stats_t));
+    if (bridge->base.mutex) { nimcp_platform_mutex_unlock(bridge->base.mutex); }
 
     return NIMCP_SUCCESS;
 }
@@ -837,7 +840,6 @@ int tom_substrate_bridge_register_bio_async(tom_substrate_bridge_t* bridge, bio_
 
 void tom_substrate_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_tom_substrate_bridge_health_agent = agent;
     }
 }

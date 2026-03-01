@@ -337,7 +337,7 @@ void vicarious_reward_destroy(vicarious_reward_system_t* system) {
     }
 
     if (system->mutex) {
-        nimcp_mutex_free(system->mutex);
+        nimcp_mutex_destroy(system->mutex);
     }
 
     nimcp_free(system);
@@ -1095,7 +1095,6 @@ void vicarious_reward_reset_stats(vicarious_reward_system_t* system) {
  * ============================================================================ */
 void mirror_vicarious_reward_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mirror_vicarious_reward_health_agent = agent;
     }
 }

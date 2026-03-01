@@ -290,7 +290,7 @@ bool metacognition_monitor_self(
 
     if (!meta->initialized) {
         LOG_ERROR("Metacognition not initialized");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_monitor_self: meta->initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "metacognition_monitor_self: meta not initialized");
         return false;
     }
 
@@ -376,9 +376,8 @@ bool metacognition_is_degraded(
         return false;
     }
 
-    // GUARD: Baseline not established
+    // GUARD: Baseline not established (normal at startup)
     if (!meta->baseline.established) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_is_degraded: meta->baseline is NULL");
         return false;  // Can't detect degradation without baseline
     }
 
@@ -1089,7 +1088,6 @@ int metacognition_query_self_knowledge(kg_reader_t* kg) {
 
 void metacognition_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_metacognition_health_agent = agent;
     }
 }

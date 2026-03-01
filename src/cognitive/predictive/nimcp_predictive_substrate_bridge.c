@@ -16,6 +16,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/exception/nimcp_exception_immune.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -138,6 +139,7 @@ predictive_substrate_bridge_t* predictive_substrate_bridge_create(void* predicti
     bridge->effects.hierarchical_depth = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    if (bridge_base_init(&bridge->base, 0, "predictive_substrate") != 0) { nimcp_free(bridge); return NULL; }
     NIMCP_LOGGING_INFO("Created %s bridge", "predictive_substrate");
     return bridge;
 }
@@ -147,7 +149,10 @@ void predictive_substrate_bridge_destroy(predictive_substrate_bridge_t* bridge) 
     predictive_substrate_bridge_heartbeat("predictive_s_destroy", 0.0f);
 
 
-    if (bridge) nimcp_free(bridge);
+    if (bridge) {
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+    }
 }
 
 int predictive_substrate_bridge_update(predictive_substrate_bridge_t* bridge) {
@@ -170,6 +175,7 @@ int predictive_substrate_bridge_update(predictive_substrate_bridge_t* bridge) {
     float metabolic_cap = metabolic.metabolic_capacity;
     float min_cap = bridge->config.min_capacity;
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_atp_modulation) {
         bridge->effects.prediction_precision = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         bridge->effects.hierarchical_depth = nimcp_clampf(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
@@ -186,6 +192,7 @@ int predictive_substrate_bridge_update(predictive_substrate_bridge_t* bridge) {
                                         bridge->effects.hierarchical_depth) / 4.0f;
 
     bridge->update_count++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -194,7 +201,9 @@ int predictive_substrate_bridge_get_effects(const predictive_substrate_bridge_t*
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     predictive_substrate_bridge_heartbeat("predictive_s_get_effects", 0.0f);
 

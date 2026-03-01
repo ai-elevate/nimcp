@@ -267,8 +267,7 @@ static int find_speaker(audio_logic_bridge_t* bridge, const char* speaker_id) {
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_speaker: operation failed");
-    return -1;
+    return -1;  // Speaker not found
 }
 
 static int find_free_speaker_slot(audio_logic_bridge_t* bridge) {
@@ -283,8 +282,7 @@ static int find_free_speaker_slot(audio_logic_bridge_t* bridge) {
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_speaker_slot: bridge->speakers is NULL");
-    return -1;
+    return -1;  // No free speaker slot
 }
 
 static void add_recent_sound(audio_logic_bridge_t* bridge, sound_category_t category,

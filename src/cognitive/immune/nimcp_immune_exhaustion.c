@@ -654,7 +654,7 @@ void exhaustion_destroy(exhaustion_system_t* system) {
     system->running = false;
 
     if (system->mutex) {
-        nimcp_mutex_free(system->mutex);
+        nimcp_mutex_destroy(system->mutex);
         system->mutex = NULL;
     }
 
@@ -1030,7 +1030,6 @@ int exhaustion_query_self_knowledge(kg_reader_t* kg) {
 
 void immune_exhaustion_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_immune_exhaustion_health_agent = agent;
     }
 }

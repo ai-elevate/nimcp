@@ -460,7 +460,6 @@ kg_relation_list_t* global_workspace_get_integrations(kg_reader_t* kg) {
 
 void global_workspace_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_global_workspace_health_agent = agent;
     }
 }

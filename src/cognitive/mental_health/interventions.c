@@ -1057,7 +1057,6 @@ const char* mental_health_disorder_to_string(disorder_type_t disorder)
 
 void interventions_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_interventions_health_agent = agent;
     }
 }

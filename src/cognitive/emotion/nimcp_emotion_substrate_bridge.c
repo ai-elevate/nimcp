@@ -656,8 +656,11 @@ float emotion_substrate_get_intensity_mod(
     /* Phase 8: Heartbeat at operation start */
     emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
 
-
-    return bridge->effects.intensity_modulation;
+    float result;
+    nimcp_mutex_lock(bridge->base.mutex);
+    result = bridge->effects.intensity_modulation;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 float emotion_substrate_get_regulation_capacity(
@@ -672,8 +675,11 @@ float emotion_substrate_get_regulation_capacity(
     /* Phase 8: Heartbeat at operation start */
     emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
 
-
-    return bridge->effects.regulation_capacity;
+    float result;
+    nimcp_mutex_lock(bridge->base.mutex);
+    result = bridge->effects.regulation_capacity;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 float emotion_substrate_get_reactivity_threshold(
@@ -688,8 +694,11 @@ float emotion_substrate_get_reactivity_threshold(
     /* Phase 8: Heartbeat at operation start */
     emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
 
-
-    return bridge->effects.reactivity_threshold;
+    float result;
+    nimcp_mutex_lock(bridge->base.mutex);
+    result = bridge->effects.reactivity_threshold;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 float emotion_substrate_get_valence_bias(
@@ -704,8 +713,11 @@ float emotion_substrate_get_valence_bias(
     /* Phase 8: Heartbeat at operation start */
     emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
 
-
-    return bridge->effects.valence_bias;
+    float result;
+    nimcp_mutex_lock(bridge->base.mutex);
+    result = bridge->effects.valence_bias;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 emotion_substrate_effects_t emotion_substrate_get_effects(
@@ -713,7 +725,6 @@ emotion_substrate_effects_t emotion_substrate_get_effects(
 ) {
     /* Phase 8: Heartbeat at operation start */
     emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
-
 
     emotion_substrate_effects_t effects = {
         .intensity_modulation = 1.0f,
@@ -729,7 +740,10 @@ emotion_substrate_effects_t emotion_substrate_get_effects(
         return effects;
     }
 
-    return bridge->effects;
+    nimcp_mutex_lock(bridge->base.mutex);
+    effects = bridge->effects;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return effects;
 }
 
 bool emotion_substrate_is_impaired(
@@ -744,8 +758,11 @@ bool emotion_substrate_is_impaired(
     /* Phase 8: Heartbeat at operation start */
     emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_is", 0.0f);
 
-
-    return bridge->effects.is_impaired;
+    bool result;
+    nimcp_mutex_lock(bridge->base.mutex);
+    result = bridge->effects.is_impaired;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 emotion_substrate_stats_t emotion_substrate_get_stats(
@@ -753,7 +770,6 @@ emotion_substrate_stats_t emotion_substrate_get_stats(
 ) {
     /* Phase 8: Heartbeat at operation start */
     emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
-
 
     emotion_substrate_stats_t stats;
     memset(&stats, 0, sizeof(emotion_substrate_stats_t));
@@ -764,7 +780,10 @@ emotion_substrate_stats_t emotion_substrate_get_stats(
         return stats;
     }
 
-    return bridge->stats;
+    nimcp_mutex_lock(bridge->base.mutex);
+    stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return stats;
 }
 
 /* ============================================================================

@@ -133,7 +133,6 @@ nimcp_error_t genius_gauss_discover_pattern_impl(
 
 void genius_gauss_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_genius_gauss_health_agent = agent;
     }
 }
@@ -148,7 +147,7 @@ int genius_gauss_training_begin(void* instance) {
                               "genius_gauss_training_begin: NULL argument");
         return -1;
     }
-    genius_gauss_heartbeat_instance(NULL, "genius_gauss_training_begin", 0.0f);
+    genius_gauss_heartbeat_instance(g_genius_gauss_health_agent, "genius_gauss_training_begin", 0.0f);
     return 0;
 }
 
@@ -158,7 +157,7 @@ int genius_gauss_training_end(void* instance) {
                               "genius_gauss_training_end: NULL argument");
         return -1;
     }
-    genius_gauss_heartbeat_instance(NULL, "genius_gauss_training_end", 1.0f);
+    genius_gauss_heartbeat_instance(g_genius_gauss_health_agent, "genius_gauss_training_end", 1.0f);
     return 0;
 }
 
@@ -170,6 +169,6 @@ int genius_gauss_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    genius_gauss_heartbeat_instance(NULL, "genius_gauss_training_step", progress);
+    genius_gauss_heartbeat_instance(g_genius_gauss_health_agent, "genius_gauss_training_step", progress);
     return 0;
 }

@@ -895,7 +895,6 @@ float quat_vec3_dot(nimcp_vec3_t v1, nimcp_vec3_t v2) {
 
 void quaternion_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_quaternion_health_agent = agent;
     }
 }

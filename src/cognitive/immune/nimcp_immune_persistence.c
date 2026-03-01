@@ -154,7 +154,8 @@ int immune_persistence_set_encryption_key(
 static uint64_t get_timestamp_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+    /* FIX HIGH:157 — cast before multiply to avoid signed 32-bit overflow */
+    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
 }
 
 /**
@@ -446,11 +447,6 @@ int immune_persistence_save(
         config = &default_cfg;
     }
 
-    /* Create backup if requested */
-    if (config->create_backup) {
-        immune_persistence_create_backup(filepath, config->backup_suffix);
-    }
-
     /* Create temporary file for atomic write */
     char temp_path[IMMUNE_PERSIST_MAX_PATH];
     snprintf(temp_path, sizeof(temp_path), "%s.tmp", filepath);
@@ -463,7 +459,18 @@ int immune_persistence_save(
     }
 
     int result = -1;
+    /* FIX HIGH:449 — backup must be created under mutex to prevent TOCTOU race;
+     * moved backup creation to after mutex acquisition */
     nimcp_mutex_lock(system->mutex);
+
+    /* Create backup if requested (now under mutex) */
+    if (config->create_backup) {
+        /* FIX HIGH:466 — TODO: file I/O under lock is a known antipattern; a
+         * future refactor should snapshot the filepath and create the backup
+         * after releasing the mutex. For now, the backup is a best-effort
+         * operation and does not block correctness. */
+        immune_persistence_create_backup(filepath, config->backup_suffix);
+    }
 
     /* Prepare header */
     immune_persistence_header_t header;
@@ -585,7 +592,12 @@ int immune_persistence_save(
     }
 
     /* Update header with file size and checksum */
+    /* FIX MEDIUM:588 — ftell() returns -1L on error; check before using */
     long file_size = ftell(file);
+    if (file_size < 0) {
+        NIMCP_LOGGING_ERROR("ftell failed when computing file size");
+        goto cleanup;
+    }
     header.file_size = (uint64_t)file_size;
 
     /* Compute checksum of data after header */
@@ -1203,7 +1215,6 @@ int immune_persistence_query_self_knowledge(kg_reader_t* kg) {
 
 void immune_persistence_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_immune_persistence_health_agent = agent;
     }
 }

@@ -202,7 +202,7 @@ NIMCP_API void genius_orchestrator_destroy(genius_math_orchestrator_t* orch) {
     if (orch->consistency) energy_consistency_destroy(orch->consistency);
     if (orch->genius) genius_destroy(orch->genius);
 
-    if (orch->mutex) nimcp_mutex_free(orch->mutex);
+    if (orch->mutex) nimcp_mutex_destroy(orch->mutex);
 
     nimcp_free(orch);
     orch = NULL;
@@ -1073,7 +1073,6 @@ NIMCP_API nimcp_error_t genius_orchestrator_verify_proof(
 
 void genius_math_orchestrator_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_genius_math_orchestrator_health_agent = agent;
     }
 }

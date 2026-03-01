@@ -242,7 +242,7 @@ int personality_thalamic_route_trait(personality_thalamic_bridge_t* bridge, cons
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_route_trait: routed_ok is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "personality_thalamic_route_trait: thalamic routing failed");
             return -1;  /* Routing failed */
         }
     }
@@ -311,7 +311,7 @@ int personality_thalamic_route_regulation(personality_thalamic_bridge_t* bridge,
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_route_regulation: routed_ok is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "personality_thalamic_route_regulation: thalamic routing failed");
             return -1;
         }
     }

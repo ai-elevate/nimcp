@@ -822,7 +822,7 @@ self_heal_engine_t* self_heal_create(const self_heal_config_t* config)
     engine->pattern_library = heal_pattern_library_create();
     if (engine->pattern_library == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to create pattern library");
-        nimcp_mutex_free(engine->mutex);
+        nimcp_mutex_destroy(engine->mutex);
         nimcp_free(engine);
         engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_heal_create: validation failed");
@@ -896,7 +896,7 @@ void self_heal_destroy(self_heal_engine_t* engine)
     engine->initialized = false;
 
     nimcp_mutex_unlock(engine->mutex);
-    nimcp_mutex_free(engine->mutex);
+    nimcp_mutex_destroy(engine->mutex);
 
     nimcp_free(engine);
     engine = NULL;
@@ -1990,7 +1990,7 @@ void heal_pattern_library_destroy(pattern_library_t* library)
     if (library == NULL) return;
 
     if (library->mutex != NULL) {
-        nimcp_mutex_free(library->mutex);
+        nimcp_mutex_destroy(library->mutex);
     }
 
     if (library->builtin_patterns != NULL) {
@@ -2790,7 +2790,6 @@ int self_heal_query_self_knowledge(kg_reader_t* kg) {
 
 void self_heal_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_self_heal_health_agent = agent;
     }
 }

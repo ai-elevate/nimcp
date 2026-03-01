@@ -1111,7 +1111,6 @@ int jepa_latent_query_self_knowledge(kg_reader_t* kg) {
 
 void jepa_latent_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_jepa_latent_health_agent = agent;
     }
 }
@@ -1126,7 +1125,7 @@ int jepa_latent_training_begin(void* instance) {
                               "jepa_latent_training_begin: NULL argument");
         return -1;
     }
-    jepa_latent_heartbeat_instance(NULL, "jepa_latent_training_begin", 0.0f);
+    jepa_latent_heartbeat("jepa_latent_training_begin", 0.0f);
     return 0;
 }
 
@@ -1136,7 +1135,7 @@ int jepa_latent_training_end(void* instance) {
                               "jepa_latent_training_end: NULL argument");
         return -1;
     }
-    jepa_latent_heartbeat_instance(NULL, "jepa_latent_training_end", 1.0f);
+    jepa_latent_heartbeat("jepa_latent_training_end", 1.0f);
     return 0;
 }
 
@@ -1148,6 +1147,6 @@ int jepa_latent_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    jepa_latent_heartbeat_instance(NULL, "jepa_latent_training_step", progress);
+    jepa_latent_heartbeat("jepa_latent_training_step", progress);
     return 0;
 }

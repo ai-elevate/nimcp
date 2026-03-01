@@ -363,7 +363,7 @@ void code_immune_self_repair_bridge_destroy(
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
         bridge->mutex = NULL;
     }
 
@@ -1085,7 +1085,6 @@ const char* code_immune_self_repair_version(void) {
 
 void code_immune_self_repair_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_code_immune_self_repair_health_agent = agent;
     }
 }

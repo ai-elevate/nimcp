@@ -512,7 +512,6 @@ int meta_reasoning_query_self_knowledge(kg_reader_t* kg) {
 
 void meta_reasoning_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_meta_reasoning_health_agent = agent;
     }
 }
@@ -527,7 +526,7 @@ int meta_reasoning_training_begin(void* instance) {
                               "meta_reasoning_training_begin: NULL argument");
         return -1;
     }
-    meta_reasoning_heartbeat_instance(NULL, "meta_reasoning_training_begin", 0.0f);
+    meta_reasoning_heartbeat_instance(g_meta_reasoning_health_agent, "meta_reasoning_training_begin", 0.0f);
     meta_engine_t* mr = (meta_engine_t*)instance;
     memset(&mr->stats, 0, sizeof(mr->stats));
     mr->calibration_bias = 0.0f;
@@ -547,7 +546,7 @@ int meta_reasoning_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    meta_reasoning_heartbeat_instance(NULL, "meta_reasoning_training_step", progress);
+    meta_reasoning_heartbeat_instance(g_meta_reasoning_health_agent, "meta_reasoning_training_step", progress);
     meta_engine_t* mr = (meta_engine_t*)instance;
     mr->stats.strategies_selected++;
     /* Progressive learning rate decay for strategy adaptation */
@@ -571,7 +570,7 @@ int meta_reasoning_training_end(void* instance) {
                               "meta_reasoning_training_end: NULL argument");
         return -1;
     }
-    meta_reasoning_heartbeat_instance(NULL, "meta_reasoning_training_end", 1.0f);
+    meta_reasoning_heartbeat_instance(g_meta_reasoning_health_agent, "meta_reasoning_training_end", 1.0f);
     meta_engine_t* mr = (meta_engine_t*)instance;
     /* Compute average strategy success */
     float total_success = 0.0f;

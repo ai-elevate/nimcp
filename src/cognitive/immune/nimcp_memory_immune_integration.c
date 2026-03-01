@@ -1421,7 +1421,7 @@ int memory_immune_connect_semantic_memory(
 ) {
     /* Guard: null checks */
     if (!integration || !semantic_memory) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_immune_connect_semantic_memory: required parameter is NULL (integration, semantic_memory)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_connect_semantic_memory: required parameter is NULL (integration, semantic_memory)");
         return -1;
     }
 
@@ -1450,7 +1450,7 @@ int memory_immune_create_semantic_immune_concept(
 ) {
     /* Guard: null checks */
     if (!integration || !integration->semantic_memory) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_immune_create_semantic_immune_concept: required parameter is NULL (integration, integration->semantic_memory)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_create_semantic_immune_concept: required parameter is NULL (integration, integration->semantic_memory)");
         return -1;
     }
     if (!concept_id) {
@@ -1837,7 +1837,6 @@ int memory_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void memory_immune_integration_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_memory_immune_integration_health_agent = agent;
     }
 }

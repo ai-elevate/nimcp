@@ -1068,7 +1068,6 @@ bool tom_plasticity_is_bio_async_connected(tom_plasticity_bridge_t* bridge) {
  * ============================================================================ */
 void tom_plasticity_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_tom_plasticity_bridge_health_agent = agent;
     }
 }
@@ -1086,7 +1085,7 @@ int tom_plasticity_bridge_training_begin(void* instance) {
                               "tom_plasticity_bridge_training_begin: NULL argument");
         return -1;
     }
-    tom_plasticity_bridge_heartbeat_instance(NULL, "tom_plasticity_bridge_training_begin", 0.0f);
+    tom_plasticity_bridge_heartbeat("tom_plasticity_bridge_training_begin", 0.0f);
     return 0;
 }
 
@@ -1096,7 +1095,7 @@ int tom_plasticity_bridge_training_end(void* instance) {
                               "tom_plasticity_bridge_training_end: NULL argument");
         return -1;
     }
-    tom_plasticity_bridge_heartbeat_instance(NULL, "tom_plasticity_bridge_training_end", 1.0f);
+    tom_plasticity_bridge_heartbeat("tom_plasticity_bridge_training_end", 1.0f);
     return 0;
 }
 
@@ -1106,6 +1105,6 @@ int tom_plasticity_bridge_training_step(void* instance, float progress) {
                               "tom_plasticity_bridge_training_step: NULL argument");
         return -1;
     }
-    tom_plasticity_bridge_heartbeat_instance(NULL, "tom_plasticity_bridge_training_step", progress);
+    tom_plasticity_bridge_heartbeat("tom_plasticity_bridge_training_step", progress);
     return 0;
 }

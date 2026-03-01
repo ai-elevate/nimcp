@@ -328,7 +328,6 @@ void sleep_imagination_bridge_destroy(sleep_imagination_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
-    bridge = NULL;
     NIMCP_LOG_INFO("Destroyed sleep-imagination bridge");
 }
 
@@ -347,7 +346,15 @@ int sleep_imagination_reset(sleep_imagination_bridge_t* bridge) {
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    /* Clear effects */
+    /* Free tensor pointers in effects BEFORE memset zeroes them */
+    if (bridge->imag_to_sleep.dream_embedding) {
+        nimcp_tensor_destroy(bridge->imag_to_sleep.dream_embedding);
+    }
+    if (bridge->imag_to_sleep.replay_cue) {
+        nimcp_tensor_destroy(bridge->imag_to_sleep.replay_cue);
+    }
+
+    /* Clear effects (now safe - tensor pointers already freed) */
     memset(&bridge->sleep_to_imag, 0, sizeof(bridge->sleep_to_imag));
     memset(&bridge->imag_to_sleep, 0, sizeof(bridge->imag_to_sleep));
 
@@ -1120,7 +1127,6 @@ int sleep_imagination_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void sleep_imagination_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_sleep_imagination_bridge_health_agent = agent;
     }
 }
@@ -1135,7 +1141,7 @@ int sleep_imagination_bridge_training_begin(void* instance) {
                               "sleep_imagination_bridge_training_begin: NULL argument");
         return -1;
     }
-    sleep_imagination_bridge_heartbeat_instance(NULL, "sleep_imagination_bridge_training_begin", 0.0f);
+    sleep_imagination_bridge_heartbeat("sleep_imagination_bridge_training_begin", 0.0f);
     return 0;
 }
 
@@ -1145,7 +1151,7 @@ int sleep_imagination_bridge_training_end(void* instance) {
                               "sleep_imagination_bridge_training_end: NULL argument");
         return -1;
     }
-    sleep_imagination_bridge_heartbeat_instance(NULL, "sleep_imagination_bridge_training_end", 1.0f);
+    sleep_imagination_bridge_heartbeat("sleep_imagination_bridge_training_end", 1.0f);
     return 0;
 }
 
@@ -1157,6 +1163,6 @@ int sleep_imagination_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    sleep_imagination_bridge_heartbeat_instance(NULL, "sleep_imagination_bridge_training_step", progress);
+    sleep_imagination_bridge_heartbeat("sleep_imagination_bridge_training_step", progress);
     return 0;
 }

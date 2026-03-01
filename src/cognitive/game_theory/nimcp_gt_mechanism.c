@@ -1638,7 +1638,6 @@ int gt_mechanism_query_self_knowledge(kg_reader_t* kg) {
 
 void gt_mechanism_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gt_mechanism_health_agent = agent;
     }
 }

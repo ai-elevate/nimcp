@@ -935,7 +935,6 @@ const char* circadian_social_phase_to_string(circadian_social_phase_t phase) {
 
 void mirror_hypothalamus_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mirror_hypothalamus_bridge_health_agent = agent;
     }
 }

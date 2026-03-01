@@ -449,7 +449,6 @@ int conceptual_blending_query_self_knowledge(kg_reader_t* kg) {
 
 void conceptual_blending_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_conceptual_blending_health_agent = agent;
     }
 }
@@ -464,7 +463,7 @@ int conceptual_blending_training_begin(void* instance) {
                               "conceptual_blending_training_begin: NULL argument");
         return -1;
     }
-    conceptual_blending_heartbeat_instance(NULL, "conceptual_blending_training_begin", 0.0f);
+    conceptual_blending_heartbeat_instance(g_conceptual_blending_health_agent, "conceptual_blending_training_begin", 0.0f);
     (void)(struct blending_engine*)instance; /* Module state available for reset */
     return 0;
 }
@@ -475,7 +474,7 @@ int conceptual_blending_training_end(void* instance) {
                               "conceptual_blending_training_end: NULL argument");
         return -1;
     }
-    conceptual_blending_heartbeat_instance(NULL, "conceptual_blending_training_end", 1.0f);
+    conceptual_blending_heartbeat_instance(g_conceptual_blending_health_agent, "conceptual_blending_training_end", 1.0f);
     (void)(struct blending_engine*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -488,7 +487,7 @@ int conceptual_blending_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    conceptual_blending_heartbeat_instance(NULL, "conceptual_blending_training_step", progress);
+    conceptual_blending_heartbeat_instance(g_conceptual_blending_health_agent, "conceptual_blending_training_step", progress);
     (void)(struct blending_engine*)instance; /* Module state available for step adaptation */
     return 0;
 }

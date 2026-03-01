@@ -1466,7 +1466,6 @@ static void add_history_entry(
 
 void counterfactual_imagination_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_counterfactual_imagination_health_agent = agent;
     }
 }

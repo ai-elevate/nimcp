@@ -267,7 +267,7 @@ void omni_metacog_destroy(omni_metacog_ctx_t* ctx) {
 
 
     if (ctx->mutex) {
-        nimcp_mutex_free(ctx->mutex);
+        nimcp_mutex_destroy(ctx->mutex);
     }
 
     if (ctx->self_model) {

@@ -480,7 +480,7 @@ int gan_generate(gan_bridge_t* bridge,
     output->width = size;
     output->height = size;
     output->channels = 3;
-    output->pixels = nimcp_calloc(size * size * 3, sizeof(uint8_t));
+    output->pixels = nimcp_calloc((size_t)size * (size_t)size * 3, sizeof(uint8_t));
 
     if (!output->pixels) {
         set_gan_error("Failed to allocate output");

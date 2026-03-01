@@ -877,11 +877,14 @@ int creative_training_submit_feedback(creative_training_bridge_t* bridge,
         return -1;
     }
 
+    nimcp_platform_mutex_lock(&g_feedback_mutex);
+
     /* Expand feedback buffer if needed */
     if (g_feedback_count >= g_feedback_capacity) {
         uint32_t new_capacity = (g_feedback_capacity == 0) ? 16 : g_feedback_capacity * 2;
         feedback_entry_t* new_buffer = nimcp_calloc(new_capacity, sizeof(feedback_entry_t));
         if (!new_buffer) {
+            nimcp_platform_mutex_unlock(&g_feedback_mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_training_cancel: new_buffer is NULL");
             return -1;
         }
@@ -894,15 +897,20 @@ int creative_training_submit_feedback(creative_training_bridge_t* bridge,
         g_feedback_capacity = new_capacity;
     }
 
-    /* Add feedback entry */
+    /* Add feedback entry.
+     * WARNING: content is stored as a borrowed reference (void* without size).
+     * Caller MUST keep the content alive until creative_training_apply_feedback()
+     * is called. A proper fix would require adding a content_size parameter to
+     * the API so we can deep-copy, but that requires a header change. */
     feedback_entry_t* entry = &g_feedback_buffer[g_feedback_count++];
-    entry->content = (void*)content; /* Note: doesn't copy content */
+    entry->content = (void*)content;
     entry->modality = modality;
     entry->rating = rating;
     if (feedback) {
         strncpy(entry->feedback, feedback, sizeof(entry->feedback) - 1);
     }
 
+    nimcp_platform_mutex_unlock(&g_feedback_mutex);
     return 0;
 }
 
@@ -913,9 +921,13 @@ int creative_training_apply_feedback(creative_training_bridge_t* bridge,
         return -1;
     }
 
+    nimcp_platform_mutex_lock(&g_feedback_mutex);
+
     if (g_feedback_count < min_feedback_count) {
+        uint32_t have = g_feedback_count;
+        nimcp_platform_mutex_unlock(&g_feedback_mutex);
         set_training_error("Insufficient feedback: have %u, need %u",
-                          g_feedback_count, min_feedback_count);
+                          have, min_feedback_count);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_training_cancel: validation failed");
         return -1;
     }
@@ -928,6 +940,7 @@ int creative_training_apply_feedback(creative_training_bridge_t* bridge,
     /* Clear applied feedback */
     g_feedback_count = 0;
 
+    nimcp_platform_mutex_unlock(&g_feedback_mutex);
     return 0;
 }
 

@@ -800,7 +800,6 @@ const char* omni_logic_condition_to_string(omni_logic_condition_t condition) {
 
 void omni_logic_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_omni_logic_bridge_health_agent = agent;
     }
 }

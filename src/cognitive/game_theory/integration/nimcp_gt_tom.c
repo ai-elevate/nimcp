@@ -236,7 +236,7 @@ void nimcp_gt_tom_destroy(nimcp_gt_tom_t ctx) {
 
     // Destroy mutex
     if (ctx->mutex) {
-        nimcp_mutex_free(ctx->mutex);
+        nimcp_mutex_destroy(ctx->mutex);
     }
 
     nimcp_free(ctx);
@@ -259,8 +259,7 @@ static tom_opponent_record_t* find_opponent(nimcp_gt_tom_t ctx, nimcp_player_id_
             return &ctx->opponents[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_opponent: validation failed");
-    return NULL;
+    return NULL;  /* Opponent not found — normal condition */
 }
 
 static tom_opponent_record_t* get_or_create_opponent(nimcp_gt_tom_t ctx, nimcp_player_id_t id) {
@@ -288,7 +287,7 @@ static tom_opponent_record_t* get_or_create_opponent(nimcp_gt_tom_t ctx, nimcp_p
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_or_create_opponent: operation failed");
+    NIMCP_LOGGING_WARN("get_or_create_opponent: opponent capacity full (max %u)", NIMCP_TOM_MAX_OPPONENTS);
     return NULL;  // No space for new opponent
 }
 
@@ -1448,7 +1447,6 @@ int tom_query_self_knowledge(kg_reader_t* kg) {
 
 void gt_tom_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gt_tom_health_agent = agent;
     }
 }

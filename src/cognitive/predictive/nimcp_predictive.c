@@ -291,21 +291,21 @@ predictive_network_t predictive_create(const predictive_config_t* config)
 
         // Allocate layer vectors
         layer->state = (float*)nimcp_calloc(size, sizeof(float));
-        if (!layer->state) return -1;
         layer->prediction = (float*)nimcp_calloc(size, sizeof(float));
-        if (!layer->prediction) return -1;
         layer->prediction_error = (float*)nimcp_calloc(size, sizeof(float));
-        if (!layer->prediction_error) return -1;
         layer->precision = (float*)nimcp_calloc(size, sizeof(float));
-        if (!layer->precision) return -1;
 
         if (!layer->state || !layer->prediction ||
             !layer->prediction_error || !layer->precision) {
             set_error("Failed to allocate layer %u vectors", i);
+            nimcp_free(layer->state);
+            nimcp_free(layer->prediction);
+            nimcp_free(layer->prediction_error);
+            nimcp_free(layer->precision);
             nimcp_free(layer);
             layer = NULL;
             predictive_destroy(net);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_create: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_create: layer vector allocation failed");
             return NULL;
         }
 
@@ -495,19 +495,18 @@ float predictive_forward(predictive_network_t net, const float* input,
 bool predictive_get_layer_prediction(predictive_network_t net,
                                      uint32_t layer_index, float* output)
 {
-    // Process pending bio-async messages
     /* Phase 8: Heartbeat at operation start */
     predictive_heartbeat("predictive_get_layer_prediction", 0.0f);
-
-
-    if (net && net->bio_ctx) {
-        bio_router_process_inbox(net->bio_ctx, 5);
-    }
 
     if (!net || !output) {
         set_error("NULL parameter");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_get_layer_prediction: required parameter is NULL (net, output)");
         return false;
+    }
+
+    // Process pending bio-async messages (after NULL check)
+    if (net->bio_ctx) {
+        bio_router_process_inbox(net->bio_ctx, 5);
     }
 
     if (layer_index >= net->num_layers) {
@@ -1096,7 +1095,6 @@ int predictive_query_self_knowledge(kg_reader_t* kg) {
  * ============================================================================ */
 void predictive_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_predictive_health_agent = agent;
     }
 }
@@ -1110,7 +1108,7 @@ int predictive_training_begin(void* instance) {
                               "predictive_training_begin: NULL argument");
         return -1;
     }
-    predictive_heartbeat_instance(NULL, "predictive_training_begin", 0.0f);
+    predictive_heartbeat("predictive_training_begin", 0.0f);
     return 0;
 }
 
@@ -1120,7 +1118,7 @@ int predictive_training_end(void* instance) {
                               "predictive_training_end: NULL argument");
         return -1;
     }
-    predictive_heartbeat_instance(NULL, "predictive_training_end", 1.0f);
+    predictive_heartbeat("predictive_training_end", 1.0f);
     return 0;
 }
 
@@ -1130,6 +1128,6 @@ int predictive_training_step(void* instance, float progress) {
                               "predictive_training_step: NULL argument");
         return -1;
     }
-    predictive_heartbeat_instance(NULL, "predictive_training_step", progress);
+    predictive_heartbeat("predictive_training_step", progress);
     return 0;
 }

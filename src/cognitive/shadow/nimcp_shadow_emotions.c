@@ -349,7 +349,7 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
             
             if (system->envy.targets[i].intensity < SHADOW_ENVY_THRESHOLD * 0.5F) {
                 system->envy.targets[i].active = false;
-                system->envy.active_envy_count--;
+                if (system->envy.active_envy_count > 0) system->envy.active_envy_count--;
             }
         }
     }
@@ -362,7 +362,7 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
             
             if (system->obsession.thoughts[i].intensity < SHADOW_OBSESSION_THRESHOLD * 0.5F) {
                 system->obsession.thoughts[i].active = false;
-                system->obsession.active_obsession_count--;
+                if (system->obsession.active_obsession_count > 0) system->obsession.active_obsession_count--;
             }
         }
     }

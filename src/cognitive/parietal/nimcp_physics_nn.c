@@ -2199,7 +2199,6 @@ int physics_nn_query_self_knowledge(kg_reader_t* kg) {
 
 void physics_nn_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_physics_nn_health_agent = agent;
     }
 }
@@ -2214,7 +2213,7 @@ int physics_nn_training_begin(void* instance) {
                               "physics_nn_training_begin: NULL argument");
         return -1;
     }
-    physics_nn_heartbeat_instance(NULL, "physics_nn_training_begin", 0.0f);
+    physics_nn_heartbeat_instance(g_physics_nn_health_agent, "physics_nn_training_begin", 0.0f);
     (void)(struct physics_nn*)instance; /* Module state available for reset */
     return 0;
 }
@@ -2225,7 +2224,7 @@ int physics_nn_training_end(void* instance) {
                               "physics_nn_training_end: NULL argument");
         return -1;
     }
-    physics_nn_heartbeat_instance(NULL, "physics_nn_training_end", 1.0f);
+    physics_nn_heartbeat_instance(g_physics_nn_health_agent, "physics_nn_training_end", 1.0f);
     (void)(struct physics_nn*)instance; /* Module state available for finalization */
     return 0;
 }
@@ -2238,7 +2237,7 @@ int physics_nn_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    physics_nn_heartbeat_instance(NULL, "physics_nn_training_step", progress);
+    physics_nn_heartbeat_instance(g_physics_nn_health_agent, "physics_nn_training_step", progress);
     (void)(struct physics_nn*)instance; /* Module state available for step adaptation */
     return 0;
 }

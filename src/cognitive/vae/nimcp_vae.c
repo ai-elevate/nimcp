@@ -779,6 +779,14 @@ cleanup:
     return result;
 }
 
+/* Forward declaration for unlocked variant used by vae_train_step */
+static int vae_compute_loss_unlocked(vae_system_t* vae,
+                     const nimcp_tensor_t* input,
+                     const nimcp_tensor_t* reconstruction,
+                     const nimcp_tensor_t* mu,
+                     const nimcp_tensor_t* log_var,
+                     vae_loss_t* loss);
+
 int vae_compute_loss(vae_system_t* vae,
                      const nimcp_tensor_t* input,
                      const nimcp_tensor_t* reconstruction,
@@ -799,13 +807,24 @@ int vae_compute_loss(vae_system_t* vae,
     }
 
     nimcp_mutex_lock(vae->mutex);
+    int ret = vae_compute_loss_unlocked(vae, input, reconstruction, mu, log_var, loss);
+    nimcp_mutex_unlock(vae->mutex);
+    return ret;
+}
 
+/** Internal: compute loss without locking (caller must hold vae->mutex) */
+static int vae_compute_loss_unlocked(vae_system_t* vae,
+                     const nimcp_tensor_t* input,
+                     const nimcp_tensor_t* reconstruction,
+                     const nimcp_tensor_t* mu,
+                     const nimcp_tensor_t* log_var,
+                     vae_loss_t* loss)
+{
     /* Create breakdown for detailed results */
     uint32_t latent_dim = vae->config.encoder.latent_dim;
     vae_loss_breakdown_t* breakdown = vae_loss_breakdown_create(latent_dim);
 
     if (!breakdown) {
-        nimcp_mutex_unlock(vae->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_compute_loss: breakdown is NULL");
         return -1;
     }
@@ -818,7 +837,6 @@ int vae_compute_loss(vae_system_t* vae,
                              "Loss computation returned NaN/Inf");
         vae->stats.anomalies_detected++;
         vae_loss_breakdown_free(breakdown);
-        nimcp_mutex_unlock(vae->mutex);
         return -1;
     }
 
@@ -840,7 +858,6 @@ int vae_compute_loss(vae_system_t* vae,
     vae_update_ema_stats(vae, loss);
 
     vae_loss_breakdown_free(breakdown);
-    nimcp_mutex_unlock(vae->mutex);
 
     return 0;
 }
@@ -914,11 +931,9 @@ int vae_train_step(vae_system_t* vae,
     result = vae_decoder_forward(vae->decoder, z, recon);
     if (result != 0) goto cleanup;
 
-    /* Compute loss */
+    /* Compute loss — use unlocked variant since we already hold vae->mutex */
     vae_loss_t train_loss;
-    nimcp_mutex_unlock(vae->mutex);
-    result = vae_compute_loss(vae, input, recon, mu, log_var, &train_loss);
-    nimcp_mutex_lock(vae->mutex);
+    result = vae_compute_loss_unlocked(vae, input, recon, mu, log_var, &train_loss);
     if (result != 0) goto cleanup;
 
     /* Copy loss to output */
@@ -1425,7 +1440,20 @@ int vae_get_precision(const vae_system_t* vae, float* precision, uint32_t dim)
 float vae_get_avg_precision(const vae_system_t* vae)
 {
     if (!vae || !vae->current_latent.log_var) return NAN;
-    return vae_latent_avg_precision(NULL);  /* Would need tensor, simplified */
+
+    uint32_t dim = vae->current_latent.latent_dim;
+    if (dim == 0) return NAN;
+
+    /* Compute average precision directly from latent state log_var */
+    float sum_precision = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        float lv = vae->current_latent.log_var[i];
+        if (lv < VAE_LATENT_MIN_LOG_VAR) lv = VAE_LATENT_MIN_LOG_VAR;
+        if (lv > VAE_LATENT_MAX_LOG_VAR) lv = VAE_LATENT_MAX_LOG_VAR;
+        sum_precision += expf(-lv);
+    }
+
+    return sum_precision / (float)dim;
 }
 
 /* ============================================================================

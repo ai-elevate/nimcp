@@ -920,9 +920,9 @@ int financial_salience_bridge_get_stats(
 
     fin_salience_heartbeat("fin_salience_get_stats", 0.0f);
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_SALIENCE_ERR_OK;
 }
@@ -952,9 +952,9 @@ int financial_salience_bridge_get_weights(
         return FIN_SALIENCE_ERR_NULL;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *weights = bridge->normalized_weights;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return FIN_SALIENCE_ERR_OK;
 }

@@ -358,7 +358,7 @@ int bridge_base_set_coordinator(bridge_base_t* base, brain_cycle_coordinator_t* 
  * @param len   Length of data in bytes
  * @return true if validation passes (or BBB not enabled), false if threat detected
  */
-bool bridge_base_validate_bbb(bridge_base_t* base, const void* data, size_t len);
+bool bridge_base_validate_bbb(const bridge_base_t* base, const void* data, size_t len);
 
 /**
  * @brief Notify brain cycle coordinator of a tick from this bridge's update

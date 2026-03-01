@@ -761,7 +761,6 @@ bool working_memory_set_salience(
 
 void working_memory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_working_memory_health_agent = agent;
     }
 }

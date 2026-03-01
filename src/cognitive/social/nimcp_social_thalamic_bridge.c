@@ -105,12 +105,17 @@ social_thalamic_bridge_t* social_thalamic_bridge_create(void* social, thalamic_r
     bridge->config = config ? *config : social_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    if (bridge_base_init(&bridge->base, 0, "social_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+
     NIMCP_LOGGING_INFO("Created %s bridge", "social_thalamic");
     return bridge;
 }
 
 void social_thalamic_bridge_destroy(social_thalamic_bridge_t* bridge) {
-    if (bridge) nimcp_free(bridge);
+    if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
 }
 
 int social_thalamic_bridge_reset(social_thalamic_bridge_t* bridge) {
@@ -118,8 +123,10 @@ int social_thalamic_bridge_reset(social_thalamic_bridge_t* bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_thalamic_bridge_reset: bridge is NULL");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -129,10 +136,12 @@ int social_thalamic_route_bond(social_thalamic_bridge_t* bridge, const social_th
         return -1;
     }
     BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(social_thalamic_signal_t));
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     /* Betrayal signals bypass attention gating */
     if (bridge->config.enable_attention_gating &&
         signal->social_salience < bridge->config.min_salience_threshold &&
         signal->signal_type != SOCIAL_SIGNAL_BETRAYAL) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
     bridge->stats.bonds_routed++;
@@ -141,6 +150,7 @@ int social_thalamic_route_bond(social_thalamic_bridge_t* bridge, const social_th
     if (signal->signal_type == SOCIAL_SIGNAL_BETRAYAL) {
         bridge->stats.betrayals_detected++;
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -149,7 +159,9 @@ int social_thalamic_route_trust(social_thalamic_bridge_t* bridge, const void* tr
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_thalamic_route_trust: bridge is NULL");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.trust_events++;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -158,7 +170,9 @@ int social_thalamic_set_attention(social_thalamic_bridge_t* bridge, float attent
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_thalamic_set_attention: bridge is NULL");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -167,7 +181,9 @@ int social_thalamic_get_attention(const social_thalamic_bridge_t* bridge, float*
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -176,7 +192,9 @@ int social_thalamic_bridge_get_stats(const social_thalamic_bridge_t* bridge, soc
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

@@ -2918,7 +2918,6 @@ NIMCP_EXPORT procedural_error_t procedural_update_skill_signature(
 
 void procedural_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_procedural_health_agent = agent;
     }
 }

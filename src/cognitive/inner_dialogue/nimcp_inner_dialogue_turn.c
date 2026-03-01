@@ -406,7 +406,6 @@ float inner_dialogue_turn_content_similarity(const inner_dialogue_turn_t* a,
 
 void turn_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_turn_health_agent = agent;
     }
 }

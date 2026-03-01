@@ -800,7 +800,6 @@ static void* guardian_monitor_thread(void* arg) {
     }
 
     GUARDIAN_LOG("Monitor thread stopped");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guardian_monitor_thread: operation failed");
     return NULL;
 }
 
@@ -936,7 +935,7 @@ void mental_health_guardian_destroy(mental_health_guardian_t* guardian) {
 
     /* Destroy mutex */
     if (guardian->lock) {
-        nimcp_mutex_free(guardian->lock);
+        nimcp_mutex_destroy(guardian->lock);
     }
 
     GUARDIAN_LOG("Mental Health Guardian destroyed (checks=%lu, interventions=%lu)",
@@ -1657,7 +1656,6 @@ int mental_health_guardian_query_self_knowledge(kg_reader_t* kg) {
 
 void mental_health_guardian_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mental_health_guardian_health_agent = agent;
     }
 }

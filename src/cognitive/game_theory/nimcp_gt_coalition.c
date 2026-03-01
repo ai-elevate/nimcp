@@ -393,7 +393,7 @@ nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* co
     // Validate player count doesn't exceed bitmask capacity (32-bit coalitions)
     // This is a hard limit due to uint32_t coalition bitmask representation
     if (config->num_players > 32) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coalition_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_create: num_players exceeds uint32_t bitmask capacity (max 32)");
         return NULL;  // Coalition bitmask overflow: uint32_t can only represent 32 players
     }
 
@@ -1685,7 +1685,6 @@ int gt_coalition_query_self_knowledge(kg_reader_t* kg) {
 
 void gt_coalition_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_gt_coalition_health_agent = agent;
     }
 }

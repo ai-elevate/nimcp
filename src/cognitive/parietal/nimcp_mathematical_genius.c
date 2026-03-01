@@ -1092,7 +1092,6 @@ NIMCP_API uint64_t genius_gauss_modular_pow(
 
 void mathematical_genius_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_mathematical_genius_health_agent = agent;
     }
 }
@@ -1107,7 +1106,7 @@ int mathematical_genius_training_begin(void* instance) {
                               "mathematical_genius_training_begin: NULL argument");
         return -1;
     }
-    mathematical_genius_heartbeat_instance(NULL, "mathematical_genius_training_begin", 0.0f);
+    mathematical_genius_heartbeat_instance(g_mathematical_genius_health_agent, "mathematical_genius_training_begin", 0.0f);
     mathematical_genius_t* mg = (mathematical_genius_t*)instance;
     mg->stats.problems_attempted = 0;
     mg->stats.problems_solved = 0;
@@ -1137,7 +1136,7 @@ int mathematical_genius_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    mathematical_genius_heartbeat_instance(NULL, "mathematical_genius_training_step", progress);
+    mathematical_genius_heartbeat_instance(g_mathematical_genius_health_agent, "mathematical_genius_training_step", progress);
     mathematical_genius_t* mg = (mathematical_genius_t*)instance;
     mg->stats.problems_attempted++;
     /* Progressive creativity/rigor balance during training */
@@ -1163,7 +1162,7 @@ int mathematical_genius_training_end(void* instance) {
                               "mathematical_genius_training_end: NULL argument");
         return -1;
     }
-    mathematical_genius_heartbeat_instance(NULL, "mathematical_genius_training_end", 1.0f);
+    mathematical_genius_heartbeat_instance(g_mathematical_genius_health_agent, "mathematical_genius_training_end", 1.0f);
     mathematical_genius_t* mg = (mathematical_genius_t*)instance;
     if (mg->stats.problems_attempted > 0) {
         mg->stats.avg_thinking_time_us =

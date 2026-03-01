@@ -1105,7 +1105,6 @@ const char* kg_reader_get_last_error(void) {
 
 void kg_reader_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_kg_reader_health_agent = agent;
     }
 }

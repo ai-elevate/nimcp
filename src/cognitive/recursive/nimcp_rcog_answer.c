@@ -478,7 +478,7 @@ void rcog_answer_refiner_destroy(rcog_answer_refiner_t* refiner)
     }
 
     if (refiner->mutex) {
-        nimcp_mutex_free(refiner->mutex);
+        nimcp_mutex_destroy(refiner->mutex);
     }
 
     nimcp_free(refiner);

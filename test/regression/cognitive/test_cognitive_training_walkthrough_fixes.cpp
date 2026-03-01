@@ -34,7 +34,7 @@ int music_track_add_note(music_track_t* track, const music_note_t* note);
 
 creative_orchestrator_t* creative_orchestrator_create(const creative_config_t* config);
 void creative_orchestrator_destroy(creative_orchestrator_t* orch);
-int creative_orchestrator_get_stats(const creative_orchestrator_t* orch,
+int creative_orchestrator_get_stats(creative_orchestrator_t* orch,
                                      creative_orchestrator_stats_t* out);
 }
 

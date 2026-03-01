@@ -154,7 +154,7 @@ NIMCP_API energy_consistency_checker_t* energy_consistency_create(
     /* Initialize last result structure */
     if (energy_consistency_result_init(&checker->last_result,
             checker->config.max_violations) != NIMCP_SUCCESS) {
-        nimcp_mutex_free(checker->mutex);
+        nimcp_mutex_destroy(checker->mutex);
         nimcp_free(checker);
         checker = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "energy_consistency_create: operation failed");
@@ -181,7 +181,7 @@ NIMCP_API void energy_consistency_destroy(
 
     /* Free mutex */
     if (checker->mutex) {
-        nimcp_mutex_free(checker->mutex);
+        nimcp_mutex_destroy(checker->mutex);
     }
 
     /* Free checker */
@@ -1338,7 +1338,6 @@ static bool check_circular_dependency(
 
 void energy_consistency_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_energy_consistency_health_agent = agent;
     }
 }

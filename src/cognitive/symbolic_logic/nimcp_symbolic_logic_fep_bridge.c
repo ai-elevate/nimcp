@@ -397,7 +397,6 @@ int symbolic_logic_fep_bridge_unregister_from_orchestrator(
  * ============================================================================ */
 void symbolic_logic_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_symbolic_logic_fep_bridge_health_agent = agent;
     }
 }

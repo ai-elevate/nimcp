@@ -475,7 +475,7 @@ social_fep_bridge_t* social_fep_bridge_create(const social_fep_config_t* config)
     if (bridge_base_init(&bridge->base, 0, "social_fep") != 0) {
         nimcp_free(bridge);
         bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "social_fep_bridge_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "social_fep_bridge_create: bridge_base_init failed");
         return NULL;
     }
 
@@ -605,7 +605,7 @@ int social_fep_bridge_register(
         bridge->orchestrator = NULL;
         bridge->social = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_fep_bridge_register: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "social_fep_bridge_register: orchestrator registration failed");
         return -1;
     }
 

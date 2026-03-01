@@ -307,7 +307,7 @@ int wellbeing_immune_apply_cytokine_effects(wellbeing_immune_bridge_t* bridge) {
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_app", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query cytokine levels */
     float il1 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
@@ -344,7 +344,7 @@ int wellbeing_immune_apply_cytokine_effects(wellbeing_immune_bridge_t* bridge) {
         clamp_f(bridge->cytokine_effects.total_distress_increase * 0.8f, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -367,7 +367,7 @@ int wellbeing_immune_apply_inflammation_effects(wellbeing_immune_bridge_t* bridg
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_app", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -411,7 +411,7 @@ int wellbeing_immune_apply_inflammation_effects(wellbeing_immune_bridge_t* bridg
     bridge->inflammation_state.resource_starvation_factor =
         (level >= INFLAMMATION_SYSTEMIC) ? 0.8f : 0.0f;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -498,10 +498,10 @@ int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_tri", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
-
-    /* Get distress assessment from introspection */
+    /* Get distress assessment before acquiring lock (external call) */
     distress_assessment_t assessment = wellbeing_assess_distress(bridge->introspection_ctx);
+
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Also consider immune system inflammation as a distress source.
      * WHY:  High inflammation is itself a physiological stressor that
@@ -533,35 +533,14 @@ int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
     bridge->wellbeing_trigger.distress_score = assessment.distress_score;
     bridge->wellbeing_trigger.distress_duration_ms = assessment.duration_ms;
 
-    /* If distress is high, trigger immune response */
-    if (assessment.distress_score >= WELLBEING_DISTRESS_TRIGGER_THRESHOLD) {
-        /* Release pro-inflammatory cytokines */
-        uint32_t cytokine_id = 0;
+    /* Determine which cytokines to release based on distress */
+    bool do_distress_response = (assessment.distress_score >= WELLBEING_DISTRESS_TRIGGER_THRESHOLD);
+    bool release_il1 = do_distress_response && (assessment.severity >= DISTRESS_SEVERITY_MODERATE);
+    bool release_tnf = do_distress_response && (assessment.severity >= DISTRESS_SEVERITY_SEVERE);
+    float il1_conc = assessment.distress_score * 0.5f;
+    float tnf_conc = assessment.distress_score * 0.6f;
 
-        /* IL-1β for moderate distress */
-        if (assessment.severity >= DISTRESS_SEVERITY_MODERATE) {
-            brain_immune_release_cytokine(
-                bridge->immune_system,
-                BRAIN_CYTOKINE_IL1,
-                0, /* source cell */
-                assessment.distress_score * 0.5f,
-                0, /* broadcast */
-                &cytokine_id
-            );
-        }
-
-        /* TNF-α for severe distress */
-        if (assessment.severity >= DISTRESS_SEVERITY_SEVERE) {
-            brain_immune_release_cytokine(
-                bridge->immune_system,
-                BRAIN_CYTOKINE_TNF,
-                0,
-                assessment.distress_score * 0.6f,
-                0,
-                &cytokine_id
-            );
-        }
-
+    if (do_distress_response) {
         bridge->wellbeing_trigger.inflammation_triggered = true;
         bridge->wellbeing_trigger.cytokine_released = true;
         bridge->wellbeing_triggered_responses++;
@@ -571,7 +550,32 @@ int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
     if (assessment.description) nimcp_free((void*)assessment.description);
     if (assessment.recommended_action) nimcp_free((void*)assessment.recommended_action);
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Release cytokines outside lock to avoid deadlock */
+    if (release_il1) {
+        uint32_t cytokine_id = 0;
+        brain_immune_release_cytokine(
+            bridge->immune_system,
+            BRAIN_CYTOKINE_IL1,
+            0, /* source cell */
+            il1_conc,
+            0, /* broadcast */
+            &cytokine_id
+        );
+    }
+
+    if (release_tnf) {
+        uint32_t cytokine_id = 0;
+        brain_immune_release_cytokine(
+            bridge->immune_system,
+            BRAIN_CYTOKINE_TNF,
+            0,
+            tnf_conc,
+            0,
+            &cytokine_id
+        );
+    }
     return 0;
 }
 
@@ -594,7 +598,7 @@ int wellbeing_immune_boost_from_positive_wellbeing(wellbeing_immune_bridge_t* br
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_boo", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute positive wellbeing state */
     float life_sat = compute_life_satisfaction(bridge->introspection_ctx);
@@ -605,21 +609,12 @@ int wellbeing_immune_boost_from_positive_wellbeing(wellbeing_immune_bridge_t* br
     bridge->positive_boost.is_flourishing = (flourishing >= WELLBEING_FLOURISHING_THRESHOLD);
 
     /* If flourishing, boost immune function */
-    if (bridge->positive_boost.is_flourishing) {
-        /* Release anti-inflammatory IL-10 */
-        uint32_t cytokine_id = 0;
-        brain_immune_release_cytokine(
-            bridge->immune_system,
-            BRAIN_CYTOKINE_IL10,
-            0,
-            flourishing * 0.4f,
-            0,
-            &cytokine_id
-        );
-
+    bool do_il10_boost = bridge->positive_boost.is_flourishing;
+    float il10_flourish_conc = flourishing * 0.4f;
+    if (do_il10_boost) {
         /* Compute immune benefits */
         bridge->positive_boost.immune_enhancement = flourishing * 0.3f;
-        bridge->positive_boost.il10_release_boost = flourishing * 0.4f;
+        bridge->positive_boost.il10_release_boost = il10_flourish_conc;
         bridge->positive_boost.inflammation_reduction = flourishing * 0.5f;
         bridge->positive_boost.antibody_effectiveness_boost = flourishing * 0.2f;
 
@@ -632,7 +627,20 @@ int wellbeing_immune_boost_from_positive_wellbeing(wellbeing_immune_bridge_t* br
         bridge->positive_boost.antibody_effectiveness_boost = 0.0f;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Release IL-10 cytokine outside lock to avoid deadlock */
+    if (do_il10_boost) {
+        uint32_t cytokine_id = 0;
+        brain_immune_release_cytokine(
+            bridge->immune_system,
+            BRAIN_CYTOKINE_IL10,
+            0,
+            il10_flourish_conc,
+            0,
+            &cytokine_id
+        );
+    }
     return 0;
 }
 
@@ -659,7 +667,7 @@ int wellbeing_immune_boost_memory_formation(
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_boo", 0.0f);
 
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Memory formation boost from flourishing */
     float boost_factor = bridge->positive_boost.flourishing_level * 0.5f;
@@ -672,7 +680,7 @@ int wellbeing_immune_boost_memory_formation(
         bridge->flourishing_memory_formations++;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -972,7 +980,6 @@ int wellbeing_immune_query_self_knowledge(kg_reader_t* kg) {
 
 void wellbeing_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_wellbeing_immune_bridge_health_agent = agent;
     }
 }
@@ -987,6 +994,7 @@ int wellbeing_immune_bridge_training_begin(void* instance) {
                               "wellbeing_immune_bridge_training_begin: NULL argument");
         return -1;
     }
+    /* TODO: Pass instance cast to (wellbeing_immune_bridge_t*)->health_agent once instance health agent is stored per-instance */
     wellbeing_immune_bridge_heartbeat_instance(NULL, "wellbeing_immune_bridge_training_begin", 0.0f);
     return 0;
 }
@@ -997,6 +1005,7 @@ int wellbeing_immune_bridge_training_end(void* instance) {
                               "wellbeing_immune_bridge_training_end: NULL argument");
         return -1;
     }
+    /* TODO: Pass instance cast to (wellbeing_immune_bridge_t*)->health_agent once instance health agent is stored per-instance */
     wellbeing_immune_bridge_heartbeat_instance(NULL, "wellbeing_immune_bridge_training_end", 1.0f);
     return 0;
 }
@@ -1009,6 +1018,7 @@ int wellbeing_immune_bridge_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
+    /* TODO: Pass instance cast to (wellbeing_immune_bridge_t*)->health_agent once instance health agent is stored per-instance */
     wellbeing_immune_bridge_heartbeat_instance(NULL, "wellbeing_immune_bridge_training_step", progress);
     return 0;
 }

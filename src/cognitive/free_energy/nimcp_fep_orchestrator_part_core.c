@@ -491,7 +491,7 @@ int fep_orchestrator_training_begin(void* instance) {
                               "fep_orchestrator_training_begin: NULL argument");
         return -1;
     }
-    fep_orchestrator_heartbeat_instance(NULL, "fep_orchestrator_training_begin", 0.0f);
+    fep_orchestrator_heartbeat_instance(g_fep_orchestrator_health_agent, "fep_orchestrator_training_begin", 0.0f);
     return 0;
 }
 
@@ -502,6 +502,6 @@ int fep_orchestrator_training_end(void* instance) {
                               "fep_orchestrator_training_end: NULL argument");
         return -1;
     }
-    fep_orchestrator_heartbeat_instance(NULL, "fep_orchestrator_training_end", 1.0f);
+    fep_orchestrator_heartbeat_instance(g_fep_orchestrator_health_agent, "fep_orchestrator_training_end", 1.0f);
     return 0;
 }

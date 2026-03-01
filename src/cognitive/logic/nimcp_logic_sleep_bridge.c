@@ -210,7 +210,7 @@ logic_sleep_bridge_t* logic_sleep_bridge_create(
         (logic_sleep_bridge_t*)nimcp_malloc(sizeof(logic_sleep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate logic-sleep bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_sleep_bridge_create: failed to allocate bridge");
 
         return NULL;
     }
@@ -722,7 +722,6 @@ int logic_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
 
 void logic_sleep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {
-        (void)agent;
         g_logic_sleep_bridge_health_agent = agent;
     }
 }

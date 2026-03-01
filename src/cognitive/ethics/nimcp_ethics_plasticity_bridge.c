@@ -355,8 +355,7 @@ int ethics_plasticity_unregister_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_unregister_synapse: operation failed");
-    return -1;
+    return -1;  /* Synapse not found — normal condition */
 }
 
 int ethics_plasticity_get_synapse(
@@ -383,8 +382,7 @@ int ethics_plasticity_get_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_get_synapse: validation failed");
-    return -1;
+    return -1;  /* Synapse not found — normal condition */
 }
 
 //=============================================================================
@@ -843,8 +841,7 @@ int ethics_plasticity_protect_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_protect_synapse: validation failed");
-    return -1;
+    return -1;  /* Synapse not found — normal condition */
 }
 
 int ethics_plasticity_unprotect_synapse(
@@ -870,8 +867,7 @@ int ethics_plasticity_unprotect_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_unprotect_synapse: validation failed");
-    return -1;
+    return -1;  /* Synapse not found — normal condition */
 }
 
 int ethics_plasticity_protect_first_law(ethics_plasticity_bridge_t* bridge) {
@@ -1108,7 +1104,7 @@ int ethics_plasticity_bio_async_connect(ethics_plasticity_bridge_t* bridge) {
         return -1;
     }
     if (!bridge->config.enable_bio_async) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_bio_async_connect: bridge->config is NULL");
+        NIMCP_LOGGING_WARN("ethics_plasticity_bio_async_connect: bio_async not enabled in config");
         return -1;
     }
 

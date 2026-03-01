@@ -482,7 +482,24 @@ uint32_t creative_memory_recall_semantic(creative_memory_bridge_t* bridge,
     for (uint32_t i = 0; i < bridge->semantic_count && count < max_results; i++) {
         if (strstr(bridge->semantic_memories[i].concept, concept) ||
             strstr(bridge->semantic_memories[i].description, concept)) {
-            out[count++] = bridge->semantic_memories[i];
+            out[count] = bridge->semantic_memories[i];
+            /* Deep-copy style.embedding to avoid aliasing the bridge's heap pointer */
+            if (bridge->semantic_memories[i].style.embedding &&
+                bridge->semantic_memories[i].style.embedding_dim > 0) {
+                uint32_t dim = bridge->semantic_memories[i].style.embedding_dim;
+                out[count].style.embedding = nimcp_calloc(dim, sizeof(float));
+                if (out[count].style.embedding) {
+                    memcpy(out[count].style.embedding,
+                           bridge->semantic_memories[i].style.embedding,
+                           dim * sizeof(float));
+                } else {
+                    out[count].style.embedding = NULL;
+                    out[count].style.embedding_dim = 0;
+                }
+            } else {
+                out[count].style.embedding = NULL;
+            }
+            count++;
         }
     }
 

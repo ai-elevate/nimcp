@@ -260,18 +260,9 @@ static bool artist_matches_name(const art_artist_info_t* artist, const char* nam
 
 static bool artist_matches_style(const art_artist_info_t* artist,
                                   art_modality_t modality, int32_t archetype) {
-    if (!artist) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "artist_matches_name: artist is NULL");
-        return false;
-    }
-    if (artist->primary_modality != modality) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "artist_matches_name: validation failed");
-        return false;
-    }
-    if (archetype >= 0 && artist->primary_archetype != archetype) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "artist_matches_name: capacity exceeded");
-        return false;
-    }
+    if (!artist) return false;
+    if (artist->primary_modality != modality) return false;
+    if (archetype >= 0 && artist->primary_archetype != archetype) return false;
     return true;
 }
 
@@ -351,8 +342,7 @@ int creative_knowledge_get_artist(creative_knowledge_bridge_t* bridge,
         LOG_DEBUG(LOG_MODULE, "Would query external KG for artist: %s", name);
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_knowledge_bridge_destroy: validation failed");
-    return -1;  /* Not found */
+    return -1;  /* Not found — normal condition, not an immune event */
 }
 
 uint32_t creative_knowledge_artists_by_style(creative_knowledge_bridge_t* bridge,
@@ -419,8 +409,7 @@ int creative_knowledge_get_work(creative_knowledge_bridge_t* bridge,
     strncpy(out->title, title, sizeof(out->title) - 1);
     strncpy(out->description, "Work information not in database", sizeof(out->description) - 1);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_knowledge_bridge_destroy: operation failed");
-    return -1;  /* Not implemented with real data */
+    return -1;  /* Not found — normal condition, not an immune event */
 }
 
 uint32_t creative_knowledge_works_by_artist(creative_knowledge_bridge_t* bridge,
@@ -470,8 +459,7 @@ int creative_knowledge_get_movement(creative_knowledge_bridge_t* bridge,
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_knowledge_bridge_destroy: validation failed");
-    return -1;
+    return -1;  /* Not found — normal condition, not an immune event */
 }
 
 uint32_t creative_knowledge_movements_by_period(creative_knowledge_bridge_t* bridge,

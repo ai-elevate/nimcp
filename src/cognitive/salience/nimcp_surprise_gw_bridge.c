@@ -203,7 +203,7 @@ void surprise_gw_bridge_destroy(surprise_gw_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+        nimcp_mutex_destroy(bridge->mutex);
     }
     nimcp_free(bridge);
     bridge = NULL;

@@ -334,8 +334,7 @@ int salience_plasticity_unregister_synapse(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "salience_plasticity_unregister_synapse: validation failed");
-    return -1;
+    return -1;  /* Synapse not found — normal condition */
 }
 
 int salience_plasticity_get_synapse(
@@ -354,8 +353,7 @@ int salience_plasticity_get_synapse(
 
     salience_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
     if (!found) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_get_synapse: found is NULL");
-        return -1;
+        return -1;  /* Synapse not found — normal condition */
     }
 
     *synapse = *found;
