@@ -137,7 +137,7 @@ static collective_workspace_t* create_workspace(uint32_t size) {
     collective_workspace_t* ws = (collective_workspace_t*)nimcp_malloc(sizeof(collective_workspace_t));
     if (!ws) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ws is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_workspace: ws allocation failed");
 
         return NULL;
 
@@ -248,7 +248,7 @@ static emergence_context_t* create_emergence_context(void) {
     emergence_context_t* ctx = (emergence_context_t*)nimcp_calloc(1, sizeof(emergence_context_t));
     if (!ctx) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_emergence_context: allocation failed");
 
         return NULL;
 
@@ -279,7 +279,7 @@ static consensus_context_t* create_consensus_context(void) {
     consensus_context_t* ctx = (consensus_context_t*)nimcp_calloc(1, sizeof(consensus_context_t));
     if (!ctx) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_consensus_context: allocation failed");
 
         return NULL;
 

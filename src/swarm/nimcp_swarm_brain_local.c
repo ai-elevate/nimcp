@@ -464,6 +464,9 @@ int swarm_brain_create_for_agent(
     if (!brain) {
         LOG_ERROR("Failed to create brain for agent %u", agent_id);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create brain for agent %u", agent_id);
+        if (test_weights) {
+            nimcp_free(test_weights);
+        }
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
     }
@@ -475,6 +478,9 @@ int swarm_brain_create_for_agent(
     if (!entry) {
         LOG_ERROR("Failed to allocate agent entry");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate agent entry for agent %u", agent_id);
+        if (test_weights) {
+            nimcp_free(test_weights);
+        }
         nimcp_brain_destroy(brain);
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
@@ -807,6 +813,9 @@ int swarm_brain_create_for_agent_with_template(
         LOG_ERROR("Failed to create brain for agent %u (role=%s)",
                   agent_id, swarm_brain_role_name(templ->role));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create brain for agent %u (role=%s)", agent_id, swarm_brain_role_name(templ->role));
+        if (test_weights) {
+            nimcp_free(test_weights);
+        }
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
     }
@@ -818,6 +827,9 @@ int swarm_brain_create_for_agent_with_template(
     if (!entry) {
         LOG_ERROR("Failed to allocate agent entry");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate agent entry for agent %u", agent_id);
+        if (test_weights) {
+            nimcp_free(test_weights);
+        }
         nimcp_brain_destroy(brain);
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
@@ -1124,20 +1136,27 @@ int swarm_brain_sync_all(swarm_brain_manager_t* mgr) {
     /* Update consensus first */
     update_consensus_weights(mgr);
 
-    /* Sync all active agents */
-    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
+    /* Collect active agent IDs first, then sync outside the lock to avoid TOCTOU */
+    uint32_t agent_ids[SWARM_BRAIN_MAX_AGENTS];
+    uint32_t agent_count = 0;
+    for (uint32_t i = 0; i < HASH_TABLE_SIZE && agent_count < SWARM_BRAIN_MAX_AGENTS; i++) {
         agent_brain_entry_t* entry = mgr->agent_table[i];
-        while (entry) {
+        while (entry && agent_count < SWARM_BRAIN_MAX_AGENTS) {
             if (entry->brain_data.active) {
-                nimcp_platform_mutex_unlock(&mgr->mutex);
-                swarm_brain_local_sync_weights(mgr, entry->brain_data.agent_id);
-                nimcp_platform_mutex_lock(&mgr->mutex);
+                agent_ids[agent_count++] = entry->brain_data.agent_id;
             }
             entry = entry->next;
         }
     }
 
     nimcp_platform_mutex_unlock(&mgr->mutex);
+
+    /* Sync each agent outside the lock */
+    for (uint32_t i = 0; i < agent_count; i++) {
+        swarm_brain_local_sync_weights(mgr, agent_ids[i]);
+    }
+
+    /* Re-lock just for the final unlock to be balanced - no, just return */
     return NIMCP_SUCCESS;
 }
 

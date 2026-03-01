@@ -31,13 +31,13 @@ void emotional_contagion_fep_default_config(emotional_contagion_fep_config_t* co
 
 emotional_contagion_fep_bridge_t* emotional_contagion_fep_create(const emotional_contagion_fep_config_t* config, emotional_contagion_t* contagion_system, fep_system_t* fep_system) {
     if (!contagion_system || !fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotional_contagion_fep_create: required parameter is NULL (contagion_system, fep_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_contagion_fep_create: required parameter is NULL (contagion_system, fep_system)");
         return NULL;
     }
     emotional_contagion_fep_bridge_t* bridge = (emotional_contagion_fep_bridge_t*)nimcp_malloc(sizeof(emotional_contagion_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotional_contagion_fep_create: allocation failed");
 
         return NULL;
 

@@ -465,7 +465,6 @@ bool swarm_consciousness_request_phi(
 
     if (!ctx->attached || !ctx->attached_swarm) {
         LOG_WARN("Not attached to swarm, cannot request phi");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_request_phi: required parameter is NULL (ctx->attached, ctx->attached_swarm)");
         return false;
     }
 
@@ -509,7 +508,6 @@ bool swarm_consciousness_request_phi(
     // No signal adapter configured - caller should set one via
     // swarm_consciousness_set_signal_adapter()
     LOG_DEBUG("No signal adapter configured for phi requests");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_request_phi: validation failed");
     return false;
 }
 
@@ -790,8 +788,7 @@ bool swarm_compute_information_geometry(
     if (ctx->history_count < MIN_GEOMETRY_SAMPLES) {
         nimcp_mutex_unlock(&ctx->lock);
         memset(geometry, 0, sizeof(*geometry));
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_compute_information_geometry: validation failed");
-        return false;
+        return false;  /* Insufficient history is normal during warmup */
     }
 
     uint32_t n = ctx->history_count;
@@ -840,8 +837,7 @@ bool swarm_compute_consciousness_dynamics(
         nimcp_mutex_unlock(&ctx->lock);
         memset(dynamics, 0, sizeof(*dynamics));
         dynamics->current_phase = CONSCIOUSNESS_PHASE_CHAOS;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_compute_consciousness_dynamics: validation failed");
-        return false;
+        return false;  /* Insufficient history is normal during warmup */
     }
 
     uint32_t n = ctx->history_count;
@@ -924,8 +920,7 @@ bool swarm_compute_neural_binding(
 
     if (ctx->history_count < 10) {
         nimcp_mutex_unlock(&ctx->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_compute_neural_binding: validation failed");
-        return false;
+        return false;  /* Insufficient history is normal during warmup */
     }
 
     // Estimate gamma power from high-frequency phi fluctuations
@@ -1045,7 +1040,7 @@ bool swarm_compute_hierarchical_consciousness(
     // Dominant level: where is phi density highest?
     float max_density = 0.0f;
     hierarchy->dominant_level = HIERARCHY_INDIVIDUAL;
-    float level_sizes[] = {1.0f, (float)squad_size, (float)platoon_size, (float)total_drones};
+    float level_sizes[] = {1.0f, fmaxf(1.0f, (float)squad_size), fmaxf(1.0f, (float)platoon_size), fmaxf(1.0f, (float)total_drones)};
     for (int i = 0; i < SWARM_CONSCIOUSNESS_MAX_HIERARCHY_LEVELS; i++) {
         float density = hierarchy->phi_by_level[i] / level_sizes[i];
         if (density > max_density) {
@@ -1102,7 +1097,7 @@ bool swarm_compute_consciousness_resilience(
     }
 
     // Dropout sensitivity: average phi loss per dropout
-    if (ctx->remote_phi_count > 0) {
+    if (ctx->remote_phi_count > 0 && baseline_phi > 0.0f) {
         float avg_dropout_phi = sum_dropout_phi / ctx->remote_phi_count;
         resilience->dropout_sensitivity = (baseline_phi - avg_dropout_phi) / baseline_phi;
     }

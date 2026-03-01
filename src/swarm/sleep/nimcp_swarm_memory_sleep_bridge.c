@@ -87,7 +87,7 @@ swarm_memory_sleep_bridge_t swarm_memory_sleep_bridge_create(
         (swarm_memory_sleep_bridge_t)nimcp_malloc(sizeof(struct swarm_memory_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm memory sleep bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_sleep_bridge_create: allocation failed");
 
         return NULL;
     }

@@ -458,8 +458,14 @@ int dragonfly_audio_bridge_process_frame(
 
             source.elevation = 0;  /* Cannot determine from stereo alone */
             source.intensity_db = intensity_db;
-            source.confidence = 0.5f + 0.5f * (intensity_db - bridge->config.min_intensity_db) /
-                                        (90.0f - bridge->config.min_intensity_db);
+            {
+                float db_range = 90.0f - bridge->config.min_intensity_db;
+                if (db_range > 0.01f) {
+                    source.confidence = 0.5f + 0.5f * (intensity_db - bridge->config.min_intensity_db) / db_range;
+                } else {
+                    source.confidence = 0.5f;
+                }
+            }
             if (source.confidence > 1.0f) source.confidence = 1.0f;
 
             /* Distance estimation */

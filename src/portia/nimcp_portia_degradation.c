@@ -320,11 +320,6 @@ nimcp_result_t portia_degradation_evaluate(
     void* bio_ctx
 ) {
     if (!state) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    // Security validation
-    if (!state) {
         LOG_ERROR("Invalid state pointer");
         bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_EVALUATE_FAILED", "Invalid state pointer");
         return NIMCP_ERROR_INVALID_PARAM;
@@ -429,11 +424,6 @@ nimcp_result_t portia_degradation_set_level(
     void* bio_ctx
 ) {
     if (!state) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    // Security validation
-    if (!state) {
         LOG_ERROR("Invalid state pointer");
         bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_SET_LEVEL_FAILED", "Invalid state pointer");
         return NIMCP_ERROR_INVALID_PARAM;
@@ -461,11 +451,6 @@ nimcp_result_t portia_degradation_disable_feature(
     uint32_t feature_id,
     void* bio_ctx
 ) {
-    if (!state) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    // Security validation
     if (!state) {
         LOG_ERROR("Invalid state pointer");
         bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_DISABLE_FEATURE_FAILED", "Invalid state pointer");
@@ -525,11 +510,6 @@ nimcp_result_t portia_degradation_enable_feature(
     void* bio_ctx
 ) {
     if (!state) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    // Security validation
-    if (!state) {
         LOG_ERROR("Invalid state pointer");
         bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_ENABLE_FEATURE_FAILED", "Invalid state pointer");
         return NIMCP_ERROR_INVALID_PARAM;
@@ -582,11 +562,6 @@ nimcp_result_t portia_degradation_get_state(
     float* resource_usage
 ) {
     if (!state) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    // Security validation
-    if (!state) {
         LOG_ERROR("Invalid state pointer");
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -614,11 +589,6 @@ nimcp_result_t portia_degradation_register_feature(
     degradation_state_t* state,
     const degradation_feature_t* feature
 ) {
-    if (!state || !feature) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    // Security validation
     if (!state) {
         LOG_ERROR("Invalid state pointer");
         bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_REGISTER_FAILED", "Invalid state pointer");
@@ -694,11 +664,6 @@ nimcp_result_t portia_degradation_get_chain(
     uint32_t chain_size,
     uint32_t* actual_count
 ) {
-    if (!state || !chain || !actual_count) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    // Security validation
     if (!state) {
         LOG_ERROR("Invalid state pointer");
         return NIMCP_ERROR_INVALID_PARAM;
@@ -706,6 +671,11 @@ nimcp_result_t portia_degradation_get_chain(
 
     if (!chain) {
         LOG_ERROR("Invalid chain buffer");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!actual_count) {
+        LOG_ERROR("Invalid actual_count pointer");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -731,13 +701,13 @@ nimcp_result_t portia_degradation_is_feature_enabled(
     uint32_t feature_id,
     bool* is_enabled
 ) {
-    if (!state || !is_enabled) {
+    if (!state) {
+        LOG_ERROR("Invalid state pointer");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    // Security validation
-    if (!state) {
-        LOG_ERROR("Invalid state pointer");
+    if (!is_enabled) {
+        LOG_ERROR("Invalid is_enabled pointer");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -767,11 +737,6 @@ nimcp_result_t portia_degradation_get_features_for_level(
     uint32_t max_features,
     uint32_t* actual_count
 ) {
-    if (!state || !features || !actual_count) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    // Security validation
     if (!state) {
         LOG_ERROR("Invalid state pointer");
         return NIMCP_ERROR_INVALID_PARAM;
@@ -779,6 +744,11 @@ nimcp_result_t portia_degradation_get_features_for_level(
 
     if (!features) {
         LOG_ERROR("Invalid features buffer");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!actual_count) {
+        LOG_ERROR("Invalid actual_count pointer");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

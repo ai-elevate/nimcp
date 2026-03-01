@@ -427,13 +427,13 @@ int dragonfly_sleep_get_memory(
     consolidated_memory_t* memory
 ) {
     if (!bridge || !memory) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_sleep_get_memory: required parameter is NULL (bridge, memory)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_get_memory: required parameter is NULL (bridge, memory)");
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *memory = bridge->memory;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -467,7 +467,7 @@ int dragonfly_sleep_recommend_strategy(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find best strategy from consolidated memory */
     float best_score = 0.0f;
@@ -484,7 +484,7 @@ int dragonfly_sleep_recommend_strategy(
     *strategy = best_strategy;
     *confidence = best_score;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -498,9 +498,9 @@ int dragonfly_sleep_get_state(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -514,9 +514,9 @@ int dragonfly_sleep_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

@@ -261,7 +261,7 @@ void dragonfly_environment_destroy(dragonfly_environment_t env) {
     if (!env) return;
 
     if (env->mutex) {
-        nimcp_mutex_free(env->mutex);
+        nimcp_mutex_destroy(env->mutex);
     }
 
     nimcp_free(env);
@@ -314,8 +314,11 @@ int dragonfly_environment_set_wind(
     float speed = vec3_length(wind_velocity);
     env->state.wind_condition = classify_wind(speed, variability);
 
-    env->stats.avg_wind_speed_ms = (env->stats.avg_wind_speed_ms * env->stats.updates + speed) /
-                                    (env->stats.updates + 1);
+    {
+        float new_avg = (env->stats.avg_wind_speed_ms * env->stats.updates + speed) /
+                        (env->stats.updates + 1);
+        if (isfinite(new_avg)) env->stats.avg_wind_speed_ms = new_avg;
+    }
 
     nimcp_mutex_unlock(env->mutex);
 
@@ -343,8 +346,11 @@ int dragonfly_environment_set_light(
     /* Adapt to light level */
     env->adapted_light_level += (light_level - env->adapted_light_level) * env->config.adaptation_rate;
 
-    env->stats.avg_light_level = (env->stats.avg_light_level * env->stats.updates + light_level) /
-                                  (env->stats.updates + 1);
+    {
+        float new_avg = (env->stats.avg_light_level * env->stats.updates + light_level) /
+                        (env->stats.updates + 1);
+        if (isfinite(new_avg)) env->stats.avg_light_level = new_avg;
+    }
 
     nimcp_mutex_unlock(env->mutex);
 
@@ -415,10 +421,14 @@ int dragonfly_environment_update(
 
     /* Update statistics */
     env->stats.updates++;
-    env->stats.avg_wind_speed_ms = (env->stats.avg_wind_speed_ms * (env->stats.updates - 1) + wind_speed) /
-                                    env->stats.updates;
-    env->stats.avg_light_level = (env->stats.avg_light_level * (env->stats.updates - 1) + state->light_level) /
-                                  env->stats.updates;
+    {
+        float new_avg_wind = (env->stats.avg_wind_speed_ms * (env->stats.updates - 1) + wind_speed) /
+                              env->stats.updates;
+        if (isfinite(new_avg_wind)) env->stats.avg_wind_speed_ms = new_avg_wind;
+        float new_avg_light = (env->stats.avg_light_level * (env->stats.updates - 1) + state->light_level) /
+                               env->stats.updates;
+        if (isfinite(new_avg_light)) env->stats.avg_light_level = new_avg_light;
+    }
 
     env->last_update_us = get_time_us();
 
@@ -440,9 +450,9 @@ int dragonfly_environment_get_state(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)env->mutex);
+    nimcp_mutex_lock(env->mutex);
     *state = env->state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)env->mutex);
+    nimcp_mutex_unlock(env->mutex);
 
     return 0;
 }
@@ -457,7 +467,7 @@ int dragonfly_environment_get_compensation(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)env->mutex);
+    nimcp_mutex_lock(env->mutex);
 
     /* Wind compensation */
     float wind_speed = vec3_length(env->state.wind_velocity);
@@ -554,7 +564,7 @@ int dragonfly_environment_get_compensation(
         compensation->limiting_factor = "none";
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)env->mutex);
+    nimcp_mutex_unlock(env->mutex);
 
     return 0;
 }
@@ -580,14 +590,14 @@ int dragonfly_environment_correct_velocity(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)env->mutex);
+    nimcp_mutex_lock(env->mutex);
 
     for (int i = 0; i < 3; i++) {
         corrected_velocity[i] = desired_velocity[i] -
                                 env->state.wind_velocity[i] * env->config.wind_compensation_gain;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)env->mutex);
+    nimcp_mutex_unlock(env->mutex);
 
     return 0;
 }
@@ -601,9 +611,9 @@ int dragonfly_environment_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)env->mutex);
+    nimcp_mutex_lock(env->mutex);
     *stats = env->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)env->mutex);
+    nimcp_mutex_unlock(env->mutex);
 
     return 0;
 }

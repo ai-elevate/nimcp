@@ -220,6 +220,14 @@ dragonfly_cortical_bridge_t* dragonfly_cortical_bridge_create(
     bridge->dragonfly = dragonfly;
     bridge->tsdn = tsdn;
 
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_cortical") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_cortical_bridge_create: failed to init base");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     /* Initialize preferred directions */
     initialize_preferred_directions(bridge);
 
@@ -244,6 +252,7 @@ void dragonfly_cortical_bridge_destroy(dragonfly_cortical_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_cortical");
     bridge->initialized = false;
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -253,12 +262,16 @@ int dragonfly_cortical_bridge_reset(dragonfly_cortical_bridge_t* bridge) {
         return -1;
     }
 
+    nimcp_mutex_lock(bridge->base.mutex);
+
     memset(&bridge->current_direction, 0, sizeof(bridge->current_direction));
     memset(bridge->minicolumn_activations, 0, sizeof(bridge->minicolumn_activations));
     memset(bridge->inhibited_activations, 0, sizeof(bridge->inhibited_activations));
     memset(bridge->adaptation_state, 0, sizeof(bridge->adaptation_state));
 
     bridge->current_gain = bridge->config.gain_modulation;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

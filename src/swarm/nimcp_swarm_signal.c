@@ -200,13 +200,11 @@ static void sim_queue_free(int index) {
 static bool sim_queue_enqueue(int index, const uint8_t* data, uint32_t len,
                               uint32_t source_id) {
     if (index < 0 || index >= SIM_MAX_NODES || !g_sim_queues[index]) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "sim_queue_free: g_sim_queues is NULL");
-        return false;
+        return false;  /* Invalid index - defensive guard */
     }
 
     // BBB: Validate buffer bounds
     if (!bbb_validate_buffer_access(data, 0, len, LORA_MAX_PAYLOAD * 2, "sim_queue_enqueue")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sim_queue_free: bbb_validate_buffer_access is NULL");
         return false;
     }
 
@@ -215,8 +213,7 @@ static bool sim_queue_enqueue(int index, const uint8_t* data, uint32_t len,
 
     if (queue->count >= SIM_QUEUE_SIZE) {
         nimcp_mutex_unlock(&queue->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "sim_queue_free: capacity exceeded");
-        return false;
+        return false;  /* Queue full - normal condition */
     }
 
     sim_packet_t* packet = &queue->packets[queue->tail];
@@ -238,8 +235,7 @@ static bool sim_queue_enqueue(int index, const uint8_t* data, uint32_t len,
 static bool sim_queue_dequeue(int index, uint8_t* data, uint32_t* len,
                               uint32_t* source_id, uint64_t* timestamp_ns) {
     if (index < 0 || index >= SIM_MAX_NODES || !g_sim_queues[index]) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "sim_queue_free: g_sim_queues is NULL");
-        return false;
+        return false;  /* Invalid index - defensive guard */
     }
 
     sim_queue_t* queue = g_sim_queues[index];
@@ -247,8 +243,7 @@ static bool sim_queue_dequeue(int index, uint8_t* data, uint32_t* len,
 
     if (queue->count == 0) {
         nimcp_mutex_unlock(&queue->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sim_queue_free: queue->count is zero");
-        return false;
+        return false;  /* Queue empty - normal condition */
     }
 
     sim_packet_t* packet = &queue->packets[queue->head];
@@ -288,8 +283,7 @@ static bool encode_lora_packet(uint8_t* output, uint32_t* output_len,
                                uint32_t source_id, uint32_t dest_id,
                                uint32_t sequence) {
     if (payload_len > LORA_MAX_PAYLOAD) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sim_queue_free: validation failed");
-        return false;
+        return false;  /* Payload too large */
     }
 
     uint32_t pos = 0;
@@ -339,16 +333,14 @@ static bool decode_lora_packet(const uint8_t* input, uint32_t input_len,
     if (input_len < LORA_PREAMBLE_LENGTH + 1 + sizeof(packet_header_t) + LORA_CRC_SIZE) {
         LOG_DEBUG("decode_lora_packet: too short: len=%u need=%zu",
                   input_len, LORA_PREAMBLE_LENGTH + 1 + sizeof(packet_header_t) + LORA_CRC_SIZE);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sim_queue_free: validation failed");
-        return false;
+        return false;  /* Packet too short */
     }
 
     /* Verify preamble */
     for (int i = 0; i < LORA_PREAMBLE_LENGTH; i++) {
         if (input[i] != 0xAA) {
             LOG_DEBUG("decode_lora_packet: bad preamble at %d: 0x%02x", i, input[i]);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sim_queue_free: validation failed");
-            return false;
+            return false;  /* Bad preamble */
         }
     }
 
@@ -356,8 +348,7 @@ static bool decode_lora_packet(const uint8_t* input, uint32_t input_len,
     if (input[LORA_PREAMBLE_LENGTH] != LORA_SYNC_WORD) {
         LOG_DEBUG("decode_lora_packet: bad sync: 0x%02x expected 0x%02x",
                   input[LORA_PREAMBLE_LENGTH], LORA_SYNC_WORD);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sim_queue_free: validation failed");
-        return false;
+        return false;  /* Bad sync word */
     }
 
     /* Extract header */
@@ -370,8 +361,7 @@ static bool decode_lora_packet(const uint8_t* input, uint32_t input_len,
     uint32_t crc_pos = payload_pos + header.payload_len;
 
     if (crc_pos + LORA_CRC_SIZE > input_len) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sim_queue_free: validation failed");
-        return false;
+        return false;  /* CRC position overflows input */
     }
 
     uint16_t calculated_crc = calculate_crc16(&input[header_pos],
@@ -380,14 +370,12 @@ static bool decode_lora_packet(const uint8_t* input, uint32_t input_len,
     memcpy(&received_crc, &input[crc_pos], sizeof(received_crc));
 
     if (calculated_crc != received_crc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sim_queue_free: validation failed");
-        return false;
+        return false;  /* CRC mismatch */
     }
 
     /* Extract payload */
     if (header.payload_len > *payload_len) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sim_queue_free: validation failed");
-        return false;
+        return false;  /* Output buffer too small */
     }
 
     memcpy(payload, &input[payload_pos], header.payload_len);
@@ -436,7 +424,7 @@ nimcp_swarm_signal_adapter_t* swarm_signal_adapter_create(
     // BBB: Validate input pointer
     if (!bbb_check_pointer(config, "swarm_signal_adapter_create")) {
         bbb_audit_log(BBB_AUDIT_ERROR, "swarm_signal", "create_failed", "config=NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bbb_check_pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_signal_adapter_create: config is NULL");
         return NULL;
     }
 
@@ -448,7 +436,7 @@ nimcp_swarm_signal_adapter_t* swarm_signal_adapter_create(
                               "swarm_signal_adapter_create")) {
         bbb_audit_log(BBB_AUDIT_ERROR, "swarm_signal", "invalid_config",
                       "max_packet_size=%u exceeds max=%u", config->max_packet_size, LORA_MAX_PAYLOAD);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_create: max_packet_size out of range");
         return NULL;
     }
 
@@ -457,7 +445,7 @@ nimcp_swarm_signal_adapter_t* swarm_signal_adapter_create(
             !bbb_check_pointer(config->custom_recv, "swarm_signal_adapter_create")) {
             bbb_audit_log(BBB_AUDIT_ERROR, "swarm_signal", "invalid_config",
                           "Custom radio requires callbacks");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bbb_check_pointer is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_create: custom callbacks missing");
             return NULL;
         }
     }
@@ -494,7 +482,7 @@ nimcp_swarm_signal_adapter_t* swarm_signal_adapter_create(
             bbb_audit_log(BBB_AUDIT_ERROR, "swarm_signal", "sim_queue_alloc_failed", "");
             nimcp_mutex_destroy(&adapter->stats_lock);
             nimcp_free(adapter);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_signal_adapter_create: sim queue alloc failed");
             return NULL;
         }
     }
@@ -547,15 +535,15 @@ bool swarm_signal_send(nimcp_swarm_signal_adapter_t* adapter,
 
     // BBB: Validate inputs
     if (!bbb_check_pointer(adapter, "swarm_signal_send")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: bbb_check_pointer is NULL");
+        /* bbb_check_pointer already logged the error */
         return false;
     }
     if (!bbb_check_pointer(data, "swarm_signal_send")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: bbb_check_pointer is NULL");
+        /* bbb_check_pointer already logged the error */
         return false;
     }
     if (!bbb_validate_range_u(len, 1, LORA_MAX_PAYLOAD, "swarm_signal_send")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: bbb_validate_range_u is NULL");
+        /* bbb_validate_range_u already logged the error */
         return false;
     }
 
@@ -566,13 +554,13 @@ bool swarm_signal_send(nimcp_swarm_signal_adapter_t* adapter,
         nimcp_mutex_lock(&adapter->stats_lock);
         adapter->stats.packets_dropped++;
         nimcp_mutex_unlock(&adapter->stats_lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: bbb_validate_network_data is NULL");
+        /* bbb_validate_network_data already logged the error */
         return false;
     }
 
     if (!adapter->operational) {
         LOG_WARNING("swarm_signal_send: Adapter not operational");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_signal_adapter_destroy: adapter->operational is NULL");
+        /* Adapter not operational - not an immune error */
         return false;
     }
 
@@ -584,7 +572,7 @@ bool swarm_signal_send(nimcp_swarm_signal_adapter_t* adapter,
         nimcp_mutex_lock(&adapter->stats_lock);
         adapter->stats.packets_dropped++;
         nimcp_mutex_unlock(&adapter->stats_lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: validation failed");
+        /* Validation failed - not an immune error */
         return false;
     }
 
@@ -682,25 +670,25 @@ bool swarm_signal_receive(nimcp_swarm_signal_adapter_t* adapter,
 
     // BBB: Validate inputs
     if (!bbb_check_pointer(adapter, "swarm_signal_receive")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: bbb_check_pointer is NULL");
+        /* bbb_check_pointer already logged the error */
         return false;
     }
     if (!bbb_check_pointer(buffer, "swarm_signal_receive")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: bbb_check_pointer is NULL");
+        /* bbb_check_pointer already logged the error */
         return false;
     }
     if (!bbb_check_pointer(received_len, "swarm_signal_receive")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: bbb_check_pointer is NULL");
+        /* bbb_check_pointer already logged the error */
         return false;
     }
     if (!bbb_validate_range_u(buffer_size, 1, LORA_MAX_PAYLOAD * 2,
                               "swarm_signal_receive")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: bbb_check_pointer is NULL");
+        /* bbb_check_pointer already logged the error */
         return false;
     }
 
     if (!adapter->operational) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_signal_adapter_destroy: adapter->operational is NULL");
+        /* Adapter not operational - not an immune error */
         return false;
     }
 
@@ -715,7 +703,7 @@ bool swarm_signal_receive(nimcp_swarm_signal_adapter_t* adapter,
 
             if (!sim_queue_dequeue(adapter->sim_queue_index, encoded,
                                   &encoded_len, &src_id, &timestamp_ns)) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: operation failed");
+                /* Operation failed - not an immune error */
                 return false;
             }
 
@@ -728,7 +716,7 @@ bool swarm_signal_receive(nimcp_swarm_signal_adapter_t* adapter,
                 nimcp_mutex_lock(&adapter->stats_lock);
                 adapter->stats.crc_errors++;
                 nimcp_mutex_unlock(&adapter->stats_lock);
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_adapter_destroy: operation failed");
+                /* Operation failed - not an immune error */
                 return false;
             }
 
@@ -737,14 +725,13 @@ bool swarm_signal_receive(nimcp_swarm_signal_adapter_t* adapter,
             if (threat != BBB_THREAT_NONE) {
                 bbb_audit_log(BBB_AUDIT_CRITICAL, "swarm_signal", "threat_detected",
                               "threat=%d src=%u len=%u", threat, src_id, *received_len);
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_receive: threat detected in received data");
                 return false;
             }
 
             /* Check if packet is for us or broadcast */
             if (dest_id != 0 && dest_id != adapter->node_id) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
-                return false;
+                return false;  /* Packet not for us - normal condition */
             }
 
             if (source_id) {
@@ -794,13 +781,13 @@ bool swarm_signal_receive_blocking(nimcp_swarm_signal_adapter_t* adapter,
 
     // BBB: Validate inputs
     if (!bbb_check_pointer(adapter, "swarm_signal_receive_blocking")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "unknown: bbb_check_pointer is NULL");
+        /* bbb_check_pointer already logged the error */
         return false;
     }
     if (!bbb_validate_range_u(timeout_ms, 0, 60000, "swarm_signal_receive_blocking")) {
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_signal", "invalid_timeout",
                       "timeout_ms=%u", timeout_ms);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: bbb_validate_range_u is NULL");
+        /* bbb_validate_range_u already logged the error */
         return false;
     }
 
@@ -818,8 +805,7 @@ bool swarm_signal_receive_blocking(nimcp_swarm_signal_adapter_t* adapter,
         elapsed_ms = nimcp_time_get_ms() - start_time;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
-    return false;
+    return false;  /* Timeout expired - normal condition */
 }
 
 bool swarm_signal_broadcast(nimcp_swarm_signal_adapter_t* adapter,
@@ -833,11 +819,11 @@ bool swarm_signal_get_stats(nimcp_swarm_signal_adapter_t* adapter,
 
     // BBB: Validate inputs
     if (!bbb_check_pointer(adapter, "swarm_signal_get_stats")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: bbb_check_pointer is NULL");
+        /* bbb_check_pointer already logged the error */
         return false;
     }
     if (!bbb_check_pointer(stats, "swarm_signal_get_stats")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: bbb_check_pointer is NULL");
+        /* bbb_check_pointer already logged the error */
         return false;
     }
 
@@ -881,13 +867,13 @@ bool swarm_signal_set_tx_power(nimcp_swarm_signal_adapter_t* adapter,
 
     // BBB: Validate inputs
     if (!bbb_check_pointer(adapter, "swarm_signal_set_tx_power")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_signal_radio_type_string: bbb_check_pointer is NULL");
+        /* bbb_check_pointer already logged the error */
         return false;
     }
     if (!bbb_validate_range(tx_power_dbm, -20, 30, "swarm_signal_set_tx_power")) {
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_signal", "invalid_tx_power",
                       "tx_power=%d", tx_power_dbm);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "swarm_signal_radio_type_string: bbb_validate_range is NULL");
+        /* bbb_validate_range already logged the error */
         return false;
     }
 

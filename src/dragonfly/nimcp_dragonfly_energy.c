@@ -271,7 +271,7 @@ void dragonfly_energy_destroy(dragonfly_energy_t energy) {
     if (!energy) return;
 
     if (energy->mutex) {
-        nimcp_mutex_free(energy->mutex);
+        nimcp_mutex_destroy(energy->mutex);
     }
 
     nimcp_free(energy);
@@ -459,7 +459,7 @@ int dragonfly_energy_estimate_pursuit(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)energy->mutex);
+    nimcp_mutex_lock(energy->mutex);
 
     /* Basic cost estimate */
     float duration = solution->intercept_time_s;
@@ -494,7 +494,7 @@ int dragonfly_energy_estimate_pursuit(
     estimate->within_budget = (estimate->estimated_energy_j < available);
     estimate->reserve_after_j = energy->budget.current_energy_j - estimate->estimated_energy_j;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)energy->mutex);
+    nimcp_mutex_unlock(energy->mutex);
 
     return 0;
 }
@@ -513,7 +513,7 @@ int dragonfly_energy_optimize_pursuit(
     (void)self;  /* For future distance-based optimization */
     (void)target;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)energy->mutex);
+    nimcp_mutex_lock(energy->mutex);
 
     float prey_value = get_prey_value(energy, prey_size);
 
@@ -545,7 +545,7 @@ int dragonfly_energy_optimize_pursuit(
         optimization->decision_reason = "viable";
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)energy->mutex);
+    nimcp_mutex_unlock(energy->mutex);
 
     return 0;
 }
@@ -575,9 +575,9 @@ int dragonfly_energy_get_budget(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)energy->mutex);
+    nimcp_mutex_lock(energy->mutex);
     *budget = energy->budget;
-    nimcp_mutex_unlock((nimcp_mutex_t*)energy->mutex);
+    nimcp_mutex_unlock(energy->mutex);
 
     return 0;
 }
@@ -601,12 +601,12 @@ int dragonfly_energy_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)energy->mutex);
+    nimcp_mutex_lock(energy->mutex);
 
     *stats = energy->stats;
     stats->net_energy_j = stats->total_energy_gained_j - stats->total_energy_spent_j;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)energy->mutex);
+    nimcp_mutex_unlock(energy->mutex);
 
     return 0;
 }

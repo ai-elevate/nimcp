@@ -99,7 +99,7 @@ swarm_module_registry_t* swarm_registry_create(
     } else {
         if (swarm_registry_default_config(&registry->config) != 0) {
             nimcp_free(registry);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_create: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_create: default config failed");
             return NULL;
         }
     }
@@ -318,7 +318,7 @@ int swarm_registry_set_module_enabled(
 
     if (!entry) {
         nimcp_platform_mutex_unlock(registry->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_set_module_enabled: entry is NULL");
+        LOG_DEBUG("swarm_registry_set_module_enabled: module %u not found", module_id);
         return -1;
     }
 
@@ -369,7 +369,7 @@ int swarm_registry_set_module_priority(
 
     if (!entry) {
         nimcp_platform_mutex_unlock(registry->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_set_module_priority: entry is NULL");
+        LOG_DEBUG("swarm_registry_set_module_priority: module %u not found", module_id);
         return -1;
     }
 
@@ -399,8 +399,7 @@ const swarm_module_entry_t* swarm_registry_get_module(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_get_module: validation failed");
-    return NULL;
+    return NULL;  /* Normal search miss - module not found */
 }
 
 const swarm_module_entry_t* swarm_registry_find_module_by_name(
@@ -419,8 +418,7 @@ const swarm_module_entry_t* swarm_registry_find_module_by_name(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_find_module_by_name: required parameter is NULL (registry, name)");
-    return NULL;
+    return NULL;  /* Normal search miss - module not found */
 }
 
 uint32_t swarm_registry_get_modules_by_category(
@@ -600,7 +598,7 @@ int swarm_registry_update_module(
 
     if (!entry) {
         nimcp_platform_mutex_unlock(registry->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_update_module: entry is NULL");
+        LOG_DEBUG("swarm_registry_update_module: module %u not found", module_id);
         return -1;
     }
 
@@ -754,8 +752,7 @@ int swarm_registry_connect_bio_async(swarm_module_registry_t* registry) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_connect_bio_async: validation failed");
-    return -1;
+    return -1;  /* Bio-async not available - not a critical error */
 }
 
 int swarm_registry_disconnect_bio_async(swarm_module_registry_t* registry) {
@@ -908,7 +905,7 @@ int swarm_registry_create_module_kg_node(
 
     if (!entry) {
         nimcp_platform_mutex_unlock(registry->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_create_module_kg_node: entry is NULL");
+        LOG_DEBUG("swarm_registry_create_module_kg_node: module %u not found", module_id);
         return -1;
     }
 
@@ -1159,7 +1156,7 @@ int swarm_registry_get_module_stats(
 
     const swarm_module_entry_t* entry = swarm_registry_get_module(registry, module_id);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_get_module_stats: entry is NULL");
+        LOG_DEBUG("swarm_registry_get_module_stats: module %u not found", module_id);
         return -1;
     }
 

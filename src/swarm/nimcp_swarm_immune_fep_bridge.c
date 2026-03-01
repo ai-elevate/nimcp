@@ -31,13 +31,13 @@ void swarm_immune_fep_default_config(swarm_immune_fep_config_t* config) {
 
 swarm_immune_fep_bridge_t* swarm_immune_fep_create(const swarm_immune_fep_config_t* config, void* immune_system, fep_system_t* fep_system) {
     if (!immune_system || !fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_immune_fep_create: required parameter is NULL (immune_system, fep_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_immune_fep_create: required parameter is NULL (immune_system, fep_system)");
         return NULL;
     }
     swarm_immune_fep_bridge_t* bridge = (swarm_immune_fep_bridge_t*)nimcp_malloc(sizeof(swarm_immune_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_immune_fep_create: allocation failed");
 
         return NULL;
 

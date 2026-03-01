@@ -626,7 +626,7 @@ nimcp_error_t swarm_logic_bridge_remove_rule(swarm_logic_bridge_t* bridge,
 const swarm_logic_rule_t* swarm_logic_bridge_get_rule(swarm_logic_bridge_t* bridge,
                                                        uint32_t rule_id) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_logic_bridge_destroy: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_logic_bridge_get_rule: bridge is NULL");
         return NULL;
     }
 
@@ -663,7 +663,7 @@ int swarm_logic_bridge_evaluate(swarm_logic_bridge_t* bridge,
                                  uint32_t max_results) {
     if (!bridge || !agent_states || num_agents == 0 || !results || max_results == 0) {
         LOG_ERROR("Invalid parameters for evaluate");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_logic_bridge_destroy: required parameter is NULL (bridge, agent_states, results)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_logic_bridge_evaluate: required parameter is NULL (bridge, agent_states, results)");
         return -1;
     }
 

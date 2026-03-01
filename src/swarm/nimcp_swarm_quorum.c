@@ -136,7 +136,7 @@ static nimcp_drone_commitment_t* add_commitment(
         /* Check for overflow before doubling capacity */
         if (quorum->commitment_capacity > UINT32_MAX / 2) {
             LOG_ERROR("Commitment capacity overflow");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_commitment: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_commitment: capacity overflow");
             return NULL;
         }
         uint32_t new_capacity = quorum->commitment_capacity * 2;
@@ -243,7 +243,7 @@ static bool add_decision(
         );
         if (!new_array) {
             LOG_ERROR("Failed to expand decision array");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_decision: new_array is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_decision: realloc failed");
             return false;
         }
         quorum->decisions = new_array;
@@ -605,8 +605,7 @@ const nimcp_drone_commitment_t* nimcp_quorum_get_commitment(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_quorum_get_commitment: validation failed");
-    return NULL;
+    return NULL;  /* Normal search miss - drone not found */
 }
 
 bool nimcp_quorum_remove_commitment(
@@ -644,20 +643,17 @@ bool nimcp_quorum_remove_commitment(
     }
 
     nimcp_platform_mutex_unlock(quorum->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_quorum_remove_commitment: operation failed");
-    return false;
+    LOG_DEBUG("nimcp_quorum_remove_commitment: drone %u not found", drone_id);
+    return false;  /* Normal search miss - drone not found */
 }
 
-uint32_t nimcp_quorum_trigger_cascade(
+/**
+ * @brief Internal unlocked cascade helper (caller must hold mutex)
+ */
+static uint32_t trigger_cascade_unlocked(
     nimcp_swarm_quorum_t* quorum,
     nimcp_signal_type_t signal
 ) {
-    if (!quorum || signal >= NIMCP_SIGNAL_COUNT) {
-        return 0;
-    }
-
-    nimcp_platform_mutex_lock(quorum->mutex);
-
     uint32_t recruited = 0;
     double cascade_strength = quorum->config.cascade_speed;
 
@@ -684,6 +680,19 @@ uint32_t nimcp_quorum_trigger_cascade(
                       signal_names[signal], recruited);
     }
 
+    return recruited;
+}
+
+uint32_t nimcp_quorum_trigger_cascade(
+    nimcp_swarm_quorum_t* quorum,
+    nimcp_signal_type_t signal
+) {
+    if (!quorum || signal >= NIMCP_SIGNAL_COUNT) {
+        return 0;
+    }
+
+    nimcp_platform_mutex_lock(quorum->mutex);
+    uint32_t recruited = trigger_cascade_unlocked(quorum, signal);
     nimcp_platform_mutex_unlock(quorum->mutex);
 
     return recruited;
@@ -709,19 +718,16 @@ bool nimcp_quorum_check_threshold(
            sig->committed_count >= quorum->config.min_quorum_size;
 }
 
-void nimcp_quorum_apply_cross_inhibition(
+/**
+ * @brief Internal unlocked cross-inhibition helper (caller must hold mutex)
+ */
+static void apply_cross_inhibition_unlocked(
     nimcp_swarm_quorum_t* quorum,
     nimcp_signal_type_t winning_signal
 ) {
-    if (!quorum || winning_signal >= NIMCP_SIGNAL_COUNT) {
-        return;
-    }
-
     if (!quorum->config.enable_cross_inhibition) {
         return;
     }
-
-    nimcp_platform_mutex_lock(quorum->mutex);
 
     double inhibition = quorum->config.inhibition_strength;
 
@@ -734,7 +740,18 @@ void nimcp_quorum_apply_cross_inhibition(
                           quorum->signals[i].concentration);
         }
     }
+}
 
+void nimcp_quorum_apply_cross_inhibition(
+    nimcp_swarm_quorum_t* quorum,
+    nimcp_signal_type_t winning_signal
+) {
+    if (!quorum || winning_signal >= NIMCP_SIGNAL_COUNT) {
+        return;
+    }
+
+    nimcp_platform_mutex_lock(quorum->mutex);
+    apply_cross_inhibition_unlocked(quorum, winning_signal);
     nimcp_platform_mutex_unlock(quorum->mutex);
 }
 
@@ -764,12 +781,11 @@ bool nimcp_quorum_make_decision(
     }
 
     if (winning_signal == NIMCP_SIGNAL_COUNT) {
-        /* No quorum reached */
+        /* No quorum reached - normal condition */
         quorum->stats.failed_quorums++;
         nimcp_platform_mutex_unlock(quorum->mutex);
         LOG_DEBUG("No quorum reached for decision type %s",
                        decision_names[decision_type]);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_quorum_make_decision: validation failed");
         return false;
     }
 
@@ -804,11 +820,11 @@ bool nimcp_quorum_make_decision(
             quorum->stats.min_committed_drones = committed;
         }
 
-        /* Apply cross-inhibition */
-        nimcp_quorum_apply_cross_inhibition(quorum, winning_signal);
+        /* Apply cross-inhibition (unlocked - we already hold the mutex) */
+        apply_cross_inhibition_unlocked(quorum, winning_signal);
 
-        /* Trigger cascade for winning signal */
-        nimcp_quorum_trigger_cascade(quorum, winning_signal);
+        /* Trigger cascade for winning signal (unlocked - we already hold the mutex) */
+        trigger_cascade_unlocked(quorum, winning_signal);
 
         LOG_INFO("Decision made: type=%s, signal=%s, consensus=%.2f, committed=%u",
                       decision_names[decision_type], signal_names[winning_signal],
@@ -826,8 +842,7 @@ const nimcp_quorum_decision_t* nimcp_quorum_get_last_decision(
     const nimcp_swarm_quorum_t* quorum
 ) {
     if (!quorum || quorum->decision_count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_quorum_get_last_decision: quorum is NULL");
-        return NULL;
+        return NULL;  /* No decisions yet - normal condition */
     }
 
     return &quorum->decisions[quorum->decision_count - 1];
@@ -1008,8 +1023,8 @@ bool nimcp_quorum_handle_message(
     /* When integrated with bio-async, would parse based on message type */
     (void)msg->type;  /* Suppress unused warning */
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_quorum_handle_message: required parameter is NULL (quorum, msg)");
-    return false;
+    LOG_DEBUG("nimcp_quorum_handle_message: message type 0x%x not handled (stub)", msg->type);
+    return false;  /* Not yet implemented */
 }
 
 bool nimcp_quorum_register_handlers(

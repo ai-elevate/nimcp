@@ -221,28 +221,6 @@ static nimcp_error_t portia_target_classifier_create(portia_target_classifier_t*
 static void portia_target_classifier_destroy(portia_target_classifier_t* classifier);
 
 //=============================================================================
-// KG-Driven Wiring Callback
-//=============================================================================
-
-/**
- * @brief Wiring callback for KG-driven handler registration
- *
- * Called by the orchestrator with discovered message types from the knowledge graph.
- * Registers handlers based on message types discovered at runtime.
- *
- * @param ctx Bio-async module context
- * @param message_types Array of discovered message types
- * @param message_count Number of message types
- * @param user_data User-provided context (unused)
- * @return 0 on success, -1 on error
- */
-static nimcp_error_t portia_message_handler(
-    const void* msg, size_t msg_size,
-    nimcp_bio_promise_t response_promise, void* user_data);
-
-
-
-//=============================================================================
 // SRP Split: Function implementations organized by responsibility
 //=============================================================================
 #include "nimcp_portia_part_accessors.c"  // 8 functions: accessors

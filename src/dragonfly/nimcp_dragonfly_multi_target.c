@@ -364,7 +364,7 @@ void dragonfly_multi_target_destroy(dragonfly_multi_target_t mt) {
     if (!mt) return;
 
     if (mt->mutex) {
-        nimcp_mutex_free(mt->mutex);
+        nimcp_mutex_destroy(mt->mutex);
     }
 
     nimcp_free(mt);
@@ -449,7 +449,9 @@ int dragonfly_multi_target_update(
             /* Estimate feasibility */
             float distance = vec3_distance(detection->position, self_state->position);
             float speed = detection->motion_speed;
-            target->intercept_time_s = distance / (self_state->max_speed - speed * 0.5f);
+            float closing_speed = self_state->max_speed - speed * 0.5f;
+            target->intercept_time_s = (closing_speed > 0.01f) ?
+                distance / closing_speed : distance / 0.01f;
             target->success_probability = 0.5f;  /* Initial estimate */
             target->energy_cost = target->intercept_time_s * 0.1f;
 
@@ -737,10 +739,12 @@ int dragonfly_multi_target_switch(
         event->timestamp_us = get_time_us();
     }
 
-    /* Update average switch latency */
-    mt->stats.avg_switch_latency_ms = (mt->stats.avg_switch_latency_ms *
-                                        (mt->stats.switches_performed - 1)) /
-                                       mt->stats.switches_performed;
+    /* Update average switch latency (EMA, no new latency measurement available) */
+    if (mt->stats.switches_performed > 1) {
+        mt->stats.avg_switch_latency_ms = mt->stats.avg_switch_latency_ms *
+            (float)(mt->stats.switches_performed - 1) /
+            (float)mt->stats.switches_performed;
+    }
 
     nimcp_mutex_unlock(mt->mutex);
 

@@ -591,15 +591,13 @@ static bool validate_workspace_item(
     if (item->type < WORKSPACE_ITEM_NONE ||
         (item->type > WORKSPACE_ITEM_META && item->type < WORKSPACE_ITEM_CUSTOM)) {
         LOG_ERROR("Invalid item type: %d", item->type);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_workspace_item: operation failed");
-        return false;
+        return false;  /* Validation failure, caller handles */
     }
 
     // Validate source drone
     if (item->source_drone >= swarm_size) {
         LOG_ERROR("Source drone %u >= swarm_size %u", item->source_drone, swarm_size);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_workspace_item: capacity exceeded");
-        return false;
+        return false;  /* Validation failure, caller handles */
     }
 
     return true;
@@ -653,7 +651,7 @@ collective_workspace_t* collective_workspace_create(
         LOG_ERROR("Invalid config: %s", error_msg);
         bbb_audit_log(BBB_AUDIT_ERROR, MODULE_NAME, "create_failed",
                      "Invalid configuration: %s", error_msg);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_workspace_create: collective_workspace_validate_config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_create: invalid configuration");
         return NULL;
     }
 
@@ -732,20 +730,15 @@ bool collective_workspace_add_item(
 ) {
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_add_item")) {
-        LOG_ERROR("NULL workspace");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_add_item: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(item, "collective_workspace_add_item")) {
-        LOG_ERROR("NULL item");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_add_item: bbb_check_pointer is NULL");
         return false;
     }
 
     // Validate item structure
     if (!validate_workspace_item(item, workspace->swarm_size)) {
         LOG_ERROR("Item validation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_add_item: validate_workspace_item is NULL");
         return false;
     }
 
@@ -772,8 +765,7 @@ bool collective_workspace_add_item(
         LOG_DEBUG("Item rejected (workspace full, salience too low): id=0x%08x, salience=%.3f",
                   local_item.item_id, local_item.salience);
         nimcp_mutex_unlock(&workspace->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_add_item: validation failed");
-        return false;
+        return false;  /* Normal capacity condition */
     }
 
     // Update metrics
@@ -803,13 +795,9 @@ bool collective_workspace_merge_item(
 ) {
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_merge_item")) {
-        LOG_ERROR("NULL workspace");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_merge_item: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(item, "collective_workspace_merge_item")) {
-        LOG_ERROR("NULL item");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_merge_item: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -818,14 +806,12 @@ bool collective_workspace_merge_item(
         LOG_ERROR("Item validation failed");
         bbb_audit_log(BBB_AUDIT_WARNING, MODULE_NAME, "merge_rejected",
                      "Item validation failed: id=0x%08x", item->item_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_merge_item: validate_workspace_item is NULL");
         return false;
     }
 
     // Additional network data validation
     if (!bbb_validate_network_data(item, sizeof(*item), "collective_workspace_merge_item")) {
         LOG_ERROR("Network data validation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_merge_item: bbb_validate_network_data is NULL");
         return false;
     }
 
@@ -846,8 +832,7 @@ bool collective_workspace_merge_item(
             LOG_DEBUG("Received item rejected (workspace full, salience too low): id=0x%08x",
                       item->item_id);
             nimcp_mutex_unlock(&workspace->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_merge_item: validation failed");
-            return false;
+            return false;  /* Normal capacity condition */
         }
 
         // Update local vector clock (merge)
@@ -991,18 +976,12 @@ bool collective_workspace_get_top_items(
 ) {
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_get_top_items")) {
-        LOG_ERROR("NULL workspace");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_top_items: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(top_items, "collective_workspace_get_top_items")) {
-        LOG_ERROR("NULL top_items");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_top_items: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(actual_count, "collective_workspace_get_top_items")) {
-        LOG_ERROR("NULL actual_count");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_top_items: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -1028,18 +1007,12 @@ bool collective_workspace_get_broadcast_items(
 ) {
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_get_broadcast_items")) {
-        LOG_ERROR("NULL workspace");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_broadcast_items: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(broadcast_items, "collective_workspace_get_broadcast_items")) {
-        LOG_ERROR("NULL broadcast_items");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_broadcast_items: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(actual_count, "collective_workspace_get_broadcast_items")) {
-        LOG_ERROR("NULL actual_count");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_broadcast_items: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -1109,7 +1082,6 @@ bool collective_workspace_mark_for_broadcast(
 ) {
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_mark_for_broadcast")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_mark_for_broadcast: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -1118,8 +1090,7 @@ bool collective_workspace_mark_for_broadcast(
     int32_t idx = find_item_by_id(workspace, item_id);
     if (idx < 0) {
         nimcp_mutex_unlock(&workspace->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_mark_for_broadcast: validation failed");
-        return false;
+        return false;  /* Item not found - normal search miss */
     }
 
     workspace->items[idx].marked_for_broadcast = true;
@@ -1208,11 +1179,9 @@ bool collective_workspace_get_focus_vector(
 ) {
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_get_focus_vector")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_focus_vector: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(focus_vector, "collective_workspace_get_focus_vector")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_focus_vector: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -1246,7 +1215,6 @@ bool collective_workspace_get_statistics(
     uint64_t* items_pruned
 ) {
     if (!bbb_check_pointer(workspace, "collective_workspace_get_statistics")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_statistics: bbb_check_pointer is NULL");
         return false;
     }
 

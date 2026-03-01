@@ -169,6 +169,12 @@ dragonfly_bio_async_bridge_t* dragonfly_bio_async_bridge_create(
     bridge->phase_angle = 0.0f;
     bridge->coherence_level = 0.8f;
 
+    /* Initialize bridge base infrastructure (mutex + metrics) */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_bio_async") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     return bridge;
 }
 
@@ -183,6 +189,7 @@ void dragonfly_bio_async_bridge_destroy(dragonfly_bio_async_bridge_t* bridge) {
         }
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

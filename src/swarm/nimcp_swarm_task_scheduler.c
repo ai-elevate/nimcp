@@ -106,14 +106,12 @@ static bool agent_meets_requirements_internal(
 {
     // Check availability
     if (!profile->is_available) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_meets_requirements_internal: profile->is_available is NULL");
         return false;
     }
 
     // Check required capabilities
     if ((profile->capabilities_mask & req->required_capabilities) !=
         req->required_capabilities) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_meets_requirements_internal: validation failed");
         return false;
     }
 
@@ -124,7 +122,6 @@ static bool agent_meets_requirements_internal(
         if (req->required_capabilities & cap_bit) {
             if (i < NIMCP_SWARM_CAP_COUNT &&
                 profile->proficiency[i] < req->min_proficiency[i]) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_meets_requirements_internal: validation failed");
                 return false;
             }
         }
@@ -132,7 +129,6 @@ static bool agent_meets_requirements_internal(
 
     // Check energy level
     if (profile->energy_level < req->min_energy) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_meets_requirements_internal: validation failed");
         return false;
     }
 
@@ -476,7 +472,8 @@ void swarm_scheduler_destroy(swarm_task_scheduler_t* scheduler)
     }
 
     nimcp_mutex_unlock(scheduler->mutex);
-    nimcp_mutex_free(scheduler->mutex);
+    nimcp_mutex_destroy(scheduler->mutex);
+    nimcp_free(scheduler->mutex);
 
     nimcp_free(scheduler);
 
@@ -1044,9 +1041,9 @@ int swarm_scheduler_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)scheduler->mutex);
+    nimcp_mutex_lock(scheduler->mutex);
     *stats = scheduler->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)scheduler->mutex);
+    nimcp_mutex_unlock(scheduler->mutex);
 
     return 0;
 }

@@ -88,7 +88,7 @@ swarm_brain_immune_bridge_t* swarm_brain_immune_bridge_create(
         (swarm_brain_immune_bridge_t*)nimcp_malloc(sizeof(swarm_brain_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm brain immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_immune_bridge_create: allocation failed");
 
         return NULL;
     }

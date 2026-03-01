@@ -222,7 +222,7 @@ void dragonfly_swarm_destroy(dragonfly_swarm_detector_t detector) {
     if (!detector) return;
 
     if (detector->mutex) {
-        nimcp_mutex_free(detector->mutex);
+        nimcp_mutex_destroy(detector->mutex);
     }
 
     nimcp_free(detector);
@@ -845,9 +845,11 @@ int dragonfly_swarm_select_target(
     best_target->recommended = true;
 
     detector->stats.targets_selected++;
-    detector->stats.avg_isolation_score =
-        (detector->stats.avg_isolation_score * (detector->stats.targets_selected - 1) +
-         det->isolation_score) / detector->stats.targets_selected;
+    {
+        float new_avg = (detector->stats.avg_isolation_score * (detector->stats.targets_selected - 1) +
+             det->isolation_score) / detector->stats.targets_selected;
+        if (isfinite(new_avg)) detector->stats.avg_isolation_score = new_avg;
+    }
 
     nimcp_mutex_unlock(detector->mutex);
 
@@ -873,7 +875,7 @@ int dragonfly_swarm_get_recommendations(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)detector->mutex);
+    nimcp_mutex_lock(detector->mutex);
 
     uint32_t count = 0;
     for (uint32_t r = 0; r < detector->num_recommendations && count < max_targets; r++) {
@@ -901,7 +903,7 @@ int dragonfly_swarm_get_recommendations(
 
     *num_targets = count;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)detector->mutex);
+    nimcp_mutex_unlock(detector->mutex);
 
     return 0;
 }
@@ -914,7 +916,7 @@ bool dragonfly_swarm_is_dangerous(
         return false;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)detector->mutex);
+    nimcp_mutex_lock(detector->mutex);
 
     bool dangerous = false;
 
@@ -932,7 +934,7 @@ bool dragonfly_swarm_is_dangerous(
         }
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)detector->mutex);
+    nimcp_mutex_unlock(detector->mutex);
 
     return dangerous;
 }
@@ -955,7 +957,7 @@ int dragonfly_swarm_get_individual(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)detector->mutex);
+    nimcp_mutex_lock(detector->mutex);
 
     for (uint32_t i = 0; i < detector->num_detections; i++) {
         if (detector->detections[i].id == id &&
@@ -979,12 +981,12 @@ int dragonfly_swarm_get_individual(
                 }
             }
 
-            nimcp_mutex_unlock((nimcp_mutex_t*)detector->mutex);
+            nimcp_mutex_unlock(detector->mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)detector->mutex);
+    nimcp_mutex_unlock(detector->mutex);
     return -1;  /* Not found */
 }
 
@@ -1002,17 +1004,17 @@ int dragonfly_swarm_get_cluster(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)detector->mutex);
+    nimcp_mutex_lock(detector->mutex);
 
     for (uint32_t i = 0; i < detector->num_clusters; i++) {
         if (detector->clusters[i].cluster_id == cluster_id) {
             *cluster = detector->clusters[i];
-            nimcp_mutex_unlock((nimcp_mutex_t*)detector->mutex);
+            nimcp_mutex_unlock(detector->mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)detector->mutex);
+    nimcp_mutex_unlock(detector->mutex);
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_swarm_get_cluster: validation failed");
     return -1;  /* Not found */
 }
@@ -1030,9 +1032,9 @@ int dragonfly_swarm_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)detector->mutex);
+    nimcp_mutex_lock(detector->mutex);
     *stats = detector->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)detector->mutex);
+    nimcp_mutex_unlock(detector->mutex);
 
     return 0;
 }

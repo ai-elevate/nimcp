@@ -84,7 +84,6 @@ static bool detect_nvidia_cuda(accelerator_info_t* info) {
     }
 
     if (!handle) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_nvidia_cuda: handle is NULL");
         return false;
     }
 
@@ -97,14 +96,12 @@ static bool detect_nvidia_cuda(accelerator_info_t* info) {
 
     if (!cuInit || !cuDeviceGetCount || !cuDeviceGet || !cuDeviceGetName) {
         dlclose(handle);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_nvidia_cuda: required parameter is NULL (cuInit, cuDeviceGetCount, cuDeviceGet, cuDeviceGetName)");
         return false;
     }
 
     // Initialize CUDA
     if (cuInit(0) != 0) {
         dlclose(handle);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "detect_nvidia_cuda: validation failed");
         return false;
     }
 
@@ -112,7 +109,6 @@ static bool detect_nvidia_cuda(accelerator_info_t* info) {
     int count = 0;
     if (cuDeviceGetCount(&count) != 0 || count == 0) {
         dlclose(handle);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_nvidia_cuda: count is zero");
         return false;
     }
 
@@ -120,7 +116,6 @@ static bool detect_nvidia_cuda(accelerator_info_t* info) {
     int device = 0;
     if (cuDeviceGet(&device, 0) != 0) {
         dlclose(handle);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_nvidia_cuda: validation failed");
         return false;
     }
 
@@ -165,7 +160,6 @@ static bool detect_amd_gpu(accelerator_info_t* info) {
     // Check for AMD GPU device files
     DIR* dir = opendir("/dev/dri");
     if (!dir) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_amd_gpu: dir is NULL");
         return false;
     }
 
@@ -181,7 +175,6 @@ static bool detect_amd_gpu(accelerator_info_t* info) {
     closedir(dir);
 
     if (!found) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_amd_gpu: found is NULL");
         return false;
     }
 
@@ -209,7 +202,6 @@ static bool detect_amd_gpu(accelerator_info_t* info) {
         fclose(vendor_file);
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_amd_gpu: operation failed");
     return false;
 }
 
@@ -220,21 +212,18 @@ static bool detect_intel_gpu(accelerator_info_t* info) {
     // Check for Intel GPU via sysfs
     FILE* vendor_file = fopen("/sys/class/drm/card0/device/vendor", "r");
     if (!vendor_file) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_intel_gpu: vendor_file is NULL");
         return false;
     }
 
     char vendor_id[16] = {0};
     if (!fgets(vendor_id, sizeof(vendor_id), vendor_file)) {
         fclose(vendor_file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_intel_gpu: fgets is NULL");
         return false;
     }
     fclose(vendor_file);
 
     // Intel vendor ID is 0x8086
     if (strstr(vendor_id, "0x8086") == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_intel_gpu: validation failed");
         return false;
     }
 
@@ -261,7 +250,6 @@ static bool detect_intel_gpu(accelerator_info_t* info) {
 static bool detect_intel_movidius(accelerator_info_t* info) {
     // Check for Movidius device
     if (access("/dev/myriad0", F_OK) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_intel_movidius: validation failed");
         return false;
     }
 
@@ -284,7 +272,6 @@ static bool detect_intel_movidius(accelerator_info_t* info) {
 static bool detect_qualcomm_hexagon(accelerator_info_t* info) {
     // Check for Hexagon DSP
     if (access("/dev/adsprpc-smd", F_OK) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_qualcomm_hexagon: validation failed");
         return false;
     }
 
@@ -335,7 +322,6 @@ static bool detect_apple_neural_engine(accelerator_info_t* info) {
     (void)info;  // Suppress unused parameter warning on non-Apple
 #endif
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_apple_neural_engine: operation failed");
     return false;
 }
 
@@ -350,7 +336,6 @@ static bool detect_ti_dsp(accelerator_info_t* info) {
     // Check for TI DSP device
     DIR* dir = opendir("/dev");
     if (!dir) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_ti_dsp: dir is NULL");
         return false;
     }
 
@@ -366,7 +351,6 @@ static bool detect_ti_dsp(accelerator_info_t* info) {
     closedir(dir);
 
     if (!found) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_ti_dsp: found is NULL");
         return false;
     }
 
@@ -408,7 +392,6 @@ static bool detect_fpga(accelerator_info_t* info) {
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_fpga: operation failed");
     return false;
 }
 
@@ -422,7 +405,6 @@ static bool detect_fpga(accelerator_info_t* info) {
 static bool detect_edge_tpu(accelerator_info_t* info) {
     // Check for Edge TPU device
     if (access("/dev/apex_0", F_OK) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_edge_tpu: validation failed");
         return false;
     }
 
@@ -1074,7 +1056,7 @@ float portia_accelerator_calculate_score(const accelerator_info_t* info,
     score += (info->memory_bytes / (1024.0F * 1024.0F * 1024.0F)) * 5.0F; // Memory weight
 
     // Power efficiency bonus
-    if (config->prefer_low_power) {
+    if (config->prefer_low_power && info->power_watts > 0.0F) {
         float efficiency = info->peak_tflops / info->power_watts;
         score += efficiency * 20.0F;
     }

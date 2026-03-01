@@ -208,9 +208,14 @@ tsdn_population_t* tsdn_create(const tsdn_config_t* config) {
         }
 
         /* Initialize elevation preferred directions */
-        float elev_spacing = (2.0f * config->elevation_range) / (float)(config->elevation_neurons - 1);
-        for (uint32_t i = 0; i < config->elevation_neurons; i++) {
-            pop->elevation_preferred[i] = -config->elevation_range + (float)i * elev_spacing;
+        if (config->elevation_neurons > 1) {
+            float elev_spacing = (2.0f * config->elevation_range) / (float)(config->elevation_neurons - 1);
+            for (uint32_t i = 0; i < config->elevation_neurons; i++) {
+                pop->elevation_preferred[i] = -config->elevation_range + (float)i * elev_spacing;
+            }
+        } else {
+            /* Single neuron: center at 0 elevation */
+            pop->elevation_preferred[0] = 0.0f;
         }
     }
 
@@ -237,7 +242,7 @@ void tsdn_destroy(tsdn_population_t* pop) {
     if (!pop) return;
 
     if (pop->mutex) {
-        nimcp_mutex_free(pop->mutex);
+        nimcp_mutex_destroy(pop->mutex);
     }
 
     if (pop->elevation_preferred) {

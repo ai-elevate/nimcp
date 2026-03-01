@@ -137,8 +137,8 @@ static void model_predict(single_model_filter_t* m, float dt) {
         case PRED_MODEL_WEAVE:
             /* Weaving: sinusoidal lateral motion */
             {
-                float omega = 2.0f * M_PI * 1.5f;  /* ~1.5 Hz weave */
-                /* Lateral accel oscillates */
+                /* ~1.5 Hz weave - lateral accel oscillates */
+                (void)(2.0f * M_PI * 1.5f);  /* omega reserved for future use */
                 x[0] += x[3] * dt;
                 x[1] += x[4] * dt;
                 x[2] += x[5] * dt;
@@ -438,7 +438,7 @@ dragonfly_predictor_t* dragonfly_predictor_create(const prediction_config_t* con
 void dragonfly_predictor_destroy(dragonfly_predictor_t* pred) {
     if (!pred) return;
     if (pred->mutex) {
-        nimcp_mutex_free(pred->mutex);
+        nimcp_mutex_destroy(pred->mutex);
     }
     nimcp_free(pred);
 }

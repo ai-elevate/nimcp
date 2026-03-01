@@ -194,10 +194,14 @@ static nimcp_error_t portia_resource_tracker_update(portia_resource_tracker_t* t
     /* Simple CPU/memory usage estimation */
     tracker->cpu_usage = 0.5F; /* Placeholder */
     /* Calculate memory usage from available and total */
-    uint64_t used_ram_mb = tracker->current_resources.total_ram_mb -
-                          tracker->current_resources.available_ram_mb;
-    tracker->memory_usage = (float)used_ram_mb /
-                           (float)tracker->current_resources.total_ram_mb;
+    uint64_t total_ram = tracker->current_resources.total_ram_mb;
+    uint64_t avail_ram = tracker->current_resources.available_ram_mb;
+    if (total_ram > 0 && avail_ram <= total_ram) {
+        uint64_t used_ram_mb = total_ram - avail_ram;
+        tracker->memory_usage = (float)used_ram_mb / (float)total_ram;
+    } else {
+        tracker->memory_usage = 0.0F; /* Cannot compute - assume zero usage */
+    }
     tracker->temperature_celsius = 50.0F; /* Placeholder */
     tracker->thermal_state = PORTIA_THERMAL_NOMINAL;
 

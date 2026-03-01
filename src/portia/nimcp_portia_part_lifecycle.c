@@ -26,16 +26,16 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         return NIMCP_PORTIA_ERROR_ALREADY_INITIALIZED;
     }
 
-    /* Use default config if none provided */
-    portia_config_t cfg = config ? *config : portia_get_default_config();
-
-    /* Security validation */
+    /* Security validation - must happen BEFORE dereferencing config */
     if (config && !bbb_check_pointer(config, "portia_init")) {
         LOG_ERROR(LOG_MODULE, "Invalid config pointer");
         nimcp_mutex_unlock(&g_portia_state_mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid config pointer in portia_init");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid config pointer in portia_init");
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    /* Use default config if none provided */
+    portia_config_t cfg = config ? *config : portia_get_default_config();
 
     /* Allocate context */
     portia_context_t* ctx = nimcp_calloc(1, sizeof(portia_context_t));
@@ -304,6 +304,8 @@ uint32_t portia_recommend_neuron_count(void) {
         return 1000;
     }
 
+    nimcp_mutex_lock(&ctx->lock);
+
     /* Get base recommendation from tier */
     platform_tier_t tier = ctx->tier_manager->current_tier;
     uint32_t base_count = platform_tier_recommend_neuron_count(tier,
@@ -329,6 +331,8 @@ uint32_t portia_recommend_neuron_count(void) {
         case PORTIA_POWER_BATTERY_CRITICAL: power_multiplier = 0.2F; break;
         case PORTIA_POWER_UNKNOWN:        power_multiplier = 0.8F; break;
     }
+
+    nimcp_mutex_unlock(&ctx->lock);
 
     uint32_t recommended = (uint32_t)(base_count * degradation_multiplier * power_multiplier);
 

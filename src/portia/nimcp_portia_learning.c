@@ -187,8 +187,7 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
         1, sizeof(portia_learning_state_t));
     if (!state) {
         LOG_ERROR("Failed to allocate learning state");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_learning_init: failed to allocate state");
         return NULL;
     }
 
@@ -349,7 +348,7 @@ int portia_learning_set_mode(portia_learning_state_t* state, portia_learning_mod
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_set_mode: state->is_initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_learning_set_mode: not initialized");
         return -1;
     }
 
@@ -383,7 +382,7 @@ int portia_learning_habituate(portia_learning_state_t* state, uint32_t stimulus_
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_set_mode: state->is_initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_learning_habituate: not initialized");
         return -1;
     }
 
@@ -428,7 +427,7 @@ int portia_learning_habituate(portia_learning_state_t* state, uint32_t stimulus_
             if (!entry) {
                 nimcp_platform_mutex_unlock(state->mutex);
                 LOG_ERROR("No habituation entry available for eviction");
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_set_mode: entry is NULL");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "portia_learning_habituate: no entry available");
                 return -1;
             }
             LOG_DEBUG("Evicting habituation entry: stimulus=%u", entry->stimulus_id);
@@ -473,7 +472,7 @@ int portia_learning_sensitize(portia_learning_state_t* state, uint32_t stimulus_
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_set_mode: state->is_initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_learning_sensitize: not initialized");
         return -1;
     }
 
@@ -542,7 +541,7 @@ int portia_learning_associate(portia_learning_state_t* state, uint32_t stimulus_
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_set_mode: state->is_initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_learning_associate: not initialized");
         return -1;
     }
 
@@ -579,7 +578,7 @@ int portia_learning_associate(portia_learning_state_t* state, uint32_t stimulus_
             if (!entry) {
                 nimcp_platform_mutex_unlock(state->mutex);
                 LOG_ERROR("No association entry available for eviction");
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: entry is NULL");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "portia_learning_associate: no entry available");
                 return -1;
             }
             LOG_DEBUG("Evicting association entry: stimulus=%u, response=%u",
@@ -621,7 +620,7 @@ int portia_learning_reinforce(portia_learning_state_t* state, uint32_t stimulus_
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: state->is_initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_learning_reinforce: not initialized");
         return -1;
     }
 
@@ -655,7 +654,7 @@ int portia_learning_reinforce(portia_learning_state_t* state, uint32_t stimulus_
         } else {
             nimcp_platform_mutex_unlock(state->mutex);
             LOG_ERROR("No association entry available");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "portia_learning_reinforce: no entry available");
             return -1;
         }
     }
@@ -755,7 +754,7 @@ int portia_learning_forget(portia_learning_state_t* state, uint64_t timestamp_ms
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_forget: state->is_initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_learning_forget: not initialized");
         return -1;
     }
 
@@ -827,7 +826,7 @@ int portia_learning_consolidate(portia_learning_state_t* state, uint64_t timesta
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_consolidate: state->is_initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_learning_consolidate: not initialized");
         return -1;
     }
 
@@ -966,7 +965,7 @@ int portia_learning_reset(portia_learning_state_t* state) {
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_reset: state->is_initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_learning_reset: not initialized");
         return -1;
     }
 
@@ -1011,14 +1010,14 @@ int portia_learning_export(portia_learning_state_t* state, const char* filepath)
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_export: state->is_initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_learning_export: not initialized");
         return -1;
     }
 
     FILE* fp = fopen(filepath, "w");
     if (!fp) {
         LOG_ERROR("Failed to open export file: %s", filepath);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_export: fp is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "portia_learning_export: failed to open file");
         return -1;
     }
 

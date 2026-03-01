@@ -221,7 +221,7 @@ void dragonfly_territory_destroy(dragonfly_territory_t territory) {
     if (!territory) return;
 
     if (territory->mutex) {
-        nimcp_mutex_free(territory->mutex);
+        nimcp_mutex_destroy(territory->mutex);
     }
 
     nimcp_free(territory);
@@ -666,9 +666,12 @@ bool dragonfly_territory_contains(
     const dragonfly_territory_t territory,
     const float position[3]
 ) {
-    if (!territory || !position || !territory->boundary_set) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_contains: required parameter is NULL (territory, position, territory->boundary_set)");
+    if (!territory || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_contains: territory or position is NULL");
         return false;
+    }
+    if (!territory->boundary_set) {
+        return false;  /* No boundary defined - normal condition */
     }
 
     float dist = vec3_distance(position, territory->boundary.center);

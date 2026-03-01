@@ -296,16 +296,31 @@ static void invoke_callbacks(
         return;
     }
 
-    nimcp_platform_mutex_lock(&switcher->callback_mutex);
+    /* Copy callback entries under lock to avoid calling external code
+     * while holding the mutex (deadlock risk). */
+    typedef struct {
+        tier_switch_callback_t callback;
+        void* user_data;
+    } cb_snapshot_t;
 
+    cb_snapshot_t snapshot[PORTIA_MAX_CALLBACKS];
+    int snapshot_count = 0;
+
+    nimcp_platform_mutex_lock(&switcher->callback_mutex);
     for (int i = 0; i < PORTIA_MAX_CALLBACKS; i++) {
         if (switcher->callbacks[i].active && switcher->callbacks[i].callback) {
-            LOG_DEBUG("[%s] Invoking callback %d", PORTIA_MODULE_NAME, i);
-            switcher->callbacks[i].callback(event, switcher->callbacks[i].user_data);
+            snapshot[snapshot_count].callback = switcher->callbacks[i].callback;
+            snapshot[snapshot_count].user_data = switcher->callbacks[i].user_data;
+            snapshot_count++;
         }
     }
-
     nimcp_platform_mutex_unlock(&switcher->callback_mutex);
+
+    /* Invoke callbacks outside the lock */
+    for (int i = 0; i < snapshot_count; i++) {
+        LOG_DEBUG("[%s] Invoking callback %d", PORTIA_MODULE_NAME, i);
+        snapshot[i].callback(event, snapshot[i].user_data);
+    }
 }
 
 //=============================================================================
@@ -353,7 +368,6 @@ static void* monitoring_thread_func(void* arg) {
     }
 
     LOG_INFO("[%s] Monitoring thread stopped", PORTIA_MODULE_NAME);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitoring_thread_func: validation failed");
     return NULL;
 }
 
@@ -424,7 +438,7 @@ portia_tier_switch_t portia_tier_switch_init(const tier_switch_config_t* config)
         1, sizeof(struct portia_tier_switch_struct));
     if (!switcher) {
         LOG_ERROR("[%s] Failed to allocate switcher structure", PORTIA_MODULE_NAME);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "switcher is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tier_switch_create: allocation failed");
 
         return NULL;
     }
@@ -582,7 +596,6 @@ bool portia_tier_switch_evaluate(
     if (switcher->state.switch_in_progress) {
         LOG_DEBUG("[%s] Switch already in progress, skipping evaluation", PORTIA_MODULE_NAME);
         nimcp_platform_mutex_unlock(&switcher->state_mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_tier_switch_evaluate: validation failed");
         return false;
     }
 

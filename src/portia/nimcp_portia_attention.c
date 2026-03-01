@@ -197,13 +197,13 @@ portia_attention_state_t portia_attention_init(
     // Validate parameters
     if (resource_count == 0) {
         LOG_ERROR("Resource count cannot be zero");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Resource count cannot be zero in portia_attention_init");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Resource count cannot be zero in portia_attention_init");
         return NULL;
     }
 
     if (total_budget <= 0.0F || total_budget > 1.0F) {
         LOG_ERROR("Invalid total budget: %.3f (must be in (0,1])", total_budget);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid total budget in portia_attention_init");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid total budget in portia_attention_init");
         return NULL;
     }
 
@@ -279,13 +279,8 @@ portia_attention_state_t portia_attention_init(
     state->attention_decay_rate = state->config.decay_rate_per_second;
 
     // Initialize mutex
-    if (nimcp_platform_mutex_init(&state->mutex, false) != 0) {
-        LOG_ERROR("Failed to initialize mutex");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize mutex in portia_attention_init");
-        nimcp_free(state->resources);
-        nimcp_free(state);
-        return NULL;
-    }
+    nimcp_mutex_init(&state->mutex, NULL);
+
 
     // Initialize statistics
     memset(&state->stats, 0, sizeof(state->stats));
@@ -315,7 +310,7 @@ void portia_attention_destroy(portia_attention_state_t state) {
              state->stats.preemptions);
 
     // Destroy mutex
-    nimcp_platform_mutex_destroy(&state->mutex);
+    nimcp_mutex_destroy(&state->mutex);
 
     // Free resources
     if (state->resources) {
@@ -339,13 +334,13 @@ int portia_attention_update_salience(
     float salience) {
 
     if (!validate_state(state)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_destroy: validate_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_update_salience: invalid state");
         return -1;
     }
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d (max=%u)", target, state->resource_count);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_attention_destroy: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_attention_update_salience: target out of range");
         return -1;
     }
 
@@ -353,11 +348,11 @@ int portia_attention_update_salience(
     if (salience < MIN_SALIENCE || salience > MAX_SALIENCE) {
         LOG_ERROR("Salience %.3f out of range [%.1f, %.1f]",
                   salience, MIN_SALIENCE, MAX_SALIENCE);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_destroy: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_update_salience: salience out of range");
         return -1;
     }
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     attention_resource_t* resource = &state->resources[target];
     float old_salience = resource->salience;
@@ -376,7 +371,7 @@ int portia_attention_update_salience(
     }
     state->stats.avg_salience = total_salience / (float)state->resource_count;
 
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     LOG_DEBUG("Updated salience for %s: %.3f -> %.3f (avg=%.3f)",
               portia_attention_target_name(target),
@@ -393,16 +388,16 @@ int portia_attention_decay(
     uint64_t current_time_ms) {
 
     if (!validate_state(state)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_destroy: validate_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_decay: invalid state");
         return -1;
     }
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     // Calculate time elapsed since last update
     uint64_t elapsed_ms = current_time_ms - state->last_update_ms;
     if (elapsed_ms == 0) {
-        nimcp_platform_mutex_unlock(&state->mutex);
+        nimcp_mutex_unlock(&state->mutex);
         return 0;
     }
 
@@ -429,7 +424,7 @@ int portia_attention_decay(
 
     state->last_update_ms = current_time_ms;
 
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return 0;
 }
@@ -447,9 +442,9 @@ float portia_attention_get_salience(
         return -1.0F;
     }
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
     float salience = state->resources[target].salience;
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return salience;
 }
@@ -463,11 +458,11 @@ int portia_attention_reallocate(
     bool force_reallocation) {
 
     if (!validate_state(state)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_attention_destroy: validate_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_reallocate: invalid state");
         return -1;
     }
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     uint64_t current_time = get_current_time_ms();
 
@@ -475,7 +470,7 @@ int portia_attention_reallocate(
     if (!force_reallocation) {
         uint64_t time_since_last = current_time - state->last_reallocation_ms;
         if (time_since_last < state->config.update_interval_ms) {
-            nimcp_platform_mutex_unlock(&state->mutex);
+            nimcp_mutex_unlock(&state->mutex);
             return 0;  // Too soon
         }
     }
@@ -488,7 +483,7 @@ int portia_attention_reallocate(
     if (!sort_entries) {
         LOG_ERROR("Failed to allocate sort entries");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate sort entries in portia_attention_reallocate");
-        nimcp_platform_mutex_unlock(&state->mutex);
+        nimcp_mutex_unlock(&state->mutex);
         return -1;
     }
 
@@ -538,7 +533,14 @@ int portia_attention_reallocate(
     LOG_DEBUG("After minimum allocations: remaining=%.3f", remaining_budget);
 
     // Phase 2: Distribute remaining budget proportionally
-    float new_allocations[ATTENTION_TARGET_COUNT] = {0};
+    float* new_allocations = nimcp_calloc(state->resource_count, sizeof(float));
+    if (!new_allocations) {
+        LOG_ERROR("Failed to allocate new_allocations array");
+        nimcp_free(sort_entries);
+        nimcp_mutex_unlock(&state->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate new_allocations in portia_attention_reallocate");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < state->resource_count; i++) {
         attention_resource_t* res = sort_entries[i].resource;
@@ -617,8 +619,9 @@ int portia_attention_reallocate(
         LOG_DEBUG("No changes triggered reallocation");
     }
 
+    nimcp_free(new_allocations);
     nimcp_free(sort_entries);
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return 0;
 }
@@ -629,25 +632,25 @@ int portia_attention_request(
     float amount) {
 
     if (!validate_state(state)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validate_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_request: invalid state");
         return -1;
     }
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d", target);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_attention_request: target out of range");
         return -1;
     }
 
     amount = nimcp_clampf(amount, MIN_ALLOCATION, MAX_ALLOCATION);
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     attention_resource_t* res = &state->resources[target];
     res->requested_allocation = amount;
     state->stats.requests++;
 
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     LOG_DEBUG("Resource request from %s: %.3f",
               portia_attention_target_name(target), amount);
@@ -666,19 +669,19 @@ int portia_attention_release(
     float amount) {
 
     if (!validate_state(state)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validate_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_release: invalid state");
         return -1;
     }
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d", target);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_attention_release: target out of range");
         return -1;
     }
 
     amount = nimcp_clampf(amount, MIN_ALLOCATION, MAX_ALLOCATION);
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     attention_resource_t* res = &state->resources[target];
 
@@ -689,7 +692,7 @@ int portia_attention_release(
     res->current_allocation -= amount;
     state->stats.releases++;
 
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     LOG_DEBUG("Resource release from %s: %.3f (remaining=%.3f)",
               portia_attention_target_name(target),
@@ -716,9 +719,9 @@ float portia_attention_get_allocation(
         return -1.0F;
     }
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
     float allocation = state->resources[target].current_allocation;
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return allocation;
 }
@@ -729,7 +732,7 @@ int portia_attention_get_all_allocations(
     uint32_t max_count) {
 
     if (!validate_state(state)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validate_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_get_all_allocations: invalid state");
         return -1;
     }
 
@@ -737,18 +740,18 @@ int portia_attention_get_all_allocations(
     if (!bbb_validate_pointer(NULL, resources,
                               max_count * sizeof(attention_resource_t), &result)) {
         LOG_ERROR("Invalid resources buffer: %s", result.reason);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validate_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_get_all_allocations: invalid buffer");
         return -1;
     }
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     uint32_t count = state->resource_count < max_count ?
                      state->resource_count : max_count;
 
     memcpy(resources, state->resources, count * sizeof(attention_resource_t));
 
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return (int)count;
 }
@@ -762,20 +765,20 @@ int portia_attention_get_stats(
     portia_attention_stats_t* stats) {
 
     if (!validate_state(state)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validate_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_get_stats: invalid state");
         return -1;
     }
 
     bbb_validation_result_t result;
     if (!bbb_validate_pointer(NULL, stats, sizeof(*stats), &result)) {
         LOG_ERROR("Invalid stats pointer: %s", result.reason);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: bbb_validate_pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_get_stats: invalid stats pointer");
         return -1;
     }
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
     memcpy(stats, &state->stats, sizeof(*stats));
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return 0;
 }
@@ -785,7 +788,7 @@ void portia_attention_reset_stats(portia_attention_state_t state) {
         return;
     }
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     // Preserve some values
     float total_allocated = state->stats.total_allocated;
@@ -796,7 +799,7 @@ void portia_attention_reset_stats(portia_attention_state_t state) {
     state->stats.total_allocated = total_allocated;
     state->stats.avg_salience = avg_salience;
 
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     LOG_DEBUG("Statistics reset");
 }
@@ -806,18 +809,17 @@ bool portia_attention_needs_reallocation(
     uint64_t current_time_ms) {
 
     if (!validate_state(state)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_attention_reset_stats: validate_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_needs_reallocation: invalid state");
         return false;
     }
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     // Check time interval
     uint64_t elapsed = current_time_ms - state->last_reallocation_ms;
     if (elapsed < state->config.update_interval_ms) {
-        nimcp_platform_mutex_unlock(&state->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_reset_stats: validation failed");
-        return false;
+        nimcp_mutex_unlock(&state->mutex);
+        return false;  /* Normal: too early to reallocate */
     }
 
     // Check if any requested allocation differs significantly
@@ -831,7 +833,7 @@ bool portia_attention_needs_reallocation(
         }
     }
 
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 
     return needs_realloc;
 }
@@ -876,7 +878,7 @@ void portia_attention_print_state(portia_attention_state_t state) {
         return;
     }
 
-    nimcp_platform_mutex_lock(&state->mutex);
+    nimcp_mutex_lock(&state->mutex);
 
     LOG_INFO("=== Portia Attention State ===");
     LOG_INFO("Total Budget: %.3f", state->total_budget);
@@ -908,5 +910,5 @@ void portia_attention_print_state(portia_attention_state_t state) {
     LOG_INFO("  Releases:         %lu", state->stats.releases);
     LOG_INFO("===============================");
 
-    nimcp_platform_mutex_unlock(&state->mutex);
+    nimcp_mutex_unlock(&state->mutex);
 }

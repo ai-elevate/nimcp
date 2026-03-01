@@ -152,8 +152,7 @@ static uint32_t get_timestamp_ms(void) {
 static swarm_connection_t* find_swarm(swarm_gateway_t* gateway,
                                       const char* swarm_id) {
     if (!gateway || !swarm_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_timestamp_ms: required parameter is NULL (gateway, swarm_id)");
-        return NULL;
+        return NULL;  /* Defensive guard */
     }
 
     for (uint32_t i = 0; i < gateway->num_swarms; i++) {
@@ -440,13 +439,13 @@ swarm_gateway_t* swarm_gateway_create(brain_t server_brain,
 
     if (!bbb_check_pointer(server_brain, "swarm_gateway_create")) {
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_gateway", "create_error", "Invalid server_brain");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "simulate_telemetry_reception: bbb_check_pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_gateway_create: server_brain is NULL");
         return NULL;
     }
 
     if (!bbb_check_pointer(config, "swarm_gateway_create")) {
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_gateway", "create_error", "Invalid config");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "simulate_telemetry_reception: bbb_check_pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_gateway_create: config is NULL");
         return NULL;
     }
 
@@ -454,7 +453,7 @@ swarm_gateway_t* swarm_gateway_create(brain_t server_brain,
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_gateway", "create_error",
                      "Invalid max_swarms: %u", config->max_swarms);
         LOG_ERROR("Invalid max_swarms: %u", config->max_swarms);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "simulate_telemetry_reception: config->max_swarms is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_gateway_create: max_swarms out of range");
         return NULL;
     }
 
@@ -466,7 +465,7 @@ swarm_gateway_t* swarm_gateway_create(brain_t server_brain,
     swarm_gateway_t* gateway = nimcp_calloc(1, sizeof(swarm_gateway_t));
     if (!gateway) {
         LOG_ERROR("Failed to allocate gateway");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gateway is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_gateway_create: alloc failed");
 
         return NULL;
     }

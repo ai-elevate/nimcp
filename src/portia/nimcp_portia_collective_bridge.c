@@ -395,7 +395,7 @@ static nimcp_error_t portia_collective_message_handler(
     portia_collective_bridge_t* bridge = (portia_collective_bridge_t*)user_data;
     if (!bridge || !msg) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_message_handler: required parameter is NULL (bridge, msg)");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     (void)response_promise;  /* Currently unused - fire-and-forget messages */
@@ -407,8 +407,7 @@ static nimcp_error_t portia_collective_message_handler(
     switch (header->type) {
         case BIO_MSG_PORTIA_COLLECTIVE_TIER_CHANGE: {
             if (payload_size < sizeof(uint32_t) * 2) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_message_handler: validation failed");
-                return -1;
+                return NIMCP_ERROR_INVALID_PARAM;
             }
             const uint32_t* data = (const uint32_t*)payload;
             uint32_t instance_id = data[0];
@@ -418,8 +417,7 @@ static nimcp_error_t portia_collective_message_handler(
         case BIO_MSG_PORTIA_COLLECTIVE_STATE_UPDATE: {
             /* Handle state update from remote instance */
             if (payload_size < sizeof(collective_instance_state_t)) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_message_handler: validation failed");
-                return -1;
+                return NIMCP_ERROR_INVALID_PARAM;
             }
             const collective_instance_state_t* state =
                 (const collective_instance_state_t*)payload;
@@ -440,8 +438,7 @@ static nimcp_error_t portia_collective_message_handler(
         case BIO_MSG_PORTIA_COLLECTIVE_OFFLOAD_REQUEST: {
             /* Handle offload request from remote instance */
             if (payload_size < sizeof(uint32_t) * 2) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_message_handler: validation failed");
-                return -1;
+                return NIMCP_ERROR_INVALID_PARAM;
             }
             const uint32_t* data = (const uint32_t*)payload;
             uint32_t source_id = data[0];
@@ -456,8 +453,7 @@ static nimcp_error_t portia_collective_message_handler(
         case BIO_MSG_PORTIA_COLLECTIVE_DEGRADATION: {
             /* Handle degradation notification from remote instance */
             if (payload_size < sizeof(uint32_t) * 2) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_message_handler: validation failed");
-                return -1;
+                return NIMCP_ERROR_INVALID_PARAM;
             }
             const uint32_t* data = (const uint32_t*)payload;
             uint32_t instance_id = data[0];
@@ -477,8 +473,7 @@ static nimcp_error_t portia_collective_message_handler(
         }
         default:
             LOG_DEBUG("Unknown message type: 0x%04X", header->type);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_message_handler: operation failed");
-            return -1;
+            return NIMCP_ERROR_INVALID_PARAM;
     }
 }
 
@@ -709,8 +704,7 @@ static int request_offload_unlocked(
     }
 
     if (best_score < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "request_offload_unlocked: validation failed");
-        return -1;  /* No suitable target found */
+        return -1;  /* No suitable target found - normal condition */
     }
 
     *target_instance = best_id;

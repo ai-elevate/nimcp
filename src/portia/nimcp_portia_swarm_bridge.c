@@ -185,11 +185,7 @@ static int update_collective_state(portia_swarm_bridge_t* bridge) {
     bridge->collective_state.agents_degraded = 0;
     bridge->collective_state.last_update = get_time_ms();
 
-    /* Notify callback if registered */
-    if (bridge->collective_cb) {
-        bridge->collective_cb(bridge, &bridge->collective_state,
-                            bridge->collective_user_data);
-    }
+    /* NOTE: Callback invocation moved to caller (outside lock) */
 
     return 0;
 }
@@ -268,13 +264,12 @@ portia_swarm_bridge_t* portia_swarm_bridge_create(
     bridge->last_sync_time = now;
     bridge->last_gossip_time = now;
 
-    /* Create mutex for thread safety */
-    nimcp_mutex_t* mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (mutex) {
-        nimcp_mutex_init(mutex, NULL);
-        bridge->base.mutex = mutex;
-    } else {
-        NIMCP_LOGGING_WARN("portia_swarm_bridge_create: mutex allocation failed");
+    /* Initialize bridge base (creates mutex, sets name) */
+    if (bridge_base_init(&bridge->base, 0, "portia_swarm") != 0) {
+        NIMCP_LOGGING_ERROR("portia_swarm_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_swarm_bridge_create: bridge_base_init failed");
+        return NULL;
     }
 
     /* Initialize local state */
@@ -304,10 +299,8 @@ void portia_swarm_bridge_destroy(portia_swarm_bridge_t* bridge) {
         portia_swarm_disconnect_bio_async(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
-    }
+    /* Cleanup bridge base (destroys mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge */
     nimcp_free(bridge);
@@ -566,12 +559,31 @@ int portia_swarm_update(portia_swarm_bridge_t* bridge) {
     }
 
     /* Update collective state from swarm */
+    bool need_collective_cb = false;
+    portia_swarm_collective_cb coll_cb = NULL;
+    void* coll_cb_data = NULL;
+    portia_swarm_collective_state_t coll_state_copy;
+
     if (bridge->config.mode == PORTIA_SWARM_MODE_PASSIVE ||
         bridge->config.mode == PORTIA_SWARM_MODE_BIDIRECTIONAL) {
         update_collective_state(bridge);
+        /* Capture callback info for invocation outside lock */
+        if (bridge->collective_cb) {
+            need_collective_cb = true;
+            coll_cb = bridge->collective_cb;
+            coll_cb_data = bridge->collective_user_data;
+            memcpy(&coll_state_copy, &bridge->collective_state,
+                   sizeof(portia_swarm_collective_state_t));
+        }
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+
+    /* Invoke collective callback outside lock */
+    if (need_collective_cb && coll_cb) {
+        coll_cb(bridge, &coll_state_copy, coll_cb_data);
+    }
+
     return 0;
 }
 
@@ -639,13 +651,17 @@ int portia_swarm_request_recommendation(
     bridge->stats.consensus_successes++;
     bridge->stats.tier_recommendations++;
 
-    /* Notify callback if registered */
-    if (bridge->recommendation_cb) {
-        bridge->recommendation_cb(bridge, recommendation,
-                                 bridge->recommendation_user_data);
-    }
+    /* Capture callback info under lock */
+    portia_swarm_recommendation_cb cb = bridge->recommendation_cb;
+    void* cb_data = bridge->recommendation_user_data;
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+
+    /* Invoke callback outside lock to avoid deadlock */
+    if (cb) {
+        cb(bridge, recommendation, cb_data);
+    }
+
     return 0;
 }
 

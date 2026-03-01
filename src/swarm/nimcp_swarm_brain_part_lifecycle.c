@@ -219,7 +219,7 @@ brain_t swarm_brain_create_local(
 
     if (!slot) {
         LOG_ERROR("No free local brain slots available (max=%d)", MAX_LOCAL_BRAINS);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_create_local: slot is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "swarm_brain_create_local: no free local brain slots available");
         return NULL;
     }
 

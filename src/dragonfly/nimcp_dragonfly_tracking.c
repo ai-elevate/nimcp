@@ -194,9 +194,9 @@ static void kalman_update(kalman_filter_t* kf, const float measurement[3]) {
     /* Kalman gain: K = P * H' * inv(S) */
     float K[KALMAN_STATE_DIM][KALMAN_MEAS_DIM];
     for (int i = 0; i < KALMAN_STATE_DIM; i++) {
-        K[i][0] = kf->P[i][0] / S[0];
-        K[i][1] = kf->P[i][1] / S[1];
-        K[i][2] = kf->P[i][2] / S[2];
+        K[i][0] = (S[0] > 1e-10f) ? kf->P[i][0] / S[0] : 0.0f;
+        K[i][1] = (S[1] > 1e-10f) ? kf->P[i][1] / S[1] : 0.0f;
+        K[i][2] = (S[2] > 1e-10f) ? kf->P[i][2] / S[2] : 0.0f;
     }
 
     /* State update: x = x + K * y */
@@ -350,7 +350,7 @@ void dragonfly_tracker_destroy(dragonfly_tracker_t* tracker) {
     if (!tracker) return;
 
     if (tracker->mutex) {
-        nimcp_mutex_free(tracker->mutex);
+        nimcp_mutex_destroy(tracker->mutex);
     }
 
     nimcp_free(tracker);
@@ -433,8 +433,7 @@ static const target_observation_t* select_best_target(
     uint32_t num_observations
 ) {
     if (num_observations == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "select_best_target: num_observations is zero");
-        return NULL;
+        return NULL;  /* No observations - normal condition */
     }
 
     const target_observation_t* best = NULL;
@@ -828,8 +827,7 @@ const tracked_target_t* dragonfly_tracker_get_target(
     }
 
     if (tracker->state == TRACK_STATE_SEARCHING) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_get_target: validation failed");
-        return NULL;
+        return NULL;  /* Not tracking - normal condition */
     }
 
     return &tracker->target;

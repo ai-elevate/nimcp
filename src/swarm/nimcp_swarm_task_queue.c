@@ -54,8 +54,7 @@ static inline bool entry_compare(
         if (a->deadline_ms != b->deadline_ms) {
             // Earlier deadline comes first (0 means no deadline, sort last)
             if (a->deadline_ms == 0) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entry_compare: a->deadline_ms is zero");
-                return false;
+                return false;  /* No deadline sorts after entries with deadline */
             }
             if (b->deadline_ms == 0) return true;
             return a->deadline_ms < b->deadline_ms;
@@ -234,7 +233,8 @@ void swarm_task_queue_destroy(swarm_task_queue_t* queue)
     }
 
     nimcp_mutex_unlock(queue->mutex);
-    nimcp_mutex_free(queue->mutex);
+    nimcp_mutex_destroy(queue->mutex);
+    nimcp_free(queue->mutex);
 
     NIMCP_LOGGING_DEBUG("Destroyed task queue for agent %u", queue->agent_id);
 

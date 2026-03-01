@@ -99,7 +99,7 @@ typedef struct portia_power_manager_struct {
     // Threading
     nimcp_thread_t poll_thread;
     bool poll_thread_running;
-    nimcp_platform_mutex_t state_mutex;
+    nimcp_mutex_t* state_mutex;
 
     // Bio-async
     uint32_t bio_async_module_id;
@@ -167,7 +167,7 @@ portia_power_manager_t portia_power_init(const portia_power_config_t* config) {
         1, sizeof(portia_power_manager_struct_t));
     if (!mgr) {
         LOG_ERROR("[%s] Failed to allocate power manager", POWER_MODULE);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mgr is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mgr allocation failed");
 
         return NULL;
     }
@@ -182,10 +182,11 @@ portia_power_manager_t portia_power_init(const portia_power_config_t* config) {
     }
 
     // Initialize mutex
-    if (nimcp_platform_mutex_init(&mgr->state_mutex, false) != 0) {
-        LOG_ERROR("[%s] Failed to initialize mutex", POWER_MODULE);
+    mgr->state_mutex = nimcp_mutex_create(NULL);
+    if (!mgr->state_mutex) {
+        LOG_ERROR("[%s] Failed to create mutex", POWER_MODULE);
         nimcp_free(mgr);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_power_init: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_power_init: mutex creation failed");
         return NULL;
     }
 
@@ -250,16 +251,18 @@ portia_power_manager_t portia_power_init(const portia_power_config_t* config) {
         }
     }
 
+    // Set running flag BEFORE creating thread to avoid race
+    mgr->poll_thread_running = true;
+
     // Start polling thread
     if (nimcp_thread_create(&mgr->poll_thread, power_poll_thread, mgr, NULL) != 0) {
         LOG_ERROR("[%s] Failed to create polling thread", POWER_MODULE);
-        nimcp_platform_mutex_destroy(&mgr->state_mutex);
+        mgr->poll_thread_running = false;
+        nimcp_mutex_destroy(mgr->state_mutex);
         nimcp_free(mgr);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_power_init: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_power_init: thread creation failed");
         return NULL;
     }
-
-    mgr->poll_thread_running = true;
     mgr->initialized = true;
 
     LOG_INFO("[%s] Power monitoring initialized successfully", POWER_MODULE);
@@ -281,7 +284,10 @@ void portia_power_shutdown(portia_power_manager_t mgr) {
     }
 
     // Cleanup
-    nimcp_platform_mutex_destroy(&mgr->state_mutex);
+    if (mgr->state_mutex) {
+        nimcp_mutex_destroy(mgr->state_mutex);
+        mgr->state_mutex = NULL;
+    }
 
     mgr->magic = 0;
     mgr->initialized = false;
@@ -309,9 +315,9 @@ bool portia_power_get_status(portia_power_manager_t mgr, power_status_t* status)
         return false;
     }
 
-    nimcp_platform_mutex_lock(&mgr->state_mutex);
+    nimcp_mutex_lock(mgr->state_mutex);
     *status = mgr->current_status;
-    nimcp_platform_mutex_unlock(&mgr->state_mutex);
+    nimcp_mutex_unlock(mgr->state_mutex);
 
     return true;
 }
@@ -321,7 +327,7 @@ power_profile_t portia_power_get_profile(portia_power_manager_t mgr) {
         return POWER_PROFILE_BALANCED;
     }
 
-    nimcp_platform_mutex_lock(&mgr->state_mutex);
+    nimcp_mutex_lock(mgr->state_mutex);
 
     power_profile_t profile;
     if (mgr->profile_forced) {
@@ -330,7 +336,7 @@ power_profile_t portia_power_get_profile(portia_power_manager_t mgr) {
         profile = mgr->current_profile;
     }
 
-    nimcp_platform_mutex_unlock(&mgr->state_mutex);
+    nimcp_mutex_unlock(mgr->state_mutex);
 
     return profile;
 }
@@ -346,14 +352,14 @@ power_profile_t portia_power_set_profile(portia_power_manager_t mgr, power_profi
         return mgr->current_profile;
     }
 
-    nimcp_platform_mutex_lock(&mgr->state_mutex);
+    nimcp_mutex_lock(mgr->state_mutex);
 
     power_profile_t old_profile = mgr->profile_forced ? mgr->forced_profile : mgr->current_profile;
 
     mgr->forced_profile = profile;
     mgr->profile_forced = true;
 
-    nimcp_platform_mutex_unlock(&mgr->state_mutex);
+    nimcp_mutex_unlock(mgr->state_mutex);
 
     LOG_INFO("[%s] Power profile manually set to %s (was %s)",
              POWER_MODULE,
@@ -382,12 +388,12 @@ float portia_power_estimate_runtime(portia_power_manager_t mgr, float safety_mar
         safety_margin = 0.9F;  // Default
     }
 
-    nimcp_platform_mutex_lock(&mgr->state_mutex);
+    nimcp_mutex_lock(mgr->state_mutex);
 
     // If on AC, runtime is "infinite"
     if (mgr->current_status.source == POWER_SOURCE_AC ||
         mgr->current_status.plugged_in) {
-        nimcp_platform_mutex_unlock(&mgr->state_mutex);
+        nimcp_mutex_unlock(mgr->state_mutex);
         return 0.0F;  // 0 = unlimited
     }
 
@@ -408,7 +414,7 @@ float portia_power_estimate_runtime(portia_power_manager_t mgr, float safety_mar
         runtime_s *= safety_margin;
     }
 
-    nimcp_platform_mutex_unlock(&mgr->state_mutex);
+    nimcp_mutex_unlock(mgr->state_mutex);
 
     return runtime_s;
 }
@@ -537,9 +543,9 @@ bool portia_power_get_stats(portia_power_manager_t mgr, portia_power_stats_t* st
         return false;
     }
 
-    nimcp_platform_mutex_lock(&mgr->state_mutex);
+    nimcp_mutex_lock(mgr->state_mutex);
     *stats = mgr->stats;
-    nimcp_platform_mutex_unlock(&mgr->state_mutex);
+    nimcp_mutex_unlock(mgr->state_mutex);
 
     return true;
 }
@@ -549,9 +555,9 @@ void portia_power_reset_stats(portia_power_manager_t mgr) {
         return;
     }
 
-    nimcp_platform_mutex_lock(&mgr->state_mutex);
+    nimcp_mutex_lock(mgr->state_mutex);
     memset(&mgr->stats, 0, sizeof(mgr->stats));
-    nimcp_platform_mutex_unlock(&mgr->state_mutex);
+    nimcp_mutex_unlock(mgr->state_mutex);
 
     LOG_INFO("[%s] Statistics reset", POWER_MODULE);
 }
@@ -600,7 +606,7 @@ static void* power_poll_thread(void* arg) {
 
         // Read battery status
         if (read_battery_status(mgr, &new_status)) {
-            nimcp_platform_mutex_lock(&mgr->state_mutex);
+            nimcp_mutex_lock(mgr->state_mutex);
 
             power_status_t old_status = mgr->current_status;
             mgr->current_status = new_status;
@@ -612,12 +618,18 @@ static void* power_poll_thread(void* arg) {
 
             // Update statistics
             mgr->stats.samples_taken++;
-            mgr->stats.avg_battery_level =
-                (mgr->stats.avg_battery_level * (mgr->stats.samples_taken - 1) +
-                 new_status.battery_level_pct) / mgr->stats.samples_taken;
-            mgr->stats.avg_discharge_rate_mw =
-                (mgr->stats.avg_discharge_rate_mw * (mgr->stats.samples_taken - 1) +
-                 new_status.discharge_rate_mw) / mgr->stats.samples_taken;
+            if (mgr->stats.samples_taken > 0) {
+                float new_avg_bat = (mgr->stats.avg_battery_level * (mgr->stats.samples_taken - 1) +
+                     new_status.battery_level_pct) / mgr->stats.samples_taken;
+                if (isfinite(new_avg_bat)) {
+                    mgr->stats.avg_battery_level = new_avg_bat;
+                }
+                float new_avg_rate = (mgr->stats.avg_discharge_rate_mw * (mgr->stats.samples_taken - 1) +
+                     new_status.discharge_rate_mw) / mgr->stats.samples_taken;
+                if (isfinite(new_avg_rate)) {
+                    mgr->stats.avg_discharge_rate_mw = new_avg_rate;
+                }
+            }
             if (new_status.temperature_c > mgr->stats.max_temperature_c) {
                 mgr->stats.max_temperature_c = new_status.temperature_c;
             }
@@ -630,7 +642,7 @@ static void* power_poll_thread(void* arg) {
                     mgr->current_profile = new_profile;
                     mgr->stats.profile_changes++;
 
-                    nimcp_platform_mutex_unlock(&mgr->state_mutex);
+                    nimcp_mutex_unlock(mgr->state_mutex);
 
                     LOG_INFO("[%s] Power profile changed: %s -> %s (%.1f%%)",
                              POWER_MODULE,
@@ -640,10 +652,10 @@ static void* power_poll_thread(void* arg) {
 
                     send_power_event(mgr, POWER_EVENT_PROFILE_CHANGE, &new_status);
                 } else {
-                    nimcp_platform_mutex_unlock(&mgr->state_mutex);
+                    nimcp_mutex_unlock(mgr->state_mutex);
                 }
             } else {
-                nimcp_platform_mutex_unlock(&mgr->state_mutex);
+                nimcp_mutex_unlock(mgr->state_mutex);
             }
 
             // Check for other events
@@ -662,9 +674,9 @@ static void* power_poll_thread(void* arg) {
 
             if (new_status.temperature_c > mgr->config.thermal_throttle_temp_c) {
                 send_power_event(mgr, POWER_EVENT_THERMAL_WARNING, &new_status);
-                nimcp_platform_mutex_lock(&mgr->state_mutex);
+                nimcp_mutex_lock(mgr->state_mutex);
                 mgr->stats.thermal_throttles++;
-                nimcp_platform_mutex_unlock(&mgr->state_mutex);
+                nimcp_mutex_unlock(mgr->state_mutex);
             }
         }
 
@@ -673,7 +685,6 @@ static void* power_poll_thread(void* arg) {
     }
 
     LOG_DEBUG("[%s] Polling thread exited", POWER_MODULE);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "power_poll_thread: operation failed");
     return NULL;
 }
 
@@ -838,9 +849,9 @@ static void send_power_event(portia_power_manager_t mgr, power_event_type_t even
         return;
     }
 
-    nimcp_platform_mutex_lock(&mgr->state_mutex);
+    nimcp_mutex_lock(mgr->state_mutex);
     mgr->stats.events_sent++;
-    nimcp_platform_mutex_unlock(&mgr->state_mutex);
+    nimcp_mutex_unlock(mgr->state_mutex);
 
     LOG_DEBUG("[%s] Power event sent: type=%d, profile=%d->%d, battery=%.1f%%",
               POWER_MODULE, event, msg.old_profile, msg.new_profile, msg.battery_level_pct);

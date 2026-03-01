@@ -157,7 +157,7 @@ dragonfly_interceptor_t* dragonfly_interceptor_create(const intercept_config_t* 
 void dragonfly_interceptor_destroy(dragonfly_interceptor_t* interceptor) {
     if (!interceptor) return;
     if (interceptor->mutex) {
-        nimcp_mutex_free(interceptor->mutex);
+        nimcp_mutex_destroy(interceptor->mutex);
     }
     nimcp_free(interceptor);
 }

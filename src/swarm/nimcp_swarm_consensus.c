@@ -320,18 +320,33 @@ void swarm_consensus_destroy(swarm_consensus_t ctx)
         swarm_consensus_disconnect_bio_async(ctx);
     }
 
-    /* Cancel all active votes and invoke callbacks */
+    /* Cancel all active votes and collect callbacks to invoke outside lock */
+    typedef struct { swarm_vote_result_t result; swarm_vote_callback_t cb; void* cb_ctx; } deferred_cb_t;
+    deferred_cb_t deferred_callbacks[SWARM_MAX_ACTIVE_VOTES];
+    uint32_t deferred_count = 0;
+
     nimcp_mutex_lock(&ctx->mutex);
 
     for (uint32_t i = 0; i < SWARM_MAX_ACTIVE_VOTES; i++) {
         active_vote_t* vote = &ctx->active_votes[i];
         if (vote->active && !vote->callback_invoked) {
             vote->result.status = VOTE_STATUS_CANCELLED;
-            invoke_callback(vote);
+            vote->callback_invoked = true;
+            if (vote->callback && deferred_count < SWARM_MAX_ACTIVE_VOTES) {
+                deferred_callbacks[deferred_count].result = vote->result;
+                deferred_callbacks[deferred_count].cb = vote->callback;
+                deferred_callbacks[deferred_count].cb_ctx = vote->callback_ctx;
+                deferred_count++;
+            }
         }
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+
+    /* Invoke callbacks outside the lock to prevent deadlock */
+    for (uint32_t i = 0; i < deferred_count; i++) {
+        deferred_callbacks[i].cb(&deferred_callbacks[i].result, deferred_callbacks[i].cb_ctx);
+    }
 
     /* Destroy mutex */
     if (ctx->mutex_initialized) {
@@ -634,7 +649,24 @@ nimcp_error_t swarm_consensus_receive_vote(
 
     nimcp_error_t eval_result = evaluate_vote_result(ctx, vote_slot, current_time);
 
+    /* Capture callback info for deferred invocation outside lock */
+    swarm_vote_callback_t eval_cb = NULL;
+    void* eval_cb_ctx = NULL;
+    swarm_vote_result_t eval_cb_result = {0};
+    if (vote_slot->result.status != VOTE_STATUS_PENDING &&
+        vote_slot->callback && !vote_slot->callback_invoked) {
+        vote_slot->callback_invoked = true;
+        eval_cb = vote_slot->callback;
+        eval_cb_ctx = vote_slot->callback_ctx;
+        eval_cb_result = vote_slot->result;
+    }
+
     nimcp_mutex_unlock(&ctx->mutex);
+
+    /* Invoke callback outside lock to prevent deadlock */
+    if (eval_cb) {
+        eval_cb(&eval_cb_result, eval_cb_ctx);
+    }
 
     return eval_result;
 }
@@ -764,14 +796,27 @@ nimcp_error_t swarm_consensus_cancel(
     vote_slot->result.status = VOTE_STATUS_CANCELLED;
     ctx->stats.proposals_cancelled++;
 
-    /* Invoke callback */
-    invoke_callback(vote_slot);
+    /* Capture callback to invoke outside lock */
+    swarm_vote_callback_t cancel_cb = NULL;
+    void* cancel_cb_ctx = NULL;
+    swarm_vote_result_t cancel_result = {0};
+    if (vote_slot->callback && !vote_slot->callback_invoked) {
+        vote_slot->callback_invoked = true;
+        cancel_cb = vote_slot->callback;
+        cancel_cb_ctx = vote_slot->callback_ctx;
+        cancel_result = vote_slot->result;
+    }
 
     /* Free slot */
     vote_slot->active = false;
     ctx->stats.active_votes--;
 
     nimcp_mutex_unlock(&ctx->mutex);
+
+    /* Invoke callback outside lock to prevent deadlock */
+    if (cancel_cb) {
+        cancel_cb(&cancel_result, cancel_cb_ctx);
+    }
 
     LOG_INFO("Proposal %u cancelled", proposal_id);
 
@@ -794,6 +839,11 @@ nimcp_error_t swarm_consensus_cleanup_expired(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Collect expired callbacks to invoke outside lock */
+    typedef struct { swarm_vote_result_t result; swarm_vote_callback_t cb; void* cb_ctx; uint32_t pid; } expired_cb_t;
+    expired_cb_t expired_cbs[SWARM_MAX_ACTIVE_VOTES];
+    uint32_t expired_count = 0;
+
     nimcp_mutex_lock(&ctx->mutex);
 
     uint32_t cleaned = 0;
@@ -813,19 +863,30 @@ nimcp_error_t swarm_consensus_cleanup_expired(
             vote->result.status = VOTE_STATUS_EXPIRED;
             ctx->stats.proposals_expired++;
 
-            /* Invoke callback */
-            invoke_callback(vote);
+            /* Capture callback for deferred invocation */
+            if (vote->callback && !vote->callback_invoked && expired_count < SWARM_MAX_ACTIVE_VOTES) {
+                vote->callback_invoked = true;
+                expired_cbs[expired_count].result = vote->result;
+                expired_cbs[expired_count].cb = vote->callback;
+                expired_cbs[expired_count].cb_ctx = vote->callback_ctx;
+                expired_cbs[expired_count].pid = vote->proposal.proposal_id;
+                expired_count++;
+            }
 
             /* Free slot */
             vote->active = false;
             ctx->stats.active_votes--;
             cleaned++;
-
-            LOG_INFO("Proposal %u expired", vote->proposal.proposal_id);
         }
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+
+    /* Invoke callbacks outside lock to prevent deadlock */
+    for (uint32_t i = 0; i < expired_count; i++) {
+        expired_cbs[i].cb(&expired_cbs[i].result, expired_cbs[i].cb_ctx);
+        LOG_INFO("Proposal %u expired", expired_cbs[i].pid);
+    }
 
     if (cleaned > 0) {
         LOG_DEBUG("Cleaned %u expired proposals", cleaned);
@@ -926,7 +987,7 @@ static nimcp_error_t evaluate_vote_result(
         current_time_ms > vote->proposal.deadline_ms) {
         vote->result.status = VOTE_STATUS_EXPIRED;
         ctx->stats.proposals_expired++;
-        invoke_callback(vote);
+        /* NOTE: callback invoked by caller outside lock */
         vote->active = false;
         ctx->stats.active_votes--;
         return NIMCP_SUCCESS;
@@ -993,8 +1054,7 @@ static nimcp_error_t evaluate_vote_result(
         ctx->stats.proposals_failed++;
     }
 
-    /* Invoke callback */
-    invoke_callback(vote);
+    /* NOTE: callback invoked by caller outside lock */
 
     /* Free slot */
     vote->active = false;

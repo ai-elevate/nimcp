@@ -394,7 +394,7 @@ emotional_contagion_t* emotional_contagion_create(
         (emotional_contagion_t*)nimcp_malloc(sizeof(emotional_contagion_t));
     if (!ec) {
         LOG_ERROR(CONTAGION_MODULE, "Failed to allocate contagion system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotional_contagion_create: alloc failed");
 
         return NULL;
     }
@@ -423,7 +423,7 @@ emotional_contagion_t* emotional_contagion_create(
         LOG_ERROR(CONTAGION_MODULE, "Failed to initialize mutex");
         nimcp_free(ec->agent_hash);
         nimcp_free(ec);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotional_contagion_get_default_config: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotional_contagion_create: mutex init failed");
         return NULL;
     }
 

@@ -140,7 +140,6 @@ static executive_action_t determine_action(
 
 static bool is_tracking_mode(dragonfly_mode_t mode) {
     return (mode == DRAGONFLY_MODE_TRACKING ||
-            mode == DRAGONFLY_MODE_TRACKING ||
             mode == DRAGONFLY_MODE_PURSUING ||
             mode == DRAGONFLY_MODE_INTERCEPTING);
 }
@@ -259,6 +258,14 @@ dragonfly_cognitive_bridge_t* dragonfly_cognitive_bridge_create(
 
     bridge->dragonfly = dragonfly;
 
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_cognitive") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_cognitive_bridge_create: failed to init base");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     /* Initialize executive state */
     bridge->exec_state.current_action = EXEC_ACTION_NONE;
     bridge->exec_state.recommended_action = EXEC_ACTION_NONE;
@@ -271,6 +278,7 @@ void dragonfly_cognitive_bridge_destroy(dragonfly_cognitive_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_cognitive");
     bridge->initialized = false;
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

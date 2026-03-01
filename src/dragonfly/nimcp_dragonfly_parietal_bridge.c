@@ -635,7 +635,7 @@ int dragonfly_parietal_bridge_get_primary_target(
 
 parietal_attention_map_t* parietal_attention_map_create(uint32_t width, uint32_t height) {
     if (width == 0 || height == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_attention_map_create: width is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_attention_map_create: width or height is zero");
         return NULL;
     }
 
@@ -763,11 +763,11 @@ int parietal_attention_map_find_peak(
     }
 
     if (azimuth) {
-        float az_norm = (float)max_x / (map->width - 1);
+        float az_norm = (map->width > 1) ? (float)max_x / (map->width - 1) : 0.5f;
         *azimuth = map->azimuth_min + az_norm * (map->azimuth_max - map->azimuth_min);
     }
     if (elevation) {
-        float el_norm = (float)max_y / (map->height - 1);
+        float el_norm = (map->height > 1) ? (float)max_y / (map->height - 1) : 0.5f;
         *elevation = map->elevation_min + el_norm * (map->elevation_max - map->elevation_min);
     }
     if (weight) {

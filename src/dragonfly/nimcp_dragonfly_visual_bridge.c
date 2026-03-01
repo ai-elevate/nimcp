@@ -449,9 +449,14 @@ int dragonfly_visual_bridge_process_frame(
     /* Update statistics */
     uint64_t elapsed = get_time_us() - start_time;
     bridge->stats.frames_processed++;
-    bridge->stats.avg_process_time_us =
-        (bridge->stats.avg_process_time_us * (bridge->stats.frames_processed - 1) + (float)elapsed)
-        / (float)bridge->stats.frames_processed;
+    {
+        float new_avg =
+            (bridge->stats.avg_process_time_us * (bridge->stats.frames_processed - 1) + (float)elapsed)
+            / (float)bridge->stats.frames_processed;
+        if (isfinite(new_avg)) {
+            bridge->stats.avg_process_time_us = new_avg;
+        }
+    }
 
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
@@ -589,38 +594,51 @@ int dragonfly_visual_bridge_inject_blob(
         }
     }
 
-    /* If dragonfly is connected, send detection */
-    if (bridge->dragonfly) {
-        /* Convert blob to dragonfly detection */
-        dragonfly_detection_t det;
+    /* Prepare detection outside of lock if dragonfly is connected */
+    dragonfly_detection_t det;
+    bool send_detection = false;
+    dragonfly_system_t* df = bridge->dragonfly;
+
+    if (df) {
         memset(&det, 0, sizeof(det));
 
         det.id = blob->track_id;
 
-        /* Convert pixel to 3D position */
-        float depth = dragonfly_visual_bridge_estimate_depth(bridge, blob->size_pixels);
-        float position[3];
-        dragonfly_visual_bridge_pixel_to_3d(bridge, blob->center_x, blob->center_y,
-                                            depth, position);
-        memcpy(det.position, position, sizeof(det.position));
+        /* Convert pixel to 3D position (stateless, uses config snapshot) */
+        float depth = (bridge->config.assumed_target_size_m *
+                       bridge->config.calibration.focal_length) /
+                      (blob->size_pixels > 0.0f ? blob->size_pixels : 1.0f);
+        float nx = (blob->center_x - bridge->config.calibration.principal_x) /
+                   bridge->config.calibration.focal_length;
+        float ny = (blob->center_y - bridge->config.calibration.principal_y) /
+                   bridge->config.calibration.focal_length;
+        det.position[0] = nx * depth;
+        det.position[1] = ny * depth;
+        det.position[2] = depth;
 
         /* Compute motion direction and speed */
         float motion_speed = sqrtf(blob->velocity_x * blob->velocity_x +
                                    blob->velocity_y * blob->velocity_y);
         det.motion_direction_rad = atan2f(blob->velocity_y, blob->velocity_x);
-        det.motion_speed = dragonfly_visual_bridge_pixel_velocity_to_angular(
-            bridge, motion_speed);
+        float radians_per_pixel = 1.0f / bridge->config.calibration.focal_length;
+        float radians_per_frame = motion_speed * radians_per_pixel;
+        det.motion_speed = radians_per_frame / bridge->config.frame_dt_s;
 
         det.size = blob->size_pixels / bridge->config.calibration.focal_length;
         det.contrast = blob->contrast;
         det.timestamp_us = now;
 
-        /* Send to dragonfly */
-        dragonfly_process_detection(bridge->dragonfly, &det);
         bridge->stats.detections_sent++;
+        send_detection = true;
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Send detection OUTSIDE of lock to avoid deadlock */
+    if (send_detection) {
+        dragonfly_process_detection(df, &det);
+    }
+
     return 0;
 }
 

@@ -243,10 +243,7 @@ static uint64_t swarm_id_hash(const void* key) {
 static int swarm_id_compare(const void* a, const void* b) {
     uint64_t id_a = *(const uint64_t*)a;
     uint64_t id_b = *(const uint64_t*)b;
-    if (id_a < id_b) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_id_compare: validation failed");
-        return -1;
-    }
+    if (id_a < id_b) return -1;
     if (id_a > id_b) return 1;
     return 0;
 }
@@ -1995,8 +1992,7 @@ static bool collect_resource_request_cb(const void* key, size_t key_size,
 
     resource_request_collect_ctx_t* ctx = (resource_request_collect_ctx_t*)user_data;
     if (!ctx || ctx->count >= ctx->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "calculate_conflict_severity: ctx is NULL");
-        return false;  /* Stop iteration if full */
+        return false;  /* Stop iteration if ctx is NULL or capacity full */
     }
 
     /* Value is a pointer to nimcp_resource_request_t stored in hash table */
@@ -2638,7 +2634,9 @@ nimcp_result_t nimcp_multi_swarm_resolve_conflict(
         conflict->is_resolved = true;
         conflict->resolution_time = nimcp_time_get_ms();
         coordinator->conflict_stats.conflicts_resolved++;
-        coordinator->conflict_stats.conflicts_pending--;
+        if (coordinator->conflict_stats.conflicts_pending > 0) {
+            coordinator->conflict_stats.conflicts_pending--;
+        }
 
         /* Update average resolution time using microsecond precision for stats */
         float elapsed = (float)(nimcp_time_get_us() - start_time_us) / 1000.0F;

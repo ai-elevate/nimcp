@@ -258,6 +258,17 @@ dragonfly_snn_bridge_t* dragonfly_snn_bridge_create(
     bridge->step_count = 0;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
+    /* Initialize bridge base infrastructure (mutex + metrics) */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_snn") != 0) {
+        nimcp_free(bridge->weights);
+        nimcp_free(bridge->biases);
+        nimcp_free(bridge->weight_gradients);
+        nimcp_free(bridge->bias_gradients);
+        nimcp_free(bridge->eligibility_traces);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     return bridge;
 }
 
@@ -265,6 +276,7 @@ void dragonfly_snn_bridge_destroy(dragonfly_snn_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_snn");
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge->weights);
     nimcp_free(bridge->biases);
     nimcp_free(bridge->weight_gradients);
@@ -432,7 +444,7 @@ float dragonfly_snn_compute_loss(
             }
     }
 
-    loss /= n;
+    loss = (n > 0) ? (loss / n) : 0.0f;
     bridge->current_loss = loss;
 
     return loss;
@@ -473,9 +485,11 @@ int dragonfly_snn_backward(dragonfly_snn_bridge_t* bridge) {
 
     grad_norm = sqrtf(grad_norm);
     bridge->gradient_norm = grad_norm;
-    bridge->stats.gradient_norm_avg =
-        (bridge->stats.gradient_norm_avg * bridge->step_count + grad_norm) /
-        (bridge->step_count + 1);
+    {
+        float new_avg = (bridge->stats.gradient_norm_avg * bridge->step_count + grad_norm) /
+            (bridge->step_count + 1);
+        if (isfinite(new_avg)) bridge->stats.gradient_norm_avg = new_avg;
+    }
 
     /* Gradient clipping */
     if (grad_norm > bridge->config.gradient_clip) {

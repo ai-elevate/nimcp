@@ -597,7 +597,6 @@ bool portia_planning_handle_obstacle(portia_planner_t planner, uint32_t plan_id,
         LOG_ERROR("Plan %u: failed (backtracking disabled)", plan_id);
         broadcast_plan_event(planner, plan_id, "plan_failed");
         nimcp_mutex_unlock(&planner->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_handle_obstacle: planner->config is NULL");
         return false;
     }
 
@@ -618,7 +617,6 @@ bool portia_planning_handle_obstacle(portia_planner_t planner, uint32_t plan_id,
     broadcast_plan_event(planner, plan_id, "plan_failed");
 
     nimcp_mutex_unlock(&planner->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_planning_handle_obstacle: operation failed");
     return false;
 }
 

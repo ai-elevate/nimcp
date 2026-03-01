@@ -86,7 +86,7 @@ swarm_pheromone_sleep_bridge_t swarm_pheromone_sleep_bridge_create(
         (swarm_pheromone_sleep_bridge_t)nimcp_malloc(sizeof(struct swarm_pheromone_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm pheromone sleep bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_pheromone_sleep_bridge_create: allocation failed");
 
         return NULL;
     }

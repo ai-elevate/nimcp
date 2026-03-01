@@ -987,6 +987,9 @@ nimcp_result_t nimcp_swarm_immune_amplify_response(
     }
 
     /* Update memory cell effectiveness (clonal selection) */
+    uint32_t cell_to_share = 0;
+    bool should_share = false;
+
     for (size_t i = 0; i < system->memory_cell_count; i++) {
         NimcpSwarmMemoryCell* cell = &system->memory_cells[i];
 
@@ -1001,9 +1004,10 @@ nimcp_result_t nimcp_swarm_immune_amplify_response(
                           cell->effectiveness / amplification,
                           cell->effectiveness);
 
-            /* Share successful patterns */
+            /* Defer share until after mutex release to avoid deadlock */
             if (success_rate > 0.8F && system->config.enable_sharing && !cell->shared) {
-                nimcp_swarm_immune_share_memory_cell(system, cell->id);
+                cell_to_share = cell->id;
+                should_share = true;
             }
 
             break;
@@ -1011,6 +1015,12 @@ nimcp_result_t nimcp_swarm_immune_amplify_response(
     }
 
     nimcp_platform_mutex_unlock(system->mutex);
+
+    /* Share outside of lock to avoid deadlock */
+    if (should_share) {
+        nimcp_swarm_immune_share_memory_cell(system, cell_to_share);
+    }
+
     return NIMCP_SUCCESS;
 }
 

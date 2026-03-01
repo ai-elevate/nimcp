@@ -208,6 +208,12 @@ dragonfly_thalamic_bridge_t* dragonfly_thalamic_bridge_create(
     bridge->attention_inhibition = 0.0f;
     bridge->decision_inhibition = 0.0f;
 
+    /* Initialize bridge base infrastructure (mutex + metrics) */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_thalamic") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     bridge->initialized = true;
     return bridge;
 }
@@ -215,6 +221,7 @@ dragonfly_thalamic_bridge_t* dragonfly_thalamic_bridge_create(
 void dragonfly_thalamic_bridge_destroy(dragonfly_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_thalamic");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

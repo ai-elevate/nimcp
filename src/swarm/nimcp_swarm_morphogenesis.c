@@ -143,8 +143,7 @@ static NimcpDroneRoleState* find_drone_state(
     uint32_t drone_id
 ) {
     if (!morph || !morph->drone_states) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_drone_state: required parameter is NULL (morph, morph->drone_states)");
-        return NULL;
+        return NULL;  /* Defensive guard - not an error */
     }
 
     for (uint32_t i = 0; i < morph->active_drones; i++) {
@@ -279,13 +278,13 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
     if (transition_cooldown < NIMCP_MORPH_MIN_COOLDOWN ||
         transition_cooldown > NIMCP_MORPH_MAX_COOLDOWN) {
         LOG_ERROR("Invalid transition_cooldown: %.2f", transition_cooldown);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_swarm_morphogenesis_create: max_drones is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_swarm_morphogenesis_create: transition_cooldown out of range");
         return NULL;
     }
 
     if (rebalance_threshold < 0.0F || rebalance_threshold > 1.0F) {
         LOG_ERROR("Invalid rebalance_threshold: %.2f", rebalance_threshold);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_morphogenesis_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_swarm_morphogenesis_create: rebalance_threshold out of range");
         return NULL;
     }
 

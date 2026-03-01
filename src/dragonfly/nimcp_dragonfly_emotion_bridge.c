@@ -632,9 +632,9 @@ int dragonfly_emotion_get_state(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -648,9 +648,9 @@ int dragonfly_emotion_get_modulation(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *modulation = bridge->modulation;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -687,9 +687,9 @@ int dragonfly_emotion_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

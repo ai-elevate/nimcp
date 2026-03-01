@@ -311,7 +311,7 @@ void dragonfly_gaze_destroy(dragonfly_gaze_t gaze) {
     if (!gaze) return;
 
     if (gaze->mutex) {
-        nimcp_mutex_free(gaze->mutex);
+        nimcp_mutex_destroy(gaze->mutex);
     }
 
     nimcp_free(gaze);

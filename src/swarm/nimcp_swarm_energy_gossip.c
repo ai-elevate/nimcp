@@ -83,8 +83,7 @@ static void update_energy_state(NimcpEnergyGossip* gossip) {
  */
 static bool is_message_cached(const NimcpEnergyGossip* gossip, uint64_t message_id) {
     if (!gossip || !gossip->message_cache) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_message_cached: required parameter is NULL (gossip, gossip->message_cache)");
-        return false;
+        return false;  /* Defensive guard - not an error */
     }
 
     for (uint32_t i = 0; i < gossip->message_cache_size; i++) {
@@ -145,8 +144,7 @@ static nimcp_result_t add_to_cache(NimcpEnergyGossip* gossip, const NimcpGossipM
  */
 static NimcpRelayNode* find_relay_node(NimcpEnergyGossip* gossip, uint32_t node_id) {
     if (!gossip || !gossip->relay_nodes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_relay_node: required parameter is NULL (gossip, gossip->relay_nodes)");
-        return NULL;
+        return NULL;  /* Defensive guard - not an error */
     }
 
     for (uint32_t i = 0; i < gossip->relay_node_count; i++) {
@@ -188,8 +186,7 @@ static NimcpHarvestOpportunity* find_harvest_opportunity(
     const float position[3]
 ) {
     if (!gossip || !gossip->opportunities || !position) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_harvest_opportunity: required parameter is NULL (gossip, gossip->opportunities, position)");
-        return NULL;
+        return NULL;  /* Defensive guard - not an error */
     }
 
     const float tolerance = 1.0F; /* 1 unit tolerance */
@@ -252,7 +249,7 @@ NimcpEnergyGossip* nimcp_energy_gossip_create(
     NimcpEnergyGossip* gossip = (NimcpEnergyGossip*)nimcp_malloc(sizeof(NimcpEnergyGossip));
     if (!gossip) {
         LOG_ERROR("Failed to allocate energy gossip protocol");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gossip is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_energy_gossip_create: alloc failed");
 
         return NULL;
     }
@@ -981,8 +978,7 @@ bool nimcp_energy_gossip_is_sleeping(const NimcpEnergyGossip* gossip) {
     if (gossip->is_sleeping && gossip->sleep_until > 0) {
         time_t now = time(NULL);
         if (now >= gossip->sleep_until) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_energy_gossip_is_sleeping: capacity exceeded");
-            return false;  /* Sleep period expired */
+            return false;  /* Sleep period expired - normal condition */
         }
     }
 
@@ -1086,16 +1082,13 @@ nimcp_result_t nimcp_energy_gossip_register_harvest(
     return NIMCP_SUCCESS;
 }
 
-nimcp_result_t nimcp_energy_gossip_select_harvest(
+/**
+ * @brief Internal unlocked harvest selection helper (caller must hold mutex)
+ */
+static nimcp_result_t select_harvest_unlocked(
     NimcpEnergyGossip* gossip,
     NimcpHarvestOpportunity* opportunity
 ) {
-    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
-    NIMCP_CHECK_THROW(opportunity, NIMCP_ERROR_NULL_POINTER, "opportunity output is NULL");
-    NIMCP_CHECK_THROW(gossip->config.enable_harvest_awareness, NIMCP_NOT_IMPLEMENTED, "harvest awareness not enabled");
-
-    nimcp_platform_mutex_lock(gossip->mutex);
-
     /* Find best opportunity (highest score with low congestion) */
     float best_score = -1.0F;
     NimcpHarvestOpportunity* best = NULL;
@@ -1115,17 +1108,30 @@ nimcp_result_t nimcp_energy_gossip_select_harvest(
     }
 
     if (!best) {
-        nimcp_platform_mutex_unlock(gossip->mutex);
         return NIMCP_NOT_FOUND;
     }
 
     memcpy(opportunity, best, sizeof(NimcpHarvestOpportunity));
-    nimcp_platform_mutex_unlock(gossip->mutex);
 
     LOG_INFO("Node %u: Selected harvest opportunity (score: %.2f)",
         gossip->node_id, best_score);
 
     return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_energy_gossip_select_harvest(
+    NimcpEnergyGossip* gossip,
+    NimcpHarvestOpportunity* opportunity
+) {
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(opportunity, NIMCP_ERROR_NULL_POINTER, "opportunity output is NULL");
+    NIMCP_CHECK_THROW(gossip->config.enable_harvest_awareness, NIMCP_NOT_IMPLEMENTED, "harvest awareness not enabled");
+
+    nimcp_platform_mutex_lock(gossip->mutex);
+    nimcp_result_t result = select_harvest_unlocked(gossip, opportunity);
+    nimcp_platform_mutex_unlock(gossip->mutex);
+
+    return result;
 }
 
 nimcp_result_t nimcp_energy_gossip_update_harvest_congestion(
@@ -1155,9 +1161,9 @@ nimcp_result_t nimcp_energy_gossip_start_harvest(NimcpEnergyGossip* gossip) {
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
-    /* Select best harvest opportunity */
+    /* Select best harvest opportunity (unlocked - we already hold the mutex) */
     NimcpHarvestOpportunity opportunity;
-    nimcp_result_t result = nimcp_energy_gossip_select_harvest(gossip, &opportunity);
+    nimcp_result_t result = select_harvest_unlocked(gossip, &opportunity);
     if (result != NIMCP_SUCCESS) {
         nimcp_platform_mutex_unlock(gossip->mutex);
         return result;

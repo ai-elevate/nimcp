@@ -255,12 +255,19 @@ dragonfly_fep_bridge_t* dragonfly_fep_bridge_create(
 
     bridge->current_action = FEP_ACTION_OBSERVE;
 
+    /* Initialize bridge base infrastructure (mutex + metrics) */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_fep") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     return bridge;
 }
 
 void dragonfly_fep_bridge_destroy(dragonfly_fep_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_fep");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -331,7 +338,7 @@ int dragonfly_fep_compute_errors(
         float diff = observations[i] - bridge->beliefs[i];
         sensory_error += diff * diff * bridge->config.sensory_precision;
     }
-    sensory_error = sqrtf(sensory_error / (float)compare_dim);
+    sensory_error = (compare_dim > 0) ? sqrtf(sensory_error / (float)compare_dim) : 0.0f;
 
     /* Compute model prediction error */
     float predicted[DRAGONFLY_FEP_MAX_STATE_DIM];
@@ -342,7 +349,7 @@ int dragonfly_fep_compute_errors(
         float diff = observations[i] - predicted[i];
         model_error += diff * diff;
     }
-    model_error = sqrtf(model_error / (float)compare_dim);
+    model_error = (compare_dim > 0) ? sqrtf(model_error / (float)compare_dim) : 0.0f;
 
     /* Precision-weighted error */
     float precision_weighted = 0.0f;
@@ -350,7 +357,7 @@ int dragonfly_fep_compute_errors(
         float diff = observations[i] - bridge->beliefs[i];
         precision_weighted += diff * diff * bridge->precision[i];
     }
-    precision_weighted = sqrtf(precision_weighted / (float)compare_dim);
+    precision_weighted = (compare_dim > 0) ? sqrtf(precision_weighted / (float)compare_dim) : 0.0f;
 
     /* Total free energy (simplified variational free energy) */
     float free_energy = sensory_error + model_error * 0.5f +
@@ -367,9 +374,11 @@ int dragonfly_fep_compute_errors(
     bridge->free_energy = free_energy;
     bridge->surprise = sensory_error;
 
-    bridge->stats.avg_prediction_error =
-        (bridge->stats.avg_prediction_error * bridge->stats.predictions_made + sensory_error) /
-        (bridge->stats.predictions_made + 1);
+    {
+        float new_avg = (bridge->stats.avg_prediction_error * bridge->stats.predictions_made + sensory_error) /
+            (bridge->stats.predictions_made + 1);
+        if (isfinite(new_avg)) bridge->stats.avg_prediction_error = new_avg;
+    }
     bridge->stats.predictions_made++;
 
     return 0;
@@ -742,10 +751,12 @@ int dragonfly_fep_update(dragonfly_fep_bridge_t* bridge, float dt_ms) {
     }
 
     /* Update stats */
-    bridge->stats.avg_free_energy =
-        (bridge->stats.avg_free_energy * NIMCP_EMA_DECAY_DEFAULT) + (bridge->free_energy * NIMCP_LEARNING_RATE_DEFAULT);
-    bridge->stats.avg_precision =
-        (bridge->stats.avg_precision * NIMCP_EMA_DECAY_DEFAULT) + (bridge->precision[0] * NIMCP_LEARNING_RATE_DEFAULT);
+    {
+        float ema_fe = (bridge->stats.avg_free_energy * NIMCP_EMA_DECAY_DEFAULT) + (bridge->free_energy * NIMCP_LEARNING_RATE_DEFAULT);
+        if (isfinite(ema_fe)) bridge->stats.avg_free_energy = ema_fe;
+        float ema_prec = (bridge->stats.avg_precision * NIMCP_EMA_DECAY_DEFAULT) + (bridge->precision[0] * NIMCP_LEARNING_RATE_DEFAULT);
+        if (isfinite(ema_prec)) bridge->stats.avg_precision = ema_prec;
+    }
 
     for (int i = 0; i < 5; i++) {
         bridge->stats.model_evidence[i] = bridge->model_evidence[i];

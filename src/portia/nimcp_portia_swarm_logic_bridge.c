@@ -10,6 +10,7 @@
 #include "middleware/training/nimcp_perception_training_bridge.h"
 #include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -108,7 +109,7 @@ portia_swarm_logic_bridge_t* portia_swarm_logic_create(
         nimcp_malloc(sizeof(portia_swarm_logic_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge allocation failed");
 
         return NULL;
     }
@@ -127,15 +128,11 @@ portia_swarm_logic_bridge_t* portia_swarm_logic_create(
     bridge->swarm_logic = swarm_logic;
     bridge->portia_swarm = portia_swarm;
 
-    // Create mutex for thread safety
-    nimcp_mutex_t* mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (mutex) {
-        nimcp_mutex_init(mutex, NULL);
-        bridge->base.mutex = mutex;
-    } else {
-        NIMCP_LOGGING_ERROR("Failed to create mutex");
+    // Initialize bridge base (creates mutex, sets name)
+    if (bridge_base_init(&bridge->base, 0, "portia_swarm_logic") != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_swarm_logic_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_swarm_logic_create: bridge_base_init failed");
         return NULL;
     }
 
@@ -145,7 +142,7 @@ portia_swarm_logic_bridge_t* portia_swarm_logic_create(
     bridge->logic_network = neural_logic_create(&logic_config);
     if (!bridge->logic_network) {
         NIMCP_LOGGING_ERROR("Failed to create neural logic network");
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_swarm_logic_create: bridge->logic_network is NULL");
         return NULL;
@@ -181,10 +178,8 @@ void portia_swarm_logic_destroy(portia_swarm_logic_bridge_t* bridge) {
         neural_logic_destroy(bridge->logic_network);
     }
 
-    // Destroy mutex
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    // Cleanup bridge base (destroys mutex)
+    bridge_base_cleanup(&bridge->base);
 
     // Free bridge
     nimcp_free(bridge);
@@ -700,9 +695,13 @@ int portia_swarm_logic_decide_degradation(
     result->local_approved = local_approved;
     result->swarm_approved = swarm_approved;
     result->approved = local_approved || swarm_approved;
-    result->confidence = (local_confidence * bridge->config.local_weight +
-                         swarm_confidence * bridge->config.collective_weight) /
-                        (bridge->config.local_weight + bridge->config.collective_weight);
+    float weight_sum = bridge->config.local_weight + bridge->config.collective_weight;
+    if (weight_sum > 0.0f) {
+        result->confidence = (local_confidence * bridge->config.local_weight +
+                             swarm_confidence * bridge->config.collective_weight) / weight_sum;
+    } else {
+        result->confidence = 0.5f;
+    }
 
     if (result->approved) {
         snprintf(result->reason, PSL_MAX_REASON_LENGTH,
@@ -829,9 +828,13 @@ int portia_swarm_logic_decide_emergency_mode(
     result->local_approved = local_approved;
     result->swarm_approved = swarm_approved;
     result->approved = local_approved || swarm_approved;
-    result->confidence = (local_confidence * bridge->config.local_weight +
-                         swarm_confidence * bridge->config.collective_weight) /
-                        (bridge->config.local_weight + bridge->config.collective_weight);
+    float emerg_weight_sum = bridge->config.local_weight + bridge->config.collective_weight;
+    if (emerg_weight_sum > 0.0f) {
+        result->confidence = (local_confidence * bridge->config.local_weight +
+                             swarm_confidence * bridge->config.collective_weight) / emerg_weight_sum;
+    } else {
+        result->confidence = 0.5f;
+    }
 
     if (result->approved) {
         snprintf(result->reason, PSL_MAX_REASON_LENGTH,

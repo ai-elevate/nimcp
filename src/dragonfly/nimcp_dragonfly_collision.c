@@ -373,7 +373,7 @@ void dragonfly_collision_destroy(dragonfly_collision_t collision) {
     if (!collision) return;
 
     if (collision->mutex) {
-        nimcp_mutex_free(collision->mutex);
+        nimcp_mutex_destroy(collision->mutex);
     }
 
     nimcp_free(collision);

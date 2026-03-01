@@ -281,7 +281,7 @@ void dragonfly_system_destroy(dragonfly_system_t* system) {
     if (system->predictor) dragonfly_predictor_destroy(system->predictor);
     if (system->tracker) dragonfly_tracker_destroy(system->tracker);
     if (system->tsdn) tsdn_destroy(system->tsdn);
-    if (system->mutex) nimcp_mutex_free(system->mutex);
+    if (system->mutex) nimcp_mutex_destroy(system->mutex);
 
     nimcp_free(system);
 }
@@ -577,9 +577,14 @@ int dragonfly_update(dragonfly_system_t* system, float dt_s) {
     /* Update timing stats */
     uint64_t elapsed = get_time_us() - start_time;
     system->stats.total_updates++;
-    system->stats.avg_update_time_us =
-        (system->stats.avg_update_time_us * (system->stats.total_updates - 1) + (float)elapsed)
-        / (float)system->stats.total_updates;
+    {
+        float new_avg =
+            (system->stats.avg_update_time_us * (system->stats.total_updates - 1) + (float)elapsed)
+            / (float)system->stats.total_updates;
+        if (isfinite(new_avg)) {
+            system->stats.avg_update_time_us = new_avg;
+        }
+    }
 
     system->last_update_us = get_time_us();
 
@@ -770,9 +775,8 @@ int dragonfly_start_scan(dragonfly_system_t* system) {
     nimcp_mutex_lock(system->mutex);
 
     if (system->mode != DRAGONFLY_MODE_IDLE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_start_scan: system not idle");
         nimcp_mutex_unlock(system->mutex);
-        return -1;
+        return -1;  /* System not idle - normal operational state */
     }
 
     system->mode = DRAGONFLY_MODE_SCANNING;

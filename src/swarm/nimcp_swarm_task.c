@@ -306,7 +306,8 @@ void swarm_task_manager_destroy(swarm_task_manager_t* manager)
     nimcp_free(manager->buckets);
 
     nimcp_mutex_unlock(manager->mutex);
-    nimcp_mutex_free(manager->mutex);
+    nimcp_mutex_destroy(manager->mutex);
+    nimcp_free(manager->mutex);
 
     nimcp_free(manager);
 

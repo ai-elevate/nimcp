@@ -215,8 +215,7 @@ static const voxel_entry_t* get_voxel(
     const grid_index_t* idx
 ) {
     if (!is_index_valid(system, idx)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_voxel: is_index_valid is NULL");
-        return NULL;
+        return NULL;  /* Out-of-range index - not an error */
     }
 
     size_t hash = grid_hash_function(idx, system->hash_size);
@@ -231,8 +230,7 @@ static const voxel_entry_t* get_voxel(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_voxel: operation failed");
-    return NULL;
+    return NULL;  /* Normal search miss - voxel not found */
 }
 
 /**
@@ -389,8 +387,8 @@ nimcp_pheromone_system_t* nimcp_pheromone_create(
 
     /* Validate configuration */
     if (nimcp_pheromone_validate_config(config) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pheromone config validation failed");
-        return NULL;
+        LOG_ERROR("Pheromone config validation failed");
+        return NULL;  /* Validation already logged details */
     }
 
     /* Security audit */

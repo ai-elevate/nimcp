@@ -144,8 +144,7 @@ static nimcp_swarm_neighbor_t* add_or_update_neighbor(
 
     LOG_WARN("Maximum neighbors (%u) reached, cannot add neighbor %u",
                    proprio->config.max_neighbors, neighbor_id);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_or_update_neighbor: capacity exceeded");
-    return NULL;
+    return NULL;  /* Capacity reached - normal condition */
 }
 
 /**
@@ -348,8 +347,7 @@ static bool detect_deformation_internal(
     nimcp_swarm_deformation_metrics_t* metrics
 ) {
     if (!proprio->has_reference || proprio->num_neighbors < 2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_deformation_internal: proprio->has_reference is NULL");
-        return false;
+        return false;  /* No reference or too few neighbors - normal condition */
     }
 
     memset(metrics, 0, sizeof(*metrics));
@@ -380,8 +378,7 @@ static bool detect_deformation_internal(
     }
 
     if (strain_count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_deformation_internal: strain_count is zero");
-        return false;
+        return false;  /* No valid strain data - normal condition */
     }
 
     double avg_strain = total_strain / strain_count;
@@ -390,8 +387,7 @@ static bool detect_deformation_internal(
     /* Classify deformation type */
     if (max_strain < proprio->config.deformation_threshold) {
         metrics->deform_type = NIMCP_SWARM_DEFORM_NONE;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_deformation_internal: validation failed");
-        return false;
+        return false;  /* No significant deformation - normal condition */
     }
 
     /* Determine deformation type based on strain pattern */

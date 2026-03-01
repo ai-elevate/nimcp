@@ -162,12 +162,19 @@ dragonfly_workspace_bridge_t* dragonfly_ws_bridge_create(
     bridge->current_salience = bridge->config.base_salience;
     bridge->context_relevance = 0.5f;
 
+    /* Initialize bridge base infrastructure (mutex + metrics) */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_workspace") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     return bridge;
 }
 
 void dragonfly_ws_bridge_destroy(dragonfly_workspace_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_workspace");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

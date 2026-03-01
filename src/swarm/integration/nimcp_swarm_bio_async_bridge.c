@@ -32,7 +32,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_bio_async_bridge)
  */
 static swarm_agent_info_t* find_agent_unlocked(swarm_bio_bridge_t* bridge, swarm_agent_id_t id) {
     if (!bridge || !bridge->agents) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_unlocked: required parameter is NULL (bridge, bridge->agents)");
         return NULL;
     }
     for (uint32_t i = 0; i < bridge->agent_count; i++) {

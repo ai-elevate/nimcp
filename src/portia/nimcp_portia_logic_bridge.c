@@ -266,7 +266,7 @@ portia_logic_bridge_t* portia_logic_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge allocation failed");
 
         return NULL;
     }
@@ -277,15 +277,11 @@ portia_logic_bridge_t* portia_logic_bridge_create(
     memcpy(&bridge->config, config, sizeof(portia_logic_config_t));
     bridge->portia = portia;
 
-    /* Create mutex for thread safety */
-    nimcp_mutex_t* mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (mutex) {
-        nimcp_mutex_init(mutex, NULL);
-        bridge->base.mutex = mutex;
-    } else {
-        NIMCP_LOGGING_ERROR("Failed to create mutex");
+    /* Initialize bridge base (creates mutex, sets name) */
+    if (bridge_base_init(&bridge->base, 0, "portia_logic") != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_logic_bridge_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_logic_bridge_create: bridge_base_init failed");
         return NULL;
     }
 
@@ -297,7 +293,7 @@ portia_logic_bridge_t* portia_logic_bridge_create(
     bridge->logic_network = neural_logic_create(&logic_config);
     if (!bridge->logic_network) {
         NIMCP_LOGGING_ERROR("Failed to create neural logic network");
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_logic_bridge_create: bridge->logic_network is NULL");
         return NULL;
@@ -307,7 +303,7 @@ portia_logic_bridge_t* portia_logic_bridge_create(
     if (init_decision_gates(bridge) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to initialize decision gates");
         neural_logic_destroy(bridge->logic_network);
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_logic_bridge_create: validation failed");
         return NULL;
@@ -342,10 +338,8 @@ void portia_logic_bridge_destroy(portia_logic_bridge_t* bridge) {
         neural_logic_destroy(bridge->logic_network);
     }
 
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    /* Cleanup bridge base (destroys mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge */
     nimcp_free(bridge);
@@ -457,7 +451,6 @@ bool portia_logic_can_upgrade_tier(
     }
 
     if (target_tier <= current_tier) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_logic_can_upgrade_tier: validation failed");
         return false;  /* Not an upgrade */
     }
 
@@ -755,7 +748,9 @@ int portia_logic_get_conditions(
     NIMCP_CHECK_THROW(bridge != NULL && conditions != NULL,
                       NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_conditions");
 
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(conditions, &bridge->conditions, sizeof(portia_resource_condition_t));
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }

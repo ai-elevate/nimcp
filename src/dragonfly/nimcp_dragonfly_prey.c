@@ -416,7 +416,7 @@ void dragonfly_prey_classifier_destroy(dragonfly_prey_classifier_t classifier) {
     if (!classifier) return;
 
     if (classifier->mutex) {
-        nimcp_mutex_free(classifier->mutex);
+        nimcp_mutex_destroy(classifier->mutex);
     }
 
     nimcp_free(classifier);

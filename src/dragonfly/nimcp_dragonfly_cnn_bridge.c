@@ -163,12 +163,21 @@ dragonfly_cnn_bridge_t* dragonfly_cnn_bridge_create(
     bridge->step_count = 0;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
+    /* Initialize bridge base infrastructure (mutex + metrics) */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_cnn") != 0) {
+        nimcp_free(bridge->feature_buffer);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     return bridge;
 }
 
 void dragonfly_cnn_bridge_destroy(dragonfly_cnn_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_cnn");
+
+    bridge_base_cleanup(&bridge->base);
 
     /* Free frame data in motion history */
     for (uint32_t i = 0; i < bridge->motion_history.num_frames; i++) {

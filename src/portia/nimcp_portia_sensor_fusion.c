@@ -75,7 +75,7 @@ struct portia_fusion_ctx {
     portia_fusion_stats_t stats;
 
     // Thread safety
-    void* mutex;  // Opaque mutex pointer
+    nimcp_platform_mutex_t* mutex;
 
     // Temporal tracking
     uint64_t last_fusion_ms;
@@ -441,7 +441,6 @@ static bool process_weighted_average(portia_fusion_ctx_t* ctx) {
 
     if (sum_weights < 1e-6F) {
         LOG_WARN("No valid sensor data for fusion");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "process_weighted_average: validation failed");
         return false;
     }
 
@@ -515,7 +514,6 @@ static bool process_kalman_filter(portia_fusion_ctx_t* ctx) {
 
     if (update_count == 0) {
         LOG_WARN("No valid sensor data for Kalman update");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "process_kalman_filter: update_count is zero");
         return false;
     }
 
@@ -560,14 +558,14 @@ portia_fusion_ctx_t* portia_fusion_init(
     if (config->fusion_rate_hz < 1 || config->fusion_rate_hz > 1000) {
         LOG_ERROR("Invalid fusion rate: %u Hz", config->fusion_rate_hz);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid fusion rate");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_fusion_init: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_init: invalid fusion_rate_hz");
         return NULL;
     }
 
     if (config->outlier_threshold < 1.0F || config->outlier_threshold > 10.0F) {
         LOG_ERROR("Invalid outlier threshold: %.2f", config->outlier_threshold);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid outlier threshold");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_fusion_init: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_init: invalid outlier_threshold");
         return NULL;
     }
 
@@ -586,8 +584,8 @@ portia_fusion_ctx_t* portia_fusion_init(
     ctx->magic = FUSION_CTX_MAGIC;
 
     // Initialize mutex
-    ctx->mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
-    if (!ctx->mutex || nimcp_platform_mutex_init((nimcp_platform_mutex_t*)ctx->mutex, false) != 0) {
+    ctx->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    if (!ctx->mutex || nimcp_platform_mutex_init(ctx->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize fusion mutex");
         if (ctx->mutex) nimcp_free(ctx->mutex);
         nimcp_free(ctx);
@@ -635,7 +633,7 @@ void portia_fusion_destroy(portia_fusion_ctx_t* ctx) {
         return;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_lock(ctx->mutex);
 
     LOG_INFO("Destroying Portia sensor fusion: fusions=%lu, outliers=%lu, dropouts=%lu",
              (unsigned long)ctx->stats.successful_fusions,
@@ -649,7 +647,7 @@ void portia_fusion_destroy(portia_fusion_ctx_t* ctx) {
     ctx->magic = 0;
 
     // Store mutex pointer before clearing ctx
-    nimcp_platform_mutex_t* mutex = (nimcp_platform_mutex_t*)ctx->mutex;
+    nimcp_platform_mutex_t* mutex = ctx->mutex;
     ctx->mutex = NULL;  // Prevent other threads from using it
 
     nimcp_platform_mutex_unlock(mutex);
@@ -693,13 +691,12 @@ bool portia_fusion_update_sensor(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_lock(ctx->mutex);
 
     // Check if sensor is enabled
     if (!ctx->config.sensors[reading->type].enabled) {
         LOG_DEBUG("Ignoring disabled sensor: %s", portia_fusion_sensor_name(reading->type));
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_fusion_update_sensor: ctx->config is NULL");
+        nimcp_platform_mutex_unlock(ctx->mutex);
         return false;
     }
 
@@ -707,8 +704,7 @@ bool portia_fusion_update_sensor(
     if (is_outlier(ctx, reading)) {
         ctx->stats.outliers_rejected++;
         LOG_DEBUG("Rejected outlier from %s", portia_fusion_sensor_name(reading->type));
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_update_sensor: validation failed");
+        nimcp_platform_mutex_unlock(ctx->mutex);
         return false;
     }
 
@@ -723,7 +719,7 @@ bool portia_fusion_update_sensor(
               reading->value, reading->confidence,
               (unsigned long)reading->timestamp_ms);
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_unlock(ctx->mutex);
 
     return true;
 }
@@ -737,7 +733,7 @@ bool portia_fusion_process(portia_fusion_ctx_t* ctx) {
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_lock(ctx->mutex);
 
     ctx->active_sensors_mask = 0;
 
@@ -755,8 +751,7 @@ bool portia_fusion_process(portia_fusion_ctx_t* ctx) {
     if (active_count < ctx->config.min_sensors) {
         LOG_WARN("Insufficient active sensors: %u < %u", active_count, ctx->config.min_sensors);
         ctx->current_state.confidence = MIN_CONFIDENCE;
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_process: validation failed");
+        nimcp_platform_mutex_unlock(ctx->mutex);
         return false;
     }
 
@@ -779,7 +774,7 @@ bool portia_fusion_process(portia_fusion_ctx_t* ctx) {
         }
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_unlock(ctx->mutex);
 
     return success;
 }
@@ -802,9 +797,9 @@ bool portia_fusion_get_state(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_lock(ctx->mutex);
     *state = ctx->current_state;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_unlock(ctx->mutex);
 
     return true;
 }
@@ -835,9 +830,9 @@ bool portia_fusion_set_weight(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_lock(ctx->mutex);
     ctx->config.sensors[type].weight = weight;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_unlock(ctx->mutex);
 
     LOG_INFO("Set %s weight to %.3f", portia_fusion_sensor_name(type), weight);
 
@@ -863,9 +858,9 @@ bool portia_fusion_enable_sensor(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_lock(ctx->mutex);
     ctx->config.sensors[type].enabled = enabled;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_unlock(ctx->mutex);
 
     LOG_INFO("%s sensor %s", enabled ? "Enabled" : "Disabled", portia_fusion_sensor_name(type));
 
@@ -882,9 +877,9 @@ float portia_fusion_get_confidence(const portia_fusion_ctx_t* ctx) {
         return 0.0F;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_lock(ctx->mutex);
     float confidence = ctx->current_state.confidence;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_unlock(ctx->mutex);
 
     return confidence;
 }
@@ -907,9 +902,9 @@ bool portia_fusion_get_stats(
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_lock(ctx->mutex);
     *stats = ctx->stats;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_unlock(ctx->mutex);
 
     return true;
 }
@@ -923,7 +918,7 @@ bool portia_fusion_reset(portia_fusion_ctx_t* ctx) {
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_lock(ctx->mutex);
 
     // Reset state
     memset(&ctx->current_state, 0, sizeof(fused_state_t));
@@ -949,7 +944,7 @@ bool portia_fusion_reset(portia_fusion_ctx_t* ctx) {
     ctx->last_fusion_ms = 0;
     ctx->active_sensors_mask = 0;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_unlock(ctx->mutex);
 
     LOG_INFO("Reset Portia sensor fusion state");
 

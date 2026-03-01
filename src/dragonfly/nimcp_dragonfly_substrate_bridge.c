@@ -137,8 +137,11 @@ static void update_modulation(dragonfly_substrate_bridge_t* bridge) {
     }
 
     float alpha = 0.01f;
-    bridge->stats.avg_performance_level = bridge->stats.avg_performance_level * (1.0f - alpha) +
-                                           bridge->modulation.overall_performance * alpha;
+    {
+        float ema = bridge->stats.avg_performance_level * (1.0f - alpha) +
+                    bridge->modulation.overall_performance * alpha;
+        if (isfinite(ema)) bridge->stats.avg_performance_level = ema;
+    }
 }
 
 static void consume_energy(dragonfly_substrate_bridge_t* bridge, float amount) {
@@ -149,7 +152,10 @@ static void consume_energy(dragonfly_substrate_bridge_t* bridge, float amount) {
 
     /* Update consumption rate (exponential moving average) */
     float rate = amount / (bridge->last_update_dt_ms + 0.001f);
-    bridge->consumption_rate = bridge->consumption_rate * 0.9f + rate * 0.1f;
+    {
+        float ema = bridge->consumption_rate * 0.9f + rate * 0.1f;
+        if (isfinite(ema)) bridge->consumption_rate = ema;
+    }
 
     if (rate > bridge->stats.peak_consumption_rate) {
         bridge->stats.peak_consumption_rate = rate;
@@ -297,6 +303,12 @@ dragonfly_substrate_bridge_t* dragonfly_substrate_bridge_create(
     bridge->stats.min_performance_level = 1.0f;
     bridge->stats.avg_performance_level = 1.0f;
 
+    /* Initialize bridge base infrastructure (mutex + metrics) */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_substrate") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     bridge->initialized = true;
     return bridge;
 }
@@ -304,6 +316,7 @@ dragonfly_substrate_bridge_t* dragonfly_substrate_bridge_create(
 void dragonfly_substrate_bridge_destroy(dragonfly_substrate_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_substrate");
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

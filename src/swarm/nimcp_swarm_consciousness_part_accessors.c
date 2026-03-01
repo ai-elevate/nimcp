@@ -51,6 +51,11 @@ swarm_consciousness_metrics_t* swarm_consciousness_get_metrics(
 
     nimcp_mutex_lock(&ctx->lock);
 
+    if (!ctx->current_metrics) {
+        nimcp_mutex_unlock(&ctx->lock);
+        return NULL;
+    }
+
     swarm_consciousness_metrics_t* result = (swarm_consciousness_metrics_t*)
         nimcp_malloc(sizeof(swarm_consciousness_metrics_t));
     if (result) {
@@ -161,7 +166,6 @@ static brain_t* swarm_brain_get_drone_brain_internal(const swarm_brain_t* swarm,
 
     // Remote drone brains not directly accessible
     // In production, would use swarm messaging to request phi values
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_get_drone_brain_internal: operation failed");
     return NULL;
 }
 

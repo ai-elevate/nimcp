@@ -118,6 +118,7 @@ static inline void *nimcp_replay_heap_extract(nimcp_min_heap_t *heap) {
 static nimcp_result_t _access_unlocked(NimcpSwarmMemory *memory, const char *memory_id);
 static nimcp_result_t _rehearse_unlocked(NimcpSwarmMemory *memory, const char *memory_id);
 static nimcp_result_t _apply_forgetting_unlocked(NimcpSwarmMemory *memory, uint32_t *forgotten_count);
+static nimcp_result_t _forget_weak_patterns_unlocked(NimcpSwarmMemory *mem, float threshold);
 static nimcp_result_t _schedule_replay_unlocked(NimcpSwarmMemory *memory, const char *memory_id, float priority);
 static nimcp_result_t _replay_cycle_unlocked(NimcpSwarmMemory *memory, uint32_t max_replays, uint32_t *replays_performed);
 static nimcp_result_t _distribute_unlocked(NimcpSwarmMemory *memory, const char *memory_id, uint32_t *replicas_created);
@@ -449,7 +450,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
             hash_table_destroy(memory->memories_by_type[i]);
         }
         nimcp_free(memory);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_memory_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: failed to create pattern_associations hash table");
         return NULL;
     }
 
@@ -465,7 +466,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
             hash_table_destroy(memory->memories_by_type[i]);
         }
         nimcp_free(memory);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_memory_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: failed to create sequence_transitions hash table");
         return NULL;
     }
 
@@ -505,8 +506,17 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
     memory->mutex = nimcp_platform_mutex_create();
     if (!memory->mutex) {
         LOG_ERROR("Failed to initialize mutex");
+        hash_table_destroy(memory->sequence_transitions);
+        hash_table_destroy(memory->pattern_associations);
+        hash_table_destroy(memory->patterns);
+        hash_table_destroy(memory->hippocampus_nodes);
+        nimcp_min_heap_destroy(memory->replay_queue);
+        hash_table_destroy(memory->memories);
+        for (int i = 0; i < NIMCP_MEMORY_TYPE_COUNT; i++) {
+            hash_table_destroy(memory->memories_by_type[i]);
+        }
         nimcp_free(memory);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: memory->mutex is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: failed to create mutex");
         return NULL;
     }
 
@@ -1007,7 +1017,7 @@ static nimcp_result_t _replay_cycle_unlocked(
         /* Update replay entry */
         replay->replay_count++;
         replay->next_replay_time = current_time +
-            (uint64_t)(3600000.0F / replay->replay_priority);  /* Schedule next replay */
+            (uint64_t)(3600000.0F / fmaxf(replay->replay_priority, 0.001F));  /* Schedule next replay */
 
         /* Re-insert if still valuable */
         if (replay->replay_count < 10 && replay->memory->strength > NIMCP_MIN_MEMORY_STRENGTH) {
@@ -1113,9 +1123,11 @@ static nimcp_result_t _compress_unlocked(
     compressed->pattern_hash = hash;
 
     /* Update statistics */
-    memory->stats.avg_compression_ratio =
-        (memory->stats.avg_compression_ratio * (memory->stats.total_memories - 1) +
-         compressed->compression_ratio) / memory->stats.total_memories;
+    if (memory->stats.total_memories > 0) {
+        memory->stats.avg_compression_ratio =
+            (memory->stats.avg_compression_ratio * (memory->stats.total_memories - 1) +
+             compressed->compression_ratio) / memory->stats.total_memories;
+    }
 
     LOG_DEBUG("Compressed memory: %s (ratio=%.3f)", memory_id, compressed->compression_ratio);
     return NIMCP_SUCCESS;
@@ -1482,7 +1494,7 @@ nimcp_result_t nimcp_swarm_memory_consolidate(
 bool nimcp_swarm_memory_is_consolidating(const NimcpSwarmMemory *memory)
 {
     if (!memory) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_is_consolidating: memory is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_memory_is_consolidating: memory is NULL");
         return false;
     }
 
@@ -1929,7 +1941,8 @@ nimcp_result_t nimcp_swarm_memory_send_memory(
 
     if (memory->auto_compression && !entry->is_compressed) {
         NimcpCompressedMemory compressed;
-        if (nimcp_swarm_memory_compress(memory, memory_id, &compressed) == NIMCP_SUCCESS) {
+        /* Use unlocked version since we already hold mutex */
+        if (_compress_unlocked(memory, memory_id, &compressed) == NIMCP_SUCCESS) {
             data_to_send = compressed.compressed_data;
             size_to_send = compressed.compressed_size;
         }
@@ -2020,7 +2033,7 @@ float nimcp_swarm_memory_get_health_score(const NimcpSwarmMemory *memory)
     float node_health = (memory->stats.active_nodes > 0) ?
         (float)memory->stats.active_nodes / (float)memory->replication_factor : 0.0F;
 
-    float replication_health = (memory->stats.distributed_memories > 0) ?
+    float replication_health = (memory->stats.distributed_memories > 0 && memory->stats.total_memories > 0) ?
         (float)memory->stats.distributed_memories / (float)memory->stats.total_memories : 0.0F;
 
     float consolidation_health = (memory->consolidation_count > 0) ? 1.0F : 0.5F;
@@ -2197,7 +2210,8 @@ nimcp_result_t swarm_memory_store_pattern(
     /* Check capacity */
     if (mem->pattern_stats.total_patterns >= mem->max_patterns) {
         LOG_WARN("Pattern capacity reached, triggering forget");
-        swarm_memory_forget_weak_patterns(mem, 0.3F);
+        /* Use unlocked version since we already hold mutex */
+        _forget_weak_patterns_unlocked(mem, 0.3F);
     }
 
     /* Create pattern copy */
@@ -2390,10 +2404,11 @@ nimcp_result_t swarm_memory_associate_pattern(
         mem->pattern_stats.total_associations++;
     }
 
+    float saved_strength = assoc->association_strength;
     nimcp_platform_mutex_unlock(mem->mutex);
 
     LOG_DEBUG("Associated pattern %u with outcome %u (strength=%.3f)",
-              pattern_id, outcome_id, assoc->association_strength);
+              pattern_id, outcome_id, saved_strength);
 
     return NIMCP_SUCCESS;
 }
@@ -2563,6 +2578,26 @@ nimcp_result_t swarm_memory_consolidate_patterns(
     return NIMCP_SUCCESS;
 }
 
+/**
+ * @brief Internal helper for forget weak patterns (caller must hold mutex)
+ */
+static nimcp_result_t _forget_weak_patterns_unlocked(
+    NimcpSwarmMemory *mem,
+    float threshold)
+{
+    uint32_t forgotten_count = 0;
+
+    /* NOTE: Would need hash table iteration to find and remove weak patterns */
+
+    mem->pattern_stats.patterns_forgotten += forgotten_count;
+    mem->pattern_stats.total_patterns -= forgotten_count;
+
+    LOG_DEBUG("Forgot %u weak patterns (threshold=%.3f)",
+              forgotten_count, threshold);
+
+    return NIMCP_SUCCESS;
+}
+
 nimcp_result_t swarm_memory_forget_weak_patterns(
     NimcpSwarmMemory *mem,
     float threshold)
@@ -2574,19 +2609,11 @@ nimcp_result_t swarm_memory_forget_weak_patterns(
 
     nimcp_platform_mutex_lock(mem->mutex);
 
-    uint32_t forgotten_count = 0;
-
-    /* NOTE: Would need hash table iteration to find and remove weak patterns */
-
-    mem->pattern_stats.patterns_forgotten += forgotten_count;
-    mem->pattern_stats.total_patterns -= forgotten_count;
+    nimcp_result_t result = _forget_weak_patterns_unlocked(mem, threshold);
 
     nimcp_platform_mutex_unlock(mem->mutex);
 
-    LOG_DEBUG("Forgot %u weak patterns (threshold=%.3f)",
-              forgotten_count, threshold);
-
-    return NIMCP_SUCCESS;
+    return result;
 }
 
 swarm_pattern_stats_t swarm_memory_get_pattern_stats(
@@ -2649,8 +2676,7 @@ int32_t swarm_memory_recognize_pattern(
 
     LOG_DEBUG("No pattern match found (best_similarity=%.3f < threshold=%.3f)",
               best_similarity, memory->pattern_similarity_threshold);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_recognize_pattern: capacity exceeded");
-    return -1;
+    return -1;  /* Not found is a normal search miss, not an error */
 }
 
 /**
@@ -2667,12 +2693,12 @@ int32_t swarm_memory_store_pattern_labeled(
     const char *label)
 {
     if (!memory || !signal || len == 0 || !label) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_store_pattern_labeled: required parameter is NULL (memory, signal, label)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_memory_store_pattern_labeled: required parameter is NULL");
         return -1;
     }
 
     if (!memory->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_store_pattern_labeled: memory->is_initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "swarm_memory_store_pattern_labeled: memory not initialized");
         return -1;
     }
 
@@ -2682,7 +2708,8 @@ int32_t swarm_memory_store_pattern_labeled(
     if (memory->pattern_stats.total_patterns >= memory->max_patterns) {
         LOG_WARN("Pattern capacity reached (%u/%u), triggering cleanup",
                  memory->pattern_stats.total_patterns, memory->max_patterns);
-        swarm_memory_forget_weak_patterns(memory, 0.3F);
+        /* Use unlocked version since we already hold mutex */
+        _forget_weak_patterns_unlocked(memory, 0.3F);
     }
 
     /* Create new pattern */
@@ -3237,7 +3264,7 @@ static NimcpMemoryEntry *create_memory_entry(
 {
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_malloc(sizeof(NimcpMemoryEntry));
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate memory entry");
 
         return NULL;
     }

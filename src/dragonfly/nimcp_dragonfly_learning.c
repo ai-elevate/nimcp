@@ -396,7 +396,7 @@ void dragonfly_learning_destroy(dragonfly_learning_t learning) {
     if (!learning) return;
 
     if (learning->mutex) {
-        nimcp_mutex_free(learning->mutex);
+        nimcp_mutex_destroy(learning->mutex);
     }
 
     nimcp_free(learning);
@@ -652,9 +652,9 @@ int dragonfly_learning_get_strategy_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)learning->mutex);
+    nimcp_mutex_lock(learning->mutex);
     *stats = learning->strategy_stats[strategy];
-    nimcp_mutex_unlock((nimcp_mutex_t*)learning->mutex);
+    nimcp_mutex_unlock(learning->mutex);
 
     return 0;
 }
@@ -669,12 +669,12 @@ int dragonfly_learning_get_all_strategy_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)learning->mutex);
+    nimcp_mutex_lock(learning->mutex);
 
     memcpy(stats, learning->strategy_stats, sizeof(learning->strategy_stats));
     *num_strategies = NUM_STRATEGIES;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)learning->mutex);
+    nimcp_mutex_unlock(learning->mutex);
 
     return 0;
 }
@@ -690,14 +690,14 @@ int dragonfly_learning_get_patterns(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)learning->mutex);
+    nimcp_mutex_lock(learning->mutex);
 
     uint32_t count = learning->num_patterns < max_patterns ?
                      learning->num_patterns : max_patterns;
     memcpy(patterns, learning->patterns, count * sizeof(learned_pattern_t));
     *num_patterns = count;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)learning->mutex);
+    nimcp_mutex_unlock(learning->mutex);
 
     return 0;
 }
@@ -713,7 +713,7 @@ int dragonfly_learning_get_recent_episodes(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)learning->mutex);
+    nimcp_mutex_lock(learning->mutex);
 
     uint32_t count = learning->episode_count < max_episodes ?
                      learning->episode_count : max_episodes;
@@ -725,7 +725,7 @@ int dragonfly_learning_get_recent_episodes(
 
     *num_episodes = count;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)learning->mutex);
+    nimcp_mutex_unlock(learning->mutex);
 
     return 0;
 }
@@ -739,9 +739,9 @@ int dragonfly_learning_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)learning->mutex);
+    nimcp_mutex_lock(learning->mutex);
     *stats = learning->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)learning->mutex);
+    nimcp_mutex_unlock(learning->mutex);
 
     return 0;
 }
