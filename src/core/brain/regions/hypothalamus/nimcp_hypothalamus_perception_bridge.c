@@ -226,6 +226,13 @@ hypo_perception_bridge_t* hypo_perception_bridge_create(
         return NULL;
     }
 
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "hypothalamus_perception") != 0) {
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_perception_bridge_create: bridge_base_init failed");
+        return NULL;
+    }
+
     bridge->drives = drives;
     bridge->creation_time_us = nimcp_time_get_us();
 
@@ -347,6 +354,7 @@ void hypo_perception_bridge_destroy(hypo_perception_bridge_t* bridge) {
         hypo_perception_bridge_unregister_bio(bridge);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     nimcp_log(LOG_LEVEL_INFO, "hypo_perception_bridge: destroyed");
 }
@@ -908,7 +916,12 @@ int hypo_perception_bridge_compute_free_energy(
     /* Update average in stats */
     float prev_avg = bridge->stats.avg_free_energy;
     float count = (float)(bridge->stats.predictions_generated + 1);
-    bridge->stats.avg_free_energy = prev_avg + (fe - prev_avg) / count;
+    if (count > 0.0f) {
+        float new_avg_fe = prev_avg + (fe - prev_avg) / count;
+        if (isfinite(new_avg_fe)) {
+            bridge->stats.avg_free_energy = new_avg_fe;
+        }
+    }
 
     return 0;
 }
@@ -986,9 +999,14 @@ int hypo_perception_bridge_modulate_pain(
 
     /* Update average in stats */
     float ratio = clamped_raw > 0.001f ? (*modulated_pain / clamped_raw) : 1.0f;
-    float prev_avg = bridge->stats.avg_pain_modulation;
-    float count = (float)bridge->stats.pain_stimuli_modulated;
-    bridge->stats.avg_pain_modulation = prev_avg + (ratio - prev_avg) / count;
+    float prev_avg_pain = bridge->stats.avg_pain_modulation;
+    float pain_count = (float)bridge->stats.pain_stimuli_modulated;
+    if (pain_count > 0.0f) {
+        float new_avg_pain = prev_avg_pain + (ratio - prev_avg_pain) / pain_count;
+        if (isfinite(new_avg_pain)) {
+            bridge->stats.avg_pain_modulation = new_avg_pain;
+        }
+    }
 
     return 0;
 }

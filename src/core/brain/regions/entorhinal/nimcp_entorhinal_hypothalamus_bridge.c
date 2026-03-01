@@ -121,7 +121,7 @@ entorhinal_hypothalamus_bridge_state_t* entorhinal_hypothalamus_bridge_create(
             sizeof(entorhinal_hypothalamus_bridge_state_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entorhinal_hypothalamus_bridge_create: allocation failed");
 
         return NULL;
 

@@ -316,8 +316,10 @@ int hypo_immune_fep_update(hypo_immune_fep_bridge_t* bridge) {
     bridge->fep_effects.resolution_progress = bridge->immune_effects.cytokine_il10;
 
     /* Compute fever signal (IL-1 driven) */
-    float fever = (bridge->immune_effects.cytokine_il1 - bridge->config.il1_baseline) /
-                  (1.0f - bridge->config.il1_baseline);
+    float fever_denom = 1.0f - bridge->config.il1_baseline;
+    float fever = (fever_denom > 1e-6f)
+        ? (bridge->immune_effects.cytokine_il1 - bridge->config.il1_baseline) / fever_denom
+        : 0.0f;
     if (fever < 0.0f) fever = 0.0f;
     if (fever > 1.0f) fever = 1.0f;
     bridge->fep_effects.fever_signal = fever;
@@ -868,14 +870,14 @@ static void update_running_averages(
 ) {
     const float alpha = 0.1f;
 
-    bridge->state.avg_surprise =
-        (1.0f - alpha) * bridge->state.avg_surprise + alpha * surprise;
+    float new_surprise = (1.0f - alpha) * bridge->state.avg_surprise + alpha * surprise;
+    if (isfinite(new_surprise)) bridge->state.avg_surprise = new_surprise;
 
-    bridge->state.avg_prediction_error =
-        (1.0f - alpha) * bridge->state.avg_prediction_error + alpha * pred_error;
+    float new_pred_error = (1.0f - alpha) * bridge->state.avg_prediction_error + alpha * pred_error;
+    if (isfinite(new_pred_error)) bridge->state.avg_prediction_error = new_pred_error;
 
-    bridge->stats.avg_free_energy =
-        (1.0f - alpha) * bridge->stats.avg_free_energy + alpha * free_energy;
+    float new_avg_fe = (1.0f - alpha) * bridge->stats.avg_free_energy + alpha * free_energy;
+    if (isfinite(new_avg_fe)) bridge->stats.avg_free_energy = new_avg_fe;
     bridge->stats.avg_surprise = bridge->state.avg_surprise;
     bridge->stats.avg_prediction_error = bridge->state.avg_prediction_error;
 }

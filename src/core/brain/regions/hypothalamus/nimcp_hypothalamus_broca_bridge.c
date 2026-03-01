@@ -139,6 +139,9 @@ hypo_broca_bridge_t* hypo_broca_bridge_create(
     bridge->bio_registered = false;
     bridge->bio_ctx = NULL;
 
+    /* Initialize bridge base (creates mutex) */
+    bridge_base_init(&bridge->base, 0, "hypothalamus_broca");
+
     nimcp_log(LOG_LEVEL_INFO, "hypo_broca_bridge: created successfully");
     return bridge;
 }
@@ -151,6 +154,7 @@ void hypo_broca_bridge_destroy(hypo_broca_bridge_t* bridge) {
         hypo_broca_bridge_unregister_bio(bridge);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     nimcp_log(LOG_LEVEL_INFO, "hypo_broca_bridge: destroyed");
 }
@@ -285,8 +289,9 @@ int hypo_broca_bridge_compute_modulation(hypo_broca_bridge_t* bridge) {
 
     if (cfg->enable_alarm_vocalization && safety_urgency > cfg->alarm_threshold) {
         mod->alarm_mode = true;
-        mod->alarm_intensity = (safety_urgency - cfg->alarm_threshold) /
-                               (1.0f - cfg->alarm_threshold);
+        float denom = 1.0f - cfg->alarm_threshold;
+        mod->alarm_intensity = (denom > 1e-6f) ?
+            (safety_urgency - cfg->alarm_threshold) / denom : 1.0f;
         mod->initiation_mode = HYPO_INIT_COMPULSIVE;
         mod->volume_multiplier = 2.0f;  /* Max volume for alarm */
 

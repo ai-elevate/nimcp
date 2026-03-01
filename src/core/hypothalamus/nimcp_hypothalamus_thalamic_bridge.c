@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <math.h>
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
@@ -63,6 +64,8 @@ hypothalamus_thalamic_bridge_t* hypothalamus_thalamic_bridge_create(void* hypoth
         return NULL;
     }
 
+    bridge_base_init(&bridge->base, 0, "hypothalamus_thalamic");
+
     bridge->hypothalamus = hypothalamus;
     bridge->router = router;
     bridge->attention_weight = 1.0f;
@@ -79,9 +82,10 @@ hypothalamus_thalamic_bridge_t* hypothalamus_thalamic_bridge_create(void* hypoth
 }
 
 void hypothalamus_thalamic_bridge_destroy(hypothalamus_thalamic_bridge_t* bridge) {
-    if (bridge) {
-        nimcp_free(bridge);
-    }
+    if (!bridge) return;
+
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
 }
 
 int hypothalamus_thalamic_bridge_reset(hypothalamus_thalamic_bridge_t* bridge) {
@@ -125,9 +129,11 @@ int hypothalamus_thalamic_route_signal(hypothalamus_thalamic_bridge_t* bridge,
 
     /* Update statistics - routing is handled externally if router is connected */
     float alpha = 0.1f;
-    bridge->stats.avg_drive_strength =
-        (1.0f - alpha) * bridge->stats.avg_drive_strength +
-        alpha * signal->drive_strength;
+    float new_avg = (1.0f - alpha) * bridge->stats.avg_drive_strength +
+                    alpha * signal->drive_strength;
+    if (isfinite(new_avg)) {
+        bridge->stats.avg_drive_strength = new_avg;
+    }
 
     if (signal->signal_type == HYPOTHALAMUS_SIGNAL_DRIVE) {
         bridge->stats.drives_routed++;

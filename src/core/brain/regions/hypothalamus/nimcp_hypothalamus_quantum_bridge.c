@@ -282,7 +282,7 @@ static int solve_qubo_simulated_annealing(
     if (!solution || !best_solution) {
         if (solution) nimcp_free(solution);
         if (best_solution) nimcp_free(best_solution);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qubo_index: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "solve_qubo_simulated_annealing: allocation failed");
         return -1;
     }
 
@@ -452,7 +452,7 @@ hypothalamus_quantum_bridge_t* hypothalamus_quantum_bridge_create(
             1, sizeof(hypothalamus_quantum_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge memory");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypothalamus_quantum_bridge_create: allocation failed");
 
         return NULL;
     }
@@ -466,10 +466,18 @@ hypothalamus_quantum_bridge_t* hypothalamus_quantum_bridge_create(
 
     bridge->hypothalamus = hypothalamus;
 
+    /* Initialize bridge base (creates mutex) */
+    if (bridge_base_init(&bridge->base, 0, "hypothalamus_quantum") != 0) {
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hypothalamus_quantum_bridge_create: bridge_base_init failed");
+        return NULL;
+    }
+
     /* Initialize QUBO matrix */
     if (init_qubo_matrix(&bridge->qubo, bridge->config.num_qubits) != 0) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hypothalamus_quantum_default_config: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hypothalamus_quantum_bridge_create: init_qubo_matrix failed");
         return NULL;
     }
 
@@ -496,6 +504,12 @@ void hypothalamus_quantum_bridge_destroy(hypothalamus_quantum_bridge_t* bridge) 
     LOG_INFO(LOG_MODULE, "Destroying quantum bridge");
 
     free_qubo_matrix(&bridge->qubo);
+
+    /* Cleanup bridge base (destroys mutex) */
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+    }
+
     nimcp_free(bridge);
 }
 
@@ -548,7 +562,6 @@ int hypothalamus_quantum_optimize_homeostasis(
 
     if (bridge->config.mode == HYPOTHALAMUS_QUANTUM_MODE_DISABLED) {
         LOG_DEBUG(LOG_MODULE, "Quantum mode disabled");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypothalamus_quantum_bridge_reset: validation failed");
         return -1;
     }
 

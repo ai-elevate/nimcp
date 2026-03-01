@@ -517,13 +517,11 @@ int hypo_epi_fep_compute_info_value(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    /* Update first to get latest state */
+    /* Update first to get latest state (update handles its own locking) */
     hypo_epi_fep_update(bridge);
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *info_value = bridge->fep_effects.info_value;
-
     nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
@@ -567,8 +565,27 @@ int hypo_epi_fep_update_from_evidence(
         (1.0f - alpha) * bridge->epi_effects.avg_uncertainty +
         alpha * bridge->fep_effects.uncertainty_level;
 
-    /* Modulate precision based on evidence quality */
-    hypo_epi_fep_modulate_precision(bridge);
+    /* Modulate precision based on evidence quality (inline to avoid deadlock) */
+    {
+        float calibration = bridge->epi_effects.calibration_score;
+        float target_precision = HYPO_EPI_FEP_DEFAULT_PRECISION;
+        if (calibration > bridge->config.calibration_target) {
+            target_precision = HYPO_EPI_FEP_DEFAULT_PRECISION * (1.0f + calibration);
+        } else {
+            target_precision = HYPO_EPI_FEP_DEFAULT_PRECISION * calibration;
+        }
+        float prec_alpha = bridge->config.precision_learning_rate;
+        bridge->state.current_precision =
+            (1.0f - prec_alpha) * bridge->state.current_precision + prec_alpha * target_precision;
+        if (bridge->state.current_precision < HYPO_EPI_FEP_MIN_PRECISION) {
+            bridge->state.current_precision = HYPO_EPI_FEP_MIN_PRECISION;
+        }
+        if (bridge->state.current_precision > HYPO_EPI_FEP_MAX_PRECISION) {
+            bridge->state.current_precision = HYPO_EPI_FEP_MAX_PRECISION;
+        }
+        bridge->fep_effects.precision = bridge->state.current_precision;
+        bridge->stats.avg_precision = bridge->state.current_precision;
+    }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
@@ -626,8 +643,27 @@ int hypo_epi_fep_check_calibration(
             (float)bridge->epi_effects.calibration_checks;
     }
 
-    /* Modulate precision based on calibration */
-    hypo_epi_fep_modulate_precision(bridge);
+    /* Modulate precision based on calibration (inline to avoid deadlock) */
+    {
+        float cal = bridge->epi_effects.calibration_score;
+        float target_prec = HYPO_EPI_FEP_DEFAULT_PRECISION;
+        if (cal > bridge->config.calibration_target) {
+            target_prec = HYPO_EPI_FEP_DEFAULT_PRECISION * (1.0f + cal);
+        } else {
+            target_prec = HYPO_EPI_FEP_DEFAULT_PRECISION * cal;
+        }
+        float prec_alpha = bridge->config.precision_learning_rate;
+        bridge->state.current_precision =
+            (1.0f - prec_alpha) * bridge->state.current_precision + prec_alpha * target_prec;
+        if (bridge->state.current_precision < HYPO_EPI_FEP_MIN_PRECISION) {
+            bridge->state.current_precision = HYPO_EPI_FEP_MIN_PRECISION;
+        }
+        if (bridge->state.current_precision > HYPO_EPI_FEP_MAX_PRECISION) {
+            bridge->state.current_precision = HYPO_EPI_FEP_MAX_PRECISION;
+        }
+        bridge->fep_effects.precision = bridge->state.current_precision;
+        bridge->stats.avg_precision = bridge->state.current_precision;
+    }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;

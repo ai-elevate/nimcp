@@ -216,19 +216,15 @@ hypo_medulla_bridge_t* hypo_medulla_bridge_create(
     bridge->last_circadian_sync_us = 0;
     bridge->last_update_us = 0;
 
-    /* Create mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
+    /* Initialize bridge base (creates mutex) */
+    bridge_base_init(&bridge->base, 0, "hypothalamus_medulla");
 
     return bridge;
 }
 
 void hypo_medulla_bridge_destroy(hypo_medulla_bridge_t* bridge) {
-    if (!bridge) {
-        return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_medulla");
-    }
+    if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_medulla");
 
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);

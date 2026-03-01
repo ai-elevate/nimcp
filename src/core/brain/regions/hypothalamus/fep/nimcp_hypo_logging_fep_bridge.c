@@ -890,14 +890,14 @@ static void update_running_averages(
 ) {
     const float alpha = 0.1f;
 
-    bridge->state.avg_surprise =
-        (1.0f - alpha) * bridge->state.avg_surprise + alpha * surprise;
+    float new_surprise = (1.0f - alpha) * bridge->state.avg_surprise + alpha * surprise;
+    if (isfinite(new_surprise)) bridge->state.avg_surprise = new_surprise;
 
-    bridge->state.avg_prediction_error =
-        (1.0f - alpha) * bridge->state.avg_prediction_error + alpha * pred_error;
+    float new_pred_error = (1.0f - alpha) * bridge->state.avg_prediction_error + alpha * pred_error;
+    if (isfinite(new_pred_error)) bridge->state.avg_prediction_error = new_pred_error;
 
-    bridge->stats.avg_free_energy =
-        (1.0f - alpha) * bridge->stats.avg_free_energy + alpha * free_energy;
+    float new_avg_fe = (1.0f - alpha) * bridge->stats.avg_free_energy + alpha * free_energy;
+    if (isfinite(new_avg_fe)) bridge->stats.avg_free_energy = new_avg_fe;
     bridge->stats.avg_surprise = bridge->state.avg_surprise;
     bridge->stats.avg_prediction_error = bridge->state.avg_prediction_error;
 }
@@ -942,10 +942,10 @@ static void update_rate_tracking(
 
     /* Update predictions */
     float alpha = 0.1f;
-    tracking->predicted_rate =
-        (1.0f - alpha) * tracking->predicted_rate + alpha * rate;
-    tracking->mean_rate =
-        (1.0f - alpha) * tracking->mean_rate + alpha * rate;
+    float new_predicted = (1.0f - alpha) * tracking->predicted_rate + alpha * rate;
+    if (isfinite(new_predicted)) tracking->predicted_rate = new_predicted;
+    float new_mean = (1.0f - alpha) * tracking->mean_rate + alpha * rate;
+    if (isfinite(new_mean)) tracking->mean_rate = new_mean;
 
     /* Reset window */
     tracking->window_start_ms = timestamp_ms;

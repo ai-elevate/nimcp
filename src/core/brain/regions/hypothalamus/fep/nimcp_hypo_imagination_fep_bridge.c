@@ -534,8 +534,26 @@ int hypo_img_fep_update_from_validation(
         bridge->img_effects.curiosity_drive_update = -0.05f;
     }
 
-    /* Update precision */
-    hypo_img_fep_modulate_precision(bridge);
+    /* Update precision (inline to avoid deadlock) */
+    {
+        float acc = 0.5f;
+        if (bridge->img_effects.scenarios_generated > 0) {
+            acc = (float)bridge->img_effects.scenarios_validated /
+                  (float)bridge->img_effects.scenarios_generated;
+        }
+        float target_prec = HYPO_IMG_FEP_DEFAULT_PRECISION * (1.0f + acc);
+        float prec_alpha = bridge->config.precision_learning_rate;
+        bridge->state.current_precision =
+            (1.0f - prec_alpha) * bridge->state.current_precision + prec_alpha * target_prec;
+        if (bridge->state.current_precision < HYPO_IMG_FEP_MIN_PRECISION) {
+            bridge->state.current_precision = HYPO_IMG_FEP_MIN_PRECISION;
+        }
+        if (bridge->state.current_precision > HYPO_IMG_FEP_MAX_PRECISION) {
+            bridge->state.current_precision = HYPO_IMG_FEP_MAX_PRECISION;
+        }
+        bridge->fep_effects.precision = bridge->state.current_precision;
+        bridge->stats.avg_precision = bridge->state.current_precision;
+    }
 
     /* Update prediction accuracy stat */
     if (bridge->img_effects.scenarios_generated > 0) {

@@ -411,6 +411,13 @@ hypo_training_bridge_t* hypo_training_bridge_create(
 
     }
 
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "hypothalamus_training") != 0) {
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_training_bridge_create: bridge_base_init failed");
+        return NULL;
+    }
+
     /* Apply configuration */
     if (config) {
         bridge->config = *config;
@@ -464,6 +471,7 @@ void hypo_training_bridge_destroy(hypo_training_bridge_t* bridge) {
     /* Disconnect from systems */
     hypo_training_bridge_disconnect(bridge);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

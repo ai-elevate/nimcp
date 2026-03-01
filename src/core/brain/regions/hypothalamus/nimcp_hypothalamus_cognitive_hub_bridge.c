@@ -565,7 +565,7 @@ hypo_cognitive_hub_bridge_t* hypo_cognitive_hub_create(
     hypo_cognitive_hub_bridge_t* bridge = (hypo_cognitive_hub_bridge_t*)nimcp_calloc(
         1, sizeof(hypo_cognitive_hub_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_cognitive_hub_create: allocation failed");
 
         return NULL;
     }
@@ -621,8 +621,8 @@ hypo_cognitive_hub_bridge_t* hypo_cognitive_hub_create(
 void hypo_cognitive_hub_destroy(hypo_cognitive_hub_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_cognitive_hub");
     }
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_cognitive_hub");
 
     /* Disconnect if connected */
     if (bridge->connected) {

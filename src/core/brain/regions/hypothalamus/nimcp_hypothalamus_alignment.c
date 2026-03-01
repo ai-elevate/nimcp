@@ -161,7 +161,7 @@ static alignment_state_t* get_state(const hypo_drive_system_handle_t* system) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_state: operation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_state: no available alignment state slots");
     return NULL;  /* No slots available */
 }
 
@@ -286,8 +286,7 @@ static bool invoke_verifiers(
             if (!state->callbacks[i].callback.verifier(
                     snapshot,
                     state->callbacks[i].user_data)) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "invoke_verifiers: state is NULL");
-                return false;  /* Verifier failed */
+                return false;  /* Verifier failed — legitimate verification failure, not an error */
             }
         }
     }

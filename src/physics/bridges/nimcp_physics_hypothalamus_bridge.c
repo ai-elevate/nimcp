@@ -157,6 +157,12 @@ physics_hypo_bridge_t* physics_hypo_bridge_create(
     physics_hypo_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate physics-hypothalamus bridge");
 
+    /* Initialize bridge base infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "physics_hypothalamus_bridge") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     /* Apply configuration */
     if (config) {
         bridge->config = *config;
@@ -202,6 +208,7 @@ void physics_hypo_bridge_destroy(physics_hypo_bridge_t* bridge) {
         (unsigned long)bridge->stats.physics_to_hypo_count,
         (unsigned long)bridge->stats.hypo_to_physics_count);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

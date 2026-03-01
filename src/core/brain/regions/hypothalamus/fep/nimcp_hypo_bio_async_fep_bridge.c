@@ -312,8 +312,8 @@ int hypo_bio_async_fep_update(hypo_bio_async_fep_bridge_t* bridge) {
 
         /* Update prediction */
         float alpha = 0.1f;
-        bridge->state.temporal.predicted_rate =
-            (1.0f - alpha) * bridge->state.temporal.predicted_rate + alpha * rate;
+        float new_predicted = (1.0f - alpha) * bridge->state.temporal.predicted_rate + alpha * rate;
+        if (isfinite(new_predicted)) bridge->state.temporal.predicted_rate = new_predicted;
     }
 
     /* Update statistics */
@@ -757,14 +757,14 @@ static void update_running_averages(
 ) {
     const float alpha = 0.1f;
 
-    bridge->state.avg_surprise =
-        (1.0f - alpha) * bridge->state.avg_surprise + alpha * surprise;
+    float new_surprise = (1.0f - alpha) * bridge->state.avg_surprise + alpha * surprise;
+    if (isfinite(new_surprise)) bridge->state.avg_surprise = new_surprise;
 
-    bridge->state.avg_prediction_error =
-        (1.0f - alpha) * bridge->state.avg_prediction_error + alpha * pred_error;
+    float new_pred_error = (1.0f - alpha) * bridge->state.avg_prediction_error + alpha * pred_error;
+    if (isfinite(new_pred_error)) bridge->state.avg_prediction_error = new_pred_error;
 
-    bridge->stats.avg_free_energy =
-        (1.0f - alpha) * bridge->stats.avg_free_energy + alpha * free_energy;
+    float new_avg_fe = (1.0f - alpha) * bridge->stats.avg_free_energy + alpha * free_energy;
+    if (isfinite(new_avg_fe)) bridge->stats.avg_free_energy = new_avg_fe;
     bridge->stats.avg_surprise = bridge->state.avg_surprise;
     bridge->stats.avg_prediction_error = bridge->state.avg_prediction_error;
 }
@@ -788,12 +788,12 @@ static void update_temporal_pattern(
 
     if (interval_ms > 0.0f) {
         float alpha = 0.1f;
-        temporal->mean_interval_ms =
-            (1.0f - alpha) * temporal->mean_interval_ms + alpha * interval_ms;
+        float new_mean = (1.0f - alpha) * temporal->mean_interval_ms + alpha * interval_ms;
+        if (isfinite(new_mean)) temporal->mean_interval_ms = new_mean;
 
         float diff = interval_ms - temporal->mean_interval_ms;
-        temporal->variance_interval_ms =
-            (1.0f - alpha) * temporal->variance_interval_ms + alpha * diff * diff;
+        float new_var = (1.0f - alpha) * temporal->variance_interval_ms + alpha * diff * diff;
+        if (isfinite(new_var)) temporal->variance_interval_ms = new_var;
 
         bridge->async_effects.avg_interval_ms = temporal->mean_interval_ms;
     }
@@ -801,7 +801,7 @@ static void update_temporal_pattern(
     temporal->messages_in_window++;
 
     float alpha_pred = 0.05f;
-    temporal->predicted_interval =
-        (1.0f - alpha_pred) * temporal->predicted_interval +
+    float new_pred_interval = (1.0f - alpha_pred) * temporal->predicted_interval +
         alpha_pred * temporal->mean_interval_ms;
+    if (isfinite(new_pred_interval)) temporal->predicted_interval = new_pred_interval;
 }

@@ -56,7 +56,6 @@ static hypo_exec_goal_t* find_goal(hypo_exec_bridge_t* bridge, uint32_t goal_id)
             return &bridge->goals[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal: validation failed");
     return NULL;
 }
 
@@ -69,7 +68,6 @@ static const hypo_exec_goal_t* find_goal_const(const hypo_exec_bridge_t* bridge,
             return &bridge->goals[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal_const: validation failed");
     return NULL;
 }
 
@@ -395,13 +393,9 @@ hypo_exec_bridge_t* hypo_exec_bridge_create(
     bridge->active_goal_id = 0;
     bridge->interrupt_active = false;
 
-    /* Create mutex */
-    mutex_attr_t attr = {
-        .type = MUTEX_TYPE_NORMAL
-    };
-    bridge->base.mutex = nimcp_mutex_create(&attr);
-    if (!bridge->base.mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "hypo_exec_bridge_create: failed to create mutex");
+    /* Initialize bridge base (creates mutex, etc.) */
+    if (bridge_base_init(&bridge->base, 0, "hypothalamus_executive") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_exec_bridge_create: bridge_base_init failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -412,8 +406,8 @@ hypo_exec_bridge_t* hypo_exec_bridge_create(
 void hypo_exec_bridge_destroy(hypo_exec_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_executive");
     }
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_executive");
 
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);

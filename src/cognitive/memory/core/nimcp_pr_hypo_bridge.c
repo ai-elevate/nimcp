@@ -397,7 +397,7 @@ NIMCP_EXPORT pr_hypo_bridge_t pr_hypo_bridge_create(const pr_hypo_config_t* conf
     pr_hypo_config_t cfg;
     if (config) {
         if (!pr_hypo_config_validate(config)) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_hypo_bridge_create: pr_hypo_config_validate is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_bridge_create: config validation failed");
             return NULL;
         }
         cfg = *config;
@@ -414,6 +414,14 @@ NIMCP_EXPORT pr_hypo_bridge_t pr_hypo_bridge_create(const pr_hypo_config_t* conf
     }
 
     bridge->config = cfg;
+
+    /* Initialize bridge base infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "pr_hypo_bridge") != 0) {
+        nimcp_free(bridge);
+        bridge = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_hypo_bridge_create: bridge_base_init failed");
+        return NULL;
+    }
 
     /* Initialize neuromodulator states */
     for (int i = 0; i < PR_HYPO_NEUROMOD_COUNT; i++) {
@@ -508,6 +516,9 @@ NIMCP_EXPORT void pr_hypo_bridge_destroy(pr_hypo_bridge_t bridge) {
     if (bridge->history) {
         nimcp_free(bridge->history);
     }
+
+    /* Cleanup bridge base infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
     bridge = NULL;
@@ -1301,6 +1312,7 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_modulate_memory(
     if (!bridge || !node) return PR_HYPO_ERROR_NULL_POINTER;
 
     /* Get current state */
+    nimcp_quaternion_t original_state = node->state;
     nimcp_quaternion_t state = node->state;
 
     /* Apply neuromodulator effects */
@@ -1315,7 +1327,7 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_modulate_memory(
     /* Update statistics */
     PR_HYPO_MUTEX_LOCK(bridge->stats_mutex);
     bridge->stats.memories_boosted++;
-    float w_diff = state.w - node->state.w;
+    float w_diff = state.w - original_state.w;
     uint64_t n = bridge->stats.memories_boosted;
     bridge->stats.avg_consolidation_boost =
         (bridge->stats.avg_consolidation_boost * (float)(n - 1) + w_diff) / (float)n;
@@ -1596,7 +1608,7 @@ NIMCP_EXPORT bool pr_hypo_bridge_validate(const pr_hypo_bridge_t bridge) {
         return false;
     }
     if (!bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_hypo_bridge_validate: bridge->initialized is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_hypo_bridge_validate: bridge not initialized");
         return false;
     }
 

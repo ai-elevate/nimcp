@@ -333,8 +333,7 @@ static int add_entry_unlocked(hypo_logging_bridge_t* bridge,
     if (bridge->count >= bridge->buffer_size) {
         if (!bridge->config.overwrite_when_full) {
             bridge->stats.entries_dropped++;
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "type_enabled: bridge->config is NULL");
-            return -1;
+            return -1;  /* Buffer full, drop silently — not an error condition */
         }
         /* Overwrite oldest entry */
     }

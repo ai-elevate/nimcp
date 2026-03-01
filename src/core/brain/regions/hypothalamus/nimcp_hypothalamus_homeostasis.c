@@ -331,7 +331,7 @@ void hypo_homeostasis_destroy(hypo_homeostasis_handle_t* system) {
     LOG_INFO(HOMEO_LOG_MODULE, "Destroying homeostasis system");
 
     if (system->mutex && system->mutex_owned) {
-        nimcp_mutex_free(system->mutex);
+        nimcp_mutex_destroy(system->mutex);
     }
 
     nimcp_free(system);

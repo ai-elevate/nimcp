@@ -119,7 +119,6 @@ static hypo_bio_subscription_t* find_subscription(
     uint32_t module_id
 ) {
     if (!bridge || !bridge->subscriptions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (bridge, bridge->subscriptions)");
         return NULL;
     }
 
@@ -129,8 +128,7 @@ static hypo_bio_subscription_t* find_subscription(
             return &bridge->subscriptions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (bridge, bridge->subscriptions)");
-    return NULL;
+    return NULL;  /* Not found is a normal condition */
 }
 
 /**
@@ -217,7 +215,7 @@ hypo_bio_async_bridge_t* hypo_bio_async_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_HYPOTHALAMUS,
                          "hypothalamus_bio_async") != 0) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_bridge_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hypo_bio_async_bridge_create: bridge_base_init failed");
         return NULL;
     }
 

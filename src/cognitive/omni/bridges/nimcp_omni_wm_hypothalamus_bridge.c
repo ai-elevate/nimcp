@@ -706,7 +706,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
         nimcp_free(bridge);
         bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "omni_wm_hypothalamus_bridge_create: bridge_base_init failed");
         return NULL;
     }
 
@@ -795,7 +795,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
             nimcp_free(bridge);
             bridge = NULL;
             NIMCP_LOGGING_ERROR("Failed to allocate resource predictions");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_hypothalamus_bridge_create: resource prediction allocation failed");
             return NULL;
         }
     }
@@ -885,8 +885,20 @@ nimcp_error_t omni_wm_hypothalamus_bridge_reset(omni_wm_hypothalamus_bridge_t* b
     bridge->hypo_to_wm.learning_rate_modifier = 1.0f;
     bridge->hypo_to_wm.exploration_modifier = 1.0f;
 
-    /* Reset wm_to_hypo effects */
+    /* Reset wm_to_hypo effects — preserve allocated predicted_availability ptrs */
+    /* Save resource prediction array pointers before clearing */
+    float* saved_ptrs[WM_HYPO_MAX_RESOURCE_TYPES];
+    for (uint32_t r = 0; r < WM_HYPO_MAX_RESOURCE_TYPES; r++) {
+        saved_ptrs[r] = bridge->wm_to_hypo.resource_forecast.resources[r].predicted_availability;
+    }
     memset(&bridge->wm_to_hypo.resource_forecast, 0, sizeof(wm_resource_forecast_t));
+    /* Restore the heap-allocated prediction array pointers */
+    for (uint32_t r = 0; r < WM_HYPO_MAX_RESOURCE_TYPES; r++) {
+        bridge->wm_to_hypo.resource_forecast.resources[r].predicted_availability = saved_ptrs[r];
+        if (saved_ptrs[r]) {
+            memset(saved_ptrs[r], 0, WM_HYPO_MAX_PREDICTION_HORIZON * sizeof(float));
+        }
+    }
     bridge->wm_to_hypo.predicted_reward = 0.0f;
     bridge->wm_to_hypo.resource_scarcity_predicted = false;
     bridge->wm_to_hypo.anomaly_detected = false;
@@ -1376,8 +1388,10 @@ float omni_wm_hypothalamus_bridge_get_stress(
     omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_stress", 0.0f);
 
 
+    nimcp_mutex_lock(bridge->base.mutex);
+    float stress = bridge->current_stress_smoothed;
     nimcp_mutex_unlock(bridge->base.mutex);
-    return bridge->current_stress_smoothed;
+    return stress;
 }
 
 float omni_wm_hypothalamus_bridge_get_arousal(
@@ -1388,8 +1402,10 @@ float omni_wm_hypothalamus_bridge_get_arousal(
     omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_arousal", 0.0f);
 
 
+    nimcp_mutex_lock(bridge->base.mutex);
+    float arousal = bridge->current_arousal_smoothed;
     nimcp_mutex_unlock(bridge->base.mutex);
-    return bridge->current_arousal_smoothed;
+    return arousal;
 }
 
 /* ============================================================================

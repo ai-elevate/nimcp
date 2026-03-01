@@ -470,26 +470,28 @@ static int hypo_immune_bridge_apply_cortisol_effects_unlocked(hypo_immune_bridge
         bridge->stats.peak_cortisol = bridge->hpa.cortisol_level;
     }
 
-    /* Broadcast cortisol state if significant */
-    if (suppression > 0.1f && bridge->bio_registered) {
-        hypo_immune_bridge_broadcast_cortisol(bridge);
-    }
-
+    /* Returns suppression for caller to decide about broadcast outside lock */
+    (void)suppression;
     return 0;
 }
 
 int hypo_immune_bridge_apply_cortisol_effects(hypo_immune_bridge_t* bridge) {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
     int result = hypo_immune_bridge_apply_cortisol_effects_unlocked(bridge);
+    float suppression = hypo_immune_bridge_get_immune_suppression(bridge);
+    bool should_broadcast = (suppression > 0.1f && bridge->bio_registered);
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Broadcast cortisol state outside the lock to avoid external call under mutex */
+    if (should_broadcast) {
+        hypo_immune_bridge_broadcast_cortisol(bridge);
+    }
+
     return result;
 }
 
@@ -1143,11 +1145,8 @@ int hypo_immune_receive_cytokines(
 int hypo_immune_send_cortisol(hypo_immune_bridge_t* bridge, float cortisol)
 {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
     if (cortisol < 0.0f || cortisol > 1.0f) return -1;
 
@@ -1156,18 +1155,17 @@ int hypo_immune_send_cortisol(hypo_immune_bridge_t* bridge, float cortisol)
     /* Update internal cortisol level */
     bridge->hpa.cortisol_level = cortisol;
 
-    /* If immune system connected, send cortisol signal */
-    if (bridge->immune && bridge->config.enable_bidirectional) {
-        /* Compute immune suppression from cortisol */
-        float suppression = hypo_immune_bridge_get_immune_suppression(bridge);
-
-        /* Broadcast via bio-async if enabled */
-        if (bridge->bio_registered) {
-            hypo_immune_bridge_broadcast_cortisol(bridge);
-        }
-    }
+    /* Check if we should broadcast (decision made under lock, action outside) */
+    bool should_broadcast = (bridge->immune && bridge->config.enable_bidirectional &&
+                             bridge->bio_registered);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Broadcast via bio-async outside the lock */
+    if (should_broadcast) {
+        hypo_immune_bridge_broadcast_cortisol(bridge);
+    }
+
     return 0;
 }
 
@@ -1254,45 +1252,46 @@ int hypo_immune_modulate_immune_response(
     float suppression)
 {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
     if (suppression < 0.0f || suppression > 1.0f) return -1;
 
+    /* Prepare broadcast message under lock, send outside */
+    struct {
+        bio_message_header_t header;
+        float cortisol_level;
+        float immune_suppression;
+        uint8_t hpa_state;
+    } msg;
+    bool should_broadcast = false;
+
     nimcp_mutex_lock(bridge->base.mutex);
 
-    /* If immune system connected, apply suppression */
-    if (bridge->immune) {
-        /* The brain immune system doesn't have a direct suppression API,
-         * but we can broadcast cortisol-mediated suppression via bio-async */
-        if (bridge->bio_registered) {
-            struct {
-                bio_message_header_t header;
-                float cortisol_level;
-                float immune_suppression;
-                uint8_t hpa_state;
-            } msg;
+    if (bridge->immune && bridge->bio_registered) {
+        msg.header.type = BIO_MSG_HYPO_IMMUNE_CORTISOL_STATE;
+        msg.header.timestamp_us = nimcp_time_get_us();
+        msg.header.source_module = HYPO_IMMUNE_BRIDGE_MODULE_ID;
+        msg.header.target_module = 0;
+        msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+        msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
 
-            msg.header.type = BIO_MSG_HYPO_IMMUNE_CORTISOL_STATE;
-            msg.header.timestamp_us = nimcp_time_get_us();
-            msg.header.source_module = HYPO_IMMUNE_BRIDGE_MODULE_ID;
-            msg.header.target_module = 0;
-            msg.header.flags = BIO_MSG_FLAG_BROADCAST;
-            msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
+        msg.cortisol_level = bridge->hpa.cortisol_level;
+        msg.immune_suppression = suppression;
+        msg.hpa_state = (uint8_t)bridge->hpa.state;
 
-            msg.cortisol_level = bridge->hpa.cortisol_level;
-            msg.immune_suppression = suppression;
-            msg.hpa_state = (uint8_t)bridge->hpa.state;
-
-            bio_router_broadcast(bridge->bio_ctx, &msg.header, sizeof(msg));
-            bridge->stats.messages_sent++;
-        }
+        should_broadcast = true;
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Broadcast outside the lock to avoid external call under mutex */
+    if (should_broadcast) {
+        bio_router_broadcast(bridge->bio_ctx, &msg.header, sizeof(msg));
+        /* Stats update is benign race but acceptable */
+        bridge->stats.messages_sent++;
+    }
+
     return 0;
 }
 
@@ -1326,19 +1325,19 @@ int hypo_immune_trigger_acute_phase(hypo_immune_bridge_t* bridge)
     hypo_immune_bridge_compute_sickness_level_unlocked(bridge);
     /* Note: apply_sickness_behavior calls compute_sickness_level and apply_cytokine_effects
      * which take their own locks, so we need to unlock first, apply, then relock */
+    bool should_broadcast = bridge->bio_registered;
     nimcp_mutex_unlock(bridge->base.mutex);
-    hypo_immune_bridge_apply_sickness_behavior(bridge);
-    nimcp_mutex_lock(bridge->base.mutex);
 
-    /* Broadcast sickness state */
-    if (bridge->bio_registered) {
+    hypo_immune_bridge_apply_sickness_behavior(bridge);
+
+    /* Broadcast sickness state outside the lock to avoid external call under mutex */
+    if (should_broadcast) {
         hypo_immune_bridge_broadcast_sickness(bridge);
         hypo_immune_bridge_broadcast_fever(bridge);
     }
 
     nimcp_log(LOG_LEVEL_INFO, "hypo_immune_bridge: acute phase response triggered");
 
-    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1366,10 +1365,7 @@ static int hypo_immune_end_acute_phase_unlocked(hypo_immune_bridge_t* bridge)
     update_sickness_from_cytokines(bridge);
     hypo_immune_bridge_compute_sickness_level_unlocked(bridge);
 
-    /* Broadcast resolution */
-    if (bridge->bio_registered) {
-        hypo_immune_bridge_broadcast_sickness(bridge);
-    }
+    /* Note: broadcast moved to public wrapper to avoid external call under lock */
 
     nimcp_log(LOG_LEVEL_INFO, "hypo_immune_bridge: acute phase response ended");
     return 0;
@@ -1378,16 +1374,21 @@ static int hypo_immune_end_acute_phase_unlocked(hypo_immune_bridge_t* bridge)
 int hypo_immune_end_acute_phase(hypo_immune_bridge_t* bridge)
 {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
+    bool was_active = bridge->acute_phase_active;
     int result = hypo_immune_end_acute_phase_unlocked(bridge);
+    bool should_broadcast = (was_active && bridge->bio_registered);
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Broadcast resolution outside the lock */
+    if (should_broadcast) {
+        hypo_immune_bridge_broadcast_sickness(bridge);
+    }
+
     return result;
 }
 

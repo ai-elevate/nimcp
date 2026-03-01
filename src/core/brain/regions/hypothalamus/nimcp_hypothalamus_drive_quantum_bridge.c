@@ -262,10 +262,13 @@ hypo_drive_quantum_bridge_t* hypo_drive_quantum_bridge_create(
     bridge->avg_quantum_contribution = 0.0f;
     bridge->avg_compute_time_us = 0.0f;
 
-    /* Create mutex */
-    mutex_attr_t attr;
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
+    /* Initialize bridge base (creates mutex) */
+    if (bridge_base_init(&bridge->base, HYPO_DQ_MODULE_ID, "hypothalamus_drive_quantum") != 0) {
+        free_drive_qubo(&bridge->qubo);
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hypo_drive_quantum_bridge_create: bridge_base_init failed");
+        return NULL;
+    }
 
     NIMCP_LOG_INFO("Drive-quantum bridge created (quantum=%s)",
                    quantum ? "available" : "unavailable");

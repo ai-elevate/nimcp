@@ -62,7 +62,7 @@ hypo_intro_fep_bridge_t* hypo_intro_fep_create(
         nimcp_malloc(sizeof(hypo_intro_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_intro_fep_create: allocation failed");
 
         return NULL;
 
@@ -209,14 +209,14 @@ int hypo_intro_fep_update(hypo_intro_fep_bridge_t* bridge, uint64_t delta_ms) {
     /* Update stats */
     bridge->state.update_count++;
     bridge->stats.total_updates++;
-    bridge->stats.avg_free_energy =
-        0.95f * bridge->stats.avg_free_energy + 0.05f * fe;
-    bridge->stats.avg_prediction_error =
-        0.95f * bridge->stats.avg_prediction_error + 0.05f * pe;
-    bridge->stats.avg_interoception_accuracy =
-        0.95f * bridge->stats.avg_interoception_accuracy + 0.05f * interoception_accuracy;
-    bridge->stats.avg_body_awareness =
-        0.95f * bridge->stats.avg_body_awareness + 0.05f * body_awareness;
+    float new_avg_fe = 0.95f * bridge->stats.avg_free_energy + 0.05f * fe;
+    if (isfinite(new_avg_fe)) bridge->stats.avg_free_energy = new_avg_fe;
+    float new_avg_pe = 0.95f * bridge->stats.avg_prediction_error + 0.05f * pe;
+    if (isfinite(new_avg_pe)) bridge->stats.avg_prediction_error = new_avg_pe;
+    float new_avg_ia = 0.95f * bridge->stats.avg_interoception_accuracy + 0.05f * interoception_accuracy;
+    if (isfinite(new_avg_ia)) bridge->stats.avg_interoception_accuracy = new_avg_ia;
+    float new_avg_ba = 0.95f * bridge->stats.avg_body_awareness + 0.05f * body_awareness;
+    if (isfinite(new_avg_ba)) bridge->stats.avg_body_awareness = new_avg_ba;
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;

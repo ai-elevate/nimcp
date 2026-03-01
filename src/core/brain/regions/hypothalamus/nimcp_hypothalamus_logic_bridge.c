@@ -80,7 +80,6 @@ struct hypo_logic_bridge {
  */
 static bool predicate_matches(const char* name, const char* pattern) {
     if (!name || !pattern) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predicate_matches: required parameter is NULL (name, pattern)");
         return false;
     }
     return strstr(name, pattern) != NULL;
@@ -294,6 +293,13 @@ hypo_logic_bridge_t* hypo_logic_bridge_create(
         return NULL;
     }
 
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "hypothalamus_logic") != 0) {
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_logic_bridge_create: bridge_base_init failed");
+        return NULL;
+    }
+
     bridge->drives = drives;
     bridge->logic = logic;
 
@@ -361,6 +367,7 @@ void hypo_logic_bridge_destroy(hypo_logic_bridge_t* bridge) {
         /* Note: goal_clause ownership may vary - be careful here */
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -455,8 +462,10 @@ int hypo_logic_bridge_update(hypo_logic_bridge_t* bridge, uint64_t delta_us) {
     bridge->last_update_us = nimcp_time_get_us();
 
     float latency = (float)(bridge->last_update_us - start_us);
-    bridge->stats.avg_modulation_latency_us =
-        bridge->stats.avg_modulation_latency_us * 0.95f + latency * 0.05f;
+    float new_avg = bridge->stats.avg_modulation_latency_us * 0.95f + latency * 0.05f;
+    if (isfinite(new_avg)) {
+        bridge->stats.avg_modulation_latency_us = new_avg;
+    }
 
     return 0;
 }
@@ -925,8 +934,10 @@ int hypo_logic_process_conclusion(
     }
 
     float latency = (float)(nimcp_time_get_us() - start_us);
-    bridge->stats.avg_conclusion_latency_us =
-        bridge->stats.avg_conclusion_latency_us * 0.95f + latency * 0.05f;
+    float new_concl_avg = bridge->stats.avg_conclusion_latency_us * 0.95f + latency * 0.05f;
+    if (isfinite(new_concl_avg)) {
+        bridge->stats.avg_conclusion_latency_us = new_concl_avg;
+    }
 
     return 0;
 }
@@ -1089,8 +1100,10 @@ float hypo_logic_update_predictions(
     }
 
     /* Update running average */
-    bridge->stats.avg_prediction_error =
-        bridge->stats.avg_prediction_error * 0.9f + fabsf(error) * 0.1f;
+    float new_pred_avg = bridge->stats.avg_prediction_error * 0.9f + fabsf(error) * 0.1f;
+    if (isfinite(new_pred_avg)) {
+        bridge->stats.avg_prediction_error = new_pred_avg;
+    }
 
     /* Update prediction for next time (learning) */
     pred->predicted_probability += error * bridge->config.prediction_learning_rate;
@@ -1159,8 +1172,10 @@ int hypo_logic_compute_free_energy(
     bridge->fep_state = *fe_state;
 
     /* Update stats */
-    bridge->stats.avg_logical_free_energy =
-        bridge->stats.avg_logical_free_energy * 0.95f + total_fe * 0.05f;
+    float new_fe_avg = bridge->stats.avg_logical_free_energy * 0.95f + total_fe * 0.05f;
+    if (isfinite(new_fe_avg)) {
+        bridge->stats.avg_logical_free_energy = new_fe_avg;
+    }
 
     return 0;
 }

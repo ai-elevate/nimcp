@@ -542,11 +542,10 @@ int hypo_col_fep_get_recommended_action(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    /* Update first to get latest state */
+    /* Update first to get latest state (update handles its own locking) */
     hypo_col_fep_update(bridge);
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     *action = bridge->fep_effects.recommended_action;
     if (strength) {
         *strength = bridge->fep_effects.action_strength;
@@ -601,8 +600,32 @@ int hypo_col_fep_update_from_outcome(
         bridge->col_effects.safety_drive_update = 0.1f;
     }
 
-    /* Update precision */
-    hypo_col_fep_modulate_precision(bridge);
+    /* Update precision (inline to avoid deadlock) */
+    {
+        float sr = 0.5f;
+        uint64_t sr_total = bridge->col_effects.collective_successes +
+                            bridge->col_effects.collective_failures;
+        if (sr_total > 0) {
+            sr = (float)bridge->col_effects.collective_successes / (float)sr_total;
+        }
+        float target_prec = HYPO_COL_FEP_DEFAULT_PRECISION;
+        if (sr > 0.7f) {
+            target_prec = HYPO_COL_FEP_DEFAULT_PRECISION * (1.0f + sr);
+        } else if (sr < 0.3f) {
+            target_prec = HYPO_COL_FEP_DEFAULT_PRECISION * (0.5f + sr);
+        }
+        float prec_alpha = bridge->config.precision_learning_rate;
+        bridge->state.current_precision =
+            (1.0f - prec_alpha) * bridge->state.current_precision + prec_alpha * target_prec;
+        if (bridge->state.current_precision < HYPO_COL_FEP_MIN_PRECISION) {
+            bridge->state.current_precision = HYPO_COL_FEP_MIN_PRECISION;
+        }
+        if (bridge->state.current_precision > HYPO_COL_FEP_MAX_PRECISION) {
+            bridge->state.current_precision = HYPO_COL_FEP_MAX_PRECISION;
+        }
+        bridge->fep_effects.precision = bridge->state.current_precision;
+        bridge->stats.avg_precision = bridge->state.current_precision;
+    }
 
     /* Update success rates */
     uint64_t col_total = bridge->col_effects.collective_successes +

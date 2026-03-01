@@ -62,7 +62,7 @@ hypo_gw_fep_bridge_t* hypo_gw_fep_create(
         nimcp_malloc(sizeof(hypo_gw_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_gw_fep_create: allocation failed");
 
         return NULL;
 
@@ -202,12 +202,12 @@ int hypo_gw_fep_update(hypo_gw_fep_bridge_t* bridge, uint64_t delta_ms) {
     /* Update stats */
     bridge->state.update_count++;
     bridge->stats.total_updates++;
-    bridge->stats.avg_free_energy =
-        0.95f * bridge->stats.avg_free_energy + 0.05f * fe;
-    bridge->stats.avg_broadcast_priority =
-        0.95f * bridge->stats.avg_broadcast_priority + 0.05f * broadcast_priority;
-    bridge->stats.avg_workspace_availability =
-        0.95f * bridge->stats.avg_workspace_availability + 0.05f * precision;
+    float new_avg_fe = 0.95f * bridge->stats.avg_free_energy + 0.05f * fe;
+    if (isfinite(new_avg_fe)) bridge->stats.avg_free_energy = new_avg_fe;
+    float new_avg_bp = 0.95f * bridge->stats.avg_broadcast_priority + 0.05f * broadcast_priority;
+    if (isfinite(new_avg_bp)) bridge->stats.avg_broadcast_priority = new_avg_bp;
+    float new_avg_wa = 0.95f * bridge->stats.avg_workspace_availability + 0.05f * precision;
+    if (isfinite(new_avg_wa)) bridge->stats.avg_workspace_availability = new_avg_wa;
 
     /* Update broadcast win rate */
     uint64_t total_broadcasts = bridge->state.broadcast_wins + bridge->state.broadcast_losses;

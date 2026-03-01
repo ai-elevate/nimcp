@@ -128,10 +128,8 @@ hypo_hipp_bridge_t* hypo_hipp_bridge_create(
     bridge->consolidation_signals_sent = 0;
     bridge->nav_goals_set = 0;
 
-    /* Create mutex */
-    mutex_attr_t attr;
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
+    /* Initialize bridge base (creates mutex) */
+    bridge_base_init(&bridge->base, 0, "hypothalamus_hippocampus");
 
     NIMCP_LOG_INFO("Hypothalamus-Hippocampus bridge created");
     return bridge;
@@ -585,7 +583,7 @@ int hypo_hipp_bridge_set_nav_goal(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+    /* Hippocampus not connected or location not valid — not an error */
     return -1;
 }
 

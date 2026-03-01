@@ -598,12 +598,18 @@ static void snc_bridge_compute_rpe(
 
     /* Update value estimate for next iteration (simple TD update) */
     float learning_rate = NIMCP_LEARNING_RATE_COARSE;
-    bridge->dopamine.value_estimate += learning_rate * rpe->td_error;
+    float new_value = bridge->dopamine.value_estimate + learning_rate * rpe->td_error;
+    if (isfinite(new_value)) {
+        bridge->dopamine.value_estimate = new_value;
+    }
 
     /* Update running average RPE for statistics */
     float alpha = 0.01f;  /* Slow average */
-    bridge->dopamine.avg_rpe = (1.0f - alpha) * bridge->dopamine.avg_rpe +
-                               alpha * fabsf(rpe->rpe);
+    float new_avg = (1.0f - alpha) * bridge->dopamine.avg_rpe +
+                    alpha * fabsf(rpe->rpe);
+    if (isfinite(new_avg)) {
+        bridge->dopamine.avg_rpe = new_avg;
+    }
 }
 
 static void snc_bridge_update_dopamine(

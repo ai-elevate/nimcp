@@ -513,7 +513,7 @@ float hypo_bias_fep_get_strength(
     hypo_bias_type_t bias_type
 ) {
     if (!bridge || bias_type >= HYPO_BIAS_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bias_fep_get_strength: bridge is NULL or bias_type invalid");
+        NIMCP_THROW_TO_IMMUNE(bridge ? NIMCP_ERROR_INVALID_PARAM : NIMCP_ERROR_NULL_POINTER, "hypo_bias_fep_get_strength: bridge is NULL or bias_type invalid");
         return -1.0f;
     }
 
@@ -552,7 +552,7 @@ int hypo_bias_fep_trigger_debias(
     float intensity
 ) {
     if (!bridge || bias_type >= HYPO_BIAS_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bias_fep_trigger_debias: bridge is NULL or bias_type invalid");
+        NIMCP_THROW_TO_IMMUNE(bridge ? NIMCP_ERROR_INVALID_PARAM : NIMCP_ERROR_NULL_POINTER, "hypo_bias_fep_trigger_debias: bridge is NULL or bias_type invalid");
         return -1;
     }
 
@@ -593,7 +593,7 @@ int hypo_bias_fep_report_debias_outcome(
     float reduction
 ) {
     if (!bridge || bias_type >= HYPO_BIAS_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bias_fep_report_debias_outcome: bridge is NULL or bias_type invalid");
+        NIMCP_THROW_TO_IMMUNE(bridge ? NIMCP_ERROR_INVALID_PARAM : NIMCP_ERROR_NULL_POINTER, "hypo_bias_fep_report_debias_outcome: bridge is NULL or bias_type invalid");
         return -1;
     }
 

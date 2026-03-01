@@ -125,6 +125,9 @@ hypo_emotion_bridge_t* hypo_emotion_bridge_create(
     bridge->bio_registered = false;
     bridge->bio_ctx = NULL;
 
+    /* Initialize bridge base (creates mutex) */
+    bridge_base_init(&bridge->base, 0, "hypothalamus_emotion");
+
     nimcp_log(LOG_LEVEL_INFO, "hypo_emotion_bridge: created successfully");
     return bridge;
 }
@@ -137,6 +140,7 @@ void hypo_emotion_bridge_destroy(hypo_emotion_bridge_t* bridge) {
         hypo_emotion_bridge_unregister_bio(bridge);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     nimcp_log(LOG_LEVEL_INFO, "hypo_emotion_bridge: destroyed");
 }

@@ -62,7 +62,7 @@ hypo_reasoning_fep_bridge_t* hypo_reasoning_fep_create(
         nimcp_malloc(sizeof(hypo_reasoning_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_reasoning_fep_create: allocation failed");
 
         return NULL;
 
@@ -188,10 +188,10 @@ int hypo_reasoning_fep_update(hypo_reasoning_fep_bridge_t* bridge, uint64_t delt
     /* Update stats */
     bridge->state.update_count++;
     bridge->stats.total_updates++;
-    bridge->stats.avg_free_energy =
-        0.95f * bridge->stats.avg_free_energy + 0.05f * fe;
-    bridge->stats.avg_precision =
-        0.95f * bridge->stats.avg_precision + 0.05f * precision;
+    float new_avg_fe = 0.95f * bridge->stats.avg_free_energy + 0.05f * fe;
+    if (isfinite(new_avg_fe)) bridge->stats.avg_free_energy = new_avg_fe;
+    float new_avg_p = 0.95f * bridge->stats.avg_precision + 0.05f * precision;
+    if (isfinite(new_avg_p)) bridge->stats.avg_precision = new_avg_p;
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
@@ -266,8 +266,8 @@ int hypo_reasoning_fep_report_error(hypo_reasoning_fep_bridge_t* bridge,
     bridge->reasoning_effects.error_urgency = pe * 0.2f;
 
     /* Update stats */
-    bridge->stats.avg_prediction_error =
-        0.9f * bridge->stats.avg_prediction_error + 0.1f * pe;
+    float new_avg_pe = 0.9f * bridge->stats.avg_prediction_error + 0.1f * pe;
+    if (isfinite(new_avg_pe)) bridge->stats.avg_prediction_error = new_avg_pe;
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;

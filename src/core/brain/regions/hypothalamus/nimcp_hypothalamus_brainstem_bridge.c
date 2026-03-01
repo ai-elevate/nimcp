@@ -124,13 +124,14 @@ static void decay_signals(hypo_brainstem_bridge_t* bridge, uint64_t current_us) 
     float total_pain = 0.0f;
     for (uint32_t i = 0; i < bridge->pain_count; ) {
         float elapsed_ms = (float)(current_us - bridge->active_pain[i].timestamp_us) / 1000.0f;
-        if (elapsed_ms > bridge->active_pain[i].duration_ms) {
-            /* Remove expired signal */
+        float dur = bridge->active_pain[i].duration_ms;
+        if (dur <= 0.0f || elapsed_ms > dur) {
+            /* Remove expired or zero-duration signal */
             bridge->active_pain[i] = bridge->active_pain[bridge->pain_count - 1];
             bridge->pain_count--;
         } else {
             /* Compute decay */
-            float decay = 1.0f - (elapsed_ms / bridge->active_pain[i].duration_ms);
+            float decay = 1.0f - (elapsed_ms / dur);
             total_pain += bridge->active_pain[i].intensity * decay;
             i++;
         }
@@ -141,13 +142,14 @@ static void decay_signals(hypo_brainstem_bridge_t* bridge, uint64_t current_us) 
     float total_pleasure = 0.0f;
     for (uint32_t i = 0; i < bridge->pleasure_count; ) {
         float elapsed_ms = (float)(current_us - bridge->active_pleasure[i].timestamp_us) / 1000.0f;
-        if (elapsed_ms > bridge->active_pleasure[i].duration_ms) {
-            /* Remove expired signal */
+        float dur = bridge->active_pleasure[i].duration_ms;
+        if (dur <= 0.0f || elapsed_ms > dur) {
+            /* Remove expired or zero-duration signal */
             bridge->active_pleasure[i] = bridge->active_pleasure[bridge->pleasure_count - 1];
             bridge->pleasure_count--;
         } else {
             /* Compute decay */
-            float decay = 1.0f - (elapsed_ms / bridge->active_pleasure[i].duration_ms);
+            float decay = 1.0f - (elapsed_ms / dur);
             total_pleasure += bridge->active_pleasure[i].intensity * decay;
             i++;
         }
@@ -285,19 +287,15 @@ hypo_brainstem_bridge_t* hypo_brainstem_bridge_create(
     bridge->total_pain = 0.0f;
     bridge->total_pleasure = 0.0f;
 
-    /* Create mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
+    /* Initialize bridge base (creates mutex) */
+    bridge_base_init(&bridge->base, 0, "hypothalamus_brainstem");
 
     return bridge;
 }
 
 void hypo_brainstem_bridge_destroy(hypo_brainstem_bridge_t* bridge) {
-    if (!bridge) {
-        return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_brainstem");
-    }
+    if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_brainstem");
 
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);

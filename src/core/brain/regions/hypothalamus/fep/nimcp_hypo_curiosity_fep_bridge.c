@@ -62,7 +62,7 @@ hypo_curiosity_fep_bridge_t* hypo_curiosity_fep_create(
         nimcp_malloc(sizeof(hypo_curiosity_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_curiosity_fep_create: allocation failed");
 
         return NULL;
 
@@ -194,18 +194,19 @@ int hypo_curiosity_fep_update(hypo_curiosity_fep_bridge_t* bridge, uint64_t delt
     /* Update reverse effects */
     bridge->curiosity_effects.info_gain_satisfaction =
         bridge->state.current_info_gain * 0.5f;
-    bridge->curiosity_effects.learning_progress = fe_reduction / bridge->config.info_gain_fe_reduction;
+    bridge->curiosity_effects.learning_progress = (bridge->config.info_gain_fe_reduction > 1e-6f)
+        ? fe_reduction / bridge->config.info_gain_fe_reduction : 0.0f;
     bridge->curiosity_effects.novelty_drive_boost = novelty * 0.2f;
 
     /* Update stats */
     bridge->state.update_count++;
     bridge->stats.total_updates++;
-    bridge->stats.avg_free_energy =
-        0.95f * bridge->stats.avg_free_energy + 0.05f * fe;
-    bridge->stats.avg_exploration_weight =
-        0.95f * bridge->stats.avg_exploration_weight + 0.05f * exploration_weight;
-    bridge->stats.avg_info_gain =
-        0.95f * bridge->stats.avg_info_gain + 0.05f * bridge->state.current_info_gain;
+    float new_avg_fe = 0.95f * bridge->stats.avg_free_energy + 0.05f * fe;
+    if (isfinite(new_avg_fe)) bridge->stats.avg_free_energy = new_avg_fe;
+    float new_avg_ew = 0.95f * bridge->stats.avg_exploration_weight + 0.05f * exploration_weight;
+    if (isfinite(new_avg_ew)) bridge->stats.avg_exploration_weight = new_avg_ew;
+    float new_avg_ig = 0.95f * bridge->stats.avg_info_gain + 0.05f * bridge->state.current_info_gain;
+    if (isfinite(new_avg_ig)) bridge->stats.avg_info_gain = new_avg_ig;
 
     /* Decay current info gain and novelty */
     bridge->state.current_info_gain *= 0.95f;

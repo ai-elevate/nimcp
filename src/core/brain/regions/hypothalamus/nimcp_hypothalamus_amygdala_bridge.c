@@ -116,10 +116,8 @@ hypo_amyg_bridge_t* hypo_amyg_bridge_create(
     bridge->chronic_stress_episodes = 0;
     bridge->safety_drive_boosts = 0;
 
-    /* Create mutex */
-    mutex_attr_t attr;
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
+    /* Initialize bridge base (creates mutex) */
+    bridge_base_init(&bridge->base, 0, "hypothalamus_amygdala");
 
     NIMCP_LOG_INFO("Hypothalamus-Amygdala bridge created");
     return bridge;
@@ -185,22 +183,27 @@ int hypo_amyg_bridge_update(hypo_amyg_bridge_t* bridge, float dt_ms) {
         return -1;
     }
 
-    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
-
     uint64_t now_us = nimcp_time_now_us();
+
+    /* Query amygdala OUTSIDE mutex to avoid deadlock with external module */
+    hypo_amyg_fear_feedback_t fear = {0};
+    bool have_fear = false;
+    if (bridge->amygdala) {
+        fear.fear_level = amygdala_get_fear_level(bridge->amygdala);
+        fear.anxiety_level = amygdala_get_anxiety_level(bridge->amygdala);
+        fear.threat_level = amygdala_get_threat_level(bridge->amygdala);
+        fear.timestamp_us = now_us;
+        have_fear = true;
+    }
+
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute outgoing stress modulation */
     bridge->current_stress = hypo_amyg_bridge_compute_stress(bridge);
     bridge->current_drive_context = hypo_amyg_bridge_compute_drive_context(bridge);
 
-    /* Query amygdala if connected */
-    if (bridge->amygdala) {
-        hypo_amyg_fear_feedback_t fear = {0};
-        fear.fear_level = amygdala_get_fear_level(bridge->amygdala);
-        fear.anxiety_level = amygdala_get_anxiety_level(bridge->amygdala);
-        fear.threat_level = amygdala_get_threat_level(bridge->amygdala);
-        fear.timestamp_us = now_us;
-
+    /* Apply amygdala fear feedback if available */
+    if (have_fear) {
         hypo_amyg_bridge_process_fear(bridge, &fear);
     }
 
@@ -248,13 +251,17 @@ int hypo_amyg_bridge_update(hypo_amyg_bridge_t* bridge, float dt_ms) {
 
     bridge->last_update_us = now_us;
 
-    /* Broadcast if enabled */
-    if (bridge->config.broadcast_enabled) {
+    /* Snapshot broadcast flag before releasing lock */
+    bool should_broadcast = bridge->config.broadcast_enabled;
+
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Broadcast OUTSIDE mutex to avoid deadlock with bio-router */
+    if (should_broadcast) {
         hypo_amyg_bridge_broadcast_stress(bridge);
         hypo_amyg_bridge_broadcast_drive_context(bridge);
     }
 
-    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -377,14 +384,26 @@ hypo_amyg_drive_context_t hypo_amyg_bridge_compute_drive_context(
 
 float hypo_amyg_bridge_get_stress_level(const hypo_amyg_bridge_t* bridge) {
     if (!bridge) return 0.0f;
-    return bridge->integrated_stress_level;
+
+    /* Cast away const to acquire mutex -- reads must be synchronized */
+    hypo_amyg_bridge_t* mutable = (hypo_amyg_bridge_t*)bridge;
+    if (mutable->base.mutex) nimcp_mutex_lock(mutable->base.mutex);
+    float level = bridge->integrated_stress_level;
+    if (mutable->base.mutex) nimcp_mutex_unlock(mutable->base.mutex);
+    return level;
 }
 
 bool hypo_amyg_bridge_is_chronic_stress(const hypo_amyg_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
-    return (bridge->chronic_stress_start_us > 0);
+
+    /* Cast away const to acquire mutex -- reads must be synchronized */
+    hypo_amyg_bridge_t* mutable = (hypo_amyg_bridge_t*)bridge;
+    if (mutable->base.mutex) nimcp_mutex_lock(mutable->base.mutex);
+    bool result = (bridge->chronic_stress_start_us > 0);
+    if (mutable->base.mutex) nimcp_mutex_unlock(mutable->base.mutex);
+    return result;
 }
 
 /*=============================================================================
@@ -496,7 +515,7 @@ bool hypo_amyg_bridge_get_fear_state(
     hypo_amyg_fear_feedback_t* fear) {
 
     if (!bridge || !fear) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_is_chronic_stress: required parameter is NULL (bridge, fear)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_get_fear_state: required parameter is NULL (bridge, fear)");
         return false;
     }
 
@@ -509,7 +528,7 @@ bool hypo_amyg_bridge_get_fear_drive_modulation(
     float* modulation) {
 
     if (!bridge || !modulation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_is_chronic_stress: required parameter is NULL (bridge, modulation)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_get_fear_drive_modulation: required parameter is NULL (bridge, modulation)");
         return false;
     }
 
@@ -527,7 +546,7 @@ bool hypo_amyg_bridge_connect(
     amygdala_t* amygdala) {
 
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_is_chronic_stress: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_connect: bridge is NULL");
         return false;
     }
 
@@ -551,7 +570,7 @@ int hypo_amyg_bridge_send_stress(
     const hypo_amyg_stress_modulation_t* stress) {
 
     if (!bridge || !stress) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_is_chronic_stress: required parameter is NULL (bridge, stress)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_send_stress: required parameter is NULL (bridge, stress)");
         return -1;
     }
 
@@ -573,7 +592,7 @@ int hypo_amyg_bridge_send_drive_context(
     const hypo_amyg_drive_context_t* context) {
 
     if (!bridge || !context) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_is_chronic_stress: required parameter is NULL (bridge, context)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_send_drive_context: required parameter is NULL (bridge, context)");
         return -1;
     }
 
@@ -593,7 +612,7 @@ int hypo_amyg_bridge_query_fear(
     hypo_amyg_fear_feedback_t* fear) {
 
     if (!bridge || !fear) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_is_chronic_stress: required parameter is NULL (bridge, fear)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_query_fear: required parameter is NULL (bridge, fear)");
         return -1;
     }
 
@@ -605,7 +624,7 @@ int hypo_amyg_bridge_query_fear(
         return 0;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+    /* Amygdala not connected — not an error, just no data available */
     return -1;
 }
 
@@ -618,7 +637,7 @@ int hypo_amyg_bridge_trigger_acute_stress(
     float intensity) {
 
     if (!bridge || !bridge->drives) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, bridge->drives)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_trigger_acute_stress: required parameter is NULL (bridge, bridge->drives)");
         return -1;
     }
 
@@ -752,7 +771,7 @@ bool hypo_amyg_bridge_register_bio(
     bool use_kg_wiring) {
 
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_exit_chronic_stress: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_register_bio: bridge is NULL");
         return false;
     }
 
@@ -770,26 +789,26 @@ bool hypo_amyg_bridge_register_bio(
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
         NIMCP_LOG_ERROR("Failed to register amygdala bridge with bio router");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_exit_chronic_stress: bridge->bio_ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_register_bio: bio_ctx is NULL");
         return false;
     }
 
     /* Register message handlers */
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_AMYGDALA_FEAR_LEVEL,
                                      amyg_handle_fear_level) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_exit_chronic_stress: bridge->bio_ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "hypo_amyg_bridge_register_bio: fear handler registration failed");
         return false;
     }
 
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_AMYGDALA_THREAT_DETECTED,
                                      amyg_handle_threat_detected) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_amyg_bridge_exit_chronic_stress: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "hypo_amyg_bridge_register_bio: threat handler registration failed");
         return false;
     }
 
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_AMYGDALA_FEAR_OUTPUT,
                                      amyg_handle_fear_output) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_amyg_bridge_exit_chronic_stress: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "hypo_amyg_bridge_register_bio: fear output handler registration failed");
         return false;
     }
 

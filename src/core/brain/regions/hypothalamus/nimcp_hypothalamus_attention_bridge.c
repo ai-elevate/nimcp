@@ -158,6 +158,9 @@ static float apply_modulation(
  */
 static nimcp_error_t attn_handle_drive_state(const void* msg, size_t msg_size,
                                               nimcp_bio_promise_t promise, void* ctx) {
+    (void)msg;
+    (void)msg_size;
+    (void)promise;
     hypo_attn_bridge_t* bridge = (hypo_attn_bridge_t*)ctx;
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge context is NULL");
 
@@ -290,19 +293,15 @@ hypo_attn_bridge_t* hypo_attn_bridge_create(
     bridge->salience.novelty_boost = 0.0f;
     bridge->salience.threat_boost = 0.0f;
 
-    /* Create mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
+    /* Initialize bridge base (creates mutex) */
+    bridge_base_init(&bridge->base, 0, "hypothalamus_attention");
 
     return bridge;
 }
 
 void hypo_attn_bridge_destroy(hypo_attn_bridge_t* bridge) {
-    if (!bridge) {
-        return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_attention");
-    }
+    if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_attention");
 
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);

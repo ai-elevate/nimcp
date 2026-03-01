@@ -135,8 +135,7 @@ static int find_bridge_index(hypo_orchestrator_t orch, uint32_t bridge_id)
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_bridge_index: validation failed");
-    return -1;
+    return -1;  /* Not found — normal lookup miss, not an error */
 }
 
 /**
@@ -149,8 +148,7 @@ static int find_bridge_by_type(hypo_orchestrator_t orch, hypo_bridge_type_t type
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_bridge_by_type: validation failed");
-    return -1;
+    return -1;  /* Not found — normal lookup miss, not an error */
 }
 
 /**
@@ -457,7 +455,7 @@ hypo_orchestrator_t hypo_orch_create(const hypo_orch_config_t* config)
             sizeof(hypo_event_queue_entry_t)
         );
         if (!orch->event_queue) {
-            nimcp_mutex_free(orch->mutex);
+            nimcp_mutex_destroy(orch->mutex);
             nimcp_free(orch);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_orch_create: orch->event_queue is NULL");
             return NULL;
@@ -489,7 +487,7 @@ void hypo_orch_destroy(hypo_orchestrator_t orch)
     ORCH_UNLOCK(orch);
 
     /* Destroy mutex */
-    nimcp_mutex_free(orch->mutex);
+    nimcp_mutex_destroy(orch->mutex);
 
     nimcp_free(orch);
 }

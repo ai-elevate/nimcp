@@ -885,7 +885,7 @@ static hypo_tom_agent_model_t* find_agent_model(hypo_tom_fep_bridge_t* bridge,
             return &bridge->state.agent_models[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_print_summary: operation failed");
+    /* Not found is a normal condition (agent not yet registered) - no THROW */
     return NULL;
 }
 
@@ -900,8 +900,8 @@ static hypo_tom_agent_model_t* allocate_agent_slot(hypo_tom_fep_bridge_t* bridge
             return &bridge->state.agent_models[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "allocate_agent_slot: bridge->state is NULL");
-    return NULL;  /* No free slots */
+    /* No free slots is a capacity limit, not a critical error */
+    return NULL;
 }
 
 /**

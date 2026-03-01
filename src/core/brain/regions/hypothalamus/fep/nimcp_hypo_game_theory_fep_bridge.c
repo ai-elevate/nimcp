@@ -497,8 +497,24 @@ int hypo_gt_fep_update_from_outcome(
         fep_update_beliefs(bridge->fep_system);
     }
 
-    /* Update precision based on prediction accuracy */
-    hypo_gt_fep_modulate_precision(bridge);
+    /* Update precision based on prediction accuracy (inline to avoid deadlock) */
+    {
+        float acc = 1.0f - (bridge->state.avg_prediction_error / 10.0f);
+        if (acc < 0.0f) acc = 0.0f;
+        if (acc > 1.0f) acc = 1.0f;
+        float target_prec = HYPO_GT_FEP_DEFAULT_PRECISION * (1.0f + acc);
+        float prec_alpha = bridge->config.precision_learning_rate;
+        bridge->state.current_precision =
+            (1.0f - prec_alpha) * bridge->state.current_precision + prec_alpha * target_prec;
+        if (bridge->state.current_precision < HYPO_GT_FEP_MIN_PRECISION) {
+            bridge->state.current_precision = HYPO_GT_FEP_MIN_PRECISION;
+        }
+        if (bridge->state.current_precision > HYPO_GT_FEP_MAX_PRECISION) {
+            bridge->state.current_precision = HYPO_GT_FEP_MAX_PRECISION;
+        }
+        bridge->fep_effects.precision = bridge->state.current_precision;
+        bridge->stats.avg_precision = bridge->state.current_precision;
+    }
 
     bridge->stats.avg_payoff = bridge->gt_effects.avg_payoff;
     bridge->stats.cooperation_rate = bridge->gt_effects.reciprocity_score;
