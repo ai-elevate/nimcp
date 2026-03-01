@@ -14,6 +14,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
+#include <math.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -179,8 +180,12 @@ int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     /* Track statistics */
-    bridge->stats.avg_atp_level = (bridge->stats.avg_atp_level * bridge->update_count + atp) / (bridge->update_count + 1);
-    bridge->stats.avg_fatigue_level = (bridge->stats.avg_fatigue_level * bridge->update_count + fatigue) / (bridge->update_count + 1);
+    if (isfinite(atp) && bridge->update_count < UINT32_MAX) {
+        bridge->stats.avg_atp_level = (bridge->stats.avg_atp_level * bridge->update_count + atp) / (bridge->update_count + 1);
+    }
+    if (isfinite(fatigue) && bridge->update_count < UINT32_MAX) {
+        bridge->stats.avg_fatigue_level = (bridge->stats.avg_fatigue_level * bridge->update_count + fatigue) / (bridge->update_count + 1);
+    }
 
     if (atp < INTUITION_ATP_IMPAIRED_THRESHOLD) {
         bridge->stats.low_atp_events++;
@@ -237,7 +242,9 @@ int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
         bridge->effects.meta_reasoning_depth * 0.1f
     );
 
-    bridge->stats.avg_capacity = (bridge->stats.avg_capacity * bridge->update_count + bridge->effects.overall_capacity) / (bridge->update_count + 1);
+    if (isfinite(bridge->effects.overall_capacity) && bridge->update_count < UINT32_MAX) {
+        bridge->stats.avg_capacity = (bridge->stats.avg_capacity * bridge->update_count + bridge->effects.overall_capacity) / (bridge->update_count + 1);
+    }
     bridge->update_count++;
     bridge->stats.updates++;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

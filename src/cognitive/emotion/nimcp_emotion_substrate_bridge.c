@@ -826,7 +826,6 @@ int emotion_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
 void emotion_substrate_bridge_set_instance_health_agent(emotion_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
     if (bridge) {
         /* Instance-level setter - substrate bridge struct is in header (opaque) */
-        (void)agent; /* Opaque struct: use global agent as fallback */
         g_emotion_substrate_bridge_health_agent = agent;
     }
 }

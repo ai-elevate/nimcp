@@ -47,7 +47,12 @@ rcog_orchestrator_t* rcog_orchestrator_create(
     /* Initialize trace if enabled */
     if (orch->config.enable_trace) {
         orch->trace = nimcp_calloc(1, sizeof(rcog_trace_t));
-        if (!orch->trace) return NULL;
+        if (!orch->trace) {
+            nimcp_mutex_destroy(orch->mutex);
+            nimcp_free(orch);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_orchestrator_create: trace allocation failed");
+            return NULL;
+        }
         orch->trace_enabled = true;
     }
 

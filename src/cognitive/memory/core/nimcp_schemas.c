@@ -1313,7 +1313,9 @@ schema_instantiation_t* schema_instantiate(
 
     // Update running average fit
     float n = (float)schema->instantiation_count;
-    schema->avg_fit = ((n - 1.0f) * schema->avg_fit + inst->fit_score) / (fabsf(n) > 1e-7f ? n : 1e-7f);
+    if (isfinite(inst->fit_score) && fabsf(n) > 1e-7f) {
+        schema->avg_fit = ((n - 1.0f) * schema->avg_fit + inst->fit_score) / n;
+    }
 
     // Update system stats
     system->stats.num_active = system->num_active;

@@ -513,13 +513,19 @@ int meta_learning_plasticity_learn(
     syn->update_count++;
     bridge->adaptation.last_learning_us = bridge->current_time_us;
 
-    /* Invoke callback */
-    if (bridge->learn_callback) {
-        bridge->learn_callback(bridge, event, magnitude, bridge->learn_callback_data);
+    bridge->state = META_LEARNING_PLASTICITY_STATE_IDLE;
+
+    /* Snapshot callback under mutex */
+    meta_learning_plasticity_learn_callback_t cb = bridge->learn_callback;
+    void* cb_data = bridge->learn_callback_data;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callback outside mutex to prevent deadlock */
+    if (cb) {
+        cb(bridge, event, magnitude, cb_data);
     }
 
-    bridge->state = META_LEARNING_PLASTICITY_STATE_IDLE;
-    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

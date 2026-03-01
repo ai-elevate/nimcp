@@ -495,7 +495,7 @@ static curiosity_social_target_t* social_get_or_create_target(
     curiosity_social_state_t* state, const char* agent_id) {
 
     if (!state || !agent_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "anxiety_balance_update: required parameter is NULL (state, agent_id)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "social_get_or_create_target: required parameter is NULL (state, agent_id)");
         return NULL;
     }
 
@@ -514,7 +514,7 @@ static curiosity_social_target_t* social_get_or_create_target(
 
     /* Create new if space available */
     if (state->num_targets >= MAX_SOCIAL_TARGETS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "anxiety_balance_update: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "social_get_or_create_target: capacity exceeded");
         return NULL;
     }
 
@@ -661,8 +661,11 @@ static float surprise_report(curiosity_enhanced_system_t* sys,
 
     /* Update running average */
     float alpha = 0.1f;
-    state->avg_surprise = alpha * state->surprise_magnitude +
-                          (1.0f - alpha) * state->avg_surprise;
+    float new_avg_surprise = alpha * state->surprise_magnitude +
+                             (1.0f - alpha) * state->avg_surprise;
+    if (isfinite(new_avg_surprise)) {
+        state->avg_surprise = new_avg_surprise;
+    }
 
     /* Compute boost */
     if (state->surprise_magnitude > config->surprise_threshold) {
@@ -751,7 +754,7 @@ static int counterfactual_generate(curiosity_enhanced_system_t* sys,
                                    const char* actual_outcome,
                                    curiosity_counterfactual_t* cf) {
     if (!sys || !decision_point || !actual_outcome || !cf) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fatigue_update: required parameter is NULL (sys, decision_point, actual_outcome, cf)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_generate: required parameter is NULL (sys, decision_point, actual_outcome, cf)");
         return -1;
     }
 
@@ -808,14 +811,17 @@ static void compute_aggregates(curiosity_enhanced_system_t* sys) {
         state->effective_exploration_rate *= 0.1f;
     }
 
-    /* Update average stats */
+    /* Update average stats with NaN/Inf guard */
     float alpha = 0.01f;
-    sys->stats.avg_curiosity_level = alpha * state->overall_curiosity_drive +
-                                     (1.0f - alpha) * sys->stats.avg_curiosity_level;
-    sys->stats.avg_boredom_level = alpha * state->boredom.monotony_level +
-                                   (1.0f - alpha) * sys->stats.avg_boredom_level;
-    sys->stats.avg_fatigue_level = alpha * state->fatigue.exploration_fatigue +
-                                   (1.0f - alpha) * sys->stats.avg_fatigue_level;
+    float new_curiosity = alpha * state->overall_curiosity_drive +
+                          (1.0f - alpha) * sys->stats.avg_curiosity_level;
+    float new_boredom = alpha * state->boredom.monotony_level +
+                        (1.0f - alpha) * sys->stats.avg_boredom_level;
+    float new_fatigue = alpha * state->fatigue.exploration_fatigue +
+                        (1.0f - alpha) * sys->stats.avg_fatigue_level;
+    if (isfinite(new_curiosity)) sys->stats.avg_curiosity_level = new_curiosity;
+    if (isfinite(new_boredom))   sys->stats.avg_boredom_level = new_boredom;
+    if (isfinite(new_fatigue))   sys->stats.avg_fatigue_level = new_fatigue;
 }
 
 /* ============================================================================
@@ -1853,8 +1859,10 @@ int curiosity_enhanced_explore_counterfactual(
 
     /* Update average */
     float alpha = 0.1f;
-    system->state.counterfactual.avg_learning_value =
-        alpha * outcome + (1.0f - alpha) * system->state.counterfactual.avg_learning_value;
+    float new_learning_val = alpha * outcome + (1.0f - alpha) * system->state.counterfactual.avg_learning_value;
+    if (isfinite(new_learning_val)) {
+        system->state.counterfactual.avg_learning_value = new_learning_val;
+    }
 
     nimcp_platform_mutex_unlock(system->mutex);
 
@@ -2337,9 +2345,11 @@ int curiosity_enhanced_estimate_uncertainty(
     system->qmc_stats.mc_samples_total += num_samples;
 
     float alpha = 0.01f;
-    system->qmc_stats.avg_epistemic_uncertainty =
-        alpha * result->epistemic_uncertainty +
-        (1.0f - alpha) * system->qmc_stats.avg_epistemic_uncertainty;
+    float new_eu = alpha * result->epistemic_uncertainty +
+                   (1.0f - alpha) * system->qmc_stats.avg_epistemic_uncertainty;
+    if (isfinite(new_eu)) {
+        system->qmc_stats.avg_epistemic_uncertainty = new_eu;
+    }
 
     if (result->epistemic_uncertainty > system->qmc_config.uncertainty_threshold) {
         system->qmc_stats.high_uncertainty_topics++;
@@ -2598,8 +2608,10 @@ int curiosity_enhanced_compute_empowerment(
     system->qmc_stats.mc_samples_total += num_samples;
 
     float alpha = 0.01f;
-    system->qmc_stats.avg_empowerment =
-        alpha * result->empowerment + (1.0f - alpha) * system->qmc_stats.avg_empowerment;
+    float new_empowerment = alpha * result->empowerment + (1.0f - alpha) * system->qmc_stats.avg_empowerment;
+    if (isfinite(new_empowerment)) {
+        system->qmc_stats.avg_empowerment = new_empowerment;
+    }
 
     nimcp_platform_mutex_unlock(system->mutex);
 

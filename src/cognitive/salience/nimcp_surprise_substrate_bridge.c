@@ -34,7 +34,8 @@
 #include "constants/nimcp_threshold_constants.h"
 
 BRIDGE_BOILERPLATE(surprise_substrate, MESH_ADAPTER_CATEGORY_COGNITIVE)
-void surprise_substrate_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { (void)agent; }
+static nimcp_health_agent_t* g_surprise_substrate_bridge_health_agent = NULL;
+void surprise_substrate_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { g_surprise_substrate_bridge_health_agent = agent; }
 
 /* ============================================================================
  * Internal Structure

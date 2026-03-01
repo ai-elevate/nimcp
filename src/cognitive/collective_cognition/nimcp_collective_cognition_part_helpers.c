@@ -73,6 +73,10 @@ static float compute_plv(
     const registered_instance_t* b,
     sync_band_t band
 ) {
+    /* Bounds check on band index */
+    if ((int)band < 0 || (int)band >= SYNC_BAND_COUNT) {
+        return 0.0f;
+    }
     /* PLV = |mean(exp(i * (phase_a - phase_b)))| */
     float phase_diff = a->band_phase[band] - b->band_phase[band];
     /* Simplified: use cosine of phase difference as proxy */
@@ -165,8 +169,10 @@ static void compute_collective_phi(collective_cognition_t* cc) {
     phi->small_world_index = global_sync * phi->connectivity;
 
     /* Update statistics */
-    cc->stats.avg_phi = (cc->stats.avg_phi * cc->stats.total_updates + phi->phi_total) /
-                        (cc->stats.total_updates + 1);
+    if (isfinite(phi->phi_total) && cc->stats.total_updates < UINT32_MAX) {
+        cc->stats.avg_phi = (cc->stats.avg_phi * cc->stats.total_updates + phi->phi_total) /
+                            (cc->stats.total_updates + 1);
+    }
     if (phi->phi_total > cc->stats.max_phi) {
         cc->stats.max_phi = phi->phi_total;
     }
@@ -228,10 +234,11 @@ static void update_hyperscanning_state(collective_cognition_t* cc) {
         hs->beta_coordination = 0.0f;
     }
 
-    /* Check for entrainment */
+    /* Check for entrainment — save old value before overwriting */
+    bool was_entrained = hs->is_entrained;
     hs->is_entrained = hs->global_sync >= cc->config.hyperscanning.sync_threshold;
 
-    if (hs->is_entrained && !cc->state.hyperscanning.is_entrained) {
+    if (hs->is_entrained && !was_entrained) {
         cc->stats.entrainment_events++;
     }
 
@@ -255,8 +262,10 @@ static void update_hyperscanning_state(collective_cognition_t* cc) {
     hs->leader_influence = max_gamma > 0.0f ? max_gamma : 0.0f;
 
     /* Update average sync statistic */
-    cc->stats.avg_sync = (cc->stats.avg_sync * cc->stats.total_updates + hs->global_sync) /
-                         (cc->stats.total_updates + 1);
+    if (isfinite(hs->global_sync) && cc->stats.total_updates < UINT32_MAX) {
+        cc->stats.avg_sync = (cc->stats.avg_sync * cc->stats.total_updates + hs->global_sync) /
+                             (cc->stats.total_updates + 1);
+    }
 }
 
 

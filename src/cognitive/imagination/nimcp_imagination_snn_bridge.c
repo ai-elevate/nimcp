@@ -542,18 +542,24 @@ int imagination_snn_encode_creativity(
 
     bridge->creativity_signal = creativity;
 
+    /* Snapshot callback under mutex */
+    imagination_snn_creative_callback_t creative_cb = NULL;
+    void* creative_cb_data = NULL;
     if (creativity > bridge->config.vividness_threshold) {
         bridge->last_imagery.creative_mode_active = true;
         bridge->last_imagery.creative_magnitude = creativity;
         bridge->stats.creative_mode_events++;
 
-        if (bridge->creative_callback) {
-            bridge->creative_callback(bridge, creativity, IMAGINATION_DIM_CREATIVITY,
-                                     bridge->creative_callback_data);
-        }
+        creative_cb = bridge->creative_callback;
+        creative_cb_data = bridge->creative_callback_data;
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callback outside mutex to prevent deadlock */
+    if (creative_cb) {
+        creative_cb(bridge, creativity, IMAGINATION_DIM_CREATIVITY, creative_cb_data);
+    }
 
     return imagination_snn_encode_state(bridge, dims, 2);
 }
@@ -660,11 +666,6 @@ int imagination_snn_simulate(imagination_snn_bridge_t* bridge, float duration_ms
     if (bridge->last_imagery.vividness_level > bridge->config.vividness_threshold) {
         bridge->last_imagery.vivid_imagery_active = true;
         bridge->stats.vivid_imagery_events++;
-
-        if (bridge->vividness_callback) {
-            bridge->vividness_callback(bridge, bridge->last_imagery.vividness_level,
-                                      bridge->current_time_us, bridge->vividness_callback_data);
-        }
     } else {
         bridge->last_imagery.vivid_imagery_active = false;
     }
@@ -672,12 +673,27 @@ int imagination_snn_simulate(imagination_snn_bridge_t* bridge, float duration_ms
     bridge->stats.total_evaluations++;
     bridge->state = IMAGINATION_SNN_STATE_IDLE;
 
-    /* Invoke imagery callback */
-    if (bridge->imagery_callback) {
-        bridge->imagery_callback(bridge, &bridge->last_imagery, bridge->imagery_callback_data);
-    }
+    /* Snapshot callback state under mutex */
+    imagination_snn_vividness_callback_t vivid_cb = bridge->vividness_callback;
+    void* vivid_cb_data = bridge->vividness_callback_data;
+    float vivid_level = bridge->last_imagery.vividness_level;
+    uint64_t cur_time = bridge->current_time_us;
+    bool do_vivid_cb = (vivid_cb != NULL && bridge->last_imagery.vivid_imagery_active);
+
+    imagination_snn_imagery_callback_t img_cb = bridge->imagery_callback;
+    void* img_cb_data = bridge->imagery_callback_data;
+    imagination_imagery_t imagery_snapshot = bridge->last_imagery;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside mutex to prevent deadlock */
+    if (do_vivid_cb) {
+        vivid_cb(bridge, vivid_level, cur_time, vivid_cb_data);
+    }
+    if (img_cb) {
+        img_cb(bridge, &imagery_snapshot, img_cb_data);
+    }
+
     return 0;
 }
 

@@ -227,13 +227,19 @@ static void update_agent_history(
     }
 
     /* Update running averages */
-    agent->avg_reward = agent->avg_reward * 0.9f + reward * 0.1f;
+    if (isfinite(reward)) {
+        agent->avg_reward = agent->avg_reward * 0.9f + reward * 0.1f;
+    }
     float rpe = reward - prediction;
-    agent->avg_prediction_error = agent->avg_prediction_error * 0.9f + fabsf(rpe) * 0.1f;
+    if (isfinite(rpe)) {
+        agent->avg_prediction_error = agent->avg_prediction_error * 0.9f + fabsf(rpe) * 0.1f;
+    }
 
     /* Update variance estimate */
     float diff = reward - agent->avg_reward;
-    agent->reward_variance = agent->reward_variance * 0.95f + diff * diff * 0.05f;
+    if (isfinite(diff)) {
+        agent->reward_variance = agent->reward_variance * 0.95f + diff * diff * 0.05f;
+    }
 
     agent->observations_count++;
     agent->last_observation_us = nimcp_time_now_us();

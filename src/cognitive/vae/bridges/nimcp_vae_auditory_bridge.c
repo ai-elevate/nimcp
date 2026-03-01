@@ -431,8 +431,10 @@ int vae_audio_compute_novelty(vae_audio_bridge_t* bridge,
         bridge->baseline_samples++;
     }
 
-    bridge->stats.avg_novelty_score = bridge->stats.avg_novelty_score * 0.9f +
-                                      (*novelty_score) * 0.1f;
+    if (isfinite(*novelty_score)) {
+        bridge->stats.avg_novelty_score = bridge->stats.avg_novelty_score * 0.9f +
+                                          (*novelty_score) * 0.1f;
+    }
 
     return 0;
 }

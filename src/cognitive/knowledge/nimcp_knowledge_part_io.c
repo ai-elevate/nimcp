@@ -166,16 +166,25 @@ bool knowledge_save(knowledge_system_t system, const char* filepath)
 
     uint32_t magic = 0x4B4E4F57;
     uint32_t version = 0x00020500;
-    fwrite(&magic, sizeof(uint32_t), 1, file);
-    fwrite(&version, sizeof(uint32_t), 1, file);
-
-    fwrite(&system->repository->num_items, sizeof(uint32_t), 1, file);
-    fwrite(&system->num_narratives, sizeof(uint32_t), 1, file);
-    fwrite(&system->num_artworks, sizeof(uint32_t), 1, file);
-    fwrite(&system->num_history, sizeof(uint32_t), 1, file);
+    if (fwrite(&magic, sizeof(uint32_t), 1, file) != 1 ||
+        fwrite(&version, sizeof(uint32_t), 1, file) != 1 ||
+        fwrite(&system->repository->num_items, sizeof(uint32_t), 1, file) != 1 ||
+        fwrite(&system->num_narratives, sizeof(uint32_t), 1, file) != 1 ||
+        fwrite(&system->num_artworks, sizeof(uint32_t), 1, file) != 1 ||
+        fwrite(&system->num_history, sizeof(uint32_t), 1, file) != 1) {
+        fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_save: write error on header");
+        return false;
+    }
 
     for (uint32_t i = 0; i < system->repository->num_items; i++) {
-        fwrite(&system->repository->items[i], sizeof(knowledge_item_t), 1, file);
+        // NOTE: knowledge_item_t contains pointer fields (examples, related_concepts).
+        // These are serialized as raw addresses and must be nulled on load.
+        if (fwrite(&system->repository->items[i], sizeof(knowledge_item_t), 1, file) != 1) {
+            fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_save: write error on item");
+            return false;
+        }
     }
 
     fclose(file);
@@ -211,8 +220,12 @@ knowledge_system_t knowledge_load(const char* filepath)
     }
 
     uint32_t magic, version;
-    fread(&magic, sizeof(uint32_t), 1, file);
-    fread(&version, sizeof(uint32_t), 1, file);
+    if (fread(&magic, sizeof(uint32_t), 1, file) != 1 ||
+        fread(&version, sizeof(uint32_t), 1, file) != 1) {
+        fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_load: short read on header");
+        return NULL;
+    }
 
     if (magic != 0x4B4E4F57) {
         fclose(file);
@@ -227,13 +240,39 @@ knowledge_system_t knowledge_load(const char* filepath)
         return NULL;
     }
 
-    fread(&system->repository->num_items, sizeof(uint32_t), 1, file);
-    fread(&system->num_narratives, sizeof(uint32_t), 1, file);
-    fread(&system->num_artworks, sizeof(uint32_t), 1, file);
-    fread(&system->num_history, sizeof(uint32_t), 1, file);
+    if (fread(&system->repository->num_items, sizeof(uint32_t), 1, file) != 1 ||
+        fread(&system->num_narratives, sizeof(uint32_t), 1, file) != 1 ||
+        fread(&system->num_artworks, sizeof(uint32_t), 1, file) != 1 ||
+        fread(&system->num_history, sizeof(uint32_t), 1, file) != 1) {
+        fclose(file);
+        knowledge_system_destroy(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_load: short read on counts");
+        return NULL;
+    }
+
+    // Validate num_items against capacity to prevent buffer overflow
+    if (system->repository->num_items > system->repository->capacity) {
+        fclose(file);
+        knowledge_system_destroy(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_load: num_items exceeds capacity");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < system->repository->num_items; i++) {
-        fread(&system->repository->items[i], sizeof(knowledge_item_t), 1, file);
+        size_t read_count = fread(&system->repository->items[i], sizeof(knowledge_item_t), 1, file);
+        if (read_count != 1) {
+            // Short read — truncate at items successfully read
+            system->repository->num_items = i;
+            break;
+        }
+
+        // CRITICAL: Null out pointer fields that were serialized as raw addresses.
+        // These point to the old process's address space and would cause UAF/crash
+        // if dereferenced (e.g., during repository_destroy).
+        system->repository->items[i].examples = NULL;
+        system->repository->items[i].num_examples = 0;
+        system->repository->items[i].related_concepts = NULL;
+        system->repository->items[i].num_related = 0;
 
         // Populate B-tree key field with unique key: "confidence_index"
         snprintf(system->repository->items[i].confidence_key,

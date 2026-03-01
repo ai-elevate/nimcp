@@ -154,7 +154,10 @@ jepa_context_encoder_t* jepa_context_encoder_create(
     NIMCP_API_CHECK_ALLOC(encoder, "Failed to allocate context encoder");
 
     /* Initialize bridge base */
-    bridge_base_init(&encoder->base, BIO_MODULE_JEPA_CONTEXT, "JEPA_CONTEXT");
+    if (bridge_base_init(&encoder->base, BIO_MODULE_JEPA_CONTEXT, "JEPA_CONTEXT") != 0) {
+        nimcp_free(encoder);
+        return NULL;
+    }
     encoder->base.bridge_active = false;
 
     /* Copy configuration */
@@ -321,6 +324,9 @@ void jepa_context_encoder_destroy(jepa_context_encoder_t* encoder)
     nimcp_free(encoder->input_buffer);
     nimcp_free(encoder->output_buffer);
     nimcp_free(encoder->temp_buffer);
+
+    /* Cleanup bridge base (mutex, etc.) */
+    bridge_base_cleanup(&encoder->base);
 
     /* Free encoder */
     nimcp_free(encoder);

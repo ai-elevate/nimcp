@@ -685,8 +685,10 @@ NIMCP_EXPORT future_error_t future_thinking_construct_scene(
     scene_out->construction_time_ms = get_current_time_ms();
     scene_out->scene_id = ft->next_event_id++;  // Use event ID counter for scenes too
 
-    ft->stats.avg_coherence = (ft->stats.avg_coherence * ft->stats.total_events_simulated +
-                               overall) / (ft->stats.total_events_simulated + 1);
+    if (isfinite(overall) && ft->stats.total_events_simulated < UINT32_MAX) {
+        ft->stats.avg_coherence = (ft->stats.avg_coherence * ft->stats.total_events_simulated +
+                                   overall) / (ft->stats.total_events_simulated + 1);
+    }
 
     return FUTURE_SUCCESS;
 }

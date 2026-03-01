@@ -74,23 +74,17 @@ working_memory_t* working_memory_create_custom(
         return NULL;
     }
 
-    // Allocate arrays
+    // Allocate arrays — do NOT early-return on individual failures.
+    // Each calloc may return NULL; the combined check below handles cleanup.
     wm->items = nimcp_calloc(config->capacity, sizeof(float*));
-    if (!wm->items) return NULL;
     wm->item_sizes = nimcp_calloc(config->capacity, sizeof(uint32_t));
-    if (!wm->item_sizes) return NULL;
     wm->salience = nimcp_calloc(config->capacity, sizeof(float));
-    if (!wm->salience) return NULL;
     wm->timestamps = nimcp_calloc(config->capacity, sizeof(uint64_t));
-    if (!wm->timestamps) return NULL;
     wm->attention_refreshed = nimcp_calloc(config->capacity, sizeof(bool));
-    if (!wm->attention_refreshed) return NULL;
     wm->emotions = nimcp_calloc(config->capacity, sizeof(emotional_tag_t));  // Phase 10.3
-    if (!wm->emotions) return NULL;
     wm->has_emotion = nimcp_calloc(config->capacity, sizeof(bool));          // Phase 10.3
-    if (!wm->has_emotion) return NULL;
 
-    // Check all allocations
+    // Check all allocations — working_memory_destroy handles partially-allocated state
     if (!wm->items || !wm->item_sizes || !wm->salience ||
         !wm->timestamps || !wm->attention_refreshed ||
         !wm->emotions || !wm->has_emotion) {

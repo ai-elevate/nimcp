@@ -139,7 +139,9 @@ static void update_phi_monitoring(self_awareness_coordinator_t* coord) {
                 coord->stats.min_phi = result->phi;
             }
             /* Running average using EMA weights */
-            coord->stats.avg_phi = (coord->stats.avg_phi * NIMCP_EMA_WEIGHT_MEDIUM) + (result->phi * NIMCP_EMA_WEIGHT_MEDIUM_NEW);
+            if (isfinite(result->phi)) {
+                coord->stats.avg_phi = (coord->stats.avg_phi * NIMCP_EMA_WEIGHT_MEDIUM) + (result->phi * NIMCP_EMA_WEIGHT_MEDIUM_NEW);
+            }
         }
 
         /* Check for alert conditions */
@@ -535,7 +537,9 @@ int sac_introspection_to_self_model(self_awareness_coordinator_t* coord) {
 
         /* Update latency tracking */
         float latency = (float)(get_current_time_ms() - start_time);
-        loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
+        if (isfinite(latency)) {
+            loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
+        }
         return NIMCP_SUCCESS;
     } else {
         loop->error_count++;
@@ -571,7 +575,9 @@ int sac_autobio_to_self_model(self_awareness_coordinator_t* coord) {
         coord->stats.total_feedback_transfers++;
 
         float latency = (float)(get_current_time_ms() - start_time);
-        loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
+        if (isfinite(latency)) {
+            loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
+        }
         return NIMCP_SUCCESS;
     } else {
         loop->error_count++;
@@ -605,7 +611,9 @@ int sac_ground_tom_in_self(self_awareness_coordinator_t* coord) {
     coord->stats.total_feedback_transfers++;
 
     float latency = (float)(get_current_time_ms() - start_time);
-    loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
+    if (isfinite(latency)) {
+        loop->avg_latency_ms = (loop->avg_latency_ms * NIMCP_EMA_WEIGHT_SLOW) + (latency * NIMCP_EMA_WEIGHT_FAST);
+    }
 
     return 0;
 }

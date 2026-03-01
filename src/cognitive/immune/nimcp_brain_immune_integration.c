@@ -344,7 +344,7 @@ nimcp_immune_integration_t* nimcp_immune_integration_create(
 
 cleanup:
     nimcp_immune_integration_destroy(integration);
-    /* FIX HIGH:347 — cleanup reached on alloc/init failure: use NO_MEMORY not NULL_POINTER */
+    /* Cleanup reached on alloc/init failure: use NO_MEMORY error code */
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_immune_integration_create: initialization failed");
     return NULL;
 }
@@ -386,7 +386,7 @@ void nimcp_immune_integration_destroy(nimcp_immune_integration_t* integration) {
 
     /* Free integration structure */
     nimcp_free(integration);
-    /* FIX LOW:388 — removed dead code: integration = NULL has no effect on caller */
+    /* Note: no need to NULL the local pointer; caller retains their copy */
 }
 
 int nimcp_immune_integration_start(nimcp_immune_integration_t* integration) {
@@ -456,7 +456,7 @@ int nimcp_immune_integration_tick(
         return -1;
     }
     if (!integration->running) {
-        /* FIX MEDIUM:458 — running is a bool, not a pointer; "is NULL" is misleading */
+        /* running is a bool flag, not a pointer */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_tick: integration is not running");
         return -1;
     }

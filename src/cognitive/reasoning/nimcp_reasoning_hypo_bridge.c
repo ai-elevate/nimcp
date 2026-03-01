@@ -28,6 +28,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 #define LOG_MODULE "reasoning_hypo"
 
@@ -84,10 +85,10 @@ reasoning_hypo_modulation_t reasoning_hypo_compute_modulation(brain_t brain) {
     memset(&mod, 0, sizeof(mod));
     mod.hypothalamus_available = true;
 
-    /* Extract key signals */
-    mod.alertness = state.circadian.alertness;
-    mod.sleep_pressure = state.circadian.sleep_pressure;
-    mod.stress_level = state.hpa_axis.cortisol_level;
+    /* Extract key signals (guard against NaN/Inf from hypothalamus) */
+    mod.alertness = isfinite(state.circadian.alertness) ? state.circadian.alertness : 1.0f;
+    mod.sleep_pressure = isfinite(state.circadian.sleep_pressure) ? state.circadian.sleep_pressure : 0.0f;
+    mod.stress_level = isfinite(state.hpa_axis.cortisol_level) ? state.hpa_axis.cortisol_level : 0.0f;
 
     /*---------------------------------------------------------------
      * Determine urgency mode from autonomic state
@@ -113,6 +114,7 @@ reasoning_hypo_modulation_t reasoning_hypo_compute_modulation(brain_t brain) {
     if (stress_factor < 0.1f) stress_factor = 0.1f;
 
     mod.cognitive_capacity = mod.alertness * fatigue_factor * stress_factor;
+    if (!isfinite(mod.cognitive_capacity)) mod.cognitive_capacity = 0.5f;
     if (mod.cognitive_capacity < 0.0f) mod.cognitive_capacity = 0.0f;
     if (mod.cognitive_capacity > 1.0f) mod.cognitive_capacity = 1.0f;
 

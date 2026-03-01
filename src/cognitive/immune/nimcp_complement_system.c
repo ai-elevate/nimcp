@@ -107,7 +107,7 @@ const char* complement_mac_state_to_string(mac_state_t state) {
 static uint64_t get_timestamp_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    /* FIX HIGH:110 — cast before multiply to avoid signed 32-bit overflow */
+    /* Cast before multiply to avoid signed 32-bit overflow */
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
 }
 
@@ -171,12 +171,12 @@ static complement_mac_t* find_mac_by_id(complement_system_t* system, uint32_t id
 static int generate_c3b(complement_system_t* system, uint32_t target_id,
                         complement_pathway_t pathway) {
     if (!system) {
-        /* FIX HIGH:173 — wrong error code (NO_MEMORY→NULL_POINTER) and wrong function name */
+        /* Corrected error code and function name */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_c3b: system is NULL");
         return -1;
     }
     if (system->c3b_count >= system->c3b_capacity) {
-        /* FIX MEDIUM:177 — wrong function name in error message */
+        /* Corrected function name in error message */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "generate_c3b: capacity exceeded");
         return -1;
     }

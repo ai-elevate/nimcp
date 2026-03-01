@@ -193,8 +193,12 @@ int gw_substrate_bridge_update(gw_substrate_bridge_t* bridge) {
 
     bridge->stats.update_count++;
     float alpha = 0.01f;
-    bridge->stats.avg_broadcast_reach = (1.0f - alpha) * bridge->stats.avg_broadcast_reach + alpha * bridge->effects.broadcast_reach;
-    bridge->stats.avg_coherence = (1.0f - alpha) * bridge->stats.avg_coherence + alpha * bridge->effects.coherence;
+    if (isfinite(bridge->effects.broadcast_reach)) {
+        bridge->stats.avg_broadcast_reach = (1.0f - alpha) * bridge->stats.avg_broadcast_reach + alpha * bridge->effects.broadcast_reach;
+    }
+    if (isfinite(bridge->effects.coherence)) {
+        bridge->stats.avg_coherence = (1.0f - alpha) * bridge->stats.avg_coherence + alpha * bridge->effects.coherence;
+    }
     nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;

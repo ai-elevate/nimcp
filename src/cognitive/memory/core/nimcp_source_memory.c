@@ -219,6 +219,10 @@ static source_error_t insert_entry(
     // Copy agent name if present
     if (entry->source.source_agent_name) {
         slot->entry.source.source_agent_name = strdup(entry->source.source_agent_name);
+        if (!slot->entry.source.source_agent_name) {
+            slot->occupied = false;
+            return SOURCE_ERROR_NO_MEMORY;
+        }
     }
 
     sm->entry_count++;
@@ -870,6 +874,9 @@ NIMCP_EXPORT source_error_t source_memory_update_source(
     // Copy agent name
     if (source->source_agent_name) {
         entry->entry.source.source_agent_name = strdup(source->source_agent_name);
+        if (!entry->entry.source.source_agent_name) {
+            return SOURCE_ERROR_NO_MEMORY;
+        }
     }
 
     // Update reality status if auto-check enabled

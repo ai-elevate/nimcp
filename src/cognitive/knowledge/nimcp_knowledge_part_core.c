@@ -807,7 +807,7 @@ int knowledge_training_begin(void* instance) {
         return -1;
     }
     knowledge_heartbeat_instance(NULL, "knowledge_training_begin", 0.0f);
-    (void)(struct hash_entry_struct*)instance; /* Module state available for reset */
+    (void)instance;
     return 0;
 }
 
@@ -819,6 +819,6 @@ int knowledge_training_end(void* instance) {
         return -1;
     }
     knowledge_heartbeat_instance(NULL, "knowledge_training_end", 1.0f);
-    (void)(struct hash_entry_struct*)instance; /* Module state available for finalization */
+    (void)instance;
     return 0;
 }

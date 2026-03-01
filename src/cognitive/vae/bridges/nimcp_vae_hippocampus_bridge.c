@@ -204,24 +204,25 @@ int vae_hippo_bridge_connect_vae(vae_hippo_bridge_t* bridge, vae_system_t* vae) 
     bridge->vae_output_dim = vae_get_output_dim(vae);
 
     bridge->encode_buffer = (float*)nimcp_calloc(bridge->vae_input_dim, sizeof(float));
-    if (!bridge->encode_buffer) return -1;
     bridge->decode_buffer = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
-    if (!bridge->decode_buffer) return -1;
     bridge->latent_buffer = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
-    if (!bridge->latent_buffer) return -1;
     bridge->variance_buffer = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
-    if (!bridge->variance_buffer) return -1;
     bridge->latent_mean_baseline = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
-    if (!bridge->latent_mean_baseline) return -1;
     bridge->latent_var_baseline = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
-    if (!bridge->latent_var_baseline) return -1;
 
     if (!bridge->encode_buffer || !bridge->decode_buffer ||
         !bridge->latent_buffer || !bridge->variance_buffer ||
         !bridge->latent_mean_baseline || !bridge->latent_var_baseline) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to allocate working buffers");
+        /* Free any partially allocated buffers */
+        if (bridge->encode_buffer) { nimcp_free(bridge->encode_buffer); bridge->encode_buffer = NULL; }
+        if (bridge->decode_buffer) { nimcp_free(bridge->decode_buffer); bridge->decode_buffer = NULL; }
+        if (bridge->latent_buffer) { nimcp_free(bridge->latent_buffer); bridge->latent_buffer = NULL; }
+        if (bridge->variance_buffer) { nimcp_free(bridge->variance_buffer); bridge->variance_buffer = NULL; }
+        if (bridge->latent_mean_baseline) { nimcp_free(bridge->latent_mean_baseline); bridge->latent_mean_baseline = NULL; }
+        if (bridge->latent_var_baseline) { nimcp_free(bridge->latent_var_baseline); bridge->latent_var_baseline = NULL; }
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_HIPPO_NO_MEMORY, "vae_hippocampus_bridge: error condition");
-        return NIMCP_ERROR_VAE_HIPPO_NO_MEMORY;
+        return -1;
     }
 
     for (uint32_t i = 0; i < bridge->vae_latent_dim; i++) {
@@ -415,11 +416,15 @@ int vae_hippo_encode_episode(vae_hippo_bridge_t* bridge,
     uint64_t elapsed = get_time_us() - start_time;
     bridge->stats.total_encodes++;
     bridge->stats.successful_encodes++;
-    bridge->stats.avg_encode_latency_us = bridge->stats.avg_encode_latency_us * 0.9f + elapsed * 0.1f;
-    bridge->stats.avg_encoding_strength = bridge->stats.avg_encoding_strength * 0.9f +
-                                          result->encoding_strength * 0.1f;
-    bridge->stats.avg_novelty_score = bridge->stats.avg_novelty_score * 0.9f +
-                                      novelty_score * 0.1f;
+    bridge->stats.avg_encode_latency_us = bridge->stats.avg_encode_latency_us * 0.9f + (float)elapsed * 0.1f;
+    if (isfinite(result->encoding_strength)) {
+        bridge->stats.avg_encoding_strength = bridge->stats.avg_encoding_strength * 0.9f +
+                                              result->encoding_strength * 0.1f;
+    }
+    if (isfinite(novelty_score)) {
+        bridge->stats.avg_novelty_score = bridge->stats.avg_novelty_score * 0.9f +
+                                          novelty_score * 0.1f;
+    }
     bridge->stats.last_operation_us = get_time_us();
 
     bridge->state = VAE_HIPPO_STATE_CONNECTED;
@@ -624,9 +629,11 @@ int vae_hippo_retrieve(vae_hippo_bridge_t* bridge,
     uint64_t elapsed = get_time_us() - start_time;
     bridge->stats.total_retrieves++;
     bridge->stats.successful_retrieves++;
-    bridge->stats.avg_retrieve_latency_us = bridge->stats.avg_retrieve_latency_us * 0.9f + elapsed * 0.1f;
-    bridge->stats.avg_retrieval_similarity = bridge->stats.avg_retrieval_similarity * 0.9f +
-                                             match_confidence * 0.1f;
+    bridge->stats.avg_retrieve_latency_us = bridge->stats.avg_retrieve_latency_us * 0.9f + (float)elapsed * 0.1f;
+    if (isfinite(match_confidence)) {
+        bridge->stats.avg_retrieval_similarity = bridge->stats.avg_retrieval_similarity * 0.9f +
+                                                 match_confidence * 0.1f;
+    }
     bridge->stats.last_operation_us = get_time_us();
 
     bridge->state = VAE_HIPPO_STATE_CONNECTED;
@@ -895,9 +902,11 @@ int vae_hippo_pattern_separate(vae_hippo_bridge_t* bridge,
 
     uint64_t elapsed = get_time_us() - start_time;
     bridge->stats.total_separations++;
-    bridge->stats.avg_pattern_latency_us = bridge->stats.avg_pattern_latency_us * 0.9f + elapsed * 0.1f;
-    bridge->stats.avg_latent_sparsity = bridge->stats.avg_latent_sparsity * 0.9f +
-                                        result->sparsity_achieved * 0.1f;
+    bridge->stats.avg_pattern_latency_us = bridge->stats.avg_pattern_latency_us * 0.9f + (float)elapsed * 0.1f;
+    if (isfinite(result->sparsity_achieved)) {
+        bridge->stats.avg_latent_sparsity = bridge->stats.avg_latent_sparsity * 0.9f +
+                                            result->sparsity_achieved * 0.1f;
+    }
     bridge->stats.last_operation_us = get_time_us();
 
     bridge->state = VAE_HIPPO_STATE_CONNECTED;
@@ -995,9 +1004,11 @@ int vae_hippo_pattern_complete(vae_hippo_bridge_t* bridge,
 
     uint64_t elapsed = get_time_us() - start_time;
     bridge->stats.total_completions++;
-    bridge->stats.avg_pattern_latency_us = bridge->stats.avg_pattern_latency_us * 0.9f + elapsed * 0.1f;
-    bridge->stats.avg_completion_confidence = bridge->stats.avg_completion_confidence * 0.9f +
-                                              result->confidence * 0.1f;
+    bridge->stats.avg_pattern_latency_us = bridge->stats.avg_pattern_latency_us * 0.9f + (float)elapsed * 0.1f;
+    if (isfinite(result->confidence)) {
+        bridge->stats.avg_completion_confidence = bridge->stats.avg_completion_confidence * 0.9f +
+                                                  result->confidence * 0.1f;
+    }
     bridge->stats.last_operation_us = get_time_us();
 
     bridge->state = VAE_HIPPO_STATE_CONNECTED;

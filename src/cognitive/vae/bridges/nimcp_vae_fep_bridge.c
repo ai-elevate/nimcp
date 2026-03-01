@@ -91,12 +91,18 @@ static void update_ema_stats(vae_fep_bridge_t* bridge, float free_energy,
         bridge->stats.min_free_energy = free_energy;
         bridge->stats.max_free_energy = free_energy;
     } else {
-        bridge->stats.avg_free_energy = alpha * bridge->stats.avg_free_energy +
-                                        (1.0f - alpha) * free_energy;
-        bridge->stats.avg_inaccuracy = alpha * bridge->stats.avg_inaccuracy +
-                                       (1.0f - alpha) * inaccuracy;
-        bridge->stats.avg_complexity = alpha * bridge->stats.avg_complexity +
-                                       (1.0f - alpha) * complexity;
+        if (isfinite(free_energy)) {
+            bridge->stats.avg_free_energy = alpha * bridge->stats.avg_free_energy +
+                                            (1.0f - alpha) * free_energy;
+        }
+        if (isfinite(inaccuracy)) {
+            bridge->stats.avg_inaccuracy = alpha * bridge->stats.avg_inaccuracy +
+                                           (1.0f - alpha) * inaccuracy;
+        }
+        if (isfinite(complexity)) {
+            bridge->stats.avg_complexity = alpha * bridge->stats.avg_complexity +
+                                           (1.0f - alpha) * complexity;
+        }
 
         if (free_energy < bridge->stats.min_free_energy) {
             bridge->stats.min_free_energy = free_energy;
@@ -106,6 +112,9 @@ static void update_ema_stats(vae_fep_bridge_t* bridge, float free_energy,
         }
     }
 }
+
+/* Forward declaration for cleanup on init failure */
+static void free_mapping_state(vae_fep_mapping_state_t* mapping);
 
 /**
  * @brief Initialize mapping state
@@ -139,11 +148,11 @@ static int init_mapping_state(vae_fep_bridge_t* bridge)
 
     if (!mapping->mapped_mean) {
         mapping->mapped_mean = nimcp_calloc(map_dim, sizeof(float));
-        if (!mapping->mapped_mean) return -1;
+        if (!mapping->mapped_mean) goto alloc_fail;
     }
     if (!mapping->mapped_precision) {
         mapping->mapped_precision = nimcp_calloc(map_dim, sizeof(float));
-        if (!mapping->mapped_precision) return -1;
+        if (!mapping->mapped_precision) goto alloc_fail;
         /* Initialize precision to 1.0 */
         for (uint32_t i = 0; i < map_dim; i++) {
             mapping->mapped_precision[i] = 1.0f;
@@ -156,6 +165,7 @@ static int init_mapping_state(vae_fep_bridge_t* bridge)
             if (!mapping->latent_to_belief_matrix) {
                 mapping->latent_to_belief_matrix = nimcp_calloc(
                     mapping->belief_dim * mapping->latent_dim, sizeof(float));
+                if (!mapping->latent_to_belief_matrix) goto alloc_fail;
                 /* Initialize to identity-like mapping */
                 uint32_t min_dim = (mapping->latent_dim < mapping->belief_dim) ?
                                     mapping->latent_dim : mapping->belief_dim;
@@ -166,6 +176,7 @@ static int init_mapping_state(vae_fep_bridge_t* bridge)
             if (!mapping->belief_to_latent_matrix) {
                 mapping->belief_to_latent_matrix = nimcp_calloc(
                     mapping->latent_dim * mapping->belief_dim, sizeof(float));
+                if (!mapping->belief_to_latent_matrix) goto alloc_fail;
                 uint32_t min_dim = (mapping->latent_dim < mapping->belief_dim) ?
                                     mapping->latent_dim : mapping->belief_dim;
                 for (uint32_t i = 0; i < min_dim; i++) {
@@ -182,6 +193,10 @@ static int init_mapping_state(vae_fep_bridge_t* bridge)
     mapping->complexity = 0.0f;
 
     return 0;
+
+alloc_fail:
+    free_mapping_state(mapping);
+    return -1;
 }
 
 /**
@@ -581,8 +596,11 @@ int vae_fep_sync_latent_to_belief(vae_fep_bridge_t* bridge)
 
     uint64_t elapsed = get_timestamp_us() - start_time;
     float alpha = VAE_FEP_EMA_ALPHA;
-    bridge->stats.avg_sync_latency_us = alpha * bridge->stats.avg_sync_latency_us +
-                                        (1.0f - alpha) * (float)elapsed;
+    float elapsed_f = (float)elapsed;
+    if (isfinite(elapsed_f)) {
+        bridge->stats.avg_sync_latency_us = alpha * bridge->stats.avg_sync_latency_us +
+                                            (1.0f - alpha) * elapsed_f;
+    }
 
     update_health(bridge, true);
 
@@ -673,8 +691,11 @@ int vae_fep_sync_belief_to_latent(vae_fep_bridge_t* bridge)
 
     uint64_t elapsed = get_timestamp_us() - start_time;
     float alpha = VAE_FEP_EMA_ALPHA;
-    bridge->stats.avg_sync_latency_us = alpha * bridge->stats.avg_sync_latency_us +
-                                        (1.0f - alpha) * (float)elapsed;
+    float elapsed_f2 = (float)elapsed;
+    if (isfinite(elapsed_f2)) {
+        bridge->stats.avg_sync_latency_us = alpha * bridge->stats.avg_sync_latency_us +
+                                            (1.0f - alpha) * elapsed_f2;
+    }
 
     update_health(bridge, true);
 
@@ -925,6 +946,7 @@ int vae_fep_sync_precision(vae_fep_bridge_t* bridge)
 float vae_fep_get_avg_precision(const vae_fep_bridge_t* bridge)
 {
     if (!bridge || !bridge->mapping.mapped_precision) return NAN;
+    if (bridge->mapping.latent_dim == 0) return NAN;
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < bridge->mapping.latent_dim; i++) {

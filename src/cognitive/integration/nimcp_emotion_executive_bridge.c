@@ -115,7 +115,6 @@ struct emotion_executive_bridge {
     size_t decision_capacity;               /**< Capacity of decisions array */
     size_t decision_count;                  /**< Current number of decisions */
     emotion_executive_stats_t stats;        /**< Bridge statistics */
-    nimcp_platform_mutex_t* mutex;          /**< Thread safety mutex */
     bool initialized;                       /**< Initialization flag */
 };
 
@@ -229,13 +228,12 @@ emotion_executive_bridge_t* emotion_executive_bridge_create(
     /* Initialize statistics */
     memset(&bridge->stats, 0, sizeof(emotion_executive_stats_t));
 
-    /* Create mutex for thread safety */
-    bridge->base.mutex = nimcp_platform_mutex_create();
-    if (!bridge->base.mutex) {
+    /* Initialize base bridge infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "emotion_executive") != 0) {
         nimcp_free(bridge->decisions);
         nimcp_free(bridge);
         bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_executive_bridge_create: bridge->base is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_executive_bridge_create: bridge_base_init failed");
         return NULL;
     }
 
@@ -250,15 +248,12 @@ void emotion_executive_bridge_destroy(emotion_executive_bridge_t* bridge) {
     }
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "emotion_executive");
 
-    /* Destroy mutex */
     /* Phase 8: Heartbeat at operation start */
     emotion_executive_bridge_heartbeat("emotion_exec_destroy", 0.0f);
 
-
+    /* Cleanup base bridge infrastructure (includes mutex) */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
+        bridge_base_cleanup(&bridge->base);
         bridge->base.mutex = NULL;
     }
 
@@ -298,7 +293,7 @@ int emotion_executive_influence_decision(
     emotion_executive_bridge_heartbeat("emotion_exec_emotion_executive_in", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Create decision record */
     if (bridge->decision_count < bridge->decision_capacity) {
@@ -366,7 +361,7 @@ int emotion_executive_influence_decision(
             / bridge->stats.decisions_influenced;
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -390,12 +385,12 @@ int emotion_executive_on_decision(
     emotion_executive_bridge_heartbeat("emotion_exec_emotion_executive_on", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find decision record */
     decision_record_t* record = find_decision_unlocked(bridge, decision_id);
     if (!record) {
-        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -430,7 +425,7 @@ int emotion_executive_on_decision(
     /* Update statistics */
     bridge->stats.emotions_triggered++;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -454,7 +449,7 @@ int emotion_executive_regulate_emotion(
     emotion_executive_bridge_heartbeat("emotion_exec_emotion_executive_re", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float strength = bridge->config.regulation_strength;
     float target_intensity = regulation_target->target_intensity;
@@ -512,7 +507,7 @@ int emotion_executive_regulate_emotion(
             / bridge->stats.regulations_applied;
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -535,7 +530,7 @@ int emotion_executive_get_emotional_state(
     emotion_executive_bridge_heartbeat("emotion_exec_emotion_executive_ge", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Copy current state to output */
     state_out->valence = bridge->current_state.valence;
@@ -575,7 +570,7 @@ int emotion_executive_get_emotional_state(
     /* Regulation effectiveness from stats */
     state_out->regulation_effectiveness = bridge->stats.avg_regulation_effectiveness;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -605,9 +600,9 @@ int emotion_executive_get_stats(
 
     emotion_executive_bridge_t* mutable_bridge = (emotion_executive_bridge_t*)bridge;
 
-    nimcp_platform_mutex_lock(mutable_bridge->base.mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *stats_out = bridge->stats;
-    nimcp_platform_mutex_unlock(mutable_bridge->base.mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }

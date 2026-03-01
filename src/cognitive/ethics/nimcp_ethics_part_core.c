@@ -295,7 +295,6 @@ int ethics_training_begin(void* instance) {
         return -1;
     }
     ethics_heartbeat_instance(NULL, "ethics_training_begin", 0.0f);
-    (void)(policy_value_t*)instance; /* Module state available for reset */
     return 0;
 }
 
@@ -307,6 +306,5 @@ int ethics_training_end(void* instance) {
         return -1;
     }
     ethics_heartbeat_instance(NULL, "ethics_training_end", 1.0f);
-    (void)(policy_value_t*)instance; /* Module state available for finalization */
     return 0;
 }

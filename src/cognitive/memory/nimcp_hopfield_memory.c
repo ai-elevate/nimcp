@@ -741,12 +741,16 @@ int hopfield_memory_retrieve_iter(hopfield_memory_t* memory,
     if (converged) {
         memory->stats.successful_retrievals++;
     }
-    memory->stats.avg_similarity = (memory->stats.avg_similarity * 0.99f) +
-                                   (best_sim * 0.01f);
+    if (isfinite(best_sim)) {
+        memory->stats.avg_similarity = (memory->stats.avg_similarity * 0.99f) +
+                                       (best_sim * 0.01f);
+    }
     memory->stats.avg_iterations = (memory->stats.avg_iterations * 0.99f) +
                                    ((float)(iter + 1) * 0.01f);
-    memory->stats.avg_energy = (memory->stats.avg_energy * 0.99f) +
-                               (result->energy * 0.01f);
+    if (isfinite(result->energy)) {
+        memory->stats.avg_energy = (memory->stats.avg_energy * 0.99f) +
+                                   (result->energy * 0.01f);
+    }
 
     if (should_use_gpu(memory, 1)) {
         memory->stats.gpu_retrievals++;

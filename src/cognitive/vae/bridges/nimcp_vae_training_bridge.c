@@ -181,18 +181,30 @@ static void update_stats(vae_training_bridge_t* bridge,
     bridge->stats.total_steps++;
 
     float alpha = VAE_TRAIN_EMA_ALPHA;
-    bridge->stats.avg_total_loss = alpha * bridge->stats.avg_total_loss +
-                                   (1.0f - alpha) * loss->total_loss;
-    bridge->stats.avg_vae_loss = alpha * bridge->stats.avg_vae_loss +
-                                 (1.0f - alpha) * loss->vae_loss;
-    bridge->stats.avg_snn_loss = alpha * bridge->stats.avg_snn_loss +
-                                 (1.0f - alpha) * loss->snn_loss;
-    bridge->stats.avg_kl_divergence = alpha * bridge->stats.avg_kl_divergence +
-                                      (1.0f - alpha) * loss->kl_loss;
-    bridge->stats.avg_recon_error = alpha * bridge->stats.avg_recon_error +
-                                    (1.0f - alpha) * loss->recon_loss;
-    bridge->stats.avg_grad_norm = alpha * bridge->stats.avg_grad_norm +
-                                  (1.0f - alpha) * grad_norm;
+    if (isfinite(loss->total_loss)) {
+        bridge->stats.avg_total_loss = alpha * bridge->stats.avg_total_loss +
+                                       (1.0f - alpha) * loss->total_loss;
+    }
+    if (isfinite(loss->vae_loss)) {
+        bridge->stats.avg_vae_loss = alpha * bridge->stats.avg_vae_loss +
+                                     (1.0f - alpha) * loss->vae_loss;
+    }
+    if (isfinite(loss->snn_loss)) {
+        bridge->stats.avg_snn_loss = alpha * bridge->stats.avg_snn_loss +
+                                     (1.0f - alpha) * loss->snn_loss;
+    }
+    if (isfinite(loss->kl_loss)) {
+        bridge->stats.avg_kl_divergence = alpha * bridge->stats.avg_kl_divergence +
+                                          (1.0f - alpha) * loss->kl_loss;
+    }
+    if (isfinite(loss->recon_loss)) {
+        bridge->stats.avg_recon_error = alpha * bridge->stats.avg_recon_error +
+                                        (1.0f - alpha) * loss->recon_loss;
+    }
+    if (isfinite(grad_norm)) {
+        bridge->stats.avg_grad_norm = alpha * bridge->stats.avg_grad_norm +
+                                      (1.0f - alpha) * grad_norm;
+    }
 
     if (loss->total_loss < bridge->stats.min_loss_observed) {
         bridge->stats.min_loss_observed = loss->total_loss;
@@ -520,7 +532,6 @@ int vae_training_forward(vae_training_bridge_t* bridge,
     result->latent_dim = latent_dim;
     result->latent_mu = nimcp_calloc(latent_dim, sizeof(float));
     result->latent_log_var = nimcp_calloc(latent_dim, sizeof(float));
-    if (!result->latent_log_var) return -1;
     result->latent_sample = nimcp_calloc(latent_dim, sizeof(float));
 
     if (!result->latent_mu || !result->latent_log_var || !result->latent_sample) {
@@ -570,7 +581,15 @@ int vae_training_forward(vae_training_bridge_t* bridge,
         /* For now, just set placeholder */
         result->snn_output_dim = result->latent_dim;
         result->snn_output = nimcp_calloc(result->snn_output_dim, sizeof(float));
-        if (!result->snn_output) return -1;
+        if (!result->snn_output) {
+            nimcp_tensor_destroy(input_tensor);
+            nimcp_tensor_destroy(mu_tensor);
+            nimcp_tensor_destroy(log_var_tensor);
+            if (result->latent_mu) { nimcp_free(result->latent_mu); result->latent_mu = NULL; }
+            if (result->latent_log_var) { nimcp_free(result->latent_log_var); result->latent_log_var = NULL; }
+            if (result->latent_sample) { nimcp_free(result->latent_sample); result->latent_sample = NULL; }
+            return -1;
+        }
     }
 
     nimcp_tensor_destroy(input_tensor);

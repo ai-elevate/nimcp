@@ -161,7 +161,9 @@ int knowledge_fep_update_knowledge(knowledge_fep_bridge_t* bridge, float predict
         bridge->stats.updates_total++;
         bridge->effects.semantic_pe = fabsf(prediction_error);
     }
-    bridge->stats.avg_semantic_pe = (bridge->stats.avg_semantic_pe * 0.9f) + (fabsf(prediction_error) * 0.1f);
+    if (isfinite(prediction_error)) {
+        bridge->stats.avg_semantic_pe = (bridge->stats.avg_semantic_pe * 0.9f) + (fabsf(prediction_error) * 0.1f);
+    }
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }

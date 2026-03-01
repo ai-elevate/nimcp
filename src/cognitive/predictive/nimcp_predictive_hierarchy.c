@@ -196,8 +196,10 @@ static void compute_prediction_error(pred_level_t* level) {
         error_sum += error * error;
     }
 
-    level->avg_error = (level->avg_error * 0.99f) +
-                       (sqrtf(error_sum / level->dim) * 0.01f);
+    float rms_error = sqrtf(error_sum / level->dim);
+    if (isfinite(rms_error)) {
+        level->avg_error = (level->avg_error * 0.99f) + (rms_error * 0.01f);
+    }
 }
 
 /**
@@ -782,8 +784,10 @@ float pred_hier_compute_free_energy(predictive_hierarchy_t* hier) {
     hier->complexity = complexity;
     hier->total_free_energy = total_fe + hier->config.complexity_weight * complexity;
 
-    hier->stats.avg_free_energy = (hier->stats.avg_free_energy * 0.99f) +
-                                   (hier->total_free_energy * 0.01f);
+    if (isfinite(hier->total_free_energy)) {
+        hier->stats.avg_free_energy = (hier->stats.avg_free_energy * 0.99f) +
+                                       (hier->total_free_energy * 0.01f);
+    }
 
     return hier->total_free_energy;
 }

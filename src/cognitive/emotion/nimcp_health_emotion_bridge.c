@@ -247,10 +247,7 @@ int health_emotion_compute_thresholds(
     emotion_adjusted_thresholds_t* thresholds
 ) {
     /* Phase 8: Heartbeat at operation start */
-    health_emotion_bridge_heartbeat("health_emoti_health_emotion_compu", 0.0f);
-
-
-    (void)agent;  /* May use agent for baseline thresholds */
+    health_emotion_bridge_heartbeat_instance(agent, "health_emoti_health_emotion_compu", 0.0f);
 
     if (!thresholds) {
 
@@ -427,10 +424,7 @@ int health_emotion_report_event(
     float severity
 ) {
     /* Phase 8: Heartbeat at operation start */
-    health_emotion_bridge_heartbeat("health_emoti_health_emotion_repor", 0.0f);
-
-
-    (void)agent;  /* May be used for context */
+    health_emotion_bridge_heartbeat_instance(agent, "health_emoti_health_emotion_repor", 0.0f);
 
     if (!emotion_system) {
 
@@ -581,10 +575,7 @@ int health_agent_detect_shadow_patterns(
      */
 
     /* Phase 8: Heartbeat at operation start */
-    health_emotion_bridge_heartbeat("health_emoti_health_agent_detect_", 0.0f);
-
-
-    (void)agent;  /* Will be used in full implementation */
+    health_emotion_bridge_heartbeat_instance((nimcp_health_agent_t*)agent, "health_emoti_health_agent_detect_", 0.0f);
 
     /* Return empty result for now */
     return 0;
@@ -702,8 +693,8 @@ int health_emotion_update_unified_state(
     /* Query immune bridge if available */
     (void)emotion_immune_bridge;  /* Will integrate in full implementation */
 
-    /* Query health agent if available */
-    (void)agent;  /* Will integrate in full implementation */
+    /* Use health agent for instance heartbeat */
+    health_emotion_bridge_heartbeat_instance((nimcp_health_agent_t*)agent, "health_emoti_health_emotion_updat", 0.5f);
 
     /* Compute derived metrics */
     state->combined_stress_index = health_emotion_compute_combined_stress(state);
@@ -845,15 +836,13 @@ int health_emotion_get_stats(
     }
 
     /* Phase 8: Heartbeat at operation start */
-    health_emotion_bridge_heartbeat("health_emoti_health_emotion_get_s", 0.0f);
+    health_emotion_bridge_heartbeat_instance((nimcp_health_agent_t*)agent, "health_emoti_health_emotion_get_s", 0.0f);
 
 
     memset(stats, 0, sizeof(health_emotion_stats_t));
 
     /* In full implementation, this would query accumulated statistics
      * from the health agent's emotion bridge state */
-
-    (void)agent;  /* Will be used in full implementation */
 
     return 0;
 }
@@ -863,10 +852,7 @@ void health_emotion_reset_stats(nimcp_health_agent_t* agent) {
      * statistics stored in the health agent */
 
     /* Phase 8: Heartbeat at operation start */
-    health_emotion_bridge_heartbeat("health_emoti_health_emotion_reset", 0.0f);
-
-
-    (void)agent;  /* Will be used in full implementation */
+    health_emotion_bridge_heartbeat_instance(agent, "health_emoti_health_emotion_reset", 0.0f);
 }
 
 /*==============================================================================

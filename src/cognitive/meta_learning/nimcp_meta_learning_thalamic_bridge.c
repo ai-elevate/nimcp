@@ -166,11 +166,12 @@ int meta_learning_thalamic_get_attention(const meta_learning_thalamic_bridge_t* 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
-    *attention = bridge->attention_weight;
     /* Phase 8: Heartbeat at operation start */
     meta_learning_thalamic_bridge_heartbeat("meta_learnin_meta_learning_thalam", 0.0f);
 
-
+    nimcp_mutex_lock(bridge->base.mutex);
+    *attention = bridge->attention_weight;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -179,11 +180,12 @@ int meta_learning_thalamic_bridge_get_stats(const meta_learning_thalamic_bridge_
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
-    *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     meta_learning_thalamic_bridge_heartbeat("meta_learnin_get_stats", 0.0f);
 
-
+    nimcp_mutex_lock(bridge->base.mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

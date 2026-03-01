@@ -581,9 +581,13 @@ int ling_fuzzy_evaluate_preposition(
     /* Update stats */
     bridge->stats.total_evaluations++;
     uint64_t elapsed_us = get_time_us() - start_us;
-    bridge->stats.avg_latency_us = (bridge->stats.avg_latency_us * 0.99f) + (elapsed_us * 0.01f);
-    bridge->stats.avg_membership = (bridge->stats.avg_membership * 0.99f) + (membership * 0.01f);
-    bridge->stats.avg_precision = (bridge->stats.avg_precision * 0.99f) + (precision * 0.01f);
+    bridge->stats.avg_latency_us = (bridge->stats.avg_latency_us * 0.99f) + ((float)elapsed_us * 0.01f);
+    if (isfinite(membership)) {
+        bridge->stats.avg_membership = (bridge->stats.avg_membership * 0.99f) + (membership * 0.01f);
+    }
+    if (isfinite(precision)) {
+        bridge->stats.avg_precision = (bridge->stats.avg_precision * 0.99f) + (precision * 0.01f);
+    }
 
     /* Update current precision for mesh */
     bridge->current_precision = precision;

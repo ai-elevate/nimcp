@@ -1372,8 +1372,12 @@ int pr_curriculum_select_next_batch(
     /* Update statistics */
     bridge->stats.batches_selected++;
     bridge->stats.samples_presented += selected;
-    bridge->stats.avg_difficulty = bridge->stats.avg_difficulty * 0.95f + result->avg_difficulty * 0.05f;
-    bridge->stats.exploration_ratio = bridge->stats.exploration_ratio * 0.95f + result->exploration_ratio * 0.05f;
+    if (isfinite(result->avg_difficulty)) {
+        bridge->stats.avg_difficulty = bridge->stats.avg_difficulty * 0.95f + result->avg_difficulty * 0.05f;
+    }
+    if (isfinite(result->exploration_ratio)) {
+        bridge->stats.exploration_ratio = bridge->stats.exploration_ratio * 0.95f + result->exploration_ratio * 0.05f;
+    }
 
     uint64_t end_time_us = nimcp_time_get_us();
     float elapsed_us = (float)(end_time_us - start_time_us);

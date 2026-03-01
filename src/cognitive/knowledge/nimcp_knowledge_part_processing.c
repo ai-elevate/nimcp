@@ -72,6 +72,6 @@ int knowledge_training_step(void* instance, float progress) {
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     knowledge_heartbeat_instance(NULL, "knowledge_training_step", progress);
-    (void)(struct hash_entry_struct*)instance; /* Module state available for step adaptation */
+    (void)instance;
     return 0;
 }

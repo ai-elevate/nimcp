@@ -374,9 +374,21 @@ int vae_immune_bridge_connect_vae(vae_immune_bridge_t* bridge, vae_system_t* vae
         }
 
         bridge->baseline_latent_mean = nimcp_calloc(latent_dim, sizeof(float));
-        if (!bridge->baseline_latent_mean) return -1;
         bridge->baseline_latent_var = nimcp_calloc(latent_dim, sizeof(float));
-        if (!bridge->baseline_latent_var) return -1;
+        if (!bridge->baseline_latent_mean || !bridge->baseline_latent_var) {
+            if (bridge->baseline_latent_mean) {
+                nimcp_free(bridge->baseline_latent_mean);
+                bridge->baseline_latent_mean = NULL;
+            }
+            if (bridge->baseline_latent_var) {
+                nimcp_free(bridge->baseline_latent_var);
+                bridge->baseline_latent_var = NULL;
+            }
+            nimcp_mutex_unlock(bridge->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                                  "vae_immune_bridge_connect_vae: baseline buffer allocation failed");
+            return -1;
+        }
     }
 
     if (bridge->immune) {

@@ -1843,6 +1843,11 @@ NIMCP_EXPORT transactive_error_t transactive_register_domain(
     entry->signature = *domain_signature;
     if (domain_name) {
         entry->name = strdup(domain_name);
+        if (!entry->name) {
+            nimcp_free(entry);
+            entry = NULL;
+            return TRANSACTIVE_ERROR_NO_MEMORY;
+        }
     }
 
     // Insert into hash table

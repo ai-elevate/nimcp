@@ -206,8 +206,10 @@ int ethics_fep_bridge_update(ethics_fep_bridge_t* bridge, uint64_t delta_ms) {
         float total = bridge->state.ethical_policies_selected + bridge->state.harmful_actions_blocked;
         bridge->state.current_value_alignment = bridge->state.ethical_policies_selected / (fabsf(total) > 1e-7f ? total : 1e-7f);
     }
-    bridge->stats.avg_value_alignment = (bridge->stats.avg_value_alignment * 0.99f) +
-        (bridge->state.current_value_alignment * 0.01f);
+    if (isfinite(bridge->state.current_value_alignment)) {
+        bridge->stats.avg_value_alignment = (bridge->stats.avg_value_alignment * 0.99f) +
+            (bridge->state.current_value_alignment * 0.01f);
+    }
     bridge->effects.ethical_constraint_active = false;
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;

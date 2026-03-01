@@ -47,7 +47,8 @@
 BRIDGE_BOILERPLATE(recovery_executive, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /* Alias: tests reference executive_set_health_agent (shorter name) */
-void executive_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+static nimcp_health_agent_t* g_executive_health_agent = NULL;
+void executive_set_health_agent(struct nimcp_health_agent* agent) { g_executive_health_agent = agent; }
 
 #define BIO_MODULE_COGNITIVE_FAULT_RECOVERY_EXECUTIVE 0x035C
 

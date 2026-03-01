@@ -14,7 +14,6 @@ int omni_world_model_training_begin(void* ctx) {
         return -1;
     }
     omni_world_model_heartbeat_instance(g_omni_world_model_health_agent, "training_begin", 0.0f);
-    (void)ctx;
     return 0;
 }
 
@@ -26,7 +25,6 @@ int omni_world_model_training_end(void* ctx) {
         return -1;
     }
     omni_world_model_heartbeat_instance(g_omni_world_model_health_agent, "training_end", 1.0f);
-    (void)ctx;
     return 0;
 }
 

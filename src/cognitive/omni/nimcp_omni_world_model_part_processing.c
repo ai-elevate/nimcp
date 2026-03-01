@@ -12,7 +12,6 @@ int omni_world_model_training_step(void* ctx, float progress) {
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     omni_world_model_heartbeat_instance(g_omni_world_model_health_agent, "training_step", progress);
-    (void)ctx;
     return 0;
 }
 
@@ -40,8 +39,10 @@ nimcp_error_t omni_wm_rssm_step(omni_world_model_t* wm,
     /* Concatenate input: [h, z, a] */
     uint32_t input_dim = state->h_dim + state->z_dim + action_dim;
     float* input = nimcp_calloc(input_dim, sizeof(float));
-    if (!input) return -1;
-    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NO_MEMORY, "failed to allocate RSSM input buffer");
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate RSSM input buffer");
+        return NIMCP_ERROR_NO_MEMORY;
+    }
 
     memcpy(input, state->h, state->h_dim * sizeof(float));
     memcpy(input + state->h_dim, state->z, state->z_dim * sizeof(float));
@@ -142,12 +143,14 @@ nimcp_error_t omni_wm_update(omni_world_model_t* wm,
         float diff = pred.next_state->values[i] - next_state->values[i];
         error += diff * diff;
     }
-    error = sqrtf(error / min_dim);
+    error = min_dim > 0 ? sqrtf(error / min_dim) : 0.0f;
 
     /* Update running average of prediction error */
     float alpha = 0.01f;
-    wm->stats.mean_prediction_error = (1.0f - alpha) * wm->stats.mean_prediction_error +
-                                       alpha * error;
+    float new_mean = (1.0f - alpha) * wm->stats.mean_prediction_error + alpha * error;
+    if (isfinite(new_mean)) {
+        wm->stats.mean_prediction_error = new_mean;
+    }
 
     /* Simple gradient update on dynamics weights */
     float lr = wm->config.learning_rate;
@@ -160,6 +163,9 @@ nimcp_error_t omni_wm_update(omni_world_model_t* wm,
     }
 
     omni_wm_state_destroy(pred.next_state);
+    if (pred.action_taken) {
+        nimcp_free(pred.action_taken);
+    }
     wm->stats.model_updates++;
 
     return NIMCP_SUCCESS;

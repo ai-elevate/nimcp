@@ -249,6 +249,12 @@ int emotion_recognition_fep_infer_emotion(
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_emotion_inference) return 0;
 
+    /* Guard: NaN/Inf pe_magnitude would poison EMA averages in stats */
+    if (!isfinite(pe_magnitude)) {
+        NIMCP_LOGGING_WARN("NaN/Inf pe_magnitude rejected in emotion_recognition_fep_infer_emotion");
+        return -1;
+    }
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Prediction error drives emotional state inference

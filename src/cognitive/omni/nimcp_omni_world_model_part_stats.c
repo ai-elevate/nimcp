@@ -34,6 +34,7 @@ float omni_wm_mdn_log_prob(const omni_wm_mdn_prediction_t* pred,
 
             float diff = value[i] - pred->components[k].mean[i];
             float std = pred->components[k].std[i];
+            if (std < 1e-10f) std = 1e-10f;
             log_prob -= 0.5f * (diff * diff) / (std * std);
             log_prob -= logf(std);
             log_prob -= 0.5f * logf(2.0f * M_PI);
@@ -96,10 +97,19 @@ nimcp_error_t omni_wm_counterfactual(omni_world_model_t* wm,
         const float* action = (t == 1) ? query->hypothetical_action : NULL;
         uint32_t adim = (t == 1) ? query->action_dim : 0;
 
+        bool action_allocated = false;
         if (!action) {
             action = nimcp_calloc(wm->config.action_dim, sizeof(float));
-            if (!action) return -1;
+            if (!action) {
+                for (uint32_t i = 0; i < t; i++) {
+                    omni_wm_state_destroy(result->trajectory[i]);
+                }
+                nimcp_free(result->trajectory);
+                result->trajectory = NULL;
+                return NIMCP_ERROR_NO_MEMORY;
+            }
             adim = wm->config.action_dim;
+            action_allocated = true;
         }
 
         /* Temporarily set state for prediction */
@@ -110,7 +120,7 @@ nimcp_error_t omni_wm_counterfactual(omni_world_model_t* wm,
 
         wm->current_state = old_state;
 
-        if (t != 1) nimcp_free((void*)action);
+        if (action_allocated) nimcp_free((void*)action);
 
         if (err != NIMCP_SUCCESS || !trans.next_state) {
             /* Cleanup on error */
@@ -124,7 +134,8 @@ nimcp_error_t omni_wm_counterfactual(omni_world_model_t* wm,
                 omni_wm_state_destroy(result->trajectory[i]);
             }
             nimcp_free(result->trajectory);
-            return err;
+            result->trajectory = NULL;
+            return err != NIMCP_SUCCESS ? err : NIMCP_ERROR_NO_MEMORY;
         }
 
         result->trajectory[t] = trans.next_state;

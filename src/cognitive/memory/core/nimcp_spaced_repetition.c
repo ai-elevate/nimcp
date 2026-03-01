@@ -972,7 +972,7 @@ NIMCP_EXPORT sr_error_t sr_system_review_at_time(
     item_add_history(item, &record);
 
     // Update response time average
-    if (response_time_ms > 0) {
+    if (response_time_ms > 0 && isfinite(response_time_ms)) {
         float alpha = 0.1f;  // Exponential moving average factor
         item->avg_response_time_ms = alpha * response_time_ms +
             (1.0f - alpha) * item->avg_response_time_ms;

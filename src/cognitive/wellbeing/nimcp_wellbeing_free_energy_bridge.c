@@ -255,10 +255,14 @@ int free_energy_bridge_update_effects(free_energy_bridge_t* bridge) {
     /* Update statistics */
     bridge->total_updates++;
     float alpha = 0.1f;
-    bridge->avg_free_energy = alpha * bridge->fe_state.free_energy +
-                              (1.0f - alpha) * bridge->avg_free_energy;
-    bridge->avg_precision = alpha * bridge->fe_state.precision +
-                            (1.0f - alpha) * bridge->avg_precision;
+    if (isfinite(bridge->fe_state.free_energy)) {
+        bridge->avg_free_energy = alpha * bridge->fe_state.free_energy +
+                                  (1.0f - alpha) * bridge->avg_free_energy;
+    }
+    if (isfinite(bridge->fe_state.precision)) {
+        bridge->avg_precision = alpha * bridge->fe_state.precision +
+                                (1.0f - alpha) * bridge->avg_precision;
+    }
 
     if (bridge->base.mutex) {
         nimcp_mutex_unlock(bridge->base.mutex);

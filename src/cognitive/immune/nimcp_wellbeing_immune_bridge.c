@@ -788,9 +788,9 @@ distress_assessment_t wellbeing_immune_get_distress_assessment(
 
         /* Update description */
         if (assessment.description) nimcp_free((void*)assessment.description);
-        assessment.description = strdup("Inflammation-induced distress");
+        assessment.description = strdup("Inflammation-induced distress");  /* NULL on OOM is acceptable */
         if (assessment.recommended_action) nimcp_free((void*)assessment.recommended_action);
-        assessment.recommended_action = strdup("Reduce inflammation via IL-10, resolve immune threats");
+        assessment.recommended_action = strdup("Reduce inflammation via IL-10, resolve immune threats");  /* NULL on OOM is acceptable */
     }
 
     return assessment;

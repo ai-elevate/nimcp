@@ -145,7 +145,10 @@ jepa_multimodal_t* jepa_multimodal_create(const jepa_multimodal_config_t* config
     NIMCP_API_CHECK_ALLOC(mm, "Failed to allocate multimodal system");
 
     /* Initialize bridge base */
-    bridge_base_init(&mm->base, BIO_MODULE_JEPA_MULTIMODAL, "jepa_multimodal");
+    if (bridge_base_init(&mm->base, BIO_MODULE_JEPA_MULTIMODAL, "jepa_multimodal") != 0) {
+        nimcp_free(mm);
+        return NULL;
+    }
     mm->base.bridge_active = false;
 
     /* Copy configuration */
@@ -245,6 +248,9 @@ void jepa_multimodal_destroy(jepa_multimodal_t* mm)
     nimcp_free(mm->visual_buffer);
     nimcp_free(mm->speech_buffer);
     nimcp_free(mm->fused_buffer);
+
+    /* Cleanup bridge base (mutex, etc.) */
+    bridge_base_cleanup(&mm->base);
 
     /* Free system */
     nimcp_free(mm);

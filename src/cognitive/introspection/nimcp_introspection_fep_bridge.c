@@ -196,8 +196,12 @@ int introspection_fep_bridge_update(introspection_fep_bridge_t* bridge, uint64_t
     NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.meta_confidence = 1.0f - bridge->state.current_uncertainty;
-    bridge->stats.avg_precision = (bridge->stats.avg_precision * 0.99f) + (bridge->state.current_precision * 0.01f);
-    bridge->stats.avg_uncertainty = (bridge->stats.avg_uncertainty * 0.99f) + (bridge->state.current_uncertainty * 0.01f);
+    if (isfinite(bridge->state.current_precision)) {
+        bridge->stats.avg_precision = (bridge->stats.avg_precision * 0.99f) + (bridge->state.current_precision * 0.01f);
+    }
+    if (isfinite(bridge->state.current_uncertainty)) {
+        bridge->stats.avg_uncertainty = (bridge->stats.avg_uncertainty * 0.99f) + (bridge->state.current_uncertainty * 0.01f);
+    }
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }

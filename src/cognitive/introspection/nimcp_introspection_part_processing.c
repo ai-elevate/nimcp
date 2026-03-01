@@ -49,6 +49,9 @@ static void pattern_registry_update(pattern_registry_t* registry, const char* na
         return;
     }
 
+    /* Guard against NaN/Inf poisoning accumulated sums */
+    if (!isfinite(activity)) activity = 0.0f;
+
     nimcp_mutex_lock(&registry->lock);
 
     /* WHAT: Try to find existing entry */
@@ -69,6 +72,11 @@ static void pattern_registry_update(pattern_registry_t* registry, const char* na
         }
 
         entry->name = nimcp_strdup(name);
+        if (entry->name == NULL) {
+            nimcp_free(entry);
+            nimcp_mutex_unlock(&registry->lock);
+            return;
+        }
         entry->current_activity = activity;
         entry->activity_sum = activity;
         entry->activation_count = 1;

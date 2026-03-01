@@ -260,6 +260,17 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
     }
 
     nn->gradients = nimcp_calloc(state_dim, sizeof(float));
+    if (!nn->gradients) {
+        for (uint32_t i = 0; i < nn->num_layers; i++) {
+            nimcp_free(nn->layers[i].weights);
+            nimcp_free(nn->layers[i].biases);
+        }
+        nimcp_free(nn->layers);
+        nimcp_free(nn);
+        nn = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_create: nn->gradients allocation failed");
+        return NULL;
+    }
 
     return nn;
 }
@@ -284,7 +295,9 @@ static void physics_nn_destroy(physics_nn_t* nn) {
 }
 
 static float physics_nn_activation(float x) {
-    /* Softplus activation for smooth derivatives */
+    /* Softplus activation for smooth derivatives, with overflow guard */
+    if (x > 80.0f) return x;           /* For large x, softplus(x) ≈ x */
+    if (x < -80.0f) return 0.0f;       /* For very negative x, softplus(x) ≈ 0 */
     return logf(1.0f + expf(x));
 }
 
@@ -441,7 +454,9 @@ static float physics_nn_train_step(physics_nn_t* nn, const float* state,
     predicted = NULL;
 
     nn->training_steps++;
-    nn->total_loss += loss;
+    if (isfinite(loss)) {
+        nn->total_loss += loss;
+    }
 
     return loss;
 }
@@ -2365,7 +2380,7 @@ imagination_scenario_t* parietal_mental_rotate(
     (void)angle_y;
     (void)angle_z;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_mental_rotate: operation failed");
+    /* Stub: imagination integration not yet implemented */
     return NULL;
 }
 
@@ -2386,7 +2401,7 @@ imagination_scenario_t* parietal_spatial_transform(
     parietal_heartbeat("parietal_spatial_transform", 0.0f);
 
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_spatial_transform: required parameter is NULL (parietal, scene, transform)");
+    /* Stub: imagination integration not yet implemented */
     return NULL;
 }
 

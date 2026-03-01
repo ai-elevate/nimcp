@@ -507,17 +507,22 @@ int autobio_snn_encode_emotional(
     bridge->emotional_signal = intensity;
 
     /* Check for emotional memory */
+    autobio_snn_emotional_callback_t emo_cb = NULL;
+    void* emo_cb_data = NULL;
     if (intensity > bridge->config.vividness_threshold) {
         bridge->last_recall.emotional_memory = true;
         bridge->stats.emotional_memories++;
 
-        if (bridge->emotional_callback) {
-            bridge->emotional_callback(bridge, intensity, valence,
-                                       bridge->emotional_callback_data);
-        }
+        emo_cb = bridge->emotional_callback;
+        emo_cb_data = bridge->emotional_callback_data;
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callback outside mutex to prevent deadlock */
+    if (emo_cb) {
+        emo_cb(bridge, intensity, valence, emo_cb_data);
+    }
 
     return autobio_snn_encode_state(bridge, dims, 3);
 }
@@ -596,26 +601,39 @@ int autobio_snn_simulate(autobio_snn_bridge_t* bridge, float duration_ms) {
     bridge->last_recall.recall_confidence = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check recall threshold */
+    autobio_snn_recall_callback_t recall_cb = NULL;
+    void* recall_cb_data = NULL;
+    float recall_vividness = 0.0f;
+    uint64_t recall_time = 0;
     if (bridge->last_recall.vividness > bridge->config.recall_threshold) {
         bridge->last_recall.recall_successful = true;
         bridge->stats.successful_recalls++;
 
-        if (bridge->recall_callback) {
-            bridge->recall_callback(bridge, bridge->last_recall.vividness,
-                                   bridge->current_time_us, bridge->recall_callback_data);
-        }
+        recall_cb = bridge->recall_callback;
+        recall_cb_data = bridge->recall_callback_data;
+        recall_vividness = bridge->last_recall.vividness;
+        recall_time = bridge->current_time_us;
     } else {
         bridge->last_recall.recall_successful = false;
     }
 
     bridge->state = AUTOBIO_SNN_STATE_IDLE;
 
-    /* Invoke encoded callback */
-    if (bridge->encoded_callback) {
-        bridge->encoded_callback(bridge, &bridge->last_recall, bridge->encoded_callback_data);
-    }
+    /* Snapshot encoded callback and recall state */
+    autobio_snn_encoded_callback_t enc_cb = bridge->encoded_callback;
+    void* enc_cb_data = bridge->encoded_callback_data;
+    autobio_recall_t recall_snapshot = bridge->last_recall;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside mutex to prevent deadlock */
+    if (recall_cb) {
+        recall_cb(bridge, recall_vividness, recall_time, recall_cb_data);
+    }
+    if (enc_cb) {
+        enc_cb(bridge, &recall_snapshot, enc_cb_data);
+    }
+
     return 0;
 }
 

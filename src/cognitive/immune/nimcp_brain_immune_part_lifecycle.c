@@ -79,7 +79,7 @@ brain_immune_system_t* brain_immune_create(const brain_immune_config_t* config) 
 
 cleanup:
     brain_immune_destroy(system);
-    /* FIX HIGH:82 — cleanup is reached on allocation failure, use NO_MEMORY not NULL_POINTER */
+    /* Cleanup reached on allocation failure */
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_create: allocation failed");
     return NULL;
 }
@@ -98,7 +98,7 @@ void brain_immune_destroy(brain_immune_system_t* system) {
     brain_immune_stop(system);
 
     if (system->mutex) {
-        /* FIX HIGH:100 — use nimcp_mutex_destroy (handles destroy+free+NULL), not nimcp_mutex_free */
+        /* Destroy mutex (handles destroy+free+NULL) */
         nimcp_mutex_destroy(system->mutex);
     }
 
@@ -109,7 +109,7 @@ void brain_immune_destroy(brain_immune_system_t* system) {
     nimcp_free(system->cytokines);
     nimcp_free(system->inflammation_sites);
     nimcp_free(system);
-    /* FIX LOW:110 — removed dead code: system = NULL after nimcp_free(system) has no effect */
+    /* Note: no need to NULL the local pointer after free */
 }
 
 

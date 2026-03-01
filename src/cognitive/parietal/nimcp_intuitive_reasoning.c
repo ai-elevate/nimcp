@@ -2163,7 +2163,9 @@ int intuitive_reasoning_training_step(void* instance, float progress) {
     if (eng->accumulated_insight_potential > 1.0f)
         eng->accumulated_insight_potential = 1.0f;
     /* Improve average plausibility running estimate */
-    eng->stats.avg_plausibility = eng->stats.avg_plausibility * 0.95f + 0.05f * progress;
+    if (isfinite(progress)) {
+        eng->stats.avg_plausibility = eng->stats.avg_plausibility * 0.95f + 0.05f * progress;
+    }
     return 0;
 }
 

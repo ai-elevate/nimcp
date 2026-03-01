@@ -101,8 +101,7 @@ static exploration_topic_t* find_topic_unlocked(
             return &bridge->topics[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_topic_unlocked: validation failed");
-    return NULL;
+    return NULL;  /* Not found is a normal condition */
 }
 
 /**

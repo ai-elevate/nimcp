@@ -560,9 +560,15 @@ int vae_imag_generate(vae_imag_bridge_t* bridge,
         default: break;
     }
 
-    bridge->stats.avg_vividness = bridge->stats.avg_vividness * 0.9f + result->vividness * 0.1f;
-    bridge->stats.avg_coherence = bridge->stats.avg_coherence * 0.9f + result->coherence * 0.1f;
-    bridge->stats.avg_novelty = bridge->stats.avg_novelty * 0.9f + result->novelty * 0.1f;
+    if (isfinite(result->vividness)) {
+        bridge->stats.avg_vividness = bridge->stats.avg_vividness * 0.9f + result->vividness * 0.1f;
+    }
+    if (isfinite(result->coherence)) {
+        bridge->stats.avg_coherence = bridge->stats.avg_coherence * 0.9f + result->coherence * 0.1f;
+    }
+    if (isfinite(result->novelty)) {
+        bridge->stats.avg_novelty = bridge->stats.avg_novelty * 0.9f + result->novelty * 0.1f;
+    }
     bridge->stats.avg_generation_latency_us = bridge->stats.avg_generation_latency_us * 0.9f +
                                                elapsed * 0.1f;
     bridge->stats.last_operation_us = get_time_us();

@@ -949,6 +949,8 @@ void mirror_attention_simd_update_saliency(
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_sim", 0.0f);
 
 
+    if (size < 2) return;  /* Need at least 2 elements for saliency normalization */
+
     float sigma_sq_2 = 2.0f * sigma * sigma;
 
     for (uint32_t i = 0; i < size; i++) {

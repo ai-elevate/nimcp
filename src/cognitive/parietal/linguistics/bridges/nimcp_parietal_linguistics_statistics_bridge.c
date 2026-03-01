@@ -477,8 +477,10 @@ int ling_stats_hmm_viterbi_decode(
 
     /* Update stats */
     bridge->stats.hmm_decodes++;
-    bridge->stats.avg_hmm_confidence = bridge->stats.avg_hmm_confidence * 0.99f +
-                                        result->confidence * 0.01f;
+    if (isfinite(result->confidence)) {
+        bridge->stats.avg_hmm_confidence = bridge->stats.avg_hmm_confidence * 0.99f +
+                                            result->confidence * 0.01f;
+    }
     bridge->stats.avg_latency_us = bridge->stats.avg_latency_us * 0.99f +
                                     (get_time_us() - start_us) * 0.01f;
 
@@ -753,8 +755,10 @@ int ling_stats_bayes_select_frame(
 
     /* Update stats */
     bridge->stats.bayesian_inferences++;
-    bridge->stats.avg_bayes_confidence = bridge->stats.avg_bayes_confidence * 0.99f +
-                                          result->confidence * 0.01f;
+    if (isfinite(result->confidence)) {
+        bridge->stats.avg_bayes_confidence = bridge->stats.avg_bayes_confidence * 0.99f +
+                                              result->confidence * 0.01f;
+    }
     bridge->stats.avg_latency_us = bridge->stats.avg_latency_us * 0.99f +
                                     (get_time_us() - start_us) * 0.01f;
 

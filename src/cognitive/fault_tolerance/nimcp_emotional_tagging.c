@@ -365,8 +365,12 @@ static void update_statistics(
      * WHY:  Track overall emotional tone
      * HOW:  Incremental average formula */
     uint64_t n = tagger->stats.total_tags;
-    tagger->stats.avg_valence = (tagger->stats.avg_valence * n + emotion->valence) / (n + 1);
-    tagger->stats.avg_arousal = (tagger->stats.avg_arousal * n + emotion->arousal) / (n + 1);
+    if (isfinite(emotion->valence) && n < UINT64_MAX) {
+        tagger->stats.avg_valence = (tagger->stats.avg_valence * (float)n + emotion->valence) / (float)(n + 1);
+    }
+    if (isfinite(emotion->arousal) && n < UINT64_MAX) {
+        tagger->stats.avg_arousal = (tagger->stats.avg_arousal * (float)n + emotion->arousal) / (float)(n + 1);
+    }
 
     /* WHAT: Count high-intensity specific emotions
      * WHY:  Track frequency of extreme emotional events */

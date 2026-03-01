@@ -52,7 +52,8 @@
 #include "constants/nimcp_learning_constants.h"
 
 BRIDGE_BOILERPLATE(surprise_plasticity, MESH_ADAPTER_CATEGORY_COGNITIVE)
-void surprise_plasticity_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { (void)agent; }
+static nimcp_health_agent_t* g_surprise_plasticity_bridge_health_agent = NULL;
+void surprise_plasticity_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { g_surprise_plasticity_bridge_health_agent = agent; }
 
 /* ============================================================================
  * Habituation Tracker

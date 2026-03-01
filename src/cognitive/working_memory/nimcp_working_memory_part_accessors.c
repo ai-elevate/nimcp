@@ -694,14 +694,13 @@ bool working_memory_get_salience(
         return false;
     }
 
-    // Guard: Invalid index
+    // Thread-safe access — bounds check INSIDE lock to prevent TOCTOU
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
     if (index >= wm->current_size) {
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_get_salience: capacity exceeded");
         return false;
     }
-
-    // Thread-safe access
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
     *salience = wm->salience[index];
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
 
@@ -733,12 +732,6 @@ bool working_memory_set_salience(
         return false;
     }
 
-    // Guard: Invalid index
-    if (index >= wm->current_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_set_salience: capacity exceeded");
-        return false;
-    }
-
     // Clamp salience to valid range
     if (new_salience < 0.0f) {
         new_salience = 0.0f;
@@ -746,8 +739,13 @@ bool working_memory_set_salience(
         new_salience = 1.0f;
     }
 
-    // Thread-safe write
+    // Thread-safe write — bounds check INSIDE lock to prevent TOCTOU
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    if (index >= wm->current_size) {
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_set_salience: capacity exceeded");
+        return false;
+    }
     wm->salience[index] = new_salience;
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
 

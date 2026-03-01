@@ -25,7 +25,8 @@
 BRIDGE_BOILERPLATE(fep_learning_instance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /* Alias: tests reference fep_learning_set_health_agent (without _instance suffix) */
-void fep_learning_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+static nimcp_health_agent_t* g_fep_learning_health_agent = NULL;
+void fep_learning_set_health_agent(struct nimcp_health_agent* agent) { g_fep_learning_health_agent = agent; }
 
 static float compute_loss(const float* target, const float* prediction, size_t dim) {
     if (!target || !prediction || dim == 0) return 0.0f;

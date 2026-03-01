@@ -143,7 +143,6 @@ struct self_introspection_bridge {
     size_t query_count;                     /**< Current number of active queries */
     uint32_t next_query_id;                 /**< Next query ID to assign */
     self_introspection_stats_t stats;       /**< Bridge statistics */
-    nimcp_platform_mutex_t* mutex;          /**< Thread synchronization */
     bool initialized;                       /**< Bridge initialization flag */
 };
 
@@ -332,13 +331,12 @@ self_introspection_bridge_t* self_introspection_bridge_create(
         return NULL;
     }
 
-    /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
-    if (!bridge->base.mutex) {
+    /* Initialize base bridge infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "self_introspection") != 0) {
         nimcp_free(bridge->queries);
         nimcp_free(bridge);
         bridge = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_introspection_bridge_create: bridge->base is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_introspection_bridge_create: bridge_base_init failed");
         return NULL;
     }
 
@@ -395,10 +393,9 @@ void self_introspection_bridge_destroy(self_introspection_bridge_t* bridge) {
         nimcp_free(bridge->queries);
     }
 
-    /* Destroy mutex */
+    /* Cleanup base bridge infrastructure (includes mutex) */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         bridge->base.mutex = NULL;
     }
 
@@ -430,7 +427,7 @@ int self_introspection_guide_query(
     self_introspection_bridge_heartbeat("self_introsp_self_introspection_g", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Determine suggested focus based on current state */
     guidance_out->suggested_focus = bridge->config.enable_guided_introspection
@@ -491,7 +488,7 @@ int self_introspection_guide_query(
     /* Update statistics */
     bridge->stats.queries_guided++;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -518,7 +515,7 @@ int self_introspection_on_result(
     self_introspection_bridge_heartbeat("self_introsp_self_introspection_o", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find the query */
     introspection_query_t* query = find_query_unlocked(bridge, query_id);
@@ -607,7 +604,7 @@ int self_introspection_on_result(
     /* Update statistics */
     bridge->stats.results_integrated++;
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -633,7 +630,7 @@ int self_introspection_trigger_reflection(
     self_introspection_bridge_heartbeat("self_introsp_self_introspection_t", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int result = 0;
     bool should_trigger = false;
@@ -683,7 +680,7 @@ int self_introspection_trigger_reflection(
         if (bridge->query_count >= bridge->query_capacity) {
             /* Cannot add more queries - reflection fails */
             bridge->stats.reflection_failures++;
-            nimcp_platform_mutex_unlock(bridge->base.mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "self_introspection_trigger_reflection: capacity exceeded");
             return -1;
         }
@@ -709,7 +706,7 @@ int self_introspection_trigger_reflection(
         result = 0;
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -735,7 +732,7 @@ int self_introspection_get_self_state(
     self_introspection_bridge_heartbeat("self_introsp_self_introspection_g", 0.0f);
 
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Map internal state to output structure */
     state_out->coherence = bridge->self_state.coherence;
@@ -773,7 +770,7 @@ int self_introspection_get_self_state(
     /* Check if reflection is active (any pending queries) */
     state_out->reflection_active = (state_out->pending_updates > 0);
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -803,11 +800,11 @@ int self_introspection_get_stats(
     self_introspection_bridge_t* mutable_bridge =
         (self_introspection_bridge_t*)bridge;
 
-    nimcp_platform_mutex_lock(mutable_bridge->base.mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     *stats_out = bridge->stats;
 
-    nimcp_platform_mutex_unlock(mutable_bridge->base.mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }

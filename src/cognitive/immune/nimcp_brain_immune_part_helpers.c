@@ -278,7 +278,7 @@ static void decay_antibodies(brain_immune_system_t* system, uint64_t delta_ms) {
         /* Deactivate if too weak */
         if (ab->effectiveness < 0.1f) {
             ab->active = false;
-            /* FIX HIGH:281 — guard against unsigned underflow before decrementing */
+            /* Guard against unsigned underflow before decrementing */
             if (system->stats.active_antibodies > 0) {
                 system->stats.active_antibodies--;
             }
@@ -335,9 +335,8 @@ static void update_inflammation_sites(brain_immune_system_t* system, uint64_t de
         }
     }
 
-    /* FIX HIGH:520 — send_imagination_modulation_unlocked() calls bio_router_send()
-     * while caller holds system->mutex (I/O under lock). Fix: collect the data needed,
-     * unlock before sending, re-lock after. */
+    /* Avoid I/O under lock: collect the data needed, unlock before sending,
+     * re-lock after. bio_router_send() must not be called under system->mutex. */
     if (level_changed && system->bio_context) {
         /* Snapshot the data needed to build the modulation message */
         float inflammation = compute_inflammation_float_unlocked(system);

@@ -27,7 +27,8 @@
 
 BRIDGE_BOILERPLATE(fep_immune_bridge_instance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 /* Alias: tests reference fep_immune_bridge_set_health_agent (without _instance suffix) */
-void fep_immune_bridge_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+static nimcp_health_agent_t* g_fep_immune_bridge_health_agent = NULL;
+void fep_immune_bridge_set_health_agent(struct nimcp_health_agent* agent) { g_fep_immune_bridge_health_agent = agent; }
 
 static uint64_t get_time_ms(void) {
     struct timespec ts;

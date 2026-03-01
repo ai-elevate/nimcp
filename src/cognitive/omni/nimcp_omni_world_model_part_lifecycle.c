@@ -21,17 +21,11 @@ static omni_wm_dynamics_t* dynamics_create(uint32_t h_dim, uint32_t z_dim,
     uint32_t input_dim = h_dim + z_dim + action_dim;
 
     dyn->W_h = nimcp_calloc(input_dim * h_dim, sizeof(float));
-    if (!dyn->W_h) return NULL;
     dyn->W_z = nimcp_calloc(h_dim * z_dim * 2, sizeof(float)); /* mean + std */
-    if (!dyn->W_z) return NULL;
     dyn->W_obs = nimcp_calloc((h_dim + z_dim) * obs_dim, sizeof(float));
-    if (!dyn->W_obs) return NULL;
     dyn->b_h = nimcp_calloc(h_dim, sizeof(float));
-    if (!dyn->b_h) return NULL;
     dyn->b_z = nimcp_calloc(z_dim * 2, sizeof(float));
-    if (!dyn->b_z) return NULL;
     dyn->b_obs = nimcp_calloc(obs_dim, sizeof(float));
-    if (!dyn->b_obs) return NULL;
 
     if (!dyn->W_h || !dyn->W_z || !dyn->W_obs ||
         !dyn->b_h || !dyn->b_z || !dyn->b_obs) {
@@ -197,11 +191,8 @@ omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
     /* Create encoder/decoder weights */
     uint32_t enc_size = wm->config.obs_dim * wm->config.latent_dim;
     wm->encoder_W = nimcp_calloc(enc_size, sizeof(float));
-    if (!wm->encoder_W) return NULL;
     wm->encoder_b = nimcp_calloc(wm->config.latent_dim, sizeof(float));
-    if (!wm->encoder_b) return NULL;
     wm->decoder_W = nimcp_calloc(enc_size, sizeof(float));
-    if (!wm->decoder_W) return NULL;
     wm->decoder_b = nimcp_calloc(wm->config.obs_dim, sizeof(float));
 
     if (!wm->encoder_W || !wm->encoder_b || !wm->decoder_W || !wm->decoder_b) {
@@ -369,11 +360,8 @@ omni_wm_rssm_state_t* omni_wm_rssm_state_create(uint32_t h_dim, uint32_t z_dim) 
     }
 
     state->h = nimcp_calloc(h_dim, sizeof(float));
-    if (!state->h) return NULL;
     state->z = nimcp_calloc(z_dim, sizeof(float));
-    if (!state->z) return NULL;
     state->z_mean = nimcp_calloc(z_dim, sizeof(float));
-    if (!state->z_mean) return NULL;
     state->z_std = nimcp_calloc(z_dim, sizeof(float));
 
     if (!state->h || !state->z || !state->z_mean || !state->z_std) {
@@ -576,7 +564,6 @@ omni_wm_experience_t* omni_wm_experience_create(uint32_t state_dim,
     exp->state = omni_wm_rssm_state_create(state_dim / 2, state_dim / 4);
     exp->next_state = omni_wm_rssm_state_create(state_dim / 2, state_dim / 4);
     exp->action = nimcp_calloc(action_dim, sizeof(float));
-    if (!exp->action) return NULL;
     exp->observation = nimcp_calloc(obs_dim, sizeof(float));
 
     if (!exp->state || !exp->next_state || !exp->action || !exp->observation) {
@@ -713,13 +700,9 @@ omni_wm_rollout_t* omni_wm_rollout_create(uint32_t max_length,
     }
 
     rollout->states = nimcp_calloc(max_length, sizeof(omni_wm_state_t*));
-    if (!rollout->states) return NULL;
     rollout->actions = nimcp_calloc(max_length, sizeof(float*));
-    if (!rollout->actions) return NULL;
     rollout->observations = nimcp_calloc(max_length, sizeof(float*));
-    if (!rollout->observations) return NULL;
     rollout->rewards = nimcp_calloc(max_length, sizeof(float));
-    if (!rollout->rewards) return NULL;
 
     if (!rollout->states || !rollout->actions ||
         !rollout->observations || !rollout->rewards) {

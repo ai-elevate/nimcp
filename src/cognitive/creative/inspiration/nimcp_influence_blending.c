@@ -614,8 +614,10 @@ int influence_blender_blend_explicit(influence_blender_t* blender,
     }
 
     blender->blends_performed++;
-    blender->avg_blend_coherence = blender->avg_blend_coherence * 0.95f +
-                                   result->coherence * 0.05f;
+    if (isfinite(result->coherence)) {
+        blender->avg_blend_coherence = blender->avg_blend_coherence * 0.95f +
+                                       result->coherence * 0.05f;
+    }
 
     return 0;
 }

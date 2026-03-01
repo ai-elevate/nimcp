@@ -2,7 +2,7 @@
 // Part of nimcp_brain_immune.c (SRP #include-based split)
 // DO NOT compile separately - #included from nimcp_brain_immune.c
 
-/* FIX MEDIUM:413 — named constant for the immune module ID offset */
+/* Named constant for the immune module ID offset */
 #define BIO_MODULE_IMMUNE_OFFSET 0x50
 
 /**
@@ -84,7 +84,7 @@ int brain_immune_execute_antibody(brain_immune_system_t* system, uint32_t antibo
 int brain_immune_update(brain_immune_system_t* system, uint64_t delta_ms) {
     if (!system || !system->running) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_update: required parameter is NULL (system, system->running)");
-        /* FIX HIGH:85 — return -1 to match FEP/immune bridge convention (not error code enum) */
+        /* Return -1 to match FEP/immune bridge convention (not error code enum) */
         return -1;
     }
 
@@ -465,9 +465,8 @@ int brain_immune_training_step(void* instance, float progress) {
     }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    /* FIX HIGH:465 — pass instance as context instead of NULL; if API only accepts NULL,
-     * this documents the limitation. The heartbeat_instance signature takes (void* instance, ...) */
-    /* TODO: brain_immune_heartbeat_instance currently ignores instance param;
+    /* Pass instance as context instead of NULL for future API use.
+     * brain_immune_heartbeat_instance currently ignores instance param;
      * pass it for correctness when the API is updated to use it */
     brain_immune_heartbeat_instance(instance, "brain_immune_training_step", progress);
     return 0;

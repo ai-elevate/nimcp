@@ -928,6 +928,7 @@ NIMCP_EXPORT uint64_t skill_acquisition_register_skill(
 
                 if (step_names[i]) {
                     skill->step_names[i] = strdup(step_names[i]);
+                    /* NULL on OOM is tolerable - step name will be missing */
                 }
             }
         }

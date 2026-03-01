@@ -24,7 +24,8 @@
 BRIDGE_BOILERPLATE(free_energy_instance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /* Alias: tests reference free_energy_set_health_agent (without _instance suffix) */
-void free_energy_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+static nimcp_health_agent_t* g_free_energy_health_agent = NULL;
+void free_energy_set_health_agent(struct nimcp_health_agent* agent) { g_free_energy_health_agent = agent; }
 
 /**
  * @brief Compute L2 norm of vector
@@ -1040,8 +1041,10 @@ int fep_compute_free_energy(
 
     /* Stats update */
     fep_stats_t* stats = &((fep_system_t*)fep)->stats;
-    stats->avg_free_energy = (stats->avg_free_energy * stats->total_updates + fe->total) /
-                             (stats->total_updates + 1);
+    if (isfinite(fe->total) && stats->total_updates < UINT64_MAX) {
+        stats->avg_free_energy = (stats->avg_free_energy * stats->total_updates + fe->total) /
+                                 (stats->total_updates + 1);
+    }
     if (fe->total < stats->min_free_energy || stats->min_free_energy == 0.0f) {
         stats->min_free_energy = fe->total;
     }

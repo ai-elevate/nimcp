@@ -185,7 +185,7 @@ static void compute_free_energy(jepa_fep_bridge_t* bridge) {
 }
 
 /**
- * @brief Check for representation collapse
+ * @brief Check for representation collapse (state update only, no callback)
  */
 static void check_collapse(jepa_fep_bridge_t* bridge) {
     if (!bridge->config.enable_collapse_detection) {
@@ -199,19 +199,14 @@ static void check_collapse(jepa_fep_bridge_t* bridge) {
         bridge->collapse_severity = nimcp_clampf(bridge->collapse_severity, 0.0f, 1.0f);
 
         bridge->stats.collapse_detections++;
-
-        /* Trigger callback */
-        if (bridge->collapse_callback) {
-            bridge->collapse_callback(bridge, bridge->collapse_severity,
-                                      bridge->collapse_user_data);
-        }
+        /* Callback invoked outside mutex by caller */
     } else {
         bridge->collapse_severity = 0.0f;
     }
 }
 
 /**
- * @brief Check and trigger callbacks
+ * @brief Check and update state for callbacks (no callback invocation)
  */
 static void check_callbacks(jepa_fep_bridge_t* bridge) {
     const jepa_fep_config_t* cfg = &bridge->config;
@@ -220,11 +215,7 @@ static void check_callbacks(jepa_fep_bridge_t* bridge) {
     if (bridge->current_free_energy > cfg->high_free_energy_threshold) {
         if (bridge->state != JEPA_FEP_STATE_DEGRADED) {
             bridge->state = JEPA_FEP_STATE_DEGRADED;
-
-            if (bridge->high_fe_callback) {
-                bridge->high_fe_callback(bridge, bridge->current_free_energy,
-                                         bridge->high_fe_user_data);
-            }
+            /* Callback invoked outside mutex by caller */
         }
     } else if (bridge->state == JEPA_FEP_STATE_DEGRADED) {
         bridge->state = JEPA_FEP_STATE_ACTIVE;
@@ -570,10 +561,33 @@ int jepa_fep_update_callback(void* handle) {
     /* Update timing */
     bridge->last_update_time_ms = get_time_ms();
 
-    /* Check and trigger callbacks */
+    /* Check state transitions (no callbacks under mutex) */
     check_callbacks(bridge);
 
+    /* Snapshot callback state under mutex */
+    jepa_fep_collapse_callback_t collapse_cb = bridge->collapse_callback;
+    void* collapse_ud = bridge->collapse_user_data;
+    float collapse_sev = bridge->collapse_severity;
+    bool do_collapse_cb = (collapse_cb != NULL && collapse_sev > 0.0f &&
+                           bridge->config.enable_collapse_detection);
+
+    jepa_fep_high_fe_callback_t high_fe_cb = bridge->high_fe_callback;
+    void* high_fe_ud = bridge->high_fe_user_data;
+    float cur_fe = bridge->current_free_energy;
+    bool do_high_fe_cb = (high_fe_cb != NULL &&
+                          bridge->state == JEPA_FEP_STATE_DEGRADED &&
+                          cur_fe > bridge->config.high_free_energy_threshold);
+
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside mutex to prevent deadlock */
+    if (do_collapse_cb) {
+        collapse_cb(bridge, collapse_sev, collapse_ud);
+    }
+    if (do_high_fe_cb) {
+        high_fe_cb(bridge, cur_fe, high_fe_ud);
+    }
+
     return 0;
 }
 
@@ -630,10 +644,33 @@ int jepa_fep_bridge_force_update(jepa_fep_bridge_t* bridge) {
     /* Update timing */
     bridge->last_update_time_ms = get_time_ms();
 
-    /* Check and trigger callbacks */
+    /* Check state transitions (no callbacks under mutex) */
     check_callbacks(bridge);
 
+    /* Snapshot callback state under mutex */
+    jepa_fep_collapse_callback_t collapse_cb = bridge->collapse_callback;
+    void* collapse_ud = bridge->collapse_user_data;
+    float collapse_sev = bridge->collapse_severity;
+    bool do_collapse_cb = (collapse_cb != NULL && collapse_sev > 0.0f &&
+                           bridge->config.enable_collapse_detection);
+
+    jepa_fep_high_fe_callback_t high_fe_cb = bridge->high_fe_callback;
+    void* high_fe_ud = bridge->high_fe_user_data;
+    float cur_fe = bridge->current_free_energy;
+    bool do_high_fe_cb = (high_fe_cb != NULL &&
+                          bridge->state == JEPA_FEP_STATE_DEGRADED &&
+                          cur_fe > bridge->config.high_free_energy_threshold);
+
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside mutex to prevent deadlock */
+    if (do_collapse_cb) {
+        collapse_cb(bridge, collapse_sev, collapse_ud);
+    }
+    if (do_high_fe_cb) {
+        high_fe_cb(bridge, cur_fe, high_fe_ud);
+    }
+
     return 0;
 }
 

@@ -580,8 +580,7 @@ const immune_bridge_entry_t* immune_bridge_coordinator_get_bridge(
         }
     }
 
-    /* FIX HIGH:583 — spurious THROW_TO_IMMUNE when bridge_id not found.
-     * Not-found is a normal lookup result, not an immune exception. */
+    /* Not-found is a normal lookup result, not an immune exception */
     LOG_MODULE_WARN("immune_bridge_coordinator", "bridge_id %u not found in coordinator", bridge_id);
     return NULL;
 }
@@ -628,9 +627,9 @@ int immune_bridge_coordinator_update(
 
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
-    /* FIX CRIT:629 — collect entries while holding the lock, then call each
-     * update_fn WITHOUT the lock to prevent callbacks under mutex (deadlock risk).
-     * Re-acquire lock afterward to update statistics. */
+    /* Collect entries while holding the lock, then call each update_fn WITHOUT
+     * the lock to prevent callbacks under mutex (deadlock risk). Re-acquire
+     * lock afterward to update statistics. */
 
     /* Local snapshot of entries to call */
     typedef struct {
@@ -771,7 +770,18 @@ int immune_bridge_coordinator_update_category(
         return 0;
     }
 
-    uint32_t updated_count = 0;
+    /* Collect matching entries under lock, call outside lock to prevent
+     * callbacks under mutex (deadlock risk). Same deferred pattern as
+     * immune_bridge_coordinator_update(). */
+    typedef struct {
+        immune_bridge_update_fn_t update_fn;
+        immune_bridge_handle_t handle;
+        uint32_t index;
+    } cat_pending_t;
+
+    cat_pending_t cat_pending[IMMUNE_COORDINATOR_MAX_BRIDGES];
+    uint32_t cat_pending_count = 0;
+
     uint64_t current_time = get_time_ms();
 
     for (uint32_t i = 0; i < coordinator->bridge_count; i++) {
@@ -787,16 +797,31 @@ int immune_bridge_coordinator_update_category(
             continue;
         }
 
-        /* Call update */
-        int result = entry->update_fn(entry->handle);
-        entry->update_count++;
-        entry->last_update_time = current_time;
+        cat_pending[cat_pending_count].update_fn = entry->update_fn;
+        cat_pending[cat_pending_count].handle    = entry->handle;
+        cat_pending[cat_pending_count].index     = i;
+        cat_pending_count++;
+    }
 
+    nimcp_platform_mutex_unlock(coordinator->mutex);
+
+    /* Call update functions WITHOUT holding the lock */
+    uint32_t updated_count = 0;
+    for (uint32_t p = 0; p < cat_pending_count; p++) {
+        int result = cat_pending[p].update_fn(cat_pending[p].handle);
         if (result == 0) {
             updated_count++;
         }
     }
 
+    /* Re-lock to update statistics */
+    nimcp_platform_mutex_lock(coordinator->mutex);
+    for (uint32_t p = 0; p < cat_pending_count; p++) {
+        uint32_t i = cat_pending[p].index;
+        if (i >= coordinator->bridge_count) continue;
+        coordinator->bridges[i].update_count++;
+        coordinator->bridges[i].last_update_time = current_time;
+    }
     nimcp_platform_mutex_unlock(coordinator->mutex);
 
     return (int)updated_count;
@@ -820,11 +845,23 @@ int immune_bridge_coordinator_update_bridge(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    /* Call update */
-    int result = entry->update_fn(entry->handle);
-    entry->update_count++;
-    entry->last_update_time = get_time_ms();
+    /* Snapshot fn+handle under lock, call outside lock to prevent
+     * callback under mutex (deadlock risk). */
+    immune_bridge_update_fn_t fn = entry->update_fn;
+    immune_bridge_handle_t handle = entry->handle;
 
+    nimcp_platform_mutex_unlock(coordinator->mutex);
+
+    /* Call update WITHOUT holding the lock */
+    int result = fn(handle);
+
+    /* Re-lock to update statistics */
+    nimcp_platform_mutex_lock(coordinator->mutex);
+    entry = find_bridge(coordinator, bridge_id);
+    if (entry) {
+        entry->update_count++;
+        entry->last_update_time = get_time_ms();
+    }
     nimcp_platform_mutex_unlock(coordinator->mutex);
 
     return result;
@@ -843,36 +880,67 @@ int immune_bridge_coordinator_health_check(
 
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
+    /* Snapshot health_fn pointers under lock, call outside lock to prevent
+     * callbacks under mutex (deadlock risk). */
+    typedef struct {
+        immune_bridge_health_fn_t health_fn;
+        immune_bridge_handle_t handle;
+        uint32_t consecutive_failures;
+        uint32_t max_consecutive_failures;
+        bool has_health_fn;
+    } health_pending_t;
+
+    nimcp_platform_mutex_lock(coordinator->mutex);
+
+    uint32_t bridge_count = coordinator->bridge_count;
+    uint32_t max_fail = coordinator->config.max_consecutive_failures;
+
+    health_pending_t hc_pending[IMMUNE_COORDINATOR_MAX_BRIDGES];
+    for (uint32_t i = 0; i < bridge_count; i++) {
+        immune_bridge_entry_t* entry = &coordinator->bridges[i];
+        hc_pending[i].health_fn = entry->health_fn;
+        hc_pending[i].handle = entry->handle;
+        hc_pending[i].consecutive_failures = entry->consecutive_failures;
+        hc_pending[i].max_consecutive_failures = max_fail;
+        hc_pending[i].has_health_fn = (entry->health_fn != NULL);
+    }
+
+    nimcp_platform_mutex_unlock(coordinator->mutex);
+
+    /* Call health functions WITHOUT holding the lock */
+    immune_bridge_health_t health_results[IMMUNE_COORDINATOR_MAX_BRIDGES];
+    for (uint32_t i = 0; i < bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge_count > 256) {
+            immune_bridge_coordinator_heartbeat("immune_bridg_loop",
+                             (float)(i + 1) / (float)bridge_count);
+        }
+
+        if (hc_pending[i].has_health_fn) {
+            health_results[i] = hc_pending[i].health_fn(hc_pending[i].handle);
+        } else {
+            /* Infer health from update failures */
+            if (hc_pending[i].consecutive_failures >= hc_pending[i].max_consecutive_failures) {
+                health_results[i] = IMMUNE_BRIDGE_DEGRADED;
+            } else if (hc_pending[i].consecutive_failures > 0) {
+                health_results[i] = IMMUNE_BRIDGE_DEGRADED;
+            } else {
+                health_results[i] = IMMUNE_BRIDGE_HEALTHY;
+            }
+        }
+    }
+
+    /* Re-lock to update statistics */
     nimcp_platform_mutex_lock(coordinator->mutex);
 
     uint32_t healthy_count = 0;
     uint64_t current_time = get_time_ms();
 
-    for (uint32_t i = 0; i < coordinator->bridge_count; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && coordinator->bridge_count > 256) {
-            immune_bridge_coordinator_heartbeat("immune_bridg_loop",
-                             (float)(i + 1) / (float)coordinator->bridge_count);
-        }
-
+    for (uint32_t i = 0; i < coordinator->bridge_count && i < bridge_count; i++) {
         immune_bridge_entry_t* entry = &coordinator->bridges[i];
 
         immune_bridge_health_t old_health = entry->health_status;
-        immune_bridge_health_t new_health;
-
-        /* Call health check if available */
-        if (entry->health_fn) {
-            new_health = entry->health_fn(entry->handle);
-        } else {
-            /* Infer health from update failures */
-            if (entry->consecutive_failures >= coordinator->config.max_consecutive_failures) {
-                new_health = IMMUNE_BRIDGE_DEGRADED;
-            } else if (entry->consecutive_failures > 0) {
-                new_health = IMMUNE_BRIDGE_DEGRADED;
-            } else {
-                new_health = IMMUNE_BRIDGE_HEALTHY;
-            }
-        }
+        immune_bridge_health_t new_health = health_results[i];
 
         entry->health_status = new_health;
         entry->last_health_check_time = current_time;
@@ -944,16 +1012,29 @@ immune_bridge_health_t immune_bridge_coordinator_check_bridge_health(
         return IMMUNE_BRIDGE_ERROR;
     }
 
+    /* Snapshot fn+handle under lock, call outside lock to prevent
+     * callback under mutex (deadlock risk). */
+    immune_bridge_health_fn_t fn = entry->health_fn;
+    immune_bridge_handle_t handle = entry->handle;
+    immune_bridge_health_t cached_health = entry->health_status;
+
+    nimcp_platform_mutex_unlock(coordinator->mutex);
+
+    /* Call health function WITHOUT holding the lock */
     immune_bridge_health_t health;
-    if (entry->health_fn) {
-        health = entry->health_fn(entry->handle);
+    if (fn) {
+        health = fn(handle);
     } else {
-        health = entry->health_status;
+        health = cached_health;
     }
 
-    entry->health_status = health;
-    entry->last_health_check_time = get_time_ms();
-
+    /* Re-lock to update entry */
+    nimcp_platform_mutex_lock(coordinator->mutex);
+    entry = find_bridge(coordinator, bridge_id);
+    if (entry) {
+        entry->health_status = health;
+        entry->last_health_check_time = get_time_ms();
+    }
     nimcp_platform_mutex_unlock(coordinator->mutex);
 
     return health;

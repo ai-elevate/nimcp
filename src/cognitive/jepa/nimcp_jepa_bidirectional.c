@@ -453,6 +453,7 @@ int jepa_bidirectional_predict_multi(jepa_bidirectional_t* bidir,
     result->num_results = request->num_directions;
     result->total_free_energy = 0.0f;
     float total_confidence = 0.0f;
+    uint32_t successful_predictions = 0;
 
     for (uint32_t i = 0; i < request->num_directions; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -480,10 +481,14 @@ int jepa_bidirectional_predict_multi(jepa_bidirectional_t* bidir,
             result->results[i].confidence = 1.0f / (1.0f + expf(-dir_state->precision));
             total_confidence += result->results[i].confidence;
             dir_state->prediction_count++;
+            successful_predictions++;
         }
     }
 
-    result->avg_confidence = total_confidence / (float)request->num_directions;
+    /* Divide by count of successful predictions, not total requested */
+    result->avg_confidence = (successful_predictions > 0)
+        ? total_confidence / (float)successful_predictions
+        : 0.0f;
     bidir->stats.total_predictions += request->num_directions;
 
     bidir->state = JEPA_BIDIR_STATE_IDLE;
@@ -576,8 +581,10 @@ float jepa_bidirectional_compute_free_energy(jepa_bidirectional_t* bidir) {
     }
 
     bidir->total_free_energy = total_fe;
-    bidir->stats.avg_free_energy = (bidir->stats.avg_free_energy * 0.99f) +
-                                   (total_fe * 0.01f);
+    if (isfinite(total_fe)) {
+        bidir->stats.avg_free_energy = (bidir->stats.avg_free_energy * 0.99f) +
+                                       (total_fe * 0.01f);
+    }
 
     nimcp_mutex_unlock(bidir->mutex);
     return total_fe;
@@ -636,8 +643,11 @@ float jepa_bidirectional_get_precision(const jepa_bidirectional_t* bidir,
     /* Phase 8: Heartbeat at operation start */
     jepa_bidirectional_heartbeat("jepa_bidirec_get_precision", 0.0f);
 
+    nimcp_mutex_lock(bidir->mutex);
+    float precision = bidir->directions[direction].precision;
+    nimcp_mutex_unlock(bidir->mutex);
 
-    return bidir->directions[direction].precision;
+    return precision;
 }
 
 int jepa_bidirectional_set_precision(jepa_bidirectional_t* bidir,
@@ -760,8 +770,11 @@ bool jepa_bidirectional_is_direction_enabled(const jepa_bidirectional_t* bidir,
     /* Phase 8: Heartbeat at operation start */
     jepa_bidirectional_heartbeat("jepa_bidirec_is_direction_enabled", 0.0f);
 
+    nimcp_mutex_lock(bidir->mutex);
+    bool enabled = bidir->directions[direction].enabled;
+    nimcp_mutex_unlock(bidir->mutex);
 
-    return bidir->directions[direction].enabled;
+    return enabled;
 }
 
 /* ============================================================================

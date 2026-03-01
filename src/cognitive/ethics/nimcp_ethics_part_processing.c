@@ -66,6 +66,5 @@ int ethics_training_step(void* instance, float progress) {
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     ethics_heartbeat_instance(NULL, "ethics_training_step", progress);
-    (void)(policy_value_t*)instance; /* Module state available for step adaptation */
     return 0;
 }

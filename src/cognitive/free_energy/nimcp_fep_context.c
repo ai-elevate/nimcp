@@ -25,7 +25,8 @@
 BRIDGE_BOILERPLATE(fep_context_instance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /* Alias: tests reference fep_context_set_health_agent (without _instance suffix) */
-void fep_context_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+static nimcp_health_agent_t* g_fep_context_health_agent = NULL;
+void fep_context_set_health_agent(struct nimcp_health_agent* agent) { g_fep_context_health_agent = agent; }
 
 
 /* ============================================================================

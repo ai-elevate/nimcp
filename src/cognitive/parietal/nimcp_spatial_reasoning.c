@@ -1183,9 +1183,13 @@ int spatial_attention_set_focus(spatial_attention_t* attention, vec3_t focus, fl
                                  (float)(x + 1) / (float)attention->grid_width);
             }
 
-            /* Map grid to normalized coordinates */
-            float nx = ((float)x / (float)(attention->grid_width - 1)) * 2.0f - 1.0f;
-            float ny = ((float)y / (float)(attention->grid_height - 1)) * 2.0f - 1.0f;
+            /* Map grid to normalized coordinates (guard against grid size 1) */
+            float nx = (attention->grid_width > 1)
+                ? ((float)x / (float)(attention->grid_width - 1)) * 2.0f - 1.0f
+                : 0.0f;
+            float ny = (attention->grid_height > 1)
+                ? ((float)y / (float)(attention->grid_height - 1)) * 2.0f - 1.0f
+                : 0.0f;
 
             float dx = nx - focus.x;
             float dy = ny - focus.y;

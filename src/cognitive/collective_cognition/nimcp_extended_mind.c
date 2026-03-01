@@ -482,7 +482,9 @@ int extended_mind_update_extension_stats(
     if (success) {
         ext->successful_queries++;
         /* Exponential moving average for latency */
-        ext->avg_latency_ms = ext->avg_latency_ms * 0.9f + latency_ms * 0.1f;
+        if (isfinite(latency_ms)) {
+            ext->avg_latency_ms = ext->avg_latency_ms * 0.9f + latency_ms * 0.1f;
+        }
     } else {
         ext->failed_queries++;
         ext->last_failure_us = get_timestamp_us();
@@ -625,7 +627,9 @@ int extended_mind_query_sync(
     }
 
     /* Update average latency */
-    em->stats.avg_latency_ms = em->stats.avg_latency_ms * 0.9f + latency_ms * 0.1f;
+    if (isfinite(latency_ms)) {
+        em->stats.avg_latency_ms = em->stats.avg_latency_ms * 0.9f + latency_ms * 0.1f;
+    }
 
     return result;
 }

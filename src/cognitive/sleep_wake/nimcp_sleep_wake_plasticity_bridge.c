@@ -472,13 +472,19 @@ int sleep_wake_plasticity_learn(
         (bridge->stats.mean_weight_change * (bridge->stats.weight_updates - 1) +
          fabsf(actual_change)) / bridge->stats.weight_updates;
 
-    /* Invoke callback */
-    if (bridge->learn_callback) {
-        bridge->learn_callback(bridge, event, magnitude, bridge->learn_callback_data);
+    bridge->state = SLEEP_WAKE_PLASTICITY_STATE_IDLE;
+
+    /* Snapshot callback under mutex */
+    sleep_wake_plasticity_learn_callback_t cb = bridge->learn_callback;
+    void* cb_data = bridge->learn_callback_data;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callback outside mutex to prevent deadlock */
+    if (cb) {
+        cb(bridge, event, magnitude, cb_data);
     }
 
-    bridge->state = SLEEP_WAKE_PLASTICITY_STATE_IDLE;
-    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

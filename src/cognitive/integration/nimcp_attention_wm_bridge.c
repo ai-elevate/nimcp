@@ -149,8 +149,7 @@ static int find_item_unlocked(const attention_wm_bridge_t* bridge, uint64_t item
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_item_unlocked: validation failed");
-    return -1;
+    return -1;  /* Not found is a normal condition */
 }
 
 /**
@@ -386,8 +385,7 @@ int attention_wm_gate_entry(
     // Check attention threshold - reject if below threshold
     if (attention_strength < bridge->config.attention_threshold) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_wm_gate_entry: validation failed");
-        return -1;  // Rejected due to insufficient attention
+        return -1;  // Rejected due to insufficient attention (normal condition)
     }
 
     // Check if item already exists
@@ -409,7 +407,6 @@ int attention_wm_gate_entry(
         slot_idx = find_lowest_priority_unlocked(bridge);
         if (slot_idx < 0) {
             nimcp_mutex_unlock(bridge->base.mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_wm_gate_entry: validation failed");
             return -1;  // Should not happen, but safety check
         }
 

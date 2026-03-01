@@ -55,6 +55,6 @@ int working_memory_training_step(void* instance, float progress) {
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     working_memory_heartbeat_instance(NULL, "working_memory_training_step", progress);
-    (void)(struct working_memory*)instance; /* Module state available for step adaptation */
+    (void)instance;
     return 0;
 }

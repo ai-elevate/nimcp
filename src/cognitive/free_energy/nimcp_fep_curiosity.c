@@ -27,7 +27,8 @@
 BRIDGE_BOILERPLATE(fep_curiosity_instance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /* Alias: tests reference fep_curiosity_set_health_agent (without _instance suffix) */
-void fep_curiosity_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+static nimcp_health_agent_t* g_fep_curiosity_health_agent = NULL;
+void fep_curiosity_set_health_agent(struct nimcp_health_agent* agent) { g_fep_curiosity_health_agent = agent; }
 
 
 /* Local result structure for total curiosity computation */

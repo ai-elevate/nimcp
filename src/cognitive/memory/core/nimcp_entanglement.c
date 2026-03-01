@@ -867,7 +867,9 @@ bool entangle_add_edge(entangle_graph_t graph, const entangle_edge_t* edge) {
 
     /* Update average weight (incremental) */
     float n = (float)graph->edge_count;
-    graph->stats.avg_weight = ((n - 1.0f) * graph->stats.avg_weight + weight) / (fabsf(n) > 1e-7f ? n : 1e-7f);
+    if (isfinite(weight) && fabsf(n) > 1e-7f) {
+        graph->stats.avg_weight = ((n - 1.0f) * graph->stats.avg_weight + weight) / n;
+    }
 
     graph->stats.memory_bytes += sizeof(edge_entry_t) + 2 * sizeof(edge_list_node_t);
 

@@ -125,6 +125,16 @@ fep_parietal_bridge_t* fep_parietal_bridge_create(const fep_parietal_config_t* c
 
         return NULL;
     }
+
+    /* Initialize bridge base infrastructure (mutex, security, coordinator) */
+    if (bridge_base_init(&bridge->base, 0, "fep_parietal") != 0) {
+        set_error("bridge_base_init failed for fep_parietal");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                              "bridge_base_init failed for fep_parietal");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     bridge->config = config ? *config : fep_parietal_default_config();
     bridge->enabled = bridge->config.enabled;
     NIMCP_LOGGING_INFO("Created %s bridge", "fep_parietal");
@@ -137,6 +147,7 @@ void fep_parietal_bridge_destroy(fep_parietal_bridge_t* bridge) {
 
 
     if (bridge) {
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         bridge = NULL;
     }

@@ -531,13 +531,18 @@ int autobio_plasticity_learn(
         (bridge->stats.mean_weight_change * (bridge->stats.weight_updates - 1) +
          fabsf(actual_change)) / bridge->stats.weight_updates;
 
-    /* Invoke callback */
-    if (bridge->learn_callback) {
-        bridge->learn_callback(bridge, event, magnitude, bridge->learn_callback_data);
-    }
+    /* Snapshot callback before releasing lock */
+    autobio_plasticity_learn_callback_t learn_cb = bridge->learn_callback;
+    void* learn_cb_data = bridge->learn_callback_data;
 
     bridge->state = AUTOBIO_PLASTICITY_STATE_IDLE;
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callback outside lock to prevent deadlock */
+    if (learn_cb) {
+        learn_cb(bridge, event, magnitude, learn_cb_data);
+    }
+
     return 0;
 }
 
@@ -881,16 +886,20 @@ int autobio_plasticity_consolidate(autobio_plasticity_bridge_t* bridge) {
 
     bridge->consolidation_state.last_consolidation_us = bridge->current_time_us;
 
-    /* Invoke consolidation callback */
-    if (bridge->consolidation_callback) {
-        bridge->consolidation_callback(bridge, old_strength,
-            bridge->consolidation_state.episodic_strength,
-            bridge->consolidation_callback_data);
-    }
+    /* Snapshot callback and values before releasing lock */
+    autobio_plasticity_consolidation_callback_t consol_cb = bridge->consolidation_callback;
+    void* consol_cb_data = bridge->consolidation_callback_data;
+    float new_strength = bridge->consolidation_state.episodic_strength;
 
     bridge->state = AUTOBIO_PLASTICITY_STATE_IDLE;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke consolidation callback outside lock to prevent deadlock */
+    if (consol_cb) {
+        consol_cb(bridge, old_strength, new_strength, consol_cb_data);
+    }
+
     return 0;
 }
 

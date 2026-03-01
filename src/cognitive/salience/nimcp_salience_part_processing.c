@@ -42,8 +42,10 @@ static void predictor_update(predictor_t* pred, const float* features, uint32_t 
                                  (float)(i + 1) / (float)safe_count);
             }
 
-            pred->prediction[i] =
-                pred->alpha * features[i] + (1.0F - pred->alpha) * pred->prediction[i];
+            float updated = pred->alpha * features[i] + (1.0F - pred->alpha) * pred->prediction[i];
+            if (isfinite(updated)) {
+                pred->prediction[i] = updated;
+            }
         }
     }
 
@@ -101,6 +103,5 @@ int salience_training_step(void* instance, float progress) {
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     salience_heartbeat_instance(NULL, "salience_training_step", progress);
-    (void)(struct salience_evaluator_struct*)instance; /* Module state available for step adaptation */
     return 0;
 }

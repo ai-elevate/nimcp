@@ -626,12 +626,18 @@ int sleep_wake_snn_simulate(sleep_wake_snn_bridge_t* bridge, float duration_ms) 
     bridge->stats.total_evaluations++;
     bridge->state = SLEEP_WAKE_SNN_STATE_IDLE;
 
-    /* Invoke arousal callback */
-    if (bridge->arousal_callback) {
-        bridge->arousal_callback(bridge, &bridge->last_arousal, bridge->arousal_callback_data);
-    }
+    /* Snapshot callback state under mutex */
+    sleep_wake_snn_arousal_callback_t arousal_cb = bridge->arousal_callback;
+    void* arousal_cb_data = bridge->arousal_callback_data;
+    sleep_wake_arousal_t arousal_snapshot = bridge->last_arousal;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callback outside mutex to prevent deadlock */
+    if (arousal_cb) {
+        arousal_cb(bridge, &arousal_snapshot, arousal_cb_data);
+    }
+
     return 0;
 }
 

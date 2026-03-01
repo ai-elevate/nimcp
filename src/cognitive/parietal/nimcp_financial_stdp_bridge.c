@@ -876,7 +876,9 @@ int financial_stdp_bridge_learn_correlation(
 
     /* Update running average of dt */
     float alpha = 0.1f;
-    corr->avg_dt_ms = (1.0f - alpha) * corr->avg_dt_ms + alpha * dt_ms;
+    if (isfinite(dt_ms)) {
+        corr->avg_dt_ms = (1.0f - alpha) * corr->avg_dt_ms + alpha * dt_ms;
+    }
 
     /* Update predictive accuracy estimate */
     if (dw > 0.0f) {

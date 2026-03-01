@@ -588,22 +588,33 @@ int meta_learning_snn_simulate(meta_learning_snn_bridge_t* bridge, float duratio
     /* Check adaptation threshold */
     if (bridge->last_insight.adaptation_level > bridge->config.adaptation_threshold) {
         bridge->stats.adaptation_detections++;
-
-        if (bridge->adaptation_callback) {
-            bridge->adaptation_callback(bridge, bridge->last_insight.adaptation_level,
-                                        bridge->current_time_us, bridge->adaptation_callback_data);
-        }
     }
 
     bridge->stats.total_evaluations++;
     bridge->state = META_LEARNING_SNN_STATE_IDLE;
 
-    /* Invoke insight callback */
-    if (bridge->insight_callback) {
-        bridge->insight_callback(bridge, &bridge->last_insight, bridge->insight_callback_data);
-    }
+    /* Snapshot callback state under mutex */
+    meta_learning_snn_adaptation_callback_t adapt_cb = bridge->adaptation_callback;
+    void* adapt_cb_data = bridge->adaptation_callback_data;
+    float adapt_level = bridge->last_insight.adaptation_level;
+    uint64_t cur_time = bridge->current_time_us;
+    bool do_adapt_cb = (adapt_cb != NULL &&
+                        adapt_level > bridge->config.adaptation_threshold);
+
+    meta_learning_snn_insight_callback_t insight_cb = bridge->insight_callback;
+    void* insight_cb_data = bridge->insight_callback_data;
+    meta_learning_insight_t insight_snapshot = bridge->last_insight;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside mutex to prevent deadlock */
+    if (do_adapt_cb) {
+        adapt_cb(bridge, adapt_level, cur_time, adapt_cb_data);
+    }
+    if (insight_cb) {
+        insight_cb(bridge, &insight_snapshot, insight_cb_data);
+    }
+
     return 0;
 }
 

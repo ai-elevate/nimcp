@@ -680,11 +680,15 @@ static int forager_do_learn_unlocked(
 
         /* Track realized IG */
         float realized_ig = curiosity_get_information_gain(f->curiosity);
-        f->stats.avg_realized_ig = f->stats.avg_realized_ig * 0.9f + realized_ig * 0.1f;
+        if (isfinite(realized_ig)) {
+            f->stats.avg_realized_ig = f->stats.avg_realized_ig * 0.9f + realized_ig * 0.1f;
+        }
 
         /* Update IG prediction error */
         float error = fabsf(f->last_expected_ig - realized_ig);
-        f->ig_error_ema = f->ig_error_ema * 0.9f + error * 0.1f;
+        if (isfinite(error)) {
+            f->ig_error_ema = f->ig_error_ema * 0.9f + error * 0.1f;
+        }
         f->stats.ig_prediction_error = f->ig_error_ema;
 
         /* Record topic in recent_topics ring buffer */

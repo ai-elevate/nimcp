@@ -150,7 +150,9 @@ int bias_fep_detect_bias(bias_fep_bridge_t* bridge, float prediction_error) {
         bridge->stats.bias_detections_total++;
         NIMCP_LOGGING_DEBUG(LOG_MODULE_BIAS_FEP " Bias detected (PE=%.2f)", pe_abs);
     }
-    bridge->stats.avg_systematic_pe = (bridge->stats.avg_systematic_pe * 0.9f) + (pe_abs * 0.1f);
+    if (isfinite(pe_abs)) {
+        bridge->stats.avg_systematic_pe = (bridge->stats.avg_systematic_pe * 0.9f) + (pe_abs * 0.1f);
+    }
     nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }

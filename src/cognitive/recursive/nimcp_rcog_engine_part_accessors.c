@@ -138,10 +138,12 @@ int rcog_engine_get_immune_modulation(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    *modulation = engine->current_modulation;
     /* Phase 8: Heartbeat at operation start */
     rcog_engine_heartbeat("rcog_engine_get_immune_modulatio", 0.0f);
 
+    nimcp_mutex_lock(((rcog_engine_t*)engine)->mutex);
+    *modulation = engine->current_modulation;
+    nimcp_mutex_unlock(((rcog_engine_t*)engine)->mutex);
 
     return 0;
 }
@@ -159,11 +161,12 @@ int rcog_engine_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    *stats = engine->stats;
     /* Phase 8: Heartbeat at operation start */
     rcog_engine_heartbeat("rcog_engine_get_stats", 0.0f);
 
+    nimcp_mutex_lock(((rcog_engine_t*)engine)->mutex);
 
+    *stats = engine->stats;
     stats->active_goals = engine->active_count;
     stats->state = engine->state;
 
@@ -172,6 +175,8 @@ int rcog_engine_get_stats(
         stats->avg_processing_time_ms =
             (float)stats->total_processing_time_ms / stats->goals_completed;
     }
+
+    nimcp_mutex_unlock(((rcog_engine_t*)engine)->mutex);
 
     return 0;
 }

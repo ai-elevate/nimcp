@@ -332,8 +332,10 @@ nimcp_error_t omni_wm_save(const omni_world_model_t* wm,
 
     /* Allocate buffer */
     uint8_t* buffer = nimcp_malloc(required_size);
-    if (!buffer) return -1;
-    NIMCP_CHECK_THROW(buffer, NIMCP_ERROR_NO_MEMORY, "failed to allocate serialization buffer");
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate serialization buffer");
+        return NIMCP_ERROR_NO_MEMORY;
+    }
 
     /* Serialize */
     size_t written = omni_wm_serialize(wm, buffer, required_size);

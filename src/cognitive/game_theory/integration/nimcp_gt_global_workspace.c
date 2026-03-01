@@ -145,8 +145,12 @@ static void update_winner_state(
 
     // Update running averages
     float alpha = 1.0f / (float)state->wins;
-    state->avg_winning_bid = (1.0f - alpha) * state->avg_winning_bid + alpha * winning_bid;
-    state->avg_payment = (1.0f - alpha) * state->avg_payment + alpha * payment;
+    if (isfinite(winning_bid)) {
+        state->avg_winning_bid = (1.0f - alpha) * state->avg_winning_bid + alpha * winning_bid;
+    }
+    if (isfinite(payment)) {
+        state->avg_payment = (1.0f - alpha) * state->avg_payment + alpha * payment;
+    }
 }
 
 //=============================================================================

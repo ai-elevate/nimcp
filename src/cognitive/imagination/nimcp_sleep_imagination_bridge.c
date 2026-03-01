@@ -943,11 +943,12 @@ int sleep_imagination_get_stats(
         return -1;
     }
 
-    *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_ge", 0.0f);
 
-
+    nimcp_mutex_lock(((sleep_imagination_bridge_t*)bridge)->base.mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(((sleep_imagination_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 

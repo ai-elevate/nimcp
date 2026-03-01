@@ -128,11 +128,18 @@ bool mirror_neurons_learn_demonstration(
     mirror_neurons_heartbeat("mirror_neuro_learn_demonstration", 0.0f);
 
 
-    (void)demonstrator_id;  // TODO: Use for agent-specific learning
-
     if (!mirror || !actions || num_actions == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_learn_demonstration: required parameter is NULL (mirror, actions)");
         return false;
+    }
+
+    // Track demonstrator agent if non-self
+    if (demonstrator_id != 0) {
+        uint32_t agent_idx = find_or_create_agent(mirror, demonstrator_id);
+        if (agent_idx != UINT32_MAX) {
+            mirror->agents[agent_idx].observation_count += num_actions;
+            mirror->agents[agent_idx].last_observation_time = nimcp_time_get_ms();
+        }
     }
 
     // Process each action in sequence
@@ -232,6 +239,7 @@ bool mirror_neurons_predict_next_action(
     // Find action with highest activation that's different from last
     float max_activation = 0.0F;
     uint32_t best_action_id = 0;
+    bool found_candidate = false;
 
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -248,10 +256,11 @@ bool mirror_neurons_predict_next_action(
         if (activation > max_activation) {
             max_activation = activation;
             best_action_id = mirror->actions[i].action_id;
+            found_candidate = true;
         }
     }
 
-    if (best_action_id == 0) {
+    if (!found_candidate) {
         if (confidence) *confidence = 0.0F;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_predict_next_action: validation failed");
         return false;

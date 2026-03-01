@@ -41,8 +41,8 @@ static mesh_participant_id_t g_salience_attention_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_salience_attention_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t salience_attention_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return -1;
-    if (g_salience_attention_fep_bridge_mesh_id != 0) return 0;
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_salience_attention_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "salience_attention_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -603,18 +603,27 @@ int sa_fep_bridge_unregister(sa_fep_bridge_t* bridge) {
         return 0;  /* Not registered, nothing to do */
     }
 
-    /* Unregister from orchestrator */
-    if (bridge->orchestrator) {
-        fep_orchestrator_unregister_bridge(bridge->orchestrator, bridge->bridge_id);
+    /* Snapshot orchestrator+bridge_id under lock, then call
+     * fep_orchestrator_unregister_bridge OUTSIDE lock to prevent deadlock. */
+    fep_orchestrator_t* orchestrator = bridge->orchestrator;
+    uint32_t bridge_id = bridge->bridge_id;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Unregister from orchestrator WITHOUT holding the lock */
+    if (orchestrator) {
+        fep_orchestrator_unregister_bridge(orchestrator, bridge_id);
     }
 
+    /* Re-lock to clear state */
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->registered = false;
     bridge->bridge_id = 0;
     bridge->orchestrator = NULL;
     bridge->sa_bridge = NULL;
     bridge->state = SA_FEP_STATE_IDLE;
-
     nimcp_mutex_unlock(bridge->base.mutex);
+
     return 0;
 }
 
@@ -678,13 +687,21 @@ int sa_fep_update_callback(void* handle) {
     /* Store previous state for delta computation */
     store_previous_state(bridge);
 
-    /* If we have a salience-attention bridge, query it for statistics */
-    if (bridge->sa_bridge) {
+    /* Snapshot sa_bridge ref under lock, query it OUTSIDE lock
+     * to prevent nested lock deadlock. */
+    salience_attention_bridge_t* sa_bridge = (salience_attention_bridge_t*)bridge->sa_bridge;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Query salience-attention bridge WITHOUT holding the lock */
+    if (sa_bridge) {
         salience_attention_stats_t sa_stats;
         memset(&sa_stats, 0, sizeof(sa_stats));
 
-        int err = salience_attention_bridge_get_stats(bridge->sa_bridge, &sa_stats);
+        int err = salience_attention_bridge_get_stats(sa_bridge, &sa_stats);
         if (err == 0) {
+            nimcp_mutex_lock(bridge->base.mutex);
+
             /* Update metrics from salience-attention statistics */
             bridge->stats.salience_computations++;
 
@@ -738,8 +755,12 @@ int sa_fep_update_callback(void* handle) {
             /* Track active targets */
             bridge->metrics.salience_detections = (uint32_t)sa_stats.salience_detections;
             bridge->metrics.active_targets = (uint32_t)sa_stats.attention_shifts;
+
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
     }
+
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute free energy from current metrics */
     compute_free_energy(bridge);

@@ -36,7 +36,8 @@
 BRIDGE_BOILERPLATE(surprise_self_model, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /* Alias: tests reference surprise_self_model_bridge_set_health_agent_global */
-void surprise_self_model_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { (void)agent; }
+static nimcp_health_agent_t* g_surprise_self_model_bridge_health_agent = NULL;
+void surprise_self_model_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { g_surprise_self_model_bridge_health_agent = agent; }
 
 /* ============================================================================
  * Capability Tracker

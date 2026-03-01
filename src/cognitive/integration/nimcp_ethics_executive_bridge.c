@@ -153,8 +153,7 @@ static action_evaluation_t* find_evaluation_unlocked(ethics_executive_bridge_t* 
             return &bridge->evaluations[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_timestamp_ms: validation failed");
-    return NULL;
+    return NULL;  /* Not found is a normal condition */
 }
 
 /**

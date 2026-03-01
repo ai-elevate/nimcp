@@ -333,10 +333,8 @@ int jepa_thalamic_bridge_training_end(jepa_thalamic_bridge_t* bridge) {
                                              "jepa_thalami_training_end", 0.0f);
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
-    /* Compute average prediction confidence from training */
-    if (bridge->stats.predictions_routed > 0) {
-        bridge->stats.avg_prediction_confidence /= (float)bridge->stats.predictions_routed;
-    }
+    /* avg_prediction_confidence is already a running average from route_prediction(),
+     * so no additional division is needed here. */
 
     /* Adjust attention weight based on training error rate */
     float error_rate = (bridge->stats.predictions_routed > 0)

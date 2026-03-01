@@ -71,9 +71,15 @@ int collective_cognition_training_step(void* instance, float progress) {
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     collective_cognition_heartbeat_instance(g_collective_cognition_instance_health_agent, "coll_cog_train_step", progress);
-    (void)instance;
+
+    collective_cognition_t* ctx = (collective_cognition_t*)instance;
 
     g_collective_cognition_training_steps++;
+
+    /* Update module stats if context is valid */
+    if (ctx) {
+        ctx->stats.total_updates++;
+    }
 
     /* Progressive adaptation: decay error accumulator */
     float decay = 1.0f - 0.1f * progress;

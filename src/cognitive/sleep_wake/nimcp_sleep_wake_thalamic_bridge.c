@@ -184,7 +184,9 @@ int sleep_wake_thalamic_get_attention(const sleep_wake_thalamic_bridge_t* bridge
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -193,7 +195,9 @@ int sleep_wake_thalamic_bridge_get_stats(const sleep_wake_thalamic_bridge_t* bri
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

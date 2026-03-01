@@ -619,8 +619,10 @@ void empathetic_response_track_effectiveness(
 
 
     float alpha = 0.1F;  // Learning rate
-    engine->avg_effectiveness = (1.0F - alpha) * engine->avg_effectiveness +
-                               alpha * effectiveness;
+    if (isfinite(effectiveness)) {
+        engine->avg_effectiveness = (1.0F - alpha) * engine->avg_effectiveness +
+                                   alpha * effectiveness;
+    }
 
     // Update strategy-specific effectiveness
     response_strategy_t strategy = response->primary_strategy;

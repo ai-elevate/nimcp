@@ -511,7 +511,7 @@ NIMCP_API uint32_t evolutionary_proof_evolve_generation(
         }
 
         /* Sort by fitness (descending) */
-        for (uint32_t i = 0; i < eps->population_count - 1; i++) {
+        for (uint32_t i = 0; i + 1 < eps->population_count; i++) {
             for (uint32_t j = i + 1; j < eps->population_count; j++) {
                 if (eps->population[j].fitness > eps->population[i].fitness) {
                     proof_strategy_t temp = eps->population[i];

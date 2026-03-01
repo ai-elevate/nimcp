@@ -40,8 +40,8 @@ static mesh_participant_id_t g_game_theory_executive_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_game_theory_executive_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t game_theory_executive_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return -1;
-    if (g_game_theory_executive_fep_bridge_mesh_id != 0) return 0;
+    if (!registry) return NIMCP_ERROR_NULL_POINTER;
+    if (g_game_theory_executive_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "game_theory_executive_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -680,10 +680,51 @@ int gt_exec_fep_update_callback(void* handle) {
     /* Update statistics */
     update_stats(bridge, update_time_us);
 
-    /* Check and trigger callbacks */
-    check_callbacks(bridge);
+    /* Snapshot callback state under lock, invoke outside to prevent deadlock */
+    gt_exec_fep_high_fe_callback_t snap_hfe_cb = bridge->high_fe_callback;
+    void* snap_hfe_ud = bridge->high_fe_user_data;
+    gt_exec_fep_surprise_callback_t snap_surp_cb = bridge->surprise_callback;
+    void* snap_surp_ud = bridge->surprise_user_data;
+    gt_exec_fep_metrics_callback_t snap_met_cb = bridge->metrics_callback;
+    void* snap_met_ud = bridge->metrics_user_data;
+
+    gt_exec_fep_metrics_t snap_m = bridge->metrics;
+    bool fire_hfe = false;
+    bool fire_surp = false;
+    const char* surp_source = "unknown";
+
+    if (snap_m.free_energy > bridge->config.high_free_energy_threshold) {
+        if (bridge->state != GT_EXEC_FEP_STATE_DEGRADED) {
+            bridge->state = GT_EXEC_FEP_STATE_DEGRADED;
+            bridge->stats.degraded_mode_entries++;
+            fire_hfe = (snap_hfe_cb != NULL);
+        }
+    } else if (bridge->state == GT_EXEC_FEP_STATE_DEGRADED) {
+        bridge->state = GT_EXEC_FEP_STATE_ACTIVE;
+    }
+
+    if (snap_m.surprise > bridge->config.prediction_error_threshold) {
+        bridge->stats.surprise_events++;
+        if (snap_surp_cb) {
+            fire_surp = true;
+            if (snap_m.decision_contribution > snap_m.alignment_contribution &&
+                snap_m.decision_contribution > snap_m.coherence_contribution) {
+                surp_source = "decision";
+            } else if (snap_m.alignment_contribution > snap_m.coherence_contribution) {
+                surp_source = "alignment";
+            } else {
+                surp_source = "coherence";
+            }
+        }
+    }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside lock */
+    if (fire_hfe) snap_hfe_cb(bridge, snap_m.free_energy, snap_hfe_ud);
+    if (fire_surp) snap_surp_cb(bridge, snap_m.surprise, surp_source, snap_surp_ud);
+    if (snap_met_cb) snap_met_cb(bridge, &snap_m, snap_met_ud);
+
     return 0;
 }
 
@@ -727,10 +768,51 @@ int gt_exec_fep_bridge_force_update(gt_exec_fep_bridge_t* bridge) {
     /* Update statistics */
     update_stats(bridge, update_time_us);
 
-    /* Check and trigger callbacks */
-    check_callbacks(bridge);
+    /* Snapshot callback state under lock, invoke outside to prevent deadlock */
+    gt_exec_fep_high_fe_callback_t fu_hfe_cb = bridge->high_fe_callback;
+    void* fu_hfe_ud = bridge->high_fe_user_data;
+    gt_exec_fep_surprise_callback_t fu_surp_cb = bridge->surprise_callback;
+    void* fu_surp_ud = bridge->surprise_user_data;
+    gt_exec_fep_metrics_callback_t fu_met_cb = bridge->metrics_callback;
+    void* fu_met_ud = bridge->metrics_user_data;
+
+    gt_exec_fep_metrics_t fu_m = bridge->metrics;
+    bool fu_fire_hfe = false;
+    bool fu_fire_surp = false;
+    const char* fu_surp_source = "unknown";
+
+    if (fu_m.free_energy > bridge->config.high_free_energy_threshold) {
+        if (bridge->state != GT_EXEC_FEP_STATE_DEGRADED) {
+            bridge->state = GT_EXEC_FEP_STATE_DEGRADED;
+            bridge->stats.degraded_mode_entries++;
+            fu_fire_hfe = (fu_hfe_cb != NULL);
+        }
+    } else if (bridge->state == GT_EXEC_FEP_STATE_DEGRADED) {
+        bridge->state = GT_EXEC_FEP_STATE_ACTIVE;
+    }
+
+    if (fu_m.surprise > bridge->config.prediction_error_threshold) {
+        bridge->stats.surprise_events++;
+        if (fu_surp_cb) {
+            fu_fire_surp = true;
+            if (fu_m.decision_contribution > fu_m.alignment_contribution &&
+                fu_m.decision_contribution > fu_m.coherence_contribution) {
+                fu_surp_source = "decision";
+            } else if (fu_m.alignment_contribution > fu_m.coherence_contribution) {
+                fu_surp_source = "alignment";
+            } else {
+                fu_surp_source = "coherence";
+            }
+        }
+    }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside lock */
+    if (fu_fire_hfe) fu_hfe_cb(bridge, fu_m.free_energy, fu_hfe_ud);
+    if (fu_fire_surp) fu_surp_cb(bridge, fu_m.surprise, fu_surp_source, fu_surp_ud);
+    if (fu_met_cb) fu_met_cb(bridge, &fu_m, fu_met_ud);
+
     return 0;
 }
 

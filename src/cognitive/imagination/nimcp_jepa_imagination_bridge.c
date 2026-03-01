@@ -742,11 +742,12 @@ int jepa_imagination_get_stats(
         return -1;
     }
 
-    *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_get", 0.0f);
 
-
+    nimcp_mutex_lock(((jepa_imagination_bridge_t*)bridge)->base.mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(((jepa_imagination_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 

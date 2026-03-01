@@ -921,13 +921,14 @@ int prefrontal_imagination_get_stats(
         return -1;
     }
 
-    *stats = bridge->stats;
-
-    /* Compute derived stats */
     /* Phase 8: Heartbeat at operation start */
     prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
 
+    nimcp_mutex_lock(((prefrontal_imagination_bridge_t*)bridge)->base.mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(((prefrontal_imagination_bridge_t*)bridge)->base.mutex);
 
+    /* Compute derived stats (from local copy, no lock needed) */
     if (stats->option_requests > 0) {
         stats->avg_options_per_request =
             (float)stats->options_generated / (float)stats->option_requests;

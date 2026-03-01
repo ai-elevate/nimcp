@@ -225,20 +225,33 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
     }
 
     system->narratives = nimcp_calloc(1000, sizeof(narrative_knowledge_t));
-    if (!system->narratives) return -1;
+    if (!system->narratives) goto create_cleanup;
     system->narratives_capacity = 1000;
 
     system->artworks = nimcp_calloc(500, sizeof(aesthetic_knowledge_t));
-    if (!system->artworks) return -1;
+    if (!system->artworks) goto create_cleanup;
     system->artworks_capacity = 500;
 
     system->history = nimcp_calloc(1000, sizeof(historical_knowledge_t));
-    if (!system->history) return -1;
+    if (!system->history) goto create_cleanup;
     system->history_capacity = 1000;
 
     system->reading_list = nimcp_calloc(100, sizeof(reading_progress_t));
-    if (!system->reading_list) return -1;
+    if (!system->reading_list) goto create_cleanup;
     system->reading_capacity = 100;
+
+    // goto target for allocation failures above — free everything allocated so far
+    if (0) {
+create_cleanup:
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_system_create: array allocation failed");
+        nimcp_free(system->reading_list);
+        nimcp_free(system->history);
+        nimcp_free(system->artworks);
+        nimcp_free(system->narratives);
+        repository_destroy(system->repository);
+        nimcp_free(system);
+        return NULL;
+    }
 
     // Initialize domain statistics (no brains needed - they were never used!)
     for (int i = 0; i < 11; i++) {

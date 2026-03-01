@@ -26,7 +26,11 @@ static int mirror_neurons_wiring_handler_callback(
     uint32_t message_count,
     void* user_data
 ) {
-    (void)user_data;
+    mirror_neurons_t mirror = (mirror_neurons_t)user_data;
+    if (!mirror) {
+        MIRROR_LOG_WARN("Wiring callback invoked with NULL user_data");
+        return -1;
+    }
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {

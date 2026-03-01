@@ -274,6 +274,9 @@ mirror_neurons_t mirror_neurons_load(FILE* file)
         if (fread(&mirror->neurons[i], sizeof(mirror_neuron_unit_t), 1, file) != 1) {
             goto cleanup;
         }
+        /* Clear serialized pointer — substrate must be re-enabled after load */
+        mirror->neurons[i].substrate = NULL;
+        mirror->neurons[i].has_substrate = false;
     }
 
     // WHAT: Read action mappings

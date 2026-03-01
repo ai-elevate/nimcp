@@ -527,18 +527,24 @@ int jepa_snn_encode_context(
 
     bridge->context_signal = context_strength;
 
+    /* Snapshot callback under mutex */
+    jepa_snn_confidence_callback_t conf_cb = NULL;
+    void* conf_cb_data = NULL;
     if (context_strength > bridge->config.confidence_threshold) {
         bridge->last_prediction.high_confidence = true;
         bridge->last_prediction.confidence_magnitude = context_strength;
         bridge->stats.high_confidence_events++;
 
-        if (bridge->confidence_callback) {
-            bridge->confidence_callback(bridge, context_strength, context_type,
-                                       bridge->confidence_callback_data);
-        }
+        conf_cb = bridge->confidence_callback;
+        conf_cb_data = bridge->confidence_callback_data;
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callback outside mutex to prevent deadlock */
+    if (conf_cb) {
+        conf_cb(bridge, context_strength, context_type, conf_cb_data);
+    }
 
     return jepa_snn_encode_state(bridge, dims, 2);
 }
@@ -613,11 +619,6 @@ int jepa_snn_simulate(jepa_snn_bridge_t* bridge, float duration_ms) {
     if (bridge->last_prediction.prediction_error > bridge->config.prediction_error_threshold) {
         bridge->last_prediction.error_detected = true;
         bridge->stats.error_detections++;
-
-        if (bridge->error_callback) {
-            bridge->error_callback(bridge, bridge->last_prediction.prediction_error,
-                                  bridge->current_time_us, bridge->error_callback_data);
-        }
     } else {
         bridge->last_prediction.error_detected = false;
     }
@@ -625,12 +626,27 @@ int jepa_snn_simulate(jepa_snn_bridge_t* bridge, float duration_ms) {
     bridge->stats.total_evaluations++;
     bridge->state = JEPA_SNN_STATE_IDLE;
 
-    /* Invoke prediction callback */
-    if (bridge->prediction_callback) {
-        bridge->prediction_callback(bridge, &bridge->last_prediction, bridge->prediction_callback_data);
-    }
+    /* Snapshot callback state under mutex */
+    jepa_snn_error_callback_t err_cb = bridge->error_callback;
+    void* err_cb_data = bridge->error_callback_data;
+    float pred_error = bridge->last_prediction.prediction_error;
+    uint64_t cur_time = bridge->current_time_us;
+    bool do_err_cb = (err_cb != NULL && bridge->last_prediction.error_detected);
+
+    jepa_snn_prediction_callback_t pred_cb = bridge->prediction_callback;
+    void* pred_cb_data = bridge->prediction_callback_data;
+    jepa_prediction_output_t pred_snapshot = bridge->last_prediction;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside mutex to prevent deadlock */
+    if (do_err_cb) {
+        err_cb(bridge, pred_error, cur_time, err_cb_data);
+    }
+    if (pred_cb) {
+        pred_cb(bridge, &pred_snapshot, pred_cb_data);
+    }
+
     return 0;
 }
 

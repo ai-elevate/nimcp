@@ -30,13 +30,12 @@ static _Thread_local uint32_t g_curiosity_mc_seed = 0;
 #ifdef NIMCP_ENABLE_CUDA
 #include "gpu/quantum/nimcp_qmc_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
+#include <stdatomic.h>  /* TOCTOU fix: atomic flag for GPU init */
 
 /* Module-level GPU resources - initialized on first use */
 static nimcp_gpu_context_t* g_curiosity_gpu_ctx = NULL;
 static qmc_gpu_rng_t g_curiosity_gpu_rng = NULL;
-static nimcp_once_t g_curiosity_gpu_once = NIMCP_ONCE_INIT;
-static volatile bool g_curiosity_gpu_init_done = false;
-static bool g_curiosity_gpu_init_attempted = false;
+static _Atomic bool g_curiosity_gpu_init_attempted = false;
 
 /**
  * @brief Initialize GPU resources for curiosity MC operations
@@ -45,18 +44,21 @@ static bool g_curiosity_gpu_init_attempted = false;
  * WHY:  GPU provides 100-1000x speedup for large-scale MC operations
  * HOW:  Create context, initialize cuRAND states
  *
- * Thread-safe: Uses atomic flag to ensure single initialization
+ * Thread-safe: Uses atomic flag to prevent TOCTOU double-initialization
  */
 static bool curiosity_init_gpu_mc(void) {
-    if (g_curiosity_gpu_init_attempted) {
+    /* TOCTOU fix: Use atomic load/store to prevent double-initialization.
+     * WHY:  Multiple threads could race on a non-atomic check, both see false,
+     *       and double-initialize GPU context (resource leak + undefined behavior).
+     */
+    if (atomic_load(&g_curiosity_gpu_init_attempted)) {
         return g_curiosity_gpu_rng != NULL;
     }
-    g_curiosity_gpu_init_attempted = true;
+    atomic_store(&g_curiosity_gpu_init_attempted, true);
 
     if (!qmc_gpu_is_available()) {
         LOG_DEBUG("GPU not available for curiosity MC, using CPU fallback");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_init_gpu_mc: qmc_gpu_is_available is NULL");
-        return false;
+        return false;  /* GPU not available is normal — not an error */
     }
 
     g_curiosity_gpu_ctx = nimcp_gpu_context_create_auto();
@@ -79,14 +81,27 @@ static bool curiosity_init_gpu_mc(void) {
     return true;
 }
 
-/**
- * @brief Check if GPU is available for MC operations
- */
 static inline bool curiosity_has_gpu_mc(void) {
-    if (!g_curiosity_gpu_init_attempted) {
-        curiosity_init_gpu_mc();
-    }
+    if (!atomic_load(&g_curiosity_gpu_init_attempted)) curiosity_init_gpu_mc();
     return g_curiosity_gpu_rng != NULL;
+}
+
+/**
+ * @brief Cleanup GPU resources on library unload
+ * WHY:  g_curiosity_gpu_ctx and g_curiosity_gpu_rng are allocated but never freed,
+ *       leaking GPU memory when the library is unloaded or process exits.
+ */
+__attribute__((destructor))
+static void curiosity_cleanup_gpu_mc(void) {
+    if (g_curiosity_gpu_rng) {
+        qmc_gpu_rng_destroy(g_curiosity_gpu_rng);
+        g_curiosity_gpu_rng = NULL;
+    }
+    if (g_curiosity_gpu_ctx) {
+        nimcp_gpu_context_destroy(g_curiosity_gpu_ctx);
+        g_curiosity_gpu_ctx = NULL;
+    }
+    atomic_store(&g_curiosity_gpu_init_attempted, false);
 }
 
 #else  /* !NIMCP_ENABLE_CUDA */

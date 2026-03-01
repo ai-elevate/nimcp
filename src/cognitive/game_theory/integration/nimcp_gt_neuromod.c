@@ -272,7 +272,9 @@ nimcp_error_t gt_neuromod_process_outcome(
 
     bridge->outcomes_processed++;
     float alpha = 1.0f / (float)bridge->outcomes_processed;
-    bridge->avg_valence = (1.0f - alpha) * bridge->avg_valence + alpha * release->net_valence;
+    if (isfinite(release->net_valence)) {
+        bridge->avg_valence = (1.0f - alpha) * bridge->avg_valence + alpha * release->net_valence;
+    }
 
     return NIMCP_SUCCESS;
 }

@@ -373,7 +373,8 @@ static void record_violation(ethics_engine_t engine, const action_context_t* act
                                     .severity = severity,
                                     .timestamp = 0,
                                     .action_description = {0},
-                                    .affected_agent = action->affected_agents[0],
+                                    .affected_agent = (action->num_affected_agents > 0)
+                                                      ? action->affected_agents[0] : 0,
                                     .golden_rule_score = golden_rule_score};
 
     engine->violations[engine->num_violations++] = violation;

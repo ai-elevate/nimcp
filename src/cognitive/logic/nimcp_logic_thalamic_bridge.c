@@ -102,6 +102,13 @@ logic_thalamic_bridge_t* logic_thalamic_bridge_create(void* logic, thalamic_rout
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_thalamic_bridge_create: failed to allocate bridge");
         return NULL;
     }
+
+    /* Initialize bridge base (provides mutex for thread safety) */
+    if (bridge_base_init(&bridge->base, 0, "logic_thalamic_bridge") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     bridge->logic = logic;
     bridge->router = router;
     bridge->config = config ? *config : logic_thalamic_default_config();
@@ -115,8 +122,10 @@ void logic_thalamic_bridge_destroy(logic_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     logic_thalamic_bridge_heartbeat("logic_thalam_destroy", 0.0f);
 
-
-    if (bridge) nimcp_free(bridge);
+    if (bridge) {
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+    }
 }
 
 int logic_thalamic_bridge_reset(logic_thalamic_bridge_t* bridge) {
@@ -127,9 +136,10 @@ int logic_thalamic_bridge_reset(logic_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     logic_thalamic_bridge_heartbeat("logic_thalam_reset", 0.0f);
 
-
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -141,19 +151,21 @@ int logic_thalamic_route_inference(logic_thalamic_bridge_t* bridge, const logic_
     /* Phase 8: Heartbeat at operation start */
     logic_thalamic_bridge_heartbeat("logic_thalam_logic_thalamic_route", 0.0f);
 
-
     if (bridge->config.enable_attention_gating && signal->logical_strength < bridge->config.min_logical_strength) {
         return 0;
     }
     if (signal->inference_depth > bridge->config.max_inference_depth) {
         return 0;
     }
+
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.inferences_routed++;
     bridge->stats.avg_inference_depth = (bridge->stats.avg_inference_depth * (bridge->stats.inferences_routed - 1) +
                                          signal->inference_depth) / bridge->stats.inferences_routed;
     if (bridge->config.enable_contradiction_alert && signal->signal_type == LOGIC_SIGNAL_CONTRADICTION) {
         bridge->stats.contradictions_flagged++;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -162,11 +174,14 @@ int logic_thalamic_route_conclusion(logic_thalamic_bridge_t* bridge, const void*
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_thalamic_route_conclusion: bridge is NULL");
         return -1;
     }
+    (void)conclusion;
+    (void)confidence;
     /* Phase 8: Heartbeat at operation start */
     logic_thalamic_bridge_heartbeat("logic_thalam_logic_thalamic_route", 0.0f);
 
-
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.conclusions_routed++;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -178,8 +193,9 @@ int logic_thalamic_set_attention(logic_thalamic_bridge_t* bridge, float attentio
     /* Phase 8: Heartbeat at operation start */
     logic_thalamic_bridge_heartbeat("logic_thalam_logic_thalamic_set_a", 0.0f);
 
-
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -188,10 +204,12 @@ int logic_thalamic_get_attention(const logic_thalamic_bridge_t* bridge, float* a
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
+    /* Cast away const for mutex lock (mutex is logically mutable) */
+    nimcp_mutex_lock(((logic_thalamic_bridge_t*)bridge)->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_mutex_unlock(((logic_thalamic_bridge_t*)bridge)->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     logic_thalamic_bridge_heartbeat("logic_thalam_logic_thalamic_get_a", 0.0f);
-
 
     return 0;
 }
@@ -201,10 +219,12 @@ int logic_thalamic_bridge_get_stats(const logic_thalamic_bridge_t* bridge, logic
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
+    /* Cast away const for mutex lock (mutex is logically mutable) */
+    nimcp_mutex_lock(((logic_thalamic_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
+    nimcp_mutex_unlock(((logic_thalamic_bridge_t*)bridge)->base.mutex);
     /* Phase 8: Heartbeat at operation start */
     logic_thalamic_bridge_heartbeat("logic_thalam_get_stats", 0.0f);
-
 
     return 0;
 }

@@ -33,7 +33,8 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 BRIDGE_BOILERPLATE(surprise_thalamic, MESH_ADAPTER_CATEGORY_COGNITIVE)
-void surprise_thalamic_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { (void)agent; }
+static nimcp_health_agent_t* g_surprise_thalamic_bridge_health_agent = NULL;
+void surprise_thalamic_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { g_surprise_thalamic_bridge_health_agent = agent; }
 
 /* ============================================================================
  * Constants

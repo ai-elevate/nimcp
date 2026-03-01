@@ -378,6 +378,43 @@ void mirror_neurons_destroy(mirror_neurons_t mirror)
     }
     mirror->bridges_enabled = false;
 
+    // Destroy enhancement systems (Phase 10.11.4-6)
+    if (mirror->stdp_enabled && mirror->stdp_system) {
+        mirror_stdp_destroy((mirror_stdp_t)mirror->stdp_system);
+        mirror->stdp_system = NULL;
+        mirror->stdp_enabled = false;
+    }
+
+    if (mirror->resonance_enabled && mirror->resonance_system) {
+        motor_resonance_destroy((motor_resonance_t)mirror->resonance_system);
+        mirror->resonance_system = NULL;
+        mirror->resonance_enabled = false;
+    }
+
+    if (mirror->hierarchy_enabled && mirror->hierarchy_system) {
+        mirror_hierarchy_destroy((mirror_hierarchy_t)mirror->hierarchy_system);
+        mirror->hierarchy_system = NULL;
+        mirror->hierarchy_enabled = false;
+    }
+
+    // Free substrate backings and pool (Phase 10.11.2)
+    if (mirror->substrate_enabled) {
+        for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+            mirror_neuron_unit_t* unit = &mirror->neurons[i];
+            if (unit->has_substrate && unit->substrate) {
+                mirror_substrate_backing_destroy(unit->substrate, mirror->substrate_pool);
+                unit->substrate = NULL;
+                unit->has_substrate = false;
+            }
+        }
+
+        if (mirror->substrate_pool) {
+            mirror_substrate_pool_destroy(mirror->substrate_pool);
+            mirror->substrate_pool = NULL;
+        }
+        mirror->substrate_enabled = false;
+    }
+
     // Unregister from bio-async router
     if (mirror->bio_async_enabled && mirror->bio_ctx) {
         bio_router_unregister_module(mirror->bio_ctx);

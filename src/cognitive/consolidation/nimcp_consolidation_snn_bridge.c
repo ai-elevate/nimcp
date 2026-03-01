@@ -497,18 +497,24 @@ int consolidation_snn_encode_schema(
 
     bridge->stabilization_signal = integration_level;
 
+    /* Snapshot callback under mutex */
+    consolidation_snn_stabilization_callback_t stab_cb = NULL;
+    void* stab_cb_data = NULL;
     if (integration_level > bridge->config.stabilization_threshold) {
         bridge->last_state.consolidation_active = true;
         bridge->last_state.consolidation_strength = integration_level;
         bridge->stats.consolidation_events++;
 
-        if (bridge->stabilization_callback) {
-            bridge->stabilization_callback(bridge, integration_level, schema_type,
-                                          bridge->stabilization_callback_data);
-        }
+        stab_cb = bridge->stabilization_callback;
+        stab_cb_data = bridge->stabilization_callback_data;
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callback outside mutex to prevent deadlock */
+    if (stab_cb) {
+        stab_cb(bridge, integration_level, schema_type, stab_cb_data);
+    }
 
     return consolidation_snn_encode_state(bridge, dims, 2);
 }
@@ -589,11 +595,6 @@ int consolidation_snn_simulate(consolidation_snn_bridge_t* bridge, float duratio
     if (bridge->last_state.replay_strength > bridge->config.replay_threshold) {
         bridge->last_state.replay_detected = true;
         bridge->stats.replay_detections++;
-
-        if (bridge->replay_callback) {
-            bridge->replay_callback(bridge, bridge->last_state.replay_strength,
-                                   bridge->current_time_us, bridge->replay_callback_data);
-        }
     } else {
         bridge->last_state.replay_detected = false;
     }
@@ -601,12 +602,27 @@ int consolidation_snn_simulate(consolidation_snn_bridge_t* bridge, float duratio
     bridge->stats.total_evaluations++;
     bridge->state = CONSOLIDATION_SNN_STATE_IDLE;
 
-    /* Invoke state callback */
-    if (bridge->state_callback) {
-        bridge->state_callback(bridge, &bridge->last_state, bridge->state_callback_data);
-    }
+    /* Snapshot callback state under mutex */
+    consolidation_snn_replay_callback_t replay_cb = bridge->replay_callback;
+    void* replay_cb_data = bridge->replay_callback_data;
+    float replay_str = bridge->last_state.replay_strength;
+    uint64_t cur_time = bridge->current_time_us;
+    bool do_replay_cb = (replay_cb != NULL && bridge->last_state.replay_detected);
+
+    consolidation_snn_state_callback_t state_cb = bridge->state_callback;
+    void* state_cb_data = bridge->state_callback_data;
+    consolidation_memory_state_t state_snapshot = bridge->last_state;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Invoke callbacks outside mutex to prevent deadlock */
+    if (do_replay_cb) {
+        replay_cb(bridge, replay_str, cur_time, replay_cb_data);
+    }
+    if (state_cb) {
+        state_cb(bridge, &state_snapshot, state_cb_data);
+    }
+
     return 0;
 }
 

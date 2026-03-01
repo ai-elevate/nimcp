@@ -705,10 +705,12 @@ int jepa_predictor_compute_error(jepa_predictor_t* predictor,
 
     /* Update statistics */
     /* On first loss, initialize avg_loss directly */
-    if (predictor->stats.min_loss == FLT_MAX) {
-        predictor->stats.avg_loss = error->loss;
-    } else {
-        predictor->stats.avg_loss = 0.9f * predictor->stats.avg_loss + 0.1f * error->loss;
+    if (isfinite(error->loss)) {
+        if (predictor->stats.min_loss == FLT_MAX) {
+            predictor->stats.avg_loss = error->loss;
+        } else {
+            predictor->stats.avg_loss = 0.9f * predictor->stats.avg_loss + 0.1f * error->loss;
+        }
     }
     if (error->loss < predictor->stats.min_loss) {
         predictor->stats.min_loss = error->loss;
@@ -1043,11 +1045,12 @@ int jepa_predictor_update_precision(jepa_predictor_t* predictor,
     }
 
     /* EMA update */
-    predictor->prediction_precision = 0.9f * predictor->prediction_precision +
-                                       0.1f * new_precision;
-
-    predictor->stats.avg_precision = 0.9f * predictor->stats.avg_precision +
-                                      0.1f * predictor->prediction_precision;
+    if (isfinite(new_precision)) {
+        predictor->prediction_precision = 0.9f * predictor->prediction_precision +
+                                           0.1f * new_precision;
+        predictor->stats.avg_precision = 0.9f * predictor->stats.avg_precision +
+                                          0.1f * predictor->prediction_precision;
+    }
 
     return NIMCP_SUCCESS;
 }

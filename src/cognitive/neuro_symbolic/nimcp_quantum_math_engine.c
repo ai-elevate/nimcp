@@ -844,9 +844,9 @@ NIMCP_API nimcp_error_t qme_path_integral(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (num_time_steps > QME_MAX_PATHS) {
+    if (num_time_steps < 2 || num_time_steps > QME_MAX_PATHS) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-            "qme_path_integral: num_time_steps exceeds QME_MAX_PATHS");
+            "qme_path_integral: num_time_steps must be >= 2 and <= QME_MAX_PATHS");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -978,6 +978,12 @@ NIMCP_API nimcp_error_t qme_find_classical_path(
     if (!sim || !action || !initial || !final || !path) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "qme_find_classical_path: sim, action, initial, final, or path is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (num_time_steps < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_find_classical_path: num_time_steps must be >= 2");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

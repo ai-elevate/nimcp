@@ -172,13 +172,13 @@ static void activate_neurons_for_action(
  */
 static void update_action_statistics(mirror_neurons_t mirror, uint32_t action_idx)
 {
-    // Process pending bio-async messages
-    if (mirror && mirror->bio_async_enabled && mirror->bio_ctx) {
-        bio_router_process_inbox(mirror->bio_ctx, 5);
-    }
-
     if (!mirror || action_idx >= mirror->num_actions) {
         return;
+    }
+
+    // Process pending bio-async messages (after NULL check)
+    if (mirror->bio_async_enabled && mirror->bio_ctx) {
+        bio_router_process_inbox(mirror->bio_ctx, 5);
     }
 
     action_mapping_t* mapping = &mirror->actions[action_idx];
