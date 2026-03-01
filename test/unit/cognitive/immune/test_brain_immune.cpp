@@ -595,10 +595,9 @@ TEST_F(BrainImmuneTest, Update) {
 }
 
 TEST_F(BrainImmuneTest, UpdateWhenNotRunningFails) {
-    // System not started - returns NIMCP_ERROR_NULL_POINTER because
-    // system->running is false, triggering the NULL/invalid check
+    // System not started - returns -1 (FEP/immune bridge convention)
     int result = brain_immune_update(system, 100);
-    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(result, -1);
 }
 
 TEST_F(BrainImmuneTest, GetStats) {

@@ -2771,9 +2771,18 @@ set_tests_properties(
   unit_core_brain_test_brain_persistence
   unit_core_brain_test_brain_error_paths
   unit_core_brain_test_brain_snapshot_operations
-  unit_core_brain_test_oscillations_immune_full_integration
   unit_core_brain_test_brain_oscillations_immune_integration
-  PROPERTIES TIMEOUT 180 RESOURCE_LOCK "brain_heavy"
+  PROPERTIES TIMEOUT 420 RESOURCE_LOCK "brain_heavy"
+)
+# brain_cache_mutex creates per-test brains (12 tests × ~35s each)
+set_tests_properties(
+  unit_core_brain_test_brain_cache_mutex
+  PROPERTIES TIMEOUT 900 RESOURCE_LOCK "brain_heavy"
+)
+# oscillations_immune_full has 30 tests with per-test immune+bridge create (~600s)
+set_tests_properties(
+  unit_core_brain_test_oscillations_immune_full_integration
+  PROPERTIES TIMEOUT 900 RESOURCE_LOCK "brain_heavy"
 )
 # network_analyzer includes LargeBrain_HandlesGracefully (142s)
 set_tests_properties(

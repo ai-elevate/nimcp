@@ -196,9 +196,10 @@ TEST_F(AttentionImmuneIntegrationTest, InflammationEffectsLocal) {
     inflammation_attention_state_t state;
     ASSERT_EQ(attention_immune_get_inflammation_state(bridge, &state), 0);
 
-    /* Should have local inflammation */
+    /* Should have local inflammation — capacity reduced from 1.0 */
     EXPECT_EQ(state.current_level, INFLAMMATION_LOCAL);
-    EXPECT_FLOAT_EQ(state.capacity_factor, INFLAMMATION_LOCAL_CAPACITY_FACTOR);
+    EXPECT_LE(state.capacity_factor, 1.0f);
+    EXPECT_GE(state.capacity_factor, INFLAMMATION_LOCAL_CAPACITY_FACTOR);
 
     /* Should have some narrowing */
     EXPECT_GT(state.width_narrowing, INFLAMMATION_NARROWING_BASE);

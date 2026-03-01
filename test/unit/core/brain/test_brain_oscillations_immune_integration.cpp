@@ -27,21 +27,38 @@
 // Test fixture for immune-oscillation integration
 class BrainOscillationImmuneTest : public ::testing::Test {
 protected:
-    brain_t brain;
+    /* Shared brain (expensive to create) */
+    static brain_t shared_brain;
+
+    /* Per-test analyzer and immune system */
     brain_oscillation_analyzer_t* analyzer;
     brain_immune_system_t* immune;
 
-    void SetUp() override {
-        // Create minimal brain
-        brain = brain_create("oscillation_immune_test", BRAIN_SIZE_SMALL,
+    /* Convenience alias */
+    brain_t brain;
+
+    static void SetUpTestSuite() {
+        shared_brain = brain_create("oscillation_immune_test", BRAIN_SIZE_SMALL,
                             BRAIN_TASK_CLASSIFICATION, 50, 10);
+        ASSERT_NE(shared_brain, nullptr);
+    }
+
+    static void TearDownTestSuite() {
+        if (shared_brain) {
+            brain_destroy(shared_brain);
+            shared_brain = nullptr;
+        }
+    }
+
+    void SetUp() override {
+        brain = shared_brain;
         ASSERT_NE(brain, nullptr);
 
-        // Create oscillation analyzer (500ms window, 250Hz sampling)
+        // Create oscillation analyzer per-test (cheap, avoids stale immune connections)
         analyzer = brain_oscillation_create(brain, 500, 250);
         ASSERT_NE(analyzer, nullptr);
 
-        // Create immune system
+        // Create immune system (per-test — lightweight)
         brain_immune_config_t config;
         brain_immune_default_config(&config);
         immune = brain_immune_create(&config);
@@ -58,9 +75,6 @@ protected:
         }
         if (immune) {
             brain_immune_destroy(immune);
-        }
-        if (brain) {
-            brain_destroy(brain);
         }
     }
 
@@ -482,6 +496,8 @@ TEST_F(BrainOscillationImmuneTest, E2E_BidirectionalFeedback) {
 //=============================================================================
 // Main
 //=============================================================================
+
+brain_t BrainOscillationImmuneTest::shared_brain = nullptr;
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
