@@ -91,6 +91,13 @@ typedef struct nimcp_gpu_weight_cache_s {
     float* host_activation_buf;            /**< Largest activation vector buffer */
     size_t host_bias_buf_size;             /**< Size of bias buffer in floats */
     size_t host_activation_buf_size;       /**< Size of activation buffer in floats */
+
+    // Per-transition connected neuron indices (for fast upload of sparse networks)
+    // Only neurons with NEURON_IN_COUNT > 0 appear in these lists.
+    // Built on first upload, reused on subsequent uploads.
+    uint32_t** connected_dst;              /**< Per-transition: local indices of connected dst neurons */
+    uint32_t*  num_connected_dst;          /**< Per-transition: count of connected dst neurons */
+    bool       connected_dst_valid;        /**< True once connected_dst lists are built */
 } nimcp_gpu_weight_cache_t;
 
 //=============================================================================

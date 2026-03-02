@@ -2038,9 +2038,16 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             if (!isfinite(loss) || loss < 0.0f) loss = 0.0f;
         }
 
-        // 4. Download activations so CPU bio-plasticity can read neuron states
-        nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
-                                                network->base_network);
+        // 4. Download activations so CPU bio-plasticity can read neuron states.
+        // Skip for large networks (>100K neurons) — bio-plasticity is already
+        // skipped at step 7 below, so syncing 1.5M neuron states is wasted work.
+        {
+            uint32_t total_neurons = neural_network_get_num_neurons(network->base_network);
+            if (total_neurons <= 100000) {
+                nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
+                                                        network->base_network);
+            }
+        }
 
         // 4.5 Full backprop through all layers (GPU forward, CPU backward)
         // Delegated to shared kernel with parallel + SIMD optimizations
@@ -3040,6 +3047,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             // C-2: Track load errors from inner synapse loop so we can break out of
             // the outer neuron loop too, preventing file position misalignment
             bool load_error = false;
+            uint64_t total_synapses_read = 0, total_synapses_added = 0, total_synapses_dropped = 0;
 
             for (uint32_t i = 0; i < base_num_neurons; i++) {
                 neuron_t* neuron = neural_network_get_neuron(network->base_network, i);
@@ -3094,8 +3102,10 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                     }
 
                     // Add synapse with metadata to sparse storage
+                    total_synapses_read++;
                     if (sparse_synapse_add_with_metadata(h_pool, m_pool,
                             &neuron->outgoing, target_id, weight, 0) == 0) {
+                        total_synapses_added++;
                         uint32_t idx = NEURON_OUT_COUNT(neuron) - 1;
                         synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, idx);
                         if (h) h->strength = strength;
@@ -3110,6 +3120,8 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                             syn->enable_stp = enable_stp;
                             if (enable_stp) syn->stp = stp_data;
                         }
+                    } else {
+                        total_synapses_dropped++;
                     }
                 }
                 // C-2: If inner synapse loop broke due to read failure, abort outer loop
@@ -3139,6 +3151,10 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             // W6-05 FIX: On load error, destroy the network and return NULL instead of
             // returning a partially-loaded network. Callers can't distinguish partial
             // from complete, leading to silent data corruption during training.
+            fprintf(stderr, "[CHECKPOINT] Synapse restore: read=%lu added=%lu dropped=%lu (%.1f%% success)\n",
+                    (unsigned long)total_synapses_read, (unsigned long)total_synapses_added,
+                    (unsigned long)total_synapses_dropped,
+                    total_synapses_read > 0 ? 100.0 * total_synapses_added / total_synapses_read : 0.0);
             if (load_error) {
                 fprintf(stderr, "ERROR: Load error during weight restoration, aborting\n");
                 adaptive_network_destroy(network);
@@ -3153,6 +3169,70 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     // Rebuild incoming synapses from outgoing for forward pass
     if (network->base_network) {
         neural_network_rebuild_incoming(network->base_network);
+
+        // POST-LOAD BACKBONE REPAIR: Check if hidden→output connections are missing.
+        // Old checkpoints saved with the broken metadata pool (fixed-size 10K) may have
+        // dropped all hidden→output connections during original brain creation. Without
+        // these connections, sparse_weights[last_layer] is NULL and GPU forward pass
+        // operates in bias-only mode (no learning possible for output layer).
+        uint32_t num_layers = network->config.base_config.num_layers;
+        const uint32_t* layer_sizes = network->config.base_config.layer_sizes;
+        if (num_layers >= 3 && layer_sizes) {
+            uint32_t output_size = layer_sizes[num_layers - 1];
+            uint32_t output_start = 0;
+            for (uint32_t l = 0; l < num_layers - 1; l++) {
+                output_start += layer_sizes[l];
+            }
+
+            // Check if output neurons have incoming connections from hidden layer
+            uint32_t output_with_incoming = 0;
+            for (uint32_t o = 0; o < output_size && o < 10; o++) {
+                neuron_t* n = neural_network_get_neuron(network->base_network, output_start + o);
+                if (n && NEURON_IN_COUNT(n) > 0) output_with_incoming++;
+            }
+
+            if (output_with_incoming == 0) {
+                fprintf(stderr, "[CHECKPOINT] Output layer has zero incoming connections — "
+                        "adding backbone hidden→output wiring\n");
+
+                uint32_t input_size = layer_sizes[0];
+                uint32_t total_hidden = 0;
+                for (uint32_t l = 1; l < num_layers - 1; l++) {
+                    total_hidden += layer_sizes[l];
+                }
+
+                if (total_hidden > 0) {
+                    uint32_t backbone_target = output_size * 32;
+                    if (backbone_target < 1024) backbone_target = 1024;
+                    if (backbone_target > 16384) backbone_target = 16384;
+                    uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
+                    uint32_t step = total_hidden / backbone;
+                    if (step == 0) step = 1;
+                    uint32_t hidden_start = input_size;
+                    float backbone_scale = 1.0F / sqrtf((float)backbone);
+                    uint32_t total_conns = 0;
+
+                    for (uint32_t b = 0; b < backbone; b++) {
+                        uint32_t hidden_id = hidden_start + b * step;
+                        if (hidden_id >= hidden_start + total_hidden) break;
+                        for (uint32_t o = 0; o < output_size; o++) {
+                            uint32_t output_id = output_start + o;
+                            uint32_t net_size = neural_network_get_num_neurons(network->base_network);
+                            if (output_id >= net_size) break;
+                            float weight = (((float)rand() / RAND_MAX) * 2.0F - 1.0F) * backbone_scale;
+                            neural_network_add_connection(network->base_network, hidden_id, output_id, weight);
+                            total_conns++;
+                        }
+                    }
+
+                    fprintf(stderr, "[CHECKPOINT] Backbone repair: %u backbone neurons, "
+                            "%u hidden→output connections added\n", backbone, total_conns);
+
+                    // Rebuild incoming again after adding new connections
+                    neural_network_rebuild_incoming(network->base_network);
+                }
+            }
+        }
     }
 
     // H11: Clean up GPU resources from create() before re-initializing

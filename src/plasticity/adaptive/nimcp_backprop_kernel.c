@@ -617,18 +617,10 @@ int backprop_sparse_full(
             nimcp_pool_wait(tpool);
 
             // Reduce: merge per-worker results into delta_prev
-            // First worker → direct copy, subsequent → SIMD add
+            // Sparse merge: only touch indices that workers actually wrote to,
+            // avoiding O(prev_size) memcpy/SIMD-add on multi-million element arrays.
             for (uint32_t w = 0; w < nw; w++) {
                 grad_norm_sq += workers[w].local_grad_norm_sq;
-
-                if (w == 0) {
-                    // Copy first worker's delta_prev
-                    memcpy(delta_prev, worker_delta[0],
-                           prev_size * sizeof(float));
-                } else {
-                    // SIMD add subsequent workers
-                    tensor_simd_add_f32(delta_prev, worker_delta[w], prev_size);
-                }
 
                 // Merge sparse_prev indices using dedup
                 for (uint32_t z = 0; z < workers[w].local_nsparse_prev; z++) {
@@ -637,6 +629,25 @@ int backprop_sparse_full(
                         sparse_dedup[idx] = 1;
                         sparse_prev[nsparse_prev++] = idx;
                     }
+                }
+            }
+
+            // Sum worker deltas at sparse positions only (avoids full prev_size scan)
+            if (nsparse_prev < prev_size / 4) {
+                // Sparse path: only sum at positions that have non-zero deltas
+                for (uint32_t z = 0; z < nsparse_prev; z++) {
+                    uint32_t idx = sparse_prev[z];
+                    float sum = 0.0f;
+                    for (uint32_t w = 0; w < nw; w++) {
+                        sum += worker_delta[w][idx];
+                    }
+                    delta_prev[idx] = sum;
+                }
+            } else {
+                // Dense path: full array merge (original code)
+                memcpy(delta_prev, worker_delta[0], prev_size * sizeof(float));
+                for (uint32_t w = 1; w < nw; w++) {
+                    tensor_simd_add_f32(delta_prev, worker_delta[w], prev_size);
                 }
             }
 

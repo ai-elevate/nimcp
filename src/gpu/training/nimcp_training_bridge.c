@@ -282,6 +282,15 @@ void nimcp_gpu_weight_cache_destroy(nimcp_gpu_weight_cache_t* cache)
         nimcp_free(cache->activations);
     }
 
+    // Free connected-neuron index lists
+    if (cache->connected_dst) {
+        for (uint32_t l = 0; l < num_transitions; l++) {
+            nimcp_free(cache->connected_dst[l]);
+        }
+        nimcp_free(cache->connected_dst);
+    }
+    nimcp_free(cache->num_connected_dst);
+
     // Free CPU arrays
     nimcp_free(cache->layer_sizes);
     nimcp_free(cache->layer_offsets);
@@ -306,6 +315,52 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
 
     uint32_t num_transitions = cache->num_layers - 1;
 
+    // First upload: build connected-neuron index lists for sparse networks.
+    // Subsequent uploads reuse these lists, skipping millions of disconnected neurons.
+    if (!cache->connected_dst_valid) {
+        cache->connected_dst = nimcp_calloc(num_transitions, sizeof(uint32_t*));
+        cache->num_connected_dst = nimcp_calloc(num_transitions, sizeof(uint32_t));
+        if (!cache->connected_dst || !cache->num_connected_dst) {
+            nimcp_free(cache->connected_dst);
+            nimcp_free(cache->num_connected_dst);
+            cache->connected_dst = NULL;
+            cache->num_connected_dst = NULL;
+            // Fall through — will use full scan below
+        }
+
+        if (cache->connected_dst) {
+            for (uint32_t l = 0; l < num_transitions; l++) {
+                uint32_t dst_layer_size = cache->layer_sizes[l + 1];
+                uint32_t dst_offset = cache->layer_offsets[l + 1];
+
+                // Count connected neurons
+                uint32_t count = 0;
+                for (uint32_t i = 0; i < dst_layer_size; i++) {
+                    neuron_t* neuron = neural_network_get_neuron(net, dst_offset + i);
+                    if (neuron && NEURON_IN_COUNT(neuron) > 0) count++;
+                }
+
+                cache->num_connected_dst[l] = count;
+                if (count > 0 && count < dst_layer_size) {
+                    // Sparse — build index list
+                    cache->connected_dst[l] = nimcp_malloc(count * sizeof(uint32_t));
+                    if (cache->connected_dst[l]) {
+                        uint32_t idx = 0;
+                        for (uint32_t i = 0; i < dst_layer_size; i++) {
+                            neuron_t* neuron = neural_network_get_neuron(net, dst_offset + i);
+                            if (neuron && NEURON_IN_COUNT(neuron) > 0) {
+                                cache->connected_dst[l][idx++] = i;
+                            }
+                        }
+                    }
+                }
+                // If count == dst_layer_size (all connected), leave connected_dst[l] = NULL
+                // to signal "use full iteration" (no benefit from index list)
+            }
+            cache->connected_dst_valid = true;
+        }
+    }
+
     for (uint32_t l = 0; l < num_transitions; l++) {
         uint32_t dst_layer_size = cache->layer_sizes[l + 1];  // post-synaptic
         uint32_t src_layer_size = cache->layer_sizes[l];       // pre-synaptic
@@ -314,9 +369,16 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
 
         memset(cache->host_bias_buf, 0, dst_layer_size * sizeof(float));
 
+        // Use connected-neuron index list if available (sparse fast path)
+        bool use_sparse_list = cache->connected_dst_valid &&
+                               cache->connected_dst &&
+                               cache->connected_dst[l] != NULL;
+        uint32_t iter_count = use_sparse_list ? cache->num_connected_dst[l] : dst_layer_size;
+
         // --- Pass 1: Count nnz and extract biases ---
         size_t nnz = 0;
-        for (uint32_t i = 0; i < dst_layer_size; i++) {
+        for (uint32_t ii = 0; ii < iter_count; ii++) {
+            uint32_t i = use_sparse_list ? cache->connected_dst[l][ii] : ii;
             uint32_t neuron_id = dst_offset + i;
             neuron_t* neuron = neural_network_get_neuron(net, neuron_id);
             if (!neuron) continue;
@@ -342,7 +404,8 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
 
         // --- Pass 2: Fill COO arrays ---
         size_t k = 0;
-        for (uint32_t i = 0; i < dst_layer_size; i++) {
+        for (uint32_t ii = 0; ii < iter_count; ii++) {
+            uint32_t i = use_sparse_list ? cache->connected_dst[l][ii] : ii;
             uint32_t neuron_id = dst_offset + i;
             neuron_t* neuron = neural_network_get_neuron(net, neuron_id);
             if (!neuron) continue;
