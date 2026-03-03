@@ -49,6 +49,28 @@ from socratic_trainer import SocraticTrainer, SocraticConfig
 from cognitive_orchestrator import CognitiveOrchestrator
 # L1: SafetyGate/SafetyConfig removed — was instantiated but never used
 
+# Multimodal encoder — optional, graceful degradation
+try:
+    from multimodal_encoder import MultimodalEncoder
+    _MULTIMODAL_ENCODER: Optional["MultimodalEncoder"] = None
+    _MULTIMODAL_LOCK = threading.Lock()
+    _MULTIMODAL_AVAILABLE = True
+except ImportError:
+    _MULTIMODAL_AVAILABLE = False
+
+
+def _get_multimodal_encoder():
+    """Get shared MultimodalEncoder instance (lazy-loaded, thread-safe)."""
+    if not _MULTIMODAL_AVAILABLE:
+        return None
+    global _MULTIMODAL_ENCODER
+    if _MULTIMODAL_ENCODER is None:
+        with _MULTIMODAL_LOCK:
+            if _MULTIMODAL_ENCODER is None:
+                _MULTIMODAL_ENCODER = MultimodalEncoder()
+    return _MULTIMODAL_ENCODER
+
+
 # ---------------------------------------------------------------------------
 # Lazy-loaded sentence-transformer embedding model (Phase 1)
 # ---------------------------------------------------------------------------
@@ -1547,11 +1569,22 @@ class InstructorAgent(threading.Thread):
         return None, label
 
     def _extract_audio(self, example: dict, label: str) -> Tuple[Optional[list], str]:
-        """Extract audio features via audio cortex or fallback."""
+        """Extract audio features via MultimodalEncoder, audio cortex, or fallback."""
         audio = example.get("audio")
         if audio and isinstance(audio, dict):
             samples = audio.get("array", [])
+            sr = audio.get("sampling_rate", 44100)
             if isinstance(samples, (list, np.ndarray)) and len(samples) > 0:
+                # Try MultimodalEncoder first (CLAP-based)
+                enc = _get_multimodal_encoder()
+                if enc is not None:
+                    try:
+                        caption = f"the sound of {label}" if label else "a sound"
+                        features, _, _ = enc.encode_audio(
+                            np.asarray(samples, dtype=np.float32), sr, caption)
+                        return features, label
+                    except Exception:
+                        pass
                 try:
                     features = self.brain.audio_cortex_process(samples)
                     return _pad_or_truncate(features, self.num_inputs), label
@@ -1564,9 +1597,18 @@ class InstructorAgent(threading.Thread):
         return None, label
 
     def _extract_visual(self, example: dict, label: str) -> Tuple[Optional[list], str]:
-        """Extract visual features via visual cortex or fallback."""
+        """Extract visual features via MultimodalEncoder, visual cortex, or fallback."""
         img = example.get("image") or example.get("img")
         if img is not None:
+            # Try MultimodalEncoder first (CLIP-based)
+            enc = _get_multimodal_encoder()
+            if enc is not None and hasattr(img, 'size'):
+                try:
+                    caption = f"a photo of a {label}" if label else "an image"
+                    features, _, _ = enc.encode_visual(img, caption)
+                    return features, label
+                except Exception:
+                    pass
             try:
                 # PIL Image → pixel array
                 if hasattr(img, 'size'):
@@ -1592,11 +1634,21 @@ class InstructorAgent(threading.Thread):
         return None, label
 
     def _extract_speech(self, example: dict, label: str) -> Tuple[Optional[list], str]:
-        """Extract speech features via speech cortex or fallback."""
+        """Extract speech features via MultimodalEncoder, speech cortex, or fallback."""
         audio = example.get("audio")
         if audio and isinstance(audio, dict):
             samples = audio.get("array", [])
+            sr = audio.get("sampling_rate", 16000)
             if isinstance(samples, (list, np.ndarray)) and len(samples) > 0:
+                # Try MultimodalEncoder first (Whisper-based)
+                enc = _get_multimodal_encoder()
+                if enc is not None:
+                    try:
+                        features, _, _ = enc.encode_speech(
+                            np.asarray(samples, dtype=np.float32), sr)
+                        return features, label
+                    except Exception:
+                        pass
                 try:
                     features = self.brain.speech_cortex_process(samples)
                     return _pad_or_truncate(features, self.num_inputs), label

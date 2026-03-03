@@ -640,6 +640,12 @@ bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
                 }
             }
 
+            /* Start EDP so it actively processes events */
+            nimcp_result_t start_result = edp_start(brain->event_driven_plasticity);
+            if (start_result != NIMCP_OK) {
+                LOG_WARN(LOG_MODULE, "EDP start returned %d (non-fatal)", start_result);
+            }
+
             LOG_INFO("Event-Driven Plasticity initialized: stdp_window=%.1fms, eligibility_tau=%.0fms",
                      edp_config.stdp_window_ms, edp_config.eligibility_tau_ms);
         } else {

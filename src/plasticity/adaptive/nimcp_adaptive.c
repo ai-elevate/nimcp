@@ -2127,16 +2127,18 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         network->gpu_weight_cache->weights_dirty_on_cpu = true;
 
         // 7. For HYBRID mode: apply biological plasticity after GPU backprop
-        //    Skip for large networks (>100K neurons) — O(N) bio-plasticity
-        //    iterates ALL neurons twice (STDP/BCM/eligibility) which takes ~80s
-        //    at 1.5M neurons. Backprop alone handles gradient learning.
+        //    Uses active-neuron-only sampling for large networks (O(active) not O(N))
         if (mode == LEARN_MODE_HYBRID && network->base_network) {
+            float reward = fmaxf(0.0f, 1.0f - loss);
             uint32_t bio_n = neural_network_get_num_neurons(network->base_network);
             if (bio_n <= 100000) {
-                float reward = fmaxf(0.0f, 1.0f - loss);
                 neural_network_apply_reward_learning(
                     network->base_network, reward, learning_rate * 0.1f,
                     network->total_learning_steps);
+            } else {
+                neural_network_apply_reward_learning_active(
+                    network->base_network, reward, learning_rate * 0.1f,
+                    network->total_learning_steps, 0.01f);
             }
         }
 
@@ -2311,10 +2313,12 @@ cpu_learn_path:
             uint64_t time_rl = network->total_learning_steps;
             float rl_reward = example->confidence;  // Direct reward signal
 
-            // Skip bio-plasticity for large networks — O(N) is impractical at >100K neurons
+            // Bio-plasticity: active-neuron sampling for large networks
             uint32_t rl_n = neural_network_get_num_neurons(base_rl);
             if (rl_n <= 100000) {
                 neural_network_apply_reward_learning(base_rl, rl_reward, learning_rate, time_rl);
+            } else {
+                neural_network_apply_reward_learning_active(base_rl, rl_reward, learning_rate, time_rl, 0.01f);
             }
 
             // W6-04 FIX: Mark GPU weight cache dirty after reward learning modifies CPU weights.
@@ -2379,6 +2383,7 @@ cpu_learn_path:
                         &grad_norm, &layer_grads);
 
                     // Phase 3: Biological plasticity AFTER backprop
+                    //   Active-neuron sampling for large networks (O(active) not O(N))
                     float reward = fmaxf(0.0f, 1.0f - loss);
                     neural_network_t base_hybrid = network->base_network;
                     if (base_hybrid) {
@@ -2387,6 +2392,10 @@ cpu_learn_path:
                             neural_network_apply_reward_learning(
                                 base_hybrid, reward, learning_rate * 0.1f,
                                 network->total_learning_steps);
+                        } else {
+                            neural_network_apply_reward_learning_active(
+                                base_hybrid, reward, learning_rate * 0.1f,
+                                network->total_learning_steps, 0.01f);
                         }
                     }
 
@@ -3333,67 +3342,100 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     if (network->base_network) {
         neural_network_rebuild_incoming(network->base_network);
 
-        // POST-LOAD BACKBONE REPAIR: Check if hidden→output connections are missing.
-        // Old checkpoints saved with the broken metadata pool (fixed-size 10K) may have
-        // dropped all hidden→output connections during original brain creation. Without
-        // these connections, sparse_weights[last_layer] is NULL and GPU forward pass
-        // operates in bias-only mode (no learning possible for output layer).
+        // POST-LOAD BACKBONE REPAIR: Verify both input→hidden and hidden→output
+        // connections exist. Old checkpoints may be missing either direction due to
+        // the broken metadata pool (fixed-size 10K) or incomplete prior repairs.
+        // Without input→hidden, hidden neurons get bias-only activation (input-blind).
+        // Without hidden→output, sparse_weights[last_layer] is NULL (bias-only output).
+        // Either missing direction causes constant output regardless of input.
         uint32_t num_layers = network->config.base_config.num_layers;
         const uint32_t* layer_sizes = network->config.base_config.layer_sizes;
         if (num_layers >= 3 && layer_sizes) {
+            uint32_t input_size = layer_sizes[0];
             uint32_t output_size = layer_sizes[num_layers - 1];
             uint32_t output_start = 0;
             for (uint32_t l = 0; l < num_layers - 1; l++) {
                 output_start += layer_sizes[l];
             }
+            uint32_t total_hidden = 0;
+            for (uint32_t l = 1; l < num_layers - 1; l++) {
+                total_hidden += layer_sizes[l];
+            }
+            uint32_t hidden_start = input_size;
 
-            // Check if output neurons have incoming connections from hidden layer
+            // Use same backbone parameters as fresh creation (nimcp_neuralnet.c)
+            uint32_t backbone_target = output_size * 4;
+            if (backbone_target < 1024) backbone_target = 1024;
+            if (backbone_target > 8192) backbone_target = 8192;
+            uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
+            uint32_t step = (total_hidden > 0) ? (total_hidden / backbone) : 1;
+            if (step == 0) step = 1;
+
+            int needs_rebuild = 0;
+
+            // --- Check input→hidden connections ---
+            uint32_t hidden_with_incoming = 0;
+            for (uint32_t b = 0; b < backbone && b < 10; b++) {
+                uint32_t hidden_id = hidden_start + b * step;
+                if (hidden_id >= hidden_start + total_hidden) break;
+                neuron_t* n = neural_network_get_neuron(network->base_network, hidden_id);
+                if (n && NEURON_IN_COUNT(n) > 0) hidden_with_incoming++;
+            }
+
+            if (hidden_with_incoming == 0 && total_hidden > 0) {
+                fprintf(stderr, "[CHECKPOINT] Backbone hidden neurons have zero incoming "
+                        "connections from input — adding input→hidden wiring\n");
+                float input_scale = 1.0F / sqrtf((float)input_size);
+                uint32_t ih_conns = 0;
+
+                for (uint32_t b = 0; b < backbone; b++) {
+                    uint32_t hidden_id = hidden_start + b * step;
+                    if (hidden_id >= hidden_start + total_hidden) break;
+                    for (uint32_t i = 0; i < input_size; i++) {
+                        float weight = (((float)rand() / RAND_MAX) * 2.0F - 1.0F) * input_scale;
+                        neural_network_add_connection(network->base_network, i, hidden_id, weight);
+                        ih_conns++;
+                    }
+                }
+                fprintf(stderr, "[CHECKPOINT] Backbone repair: %u input→hidden connections "
+                        "added (%u backbone neurons × %u inputs)\n",
+                        ih_conns, backbone, input_size);
+                needs_rebuild = 1;
+            }
+
+            // --- Check hidden→output connections ---
             uint32_t output_with_incoming = 0;
             for (uint32_t o = 0; o < output_size && o < 10; o++) {
                 neuron_t* n = neural_network_get_neuron(network->base_network, output_start + o);
                 if (n && NEURON_IN_COUNT(n) > 0) output_with_incoming++;
             }
 
-            if (output_with_incoming == 0) {
+            if (output_with_incoming == 0 && total_hidden > 0) {
                 fprintf(stderr, "[CHECKPOINT] Output layer has zero incoming connections — "
                         "adding backbone hidden→output wiring\n");
+                float backbone_scale = 1.0F / sqrtf((float)backbone);
+                uint32_t ho_conns = 0;
 
-                uint32_t input_size = layer_sizes[0];
-                uint32_t total_hidden = 0;
-                for (uint32_t l = 1; l < num_layers - 1; l++) {
-                    total_hidden += layer_sizes[l];
-                }
-
-                if (total_hidden > 0) {
-                    uint32_t backbone_target = output_size * 32;
-                    if (backbone_target < 1024) backbone_target = 1024;
-                    if (backbone_target > 16384) backbone_target = 16384;
-                    uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
-                    uint32_t step = total_hidden / backbone;
-                    if (step == 0) step = 1;
-                    uint32_t hidden_start = input_size;
-                    float backbone_scale = 1.0F / sqrtf((float)backbone);
-                    uint32_t total_conns = 0;
-
-                    for (uint32_t b = 0; b < backbone; b++) {
-                        uint32_t hidden_id = hidden_start + b * step;
-                        if (hidden_id >= hidden_start + total_hidden) break;
-                        for (uint32_t o = 0; o < output_size; o++) {
-                            uint32_t output_id = output_start + o;
-                            uint32_t net_size = neural_network_get_num_neurons(network->base_network);
-                            if (output_id >= net_size) break;
-                            float weight = (((float)rand() / RAND_MAX) * 2.0F - 1.0F) * backbone_scale;
-                            neural_network_add_connection(network->base_network, hidden_id, output_id, weight);
-                            total_conns++;
-                        }
+                for (uint32_t b = 0; b < backbone; b++) {
+                    uint32_t hidden_id = hidden_start + b * step;
+                    if (hidden_id >= hidden_start + total_hidden) break;
+                    for (uint32_t o = 0; o < output_size; o++) {
+                        uint32_t output_id = output_start + o;
+                        uint32_t net_size = neural_network_get_num_neurons(network->base_network);
+                        if (output_id >= net_size) break;
+                        float weight = (((float)rand() / RAND_MAX) * 2.0F - 1.0F) * backbone_scale;
+                        neural_network_add_connection(network->base_network, hidden_id, output_id, weight);
+                        ho_conns++;
                     }
-
-                    fprintf(stderr, "[CHECKPOINT] Backbone repair: %u backbone neurons, "
-                            "%u hidden→output connections added\n", backbone, total_conns);
-
-                    // Rebuild incoming again after adding new connections
-                    neural_network_rebuild_incoming(network->base_network);
                 }
+                fprintf(stderr, "[CHECKPOINT] Backbone repair: %u hidden→output connections "
+                        "added (%u backbone neurons × %u outputs)\n",
+                        ho_conns, backbone, output_size);
+                needs_rebuild = 1;
+            }
+
+            if (needs_rebuild) {
+                neural_network_rebuild_incoming(network->base_network);
             }
         }
     }

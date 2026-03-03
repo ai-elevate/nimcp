@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """Developmental Teaching Script for Athena.
 
-Trains Athena through 6 developmental stages, mirroring how humans learn:
-  Stage 0 (Birth)        — Raw sensory exposure. No lessons, just experience.
-  Stage 1 (Babbling)     — Language exposure. Hearing text, patterns emerge.
-  Stage 2 (First Words)  — Imitation. Exposure + gentle distillation toward targets.
-  Stage 3 (Sentences)    — Guided learning. Claude provides structured lessons.
-  Stage 4 (Conversation) — Interactive dialogue. Claude as conversational teacher.
-  Stage 5 (Self-Directed) — Athena-initiated exploration.
+Trains Athena through developmental stages, mirroring how humans learn:
+  Stage 0a (Birth/text)    — Raw sensory exposure via text descriptions.
+  Stage 0b (Birth/visual)  — Visual exposure via CIFAR-100, Fashion-MNIST + CLIP.
+  Stage 0c (Birth/audio)   — Audio exposure via ESC-50 + CLAP.
+  Stage 1a (Babbling/text) — Language exposure. Hearing text, patterns emerge.
+  Stage 1b (Babbling/speech) — Speech exposure via LJ Speech + Whisper.
+  Stage 2  (First Words)   — Cross-modal association + guided learning.
+  Stage 3  (Sentences)     — Guided learning. Claude provides structured lessons.
+  Stage 4  (Conversation)  — Interactive dialogue. Claude as conversational teacher.
+  Stage 5  (Self-Directed) — Athena-initiated exploration.
 
 Key design principle: Stages 0-1 use EXPOSURE, not instruction. Perception
 and basic language patterns emerge from repeated experience — the way a baby
 learns by seeing and hearing, not by being taught in a classroom.
+
+Multimodal input layout (1024 dims):
+  [modality_tag:16 | primary_encoder:512 | text_semantic:384 | stats:112]
 
 Usage:
     python3 scripts/teach_athena.py --stage 0 --resume
@@ -37,6 +43,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from neural_decoder import NeuralDecoder
 from claude_teacher import ClaudeTeacher, LessonSpec, encode_text
+
+# Multimodal support — graceful degradation if encoders not installed
+try:
+    from multimodal_encoder import MultimodalEncoder, ModalityType
+    from multimodal_datasets import (VisualDatasetLoader, AudioDatasetLoader,
+                                      SpeechDatasetLoader)
+    MULTIMODAL_AVAILABLE = True
+except ImportError:
+    MULTIMODAL_AVAILABLE = False
 
 logger = logging.getLogger("teach_athena")
 
@@ -89,19 +104,20 @@ def tile_to_brain_input(embedding: np.ndarray) -> list[float]:
 
 
 def pad_target_to_outputs(embedding: np.ndarray, num_outputs: int) -> list[float]:
-    """Pad a 384-dim embedding to match brain output dimension.
+    """Tile embedding to match brain output dimension.
 
     Values are normalized to [0,1] for compatibility with the brain's
-    sigmoid outputs and BCE loss.  Padding uses 0.5 (the midpoint) instead
-    of 0.0, so unused outputs don't bias toward the boundary.
+    sigmoid outputs and BCE loss.  Tiles the embedding to fill all outputs
+    so every output neuron carries real signal (avoids the 0.5-padding trap
+    where 81% of outputs are constant, collapsing loss to ln(2)/2).
     """
     e = np.asarray(embedding, dtype=np.float32).ravel()
     e = _normalize_embedding(e)
     if len(e) >= num_outputs:
         return e[:num_outputs].tolist()
-    padded = np.full(num_outputs, 0.5, dtype=np.float32)
-    padded[:len(e)] = e
-    return padded.tolist()
+    reps = math.ceil(num_outputs / len(e))
+    tiled = np.tile(e, reps)[:num_outputs]
+    return tiled.tolist()
 
 
 def get_brain_output(brain, features, num_outputs: int) -> np.ndarray:
@@ -365,6 +381,200 @@ def run_exposure_stage(brain, decoder: NeuralDecoder, state: TrainingState,
     return True
 
 
+# ---------------------------------------------------------------------------
+# Multimodal stage runners
+# ---------------------------------------------------------------------------
+
+def run_multimodal_exposure_stage(brain, decoder: NeuralDecoder,
+                                   state: TrainingState,
+                                   encoder: "MultimodalEncoder",
+                                   modality: str, dataset_configs: list,
+                                   num_outputs: int,
+                                   report_interval: int = 100,
+                                   max_examples: int = 25000):
+    """Run a multimodal exposure stage (0b visual, 0c audio, 1b speech).
+
+    Feeds real perceptual data through pre-trained encoders into the brain.
+    """
+    stage_label = f"{state.stage} ({modality})"
+    logger.info("=== Multimodal exposure stage %s — real %s perception ===",
+                stage_label, modality)
+
+    examples_done = 0
+
+    for ds_config in dataset_configs:
+        ds_name = ds_config["name"]
+        ds_max = ds_config.get("max_examples", max_examples)
+        logger.info("Loading dataset: %s (max %d examples)", ds_name, ds_max)
+
+        if modality == "visual":
+            loader = VisualDatasetLoader(ds_name, max_examples=ds_max)
+            for img, label, caption in loader:
+                if examples_done >= max_examples:
+                    break
+                try:
+                    features, target_384, _ = encoder.encode_visual(img, caption)
+                    target = pad_target_to_outputs(
+                        np.array(target_384), num_outputs)
+                    loss = brain.learn_vector(features, target,
+                                              label=f"visual:{label}",
+                                              confidence=0.8)
+                except Exception as e:
+                    logger.debug("Visual encode/learn failed: %s", e)
+                    continue
+
+                state.loss_history.append(loss)
+                state.examples_this_stage += 1
+                state.total_examples += 1
+                examples_done += 1
+
+                if examples_done % report_interval == 0:
+                    avg_loss = state.avg_loss(window=report_interval)
+                    logger.info(
+                        "Stage %s | %d examples | avg_loss=%.4f | %s: %s",
+                        stage_label, examples_done, avg_loss, modality,
+                        caption[:60])
+
+                if examples_done % 1000 == 0:
+                    state.save()
+
+        elif modality == "audio":
+            loader = AudioDatasetLoader(ds_name, max_examples=ds_max)
+            for samples, sr, category, caption in loader:
+                if examples_done >= max_examples:
+                    break
+                try:
+                    features, target_384, _ = encoder.encode_audio(
+                        samples, sr, caption)
+                    target = pad_target_to_outputs(
+                        np.array(target_384), num_outputs)
+                    loss = brain.learn_vector(features, target,
+                                              label=f"audio:{category}",
+                                              confidence=0.8)
+                except Exception as e:
+                    logger.debug("Audio encode/learn failed: %s", e)
+                    continue
+
+                state.loss_history.append(loss)
+                state.examples_this_stage += 1
+                state.total_examples += 1
+                examples_done += 1
+
+                if examples_done % report_interval == 0:
+                    avg_loss = state.avg_loss(window=report_interval)
+                    logger.info(
+                        "Stage %s | %d examples | avg_loss=%.4f | %s: %s",
+                        stage_label, examples_done, avg_loss, modality,
+                        caption[:60])
+
+                if examples_done % 1000 == 0:
+                    state.save()
+
+        elif modality == "speech":
+            loader = SpeechDatasetLoader(ds_name, max_examples=ds_max)
+            for samples, sr, transcription in loader:
+                if examples_done >= max_examples:
+                    break
+                try:
+                    features, target_384, text = encoder.encode_speech(
+                        samples, sr)
+                    target = pad_target_to_outputs(
+                        np.array(target_384), num_outputs)
+                    loss = brain.learn_vector(features, target,
+                                              label="speech",
+                                              confidence=0.8)
+                except Exception as e:
+                    logger.debug("Speech encode/learn failed: %s", e)
+                    continue
+
+                state.loss_history.append(loss)
+                state.examples_this_stage += 1
+                state.total_examples += 1
+                examples_done += 1
+
+                if examples_done % report_interval == 0:
+                    avg_loss = state.avg_loss(window=report_interval)
+                    logger.info(
+                        "Stage %s | %d examples | avg_loss=%.4f | speech: %s",
+                        stage_label, examples_done, avg_loss,
+                        (text or transcription)[:60])
+
+                if examples_done % 1000 == 0:
+                    state.save()
+
+    logger.info("Multimodal stage %s complete: %d examples", stage_label,
+                examples_done)
+    return True
+
+
+def run_crossmodal_association_stage(brain, decoder: NeuralDecoder,
+                                      state: TrainingState,
+                                      encoder: "MultimodalEncoder",
+                                      num_outputs: int,
+                                      report_interval: int = 100,
+                                      max_examples: int = 50000):
+    """Run cross-modal association training (Stage 2).
+
+    Trains paired examples: image → target AND text → SAME target.
+    Forces the brain to produce similar outputs for "a photo of a dog" (text)
+    and an actual photo of a dog (CLIP features).
+    """
+    logger.info("=== Cross-modal association stage — binding perception to language ===")
+
+    examples_done = 0
+    pairs_trained = 0
+
+    # Use CIFAR-100 for cross-modal pairs
+    loader = VisualDatasetLoader("cifar100", max_examples=max_examples // 2)
+
+    for img, label, caption in loader:
+        if examples_done >= max_examples:
+            break
+
+        try:
+            # 1. Image → semantic target
+            vis_features, target_384, _ = encoder.encode_visual(img, caption)
+            target = pad_target_to_outputs(np.array(target_384), num_outputs)
+            loss_vis = brain.learn_vector(vis_features, target,
+                                          label=f"visual:{label}",
+                                          confidence=0.9)
+
+            state.loss_history.append(loss_vis)
+            state.examples_this_stage += 1
+            state.total_examples += 1
+            examples_done += 1
+
+            # 2. Text → SAME semantic target
+            txt_features, _, _ = encoder.encode_text(caption)
+            loss_txt = brain.learn_vector(txt_features, target,
+                                          label=f"text:{label}",
+                                          confidence=0.9)
+
+            state.loss_history.append(loss_txt)
+            state.examples_this_stage += 1
+            state.total_examples += 1
+            examples_done += 1
+            pairs_trained += 1
+
+        except Exception as e:
+            logger.debug("Cross-modal pair failed: %s", e)
+            continue
+
+        if pairs_trained % (report_interval // 2) == 0:
+            avg_loss = state.avg_loss(window=report_interval)
+            logger.info(
+                "Cross-modal | %d pairs (%d examples) | avg_loss=%.4f | %s",
+                pairs_trained, examples_done, avg_loss, caption[:60])
+
+        if examples_done % 1000 == 0:
+            state.save()
+            decoder.save(os.path.join(state.state_dir, "decoder"))
+
+    logger.info("Cross-modal stage complete: %d pairs, %d examples",
+                pairs_trained, examples_done)
+    return True
+
+
 def run_guided_stage(brain, decoder: NeuralDecoder, teacher: ClaudeTeacher,
                      state: TrainingState, num_outputs: int,
                      report_interval: int = 50, max_examples: int = 100000):
@@ -562,17 +772,24 @@ def main():
         description="Developmental teaching for Athena")
     parser.add_argument("--stage", type=int, default=None,
                         help="Start at this developmental stage (0-5)")
+    parser.add_argument("--substage", type=str, default=None,
+                        help="Start at exact substage (0a,0b,0c,1a,1b,2,3,4,5)")
     parser.add_argument("--resume", action="store_true",
                         help="Resume from saved state")
     parser.add_argument("--checkpoint", type=str,
-                        default="frontend/backend/brain_data/13/athena.bin",
-                        help="Brain checkpoint path")
+                        default="checkpoints/athena/athena_initial.bin",
+                        help="Brain checkpoint to load from")
+    parser.add_argument("--save-checkpoint", type=str,
+                        default="checkpoints/athena/athena_developmental.bin",
+                        help="Brain checkpoint to save to")
     parser.add_argument("--state-dir", type=str, default=STATE_DIR,
                         help="Directory for teaching state")
     parser.add_argument("--num-inputs", type=int, default=1024,
                         help="Brain input dimension")
     parser.add_argument("--num-outputs", type=int, default=2048,
                         help="Brain output dimension")
+    parser.add_argument("--neuron-count", type=int, default=1024,
+                        help="Hidden layer neuron count (default 1024)")
     parser.add_argument("--model", type=str, default="sonnet",
                         help="Claude CLI model (sonnet, haiku, opus)")
     parser.add_argument("--report-interval", type=int, default=100,
@@ -600,17 +817,19 @@ def main():
     # -----------------------------------------------------------------------
     import nimcp
 
-    if args.resume and os.path.exists(args.checkpoint):
-        logger.info("Loading checkpoint: %s", args.checkpoint)
-        brain = nimcp.Brain("athena", num_inputs=args.num_inputs, num_outputs=args.num_outputs)
-        brain.set_fast_training(True)
-        brain.load(args.checkpoint)
-        logger.info("Checkpoint loaded")
+    checkpoint_path = args.checkpoint if args.resume else None
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        logger.info("Loading Athena from checkpoint: %s", checkpoint_path)
     else:
-        logger.info("Creating fresh brain: inputs=%d, outputs=%d",
-                     args.num_inputs, args.num_outputs)
-        brain = nimcp.Brain("athena", num_inputs=args.num_inputs, num_outputs=args.num_outputs)
-        brain.set_fast_training(True)
+        logger.info("Creating fresh Athena: inputs=%d, outputs=%d, hidden=%d",
+                     args.num_inputs, args.num_outputs, args.neuron_count)
+        checkpoint_path = None
+
+    brain = nimcp.Brain("athena", num_inputs=args.num_inputs,
+                        num_outputs=args.num_outputs,
+                        neuron_count=args.neuron_count,
+                        checkpoint=checkpoint_path)
+    brain.set_fast_training(True)
 
     # -----------------------------------------------------------------------
     # Load / create decoder and teacher
@@ -651,7 +870,7 @@ def main():
         state.save()
         decoder.save(decoder_dir)
         teacher.save_state(teacher_path)
-        brain.save(args.checkpoint)
+        brain.save(args.save_checkpoint)
         logger.info("State saved. Exiting.")
         sys.exit(0)
 
@@ -659,36 +878,170 @@ def main():
     signal.signal(signal.SIGTERM, handle_signal)
 
     # -----------------------------------------------------------------------
+    # Multimodal encoder (lazy — only loaded when multimodal stages run)
+    # -----------------------------------------------------------------------
+    mm_encoder = None
+    if MULTIMODAL_AVAILABLE:
+        logger.info("Multimodal support available (CLIP/CLAP/Whisper lazy-loaded)")
+    else:
+        logger.info("Multimodal support not available — text-only training")
+
+    def get_mm_encoder():
+        nonlocal mm_encoder
+        if mm_encoder is None:
+            mm_encoder = MultimodalEncoder(device="cuda" if args.num_outputs else "cpu")
+        return mm_encoder
+
+    # -----------------------------------------------------------------------
+    # Stage definitions — substages use string keys for flexibility
+    # -----------------------------------------------------------------------
+    # Stages: "0a" "0b" "0c" "1a" "1b" "2" "3" "4" "5"
+    STAGE_ORDER = ["0a", "0b", "0c", "1a", "1b", "2", "3", "4", "5"]
+
+    STAGE_NAMES = {
+        "0a": "Birth (text)",
+        "0b": "Birth (visual)",
+        "0c": "Birth (audio)",
+        "1a": "Babbling (text)",
+        "1b": "Babbling (speech)",
+        "2": "First Words (cross-modal)",
+        "3": "Sentences",
+        "4": "Conversation",
+        "5": "Self-Directed",
+    }
+
+    # Map numeric stages from saved state to substage keys
+    def numeric_stage_to_substage(stage_num: int) -> str:
+        mapping = {0: "0a", 1: "1a", 2: "2", 3: "3", 4: "4", 5: "5"}
+        return mapping.get(stage_num, "0a")
+
+    # Map substage keys back to numeric for teacher/criteria compat
+    def substage_to_numeric(substage: str) -> int:
+        mapping = {"0a": 0, "0b": 0, "0c": 0, "1a": 1, "1b": 1,
+                   "2": 2, "3": 3, "4": 4, "5": 5}
+        return mapping.get(substage, 0)
+
+    # Determine starting substage
+    current_substage = numeric_stage_to_substage(state.stage)
+    if args.substage is not None and args.substage in STAGE_ORDER:
+        current_substage = args.substage
+    elif args.stage is not None:
+        current_substage = numeric_stage_to_substage(args.stage)
+
+    # Find starting index in stage order
+    try:
+        stage_idx = STAGE_ORDER.index(current_substage)
+    except ValueError:
+        stage_idx = 0
+
+    # -----------------------------------------------------------------------
     # Main stage loop
     # -----------------------------------------------------------------------
     logger.info("=" * 70)
-    logger.info("Athena Developmental Training — Stage %d (%s)",
-                state.stage, teacher.get_stage_name(state.stage))
+    logger.info("Athena Developmental Training — Stage %s (%s)",
+                current_substage, STAGE_NAMES.get(current_substage, "Unknown"))
     logger.info("=" * 70)
 
-    while state.stage <= 5:
-        teacher.current_stage = state.stage
-        criteria = STAGE_CRITERIA.get(state.stage, {})
+    while stage_idx < len(STAGE_ORDER):
+        current_substage = STAGE_ORDER[stage_idx]
+        numeric = substage_to_numeric(current_substage)
+        state.stage = numeric
+        teacher.current_stage = numeric
+        criteria = STAGE_CRITERIA.get(numeric, {})
         max_ex = criteria.get("max_examples", 100000)
 
-        if state.stage == 0:
-            # Birth — raw sensory exposure, patterns emerge naturally
+        stage_name = STAGE_NAMES.get(current_substage, current_substage)
+        logger.info("--- Starting substage %s: %s ---", current_substage,
+                     stage_name)
+
+        if current_substage == "0a":
+            # Birth (text) — raw sensory exposure via text
             transitioned = run_exposure_stage(
                 brain, decoder, state, generate_sensory_exposure,
                 args.num_outputs, args.report_interval, max_ex
             )
-        elif state.stage == 1:
-            # Babbling — language exposure, phonemes and words emerge
+
+        elif current_substage == "0b":
+            # Birth (visual) — real image perception
+            if MULTIMODAL_AVAILABLE:
+                transitioned = run_multimodal_exposure_stage(
+                    brain, decoder, state, get_mm_encoder(),
+                    modality="visual",
+                    dataset_configs=[
+                        {"name": "fashion_mnist", "max_examples": 15000},
+                        {"name": "cifar100", "max_examples": 15000},
+                    ],
+                    num_outputs=args.num_outputs,
+                    report_interval=args.report_interval,
+                    max_examples=30000,
+                )
+            else:
+                logger.info("Skipping visual stage — multimodal not available")
+                transitioned = True
+
+        elif current_substage == "0c":
+            # Birth (audio) — real environmental sounds
+            if MULTIMODAL_AVAILABLE:
+                transitioned = run_multimodal_exposure_stage(
+                    brain, decoder, state, get_mm_encoder(),
+                    modality="audio",
+                    dataset_configs=[
+                        {"name": "esc50", "max_examples": 2000},
+                    ],
+                    num_outputs=args.num_outputs,
+                    report_interval=args.report_interval,
+                    max_examples=2000,
+                )
+            else:
+                logger.info("Skipping audio stage — multimodal not available")
+                transitioned = True
+
+        elif current_substage == "1a":
+            # Babbling (text) — language exposure
             transitioned = run_exposure_stage(
                 brain, decoder, state, generate_language_exposure,
                 args.num_outputs, args.report_interval, max_ex
             )
-        elif state.stage in (2, 3):
-            # First Words / Sentences — guided learning with Claude
+
+        elif current_substage == "1b":
+            # Babbling (speech) — real spoken language
+            if MULTIMODAL_AVAILABLE:
+                transitioned = run_multimodal_exposure_stage(
+                    brain, decoder, state, get_mm_encoder(),
+                    modality="speech",
+                    dataset_configs=[
+                        {"name": "librispeech", "max_examples": 5000},
+                    ],
+                    num_outputs=args.num_outputs,
+                    report_interval=args.report_interval,
+                    max_examples=5000,
+                )
+            else:
+                logger.info("Skipping speech stage — multimodal not available")
+                transitioned = True
+
+        elif current_substage == "2":
+            # First Words — cross-modal association
+            if MULTIMODAL_AVAILABLE:
+                transitioned = run_crossmodal_association_stage(
+                    brain, decoder, state, get_mm_encoder(),
+                    args.num_outputs, args.report_interval,
+                    max_examples=min(max_ex, 50000),
+                )
+            else:
+                # Fall back to text-only guided stage
+                transitioned = run_guided_stage(
+                    brain, decoder, teacher, state, args.num_outputs,
+                    args.report_interval, max_ex
+                )
+
+        elif current_substage == "3":
+            # Sentences — guided learning with Claude
             transitioned = run_guided_stage(
                 brain, decoder, teacher, state, args.num_outputs,
                 args.report_interval, max_ex
             )
+
         else:
             # Conversation / Self-Directed — interactive dialogue
             transitioned = run_interactive_stage(
@@ -696,19 +1049,22 @@ def main():
                 args.report_interval, max_ex
             )
 
-        if transitioned and state.stage < 5:
+        if transitioned and stage_idx < len(STAGE_ORDER) - 1:
+            next_substage = STAGE_ORDER[stage_idx + 1]
             logger.info("=" * 70)
-            logger.info("STAGE TRANSITION: %d → %d", state.stage, state.stage + 1)
+            logger.info("STAGE TRANSITION: %s → %s", current_substage,
+                        next_substage)
             logger.info("=" * 70)
-            state.stage += 1
+            stage_idx += 1
             state.examples_this_stage = 0
+            state.stage = substage_to_numeric(next_substage)
             state.stage_start_time = time.time()
 
             # Save after transition
             state.save()
             decoder.save(decoder_dir)
             teacher.save_state(teacher_path)
-            brain.save(args.checkpoint)
+            brain.save(args.save_checkpoint)
         else:
             break
 
@@ -717,7 +1073,7 @@ def main():
     state.save()
     decoder.save(decoder_dir)
     teacher.save_state(teacher_path)
-    brain.save(args.checkpoint)
+    brain.save(args.save_checkpoint)
     logger.info("Total examples: %d | Final stage: %d | Claude calls: %d",
                 state.total_examples, state.stage, teacher.calls_made)
 

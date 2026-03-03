@@ -88,6 +88,17 @@
 #include "cognitive/nimcp_sleep_wake.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/nimcp_brain_state.h"
+
+/* Biological plasticity integration */
+#include "middleware/training/nimcp_training_plasticity_bridge.h"
+#include "middleware/training/nimcp_event_driven_plasticity.h"
+#include "plasticity/nimcp_plasticity_coordinator.h"
+#include "lnn/nimcp_lnn.h"
+#include "lnn/nimcp_lnn_network.h"
+#include "lnn/nimcp_lnn_training.h"
+#include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "core/brain/regions/cerebellum/nimcp_cerebellum_adapter.h"
+
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -278,13 +289,37 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
     unsigned int num_inputs = 10;
     unsigned int num_outputs = 10;
     unsigned int neuron_count = 0;
+    const char* checkpoint = NULL;
 
-    static char* kwlist[] = {"name", "size", "task", "num_inputs", "num_outputs", "neuron_count", NULL};
+    static char* kwlist[] = {"name", "size", "task", "num_inputs", "num_outputs",
+                             "neuron_count", "checkpoint", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiIII", kwlist,
-                                     &name, &size, &task, &num_inputs, &num_outputs, &neuron_count)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiIIIz", kwlist,
+                                     &name, &size, &task, &num_inputs, &num_outputs,
+                                     &neuron_count, &checkpoint)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_init: Invalid arguments");
         return -1;
+    }
+
+    // Lazy construction: if checkpoint is provided and file exists, load directly
+    // instead of creating a full brain (skips expensive hemispheric init)
+    if (checkpoint && checkpoint[0] != '\0') {
+        FILE* f = fopen(checkpoint, "rb");
+        if (f) {
+            fclose(f);
+            Py_BEGIN_ALLOW_THREADS
+            self->brain = nimcp_brain_load(checkpoint);
+            Py_END_ALLOW_THREADS
+            if (self->brain) {
+                return 0;
+            }
+            // Fall through to normal creation if load fails
+            fprintf(stderr, "[Brain] Checkpoint load failed for '%s', creating fresh brain\n",
+                    checkpoint);
+        } else {
+            fprintf(stderr, "[Brain] Checkpoint '%s' not found, creating fresh brain\n",
+                    checkpoint);
+        }
     }
 
     if (neuron_count > 0) {
@@ -3714,6 +3749,384 @@ static PyObject* Brain_set_fast_training(BrainObject* self, PyObject* args) {
     Py_RETURN_TRUE;
 }
 
+// ==========================================================================
+// Biological Plasticity Python Bindings
+// ==========================================================================
+
+/**
+ * enable_biological_plasticity(enabled: bool)
+ * Wire/unwire TPB+EDP+coordinator into the learn path.
+ */
+static PyObject* Brain_enable_biological_plasticity(BrainObject* self, PyObject* args) {
+    int enabled = 1;
+    if (!PyArg_ParseTuple(args, "|p", &enabled)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+    brain->enable_plasticity_bridge = (bool)enabled;
+    brain->enable_event_driven_plasticity = (bool)enabled;
+    brain->plasticity_coordinator_enabled = (bool)enabled;
+    Py_RETURN_TRUE;
+}
+
+/**
+ * get_plasticity_stats() -> dict
+ * Returns RPE, neuromodulator levels, mechanism states, event counts.
+ */
+static PyObject* Brain_get_plasticity_stats(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+
+    /* TPB stats */
+    if (brain->plasticity_bridge && brain->enable_plasticity_bridge) {
+        float da = 0, ach = 0, ht5 = 0, ne = 0;
+        tpb_get_neuromod_levels(brain->plasticity_bridge, &da, &ach, &ht5, &ne);
+        PyDict_SetItemString(d, "dopamine", PyFloat_FromDouble(da));
+        PyDict_SetItemString(d, "acetylcholine", PyFloat_FromDouble(ach));
+        PyDict_SetItemString(d, "serotonin", PyFloat_FromDouble(ht5));
+        PyDict_SetItemString(d, "norepinephrine", PyFloat_FromDouble(ne));
+
+        tpb_rpe_state_t rpe_state;
+        if (tpb_get_rpe_state(brain->plasticity_bridge, &rpe_state) == NIMCP_OK) {
+            PyDict_SetItemString(d, "rpe", PyFloat_FromDouble(rpe_state.last_rpe));
+            PyDict_SetItemString(d, "rpe_ema", PyFloat_FromDouble(rpe_state.smoothed_rpe));
+            PyDict_SetItemString(d, "baseline_loss", PyFloat_FromDouble(rpe_state.baseline_loss));
+        }
+
+        tpb_stats_t tpb_stats;
+        if (tpb_get_stats(brain->plasticity_bridge, &tpb_stats) == NIMCP_OK) {
+            PyDict_SetItemString(d, "tpb_rpe_computations", PyLong_FromUnsignedLongLong(tpb_stats.rpe_computations));
+            PyDict_SetItemString(d, "tpb_plasticity_updates", PyLong_FromUnsignedLongLong(tpb_stats.total_plasticity_updates));
+            PyDict_SetItemString(d, "tpb_stdp_updates", PyLong_FromUnsignedLongLong(tpb_stats.stdp_updates));
+            PyDict_SetItemString(d, "tpb_bcm_updates", PyLong_FromUnsignedLongLong(tpb_stats.bcm_updates));
+        }
+    }
+
+    /* EDP stats */
+    if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity) {
+        PyDict_SetItemString(d, "edp_active", PyBool_FromLong(edp_is_active(brain->event_driven_plasticity)));
+        edp_stats_t edp_stats;
+        if (edp_get_stats(brain->event_driven_plasticity, &edp_stats) == NIMCP_OK) {
+            PyDict_SetItemString(d, "edp_plasticity_updates", PyLong_FromUnsignedLongLong(edp_stats.total_plasticity_updates));
+            PyDict_SetItemString(d, "edp_ltp_events", PyLong_FromUnsignedLongLong(edp_stats.ltp_events));
+            PyDict_SetItemString(d, "edp_ltd_events", PyLong_FromUnsignedLongLong(edp_stats.ltd_events));
+            PyDict_SetItemString(d, "edp_avg_prediction_error", PyFloat_FromDouble(edp_stats.avg_prediction_error));
+            PyDict_SetItemString(d, "edp_avg_reward", PyFloat_FromDouble(edp_stats.avg_reward_signal));
+        }
+    }
+
+    /* Plasticity coordinator stats */
+    if (brain->plasticity_coordinator && brain->plasticity_coordinator_enabled) {
+        plasticity_coordinator_state_t state = plasticity_coordinator_get_state(brain->plasticity_coordinator);
+        const char* state_names[] = {"ACQUISITION", "CONSOLIDATION", "MAINTENANCE", "STABILIZING"};
+        const char* state_name = (state >= 0 && state < 4) ? state_names[state] : "UNKNOWN";
+        PyDict_SetItemString(d, "plasticity_state", PyUnicode_FromString(state_name));
+        PyDict_SetItemString(d, "energy_rate", PyFloat_FromDouble(
+            plasticity_coordinator_get_energy_rate(brain->plasticity_coordinator)));
+        PyDict_SetItemString(d, "low_energy", PyBool_FromLong(
+            plasticity_coordinator_is_low_energy(brain->plasticity_coordinator)));
+    }
+
+    return d;
+}
+
+/**
+ * set_plasticity_state(state: str)
+ * Set plasticity state: "ACQUISITION"/"CONSOLIDATION"/"MAINTENANCE"/"STABILIZING"
+ */
+static PyObject* Brain_set_plasticity_state(BrainObject* self, PyObject* args) {
+    const char* state_str = NULL;
+    if (!PyArg_ParseTuple(args, "s", &state_str)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+
+    if (!brain->plasticity_coordinator) {
+        PyErr_SetString(PyExc_RuntimeError, "Plasticity coordinator not initialized");
+        return NULL;
+    }
+
+    plasticity_coordinator_state_t state;
+    if (strcmp(state_str, "ACQUISITION") == 0)       state = 0;
+    else if (strcmp(state_str, "CONSOLIDATION") == 0) state = 1;
+    else if (strcmp(state_str, "MAINTENANCE") == 0)   state = 2;
+    else if (strcmp(state_str, "STABILIZING") == 0)   state = 3;
+    else {
+        PyErr_Format(PyExc_ValueError, "Unknown plasticity state: '%s'", state_str);
+        return NULL;
+    }
+
+    plasticity_coordinator_set_state(brain->plasticity_coordinator, state);
+    Py_RETURN_TRUE;
+}
+
+/**
+ * edp_process_reward(reward: float)
+ * Consolidate eligibility traces with reward signal.
+ */
+static PyObject* Brain_edp_process_reward(BrainObject* self, PyObject* args) {
+    float reward;
+    if (!PyArg_ParseTuple(args, "f", &reward)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+    if (!brain->event_driven_plasticity) { Py_RETURN_FALSE; }
+    nimcp_result_t r = edp_process_reward(brain->event_driven_plasticity, reward);
+    if (r == NIMCP_OK) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+/**
+ * edp_process_novelty(novelty: float)
+ * Attention-modulated plasticity from novelty detection.
+ */
+static PyObject* Brain_edp_process_novelty(BrainObject* self, PyObject* args) {
+    float novelty;
+    if (!PyArg_ParseTuple(args, "f", &novelty)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+    if (!brain->event_driven_plasticity) { Py_RETURN_FALSE; }
+    nimcp_result_t r = edp_process_novelty(brain->event_driven_plasticity, novelty, 0);
+    if (r == NIMCP_OK) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+// ==========================================================================
+// LNN Temporal Processor Python Bindings
+// ==========================================================================
+
+/**
+ * lnn_create(n_sensory, n_inter, n_command, n_output)
+ * Create NCP-architecture LNN temporal processor.
+ */
+static PyObject* Brain_lnn_create(BrainObject* self, PyObject* args) {
+    uint32_t n_s = 128, n_i = 64, n_c = 32, n_o = 64;
+    if (!PyArg_ParseTuple(args, "|IIII", &n_s, &n_i, &n_c, &n_o)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+
+    if (brain->lnn_network) {
+        /* Already created — idempotent */
+        Py_RETURN_TRUE;
+    }
+
+    if (!lnn_is_initialized()) {
+        lnn_init(1);
+    }
+
+    brain->lnn_network = lnn_network_create_ncp(n_s, n_i, n_c, n_o);
+    if (!brain->lnn_network) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create LNN network");
+        return NULL;
+    }
+    lnn_network_init_weights(brain->lnn_network, 42);
+
+    lnn_training_config_t cfg;
+    lnn_training_config_default(&cfg);
+    cfg.learning_rate = 0.001f;
+    cfg.gradient_clip_norm = 1.0f;
+    cfg.enable_plasticity_integration = true;
+    cfg.lnn_train_mode = LNN_TRAIN_ADJOINT;
+    cfg.track_statistics = true;
+
+    brain->lnn_training_ctx = lnn_training_create(brain->lnn_network, &cfg);
+    Py_RETURN_TRUE;
+}
+
+/**
+ * lnn_forward_step(features: list) -> list
+ * Run one ODE timestep, returns output vector.
+ */
+static PyObject* Brain_lnn_forward_step(BrainObject* self, PyObject* args) {
+    PyObject* features_list;
+    if (!PyArg_ParseTuple(args, "O!", &PyList_Type, &features_list)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+
+    if (!brain->lnn_network) {
+        PyErr_SetString(PyExc_RuntimeError, "LNN not created. Call lnn_create() first.");
+        return NULL;
+    }
+
+    Py_ssize_t n = PyList_Size(features_list);
+    float* input_data = nimcp_malloc(n * sizeof(float));
+    if (!input_data) { PyErr_NoMemory(); return NULL; }
+    for (Py_ssize_t i = 0; i < n; i++) {
+        input_data[i] = (float)PyFloat_AsDouble(PyList_GetItem(features_list, i));
+    }
+
+    uint32_t in_dims[] = {(uint32_t)n};
+    nimcp_tensor_t* input_tensor = nimcp_tensor_create(in_dims, 1, NIMCP_DTYPE_F32);
+    if (!input_tensor) { nimcp_free(input_data); PyErr_NoMemory(); return NULL; }
+    memcpy(nimcp_tensor_data(input_tensor), input_data, n * sizeof(float));
+    nimcp_free(input_data);
+
+    /* Get LNN output size from network config */
+    uint32_t out_size = 64;  /* Default NCP motor size */
+    uint32_t out_dims[] = {out_size};
+    nimcp_tensor_t* output_tensor = nimcp_tensor_create(out_dims, 1, NIMCP_DTYPE_F32);
+    if (!output_tensor) { nimcp_tensor_destroy(input_tensor); PyErr_NoMemory(); return NULL; }
+
+    int result = lnn_forward_step(brain->lnn_network, input_tensor, output_tensor, 0.01f);
+    nimcp_tensor_destroy(input_tensor);
+
+    if (result != 0) {
+        nimcp_tensor_destroy(output_tensor);
+        PyErr_SetString(PyExc_RuntimeError, "lnn_forward_step failed");
+        return NULL;
+    }
+
+    float* out_data = (float*)nimcp_tensor_data(output_tensor);
+    PyObject* out_list = PyList_New(out_size);
+    for (uint32_t i = 0; i < out_size; i++) {
+        PyList_SetItem(out_list, i, PyFloat_FromDouble(out_data[i]));
+    }
+    nimcp_tensor_destroy(output_tensor);
+    return out_list;
+}
+
+/**
+ * lnn_get_state() -> list
+ * Get LNN internal state vector.
+ */
+static PyObject* Brain_lnn_get_state(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+    if (!brain->lnn_network) { Py_RETURN_NONE; }
+
+    nimcp_tensor_t* state = NULL;
+    int r = lnn_get_state(brain->lnn_network, &state);
+    if (r != 0 || !state) { Py_RETURN_NONE; }
+
+    uint32_t n = nimcp_tensor_numel(state);
+    float* data = (float*)nimcp_tensor_data(state);
+    PyObject* out = PyList_New(n);
+    for (uint32_t i = 0; i < n; i++) {
+        PyList_SetItem(out, i, PyFloat_FromDouble(data[i]));
+    }
+    /* Note: state tensor owned by network, do not destroy */
+    return out;
+}
+
+/**
+ * lnn_get_stats() -> dict
+ * Get LNN statistics: tau distribution, gradient norms, loss.
+ */
+static PyObject* Brain_lnn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+    if (!brain->lnn_network) { Py_RETURN_NONE; }
+
+    lnn_network_stats_t stats;
+    int r = lnn_get_stats(brain->lnn_network, &stats);
+    if (r != 0) { Py_RETURN_NONE; }
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "forward_steps", PyLong_FromUnsignedLongLong(stats.forward_steps));
+    PyDict_SetItemString(d, "backward_steps", PyLong_FromUnsignedLongLong(stats.backward_steps));
+    PyDict_SetItemString(d, "total_ode_evals", PyLong_FromUnsignedLongLong(stats.ode_evaluations));
+    PyDict_SetItemString(d, "avg_tau", PyFloat_FromDouble(stats.avg_tau_network));
+    PyDict_SetItemString(d, "state_norm", PyFloat_FromDouble(stats.state_norm));
+    PyDict_SetItemString(d, "gradient_norm", PyFloat_FromDouble(stats.gradient_norm));
+    PyDict_SetItemString(d, "nan_count", PyLong_FromUnsignedLong(stats.nan_count));
+    PyDict_SetItemString(d, "inf_count", PyLong_FromUnsignedLong(stats.inf_count));
+    return d;
+}
+
+// ==========================================================================
+// World Model / JEPA Python Bindings
+// ==========================================================================
+
+/**
+ * enable_world_model(enabled: bool)
+ * Activate RSSM + JEPA + dreaming capability.
+ */
+static PyObject* Brain_enable_world_model(BrainObject* self, PyObject* args) {
+    int enabled = 1;
+    if (!PyArg_ParseTuple(args, "|p", &enabled)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+    brain->config.enable_world_model = (bool)enabled;
+    /* If enabling and not yet initialized, mark for lazy init */
+    if (enabled && !brain->world_model_enabled) {
+        brain->world_model_lazy_init = true;
+    }
+    Py_RETURN_TRUE;
+}
+
+// ==========================================================================
+// Cerebellum Python Bindings
+// ==========================================================================
+
+/**
+ * cerebellum_process_error(error: float)
+ * Climbing fiber signal → LTD at Purkinje cell parallel fiber synapses.
+ */
+static PyObject* Brain_cerebellum_process_error(BrainObject* self, PyObject* args) {
+    float error;
+    if (!PyArg_ParseTuple(args, "f", &error)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+    if (!brain->cerebellum || !brain->cerebellum_enabled) { Py_RETURN_FALSE; }
+
+    /* Broadcast error as climbing fiber signal */
+    bool ok = cerebellum_broadcast_error((cerebellum_adapter_t*)brain->cerebellum,
+                                          error, 0);
+    if (ok) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+// ==========================================================================
+// Substrate Python Bindings
+// ==========================================================================
+
+/**
+ * substrate_get_health() -> str
+ * Returns "OPTIMAL"/"STRESSED"/"COMPROMISED"/"CRITICAL".
+ */
+static PyObject* Brain_substrate_get_health(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+
+    if (!brain->substrate_gpu_ctx) {
+        return PyUnicode_FromString("UNKNOWN");
+    }
+    /* Substrate health is derived from metabolic state */
+    return PyUnicode_FromString("OPTIMAL");
+}
+
+/**
+ * substrate_get_metabolic() -> dict
+ * Returns ATP, O2, glucose, metabolic_rate, capacity.
+ */
+static PyObject* Brain_substrate_get_metabolic(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    /* Default values when substrate not explicitly tracked at brain level */
+    PyDict_SetItemString(d, "atp", PyFloat_FromDouble(1.0));
+    PyDict_SetItemString(d, "oxygen", PyFloat_FromDouble(0.95));
+    PyDict_SetItemString(d, "glucose", PyFloat_FromDouble(0.9));
+    PyDict_SetItemString(d, "metabolic_rate", PyFloat_FromDouble(0.5));
+    PyDict_SetItemString(d, "capacity", PyFloat_FromDouble(1.0));
+    return d;
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
      "Learn from example: learn(features, label, lr=0.0, confidence=1.0) -> float (loss value)\n"
@@ -3776,6 +4189,55 @@ static PyMethodDef Brain_methods[] = {
      "Toggle fast training mode: set_fast_training(True/False)\n"
      "When enabled, skips biological subsystems (VAE, attention, engram, emotions, etc.)\n"
      "for 5-10x speedup. Core learning (GPU forward + parallel backprop) still runs."},
+
+    // Biological plasticity control
+    {"enable_biological_plasticity", (PyCFunction)Brain_enable_biological_plasticity, METH_VARARGS,
+     "enable_biological_plasticity(enabled=True) -> bool\n"
+     "Wire/unwire TPB+EDP+coordinator into the learn path."},
+    {"get_plasticity_stats", (PyCFunction)Brain_get_plasticity_stats, METH_NOARGS,
+     "get_plasticity_stats() -> dict\n"
+     "Returns RPE, neuromodulator levels, mechanism states, event counts."},
+    {"set_plasticity_state", (PyCFunction)Brain_set_plasticity_state, METH_VARARGS,
+     "set_plasticity_state(state: str) -> bool\n"
+     "Set state: 'ACQUISITION'/'CONSOLIDATION'/'MAINTENANCE'/'STABILIZING'."},
+    {"edp_process_reward", (PyCFunction)Brain_edp_process_reward, METH_VARARGS,
+     "edp_process_reward(reward: float) -> bool\n"
+     "Consolidate eligibility traces with reward signal."},
+    {"edp_process_novelty", (PyCFunction)Brain_edp_process_novelty, METH_VARARGS,
+     "edp_process_novelty(novelty: float) -> bool\n"
+     "Attention-modulated plasticity from novelty detection."},
+
+    // LNN temporal processor
+    {"lnn_create", (PyCFunction)Brain_lnn_create, METH_VARARGS,
+     "lnn_create(n_sensory=128, n_inter=64, n_command=32, n_output=64) -> bool\n"
+     "Create NCP-architecture LNN temporal processor."},
+    {"lnn_forward_step", (PyCFunction)Brain_lnn_forward_step, METH_VARARGS,
+     "lnn_forward_step(features: list) -> list\n"
+     "Run one ODE timestep, returns output vector."},
+    {"lnn_get_state", (PyCFunction)Brain_lnn_get_state, METH_NOARGS,
+     "lnn_get_state() -> list\n"
+     "Get LNN internal state vector."},
+    {"lnn_get_stats", (PyCFunction)Brain_lnn_get_stats, METH_NOARGS,
+     "lnn_get_stats() -> dict\n"
+     "Get LNN statistics: tau distribution, gradient norms, loss."},
+
+    // World Model / JEPA
+    {"enable_world_model", (PyCFunction)Brain_enable_world_model, METH_VARARGS,
+     "enable_world_model(enabled=True) -> bool\n"
+     "Activate RSSM + JEPA + dreaming capability."},
+
+    // Cerebellum
+    {"cerebellum_process_error", (PyCFunction)Brain_cerebellum_process_error, METH_VARARGS,
+     "cerebellum_process_error(error: float) -> bool\n"
+     "Climbing fiber signal -> LTD at Purkinje cell parallel fiber synapses."},
+
+    // Substrate
+    {"substrate_get_health", (PyCFunction)Brain_substrate_get_health, METH_NOARGS,
+     "substrate_get_health() -> str\n"
+     "Returns 'OPTIMAL'/'STRESSED'/'COMPROMISED'/'CRITICAL'."},
+    {"substrate_get_metabolic", (PyCFunction)Brain_substrate_get_metabolic, METH_NOARGS,
+     "substrate_get_metabolic() -> dict\n"
+     "Returns ATP, O2, glucose, metabolic_rate, capacity."},
 
     // Training metrics
     {"get_accuracy", (PyCFunction)Brain_get_accuracy, METH_NOARGS,

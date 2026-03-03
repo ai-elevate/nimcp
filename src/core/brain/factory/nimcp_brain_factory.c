@@ -267,6 +267,10 @@ extern void set_error(const char* format, ...);
 #define wire_world_model_active_inference           nimcp_brain_factory_wire_world_model_active_inference
 #define wire_world_model_imagination                nimcp_brain_factory_wire_world_model_imagination
 
+// LNN temporal context processor (NCP architecture)
+extern bool nimcp_brain_factory_init_lnn_subsystem(brain_t brain);
+#define init_lnn_subsystem                          nimcp_brain_factory_init_lnn_subsystem
+
 //=============================================================================
 // Main Factory Functions
 //=============================================================================
@@ -739,10 +743,20 @@ brain_t brain_create_custom(const brain_config_t* config)
         if (!init_pr_memory_subsystem(brain)) { brain_destroy(brain); return NULL; }
     }
 
+    // LNN temporal context processor (NCP architecture: 128→64→32→64 = 288 neurons)
+    // Creates compact continuous-time ODE network for sequence-aware temporal context.
+    // Skipped in fast_training_mode. Connected to TPB, immune, bio-async.
+    if (!brain->config.fast_training_mode) {
+        if (!init_lnn_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
+
     // World Model System (generative world model for mental simulation)
     // Provides: Omni World Model (RSSM dynamics), Multimodal World Model (cross-modal fusion)
     // Enables: Counterfactual reasoning, policy evaluation, dreaming, mental imagery
-    if (brain->config.enable_world_model && !brain->config.lazy_world_model_init) {
+    // Auto-enable when not in fast training mode (biological development needs world model)
+    if ((brain->config.enable_world_model || !brain->config.fast_training_mode) &&
+        !brain->config.lazy_world_model_init) {
+        brain->config.enable_world_model = true;
         if (!init_world_model_subsystem(brain)) { brain_destroy(brain); return NULL; }
     }
 

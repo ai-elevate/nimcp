@@ -123,6 +123,36 @@ bool nimcp_brain_factory_init_plasticity_coordinator_subsystem(brain_t brain) {
     brain->plasticity_coordinator = coord;
     brain->plasticity_coordinator_enabled = true;
 
+    /* Register biological plasticity mechanisms with their update intervals.
+     * These drive real-time STDP, BCM, homeostatic scaling, eligibility traces,
+     * dendritic computation, STP, adaptive thresholds, and predictive coding. */
+    uint32_t mech_id = 0;
+    plasticity_coordinator_register_mechanism(
+        brain->plasticity_coordinator, "stdp", PLASTICITY_TYPE_STDP,
+        NULL, NULL, NULL, 1.0f, 0.1f, 10, &mech_id);
+    plasticity_coordinator_register_mechanism(
+        brain->plasticity_coordinator, "bcm", PLASTICITY_TYPE_BCM,
+        NULL, NULL, NULL, 0.9f, 0.15f, 50, &mech_id);
+    plasticity_coordinator_register_mechanism(
+        brain->plasticity_coordinator, "homeostatic", PLASTICITY_TYPE_HOMEOSTATIC,
+        NULL, NULL, NULL, 0.7f, 0.05f, 1000, &mech_id);
+    plasticity_coordinator_register_mechanism(
+        brain->plasticity_coordinator, "eligibility", PLASTICITY_TYPE_ELIGIBILITY,
+        NULL, NULL, NULL, 0.95f, 0.12f, 10, &mech_id);
+    plasticity_coordinator_register_mechanism(
+        brain->plasticity_coordinator, "dendritic", PLASTICITY_TYPE_DENDRITIC,
+        NULL, NULL, NULL, 0.6f, 0.2f, 100, &mech_id);
+    plasticity_coordinator_register_mechanism(
+        brain->plasticity_coordinator, "stp", PLASTICITY_TYPE_STP,
+        NULL, NULL, NULL, 0.5f, 0.08f, 20, &mech_id);
+    plasticity_coordinator_register_mechanism(
+        brain->plasticity_coordinator, "adaptive", PLASTICITY_TYPE_ADAPTIVE,
+        NULL, NULL, NULL, 0.8f, 0.1f, 100, &mech_id);
+    plasticity_coordinator_register_mechanism(
+        brain->plasticity_coordinator, "predictive", PLASTICITY_TYPE_PREDICTIVE,
+        NULL, NULL, NULL, 0.85f, 0.18f, 50, &mech_id);
+    NIMCP_LOGGING_INFO("Registered 8 biological plasticity mechanisms in coordinator");
+
     /* Log success */
     plasticity_coordinator_stats_t stats;
     if (plasticity_coordinator_get_stats(coord, &stats) == 0) {

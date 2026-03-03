@@ -122,6 +122,19 @@ NIMCP_EXPORT uint32_t neural_network_apply_reward_learning(neural_network_t netw
                                                            float learning_rate, uint64_t current_time);
 
 /**
+ * @brief Apply reward-modulated bio-plasticity to ACTIVE neurons only.
+ *
+ * Like neural_network_apply_reward_learning() but only processes neurons
+ * with |state| > activity_threshold. O(active) instead of O(N), making
+ * STDP/BCM/eligibility feasible at 1.5M+ neurons.
+ *
+ * @param activity_threshold Minimum |state| to consider a neuron active (default 0.01)
+ */
+NIMCP_EXPORT uint32_t neural_network_apply_reward_learning_active(neural_network_t network, float reward,
+                                                                   float learning_rate, uint64_t current_time,
+                                                                   float activity_threshold);
+
+/**
  * @brief Apply lateral inhibition (winner-take-all) to output layer
  *
  * WHAT: Suppress non-winning output neurons to sharpen classification

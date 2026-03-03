@@ -76,6 +76,12 @@
 #include "perception/nimcp_audio_cortex.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
 #include "plasticity/predictive/nimcp_predictive_coding.h"
+
+// Biological plasticity integration (TPB + EDP + coordinator)
+#include "middleware/training/nimcp_training_plasticity_bridge.h"
+#include "middleware/training/nimcp_event_driven_plasticity.h"
+#include "plasticity/nimcp_plasticity_coordinator.h"
+
 #include "core/brain_regions/nimcp_brain_regions.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(brain_learning, MESH_ADAPTER_CATEGORY_COGNITIVE)
@@ -381,6 +387,26 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                                          brain->config.learning_rate);
     nimcp_brain_learning_adapt_learning_rate(brain, loss);
     __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
+
+    /* Biological plasticity integration (when not in fast training mode) */
+    if (!brain->config.fast_training_mode) {
+        /* TPB: Loss → RPE → neuromodulator update */
+        if (brain->plasticity_bridge && brain->enable_plasticity_bridge) {
+            float rpe = 0.0f;
+            tpb_report_loss(brain->plasticity_bridge, loss, &rpe);
+        }
+        /* EDP: Three-factor eligibility consolidation */
+        if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity) {
+            edp_process_prediction_error(brain->event_driven_plasticity, loss, 0);
+        }
+        /* Plasticity coordinator: interval-based STDP/BCM/homeostatic updates */
+        if (brain->plasticity_coordinator && brain->plasticity_coordinator_enabled) {
+            uint64_t now_ms = nimcp_time_get_us() / 1000;
+            plasticity_coordinator_update(brain->plasticity_coordinator, now_ms, 1.0f);
+        }
+        /* LNN temporal training is handled in the slow path (brain_learn_example)
+         * where input/target tensors are available for lnn_training_step(). */
+    }
 
     /* Accumulate sleep pressure */
     if (brain->sleep_system && brain->config.enable_sleep_wake_cycle) {
@@ -998,6 +1024,25 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     float network_loss = adaptive_network_learn(brain->network, &example, LEARN_MODE_HYBRID,
                                                 effective_learning_rate);
     uint64_t _t_learn_us = nimcp_time_get_us() - _t_learn_start;
+
+    // ========================================================================
+    // BIOLOGICAL PLASTICITY: TPB + EDP + Coordinator (after backprop)
+    // ========================================================================
+    // Wire loss into biological plasticity pathways:
+    // - TPB: Loss → RPE → neuromodulators (DA/ACh/NE/5-HT) → region-specific STDP/BCM
+    // - EDP: Three-factor eligibility (Activity × Eligibility × Reward)
+    // - Coordinator: Interval-based mechanism updates (STDP 10ms, BCM 50ms, Homeostatic 1s)
+    if (brain->plasticity_bridge && brain->enable_plasticity_bridge) {
+        float rpe = 0.0f;
+        tpb_report_loss(brain->plasticity_bridge, network_loss, &rpe);
+    }
+    if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity) {
+        edp_process_prediction_error(brain->event_driven_plasticity, network_loss, 0);
+    }
+    if (brain->plasticity_coordinator && brain->plasticity_coordinator_enabled) {
+        uint64_t now_ms = nimcp_time_get_us() / 1000;
+        plasticity_coordinator_update(brain->plasticity_coordinator, now_ms, 1.0f);
+    }
 
     // ========================================================================
     // BIOLOGICAL SECURITY: Monitor for attacks after learning (Phase 11)

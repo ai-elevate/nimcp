@@ -60,6 +60,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_memory.c              # Memory subsystems (418 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_pr_memory.c          # Prime Resonant memory subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_world_model.c        # World Model subsystem (omni + multimodal)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_lnn.c               # LNN liquid neural network temporal processor
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/internal/nimcp_brain_pr_memory.c                   # Brain-PR memory integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/internal/nimcp_pr_memory_quantum_bridge.c          # PR memory-quantum integration (search, consolidation, entanglement)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_plasticity.c          # Plasticity subsystems (553 lines)
