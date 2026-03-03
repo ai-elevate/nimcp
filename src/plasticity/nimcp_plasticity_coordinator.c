@@ -334,8 +334,9 @@ int plasticity_coordinator_register_mechanism(
     uint64_t update_interval_ms,
     uint32_t* mechanism_id_out
 ) {
-    /* Guard clauses */
-    if (!coordinator || !name || !handle || !update_fn) {
+    /* Guard clauses — handle and update_fn may be NULL for declaration-only
+     * registrations where the coordinator tracks metadata/scheduling only */
+    if (!coordinator || !name) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid parameters for mechanism registration");
         NIMCP_LOGGING_ERROR("Invalid parameters");
         return -1;
@@ -514,7 +515,8 @@ int plasticity_coordinator_update(
         uint64_t elapsed = current_time_ms - entry->last_update_time;
         if (elapsed < entry->update_interval_ms) continue;
 
-        /* Call update function */
+        /* Call update function (skip declaration-only mechanisms with no callback) */
+        if (!entry->update_fn) continue;
         if (entry->update_fn(entry->handle, dt) == 0) {
             entry->update_count++;
             entry->last_update_time = current_time_ms;
@@ -595,7 +597,11 @@ int plasticity_coordinator_update_mechanism(
         if (coordinator->mechanisms[i].mechanism_id == mechanism_id) {
             plasticity_mechanism_entry_t* entry = &coordinator->mechanisms[i];
 
-            /* Call update */
+            /* Call update (skip declaration-only mechanisms with no callback) */
+            if (!entry->update_fn) {
+                nimcp_platform_mutex_unlock(coordinator->mutex);
+                return 0;
+            }
             int result = entry->update_fn(entry->handle, dt);
             if (result == 0) {
                 entry->update_count++;

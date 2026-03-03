@@ -2009,6 +2009,153 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
 }
 
 /**
+ * @brief Apply reward-modulated bio-plasticity to ACTIVE neurons only.
+ *
+ * WHY: The full neural_network_apply_reward_learning() iterates ALL neurons
+ *      twice (pre-pass + main loop), which costs ~80s at 1.5M neurons.
+ *      This version samples only neurons with |state| > activity_threshold,
+ *      making STDP/BCM/eligibility feasible at any network size.
+ *
+ * ALGORITHM:
+ *   1. Scan neurons, collect indices where |state| > threshold (typically <1% are active)
+ *   2. Set outgoing synapse traces only for active neurons
+ *   3. Apply STDP/Oja/eligibility/BCM only to active neurons
+ *   4. Sync outgoing→incoming weights only for modified synapses
+ */
+uint32_t neural_network_apply_reward_learning_active(neural_network_t network, float reward,
+                                                     float learning_rate, uint64_t current_time,
+                                                     float activity_threshold)
+{
+    if (!network) return 0;
+    if (!isfinite(reward) || learning_rate <= 0.0f) return 0;
+    if (activity_threshold <= 0.0f) activity_threshold = 0.01f;
+
+    /* Phase 1: Collect active neuron indices */
+    uint32_t max_active = network->num_neurons / 10 + 256;  /* Expect <10% active */
+    uint32_t* active_ids = nimcp_malloc(max_active * sizeof(uint32_t));
+    if (!active_ids) return 0;
+    uint32_t num_active = 0;
+
+    for (uint32_t n = 0; n < network->num_neurons && num_active < max_active; n++) {
+        if (fabsf(network->neurons[n].state) > activity_threshold) {
+            active_ids[num_active++] = n;
+        }
+    }
+
+    if (num_active == 0) {
+        nimcp_free(active_ids);
+        return 0;
+    }
+
+    uint32_t total_modified = 0;
+
+    /* Phase 2: Set outgoing synapse traces for active neurons only */
+    for (uint32_t i = 0; i < num_active; i++) {
+        uint32_t n = active_ids[i];
+        float activity = fabsf(network->neurons[n].state);
+        neuron_t* neuron = &network->neurons[n];
+        for (uint32_t s = 0; s < NEURON_OUT_COUNT(neuron); s++) {
+            synapse_t* trace_syn = NEURON_OUT_META(network, neuron, s);
+            if (trace_syn) trace_syn->trace = activity;
+        }
+    }
+
+    /* Phase 3: Apply STDP/Oja/eligibility/BCM to active neurons */
+    for (uint32_t i = 0; i < num_active; i++) {
+        uint32_t neuron_id = active_ids[i];
+        neuron_t* neuron = &network->neurons[neuron_id];
+
+        if (neuron->learning_rule & LEARNING_STDP) {
+            total_modified += neural_network_apply_stdp(network, neuron_id, current_time);
+        }
+        if (neuron->learning_rule & LEARNING_OJA) {
+            total_modified += neural_network_apply_oja(network, neuron_id, current_time);
+        }
+
+        for (uint32_t syn_idx = 0; syn_idx < NEURON_OUT_COUNT(neuron); syn_idx++) {
+            synapse_handle_t* out_h = NEURON_OUT_HANDLE(neuron, syn_idx);
+            if (!out_h) continue;
+            synapse_t* syn = NEURON_OUT_META(network, neuron, syn_idx);
+
+            /* Eligibility-trace learning */
+            if (syn && syn->enable_eligibility && syn->eligibility) {
+                eligibility_config_t elig_config = eligibility_default_config();
+                elig_config.learning_rate = learning_rate;
+
+                if (syn->trace > 0.1f) {
+                    eligibility_trace_update(syn->eligibility, &elig_config, current_time, syn->trace);
+                } else {
+                    eligibility_trace_decay(syn->eligibility, &elig_config, current_time);
+                }
+
+                float dopamine = 0.5f;
+                if (network->neuromodulator_system) {
+                    dopamine = neuromodulator_get_level(network->neuromodulator_system, NEUROMOD_DOPAMINE);
+                }
+
+                float old_weight = out_h->weight;
+                syn->weight = out_h->weight;
+                eligibility_apply_reward(syn, syn->eligibility, &elig_config, reward, dopamine);
+
+                if (!isfinite(syn->weight)) syn->weight = old_weight;
+                if (!nimcp_security_validate_weight_change(old_weight, syn->weight,
+                                                          NIMCP_MAX_WEIGHT_DELTA_PER_STEP)) {
+                    syn->weight = old_weight;
+                    continue;
+                }
+                syn->weight = fmaxf(network->config.min_weight,
+                                  fminf(network->config.max_weight, syn->weight));
+                out_h->weight = syn->weight;
+
+                if (fabsf(out_h->weight - old_weight) > WEIGHT_UPDATE_THRESHOLD) {
+                    total_modified++;
+                }
+            }
+
+            /* BCM homeostatic plasticity */
+            if (syn && syn->enable_bcm && syn->bcm) {
+                uint32_t target_id = out_h->target_neuron_id;
+                if (target_id < network->num_neurons) {
+                    bcm_params_t bcm_params = bcm_params_cortical();
+                    const neuron_t* post_neuron = &network->neurons[target_id];
+                    bcm_apply_rule(syn->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
+                    if (fabsf(syn->bcm->weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                        out_h->weight = syn->bcm->weight;
+                        syn->weight = syn->bcm->weight;
+                        total_modified++;
+                    }
+                }
+            }
+        }
+    }
+
+    /* Phase 4: Sync outgoing→incoming only for active neurons */
+    if (total_modified > 0) {
+        for (uint32_t i = 0; i < num_active; i++) {
+            uint32_t n = active_ids[i];
+            neuron_t* src = &network->neurons[n];
+            for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
+                synapse_handle_t* out_h = NEURON_OUT_HANDLE(src, s);
+                if (!out_h) continue;
+                uint32_t target_id = out_h->target_neuron_id;
+                if (target_id >= network->num_neurons) continue;
+                neuron_t* target = &network->neurons[target_id];
+                if (out_h->peer_index != SPARSE_SYNAPSE_NO_PEER) {
+                    synapse_handle_t* in_h = sparse_synapse_get(&target->incoming, out_h->peer_index);
+                    if (in_h) {
+                        in_h->weight = out_h->weight;
+                        in_h->strength = out_h->strength;
+                    }
+                }
+            }
+        }
+    }
+
+    nimcp_free(active_ids);
+    return total_modified;
+}
+
+/**
  * @brief Apply lateral inhibition (winner-take-all) to output layer
  *
  * WHAT: Suppress non-winning output neurons to sharpen classification
