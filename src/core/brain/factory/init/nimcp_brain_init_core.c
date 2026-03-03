@@ -31,6 +31,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/containers/nimcp_hash_table.h"
 
 /* Forward declaration for mesh integration - include avoided to prevent type conflicts */
 struct mesh_brain_integration;
@@ -220,6 +221,18 @@ bool nimcp_brain_factory_init_output_labels(brain_t brain, uint32_t num_outputs)
         return false;
     }
     brain->num_output_labels = 0;
+
+    // Create O(1) label lookup hash table (FNV-1a)
+    hash_table_config_t ht_config = {
+        .initial_buckets = 256,
+        .key_type = HASH_KEY_STRING,
+        .hash_algorithm = HASH_ALG_FNV1A,
+        .case_insensitive = false,
+        .thread_safe = false  // caller uses brain->cache_mutex
+    };
+    brain->label_index = hash_table_create(&ht_config);
+    // Non-fatal if NULL — falls back to linear search in get_or_create_label_index
+
     return true;
 }
 

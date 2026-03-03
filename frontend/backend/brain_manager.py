@@ -77,12 +77,12 @@ class BrainStats:
 
 
 class BrainMetadata:
-    __slots__ = ("name", "created_at", "dataset", "parent_id", "num_inputs", "num_outputs", "size", "task")
+    __slots__ = ("name", "created_at", "dataset", "parent_id", "num_inputs", "num_outputs", "size", "task", "owner")
 
     def __init__(self, name: str, num_inputs: int = 0, num_outputs: int = 0,
                  size: int = 1, task: int = 0,
                  dataset: Optional[str] = None, parent_id: Optional[int] = None,
-                 created_at: Optional[str] = None):
+                 created_at: Optional[str] = None, owner: Optional[str] = None):
         self.name = name
         self.created_at = created_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         self.dataset = dataset
@@ -91,9 +91,10 @@ class BrainMetadata:
         self.num_outputs = num_outputs
         self.size = size
         self.task = task
+        self.owner = owner  # None = shared/system, str = personal brain
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "name": self.name,
             "created_at": self.created_at,
             "dataset": self.dataset,
@@ -103,6 +104,9 @@ class BrainMetadata:
             "size": self.size,
             "task": self.task,
         }
+        if self.owner is not None:
+            d["owner"] = self.owner
+        return d
 
 
 class BrainManager:
@@ -115,7 +119,8 @@ class BrainManager:
         self._stats: dict[int, BrainStats] = {}
         self._probe_history: dict[int, deque] = {}
         self._next_id = 0
-        self._interpreters: dict[int, CognitiveInterpreter] = {}
+        # Per-user interpreters: keyed by (brain_id, username)
+        self._interpreters: dict[tuple[int, str], CognitiveInterpreter] = {}
         self._snapshots: dict[int, dict] = {}  # brain_id -> {name: path}
         self._cow_snapshots: dict[int, dict] = {}  # brain_id -> {name: capsule}
 
@@ -189,6 +194,7 @@ class BrainManager:
                     dataset=meta_dict.get("dataset"),
                     parent_id=meta_dict.get("parent_id"),
                     created_at=meta_dict.get("created_at"),
+                    owner=meta_dict.get("owner"),
                 )
                 stats = BrainStats()
                 stats_dict = meta_dict.get("stats")
@@ -199,7 +205,6 @@ class BrainManager:
                     self._metadata[bid] = meta
                     self._stats[bid] = stats
                     self._probe_history[bid] = deque(maxlen=PROBE_HISTORY_SIZE)
-                    self._interpreters[bid] = CognitiveInterpreter(brain_name=meta.name)
                     self._snapshots[bid] = {}
                     self._cow_snapshots[bid] = {}
                     if bid > max_id:
@@ -218,7 +223,8 @@ class BrainManager:
     def create_brain(self, name: str, size: int, task: int,
                      num_inputs: int, num_outputs: int,
                      dataset: Optional[str] = None,
-                     num_neurons: Optional[int] = None) -> int:
+                     num_neurons: Optional[int] = None,
+                     owner: Optional[str] = None) -> int:
         with self._lock:
             if len(self._brains) >= MAX_BRAIN_COUNT:
                 raise ValueError(f"Maximum brain count ({MAX_BRAIN_COUNT}) reached")
@@ -240,16 +246,15 @@ class BrainManager:
             self._brains[bid] = brain
             self._metadata[bid] = BrainMetadata(
                 name=name, num_inputs=num_inputs, num_outputs=num_outputs,
-                size=size, task=task, dataset=dataset,
+                size=size, task=task, dataset=dataset, owner=owner,
             )
             self._stats[bid] = BrainStats()
             self._probe_history[bid] = deque(maxlen=PROBE_HISTORY_SIZE)
-            self._interpreters[bid] = CognitiveInterpreter(brain_name=name)
             self._snapshots[bid] = {}
             self._cow_snapshots[bid] = {}
             self._save_brain_to_disk(bid)
-            _log.info("Created brain %d (%s) neurons=%s inputs=%d outputs=%d",
-                      bid, name, num_neurons or "preset", num_inputs, num_outputs)
+            _log.info("Created brain %d (%s) neurons=%s inputs=%d outputs=%d owner=%s",
+                      bid, name, num_neurons or "preset", num_inputs, num_outputs, owner or "shared")
             return bid
 
     def resize_brain(self, bid: int, num_neurons: int) -> bool:
@@ -428,22 +433,23 @@ class BrainManager:
             stats.inference_times.append(elapsed_us)
             return result  # dict with label, confidence, explanation, sparsity, etc.
 
-    def _get_interpreter(self, bid: int) -> Optional["CognitiveInterpreter"]:
-        """Get or create the cognitive interpreter for a brain, syncing baselines."""
+    def _get_interpreter(self, bid: int, username: str = "") -> Optional["CognitiveInterpreter"]:
+        """Get or create per-user cognitive interpreter for a brain, syncing baselines."""
         meta = self._metadata.get(bid)
         if meta is None:
             return None
-        interpreter = self._interpreters.get(bid)
+        key = (bid, username)
+        interpreter = self._interpreters.get(key)
         if interpreter is None:
             stats = self._stats[bid]
             interpreter = CognitiveInterpreter(brain_name=meta.name)
             # Sync baselines so pre-existing training isn't mistaken for new growth
             interpreter._last_learning_steps = stats.total_learning_steps
             interpreter._last_inferences = stats.total_inferences
-            self._interpreters[bid] = interpreter
+            self._interpreters[key] = interpreter
         return interpreter
 
-    def converse(self, bid: int, text: str) -> Optional[dict]:
+    def converse(self, bid: int, text: str, username: str = "") -> Optional[dict]:
         """Run full cognitive pipeline and return conversational response."""
         with self._lock:
             brain = self._brains.get(bid)
@@ -451,7 +457,7 @@ class BrainManager:
                 return None
             meta = self._metadata[bid]
             stats = self._stats[bid]
-            interpreter = self._get_interpreter(bid)
+            interpreter = self._get_interpreter(bid, username)
             if interpreter is None:
                 return None
 
@@ -471,14 +477,14 @@ class BrainManager:
                 "cognitive_state": cognitive_state,
             }
 
-    def teach_conversational(self, bid: int, text: str, label: str) -> Optional[dict]:
+    def teach_conversational(self, bid: int, text: str, label: str, username: str = "") -> Optional[dict]:
         """Teach the brain via the cognitive interpreter."""
         with self._lock:
             brain = self._brains.get(bid)
             if brain is None:
                 return None
             stats = self._stats[bid]
-            interpreter = self._get_interpreter(bid)
+            interpreter = self._get_interpreter(bid, username)
             if interpreter is None:
                 return None
 
@@ -489,14 +495,14 @@ class BrainManager:
                 stats.losses.append(result["loss"])
             return result
 
-    def introspect(self, bid: int) -> Optional[dict]:
+    def introspect(self, bid: int, username: str = "") -> Optional[dict]:
         """Ask the brain to describe its own state."""
         with self._lock:
             brain = self._brains.get(bid)
             if brain is None:
                 return None
             stats = self._stats[bid]
-            interpreter = self._get_interpreter(bid)
+            interpreter = self._get_interpreter(bid, username)
             if interpreter is None:
                 return None
 
@@ -522,6 +528,42 @@ class BrainManager:
             }
             response = interpreter.generate_introspection(cognitive_state, stats_dict)
             return {"message": response}
+
+    def ensure_athena(self):
+        """Ensure brain_id=0 exists as the shared Athena instance."""
+        with self._lock:
+            if 0 in self._brains:
+                _log.info("Athena (brain_id=0) already loaded")
+                return
+        # Create Athena as brain 0 outside lock (create_brain acquires lock)
+        _log.info("Creating shared Athena brain (brain_id=0)")
+        # Use reasonable defaults for the shared assistant
+        bid = self.create_brain(
+            name="Athena", size=2, task=4,
+            num_inputs=1024, num_outputs=64,
+        )
+        if bid != 0:
+            _log.warning("Athena created as brain_id=%d (expected 0)", bid)
+
+    def list_brains_for_user(self, username: str, role: str) -> list[dict]:
+        """List brains visible to a user. Admins see all, users see shared + their own."""
+        with self._lock:
+            result = []
+            for bid, meta in self._metadata.items():
+                # Admins see everything; users see shared (no owner) + their own
+                if role != "admin" and meta.owner is not None and meta.owner != username:
+                    continue
+                info = {
+                    "id": bid,
+                    "name": meta.name,
+                    "created_at": meta.created_at,
+                    "dataset": meta.dataset,
+                    "parent_id": meta.parent_id,
+                    "owner": meta.owner,
+                    "probe": self._build_probe(bid),
+                }
+                result.append(info)
+            return result
 
     def learn(self, bid: int, features: list[float], label: str, confidence: float = 1.0) -> Optional[float]:
         with self._lock:

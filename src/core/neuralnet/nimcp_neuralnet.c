@@ -806,9 +806,9 @@ neural_network_t neural_network_create(const network_config_t* config)
             // Each output class gets backbone/output_size dedicated neurons for
             // specialization. 32 backbone neurons per class is the sweet spot:
             // enough for complex decision boundaries, small enough for fast init.
-            uint32_t backbone_target = output_size * 32;
+            uint32_t backbone_target = output_size * 4;
             if (backbone_target < 1024) backbone_target = 1024;
-            if (backbone_target > 16384) backbone_target = 16384;
+            if (backbone_target > 8192) backbone_target = 8192;
             uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
 
             // Evenly space backbone neurons across the hidden layer

@@ -897,6 +897,72 @@
       "description": "PubMed surface chemistry abstracts — catalysis, coatings, functionalization"
     }
   ],
+  "developmental_stages": {
+    "description": "Biological curriculum: sensory → language → comprehension → foundation → mastery",
+    "stage_0_sensory": {
+      "description": "Sensory bootstrapping — establish basic neural connectivity",
+      "exit_criteria": "Loss decreasing on all datasets",
+      "datasets": ["fashion_mnist", "cifar100", "svhn"]
+    },
+    "stage_1_language": {
+      "description": "Language acquisition — train Broca/Wernicke areas",
+      "exit_criteria": "Rolling accuracy on language domain > 60% OR all datasets exhausted",
+      "consolidation": "full",
+      "batch_size": 30,
+      "datasets_ordered": [
+        "tinystories",
+        "wikitext103",
+        "openwebtext",
+        "wikipedia_general",
+        "nimcp_documentation"
+      ]
+    },
+    "stage_2_comprehension": {
+      "description": "Reading comprehension — teach reasoning about text",
+      "exit_criteria": "Rolling accuracy on QA tasks > 50%",
+      "consolidation": "full",
+      "batch_size": 30,
+      "datasets_ordered": [
+        "commonsense_qa",
+        "squad_v2",
+        "hellaswag",
+        "conceptnet_knowledge"
+      ]
+    },
+    "stage_3_foundation": {
+      "description": "Foundation knowledge — domain knowledge built on language understanding",
+      "consolidation": "auto",
+      "batch_size": 30,
+      "exit_criteria": "All domains have > 30% accuracy",
+      "tiers": {
+        "tier_1_language_adjacent": {
+          "description": "Close to language — literature, history, philosophy, humanities, ethics",
+          "domains": ["literature", "history", "philosophy", "humanities", "ethics"]
+        },
+        "tier_2_reasoning": {
+          "description": "Reasoning-heavy — science domains",
+          "domains": ["biology", "chemistry", "physics", "earth_sciences", "medicine"]
+        },
+        "tier_3_specialized": {
+          "description": "Specialized professional domains",
+          "domains": ["finance", "economics", "programming", "psychology", "sociology",
+                      "anthropology", "social_sciences", "cryptocurrency", "paleontology",
+                      "electrical_engineering", "mechanical_engineering", "materials_science",
+                      "surface_physics", "surface_chemistry", "news"]
+        },
+        "tier_4_multimodal": {
+          "description": "Multimodal processing",
+          "domains": ["audio", "visual", "speech"]
+        }
+      }
+    },
+    "stage_4_mastery": {
+      "description": "Self-directed mastery — brain curiosity drives what to study",
+      "exit_criteria": "95% mastery per domain OR time cap",
+      "use_curiosity": true,
+      "use_forager": true
+    }
+  },
   "training_order": [
     "language",
     "literature",
@@ -929,7 +995,7 @@
     "speech"
   ],
   "notes": {
-    "curriculum_strategy": "All 23 domains taught simultaneously by parallel instructor agents. Training order used for staggered startup.",
+    "curriculum_strategy": "Biological developmental stages: Stage 0 (sensory) → Stage 1 (language) → Stage 2 (comprehension) → Stage 3 (foundation, tiered) → Stage 4 (self-directed mastery). See developmental_stages section.",
     "dataset_selection": "ALL datasets verified streaming=True with datasets v4.5+ — no legacy scripts, no gated access",
     "coverage": "29 domains: 25 text (language, literature, programming, ethics, philosophy, history, psychology, anthropology, social_sciences, medicine, biology, chemistry, physics, materials_science, electrical_engineering, mechanical_engineering, surface_physics, surface_chemistry, humanities, finance, cryptocurrency, sociology, paleontology, economics, earth_sciences) + 3 multimodal (audio, visual, speech) + 1 live (news)",
     "new_in_v6": "Added 5 engineering/science domains: materials_science (4 datasets), electrical_engineering (3), mechanical_engineering (3), surface_physics (3), surface_chemistry (3)",
@@ -938,6 +1004,6 @@
     "live_news": "news_rss streams continuously from 22 RSS feeds (Reuters, BBC, NYT, NPR, Al Jazeera, Nature, Ars Technica, HN, Guardian). Polls every 5min, deduplicates by URL, never finishes. Keeps Athena current with world events.",
     "estimated_total_size": "~60GB+ (text ~50GB + audio/visual/speech ~10GB + local ~200MB + API/news streams ~0 disk)",
     "total_datasets": 97,
-    "version": "v6.0 — 29 domains, parallel school training, multimodal + self-knowledge + streaming APIs + live news + engineering/materials science"
+    "version": "v7.0 — biological curriculum (5 developmental stages), batch optimization, curiosity-driven learning + 29 domains"
   }
 }

@@ -54,6 +54,11 @@ class ThreadSafeBrain:
         with self._lock:
             return self._brain.learn(*args, **kwargs)
 
+    def learn_vector(self, features, target, label=None, confidence=1.0):
+        """Learn from a dense target vector (teacher distillation)."""
+        with self._lock:
+            return self._brain.learn_vector(features, target, label, confidence)
+
     def learn_and_get_gradient(self, features, label, lr):
         """Atomically learn and capture gradient norm (C1 fix: prevents
         another instructor from overwriting the gradient between calls)."""
@@ -63,20 +68,31 @@ class ThreadSafeBrain:
             return result, grad
 
     def learn_batch(self, batch):
-        """Learn a batch of examples under a single lock acquisition.
+        """Learn a batch of examples via C-level batch API.
 
-        Phase 5: Reduces lock overhead from N acquisitions to 1 per batch,
-        enabling concurrent instructors (4×) without C-level changes.
+        Uses nimcp_brain_learn_batch() for 10-20x throughput: single lock
+        acquisition, single GPU weight upload, amortized per-example overhead.
         Each item is (features, label, lr).
-        Returns list of (result, grad_norm) tuples.
+        Returns list of (loss, grad_norm) tuples.
         """
-        results = []
         with self._lock:
+            # Try C-level batch learn first (available after v7.0 build)
+            if hasattr(self._brain, 'learn_batch'):
+                try:
+                    c_batch = [(f, l, lr) for f, l, lr in batch]
+                    losses = self._brain.learn_batch(c_batch)
+                    grad = self._brain.get_last_gradient_norm()
+                    return [(loss, grad) for loss in losses]
+                except (AttributeError, TypeError):
+                    pass  # Fall through to per-example path
+
+            # Fallback: per-example learn under single lock
+            results = []
             for features, label, lr in batch:
                 result = self._brain.learn(features, label, lr)
                 grad = self._brain.get_last_gradient_norm()
                 results.append((result, grad))
-        return results
+            return results
 
     def predict_fast(self, *args, **kwargs):
         with self._lock:
@@ -137,6 +153,10 @@ class ThreadSafeBrain:
     def invalidate_community_cache(self, *args, **kwargs):
         with self._lock:
             return self._brain.invalidate_community_cache(*args, **kwargs)
+
+    def curiosity_detect_gaps(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.curiosity_detect_gaps(*args, **kwargs)
 
     def audio_cortex_process(self, *args, **kwargs):
         with self._lock:
@@ -243,6 +263,8 @@ class SchoolConfig:
     max_concurrent_instructors: int = 4    # Phase 5: batch learning reduces lock contention, allowing 4 concurrent instructors
     min_domain_accuracy: float = 0.0       # Per-domain min accuracy before "done" (0=disabled)
     max_retry_passes: int = 5              # Max re-teach passes if below accuracy threshold
+    enable_sleep_wake: bool = True          # Enable biological sleep/wake cycle
+    circadian_time_scale: float = 24.0      # 1 wall hour = 1 circadian day
 
 
 # ---------------------------------------------------------------------------
@@ -457,6 +479,167 @@ class TrainingMetacognition:
 
 
 # ---------------------------------------------------------------------------
+# Sleep/Wake Cycle Controller
+# ---------------------------------------------------------------------------
+
+class SleepController:
+    """Biologically-timed consolidation via the C-level sleep/wake system.
+
+    WHAT: Ticks the circadian clock, monitors sleep pressure, triggers sleep
+          cycles with differentiated consolidation (deep night vs light nap).
+    WHY:  Timer-based recess ignores sleep pressure and circadian phase —
+          biological timing should drive when and how deeply to consolidate.
+    HOW:  Every coordinator tick, advance circadian time via update_medulla(),
+          check sleep_is_needed(), and if triggered, pause instructors and
+          run sleep_run_cycle() + brain.consolidate().
+    """
+
+    # Circadian phase constants (from circadian_phase_t enum)
+    PHASE_NIGHT_DEEP = 0
+    PHASE_NIGHT_LATE = 1
+
+    def __init__(self, brain, logger, config: SchoolConfig):
+        self.brain = brain          # ThreadSafeBrain
+        self.logger = logger
+        self.time_scale = config.circadian_time_scale
+        self._last_tick = time.time()
+        self._last_sleep_log = 0.0
+        self._sleep_cycles_run = 0
+        self._total_sleep_time = 0.0
+
+    def tick(self, instructors, recess_event, stop_event) -> bool:
+        """Called every coordinator loop iteration. Returns True if sleep occurred."""
+        # 1. Advance circadian clock
+        now = time.time()
+        dt = now - self._last_tick
+        self._last_tick = now
+        try:
+            self.brain.update_medulla(dt * self.time_scale)
+        except Exception:
+            pass  # Graceful fallback if binding not available
+
+        # 2. Check sleep need
+        try:
+            pressure = self.brain.sleep_get_pressure()
+            phase = self.brain.medulla_get_circadian_phase()
+            needed = self.brain.sleep_is_needed()
+        except Exception:
+            return False
+
+        # 3. Log sleep state periodically (every 60s)
+        if now - self._last_sleep_log >= 60.0:
+            state_names = {0: "AWAKE", 1: "DROWSY", 2: "LIGHT_NREM",
+                           3: "DEEP_NREM", 4: "REM"}
+            phase_names = {0: "NIGHT_DEEP", 1: "NIGHT_LATE", 2: "DAWN",
+                           3: "MORNING", 4: "MIDDAY", 5: "AFTERNOON",
+                           6: "EVENING", 7: "DUSK"}
+            try:
+                sleep_state = self.brain.sleep_get_state()
+            except Exception:
+                sleep_state = 0
+            self.logger.log(
+                f"[Sleep] pressure={pressure:.3f} phase={phase_names.get(phase, phase)} "
+                f"state={state_names.get(sleep_state, sleep_state)} needed={needed} "
+                f"cycles_total={self._sleep_cycles_run}")
+            self._last_sleep_log = now
+
+        # 4. Trigger sleep if needed
+        if not needed:
+            return False
+
+        is_night = phase in (self.PHASE_NIGHT_DEEP, self.PHASE_NIGHT_LATE)
+        return self._run_sleep(instructors, recess_event, stop_event, is_night)
+
+    def _run_sleep(self, instructors, recess_event, stop_event, deep: bool) -> bool:
+        """Execute a sleep cycle (pauses instructors, runs consolidation)."""
+        sleep_type = "DEEP SLEEP" if deep else "NAP"
+        num_cycles = 3 if deep else 1
+        replay_count = 100 if deep else 30
+        consolidation_mode = "full" if deep else "auto"
+
+        self.logger.log(f"\n[Sleep] === {sleep_type} — {num_cycles} cycle(s), "
+                        f"{consolidation_mode} consolidation ===")
+        sleep_start = time.time()
+
+        # Signal instructors to pause
+        recess_event.set()
+        time.sleep(0.5)
+
+        # Acquire exclusive brain access
+        self.brain.acquire_exclusive()
+        try:
+            raw_brain = self.brain.get_raw_brain()
+
+            # Run C-level sleep cycle (state machine: drowsy → NREM → deep → REM → awake)
+            try:
+                ok = raw_brain.sleep_run_cycle(num_cycles)
+                self.logger.log(f"[Sleep] sleep_run_cycle({num_cycles}) -> {ok}")
+            except Exception as e:
+                self.logger.log(f"[Sleep] WARNING: sleep_run_cycle failed: {e}")
+
+            # Interleaved replay from instructor adversarial banks
+            all_exemplars = []
+            for agent in instructors:
+                if agent.adversarial_bank:
+                    bank = list(agent.adversarial_bank)
+                    samples = random.sample(bank, min(10, len(bank)))
+                    for feat, lbl in samples:
+                        all_exemplars.append((feat, lbl, agent.config.domain))
+            if all_exemplars:
+                random.shuffle(all_exemplars)
+                replay_lr = 0.3
+                try:
+                    replay_lr = raw_brain.ti_compute_unified_lr(0.3)
+                except Exception:
+                    pass
+                replayed = 0
+                for feat, lbl, dom in all_exemplars[:replay_count]:
+                    if stop_event.is_set():
+                        break
+                    try:
+                        raw_brain.learn(feat, lbl, replay_lr)
+                        replayed += 1
+                    except Exception:
+                        break
+                self.logger.log(
+                    f"[Sleep] Replay: {replayed}/{replay_count} examples from "
+                    f"{len(set(d for _, _, d in all_exemplars[:replay_count]))} domains")
+
+            # Consolidation
+            try:
+                raw_brain.consolidate(mode=consolidation_mode)
+                self.logger.log(f"[Sleep] consolidate(mode='{consolidation_mode}') complete")
+            except Exception as e:
+                self.logger.log(f"[Sleep] consolidation error: {e}")
+
+            # Log post-sleep statistics
+            try:
+                stats = raw_brain.sleep_get_statistics()
+                if stats:
+                    self.logger.log(
+                        f"[Sleep] Stats: cycles={stats.get('sleep_cycles_completed', 0)} "
+                        f"replayed={stats.get('total_memories_replayed', 0)} "
+                        f"pruned={stats.get('total_synapses_pruned', 0)} "
+                        f"efficiency={stats.get('avg_consolidation_efficiency', 0):.3f} "
+                        f"pressure={stats.get('current_sleep_pressure', 0):.3f}")
+            except Exception:
+                pass
+
+        finally:
+            self.brain.release_exclusive()
+
+        # Clear recess signal
+        recess_event.clear()
+
+        sleep_duration = time.time() - sleep_start
+        self._sleep_cycles_run += num_cycles
+        self._total_sleep_time += sleep_duration
+        self.logger.log(f"[Sleep] {sleep_type} complete: {sleep_duration:.1f}s "
+                        f"(total sleep: {self._total_sleep_time:.0f}s)")
+        return True
+
+
+# ---------------------------------------------------------------------------
 # School Coordinator
 # ---------------------------------------------------------------------------
 
@@ -482,6 +665,12 @@ class School:
         self.metacognition = TrainingMetacognition(
             self.logger, mastery_threshold=config.graduation_mastery)
         self.cognitive = CognitiveOrchestrator(self.brain)
+
+        # Sleep/Wake cycle controller
+        if config.enable_sleep_wake:
+            self.sleep_controller = SleepController(self.brain, self.logger, config)
+        else:
+            self.sleep_controller = None
 
         self._last_metacog = 0.0
 
@@ -1106,7 +1295,13 @@ class School:
 
                 self._last_metacog = now
 
-            # Recess (consolidation)
+            # Sleep/Wake cycle — biologically-timed consolidation
+            if self.sleep_controller:
+                if self.sleep_controller.tick(
+                        self.instructors, self.recess_event, self.stop_event):
+                    self._last_recess = time.time()  # Sleep counts as recess
+
+            # Recess (consolidation) — timer-based fallback
             # H2: Only update timer when recess actually ran
             # SCH-10 fix: Use time.time() instead of stale `now`
             if now - self._last_recess >= self.config.recess_interval_s:

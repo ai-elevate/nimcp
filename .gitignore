@@ -216,3 +216,7 @@ memory-bank/activeContext.md
 # Generated training datasets (reproducible via scripts/prepare_nimcp_dataset.py)
 datasets/nimcp_local/
 .claude/worktrees/
+logs/
+frontend/backend/brain_data/
+teaching_state/
+build/

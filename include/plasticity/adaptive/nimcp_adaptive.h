@@ -656,6 +656,32 @@ bool adaptive_network_is_frozen(adaptive_network_t network);
 float adaptive_network_get_last_grad_norm(adaptive_network_t network);
 
 /**
+ * @brief Get running accuracy EMA from the learn path (GPU or CPU).
+ *
+ * Updated in the probe tracking block of adaptive_network_learn() using the
+ * output buffer directly (not neuron->state). EMA decay = 0.99.
+ *
+ * @param network The adaptive network
+ * @return Running accuracy EMA in [0,1], or 0.0 if network is NULL
+ */
+float adaptive_network_get_running_accuracy(adaptive_network_t network);
+
+/**
+ * @brief Get per-layer gradient L2 norms from the most recent learn step
+ *
+ * Copies up to max_layers per-layer gradient norms into out_norms[].
+ * Layer 0 = input->hidden weights, layer 1 = hidden->output weights, etc.
+ *
+ * @param network    Adaptive network
+ * @param out_norms  Caller-provided array to receive per-layer norms
+ * @param max_layers Capacity of out_norms array
+ * @return Number of layers written (0 if network is NULL or no backprop yet)
+ */
+uint32_t adaptive_network_get_layer_grad_norms(adaptive_network_t network,
+                                                float* out_norms,
+                                                uint32_t max_layers);
+
+/**
  * @brief Get the exponential moving average of gradient norms
  *
  * Tracks training stability using EMA with decay=0.99.
@@ -676,6 +702,86 @@ float adaptive_network_get_ema_grad_norm(adaptive_network_t network);
  * @return EMA loss, or 0.0 if network is NULL
  */
 float adaptive_network_get_ema_loss(adaptive_network_t network);
+
+/**
+ * @brief Compute weight statistics by sampling backbone neurons
+ *
+ * Samples a subset of neurons to compute weight L2 norm, mean absolute weight,
+ * max absolute weight, and number of sampled synapses. Fast enough for real-time
+ * monitoring (~15K neurons sampled for 1.5M neuron network).
+ *
+ * @param network Adaptive network
+ * @param out_weight_l2_norm L2 norm of sampled weights (NULL to skip)
+ * @param out_mean_abs_weight Mean absolute weight (NULL to skip)
+ * @param out_max_abs_weight Maximum absolute weight (NULL to skip)
+ * @param out_num_sampled_synapses Number of synapses sampled (NULL to skip)
+ */
+void adaptive_network_weight_stats(adaptive_network_t network,
+                                   float* out_weight_l2_norm,
+                                   float* out_mean_abs_weight,
+                                   float* out_max_abs_weight,
+                                   uint64_t* out_num_sampled_synapses);
+
+//=============================================================================
+// Learning Quality Probes
+//=============================================================================
+
+/**
+ * @brief Learning quality metrics for conversational readiness assessment
+ *
+ * Provides per-label accuracy, confidence calibration, learning velocity,
+ * prediction diversity, and synapse growth metrics.
+ */
+typedef struct {
+    float mean_label_accuracy;      /**< Average accuracy across all tracked labels */
+    float worst_label_accuracy;     /**< Lowest per-label accuracy */
+    uint32_t num_labels_tracked;    /**< Number of distinct labels seen */
+    float confidence_calibration;   /**< Mean absolute error between confidence and actual accuracy */
+    float learning_velocity;        /**< Rate of accuracy change (slope of recent accuracy history) */
+    float prediction_entropy;       /**< Shannon entropy of recent predictions (higher = more diverse) */
+    uint64_t synapse_growth;        /**< Net synapse change since last probe */
+} adaptive_learning_quality_t;
+
+/**
+ * @brief Update probe tracking state after a learn step
+ *
+ * Call from adaptive_network_learn() after loss is computed.
+ * Uses _Atomic counters for thread safety without mutexes.
+ *
+ * @param network Adaptive network
+ * @param label_index Index of the target label (from label_table)
+ * @param loss Loss value from this learn step
+ * @param confidence Prediction confidence (max output activation)
+ * @param was_correct Whether the predicted label matched the target
+ */
+void adaptive_network_update_probe_tracking(adaptive_network_t network,
+                                            uint32_t label_index,
+                                            float loss,
+                                            float confidence,
+                                            bool was_correct);
+
+/**
+ * @brief Get per-label accuracy for a specific label index
+ *
+ * @param network Adaptive network
+ * @param label_index Label index (0 to 2047)
+ * @return Accuracy in [0.0, 1.0], or 0.0 if no samples for this label
+ */
+float adaptive_network_get_label_accuracy(adaptive_network_t network,
+                                          uint32_t label_index);
+
+/**
+ * @brief Compute comprehensive learning quality metrics
+ *
+ * Aggregates per-label accuracy, confidence calibration error,
+ * learning velocity (linear regression slope), prediction entropy
+ * (Shannon entropy), and synapse growth.
+ *
+ * @param network Adaptive network
+ * @param out Output metrics structure (caller-allocated)
+ */
+void adaptive_network_learning_quality(adaptive_network_t network,
+                                       adaptive_learning_quality_t* out);
 
 #ifdef __cplusplus
 }

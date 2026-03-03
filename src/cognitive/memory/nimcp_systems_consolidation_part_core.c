@@ -24,8 +24,7 @@ bool systems_consolidation_schedule_replay(
 
 
     if (system->replay_queue_size >= system->replay_queue_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "systems_consolidation_schedule_replay: capacity exceeded");
-        return false;  // Queue full
+        return false;  // Queue full — normal operating condition, not an error
     }
 
     // WHAT: Create replay event

@@ -57,6 +57,7 @@
 #include <stdarg.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/containers/nimcp_hash_table.h"
 #include "utils/cache/nimcp_cache.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/platform/nimcp_platform_once.h"
@@ -379,6 +380,23 @@ brain_t brain_clone_cow(brain_t original)
         // Copy existing labels from original
         for (uint32_t i = 0; i < original->num_output_labels; i++) {
             clone->output_labels[i] = nimcp_strdup(original->output_labels[i]);
+        }
+    }
+
+    // Rebuild O(1) label lookup hash table for clone
+    hash_table_config_t ht_config = {
+        .initial_buckets = 256,
+        .key_type = HASH_KEY_STRING,
+        .hash_algorithm = HASH_ALG_FNV1A,
+        .case_insensitive = false,
+        .thread_safe = false
+    };
+    clone->label_index = hash_table_create(&ht_config);
+    if (clone->label_index && clone->output_labels) {
+        for (uint32_t i = 0; i < clone->num_output_labels; i++) {
+            if (clone->output_labels[i]) {
+                hash_table_insert_string(clone->label_index, clone->output_labels[i], &i, sizeof(uint32_t));
+            }
         }
     }
 

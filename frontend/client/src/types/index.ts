@@ -129,7 +129,7 @@ export interface ChatMessage {
   num_active_neurons?: number;
   inference_time_us?: number;
   output_vector?: number[];
-  cognitive_state?: CognitiveState;
+  cognitive_state?: Partial<CognitiveState>;
 }
 
 export interface WSMessage {
@@ -153,4 +153,155 @@ export interface ScriptStatus {
   total_lines?: number;
 }
 
-export type Tab = 'dashboard' | 'training' | 'chat' | 'datasets';
+export type Tab = 'dashboard' | 'training' | 'chat' | 'datasets' | 'benchmarks';
+
+export interface AuthState {
+  username: string;
+  role: 'admin' | 'user';
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  brain_id: number;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
+export interface ConversationMessage {
+  role: 'user' | 'brain';
+  text: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ConversationDetail {
+  id: string;
+  title: string;
+  brain_id: number;
+  created_at: string;
+  updated_at: string;
+  messages: ConversationMessage[];
+}
+
+export type AppView = 'chat' | 'dashboard' | 'training' | 'probes' | 'monitor';
+
+export interface ProbeConfig {
+  id: string;
+  name: string;
+  brain_id: number;
+  metrics: string[];
+  refresh_ms: number;
+  chart_type: 'line' | 'bar' | 'gauge';
+  alert_thresholds?: Record<string, number>;
+}
+
+export interface CognitiveMetrics {
+  working_memory_capacity: number;
+  working_memory_occupancy: number;
+  oscillation_coherence: number;
+  pac_index: number;
+  workspace_broadcasts: number;
+  workspace_avg_strength: number;
+  ethics_separation: number;
+  ethics_harmful_score: number;
+  ethics_beneficial_score: number;
+  knowledge_concepts: number;
+  knowledge_coverage: number;
+}
+
+export interface BenchmarkResult {
+  benchmark_id: string;
+  category: string;
+  accuracy: number;
+  reference_scores: Record<string, number>;
+  sparsity: number;
+  efficiency: number;
+  cognitive: CognitiveMetrics | null;
+  train_time_ms: number;
+  infer_time_ms: number;
+  train_time_seconds: number;
+  inference_time_us: number;
+  active_neuron_ratio: number;
+}
+
+export interface BenchmarkSummary {
+  overall_ml_accuracy: number;
+  overall_genai_accuracy: number;
+  cognitive_health_score: number;
+  results: BenchmarkResult[];
+  timestamp: string;
+}
+
+export interface BenchmarkInfo {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+}
+
+export interface AthenaStatus {
+  loaded: boolean;
+  name?: string;
+  num_neurons?: number;
+  total_inferences?: number;
+  total_learning_steps?: number;
+  accuracy?: number;
+  memory_bytes?: number;
+}
+
+/** Full probe data returned by GET /api/admin/probes/live */
+export interface ProbeData {
+  // Core brain metrics
+  num_neurons: number;
+  num_synapses: number;
+  accuracy: number;
+  last_loss: number;
+  last_gradient_norm: number;
+  gpu_available: boolean;
+  total_learning_steps: number;
+  num_inputs: number;
+  num_outputs: number;
+
+  // Training dynamics
+  weight_l2_norm: number;
+  weight_mean_abs: number;
+  weight_max_abs: number;
+  weight_sampled_synapses: number;
+  ema_gradient_norm: number;
+  ema_loss: number;
+  layer_grad_norms: number[];
+
+  // Learning quality
+  mean_label_accuracy: number;
+  worst_label_accuracy: number;
+  num_labels_tracked: number;
+  confidence_calibration: number;
+  learning_velocity: number;
+  prediction_entropy: number;
+  synapse_growth: number;
+
+  // Brain health
+  memory_rss_bytes: number;
+  gpu_vram_bytes: number;
+  neuron_utilization: number;
+  immune_total_exceptions: number;
+  immune_inflammation: number;
+
+  // Conversational readiness
+  vocabulary_size: number;
+  response_diversity: number;
+
+  // Extra fields from existing probe
+  utilization?: number;
+  avg_inference_time_us?: number;
+  total_inferences?: number;
+  num_active_synapses?: number;
+  avg_sparsity?: number;
+  current_learning_rate?: number;
+  memory_bytes?: number;
+
+  // Allow extra keys from C probe
+  [key: string]: unknown;
+}

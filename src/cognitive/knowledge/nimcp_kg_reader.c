@@ -349,8 +349,7 @@ static const char* strcasestr_local(const char* haystack, const char* needle) {
         if (!*n) return haystack;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strcasestr_local: validation failed");
-    return NULL;
+    return NULL;  // Not found — normal search result, not an error
 }
 
 /* ============================================================================
@@ -935,8 +934,7 @@ const char* kg_reader_get_observation(const kg_reader_t* reader, const char* ent
             return entity->observations[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_observation: validation failed");
-    return NULL;
+    return NULL;  // Observation not found — normal search result
 }
 
 const char* const* kg_reader_get_observations(const kg_reader_t* reader, const char* entity_name, uint32_t* out_count) {

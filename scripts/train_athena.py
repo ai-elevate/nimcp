@@ -7,13 +7,13 @@ WHAT: Train a 1M-neuron brain called "Athena" to serve as the pretrained
       baseline for all future brains.
 WHY:  Every new brain should start from a trained baseline rather than
       random initialization — dramatically faster convergence on new tasks.
-HOW:  5-phase parallel school pipeline:
-      Phase 0: Orientation — built-in benchmarks with predict-before-learn (warm-up)
-      Phase 1: Parallel School — 23 instructor agents teach simultaneously
-               (20 text + 3 multimodal domains, 7 teaching methods each)
-      Phase 2: Guided Study — streaming HuggingFace datasets (Socratic)
-      Phase 3: Research — curiosity-driven exploration
-      Phase 4: Final Exam — creativity test, hard-item review, save
+HOW:  Biological developmental curriculum:
+      Stage 0: Sensory Bootstrapping — built-in benchmarks (warm-up)
+      Stage 1: Language Acquisition — Broca/Wernicke training (language-only)
+      Stage 2: Reading Comprehension — QA, reasoning, sentence completion
+      Stage 3: Foundation Knowledge — tiered domain introduction (curiosity-ranked)
+      Stage 4: Self-Directed Mastery — pull-based, interactive, curiosity-driven
+      Exam: Final creativity test, hard-item review, save
 
 Full NIMCP system engaged: 67+ cognitive modules, 32 brain regions, 3 sensory
 cortices, mesh network, bio-async router, plasticity orchestrator, glial system,
@@ -41,6 +41,7 @@ import os
 import random
 import signal
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -162,7 +163,11 @@ signal.signal(signal.SIGTERM, _signal_handler)
 # Resume Phase Ordering
 # ---------------------------------------------------------------------------
 PHASE_ORDER = {
-    "phase0": 0, "phase1": 1, "phase2": 2, "phase3": 3, "phase4": 4,
+    "phase0": 0, "stage0": 0,
+    "phase1": 1, "stage1": 1,
+    "phase2": 2, "stage2": 2,
+    "phase3": 3, "stage3": 3,
+    "phase4": 4, "stage4": 4,
     "legacy_phase1": 1, "legacy_phase2": 2, "legacy_phase3": 3,
 }
 
@@ -177,7 +182,7 @@ def phase_reached(resume_phase: str, target_phase: str) -> bool:
 # ---------------------------------------------------------------------------
 ATHENA_NEURONS = 1_500_000
 ATHENA_NUM_INPUTS = 1024    # Was 256 — increased for collision-free encoding
-ATHENA_NUM_OUTPUTS = 256    # Was 128 — increased to eliminate label overflow
+ATHENA_NUM_OUTPUTS = 2048   # Dynamic label capacity — labels assigned on-the-fly
 
 # Output paths
 ATHENA_MODEL_DIR = PROJECT_ROOT / "models" / "pretrained" / "athena" / "v1.0"
@@ -644,6 +649,150 @@ class AthenaLogger:
 
 
 # ---------------------------------------------------------------------------
+# Live Probe Monitor — Background thread for real-time brain metrics
+# ---------------------------------------------------------------------------
+
+class ProbeMonitor:
+    """Background thread that polls brain.probe() and logs all metrics.
+
+    Emits JSONL records with type='probe_snapshot' every `interval_s` seconds.
+    Tracks weight norms, accuracy, mastery, learning velocity, gradient norms,
+    brain health (memory, GPU, immune), and conversational readiness metrics.
+
+    Also detects error conditions and sets an error flag for the main thread.
+    """
+
+    def __init__(self, brain, logger: AthenaLogger, interval_s: float = 10.0):
+        self._brain = brain
+        self._logger = logger
+        self._interval = interval_s
+        self._stop = threading.Event()
+        self._thread = None
+        self._error_flag = threading.Event()
+        self._error_msg = ""
+        self._snapshot_count = 0
+        self._prev_weight_l2 = None
+        self._prev_accuracy = None
+        self._stall_count = 0
+
+    def start(self):
+        self._thread = threading.Thread(target=self._run, daemon=True, name="ProbeMonitor")
+        self._thread.start()
+
+    def stop(self):
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=5.0)
+
+    @property
+    def has_error(self) -> bool:
+        return self._error_flag.is_set()
+
+    @property
+    def error_message(self) -> str:
+        return self._error_msg
+
+    def _run(self):
+        while not self._stop.wait(self._interval):
+            try:
+                p = self._brain.probe()
+                self._snapshot_count += 1
+
+                # Build probe snapshot record
+                snapshot = {
+                    "type": "probe_snapshot",
+                    "snapshot_num": self._snapshot_count,
+                    # Training Dynamics
+                    "weight_l2_norm": p.get("weight_l2_norm", 0),
+                    "weight_mean_abs": p.get("weight_mean_abs", 0),
+                    "weight_max_abs": p.get("weight_max_abs", 0),
+                    "ema_gradient_norm": p.get("ema_gradient_norm", 0),
+                    "ema_loss": p.get("ema_loss", 0),
+                    "last_gradient_norm": p.get("last_gradient_norm", 0),
+                    "layer_grad_norms": p.get("layer_grad_norms", []),
+                    # Learning Quality
+                    "accuracy": p.get("accuracy", 0),
+                    "mean_label_accuracy": p.get("mean_label_accuracy", 0),
+                    "worst_label_accuracy": p.get("worst_label_accuracy", 0),
+                    "num_labels_tracked": p.get("num_labels_tracked", 0),
+                    "confidence_calibration": p.get("confidence_calibration", 0),
+                    "learning_velocity": p.get("learning_velocity", 0),
+                    "prediction_entropy": p.get("prediction_entropy", 0),
+                    "synapse_growth": p.get("synapse_growth", 0),
+                    # Brain Health
+                    "memory_rss_bytes": p.get("memory_rss_bytes", 0),
+                    "gpu_vram_bytes": p.get("gpu_vram_bytes", 0),
+                    "neuron_utilization": p.get("neuron_utilization", 0),
+                    "immune_inflammation": p.get("immune_inflammation", 0),
+                    "immune_total_exceptions": p.get("immune_total_exceptions", 0),
+                    "gpu_available": p.get("gpu_available", False),
+                    # Conversational Readiness
+                    "total_learning_steps": p.get("total_learning_steps", 0),
+                    "num_neurons": p.get("num_neurons", 0),
+                    "num_synapses": p.get("num_synapses", 0),
+                    "current_learning_rate": p.get("current_learning_rate", 0),
+                }
+
+                self._logger.metric(snapshot)
+
+                # Print summary to stdout every snapshot
+                acc = snapshot["accuracy"]
+                w_l2 = snapshot["weight_l2_norm"]
+                grad = snapshot["ema_gradient_norm"]
+                loss = snapshot["ema_loss"]
+                labels = snapshot["num_labels_tracked"]
+                steps = snapshot["total_learning_steps"]
+                mem_mb = snapshot["memory_rss_bytes"] / (1024 * 1024) if snapshot["memory_rss_bytes"] else 0
+                vel = snapshot["learning_velocity"]
+                mean_acc = snapshot["mean_label_accuracy"]
+                worst_acc = snapshot["worst_label_accuracy"]
+
+                print(f"[PROBE #{self._snapshot_count:04d}] "
+                      f"acc={acc:.3f} mean_label={mean_acc:.3f} worst={worst_acc:.3f} | "
+                      f"W_L2={w_l2:.2f} grad={grad:.6f} loss={loss:.4f} vel={vel:.6f} | "
+                      f"steps={steps:,} labels={labels} mem={mem_mb:.0f}MB",
+                      flush=True)
+
+                # Error detection: weight explosion
+                if w_l2 > 1e6 and steps > 100:
+                    self._error_msg = f"Weight explosion detected: L2 norm = {w_l2:.2f}"
+                    self._error_flag.set()
+
+                # Error detection: NaN/Inf
+                if not math.isfinite(w_l2) or not math.isfinite(loss):
+                    self._error_msg = f"NaN/Inf detected: weight_l2={w_l2}, loss={loss}"
+                    self._error_flag.set()
+
+                # Error detection: gradient vanishing after many steps
+                if steps > 5000 and grad < 1e-10 and grad > 0:
+                    self._stall_count += 1
+                    if self._stall_count > 6:  # 60s of zero gradients
+                        self._error_msg = f"Training stalled: gradient norm {grad:.2e} for {self._stall_count * self._interval:.0f}s"
+                        self._error_flag.set()
+                else:
+                    self._stall_count = 0
+
+                # Track weight activity
+                if self._prev_weight_l2 is not None:
+                    w_delta = abs(w_l2 - self._prev_weight_l2)
+                    if steps > 1000 and w_delta < 1e-8 and w_l2 > 0:
+                        self._stall_count += 1
+                self._prev_weight_l2 = w_l2
+                self._prev_accuracy = acc
+
+            except Exception as e:
+                # Don't crash the monitor thread on transient errors
+                print(f"[PROBE] Error polling: {e}", flush=True)
+
+    def get_latest(self) -> dict:
+        """Get latest probe snapshot (for external callers)."""
+        try:
+            return self._brain.probe()
+        except Exception:
+            return {}
+
+
+# ---------------------------------------------------------------------------
 # Phase 0: Orientation — Quick warm-up on built-in benchmarks
 # ---------------------------------------------------------------------------
 
@@ -852,11 +1001,11 @@ def phase1_parallel_school(brain, socratic: SocraticTrainer,
         return total_trained, None
 
     school_config = SchoolConfig(
-        recess_interval_s=300.0,
+        recess_interval_s=900.0,  # 15 min (was 5 min) — consolidation deferred, not skipped
         report_interval_s=30.0,
         checkpoint_interval_s=600.0,
         max_training_time_s=82800.0,  # 23h (leave 1h for final exam)
-        graduation_mastery=0.85,
+        graduation_mastery=0.95,
         max_examples_per_dataset=PHASE2_MAX_PER_DATASET,
         startup_stagger_s=3.0,
         num_inputs=ATHENA_NUM_INPUTS,
@@ -864,6 +1013,8 @@ def phase1_parallel_school(brain, socratic: SocraticTrainer,
         max_concurrent_instructors=max_concurrent_instructors,
         min_domain_accuracy=min_domain_accuracy,
         max_retry_passes=max_retry_passes,
+        enable_sleep_wake=True,
+        circadian_time_scale=24.0,  # 1 wall hour = 1 circadian day
     )
 
     school = School(brain, school_config, logger)
@@ -1785,12 +1936,15 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
             "total_examples": total_trained,
             "training_date": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "training_framework": f"NIMCP {nimcp.version()}",
-            "training_mode": "parallel_school" if SCHOOL_AVAILABLE else "sequential_legacy",
+            "training_mode": "biological_curriculum" if SCHOOL_AVAILABLE else "sequential_legacy",
             "num_instructors": 23 if SCHOOL_AVAILABLE else 0,
-            "method": "parallel_school_7_teaching_methods",
+            "method": "biological_developmental_curriculum",
             "phases": [
-                "orientation_warmup",
-                "parallel_school_23_instructors",
+                "stage0_sensory_bootstrapping",
+                "stage1_language_acquisition",
+                "stage2_reading_comprehension",
+                "stage3_foundation_knowledge_tiered",
+                "stage4_self_directed_mastery",
                 "creative_exam_consolidation",
             ] if SCHOOL_AVAILABLE else [
                 "worksheets_socratic",
@@ -1841,6 +1995,536 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
         logger.log(f"Metadata saved: {metadata_path}")
     except Exception as e:
         logger.log(f"WARNING: Metadata save failed: {e}")
+
+    return total_trained
+
+
+# ---------------------------------------------------------------------------
+# Biological Developmental Stages
+# ---------------------------------------------------------------------------
+
+def _load_developmental_config():
+    """Load foundation_datasets_config.json and extract developmental stage definitions."""
+    config_file = SCRIPT_DIR / "foundation_datasets_config.json"
+    if not config_file.exists():
+        return None, {}
+    with open(config_file) as f:
+        config = json.load(f)
+    stages = config.get("developmental_stages", {})
+    return config, stages
+
+
+def _filter_datasets(all_datasets, names=None, domains=None):
+    """Filter datasets by name list and/or domain list."""
+    result = []
+    name_set = set(names) if names else set()
+    domain_set = set(domains) if domains else set()
+    for ds in all_datasets:
+        if name_set and ds.get("name") in name_set:
+            result.append(ds)
+        elif domain_set and ds.get("domain") in domain_set:
+            result.append(ds)
+    return result
+
+
+def _run_school_for_stage(brain, datasets, logger, total_trained,
+                          stage_name, max_concurrent=4,
+                          max_time_s=82800.0, max_examples=None,
+                          min_accuracy=0.0, max_retry=5):
+    """Run a School training cycle on a filtered dataset list.
+
+    Writes a temporary config file, creates a School, runs it, returns
+    (new_total_trained, report_card).
+    """
+    if not SCHOOL_AVAILABLE:
+        logger.log(f"[{stage_name}] School not available — skipping")
+        return total_trained, None
+    if not datasets:
+        logger.log(f"[{stage_name}] No datasets — skipping")
+        return total_trained, None
+
+    # Write temporary config for this stage
+    tmp_config = {
+        "description": f"Stage config: {stage_name}",
+        "version": "auto",
+        "datasets": datasets,
+        "training_order": list(dict.fromkeys(
+            ds.get("domain", "general") for ds in datasets)),
+    }
+    tmp_path = ATHENA_CHECKPOINT_DIR / f"_stage_{stage_name}.json"
+    ATHENA_CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+    with open(tmp_path, "w") as f:
+        json.dump(tmp_config, f, indent=2)
+
+    school_config = SchoolConfig(
+        recess_interval_s=900.0,  # 15 min (was 5 min) — consolidation deferred, not skipped
+        report_interval_s=30.0,
+        checkpoint_interval_s=600.0,
+        max_training_time_s=max_time_s,
+        graduation_mastery=0.95,
+        max_examples_per_dataset=max_examples or PHASE2_MAX_PER_DATASET,
+        startup_stagger_s=2.0,
+        num_inputs=ATHENA_NUM_INPUTS,
+        num_outputs=ATHENA_NUM_OUTPUTS,
+        max_concurrent_instructors=max_concurrent,
+        min_domain_accuracy=min_accuracy,
+        max_retry_passes=max_retry,
+        enable_sleep_wake=True,
+        circadian_time_scale=24.0,  # 1 wall hour = 1 circadian day
+    )
+
+    school = School(brain, school_config, logger)
+    school.setup(tmp_path)
+    school.start()
+
+    report = school.get_report_card()
+    stage_examples = report.get("total_examples", 0)
+    total_trained += stage_examples
+
+    try:
+        tmp_path.unlink()
+    except Exception:
+        pass
+
+    return total_trained, report
+
+
+def stage1_language_acquisition(brain, socratic, cognitive, logger, total_trained):
+    """
+    Stage 1: Language Acquisition — train Broca/Wernicke areas.
+
+    The brain must understand language before it can learn FROM language.
+    Processes language datasets with consolidation between them.
+    Exit criteria: language domain accuracy > 60% OR all datasets exhausted.
+    """
+    logger.log("\n" + "=" * 70)
+    logger.log("STAGE 1: Language Acquisition (Broca/Wernicke Training)")
+    logger.log("=" * 70)
+
+    config, stages = _load_developmental_config()
+    if config is None:
+        logger.log("Stage 1 SKIPPED — config not found")
+        return total_trained
+
+    stage1 = stages.get("stage_1_language", {})
+    dataset_names = stage1.get("datasets_ordered", [])
+    all_datasets = config.get("datasets", [])
+
+    # Get datasets listed in stage config
+    language_datasets = _filter_datasets(all_datasets, names=dataset_names)
+
+    # Also include any language-domain datasets not explicitly listed
+    listed_names = {ds.get("name") for ds in language_datasets}
+    extra_lang = [ds for ds in all_datasets
+                  if ds.get("domain") == "language" and ds.get("name") not in listed_names]
+    language_datasets.extend(extra_lang)
+
+    if not language_datasets:
+        logger.log("Stage 1 SKIPPED — no language datasets found")
+        return total_trained
+
+    logger.log(f"  Language datasets ({len(language_datasets)}): "
+               f"{[ds['name'] for ds in language_datasets]}")
+    logger.log(f"  Batch size: {stage1.get('batch_size', 30)}")
+    logger.log(f"  Exit criteria: language accuracy > 60%")
+
+    # Run school with language datasets — max_concurrent=2 for sequential-ish ordering
+    total_trained, report = _run_school_for_stage(
+        brain, language_datasets, logger, total_trained,
+        stage_name="language_acquisition",
+        max_concurrent=2,
+        max_time_s=14400.0,  # 4h cap
+        max_examples=PHASE2_MAX_PER_DATASET,
+    )
+
+    if report:
+        logger.log(f"\n{report.get('domain_report', '')}")
+
+    # Full consolidation — strengthen language patterns via hippocampal replay
+    logger.log("  Stage 1 consolidation (hippocampal replay for language patterns)...")
+    cognitive.consolidate(mode="full")
+
+    # Check exit criteria
+    try:
+        lang_mastery = socratic.mastery.mastery("language")
+        logger.log(f"  Language mastery: {lang_mastery:.3f}")
+    except Exception:
+        pass
+
+    health_check(brain, logger, "Stage 1 (Language)", abort_on_fail=True)
+    conversation_probe(brain, logger, "Stage 1 (Language Acquisition)")
+
+    logger.log(f"Stage 1 complete — {total_trained:,} total steps")
+    return total_trained
+
+
+def stage2_reading_comprehension(brain, socratic, cognitive, logger, total_trained):
+    """
+    Stage 2: Reading Comprehension — teach understanding and reasoning.
+
+    The brain can now process text; teach it to UNDERSTAND and REASON about text.
+    QA datasets, sentence completion, pronoun resolution, common sense.
+    """
+    logger.log("\n" + "=" * 70)
+    logger.log("STAGE 2: Reading Comprehension (Understanding & Reasoning)")
+    logger.log("=" * 70)
+
+    config, stages = _load_developmental_config()
+    if config is None:
+        logger.log("Stage 2 SKIPPED — config not found")
+        return total_trained
+
+    stage2 = stages.get("stage_2_comprehension", {})
+    dataset_names = stage2.get("datasets_ordered", [])
+    all_datasets = config.get("datasets", [])
+
+    comprehension_datasets = _filter_datasets(all_datasets, names=dataset_names)
+
+    if not comprehension_datasets:
+        logger.log("Stage 2 SKIPPED — no comprehension datasets found")
+        return total_trained
+
+    found_names = [ds["name"] for ds in comprehension_datasets]
+    missing = [n for n in dataset_names if n not in found_names]
+    if missing:
+        logger.log(f"  NOTE: Datasets not found (skipped): {missing}")
+
+    logger.log(f"  Comprehension datasets ({len(comprehension_datasets)}): {found_names}")
+
+    # Run school with comprehension datasets
+    total_trained, report = _run_school_for_stage(
+        brain, comprehension_datasets, logger, total_trained,
+        stage_name="reading_comprehension",
+        max_concurrent=2,
+        max_time_s=7200.0,  # 2h cap
+        max_examples=PHASE2_MAX_PER_DATASET,
+    )
+
+    if report:
+        logger.log(f"\n{report.get('domain_report', '')}")
+
+    # Consolidation
+    logger.log("  Stage 2 consolidation...")
+    cognitive.consolidate(mode="full")
+
+    # Metacognition check — extended consolidation if needed
+    try:
+        decision = brain.ti_compute_decision_cycle(
+            0.5, 0.0, 0.0, 0.0, 0.5, "stage2", 1000, 1.0)
+        if decision and decision.get("recommend_pause"):
+            logger.log("  Metacognition recommends extended consolidation...")
+            cognitive.consolidate(mode="full", cycles=5)
+    except Exception:
+        pass
+
+    health_check(brain, logger, "Stage 2 (Comprehension)", abort_on_fail=True)
+    conversation_probe(brain, logger, "Stage 2 (Reading Comprehension)")
+
+    logger.log(f"Stage 2 complete — {total_trained:,} total steps")
+    return total_trained
+
+
+def stage3_foundation_knowledge(brain, socratic, cognitive, logger, total_trained):
+    """
+    Stage 3: Foundation Knowledge — tiered domain introduction.
+
+    Build domain knowledge on top of language understanding.
+    Tiers: language-adjacent -> reasoning -> specialized -> multimodal.
+    After Tier 1, curiosity_detect_gaps ranks which domains to teach next.
+    """
+    logger.log("\n" + "=" * 70)
+    logger.log("STAGE 3: Foundation Knowledge (Tiered Domain Introduction)")
+    logger.log("=" * 70)
+
+    config, stages = _load_developmental_config()
+    if config is None:
+        logger.log("Stage 3 SKIPPED — config not found")
+        return total_trained
+
+    stage3 = stages.get("stage_3_foundation", {})
+    tiers = stage3.get("tiers", {})
+    all_datasets = config.get("datasets", [])
+
+    tier_order = [
+        ("tier_1_language_adjacent", "Tier 1: Language-Adjacent"),
+        ("tier_2_reasoning", "Tier 2: Reasoning & Science"),
+        ("tier_3_specialized", "Tier 3: Specialized Professional"),
+        ("tier_4_multimodal", "Tier 4: Multimodal"),
+    ]
+
+    for tier_key, tier_label in tier_order:
+        if _shutdown_requested:
+            break
+
+        tier_info = tiers.get(tier_key, {})
+        tier_domains = tier_info.get("domains", [])
+        if not tier_domains:
+            continue
+
+        # After Tier 1, use curiosity to rank domains within the tier
+        if tier_key != "tier_1_language_adjacent":
+            try:
+                domain_gaps = {}
+                for domain in tier_domains:
+                    try:
+                        gap = brain.curiosity_detect_gaps(domain)
+                        if isinstance(gap, dict):
+                            domain_gaps[domain] = gap.get("curiosity_intensity", 0.5)
+                        else:
+                            domain_gaps[domain] = float(gap) if gap else 0.5
+                    except Exception:
+                        domain_gaps[domain] = 0.5
+                # Sort by curiosity intensity (highest gap first)
+                tier_domains = sorted(tier_domains,
+                                      key=lambda d: domain_gaps.get(d, 0.5),
+                                      reverse=True)
+                logger.log(f"  Curiosity-ranked domains: "
+                           f"{[(d, f'{domain_gaps.get(d, 0):.2f}') for d in tier_domains]}")
+            except Exception as e:
+                logger.log(f"  Curiosity ranking failed ({e}) — using default order")
+
+        tier_datasets = _filter_datasets(all_datasets, domains=tier_domains)
+
+        if not tier_datasets:
+            logger.log(f"\n  {tier_label}: No datasets — skipping")
+            continue
+
+        logger.log(f"\n  --- {tier_label} ---")
+        logger.log(f"  Domains: {tier_domains}")
+        logger.log(f"  Datasets: {len(tier_datasets)}")
+
+        total_trained, report = _run_school_for_stage(
+            brain, tier_datasets, logger, total_trained,
+            stage_name=f"foundation_{tier_key}",
+            max_concurrent=4,
+            max_time_s=14400.0,  # 4h per tier
+            max_examples=PHASE2_MAX_PER_DATASET,
+        )
+
+        if report:
+            logger.log(f"\n{report.get('domain_report', '')}")
+
+        # Consolidate between tiers
+        logger.log(f"  Consolidating between tiers...")
+        cognitive.consolidate(mode="auto")
+
+        # Metacognition check — should we pause?
+        try:
+            decision = brain.ti_compute_decision_cycle(
+                0.5, 0.0, 0.0, 0.0, 0.5, tier_key, 1000, 1.0)
+            if decision and decision.get("recommend_pause"):
+                logger.log("  Metacognition recommends extended consolidation...")
+                cognitive.consolidate(mode="full", cycles=3)
+        except Exception:
+            pass
+
+    health_check(brain, logger, "Stage 3 (Foundation)", abort_on_fail=True)
+    conversation_probe(brain, logger, "Stage 3 (Foundation Knowledge)")
+
+    logger.log(f"Stage 3 complete — {total_trained:,} total steps")
+    return total_trained
+
+
+def stage4_self_directed_mastery(brain, socratic, cognitive, logger, total_trained):
+    """
+    Stage 4: Self-Directed Mastery — Pull-Based Interactive Learning.
+
+    The brain's own curiosity system decides what to study next (pull-based).
+    Learning runs in a background thread while the foreground handles interaction.
+
+    If running interactively (TTY), the user can talk to Athena like a child
+    while it continues learning autonomously.
+    If running via nohup, uses autonomous curiosity-driven learning loop.
+    """
+    logger.log("\n" + "=" * 70)
+    logger.log("STAGE 4: Self-Directed Mastery (Pull-Based Learning)")
+    logger.log("=" * 70)
+
+    config, _ = _load_developmental_config()
+    all_datasets = config.get("datasets", []) if config else []
+
+    # Build domain -> dataset mapping for curiosity-driven selection
+    domain_datasets = {}
+    for ds in all_datasets:
+        domain = ds.get("domain", "general")
+        domain_datasets.setdefault(domain, []).append(ds)
+    all_domains = list(domain_datasets.keys())
+
+    is_interactive = sys.stdin.isatty()
+    logger.log(f"  Available domains: {len(all_domains)}")
+    logger.log(f"  Mode: {'interactive (TTY)' if is_interactive else 'autonomous (nohup)'}")
+
+    # Shared state for background learning
+    learning_active = threading.Event()
+    learning_active.set()
+    learning_stats = {"examples": 0, "current_domain": "", "cycles": 0}
+    learning_lock = threading.Lock()
+
+    def _curiosity_learning_loop():
+        """Background thread: curiosity-driven dataset selection and learning."""
+        nonlocal total_trained
+
+        while learning_active.is_set() and not _shutdown_requested:
+            # Ask the brain what it's curious about
+            domain_scores = {}
+            for domain in all_domains:
+                try:
+                    gap = brain.curiosity_detect_gaps(domain)
+                    if isinstance(gap, dict):
+                        score = gap.get("curiosity_intensity", 0.0)
+                    else:
+                        score = float(gap) if gap else 0.0
+                    domain_scores[domain] = score
+                except Exception:
+                    domain_scores[domain] = 0.0
+
+            if not domain_scores:
+                time.sleep(5)
+                continue
+
+            # Pick domain with highest curiosity (knowledge gap)
+            ranked = sorted(domain_scores.items(), key=lambda x: -x[1])
+            target_domain = ranked[0][0]
+            target_score = ranked[0][1]
+
+            with learning_lock:
+                learning_stats["current_domain"] = target_domain
+                learning_stats["cycles"] += 1
+
+            # If curiosity is very low everywhere, consolidate and rest
+            if target_score < 0.1:
+                logger.log(f"  [Curiosity] All domains saturated "
+                           f"(max={target_score:.3f}) — consolidating...")
+                try:
+                    cognitive.consolidate(mode="auto")
+                except Exception:
+                    pass
+                time.sleep(30)
+                continue
+
+            logger.log(f"  [Curiosity] Studying {target_domain} "
+                       f"(intensity={target_score:.3f})")
+
+            # Get datasets for this domain and run a short School session
+            ds_list = domain_datasets.get(target_domain, [])
+            if ds_list:
+                try:
+                    new_total, _ = _run_school_for_stage(
+                        brain, ds_list, logger, total_trained,
+                        stage_name=f"mastery_{target_domain}",
+                        max_concurrent=1,
+                        max_time_s=1800.0,  # 30 min per curiosity pull
+                        max_examples=10000,
+                    )
+                    with learning_lock:
+                        added = new_total - total_trained
+                        learning_stats["examples"] += added
+                        total_trained = new_total
+                except Exception as e:
+                    logger.log(f"  [Curiosity] Error studying {target_domain}: {e}")
+
+            # Brief consolidation between topics
+            try:
+                cognitive.consolidate(mode="light")
+            except Exception:
+                pass
+
+    # Start background learning thread
+    learn_thread = threading.Thread(target=_curiosity_learning_loop,
+                                    daemon=True, name="curiosity-learner")
+    learn_thread.start()
+    logger.log("  Background curiosity learning started")
+
+    if is_interactive:
+        # Interactive mode — talk to Athena while she learns
+        logger.log("\n" + "-" * 70)
+        logger.log("INTERACTIVE MODE — Talk to Athena (type 'quit' to exit)")
+        logger.log("Athena is learning autonomously in the background.")
+        logger.log("-" * 70)
+        print("\nAthena is ready. Type a message (or 'quit' to finish):\n")
+
+        while not _shutdown_requested:
+            try:
+                user_input = input("You> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                break
+
+            if not user_input:
+                continue
+            if user_input.lower() in ("quit", "exit", "bye", "q"):
+                print("Athena: Goodbye! I'll keep studying.")
+                break
+
+            if user_input.lower() == "status":
+                with learning_lock:
+                    stats = dict(learning_stats)
+                print(f"  [Status] Domain: {stats['current_domain']}, "
+                      f"Examples: {stats['examples']:,}, "
+                      f"Cycles: {stats['cycles']}")
+                continue
+
+            # Encode user's text and get a prediction
+            features = _probe_encode_text(user_input, ATHENA_NUM_INPUTS)
+            try:
+                result = brain.decide_full(features)
+                label = result.get("label", "")
+                confidence = float(result.get("confidence", 0.0))
+                explanation = result.get("explanation", "")
+
+                if explanation and explanation.strip():
+                    print(f"Athena: {explanation[:500]}")
+                else:
+                    print(f"Athena: [{label}] (confidence: {confidence:.2f})")
+
+                logger.log(f"  [Chat] Q: {user_input[:80]}")
+                logger.log(f"  [Chat] A: label={label}, conf={confidence:.3f}")
+                logger.metric({
+                    "stage": 4, "interaction": True,
+                    "prompt": user_input[:200],
+                    "label": label,
+                    "confidence": confidence,
+                })
+            except Exception as e:
+                try:
+                    pred, conf = brain.predict_fast(features)
+                    print(f"Athena: I think... [{pred}] (confidence: {conf:.2f})")
+                except Exception:
+                    print(f"Athena: I'm still learning... (error: {e})")
+
+            print()
+
+    else:
+        # Non-interactive (nohup) mode — run curiosity loop with time cap
+        elapsed_so_far = time.time() - logger.start_time
+        max_mastery_time = max(82800.0 - elapsed_so_far, 3600.0)
+        logger.log(f"  Autonomous mode — learning for up to "
+                   f"{max_mastery_time / 3600:.1f}h")
+
+        deadline = time.time() + max_mastery_time
+        while time.time() < deadline and not _shutdown_requested:
+            time.sleep(60)
+
+            with learning_lock:
+                stats = dict(learning_stats)
+
+            if stats["cycles"] > 0 and stats["cycles"] % 5 == 0:
+                logger.log(f"  [Mastery] Cycle {stats['cycles']}: "
+                           f"domain={stats['current_domain']}, "
+                           f"examples={stats['examples']:,}")
+
+    # Stop background learning
+    learning_active.clear()
+    learn_thread.join(timeout=30)
+
+    with learning_lock:
+        final_stats = dict(learning_stats)
+
+    logger.log(f"\nStage 4 complete — {final_stats['examples']:,} self-directed examples, "
+               f"{final_stats['cycles']} curiosity cycles")
+    logger.log(f"Total trained: {total_trained:,}")
+
+    # Final consolidation
+    cognitive.consolidate(mode="full")
 
     return total_trained
 
@@ -1973,8 +2657,8 @@ def main() -> int:
     logger.log(f"Target neurons: {ATHENA_NEURONS:,}")
     logger.log(f"Inputs: {ATHENA_NUM_INPUTS}, Outputs: {ATHENA_NUM_OUTPUTS}")
     logger.log(f"Model output: {ATHENA_MODEL_PATH}")
-    logger.log(f"Training mode: {'parallel_school' if SCHOOL_AVAILABLE else 'sequential_legacy'}")
-    logger.log("Layers: Socratic + Instructor + School + DataSkeptic + Safety")
+    logger.log(f"Training mode: {'biological_curriculum' if SCHOOL_AVAILABLE else 'sequential_legacy'}")
+    logger.log("Pipeline: Sensory -> Language -> Comprehension -> Foundation -> Mastery")
     logger.log("=" * 70)
 
     # Create checkpoint directory
@@ -2001,34 +2685,59 @@ def main() -> int:
             ATHENA_NUM_INPUTS = ckpt_inputs
             ATHENA_NUM_OUTPUTS = ckpt_outputs
     else:
-        # Create brain directly at target neuron count
-        logger.log(f"Creating Athena brain with {ATHENA_NEURONS:,} neurons...")
-        brain = nimcp.Brain(
+        # Create brain with ALL subsystems enabled (RESEARCH profile + world model +
+        # creative + LGSS + neuromodulators + hypothalamus + PR memory + JEPA + etc.)
+        logger.log(f"Creating FULL Athena brain with {ATHENA_NEURONS:,} neurons (all subsystems)...")
+        brain = nimcp.Brain.create_full(
             "Athena",
-            nimcp.BRAIN_LARGE,
-            nimcp.TASK_CLASSIFICATION,
-            ATHENA_NUM_INPUTS,
-            ATHENA_NUM_OUTPUTS,
+            task=nimcp.TASK_CLASSIFICATION,
+            num_inputs=ATHENA_NUM_INPUTS,
+            num_outputs=ATHENA_NUM_OUTPUTS,
             neuron_count=ATHENA_NEURONS,
         )
         logger.log(f"Neuron count: {brain.get_neuron_count():,}")
+        logger.log("All subsystems enabled: attention, executive, meta-learning, predictive, "
+                    "world model, creative, LGSS, neuromodulators, hypothalamus, PR memory, "
+                    "dendritic computation, eligibility traces, cortical columns, oscillations")
 
     _brain_ref[0] = brain  # Enable emergency checkpoint in atexit handler
+
+    # Enable fast training mode — skips ~25 biological subsystems (engrams, dopamine,
+    # curiosity, emotion, mirror neurons, glial, consolidation, semantic memory, etc.)
+    # during brain.learn(), executing only forward pass + backprop + adaptive LR.
+    # Predict still runs the full pipeline. 5-10x speedup on learn calls.
+    try:
+        brain.set_fast_training(True)
+        logger.log("Fast training mode ENABLED (learn skips bio subsystems)")
+    except Exception as e:
+        logger.log(f"Fast training mode not available: {e}")
 
     # Configure training pipeline (LR scheduler, regularization, gradient management)
     # Essential for effective training — especially for checkpoints from older saves
     # NOTE: Python-side CosineAnnealingLR produces LR in [0.05, 0.5] passed to brain.learn().
     # The C-level configure_training sets weight_decay and gradient clipping parameters
-    # but its learning_rate is overridden by the explicit LR in learn() calls.
+    # but its learning_rate is the fallback when no explicit LR is passed to learn().
+    # With 1024 inputs, backprop scales hidden LR by 1/sqrt(fan_in) = 1/32, so:
+    #   hidden effective = 0.05/32 = 0.0016,  output effective = 0.05*10 = 0.5
     try:
         brain.configure_training(
-            learning_rate=0.001,
+            learning_rate=0.05,
             weight_decay=0.0001,
             gradient_clip=1.0,
         )
-        logger.log("Configured training pipeline (LR=0.001, L2=0.0001, grad_clip=1.0)")
+        logger.log("Configured training pipeline (LR=0.05, L2=0.0001, grad_clip=1.0)")
     except Exception as e:
         logger.log(f"Training pipeline configuration failed: {e}")
+
+    # Note: cognitive profile is already enabled via Brain.create_full() at creation time.
+    # For checkpoint-resumed brains, configure_cognitive() sets flags only (subsystems
+    # must have been initialized at original creation time to be effective).
+    if resume_path:
+        try:
+            brain.configure_cognitive()
+            logger.log("Set cognitive config flags on resumed brain")
+        except Exception as e:
+            logger.log(f"Cognitive profile configuration failed: {e}")
 
     # Enable multi-network ensemble training (LNN + CNN alongside adaptive SNN)
     try:
@@ -2068,7 +2777,14 @@ def main() -> int:
     smoke_ok = True
     try:
         # 1. Verify predict works with correct dimensions
-        test_input = [0.1] * ATHENA_NUM_INPUTS
+        # Use text_to_features to generate natural-looking features that won't trigger BBB
+        if BENCHMARKS_AVAILABLE:
+            from benchmark_datasets import text_to_features as _smoke_ttf
+            test_input = _smoke_ttf("This is a smoke test for the brain prediction pipeline", ATHENA_NUM_INPUTS)
+        else:
+            import random
+            rng = random.Random(42)
+            test_input = [rng.gauss(0.0, 0.3) for _ in range(ATHENA_NUM_INPUTS)]
         result = brain.predict(test_input)
         if result is None:
             logger.log("  FAIL: brain.predict() returned None")
@@ -2077,7 +2793,7 @@ def main() -> int:
             decision = result[0] if isinstance(result, tuple) else result
             logger.log(f"  OK: predict returns result (decision={decision})")
 
-        # 2. Verify learn works
+        # 2. Verify learn works (use same natural features to avoid BBB trigger)
         brain.learn(test_input, "smoke:test_label", 0.1)
         logger.log("  OK: brain.learn() accepted input")
 
@@ -2103,10 +2819,22 @@ def main() -> int:
         logger.log(f"  OK: domain labels prefixed ({test_label})")
 
         # 5. Quick learn+predict cycle to verify learning signal
-        for i in range(5):
-            features = [float(i == j) for j in range(ATHENA_NUM_INPUTS)]
+        # Use text_to_features for natural feature vectors that pass BBB
+        smoke_phrases = ["The cat sat on the mat", "Neural networks learn patterns",
+                         "Mathematics is beautiful", "Stars shine at night", "Music moves the soul"]
+        for i, phrase in enumerate(smoke_phrases):
+            if BENCHMARKS_AVAILABLE:
+                features = _smoke_ttf(phrase, ATHENA_NUM_INPUTS)
+            else:
+                rng2 = random.Random(i + 100)
+                features = [rng2.gauss(0.0, 0.3) for _ in range(ATHENA_NUM_INPUTS)]
             brain.learn(features, f"smoke:{i}", 0.5)
-        result2 = brain.predict([1.0] + [0.0] * (ATHENA_NUM_INPUTS - 1))
+        if BENCHMARKS_AVAILABLE:
+            verify_input = _smoke_ttf("The dog sat on the rug", ATHENA_NUM_INPUTS)
+        else:
+            rng3 = random.Random(999)
+            verify_input = [rng3.gauss(0.0, 0.3) for _ in range(ATHENA_NUM_INPUTS)]
+        result2 = brain.predict(verify_input)
         dec2 = result2[0] if isinstance(result2, tuple) else result2
         logger.log(f"  OK: 5-step train+predict cycle (decision={dec2 if result2 else 'None'})")
 
@@ -2125,6 +2853,11 @@ def main() -> int:
 
     logger.log("SMOKE TEST PASSED — proceeding with training")
     logger.log("-" * 70)
+
+    # Start live probe monitor — polls every 10s, logs to JSONL, detects errors
+    probe_monitor = ProbeMonitor(brain, logger, interval_s=10.0)
+    probe_monitor.start()
+    logger.log("Live probe monitor started (10s interval)")
 
     report_card = None
 
@@ -2149,6 +2882,7 @@ def main() -> int:
     def _shutdown_save_and_return():
         global _clean_exit
         logger.log("Shutdown requested — emergency save before exit")
+        probe_monitor.stop()
         try:
             if _brain_ref[0] is not None:
                 _brain_ref[0].save(str(ATHENA_CHECKPOINT_DIR / "athena_emergency.bin"))
@@ -2165,13 +2899,24 @@ def main() -> int:
         except Exception:
             pass
 
-    if SCHOOL_AVAILABLE:
-        # ===== NEW PIPELINE: Parallel School =====
+    def _check_probe_error():
+        """Check if probe monitor detected errors. Returns True if error found."""
+        if probe_monitor.has_error:
+            logger.log(f"PROBE ERROR DETECTED: {probe_monitor.error_message}")
+            logger.log("Saving emergency checkpoint and stopping training...")
+            _shutdown_save_and_return()
+            return True
+        return False
 
-        # Phase 0: Orientation (quick warm-up on built-in benchmarks)
-        if resume_phase and phase_reached(resume_phase, "phase0"):
+    if SCHOOL_AVAILABLE:
+        # ===== BIOLOGICAL CURRICULUM PIPELINE =====
+        # Stage 0: Sensory -> Stage 1: Language -> Stage 2: Comprehension
+        # -> Stage 3: Foundation (tiered) -> Stage 4: Self-Directed Mastery
+
+        # Stage 0: Sensory Bootstrapping (= Phase 0 Orientation)
+        if resume_phase and phase_reached(resume_phase, "stage0"):
             logger.log("\n" + "=" * 70)
-            logger.log(f"SKIPPING Phase 0 (completed in previous run)")
+            logger.log(f"SKIPPING Stage 0 (completed in previous run)")
             logger.log("=" * 70)
             total_trained = resume_trained
             health_check(brain, logger, "Resume", abort_on_fail=True)
@@ -2179,42 +2924,75 @@ def main() -> int:
         else:
             total_trained = phase0_orientation(brain, socratic, cognitive, logger)
 
-            p0_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_phase0.bin"
-            brain.save(str(p0_ckpt))
-            save_progress("phase0", p0_ckpt, total_trained)
-            logger.log(f"Phase 0 checkpoint saved: {p0_ckpt}")
+            s0_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_stage0.bin"
+            brain.save(str(s0_ckpt))
+            save_progress("stage0", s0_ckpt, total_trained)
+            logger.log(f"Stage 0 checkpoint saved: {s0_ckpt}")
 
-            health_check(brain, logger, "Phase 0", abort_on_fail=True)
-            conversation_probe(brain, logger, "Phase 0 (Orientation)")
+            health_check(brain, logger, "Stage 0", abort_on_fail=True)
+            conversation_probe(brain, logger, "Stage 0 (Sensory Bootstrapping)")
 
-        # Check for shutdown between Phase 0 and Phase 1
-        if _shutdown_requested:
+        if _shutdown_requested or _check_probe_error():
             _shutdown_save_and_return()
             return 0
 
-        # Phase 1: Parallel School (23 instructors)
-        if resume_phase and phase_reached(resume_phase, "phase1"):
+        # Stage 1: Language Acquisition
+        if resume_phase and phase_reached(resume_phase, "stage1"):
             logger.log("\n" + "=" * 70)
-            logger.log(f"SKIPPING Phase 1 (completed in previous run)")
+            logger.log(f"SKIPPING Stage 1 (completed in previous run)")
             logger.log("=" * 70)
         else:
-            result = phase1_parallel_school(brain, socratic, cognitive,
-                                            logger, total_trained,
-                                            max_concurrent_instructors=cli_max_concurrent,
-                                            min_domain_accuracy=cli_min_accuracy,
-                                            max_retry_passes=cli_max_retry)
-            if isinstance(result, tuple):
-                total_trained, report_card = result
-            else:
-                total_trained = result
+            total_trained = stage1_language_acquisition(
+                brain, socratic, cognitive, logger, total_trained)
 
-            p1_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_school.bin"
-            brain.save(str(p1_ckpt))
-            save_progress("phase1", p1_ckpt, total_trained)
-            logger.log(f"School checkpoint saved: {p1_ckpt}")
+            s1_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_stage1_language.bin"
+            brain.save(str(s1_ckpt))
+            save_progress("stage1", s1_ckpt, total_trained)
+            logger.log(f"Stage 1 checkpoint saved: {s1_ckpt}")
 
-            health_check(brain, logger, "Phase 1 (School)", abort_on_fail=True)
-            conversation_probe(brain, logger, "Phase 1 (Parallel School)")
+        if _shutdown_requested or _check_probe_error():
+            _shutdown_save_and_return()
+            return 0
+
+        # Stage 2: Reading Comprehension
+        if resume_phase and phase_reached(resume_phase, "stage2"):
+            logger.log("\n" + "=" * 70)
+            logger.log(f"SKIPPING Stage 2 (completed in previous run)")
+            logger.log("=" * 70)
+        else:
+            total_trained = stage2_reading_comprehension(
+                brain, socratic, cognitive, logger, total_trained)
+
+            s2_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_stage2_comprehension.bin"
+            brain.save(str(s2_ckpt))
+            save_progress("stage2", s2_ckpt, total_trained)
+            logger.log(f"Stage 2 checkpoint saved: {s2_ckpt}")
+
+        if _shutdown_requested or _check_probe_error():
+            _shutdown_save_and_return()
+            return 0
+
+        # Stage 3: Foundation Knowledge (tiered, curiosity-ranked)
+        if resume_phase and phase_reached(resume_phase, "stage3"):
+            logger.log("\n" + "=" * 70)
+            logger.log(f"SKIPPING Stage 3 (completed in previous run)")
+            logger.log("=" * 70)
+        else:
+            total_trained = stage3_foundation_knowledge(
+                brain, socratic, cognitive, logger, total_trained)
+
+            s3_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_stage3_foundation.bin"
+            brain.save(str(s3_ckpt))
+            save_progress("stage3", s3_ckpt, total_trained)
+            logger.log(f"Stage 3 checkpoint saved: {s3_ckpt}")
+
+        if _shutdown_requested or _check_probe_error():
+            _shutdown_save_and_return()
+            return 0
+
+        # Stage 4: Self-Directed Mastery (pull-based, interactive)
+        total_trained = stage4_self_directed_mastery(
+            brain, socratic, cognitive, logger, total_trained)
 
     else:
         # ===== LEGACY PIPELINE: Sequential phases =====
@@ -2303,15 +3081,15 @@ def main() -> int:
     elapsed = time.time() - logger.start_time
     logger.log("\n" + "=" * 70)
     logger.log("ATHENA TRAINING COMPLETE")
-    logger.log(f"Training mode: {'parallel_school' if SCHOOL_AVAILABLE else 'sequential_legacy'}")
-    if report_card:
-        logger.log(f"Instructors: {report_card.get('num_instructors', 0)}")
-        logger.log(f"Graduated: {report_card.get('graduated', 0)}/"
-                    f"{report_card.get('total_domains', 0)} domains")
+    logger.log(f"Training mode: {'biological_curriculum' if SCHOOL_AVAILABLE else 'sequential_legacy'}")
     logger.log(f"Total training steps: {total_trained:,}")
     logger.log(f"Total time: {elapsed/3600:.2f} hours")
     logger.log(f"Model saved to: {ATHENA_MODEL_PATH}")
     logger.log("=" * 70)
+
+    # Stop probe monitor
+    probe_monitor.stop()
+    logger.log("Probe monitor stopped")
 
     # Clean exit — set _clean_exit before shutdown so atexit handler is a no-op
     _brain_ref[0] = None

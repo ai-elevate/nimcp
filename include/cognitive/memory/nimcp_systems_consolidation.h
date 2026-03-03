@@ -47,7 +47,7 @@ extern "C" {
 
 // Default capacities
 #define CONSOLIDATION_DEFAULT_CORTICAL_CAPACITY    2048  // Max cortical nodes
-#define CONSOLIDATION_DEFAULT_REPLAY_QUEUE_SIZE     256  // Max replay events per cycle
+#define CONSOLIDATION_DEFAULT_REPLAY_QUEUE_SIZE    4096  // Max replay events per cycle
 #define CONSOLIDATION_DEFAULT_NEIGHBORS_PER_NODE      8  // Semantic similarity links
 
 // Consolidation parameters (biological timescales)

@@ -306,6 +306,133 @@ cleanup:
     return NULL;
 }
 
+/**
+ * Create a brain with ALL subsystems enabled (RESEARCH profile + extras).
+ * This is the "everything on" mode for maximum capability.
+ */
+nimcp_brain_t nimcp_brain_create_full(
+    const char* name,
+    nimcp_brain_task_t task,
+    uint32_t num_inputs,
+    uint32_t num_outputs,
+    uint32_t neuron_count)
+{
+    LOG_INFO("Creating FULL brain with %u neurons: name='%s', task=%d, inputs=%u, outputs=%u",
+             neuron_count, name ? name : "NULL", task, num_inputs, num_outputs);
+
+    NIMCP_API_CHECK_NULL_RET_NULL(name, "Brain name cannot be NULL");
+
+    nimcp_brain_t handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_create_full: handle allocation failed");
+        return NULL;
+    }
+
+    /* Start from RESEARCH profile (includes cognitive + standard) */
+    brain_config_t config = brain_config_from_profile(BRAIN_CONFIG_RESEARCH);
+
+    /* Override dimensions and task */
+    config.neuron_count = neuron_count;
+    config.num_inputs = num_inputs;
+    config.num_outputs = num_outputs;
+    config.task = (brain_task_t)task;
+    config.size = BRAIN_SIZE_LARGE;
+
+    /* Enable subsystems not in the research profile */
+    config.enable_world_model = true;
+    config.enable_omni_world_model = true;
+    config.enable_multimodal_world_model = true;
+    config.omni_wm_enable_dreaming = true;
+    config.mm_wm_enable_bio_async = true;
+    config.enable_wm_security_immune_bridge = true;
+    config.enable_wm_logging_bridge = true;
+    config.enable_wm_cognitive_bridge = true;
+    config.enable_wm_parietal_bridge = true;
+    config.enable_wm_hypothalamus_bridge = true;
+    config.enable_wm_thalamic_bridge = true;
+    config.enable_wm_substrate_bridge = true;
+    config.enable_wm_memory_bridge = true;
+    config.enable_wm_kg_bridge = true;
+    config.enable_wm_tom_bridge = true;
+    config.enable_wm_plasticity_bridge = true;
+
+    /* Creative system */
+    config.enable_creative_system = true;
+    config.enable_creative_text = true;
+    config.enable_creative_music = true;
+    config.enable_creative_visual = true;
+    config.enable_creative_video = true;
+    config.enable_creative_appreciation = true;
+    config.enable_creative_ethics = true;
+
+    /* LGSS safety */
+    config.enable_lgss = true;
+    config.enable_lgss_telemetry = true;
+    config.lgss_enable_bio_async = true;
+    config.lgss_enable_ethics_bridge = true;
+    config.lgss_enable_plasticity_bridge = true;
+    config.lgss_enable_output_gates = true;
+
+    /* Neuromodulators */
+    config.enable_lc = true;
+    config.enable_vta = true;
+    config.enable_raphe = true;
+    config.enable_habenula = true;
+    config.enable_neuromod_intra = true;
+    config.neuromod_enable_security_bridge = true;
+    config.neuromod_enable_immune_bridge = true;
+    config.neuromod_enable_logging_bridge = true;
+    config.neuromod_enable_training_bridge = true;
+
+    /* Immune system bridges */
+    config.immune_enable_bbb_integration = true;
+    config.immune_enable_bft_integration = true;
+    config.immune_enable_swarm_integration = true;
+    config.immune_enable_bio_async = true;
+
+    /* Collective cognition bridges */
+    config.collective_enable_leader_detection = true;
+    config.collective_enable_immune_integration = true;
+    config.collective_enable_bio_async = true;
+
+    /* Spike NLP */
+    config.enable_spike_nlp = true;
+
+    /* Health agent */
+    config.enable_health_agent = true;
+
+    /* Cycle coordinator */
+    config.enable_cycle_coordinator = true;
+
+    /* Auto intervention */
+    config.enable_auto_intervention = true;
+
+    /* Global workspace dimension must match num_inputs
+     * WHY:  brain_part_core.c passes (features, num_features) to
+     *       global_workspace_compete() — num_features == num_inputs.
+     *       Default is 256, causing dimension mismatch THROW every step. */
+    config.workspace_capacity_dim = num_inputs;
+
+    /* All lazy inits OFF — everything initializes at creation */
+    config.lazy_init_mode = false;
+    config.lazy_consolidation_init = false;
+    config.lazy_global_workspace_init = false;
+
+    /* Create the brain with full subsystem initialization */
+    handle->internal_brain = brain_create_custom(&config);
+    if (!handle->internal_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "nimcp_brain_create_full: brain_create_custom returned NULL");
+        nimcp_free(handle);
+        return NULL;
+    }
+
+    set_error("No error");
+    LOG_INFO("FULL brain '%s' created with %u neurons, all subsystems enabled (handle=%p)",
+             name, neuron_count, (void*)handle);
+    return handle;
+}
+
 nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
     if (!config_filepath) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_create_from_config: config_filepath is NULL");

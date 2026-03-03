@@ -38,6 +38,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "utils/containers/nimcp_hash_table.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "networking/distributed/nimcp_distributed_cognition.h"
@@ -200,8 +201,9 @@ struct brain_struct {
     // CNN training is integrated into cnn_trainer
 
     // Label to output mapping
-    char** output_labels;        // Label strings
+    char** output_labels;        // Label strings (indexed array for reverse lookup)
     uint32_t num_output_labels;  // Current label count
+    hash_table_t* label_index;   // O(1) string→uint32 label lookup (FNV-1a)
 
     // Statistics
     brain_stats_t stats;  // Performance metrics

@@ -261,47 +261,56 @@ static synapse_handle_t* allocate_overflow(sparse_synapse_pool_t pool, uint32_t 
 
     // Find appropriate size class
     int class_idx = find_size_class(capacity);
-    if (class_idx < 0) {
-        LOG_ERROR("Overflow capacity %u exceeds maximum size class %u",
-                  capacity, SIZE_CLASS_MAX_HANDLES);
-        if (pool->config.enable_statistics) {
-            atomic_fetch_add(&pool->failed_allocations, 1);
-        }
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_unlock: validation failed");
-        return NULL;
-    }
 
-    // Get the actual capacity from the size class
-    uint32_t class_capacity = SIZE_CLASS_CAPACITIES[class_idx];
-    size_t block_size = class_capacity * sizeof(synapse_handle_t);
-
-    // Try to allocate from size-class pool
     void* ptr = NULL;
-    pool_lock(pool);
+    uint32_t class_capacity;
 
-    if (pool->size_class_pools[class_idx] != NULL) {
-        ptr = memory_pool_acquire(pool->size_class_pools[class_idx]);
-    }
-
-    pool_unlock(pool);
-
-    // Fallback to nimcp_malloc if pool exhausted or not initialized
-    if (ptr == NULL) {
+    if (class_idx < 0) {
+        // Oversized allocation — exceeds max size class, use direct malloc.
+        // This happens when neurons accumulate many connections (e.g. output
+        // neurons in large-backbone networks with >8192 incoming connections).
+        class_capacity = capacity;
+        size_t block_size = (size_t)capacity * sizeof(synapse_handle_t);
         ptr = nimcp_malloc(block_size);
         if (ptr == NULL) {
-            LOG_ERROR("Failed to allocate overflow array (capacity=%u, class=%d)",
-                      capacity, class_idx);
+            LOG_ERROR("Failed to allocate oversized overflow (capacity=%u, %zu bytes)",
+                      capacity, block_size);
             if (pool->config.enable_statistics) {
                 atomic_fetch_add(&pool->failed_allocations, 1);
             }
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pool_unlock: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_overflow: oversized malloc failed");
             return NULL;
         }
-        LOG_DEBUG("Overflow allocated via nimcp_malloc fallback (class %d exhausted)", class_idx);
-    }
+        memset(ptr, 0, block_size);
+        LOG_DEBUG("Oversized overflow allocated via nimcp_malloc (capacity=%u, %zu bytes)",
+                  capacity, block_size);
+    } else {
+        // Normal path — use size-class pool with malloc fallback
+        class_capacity = SIZE_CLASS_CAPACITIES[class_idx];
+        size_t block_size = class_capacity * sizeof(synapse_handle_t);
 
-    // Initialize to zero
-    memset(ptr, 0, block_size);
+        pool_lock(pool);
+        if (pool->size_class_pools[class_idx] != NULL) {
+            ptr = memory_pool_acquire(pool->size_class_pools[class_idx]);
+        }
+        pool_unlock(pool);
+
+        if (ptr == NULL) {
+            ptr = nimcp_malloc(block_size);
+            if (ptr == NULL) {
+                LOG_ERROR("Failed to allocate overflow array (capacity=%u, class=%d)",
+                          capacity, class_idx);
+                if (pool->config.enable_statistics) {
+                    atomic_fetch_add(&pool->failed_allocations, 1);
+                }
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_overflow: malloc fallback failed");
+                return NULL;
+            }
+            LOG_DEBUG("Overflow allocated via nimcp_malloc fallback (class %d exhausted)", class_idx);
+        }
+
+        memset(ptr, 0, block_size);
+    }
 
     // Return actual capacity
     if (actual_capacity) {
@@ -312,11 +321,14 @@ static synapse_handle_t* allocate_overflow(sparse_synapse_pool_t pool, uint32_t 
     if (pool->config.enable_statistics) {
         atomic_fetch_add(&pool->overflow_allocations, 1);
         atomic_fetch_add(&pool->total_allocations, 1);
-        atomic_fetch_add(&pool->size_class_hits[class_idx], 1);
+        if (class_idx >= 0) {
+            atomic_fetch_add(&pool->size_class_hits[class_idx], 1);
+        }
     }
 
     LOG_DEBUG("Allocated overflow array: requested=%u, actual=%u, class=%d, size=%zu bytes",
-              capacity, class_capacity, class_idx, block_size);
+              capacity, class_capacity, class_idx,
+              (size_t)class_capacity * sizeof(synapse_handle_t));
     return (synapse_handle_t*)ptr;
 }
 
@@ -1725,9 +1737,11 @@ int sparse_synapse_remove_with_metadata(
     }
 
     // Get handle before removal to check for metadata
+    // NOTE: sparse_synapse_get() returns NULL for out-of-bounds indices,
+    // which happens legitimately during pruning when peer_index values
+    // become stale. Do NOT throw to immune — callers handle -1 return.
     synapse_handle_t* handle = sparse_synapse_get(storage, index);
     if (handle == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_remove_with_metadata: validation failed");
         return -1;
     }
 

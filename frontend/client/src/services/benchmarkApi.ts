@@ -1,4 +1,5 @@
 import api from './api';
+import type { BenchmarkInfo, BenchmarkSummary } from '../types';
 
 export interface BenchmarkRequest {
   benchmark_id: string;
@@ -8,13 +9,13 @@ export interface BenchmarkRequest {
   include_cognitive?: boolean;
 }
 
-export const listBenchmarks = () => api.get('/benchmarks/available');
+export const listBenchmarks = () => api.get<BenchmarkInfo[]>('/benchmarks/available');
 
 export const runBenchmark = (req: BenchmarkRequest) =>
   api.post('/benchmarks/run', req);
 
-export const getBenchmarkStatus = () => api.get('/benchmarks/status');
+export const getBenchmarkStatus = () => api.get<{ running: boolean; current_benchmark?: string }>('/benchmarks/status');
 
-export const getBenchmarkResults = () => api.get('/benchmarks/results');
+export const getBenchmarkResults = () => api.get<BenchmarkSummary>('/benchmarks/results');
 
 export const stopBenchmark = () => api.post('/benchmarks/stop');

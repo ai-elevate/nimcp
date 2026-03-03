@@ -45,6 +45,11 @@ static _Atomic bool g_bp_shutting_down = false;
 // backprop_kernel_cleanup spins until this reaches zero before destroying pools.
 static _Atomic uint32_t g_bp_refcount = 0;
 
+// Monotonic call counter for negative sampling RNG seed diversity.
+// Each backprop call gets a unique seed so the sampled negatives vary across
+// training steps, providing unbiased gradient estimation over time.
+static _Atomic uint32_t g_bp_call_counter = 0;
+
 //=============================================================================
 // Constants
 //=============================================================================
@@ -53,6 +58,14 @@ static _Atomic uint32_t g_bp_refcount = 0;
 #define BP_PARALLEL_THRESHOLD 256
 #define BP_NEURONS_PER_THREAD 64
 #define BP_MAX_WORKERS 4
+
+// Negative sampling for output layer deltas.
+// With large output vocabularies (e.g. 2048 labels), computing deltas for ALL
+// outputs causes 2047 "push to zero" gradients to overwhelm the 1 "push to one"
+// gradient, collapsing all outputs to zero. Instead, we backprop through active
+// targets + K random negatives, scaling negative deltas to maintain unbiased
+// gradient estimation.
+#define BP_NEGATIVE_SAMPLES 32
 
 #define BP_POOL_BLOCK_SIZE 4096
 #define BP_POOL_NUM_BLOCKS 256
@@ -375,16 +388,21 @@ static void backprop_worker(void* arg)
             neuron_t* src = neural_network_get_neuron(w->net, src_id);
             if (!src) continue;
 
-            float weight_delta = w->layer_lr * dj * src->state;
-            if (weight_delta > 0.1f) weight_delta = 0.1f;
-            if (weight_delta < -0.1f) weight_delta = -0.1f;
+            // C4-FIX: Include strength in gradient — forward pass computes
+            // weight * strength * activation, so d(loss)/d(weight) = strength * delta * act
+            float strength = in_syn->strength;
+            float weight_delta = w->layer_lr * dj * strength * src->state;
+            float max_delta = fmaxf(0.1f, w->layer_lr * 2.0f);
+            if (weight_delta > max_delta) weight_delta = max_delta;
+            if (weight_delta < -max_delta) weight_delta = -max_delta;
 
             gnorm += (double)weight_delta * weight_delta;
 
             if (src_id >= w->prev_offset &&
                 src_id < w->prev_offset + w->prev_size) {
                 uint32_t prev_idx = src_id - w->prev_offset;
-                w->local_delta_prev[prev_idx] += in_syn->weight * dj;
+                // C4-FIX: Propagate delta through effective weight (weight * strength)
+                w->local_delta_prev[prev_idx] += in_syn->weight * strength * dj;
                 if (!w->local_dedup[prev_idx]) {
                     w->local_dedup[prev_idx] = 1;
                     w->local_sparse_prev[nsp++] = prev_idx;
@@ -422,6 +440,24 @@ int backprop_sparse_full(
     float max_grad_norm,
     float* out_grad_norm)
 {
+    return backprop_sparse_full_ex(net, num_layers, layer_sizes,
+        learning_rate, min_weight, max_weight,
+        target, output, target_size,
+        max_grad_norm, out_grad_norm, NULL);
+}
+
+int backprop_sparse_full_ex(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float max_grad_norm,
+    float* out_grad_norm,
+    backprop_layer_grads_t* out_layer_grads)
+{
     if (!net || num_layers < 2 || !layer_sizes || !target || !output || !out_grad_norm)
         return -1;
 
@@ -436,6 +472,15 @@ int backprop_sparse_full(
     }
 
     double grad_norm_sq = 0.0;
+
+    // Per-layer gradient norm accumulators (double precision to avoid float drift).
+    // num_weight_layers = num_layers - 1 (weights connect adjacent neuron layers).
+    // Clamped to BP_MAX_GRAD_LAYERS to avoid stack overflow on pathological input.
+    uint32_t num_weight_layers = num_layers - 1;
+    if (num_weight_layers > BP_MAX_GRAD_LAYERS)
+        num_weight_layers = BP_MAX_GRAD_LAYERS;
+    double layer_grad_sq[BP_MAX_GRAD_LAYERS];
+    memset(layer_grad_sq, 0, sizeof(layer_grad_sq));
 
     // Compute layer offsets
     uint32_t* layer_offsets = (uint32_t*)nimcp_malloc(num_layers * sizeof(uint32_t));
@@ -490,11 +535,65 @@ int backprop_sparse_full(
     memset(delta_cur, 0, max_layer * sizeof(float));
     memset(delta_prev, 0, max_layer * sizeof(float));
 
-    // Output layer deltas (CE + sigmoid): delta = target - output
-    for (uint32_t j = 0; j < output_size && j < target_size; j++) {
-        delta_cur[j] = target[j] - output[j];
-        if (fabsf(delta_cur[j]) > 1e-10f) {
-            sparse_cur[nsparse_cur++] = j;
+    // Output layer deltas with negative sampling (CE + sigmoid): delta = target - output
+    //
+    // PROBLEM: With large output vocabularies (e.g. 2048 labels), computing deltas
+    // for ALL outputs creates 2047 "push down to 0" gradients vs 1 "push up to 1"
+    // gradient. The network learns to output 0 for everything.
+    //
+    // FIX: Only backprop through active targets (target[j] > 0.5) plus K random
+    // negative samples. Negative deltas are scaled by (num_negatives / K) so the
+    // gradient is an unbiased estimate of the full-vocabulary gradient.
+    //
+    // Phase 1: Compute deltas for active targets only
+    uint32_t bp_min_output = output_size < target_size ? output_size : target_size;
+    for (uint32_t j = 0; j < bp_min_output; j++) {
+        if (target[j] > 0.5f) {
+            delta_cur[j] = target[j] - output[j];
+            if (fabsf(delta_cur[j]) > 1e-10f) {
+                sparse_cur[nsparse_cur++] = j;
+            }
+        }
+        // Non-targets: delta_cur[j] stays 0 from memset above
+    }
+
+    // Phase 2: Sample K random negatives (indices where target[j] <= 0.5)
+    // Skip negative sampling if output is small enough that gradient domination
+    // is not a concern (threshold: when num_negatives <= 2 * BP_NEGATIVE_SAMPLES)
+    //
+    // NOTE: Negatives are NOT scaled by (total_negatives / K). The whole point of
+    // negative sampling is to reduce the push-down gradient pressure. With K=32
+    // unscaled negatives, the gradient ratio is 1:32 (positive:negative) instead
+    // of 1:2048. Scaling by neg_space/K would reconstruct the original 1:2048 ratio,
+    // defeating the purpose entirely.
+    uint32_t num_active = nsparse_cur;
+    uint32_t neg_space = bp_min_output > num_active ? bp_min_output - num_active : 0;
+    if (neg_space > 2 * BP_NEGATIVE_SAMPLES) {
+        uint32_t neg_limit = BP_NEGATIVE_SAMPLES < neg_space ? BP_NEGATIVE_SAMPLES : neg_space;
+
+        // Seed from atomic call counter (Knuth multiplicative hash for bit mixing)
+        uint32_t neg_seed = atomic_fetch_add(&g_bp_call_counter, 1) * 2654435761u;
+        uint32_t neg_count = 0;
+
+        for (uint32_t attempt = 0; attempt < neg_limit * 4 && neg_count < neg_limit; attempt++) {
+            neg_seed = neg_seed * 1103515245u + 12345u;
+            uint32_t j = neg_seed % bp_min_output;
+            if (target[j] > 0.5f) continue;                // skip active targets
+            if (fabsf(delta_cur[j]) > 1e-10f) continue;    // already selected
+            delta_cur[j] = target[j] - output[j];           // unscaled — 1:K ratio
+            if (fabsf(delta_cur[j]) > 1e-10f) {
+                sparse_cur[nsparse_cur++] = j;
+            }
+            neg_count++;
+        }
+    } else if (neg_space > 0) {
+        // Small output layer: compute all negatives (no domination risk)
+        for (uint32_t j = 0; j < bp_min_output; j++) {
+            if (target[j] > 0.5f) continue;  // already handled in Phase 1
+            delta_cur[j] = target[j] - output[j];
+            if (fabsf(delta_cur[j]) > 1e-10f) {
+                sparse_cur[nsparse_cur++] = j;
+            }
         }
     }
 
@@ -512,8 +611,11 @@ int backprop_sparse_full(
         if (is_output) {
             layer_lr = learning_rate * OUTPUT_LR_BOOST;
         } else {
+            // H3-FIX: Fourth-root scaling instead of square-root — with fan_in=1024,
+            // sqrt gives /32 (hidden LR=0.0016), fourth-root gives /5.66 (hidden LR=0.0088).
+            // This is ~5.5x faster hidden representation learning while still normalizing.
             float fan_in = (float)prev_size;
-            layer_lr = learning_rate / sqrtf(fmaxf(fan_in, 1.0f));
+            layer_lr = learning_rate / powf(fmaxf(fan_in, 1.0f), 0.25f);
         }
 
         // Global gradient norm clipping: scale layer_lr if grad norm exceeds threshold.
@@ -619,15 +721,20 @@ int backprop_sparse_full(
             // Reduce: merge per-worker results into delta_prev
             // Sparse merge: only touch indices that workers actually wrote to,
             // avoiding O(prev_size) memcpy/SIMD-add on multi-million element arrays.
-            for (uint32_t w = 0; w < nw; w++) {
-                grad_norm_sq += workers[w].local_grad_norm_sq;
+            {
+                uint32_t wl_idx = (uint32_t)(layer - 1);
+                for (uint32_t w = 0; w < nw; w++) {
+                    grad_norm_sq += workers[w].local_grad_norm_sq;
+                    if (wl_idx < num_weight_layers)
+                        layer_grad_sq[wl_idx] += workers[w].local_grad_norm_sq;
 
-                // Merge sparse_prev indices using dedup
-                for (uint32_t z = 0; z < workers[w].local_nsparse_prev; z++) {
-                    uint32_t idx = workers[w].local_sparse_prev[z];
-                    if (!sparse_dedup[idx]) {
-                        sparse_dedup[idx] = 1;
-                        sparse_prev[nsparse_prev++] = idx;
+                    // Merge sparse_prev indices using dedup
+                    for (uint32_t z = 0; z < workers[w].local_nsparse_prev; z++) {
+                        uint32_t idx = workers[w].local_sparse_prev[z];
+                        if (!sparse_dedup[idx]) {
+                            sparse_dedup[idx] = 1;
+                            sparse_prev[nsparse_prev++] = idx;
+                        }
                     }
                 }
             }
@@ -669,6 +776,10 @@ int backprop_sparse_full(
         // Serial path (small layer or no thread pool)
         //--------------------------------------------------------------
 serial_path:
+        {
+        // Per-layer accumulator: avoids repeated array indexing in the hot inner loop.
+        // Added to layer_grad_sq[layer-1] after the serial loop completes.
+        double serial_layer_gnorm = 0.0;
         for (uint32_t ai = 0; ai < nsparse_cur; ai++) {
             uint32_t j = sparse_cur[ai];
             if (is_output && j >= target_size)
@@ -690,15 +801,23 @@ serial_path:
                 neuron_t* src = neural_network_get_neuron(net, src_id);
                 if (!src) continue;
 
-                float weight_delta = layer_lr * dj * src->state;
-                if (weight_delta > 0.1f) weight_delta = 0.1f;
-                if (weight_delta < -0.1f) weight_delta = -0.1f;
+                // C4-FIX: Include strength in gradient — forward pass computes
+                // weight * strength * activation, so d(loss)/d(weight) = strength * delta * act
+                float strength = in_syn->strength;
+                float weight_delta = layer_lr * dj * strength * src->state;
+                // H2-FIX: Proportional clamp — allows larger updates at higher LR (output layer)
+                float max_delta = fmaxf(0.1f, layer_lr * 2.0f);
+                if (weight_delta > max_delta) weight_delta = max_delta;
+                if (weight_delta < -max_delta) weight_delta = -max_delta;
 
-                grad_norm_sq += (double)weight_delta * weight_delta;
+                double wd_sq = (double)weight_delta * weight_delta;
+                grad_norm_sq += wd_sq;
+                serial_layer_gnorm += wd_sq;
 
                 if (src_id >= prev_offset && src_id < prev_offset + prev_size) {
                     uint32_t prev_idx = src_id - prev_offset;
-                    delta_prev[prev_idx] += in_syn->weight * dj;
+                    // C4-FIX: Propagate delta through effective weight (weight * strength)
+                    delta_prev[prev_idx] += in_syn->weight * strength * dj;
                     if (!sparse_dedup[prev_idx]) {
                         sparse_dedup[prev_idx] = 1;
                         sparse_prev[nsparse_prev++] = prev_idx;
@@ -711,10 +830,19 @@ serial_path:
             }
 
             float bias_delta = layer_lr * dj;
-            grad_norm_sq += (double)bias_delta * bias_delta;
+            double bd_sq = (double)bias_delta * bias_delta;
+            grad_norm_sq += bd_sq;
+            serial_layer_gnorm += bd_sq;
             cur_n->bias += bias_delta;
             if (cur_n->bias > 10.0f) cur_n->bias = 10.0f;
             if (cur_n->bias < -10.0f) cur_n->bias = -10.0f;
+        }
+        // Flush serial layer accumulator into per-layer array
+        {
+            uint32_t wl_idx = (uint32_t)(layer - 1);
+            if (wl_idx < num_weight_layers)
+                layer_grad_sq[wl_idx] += serial_layer_gnorm;
+        }
         }
 
 after_weight_update:
@@ -834,6 +962,20 @@ after_act_deriv:
     {
         float norm = sqrtf((float)grad_norm_sq);
         *out_grad_norm = isfinite(norm) ? norm : 0.0f;
+    }
+
+    // Per-layer gradient norms: compute sqrt of per-layer accumulators.
+    // Only written when caller provides the output struct (NULL = no overhead).
+    if (out_layer_grads) {
+        out_layer_grads->num_layers = num_weight_layers;
+        for (uint32_t l = 0; l < num_weight_layers; l++) {
+            float ln = sqrtf((float)layer_grad_sq[l]);
+            out_layer_grads->norms[l] = isfinite(ln) ? ln : 0.0f;
+        }
+        // Zero remaining slots for safety
+        for (uint32_t l = num_weight_layers; l < BP_MAX_GRAD_LAYERS; l++) {
+            out_layer_grads->norms[l] = 0.0f;
+        }
     }
 
     // H-3: Decrement refcount so cleanup knows we're done

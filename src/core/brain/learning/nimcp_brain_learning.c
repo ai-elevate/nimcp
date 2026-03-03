@@ -47,6 +47,7 @@
 #include "async/nimcp_future.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "utils/containers/nimcp_hash_table.h"
 #include "cognitive/memory/core/nimcp_prime_signature.h"
 #include "core/brain/regions/mammillary/nimcp_mammillary.h"
 
@@ -118,10 +119,11 @@ uint32_t nimcp_brain_learning_get_or_create_label_index(brain_t brain, const cha
     // 3. Result in buffer overflow past output_labels capacity → heap corruption
     nimcp_platform_mutex_lock(&brain->cache_mutex);
 
-    // Search existing labels - O(k)
-    for (uint32_t i = 0; i < brain->num_output_labels; i++) {
-        if (strcmp(brain->output_labels[i], label) == 0) {
-            result = i;
+    // O(1) hash table lookup (replaces O(k) linear strcmp scan)
+    if (brain->label_index) {
+        void* found = hash_table_lookup_string(brain->label_index, label);
+        if (found) {
+            result = *(uint32_t*)found;
             goto done;
         }
     }
@@ -129,16 +131,29 @@ uint32_t nimcp_brain_learning_get_or_create_label_index(brain_t brain, const cha
     // Guard: Check capacity — labels exceed output neurons
     if (brain->num_output_labels >= brain->config.num_outputs) {
         // Hash overflow labels across existing outputs instead of always index 0
+        // (M2): Use djb2 consistent hash so labels get deterministic, well-distributed
+        // assignments even when beyond capacity. Avoids the pathological case where
+        // simple modulo of a monotonic counter clusters labels into low indices.
         uint32_t h = 5381;
         for (const char* p = label; *p; p++) {
             h = ((h << 5) + h) + (unsigned char)*p;
         }
         result = h % brain->config.num_outputs;
-        // WARNING: Label overflow — this label collides with an existing class
-        // To fix: increase num_outputs to accommodate all labels
+        // Still insert into hash table for O(1) future lookups of overflow labels
+        if (brain->label_index)
+            hash_table_insert_string(brain->label_index, label, &result, sizeof(uint32_t));
         LOG_WARN("Label overflow: '%s' hashed to output %u (num_labels=%u >= num_outputs=%u)",
                  label, result, brain->num_output_labels, brain->config.num_outputs);
         goto done;
+    }
+
+    // (M2): Early warning when approaching label capacity — gives callers a
+    // chance to notice before overflow causes hash collisions.
+    if (brain->num_output_labels >= (brain->config.num_outputs * 9u / 10u) &&
+        brain->num_output_labels == (brain->config.num_outputs * 9u / 10u)) {
+        LOG_WARN("Label capacity at 90%%: %u of %u output slots used. "
+                 "New labels beyond capacity will be hash-mapped to existing outputs.",
+                 brain->num_output_labels, brain->config.num_outputs);
     }
 
     // Create new label (use nimcp_malloc to match nimcp_free in brain_destroy)
@@ -148,9 +163,14 @@ uint32_t nimcp_brain_learning_get_or_create_label_index(brain_t brain, const cha
         result = 0;
         goto done;
     }
-    strncpy(brain->output_labels[brain->num_output_labels], label, label_len + 1);
-    brain->output_labels[brain->num_output_labels][label_len] = '\0';
-    result = brain->num_output_labels++;
+    memcpy(brain->output_labels[brain->num_output_labels], label, label_len + 1);
+    result = brain->num_output_labels;
+
+    // Insert into hash table for O(1) future lookups
+    if (brain->label_index)
+        hash_table_insert_string(brain->label_index, label, &result, sizeof(uint32_t));
+
+    brain->num_output_labels++;
 
 done:
     nimcp_platform_mutex_unlock(&brain->cache_mutex);
@@ -284,6 +304,93 @@ float nimcp_brain_learning_quantum_weight_energy(const float* weights, uint32_t 
 //=============================================================================
 // Public Learning API
 //=============================================================================
+
+/**
+ * @brief Learn from a dense target vector (distillation / generative training)
+ *
+ * WHY: Enables teacher-model distillation and semantic embedding training
+ * HOW: Builds training_example_t with dense target, uses LEARN_MODE_DISTILLATION
+ *
+ * @param brain Brain handle
+ * @param features Input features
+ * @param num_features Feature count
+ * @param target Dense target output vector
+ * @param target_size Target vector size
+ * @param label Optional semantic label (can be NULL)
+ * @param confidence Training weight
+ * @return Loss value or -1 on error
+ */
+float brain_learn_vector(brain_t brain, const float* features, uint32_t num_features,
+                          const float* target, uint32_t target_size,
+                          const char* label, float confidence)
+{
+    if (!brain || !features || !target) {
+        set_error("Invalid parameters to brain_learn_vector");
+        return -1.0f;
+    }
+
+    if (num_features != brain->config.num_inputs) {
+        set_error("Feature count mismatch: expected %u, got %u",
+                  brain->config.num_inputs, num_features);
+        return -1.0f;
+    }
+
+    if (target_size != brain->config.num_outputs) {
+        set_error("Target size mismatch: expected %u, got %u",
+                  brain->config.num_outputs, target_size);
+        return -1.0f;
+    }
+
+    /* Validate features for NaN/Inf */
+    for (uint32_t i = 0; i < num_features; i++) {
+        if (isnan(features[i]) || isinf(features[i])) {
+            set_error("Invalid feature value at index %u: NaN or Inf", i);
+            return -1.0f;
+        }
+    }
+
+    /* Validate target for NaN/Inf */
+    for (uint32_t i = 0; i < target_size; i++) {
+        if (isnan(target[i]) || isinf(target[i])) {
+            set_error("Invalid target value at index %u: NaN or Inf", i);
+            return -1.0f;
+        }
+    }
+
+    if (!ensure_writable_network(brain)) {
+        return -1.0f;
+    }
+
+    /* Build training example with dense target directly — no one-hot conversion */
+    training_example_t example = {
+        .input = (float*)features,
+        .input_size = num_features,
+        .target = (float*)target,
+        .target_size = target_size,
+        .confidence = confidence
+    };
+    if (label) {
+        strncpy(example.label, label, sizeof(example.label) - 1);
+    } else {
+        example.label[0] = '\0';
+    }
+
+    /* Use fast training path (distillation mode) */
+    float loss = adaptive_network_learn(brain->network, &example,
+                                         LEARN_MODE_DISTILLATION,
+                                         brain->config.learning_rate);
+    nimcp_brain_learning_adapt_learning_rate(brain, loss);
+    __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
+
+    /* Accumulate sleep pressure */
+    if (brain->sleep_system && brain->config.enable_sleep_wake_cycle) {
+        sleep_accumulate_pressure(brain->sleep_system, 1);
+    }
+
+    clear_cache(brain);
+    return loss;
+}
+
 
 /**
  * @brief Learn from single labeled example
@@ -433,6 +540,13 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     //   3. Post-learning MSE computation
     //   4. Adaptive LR + statistics
     // This gives 5-10x speedup by skipping ~25 biological subsystems.
+    //
+    // NOTE (M1): Fast training mode feeds raw float features directly to the
+    // adaptive network, skipping Poisson spike encoding. This is intentional —
+    // the adaptive network handles continuous floats natively. The spike
+    // encoding path is only relevant for the biological SNN pipeline which
+    // fast mode bypasses entirely. Both train and eval use the same float
+    // path under fast mode, so there is no train/eval encoding mismatch.
     if (brain->config.fast_training_mode) {
         float fast_loss = adaptive_network_learn(brain->network, &example,
                                                   LEARN_MODE_SUPERVISED,
@@ -443,6 +557,48 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         // through 1.5M neurons would double the per-example time for minimal benefit.
         nimcp_brain_learning_adapt_learning_rate(brain, fast_loss);
         __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
+
+        // Track label-match accuracy by reading output neuron states directly.
+        // After adaptive_network_learn (GPU path), sync_activations wrote the
+        // forward pass outputs to neuron->state. Backprop only modifies weights
+        // and biases (not states), so reading states post-learn is safe.
+        {
+            neural_network_t nn = adaptive_network_get_base_network(brain->network);
+            uint32_t total_n = nn ? neural_network_get_num_neurons(nn) : 0;
+            uint32_t num_out = brain->config.num_outputs;
+            if (nn && total_n > num_out) {
+                uint32_t out_start = total_n - num_out;
+
+                // Argmax of prediction — scan only trained labels
+                uint32_t label_range = brain->num_output_labels > 0
+                    ? brain->num_output_labels : num_out;
+                if (label_range > num_out) label_range = num_out;
+
+                uint32_t pred_argmax = 0;
+                float pred_max = -1e30f;
+                for (uint32_t i = 0; i < label_range; i++) {
+                    neuron_t* on = neural_network_get_neuron(nn, out_start + i);
+                    if (on && on->state > pred_max) {
+                        pred_max = on->state;
+                        pred_argmax = i;
+                    }
+                }
+                // Argmax of target (one-hot)
+                uint32_t tgt_argmax = 0;
+                for (uint32_t i = 0; i < num_out; i++) {
+                    if (target[i] > 0.5f) { tgt_argmax = i; break; }
+                }
+                float match_val = (pred_argmax == tgt_argmax) ? 1.0f : 0.0f;
+                brain->stats.running_accuracy =
+                    brain->stats.running_accuracy * 0.99f + match_val * 0.01f;
+            }
+        }
+
+        // Accumulate sleep pressure even in fast mode — needed for sleep/wake cycle
+        if (brain->sleep_system && brain->config.enable_sleep_wake_cycle) {
+            sleep_accumulate_pressure(brain->sleep_system, 1);
+        }
+
         clear_cache(brain);
 
         if (!target_from_scratch) nimcp_free(target);
@@ -1567,42 +1723,17 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                     }
                 }
 
-                // Get weights array - count total synapses
-                uint32_t total_synapses = 0;
-                uint32_t synapses_per_neuron = 0;
-                for (uint32_t i = 0; i < num_neurons && i < 100; i++) {
-                    neuron_t* neuron = neural_network_get_neuron(base_net, i);
-                    if (neuron) {
-                        uint32_t nsyn = NEURON_OUT_COUNT(neuron);
-                        total_synapses += nsyn;
-                        if (i == 0) synapses_per_neuron = nsyn;
-                    }
-                }
-
-                if (total_synapses > 0 && synapses_per_neuron > 0) {
-                    // Extract weights
-                    float* weights = nimcp_malloc(total_synapses * sizeof(float));
-                    if (weights) {
-                        uint32_t w_idx = 0;
-                        for (uint32_t i = 0; i < num_neurons && i < 100 && w_idx < total_synapses; i++) {
-                            neuron_t* neuron = neural_network_get_neuron(base_net, i);
-                            if (neuron) {
-                                uint32_t nsyn = NEURON_OUT_COUNT(neuron);
-                                for (uint32_t s = 0; s < nsyn && w_idx < total_synapses; s++) {
-                                    synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
-                                    weights[w_idx++] = h ? h->weight : 0.0F;
-                                }
-                            }
-                        }
-
-                        // Update homeostatic controller
-                        const float DT_MS = 1.0F;  // Simulated time step
-                        homeostatic_controller_update(brain->homeostatic, firing_rates, weights,
-                                                     synapses_per_neuron, DT_MS);
-
-                        nimcp_free(weights);
-                    }
-                }
+                // Update homeostatic controller (rate-based only, no weight access)
+                // WHY:  Extracting a flat weight array from sparse synapse storage
+                //        for 1.5M neurons is impractical. The controller iterates
+                //        controller->num_neurons (all neurons) but weights was only
+                //        allocated for ~100 neurons — causing massive buffer overrun.
+                //        Pass NULL for weights; controller skips synaptic scaling
+                //        weight modification but still tracks rate stability,
+                //        intrinsic plasticity, and metaplasticity.
+                const float DT_MS = 1.0F;
+                homeostatic_controller_update(brain->homeostatic, firing_rates, NULL,
+                                             0, DT_MS);
 
                 nimcp_free(firing_rates);
             }
@@ -2040,6 +2171,61 @@ float brain_learn_batch(brain_t brain, const brain_example_t* examples, uint32_t
     // Health monitoring: batch learning complete
     brain_heartbeat(brain, "brain_learn_batch:complete", 1.0f);
 
+    brain_clear_error();
+    return total_loss / num_examples;
+}
+
+/**
+ * @brief Learn batch with per-example loss output
+ *
+ * WHY: Python binding needs individual loss values for training diagnostics.
+ *      The original brain_learn_batch only returns the average.
+ *
+ * @param brain Brain handle
+ * @param examples Array of examples
+ * @param num_examples Example count
+ * @param losses_out Caller-allocated float[num_examples] to receive per-example losses.
+ *                   Can be NULL to skip per-example tracking.
+ * @return Average loss or -1 on error
+ */
+float brain_learn_batch_detailed(brain_t brain, const brain_example_t* examples,
+                                 uint32_t num_examples, float* losses_out)
+{
+    if (!brain || !examples || num_examples == 0) {
+        set_error("Invalid parameters to brain_learn_batch_detailed");
+        return -1.0F;
+    }
+
+    brain_heartbeat(brain, "brain_learn_batch:start", 0.0f);
+
+    float total_loss = 0.0F;
+    uint32_t heartbeat_interval = (num_examples / 10 > 100) ? num_examples / 10 : 100;
+    if (heartbeat_interval == 0) heartbeat_interval = 1;
+
+    for (uint32_t i = 0; i < num_examples; i++) {
+        float loss = brain_learn_example(brain, examples[i].features, examples[i].num_features,
+                                         examples[i].label, examples[i].confidence);
+
+        if (loss < 0.0F) {
+            /* Fill remaining losses_out with -1 to signal error */
+            if (losses_out) {
+                for (uint32_t j = i; j < num_examples; j++)
+                    losses_out[j] = -1.0F;
+            }
+            return -1.0F;
+        }
+
+        if (losses_out)
+            losses_out[i] = loss;
+        total_loss += loss;
+
+        if ((i + 1) % heartbeat_interval == 0) {
+            float progress = (float)(i + 1) / (float)num_examples;
+            brain_heartbeat(brain, "brain_learn_batch:progress", progress);
+        }
+    }
+
+    brain_heartbeat(brain, "brain_learn_batch:complete", 1.0f);
     brain_clear_error();
     return total_loss / num_examples;
 }

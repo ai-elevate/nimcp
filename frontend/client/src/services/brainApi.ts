@@ -1,5 +1,5 @@
 import api from './api';
-import type { BrainCreate, BrainInfo, BrainDetail, BrainProbe } from '../types';
+import type { BrainCreate, BrainInfo, BrainDetail, BrainProbe, AthenaStatus, ProbeConfig, ProbeData } from '../types';
 
 export const createBrain = (data: BrainCreate) =>
   api.post<{ id: number; probe: BrainProbe }>('/brains/', data);
@@ -51,3 +51,32 @@ export const cowSnapshot = (id: number) =>
 
 export const cowRestore = (id: number) =>
   api.post(`/brains/${id}/cow/restore`);
+
+// Admin endpoints
+export const getAthenaStatus = () =>
+  api.get<AthenaStatus>('/admin/athena/status');
+
+export const saveAthena = () =>
+  api.post('/admin/athena/save');
+
+export const listUsers = () =>
+  api.get<{ username: string; role: string }[]>('/admin/users');
+
+export const updateUserRole = (username: string, role: string) =>
+  api.patch(`/admin/users/${username}`, { role });
+
+export const listProbeConfigs = () =>
+  api.get<ProbeConfig[]>('/admin/probes');
+
+export const saveProbeConfig = (config: Partial<ProbeConfig>) =>
+  api.post<ProbeConfig>('/admin/probes', config);
+
+export const deleteProbeConfig = (probeId: string) =>
+  api.delete(`/admin/probes/${probeId}`);
+
+export const getAuthMe = () =>
+  api.get<{ username: string; role: string }>('/auth/me');
+
+/** Fetch live probe data for real-time monitoring. Defaults to Athena (brain_id=0). */
+export const fetchLiveProbeData = (brainId: number = 0) =>
+  api.get<ProbeData>(`/admin/probes/live`, { params: { brain_id: brainId } });

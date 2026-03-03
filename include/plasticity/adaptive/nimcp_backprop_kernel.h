@@ -28,6 +28,27 @@ extern "C" {
  *  nimcp_backprop_kernel.c share the same constant. */
 #define OUTPUT_LR_BOOST 10.0f
 
+/** Maximum number of layers for per-layer gradient norm tracking.
+ *  Covers networks up to 8 weight layers (9 neuron layers). */
+#define BP_MAX_GRAD_LAYERS 8
+
+/**
+ * @brief Per-layer gradient norm results from a backprop pass
+ *
+ * WHY: Enables layer-wise learning rate diagnostics and per-layer gradient
+ *      monitoring without changing the scalar out_grad_norm API.
+ *
+ * USAGE: Allocate on the stack and pass to backprop_sparse_full_ex().
+ *        After return, norms[0..num_layers-1] contain the L2 norm of all
+ *        weight deltas applied at each weight layer (layer 0 = weights
+ *        connecting input->hidden, layer 1 = hidden->output, etc.).
+ *        Pass NULL to skip per-layer tracking (zero overhead).
+ */
+typedef struct {
+    float  norms[BP_MAX_GRAD_LAYERS];  /**< L2 norm per weight layer */
+    uint32_t num_layers;               /**< Number of valid entries in norms[] */
+} backprop_layer_grads_t;
+
 /**
  * @brief Run sparse backprop through all layers
  *
@@ -54,6 +75,38 @@ int backprop_sparse_full(
     uint32_t target_size,
     float max_grad_norm,
     float* out_grad_norm);
+
+/**
+ * @brief Run sparse backprop with optional per-layer gradient norm tracking
+ *
+ * Extended version of backprop_sparse_full() that also computes per-layer
+ * gradient L2 norms. The scalar out_grad_norm still receives the global norm.
+ *
+ * @param net           Base neural network handle
+ * @param num_layers    Number of layers (must be >= 2)
+ * @param layer_sizes   Array of per-layer neuron counts [num_layers]
+ * @param learning_rate Base learning rate (output layer gets 10x boost)
+ * @param min_weight    Weight clamp lower bound
+ * @param max_weight    Weight clamp upper bound
+ * @param target        Target vector [target_size]
+ * @param output        Network output vector [target_size]
+ * @param target_size   Length of target/output vectors
+ * @param max_grad_norm Maximum gradient norm for clipping (0.0 = no clipping)
+ * @param out_grad_norm Output: global L2 gradient norm
+ * @param out_layer_grads Output: per-layer gradient norms (NULL to skip tracking)
+ * @return 0 on success, -1 on allocation failure
+ */
+int backprop_sparse_full_ex(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float max_grad_norm,
+    float* out_grad_norm,
+    backprop_layer_grads_t* out_layer_grads);
 
 /**
  * @brief Run sparse backprop with gradient accumulation via LR scaling

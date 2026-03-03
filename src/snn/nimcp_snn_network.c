@@ -868,8 +868,8 @@ float snn_network_train_step(snn_network_t* network,
     snn_network_set_training(network, true);
 
     /* Forward pass */
-    float outputs[256];  /* Max outputs */
-    if (n_targets > 256) return -1.0f;
+    float outputs[4096];  /* Max outputs */
+    if (n_targets > 4096) return -1.0f;
 
     int result = snn_network_forward(network, inputs, n_inputs,
                                      outputs, n_targets, duration_ms);

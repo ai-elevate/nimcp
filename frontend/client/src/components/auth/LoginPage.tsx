@@ -3,7 +3,7 @@ import { login } from '../../services/authApi';
 import { PasswordInput } from './PasswordInput';
 
 interface Props {
-  onLogin: (username: string, password: string) => void;
+  onLogin: (username: string, password: string, role?: string) => void;
   onSwitchToRegister: () => void;
 }
 
@@ -19,8 +19,8 @@ export function LoginPage({ onLogin, onSwitchToRegister }: Props) {
     setLoading(true);
     setError('');
     try {
-      await login(username, password);
-      onLogin(username, password);
+      const resp = await login(username, password);
+      onLogin(username, password, resp.data.role);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setError(msg || 'Login failed');
@@ -31,7 +31,7 @@ export function LoginPage({ onLogin, onSwitchToRegister }: Props) {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <div className="auth-title">NIMCP Dashboard</div>
+        <div className="auth-title">Athena</div>
         <div className="auth-subtitle">Sign in to continue</div>
 
         {error && <div className="auth-error">{error}</div>}

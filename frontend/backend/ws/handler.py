@@ -7,6 +7,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 import nimcp_logger
 from brain_manager import manager
+import conversation_store
 from config import C_API_TIMEOUT_SECONDS, MAX_WS_MESSAGE_BYTES
 from validation import c_api_call
 from ws.probe_streamer import subscribe_probe, unsubscribe_probe
@@ -15,9 +16,9 @@ import training_runner
 _log = nimcp_logger.get("ws.handler")
 
 
-async def websocket_handler(ws: WebSocket, brain_id: int):
+async def websocket_handler(ws: WebSocket, brain_id: int, username: str = ""):
     await ws.accept()
-    _log.info("WebSocket connected brain_id=%d", brain_id)
+    _log.info("WebSocket connected brain_id=%d user=%s", brain_id, username or "anonymous")
 
     probe_queue: asyncio.Queue | None = None
     training_queue: asyncio.Queue | None = None
@@ -96,7 +97,16 @@ async def websocket_handler(ws: WebSocket, brain_id: int):
             elif msg_type == "chat":
                 text = data.get("text", "")
                 mode = data.get("mode", "chat")
+                conv_id = data.get("conversation_id")
                 t0 = time.monotonic()
+
+                # Persist user message if conversation_id provided
+                if conv_id and username and mode in ("chat", "teach", "introspect"):
+                    try:
+                        conversation_store.append_message(
+                            username, conv_id, "user", text, {"mode": mode})
+                    except Exception as exc:
+                        _log.debug("Failed to persist user message: %s", exc)
 
                 if mode == "probe":
                     probe = await c_api_call(manager.probe_brain, brain_id, timeout=C_API_TIMEOUT_SECONDS)
@@ -109,14 +119,21 @@ async def websocket_handler(ws: WebSocket, brain_id: int):
                     }))
 
                 elif mode == "introspect":
-                    result = await c_api_call(manager.introspect, brain_id,
+                    result = await c_api_call(manager.introspect, brain_id, username,
                                               timeout=C_API_TIMEOUT_SECONDS)
                     elapsed = (time.monotonic() - t0) * 1000
+                    response_msg = result["message"] if result else "Introspection failed"
                     await ws.send_text(json.dumps({
                         "type": "chat_response",
-                        "message": result["message"] if result else "Introspection failed",
+                        "message": response_msg,
                         "time_ms": round(elapsed, 2),
                     }))
+                    if conv_id and username:
+                        try:
+                            conversation_store.append_message(
+                                username, conv_id, "brain", response_msg)
+                        except Exception:
+                            pass
 
                 elif mode == "teach":
                     # Parse "label: content" or "content -> label"
@@ -132,15 +149,22 @@ async def websocket_handler(ws: WebSocket, brain_id: int):
                         label = label.strip()
 
                     result = await c_api_call(manager.teach_conversational,
-                                              brain_id, content, label,
+                                              brain_id, content, label, username,
                                               timeout=C_API_TIMEOUT_SECONDS)
                     elapsed = (time.monotonic() - t0) * 1000
+                    response_msg = result["message"] if result else "Teaching failed"
                     await ws.send_text(json.dumps({
                         "type": "chat_response",
-                        "message": result["message"] if result else "Teaching failed",
+                        "message": response_msg,
                         "label": label,
                         "time_ms": round(elapsed, 2),
                     }))
+                    if conv_id and username:
+                        try:
+                            conversation_store.append_message(
+                                username, conv_id, "brain", response_msg, {"label": label})
+                        except Exception:
+                            pass
 
                 elif mode == "learn":
                     # Legacy numeric learn mode
@@ -167,13 +191,14 @@ async def websocket_handler(ws: WebSocket, brain_id: int):
 
                 else:
                     # Default: conversational chat
-                    result = await c_api_call(manager.converse, brain_id, text,
+                    result = await c_api_call(manager.converse, brain_id, text, username,
                                               timeout=C_API_TIMEOUT_SECONDS)
                     elapsed = (time.monotonic() - t0) * 1000
                     if result:
+                        response_msg = result.get("message", "")
                         await ws.send_text(json.dumps({
                             "type": "chat_response",
-                            "message": result.get("message", ""),
+                            "message": response_msg,
                             "label": result.get("label", ""),
                             "confidence": result.get("confidence", 0.0),
                             "time_ms": round(elapsed, 2),
@@ -184,6 +209,13 @@ async def websocket_handler(ws: WebSocket, brain_id: int):
                             "output_vector": result.get("output_vector"),
                             "cognitive_state": result.get("cognitive_state"),
                         }))
+                        if conv_id and username:
+                            try:
+                                conversation_store.append_message(
+                                    username, conv_id, "brain", response_msg,
+                                    {"confidence": result.get("confidence", 0.0)})
+                            except Exception:
+                                pass
                     else:
                         await ws.send_text(json.dumps({
                             "type": "chat_response",

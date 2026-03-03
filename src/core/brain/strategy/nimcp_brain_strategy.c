@@ -459,6 +459,7 @@ bool brain_get_stats(brain_t brain, brain_stats_t* stats)
     stats->avg_inference_time_us = brain->stats.avg_inference_time_us;  // Use brain's stats, updated by update_inference_stats
     stats->current_learning_rate = brain->config.learning_rate;
     stats->accuracy = perf.accuracy;
+    stats->running_accuracy = brain->stats.running_accuracy;
     stats->memory_bytes = perf.memory_usage_bytes;
     strncpy(stats->task_name, brain->config.task_name, sizeof(stats->task_name) - 1);
 

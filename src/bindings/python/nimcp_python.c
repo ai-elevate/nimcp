@@ -70,6 +70,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "plasticity/adaptive/nimcp_adaptive.h"
+#include "plasticity/adaptive/nimcp_backprop_kernel.h"
 #include <string.h>
 #include <math.h>    /* for isnan, isinf (M-nan checks) */
 
@@ -83,6 +85,9 @@
 #include "utils/signal/nimcp_signal_handler.h"
 #include "middleware/training/nimcp_training_convergent_decision.h"
 #include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
+#include "cognitive/nimcp_sleep_wake.h"
+#include "core/brain/factory/init/nimcp_brain_init_medulla.h"
+#include "core/brain/nimcp_brain_state.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -307,12 +312,14 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
  *
  * @param features List of feature values
  * @param label Class label (string)
+ * @param learning_rate Per-call learning rate override (0 = use brain default)
  * @param confidence Training confidence (0-1, default 1.0)
  * @return float loss value
  */
 static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
     PyObject* features_list;
     const char* label;
+    float learning_rate = 0.0F;
     float confidence = 1.0F;
 
     if (!self->brain) {
@@ -320,7 +327,7 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
-    if (!PyArg_ParseTuple(args, "Os|f", &features_list, &label, &confidence)) {
+    if (!PyArg_ParseTuple(args, "Os|ff", &features_list, &label, &learning_rate, &confidence)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_learn: Invalid arguments");
         return NULL;
     }
@@ -352,6 +359,17 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
     uint32_t nf = (uint32_t)num_features;
     volatile bool learn_crashed = false;
 
+    /* Per-call learning rate override: save original, swap in caller's LR,
+     * restore after learn completes (even on crash). Only override if the
+     * caller passed a positive learning_rate (0.0 = use brain default). */
+    float saved_lr = 0.0F;
+    bool lr_overridden = false;
+    if (learning_rate > 0.0F && brain_ref->internal_brain) {
+        saved_lr = brain_ref->internal_brain->config.learning_rate;
+        brain_ref->internal_brain->config.learning_rate = learning_rate;
+        lr_overridden = true;
+    }
+
     Py_BEGIN_ALLOW_THREADS
 
     /* Wrap learn in signal recovery — SIGSEGV during backprop returns error
@@ -365,6 +383,11 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
     } SIGNAL_TRY_END;
 
     Py_END_ALLOW_THREADS
+
+    /* Restore original learning rate to avoid side effects on future calls */
+    if (lr_overridden) {
+        brain_ref->internal_brain->config.learning_rate = saved_lr;
+    }
     nimcp_free(features);
 
     if (learn_crashed) {
@@ -389,6 +412,268 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
         return NULL;
     }
     return PyFloat_FromDouble((double)loss);
+}
+
+/**
+ * WHAT: Learn from a dense target vector (teacher distillation / generative training)
+ * WHY:  Enables training toward semantic embeddings instead of one-hot labels
+ * HOW:  Takes features + target arrays, calls nimcp_brain_learn_vector()
+ */
+static PyObject* Brain_learn_vector(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    PyObject* features_list;
+    PyObject* target_list;
+    const char* label = NULL;
+    float confidence = 1.0f;
+
+    static char* kwlist[] = {"features", "target", "label", "confidence", NULL};
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO|zf", kwlist,
+                                      &features_list, &target_list, &label, &confidence)) {
+        return NULL;
+    }
+
+    Py_ssize_t num_features;
+    float* features = py_list_to_float_array(features_list, &num_features);
+    if (!features) return NULL;
+
+    Py_ssize_t num_targets;
+    float* target = py_list_to_float_array(target_list, &num_targets);
+    if (!target) {
+        nimcp_free(features);
+        return NULL;
+    }
+
+    if (num_features > UINT32_MAX || num_features < 0) {
+        nimcp_free(features);
+        nimcp_free(target);
+        PyErr_SetString(PyExc_OverflowError, "Feature list too large for uint32_t");
+        return NULL;
+    }
+    if (num_targets > UINT32_MAX || num_targets < 0) {
+        nimcp_free(features);
+        nimcp_free(target);
+        PyErr_SetString(PyExc_OverflowError, "Target list too large for uint32_t");
+        return NULL;
+    }
+
+    volatile nimcp_status_t status = NIMCP_ERROR_UNKNOWN;
+    nimcp_brain_t brain_ref = self->brain;
+    uint32_t nf = (uint32_t)num_features;
+    uint32_t nt = (uint32_t)num_targets;
+    volatile bool learn_crashed = false;
+
+    Py_BEGIN_ALLOW_THREADS
+
+    SIGNAL_TRY_RECOVER(0, "Brain_learn_vector") {
+        status = nimcp_brain_learn_vector(brain_ref, features, nf, target, nt,
+                                          label, confidence);
+    } SIGNAL_ON_CRASH {
+        learn_crashed = true;
+        status = NIMCP_ERROR_UNKNOWN;
+    } SIGNAL_TRY_END;
+
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(features);
+    nimcp_free(target);
+
+    if (learn_crashed) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "Brain.learn_vector() crashed (SIGSEGV) — reported to immune system");
+        return NULL;
+    }
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        return NULL;
+    }
+
+    float loss = nimcp_brain_get_last_loss(self->brain);
+    if (isnan(loss) || isinf(loss)) {
+        PyErr_SetString(PyExc_ValueError, "Brain.learn_vector() produced NaN/inf loss");
+        return NULL;
+    }
+    return PyFloat_FromDouble((double)loss);
+}
+
+
+/**
+ * WHAT: Learn from a batch of examples in a single C call
+ * WHY:  10-20x throughput improvement — one lock acquisition, one GPU weight
+ *       upload, amortized overhead across N examples
+ * HOW:  Takes list of (features_list, label_str, confidence_float) tuples,
+ *       converts to C arrays, calls nimcp_brain_learn_batch(), returns
+ *       list of per-example loss values.
+ */
+static PyObject* Brain_learn_batch(BrainObject* self, PyObject* args) {
+    PyObject* batch_list;
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "O", &batch_list)) {
+        return NULL;
+    }
+
+    if (!PyList_Check(batch_list)) {
+        PyErr_SetString(PyExc_TypeError, "learn_batch expects a list of (features, label, confidence) tuples");
+        return NULL;
+    }
+
+    Py_ssize_t num_examples = PyList_Size(batch_list);
+    if (num_examples <= 0) {
+        return PyList_New(0);
+    }
+
+    if (num_examples > 10000) {
+        PyErr_SetString(PyExc_ValueError, "Batch size exceeds maximum of 10000");
+        return NULL;
+    }
+
+    uint32_t n = (uint32_t)num_examples;
+
+    /* Allocate parallel arrays for the C API */
+    const float** features_array = (const float**)nimcp_calloc(n, sizeof(float*));
+    uint32_t* num_features_array = (uint32_t*)nimcp_calloc(n, sizeof(uint32_t));
+    const char** labels = (const char**)nimcp_calloc(n, sizeof(char*));
+    float* confidences = (float*)nimcp_calloc(n, sizeof(float));
+    float* losses_out = (float*)nimcp_calloc(n, sizeof(float));
+    /* Track allocated feature arrays for cleanup */
+    float** owned_features = (float**)nimcp_calloc(n, sizeof(float*));
+
+    if (!features_array || !num_features_array || !labels || !confidences ||
+        !losses_out || !owned_features) {
+        nimcp_free(features_array);
+        nimcp_free(num_features_array);
+        nimcp_free(labels);
+        nimcp_free(confidences);
+        nimcp_free(losses_out);
+        nimcp_free(owned_features);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate batch arrays");
+        return NULL;
+    }
+
+    /* Parse each (features, label, confidence) tuple */
+    for (uint32_t i = 0; i < n; i++) {
+        PyObject* item = PyList_GetItem(batch_list, (Py_ssize_t)i);
+        if (!item || !PyTuple_Check(item) || PyTuple_Size(item) < 2) {
+            PyErr_Format(PyExc_TypeError,
+                "Item %u must be a tuple of (features, label[, confidence])", i);
+            goto cleanup_error;
+        }
+
+        PyObject* feat_obj = PyTuple_GetItem(item, 0);
+        PyObject* label_obj = PyTuple_GetItem(item, 1);
+        float conf = 1.0f;
+        if (PyTuple_Size(item) >= 3) {
+            PyObject* conf_obj = PyTuple_GetItem(item, 2);
+            conf = (float)PyFloat_AsDouble(conf_obj);
+            if (PyErr_Occurred()) goto cleanup_error;
+        }
+
+        /* Convert features list to float array */
+        Py_ssize_t nf;
+        float* feats = py_list_to_float_array(feat_obj, &nf);
+        if (!feats) goto cleanup_error;
+
+        if (nf > UINT32_MAX || nf < 0) {
+            nimcp_free(feats);
+            PyErr_SetString(PyExc_OverflowError, "Feature list too large");
+            goto cleanup_error;
+        }
+
+        owned_features[i] = feats;
+        features_array[i] = feats;
+        num_features_array[i] = (uint32_t)nf;
+
+        const char* label_str = PyUnicode_AsUTF8(label_obj);
+        if (!label_str) goto cleanup_error;
+        labels[i] = label_str;
+
+        confidences[i] = conf;
+    }
+
+    /* Call C batch learn API with GIL released */
+    volatile nimcp_status_t status = NIMCP_ERROR_UNKNOWN;
+    nimcp_brain_t brain_ref = self->brain;
+    volatile bool batch_crashed = false;
+
+    Py_BEGIN_ALLOW_THREADS
+
+    SIGNAL_TRY_RECOVER(0, "Brain_learn_batch") {
+        status = nimcp_brain_learn_batch(brain_ref,
+                                          features_array, num_features_array,
+                                          labels, confidences, n, losses_out);
+    } SIGNAL_ON_CRASH {
+        batch_crashed = true;
+        status = NIMCP_ERROR_UNKNOWN;
+    } SIGNAL_TRY_END;
+
+    Py_END_ALLOW_THREADS
+
+    /* Cleanup feature arrays */
+    for (uint32_t i = 0; i < n; i++) {
+        if (owned_features[i]) nimcp_free(owned_features[i]);
+    }
+    nimcp_free(features_array);
+    nimcp_free(num_features_array);
+    nimcp_free(labels);
+    nimcp_free(confidences);
+    nimcp_free(owned_features);
+
+    if (batch_crashed) {
+        nimcp_free(losses_out);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "Brain_learn_batch: SIGSEGV during batch learn");
+        PyErr_SetString(PyExc_RuntimeError,
+            "Brain.learn_batch() crashed (SIGSEGV) — reported to immune system");
+        return NULL;
+    }
+
+    if (status != NIMCP_OK) {
+        nimcp_free(losses_out);
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        return NULL;
+    }
+
+    /* Build Python list of per-example losses */
+    PyObject* result_list = PyList_New((Py_ssize_t)n);
+    if (!result_list) {
+        nimcp_free(losses_out);
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < n; i++) {
+        PyObject* loss_val = PyFloat_FromDouble((double)losses_out[i]);
+        if (!loss_val) {
+            Py_DECREF(result_list);
+            nimcp_free(losses_out);
+            return NULL;
+        }
+        PyList_SET_ITEM(result_list, (Py_ssize_t)i, loss_val);
+    }
+
+    nimcp_free(losses_out);
+    return result_list;
+
+cleanup_error:
+    for (uint32_t i = 0; i < n; i++) {
+        if (owned_features[i]) nimcp_free(owned_features[i]);
+    }
+    nimcp_free(features_array);
+    nimcp_free(num_features_array);
+    nimcp_free(labels);
+    nimcp_free(confidences);
+    nimcp_free(losses_out);
+    nimcp_free(owned_features);
+    return NULL;
 }
 
 /**
@@ -1228,6 +1513,65 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     SET("last_loss",              PyFloat_FromDouble(nimcp_brain_get_last_loss(self->brain)));
     SET("last_gradient_norm",     PyFloat_FromDouble(nimcp_brain_get_last_gradient_norm(self->brain)));
 
+    // === Training Dynamics ===
+    if (self->brain->internal_brain && self->brain->internal_brain->network) {
+        adaptive_network_t net = self->brain->internal_brain->network;
+
+        // Weight statistics (sampled for speed)
+        float w_l2 = 0.0f, w_mean_abs = 0.0f, w_max_abs = 0.0f;
+        uint64_t w_sampled = 0;
+        adaptive_network_weight_stats(net, &w_l2, &w_mean_abs, &w_max_abs, &w_sampled);
+        SET("weight_l2_norm",         PyFloat_FromDouble(w_l2));
+        SET("weight_mean_abs",        PyFloat_FromDouble(w_mean_abs));
+        SET("weight_max_abs",         PyFloat_FromDouble(w_max_abs));
+        SET("weight_sampled_synapses", PyLong_FromUnsignedLongLong(w_sampled));
+
+        // EMA metrics for trend detection
+        SET("ema_gradient_norm",      PyFloat_FromDouble(adaptive_network_get_ema_grad_norm(net)));
+        SET("ema_loss",               PyFloat_FromDouble(adaptive_network_get_ema_loss(net)));
+
+        // Per-layer gradient norms
+        float layer_norms[BP_MAX_GRAD_LAYERS];
+        uint32_t nlayers = adaptive_network_get_layer_grad_norms(net, layer_norms, BP_MAX_GRAD_LAYERS);
+        PyObject* layer_list = PyList_New((Py_ssize_t)nlayers);
+        if (layer_list) {
+            for (uint32_t i = 0; i < nlayers; i++) {
+                PyList_SET_ITEM(layer_list, (Py_ssize_t)i, PyFloat_FromDouble(layer_norms[i]));
+            }
+            SET("layer_grad_norms", layer_list);
+        }
+
+        // === Learning Quality ===
+        adaptive_learning_quality_t lq;
+        adaptive_network_learning_quality(net, &lq);
+        SET("mean_label_accuracy",    PyFloat_FromDouble(lq.mean_label_accuracy));
+        SET("worst_label_accuracy",   PyFloat_FromDouble(lq.worst_label_accuracy));
+        SET("num_labels_tracked",     PyLong_FromUnsignedLong(lq.num_labels_tracked));
+        SET("confidence_calibration", PyFloat_FromDouble(lq.confidence_calibration));
+        SET("learning_velocity",      PyFloat_FromDouble(lq.learning_velocity));
+        SET("prediction_entropy",     PyFloat_FromDouble(lq.prediction_entropy));
+        SET("synapse_growth",         PyLong_FromUnsignedLongLong(lq.synapse_growth));
+    }
+
+    // === Brain Health ===
+    SET("memory_rss_bytes",       PyLong_FromSize_t(nimcp_brain_get_memory_rss()));
+    SET("gpu_vram_bytes",         PyLong_FromSize_t(nimcp_brain_get_gpu_vram_used(self->brain)));
+    SET("neuron_utilization",     PyFloat_FromDouble(nimcp_brain_get_neuron_utilization(self->brain)));
+
+    nimcp_immune_metrics_t imm;
+    if (nimcp_brain_get_immune_metrics(self->brain, &imm) == NIMCP_OK) {
+        SET("immune_total_exceptions",    PyLong_FromUnsignedLong(imm.total_exceptions));
+        SET("immune_recovered_exceptions", PyLong_FromUnsignedLong(imm.recovered_exceptions));
+        SET("immune_inflammation",        PyFloat_FromDouble(imm.inflammation_level));
+        SET("immune_active_antibodies",   PyLong_FromUnsignedLong(imm.active_antibodies));
+    }
+
+    nimcp_synapse_stats_t syn;
+    if (nimcp_brain_get_synapse_stats(self->brain, &syn) == NIMCP_OK) {
+        SET("synapse_total",      PyLong_FromUnsignedLongLong(syn.total_synapses));
+        SET("synapse_growth_delta", PyLong_FromLongLong(syn.growth_since_last));
+    }
+
 #undef SET
 
     return dict;
@@ -1416,7 +1760,7 @@ static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
     float confidence;
     char explanation[NIMCP_NAME_BUFFER_SIZE];
     memset(explanation, 0, sizeof(explanation));
-    enum { DECIDE_FULL_MAX_OUTPUT = 1024 };
+    enum { DECIDE_FULL_MAX_OUTPUT = 4096 };
     float output_vector[DECIDE_FULL_MAX_OUTPUT];
     uint32_t output_size = DECIDE_FULL_MAX_OUTPUT;
     uint32_t num_active_neurons = 0;
@@ -1903,6 +2247,153 @@ static PyObject* Brain_medulla_get_circadian_efficiency(BrainObject* self, PyObj
     PyObject* result = PyFloat_FromDouble((double)efficiency);
     if (!result) return NULL;  /* OOM */
     return result;
+}
+
+/* ========================================================================
+ * Sleep/Wake System Bindings
+ * ======================================================================== */
+
+/**
+ * WHAT: Get current sleep pressure
+ * WHY:  Monitor adenosine accumulation to decide when to trigger sleep
+ * HOW:  Calls sleep_get_pressure via brain_get_sleep_system
+ */
+static PyObject* Brain_sleep_get_pressure(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    sleep_system_t ss = brain_get_sleep_system(self->brain->internal_brain);
+    if (!ss) {
+        return PyFloat_FromDouble(0.0);
+    }
+    float pressure = sleep_get_pressure(ss);
+    return PyFloat_FromDouble((double)pressure);
+}
+
+/**
+ * WHAT: Check if sleep is needed
+ * WHY:  Determine when to initiate a sleep cycle
+ * HOW:  Calls sleep_is_needed via brain_get_sleep_system
+ */
+static PyObject* Brain_sleep_is_needed(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    sleep_system_t ss = brain_get_sleep_system(self->brain->internal_brain);
+    if (!ss) {
+        Py_RETURN_FALSE;
+    }
+    if (sleep_is_needed(ss)) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+/**
+ * WHAT: Get current sleep state
+ * WHY:  Check whether the brain is awake, drowsy, in NREM, or REM
+ * HOW:  Calls sleep_get_current_state via brain_get_sleep_system
+ */
+static PyObject* Brain_sleep_get_state(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    sleep_system_t ss = brain_get_sleep_system(self->brain->internal_brain);
+    if (!ss) {
+        return PyLong_FromLong(0);  /* SLEEP_STATE_AWAKE */
+    }
+    sleep_state_t state = sleep_get_current_state(ss);
+    return PyLong_FromLong((long)state);
+}
+
+/**
+ * WHAT: Run automatic sleep cycle(s)
+ * WHY:  Execute full consolidation cycle (drowsy → light → deep → REM → awake)
+ * HOW:  Calls sleep_run_cycle via brain_get_sleep_system
+ */
+static PyObject* Brain_sleep_run_cycle(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    int num_cycles = 1;
+    if (!PyArg_ParseTuple(args, "|i", &num_cycles)) return NULL;
+    if (num_cycles < 1) num_cycles = 1;
+
+    sleep_system_t ss = brain_get_sleep_system(self->brain->internal_brain);
+    if (!ss) {
+        Py_RETURN_FALSE;
+    }
+    bool ok = sleep_run_cycle(ss, (uint32_t)num_cycles);
+    if (ok) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+/**
+ * WHAT: Get sleep statistics
+ * WHY:  Monitor sleep quality, cycles completed, memory consolidation efficiency
+ * HOW:  Calls sleep_get_statistics, returns dict of sleep_stats_t fields
+ */
+static PyObject* Brain_sleep_get_statistics(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    sleep_system_t ss = brain_get_sleep_system(self->brain->internal_brain);
+    if (!ss) {
+        Py_RETURN_NONE;
+    }
+    sleep_stats_t stats;
+    if (!sleep_get_statistics(ss, &stats)) {
+        Py_RETURN_NONE;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "total_awake_time_ms",
+        PyLong_FromUnsignedLongLong(stats.total_awake_time_ms));
+    PyDict_SetItemString(d, "total_sleep_time_ms",
+        PyLong_FromUnsignedLongLong(stats.total_sleep_time_ms));
+    PyDict_SetItemString(d, "sleep_cycles_completed",
+        PyLong_FromUnsignedLong(stats.sleep_cycles_completed));
+    PyDict_SetItemString(d, "total_memories_replayed",
+        PyLong_FromUnsignedLong(stats.total_memories_replayed));
+    PyDict_SetItemString(d, "total_synapses_pruned",
+        PyLong_FromUnsignedLong(stats.total_synapses_pruned));
+    PyDict_SetItemString(d, "avg_consolidation_efficiency",
+        PyFloat_FromDouble((double)stats.avg_consolidation_efficiency));
+    PyDict_SetItemString(d, "energy_savings_percent",
+        PyFloat_FromDouble((double)stats.energy_savings_percent));
+    PyDict_SetItemString(d, "current_sleep_pressure",
+        PyFloat_FromDouble((double)stats.current_sleep_pressure));
+    return d;
+}
+
+/**
+ * WHAT: Update medulla subsystem (circadian clock, arousal, etc.)
+ * WHY:  Advance circadian time during training (fast_training_mode skips cognitive pipeline)
+ * HOW:  Calls nimcp_brain_update_medulla_subsystem with delta_time_s
+ */
+static PyObject* Brain_update_medulla(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    float delta_time_s;
+    if (!PyArg_ParseTuple(args, "f", &delta_time_s)) return NULL;
+
+    nimcp_brain_update_medulla_subsystem(self->brain->internal_brain, delta_time_s);
+    Py_RETURN_NONE;
 }
 
 /**
@@ -3092,6 +3583,104 @@ static PyObject* Brain_configure_training(BrainObject* self, PyObject* args, PyO
 }
 
 /**
+ * @brief Enable cognitive profile on an existing brain.
+ *
+ * Activates multi-head attention, executive control, meta-learning,
+ * predictive processing, brain regions, oscillations, and other
+ * cognitive subsystems that enhance training quality.
+ *
+ * Call BEFORE starting training (not thread-safe).
+ */
+/**
+ * WHAT: Create a brain with ALL subsystems enabled (RESEARCH profile + extras)
+ * WHY:  Enables every functional module for maximum capability training/inference
+ * HOW:  Class method — Brain.create_full(name, task, inputs, outputs, neurons)
+ *       Uses nimcp_brain_create_full() which applies RESEARCH profile at creation
+ *       time so all subsystems initialize in proper order.
+ */
+static PyObject* Brain_create_full(PyTypeObject* type, PyObject* args, PyObject* kwds) {
+    const char* name;
+    int task = NIMCP_TASK_CLASSIFICATION;
+    unsigned int num_inputs = 1024;
+    unsigned int num_outputs = 2048;
+    unsigned int neuron_count = 1500000;
+
+    static char* kwlist[] = {"name", "task", "num_inputs", "num_outputs", "neuron_count", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iIII", kwlist,
+                                     &name, &task, &num_inputs, &num_outputs, &neuron_count)) {
+        return NULL;
+    }
+
+    BrainObject* self = (BrainObject*)type->tp_alloc(type, 0);
+    if (!self) return NULL;
+    self->brain = NULL;
+    self->community_cache = NULL;
+
+    self->brain = nimcp_brain_create_full(name, (nimcp_brain_task_t)task,
+                                           num_inputs, num_outputs, neuron_count);
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "nimcp_brain_create_full failed — check logs for subsystem init errors");
+        Py_DECREF(self);
+        return NULL;
+    }
+
+    return (PyObject*)self;
+}
+
+/**
+ * WHAT: Configure cognitive profile on existing brain (deprecated — use create_full)
+ * WHY:  Backward compatibility — but post-creation init may crash on checkpoint-loaded brains
+ * HOW:  Sets config flags only (no subsystem init — those must be done at creation time)
+ */
+static PyObject* Brain_configure_cognitive(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    brain_t internal = self->brain->internal_brain;
+    if (!internal) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain has no internal state");
+        return NULL;
+    }
+
+    /* Set cognitive flags — subsystems won't init if they weren't created at brain_create time */
+    internal->config.enable_multihead_attention = true;
+    internal->config.num_attention_heads = 8;
+    internal->config.attention_key_dim = 64;
+    internal->config.enable_thalamic_gate = true;
+    internal->config.enable_salience_weighting = true;
+    internal->config.enable_executive_control = true;
+    internal->config.enable_task_switching = true;
+    internal->config.enable_planning = true;
+    internal->config.enable_meta_learning = true;
+    internal->config.enable_adaptive_meta_lr = true;
+    internal->config.enable_predictive_processing = true;
+    internal->config.enable_active_inference = true;
+    internal->config.enable_logic = true;
+    internal->config.enable_epistemic_filter = true;
+    internal->config.enable_emotional_tagging = true;
+    internal->config.enable_emotional_memories = true;
+    internal->config.enable_natural_explanations = true;
+    internal->config.enable_causal_explanations = true;
+    internal->config.enable_ethics = true;
+    internal->config.enable_wellbeing = true;
+    internal->config.enable_brain_regions = true;
+    internal->config.enable_oscillations = true;
+    internal->config.enable_sleep_wake_cycle = true;
+    internal->config.enable_memory_replay = true;
+    internal->config.enable_synaptic_homeostasis = true;
+    internal->config.enable_mental_health_monitoring = true;
+    internal->config.enable_training_integration = true;
+    internal->config.enable_homeostatic_plasticity = true;
+    internal->config.enable_dendritic_computation = true;
+    internal->config.enable_eligibility_traces = true;
+
+    Py_RETURN_TRUE;
+}
+
+/**
  * @brief Check if brain is frozen
  */
 static PyObject* Brain_get_is_frozen(BrainObject* self, void* closure) {
@@ -3127,7 +3716,13 @@ static PyObject* Brain_set_fast_training(BrainObject* self, PyObject* args) {
 
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
-     "Learn from example: learn(features, label, confidence=1.0) -> float (loss value, not bool)"},
+     "Learn from example: learn(features, label, lr=0.0, confidence=1.0) -> float (loss value)\n"
+     "  lr: per-call learning rate override (0 = use brain default)"},
+    {"learn_vector", (PyCFunction)Brain_learn_vector, METH_VARARGS | METH_KEYWORDS,
+     "Learn from dense target vector: learn_vector(features, target, label=None, confidence=1.0) -> float (loss)\n"
+     "  Trains toward a dense embedding vector instead of a one-hot label."},
+    {"learn_batch", (PyCFunction)Brain_learn_batch, METH_VARARGS,
+     "Learn from batch: learn_batch([(features, label, confidence), ...]) -> [loss, ...]"},
     {"predict", (PyCFunction)Brain_predict, METH_VARARGS,
      "Make prediction: predict(features) -> (label, confidence)"},
     {"predict_batch", (PyCFunction)Brain_predict_batch, METH_VARARGS,
@@ -3163,7 +3758,16 @@ static PyMethodDef Brain_methods[] = {
     {"enable_multi_network", (PyCFunction)Brain_enable_multi_network, METH_NOARGS,
      "Enable LNN + CNN ensemble training alongside adaptive SNN"},
 
-    // Training configuration
+    // Full brain creation (class method)
+    {"create_full", (PyCFunction)Brain_create_full, METH_VARARGS | METH_KEYWORDS | METH_CLASS,
+     "Create brain with ALL subsystems enabled (RESEARCH profile + world model + creative + LGSS + neuromodulators).\n"
+     "Usage: brain = Brain.create_full('athena', task=nimcp.TASK_CLASSIFICATION, num_inputs=1024, num_outputs=2048, neuron_count=1500000)\n"
+     "This initializes every functional module at creation time (no lazy init).\n"},
+
+    // Training configuration (legacy — use create_full for new brains)
+    {"configure_cognitive", (PyCFunction)Brain_configure_cognitive, METH_NOARGS,
+     "Enable cognitive config flags on existing brain. WARNING: does NOT init subsystems.\n"
+     "For full subsystem activation, use Brain.create_full() instead.\n"},
     {"configure_training", (PyCFunction)Brain_configure_training, METH_VARARGS | METH_KEYWORDS,
      "Configure training pipeline: configure_training(learning_rate=0.001, weight_decay=0.0001, gradient_clip=1.0) -> True\n"
      "WARNING: Must be called before starting concurrent training threads.\n"
@@ -3252,6 +3856,20 @@ static PyMethodDef Brain_methods[] = {
      "Boost arousal: medulla_boost_arousal(delta) -> None"},
     {"medulla_get_circadian_efficiency", (PyCFunction)Brain_medulla_get_circadian_efficiency, METH_NOARGS,
      "Get circadian efficiency: medulla_get_circadian_efficiency() -> float"},
+
+    // Sleep/Wake system
+    {"sleep_get_pressure", (PyCFunction)Brain_sleep_get_pressure, METH_NOARGS,
+     "Get sleep pressure [0,1]: sleep_get_pressure() -> float"},
+    {"sleep_is_needed", (PyCFunction)Brain_sleep_is_needed, METH_NOARGS,
+     "Check if sleep is needed: sleep_is_needed() -> bool"},
+    {"sleep_get_state", (PyCFunction)Brain_sleep_get_state, METH_NOARGS,
+     "Get sleep state (0=awake,1=drowsy,2=light,3=deep,4=REM): sleep_get_state() -> int"},
+    {"sleep_run_cycle", (PyCFunction)Brain_sleep_run_cycle, METH_VARARGS,
+     "Run sleep cycle(s): sleep_run_cycle(num_cycles=1) -> bool"},
+    {"sleep_get_statistics", (PyCFunction)Brain_sleep_get_statistics, METH_NOARGS,
+     "Get sleep statistics: sleep_get_statistics() -> dict"},
+    {"update_medulla", (PyCFunction)Brain_update_medulla, METH_VARARGS,
+     "Update medulla subsystem (circadian clock): update_medulla(delta_time_s) -> None"},
 
     // Training Integration API: reasoning
     {"ti_add_fact", (PyCFunction)Brain_ti_add_fact, METH_VARARGS,

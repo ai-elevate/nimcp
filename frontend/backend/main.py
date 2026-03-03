@@ -23,23 +23,25 @@ from brain_manager import manager
 import user_store
 from ws.handler import websocket_handler
 from ws.probe_streamer import probe_loop
-from routers import auth, brains, training, datasets, chat, system, scripts
+from routers import auth, brains, training, datasets, chat, system, scripts, conversations, admin, media
 
 _log = nimcp_logger.get("main")
 
 
-def _check_basic_auth(request: Request) -> bool:
-    """Validate HTTP Basic Auth credentials against user store."""
+def _extract_basic_auth(request: Request) -> tuple[bool, str]:
+    """Validate HTTP Basic Auth and return (authed, username)."""
     auth_header = request.headers.get("authorization", "")
     if not auth_header.startswith("Basic "):
-        return False
+        return False, ""
     try:
         decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
         username, _, password = decoded.partition(":")
     except Exception as exc:
         _log.warning("Auth decode error: %s", exc)
-        return False
-    return user_store.verify(username, password)
+        return False, ""
+    if user_store.verify(username, password):
+        return True, username
+    return False, ""
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
@@ -82,7 +84,11 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         # Auth endpoints are public (login, register)
         if path.startswith("/api/auth/"):
             return await call_next(request)
-        if _check_basic_auth(request):
+        authed, username = _extract_basic_auth(request)
+        if authed:
+            # Set identity on request state for downstream handlers
+            request.state.username = username
+            request.state.role = user_store.get_role(username)
             return await call_next(request)
         _log.warning("Auth failed: %s %s", request.method, request.url.path)
         # Return 401 WITHOUT WWW-Authenticate header to prevent the
@@ -108,6 +114,7 @@ async def lifespan(app: FastAPI):
     _log.info("NIMCP Dashboard starting (dev_mode=%s, log_level=%s)", DEV_MODE, LOG_LEVEL)
     nimcp.init()
     manager.load_all_from_disk()
+    manager.ensure_athena()
     probe_task = asyncio.create_task(probe_loop())
     yield
     _log.info("NIMCP Dashboard shutting down")
@@ -160,18 +167,22 @@ app.include_router(datasets.router)
 app.include_router(chat.router)
 app.include_router(system.router)
 app.include_router(scripts.router)
+app.include_router(conversations.router)
+app.include_router(admin.router)
+app.include_router(media.router)
 
 
 # WebSocket — check Authorization header OR ?auth= query param
 @app.websocket("/ws/{brain_id}")
 async def ws_endpoint(ws: WebSocket, brain_id: int):
+    username = ""
     if AUTH_PASS_HASH:
         # Try the Authorization header first (e.g. URL-embedded credentials)
         from starlette.requests import Request as StarletteRequest
         scope = ws.scope.copy()
         scope["type"] = "http"
         fake_req = StarletteRequest(scope)
-        authed = _check_basic_auth(fake_req)
+        authed, username = _extract_basic_auth(fake_req)
         # Fall back to ?auth= query param (base64-encoded user:pass)
         if not authed:
             from urllib.parse import parse_qs
@@ -181,13 +192,14 @@ async def ws_endpoint(ws: WebSocket, brain_id: int):
                 try:
                     decoded = base64.b64decode(token).decode("utf-8")
                     username, _, password = decoded.partition(":")
-                    authed = user_store.verify(username, password)
+                    if user_store.verify(username, password):
+                        authed = True
                 except Exception:
                     pass
         if not authed:
             await ws.close(code=4401, reason="Unauthorized")
             return
-    await websocket_handler(ws, brain_id)
+    await websocket_handler(ws, brain_id, username)
 
 
 # Static files for production

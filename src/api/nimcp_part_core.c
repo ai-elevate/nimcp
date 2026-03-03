@@ -84,6 +84,77 @@ nimcp_status_t nimcp_brain_learn_example(
 }
 
 
+nimcp_status_t nimcp_brain_learn_vector(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    const float* target,
+    uint32_t target_size,
+    const char* label,
+    float confidence)
+{
+    LOG_DEBUG("Learning vector: target_size=%u, num_features=%u, confidence=%.3f",
+              target_size, num_features, confidence);
+
+    /* Exception-integrated parameter validation */
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    NIMCP_API_CHECK_NULL(target, NIMCP_ERROR_NULL_ARG, "Target array is NULL");
+    NIMCP_API_CHECK_NULL(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    if (num_features == 0) {
+        set_error("num_features must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+    if (target_size == 0) {
+        set_error("target_size must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    /* === BBB INPUT VALIDATION === */
+    if (brain->internal_brain->bbb_enabled &&
+        brain->internal_brain->bbb_system) {
+        bbb_validation_result_t result;
+
+        /* Validate features array */
+        if (!bbb_validate_input(brain->internal_brain->bbb_system,
+                               features, num_features * sizeof(float), &result)) {
+            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_INVALID);
+        }
+
+        /* Validate target array */
+        if (!bbb_validate_input(brain->internal_brain->bbb_system,
+                               target, target_size * sizeof(float), &result)) {
+            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_INVALID);
+        }
+
+        /* Validate label string if provided */
+        if (label && !bbb_validate_string(brain->internal_brain->bbb_system, label, &result)) {
+            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_INVALID);
+        }
+    }
+
+    /* Call internal brain API */
+    float loss = brain_learn_vector(brain->internal_brain, features, num_features,
+                                    target, target_size, label, confidence);
+
+    NIMCP_API_CHECK_FLOAT(loss, NIMCP_ERROR,
+                          "Brain vector learning failed");
+
+    /* Store loss and gradient norm */
+    brain->last_loss = loss;
+    if (brain->internal_brain && brain->internal_brain->network) {
+        brain->last_gradient_norm = adaptive_network_get_last_grad_norm(brain->internal_brain->network);
+    } else {
+        brain->last_gradient_norm = 0.0f;
+    }
+
+    set_error("No error");
+    LOG_DEBUG("Learning vector completed successfully (loss=%.6f)", loss);
+    return NIMCP_OK;
+}
+
+
 float nimcp_brain_get_last_loss(nimcp_brain_t brain)
 {
     if (!brain) return -1.0F;
@@ -102,6 +173,81 @@ float nimcp_brain_get_accuracy(nimcp_brain_t brain)
 {
     if (!brain || !brain->internal_brain) return 0.0F;
     return brain->internal_brain->stats.running_accuracy;
+}
+
+
+nimcp_status_t nimcp_brain_learn_batch(
+    nimcp_brain_t brain,
+    const float** features_array,
+    const uint32_t* num_features_array,
+    const char** labels,
+    const float* confidences,
+    uint32_t num_examples,
+    float* losses_out)
+{
+    LOG_DEBUG("Learning batch: num_examples=%u", num_examples);
+
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(features_array, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    NIMCP_API_CHECK_NULL(labels, NIMCP_ERROR_NULL_ARG, "Labels array is NULL");
+    NIMCP_API_CHECK_NULL(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    if (num_examples == 0) {
+        set_error("num_examples must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    /* BBB validation on the entire batch */
+    if (brain->internal_brain->bbb_enabled &&
+        brain->internal_brain->bbb_system) {
+        bbb_validation_result_t result;
+        for (uint32_t i = 0; i < num_examples; i++) {
+            if (!features_array[i] || !labels[i]) continue;
+            uint32_t nf = num_features_array ? num_features_array[i] : 0;
+            if (!bbb_validate_input(brain->internal_brain->bbb_system,
+                                   features_array[i], nf * sizeof(float), &result)) {
+                NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_INVALID);
+            }
+            if (!bbb_validate_string(brain->internal_brain->bbb_system, labels[i], &result)) {
+                NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_INVALID);
+            }
+        }
+    }
+
+    /* Build brain_example_t array and call internal batch learn */
+    brain_example_t* examples = (brain_example_t*)nimcp_calloc(num_examples, sizeof(brain_example_t));
+    if (!examples) {
+        set_error("Failed to allocate batch example array");
+        return NIMCP_ERROR_OUT_OF_MEMORY;
+    }
+
+    for (uint32_t i = 0; i < num_examples; i++) {
+        examples[i].features = (float*)features_array[i];
+        examples[i].num_features = num_features_array ? num_features_array[i] : 0;
+        strncpy(examples[i].label, labels[i] ? labels[i] : "", 63);
+        examples[i].label[63] = '\0';
+        examples[i].confidence = confidences ? confidences[i] : 1.0f;
+    }
+
+    float avg_loss = brain_learn_batch_detailed(brain->internal_brain, examples,
+                                                 num_examples, losses_out);
+
+    nimcp_free(examples);
+
+    if (avg_loss < 0.0f) {
+        set_error("Batch learning failed");
+        return NIMCP_ERROR;
+    }
+
+    brain->last_loss = avg_loss;
+
+    /* Update gradient norm from last example in batch */
+    if (brain->internal_brain && brain->internal_brain->network) {
+        brain->last_gradient_norm = adaptive_network_get_last_grad_norm(brain->internal_brain->network);
+    }
+
+    LOG_DEBUG("Batch learning completed: avg_loss=%.6f", avg_loss);
+    return NIMCP_OK;
 }
 
 
@@ -236,8 +382,8 @@ nimcp_status_t nimcp_brain_predict_fast(
     // W6-6 FIX: Zero-initialize stack buffer. If forward_raw partially writes
     // (e.g., writes fewer outputs than num_outputs), argmax would read garbage
     // from uninitialized slots, potentially selecting a wrong output index.
-    float stack_buf[256] = {0};
-    float* output = (num_outputs <= 256) ? stack_buf : (float*)nimcp_calloc(num_outputs, sizeof(float));
+    float stack_buf[4096] = {0};
+    float* output = (num_outputs <= 4096) ? stack_buf : (float*)nimcp_calloc(num_outputs, sizeof(float));
     if (!output) {
         set_error("Failed to allocate output buffer");
         return NIMCP_ERROR_MEMORY;
@@ -380,8 +526,8 @@ nimcp_status_t nimcp_brain_predict_in_domain(
     }
     // W6-6 FIX: Zero-initialize stack buffer to prevent argmax reading garbage
     // if forward_raw partially writes the output array.
-    float stack_buf[256] = {0};
-    float* output = (num_outputs <= 256) ? stack_buf : (float*)nimcp_calloc(num_outputs, sizeof(float));
+    float stack_buf[4096] = {0};
+    float* output = (num_outputs <= 4096) ? stack_buf : (float*)nimcp_calloc(num_outputs, sizeof(float));
     if (!output) {
         set_error("Failed to allocate output buffer");
         return NIMCP_ERROR_MEMORY;
@@ -745,7 +891,9 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
     probe->avg_inference_time_us = internal_stats.avg_inference_time_us;
     probe->current_learning_rate = internal_stats.current_learning_rate;
 
-    probe->accuracy = internal_stats.accuracy;
+    probe->accuracy = internal_stats.running_accuracy > 0.0f
+                    ? internal_stats.running_accuracy
+                    : internal_stats.accuracy;
     probe->memory_bytes = internal_stats.memory_bytes;
 
     // Get input/output sizes from internal brain
@@ -1793,6 +1941,143 @@ nimcp_status_t nimcp_brain_unregister_callback(
     if (!tcb_unregister(state->callbacks, callback_id)) {
         NIMCP_CHECK_THROW(false, NIMCP_ERROR, "Failed to unregister callback");
     }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+//=============================================================================
+// Brain Health Probes - System-Level Metrics Collection
+//=============================================================================
+
+size_t nimcp_brain_get_memory_rss(void) {
+#ifdef __linux__
+    FILE* f = fopen("/proc/self/status", "r");
+    if (!f) return 0;
+
+    unsigned long rss_kb = 0;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "VmRSS:", 6) == 0) {
+            /* Format: "VmRSS:    <number> kB\n" */
+            if (sscanf(line + 6, " %lu", &rss_kb) != 1) {
+                rss_kb = 0;
+            }
+            break;
+        }
+    }
+    fclose(f);
+    return (size_t)rss_kb * 1024;  /* Convert kB to bytes */
+#else
+    return 0;  /* Not supported on non-Linux platforms */
+#endif
+}
+
+
+size_t nimcp_brain_get_gpu_vram_used(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return 0;
+    if (!brain->internal_brain->gpu_enabled) return 0;
+
+    struct nimcp_gpu_context_s* gpu_ctx = brain->internal_brain->gpu_ctx;
+    if (!gpu_ctx) return 0;
+
+    return gpu_ctx->allocated_memory;
+}
+
+
+float nimcp_brain_get_neuron_utilization(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return 0.0f;
+
+    neural_network_t net = adaptive_network_get_base_network(brain->internal_brain->network);
+    if (!net) return 0.0f;
+
+    uint32_t total = neural_network_get_num_neurons(net);
+    if (total == 0) return 0.0f;
+
+    /* Sample every Nth neuron for speed (same pattern as weight_stats) */
+    uint32_t step = total / 15000;
+    if (step < 1) step = 1;
+
+    uint32_t sampled = 0;
+    uint32_t connected = 0;
+
+    for (uint32_t i = 0; i < total; i += step) {
+        neuron_t* n = neural_network_get_neuron(net, i);
+        if (!n) continue;
+        sampled++;
+        if (NEURON_OUT_COUNT(n) > 0) {
+            connected++;
+        }
+    }
+
+    if (sampled == 0) return 0.0f;
+    return (float)connected / (float)sampled;
+}
+
+
+nimcp_status_t nimcp_brain_get_immune_metrics(nimcp_brain_t brain, nimcp_immune_metrics_t* out) {
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_CHECK_THROW(out, NIMCP_ERROR_NULL_ARG, "Output structure is NULL");
+    NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    memset(out, 0, sizeof(*out));
+
+    /* If immune system is not enabled, return zeroed struct successfully */
+    if (!brain->internal_brain->immune_enabled ||
+        !brain->internal_brain->immune_system) {
+        set_error("No error");
+        return NIMCP_OK;
+    }
+
+    brain_immune_stats_t istats;
+    int rc = brain_immune_get_stats(brain->internal_brain->immune_system, &istats);
+    if (rc != 0) {
+        set_error("Failed to get immune stats");
+        return NIMCP_ERROR;
+    }
+
+    out->total_exceptions = (uint32_t)istats.antigens_processed;
+    out->recovered_exceptions = (uint32_t)istats.threats_neutralized;
+    out->inflammation_level = istats.inflammation_level_continuous;
+    out->active_antibodies = istats.active_antibodies;
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+/**
+ * @brief Per-brain synapse count from previous probe call
+ *
+ * WHAT: Static storage for computing synapse growth delta
+ * WHY:  The delta is per-call, not per-session — simplest approach is a static
+ * HOW:  Stores previous synapse count, computes diff on next call
+ *
+ * NOTE: This is a single static — if multiple brains are probed, the delta
+ * reflects the difference since the last call regardless of which brain.
+ * A per-brain approach would require a hash map; this is adequate for the
+ * common single-brain monitoring case.
+ */
+static uint64_t s_last_synapse_count = 0;
+
+nimcp_status_t nimcp_brain_get_synapse_stats(nimcp_brain_t brain, nimcp_synapse_stats_t* out) {
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_CHECK_THROW(out, NIMCP_ERROR_NULL_ARG, "Output structure is NULL");
+    NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    memset(out, 0, sizeof(*out));
+
+    brain_stats_t stats;
+    if (!brain_get_stats(brain->internal_brain, &stats)) {
+        set_error("Failed to get brain stats");
+        return NIMCP_ERROR;
+    }
+
+    uint64_t current = (uint64_t)stats.num_synapses;
+    out->total_synapses = current;
+    out->growth_since_last = (int64_t)current - (int64_t)s_last_synapse_count;
+    s_last_synapse_count = current;
 
     set_error("No error");
     return NIMCP_OK;

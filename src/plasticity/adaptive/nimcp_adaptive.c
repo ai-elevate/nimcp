@@ -379,9 +379,45 @@ struct adaptive_network_struct {
     // Requires -latomic on GCC/Linux (already linked).
     _Atomic float last_grad_norm;  /**< L2 norm of gradients from most recent learn step */
 
+    // Per-layer gradient norm tracking
+    // WHY: Enables layer-wise learning rate diagnostics (e.g., detecting vanishing/exploding
+    // gradients in specific layers). Written by learn() alongside last_grad_norm.
+    float last_layer_grad_norms[BP_MAX_GRAD_LAYERS]; /**< Per-layer L2 gradient norms */
+    uint32_t num_grad_layers;                         /**< Number of valid entries */
+
     // EMA tracking for training stability detection
     _Atomic float ema_grad_norm;   /**< Exponential moving average of gradient norms (decay=0.99), -1 = uninitialized */
     _Atomic float ema_loss;        /**< Exponential moving average of training loss (decay=0.99), -1 = uninitialized */
+
+    // === Probe tracking state ===
+    // Per-label accuracy tracking (circular buffer of recent predictions)
+    // Index by label_index from label_table. Max 2048 labels (matches ATHENA_NUM_OUTPUTS).
+    struct {
+        _Atomic uint32_t correct;
+        _Atomic uint32_t total;
+    } label_accuracy[2048];
+    _Atomic uint32_t label_accuracy_size;  /**< Number of distinct labels tracked */
+
+    // Confidence calibration (10 bins: [0-0.1), [0.1-0.2), ..., [0.9-1.0])
+    struct {
+        _Atomic uint32_t correct;
+        _Atomic uint32_t total;
+    } confidence_bins[10];
+
+    // Learning velocity (rolling window of accuracy snapshots)
+    float accuracy_history[64];
+    _Atomic uint32_t accuracy_history_idx;
+    _Atomic uint32_t accuracy_history_count;
+
+    // Prediction diversity (count of each label predicted recently)
+    _Atomic uint32_t recent_predictions[2048];
+    _Atomic uint32_t recent_prediction_total;
+
+    // Running accuracy EMA (fed by GPU probe tracking, read by brain_learn)
+    _Atomic float running_accuracy_ema;
+
+    // Synapse count for growth tracking
+    _Atomic uint64_t prev_synapse_count;
 };
 
 //=============================================================================
@@ -1150,6 +1186,10 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     // Initialize EMA tracking fields (-1 = uninitialized, first sample will seed)
     network->ema_grad_norm = -1.0f;
     network->ema_loss = -1.0f;
+
+    // Probe tracking fields: all zero-initialized by nimcp_calloc above.
+    // label_accuracy[], confidence_bins[], accuracy_history[], recent_predictions[]
+    // all start at zero which is the correct initial state.
 
     // Deep copy layer_sizes array to avoid dangling pointer
     // WHY: Config may be stack-allocated by caller, so we need our own copy
@@ -2034,37 +2074,43 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 float t = fminf(fmaxf(example->target[li], 0.0f), 1.0f);
                 loss -= t * logf(o) + (1.0f - t) * logf(1.0f - o);
             }
-            loss /= example->target_size;
+            // BCE loss dilution fix (GPU path): same normalization as CPU path
+            int active_targets = 0;
+            for (uint32_t li = 0; li < example->target_size; li++) {
+                if (example->target[li] > 0.01f) active_targets++;
+            }
+            loss /= fmaxf(2.0f * active_targets, 1.0f);
             if (!isfinite(loss) || loss < 0.0f) loss = 0.0f;
         }
 
-        // 4. Download activations so CPU bio-plasticity can read neuron states.
-        // Skip for large networks (>100K neurons) — bio-plasticity is already
-        // skipped at step 7 below, so syncing 1.5M neuron states is wasted work.
-        {
-            uint32_t total_neurons = neural_network_get_num_neurons(network->base_network);
-            if (total_neurons <= 100000) {
-                nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
-                                                        network->base_network);
-            }
-        }
+        // 4. Download activations so CPU backprop can read neuron states.
+        // CRITICAL: backprop_sparse_full() computes weight_delta = lr * delta * src->state
+        // where src->state must reflect the GPU forward pass activations. Without this
+        // sync, src->state is zero/stale and ALL weight updates become zero — only biases
+        // update, capping accuracy around 33-35%.
+        nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
+                                                network->base_network);
 
         // 4.5 Full backprop through all layers (GPU forward, CPU backward)
         // Delegated to shared kernel with parallel + SIMD optimizations
         {
             float grad_norm = 0.0f;
+            backprop_layer_grads_t layer_grads = {0};
             uint32_t num_layers = network->config.base_config.num_layers;
             uint32_t* layer_sizes = network->config.base_config.layer_sizes;
             if (num_layers >= 2 && layer_sizes) {
-                backprop_sparse_full(network->base_network,
+                backprop_sparse_full_ex(network->base_network,
                     num_layers, layer_sizes, learning_rate,
                     network->config.base_config.min_weight,
                     network->config.base_config.max_weight,
                     example->target, output, example->target_size,
                     1.0f,  // L-3 TODO: Make max_grad_norm configurable via adaptive_network_config_t
-                    &grad_norm);
+                    &grad_norm, &layer_grads);
             }
             network->last_grad_norm = grad_norm;
+            network->num_grad_layers = layer_grads.num_layers;
+            memcpy(network->last_layer_grad_norms, layer_grads.norms,
+                   sizeof(network->last_layer_grad_norms));
 
             // Update EMA of gradient norm for training stability detection
             // H-5: Guard against +Inf/NaN corrupting the EMA
@@ -2092,6 +2138,38 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     network->base_network, reward, learning_rate * 0.1f,
                     network->total_learning_steps);
             }
+        }
+
+        // --- Probe tracking (GPU path) ---
+        {
+            uint32_t target_label = 0;
+            float target_max = example->target[0];
+            uint32_t pred_label = 0;
+            float pred_max = output[0];
+            for (uint32_t pi = 1; pi < example->target_size; pi++) {
+                if (example->target[pi] > target_max) {
+                    target_max = example->target[pi];
+                    target_label = pi;
+                }
+                if (output[pi] > pred_max) {
+                    pred_max = output[pi];
+                    pred_label = pi;
+                }
+            }
+            float probe_conf = fmaxf(0.0f, fminf(1.0f, pred_max));
+            bool probe_correct = (pred_label == target_label);
+            adaptive_network_update_probe_tracking(network, target_label,
+                                                   loss, probe_conf, probe_correct);
+
+            // Update running accuracy EMA — this uses the output[] buffer directly
+            // (ground truth from GPU forward pass), unlike the brain_learn code which
+            // tried to reconstruct predictions from neuron->state.
+            float match_f = probe_correct ? 1.0f : 0.0f;
+            float cur = atomic_load_explicit(&network->running_accuracy_ema,
+                                              memory_order_relaxed);
+            float next = cur * 0.99f + match_f * 0.01f;
+            atomic_store_explicit(&network->running_accuracy_ema, next,
+                                   memory_order_relaxed);
         }
 
         free_hot_buffer(output);
@@ -2145,7 +2223,19 @@ cpu_learn_path:
                     float t = fminf(fmaxf(example->target[i], 0.0f), 1.0f);
                     loss -= t * logf(o) + (1.0f - t) * logf(1.0f - o);
                 }
-                loss /= example->target_size;
+                // BCE loss dilution fix: With sparse labels (e.g., 19 active out
+                // of 2048 outputs), dividing by target_size lets 2029 zero-target
+                // outputs contribute near-zero loss, drowning out the gradient
+                // signal from active labels and causing mode collapse (network
+                // learns all-zeros).  Instead, normalize by 2x active targets:
+                // one count for the positive BCE term, one for the negative term
+                // of each active output.  With 19 active labels this gives ~54x
+                // stronger gradients vs dividing by 2048.
+                int active_targets = 0;
+                for (uint32_t i = 0; i < example->target_size; i++) {
+                    if (example->target[i] > 0.01f) active_targets++;
+                }
+                loss /= fmaxf(2.0f * active_targets, 1.0f);
             }
 
             // =================================================================
@@ -2167,18 +2257,22 @@ cpu_learn_path:
             // Delegated to shared kernel with parallel + SIMD optimizations
             {
                 float grad_norm = 0.0f;
+                backprop_layer_grads_t layer_grads = {0};
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
-                    backprop_sparse_full(network->base_network,
+                    backprop_sparse_full_ex(network->base_network,
                         num_layers, layer_sizes, learning_rate,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
                         1.0f,
-                        &grad_norm);
+                        &grad_norm, &layer_grads);
                 }
                 network->last_grad_norm = grad_norm;
+                network->num_grad_layers = layer_grads.num_layers;
+                memcpy(network->last_layer_grad_norms, layer_grads.norms,
+                       sizeof(network->last_layer_grad_norms));
 
                 // W6-03 FIX: Mark GPU weight cache dirty after CPU backprop modifies weights.
                 // Without this, the next GPU-path learn/forward uses stale cached weights.
@@ -2261,22 +2355,28 @@ cpu_learn_path:
                     float t = fminf(fmaxf(example->target[i], 0.0f), 1.0f);
                     loss -= t * logf(o) + (1.0f - t) * logf(1.0f - o);
                 }
-                loss /= example->target_size;
+                // BCE loss dilution fix (RL path): same normalization as CPU supervised path
+                int active_targets = 0;
+                for (uint32_t i = 0; i < example->target_size; i++) {
+                    if (example->target[i] > 0.01f) active_targets++;
+                }
+                loss /= fmaxf(2.0f * active_targets, 1.0f);
             }
 
             // Phase 2: Full backpropagation (delegated to shared kernel)
             {
                 float grad_norm = 0.0f;
+                backprop_layer_grads_t layer_grads = {0};
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
-                    backprop_sparse_full(network->base_network,
+                    backprop_sparse_full_ex(network->base_network,
                         num_layers, layer_sizes, learning_rate,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
                         1.0f,
-                        &grad_norm);
+                        &grad_norm, &layer_grads);
 
                     // Phase 3: Biological plasticity AFTER backprop
                     float reward = fmaxf(0.0f, 1.0f - loss);
@@ -2303,6 +2403,9 @@ cpu_learn_path:
                     }
                 }
                 network->last_grad_norm = grad_norm;
+                network->num_grad_layers = layer_grads.num_layers;
+                memcpy(network->last_layer_grad_norms, layer_grads.norms,
+                       sizeof(network->last_layer_grad_norms));
 
                 // W6-03 FIX: Mark GPU weight cache dirty after CPU HYBRID backprop + bio-plasticity.
                 if (network->gpu_weight_cache) {
@@ -2320,6 +2423,38 @@ cpu_learn_path:
                 }
             }
             break;
+    }
+
+    // --- Probe tracking (CPU path) ---
+    // Only for modes with meaningful target/output for classification accuracy.
+    if (mode == LEARN_MODE_SUPERVISED || mode == LEARN_MODE_DISTILLATION ||
+        mode == LEARN_MODE_HYBRID) {
+        uint32_t target_label = 0;
+        float target_max = example->target[0];
+        uint32_t pred_label = 0;
+        float pred_max = output[0];
+        for (uint32_t pi = 1; pi < example->target_size; pi++) {
+            if (example->target[pi] > target_max) {
+                target_max = example->target[pi];
+                target_label = pi;
+            }
+            if (output[pi] > pred_max) {
+                pred_max = output[pi];
+                pred_label = pi;
+            }
+        }
+        float probe_conf = fmaxf(0.0f, fminf(1.0f, pred_max));
+        bool probe_correct = (pred_label == target_label);
+        adaptive_network_update_probe_tracking(network, target_label,
+                                               loss, probe_conf, probe_correct);
+
+        // Update running accuracy EMA (CPU path, same as GPU path)
+        float match_f = probe_correct ? 1.0f : 0.0f;
+        float cur = atomic_load_explicit(&network->running_accuracy_ema,
+                                          memory_order_relaxed);
+        float next = cur * 0.99f + match_f * 0.01f;
+        atomic_store_explicit(&network->running_accuracy_ema, next,
+                               memory_order_relaxed);
     }
 
     free_hot_buffer(output);  // Phase MP: Return to pool
@@ -2346,6 +2481,24 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
     if (!network || !examples || num_examples == 0)
         return -1.0F;
 
+    /* GPU batch optimization: upload weights ONCE before the batch loop, then
+     * suppress per-example re-uploads by clearing weights_dirty_on_cpu after
+     * each learn call.  The GPU weights will be slightly stale for examples 2+
+     * (they don't reflect the previous example's backprop update), but this is
+     * standard mini-batch behavior and saves ~0.5s per extra example. */
+    bool gpu_batch_opt = (network->gpu_enabled && network->gpu_weight_cache &&
+        (mode == LEARN_MODE_SUPERVISED || mode == LEARN_MODE_DISTILLATION || mode == LEARN_MODE_HYBRID));
+
+    if (gpu_batch_opt) {
+        /* Force single weight upload before batch starts */
+        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
+            nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
+                                         network->base_network);
+        }
+        /* Pre-clear so the first adaptive_network_learn doesn't re-upload */
+        network->gpu_weight_cache->weights_dirty_on_cpu = false;
+    }
+
     float total_loss = 0.0F;
     uint32_t successful = 0;
 
@@ -2358,6 +2511,16 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
             successful++;
         }
         /* Skip examples that return -1.0f (error) or non-finite to avoid corrupting average */
+
+        /* Suppress per-example re-upload — weights stay on GPU from batch start */
+        if (gpu_batch_opt && network->gpu_weight_cache) {
+            network->gpu_weight_cache->weights_dirty_on_cpu = false;
+        }
+    }
+
+    /* Re-mark dirty so the next non-batch operation does a proper sync */
+    if (gpu_batch_opt && network->gpu_weight_cache) {
+        network->gpu_weight_cache->weights_dirty_on_cpu = true;
     }
 
     return (successful > 0) ? (total_loss / successful) : -1.0F;
@@ -3732,6 +3895,24 @@ float adaptive_network_get_last_grad_norm(adaptive_network_t network)
     return network->last_grad_norm;
 }
 
+float adaptive_network_get_running_accuracy(adaptive_network_t network)
+{
+    if (!network) return 0.0f;
+    return atomic_load_explicit(&network->running_accuracy_ema, memory_order_relaxed);
+}
+
+uint32_t adaptive_network_get_layer_grad_norms(adaptive_network_t network,
+                                                float* out_norms,
+                                                uint32_t max_layers)
+{
+    if (!network || !out_norms || max_layers == 0) return 0;
+    uint32_t n = network->num_grad_layers;
+    if (n > max_layers) n = max_layers;
+    if (n > BP_MAX_GRAD_LAYERS) n = BP_MAX_GRAD_LAYERS;
+    memcpy(out_norms, network->last_layer_grad_norms, n * sizeof(float));
+    return n;
+}
+
 float adaptive_network_get_ema_grad_norm(adaptive_network_t network)
 {
     if (!network) return 0.0f;
@@ -3742,6 +3923,332 @@ float adaptive_network_get_ema_loss(adaptive_network_t network)
 {
     if (!network) return 0.0f;
     return network->ema_loss;
+}
+
+/**
+ * WHAT: Compute weight statistics by sampling backbone neurons
+ * WHY:  Real-time monitoring of whether weights are actually updating
+ * HOW:  Sample every Nth neuron's outgoing synapses, compute L2 norm,
+ *       mean absolute weight, max weight, and total sampled connections
+ */
+void adaptive_network_weight_stats(adaptive_network_t network,
+                                   float* out_weight_l2_norm,
+                                   float* out_mean_abs_weight,
+                                   float* out_max_abs_weight,
+                                   uint64_t* out_num_sampled_synapses)
+{
+    if (!network || !network->base_network) {
+        if (out_weight_l2_norm) *out_weight_l2_norm = 0.0f;
+        if (out_mean_abs_weight) *out_mean_abs_weight = 0.0f;
+        if (out_max_abs_weight) *out_max_abs_weight = 0.0f;
+        if (out_num_sampled_synapses) *out_num_sampled_synapses = 0;
+        return;
+    }
+
+    neural_network_t nn = network->base_network;
+    uint32_t total = neural_network_get_num_neurons(nn);
+
+    // Sample every Nth neuron to keep this O(sample_size) not O(total_synapses)
+    // For 1.5M neurons, step=100 gives ~15K neurons sampled
+    uint32_t step = total > 15000 ? total / 15000 : 1;
+
+    double sum_sq = 0.0;
+    double sum_abs = 0.0;
+    float max_abs = 0.0f;
+    uint64_t count = 0;
+
+    for (uint32_t i = 0; i < total; i += step) {
+        neuron_t* n = neural_network_get_neuron(nn, i);
+        if (!n) continue;
+        // Read from INCOMING handles — these are the weights that the GPU cache
+        // and backprop use. Outgoing handles are stale after backprop updates.
+        uint32_t nin = NEURON_IN_COUNT(n);
+        for (uint32_t j = 0; j < nin; j++) {
+            synapse_handle_t* h = NEURON_IN_HANDLE(n, j);
+            if (!h) continue;
+            float w = h->weight;
+            float aw = w < 0 ? -w : w;
+            sum_sq += (double)w * (double)w;
+            sum_abs += (double)aw;
+            if (aw > max_abs) max_abs = aw;
+            count++;
+        }
+    }
+
+    if (out_weight_l2_norm) *out_weight_l2_norm = (float)sqrt(sum_sq);
+    if (out_mean_abs_weight) *out_mean_abs_weight = count > 0 ? (float)(sum_abs / (double)count) : 0.0f;
+    if (out_max_abs_weight) *out_max_abs_weight = max_abs;
+    if (out_num_sampled_synapses) *out_num_sampled_synapses = count;
+}
+
+//=============================================================================
+// Learning Quality Probes
+//=============================================================================
+
+/**
+ * WHAT: Update probe tracking state after a learn step
+ * WHY:  Enable per-label accuracy, confidence calibration, prediction diversity
+ *       and learning velocity tracking for conversational readiness assessment
+ * HOW:  Atomic increments on per-label and per-bin counters; no mutex needed
+ *
+ * COMPLEXITY: O(1) — constant-time counter updates
+ */
+void adaptive_network_update_probe_tracking(adaptive_network_t network,
+                                            uint32_t label_index,
+                                            float loss,
+                                            float confidence,
+                                            bool was_correct)
+{
+    if (!network)
+        return;
+
+    (void)loss;  // Reserved for future use (e.g., loss-weighted metrics)
+
+    // --- Per-label accuracy ---
+    if (label_index < 2048) {
+        atomic_fetch_add_explicit(&network->label_accuracy[label_index].total,
+                                  1, memory_order_relaxed);
+        if (was_correct) {
+            atomic_fetch_add_explicit(&network->label_accuracy[label_index].correct,
+                                      1, memory_order_relaxed);
+        }
+        // Track high-water mark of labels seen
+        uint32_t cur_size = atomic_load_explicit(&network->label_accuracy_size,
+                                                 memory_order_relaxed);
+        while (label_index >= cur_size) {
+            // CAS to bump label_accuracy_size if we're the one that discovers a new label
+            if (atomic_compare_exchange_weak_explicit(&network->label_accuracy_size,
+                                                      &cur_size, label_index + 1,
+                                                      memory_order_relaxed,
+                                                      memory_order_relaxed))
+                break;
+            // CAS failed — cur_size was reloaded by the CAS, retry loop
+        }
+    }
+
+    // --- Confidence calibration bins ---
+    if (isfinite(confidence)) {
+        float clamped = fmaxf(0.0f, fminf(confidence, 1.0f));
+        uint32_t bin = (uint32_t)(clamped * 10.0f);
+        if (bin >= 10) bin = 9;  // [0.9, 1.0] maps to bin 9
+        atomic_fetch_add_explicit(&network->confidence_bins[bin].total,
+                                  1, memory_order_relaxed);
+        if (was_correct) {
+            atomic_fetch_add_explicit(&network->confidence_bins[bin].correct,
+                                      1, memory_order_relaxed);
+        }
+    }
+
+    // --- Prediction diversity (track which labels are predicted) ---
+    if (label_index < 2048) {
+        atomic_fetch_add_explicit(&network->recent_predictions[label_index],
+                                  1, memory_order_relaxed);
+        atomic_fetch_add_explicit(&network->recent_prediction_total,
+                                  1, memory_order_relaxed);
+    }
+
+    // --- Learning velocity: record rolling overall accuracy ---
+    // Snapshot overall accuracy every 256 learn steps to keep history sparse
+    uint32_t total_steps = (uint32_t)network->total_learning_steps;
+    if ((total_steps & 0xFF) == 0 && total_steps > 0) {
+        // Compute current global accuracy from label_accuracy counters
+        uint32_t nlabels = atomic_load_explicit(&network->label_accuracy_size,
+                                                memory_order_relaxed);
+        uint64_t sum_correct = 0, sum_total = 0;
+        for (uint32_t i = 0; i < nlabels && i < 2048; i++) {
+            sum_correct += atomic_load_explicit(&network->label_accuracy[i].correct,
+                                                memory_order_relaxed);
+            sum_total += atomic_load_explicit(&network->label_accuracy[i].total,
+                                              memory_order_relaxed);
+        }
+        float acc = (sum_total > 0) ? (float)sum_correct / (float)sum_total : 0.0f;
+
+        uint32_t idx = atomic_load_explicit(&network->accuracy_history_idx,
+                                            memory_order_relaxed);
+        network->accuracy_history[idx & 63] = acc;
+        atomic_store_explicit(&network->accuracy_history_idx,
+                              (idx + 1) & 63, memory_order_relaxed);
+        uint32_t cnt = atomic_load_explicit(&network->accuracy_history_count,
+                                            memory_order_relaxed);
+        if (cnt < 64) {
+            atomic_store_explicit(&network->accuracy_history_count,
+                                  cnt + 1, memory_order_relaxed);
+        }
+    }
+}
+
+/**
+ * WHAT: Get per-label accuracy for a specific label index
+ * WHY:  Enable fine-grained per-domain accuracy reporting
+ * HOW:  Read atomic counters, compute ratio
+ *
+ * COMPLEXITY: O(1)
+ */
+float adaptive_network_get_label_accuracy(adaptive_network_t network,
+                                          uint32_t label_index)
+{
+    if (!network || label_index >= 2048)
+        return 0.0f;
+    uint32_t total = atomic_load_explicit(&network->label_accuracy[label_index].total,
+                                          memory_order_relaxed);
+    if (total == 0)
+        return 0.0f;
+    uint32_t correct = atomic_load_explicit(&network->label_accuracy[label_index].correct,
+                                            memory_order_relaxed);
+    return (float)correct / (float)total;
+}
+
+/**
+ * WHAT: Compute comprehensive learning quality metrics
+ * WHY:  Aggregate per-label accuracy, calibration, velocity, diversity, growth
+ *       into a single struct for probe/dashboard consumption
+ * HOW:
+ *   - mean/worst label accuracy: iterate tracked labels
+ *   - confidence calibration: MAE across 10 bins (|bin_accuracy - bin_midpoint|)
+ *   - learning velocity: linear regression slope over accuracy_history window
+ *   - prediction entropy: Shannon entropy -sum(p_i * log2(p_i))
+ *   - synapse growth: delta from prev_synapse_count
+ *
+ * COMPLEXITY: O(num_labels) for accuracy scan, O(64) for velocity, O(2048) for entropy
+ */
+void adaptive_network_learning_quality(adaptive_network_t network,
+                                       adaptive_learning_quality_t* out)
+{
+    if (!out)
+        return;
+    memset(out, 0, sizeof(adaptive_learning_quality_t));
+
+    if (!network)
+        return;
+
+    // --- Per-label accuracy (mean and worst) ---
+    uint32_t nlabels = atomic_load_explicit(&network->label_accuracy_size,
+                                            memory_order_relaxed);
+    if (nlabels > 2048) nlabels = 2048;
+    out->num_labels_tracked = nlabels;
+
+    if (nlabels > 0) {
+        double acc_sum = 0.0;
+        float worst = 1.0f;
+        for (uint32_t i = 0; i < nlabels; i++) {
+            uint32_t total = atomic_load_explicit(&network->label_accuracy[i].total,
+                                                  memory_order_relaxed);
+            float acc = 0.0f;
+            if (total > 0) {
+                uint32_t correct = atomic_load_explicit(&network->label_accuracy[i].correct,
+                                                        memory_order_relaxed);
+                acc = (float)correct / (float)total;
+            }
+            acc_sum += acc;
+            if (acc < worst)
+                worst = acc;
+        }
+        out->mean_label_accuracy = (float)(acc_sum / (double)nlabels);
+        out->worst_label_accuracy = worst;
+    }
+
+    // --- Confidence calibration (ECE — Expected Calibration Error) ---
+    {
+        double mae_sum = 0.0;
+        uint32_t bins_with_data = 0;
+        for (uint32_t b = 0; b < 10; b++) {
+            uint32_t total = atomic_load_explicit(&network->confidence_bins[b].total,
+                                                  memory_order_relaxed);
+            if (total == 0) continue;
+            uint32_t correct = atomic_load_explicit(&network->confidence_bins[b].correct,
+                                                    memory_order_relaxed);
+            float bin_accuracy = (float)correct / (float)total;
+            float bin_midpoint = (float)b * 0.1f + 0.05f;
+            float err = bin_accuracy - bin_midpoint;
+            mae_sum += (err < 0.0f) ? -err : err;
+            bins_with_data++;
+        }
+        out->confidence_calibration = (bins_with_data > 0)
+            ? (float)(mae_sum / (double)bins_with_data)
+            : 0.0f;
+    }
+
+    // --- Learning velocity (linear regression slope over accuracy_history) ---
+    {
+        uint32_t count = atomic_load_explicit(&network->accuracy_history_count,
+                                              memory_order_relaxed);
+        if (count >= 2) {
+            uint32_t head = atomic_load_explicit(&network->accuracy_history_idx,
+                                                 memory_order_relaxed);
+            // Reconstruct oldest-to-newest order from circular buffer
+            // head points to the NEXT write position, so the oldest entry is at head
+            // if the buffer is full, otherwise at index 0
+            double sum_x = 0.0, sum_y = 0.0, sum_xy = 0.0, sum_x2 = 0.0;
+            for (uint32_t i = 0; i < count; i++) {
+                // Read from oldest to newest
+                uint32_t buf_idx = (count < 64)
+                    ? i
+                    : (head + i) & 63;
+                double x = (double)i;
+                double y = (double)network->accuracy_history[buf_idx];
+                sum_x += x;
+                sum_y += y;
+                sum_xy += x * y;
+                sum_x2 += x * x;
+            }
+            double n = (double)count;
+            double denom = n * sum_x2 - sum_x * sum_x;
+            if (denom > 1e-12) {
+                out->learning_velocity = (float)((n * sum_xy - sum_x * sum_y) / denom);
+            }
+        }
+    }
+
+    // --- Prediction entropy (Shannon entropy of recent prediction distribution) ---
+    {
+        uint32_t total = atomic_load_explicit(&network->recent_prediction_total,
+                                              memory_order_relaxed);
+        if (total > 0) {
+            double entropy = 0.0;
+            double inv_total = 1.0 / (double)total;
+            for (uint32_t i = 0; i < 2048; i++) {
+                uint32_t cnt = atomic_load_explicit(&network->recent_predictions[i],
+                                                    memory_order_relaxed);
+                if (cnt == 0) continue;
+                double p = (double)cnt * inv_total;
+                entropy -= p * log2(p);
+            }
+            out->prediction_entropy = (float)entropy;
+        }
+    }
+
+    // --- Synapse growth ---
+    {
+        // Count total synapses across all neurons (sampled for speed)
+        neural_network_t nn = network->base_network;
+        uint64_t current_count = 0;
+        if (nn) {
+            uint32_t total_neurons = neural_network_get_num_neurons(nn);
+            // Sample every Nth neuron and extrapolate (same strategy as weight_stats)
+            uint32_t step = total_neurons > 15000 ? total_neurons / 15000 : 1;
+            uint64_t sampled_synapses = 0;
+            uint32_t sampled_neurons = 0;
+            for (uint32_t i = 0; i < total_neurons; i += step) {
+                neuron_t* n = neural_network_get_neuron(nn, i);
+                if (!n) continue;
+                sampled_synapses += NEURON_OUT_COUNT(n);
+                sampled_neurons++;
+            }
+            if (sampled_neurons > 0 && step > 1) {
+                // Extrapolate from sample
+                current_count = sampled_synapses * (uint64_t)step;
+            } else {
+                current_count = sampled_synapses;
+            }
+        }
+        uint64_t prev = atomic_load_explicit(&network->prev_synapse_count,
+                                             memory_order_relaxed);
+        // Signed delta: growth can be negative (pruning)
+        out->synapse_growth = current_count - prev;
+        // Update prev for next probe call
+        atomic_store_explicit(&network->prev_synapse_count,
+                              current_count, memory_order_relaxed);
+    }
 }
 
 /**

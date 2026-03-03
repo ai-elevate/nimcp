@@ -236,6 +236,29 @@ nimcp_brain_t nimcp_brain_create_with_neurons(
 );
 
 /**
+ * @brief Create brain with ALL subsystems enabled (RESEARCH profile + extras)
+ *
+ * Uses the RESEARCH config profile as a base and additionally enables:
+ * world model, creative system, LGSS safety, neuromodulators, immune bridges,
+ * collective cognition bridges, spike NLP, health agent, cycle coordinator.
+ * All lazy initialization is disabled — everything initializes at creation.
+ *
+ * @param name Brain name
+ * @param task Task type
+ * @param num_inputs Number of input features
+ * @param num_outputs Number of output classes
+ * @param neuron_count Number of neurons
+ * @return Brain handle, or NULL on failure
+ */
+nimcp_brain_t nimcp_brain_create_full(
+    const char* name,
+    nimcp_brain_task_t task,
+    uint32_t num_inputs,
+    uint32_t num_outputs,
+    uint32_t neuron_count
+);
+
+/**
  * @brief Destroy a brain and free all resources
  *
  * @param brain Brain handle
@@ -258,6 +281,54 @@ nimcp_status_t nimcp_brain_learn_example(
     uint32_t num_features,
     const char* label,
     float confidence
+);
+
+/**
+ * @brief Learn from a dense target vector (teacher distillation / generative training)
+ *
+ * Unlike nimcp_brain_learn_example() which converts a string label to one-hot,
+ * this function trains toward an arbitrary dense target vector (e.g. a semantic
+ * embedding from a teacher model). Uses LEARN_MODE_DISTILLATION internally.
+ *
+ * @param brain Brain handle
+ * @param features Input features array
+ * @param num_features Number of input features
+ * @param target Dense target output vector
+ * @param target_size Size of target vector (must match brain num_outputs)
+ * @param label Optional semantic label for tracking (can be NULL)
+ * @param confidence Training weight [0.0-1.0]
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_learn_vector(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    const float* target,
+    uint32_t target_size,
+    const char* label,
+    float confidence
+);
+
+/**
+ * @brief Learn from a batch of examples
+ *
+ * @param brain Brain handle
+ * @param features_array Array of feature pointers (one per example)
+ * @param num_features_array Array of feature counts (one per example, can be NULL if uniform)
+ * @param labels Array of label strings (one per example)
+ * @param confidences Array of confidence values (one per example, can be NULL for default 1.0)
+ * @param num_examples Number of examples in the batch
+ * @param losses_out Caller-allocated float[num_examples] for per-example losses (can be NULL)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_learn_batch(
+    nimcp_brain_t brain,
+    const float** features_array,
+    const uint32_t* num_features_array,
+    const char** labels,
+    const float* confidences,
+    uint32_t num_examples,
+    float* losses_out
 );
 
 /**
@@ -1072,6 +1143,98 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
  * @return NIMCP_OK on success, error code otherwise
  */
 nimcp_status_t nimcp_brain_broadcast_probe(nimcp_brain_t brain);
+
+//=============================================================================
+// Brain Health Probes - System-Level Metrics Collection
+//=============================================================================
+
+/**
+ * @brief Immune system metrics snapshot
+ *
+ * WHAT: Aggregated immune system health metrics for external monitoring
+ * WHY:  Enables health dashboards to track immune activity without
+ *       exposing internal immune system structures
+ * HOW:  Reads from brain_immune_system_t stats and continuous inflammation
+ */
+typedef struct {
+    uint32_t total_exceptions;       /**< Total exceptions processed by immune system */
+    uint32_t recovered_exceptions;   /**< Exceptions successfully recovered */
+    float inflammation_level;        /**< Continuous inflammation [0.0-1.0] */
+    uint32_t active_antibodies;      /**< Number of active antibody responses */
+} nimcp_immune_metrics_t;
+
+/**
+ * @brief Synapse statistics snapshot
+ *
+ * WHAT: Current synapse count and growth delta since last probe call
+ * WHY:  Tracks network connectivity growth over time
+ * HOW:  Reads total synapses from brain_stats, computes delta from last call
+ */
+typedef struct {
+    uint64_t total_synapses;         /**< Current total synapse count */
+    int64_t  growth_since_last;      /**< Change since previous call (can be negative if pruned) */
+} nimcp_synapse_stats_t;
+
+/**
+ * @brief Get process resident set size (RSS) in bytes
+ *
+ * WHAT: Returns the current process RSS from /proc/self/status (Linux)
+ * WHY:  Monitors memory pressure without requiring external tools
+ * HOW:  Parses VmRSS line from /proc/self/status; returns 0 on non-Linux
+ *
+ * @return Process RSS in bytes, or 0 if unavailable
+ */
+size_t nimcp_brain_get_memory_rss(void);
+
+/**
+ * @brief Get approximate GPU VRAM in use by this brain
+ *
+ * WHAT: Returns tracked GPU memory allocation from the brain's GPU context
+ * WHY:  Enables GPU memory pressure monitoring for health dashboards
+ * HOW:  Reads allocated_memory from brain's nimcp_gpu_context_t
+ *
+ * @param brain Brain handle
+ * @return GPU VRAM bytes in use, or 0 if no GPU or brain is NULL
+ */
+size_t nimcp_brain_get_gpu_vram_used(nimcp_brain_t brain);
+
+/**
+ * @brief Get fraction of neurons with at least one outgoing synapse
+ *
+ * WHAT: Measures neuron utilization as connected_neurons / total_neurons
+ * WHY:  Low utilization indicates many dead/orphan neurons (wasted capacity)
+ * HOW:  Samples every Nth neuron (N = total/15000) via NEURON_OUT_COUNT
+ *
+ * @param brain Brain handle
+ * @return Fraction [0.0-1.0], or 0.0 on error
+ */
+float nimcp_brain_get_neuron_utilization(nimcp_brain_t brain);
+
+/**
+ * @brief Get immune system metrics for the brain
+ *
+ * WHAT: Fills output struct with immune activity, inflammation, and recovery stats
+ * WHY:  Enables external dashboards to monitor brain immune health
+ * HOW:  Calls brain_immune_get_stats() on the brain's immune system
+ *
+ * @param brain Brain handle
+ * @param out   Output structure (zeroed on error)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_get_immune_metrics(nimcp_brain_t brain, nimcp_immune_metrics_t* out);
+
+/**
+ * @brief Get synapse count and growth since last probe call
+ *
+ * WHAT: Returns current synapse total and delta from previous invocation
+ * WHY:  Tracks network growth rate for adaptive training decisions
+ * HOW:  Reads num_synapses from brain stats; stores previous value internally
+ *
+ * @param brain Brain handle
+ * @param out   Output structure (zeroed on error)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_get_synapse_stats(nimcp_brain_t brain, nimcp_synapse_stats_t* out);
 
 //=============================================================================
 // Cognitive Output Rubric - Human-Style Quality Evaluation

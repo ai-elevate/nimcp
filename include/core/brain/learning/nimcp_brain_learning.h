@@ -90,6 +90,26 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                           const char* label, float confidence);
 
 /**
+ * @brief Learn from a dense target vector (distillation / generative training)
+ *
+ * WHAT: Train toward an arbitrary dense output vector instead of a one-hot label
+ * WHY:  Enables teacher-model distillation and semantic embedding training
+ * HOW:  Builds training_example_t with dense target, uses LEARN_MODE_DISTILLATION
+ *
+ * @param brain Brain handle
+ * @param features Input feature vector
+ * @param num_features Feature count (must match brain->config.num_inputs)
+ * @param target Dense target output vector
+ * @param target_size Target vector size (must match brain->config.num_outputs)
+ * @param label Optional semantic label for tracking (can be NULL)
+ * @param confidence Training weight [0.0-1.0]
+ * @return Loss value (lower is better) or -1.0f on error
+ */
+float brain_learn_vector(brain_t brain, const float* features, uint32_t num_features,
+                          const float* target, uint32_t target_size,
+                          const char* label, float confidence);
+
+/**
  * @brief Learn from batch of examples
  *
  * WHAT: Mini-batch gradient descent for efficient learning
@@ -116,6 +136,18 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
  * float avg_loss = brain_learn_batch(brain, batch, 2);
  */
 float brain_learn_batch(brain_t brain, const brain_example_t* examples, uint32_t num_examples);
+
+/**
+ * @brief Learn batch with per-example loss output
+ *
+ * @param brain Brain handle
+ * @param examples Array of examples
+ * @param num_examples Example count
+ * @param losses_out Caller-allocated float[num_examples] for per-example losses (can be NULL)
+ * @return Average loss or -1 on error
+ */
+float brain_learn_batch_detailed(brain_t brain, const brain_example_t* examples,
+                                 uint32_t num_examples, float* losses_out);
 
 /**
  * @brief Apply reward-based reinforcement learning

@@ -56,6 +56,13 @@ _EMBEDDING_MODEL = None
 _EMBEDDING_LOCK = threading.Lock()
 _EMBEDDING_AVAILABLE = None  # None = not checked yet
 
+# Embedding LRU cache — avoids re-encoding previously-seen texts.
+# Keyed by hash of text[:1000] (same truncation as model.encode), stores raw embedding.
+# Thread-safe: reads/writes under _EMBEDDING_LOCK alongside model.encode().
+_EMBEDDING_CACHE_MAX = 10_000
+_EMBEDDING_CACHE: Dict[str, np.ndarray] = {}
+_EMBEDDING_CACHE_ORDER: collections.deque = collections.deque()
+
 # Progressive feature unfreezing (Enhancement #8) — per-instructor step tracking
 # Note: Thresholds (1000/3000) are per-instructor, not global. With N concurrent
 # instructors, each independently ramps from semantic to blended features.
@@ -367,6 +374,13 @@ class InstructorAgent(threading.Thread):
         self._predict_fallback_count = 0
         self._predict_fallback_warned = False
 
+        # Batch learning buffer — accumulates examples for C-level batch learn
+        self._batch_buffer: List[Tuple[list, str, float]] = []  # (features, label, lr)
+        self._batch_size = 20  # Flush every N examples
+        # (M4): Actual average loss from last batch flush — used by decision cycle
+        # to supplement heuristic loss with real C-level loss when available.
+        self._last_actual_batch_loss: Optional[float] = None
+
         # Logging
         self._log_dir = log_dir
         self._log_file = None
@@ -402,6 +416,74 @@ class InstructorAgent(threading.Thread):
             if self._log_file:
                 self._log_file.close()
                 self._log_file = None
+
+    def _flush_batch(self):
+        """Flush accumulated batch buffer via C-level batch learn.
+
+        Uses brain.learn_batch() for 2-3x throughput: single lock acquisition,
+        single GPU weight upload, amortized overhead per batch.
+        Falls back to per-example learn if batch API unavailable.
+
+        NOTE: Does NOT update _loss_history/_grad_history — the per-example
+        teaching methods already tracked heuristic loss and estimated grad via
+        _update_metrics_and_decide(). Only updates _last_grad_norm from actual
+        batch results for better estimates in future _learn_and_capture_grad calls.
+
+        (M4): Also captures _last_actual_batch_loss — the real average loss from
+        the C backprop path — so _run_decision_cycle() can use actual loss instead
+        of the heuristic proxy.
+        """
+        if not self._batch_buffer:
+            return
+
+        batch = self._batch_buffer
+        self._batch_buffer = []
+
+        try:
+            results = self.brain.learn_batch(batch)
+            if isinstance(results, list) and results:
+                # Update _last_grad_norm from the last batch result for better
+                # estimates in future _learn_and_capture_grad calls
+                last = results[-1]
+                if isinstance(last, tuple) and len(last) >= 2:
+                    grad = last[1]
+                    if isinstance(grad, (int, float)) and grad >= 0:
+                        self._last_grad_norm = grad
+                # (M4): Capture actual average loss from batch results.
+                # Each result is (loss, grad_norm) — collect valid losses and average.
+                actual_losses = []
+                for r in results:
+                    if isinstance(r, tuple) and len(r) >= 1:
+                        loss_val = r[0]
+                        if isinstance(loss_val, (int, float)) and math.isfinite(loss_val):
+                            actual_losses.append(float(loss_val))
+                    elif isinstance(r, (int, float)) and math.isfinite(r):
+                        actual_losses.append(float(r))
+                if actual_losses:
+                    self._last_actual_batch_loss = sum(actual_losses) / len(actual_losses)
+                return
+        except Exception:
+            pass
+
+        # Fallback: per-example learn under single lock acquisition
+        last_loss = None
+        for features, label, lr in batch:
+            try:
+                loss_val = self.brain.learn(features, label, lr)
+                if isinstance(loss_val, (int, float)) and math.isfinite(loss_val):
+                    last_loss = float(loss_val)
+            except Exception:
+                pass
+        # (M4): Capture actual loss from fallback path
+        if last_loss is not None:
+            self._last_actual_batch_loss = last_loss
+        # Update grad estimate from last example
+        try:
+            grad = self.brain.get_last_gradient_norm() if hasattr(self.brain, 'get_last_gradient_norm') else 0.0
+            if isinstance(grad, (int, float)) and grad >= 0:
+                self._last_grad_norm = grad
+        except Exception:
+            pass
 
     def run(self):
         """Main instructor loop — repeats until accuracy threshold or max passes."""
@@ -473,7 +555,14 @@ class InstructorAgent(threading.Thread):
 
     def _teach_text_dataset(self, ds_config: dict, name: str, domain: str,
                             source_name: str):
-        """Teach a text dataset using StreamingDatasetProcessor."""
+        """Teach a text dataset using StreamingDatasetProcessor.
+
+        Prefetch optimization: Collects PREFETCH_SIZE examples (text + label only),
+        batch-encodes all texts in a single model.encode() call (~60x faster than
+        per-example), then processes each with the full teaching method pipeline.
+        """
+        PREFETCH_SIZE = 64
+
         API_TYPES = {"wikipedia", "arxiv", "stackexchange", "pubmed",
                      "gutenberg", "conceptnet", "news_rss"}
         try:
@@ -492,8 +581,11 @@ class InstructorAgent(threading.Thread):
             return
 
         count = 0
+        done = False
+        prefetch = []  # (text, label) tuples awaiting batch encoding
+
         for example in dataset:
-            if self.stop_event.is_set():
+            if self.stop_event.is_set() or done:
                 break
             self._wait_for_recess()
 
@@ -508,38 +600,65 @@ class InstructorAgent(threading.Thread):
                 _, label = result
             if label is None:
                 continue
-            # Domain-prefix label to prevent cross-domain collision
-            label = f"{domain}:{label}"
+            label = f"{domain}:{name}_{label}"
 
-            # C1: Use hybrid features instead of pure n-gram from processor
             text = self._extract_text(example)
             if not text or not text.strip():
                 continue
-            self._feature_step_count += 1
-            features = _text_to_features(text, self.num_inputs, self._feature_step_count)
 
-            # Grade data quality
+            prefetch.append((text, str(label)))
+
+            # Process prefetch block when full
+            if len(prefetch) >= PREFETCH_SIZE:
+                count, done = self._process_prefetch_block(
+                    prefetch, domain, name, source_name, count)
+                self._flush_batch()
+                prefetch = []
+
+        # Process remaining examples
+        if prefetch and not done:
+            count, done = self._process_prefetch_block(
+                prefetch, domain, name, source_name, count)
+        self._flush_batch()
+
+        # Publish a cross-domain exemplar
+        self._publish_exemplar(domain)
+
+    def _process_prefetch_block(self, prefetch: list, domain: str, name: str,
+                                source_name: str, count: int) -> tuple:
+        """Batch-encode and train a prefetch block of (text, label) pairs.
+
+        Returns (updated_count, done_flag).
+        """
+        texts = [t for t, _ in prefetch]
+        base_step = self._feature_step_count
+        steps = [base_step + i + 1 for i in range(len(prefetch))]
+        features_batch = _batch_encode_texts(texts, self.num_inputs, steps)
+        self._feature_step_count += len(prefetch)
+
+        done = False
+        for (text, label), features in zip(prefetch, features_batch):
+            if self.stop_event.is_set():
+                done = True
+                break
+
             grade = self._grade_example(text, domain, source_name)
 
-            # Select and execute teaching method
-            # Phase 3: Respect forced method override from metacognition
             with self._method_lock:
                 method = self.method_stats.select_method(forced=self._forced_method)
                 if self._forced_method is not None:
                     self._forced_method_remaining -= 1
                     if self._forced_method_remaining <= 0:
                         self._forced_method = None
-            correct, loss = self._execute_method(method, features, str(label),
+            correct, loss = self._execute_method(method, features, label,
                                                   domain, grade)
 
-            # Record
             self.method_stats.record(method.value, correct, loss)
             self.total_examples += 1
             if correct:
                 self.total_correct += 1
             count += 1
 
-            # Log
             self._log_example({
                 "action": "LEARN", "method": method.value,
                 "correct": correct, "loss": round(loss, 5),
@@ -548,19 +667,17 @@ class InstructorAgent(threading.Thread):
                 "dataset": name, "features_dim": len(features),
             })
 
-            # Periodic report + meta-learning update
             if count % self.config.report_interval == 0:
                 self.method_stats.update_weights()
                 self._send_report()
 
-            # Difficulty ramp
             self.difficulty = min(1.0, self.difficulty + self.config.difficulty_ramp_rate / 1000)
 
             if count >= self.config.max_examples_per_dataset:
+                done = True
                 break
 
-        # Publish a cross-domain exemplar
-        self._publish_exemplar(domain)
+        return count, done
 
     def _teach_multimodal_dataset(self, ds_config: dict, name: str, domain: str,
                                    modality: str, source_name: str):
@@ -592,7 +709,7 @@ class InstructorAgent(threading.Thread):
             if features is None:
                 continue
             # Domain-prefix label to prevent cross-domain collision
-            label = f"{domain}:{label}"
+            label = f"{domain}:{name}_{label}"
 
             grade = self._grade_example("", domain, source_name)
             with self._method_lock:
@@ -626,12 +743,19 @@ class InstructorAgent(threading.Thread):
             if count >= self.config.max_examples_per_dataset:
                 break
 
+        # Flush any remaining buffered learns
+        self._flush_batch()
         # L3: Publish cross-domain exemplar for multimodal datasets
         self._publish_exemplar(domain)
 
     def _teach_text_fallback(self, ds_config: dict, name: str, domain: str,
                               source_name: str):
-        """Fallback text teaching without StreamingDatasetProcessor."""
+        """Fallback text teaching without StreamingDatasetProcessor.
+
+        Uses same prefetch + batch-encode pattern as _teach_text_dataset.
+        """
+        PREFETCH_SIZE = 64
+
         try:
             from datasets import load_dataset
             hf_dataset = ds_config.get("hf_dataset", "")
@@ -650,8 +774,11 @@ class InstructorAgent(threading.Thread):
             return
 
         count = 0
+        done = False
+        prefetch = []  # (text, label) tuples
+
         for example in dataset:
-            if self.stop_event.is_set():
+            if self.stop_event.is_set() or done:
                 break
             self._wait_for_recess()
 
@@ -659,44 +786,19 @@ class InstructorAgent(threading.Thread):
             if not text or not text.strip():
                 continue
 
-            self._feature_step_count += 1
-            features = _text_to_features(text, self.num_inputs, self._feature_step_count)
-            # Domain-prefix label to prevent cross-domain collision
-            label_val = f"{domain}:{example.get('answer', example.get('label', 0))}"
+            label_val = f"{domain}:{self._extract_label(example, domain, name)}"
+            prefetch.append((text, str(label_val)))
 
-            grade = self._grade_example(text, domain, source_name)
-            with self._method_lock:
-                method = self.method_stats.select_method(forced=self._forced_method)
-                if self._forced_method is not None:
-                    self._forced_method_remaining -= 1
-                    if self._forced_method_remaining <= 0:
-                        self._forced_method = None
-            correct, loss = self._execute_method(method, features, str(label_val),
-                                                  domain, grade)
+            if len(prefetch) >= PREFETCH_SIZE:
+                count, done = self._process_prefetch_block(
+                    prefetch, domain, name, source_name, count)
+                self._flush_batch()
+                prefetch = []
 
-            self.method_stats.record(method.value, correct, loss)
-            self.total_examples += 1
-            if correct:
-                self.total_correct += 1
-            count += 1
-
-            # INST-13: Add per-example logging matching _teach_text_dataset pattern
-            self._log_example({
-                "action": "LEARN", "method": method.value,
-                "correct": correct, "loss": round(loss, 5),
-                "confidence_mod": round(grade.confidence_modifier, 3) if grade else 1.0,
-                "dataset": name, "features_dim": len(features),
-            })
-
-            if count % self.config.report_interval == 0:
-                self.method_stats.update_weights()
-                self._send_report()
-
-            # Difficulty ramp
-            self.difficulty = min(1.0, self.difficulty + self.config.difficulty_ramp_rate / 1000)
-
-            if count >= self.config.max_examples_per_dataset:
-                break
+        if prefetch and not done:
+            count, done = self._process_prefetch_block(
+                prefetch, domain, name, source_name, count)
+        self._flush_batch()
 
         # L3: Publish cross-domain exemplar for fallback text datasets
         self._publish_exemplar(domain)
@@ -741,18 +843,23 @@ class InstructorAgent(threading.Thread):
         return effective
 
     def _learn_and_capture_grad(self, features, label, lr):
-        """Learn and atomically capture gradient norm (C1 fix).
+        """Buffer learn call for batch execution (C1 fix + batch optimization).
 
-        Prevents another instructor from overwriting the C backend's
-        gradient norm between learn() and get_last_gradient_norm().
+        Instead of executing brain.learn() immediately (acquiring the lock per
+        example), buffers (features, label, lr) and auto-flushes every
+        _batch_size examples via brain.learn_batch() — single lock acquisition,
+        single GPU weight upload per batch.
+
+        Returns (None, estimated_grad) immediately. The estimated grad is the
+        last actual grad from the previous flush — sufficient for the decision
+        cycle's rolling-window metrics.
         """
-        if hasattr(self.brain, 'learn_and_get_gradient'):
-            result, grad = self.brain.learn_and_get_gradient(features, label, lr)
-            return result, grad
-        else:
-            result = self.brain.learn(features, label, lr)
-            grad = self.cognitive.get_last_gradient_norm()
-            return result, grad
+        self._batch_buffer.append((features, label, lr))
+
+        if len(self._batch_buffer) >= self._batch_size:
+            self._flush_batch()
+
+        return None, self._last_grad_norm
 
     def _update_metrics_and_decide(self, loss: float, grad_norm=None,
                                     is_primary: bool = True):
@@ -763,7 +870,11 @@ class InstructorAgent(threading.Thread):
         every report_interval examples.
 
         Args:
-            loss: Heuristic loss for this example.
+            loss: Heuristic loss proxy for this example (0.0 if correct, else
+                  max(0.1, confidence)). This is NOT the actual C-level network
+                  loss — actual loss is captured separately via _flush_batch()
+                  into _last_actual_batch_loss and used by _run_decision_cycle()
+                  when available. See M4 and M11 comments.
             grad_norm: Pre-captured gradient norm from _learn_and_capture_grad.
                        If None, fetches from C backend (legacy path).
             is_primary: INST-3 — True for primary training examples, False for
@@ -788,13 +899,24 @@ class InstructorAgent(threading.Thread):
             self._run_decision_cycle()
 
     def _run_decision_cycle(self):
-        """Run the full Layer 1/2/3 decision cycle."""
+        """Run the full Layer 1/2/3 decision cycle.
+
+        (M4): When actual batch loss is available from _flush_batch(), use it
+        instead of the heuristic loss (0/conf proxy). The heuristic loss from
+        _loss_history is a directional signal but can diverge from the real
+        C-level MSE/cross-entropy. The actual batch loss gives the decision
+        cycle ground truth for diagnosing learning health.
+        """
         losses = list(self._loss_history)
         grads = list(self._grad_history)
         if len(losses) < 2 or len(grads) < 2:
             return
 
-        loss_current = losses[-1]
+        # (M4): Prefer actual C-level loss over heuristic proxy when available
+        if self._last_actual_batch_loss is not None:
+            loss_current = self._last_actual_batch_loss
+        else:
+            loss_current = losses[-1]
         loss_previous = losses[-2]
         grad_norm = grads[-1]
         grad_norm_previous = grads[-2]
@@ -911,16 +1033,24 @@ class InstructorAgent(threading.Thread):
 
         # C4: Capture pre-prediction BEFORE learning so confidence reflects
         # the brain's state prior to this example's training signal.
-        try:
-            pre_pred_label, pre_conf = self._predict_domain(features, domain)
-            # C2 fix: Guard against NaN/Inf confidence from predict
-            if math.isnan(pre_conf) or math.isinf(pre_conf):
-                pre_conf = 0.0
-            pre_correct = (pre_pred_label == label)
-        except Exception:
+        # WARMUP SKIP: First 1000 examples per instructor — predictions are
+        # near-random, so skip the expensive C pipeline traversal and use
+        # fixed defaults. Saves ~50% of brain calls during warmup.
+        if self.total_examples < 1000:
             pre_pred_label = None
             pre_conf = 0.5
             pre_correct = False
+        else:
+            try:
+                pre_pred_label, pre_conf = self._predict_domain(features, domain)
+                # C2 fix: Guard against NaN/Inf confidence from predict
+                if math.isnan(pre_conf) or math.isinf(pre_conf):
+                    pre_conf = 0.0
+                pre_correct = (pre_pred_label == label)
+            except Exception:
+                pre_pred_label = None
+                pre_conf = 0.5
+                pre_correct = False
 
         # Phase 3: Collect holdout samples for self-assessment
         # H1: Holdout examples are NOT trained on — keeps self-assessment unbiased
@@ -947,10 +1077,20 @@ class InstructorAgent(threading.Thread):
         conf_mod *= focal_factor
 
         # Phase 3: Process any due spaced-replay examples
+        # Flush buffered learns first so replay predictions see current brain state
+        if self._batch_buffer:
+            self._flush_batch()
         self._spaced_replay_tick()
 
         # Phase 4: Update domain centroid
         self._update_domain_centroid(features)
+
+        # ADVERSARIAL WARMUP GATE: Adversarial method does ~40 forward passes
+        # per example (5 directions x 8 binary search steps) — pointless during
+        # early training when decision boundary is meaningless. Fall back to
+        # SOCRATIC which is ~40x cheaper.
+        if method == TeachingMethod.ADVERSARIAL and self.total_examples < 5000:
+            method = TeachingMethod.SOCRATIC
 
         if method == TeachingMethod.SOCRATIC:
             result = self._method_socratic(features, label, domain, conf_mod, pre_pred=pre_pred_label, pre_conf=pre_conf)
@@ -1094,7 +1234,9 @@ class InstructorAgent(threading.Thread):
 
         # INST-9: Actual contrastive signal — brief negative learn with random
         # wrong label at 0.1x LR to push brain AWAY from confusable alternatives
+        # Flush primary learn before secondary negative learn
         if not correct and pred is not None and pred != label:
+            self._flush_batch()
             # Use the brain's wrong prediction as the negative label
             try:
                 neg_lr = self._modulate_lr(0.7 * conf_mod * boost) * 0.1
@@ -1257,6 +1399,8 @@ class InstructorAgent(threading.Thread):
         # C1/M1: Atomically learn + capture gradient from the MAIN example
         _, main_grad = self._learn_and_capture_grad(
             features, scoped_label, self._modulate_lr(lr))
+        # Flush before secondary learns so primary is applied first
+        self._flush_batch()
 
         # Step 4: Train on adversarial example (if found) with correct label
         if best_adversarial is not None:
@@ -1335,6 +1479,8 @@ class InstructorAgent(threading.Thread):
         # C1: Atomically learn + capture gradient
         _, grad = self._learn_and_capture_grad(
             features, self._scope_target_to_domain(label), self._modulate_lr(0.7 * conf_mod))
+        # Flush primary learn before secondary blended exemplar learn
+        self._flush_batch()
 
         # H1: Try to blend with cross-domain exemplar from per-domain queue
         # (with fallback to shared queue for backward compat)
@@ -1477,6 +1623,93 @@ class InstructorAgent(threading.Thread):
         parts = [str(v) for v in example.values() if isinstance(v, str) and v.strip()]
         return " ".join(parts)
 
+    def _extract_label(self, example: dict, domain: str, dataset_name: str) -> str:
+        """Extract a namespaced label from a HuggingFace example.
+
+        Handles dataset-specific field patterns and namespaces labels by dataset
+        name to prevent cross-dataset collision (e.g. "ethics:0" from both
+        hellaswag and prosocial_dialog).
+        """
+        try:
+            # MMLU: question + choices + integer answer index
+            if 'question' in example and 'choices' in example and 'answer' in example:
+                return f"mmlu_{int(example['answer'])}"
+
+            # SQuAD-style: context + question + answers dict
+            if 'context' in example and 'question' in example and 'answers' in example:
+                ans = example['answers']
+                if isinstance(ans, dict):
+                    texts = ans.get('text', [])
+                elif isinstance(ans, list):
+                    texts = ans
+                else:
+                    texts = [str(ans)]
+                if texts and str(texts[0]).strip():
+                    h = hash(str(texts[0]).split()[0]) % 8
+                    return f"squad_answerable_{h}"
+                return "squad_unanswerable"
+
+            # CommonsenseQA: question + choices + answerKey
+            if 'question' in example and 'choices' in example and 'answerKey' in example:
+                return f"csqa_{str(example['answerKey'])}"
+
+            # HellaSwag: ctx + endings + label
+            if 'ctx' in example and 'endings' in example and 'label' in example:
+                return f"hellaswag_{str(example['label'])}"
+
+            # Social Chemistry 101: action/rot fields
+            if 'action' in example and 'rot' in example:
+                rot = str(example.get('rot-judgment', example.get('rot_judgment', '')))
+                return f"sochem_{rot}" if rot else f"sochem_{hash(str(example.get('rot', ''))) % 8}"
+
+            # Prosocial Dialog: safety_label
+            if 'safety_label' in example:
+                sl = str(example['safety_label']).strip().lower()
+                if 'casual' in sl or 'safe' in sl or sl == '':
+                    tag = 'safe'
+                elif 'caution' in sl:
+                    tag = 'caution'
+                else:
+                    tag = 'intervention'
+                return f"prosocial_{tag}"
+
+            # HH-RLHF: chosen + rejected
+            if 'chosen' in example and 'rejected' in example:
+                h = hash(str(example['chosen'])[:80]) % 8
+                return f"rlhf_{h}"
+
+            # OpenOrca: system_prompt + question + response
+            if 'system_prompt' in example and 'question' in example and 'response' in example:
+                h = hash(str(example['question'])[:80]) % 8
+                return f"orca_{h}"
+
+            # Generic input+label (ethics datasets, etc.)
+            if 'label' in example:
+                return f"{dataset_name}_{str(example['label'])}"
+            if 'answer' in example:
+                return f"{dataset_name}_{str(example['answer'])}"
+
+            # Programming: code/content + language
+            if 'code' in example or 'content' in example:
+                lang = str(example.get('language', example.get('lang', 'unk')))
+                src = str(example.get('code', example.get('content', '')))
+                h = hash(src[:80]) % 16
+                return f"code_{lang}_{h}"
+
+            # Plain text only
+            if 'text' in example:
+                txt = str(example['text']).strip()
+                words = txt.split()
+                # Find first significant word (>3 chars)
+                sig = next((w for w in words if len(w) > 3), words[0] if words else "empty")
+                h = hash(sig) % 16
+                return f"txt_{h}"
+
+            # Ultimate fallback
+            return f"unk_{hash(str(sorted(example.keys()))) % 8}"
+        except Exception:
+            return f"unk_{hash(str(sorted(example.keys()))) % 8}"
+
     def _grade_example(self, text: str, domain: str,
                        source_name: str) -> Optional[DataGrade]:
         """Grade example quality if DataSkeptic is available."""
@@ -1525,6 +1758,8 @@ class InstructorAgent(threading.Thread):
             # M4: Include remedial results in rolling accuracy (separate from cumulative)
             self._recent_results.append(correct)
             self.socratic.mastery.record(domain, correct)
+        # Flush any remaining buffered learns from remedial loop
+        self._flush_batch()
 
     def _publish_exemplar(self, domain: str):
         """Publish a representative exemplar for cross-domain teaching.
@@ -1546,6 +1781,8 @@ class InstructorAgent(threading.Thread):
 
     def _send_report(self, final: bool = False):
         """Send progress report to school coordinator."""
+        # Flush any buffered learns before reporting so brain state is current
+        self._flush_batch()
         elapsed = time.time() - self._start_time
         rate = self.total_examples / max(elapsed, 0.001)
         mastery = self.socratic.mastery.mastery(self.config.domain)
@@ -2059,6 +2296,121 @@ class _CosineAnnealingLR:
 # Feature Utilities
 # ---------------------------------------------------------------------------
 
+def _embedding_cache_key(text: str) -> str:
+    """Hash key for embedding cache — uses same truncation as model.encode."""
+    return hashlib.md5(text[:1000].encode('utf-8', errors='replace')).hexdigest()
+
+
+def _cached_encode_single(model, text: str) -> np.ndarray:
+    """Encode a single text with LRU cache. Caller must hold _EMBEDDING_LOCK."""
+    key = _embedding_cache_key(text)
+    cached = _EMBEDDING_CACHE.get(key)
+    if cached is not None:
+        return cached
+    embedding = model.encode(text[:1000], convert_to_numpy=True)
+    # LRU eviction
+    if len(_EMBEDDING_CACHE) >= _EMBEDDING_CACHE_MAX:
+        old_key = _EMBEDDING_CACHE_ORDER.popleft()
+        _EMBEDDING_CACHE.pop(old_key, None)
+    _EMBEDDING_CACHE[key] = embedding
+    _EMBEDDING_CACHE_ORDER.append(key)
+    return embedding
+
+
+def _batch_encode_texts(texts: list, num_inputs: int, feature_steps: list) -> list:
+    """Batch-encode a list of texts into feature vectors.
+
+    Uses sentence-transformers batch encoding (single model.encode call for all
+    texts) — ~60x faster than per-example encoding due to GPU/CPU vectorization.
+    Falls back to per-example _text_to_features if model unavailable.
+
+    Args:
+        texts: List of raw text strings.
+        num_inputs: Feature vector dimension.
+        feature_steps: List of per-example feature step counts (same length as texts).
+
+    Returns:
+        List of feature vectors (list of floats), same length as texts.
+    """
+    model = _get_embedding_model()
+    if model is None or not texts:
+        # Fallback: per-example n-gram encoding
+        return [_text_to_features(t, num_inputs, s) for t, s in zip(texts, feature_steps)]
+
+    # Split texts into cache-hit and cache-miss groups
+    truncated = [t[:1000] for t in texts]
+    keys = [_embedding_cache_key(t) for t in texts]
+
+    with _EMBEDDING_LOCK:
+        # Check cache for all texts
+        cached_embeddings = {}
+        miss_indices = []
+        miss_texts = []
+        for i, key in enumerate(keys):
+            cached = _EMBEDDING_CACHE.get(key)
+            if cached is not None:
+                cached_embeddings[i] = cached
+            else:
+                miss_indices.append(i)
+                miss_texts.append(truncated[i])
+
+        # Batch-encode all cache misses in a single call
+        if miss_texts:
+            new_embeddings = model.encode(miss_texts, batch_size=len(miss_texts),
+                                          convert_to_numpy=True)
+            # model.encode(list) always returns 2D (N, dim) even for N=1
+            if new_embeddings.ndim == 1:
+                new_embeddings = new_embeddings.reshape(1, -1)
+            for j, idx in enumerate(miss_indices):
+                emb = new_embeddings[j]
+                cached_embeddings[idx] = emb
+                # Insert into cache
+                key = keys[idx]
+                if len(_EMBEDDING_CACHE) >= _EMBEDDING_CACHE_MAX:
+                    old_key = _EMBEDDING_CACHE_ORDER.popleft()
+                    _EMBEDDING_CACHE.pop(old_key, None)
+                _EMBEDDING_CACHE[key] = emb
+                _EMBEDDING_CACHE_ORDER.append(key)
+
+    # Build feature vectors using cached embeddings + blend ratios
+    results = []
+    for i, (text, step) in enumerate(zip(texts, feature_steps)):
+        embedding = cached_embeddings.get(i)
+        if embedding is None:
+            results.append(_text_to_features(text, num_inputs, step))
+            continue
+        try:
+            ngram_ratio = _get_feature_blend_ratio_for_step(step)
+            semantic_ratio = 1.0 - ngram_ratio
+            sem_dims = max(1, int(num_inputs * semantic_ratio))
+            ngram_dims = num_inputs - sem_dims
+
+            # H1 FIX: Tile embedding to fill sem_dims instead of zero-padding.
+            # 384-dim embeddings zero-padded to 1024 waste 62.5% of input capacity.
+            # Tiling ensures every input neuron receives meaningful signal.
+            emb_len = len(embedding)
+            if emb_len >= sem_dims:
+                sem_features = embedding[:sem_dims].astype(np.float32)
+            else:
+                reps = int(np.ceil(sem_dims / emb_len))
+                sem_features = np.tile(embedding, reps)[:sem_dims].astype(np.float32)
+
+            if ngram_dims > 0:
+                ngram_features = np.array(
+                    _text_to_ngram_features(text, ngram_dims), dtype=np.float32)
+                combined = np.concatenate([sem_features, ngram_features])
+            else:
+                combined = sem_features.copy()
+
+            norm = np.linalg.norm(combined)
+            if norm > 1e-6:
+                combined /= norm
+            results.append(combined.tolist())
+        except Exception:
+            results.append(_text_to_features(text, num_inputs, step))
+    return results
+
+
 def _text_to_features(text: str, num_inputs: int, feature_step: int = 3000) -> list:
     """Hybrid text feature encoding: semantic embeddings + character n-grams.
 
@@ -2087,19 +2439,23 @@ def _text_to_features(text: str, num_inputs: int, feature_step: int = 3000) -> l
             # INST-1: Acquire lock around model.encode() — PyTorch inference is
             # NOT thread-safe and multiple instructor threads share the singleton
             with _EMBEDDING_LOCK:
-                embedding = model.encode(text[:1000], convert_to_numpy=True)
-            sem_features = np.zeros(sem_dims, dtype=np.float32)
-            copy_len = min(len(embedding), sem_dims)
-            sem_features[:copy_len] = embedding[:copy_len]
+                embedding = _cached_encode_single(model, text)
+            # H1 FIX: Tile embedding to fill sem_dims instead of zero-padding.
+            # 384-dim embeddings zero-padded to 1024 waste 62.5% of input capacity.
+            # Tiling ensures every input neuron receives meaningful signal.
+            emb_len = len(embedding)
+            if emb_len >= sem_dims:
+                sem_features = embedding[:sem_dims].astype(np.float32)
+            else:
+                reps = int(np.ceil(sem_dims / emb_len))
+                sem_features = np.tile(embedding, reps)[:sem_dims].astype(np.float32)
 
             if ngram_dims > 0:
                 ngram_features = np.array(
                     _text_to_ngram_features(text, ngram_dims), dtype=np.float32)
                 combined = np.concatenate([sem_features, ngram_features])
             else:
-                # Pad semantic to full width
-                combined = np.zeros(num_inputs, dtype=np.float32)
-                combined[:len(sem_features)] = sem_features
+                combined = sem_features.copy()
 
             norm = np.linalg.norm(combined)
             if norm > 1e-6:

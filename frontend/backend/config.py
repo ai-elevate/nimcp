@@ -45,6 +45,8 @@ MAX_CSV_UPLOAD_BYTES = int(os.environ.get("NIMCP_MAX_CSV_BYTES", str(10 * 1024 *
 MAX_FEATURE_LENGTH = 10000
 MAX_WS_MESSAGE_BYTES = 64 * 1024
 C_API_TIMEOUT_SECONDS = float(os.environ.get("NIMCP_C_API_TIMEOUT", "30"))
+MAX_AUDIO_SAMPLES = 441000  # 10s at 44.1kHz
+MAX_VIDEO_PIXELS = 921600   # 640x480x3
 
 # CORS
 CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("NIMCP_CORS_ORIGINS", "").split(",") if o.strip()]

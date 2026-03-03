@@ -60,6 +60,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/containers/nimcp_hash_table.h"
 #include "utils/platform/nimcp_platform_time.h"
 
 //=============================================================================
@@ -857,6 +858,21 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
         }
 
         fread(brain->output_labels[i], len, 1, meta_file);
+    }
+
+    // Rebuild O(1) label lookup hash table from loaded labels
+    hash_table_config_t ht_config = {
+        .initial_buckets = 256,
+        .key_type = HASH_KEY_STRING,
+        .hash_algorithm = HASH_ALG_FNV1A,
+        .case_insensitive = false,
+        .thread_safe = false
+    };
+    brain->label_index = hash_table_create(&ht_config);
+    if (brain->label_index) {
+        for (uint32_t j = 0; j < brain->num_output_labels; j++) {
+            hash_table_insert_string(brain->label_index, brain->output_labels[j], &j, sizeof(uint32_t));
+        }
     }
 
     // Phase 10.2: Load working memory state
