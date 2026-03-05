@@ -66,3 +66,8 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_bayesian_advanced.cpp)
     add_statistics_test(test_bayesian_advanced)
 endif()
+
+# Alloca-to-heap migration + bounds tests (C4/C5 bug fixes)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_alloca_bounds.cpp)
+    add_statistics_test(test_alloca_bounds)
+endif()

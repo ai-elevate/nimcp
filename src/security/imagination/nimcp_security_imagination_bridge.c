@@ -1182,6 +1182,7 @@ static void update_average(float* avg, uint64_t count, float new_value) {
     /* Exponential moving average for stability */
     float alpha = 1.0f / (float)(count < 100 ? count : 100);
     *avg = (*avg * (1.0f - alpha)) + (new_value * alpha);
+    if (!isfinite(*avg)) *avg = new_value;
 }
 
 /**

@@ -678,6 +678,37 @@ set_tests_properties(unit_middleware_training_test_training_integration_fixes
         TIMEOUT 120
         RESOURCE_LOCK "brain_heavy")
 
+# Gradient Manager Destroy Race Tests (Bug H12)
+add_executable(unit_middleware_training_test_gradient_manager_destroy_race
+    test_gradient_manager_destroy_race.cpp
+)
+
+target_include_directories(unit_middleware_training_test_gradient_manager_destroy_race PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_gradient_manager_destroy_race PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_gradient_manager_destroy_race
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp_middleware
+        nimcp
+        Threads::Threads
+        m
+)
+
+add_test(NAME unit_middleware_training_test_gradient_manager_destroy_race
+         COMMAND unit_middleware_training_test_gradient_manager_destroy_race
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+set_tests_properties(unit_middleware_training_test_gradient_manager_destroy_race
+    PROPERTIES
+        LABELS "unit;middleware;training;gradient;thread_safety"
+        TIMEOUT 60)
+
 # =============================================================================
 # Orphaned Unit Test Targets
 # =============================================================================

@@ -1438,8 +1438,11 @@ uint32_t synapse_metadata_pool_allocate(synapse_metadata_pool_t pool) {
             if (pool->config.thread_safe) {
                 nimcp_mutex_unlock(&pool->mutex);
             }
-            atomic_fetch_add(&pool->failed_allocations, 1);
-            LOG_WARN("Metadata pool at maximum capacity (%u)", pool->pool_size);
+            uint64_t fails = atomic_fetch_add(&pool->failed_allocations, 1);
+            if ((fails & (fails - 1)) == 0) {  /* Log at powers of 2 */
+                LOG_WARN("Metadata pool at maximum capacity (%u), %lu failed allocations",
+                         pool->pool_size, (unsigned long)(fails + 1));
+            }
             return SPARSE_SYNAPSE_NO_METADATA;
         }
 

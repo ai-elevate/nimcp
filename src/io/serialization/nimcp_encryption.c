@@ -315,6 +315,15 @@ bool nimcp_decrypt_with_password(
 
 #else  // NIMCP_ENABLE_ENCRYPTION not defined
 
+#include <stdio.h>
+
+/**
+ * WARNING: Encryption is NOT available in this build.
+ * libsodium was not found at compile time.
+ * All encrypt/decrypt calls will fail and return false.
+ * Data will NOT be encrypted — it will be stored/transmitted in plaintext.
+ */
+
 // Stub implementations when encryption is not available
 bool nimcp_encryption_available(void)
 {
@@ -342,7 +351,9 @@ bool nimcp_encrypt_with_password(
     (void)password_len;
     (void)ciphertext;
     (void)ciphertext_len;
-    return false;  /* Encryption not available - normal stub result */
+    fprintf(stderr, "WARNING: nimcp_encrypt_with_password called but encryption "
+            "is unavailable (libsodium not compiled). Data will NOT be encrypted.\n");
+    return false;
 }
 
 bool nimcp_decrypt_with_password(
@@ -360,7 +371,9 @@ bool nimcp_decrypt_with_password(
     (void)password_len;
     (void)plaintext;
     (void)plaintext_len;
-    return false;  /* Decryption not available - normal stub result */
+    fprintf(stderr, "WARNING: nimcp_decrypt_with_password called but encryption "
+            "is unavailable (libsodium not compiled). Cannot decrypt data.\n");
+    return false;
 }
 
 #endif  // NIMCP_ENABLE_ENCRYPTION

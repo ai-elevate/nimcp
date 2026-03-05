@@ -119,6 +119,7 @@ int hh_bio_async_default_config(hh_bio_async_config_t* config) {
 hh_bio_async_bridge_t* hh_bio_async_bridge_create(const hh_bio_async_config_t* config) {
     hh_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(hh_bio_async_bridge_t));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate HH bio-async bridge");
+    if (bridge_base_init(&bridge->base, 0, "hh_bio_async") != 0) { nimcp_free(bridge); return NULL; }
 
     if (config) {
         bridge->config = *config;
@@ -150,6 +151,7 @@ void hh_bio_async_bridge_destroy(hh_bio_async_bridge_t* bridge) {
     }
 
     nimcp_free(bridge->subscriptions);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

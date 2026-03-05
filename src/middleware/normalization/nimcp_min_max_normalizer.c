@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/thread/nimcp_thread.h"
 
 
 
@@ -34,6 +35,7 @@ struct min_max_normalizer {
     float target_max;
     bool use_percentiles;
     channel_stats_t* channels;
+    nimcp_mutex_t* mutex;
 };
 
 min_max_normalizer_t* minmax_normalizer_create(
@@ -72,11 +74,20 @@ min_max_normalizer_t* minmax_normalizer_create(
         norm->channels[i].count = 0;
     }
 
+    norm->mutex = nimcp_mutex_create(NULL);
+    if (!norm->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "minmax_normalizer_create: failed to create mutex");
+        nimcp_free(norm->channels);
+        nimcp_free(norm);
+        return NULL;
+    }
+
     return norm;
 }
 
 void minmax_normalizer_destroy(min_max_normalizer_t* normalizer) {
     if (!normalizer) return;
+    if (normalizer->mutex) nimcp_mutex_free(normalizer->mutex);
     nimcp_free(normalizer->channels);
     nimcp_free(normalizer);
 }
@@ -91,6 +102,8 @@ bool minmax_normalizer_fit(
         return false;
     }
 
+    nimcp_mutex_lock(normalizer->mutex);
+
     channel_stats_t* stats = &normalizer->channels[channel];
 
     if (value < stats->min_value) stats->min_value = value;
@@ -100,6 +113,8 @@ bool minmax_normalizer_fit(
     if (stats->range < 1e-6F) stats->range = 1.0F;
 
     stats->count++;
+
+    nimcp_mutex_unlock(normalizer->mutex);
     return true;
 }
 
@@ -167,20 +182,37 @@ bool minmax_normalizer_reset_channel(
         return false;
     }
 
+    nimcp_mutex_lock(normalizer->mutex);
+
     channel_stats_t* stats = &normalizer->channels[channel];
     stats->min_value = FLT_MAX;
     stats->max_value = -FLT_MAX;
     stats->range = 1.0F;
     stats->count = 0;
 
+    nimcp_mutex_unlock(normalizer->mutex);
+
     return true;
+}
+
+static void minmax_normalizer_reset_channel_unlocked(
+    min_max_normalizer_t* normalizer,
+    size_t channel
+) {
+    channel_stats_t* stats = &normalizer->channels[channel];
+    stats->min_value = FLT_MAX;
+    stats->max_value = -FLT_MAX;
+    stats->range = 1.0F;
+    stats->count = 0;
 }
 
 void minmax_normalizer_reset_all(min_max_normalizer_t* normalizer) {
     if (!normalizer) return;
+    nimcp_mutex_lock(normalizer->mutex);
     for (size_t i = 0; i < normalizer->num_channels; i++) {
-        minmax_normalizer_reset_channel(normalizer, i);
+        minmax_normalizer_reset_channel_unlocked(normalizer, i);
     }
+    nimcp_mutex_unlock(normalizer->mutex);
 }
 
 size_t minmax_normalizer_num_channels(const min_max_normalizer_t* normalizer) {

@@ -62,6 +62,7 @@ snn_executive_bridge_t* snn_executive_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_executive_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_executive") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->executive = executive;
     bridge->config = *config;
@@ -86,6 +87,7 @@ void snn_executive_bridge_destroy(snn_executive_bridge_t* bridge) {
     if (bridge->base.bio_async_enabled) {
         snn_executive_bridge_disconnect_bio_async(bridge);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-executive bridge");
 }

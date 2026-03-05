@@ -305,6 +305,7 @@ int metaplasticity_update_baseline(
     /* Update activity averages */
     float alpha = 1.0f - expf(-dt / config->activity_tau_ms);
     state->activity_avg = state->activity_avg * (1.0f - alpha) + current_activity * alpha;
+    if (!isfinite(state->activity_avg)) state->activity_avg = current_activity;
 
     float r_squared = current_activity * current_activity;
     state->activity_squared_avg = state->activity_squared_avg * (1.0f - alpha) +

@@ -395,7 +395,9 @@ static void update_emotional_state(nimcp_intero_context_t* ctx) {
     ctx->emotional_state.update_time = get_timestamp_ns();
 
     ctx->stats.avg_arousal = (ctx->stats.avg_arousal * 0.95 + arousal * 0.05);
+    if (!isfinite(ctx->stats.avg_arousal)) ctx->stats.avg_arousal = arousal;
     ctx->stats.avg_stress = (ctx->stats.avg_stress * 0.95 + ctx->emotional_state.stress_level * 0.05);
+    if (!isfinite(ctx->stats.avg_stress)) ctx->stats.avg_stress = ctx->emotional_state.stress_level;
 }
 
 /**

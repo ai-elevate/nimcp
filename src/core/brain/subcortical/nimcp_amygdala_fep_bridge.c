@@ -307,11 +307,14 @@ amyg_fep_bridge_t* amyg_fep_bridge_create(
     bridge->current_action = AMYG_FEP_ACTION_OBSERVE;
     bridge->safety_belief = AMYG_FEP_BELIEF_UNCERTAIN;
 
+    bridge_base_init(&bridge->base, 0, "amygdala_fep_bridge");
+
     return bridge;
 }
 
 void amyg_fep_bridge_destroy(amyg_fep_bridge_t* bridge) {
     if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "amygdala_fep");
     nimcp_free(bridge);
 }

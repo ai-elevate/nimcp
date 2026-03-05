@@ -97,6 +97,10 @@
 #include "lnn/nimcp_lnn.h"
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_training.h"
+#include "snn/nimcp_snn_network.h"
+#include "snn/nimcp_snn_types.h"
+#include "training/nimcp_cnn_training.h"
+#include "training/nimcp_training_dispatch.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "core/brain/regions/cerebellum/nimcp_cerebellum_adapter.h"
 #include "cognitive/omni/nimcp_omni_world_model.h"
@@ -4048,6 +4052,56 @@ static PyObject* Brain_lnn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args
     return d;
 }
 
+/**
+ * snn_get_stats() -> dict
+ * Get SNN network statistics: firing rates, spikes, health.
+ */
+static PyObject* Brain_snn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+    if (!brain->snn_network) { Py_RETURN_NONE; }
+
+    snn_stats_t stats;
+    memset(&stats, 0, sizeof(stats));
+    int r = snn_network_get_stats(brain->snn_network, &stats);
+    if (r != 0) { Py_RETURN_NONE; }
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "total_steps", PyLong_FromUnsignedLongLong(stats.total_steps));
+    PyDict_SetItemString(d, "total_spikes", PyLong_FromUnsignedLongLong(stats.total_spikes));
+    PyDict_SetItemString(d, "mean_firing_rate", PyFloat_FromDouble(stats.mean_firing_rate));
+    PyDict_SetItemString(d, "max_firing_rate", PyFloat_FromDouble(stats.max_firing_rate));
+    PyDict_SetItemString(d, "sparsity", PyFloat_FromDouble(stats.sparsity));
+    PyDict_SetItemString(d, "synchrony", PyFloat_FromDouble(stats.synchrony));
+    PyDict_SetItemString(d, "spikes_per_sample", PyFloat_FromDouble(stats.spikes_per_sample));
+    PyDict_SetItemString(d, "silent_neurons", PyLong_FromUnsignedLong(stats.silent_neurons));
+    PyDict_SetItemString(d, "hyperactive_neurons", PyLong_FromUnsignedLong(stats.hyperactive_neurons));
+    PyDict_SetItemString(d, "health", PyLong_FromLong((long)stats.health));
+    PyDict_SetItemString(d, "memory_usage_bytes", PyLong_FromSize_t(stats.memory_usage_bytes));
+    return d;
+}
+
+/**
+ * cnn_get_stats() -> dict
+ * Get CNN trainer statistics: layer count, parameter count, label count.
+ */
+static PyObject* Brain_cnn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t brain = self->brain->internal_brain;
+    if (!brain->cnn_trainer) { Py_RETURN_NONE; }
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "num_layers", PyLong_FromUnsignedLong(cnn_get_layer_count(brain->cnn_trainer)));
+    PyDict_SetItemString(d, "num_parameters", PyLong_FromSize_t(cnn_count_parameters(brain->cnn_trainer)));
+    PyDict_SetItemString(d, "num_labels", PyLong_FromUnsignedLong(brain->num_output_labels));
+    PyDict_SetItemString(d, "active", PyBool_FromLong(1));
+    return d;
+}
+
 // ==========================================================================
 // World Model / JEPA Python Bindings
 // ==========================================================================
@@ -4490,6 +4544,12 @@ static PyMethodDef Brain_methods[] = {
     {"lnn_get_stats", (PyCFunction)Brain_lnn_get_stats, METH_NOARGS,
      "lnn_get_stats() -> dict\n"
      "Get LNN statistics: tau distribution, gradient norms, loss."},
+    {"snn_get_stats", (PyCFunction)Brain_snn_get_stats, METH_NOARGS,
+     "snn_get_stats() -> dict\n"
+     "Get SNN statistics: firing rates, spikes, health."},
+    {"cnn_get_stats", (PyCFunction)Brain_cnn_get_stats, METH_NOARGS,
+     "cnn_get_stats() -> dict\n"
+     "Get CNN statistics: layers, parameters, labels."},
 
     // World Model / JEPA
     {"enable_world_model", (PyCFunction)Brain_enable_world_model, METH_VARARGS,

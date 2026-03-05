@@ -1120,9 +1120,17 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
     float* gamma_init_sum = (float*)nimcp_calloc(s, sizeof(float));
     float* scale = (float*)nimcp_malloc(max_len * sizeof(float));
 
-    if (!alpha || !beta || !gamma || !xi_sum || !gamma_sum || !gamma_init_sum || !scale) {
+    /* Pre-allocate loop scratch buffers on heap instead of alloca() to avoid
+     * stack overflow with large state counts (s*s is quadratic). */
+    float* log_tmp_buf = (float*)nimcp_malloc(s * sizeof(float));
+    float* log_gamma_buf = (float*)nimcp_malloc(s * sizeof(float));
+    float* log_xi_buf = (float*)nimcp_malloc(s * s * sizeof(float));
+
+    if (!alpha || !beta || !gamma || !xi_sum || !gamma_sum || !gamma_init_sum || !scale ||
+        !log_tmp_buf || !log_gamma_buf || !log_xi_buf) {
         nimcp_free(alpha); nimcp_free(beta); nimcp_free(gamma);
         nimcp_free(xi_sum); nimcp_free(gamma_sum); nimcp_free(gamma_init_sum); nimcp_free(scale);
+        nimcp_free(log_tmp_buf); nimcp_free(log_gamma_buf); nimcp_free(log_xi_buf);
         return NIMCP_ML_ERROR_MEMORY;
     }
 
@@ -1158,11 +1166,10 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
 
             for (uint32_t t = 1; t < T; t++) {
                 for (uint32_t j = 0; j < s; j++) {
-                    float* log_tmp = (float*)alloca(s * sizeof(float));
                     for (uint32_t i = 0; i < s; i++) {
-                        log_tmp[i] = alpha[(t-1) * s + i] + hmm->log_transition[i * s + j];
+                        log_tmp_buf[i] = alpha[(t-1) * s + i] + hmm->log_transition[i * s + j];
                     }
-                    alpha[t * s + j] = log_sum_exp(log_tmp, s) +
+                    alpha[t * s + j] = log_sum_exp(log_tmp_buf, s) +
                                        hmm_log_emission(hmm, j, &obs[t * d]);
                 }
 
@@ -1185,26 +1192,24 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
 
             for (int t = (int)T - 2; t >= 0; t--) {
                 for (uint32_t i = 0; i < s; i++) {
-                    float* log_tmp = (float*)alloca(s * sizeof(float));
                     for (uint32_t j = 0; j < s; j++) {
-                        log_tmp[j] = hmm->log_transition[i * s + j] +
-                                     hmm_log_emission(hmm, j, &obs[(t+1) * d]) +
-                                     beta[(t+1) * s + j];
+                        log_tmp_buf[j] = hmm->log_transition[i * s + j] +
+                                         hmm_log_emission(hmm, j, &obs[(t+1) * d]) +
+                                         beta[(t+1) * s + j];
                     }
-                    beta[t * s + i] = log_sum_exp(log_tmp, s) - scale[t+1];
+                    beta[t * s + i] = log_sum_exp(log_tmp_buf, s) - scale[t+1];
                 }
             }
 
             /* Compute gamma and accumulate */
             for (uint32_t t = 0; t < T; t++) {
-                float* log_gamma = (float*)alloca(s * sizeof(float));
                 for (uint32_t i = 0; i < s; i++) {
-                    log_gamma[i] = alpha[t * s + i] + beta[t * s + i];
+                    log_gamma_buf[i] = alpha[t * s + i] + beta[t * s + i];
                 }
-                float log_sum = log_sum_exp(log_gamma, s);
+                float log_sum = log_sum_exp(log_gamma_buf, s);
 
                 for (uint32_t i = 0; i < s; i++) {
-                    gamma[t * s + i] = expf(log_gamma[i] - log_sum);
+                    gamma[t * s + i] = expf(log_gamma_buf[i] - log_sum);
                     gamma_sum[i] += gamma[t * s + i];
 
                     for (uint32_t j = 0; j < d; j++) {
@@ -1221,20 +1226,19 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
 
             /* Accumulate xi */
             for (uint32_t t = 0; t < T - 1; t++) {
-                float* log_xi = (float*)alloca(s * s * sizeof(float));
                 for (uint32_t i = 0; i < s; i++) {
                     for (uint32_t j = 0; j < s; j++) {
-                        log_xi[i * s + j] = alpha[t * s + i] +
+                        log_xi_buf[i * s + j] = alpha[t * s + i] +
                                            hmm->log_transition[i * s + j] +
                                            hmm_log_emission(hmm, j, &obs[(t+1) * d]) +
                                            beta[(t+1) * s + j];
                     }
                 }
-                float log_sum = log_sum_exp(log_xi, s * s);
+                float log_sum = log_sum_exp(log_xi_buf, s * s);
 
                 for (uint32_t i = 0; i < s; i++) {
                     for (uint32_t j = 0; j < s; j++) {
-                        xi_sum[i * s + j] += expf(log_xi[i * s + j] - log_sum);
+                        xi_sum[i * s + j] += expf(log_xi_buf[i * s + j] - log_sum);
                     }
                 }
             }
@@ -1317,6 +1321,7 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
 
     nimcp_free(alpha); nimcp_free(beta); nimcp_free(gamma);
     nimcp_free(xi_sum); nimcp_free(gamma_sum); nimcp_free(gamma_init_sum); nimcp_free(scale);
+    nimcp_free(log_tmp_buf); nimcp_free(log_gamma_buf); nimcp_free(log_xi_buf);
 
     return NIMCP_ML_OK;
 }
@@ -1401,8 +1406,11 @@ nimcp_ml_error_t nimcp_hmm_predict(const nimcp_hmm_t* hmm, const float* observat
 
     float* alpha = (float*)nimcp_malloc(T * s * sizeof(float));
     float* scale = (float*)nimcp_malloc(T * sizeof(float));
-    if (!alpha || !scale) {
+    float* log_alpha_buf = (float*)nimcp_malloc(s * sizeof(float));
+    float* log_tmp_pred = (float*)nimcp_malloc(s * sizeof(float));
+    if (!alpha || !scale || !log_alpha_buf || !log_tmp_pred) {
         nimcp_free(alpha); nimcp_free(scale);
+        nimcp_free(log_alpha_buf); nimcp_free(log_tmp_pred);
         return NIMCP_ML_ERROR_MEMORY;
     }
 
@@ -1419,20 +1427,18 @@ nimcp_ml_error_t nimcp_hmm_predict(const nimcp_hmm_t* hmm, const float* observat
     }
 
     for (uint32_t t = 1; t < T; t++) {
-        float* log_alpha = (float*)alloca(s * sizeof(float));
         for (uint32_t j = 0; j < s; j++) {
-            float* log_tmp = (float*)alloca(s * sizeof(float));
             for (uint32_t i = 0; i < s; i++) {
-                log_tmp[i] = safe_log(alpha[(t-1) * s + i]) + hmm->log_transition[i * s + j];
+                log_tmp_pred[i] = safe_log(alpha[(t-1) * s + i]) + hmm->log_transition[i * s + j];
             }
-            log_alpha[j] = log_sum_exp(log_tmp, s) + hmm_log_emission(hmm, j, &observations[t * d]);
+            log_alpha_buf[j] = log_sum_exp(log_tmp_pred, s) + hmm_log_emission(hmm, j, &observations[t * d]);
         }
 
-        log_scale = log_sum_exp(log_alpha, s);
+        log_scale = log_sum_exp(log_alpha_buf, s);
         scale[t] = log_scale;
 
         for (uint32_t i = 0; i < s; i++) {
-            alpha[t * s + i] = expf(log_alpha[i] - log_scale);
+            alpha[t * s + i] = expf(log_alpha_buf[i] - log_scale);
             state_probs[t * s + i] = alpha[t * s + i];
         }
     }
@@ -1446,6 +1452,8 @@ nimcp_ml_error_t nimcp_hmm_predict(const nimcp_hmm_t* hmm, const float* observat
 
     nimcp_free(alpha);
     nimcp_free(scale);
+    nimcp_free(log_alpha_buf);
+    nimcp_free(log_tmp_pred);
     return NIMCP_ML_OK;
 }
 
@@ -1665,9 +1673,12 @@ nimcp_ml_error_t nimcp_kde_evaluate(const nimcp_kde_t* kde, const float* X,
     uint32_t n = kde->n_samples;
     uint32_t d = kde->n_features;
 
-    for (uint32_t i = 0; i < n_points; i++) {
-        float* log_vals = (float*)alloca(n * sizeof(float));
+    /* Heap-allocate scratch buffer — n_samples can be arbitrarily large,
+     * so alloca() would overflow the stack. */
+    float* log_vals = (float*)nimcp_malloc(n * sizeof(float));
+    if (!log_vals) return NIMCP_ML_ERROR_MEMORY;
 
+    for (uint32_t i = 0; i < n_points; i++) {
         for (uint32_t k = 0; k < n; k++) {
             float log_kern = 0.0f;
             for (uint32_t j = 0; j < d; j++) {
@@ -1680,6 +1691,7 @@ nimcp_ml_error_t nimcp_kde_evaluate(const nimcp_kde_t* kde, const float* X,
         density[i] = log_sum_exp(log_vals, n) - logf((float)n);
     }
 
+    nimcp_free(log_vals);
     return NIMCP_ML_OK;
 }
 
@@ -2042,7 +2054,9 @@ nimcp_ml_error_t nimcp_nb_predict_proba(const nimcp_nb_t* nb, const float* X,
     uint32_t c = nb->n_classes;
     uint32_t d = nb->n_features;
 
-    float* log_probs = (float*)alloca(c * sizeof(float));
+    /* Heap-allocate to avoid stack overflow with large class counts */
+    float* log_probs = (float*)nimcp_malloc(c * sizeof(float));
+    if (!log_probs) return NIMCP_ML_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n_samples; i++) {
         for (uint32_t k = 0; k < c; k++) {
@@ -2079,6 +2093,7 @@ nimcp_ml_error_t nimcp_nb_predict_proba(const nimcp_nb_t* nb, const float* X,
         }
     }
 
+    nimcp_free(log_probs);
     return NIMCP_ML_OK;
 }
 

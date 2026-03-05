@@ -3177,6 +3177,80 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/utils/CMakeLists.txt)
     add_subdirectory(utils)
 endif()
 
+# ---------------------------------------------------------------------------
+# E2E: Full Brain Lifecycle (C + libcheck)
+# ---------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_full_brain_lifecycle_e2e.c)
+    add_executable(e2e_test_full_brain_lifecycle
+        test_full_brain_lifecycle_e2e.c
+    )
+    target_include_directories(e2e_test_full_brain_lifecycle PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_full_brain_lifecycle PRIVATE c_std_11)
+    target_link_libraries(e2e_test_full_brain_lifecycle PRIVATE
+        nimcp_middleware nimcp Threads::Threads check_pic subunit rt m
+    )
+    add_test(NAME e2e_test_full_brain_lifecycle
+             COMMAND e2e_test_full_brain_lifecycle
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_full_brain_lifecycle
+        PROPERTIES
+            LABELS "e2e;brain;lifecycle;subsystems"
+            TIMEOUT 600
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
+# ---------------------------------------------------------------------------
+# E2E: Sleep-Wake Cycle (C + libcheck)
+# ---------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_sleep_wake_cycle_e2e.c)
+    add_executable(e2e_test_sleep_wake_cycle
+        test_sleep_wake_cycle_e2e.c
+    )
+    target_include_directories(e2e_test_sleep_wake_cycle PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_sleep_wake_cycle PRIVATE c_std_11)
+    target_link_libraries(e2e_test_sleep_wake_cycle PRIVATE
+        nimcp_middleware nimcp Threads::Threads check_pic subunit rt m
+    )
+    add_test(NAME e2e_test_sleep_wake_cycle
+             COMMAND e2e_test_sleep_wake_cycle
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_sleep_wake_cycle
+        PROPERTIES
+            LABELS "e2e;brain;sleep_wake;glymphatic;neuropeptide"
+            TIMEOUT 120)
+endif()
+
+# ---------------------------------------------------------------------------
+# E2E: Parallel Init Lifecycle (C + libcheck)
+# ---------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_parallel_init_lifecycle_e2e.c)
+    add_executable(e2e_test_parallel_init_lifecycle
+        test_parallel_init_lifecycle_e2e.c
+    )
+    target_include_directories(e2e_test_parallel_init_lifecycle PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_parallel_init_lifecycle PRIVATE c_std_11)
+    target_link_libraries(e2e_test_parallel_init_lifecycle PRIVATE
+        nimcp_middleware nimcp Threads::Threads check_pic subunit rt m
+    )
+    add_test(NAME e2e_test_parallel_init_lifecycle
+             COMMAND e2e_test_parallel_init_lifecycle
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_parallel_init_lifecycle
+        PROPERTIES
+            LABELS "e2e;brain;parallel_init;lifecycle"
+            TIMEOUT 900
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

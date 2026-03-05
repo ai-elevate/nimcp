@@ -50,7 +50,7 @@ extern int      tokenizer_decode(const void* tok, const uint32_t* ids,
                                  uint32_t max_len);
 
 extern int      embedding_lookup(const void* emb, uint32_t token_id,
-                                 float* out_vector, uint32_t embed_dim);
+                                 float* out_vector);
 
 /*=============================================================================
  * Internal Structure
@@ -88,6 +88,9 @@ struct language_generator {
     uint32_t total_generations;
     uint32_t total_tokens_generated;
     float    cumulative_perplexity;
+
+    /* Per-instance PRNG state for thread safety */
+    unsigned int rng_seed;
 };
 
 /*=============================================================================
@@ -129,8 +132,8 @@ static void softmax_inplace(float* logits, uint32_t size) {
  * WHY:  Core sampling primitive for all stochastic decoding strategies
  * HOW:  Draw uniform random in [0,1), walk cumulative sum until exceeded
  */
-static uint32_t sample_categorical(const float* probs, uint32_t size) {
-    float r = (float)rand() / ((float)RAND_MAX + 1.0f);
+static uint32_t sample_categorical(const float* probs, uint32_t size, unsigned int* rng_seed) {
+    float r = (float)rand_r(rng_seed) / ((float)RAND_MAX + 1.0f);
     float cumsum = 0.0f;
     for (uint32_t i = 0; i < size; i++) {
         cumsum += probs[i];
@@ -160,12 +163,12 @@ static uint32_t argmax(const float* arr, uint32_t size) {
  * WHY:  Keeps variance stable across layers at init time
  * HOW:  U(-limit, +limit) where limit = sqrt(6 / (fan_in + fan_out))
  */
-static void xavier_init(float* weights, uint32_t fan_in, uint32_t fan_out) {
+static void xavier_init(float* weights, uint32_t fan_in, uint32_t fan_out, unsigned int* rng_seed) {
     float limit = sqrtf(6.0f / (float)(fan_in + fan_out));
     uint32_t total = fan_in * fan_out;
     for (uint32_t i = 0; i < total; i++) {
-        float u = (float)rand() / (float)RAND_MAX;     /* [0, 1] */
-        weights[i] = (2.0f * u - 1.0f) * limit;        /* [-limit, +limit] */
+        float u = (float)rand_r(rng_seed) / (float)RAND_MAX;  /* [0, 1] */
+        weights[i] = (2.0f * u - 1.0f) * limit;               /* [-limit, +limit] */
     }
 }
 
@@ -460,7 +463,7 @@ static int beam_search_generate(
             /* Replay beam tokens */
             for (uint32_t t = 0; t < beams[b].length; t++) {
                 embedding_lookup(gen->embedding, beams[b].tokens[t],
-                                 embed_buf, gen->embed_dim);
+                                 embed_buf);
                 matvec(gen->embed_projection, embed_buf, proj_buf,
                        hdim, gen->embed_dim);
                 memcpy(nimcp_tensor_data(inp), proj_buf, hdim * sizeof(float));
@@ -622,7 +625,7 @@ static int ensure_cognitive_projection(language_generator_t* gen,
                   "[%u x %u]", state_dim, hdim);
         return -1;
     }
-    xavier_init(gen->cognitive_projection, state_dim, hdim);
+    xavier_init(gen->cognitive_projection, state_dim, hdim, &gen->rng_seed);
     gen->cognitive_dim = state_dim;
     LOG_INFO("language_generator: allocated cognitive projection [%u x %u]",
              state_dim, hdim);
@@ -667,17 +670,17 @@ static uint32_t select_next_token(float* logits, uint32_t vocab_size,
         break;
 
     case GENERATION_SAMPLING:
-        token = sample_categorical(logits, vocab_size);
+        token = sample_categorical(logits, vocab_size, &gen->rng_seed);
         break;
 
     case GENERATION_TOP_K:
         apply_top_k(logits, vocab_size, gen->config.top_k);
-        token = sample_categorical(logits, vocab_size);
+        token = sample_categorical(logits, vocab_size, &gen->rng_seed);
         break;
 
     case GENERATION_TOP_P:
         apply_top_p(logits, vocab_size, gen->config.top_p);
-        token = sample_categorical(logits, vocab_size);
+        token = sample_categorical(logits, vocab_size, &gen->rng_seed);
         break;
 
     case GENERATION_BEAM_SEARCH:
@@ -761,6 +764,10 @@ language_generator_t* language_generator_create(
     gen->vocab_size = vocab_size;
     gen->embed_dim  = embed_dim;
 
+    /* Seed per-instance PRNG from time + pointer for thread safety */
+    gen->rng_seed = (unsigned int)time(NULL) ^ (unsigned int)(uintptr_t)gen;
+    if (gen->rng_seed == 0) gen->rng_seed = 1;
+
     uint32_t hdim = gen->config.hidden_dim;
     uint32_t lnn_n = gen->config.num_lnn_neurons;
 
@@ -788,7 +795,7 @@ language_generator_t* language_generator_create(
         language_generator_destroy(gen);
         return NULL;
     }
-    xavier_init(gen->output_projection, hdim, vocab_size);
+    xavier_init(gen->output_projection, hdim, vocab_size, &gen->rng_seed);
 
     /* --- Output bias [vocab_size] zeroed --- */
     gen->output_bias = (float*)nimcp_calloc(vocab_size, sizeof(float));
@@ -808,7 +815,7 @@ language_generator_t* language_generator_create(
     }
     /* NOTE: output of matvec(embed_projection, embed, ...) is [hidden_dim],
      * so the matrix shape is [hidden_dim x embed_dim] (rows = hdim). */
-    xavier_init(gen->embed_projection, embed_dim, hdim);
+    xavier_init(gen->embed_projection, embed_dim, hdim, &gen->rng_seed);
 
     /* --- Cognitive projection (lazy — allocated on first generate call) --- */
     gen->cognitive_projection = NULL;
@@ -983,7 +990,7 @@ int language_generator_generate(
 
         /* (j) Embed the generated token and project to hidden_dim for next input */
         if (gen->embedding) {
-            embedding_lookup(gen->embedding, tok, embed_buf, gen->embed_dim);
+            embedding_lookup(gen->embedding, tok, embed_buf);
             matvec(gen->embed_projection, embed_buf, proj_buf, hdim, gen->embed_dim);
             memcpy(nimcp_tensor_data(lnn_input), proj_buf, hdim * sizeof(float));
         } else {
@@ -1117,7 +1124,7 @@ int language_generator_generate_from_prompt(
     for (uint32_t t = 0; t < prompt_len; t++) {
         if (gen->embedding) {
             embedding_lookup(gen->embedding, prompt_ids[t],
-                             embed_buf, gen->embed_dim);
+                             embed_buf);
             matvec(gen->embed_projection, embed_buf, proj_buf,
                    hdim, gen->embed_dim);
             memcpy(nimcp_tensor_data(lnn_input), proj_buf, hdim * sizeof(float));
@@ -1172,7 +1179,7 @@ int language_generator_generate_from_prompt(
 
         /* Embed and project for next step */
         if (gen->embedding) {
-            embedding_lookup(gen->embedding, tok, embed_buf, gen->embed_dim);
+            embedding_lookup(gen->embedding, tok, embed_buf);
             matvec(gen->embed_projection, embed_buf, proj_buf, hdim, gen->embed_dim);
             memcpy(nimcp_tensor_data(lnn_input), proj_buf, hdim * sizeof(float));
         } else {
@@ -1401,7 +1408,7 @@ int language_generator_train_step(
         /* (1) Embed and project input token */
         if (gen->embedding) {
             embedding_lookup(gen->embedding, input_ids[t],
-                             embed_buf, gen->embed_dim);
+                             embed_buf);
             matvec(gen->embed_projection, embed_buf, proj_buf,
                    hdim, gen->embed_dim);
             memcpy(nimcp_tensor_data(lnn_input), proj_buf, hdim * sizeof(float));

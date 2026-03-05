@@ -2100,13 +2100,22 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // WHY:  Enable learning from own actions, build execution representation
     // HOW:  Convert decision to action and send to mirror neurons
     if (brain->mirror_neurons && brain->config.enable_mirror_neurons) {
-        // Convert decision to action
-        const char* action_name = decision->label[0] ? decision->label : "decision";
-        // Use hash of label as action_id for consistent tracking
+        // Use the winning output neuron index as the action_id.
+        // The brain's output is a continuous embedding — there are no discrete
+        // "labels" to track. The argmax output neuron is the most stable
+        // identifier for the response pattern. This keeps the action space
+        // bounded by num_outputs (not unbounded unique label strings).
         uint32_t action_id = 0;
-        for (const char* p = action_name; *p; p++) {
-            action_id = action_id * 31 + (uint32_t)(*p);
+        if (decision->output_vector && decision->output_size > 0) {
+            float max_val = decision->output_vector[0];
+            for (uint32_t i = 1; i < decision->output_size; i++) {
+                if (decision->output_vector[i] > max_val) {
+                    max_val = decision->output_vector[i];
+                    action_id = i;
+                }
+            }
         }
+        const char* action_name = "response";
         action_t action = brain_decision_to_action(decision, action_id, action_name);
 
         // Record as executed action

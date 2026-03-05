@@ -107,6 +107,7 @@ int elig_pink_noise_update(elig_pink_noise_bridge_t* bridge) {
 
     bridge->samples_generated++;
     bridge->avg_noise_amplitude = bridge->avg_noise_amplitude * 0.99f + fabsf(bridge->decay_noise) * amp * 0.01f;
+    if (!isfinite(bridge->avg_noise_amplitude)) bridge->avg_noise_amplitude = 0.0f;
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);

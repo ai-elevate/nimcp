@@ -77,6 +77,7 @@ physics_swarm_bridge_t* physics_swarm_bridge_create(
 ) {
     physics_swarm_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate physics-swarm bridge");
+    if (bridge_base_init(&bridge->base, 0, "physics_swarm") != 0) { nimcp_free(bridge); return NULL; }
 
     if (config) {
         bridge->config = *config;
@@ -109,6 +110,7 @@ void physics_swarm_bridge_destroy(physics_swarm_bridge_t* bridge) {
         (unsigned long)bridge->stats.boundary_updates,
         (unsigned long)bridge->stats.broadcasts_sent);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

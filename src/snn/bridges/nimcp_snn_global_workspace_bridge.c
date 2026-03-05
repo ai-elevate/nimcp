@@ -53,6 +53,7 @@ snn_global_workspace_bridge_t* snn_global_workspace_bridge_create(const snn_glob
     }
 
     memset(bridge, 0, sizeof(snn_global_workspace_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_global_workspace") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->workspace = workspace;
     bridge->config = *config;
@@ -77,6 +78,7 @@ void snn_global_workspace_bridge_destroy(snn_global_workspace_bridge_t* bridge) 
         snn_global_workspace_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->broadcast_buffer) nimcp_free(bridge->broadcast_buffer);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-global-workspace bridge");
 }

@@ -1690,6 +1690,10 @@ typedef struct {
     uint32_t inference_threads;           /**< Thread pool size for parallel stages (0 = auto/4, >0 = explicit) */
     bool force_serial_inference;          /**< Disable parallel cognitive stages (default: false) */
 
+    // === PARALLEL SUBSYSTEM INITIALIZATION ===
+    bool parallel_init;                   /**< Enable parallel subsystem init via wave executor (default: true) */
+    uint32_t init_threads;               /**< Thread pool size for parallel init (0 = auto/4, >0 = explicit) */
+
     // === PHASE 4 NEUROMODULATORY NUCLEI CONFIGURATION ===
     /**
      * Phase 4 Neuromodulatory Nuclei Configuration

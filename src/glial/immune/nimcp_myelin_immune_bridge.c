@@ -77,11 +77,8 @@ myelin_immune_bridge_t* myelin_immune_create(
     bridge->sheath_integrity = 1.0f;
     bridge->conduction_efficiency = 1.0f;
 
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
-    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
+    if (bridge_base_init(&bridge->base, 0, "myelin_immune") != 0) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "myelin_immune_create: validation failed");
         return NULL;
     }
 
@@ -93,8 +90,7 @@ myelin_immune_bridge_t* myelin_immune_create(
 void myelin_immune_destroy(myelin_immune_bridge_t* bridge)
 {
     if (!bridge) return;
-    if (bridge->base.bio_async_enabled) myelin_immune_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) { nimcp_mutex_free(bridge->base.mutex); }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

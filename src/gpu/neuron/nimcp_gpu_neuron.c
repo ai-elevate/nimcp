@@ -911,7 +911,9 @@ static uint32_t cpu_update_neurons(
 
         // Update state with leaky integration
         float decay = expf(-(float)delta_t / 20000.0F);  // 20ms time constant
+        if (!isfinite(decay)) decay = 0.0F;
         neuron->membrane_potential = neuron->membrane_potential * decay + potential * (1.0F - decay);
+        if (!isfinite(neuron->membrane_potential)) neuron->membrane_potential = potential;
         neuron->state = neuron->membrane_potential;
 
         // Check for spike

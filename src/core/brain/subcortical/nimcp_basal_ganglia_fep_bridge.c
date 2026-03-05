@@ -327,12 +327,15 @@ bg_fep_bridge_t* bg_fep_create(const bg_fep_config_t* config) {
     bridge->action_state = BG_FEP_ACTION_PENDING;
     bridge->confidence = BG_FEP_CONFIDENCE_MEDIUM;
 
+    bridge_base_init(&bridge->base, 0, "basal_ganglia_fep_bridge");
+
     NIMCP_LOGGING_INFO("Created %s bridge", "basal_ganglia_fep");
     return bridge;
 }
 
 void bg_fep_destroy(bg_fep_bridge_t* bridge) {
     if (!bridge) return;
+    bridge_base_cleanup(&bridge->base);
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "basal_ganglia_fep");
     nimcp_free(bridge);
 }

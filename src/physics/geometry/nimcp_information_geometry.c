@@ -358,11 +358,14 @@ nimcp_info_geom_error_t nimcp_info_geom_natural_gradient(
     float nat_grad_norm = vector_norm(natural_grad, grad_size);
 
     geom->stats.avg_gradient_norm = geom->stats.avg_gradient_norm * 0.99f + grad_norm * 0.01f;
+    if (!isfinite(geom->stats.avg_gradient_norm)) geom->stats.avg_gradient_norm = grad_norm;
     geom->stats.avg_natural_grad_norm = geom->stats.avg_natural_grad_norm * 0.99f + nat_grad_norm * 0.01f;
+    if (!isfinite(geom->stats.avg_natural_grad_norm)) geom->stats.avg_natural_grad_norm = nat_grad_norm;
 
     if (grad_norm > 1e-8f) {
         float ratio = nat_grad_norm / grad_norm;
         geom->stats.avg_speedup_ratio = geom->stats.avg_speedup_ratio * 0.99f + ratio * 0.01f;
+        if (!isfinite(geom->stats.avg_speedup_ratio)) geom->stats.avg_speedup_ratio = ratio;
     }
 
     return INFO_GEOM_OK;

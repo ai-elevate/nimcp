@@ -56,19 +56,21 @@ static volatile sig_atomic_t g_shutdown_requested = 0;
 static volatile sig_atomic_t g_reload_requested = 0;
 static volatile sig_atomic_t g_last_signal = 0;
 
-// Signal statistics (updated atomically)
-static volatile uint64_t g_sigsegv_count = 0;
-static volatile uint64_t g_sigabrt_count = 0;
-static volatile uint64_t g_sigbus_count = 0;
-static volatile uint64_t g_sigfpe_count = 0;
-static volatile uint64_t g_sigill_count = 0;
-static volatile uint64_t g_sigterm_count = 0;
-static volatile uint64_t g_sigint_count = 0;
-static volatile uint64_t g_sighup_count = 0;
-static volatile uint64_t g_recoveries = 0;
-static volatile uint64_t g_fatal_crashes = 0;
-static volatile uint64_t g_checkpoint_saves = 0;
-static volatile uint64_t g_recovery_failures = 0;
+// Signal statistics — must be volatile sig_atomic_t for async-signal-safety.
+// The C standard guarantees that sig_atomic_t can be read/written atomically
+// from a signal handler; volatile uint64_t increment (++) is NOT async-signal-safe.
+static volatile sig_atomic_t g_sigsegv_count = 0;
+static volatile sig_atomic_t g_sigabrt_count = 0;
+static volatile sig_atomic_t g_sigbus_count = 0;
+static volatile sig_atomic_t g_sigfpe_count = 0;
+static volatile sig_atomic_t g_sigill_count = 0;
+static volatile sig_atomic_t g_sigterm_count = 0;
+static volatile sig_atomic_t g_sigint_count = 0;
+static volatile sig_atomic_t g_sighup_count = 0;
+static volatile sig_atomic_t g_recoveries = 0;
+static volatile sig_atomic_t g_fatal_crashes = 0;
+static volatile sig_atomic_t g_checkpoint_saves = 0;
+static volatile sig_atomic_t g_recovery_failures = 0;
 
 // Configuration (set once during initialization)
 static signal_handler_config_t g_config;
@@ -78,7 +80,7 @@ static bool g_installed = false;
 static bool g_auto_recovery_enabled = true;
 static int g_max_recovery_attempts = 3;
 static int g_checkpoint_retention = 5;
-static volatile uint64_t g_recovery_attempt_count = 0;
+static volatile sig_atomic_t g_recovery_attempt_count = 0;
 
 // Brain instance for crash recovery (signal-safe pointer)
 static brain_t g_registered_brain = NULL;
@@ -114,7 +116,18 @@ static code_immune_system_t* g_code_immune = NULL;
  * HOW:  Set by sigsetjmp in main code, jumped to from handler
  */
 static __thread volatile sig_atomic_t g_recovery_jump_valid = 0;
-static __thread sigjmp_buf g_recovery_jump_buf;
+
+/**
+ * Wrapper struct to apply volatile qualifier to sigjmp_buf.
+ * Direct `volatile sigjmp_buf` causes warnings on some compilers because
+ * sigjmp_buf is an array type. The wrapper avoids that issue while ensuring
+ * the compiler does not optimize away reads/writes from signal handlers.
+ */
+typedef struct {
+    volatile sigjmp_buf buf;
+} volatile_jmpbuf_t;
+static __thread volatile_jmpbuf_t g_recovery_jump_wrapper;
+#define g_recovery_jump_buf (g_recovery_jump_wrapper.buf)
 
 /**
  * @brief Flag indicating crash is being handled by code immune

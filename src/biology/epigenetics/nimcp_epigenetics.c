@@ -139,6 +139,7 @@ static void update_histone(histone_entry_t* h, float dt) {
 static void update_chromatin(chromatin_entry_t* c, float dt, float activity) {
     /* Accumulate activity */
     c->activity_accumulator = c->activity_accumulator * 0.95f + activity * 0.05f;
+    if (!isfinite(c->activity_accumulator)) c->activity_accumulator = activity;
 
     /* Critical period handling */
     if (c->in_critical_period) {
@@ -380,8 +381,10 @@ nimcp_epigenetics_error_t nimcp_epigenetics_update(nimcp_epigenetics_t epi, floa
     /* Update stats */
     epi->stats.avg_plasticity = epi->stats.avg_plasticity * 0.99f +
                                 epi->state.global_plasticity * 0.01f;
+    if (!isfinite(epi->stats.avg_plasticity)) epi->stats.avg_plasticity = epi->state.global_plasticity;
     epi->stats.avg_methylation = epi->stats.avg_methylation * 0.99f +
                                  epi->state.methylation_load * 0.01f;
+    if (!isfinite(epi->stats.avg_methylation)) epi->stats.avg_methylation = epi->state.methylation_load;
 
     epi->state.last_update_time = epi->current_time;
 

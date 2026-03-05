@@ -168,15 +168,9 @@ dendrite_orchestrator_bridge_t* dendrite_orchestrator_bridge_create(
     bridge->mapping_capacity = capacity;
     bridge->mapping_count = 0;
 
-    /* Create mutex */
-
-
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-
-
-    if (bridge->base.mutex && nimcp_mutex_init(bridge->base.mutex, NULL) == 0) {
-    } else {
-        NIMCP_LOGGING_WARN("dendrite_orchestrator_bridge_create: mutex creation failed");
+    /* Initialize bridge base (allocates mutex, sets module name) */
+    if (bridge_base_init(&bridge->base, 0, "dendrite_orchestrator") != 0) {
+        NIMCP_LOGGING_WARN("dendrite_orchestrator_bridge_create: bridge_base_init failed");
     }
 
     /* Initialize statistics */
@@ -192,16 +186,8 @@ void dendrite_orchestrator_bridge_destroy(dendrite_orchestrator_bridge_t* bridge
         return;
     }
 
-    /* Disconnect from bio-async */
-    if (bridge->base.bio_async_enabled) {
-        dendrite_orchestrator_disconnect_bio_async(bridge);
-    }
-
-    /* Free mutex */
-    if ((bridge->base.mutex != NULL)) {
-        nimcp_mutex_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free mappings */
     if (bridge->mappings) {

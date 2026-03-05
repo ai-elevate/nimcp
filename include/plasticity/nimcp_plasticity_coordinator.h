@@ -204,6 +204,7 @@ typedef enum {
     PLASTICITY_TYPE_STP,               /**< Short-term plasticity */
     PLASTICITY_TYPE_ADAPTIVE,          /**< Adaptive threshold */
     PLASTICITY_TYPE_PREDICTIVE,        /**< Predictive coding */
+    PLASTICITY_TYPE_STRUCTURAL,        /**< Structural plasticity (synaptogenesis) */
     PLASTICITY_TYPE_COUNT              /**< Total types */
 } plasticity_mechanism_type_t;
 

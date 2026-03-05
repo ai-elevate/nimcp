@@ -130,6 +130,7 @@ int meta_pink_noise_update(meta_pink_noise_bridge_t* bridge) {
     bridge->parameters_modulated++;
     float noise_amp = fabsf(bridge->theta_base_noise) * amp;
     bridge->avg_noise_amplitude = bridge->avg_noise_amplitude * 0.99f + noise_amp * 0.01f;
+    if (!isfinite(bridge->avg_noise_amplitude)) bridge->avg_noise_amplitude = noise_amp;
     if (noise_amp > bridge->max_noise_amplitude) bridge->max_noise_amplitude = noise_amp;
 
     /* Notify coordinator of update cycle completion */

@@ -1017,7 +1017,7 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
         for (uint32_t i = 0; i < num_neurons; i++) {
             sum += concentration[i];
         }
-        field->avg_concentration = sum / num_neurons;
+        field->avg_concentration = (num_neurons > 0) ? (sum / num_neurons) : 0.0F;
         field->update_count++;
 
         return true;  // Skip classical diffusion
@@ -1230,6 +1230,7 @@ float spatial_neuromod_get_average(const spatial_neuromod_field_t* field) {
     //            Performance impact is minimal (O(N) scan) for this query operation.
 
     if (!field) return 0.0F;
+    if (field->num_neurons == 0) return 0.0F;
 
     // Compute average from current concentration array
     float sum = 0.0F;
@@ -1335,8 +1336,14 @@ bool spatial_neuromod_compute_stats(const spatial_neuromod_field_t* field,
     // HOW:  Single pass over arrays
 
     if (!field) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_get_average: field is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_get_statistics: field is NULL");
         return false;
+    }
+    if (field->num_neurons == 0) {
+        if (mean_out) *mean_out = 0.0F;
+        if (variance_out) *variance_out = 0.0F;
+        if (max_gradient_out) *max_gradient_out = 0.0F;
+        return true;
     }
 
     // Mean

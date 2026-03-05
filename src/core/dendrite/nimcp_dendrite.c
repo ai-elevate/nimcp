@@ -708,7 +708,7 @@ static float calculate_attenuation(dendrite_t* dendrite, uint32_t segment_id) {
     float lambda = sqrtf(segment->R_m / segment->R_a);
 
     // Attenuation factor: exp(-distance / lambda)
-    float attenuation = expf(-segment->path_distance / lambda);
+    float attenuation = expf(fminf(-segment->path_distance / lambda, 88.0f));
 
     return attenuation;
 }
@@ -833,7 +833,7 @@ static void update_segment_calcium(dendritic_segment_t* segment, float dt_ms) {
     }
 
     // Calcium decay: dCa/dt = -Ca / tau
-    float decay_factor = expf(-dt_ms / CALCIUM_DECAY_TAU);
+    float decay_factor = expf(fminf(-dt_ms / CALCIUM_DECAY_TAU, 88.0f));
     segment->calcium *= decay_factor;
 
     // Clamp calcium
@@ -1284,7 +1284,7 @@ dendrite_network_stats_t dendrite_network_get_stats(dendrite_network_t* network)
  */
 static float calculate_mg_block(float voltage_mv) {
     float block = 1.0F / (1.0F + NMDA_MG_CONCENTRATION *
-                          expf(-NMDA_MG_BLOCK_CONSTANT * voltage_mv));
+                          expf(fminf(-NMDA_MG_BLOCK_CONSTANT * voltage_mv, 88.0f)));
     return block;
 }
 
@@ -1378,7 +1378,7 @@ void dendrite_update_nmda_spike(dendrite_t* dendrite, float dt_ms) {
     }
 
     // Maintain plateau voltage (slight decay)
-    float decay_factor = expf(-dt_ms / (NIMCP_NMDA_PLATEAU_DURATION_MS * 2.0F));
+    float decay_factor = expf(fminf(-dt_ms / (NIMCP_NMDA_PLATEAU_DURATION_MS * 2.0F), 88.0f));
     segment->nmda_spike_voltage *= decay_factor;
     segment->voltage = fmaxf(segment->voltage, segment->nmda_spike_voltage);
 
@@ -1499,7 +1499,7 @@ void dendrite_update_bap(dendrite_t* dendrite, float dt_ms) {
     dendrite->bap_state.wavefront_position_um += distance_traveled;
 
     // Attenuate amplitude
-    float attenuation = expf(-NIMCP_BAP_ATTENUATION_PER_UM * distance_traveled);
+    float attenuation = expf(fminf(-NIMCP_BAP_ATTENUATION_PER_UM * distance_traveled, 88.0f));
     dendrite->bap_state.current_amplitude_mv *= attenuation;
 
     // Update segments reached by wavefront
@@ -1517,8 +1517,8 @@ void dendrite_update_bap(dendrite_t* dendrite, float dt_ms) {
                 (uint64_t)(segment->path_distance / NIMCP_BAP_VELOCITY_UM_MS * 1000.0F);
 
             // Calculate local amplitude with distance-based attenuation
-            float local_attenuation = expf(-NIMCP_BAP_ATTENUATION_PER_UM *
-                                           segment->path_distance);
+            float local_attenuation = expf(fminf(-NIMCP_BAP_ATTENUATION_PER_UM *
+                                           segment->path_distance, 88.0f));
 
             // Boost at distal segments with active properties
             if (segment->has_active_properties && segment->path_distance > 200.0F) {
@@ -1788,9 +1788,11 @@ static void dendrite_stdp_pre_spike_unlocked(dendrite_t* dendrite, uint32_t spin
         if (dt_ms > 0.0F && dt_ms < NIMCP_STDP_WINDOW_MS) {
             // LTD: pre came after post
             float ltd_magnitude = NIMCP_STDP_A_MINUS *
-                                  expf(-dt_ms / NIMCP_STDP_TAU_MINUS_MS) *
+                                  expf(fminf(-dt_ms / NIMCP_STDP_TAU_MINUS_MS, 88.0f)) *
                                   stdp->post_trace;
-            stdp->accumulated_ltd += ltd_magnitude;
+            if (isfinite(ltd_magnitude)) {
+                stdp->accumulated_ltd += ltd_magnitude;
+            }
             stdp->eligible_for_update = true;
         }
     }
@@ -1828,9 +1830,11 @@ void dendrite_stdp_post_spike(dendrite_t* dendrite, uint64_t timestamp) {
             if (dt_ms > 0.0F && dt_ms < NIMCP_STDP_WINDOW_MS) {
                 // LTP: post came after pre
                 float ltp_magnitude = NIMCP_STDP_A_PLUS *
-                                      expf(-dt_ms / NIMCP_STDP_TAU_PLUS_MS) *
+                                      expf(fminf(-dt_ms / NIMCP_STDP_TAU_PLUS_MS, 88.0f)) *
                                       stdp->pre_trace;
-                stdp->accumulated_ltp += ltp_magnitude;
+                if (isfinite(ltp_magnitude)) {
+                    stdp->accumulated_ltp += ltp_magnitude;
+                }
                 stdp->eligible_for_update = true;
             }
         }
@@ -1855,7 +1859,10 @@ void dendrite_stdp_apply_weight_changes(dendrite_t* dendrite) {
         float delta_w = stdp->accumulated_ltp - stdp->accumulated_ltd;
 
         // Apply to synaptic weight
-        spine->synaptic_weight += delta_w;
+        float new_weight = spine->synaptic_weight + delta_w;
+        if (isfinite(new_weight)) {
+            spine->synaptic_weight = new_weight;
+        }
 
         // Bounds
         if (spine->synaptic_weight < 0.1F) spine->synaptic_weight = 0.1F;
@@ -2230,9 +2237,9 @@ void dendrite_update_spine_conductances(dendrite_t* dendrite, float dt_ms) {
     const float tau_nmda = 100.0F; // NMDA decay (ms)
     const float tau_gaba = 6.0F;   // GABA decay (ms)
 
-    float decay_ampa = expf(-dt_ms / tau_ampa);
-    float decay_nmda = expf(-dt_ms / tau_nmda);
-    float decay_gaba = expf(-dt_ms / tau_gaba);
+    float decay_ampa = expf(fminf(-dt_ms / tau_ampa, 88.0f));
+    float decay_nmda = expf(fminf(-dt_ms / tau_nmda, 88.0f));
+    float decay_gaba = expf(fminf(-dt_ms / tau_gaba, 88.0f));
 
     for (uint32_t i = 0; i < dendrite->num_spines; i++) {
         dendritic_spine_t* spine = &dendrite->spines[i];
@@ -2245,10 +2252,10 @@ void dendrite_update_spine_conductances(dendrite_t* dendrite, float dt_ms) {
         // Decay voltage
         float tau_voltage = spine->neck_resistance * spine->head_capacitance * 1e-6F;
         if (tau_voltage < 0.1F) tau_voltage = 0.1F;
-        spine->voltage *= expf(-dt_ms / tau_voltage);
+        spine->voltage *= expf(fminf(-dt_ms / tau_voltage, 88.0f));
 
         // Decay calcium
-        spine->calcium *= expf(-dt_ms / CALCIUM_DECAY_TAU);
+        spine->calcium *= expf(fminf(-dt_ms / CALCIUM_DECAY_TAU, 88.0f));
     }
 
     nimcp_mutex_unlock(&dendrite->lock);

@@ -30,6 +30,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/thread/nimcp_thread.h"
 
 
 
@@ -55,6 +56,7 @@ struct zscore_normalizer {
     size_t window_size;
     float outlier_clip;
     channel_stats_t* channels;
+    nimcp_mutex_t* mutex;
 };
 
 zscore_normalizer_t* zscore_normalizer_create(
@@ -105,11 +107,24 @@ zscore_normalizer_t* zscore_normalizer_create(
         }
     }
 
+    norm->mutex = nimcp_mutex_create(NULL);
+    if (!norm->mutex) {
+        for (size_t i = 0; i < num_channels; i++) {
+            circular_buffer_destroy(norm->channels[i].window);
+        }
+        nimcp_free(norm->channels);
+        nimcp_free(norm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "zscore_normalizer_create: failed to create mutex");
+        return NULL;
+    }
+
     return norm;
 }
 
 void zscore_normalizer_destroy(zscore_normalizer_t* normalizer) {
     if (!normalizer) return;
+
+    if (normalizer->mutex) nimcp_mutex_free(normalizer->mutex);
 
     if (normalizer->channels) {
         for (size_t i = 0; i < normalizer->num_channels; i++) {
@@ -130,6 +145,8 @@ bool zscore_normalizer_fit(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "zscore_normalizer_fit: normalizer is NULL");
         return false;
     }
+
+    nimcp_mutex_lock(normalizer->mutex);
 
     channel_stats_t* stats = &normalizer->channels[channel];
 
@@ -173,6 +190,8 @@ bool zscore_normalizer_fit(
         if (value < stats->min_value) stats->min_value = value;
         if (value > stats->max_value) stats->max_value = value;
     }
+
+    nimcp_mutex_unlock(normalizer->mutex);
 
     return true;
 }
@@ -334,6 +353,8 @@ bool zscore_normalizer_reset_channel(zscore_normalizer_t* normalizer, size_t cha
         return false;
     }
 
+    nimcp_mutex_lock(normalizer->mutex);
+
     channel_stats_t* stats = &normalizer->channels[channel];
     stats->mean = 0.0F;
     stats->m2 = 0.0F;
@@ -347,15 +368,36 @@ bool zscore_normalizer_reset_channel(zscore_normalizer_t* normalizer, size_t cha
         circular_buffer_clear(stats->window);
     }
 
+    nimcp_mutex_unlock(normalizer->mutex);
+
     return true;
+}
+
+static void zscore_normalizer_reset_channel_unlocked(
+    zscore_normalizer_t* normalizer,
+    size_t channel
+) {
+    channel_stats_t* stats = &normalizer->channels[channel];
+    stats->mean = 0.0F;
+    stats->m2 = 0.0F;
+    stats->variance = 0.0F;
+    stats->stddev = 1.0F;
+    stats->count = 0;
+    stats->min_value = FLT_MAX;
+    stats->max_value = -FLT_MAX;
+    if (stats->window) {
+        circular_buffer_clear(stats->window);
+    }
 }
 
 void zscore_normalizer_reset_all(zscore_normalizer_t* normalizer) {
     if (!normalizer) return;
 
+    nimcp_mutex_lock(normalizer->mutex);
     for (size_t i = 0; i < normalizer->num_channels; i++) {
-        zscore_normalizer_reset_channel(normalizer, i);
+        zscore_normalizer_reset_channel_unlocked(normalizer, i);
     }
+    nimcp_mutex_unlock(normalizer->mutex);
 }
 
 /* ============================================================================
@@ -471,6 +513,8 @@ size_t zscore_normalizer_fit_tensor(
         return 0;
     }
 
+    nimcp_mutex_lock(normalizer->mutex);
+
     /* Compute mean and variance using tensor operations */
     nimcp_tensor_t* mean_t = nimcp_tensor_mean(tensor);
     nimcp_tensor_t* var_t = nimcp_tensor_var(tensor, true);  /* Sample variance */
@@ -531,6 +575,8 @@ size_t zscore_normalizer_fit_tensor(
 
     nimcp_tensor_destroy(mean_t);
     nimcp_tensor_destroy(var_t);
+
+    nimcp_mutex_unlock(normalizer->mutex);
 
     return numel;
 }

@@ -1524,6 +1524,7 @@ static float compute_detection_sensitivity(float precision) {
 static void update_running_average(float* avg, float new_value, float alpha) {
     if (!avg) return;
     *avg = (1.0f - alpha) * (*avg) + alpha * new_value;
+    if (!isfinite(*avg)) *avg = new_value;
 }
 
 /**

@@ -34,6 +34,7 @@ struct embedding_layer {
     uint32_t embed_dim;     /**< Dimensionality of embedding vectors */
     uint32_t update_count;  /**< Number of gradient update steps applied */
     bool     frozen;        /**< If true, backward/update are no-ops */
+    uint32_t rng_state;     /**< Per-instance xorshift32 PRNG state */
 };
 
 /*=============================================================================
@@ -41,39 +42,41 @@ struct embedding_layer {
  *===========================================================================*/
 
 /**
- * WHAT: Seed-safe random float in [-1, 1]
- * WHY:  Xavier initialization needs uniform random values
- * HOW:  Uses a simple xorshift32 PRNG seeded from time + address
- *        to avoid reliance on global rand() state
+ * WHAT: Per-instance xorshift32 PRNG step
+ * WHY:  Thread-safe random number generation without global state
+ * HOW:  xorshift32 with state stored per embedding instance
  */
-static uint32_t s_embedding_rng_state = 0;
-
-static void ensure_rng_seeded(void)
+static uint32_t embedding_xorshift32(uint32_t* state)
 {
-    if (s_embedding_rng_state == 0) {
-        s_embedding_rng_state = (uint32_t)time(NULL) ^ 0xDEADBEEF;
-        /* Mix in address bits for extra entropy */
-        s_embedding_rng_state ^= (uint32_t)(uintptr_t)&s_embedding_rng_state;
-        if (s_embedding_rng_state == 0) s_embedding_rng_state = 1;
-    }
-}
-
-static uint32_t xorshift32(void)
-{
-    uint32_t x = s_embedding_rng_state;
+    uint32_t x = *state;
     x ^= x << 13;
     x ^= x >> 17;
     x ^= x << 5;
-    s_embedding_rng_state = x;
+    *state = x;
     return x;
 }
 
 /**
  * WHAT: Return a float uniformly distributed in [-1.0, 1.0]
+ * WHY:  Xavier initialization needs uniform random values
+ * HOW:  Per-instance PRNG avoids global state race conditions
  */
-static float rand_uniform(void)
+static float rand_uniform_instance(uint32_t* rng_state)
 {
-    return ((float)xorshift32() / (float)UINT32_MAX) * 2.0f - 1.0f;
+    return ((float)embedding_xorshift32(rng_state) / (float)UINT32_MAX) * 2.0f - 1.0f;
+}
+
+/**
+ * WHAT: Seed a per-instance RNG state
+ * WHY:  Each embedding gets its own PRNG to avoid thread contention
+ * HOW:  Mix time, pointer address, and a constant for entropy
+ */
+static uint32_t embedding_seed_rng(const void* instance_ptr)
+{
+    uint32_t seed = (uint32_t)time(NULL) ^ 0xDEADBEEF;
+    seed ^= (uint32_t)(uintptr_t)instance_ptr;
+    if (seed == 0) seed = 1;
+    return seed;
 }
 
 /**
@@ -180,9 +183,9 @@ embedding_layer_t* embedding_create(const embedding_config_t* config)
         scale = sqrtf(2.0f / (float)(config->vocab_size + config->embed_dim));
     }
 
-    ensure_rng_seeded();
+    emb->rng_state = embedding_seed_rng(emb);
     for (size_t i = 0; i < total_floats; i++) {
-        emb->weights[i] = rand_uniform() * scale;
+        emb->weights[i] = rand_uniform_instance(&emb->rng_state) * scale;
     }
 
     LOG_INFO("embedding_create: %u x %u, scale=%.6f, frozen=%s",

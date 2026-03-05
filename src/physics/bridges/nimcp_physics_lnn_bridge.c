@@ -200,6 +200,7 @@ physics_lnn_bridge_t* physics_lnn_bridge_create(
 ) {
     physics_lnn_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate physics-LNN bridge");
+    if (bridge_base_init(&bridge->base, 0, "physics_lnn") != 0) { nimcp_free(bridge); return NULL; }
 
     /* Apply configuration */
     if (config) {
@@ -284,6 +285,7 @@ void physics_lnn_bridge_destroy(physics_lnn_bridge_t* bridge) {
     if (bridge->spike_history) {
         nimcp_free(bridge->spike_history);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

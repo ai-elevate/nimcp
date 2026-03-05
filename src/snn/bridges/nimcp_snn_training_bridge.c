@@ -92,6 +92,7 @@ snn_training_bridge_t* snn_training_bridge_create(
         return NULL;
     }
 
+    if (bridge_base_init(&bridge->base, 0, "snn_training") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->training_ctx = training_ctx;
     memcpy(&bridge->config, config, sizeof(snn_training_bridge_config_t));
@@ -127,10 +128,7 @@ void snn_training_bridge_destroy(snn_training_bridge_t* bridge) {
         nimcp_free(bridge->neuron_rates);
     }
 
-    /* Free mutex if allocated */
-    if (bridge->base.mutex) {
-    }
-
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("SNN training bridge destroyed");
 }

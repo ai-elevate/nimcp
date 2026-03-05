@@ -28,6 +28,10 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_sensory_bridge)
 
 #define LOG_MODULE "OMNI_SENSORY_BRIDGE"
 
+/* Forward declaration for unlocked binding helper (used by omni_sensory_update) */
+static int omni_sensory_compute_binding_unlocked(omni_sensory_bridge_t* bridge,
+                                                  omni_crossmodal_binding_t* binding);
+
 
 /* ============================================================================
  * Bio-Async Message Handlers
@@ -61,8 +65,10 @@ static nimcp_error_t handle_omni_precision_update(
     omni_sensory_bridge_t* bridge = (omni_sensory_bridge_t*)user_data;
     NIMCP_CHECK_THROW(bridge && msg, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in handle_omni_precision_update");
 
-    /* Update precision weights */
+    /* Update precision weights under lock (bio-async handler runs on separate thread) */
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
     omni_sensory_update_precision(bridge);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     (void)response_promise;
     (void)msg_size;
@@ -358,13 +364,11 @@ int omni_sensory_update(omni_sensory_bridge_t* bridge) {
         omni_sensory_update_precision(bridge);
     }
 
-    /* Compute cross-modal binding if enabled (call unlocked version) */
+    /* Compute cross-modal binding if enabled (use unlocked helper to avoid
+     * race condition from unlock-call-relock pattern) */
     if (bridge->config.enable_binding) {
         omni_crossmodal_binding_t binding;
-        /* Unlock before calling to avoid deadlock, or call internal helper */
-        nimcp_mutex_unlock(bridge->base.mutex);
-        omni_sensory_compute_binding(bridge, &binding);
-        nimcp_mutex_lock(bridge->base.mutex);
+        omni_sensory_compute_binding_unlocked(bridge, &binding);
     }
 
     /* Copy individual PEs to effects */
@@ -506,12 +510,16 @@ int omni_sensory_crossmodal_predict(omni_sensory_bridge_t* bridge,
  * Binding API
  * ============================================================================ */
 
-int omni_sensory_compute_binding(omni_sensory_bridge_t* bridge,
-                                  omni_crossmodal_binding_t* binding) {
-    NIMCP_CHECK_THROW(bridge && binding, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in omni_sensory_compute_binding");
-
-    nimcp_mutex_lock(bridge->base.mutex);
-
+/**
+ * @brief Internal unlocked binding computation
+ *
+ * WHAT: Compute cross-modal binding without acquiring mutex
+ * WHY:  Called from omni_sensory_update() which already holds the mutex;
+ *       acquiring it again would deadlock (or race if we unlock/relock)
+ * HOW:  Pure computation on bridge state, caller must hold bridge->base.mutex
+ */
+static int omni_sensory_compute_binding_unlocked(omni_sensory_bridge_t* bridge,
+                                                  omni_crossmodal_binding_t* binding) {
     memset(binding, 0, sizeof(omni_crossmodal_binding_t));
 
     omni_modality_state_t* audio = &bridge->modality_states[OMNI_MODALITY_AUDIO];
@@ -557,8 +565,17 @@ int omni_sensory_compute_binding(omni_sensory_bridge_t* bridge,
         bridge->stats.crossmodal_bindings++;
     }
 
-    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
+}
+
+int omni_sensory_compute_binding(omni_sensory_bridge_t* bridge,
+                                  omni_crossmodal_binding_t* binding) {
+    NIMCP_CHECK_THROW(bridge && binding, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in omni_sensory_compute_binding");
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    int result = omni_sensory_compute_binding_unlocked(bridge, binding);
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 bool omni_sensory_are_bound(const omni_sensory_bridge_t* bridge,

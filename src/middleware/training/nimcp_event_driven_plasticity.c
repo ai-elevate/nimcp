@@ -28,6 +28,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
@@ -994,6 +995,7 @@ nimcp_result_t edp_process_prediction_error(edp_context_t* ctx,
     ctx->stats.total_processing_time_ns += elapsed;
     ctx->stats.avg_prediction_error = (ctx->stats.avg_prediction_error * 0.99F) +
                                       (fabsf(prediction_error) * 0.01F);
+    NIMCP_EMA_GUARD_ZERO(ctx->stats.avg_prediction_error);
     ctx->stats.category_stats[EDP_CATEGORY_ERROR].events_received++;
     if (res == NIMCP_SUCCESS) {
         ctx->stats.category_stats[EDP_CATEGORY_ERROR].events_processed++;
@@ -1036,6 +1038,7 @@ nimcp_result_t edp_process_reward(edp_context_t* ctx, float reward_signal)
     ctx->stats.total_processing_time_ns += elapsed;
     ctx->stats.avg_reward_signal = (ctx->stats.avg_reward_signal * 0.99F) +
                                    (reward_signal * 0.01F);
+    NIMCP_EMA_GUARD_ZERO(ctx->stats.avg_reward_signal);
     ctx->stats.cumulative_reward += reward_signal;
     ctx->stats.category_stats[EDP_CATEGORY_REWARD].events_received++;
     if (res == NIMCP_SUCCESS) {

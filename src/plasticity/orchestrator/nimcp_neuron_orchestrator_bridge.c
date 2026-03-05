@@ -177,15 +177,9 @@ neuron_orchestrator_bridge_t* neuron_orchestrator_bridge_create(
     bridge->neuron_capacity = capacity;
     bridge->neuron_count = 0;
 
-    /* Create mutex */
-
-
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-
-
-    if (bridge->base.mutex && nimcp_mutex_init(bridge->base.mutex, NULL) == 0) {
-    } else {
-        NIMCP_LOGGING_WARN("neuron_orchestrator_bridge_create: mutex creation failed");
+    /* Initialize bridge base (allocates mutex, sets module name) */
+    if (bridge_base_init(&bridge->base, 0, "neuron_orchestrator") != 0) {
+        NIMCP_LOGGING_WARN("neuron_orchestrator_bridge_create: bridge_base_init failed");
     }
 
     /* Initialize statistics */
@@ -201,16 +195,8 @@ void neuron_orchestrator_bridge_destroy(neuron_orchestrator_bridge_t* bridge) {
         return;
     }
 
-    /* Disconnect from bio-async */
-    if (bridge->base.bio_async_enabled) {
-        neuron_orchestrator_disconnect_bio_async(bridge);
-    }
-
-    /* Free mutex */
-    if ((bridge->base.mutex != NULL)) {
-        nimcp_mutex_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free neuron array */
     if (bridge->neurons) {
@@ -318,6 +304,7 @@ static void update_firing_rate(
     if (alpha > 1.0f) alpha = 1.0f;
 
     entry->rate_ema = (1.0f - alpha) * entry->rate_ema + alpha * instant_rate_hz;
+    if (!isfinite(entry->rate_ema)) entry->rate_ema = instant_rate_hz;
     entry->firing_rate_hz = entry->rate_ema;
     entry->last_spike_time_us = current_time_us;
 }

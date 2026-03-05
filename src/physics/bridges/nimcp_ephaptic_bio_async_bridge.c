@@ -215,6 +215,7 @@ ephaptic_bio_async_bridge_t* ephaptic_bio_async_bridge_create(
 ) {
     ephaptic_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate ephaptic bio-async bridge");
+    if (bridge_base_init(&bridge->base, 0, "ephaptic_bio_async") != 0) { nimcp_free(bridge); return NULL; }
 
     // Apply configuration
     if (config) {
@@ -252,6 +253,7 @@ void ephaptic_bio_async_bridge_destroy(ephaptic_bio_async_bridge_t* bridge) {
     }
 
     bridge->initialized = false;
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

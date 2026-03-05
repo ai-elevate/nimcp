@@ -386,7 +386,9 @@ void neuromod_pink_update(
     // HOW: EMA with α=0.01 (99% weight on history, 1% on current)
     mod->update_count++;
     mod->avg_dopamine = (mod->avg_dopamine * 0.99F) + (mod->dopamine_current * 0.01F);
+    if (!isfinite(mod->avg_dopamine)) mod->avg_dopamine = mod->dopamine_current;
     mod->avg_serotonin = (mod->avg_serotonin * 0.99F) + (mod->serotonin_current * 0.01F);
+    if (!isfinite(mod->avg_serotonin)) mod->avg_serotonin = mod->serotonin_current;
 }
 
 /**

@@ -21,6 +21,7 @@
 
 #include "physics/thermodynamics/nimcp_thermodynamics.h"
 #include "utils/memory/nimcp_memory_guards.h"
+#include "utils/thread/nimcp_thread.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
@@ -80,9 +81,43 @@ typedef struct nimcp_thermo_internal_s {
 
 } nimcp_thermo_internal_t;
 
-/** Thread-local internal state storage */
-static __thread nimcp_thermo_internal_t* s_internal_states[256] = {0};
-static __thread uint32_t s_state_count = 0;
+/**
+ * Shared internal state storage (NOT thread-local).
+ *
+ * DESIGN FIX: Previously used __thread, which caused state initialized on one
+ * thread to be invisible from other threads. Since thermodynamic states are
+ * shared resources (e.g., attached to brain subsystems accessed by multiple
+ * threads), the storage must be global with mutex protection.
+ */
+static nimcp_thermo_internal_t* s_internal_states[256] = {0};
+static uint32_t s_state_count = 0;
+static nimcp_mutex_t* s_thermo_mutex = NULL;
+static bool s_thermo_mutex_initialized = false;
+
+/**
+ * @brief Ensure the thermodynamics module mutex is initialized
+ *
+ * WHAT: Lazily initialize the global mutex for state array access
+ * WHY:  Protect shared state from concurrent access after TLS removal
+ * HOW:  One-time initialization with double-check pattern
+ */
+static void ensure_thermo_mutex(void) {
+    if (s_thermo_mutex_initialized) return;
+    s_thermo_mutex = nimcp_calloc(1, sizeof(nimcp_mutex_t));
+    if (s_thermo_mutex) {
+        nimcp_mutex_init(s_thermo_mutex, NULL);
+        s_thermo_mutex_initialized = true;
+    }
+}
+
+static inline void thermo_lock(void) {
+    ensure_thermo_mutex();
+    if (s_thermo_mutex) nimcp_mutex_lock(s_thermo_mutex);
+}
+
+static inline void thermo_unlock(void) {
+    if (s_thermo_mutex) nimcp_mutex_unlock(s_thermo_mutex);
+}
 
 //=============================================================================
 // Helper Functions
@@ -101,7 +136,10 @@ static nimcp_thermo_internal_t* get_internal_state(
     if (!state || state->module_id >= 256) {
         return NULL;
     }
-    return s_internal_states[state->module_id];
+    thermo_lock();
+    nimcp_thermo_internal_t* result = s_internal_states[state->module_id];
+    thermo_unlock();
+    return result;
 }
 
 /**
@@ -112,7 +150,9 @@ static void set_internal_state(
     nimcp_thermo_internal_t* internal
 ) {
     if (module_id < 256) {
+        thermo_lock();
         s_internal_states[module_id] = internal;
+        thermo_unlock();
     }
 }
 
@@ -164,7 +204,10 @@ nimcp_thermo_config_t nimcp_thermo_default_config(void) {
     config.max_power_budget = 0.0;       /* No limit */
     config.heat_dissipation_coeff = 1.0e-9;  /* W/K */
     config.external_temp_k = 298.0;      /* Room temperature */
+
+    thermo_lock();
     config.module_id = s_state_count;
+    thermo_unlock();
 
     return config;
 }
@@ -227,7 +270,10 @@ nimcp_error_t nimcp_thermo_init(
     memset(&internal->landauer_cumulative, 0, sizeof(internal->landauer_cumulative));
 
     set_internal_state(state->module_id, internal);
+
+    thermo_lock();
     s_state_count++;
+    thermo_unlock();
 
     state->initialized = true;
     return NIMCP_SUCCESS;

@@ -205,10 +205,8 @@ feature_immune_bridge_t* feature_immune_bridge_create(
 void feature_immune_bridge_destroy(feature_immune_bridge_t* bridge) {
     if (!bridge) return;
 
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);

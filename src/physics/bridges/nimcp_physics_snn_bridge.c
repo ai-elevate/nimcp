@@ -164,6 +164,7 @@ physics_snn_bridge_t* physics_snn_bridge_create(
 ) {
     physics_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate physics-SNN bridge");
+    if (bridge_base_init(&bridge->base, 0, "physics_snn") != 0) { nimcp_free(bridge); return NULL; }
 
     if (config) {
         bridge->config = *config;
@@ -207,6 +208,7 @@ void physics_snn_bridge_destroy(physics_snn_bridge_t* bridge) {
         (unsigned long)bridge->stats.stdp_updates,
         (unsigned long)bridge->stats.eligibility_conversions);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

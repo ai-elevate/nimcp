@@ -76,6 +76,7 @@ snn_routing_bridge_t* snn_routing_bridge_create(
 
     /* WHY: Initialize all fields to zero */
     memset(bridge, 0, sizeof(snn_routing_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_routing") != 0) { nimcp_free(bridge); return NULL; }
 
     /* HOW: Set configuration */
     if (config) {
@@ -164,6 +165,7 @@ void snn_routing_bridge_destroy(snn_routing_bridge_t* bridge) {
     if (bridge->last_spike_time_us) nimcp_free(bridge->last_spike_time_us);
     if (bridge->in_burst_mode) nimcp_free(bridge->in_burst_mode);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("SNN routing bridge destroyed");
 }

@@ -980,6 +980,14 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/brain_regions/CMakeLists.txt")
 endif()
 
 # ============================================================================
+# Brain Subsystems Regression Tests (7 new subsystems)
+# ============================================================================
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/brain_subsystems/CMakeLists.txt")
+    message(STATUS "Adding brain subsystems regression tests...")
+    add_subdirectory(regression/brain_subsystems)
+endif()
+
+# ============================================================================
 # Brain KG Module Wiring Regression Tests
 # ============================================================================
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/brain/CMakeLists.txt")
@@ -2242,6 +2250,11 @@ endif()
 # WHY:  Verify physical process modeling and constraints
 # HOW:  Subdirectory-based test organization
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/io")
+    message(STATUS "Adding IO unit tests...")
+    add_subdirectory(unit/io)
+endif()
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/physics/thermodynamics")
     message(STATUS "Adding physics thermodynamics unit tests...")
     add_subdirectory(unit/physics/thermodynamics)
@@ -2895,5 +2908,79 @@ gtest_discover_tests(regression_test_backprop_kernel_compat
 # integration_test_backprop_grad_clip are defined in
 # test/integration/CMakeLists.txt, which is included via
 # add_subdirectory(integration) above (line ~1949).
+
+# ============================================================================
+# Brain Subsystem Unit Tests (Glymphatic, Endocannabinoid, Neuropeptide)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/regions")
+    message(STATUS "Adding brain regions (glymphatic/endocannabinoid/neuropeptide) unit tests...")
+    add_subdirectory(unit/regions)
+endif()
+
+# ============================================================================
+# Cortical Interneuron Unit Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cortical")
+    message(STATUS "Adding cortical interneuron unit tests...")
+    add_subdirectory(unit/cortical)
+endif()
+
+# ============================================================================
+# White Matter Tract Unit Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/white_matter")
+    message(STATUS "Adding white matter tract unit tests...")
+    add_subdirectory(unit/white_matter)
+endif()
+
+# ============================================================================
+# Subcortical Unit Tests (Inferior Colliculus)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/subcortical")
+    message(STATUS "Adding subcortical (inferior colliculus) unit tests...")
+    add_subdirectory(unit/subcortical)
+endif()
+
+# ============================================================================
+# Spinal Cord Unit Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/spinal")
+    message(STATUS "Adding spinal cord unit tests...")
+    add_subdirectory(unit/spinal)
+endif()
+
+# ============================================================================
+# Synapse Compute + Multimodal Integration Bug Fix Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/synapse_compute/test_synapse_compute_bugs.c")
+    message(STATUS "Adding synapse compute bug fix tests...")
+    add_executable(unit_core_synapse_compute_bugs
+        unit/core/synapse_compute/test_synapse_compute_bugs.c
+    )
+    target_include_directories(unit_core_synapse_compute_bugs PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_core_synapse_compute_bugs PRIVATE c_std_11)
+    target_compile_options(unit_core_synapse_compute_bugs PRIVATE
+        -Wall -Wextra
+    )
+    target_link_libraries(unit_core_synapse_compute_bugs PRIVATE
+        nimcp Threads::Threads check_pic subunit rt m
+    )
+    add_test(NAME unit_core_synapse_compute_bugs
+             COMMAND unit_core_synapse_compute_bugs
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_core_synapse_compute_bugs
+        PROPERTIES
+            LABELS "unit;core;synapse_compute;multimodal;bugfix"
+            TIMEOUT 120)
+endif()
 
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)

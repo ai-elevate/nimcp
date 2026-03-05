@@ -5,9 +5,10 @@ Yields (raw_data, class_label, text_caption) tuples from standard datasets
 using HuggingFace datasets in streaming mode.
 
 Supported datasets:
-  Visual:  CIFAR-100, Fashion-MNIST
-  Audio:   ESC-50 (environmental sounds)
-  Speech:  LibriSpeech (read speech + transcriptions)
+  Visual:   CIFAR-100, Fashion-MNIST
+  Audio:    ESC-50 (environmental sounds)
+  Speech:   LibriSpeech (read speech + transcriptions)
+  Language: Tatoeba parallel sentences (59 language pairs)
 """
 
 import logging
@@ -315,3 +316,97 @@ class SpeechDatasetLoader:
             count += 1
             if self.max_examples and count >= self.max_examples:
                 return
+
+
+# ---------------------------------------------------------------------------
+# Language text datasets (multilingual)
+# ---------------------------------------------------------------------------
+
+class LanguageTextDatasetLoader:
+    """Loads multilingual text from Tatoeba, yielding (text, lang_code).
+
+    Uses sentence-transformers/parallel-sentences-tatoeba from HuggingFace.
+    Each language pair yields BOTH English and target-language sentences.
+    """
+
+    _LANG_CONFIGS = {
+        "fr": "en-fr", "es": "en-es", "de": "en-de",
+        "it": "en-it", "nl": "en-nl", "pt": "en-pt",
+        "ru": "en-ru", "ja": "en-ja", "zh": "en-zh",
+    }
+
+    def __init__(self, languages=("en", "fr", "es", "de"),
+                 max_examples_per_lang=None, shuffle=True, seed=42):
+        self.languages = tuple(languages)
+        self.max_examples_per_lang = max_examples_per_lang
+        self.shuffle = shuffle
+        self.seed = seed
+
+    def __iter__(self) -> Iterator[tuple]:
+        """Yields (text, lang_code) pairs, interleaving languages."""
+        if not HF_AVAILABLE:
+            logger.warning("HuggingFace datasets not available — "
+                           "LanguageTextDatasetLoader returning empty")
+            return
+
+        # Collect per-language iterators
+        lang_iters = {}
+        non_en = [l for l in self.languages if l != "en" and l in self._LANG_CONFIGS]
+
+        if not non_en:
+            # English-only: use any available pair for its English side
+            non_en = ["fr"]
+
+        for lang in non_en:
+            config = self._LANG_CONFIGS[lang]
+            try:
+                ds = load_dataset(
+                    "sentence-transformers/parallel-sentences-tatoeba",
+                    config, split="train", streaming=True)
+                if self.shuffle:
+                    ds = ds.shuffle(seed=self.seed, buffer_size=2000)
+                lang_iters[lang] = iter(ds)
+            except Exception as e:
+                logger.warning("Failed to load Tatoeba %s: %s", config, e)
+
+        if not lang_iters:
+            logger.warning("No Tatoeba language pairs loaded — empty iterator")
+            return
+
+        # Round-robin interleave with both English + target per example
+        import random as _rng
+        rng = _rng.Random(self.seed)
+        lang_keys = list(lang_iters.keys())
+        counts = {l: 0 for l in lang_keys}
+        counts["en"] = 0
+        exhausted = set()
+
+        while len(exhausted) < len(lang_keys):
+            # Pick a random non-exhausted language
+            active = [l for l in lang_keys if l not in exhausted]
+            if not active:
+                break
+            lang = rng.choice(active)
+
+            try:
+                example = next(lang_iters[lang])
+            except StopIteration:
+                exhausted.add(lang)
+                continue
+
+            # Each example has 'english' and 'non_english' columns
+            en_text = example.get("english", "")
+            non_en_text = example.get("non_english", "")
+
+            if en_text and "en" in self.languages:
+                yield (en_text.strip(), "en")
+                counts["en"] += 1
+
+            if non_en_text and lang in self.languages:
+                yield (non_en_text.strip(), lang)
+                counts[lang] += 1
+
+            # Check per-language cap
+            if self.max_examples_per_lang:
+                if counts[lang] >= self.max_examples_per_lang:
+                    exhausted.add(lang)

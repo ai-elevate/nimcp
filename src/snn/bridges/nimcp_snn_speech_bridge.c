@@ -135,6 +135,7 @@ snn_speech_bridge_t* snn_speech_bridge_create(
 
     /* Initialize structure */
     memset(bridge, 0, sizeof(snn_speech_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_speech") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->speech_cortex = speech_cortex;
     bridge->config = *config;
@@ -286,6 +287,7 @@ void snn_speech_bridge_destroy(snn_speech_bridge_t* bridge) {
     if (bridge->encoder) snn_encoder_destroy(bridge->encoder);
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-speech bridge");
 }

@@ -65,16 +65,11 @@ amygdala_autobio_bridge_t* amygdala_autobio_create(
         amygdala_autobio_default_config(&bridge->config);
     }
 
-    /* Initialize mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex");
+    /* Initialize bridge base (allocates mutex, sets module name) */
+    if (bridge_base_init(&bridge->base, 0, "amygdala_autobio") != 0) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "amygdala_autobio_create: bridge->base is NULL");
         return NULL;
     }
-
-    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     NIMCP_LOGGING_INFO("Created amygdala-autobio bridge");
     return bridge;
@@ -85,13 +80,8 @@ void amygdala_autobio_destroy(amygdala_autobio_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->base.bio_async_enabled) {
-        amygdala_autobio_disconnect_bio_async(bridge);
-    }
-
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed amygdala-autobio bridge");

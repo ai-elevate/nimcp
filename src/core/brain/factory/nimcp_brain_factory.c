@@ -118,8 +118,16 @@
 #include "core/brain/factory/init/nimcp_brain_init_creative.h"
 #include "core/brain/factory/nimcp_brain_init_state_manager.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
+#include "core/brain/factory/init/nimcp_brain_init_white_matter.h"
+#include "core/brain/factory/init/nimcp_brain_init_inferior_colliculus.h"
+#include "core/brain/factory/init/nimcp_brain_init_spinal_cord.h"
+#include "core/brain/factory/init/nimcp_brain_init_cortical_interneurons.h"
+#include "core/brain/factory/init/nimcp_brain_init_neuropeptide.h"
+#include "core/brain/factory/init/nimcp_brain_init_endocannabinoid.h"
+#include "core/brain/factory/init/nimcp_brain_init_glymphatic.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/signal/nimcp_signal_handler.h"
+#include "core/brain/factory/nimcp_brain_parallel_init.h"
 
 #define LOG_MODULE "BRAIN_FACTORY"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -270,6 +278,27 @@ extern void set_error(const char* format, ...);
 // LNN temporal context processor (NCP architecture)
 extern bool nimcp_brain_factory_init_lnn_subsystem(brain_t brain);
 #define init_lnn_subsystem                          nimcp_brain_factory_init_lnn_subsystem
+
+// White Matter Tracts subsystem macro (long-range myelinated connectivity)
+#define init_white_matter_subsystem                 nimcp_brain_factory_init_white_matter_subsystem
+
+// Inferior Colliculus subsystem macro (auditory midbrain processing)
+#define init_inferior_colliculus_subsystem           nimcp_brain_factory_init_inferior_colliculus_subsystem
+
+// Spinal Cord subsystem macro (motor output, CPGs, reflex arcs)
+#define init_spinal_cord_subsystem                  nimcp_brain_factory_init_spinal_cord_subsystem
+
+// Cortical Interneurons subsystem macro (GABAergic inhibitory microcircuits)
+#define init_cortical_interneurons_subsystem        nimcp_brain_factory_init_cortical_interneurons_subsystem
+
+// Neuropeptide System subsystem macro (slow neuromodulation: 8 peptides)
+#define init_neuropeptide_subsystem                 nimcp_brain_factory_init_neuropeptide_subsystem
+
+// Endocannabinoid System subsystem macro (retrograde synaptic modulation)
+#define init_endocannabinoid_subsystem              nimcp_brain_factory_init_endocannabinoid_subsystem
+
+// Glymphatic System subsystem macro (brain waste clearance during sleep)
+#define init_glymphatic_subsystem                   nimcp_brain_factory_init_glymphatic_subsystem
 
 //=============================================================================
 // Main Factory Functions
@@ -589,6 +618,24 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Lazy evaluation: Skip heavy subsystems when lazy_*_init flags are set.
     // These will be initialized on-demand when first accessed.
     // ========================================================================
+
+    // Parallel init: wave-based execution of independent subsystem inits.
+    // Falls through to sequential path if parallel_init is disabled or pool fails.
+    bool parallel_init_done = false;
+    if (config->parallel_init && !config->minimal_mode) {
+        if (nimcp_brain_parallel_init_subsystems(brain, config)) {
+            parallel_init_done = true;
+            goto post_init;
+        }
+        // If parallel init returned false due to pool creation failure (not subsystem failure),
+        // fall through to sequential path. If a subsystem actually failed, brain is corrupted.
+        // Simple heuristic: if GPU was already initialized, a subsystem failed (not just pool).
+        if (brain->gpu_ctx) {
+            brain_destroy(brain);
+            return NULL;
+        }
+        LOG_WARN("BRAIN_FACTORY", "Parallel init unavailable, using sequential fallback");
+    }
 
     // GPU Context (auto-init if GPU available - enables CUDA kernel acceleration)
     // This is initialized first as many subsystems can benefit from GPU acceleration.
@@ -935,6 +982,88 @@ brain_t brain_create_custom(const brain_config_t* config)
     if (!init_gustatory_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
+    // WHITE MATTER TRACTS (LONG-RANGE MYELINATED CONNECTIVITY)
+    // ========================================================================
+    // Initialize white matter tract system:
+    // - 8 major tracts with conduction velocity and myelination modeling
+    // - Foundation for inter-regional signal routing and timing
+    // - Activity-dependent myelination via glial integration
+    // BIOLOGICAL: Myelinated axon bundles connecting distant brain regions
+    // DEPENDS ON: Thalamus (relay), Glial (myelination), Brain regions
+    if (!init_white_matter_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // INFERIOR COLLICULUS (AUDITORY MIDBRAIN PROCESSING)
+    // ========================================================================
+    // Initialize inferior colliculus for auditory relay:
+    // - Tonotopic map (64 channels, 20Hz-20kHz log-spaced)
+    // - Binaural integration: ITD/ILD for sound localization
+    // - ICC (central): primary ascending relay
+    // - ICX (external): multisensory spatial integration
+    // BIOLOGICAL: Primary auditory midbrain nucleus, relay to MGN
+    // DEPENDS ON: Thalamus (MGN relay), Audio cortex (downstream)
+    if (!init_inferior_colliculus_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // SPINAL CORD (MOTOR OUTPUT & REFLEX ARCS)
+    // ========================================================================
+    // Initialize spinal cord motor output system:
+    // - Central Pattern Generators for rhythmic movement
+    // - Reflex arcs: stretch, withdrawal, crossed extension
+    // - Motor neuron pools grouped by effector
+    // - Proprioceptive feedback (Ia, II, Ib afferents)
+    // BIOLOGICAL: Final common pathway for motor commands
+    // DEPENDS ON: White matter (corticospinal tract), Motor cortex
+    if (!init_spinal_cord_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // CORTICAL INTERNEURONS (INHIBITORY MICROCIRCUIT CONTROL)
+    // ========================================================================
+    // Initialize cortical interneuron system:
+    // - PV basket: gamma oscillations, perisomatic inhibition
+    // - PV chandelier: output gating at AIS
+    // - SST Martinotti: dendritic feedback inhibition
+    // - VIP: disinhibition for attention gating
+    // - NGF L1: slow volume transmission GABA
+    // BIOLOGICAL: E/I balance, feature binding, predictive coding
+    // DEPENDS ON: Cortical columns (host architecture)
+    if (!init_cortical_interneurons_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // NEUROPEPTIDE SYSTEM (SLOW NEUROMODULATION)
+    // ========================================================================
+    // Initialize neuropeptide system with 8 peptides:
+    // - Oxytocin, Vasopressin, NPY, Substance P
+    // - Orexin, CRH, Endorphin, CCK
+    // BIOLOGICAL: Slow modulatory effects on social, stress, pain, appetite
+    // DEPENDS ON: Hypothalamus (primary release site)
+    if (!init_neuropeptide_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // ENDOCANNABINOID SYSTEM (RETROGRADE SYNAPTIC MODULATION)
+    // ========================================================================
+    // Initialize endocannabinoid system:
+    // - CB1/CB2 receptor dynamics with regional density
+    // - 2-AG and anandamide synthesis/degradation
+    // - DSI/DSE retrograde suppression
+    // - Pain modulation via spinal gate control
+    // BIOLOGICAL: Retrograde signaling modulates mood, pain, appetite, memory
+    // DEPENDS ON: Neuropeptide (pain pathways), Somatosensory
+    if (!init_endocannabinoid_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // GLYMPHATIC SYSTEM (BRAIN WASTE CLEARANCE)
+    // ========================================================================
+    // Initialize glymphatic waste clearance system:
+    // - AQP4-driven CSF/ISF exchange
+    // - 10-60x more active during NREM sleep
+    // - Clears beta-amyloid, tau, metabolic waste
+    // - High waste degrades learning rate and decision confidence
+    // BIOLOGICAL: Sleep-dependent brain cleaning, Alzheimer's prevention
+    // DEPENDS ON: Glial (AQP4 expression), Sleep system
+    if (!init_glymphatic_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
     // ========================================================================
     // FUZZY LOGIC (CROSS-CUTTING UTILITY)
     // ========================================================================
@@ -1134,6 +1263,8 @@ brain_t brain_create_custom(const brain_config_t* config)
     // ========================================================================
     // POST-INITIALIZATION
     // ========================================================================
+post_init:
+    (void)parallel_init_done;  // Suppress unused warning when goto skips sequential
 
     // ========================================================================
     // WORLD MODEL WIRING (Connect to Active Inference & Imagination)

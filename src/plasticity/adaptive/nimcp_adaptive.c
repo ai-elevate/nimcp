@@ -34,6 +34,7 @@
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "plasticity/adaptive/nimcp_backprop_kernel.h"
 #include <math.h>
+#include "utils/math/nimcp_math_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2170,6 +2171,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             float cur = atomic_load_explicit(&network->running_accuracy_ema,
                                               memory_order_relaxed);
             float next = cur * 0.99f + match_f * 0.01f;
+            NIMCP_EMA_GUARD(next, match_f);
             atomic_store_explicit(&network->running_accuracy_ema, next,
                                    memory_order_relaxed);
         }
@@ -2185,6 +2187,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             } else {
                 network->ema_loss = 0.99f * network->ema_loss + 0.01f * loss;
             }
+            NIMCP_EMA_GUARD(network->ema_loss, loss);
         }
 
         return loss;
@@ -2290,6 +2293,7 @@ cpu_learn_path:
                     } else {
                         network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
                     }
+                    NIMCP_EMA_GUARD(network->ema_grad_norm, grad_norm);
                 }
             }
             break;
@@ -2429,6 +2433,7 @@ cpu_learn_path:
                     } else {
                         network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
                     }
+                    NIMCP_EMA_GUARD(network->ema_grad_norm, grad_norm);
                 }
             }
             break;
@@ -3364,9 +3369,9 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             uint32_t hidden_start = input_size;
 
             // Use same backbone parameters as fresh creation (nimcp_neuralnet.c)
-            uint32_t backbone_target = output_size * 4;
+            uint32_t backbone_target = output_size * 16;
             if (backbone_target < 1024) backbone_target = 1024;
-            if (backbone_target > 8192) backbone_target = 8192;
+            if (backbone_target > 32768) backbone_target = 32768;
             uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
             uint32_t step = (total_hidden > 0) ? (total_hidden / backbone) : 1;
             if (step == 0) step = 1;
@@ -3375,14 +3380,15 @@ adaptive_network_t adaptive_network_load(const char* filepath)
 
             // --- Check input→hidden connections ---
             uint32_t hidden_with_incoming = 0;
-            for (uint32_t b = 0; b < backbone && b < 10; b++) {
+            uint32_t hidden_check = (backbone < 100) ? backbone : 100;
+            for (uint32_t b = 0; b < hidden_check; b++) {
                 uint32_t hidden_id = hidden_start + b * step;
                 if (hidden_id >= hidden_start + total_hidden) break;
                 neuron_t* n = neural_network_get_neuron(network->base_network, hidden_id);
                 if (n && NEURON_IN_COUNT(n) > 0) hidden_with_incoming++;
             }
 
-            if (hidden_with_incoming == 0 && total_hidden > 0) {
+            if (hidden_with_incoming < hidden_check / 2 && total_hidden > 0) {
                 fprintf(stderr, "[CHECKPOINT] Backbone hidden neurons have zero incoming "
                         "connections from input — adding input→hidden wiring\n");
                 float input_scale = 1.0F / sqrtf((float)input_size);
@@ -3405,12 +3411,13 @@ adaptive_network_t adaptive_network_load(const char* filepath)
 
             // --- Check hidden→output connections ---
             uint32_t output_with_incoming = 0;
-            for (uint32_t o = 0; o < output_size && o < 10; o++) {
+            uint32_t output_check = (output_size < 100) ? output_size : 100;
+            for (uint32_t o = 0; o < output_check; o++) {
                 neuron_t* n = neural_network_get_neuron(network->base_network, output_start + o);
                 if (n && NEURON_IN_COUNT(n) > 0) output_with_incoming++;
             }
 
-            if (output_with_incoming == 0 && total_hidden > 0) {
+            if (output_with_incoming < output_check / 2 && total_hidden > 0) {
                 fprintf(stderr, "[CHECKPOINT] Output layer has zero incoming connections — "
                         "adding backbone hidden→output wiring\n");
                 float backbone_scale = 1.0F / sqrtf((float)backbone);
@@ -3880,6 +3887,21 @@ void adaptive_network_mark_gpu_weights_dirty(adaptive_network_t network)
     if (network->gpu_weight_cache) {
         network->gpu_weight_cache->weights_dirty_on_cpu = true;
     }
+}
+
+void adaptive_network_invalidate_gpu_structure(adaptive_network_t network)
+{
+    if (!network || !network->gpu_weight_cache) return;
+    if (network->gpu_weight_cache->connected_dst_valid &&
+        network->gpu_weight_cache->connected_dst) {
+        uint32_t num_transitions = network->gpu_weight_cache->num_layers - 1;
+        for (uint32_t l = 0; l < num_transitions; l++) {
+            nimcp_free(network->gpu_weight_cache->connected_dst[l]);
+            network->gpu_weight_cache->connected_dst[l] = NULL;
+        }
+        network->gpu_weight_cache->connected_dst_valid = false;
+    }
+    network->gpu_weight_cache->weights_dirty_on_cpu = true;
 }
 
 //=============================================================================

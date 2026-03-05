@@ -16,6 +16,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <time.h>
+#include <stdatomic.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/math/nimcp_math_helpers.h"
 
@@ -47,10 +48,10 @@ static void init_message_header(
 ) {
     if (!header) return;
 
-    static uint32_t sequence_counter = 0;
+    static _Atomic uint32_t sequence_counter = 0;
 
     header->type = type;
-    header->sequence_id = ++sequence_counter;
+    header->sequence_id = atomic_fetch_add(&sequence_counter, 1) + 1;
     header->source_module = source;
     header->target_module = target;
     header->timestamp_us = get_time_us();

@@ -160,6 +160,12 @@ void rubric_evaluator_destroy(struct rubric_evaluator* eval);
 #include "utils/thread/nimcp_thread_rand.h"
 #include "constants/nimcp_buffer_constants.h"
 
+// Multi-network inference includes (CNN / SNN / LNN forward passes)
+#include "training/nimcp_cnn_training.h"
+#include "snn/nimcp_snn_network.h"
+#include "lnn/nimcp_lnn.h"
+#include "utils/tensor/nimcp_tensor.h"
+
 //=============================================================================
 // Bio-Async Module Registration
 //=============================================================================

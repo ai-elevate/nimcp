@@ -52,6 +52,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 // === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
 #include "async/nimcp_bio_async.h"
@@ -70,29 +71,15 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(synapse_compute)
 
 
 // Helper: Get dopamine phasic-tonic state from neuromodulator system
-// This is an internal accessor that knows the struct layout
+// Uses the public accessor from nimcp_neuromodulators.h
 static phasic_tonic_state_t* get_dopamine_phasic_tonic(void* neuromod_system) {
     if (!neuromod_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_dopamine_phasic_tonic: neuromod_system is NULL");
         return NULL;
     }
 
-    // The neuromodulator_system_struct layout (from nimcp_neuromodulators.c):
-    // - nimcp_platform_rwlock_t rwlock
-    // - float concentrations[NEUROMOD_COUNT]
-    // - float baselines[NEUROMOD_COUNT]
-    // - float decay_times[NEUROMOD_COUNT]
-    // - float reward_dopamine_gain, threat_norepinephrine_gain, salience_acetylcholine_gain, punishment_serotonin_gain
-    // - bool enable_volume_transmission
-    // - float diffusion_rate
-    // - stats struct
-    // - uint64_t last_update_time
-    // - phasic_tonic_state_t dopamine_phasic_tonic  <-- TARGET
-
-    // Calculate offset: We'll use the actual structure from neuromodulators.c
-    // For now, return NULL and use dopamine_level only (safer approach)
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_dopamine_phasic_tonic: operation failed");
-    return NULL;
+    // Use the public API accessor — avoids needing internal struct visibility
+    neuromodulator_system_t sys = (neuromodulator_system_t)neuromod_system;
+    return neuromodulator_get_dopamine_phasic_tonic(sys);
 }
 
 //=============================================================================
@@ -264,7 +251,9 @@ float synapse_compute_attention(
 
     // Compute scaled dot-product attention
     float attention_score = dot_product(query, key, ATTENTION_DIM) / sqrtf(ATTENTION_DIM);
-    float attention_weight = expf(attention_score);  // Note: softmax normalization done globally
+    float clamped_score = fminf(attention_score, 88.0f);
+    float attention_weight = expf(clamped_score);  // Note: softmax normalization done globally
+    if (!isfinite(attention_weight)) attention_weight = 1.0f;
 
     // Store attention weight in local memory for debugging
     if (syn->compute_state) {
@@ -549,7 +538,9 @@ void synapse_learn_three_factor(
         if (pre_spike_time > 0 && post_spike_time > 0) {
             // Compute STDP contribution (pre-post correlation)
             float dt = post_spike_time - pre_spike_time;
-            float stdp_contribution = expf(-fabsf(dt) / 20.0F);
+            float stdp_exp = fminf(-fabsf(dt) / 20.0F, 88.0f);
+            float stdp_contribution = expf(stdp_exp);
+            if (!isfinite(stdp_contribution)) stdp_contribution = 0.0F;
             if (dt < 0) {
                 stdp_contribution *= -0.5F;  // LTD asymmetry
             }
@@ -598,7 +589,9 @@ void synapse_learn_three_factor(
         // Update eligibility trace with STDP
         if (pre_spike_time > 0 && post_spike_time > 0) {
             float dt = post_spike_time - pre_spike_time;
-            float stdp_update = expf(-fabsf(dt) / 20.0F);
+            float stdp_exp2 = fminf(-fabsf(dt) / 20.0F, 88.0f);
+            float stdp_update = expf(stdp_exp2);
+            if (!isfinite(stdp_update)) stdp_update = 0.0F;
             if (dt > 0) {
                 stdp_update *= 1.0F;  // LTP
             } else {
@@ -612,7 +605,10 @@ void synapse_learn_three_factor(
         // Decay eligibility trace
         if (context) {
             float dt = 1.0F; // Assume 1ms timestep
-            syn->trace *= expf(-dt / TAU_ELIGIBILITY);
+            float decay_exp = fminf(-dt / TAU_ELIGIBILITY, 88.0f);
+            float decay_factor = expf(decay_exp);
+            if (!isfinite(decay_factor)) decay_factor = 0.0F;
+            syn->trace *= decay_factor;
         }
 
         // Three-factor weight update
@@ -653,7 +649,9 @@ void synapse_learn_attention_modulated(
     // Standard STDP
     if (pre_spike_time > 0 && post_spike_time > 0) {
         float dt = post_spike_time - pre_spike_time;
-        float stdp_update = expf(-fabsf(dt) / 20.0F);
+        float attn_stdp_exp = fminf(-fabsf(dt) / 20.0F, 88.0f);
+        float stdp_update = expf(attn_stdp_exp);
+        if (!isfinite(stdp_update)) stdp_update = 0.0F;
         if (dt > 0) {
             stdp_update *= 1.0F;
         } else {
@@ -700,11 +698,14 @@ void synapse_learn_metaplastic(
 
     // Update meta-plasticity state
     syn->meta_plasticity = 0.9F * syn->meta_plasticity + 0.1F * activity_factor;
+    NIMCP_EMA_GUARD(syn->meta_plasticity, activity_factor);
 
     // Standard STDP with meta-plasticity modulation
     if (pre_spike_time > 0 && post_spike_time > 0) {
         float dt = post_spike_time - pre_spike_time;
-        float stdp_update = expf(-fabsf(dt) / 20.0F);
+        float meta_stdp_exp = fminf(-fabsf(dt) / 20.0F, 88.0f);
+        float stdp_update = expf(meta_stdp_exp);
+        if (!isfinite(stdp_update)) stdp_update = 0.0F;
         if (dt > 0) {
             stdp_update *= 1.0F;
         } else {

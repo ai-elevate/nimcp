@@ -302,6 +302,7 @@ int dragonfly_thalamic_relay_visual(
     bridge->stats.visual_signals_relayed++;
     bridge->stats.avg_lgn_attention = (bridge->stats.avg_lgn_attention * 0.95f) +
                                        (effective_attention * 0.05f);
+    if (!isfinite(bridge->stats.avg_lgn_attention)) bridge->stats.avg_lgn_attention = effective_attention;
     bridge->stats.total_processing_time_us += get_time_us() - start;
 
     return 0;
@@ -390,6 +391,7 @@ int dragonfly_thalamic_relay_attention(
     bridge->stats.attention_signals_relayed++;
     bridge->stats.avg_pulvinar_salience = (bridge->stats.avg_pulvinar_salience * 0.95f) +
                                            (attention->salience * 0.05f);
+    if (!isfinite(bridge->stats.avg_pulvinar_salience)) bridge->stats.avg_pulvinar_salience = attention->salience;
     bridge->stats.total_processing_time_us += get_time_us() - start;
 
     return 0;

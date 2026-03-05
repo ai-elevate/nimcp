@@ -482,7 +482,16 @@ int snn_surrogate_backward(snn_training_ctx_t* ctx,
                            const float* membrane_v,
                            uint32_t n_neurons,
                            float* input_grad) {
-    if (!ctx || !output_grad || !membrane_v || !input_grad) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surrogate_backward: training context is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!output_grad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surrogate_backward: gradient buffer is NULL (no forward pass?)");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!membrane_v || !input_grad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surrogate_backward: membrane_v or input_grad is NULL");
         return SNN_ERROR_NULL_POINTER;
     }
 

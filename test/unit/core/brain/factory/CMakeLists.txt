@@ -153,3 +153,25 @@ target_include_directories(unit_core_brain_factory_init_bg_bbb_kg
 add_test(NAME unit_core_brain_factory_init_bg_bbb_kg
          COMMAND unit_core_brain_factory_init_bg_bbb_kg)
 set_tests_properties(unit_core_brain_factory_init_bg_bbb_kg PROPERTIES LABELS "unit" RESOURCE_LOCK "brain_heavy")
+
+# Test: Parallel Init (wave-based subsystem initialization)
+add_executable(unit_core_brain_factory_test_parallel_init
+    test_brain_parallel_init.cpp
+)
+target_link_libraries(unit_core_brain_factory_test_parallel_init
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_core_brain_factory_test_parallel_init
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME unit_core_brain_factory_test_parallel_init
+         COMMAND unit_core_brain_factory_test_parallel_init)
+set_tests_properties(unit_core_brain_factory_test_parallel_init PROPERTIES
+    LABELS "unit;brain;parallel_init"
+    TIMEOUT 300
+    RESOURCE_LOCK "brain_heavy")

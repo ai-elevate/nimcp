@@ -186,15 +186,11 @@ hemispheric_portia_bridge_t* hemispheric_portia_create(
     bridge->right_state.transition_in_progress = false;
     bridge->right_state.last_transition_ms = 0;
 
-    // Allocate mutex
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("hemispheric_portia_create: mutex allocation failed");
+    // Initialize bridge base (allocates mutex, sets module name)
+    if (bridge_base_init(&bridge->base, 0, "hemispheric_portia") != 0) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hemispheric_portia_create: bridge->base is NULL");
         return NULL;
     }
-    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     bridge->initialized = true;
 
@@ -205,13 +201,8 @@ hemispheric_portia_bridge_t* hemispheric_portia_create(
 void hemispheric_portia_destroy(hemispheric_portia_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->base.bio_async_enabled) {
-        hemispheric_portia_disconnect_bio_async(bridge);
-    }
-
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     bridge->initialized = false;
     nimcp_free(bridge);

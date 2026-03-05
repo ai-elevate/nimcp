@@ -128,12 +128,18 @@ static void* delivery_thread_fn(void* arg) {
         event_t events[NIMCP_EVENT_BATCH_SIZE];
         uint32_t count = event_queue_dequeue_batch(bus->queue, events, NIMCP_EVENT_BATCH_SIZE);
 
+        /* P4 fix: Accumulate local batch count, update shared counter once after
+         * the batch instead of locking/unlocking mutex per event. */
+        uint32_t batch_delivered = 0;
         for (uint32_t i = 0; i < count; i++) {
             subscriber_dispatch_event(bus->subscribers, &events[i]);
             event_free(&events[i]);
+            batch_delivered++;
+        }
 
+        if (batch_delivered > 0) {
             nimcp_platform_mutex_lock(&bus->mutex);
-            bus->events_delivered++;
+            bus->events_delivered += batch_delivered;
             nimcp_platform_mutex_unlock(&bus->mutex);
         }
 
@@ -342,12 +348,15 @@ uint32_t event_bus_process_events(event_bus_t bus, uint32_t max_events) {
         LOG_DEBUG(LOG_MODULE, "Processing %u events", count);
     }
 
+    /* P4 fix: Batch counter update - single lock/unlock instead of per-event */
     for (uint32_t i = 0; i < count; i++) {
         subscriber_dispatch_event(bus->subscribers, &events[i]);
         event_free(&events[i]);
+    }
 
+    if (count > 0) {
         nimcp_platform_mutex_lock(&bus->mutex);
-        bus->events_delivered++;
+        bus->events_delivered += count;
         nimcp_platform_mutex_unlock(&bus->mutex);
     }
 

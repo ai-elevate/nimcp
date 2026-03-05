@@ -327,5 +327,19 @@ target_compile_features(unit_integration_pfc_adapter PRIVATE cxx_std_17)
 gtest_discover_tests(unit_integration_pfc_adapter
     PROPERTIES LABELS "unit;integration;adapters;executive")
 
-message(STATUS "  Added 7 layer infrastructure unit tests")
+# Inter-Layer Router Queue Depth Tests (Tier 4 fix)
+add_executable(unit_integration_inter_layer_router_queue
+    test_inter_layer_router_queue.cpp
+)
+target_link_libraries(unit_integration_inter_layer_router_queue
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_integration_inter_layer_router_queue
+    PRIVATE ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(unit_integration_inter_layer_router_queue PRIVATE cxx_std_17)
+gtest_discover_tests(unit_integration_inter_layer_router_queue
+    PROPERTIES LABELS "unit;integration;inter_layer_router")
+
+message(STATUS "  Added 8 layer infrastructure unit tests")
 message(STATUS "  Added 14 module adapter unit tests")

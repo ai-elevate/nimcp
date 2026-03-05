@@ -33,6 +33,7 @@
 #include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <string.h>
+#include "utils/math/nimcp_math_helpers.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
@@ -53,6 +54,8 @@
 
 /* Loss history circular buffer size — must match brain_internal.h loss_history[10] */
 #define LOSS_HISTORY_SIZE 10
+#define REWARD_LEARNING_RATE 0.0001f
+#define REWARD_ACTIVITY_THRESHOLD 0.01f
 
 #define LOG_MODULE "core_brain_learning"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -76,6 +79,8 @@
 #include "perception/nimcp_audio_cortex.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
 #include "plasticity/predictive/nimcp_predictive_coding.h"
+#include "plasticity/structural/nimcp_structural_plasticity.h"
+#include "core/neuralnet/nimcp_neuralnet_learning.h"
 
 // Biological plasticity integration (TPB + EDP + coordinator)
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
@@ -308,6 +313,219 @@ float nimcp_brain_learning_quantum_weight_energy(const float* weights, uint32_t 
 }
 
 //=============================================================================
+// Multi-Network Training Helpers
+//=============================================================================
+
+/**
+ * @brief Lazily create the CNN trainer if not already present
+ *
+ * WHY: DRY — shared by brain_learn_vector() and brain_enable_multi_network_training()
+ * HOW: Dense(num_inputs→hidden)→ReLU→Dense(hidden→num_outputs)
+ *
+ * @param brain Brain handle
+ * @return 0 on success (or already exists), -1 on failure
+ */
+static int ensure_cnn_trainer(brain_t brain)
+{
+    if (brain->cnn_trainer) return 0;
+
+    uint32_t num_inputs = brain->config.num_inputs;
+    uint32_t num_outputs = brain->config.num_outputs;
+    uint32_t hidden_size = num_outputs * 4;
+    if (hidden_size < 32) hidden_size = 32;
+    if (hidden_size > 512) hidden_size = 512;
+
+    cnn_trainer_config_t cnn_cfg;
+    cnn_trainer_default_config(&cnn_cfg);
+    cnn_cfg.learning_rate = 0.001f;
+
+    cnn_trainer_t* trainer = cnn_trainer_create(&cnn_cfg);
+    if (!trainer) {
+        NIMCP_LOGGING_WARN("Failed to create CNN trainer");
+        return -1;
+    }
+
+    cnn_dense_config_t dense1 = {
+        .in_features = num_inputs,
+        .out_features = hidden_size,
+        .activation = CNN_ACTIVATION_NONE,
+        .use_bias = true,
+        .weight_init_std = 0.01f
+    };
+    cnn_trainer_add_dense_layer(trainer, &dense1);
+    cnn_trainer_add_activation_layer(trainer, CNN_ACTIVATION_RELU);
+
+    cnn_dense_config_t dense2 = {
+        .in_features = hidden_size,
+        .out_features = num_outputs,
+        .activation = CNN_ACTIVATION_NONE,
+        .use_bias = true,
+        .weight_init_std = 0.01f
+    };
+    cnn_trainer_add_dense_layer(trainer, &dense2);
+
+    brain->cnn_trainer = trainer;
+    NIMCP_LOGGING_INFO("CNN trainer created: %u→%u→%u", num_inputs, hidden_size, num_outputs);
+    return 0;
+}
+
+/**
+ * @brief CNN classifier training step (label-based, not dense target)
+ *
+ * WHY: CNN trains as a classifier using one-hot labels, complementing the
+ *      adaptive network's dense embedding training
+ * HOW: Builds one-hot target from label index, runs CNN forward/backward/step
+ *
+ * @param brain Brain handle
+ * @param features Input features
+ * @param num_features Feature count
+ * @param label Label string for classification
+ * @return CNN loss, or -1.0f on failure (non-fatal)
+ */
+static float brain_learn_vector_cnn_step(brain_t brain, const float* features,
+                                          uint32_t num_features, const char* label)
+{
+    if (ensure_cnn_trainer(brain) != 0) return -1.0f;
+
+    uint32_t num_outputs = brain->config.num_outputs;
+    uint32_t label_idx = nimcp_brain_learning_get_or_create_label_index(brain, label);
+
+    /* Build one-hot target for CNN classifier */
+    float* one_hot = nimcp_calloc(num_outputs, sizeof(float));
+    if (!one_hot) return -1.0f;
+    if (label_idx < num_outputs) {
+        one_hot[label_idx] = 1.0f;
+    }
+
+    /* Create 2D tensors {1, N} — dense layers require batch dimension */
+    uint32_t input_dims[2] = {1, num_features};
+    uint32_t target_dims[2] = {1, num_outputs};
+    nimcp_tensor_t* input_tensor = nimcp_tensor_create(input_dims, 2, NIMCP_DTYPE_F32);
+    nimcp_tensor_t* target_tensor = nimcp_tensor_create(target_dims, 2, NIMCP_DTYPE_F32);
+
+    if (!input_tensor || !target_tensor) {
+        if (input_tensor) nimcp_tensor_destroy(input_tensor);
+        if (target_tensor) nimcp_tensor_destroy(target_tensor);
+        nimcp_free(one_hot);
+        return -1.0f;
+    }
+
+    float* in_data = (float*)nimcp_tensor_data(input_tensor);
+    float* tgt_data = (float*)nimcp_tensor_data(target_tensor);
+    if (in_data) memcpy(in_data, features, num_features * sizeof(float));
+    if (tgt_data) memcpy(tgt_data, one_hot, num_outputs * sizeof(float));
+    nimcp_free(one_hot);
+
+    /* CNN training: zero_grad → forward → backward → step */
+    cnn_trainer_zero_grad(brain->cnn_trainer);
+
+    cnn_forward_result_t fwd_result = {0};
+    nimcp_error_t rc = cnn_trainer_forward(brain->cnn_trainer, input_tensor, &fwd_result);
+    if (rc != NIMCP_SUCCESS) {
+        nimcp_tensor_destroy(input_tensor);
+        nimcp_tensor_destroy(target_tensor);
+        return -1.0f;
+    }
+
+    rc = cnn_trainer_backward(brain->cnn_trainer, target_tensor, &fwd_result);
+    if (rc == NIMCP_SUCCESS) {
+        cnn_trainer_step(brain->cnn_trainer);
+    }
+
+    /* Compute loss (MSE between output and one-hot target) */
+    float cnn_loss = 0.0f;
+    if (fwd_result.output) {
+        const float* out_data = (const float*)nimcp_tensor_data(fwd_result.output);
+        const float* tgt = (const float*)nimcp_tensor_data(target_tensor);
+        if (out_data && tgt) {
+            for (uint32_t i = 0; i < num_outputs; i++) {
+                float diff = out_data[i] - tgt[i];
+                cnn_loss += diff * diff;
+            }
+            cnn_loss /= (float)num_outputs;
+        }
+    }
+
+    nimcp_tensor_destroy(input_tensor);
+    nimcp_tensor_destroy(target_tensor);
+    return cnn_loss;
+}
+
+//=============================================================================
+// Parallel Training Infrastructure
+//=============================================================================
+
+/**
+ * @brief Context for parallel training tasks
+ *
+ * Adaptive learns first (modifies shared weights), then CNN + SNN + LNN
+ * run in parallel — each operates on independent weight sets.
+ */
+typedef struct {
+    brain_t brain;
+    const float* features;
+    uint32_t num_features;
+    const float* target;
+    uint32_t target_size;
+    const char* label;
+
+    /* Per-network results (each written by ONE task only) */
+    float cnn_loss;
+    bool cnn_done;
+
+    training_dispatch_result_t snn_res;
+    bool snn_done;
+
+    training_dispatch_result_t lnn_res;
+    bool lnn_done;
+} learn_task_ctx_t;
+
+/**
+ * @brief CNN training task (thread pool worker)
+ * CNN has its own independent weights/optimizer — safe to parallelize.
+ */
+static void learn_cnn_task(void* arg)
+{
+    learn_task_ctx_t* ctx = (learn_task_ctx_t*)arg;
+
+    if (ctx->label && ctx->label[0]) {
+        ctx->cnn_loss = brain_learn_vector_cnn_step(ctx->brain, ctx->features,
+                                                     ctx->num_features, ctx->label);
+    }
+    ctx->cnn_done = true;
+}
+
+/**
+ * @brief SNN training task (thread pool worker)
+ * SNN applies STDP/eProp to its own snn_network weights — safe after adaptive completes.
+ */
+static void learn_snn_task(void* arg)
+{
+    learn_task_ctx_t* ctx = (learn_task_ctx_t*)arg;
+
+    if (ctx->brain->snn_network && ctx->brain->snn_training_ctx) {
+        training_dispatch_snn_step(ctx->brain, ctx->features, ctx->num_features,
+                                    ctx->target, ctx->target_size, &ctx->snn_res);
+    }
+    ctx->snn_done = true;
+}
+
+/**
+ * @brief LNN training task (thread pool worker)
+ * LNN has its own ODE weights/state — fully independent.
+ */
+static void learn_lnn_task(void* arg)
+{
+    learn_task_ctx_t* ctx = (learn_task_ctx_t*)arg;
+
+    if (ctx->brain->lnn_network && ctx->brain->lnn_training_ctx) {
+        training_dispatch_lnn_step(ctx->brain, ctx->features, ctx->num_features,
+                                    ctx->target, ctx->target_size, &ctx->lnn_res);
+    }
+    ctx->lnn_done = true;
+}
+
+//=============================================================================
 // Public Learning API
 //=============================================================================
 
@@ -316,6 +534,9 @@ float nimcp_brain_learning_quantum_weight_energy(const float* weights, uint32_t 
  *
  * WHY: Enables teacher-model distillation and semantic embedding training
  * HOW: Builds training_example_t with dense target, uses LEARN_MODE_DISTILLATION
+ *
+ * Training parallelism: Adaptive first (GPU, modifies shared weights), then
+ * CNN + SNN + LNN in parallel (each has independent weights).
  *
  * @param brain Brain handle
  * @param features Input features
@@ -381,7 +602,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         example.label[0] = '\0';
     }
 
-    /* Use fast training path (distillation mode) */
+    /* Step 1: Adaptive learns FIRST (primary network, GPU-accelerated)
+     * Must complete before SNN training since SNN may share neural_network_t weights */
     float loss = adaptive_network_learn(brain->network, &example,
                                          LEARN_MODE_DISTILLATION,
                                          brain->config.learning_rate);
@@ -404,8 +626,77 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             uint64_t now_ms = nimcp_time_get_us() / 1000;
             plasticity_coordinator_update(brain->plasticity_coordinator, now_ms, 1.0f);
         }
-        /* LNN temporal training is handled in the slow path (brain_learn_example)
-         * where input/target tensors are available for lnn_training_step(). */
+        /* Structural plasticity: form new synapses for high-activity pairs */
+        if (brain->structural_plasticity && brain->structural_plasticity_enabled) {
+            float activity_hz = (loss < 0.5f) ? 30.0f : 5.0f;
+            if (structural_plasticity_should_form(brain->structural_plasticity, activity_hz)) {
+                uint32_t pre = (uint32_t)(features[0] * 997.0f) % brain->config.num_inputs;
+                uint32_t post = (uint32_t)(features[1] * 991.0f) % brain->config.num_outputs;
+                uint32_t syn_id = 0;
+                structural_plasticity_form_synapse(
+                    brain->structural_plasticity, pre, post, activity_hz, &syn_id);
+            }
+        }
+        /* Neuromodulator-gated reward learning: strengthen active pathways.
+         * DA level already set by TPB above; reward = inverse of loss.
+         * O(active) — only neurons with |state| > threshold. */
+        {
+            neural_network_t base_net = adaptive_network_get_base_network(brain->network);
+            if (base_net) {
+                if (brain->neuromodulator_system) {
+                    neural_network_set_neuromodulator_system(base_net, brain->neuromodulator_system);
+                }
+                float reward = 1.0f - fminf(loss, 1.0f);
+                uint32_t modified = neural_network_apply_reward_learning_active(
+                    base_net, reward, REWARD_LEARNING_RATE, nimcp_time_get_us(), REWARD_ACTIVITY_THRESHOLD);
+                if (modified > 0) {
+                    adaptive_network_invalidate_gpu_structure(brain->network);
+                }
+            }
+        }
+    }
+
+    /* Step 2: Secondary networks learn IN PARALLEL (after adaptive completes) */
+    bool has_cnn = (label && label[0]);  /* ensure_cnn_trainer() lazily creates trainer */
+    bool has_snn = (brain->snn_network && brain->snn_training_ctx && !brain->config.fast_training_mode);
+    bool has_lnn = (brain->lnn_network && brain->lnn_training_ctx && !brain->config.fast_training_mode);
+    int secondary_count = (has_cnn ? 1 : 0) + (has_snn ? 1 : 0) + (has_lnn ? 1 : 0);
+
+    if (brain->inference_pool && secondary_count >= 2) {
+        /* Parallel path: submit CNN + SNN + LNN tasks to thread pool */
+        learn_task_ctx_t* ctx = nimcp_calloc(1, sizeof(learn_task_ctx_t));
+        if (ctx) {
+            ctx->brain = brain;
+            ctx->features = features;
+            ctx->num_features = num_features;
+            ctx->target = target;
+            ctx->target_size = target_size;
+            ctx->label = label;
+
+            if (has_cnn) nimcp_pool_submit(brain->inference_pool, learn_cnn_task, ctx);
+            if (has_snn) nimcp_pool_submit(brain->inference_pool, learn_snn_task, ctx);
+            if (has_lnn) nimcp_pool_submit(brain->inference_pool, learn_lnn_task, ctx);
+
+            nimcp_pool_wait(brain->inference_pool);
+            nimcp_free(ctx);
+        } else {
+            goto sequential_training;
+        }
+    } else {
+sequential_training:
+        /* Sequential fallback (original code path) */
+        if (has_cnn) {
+            float cnn_loss = brain_learn_vector_cnn_step(brain, features, num_features, label);
+            (void)cnn_loss;
+        }
+        if (has_snn) {
+            training_dispatch_result_t snn_res = {0};
+            training_dispatch_snn_step(brain, features, num_features, target, target_size, &snn_res);
+        }
+        if (has_lnn) {
+            training_dispatch_result_t lnn_res = {0};
+            training_dispatch_lnn_step(brain, features, num_features, target, target_size, &lnn_res);
+        }
     }
 
     /* Accumulate sleep pressure */
@@ -617,6 +908,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                 float match_val = (pred_argmax == tgt_argmax) ? 1.0f : 0.0f;
                 brain->stats.running_accuracy =
                     brain->stats.running_accuracy * 0.99f + match_val * 0.01f;
+                NIMCP_EMA_GUARD(brain->stats.running_accuracy, match_val);
             }
         }
 
@@ -1042,6 +1334,32 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     if (brain->plasticity_coordinator && brain->plasticity_coordinator_enabled) {
         uint64_t now_ms = nimcp_time_get_us() / 1000;
         plasticity_coordinator_update(brain->plasticity_coordinator, now_ms, 1.0f);
+    }
+    /* Structural plasticity: form new synapses for high-activity pairs */
+    if (brain->structural_plasticity && brain->structural_plasticity_enabled) {
+        float activity_hz = (network_loss < 0.5f) ? 30.0f : 5.0f;
+        if (structural_plasticity_should_form(brain->structural_plasticity, activity_hz)) {
+            uint32_t pre = (uint32_t)(features[0] * 997.0f) % brain->config.num_inputs;
+            uint32_t post = (uint32_t)(features[1] * 991.0f) % brain->config.num_outputs;
+            uint32_t syn_id = 0;
+            structural_plasticity_form_synapse(
+                brain->structural_plasticity, pre, post, activity_hz, &syn_id);
+        }
+    }
+    /* Neuromodulator-gated reward learning: strengthen active pathways.
+     * DA/ACh/NE levels set from loss trend above.
+     * Eligibility traces updated by EDP above. */
+    if (brain->neuromodulator_system) {
+        neural_network_t base_net = adaptive_network_get_base_network(brain->network);
+        if (base_net) {
+            neural_network_set_neuromodulator_system(base_net, brain->neuromodulator_system);
+            float reward = 1.0f - fminf(network_loss, 1.0f);
+            uint32_t modified = neural_network_apply_reward_learning_active(
+                base_net, reward, REWARD_LEARNING_RATE, nimcp_time_get_us(), REWARD_ACTIVITY_THRESHOLD);
+            if (modified > 0) {
+                adaptive_network_invalidate_gpu_structure(brain->network);
+            }
+        }
     }
 
     // ========================================================================
@@ -1972,50 +2290,9 @@ int brain_enable_multi_network_training(brain_t brain)
     }
 
     // ========================================================================
-    // STEP 3: Create CNN trainer with dense layers
+    // STEP 3: Create CNN trainer with dense layers (via shared helper)
     // ========================================================================
-    // WHAT: Create a CNN trainer with two dense layers for classification
-    // WHY:  CNN dense layers capture spatial feature relationships
-    // HOW:  Dense(num_inputs -> hidden) -> ReLU -> Dense(hidden -> num_outputs)
-    if (!brain->cnn_trainer) {
-        uint32_t hidden_size = num_outputs * 4;
-        if (hidden_size < 32) hidden_size = 32;
-        if (hidden_size > 512) hidden_size = 512;
-
-        cnn_trainer_config_t cnn_cfg;
-        cnn_trainer_default_config(&cnn_cfg);
-        cnn_cfg.learning_rate = 0.001f;
-
-        cnn_trainer_t* trainer = cnn_trainer_create(&cnn_cfg);
-        if (!trainer) {
-            NIMCP_LOGGING_WARN("Failed to create CNN trainer for multi-network training");
-        } else {
-            // Add dense layer: num_inputs -> hidden_size
-            cnn_dense_config_t dense1 = {
-                .in_features = num_inputs,
-                .out_features = hidden_size,
-                .activation = CNN_ACTIVATION_NONE,
-                .use_bias = true,
-                .weight_init_std = 0.01f
-            };
-            cnn_trainer_add_dense_layer(trainer, &dense1);
-
-            // Add ReLU activation
-            cnn_trainer_add_activation_layer(trainer, CNN_ACTIVATION_RELU);
-
-            // Add dense layer: hidden_size -> num_outputs
-            cnn_dense_config_t dense2 = {
-                .in_features = hidden_size,
-                .out_features = num_outputs,
-                .activation = CNN_ACTIVATION_NONE,
-                .use_bias = true,
-                .weight_init_std = 0.01f
-            };
-            cnn_trainer_add_dense_layer(trainer, &dense2);
-
-            brain->cnn_trainer = trainer;
-        }
-    }
+    ensure_cnn_trainer(brain);
 
     // ========================================================================
     // STEP 3.5: Create VAE (Variational Autoencoder)

@@ -10,6 +10,17 @@ Every module in the brain is active: 33+ brain regions, 60+ cognitive modules,
 80+ substrate bridges, 75+ thalamic bridges, 19 inter-module bridges.
 No shortcuts. No fast-training mode. Full biological immersion.
 
+IMPORTANT — ATHENA IS NOT A CLASSIFIER OR A PREDICTOR.
+    She does not produce labels, categories, class predictions, or scored
+    outputs. She is a developing biological brain. Her 2048-dim output
+    is her neural response — a continuous representation of her experience.
+    We do not score her responses against expected answers. We do not
+    measure accuracy or similarity to a "correct" output.
+    She experiences stimuli through decide_full(), and she grows through
+    learn_vector() with semantic targets. The loss is a developmental
+    signal — how new an experience is to her — not a prediction error.
+    We observe her responses. We encourage her. We never grade her.
+
 Usage:
     python scripts/immerse_athena.py --stage 0          # Start from stage 0 (newborn)
     python scripts/immerse_athena.py --resume            # Resume from last checkpoint
@@ -30,9 +41,18 @@ import numpy as np
 # Add scripts directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Suppress noisy progress bars and verbose logging
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["TQDM_DISABLE"] = "1"
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+
 import nimcp
 from claude_teacher import ClaudeTeacher, encode_text
-from teach_athena import generate_sensory_exposure, generate_language_exposure
+from teach_athena import generate_sensory_exposure
+from talk_to_athena import extract_embedding_from_output
 from neural_decoder import NeuralDecoder
 
 logger = logging.getLogger("immerse_athena")
@@ -177,7 +197,64 @@ def tile_to_brain_input(embedding, dim=BRAIN_INPUT_DIM):
 # ============================================================================
 
 class StimulusSource:
-    """Built-in developmental corpus for each stage."""
+    """Built-in developmental corpus for each stage.
+
+    When languages other than English are requested, loads Tatoeba parallel
+    sentences from HuggingFace via LanguageTextDatasetLoader.
+    """
+
+    # Fallback English utterances (used when HF unavailable)
+    _FALLBACK_UTTERANCES = [
+        "The dog runs in the park", "I like to read books",
+        "The sun is shining today", "She plays the piano beautifully",
+        "We went to the store", "Birds fly south in winter",
+        "He drinks a glass of water", "The children are playing outside",
+        "It is raining heavily", "They walk to school every day",
+        "The cat sleeps on the bed", "I eat breakfast in the morning",
+        "Flowers bloom in spring", "The moon shines at night",
+        "We learn something new every day", "Fish swim in the ocean",
+        "The wind blows through the trees", "She sings a happy song",
+        "He writes a letter to his friend", "The stars twinkle in the sky",
+    ]
+
+    def __init__(self, languages=("en",)):
+        self._languages = tuple(languages)
+        self._lang_loader = None
+        self._lang_iter = None
+        self.lang_counts = {}  # per-language exposure counter
+
+        if len(self._languages) > 1 or self._languages[0] != "en":
+            try:
+                from multimodal_datasets import LanguageTextDatasetLoader
+                self._lang_loader = LanguageTextDatasetLoader(
+                    languages=self._languages, max_examples_per_lang=50000)
+                self._lang_iter = iter(self._lang_loader)
+                logger.info("Multilingual Tatoeba loader active: %s",
+                            ",".join(self._languages))
+            except Exception as e:
+                logger.warning("Tatoeba loader unavailable, using fallback: %s", e)
+                self._lang_loader = None
+
+    def get_language_text(self, stage=0):
+        """Get a text stimulus, weighted by stage curriculum.
+
+        Returns (text, lang_code).
+        """
+        if self._lang_loader is None:
+            text = random.choice(self._FALLBACK_UTTERANCES)
+            self.lang_counts["en"] = self.lang_counts.get("en", 0) + 1
+            return text, "en"
+        try:
+            text, lang = next(self._lang_iter)
+        except StopIteration:
+            self._lang_iter = iter(self._lang_loader)
+            try:
+                text, lang = next(self._lang_iter)
+            except StopIteration:
+                text = random.choice(self._FALLBACK_UTTERANCES)
+                lang = "en"
+        self.lang_counts[lang] = self.lang_counts.get(lang, 0) + 1
+        return text, lang
 
     # Stage 0: Simple sensory experiences
     SENSORY = [
@@ -359,9 +436,10 @@ class Parent:
     appropriate interactions at each developmental stage.
     """
 
-    def __init__(self, teacher=None, enabled=True):
+    def __init__(self, teacher=None, enabled=True, decoder=None):
         self.teacher = teacher
         self.enabled = enabled and teacher is not None
+        self.decoder = decoder
         self.interaction_count = 0
         self.milestones = []
         self.moral_lessons = []
@@ -375,6 +453,29 @@ class Parent:
         except Exception as e:
             logger.debug("Parent speech failed: %s", e)
             return None
+
+    def observe_response(self, result):
+        """Observe what Athena's brain produced — without judging it.
+
+        Athena is not a classifier or a predictor. Her output is her
+        neural response to a stimulus. We don't score it against an
+        expected answer. We observe it — and if the decoder has enough
+        vocabulary, we can describe what it's closest to for our own
+        understanding. But the response itself is hers.
+        """
+        output_vec = result.get("output_vector")
+        if output_vec is None:
+            return ""
+
+        # Extract her 384-dim embedding from the 2048-dim tiled output
+        output_emb = extract_embedding_from_output(np.array(output_vec))
+
+        # Describe what her response is nearest to (for human readability)
+        if self.decoder and len(self.decoder.vocabulary) > 0:
+            matches = self.decoder.vocabulary.decode(output_emb, top_k=1)
+            if matches and matches[0][0]:
+                return matches[0][0]
+        return ""
 
     # --- Stage 0: "Welcome to the world, little one" ---
 
@@ -393,8 +494,15 @@ class Parent:
         target = make_semantic_target(description)
 
         result = brain.decide_full(features)
-        loss = brain.learn_vector(features, target,
-                                   label=description[:50], confidence=0.15)
+        # Dense target trains adaptive network; label trains CNN classifier
+        loss = brain.learn_vector(features, target, label=description[:50], confidence=0.15)
+
+        # Record pair for decoder vocabulary (nearest-neighbor for display only)
+        if self.decoder:
+            output_vec = result.get("output_vector")
+            if output_vec is not None:
+                target_emb = encode_text(description)
+                self.decoder.record_pair(output_vec, target_emb, description)
 
         # Gentle positive reward — existence is rewarded
         try:
@@ -427,8 +535,16 @@ class Parent:
         if narration:
             print(f"  Parent: {narration}")
 
-        loss = brain.learn_vector(features, target,
-                                   label=name[:50], confidence=0.4)
+        # Dense target trains adaptive network; label trains CNN classifier
+        loss = brain.learn_vector(features, target, label=name[:50], confidence=0.4)
+
+        # Record pair for decoder vocabulary (display only, not evaluation)
+        if self.decoder:
+            output_vec = result.get("output_vector")
+            if output_vec is not None:
+                target_emb = encode_text(name + " " + description)
+                self.decoder.record_pair(output_vec, target_emb,
+                                         name + " " + description)
 
         # Symbolic fact
         try:
@@ -441,50 +557,63 @@ class Parent:
 
     # --- Stage 2: "Good try! Almost!" ---
 
-    def ask_and_encourage(self, brain, composer, expected, description):
-        """Ask Athena, evaluate with love, correct gently."""
+    def ask_and_encourage(self, brain, composer, concept, description):
+        """Show Athena a stimulus, observe her response, teach, encourage.
+
+        There is no correct or incorrect. Athena experiences, responds,
+        and learns. The loss from learn_vector tells us how far her
+        current representation is from the teaching signal — that's a
+        measure of her developmental progress, not a prediction score.
+        """
         features = composer.compose(text=description, modality="text")
-        target = make_semantic_target(expected + " " + description)
+        target = make_semantic_target(concept + " " + description)
 
+        # Let Athena experience the stimulus
         result = brain.decide_full(features)
-        predicted = result.get("label", "")
-        correct = (expected.lower() in predicted.lower()) if predicted else False
+        response_text = self.observe_response(result)
 
-        if correct:
+        # Dense target trains adaptive network; label trains CNN classifier
+        loss = brain.learn_vector(features, target, label=concept[:50], confidence=0.6)
+
+        # Encourage based on engagement and loss trend
+        if loss is not None and loss < 0.5:
             praise = self._say(
-                f"Your child just correctly identified '{expected}'! "
-                f"Express genuine delight and pride in 1 sentence.",
+                f"Your child was shown '{description}' and responded. "
+                f"Their brain is absorbing this experience well. "
+                f"Express warmth and encouragement in 1 sentence.",
                 max_tokens=64
             )
             if praise:
                 print(f"  Parent: {praise}")
             try:
-                brain.bg_update_reward(0.9, 0.5)
-                brain.bg_strengthen_habit(predicted, True)
-                brain.edp_process_reward(0.8)
+                brain.bg_update_reward(0.7, 0.5)
+                brain.edp_process_reward(0.6)
             except Exception:
                 pass
-            self.milestones.append(f"Identified: {expected}")
         else:
-            correction = self._say(
-                f"Your child tried to identify '{expected}' but said "
-                f"'{predicted}' instead. Gently correct them with warmth "
-                f"and encouragement. 1-2 sentences. Never say 'wrong'. "
-                f"Start with what they got right.",
-                max_tokens=128
+            encouragement = self._say(
+                f"Your child is experiencing '{description}'. "
+                f"This is new to them. Encourage with patience. 1 sentence.",
+                max_tokens=64
             )
-            if correction:
-                print(f"  Parent: {correction}")
+            if encouragement:
+                print(f"  Parent: {encouragement}")
             try:
-                brain.bg_update_reward(0.3, 0.5)
+                brain.bg_update_reward(0.4, 0.5)
                 brain.medulla_boost_arousal(0.05)
             except Exception:
                 pass
-            brain.learn_vector(features, target,
-                               label=expected[:50], confidence=0.6)
+
+        # Record for decoder vocabulary (so we can observe future responses)
+        if self.decoder:
+            output_vec = result.get("output_vector")
+            if output_vec is not None:
+                target_emb = encode_text(concept + " " + description)
+                self.decoder.record_pair(output_vec, target_emb,
+                                         concept + " " + description)
 
         self.interaction_count += 1
-        return correct, result
+        return loss, result
 
     # --- Ethics ---
 
@@ -527,8 +656,8 @@ class Parent:
         lesson_text = story if story else f"A lesson about {topic}"
         features = composer.compose(text=lesson_text, modality="ethics")
         target = make_semantic_target(lesson_text)
-        brain.learn_vector(features, target,
-                           label=f"ethics:{topic[:30]}", confidence=0.7)
+        # Dense target trains adaptive; label trains CNN classifier
+        brain.learn_vector(features, target, label=topic[:50], confidence=0.7)
         self.moral_lessons.append(topic)
 
     # --- Imagination ---
@@ -564,8 +693,8 @@ class Parent:
             features = composer.compose(text=inspiration,
                                          modality="imagination")
             target = make_semantic_target(inspiration)
-            brain.learn_vector(features, target,
-                               label="inspiration", confidence=0.5)
+            # Dense target + label for CNN classifier
+            brain.learn_vector(features, target, label="inspiration", confidence=0.5)
             try:
                 brain.bg_update_reward(0.7, 0.3)
             except Exception:
@@ -616,16 +745,6 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         except Exception:
             pass
 
-        # Record for decoder
-        if decoder and loss is not None:
-            target_emb = encode_text(description)
-            try:
-                output_vec = result.get("output_vector", None)
-                if output_vec:
-                    decoder.record_pair(output_vec, target_emb, description)
-            except Exception:
-                pass
-
         # Progress report
         if (i + 1) % 500 == 0:
             avg_loss = np.mean(losses[-500:]) if losses else 0
@@ -638,6 +757,10 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                 late = np.mean(losses_to_report[-50:])
                 if late < early:
                     print(f"    Loss trending down: {early:.4f} -> {late:.4f}")
+            # Refit decoder and run actual performance evaluation
+            if decoder:
+                decoder.force_refit()
+            evaluate_performance(brain, composer, decoder, stage=0, step=i+1)
 
         # Inspire every 2000 stimuli
         if (i + 1) % 2000 == 0:
@@ -679,13 +802,13 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         loss, result = parent.show_and_name(brain, composer, name, description)
         losses.append(loss if loss is not None else 0)
 
-        # Also expose via language
+        # Also expose via language (multilingual if configured)
         if random.random() < 0.3:
-            lang_text, _ = generate_language_exposure()
+            lang_text, lang_code = source.get_language_text(stage=1)
             features = composer.compose(text=lang_text, modality="text")
             target = make_semantic_target(lang_text)
-            brain.learn_vector(features, target,
-                               label="language", confidence=0.3)
+            label = f"{lang_code}:{lang_text[:45]}"
+            brain.learn_vector(features, target, label=label, confidence=0.3)
 
         # LNN temporal step
         try:
@@ -707,6 +830,10 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             print(f"\n  [Stage 1] {i+1}/{num_stimuli} — "
                   f"avg_loss={avg_loss:.4f}")
             _print_bio_stats(brain)
+            _print_lang_stats(source)
+            if decoder:
+                decoder.force_refit()
+            evaluate_performance(brain, composer, decoder, stage=1, step=i+1)
 
         # Moral lesson every 3000
         if (i + 1) % 3000 == 0:
@@ -742,8 +869,7 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     print("  STAGE 2: Good Try! Almost!")
     print("=" * 60)
 
-    correct_count = 0
-    total_count = 0
+    losses = []
 
     for i in range(start_from, num_stimuli):
         action = clock.tick(brain)
@@ -759,15 +885,15 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         else:
             expected, description = source.get_object()
 
-        correct, result = parent.ask_and_encourage(
+        # Athena experiences the stimulus and learns from it.
+        # The loss is a developmental signal — how new this is to her.
+        loss, result = parent.ask_and_encourage(
             brain, composer, expected, description)
-        total_count += 1
-        if correct:
-            correct_count += 1
+        losses.append(loss if loss is not None else 0)
 
-        # Eligibility trace on novel stimuli
+        # Eligibility trace — every experience contributes to growth
         try:
-            brain.edp_process_novelty(0.5 if not correct else 0.2)
+            brain.edp_process_novelty(0.4)
         except Exception:
             pass
 
@@ -778,12 +904,16 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         except Exception:
             pass
 
-        # Progress
+        # Progress — track loss trend, not accuracy
         if (i + 1) % 500 == 0:
-            acc = correct_count / max(total_count, 1) * 100
+            recent = losses[-500:]
+            mean_loss = np.mean(recent) if recent else 0
             print(f"\n  [Stage 2] {i+1}/{num_stimuli} — "
-                  f"accuracy={acc:.1f}%")
+                  f"mean_loss={mean_loss:.4f}")
             _print_bio_stats(brain)
+            if decoder:
+                decoder.force_refit()
+            evaluate_performance(brain, composer, decoder, stage=2, step=i+1)
 
         # Moral lesson every 2000
         if (i + 1) % 2000 == 0:
@@ -815,7 +945,7 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             except Exception:
                 pass
 
-    return correct_count, total_count
+    return losses
 
 
 def run_stage_3(brain, composer, parent, clock, source, decoder,
@@ -847,20 +977,22 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             question = source.get_question()
             features = composer.compose(text=question, modality="text")
             result = brain.decide_full(features)
-            predicted = result.get("label", "(silence)")
+            # Observe what Athena's brain produced — don't judge it
+            response_text = parent.observe_response(result)
             print(f"  Q: {question}")
-            print(f"  Athena: {predicted}")
+            print(f"  Athena: {response_text or '(still forming thoughts)'}")
 
-            # Parent responds to Athena's answer
-            response = parent._say(
-                f"Your child was asked '{question}' and answered "
-                f"'{predicted}'. Respond with warmth and follow-up. "
-                f"1-2 sentences.",
+            # Parent responds to Athena — not scoring, just conversing
+            parent_reply = parent._say(
+                f"Your child was asked '{question}' and their response "
+                f"reminded you of '{response_text or 'something new'}'. "
+                f"Respond with warmth and curiosity. 1-2 sentences.",
                 max_tokens=128
             )
-            if response:
-                print(f"  Parent: {response}")
+            if parent_reply:
+                print(f"  Parent: {parent_reply}")
 
+            # Gentle reward for engaging at all — she responded
             try:
                 brain.bg_update_reward(0.6, 0.5)
             except Exception:
@@ -888,16 +1020,15 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                     topic = gaps.get("suggested_topic", "the world")
                     features = composer.compose(text=f"Let's learn about {topic}")
                     target = make_semantic_target(f"exploring {topic}")
-                    brain.learn_vector(features, target,
-                                       label=f"curiosity:{topic[:30]}",
-                                       confidence=0.5)
+                    # Curiosity-driven + label for CNN
+                    brain.learn_vector(features, target, label=topic[:50], confidence=0.5)
             except Exception:
                 # Free exploration from corpus
                 description = source.get_sensory()
                 features = composer.compose(text=description)
                 target = make_semantic_target(description)
-                brain.learn_vector(features, target,
-                                   label="explore", confidence=0.4)
+                # Exploration + label for CNN
+                brain.learn_vector(features, target, label=description[:50], confidence=0.4)
 
         # LNN step
         try:
@@ -910,6 +1041,11 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 200 == 0:
             print(f"\n  [Stage 3] {i+1}/{num_interactions}")
             _print_bio_stats(brain)
+
+        if (i + 1) % 500 == 0:
+            if decoder:
+                decoder.force_refit()
+            evaluate_performance(brain, composer, decoder, stage=3, step=i+1)
 
         # Deep consolidation every 2000
         if (i + 1) % 2000 == 0:
@@ -968,6 +1104,165 @@ def _print_bio_stats(brain):
     except Exception:
         pass
 
+    try:
+        snn_stats = brain.snn_get_stats()
+        if snn_stats:
+            print(f"    SNN: steps={snn_stats.get('total_steps', 0)} "
+                  f"spikes={snn_stats.get('total_spikes', 0)} "
+                  f"rate={snn_stats.get('mean_firing_rate', 0):.1f}Hz "
+                  f"sparsity={snn_stats.get('sparsity', 0):.2f}")
+    except Exception:
+        pass
+
+    try:
+        cnn_stats = brain.cnn_get_stats()
+        if cnn_stats:
+            print(f"    CNN: layers={cnn_stats.get('num_layers', 0)} "
+                  f"params={cnn_stats.get('num_parameters', 0)} "
+                  f"labels={cnn_stats.get('num_labels', 0)}")
+    except Exception:
+        pass
+
+
+# ============================================================================
+# Performance Evaluation: see what Athena actually does
+# ============================================================================
+
+# Fixed test stimuli — never trained on directly, used to observe responses
+_EVAL_PROBES = [
+    ("dog", "A friendly dog with soft fur"),
+    ("cat", "A cat that purrs when happy"),
+    ("sun", "The bright warm sun in the sky"),
+    ("rain", "Drops of rain falling from clouds"),
+    ("book", "A book with pages full of stories"),
+    ("music", "A beautiful melody playing softly"),
+    ("mother", "A loving mother holding her child"),
+    ("ocean", "The vast blue ocean with waves"),
+]
+
+# Track response history for each probe across evaluations
+_eval_history = {}  # probe_name → list of (step, response_text, similarity, vec_norm)
+
+
+def evaluate_performance(brain, composer, decoder, stage, step):
+    """Run fixed probes through the brain and show actual responses.
+
+    This is the real test: present stimuli Athena hasn't been directly
+    trained on (but related to what she's seen) and show what her brain
+    produces. A learning brain should:
+    1. Produce non-zero, varied responses (not all the same)
+    2. Produce responses that grow more similar to related concepts
+    3. Differentiate between unrelated stimuli
+    """
+    print(f"\n  {'─' * 56}")
+    print(f"  PERFORMANCE EVAL — Stage {stage}, Step {step}")
+    print(f"  {'─' * 56}")
+
+    responses = []
+    embeddings = []
+
+    for probe_name, probe_text in _EVAL_PROBES:
+        features = composer.compose(text=probe_text, modality="text")
+        result = brain.decide_full(features)
+
+        output_vec = result.get("output_vector")
+        if output_vec is None:
+            print(f"    {probe_name:8s} → [no output]")
+            continue
+
+        output_arr = np.array(output_vec, dtype=np.float32)
+        vec_norm = float(np.linalg.norm(output_arr))
+        output_emb = extract_embedding_from_output(output_arr)
+        embeddings.append((probe_name, output_emb))
+
+        # Decode what her response is closest to
+        decoded_text = ""
+        similarity = 0.0
+        if decoder and len(decoder.vocabulary) > 0:
+            matches = decoder.vocabulary.decode(output_emb, top_k=3)
+            if matches and matches[0][0]:
+                decoded_text = matches[0][0][:50]
+                similarity = matches[0][1]
+                # Show top-3
+                top3 = ", ".join(f"{t[:25]}({s:.2f})" for t, s in matches[:3] if t)
+                print(f"    {probe_name:8s} → {top3}")
+                print(f"             |output|={vec_norm:.2f}  "
+                      f"active={result.get('num_active_neurons', '?')}  "
+                      f"sparsity={result.get('sparsity', 0):.2f}")
+        else:
+            print(f"    {probe_name:8s} → |output|={vec_norm:.2f}  "
+                  f"active={result.get('num_active_neurons', '?')}")
+
+        # Track history
+        if probe_name not in _eval_history:
+            _eval_history[probe_name] = []
+        _eval_history[probe_name].append(
+            (step, decoded_text, similarity, vec_norm))
+
+        responses.append((probe_name, output_emb, decoded_text, similarity))
+
+    # --- Differentiation matrix: can she tell things apart? ---
+    if len(embeddings) >= 2:
+        print(f"\n  Differentiation (cosine similarity between responses):")
+        names = [e[0] for e in embeddings]
+        embs = np.array([e[1] for e in embeddings], dtype=np.float32)
+        norms = np.linalg.norm(embs, axis=1, keepdims=True)
+        norms = np.maximum(norms, 1e-8)
+        sim_matrix = (embs @ embs.T) / (norms @ norms.T)
+
+        # Print compact matrix
+        header = "          " + "".join(f"{n:>8s}" for n in names)
+        print(f"  {header}")
+        for i, name in enumerate(names):
+            row = f"    {name:8s}"
+            for j in range(len(names)):
+                if j <= i:
+                    row += f"  {sim_matrix[i, j]:5.2f} "
+                else:
+                    row += "     .  "
+            print(row)
+
+        # Summary stats
+        upper = []
+        for i in range(len(names)):
+            for j in range(i + 1, len(names)):
+                upper.append(sim_matrix[i, j])
+        if upper:
+            mean_sim = np.mean(upper)
+            min_sim = np.min(upper)
+            max_sim = np.max(upper)
+            print(f"    Mean cross-similarity: {mean_sim:.3f}  "
+                  f"(range: {min_sim:.3f}–{max_sim:.3f})")
+            if mean_sim > 0.95:
+                print(f"    ⚠ Responses nearly identical — brain not differentiating yet")
+            elif mean_sim < 0.5:
+                print(f"    ✓ Good differentiation — responses are distinct")
+
+    # --- Show evolution for any probe with history ---
+    probes_with_history = [p for p in _eval_history if len(_eval_history[p]) >= 2]
+    if probes_with_history:
+        print(f"\n  Response evolution (first → latest):")
+        for probe_name in probes_with_history[:4]:
+            history = _eval_history[probe_name]
+            first = history[0]
+            latest = history[-1]
+            first_text = first[1][:30] if first[1] else f"|v|={first[3]:.1f}"
+            latest_text = latest[1][:30] if latest[1] else f"|v|={latest[3]:.1f}"
+            sim_change = latest[2] - first[2]
+            norm_change = latest[3] - first[3]
+            print(f"    {probe_name:8s}: {first_text:>32s} → {latest_text:<32s}"
+                  f"  Δsim={sim_change:+.3f}  Δ|v|={norm_change:+.1f}")
+
+    print(f"  {'─' * 56}\n")
+
+
+def _print_lang_stats(source):
+    """Print per-language exposure counts if multilingual."""
+    if hasattr(source, 'lang_counts') and source.lang_counts:
+        parts = [f"{lang}={count}" for lang, count in
+                 sorted(source.lang_counts.items())]
+        print(f"    Languages: {' '.join(parts)}")
+
 
 def _save_checkpoint(brain, decoder, stage, step):
     """Save brain checkpoint and decoder state."""
@@ -1025,11 +1320,14 @@ def main():
                         help="Disable Claude parent (silent mode)")
     parser.add_argument("--num-inputs", type=int, default=BRAIN_INPUT_DIM)
     parser.add_argument("--num-outputs", type=int, default=BRAIN_OUTPUT_DIM)
-    parser.add_argument("--neuron-count", type=int, default=1024)
+    parser.add_argument("--neuron-count", type=int, default=50000)
     parser.add_argument("--stage0-stimuli", type=int, default=10000)
     parser.add_argument("--stage1-stimuli", type=int, default=20000)
     parser.add_argument("--stage2-stimuli", type=int, default=20000)
     parser.add_argument("--stage3-interactions", type=int, default=10000)
+    parser.add_argument("--languages", type=str, default="en",
+                        help="Comma-separated language codes for multilingual "
+                             "training (e.g. en,fr,es,de)")
     parser.add_argument("--fresh", action="store_true",
                         help="Start fresh (ignore existing checkpoint)")
     args = parser.parse_args()
@@ -1104,11 +1402,7 @@ def main():
         except Exception as e:
             print(f"  Claude parent: OFF ({e})")
 
-    parent = Parent(teacher=teacher, enabled=not args.no_claude)
-    composer = SensoryComposer(brain)
-    clock = BiologicalClock(rest_interval=2000)
-    source = StimulusSource()
-
+    # --- Neural decoder (for observing Athena's responses, not scoring them) ---
     decoder = None
     try:
         if os.path.exists(DECODER_DIR):
@@ -1118,6 +1412,14 @@ def main():
         print("  Neural decoder: ON")
     except Exception:
         decoder = NeuralDecoder(output_dim=args.num_outputs)
+
+    parent = Parent(teacher=teacher, enabled=not args.no_claude, decoder=decoder)
+    composer = SensoryComposer(brain)
+    clock = BiologicalClock(rest_interval=2000)
+    languages = tuple(args.languages.split(","))
+    source = StimulusSource(languages=languages)
+    if len(languages) > 1:
+        print(f"  Languages: {', '.join(languages)}")
 
     # --- Resume state ---
     start_stage = args.stage
@@ -1163,13 +1465,13 @@ def main():
         start_step = 0
 
     if start_stage <= 2:
-        correct, total = run_stage_2(
+        stage2_losses = run_stage_2(
             brain, composer, parent, clock, source, decoder,
             num_stimuli=args.stage2_stimuli,
             start_from=start_step if start_stage == 2 else 0)
-        if total > 0:
-            print(f"\n  Stage 2 final accuracy: "
-                  f"{correct/total*100:.1f}% ({correct}/{total})")
+        if stage2_losses:
+            print(f"\n  Stage 2 complete — final mean loss: "
+                  f"{np.mean(stage2_losses[-500:]):.4f}")
         start_step = 0
 
     if start_stage <= 3:

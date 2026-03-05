@@ -261,18 +261,8 @@ metabolic_pink_noise_bridge_t* metabolic_pink_noise_create(
     bridge->state.effective_amplitude = bridge->config.healthy_amplitude_scale;
     bridge->state.effective_alpha = bridge->config.normal_alpha;
 
-    // Create mutex for thread safety
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metabolic_pink_noise_create: failed to allocate mutex");
-        pink_noise_destroy(bridge->noise_generator);
-        nimcp_free(bridge);
-        return NULL;
-    }
-    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "metabolic_pink_noise_create: failed to initialize mutex");
+    // Initialize bridge base (allocates mutex, sets module name)
+    if (bridge_base_init(&bridge->base, 0, "metabolic_pink_noise") != 0) {
         pink_noise_destroy(bridge->noise_generator);
         nimcp_free(bridge);
         return NULL;
@@ -293,10 +283,8 @@ void metabolic_pink_noise_destroy(metabolic_pink_noise_bridge_t* bridge) {
         pink_noise_destroy(bridge->noise_generator);
     }
 
-    // Destroy mutex
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    // Cleanup bridge base (disconnects bio-async, destroys+frees mutex)
+    bridge_base_cleanup(&bridge->base);
 
     // Free bridge structure
     nimcp_free(bridge);

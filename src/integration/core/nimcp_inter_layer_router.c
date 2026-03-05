@@ -20,7 +20,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(inter_layer_router)
 #define MAX_QUEUES NIMCP_LAYER_COUNT
 
 typedef struct {
-    nimcp_layer_msg_t* messages[256];
+    nimcp_layer_msg_t** messages;  // Dynamically allocated based on config
+    uint32_t capacity;             // Queue capacity (from config.default_queue_depth)
     uint32_t head;
     uint32_t tail;
     uint32_t count;
@@ -55,19 +56,42 @@ nimcp_inter_layer_router_t nimcp_inter_layer_router_create(
     NIMCP_API_CHECK_ALLOC(router, "Failed to allocate inter-layer router");
     router->config = config ? *config : nimcp_inter_layer_router_default_config();
     router->registry = registry;
+
+    /* P4 fix: Allocate queue message arrays based on configured queue depth
+     * instead of hardcoded 256 */
+    uint32_t queue_depth = router->config.default_queue_depth;
+    if (queue_depth == 0) {
+        queue_depth = 256;  /* Fallback to safe default */
+    }
+
+    for (int i = 0; i < MAX_QUEUES; i++) {
+        router->queues[i].messages = (nimcp_layer_msg_t**)nimcp_calloc(queue_depth, sizeof(nimcp_layer_msg_t*));
+        if (!router->queues[i].messages) {
+            /* Cleanup already-allocated queues */
+            for (int j = 0; j < i; j++) {
+                nimcp_free(router->queues[j].messages);
+            }
+            nimcp_free(router);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_inter_layer_router_create: queue allocation failed");
+            return NULL;
+        }
+        router->queues[i].capacity = queue_depth;
+    }
+
     return router;
 }
 
 void nimcp_inter_layer_router_destroy(nimcp_inter_layer_router_t router) {
     if (!router) return;
-    /* Clear queues */
+    /* Clear queues and free dynamic arrays */
     for (int i = 0; i < MAX_QUEUES; i++) {
         message_queue_t* q = &router->queues[i];
-        while (q->count > 0) {
+        while (q->count > 0 && q->messages) {
             nimcp_layer_msg_destroy(q->messages[q->head]);
-            q->head = (q->head + 1) % 256;
+            q->head = (q->head + 1) % q->capacity;
             q->count--;
         }
+        nimcp_free(q->messages);
     }
     nimcp_free(router);
 }
@@ -76,9 +100,9 @@ nimcp_layer_error_t nimcp_inter_layer_router_reset(nimcp_inter_layer_router_t ro
     NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in reset");
     for (int i = 0; i < MAX_QUEUES; i++) {
         message_queue_t* q = &router->queues[i];
-        while (q->count > 0) {
+        while (q->count > 0 && q->messages) {
             nimcp_layer_msg_destroy(q->messages[q->head]);
-            q->head = (q->head + 1) % 256;
+            q->head = (q->head + 1) % q->capacity;
             q->count--;
         }
     }
@@ -94,13 +118,13 @@ nimcp_layer_error_t nimcp_inter_layer_router_route(nimcp_inter_layer_router_t ro
     NIMCP_API_CHECK(target < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid target layer in route");
 
     message_queue_t* q = &router->queues[target];
-    if (q->count >= 256) {
+    if (q->count >= q->capacity) {
         router->stats.messages_dropped++;
         return NIMCP_LAYER_ERR_QUEUE_FULL;
     }
 
     q->messages[q->tail] = msg;
-    q->tail = (q->tail + 1) % 256;
+    q->tail = (q->tail + 1) % q->capacity;
     q->count++;
     router->stats.messages_routed++;
 
@@ -182,7 +206,7 @@ nimcp_layer_error_t nimcp_inter_layer_router_process_layer(
             router->callback(msg->header.source_layer, layer_id, msg, router->callback_data);
         }
         nimcp_layer_msg_destroy(msg);
-        q->head = (q->head + 1) % 256;
+        q->head = (q->head + 1) % q->capacity;
         q->count--;
         processed++;
     }

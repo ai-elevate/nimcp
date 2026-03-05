@@ -50,12 +50,9 @@ typedef struct hash_entry_t {
  * WHY: Encapsulate all table state
  * HOW: Bucket array + configuration
  *
- * P3 LIMITATION: No dynamic resizing is implemented. The bucket count is fixed
- * at creation time (default: 256). This means load factor grows linearly with
- * entry count, degrading lookup from O(1) to O(n) in the worst case.
- * SUGGESTED FIX: Implement resize when load_factor > 0.75 by allocating a new
- * bucket array at 2x capacity and rehashing all entries. This is a major change
- * that requires careful testing.
+ * Dynamic resizing: When load factor exceeds 0.75, the table doubles its bucket
+ * count and rehashes all entries. This maintains O(1) average-case lookup even
+ * as entry count grows well beyond initial capacity.
  */
 struct hash_table_t {
     hash_entry_t** buckets;      // Array of bucket heads
@@ -63,6 +60,89 @@ struct hash_table_t {
     size_t entry_count;          // Number of entries
     hash_table_config_t config;  // Configuration
 };
+
+//=============================================================================
+// Dynamic Resizing
+//=============================================================================
+
+/**
+ * WHAT: Maximum load factor before triggering resize
+ * WHY: 0.75 balances memory usage vs chain length
+ * HOW: Checked after every successful insert of a new entry
+ */
+#define HASH_TABLE_MAX_LOAD_FACTOR 0.75f
+
+/**
+ * WHAT: Resize hash table by doubling bucket count and rehashing all entries
+ * WHY: Keep load factor below threshold to maintain O(1) average lookup
+ * HOW: Allocate new bucket array at 2x capacity, walk old buckets rehashing
+ *      each entry into new array, then free old array
+ *
+ * @param table Hash table to resize
+ * @return true on success, false on allocation failure (table unchanged)
+ */
+static bool hash_table_resize(hash_table_t* table)
+{
+    if (!table || !table->buckets) {
+        return false;
+    }
+
+    /* Guard: prevent overflow when doubling */
+    if (table->bucket_count > SIZE_MAX / 2) {
+        LOG_WARN("nimcp_hash_table", "Cannot resize: bucket_count overflow");
+        return false;
+    }
+
+    size_t new_bucket_count = table->bucket_count * 2;
+    hash_entry_t** new_buckets = (hash_entry_t**)nimcp_calloc(new_bucket_count, sizeof(hash_entry_t*));
+    if (!new_buckets) {
+        LOG_WARN("nimcp_hash_table",
+                 "Failed to allocate %zu buckets for resize, continuing with current capacity",
+                 new_bucket_count);
+        return false;  /* Non-fatal: table still works, just slower */
+    }
+
+    /* Rehash all entries into new bucket array */
+    for (size_t i = 0; i < table->bucket_count; i++) {
+        hash_entry_t* current = table->buckets[i];
+        while (current) {
+            hash_entry_t* next = current->next;
+
+            /* Use cached hash to compute new bucket index */
+            size_t new_index = current->hash % new_bucket_count;
+
+            /* Insert at head of new chain */
+            current->next = new_buckets[new_index];
+            new_buckets[new_index] = current;
+
+            current = next;
+        }
+    }
+
+    /* Swap in new bucket array */
+    nimcp_free(table->buckets);
+    table->buckets = new_buckets;
+    table->bucket_count = new_bucket_count;
+
+    return true;
+}
+
+/**
+ * WHAT: Check load factor and resize if needed
+ * WHY: Called after each new entry insertion
+ * HOW: If entries/buckets > 0.75, trigger resize
+ */
+static void hash_table_maybe_resize(hash_table_t* table)
+{
+    if (!table || table->bucket_count == 0) {
+        return;
+    }
+
+    float load_factor = (float)table->entry_count / (float)table->bucket_count;
+    if (load_factor > HASH_TABLE_MAX_LOAD_FACTOR) {
+        hash_table_resize(table);
+    }
+}
 
 //=============================================================================
 // Hash Functions
@@ -614,6 +694,9 @@ static bool hash_table_insert_generic(hash_table_t* table, const void* key, size
     new_entry->next = table->buckets[bucket_index];
     table->buckets[bucket_index] = new_entry;
     table->entry_count++;
+
+    // Check load factor and resize if needed
+    hash_table_maybe_resize(table);
 
     return true;
 }

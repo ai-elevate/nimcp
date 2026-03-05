@@ -50,6 +50,7 @@
 #include "common/nimcp_export.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/tensor/nimcp_tensor.h"
+#include "plasticity/neuromodulators/nimcp_phasic_tonic.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -479,6 +480,18 @@ bool neuromodulator_get_levels(neuromodulator_system_t system, neuromodulator_po
  * @return Current concentration (0-1), or 0.0f on error
  */
 float neuromodulator_get_level(neuromodulator_system_t system, neuromodulator_type_t type);
+
+/**
+ * @brief Get pointer to dopamine phasic-tonic state from neuromodulator system
+ *
+ * WHAT: Returns a pointer to the internal dopamine phasic-tonic state
+ * WHY:  Needed by synapse compute for three-factor learning with burst detection
+ * HOW:  Casts opaque handle to internal struct and returns field pointer
+ *
+ * @param system Neuromodulator system handle
+ * @return Pointer to dopamine phasic-tonic state, or NULL if system is NULL
+ */
+phasic_tonic_state_t* neuromodulator_get_dopamine_phasic_tonic(neuromodulator_system_t system);
 
 /**
  * @brief Set neuromodulator concentration directly

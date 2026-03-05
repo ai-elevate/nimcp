@@ -756,6 +756,9 @@ struct brain_struct {
     struct plasticity_coordinator* plasticity_coordinator;  // Plasticity mechanism coordination
     bool plasticity_coordinator_enabled;                    // Plasticity coordinator enabled
 
+    struct structural_plasticity_system* structural_plasticity;  // Structural plasticity (synaptogenesis)
+    bool structural_plasticity_enabled;                          // Structural plasticity enabled
+
     // === PLASTICITY BRIDGES (Phase 7: Cognitive Substrate Integration) ===
     //
     // These bridges connect plasticity mechanisms with higher-level cognitive systems:
@@ -1740,6 +1743,108 @@ struct brain_struct {
     bool vae_enabled;                                // VAE enabled for this brain
     float last_vae_anomaly_score;                    // Most recent anomaly score from VAE
     float last_vae_free_energy;                      // Most recent free energy (negative ELBO)
+
+    // =========================================================================
+    // WHITE MATTER TRACTS (Long-Range Myelinated Connectivity)
+    // =========================================================================
+    // Models 8 major white matter tracts with conduction velocity, myelination,
+    // and signal delay. Foundation for inter-regional communication timing.
+    // - Corpus Callosum: Interhemispheric transfer
+    // - Arcuate Fasciculus: Broca↔Wernicke language pathway
+    // - Corticospinal: Motor cortex → spinal cord descending control
+    // - Spinothalamic: Spinal cord → thalamus ascending pain/temperature
+    // - Optic Radiation: LGN → V1 visual pathway
+    //
+    struct wmt_system* white_matter;                     // White matter tract system
+    bool white_matter_enabled;                           // White matter enabled for this brain
+    uint64_t last_white_matter_update_us;                // Last white matter update timestamp
+
+    // =========================================================================
+    // INFERIOR COLLICULUS (Auditory Midbrain Processing)
+    // =========================================================================
+    // Primary auditory midbrain nucleus providing:
+    // - Tonotopic organization (64 log-spaced frequency channels, 20Hz-20kHz)
+    // - Binaural integration: ITD/ILD for sound localization (azimuth/elevation)
+    // - ICC central nucleus: ascending auditory relay
+    // - ICX external nucleus: multisensory integration
+    // Relay station between cochlear nucleus and MGN of thalamus.
+    //
+    struct inferior_colliculus* inferior_colliculus;      // Inferior colliculus system
+    bool inferior_colliculus_enabled;                     // IC enabled for this brain
+    uint64_t last_inferior_colliculus_update_us;          // Last IC update timestamp
+
+    // =========================================================================
+    // SPINAL CORD / MOTOR OUTPUT (Effector Interface)
+    // =========================================================================
+    // Final common pathway for motor output:
+    // - Central Pattern Generators (CPGs) for rhythmic movement
+    // - Reflex arcs: stretch, withdrawal, crossed extension
+    // - Motor neuron pools grouped by effector
+    // - Proprioceptive feedback: Ia, II, Ib afferents
+    // - Gate control for pain modulation
+    // - Descending input: corticospinal, rubrospinal, vestibulospinal
+    //
+    struct spinal_cord* spinal_cord;                     // Spinal cord motor output system
+    bool spinal_cord_enabled;                            // Spinal cord enabled for this brain
+    uint64_t last_spinal_cord_update_us;                 // Last spinal cord update timestamp
+
+    // =========================================================================
+    // CORTICAL INTERNEURONS (Inhibitory Microcircuit Control)
+    // =========================================================================
+    // GABAergic interneurons controlling cortical microcircuit dynamics:
+    // - PV+ Basket: Fast-spiking, perisomatic inhibition, gamma oscillations
+    // - PV+ Chandelier: Axo-axonic, gates AP initiation at AIS
+    // - SST+ Martinotti: Dendrite-targeting, feedback inhibition L5→L1
+    // - VIP+: Disinhibition (inhibit SST/PV), attention gating
+    // - NGF L1: Neurogliaform, volume transmission GABA, slow inhibition
+    // Critical for E/I balance, gamma oscillations, and information gating.
+    //
+    struct cortical_interneuron_system* cortical_interneurons;  // Cortical interneuron system
+    bool cortical_interneurons_enabled;                         // Interneurons enabled
+    uint64_t last_cortical_interneurons_update_us;              // Last update timestamp
+
+    // =========================================================================
+    // NEUROPEPTIDE SYSTEM (Slow Neuromodulation)
+    // =========================================================================
+    // 8 neuropeptide systems with synthesis, release, degradation kinetics:
+    // - Oxytocin (bonding), Vasopressin (aggression, pair bonding)
+    // - NPY (appetite, anxiolysis), Substance P (pain, inflammation)
+    // - Orexin (wakefulness), CRH (stress/HPA axis)
+    // - Endorphin (pain relief, euphoria), CCK (satiety, anxiety)
+    // Slow, long-lasting modulatory effects complementing classical monoamines.
+    //
+    struct neuropeptide_system* neuropeptide;             // Neuropeptide system
+    bool neuropeptide_enabled;                            // Neuropeptide system enabled
+    uint64_t last_neuropeptide_update_us;                 // Last neuropeptide update timestamp
+
+    // =========================================================================
+    // ENDOCANNABINOID SYSTEM (Retrograde Synaptic Modulation)
+    // =========================================================================
+    // CB1/CB2 receptors with 2-AG and anandamide (AEA) endocannabinoids:
+    // - Retrograde signaling: postsynaptic → presynaptic suppression
+    // - DSI/DSE: Depolarization-induced suppression of inhibition/excitation
+    // - Pain modulation via CB1 on spinal/PAG interneurons
+    // - Tonic inhibition: baseline CB1-mediated neural suppression
+    // Modulates pain, mood, appetite, memory consolidation.
+    //
+    struct endocannabinoid_system* endocannabinoid;      // Endocannabinoid system
+    bool endocannabinoid_enabled;                        // ECB enabled for this brain
+    uint64_t last_endocannabinoid_update_us;             // Last ECB update timestamp
+
+    // =========================================================================
+    // GLYMPHATIC SYSTEM (Brain Waste Clearance)
+    // =========================================================================
+    // Astrocyte-lined perivascular channels clearing metabolic waste:
+    // - AQP4 (aquaporin-4) channels drive CSF/ISF exchange
+    // - 10-60x more active during NREM sleep
+    // - Clears beta-amyloid, tau protein, metabolic waste
+    // - Interstitial space expands ~60% during sleep
+    // - State machine: INACTIVE → PRIMING → ACTIVE → FLUSHING
+    // High waste degrades learning rate and decision confidence.
+    //
+    struct glymphatic_system* glymphatic;                // Glymphatic waste clearance system
+    bool glymphatic_enabled;                             // Glymphatic enabled for this brain
+    uint64_t last_glymphatic_update_us;                  // Last glymphatic update timestamp
 
     // === PRE-ALLOCATED SCRATCH BUFFERS FOR learn() HOT PATH ===
     //

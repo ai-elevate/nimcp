@@ -23,6 +23,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuron_bridge)
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -87,7 +88,7 @@ nimcp_neuron_inference_cache_t* nimcp_neuron_cache_create(
         return NULL;
     }
 
-    nimcp_neuron_inference_cache_t* cache = calloc(1, sizeof(nimcp_neuron_inference_cache_t));
+    nimcp_neuron_inference_cache_t* cache = nimcp_calloc(1, sizeof(nimcp_neuron_inference_cache_t));
     if (!cache) return NULL;
 
     cache->ctx = ctx;
@@ -97,21 +98,21 @@ nimcp_neuron_inference_cache_t* nimcp_neuron_cache_create(
     cache->recompile_interval = NEURON_DEFAULT_RECOMPILE_INTERVAL;
 
     // Copy layer sizes
-    cache->layer_sizes = calloc(num_layers, sizeof(uint32_t));
+    cache->layer_sizes = nimcp_calloc(num_layers, sizeof(uint32_t));
     if (!cache->layer_sizes) {
-        free(cache);
+        nimcp_free(cache);
         return NULL;
     }
     memcpy(cache->layer_sizes, layer_sizes, num_layers * sizeof(uint32_t));
 
     // Allocate host I/O buffers
-    cache->host_input = calloc(cache->input_size, sizeof(float));
-    cache->host_output = calloc(cache->output_size, sizeof(float));
+    cache->host_input = nimcp_calloc(cache->input_size, sizeof(float));
+    cache->host_output = nimcp_calloc(cache->output_size, sizeof(float));
     if (!cache->host_input || !cache->host_output) {
-        free(cache->layer_sizes);
-        free(cache->host_input);
-        free(cache->host_output);
-        free(cache);
+        nimcp_free(cache->layer_sizes);
+        nimcp_free(cache->host_input);
+        nimcp_free(cache->host_output);
+        nimcp_free(cache);
         return NULL;
     }
 
@@ -132,14 +133,14 @@ void nimcp_neuron_cache_destroy(nimcp_neuron_inference_cache_t* cache)
 {
     if (!cache) return;
 
-    free(cache->layer_sizes);
-    free(cache->host_input);
-    free(cache->host_output);
+    nimcp_free(cache->layer_sizes);
+    nimcp_free(cache->host_input);
+    nimcp_free(cache->host_output);
 
     LOG_INFO("Neuron cache destroyed (inferences=%lu)",
              (unsigned long)cache->inference_count);
 
-    free(cache);
+    nimcp_free(cache);
 }
 
 //=============================================================================
@@ -190,11 +191,11 @@ int nimcp_neuron_export_onnx(nimcp_neuron_inference_cache_t* cache,
         // Extract weights from network neurons
         // Neurons are indexed sequentially: layer 0 = [0..in_dim),
         // layer 1 = [in_dim..in_dim+out_dim), etc.
-        float* weights = calloc(weight_count, sizeof(float));
-        float* biases = calloc(out_dim, sizeof(float));
+        float* weights = nimcp_calloc(weight_count, sizeof(float));
+        float* biases = nimcp_calloc(out_dim, sizeof(float));
         if (!weights || !biases) {
-            free(weights);
-            free(biases);
+            nimcp_free(weights);
+            nimcp_free(biases);
             fclose(fp);
             return -1;
         }
@@ -235,8 +236,8 @@ int nimcp_neuron_export_onnx(nimcp_neuron_inference_cache_t* cache,
         fwrite(weights, sizeof(float), weight_count, fp);
         fwrite(biases, sizeof(float), out_dim, fp);
 
-        free(weights);
-        free(biases);
+        nimcp_free(weights);
+        nimcp_free(biases);
     }
 
     fclose(fp);

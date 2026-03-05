@@ -45,6 +45,7 @@ set(NIMCP_CORE_SOURCES
     # See BRAIN_MODULARIZATION_PLAN.md for integration roadmap
     # Brain factory (Phase 11: SRP Split - Refactored into 7 modules)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/nimcp_brain_factory.c                        # Main factory orchestration (685 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/nimcp_brain_parallel_init.c                  # Parallel wave-based subsystem init
     # Brain initialization - REFACTORED into 5 modular files (2025-12-08)
     # Original nimcp_brain_init.c (4107 lines) has been split into:
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_config.c              # Configuration builders (280 lines)
@@ -95,6 +96,42 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu.c              # GPU context auto-initialization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu_inference.c   # GPU inference weight cache init
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_substrate_gpu.c   # GPU substrate subsystem initialization
+
+    # White Matter Tracts - Long-range myelinated connectivity (8 major tracts)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/white_matter/nimcp_white_matter_tracts.c              # White matter core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/white_matter/nimcp_white_matter_bridges.c             # White matter bridge integrations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_white_matter.c            # White matter factory init
+
+    # Inferior Colliculus - Auditory midbrain processing (tonotopic, binaural)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_inferior_colliculus.c               # Inferior colliculus core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_inferior_colliculus_bridges.c       # Inferior colliculus bridge integrations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_inferior_colliculus.c   # Inferior colliculus factory init
+
+    # Spinal Cord - Motor output, CPGs, reflex arcs, proprioception
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/spinal/nimcp_spinal_cord.c                                 # Spinal cord core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/spinal/nimcp_spinal_cord_bridges.c                         # Spinal cord bridge integrations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_spinal_cord.c          # Spinal cord factory init
+
+    # Cortical Interneurons - GABAergic inhibitory microcircuit control (5 types)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_interneurons.c             # Cortical interneurons core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_interneurons_bridges.c     # Cortical interneurons bridge integrations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cortical_interneurons.c # Cortical interneurons factory init
+
+    # Neuropeptide System - Slow neuromodulation (8 peptides: oxytocin, orexin, etc.)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/neuropeptide/nimcp_neuropeptide.c             # Neuropeptide core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/neuropeptide/nimcp_neuropeptide_bridges.c     # Neuropeptide bridge integrations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_neuropeptide.c          # Neuropeptide factory init
+
+    # Endocannabinoid System - Retrograde synaptic modulation (CB1/CB2, 2-AG, AEA)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/endocannabinoid/nimcp_endocannabinoid.c       # Endocannabinoid core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/endocannabinoid/nimcp_endocannabinoid_bridges.c # Endocannabinoid bridge integrations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_endocannabinoid.c       # Endocannabinoid factory init
+
+    # Glymphatic System - Brain waste clearance (sleep-modulated CSF flow)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/glymphatic/nimcp_glymphatic.c                 # Glymphatic core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/glymphatic/nimcp_glymphatic_bridges.c         # Glymphatic bridge integrations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_glymphatic.c            # Glymphatic factory init
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
@@ -288,6 +325,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c   # Hypothalamus-training integration bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c     # Hypothalamus-logic integration (hot cognition)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hypothalamus.c              # Hypothalamus factory init
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_inferior_colliculus.c      # Inferior colliculus factory init
 
     # Hippocampus - Episodic memory, spatial navigation, pattern separation/completion (Phase H1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/nimcp_hippocampus.c                   # Hippocampus core implementation
@@ -480,6 +518,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_hierarchical_rl.c      # Hierarchical RL with options framework
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_nucleus_accumbens.c       # Nucleus accumbens (motivation, PIT)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_superior_colliculus.c     # Superior colliculus (gaze, orienting)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_inferior_colliculus.c    # Inferior colliculus (auditory midbrain)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_inferior_colliculus_bridges.c  # IC bridge integrations
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_model_based.c          # Model-based planning
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_striatal_interneurons.c   # Striatal interneurons (FSI, TAN, LTS)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_cerebellar_coord.c     # BG-cerebellar coordination

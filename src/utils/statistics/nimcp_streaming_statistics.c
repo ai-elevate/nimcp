@@ -1270,8 +1270,13 @@ nimcp_stream_stats_result_t nimcp_stream_cov_matrix_update(
     double n = (double)cov->n;
     uint32_t d = cov->n_dims;
 
-    /* Compute deltas */
-    double* delta = (double*)alloca(d * sizeof(double));
+    /* Heap-allocate delta — dimension count can be large, alloca() risks
+     * stack overflow. */
+    double* delta = (double*)nimcp_malloc(d * sizeof(double));
+    if (!delta) {
+        if (cov->mutex) nimcp_mutex_unlock(cov->mutex);
+        return NIMCP_STREAM_ERROR_MEMORY;
+    }
     for (uint32_t i = 0; i < d; i++) {
         delta[i] = (double)values[i] - cov->means[i];
     }
@@ -1290,6 +1295,7 @@ nimcp_stream_stats_result_t nimcp_stream_cov_matrix_update(
         }
     }
 
+    nimcp_free(delta);
     if (cov->mutex) nimcp_mutex_unlock(cov->mutex);
     return NIMCP_STREAM_OK;
 }
@@ -1340,8 +1346,10 @@ nimcp_stream_stats_result_t nimcp_stream_corr_matrix_get(
     uint32_t d = cov->n_dims;
     double denom = (double)(cov->n - 1);
 
-    /* Compute standard deviations */
-    double* stds = (double*)alloca(d * sizeof(double));
+    /* Heap-allocate to avoid stack overflow with large dimension counts */
+    double* stds = (double*)nimcp_malloc(d * sizeof(double));
+    if (!stds) return NIMCP_STREAM_ERROR_MEMORY;
+
     for (uint32_t i = 0; i < d; i++) {
         stds[i] = sqrt(cov->cov[i * d + i] / denom);
     }
@@ -1360,6 +1368,7 @@ nimcp_stream_stats_result_t nimcp_stream_corr_matrix_get(
         }
     }
 
+    nimcp_free(stds);
     return NIMCP_STREAM_OK;
 }
 
@@ -1675,8 +1684,17 @@ nimcp_stream_stats_result_t nimcp_stream_linreg_update(
     uint32_t np1 = reg->n_features + 1;
     float lambda = reg->forgetting_factor;
 
+    /* Heap-allocate scratch buffers — n_features can be large */
+    float* x_ext = (float*)nimcp_malloc(np1 * sizeof(float));
+    float* Px = (float*)nimcp_malloc(np1 * sizeof(float));
+    float* K = (float*)nimcp_malloc(np1 * sizeof(float));
+    if (!x_ext || !Px || !K) {
+        nimcp_free(x_ext); nimcp_free(Px); nimcp_free(K);
+        if (reg->mutex) nimcp_mutex_unlock(reg->mutex);
+        return NIMCP_STREAM_ERROR_MEMORY;
+    }
+
     /* Extended feature vector with intercept [x, 1] */
-    float* x_ext = (float*)alloca(np1 * sizeof(float));
     memcpy(x_ext, x, reg->n_features * sizeof(float));
     x_ext[reg->n_features] = 1.0f;
 
@@ -1688,7 +1706,6 @@ nimcp_stream_stats_result_t nimcp_stream_linreg_update(
     float error = y - y_pred;
 
     /* P * x */
-    float* Px = (float*)alloca(np1 * sizeof(float));
     for (uint32_t i = 0; i < np1; i++) {
         Px[i] = 0.0f;
         for (uint32_t j = 0; j < np1; j++) {
@@ -1704,7 +1721,6 @@ nimcp_stream_stats_result_t nimcp_stream_linreg_update(
 
     /* Kalman gain: K = P * x / (lambda + x' * P * x) */
     float denom = lambda + xPx;
-    float* K = (float*)alloca(np1 * sizeof(float));
     for (uint32_t i = 0; i < np1; i++) {
         K[i] = Px[i] / denom;
     }
@@ -1729,6 +1745,7 @@ nimcp_stream_stats_result_t nimcp_stream_linreg_update(
     reg->ss_tot += delta * (y - reg->y_mean);
     reg->ss_res += error * error;
 
+    nimcp_free(x_ext); nimcp_free(Px); nimcp_free(K);
     if (reg->mutex) nimcp_mutex_unlock(reg->mutex);
     return NIMCP_STREAM_OK;
 }

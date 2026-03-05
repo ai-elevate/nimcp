@@ -357,6 +357,10 @@ brain_immune_phase_t brain_immune_get_phase(brain_immune_system_t* system) {
 
 /**
  * @brief Check if antigen is neutralized
+ *
+ * WHAT: Thread-safe check of antigen neutralization state
+ * WHY:  Antigen list is modified by multiple subsystems concurrently
+ * HOW:  Lock immune mutex around antigen lookup and field read
  */
 bool brain_immune_is_neutralized(brain_immune_system_t* system, uint32_t antigen_id) {
     if (!system) {
@@ -366,14 +370,26 @@ bool brain_immune_is_neutralized(brain_immune_system_t* system, uint32_t antigen
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_is_neutralized", 0.0f);
 
-
+    nimcp_mutex_lock(system->mutex);
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
-    return antigen && antigen->neutralized;
+    bool result = antigen && antigen->neutralized;
+    nimcp_mutex_unlock(system->mutex);
+
+    return result;
 }
 
 
 /**
  * @brief Get antigen by ID
+ *
+ * WHAT: Thread-safe antigen lookup by ID
+ * WHY:  Antigen list is modified concurrently by emotional/cognitive subsystems;
+ *       unprotected reads can race with present_antigen/neutralize modifications
+ * HOW:  Lock immune mutex around antigen array traversal
+ *
+ * NOTE: Returned pointer is to internal data. Caller must not hold the pointer
+ *       across operations that could modify the antigen list without external
+ *       synchronization.
  */
 const brain_antigen_t* brain_immune_get_antigen(brain_immune_system_t* system, uint32_t antigen_id) {
     if (!system) {
@@ -386,8 +402,32 @@ const brain_antigen_t* brain_immune_get_antigen(brain_immune_system_t* system, u
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_get_antigen", 0.0f);
 
+    nimcp_mutex_lock(system->mutex);
+    const brain_antigen_t* result = find_antigen_by_id(system, antigen_id);
+    nimcp_mutex_unlock(system->mutex);
 
-    return find_antigen_by_id(system, antigen_id);
+    return result;
+}
+
+/**
+ * Thread-safe antigen copy by ID.
+ * Returns 0 on success, -1 if not found or error.
+ * Caller gets a full copy — no dangling pointer risk.
+ */
+int brain_immune_get_antigen_copy(brain_immune_system_t* system, uint32_t antigen_id, brain_antigen_t* out) {
+    if (!system || !out) return -1;
+
+    brain_immune_heartbeat("brain_immune_get_antigen_copy", 0.0f);
+
+    nimcp_mutex_lock(system->mutex);
+    const brain_antigen_t* found = find_antigen_by_id(system, antigen_id);
+    if (found) {
+        *out = *found;  /* Struct copy under lock */
+        nimcp_mutex_unlock(system->mutex);
+        return 0;
+    }
+    nimcp_mutex_unlock(system->mutex);
+    return -1;
 }
 
 

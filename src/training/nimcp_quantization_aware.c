@@ -415,7 +415,9 @@ int qat_observe(
             } else {
                 float decay = ctx->config.observer.ema_decay;
                 obs->ema_min = decay * obs->ema_min + (1.0f - decay) * batch_min;
+                NIMCP_EMA_GUARD(obs->ema_min, batch_min);
                 obs->ema_max = decay * obs->ema_max + (1.0f - decay) * batch_max;
+                NIMCP_EMA_GUARD(obs->ema_max, batch_max);
             }
             obs->min_val = obs->ema_min;
             obs->max_val = obs->ema_max;

@@ -100,6 +100,7 @@ snn_mental_health_bridge_t* snn_mental_health_bridge_create(
 
     /* Initialize structure */
     memset(bridge, 0, sizeof(snn_mental_health_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_mental_health") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->config = *config;
 
@@ -145,6 +146,7 @@ void snn_mental_health_bridge_destroy(snn_mental_health_bridge_t* bridge) {
         snn_mental_health_bridge_disconnect_bio_async(bridge);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-mental health bridge");
 }

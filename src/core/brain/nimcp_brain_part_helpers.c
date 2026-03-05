@@ -780,10 +780,243 @@ static brain_decision_t* allocate_decision(uint32_t output_size)
 }
 
 
+//=============================================================================
+// Parallel Forward Pass Infrastructure
+//=============================================================================
+
+/**
+ * @brief Context for parallel forward pass tasks
+ *
+ * Each task writes ONLY to its own output slots — no shared writes.
+ * Shared inputs (brain, features) are read-only by all tasks.
+ */
+typedef struct {
+    /* Shared inputs (read-only by all tasks) */
+    brain_t brain;
+    const float* features;
+    uint32_t num_features;
+    uint32_t output_size;
+    bool use_readonly;
+
+    /* Per-network output slots (each written by ONE task only) */
+    float* adaptive_output;
+    uint32_t adaptive_active;
+    float adaptive_confidence;
+    bool adaptive_success;
+
+    float* cnn_output;
+    float cnn_confidence;
+    char cnn_label[64];
+    bool cnn_has_label;
+    bool cnn_success;
+
+    float* snn_output;
+    float snn_confidence;
+    bool snn_success;
+} forward_task_ctx_t;
+
+/**
+ * @brief Adaptive network forward task (thread pool worker)
+ */
+static void forward_adaptive_task(void* arg)
+{
+    forward_task_ctx_t* ctx = (forward_task_ctx_t*)arg;
+
+    if (ctx->use_readonly) {
+        ctx->adaptive_active = adaptive_network_forward_readonly(
+            ctx->brain->network, ctx->features, ctx->num_features,
+            ctx->adaptive_output, ctx->output_size, 0);
+    } else {
+        ctx->adaptive_active = adaptive_network_forward(
+            ctx->brain->network, ctx->features, ctx->num_features,
+            ctx->adaptive_output, ctx->output_size, 0);
+    }
+
+    /* Softmax-max confidence: numerically stable max-normalized softmax */
+    float max_val = -1e30f;
+    for (uint32_t i = 0; i < ctx->output_size; i++) {
+        if (isfinite(ctx->adaptive_output[i]) && ctx->adaptive_output[i] > max_val)
+            max_val = ctx->adaptive_output[i];
+    }
+    float sum_exp = 0.0f;
+    for (uint32_t i = 0; i < ctx->output_size; i++) {
+        if (isfinite(ctx->adaptive_output[i]))
+            sum_exp += expf(ctx->adaptive_output[i] - max_val);
+    }
+    ctx->adaptive_confidence = (sum_exp > 0.0f) ? (1.0f / sum_exp) : 0.01f;
+    if (ctx->adaptive_confidence > 1.0f) ctx->adaptive_confidence = 1.0f;
+    if (ctx->adaptive_confidence < 0.01f) ctx->adaptive_confidence = 0.01f;
+
+    ctx->adaptive_success = true;
+}
+
+/**
+ * @brief CNN forward task (thread pool worker)
+ */
+static void forward_cnn_task(void* arg)
+{
+    forward_task_ctx_t* ctx = (forward_task_ctx_t*)arg;
+
+    uint32_t input_dims[2] = {1, ctx->num_features};
+    nimcp_tensor_t* cnn_input = nimcp_tensor_create(input_dims, 2, NIMCP_DTYPE_F32);
+    if (!cnn_input) return;
+
+    float* in_data = (float*)nimcp_tensor_data(cnn_input);
+    if (in_data) {
+        memcpy(in_data, ctx->features, ctx->num_features * sizeof(float));
+    }
+
+    cnn_forward_result_t fwd = {0};
+    nimcp_error_t rc = cnn_trainer_forward(ctx->brain->cnn_trainer, cnn_input, &fwd);
+    if (rc == NIMCP_SUCCESS && fwd.output) {
+        const float* cnn_out = (const float*)nimcp_tensor_data(fwd.output);
+        if (cnn_out) {
+            /* Copy CNN output to ctx slot */
+            for (uint32_t i = 0; i < ctx->output_size; i++) {
+                ctx->cnn_output[i] = isfinite(cnn_out[i]) ? cnn_out[i] : 0.0f;
+            }
+
+            /* Argmax + softmax-max confidence */
+            uint32_t cnn_max_idx = 0;
+            float max_val = -1e30f;
+            for (uint32_t i = 0; i < ctx->output_size; i++) {
+                if (ctx->cnn_output[i] > max_val) {
+                    max_val = ctx->cnn_output[i];
+                    cnn_max_idx = i;
+                }
+            }
+            float sum_exp = 0.0f;
+            for (uint32_t i = 0; i < ctx->output_size; i++) {
+                sum_exp += expf(ctx->cnn_output[i] - max_val);
+            }
+            ctx->cnn_confidence = (sum_exp > 0.0f) ? (1.0f / sum_exp) : 0.01f;
+            if (ctx->cnn_confidence > 1.0f) ctx->cnn_confidence = 1.0f;
+            if (ctx->cnn_confidence < 0.01f) ctx->cnn_confidence = 0.01f;
+
+            /* Extract label from CNN argmax */
+            if (ctx->brain->output_labels && cnn_max_idx < ctx->brain->num_output_labels
+                && ctx->brain->output_labels[cnn_max_idx]) {
+                strncpy(ctx->cnn_label, ctx->brain->output_labels[cnn_max_idx],
+                        sizeof(ctx->cnn_label) - 1);
+                ctx->cnn_label[sizeof(ctx->cnn_label) - 1] = '\0';
+                ctx->cnn_has_label = true;
+            }
+
+            ctx->cnn_success = true;
+        }
+    }
+    nimcp_tensor_destroy(cnn_input);
+}
+
+/**
+ * @brief SNN forward task (thread pool worker)
+ */
+static void forward_snn_task(void* arg)
+{
+    forward_task_ctx_t* ctx = (forward_task_ctx_t*)arg;
+
+    int rc = snn_network_forward(ctx->brain->snn_network, ctx->features, ctx->num_features,
+                                  ctx->snn_output, ctx->output_size, 10.0f);
+    if (rc != 0) return;
+
+    /* Spike coherence confidence: 1 - entropy/max_entropy of softmax distribution */
+    float max_val = -1e30f;
+    for (uint32_t i = 0; i < ctx->output_size; i++) {
+        if (isfinite(ctx->snn_output[i]) && ctx->snn_output[i] > max_val)
+            max_val = ctx->snn_output[i];
+    }
+    float sum_exp = 0.0f;
+    float entropy = 0.0f;
+    for (uint32_t i = 0; i < ctx->output_size; i++) {
+        float p = isfinite(ctx->snn_output[i]) ? expf(ctx->snn_output[i] - max_val) : 0.0f;
+        sum_exp += p;
+    }
+    if (sum_exp > 0.0f) {
+        for (uint32_t i = 0; i < ctx->output_size; i++) {
+            float p = isfinite(ctx->snn_output[i]) ? expf(ctx->snn_output[i] - max_val) / sum_exp : 0.0f;
+            if (p > 1e-8f) {
+                entropy -= p * logf(p);
+            }
+        }
+    }
+    float max_entropy = (ctx->output_size > 1) ? logf((float)ctx->output_size) : 1.0f;
+    ctx->snn_confidence = (max_entropy > 0.0f) ? (1.0f - entropy / max_entropy) : 0.01f;
+    if (ctx->snn_confidence > 1.0f) ctx->snn_confidence = 1.0f;
+    if (ctx->snn_confidence < 0.01f) ctx->snn_confidence = 0.01f;
+
+    ctx->snn_success = true;
+}
+
+/**
+ * @brief Confidence-weighted fusion of parallel network outputs
+ *
+ * Replaces hardcoded 0.7/0.3 blend with dynamic confidence weighting.
+ * Each successful network contributes confidence * output[i], normalized
+ * by total confidence.
+ */
+static void fuse_forward_outputs(const forward_task_ctx_t* ctx,
+                                  float* fused_output, uint32_t output_size,
+                                  uint32_t* active_neurons_out,
+                                  brain_decision_t* decision)
+{
+    float total_confidence = 0.0f;
+
+    /* Zero fused output */
+    memset(fused_output, 0, output_size * sizeof(float));
+
+    /* Adaptive contribution (always expected to succeed) */
+    if (ctx->adaptive_success) {
+        float w = ctx->adaptive_confidence;
+        for (uint32_t i = 0; i < output_size; i++) {
+            fused_output[i] += w * ctx->adaptive_output[i];
+        }
+        total_confidence += w;
+        *active_neurons_out = ctx->adaptive_active;
+    }
+
+    /* CNN contribution */
+    if (ctx->cnn_success) {
+        float w = ctx->cnn_confidence;
+        for (uint32_t i = 0; i < output_size; i++) {
+            fused_output[i] += w * ctx->cnn_output[i];
+        }
+        total_confidence += w;
+
+        /* CNN label override (if available) */
+        if (ctx->cnn_has_label) {
+            strncpy(decision->label, ctx->cnn_label, sizeof(decision->label) - 1);
+            decision->label[sizeof(decision->label) - 1] = '\0';
+        }
+    }
+
+    /* SNN contribution */
+    if (ctx->snn_success) {
+        float w = ctx->snn_confidence;
+        for (uint32_t i = 0; i < output_size; i++) {
+            if (isfinite(ctx->snn_output[i])) {
+                fused_output[i] += w * ctx->snn_output[i];
+            }
+        }
+        total_confidence += w;
+    }
+
+    /* Normalize by total confidence */
+    if (total_confidence > 0.0f) {
+        float inv_conf = 1.0f / total_confidence;
+        for (uint32_t i = 0; i < output_size; i++) {
+            fused_output[i] *= inv_conf;
+        }
+    }
+}
+
 /**
  * @brief Perform forward pass through network
  *
  * COMPLEXITY: O(s*n) where s = sparsity
+ *
+ * When inference_pool is available and secondary networks (CNN/SNN) exist,
+ * runs adaptive + CNN + SNN in parallel, then fuses outputs with confidence
+ * weighting. LNN gating always runs sequentially post-fusion.
  *
  * @param brain Brain handle
  * @param features Input features
@@ -795,18 +1028,190 @@ static uint32_t perform_forward_pass(brain_t brain, const float* features, uint3
                                      brain_decision_t* decision)
 {
     uint64_t start_time = nimcp_time_monotonic_us();
+    uint32_t active_neurons = 0;
+    bool has_cnn = (brain->cnn_trainer != NULL);
+    bool has_snn = (brain->snn_network != NULL);
 
-    uint32_t active_neurons;
+    /* === Parallel path: submit adaptive + CNN + SNN to thread pool === */
+    if (brain->inference_pool && (has_cnn || has_snn)) {
+        forward_task_ctx_t* ctx = nimcp_calloc(1, sizeof(forward_task_ctx_t));
+        if (!ctx) goto sequential_fallback;
 
-    // Phase 3: Use read-only inference for COW clones to avoid triggering copy
+        ctx->brain = brain;
+        ctx->features = features;
+        ctx->num_features = num_features;
+        ctx->output_size = decision->output_size;
+        ctx->use_readonly = brain->can_use_readonly;
+
+        /* Allocate per-network output buffers */
+        ctx->adaptive_output = nimcp_calloc(decision->output_size, sizeof(float));
+        if (!ctx->adaptive_output) {
+            nimcp_free(ctx);
+            goto sequential_fallback;
+        }
+        if (has_cnn) {
+            ctx->cnn_output = nimcp_calloc(decision->output_size, sizeof(float));
+            if (!ctx->cnn_output) {
+                nimcp_free(ctx->adaptive_output);
+                nimcp_free(ctx);
+                goto sequential_fallback;
+            }
+        }
+        if (has_snn) {
+            ctx->snn_output = nimcp_calloc(decision->output_size, sizeof(float));
+            if (!ctx->snn_output) {
+                if (ctx->cnn_output) nimcp_free(ctx->cnn_output);
+                nimcp_free(ctx->adaptive_output);
+                nimcp_free(ctx);
+                goto sequential_fallback;
+            }
+        }
+
+        /* Submit tasks to pool */
+        nimcp_pool_submit(brain->inference_pool, forward_adaptive_task, ctx);
+        if (has_cnn) {
+            nimcp_pool_submit(brain->inference_pool, forward_cnn_task, ctx);
+        }
+        if (has_snn) {
+            nimcp_pool_submit(brain->inference_pool, forward_snn_task, ctx);
+        }
+
+        /* Wait for all tasks to complete */
+        nimcp_pool_wait(brain->inference_pool);
+
+        /* Fuse outputs with confidence weighting */
+        fuse_forward_outputs(ctx, decision->output_vector, decision->output_size,
+                             &active_neurons, decision);
+
+        /* Cleanup */
+        if (ctx->snn_output) nimcp_free(ctx->snn_output);
+        if (ctx->cnn_output) nimcp_free(ctx->cnn_output);
+        nimcp_free(ctx->adaptive_output);
+        nimcp_free(ctx);
+
+        goto lnn_gating;
+    }
+
+sequential_fallback:
+
+    /* === Sequential fallback (original code path) === */
+
+    /* 1. Adaptive network — primary forward pass (always runs) */
     if (brain->can_use_readonly) {
-        // COW clone using shared network - read-only inference
         active_neurons = adaptive_network_forward_readonly(
             brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
     } else {
-        // Original brain or post-COW clone - normal inference with statistics
         active_neurons = adaptive_network_forward(
             brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
+    }
+
+    /* 2. CNN forward — classification overlay (label from CNN, embedding from adaptive) */
+    if (brain->cnn_trainer) {
+        uint32_t input_dims[2] = {1, num_features};
+        nimcp_tensor_t* cnn_input = nimcp_tensor_create(input_dims, 2, NIMCP_DTYPE_F32);
+        if (cnn_input) {
+            float* in_data = (float*)nimcp_tensor_data(cnn_input);
+            if (in_data) {
+                memcpy(in_data, features, num_features * sizeof(float));
+            }
+
+            cnn_forward_result_t fwd = {0};
+            nimcp_error_t rc = cnn_trainer_forward(brain->cnn_trainer, cnn_input, &fwd);
+            if (rc == NIMCP_SUCCESS && fwd.output) {
+                const float* cnn_out = (const float*)nimcp_tensor_data(fwd.output);
+                if (cnn_out) {
+                    /* Find CNN argmax — use as classification label */
+                    uint32_t cnn_max_idx = 0;
+                    float cnn_max_val = -1e30f;
+                    for (uint32_t i = 0; i < decision->output_size; i++) {
+                        if (isfinite(cnn_out[i]) && cnn_out[i] > cnn_max_val) {
+                            cnn_max_val = cnn_out[i];
+                            cnn_max_idx = i;
+                        }
+                    }
+                    /* Override label with CNN's classification if labels exist */
+                    if (brain->output_labels && cnn_max_idx < brain->num_output_labels
+                        && brain->output_labels[cnn_max_idx]) {
+                        strncpy(decision->label, brain->output_labels[cnn_max_idx],
+                                sizeof(decision->label) - 1);
+                        decision->label[sizeof(decision->label) - 1] = '\0';
+                    }
+                }
+            }
+            nimcp_tensor_destroy(cnn_input);
+        }
+    }
+
+    /* 3. SNN forward — spike-based blending */
+    if (brain->snn_network) {
+        float* snn_output = nimcp_calloc(decision->output_size, sizeof(float));
+        if (snn_output) {
+            int rc = snn_network_forward(brain->snn_network, features, num_features,
+                                         snn_output, decision->output_size, 10.0f);
+            if (rc == 0) {
+                /* Blend: 70% adaptive + 30% SNN */
+                for (uint32_t i = 0; i < decision->output_size; i++) {
+                    if (isfinite(snn_output[i])) {
+                        decision->output_vector[i] = 0.7f * decision->output_vector[i]
+                                                   + 0.3f * snn_output[i];
+                    }
+                }
+            }
+            nimcp_free(snn_output);
+        }
+    }
+
+lnn_gating:
+
+    /* 4. LNN forward — temporal context modulation (multiplicative sigmoid gating) */
+    /* Always sequential: LNN modulates the fused result */
+    if (brain->lnn_network) {
+        uint32_t lnn_out_size = brain->lnn_network->n_outputs;
+        uint32_t lnn_in_size = brain->lnn_network->n_inputs;
+        uint32_t in_dims[1] = {lnn_in_size};
+        uint32_t out_dims[1] = {lnn_out_size};
+
+        nimcp_tensor_t* lnn_input = nimcp_tensor_create(in_dims, 1, NIMCP_DTYPE_F32);
+        nimcp_tensor_t* lnn_output = nimcp_tensor_create(out_dims, 1, NIMCP_DTYPE_F32);
+
+        if (lnn_input && lnn_output) {
+            float* li_data = (float*)nimcp_tensor_data(lnn_input);
+            if (li_data) {
+                /* Average-pool features into LNN input size */
+                if (num_features > lnn_in_size) {
+                    uint32_t stride = num_features / lnn_in_size;
+                    for (uint32_t i = 0; i < lnn_in_size; i++) {
+                        float sum = 0.0f;
+                        uint32_t start = i * stride;
+                        uint32_t end = (i + 1 < lnn_in_size) ? (i + 1) * stride : num_features;
+                        for (uint32_t j = start; j < end; j++) {
+                            sum += features[j];
+                        }
+                        li_data[i] = sum / (float)(end - start);
+                    }
+                } else {
+                    memcpy(li_data, features, num_features * sizeof(float));
+                }
+            }
+
+            int rc = lnn_forward_step(brain->lnn_network, lnn_input, lnn_output, 0.01f);
+            if (rc == 0) {
+                const float* lo_data = (const float*)nimcp_tensor_data(lnn_output);
+                if (lo_data) {
+                    /* Multiplicative sigmoid gating on first lnn_out_size outputs */
+                    uint32_t gate_size = (lnn_out_size < decision->output_size)
+                                       ? lnn_out_size : decision->output_size;
+                    for (uint32_t i = 0; i < gate_size; i++) {
+                        if (isfinite(lo_data[i])) {
+                            float gate = 1.0f / (1.0f + expf(-lo_data[i]));
+                            decision->output_vector[i] *= gate;
+                        }
+                    }
+                }
+            }
+        }
+        if (lnn_input) nimcp_tensor_destroy(lnn_input);
+        if (lnn_output) nimcp_tensor_destroy(lnn_output);
     }
 
     decision->inference_time_us = nimcp_time_elapsed_us(start_time);

@@ -104,6 +104,7 @@ snn_autobiographical_bridge_t* snn_autobiographical_bridge_create(
 
     /* Initialize structure */
     memset(bridge, 0, sizeof(snn_autobiographical_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_autobiographical") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->config = *config;
 
@@ -168,6 +169,7 @@ void snn_autobiographical_bridge_destroy(snn_autobiographical_bridge_t* bridge) 
         nimcp_free(bridge->memories);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-autobiographical bridge");
 }

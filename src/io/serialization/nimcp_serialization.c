@@ -15,28 +15,24 @@
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_once.h"
 
-// Global BBB security system
+// Global BBB security system — protected by once-init to avoid TOCTOU race
 static bbb_system_t g_bbb_system = NULL;
-
-
+static nimcp_platform_once_t g_bbb_once = NIMCP_PLATFORM_ONCE_INIT;
 
 //=============================================================================
 // Security Initialization
 //=============================================================================
 
 /**
- * @brief Initialize security subsystem for serialization
+ * @brief Initialize security subsystem for serialization (once-init callback)
  *
  * WHAT: Create and configure BBB system for input validation
- * WHY: Protect against malicious external input
- * HOW: Initialize with conservative security settings
+ * WHY: Protect against malicious external input and TOCTOU race on g_bbb_system
+ * HOW: Called exactly once via nimcp_platform_once — thread-safe initialization
  */
-static void serialization_security_init(void) {
-    if (g_bbb_system) {
-        return;  // Already initialized
-    }
-
+static void serialization_security_init_impl(void) {
     bbb_config_t config = bbb_default_config();
     config.strict_mode = false;  // Don't block, just log
     config.default_action = BBB_ACTION_LOG;
@@ -50,6 +46,14 @@ static void serialization_security_init(void) {
     } else {
         LOG_INFO("serialization: Security subsystem initialized");
     }
+}
+
+/**
+ * @brief Thread-safe security init entry point
+ * WHY: nimcp_platform_once guarantees exactly-once execution, no TOCTOU race
+ */
+static void serialization_security_init(void) {
+    nimcp_platform_once(&g_bbb_once, serialization_security_init_impl);
 }
 
 /**
@@ -86,7 +90,13 @@ static bool nimcp_check_read(NimcpSerializer* serializer, size_t bytes_needed)
         return false;
     }
     if (bytes_needed == 0) return true;
-    if (serializer->position + bytes_needed > serializer->length) {
+    /* Guard: position must be within length before subtraction */
+    if (serializer->position > serializer->length) {
+        serializer->has_error = true;
+        return false;
+    }
+    /* Overflow-safe: subtract instead of add to avoid size_t wraparound */
+    if (bytes_needed > serializer->length - serializer->position) {
         serializer->has_error = true;
         return false;  /* Bounds check failure is normal validation */
     }
@@ -99,6 +109,12 @@ static bool ensure_capacity(NimcpSerializer* serializer, size_t additional_size)
         if (serializer) {
             serializer->has_error = true;
         }
+        return false;
+    }
+
+    /* Overflow-safe: check via subtraction instead of addition */
+    if (additional_size > NIMCP_SERIALIZER_MAX_SIZE - serializer->position) {
+        serializer->has_error = true;
         return false;
     }
 
@@ -292,7 +308,9 @@ NimcpSerialResult nimcp_serializer_compress(NimcpSerializer* serializer)
         return NIMCP_SERIAL_ERROR_MEMORY;
     }
 
-    *(uint32_t*) final_buffer = (uint32_t) serializer->length;
+    /* Fix unaligned write: use memcpy instead of pointer cast */
+    uint32_t orig_len = (uint32_t) serializer->length;
+    memcpy(final_buffer, &orig_len, sizeof(uint32_t));
     memcpy(final_buffer + sizeof(uint32_t), compressed_buffer, compressed_size);
 
     nimcp_free(compressed_buffer);
@@ -317,7 +335,21 @@ NimcpSerialResult nimcp_serializer_decompress(NimcpSerializer* serializer)
         return NIMCP_SERIAL_ERROR_BOUNDS;
     }
 
-    uint32_t original_size = *(uint32_t*) serializer->buffer;
+    /* Fix unaligned read: use memcpy instead of pointer cast */
+    uint32_t original_size;
+    memcpy(&original_size, serializer->buffer, sizeof(uint32_t));
+
+    /* Reject attacker-controlled allocation above max size */
+    if (original_size > NIMCP_SERIALIZER_MAX_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT,
+            "nimcp_serializer_decompress: original_size %u exceeds max %u",
+            (unsigned)original_size, (unsigned)NIMCP_SERIALIZER_MAX_SIZE);
+        return NIMCP_SERIAL_ERROR_INVALID_PARAM;
+    }
+    if (original_size == 0) {
+        return NIMCP_SERIAL_ERROR_INVALID_PARAM;
+    }
+
     uint8_t* decompressed_buffer = nimcp_malloc(original_size);
     if (!decompressed_buffer) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, original_size,

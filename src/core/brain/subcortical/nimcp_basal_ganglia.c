@@ -596,7 +596,8 @@ void basal_ganglia_destroy(basal_ganglia_t* bg) {
     nimcp_free(bg->habits);
 
     nimcp_mutex_unlock(bg->mutex);
-    nimcp_mutex_free(bg->mutex);
+    nimcp_mutex_destroy(bg->mutex);
+    nimcp_free(bg->mutex);
 
     nimcp_free(bg);
 

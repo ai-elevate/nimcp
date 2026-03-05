@@ -202,7 +202,8 @@ void thal_nucleus_destroy(thal_nucleus_t* nucleus) {
     if (!nucleus) return;
 
     if (nucleus->mutex) {
-        nimcp_mutex_free(nucleus->mutex);
+        nimcp_mutex_destroy(nucleus->mutex);
+        nimcp_free(nucleus->mutex);
     }
 
     nimcp_free(nucleus->cells);
@@ -261,7 +262,8 @@ static void trn_destroy(thalamic_reticular_nucleus_t* trn) {
     if (!trn) return;
 
     if (trn->mutex) {
-        nimcp_mutex_free(trn->mutex);
+        nimcp_mutex_destroy(trn->mutex);
+        nimcp_free(trn->mutex);
     }
 
     nimcp_free(trn->inhibition_map);
@@ -348,7 +350,8 @@ void thalamus_destroy(thalamus_t* thal) {
     }
 
     if (thal->mutex) {
-        nimcp_mutex_free(thal->mutex);
+        nimcp_mutex_destroy(thal->mutex);
+        nimcp_free(thal->mutex);
     }
 
     thal_nucleus_destroy(thal->lgn);

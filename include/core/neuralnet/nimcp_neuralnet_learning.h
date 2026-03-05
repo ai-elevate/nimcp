@@ -160,6 +160,22 @@ NIMCP_EXPORT uint32_t neural_network_apply_lateral_inhibition(
     float inhibition_strength);
 
 /**
+ * @brief Synaptogenesis: grow new connections from active neurons to dormant neighbors.
+ *
+ * WHY: Networks with sparse backbone wiring have millions of dormant neurons
+ *      with zero connections. This gradually activates them by sprouting
+ *      connections from active neighbors, expanding network capacity over time.
+ *
+ * @param network Neural network
+ * @param max_new_connections Maximum connections to create per call
+ * @param activity_threshold Minimum |state| to consider a neuron active
+ * @return Number of new connections created
+ */
+NIMCP_EXPORT uint32_t neural_network_sprout_connections(neural_network_t network,
+                                                        uint32_t max_new_connections,
+                                                        float activity_threshold);
+
+/**
  * @brief Apply generalized Oja's rule
  *
  * @param network Neural network

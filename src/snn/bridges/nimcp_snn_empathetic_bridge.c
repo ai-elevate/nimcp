@@ -60,6 +60,7 @@ snn_empathetic_bridge_t* snn_empathetic_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_empathetic_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_empathetic") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->empathetic_system = empathetic_system;
     bridge->config = *config;
@@ -100,6 +101,7 @@ void snn_empathetic_bridge_destroy(snn_empathetic_bridge_t* bridge) {
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
     if (bridge->responses) nimcp_free(bridge->responses);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-empathetic bridge");
 }
@@ -179,6 +181,7 @@ int snn_empathetic_bridge_update(snn_empathetic_bridge_t* bridge, float dt) {
     /* Update statistics */
     bridge->state.avg_mirror_activation = bridge->state.avg_mirror_activation * 0.95f +
                                            activation * 0.05f;
+    if (!isfinite(bridge->state.avg_mirror_activation)) bridge->state.avg_mirror_activation = activation;
 
     return 0;
 }

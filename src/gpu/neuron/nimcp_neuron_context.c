@@ -21,6 +21,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuron_context)
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -128,7 +129,7 @@ nimcp_neuron_context_t* nimcp_neuron_context_create(int device_id)
     }
 
     // Allocate context
-    nimcp_neuron_context_t* ctx = calloc(1, sizeof(nimcp_neuron_context_t));
+    nimcp_neuron_context_t* ctx = nimcp_calloc(1, sizeof(nimcp_neuron_context_t));
     if (!ctx) {
         NRT_LIB_CLOSE(lib);
         LOG_ERROR("Failed to allocate Neuron context");
@@ -141,7 +142,7 @@ nimcp_neuron_context_t* nimcp_neuron_context_create(int device_id)
     // Resolve function pointers
     if (!resolve_nrt_symbols(ctx)) {
         NRT_LIB_CLOSE(lib);
-        free(ctx);
+        nimcp_free(ctx);
         LOG_ERROR("Failed to resolve NRT symbols");
         return NULL;
     }
@@ -152,7 +153,7 @@ nimcp_neuron_context_t* nimcp_neuron_context_create(int device_id)
         const char* err = ctx->fn_get_error ? ctx->fn_get_error(status) : "unknown";
         LOG_ERROR("nrt_init failed: %s (status=%d)", err, status);
         NRT_LIB_CLOSE(lib);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -174,7 +175,7 @@ nimcp_neuron_context_t* nimcp_neuron_context_create(int device_id)
         LOG_ERROR("Invalid device_id %d (available: %u)", device_id, ctx->device_count);
         if (ctx->fn_close) ctx->fn_close();
         NRT_LIB_CLOSE(lib);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -207,7 +208,7 @@ void nimcp_neuron_context_destroy(nimcp_neuron_context_t* ctx)
     LOG_INFO("Neuron context destroyed (device=%d, inferences=%lu)",
              ctx->device_id, (unsigned long)ctx->total_inferences);
 
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 bool nimcp_neuron_context_is_valid(const nimcp_neuron_context_t* ctx)

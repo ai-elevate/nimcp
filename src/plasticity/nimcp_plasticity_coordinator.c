@@ -501,7 +501,19 @@ int plasticity_coordinator_update(
     /* Check if low energy mode */
     bool low_energy = plasticity_coordinator_is_low_energy(coordinator);
 
-    /* Update each mechanism based on interval */
+    /* Collect mechanisms due for update while holding lock, then call outside */
+    typedef struct {
+        int (*update_fn)(void*, float);
+        void* handle;
+        float energy_cost;
+        uint32_t index;
+        uint32_t type;
+    } pending_update_t;
+
+    /* Stack-allocate for typical case; if mechanism_count > 256, only first 256 run */
+    pending_update_t pending[256];
+    uint32_t num_pending = 0;
+
     for (uint32_t i = 0; i < coordinator->mechanism_count; i++) {
         plasticity_mechanism_entry_t* entry = &coordinator->mechanisms[i];
 
@@ -515,34 +527,58 @@ int plasticity_coordinator_update(
         uint64_t elapsed = current_time_ms - entry->last_update_time;
         if (elapsed < entry->update_interval_ms) continue;
 
-        /* Call update function (skip declaration-only mechanisms with no callback) */
+        /* Skip declaration-only mechanisms with no callback */
         if (!entry->update_fn) continue;
-        if (entry->update_fn(entry->handle, dt) == 0) {
+
+        if (num_pending < 256) {
+            pending[num_pending].update_fn = entry->update_fn;
+            pending[num_pending].handle = entry->handle;
+            pending[num_pending].energy_cost = entry->energy_cost;
+            pending[num_pending].index = i;
+            pending[num_pending].type = entry->type;
+            num_pending++;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(coordinator->mutex);
+
+    /* Call update functions OUTSIDE the lock to avoid deadlock */
+    for (uint32_t p = 0; p < num_pending; p++) {
+        if (pending[p].update_fn(pending[p].handle, dt) == 0) {
+            /* Re-acquire lock to update stats */
+            nimcp_platform_mutex_lock(coordinator->mutex);
+
+            plasticity_mechanism_entry_t* entry =
+                &coordinator->mechanisms[pending[p].index];
             entry->update_count++;
             entry->last_update_time = current_time_ms;
 
             /* Track energy */
             if (coordinator->config.enable_energy_tracking) {
-                entry->total_energy_consumed += entry->energy_cost;
-                coordinator->energy_consumed_this_second += entry->energy_cost;
-                coordinator->stats.total_energy_consumed += entry->energy_cost;
+                entry->total_energy_consumed += pending[p].energy_cost;
+                coordinator->energy_consumed_this_second += pending[p].energy_cost;
+                coordinator->stats.total_energy_consumed += pending[p].energy_cost;
             }
 
             mechanisms_updated++;
             coordinator->stats.total_mechanism_updates++;
 
             /* Update per-mechanism stats */
-            coordinator->stats.mechanism_stats[entry->type].total_updates++;
-            coordinator->stats.mechanism_stats[entry->type].total_energy_consumed +=
-                entry->energy_cost;
+            coordinator->stats.mechanism_stats[pending[p].type].total_updates++;
+            coordinator->stats.mechanism_stats[pending[p].type].total_energy_consumed +=
+                pending[p].energy_cost;
+
+            nimcp_platform_mutex_unlock(coordinator->mutex);
         }
 
         /* Phase 8: Send heartbeat for progress tracking in large mechanism sets */
-        if ((i & 0x1F) == 0 && coordinator->mechanism_count > 32) {
+        if ((p & 0x1F) == 0 && num_pending > 32) {
             plasticity_heartbeat("plasticity_update",
-                                (float)(i + 1) / (float)coordinator->mechanism_count);
+                                (float)(p + 1) / (float)num_pending);
         }
     }
+
+    nimcp_platform_mutex_lock(coordinator->mutex);
 
     /* Update statistics */
     coordinator->stats.total_update_cycles++;
@@ -592,36 +628,56 @@ int plasticity_coordinator_update_mechanism(
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
-    /* Find mechanism */
+    /* Find mechanism and copy callback data under lock */
+    int (*update_fn)(void*, float) = NULL;
+    void* handle = NULL;
+    float energy_cost = 0.0f;
+    uint32_t found_idx = UINT32_MAX;
+
     for (uint32_t i = 0; i < coordinator->mechanism_count; i++) {
         if (coordinator->mechanisms[i].mechanism_id == mechanism_id) {
             plasticity_mechanism_entry_t* entry = &coordinator->mechanisms[i];
 
-            /* Call update (skip declaration-only mechanisms with no callback) */
+            /* Skip declaration-only mechanisms with no callback */
             if (!entry->update_fn) {
                 nimcp_platform_mutex_unlock(coordinator->mutex);
                 return 0;
             }
-            int result = entry->update_fn(entry->handle, dt);
-            if (result == 0) {
-                entry->update_count++;
-                entry->last_update_time = get_current_time_ms();
 
-                /* Track energy */
-                if (coordinator->config.enable_energy_tracking) {
-                    entry->total_energy_consumed += entry->energy_cost;
-                    coordinator->stats.total_energy_consumed += entry->energy_cost;
-                }
-            }
-
-            nimcp_platform_mutex_unlock(coordinator->mutex);
-            return result;
+            update_fn = entry->update_fn;
+            handle = entry->handle;
+            energy_cost = entry->energy_cost;
+            found_idx = i;
+            break;
         }
     }
 
+    if (found_idx == UINT32_MAX) {
+        nimcp_platform_mutex_unlock(coordinator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_coordinator_update_mechanism: operation failed");
+        return -1;
+    }
+
     nimcp_platform_mutex_unlock(coordinator->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_coordinator_update_mechanism: operation failed");
-    return -1;
+
+    /* Call update function OUTSIDE the lock to avoid deadlock */
+    int result = update_fn(handle, dt);
+
+    if (result == 0) {
+        nimcp_platform_mutex_lock(coordinator->mutex);
+        plasticity_mechanism_entry_t* entry = &coordinator->mechanisms[found_idx];
+        entry->update_count++;
+        entry->last_update_time = get_current_time_ms();
+
+        /* Track energy */
+        if (coordinator->config.enable_energy_tracking) {
+            entry->total_energy_consumed += energy_cost;
+            coordinator->stats.total_energy_consumed += energy_cost;
+        }
+        nimcp_platform_mutex_unlock(coordinator->mutex);
+    }
+
+    return result;
 }
 
 /* ============================================================================

@@ -196,6 +196,12 @@ struct brain_cycle_coordinator* brain_get_cycle_coordinator(brain_t brain);
 // plasticity rate scheduling, and ethical decision scoring
 bool nimcp_brain_factory_init_fuzzy_subsystem(brain_t brain);
 
+// === SPINAL CORD SUBSYSTEM (Motor Output / Final Common Pathway) ===
+// Motor pools, CPGs, reflex arcs, descending tract integration
+// Depends on: Motor cortex, Cerebellum, Brainstem, Bio-async
+bool nimcp_brain_factory_init_spinal_cord_subsystem(brain_t brain);
+void nimcp_brain_factory_destroy_spinal_cord_subsystem(brain_t brain);
+
 // Health agent accessor functions
 struct nimcp_health_agent* brain_get_health_agent(brain_t brain);
 bool brain_start_health_agent(brain_t brain);

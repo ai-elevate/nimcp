@@ -11,6 +11,7 @@
 #include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
@@ -49,6 +50,7 @@ typedef struct topology_cache_entry {
  * @brief Bridge structure
  */
 struct mesh_kg_routing_bridge {
+    bridge_base_t base;
     uint32_t magic;
     mesh_kg_bridge_config_t config;
     mesh_pattern_router_t* router;
@@ -182,6 +184,8 @@ mesh_kg_routing_bridge_t* mesh_kg_bridge_create(
         return NULL;
     }
 
+    bridge_base_init(&bridge->base, 0, "mesh_kg_routing_bridge");
+
     LOG_INFO("Created KG-Mesh routing bridge (mode=%d)", bridge->config.mode);
 
     return bridge;
@@ -194,6 +198,7 @@ void mesh_kg_bridge_destroy(mesh_kg_routing_bridge_t* bridge) {
         nimcp_mutex_destroy(bridge->mutex);
     }
 
+    bridge_base_cleanup(&bridge->base);
     bridge->magic = 0;
     nimcp_free(bridge);
 

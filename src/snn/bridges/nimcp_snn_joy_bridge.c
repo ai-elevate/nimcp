@@ -58,6 +58,7 @@ snn_joy_bridge_t* snn_joy_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_joy_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_joy") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->joy_system = joy_system;
     bridge->config = *config;
@@ -84,6 +85,7 @@ void snn_joy_bridge_destroy(snn_joy_bridge_t* bridge) {
     if (bridge->encoder) snn_encoder_destroy(bridge->encoder);
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-joy bridge");
 }
@@ -162,8 +164,10 @@ int snn_joy_bridge_update(snn_joy_bridge_t* bridge, float dt) {
 
     bridge->state.sync_count++;
     bridge->state.avg_joy_level = (bridge->state.avg_joy_level * 0.95f + joy_level * 0.05f);
+    if (!isfinite(bridge->state.avg_joy_level)) bridge->state.avg_joy_level = joy_level;
     bridge->state.avg_burst_frequency = (bridge->state.avg_burst_frequency * 0.95f +
                                          bridge->state.burst.frequency * 0.05f);
+    if (!isfinite(bridge->state.avg_burst_frequency)) bridge->state.avg_burst_frequency = bridge->state.burst.frequency;
 
     return 0;
 }

@@ -74,6 +74,7 @@ snn_population_bridge_t* snn_population_bridge_create(
 
     /* WHY: Initialize all fields to zero */
     memset(bridge, 0, sizeof(snn_population_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_population") != 0) { nimcp_free(bridge); return NULL; }
 
     /* HOW: Set configuration */
     if (config) {
@@ -199,6 +200,7 @@ void snn_population_bridge_destroy(snn_population_bridge_t* bridge) {
         population_coding_pca_result_destroy(bridge->pca_result);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("SNN population bridge destroyed");
 }

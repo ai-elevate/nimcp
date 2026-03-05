@@ -56,6 +56,7 @@ snn_self_model_bridge_t* snn_self_model_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_self_model_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_self_model") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->self_model = self_model;
     bridge->config = *config;
@@ -75,6 +76,7 @@ void snn_self_model_bridge_destroy(snn_self_model_bridge_t* bridge) {
     }
     if (bridge->encoder) snn_encoder_destroy(bridge->encoder);
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-self_model bridge");
 }
@@ -130,6 +132,7 @@ int snn_self_model_bridge_update(snn_self_model_bridge_t* bridge, float dt) {
         float spike_rate = snn_population_get_firing_rate(bridge->self_model_pop);
         bridge->state.self_coherence = snn_self_model_compute_coherence(bridge, spike_rate);
         bridge->state.avg_self_rate = (bridge->state.avg_self_rate * 0.9f + spike_rate * 0.1f);
+        if (!isfinite(bridge->state.avg_self_rate)) bridge->state.avg_self_rate = spike_rate;
 
         if (bridge->state.self_coherence >= bridge->config.self_reference_threshold) {
             bridge->state.coherent_self_detected = true;

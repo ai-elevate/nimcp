@@ -35,6 +35,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "plasticity/nimcp_plasticity_coordinator.h"
+#include "plasticity/structural/nimcp_structural_plasticity.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -151,7 +152,28 @@ bool nimcp_brain_factory_init_plasticity_coordinator_subsystem(brain_t brain) {
     plasticity_coordinator_register_mechanism(
         brain->plasticity_coordinator, "predictive", PLASTICITY_TYPE_PREDICTIVE,
         NULL, NULL, NULL, 0.85f, 0.18f, 50, &mech_id);
-    NIMCP_LOGGING_INFO("Registered 8 biological plasticity mechanisms in coordinator");
+    /* Structural plasticity (synaptogenesis): form/prune synapses during learning */
+    brain->structural_plasticity = NULL;
+    brain->structural_plasticity_enabled = false;
+    structural_plasticity_config_t sp_config;
+    structural_plasticity_default_config(&sp_config);
+    /* Override biological defaults for training speed */
+    sp_config.formation_threshold_hz = 5.0f;   /* lower from 50 Hz — training produces moderate activity */
+    sp_config.maturation_time_sec = 60.0f;     /* 1 minute vs 24 hours — training runs fast */
+    structural_plasticity_system_t* sp = structural_plasticity_create(&sp_config);
+    if (sp) {
+        brain->structural_plasticity = sp;
+        brain->structural_plasticity_enabled = true;
+        plasticity_coordinator_register_mechanism(
+            brain->plasticity_coordinator, "structural", PLASTICITY_TYPE_STRUCTURAL,
+            sp, (plasticity_mechanism_update_fn_t)structural_plasticity_update,
+            NULL, 0.9f, 0.3f, 100, &mech_id);
+        NIMCP_LOGGING_INFO("Structural plasticity (synaptogenesis) registered");
+    } else {
+        NIMCP_LOGGING_WARN("Failed to create structural plasticity — continuing without");
+    }
+
+    NIMCP_LOGGING_INFO("Registered 9 biological plasticity mechanisms in coordinator");
 
     /* Log success */
     plasticity_coordinator_stats_t stats;

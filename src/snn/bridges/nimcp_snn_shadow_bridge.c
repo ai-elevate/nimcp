@@ -58,6 +58,7 @@ snn_shadow_bridge_t* snn_shadow_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_shadow_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_shadow") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->shadow_system = shadow_system;
     bridge->config = *config;
@@ -84,6 +85,7 @@ void snn_shadow_bridge_destroy(snn_shadow_bridge_t* bridge) {
     if (bridge->encoder) snn_encoder_destroy(bridge->encoder);
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-shadow bridge");
 }
@@ -163,8 +165,10 @@ int snn_shadow_bridge_update(snn_shadow_bridge_t* bridge, float dt) {
     bridge->state.sync_count++;
     bridge->state.avg_shadow_activity = (bridge->state.avg_shadow_activity * 0.95f +
                                          shadow_activity * 0.05f);
+    if (!isfinite(bridge->state.avg_shadow_activity)) bridge->state.avg_shadow_activity = shadow_activity;
     bridge->state.avg_dmn_activity = (bridge->state.avg_dmn_activity * 0.95f +
                                       dmn_activity * 0.05f);
+    if (!isfinite(bridge->state.avg_dmn_activity)) bridge->state.avg_dmn_activity = dmn_activity;
 
     return 0;
 }

@@ -489,7 +489,7 @@ int spatial_pink_bridge_update(spatial_pink_bridge_t* bridge) {
     }
 
     // Update statistics
-    bridge->avg_noise_magnitude = sum_noise / num_neurons;
+    bridge->avg_noise_magnitude = (num_neurons > 0) ? (sum_noise / num_neurons) : 0.0f;
     bridge->max_noise_magnitude = max_noise;
 
     // Step 3: Apply noise modulation

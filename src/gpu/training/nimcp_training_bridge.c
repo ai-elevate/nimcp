@@ -800,7 +800,7 @@ bool nimcp_gpu_forward_pass_batch(
         if (cache->layer_sizes[l] > max_layer)
             max_layer = cache->layer_sizes[l];
     }
-    float* clamp_buf = (float*)malloc(batch_size * max_layer * sizeof(float));
+    float* clamp_buf = (float*)nimcp_malloc(batch_size * max_layer * sizeof(float));
     if (!clamp_buf) {
         nimcp_gpu_tensor_destroy(act);
         return false;
@@ -825,7 +825,7 @@ bool nimcp_gpu_forward_pass_batch(
                 cache->ctx, out_dims, 2, NIMCP_GPU_PRECISION_FP32);
             if (!next_act) {
                 nimcp_gpu_tensor_destroy(act);
-                free(clamp_buf);
+                nimcp_free(clamp_buf);
                 return false;
             }
         }
@@ -876,7 +876,7 @@ bool nimcp_gpu_forward_pass_batch(
         act = nimcp_gpu_tensor_from_host(
             cache->ctx, clamp_buf, out_dims, 2, NIMCP_GPU_PRECISION_FP32);
         if (!act) {
-            free(clamp_buf);
+            nimcp_free(clamp_buf);
             return false;
         }
     }
@@ -884,6 +884,6 @@ bool nimcp_gpu_forward_pass_batch(
     // Download final output
     nimcp_gpu_tensor_to_host(act, outputs);
     nimcp_gpu_tensor_destroy(act);
-    free(clamp_buf);
+    nimcp_free(clamp_buf);
     return true;
 }

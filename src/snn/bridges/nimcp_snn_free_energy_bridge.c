@@ -49,6 +49,7 @@ snn_free_energy_bridge_t* snn_free_energy_bridge_create(const snn_free_energy_co
     }
 
     memset(bridge, 0, sizeof(snn_free_energy_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_free_energy") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->free_energy_system = free_energy_system;
     bridge->config = *config;
@@ -70,6 +71,7 @@ void snn_free_energy_bridge_destroy(snn_free_energy_bridge_t* bridge) {
         snn_free_energy_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->prediction_buffer) nimcp_free(bridge->prediction_buffer);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-free-energy bridge");
 }

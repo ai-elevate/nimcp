@@ -27,6 +27,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/math/nimcp_math_helpers.h"
 #include <time.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -1315,7 +1316,9 @@ static nimcp_tensor_t* cnn_forward_batch_norm(cnn_layer_t* layer, const nimcp_te
             /* Update running stats */
             if (running_mean && running_var) {
                 running_mean[c] = cfg->momentum * running_mean[c] + (1.0f - cfg->momentum) * mean;
+                NIMCP_EMA_GUARD(running_mean[c], mean);
                 running_var[c] = cfg->momentum * running_var[c] + (1.0f - cfg->momentum) * var;
+                NIMCP_EMA_GUARD(running_var[c], var);
             }
         } else {
             /* Use running statistics */

@@ -158,6 +158,29 @@ gtest_discover_tests(unit_plasticity_test_coordinator
     TIMEOUT 60
 )
 
+# ============================================================================
+# Plasticity Coordinator No-Deadlock Tests (Bug H3)
+# ============================================================================
+# WHAT: Tests for callback-under-mutex fix in plasticity coordinator
+# WHY:  Verify callbacks are invoked outside the lock to prevent deadlock
+# HOW:  Register re-entrant callbacks, concurrent updates, lifecycle tests
+# ============================================================================
+
+add_executable(unit_plasticity_test_coordinator_no_deadlock test_plasticity_coordinator_no_deadlock.cpp)
+target_link_libraries(unit_plasticity_test_coordinator_no_deadlock
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_test_coordinator_no_deadlock PRIVATE cxx_std_20)
+gtest_discover_tests(unit_plasticity_test_coordinator_no_deadlock
+    PROPERTIES LABELS "unit;plasticity;coordinator;deadlock"
+    TIMEOUT 30
+)
+
 # Attention subdirectory (PE tests)
 add_subdirectory(attention)
 
@@ -745,4 +768,27 @@ add_test(NAME test_backprop_grad_clip COMMAND test_backprop_grad_clip)
 set_tests_properties(test_backprop_grad_clip PROPERTIES
     LABELS "unit;plasticity;adaptive;backprop;grad_clip"
     TIMEOUT 60
+)
+
+# ============================================================================
+# EMA isfinite() Guard Tests
+# WHAT: Tests that EMA calculations recover from NaN/Inf inputs
+# WHY:  A single NaN/Inf permanently corrupts an EMA without isfinite guards
+# HOW:  Feed NaN/Inf into NIMCP_EMA_GUARD macros and nimcp_safe_expf, verify recovery
+# ============================================================================
+
+add_executable(test_ema_isfinite_guards
+    test_ema_isfinite_guards.c
+)
+target_link_libraries(test_ema_isfinite_guards
+    PRIVATE m
+)
+target_include_directories(test_ema_isfinite_guards PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+add_test(NAME test_ema_isfinite_guards COMMAND test_ema_isfinite_guards)
+set_tests_properties(test_ema_isfinite_guards PROPERTIES
+    LABELS "unit;plasticity;math;ema;isfinite"
+    TIMEOUT 30
 )

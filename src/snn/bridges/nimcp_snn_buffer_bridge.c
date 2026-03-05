@@ -72,6 +72,7 @@ snn_buffer_bridge_t* snn_buffer_bridge_create(
 
     /* WHY: Initialize all fields to zero */
     memset(bridge, 0, sizeof(snn_buffer_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_buffer") != 0) { nimcp_free(bridge); return NULL; }
 
     /* HOW: Set configuration */
     if (config) {
@@ -188,6 +189,7 @@ void snn_buffer_bridge_destroy(snn_buffer_bridge_t* bridge) {
     if (bridge->delayed_spike_neurons) nimcp_free(bridge->delayed_spike_neurons);
     if (bridge->pattern_hashes) nimcp_free(bridge->pattern_hashes);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("SNN buffer bridge destroyed");
 }

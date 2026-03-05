@@ -75,6 +75,7 @@ JNIEXPORT jlong JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeCreate(
 {
     (void)cls;
     const char *c_name = (*env)->GetStringUTFChars(env, name, NULL);
+    if (!c_name) return 0; /* OOM — JVM already threw OutOfMemoryError */
     nimcp_brain_t brain = nimcp_brain_create(
         c_name, (nimcp_brain_size_t)size, (nimcp_brain_task_t)task,
         (uint32_t)numInputs, (uint32_t)numOutputs);
@@ -97,7 +98,12 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeLearn(
     nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
     jint len = (*env)->GetArrayLength(env, features);
     jfloat *feats = (*env)->GetFloatArrayElements(env, features, NULL);
+    if (!feats) return (jint)NIMCP_OK; /* OOM — JVM already threw */
     const char *c_label = (*env)->GetStringUTFChars(env, label, NULL);
+    if (!c_label) {
+        (*env)->ReleaseFloatArrayElements(env, features, feats, JNI_ABORT);
+        return (jint)NIMCP_OK; /* OOM — JVM already threw */
+    }
 
     nimcp_status_t rc = nimcp_brain_learn_example(
         brain, feats, (uint32_t)len, c_label, confidence);
@@ -115,6 +121,7 @@ JNIEXPORT jstring JNICALL Java_com_nimcp_NIMCP_00024Brain_nativePredict(
     nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
     jint len = (*env)->GetArrayLength(env, features);
     jfloat *feats = (*env)->GetFloatArrayElements(env, features, NULL);
+    if (!feats) return NULL; /* OOM — JVM already threw */
 
     char label_buf[NIMCP_MAX_LABEL_SIZE];
     float conf = 0.0f;
@@ -139,7 +146,12 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeInfer(
     jint flen = (*env)->GetArrayLength(env, features);
     jint olen = (*env)->GetArrayLength(env, outputs);
     jfloat *feats = (*env)->GetFloatArrayElements(env, features, NULL);
+    if (!feats) return (jint)NIMCP_OK; /* OOM — JVM already threw */
     jfloat *outs = (*env)->GetFloatArrayElements(env, outputs, NULL);
+    if (!outs) {
+        (*env)->ReleaseFloatArrayElements(env, features, feats, JNI_ABORT);
+        return (jint)NIMCP_OK; /* OOM — JVM already threw */
+    }
 
     nimcp_status_t rc = nimcp_brain_infer(
         brain, feats, (uint32_t)flen, outs, (uint32_t)olen);
@@ -154,6 +166,7 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSave(
 {
     (void)cls;
     const char *c_path = (*env)->GetStringUTFChars(env, path, NULL);
+    if (!c_path) return (jint)NIMCP_OK; /* OOM — JVM already threw */
     nimcp_status_t rc = nimcp_brain_save(
         (nimcp_brain_t)(uintptr_t)h, c_path);
     (*env)->ReleaseStringUTFChars(env, path, c_path);
@@ -165,6 +178,7 @@ JNIEXPORT jlong JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeLoad(
 {
     (void)cls;
     const char *c_path = (*env)->GetStringUTFChars(env, path, NULL);
+    if (!c_path) return 0; /* OOM — JVM already threw */
     nimcp_brain_t brain = nimcp_brain_load(c_path);
     (*env)->ReleaseStringUTFChars(env, path, c_path);
     return (jlong)(uintptr_t)brain;
@@ -175,6 +189,7 @@ JNIEXPORT jlong JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeCreateFromConfig(
 {
     (void)cls;
     const char *c_path = (*env)->GetStringUTFChars(env, path, NULL);
+    if (!c_path) return 0; /* OOM — JVM already threw */
     nimcp_brain_t brain = nimcp_brain_create_from_config(c_path);
     (*env)->ReleaseStringUTFChars(env, path, c_path);
     return (jlong)(uintptr_t)brain;
@@ -234,7 +249,12 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeTrainStep(
     jint flen = (*env)->GetArrayLength(env, features);
     jint tlen = (*env)->GetArrayLength(env, targets);
     jfloat *feats = (*env)->GetFloatArrayElements(env, features, NULL);
+    if (!feats) return NULL; /* OOM — JVM already threw */
     jfloat *tgts = (*env)->GetFloatArrayElements(env, targets, NULL);
+    if (!tgts) {
+        (*env)->ReleaseFloatArrayElements(env, features, feats, JNI_ABORT);
+        return NULL; /* OOM — JVM already threw */
+    }
 
     nimcp_training_result_t result = {0};
     nimcp_status_t rc = nimcp_brain_train_step(
@@ -260,7 +280,12 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeTrainBatch(
     (void)cls;
     nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
     jfloat *feats = (*env)->GetFloatArrayElements(env, features, NULL);
+    if (!feats) return NULL; /* OOM — JVM already threw */
     jfloat *tgts = (*env)->GetFloatArrayElements(env, targets, NULL);
+    if (!tgts) {
+        (*env)->ReleaseFloatArrayElements(env, features, feats, JNI_ABORT);
+        return NULL; /* OOM — JVM already threw */
+    }
 
     nimcp_training_result_t result = {0};
     nimcp_status_t rc = nimcp_brain_train_batch(
@@ -510,7 +535,9 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSnapshotSave(
 {
     (void)cls;
     const char *c_name = (*env)->GetStringUTFChars(env, name, NULL);
+    if (!c_name) return (jint)NIMCP_OK; /* OOM — JVM already threw */
     const char *c_desc = desc ? (*env)->GetStringUTFChars(env, desc, NULL) : NULL;
+    /* c_desc NULL is OK when desc is NULL (optional param) */
 
     nimcp_status_t rc = nimcp_brain_snapshot_save(
         (nimcp_brain_t)(uintptr_t)h, c_name, c_desc);
@@ -525,6 +552,7 @@ JNIEXPORT jlong JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSnapshotRestore(
 {
     (void)cls;
     const char *c_name = (*env)->GetStringUTFChars(env, name, NULL);
+    if (!c_name) return 0; /* OOM — JVM already threw */
     nimcp_brain_t brain = nimcp_brain_snapshot_restore(
         (nimcp_brain_t)(uintptr_t)h, c_name);
     (*env)->ReleaseStringUTFChars(env, name, c_name);
@@ -570,6 +598,7 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSnapshotDelete(
 {
     (void)cls;
     const char *c_name = (*env)->GetStringUTFChars(env, name, NULL);
+    if (!c_name) return (jint)NIMCP_OK; /* OOM — JVM already threw */
     nimcp_status_t rc = nimcp_brain_snapshot_delete(
         (nimcp_brain_t)(uintptr_t)h, c_name);
     (*env)->ReleaseStringUTFChars(env, name, c_name);
@@ -623,6 +652,7 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWorkingMemoryAdd(
     (void)cls;
     jint len = (*env)->GetArrayLength(env, data);
     jfloat *arr = (*env)->GetFloatArrayElements(env, data, NULL);
+    if (!arr) return (jint)NIMCP_OK; /* OOM — JVM already threw */
     nimcp_status_t rc = nimcp_brain_working_memory_add(
         (nimcp_brain_t)(uintptr_t)h, arr, (uint32_t)len, salience);
     (*env)->ReleaseFloatArrayElements(env, data, arr, JNI_ABORT);
@@ -677,6 +707,7 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWorkspaceCompete(
     (void)cls;
     jint len = (*env)->GetArrayLength(env, content);
     jfloat *arr = (*env)->GetFloatArrayElements(env, content, NULL);
+    if (!arr) return (jint)NIMCP_OK; /* OOM — JVM already threw */
     nimcp_status_t rc = nimcp_brain_workspace_compete(
         (nimcp_brain_t)(uintptr_t)h,
         (nimcp_cognitive_module_t)module,
@@ -793,9 +824,18 @@ JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetPhaseCoherence
     (void)cls;
     jint len = (*env)->GetArrayLength(env, neuronIds);
     jint *ids = (*env)->GetIntArrayElements(env, neuronIds, NULL);
+    if (!ids) return 0.0f;
 
     // Convert jint[] to uint32_t[]
+    if (len <= 0 || (size_t)len > SIZE_MAX / sizeof(uint32_t)) {
+        (*env)->ReleaseIntArrayElements(env, neuronIds, ids, JNI_ABORT);
+        return 0.0f;
+    }
     uint32_t *uids = (uint32_t *)malloc((size_t)len * sizeof(uint32_t));
+    if (!uids) {
+        (*env)->ReleaseIntArrayElements(env, neuronIds, ids, JNI_ABORT);
+        return 0.0f;
+    }
     for (jint i = 0; i < len; i++) uids[i] = (uint32_t)ids[i];
 
     float result = nimcp_get_phase_coherence(
@@ -887,7 +927,12 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Network_nativeForward(
     jint ilen = (*env)->GetArrayLength(env, inputs);
     jint olen = (*env)->GetArrayLength(env, outputs);
     jfloat *ins = (*env)->GetFloatArrayElements(env, inputs, NULL);
+    if (!ins) return (jint)NIMCP_OK; /* OOM — JVM already threw */
     jfloat *outs = (*env)->GetFloatArrayElements(env, outputs, NULL);
+    if (!outs) {
+        (*env)->ReleaseFloatArrayElements(env, inputs, ins, JNI_ABORT);
+        return (jint)NIMCP_OK; /* OOM — JVM already threw */
+    }
 
     nimcp_status_t rc = nimcp_network_forward(
         (nimcp_network_t)(uintptr_t)h,
@@ -906,7 +951,12 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Network_nativeTrain(
     jint ilen = (*env)->GetArrayLength(env, inputs);
     jint tlen = (*env)->GetArrayLength(env, targets);
     jfloat *ins = (*env)->GetFloatArrayElements(env, inputs, NULL);
+    if (!ins) return (jint)NIMCP_OK; /* OOM — JVM already threw */
     jfloat *tgts = (*env)->GetFloatArrayElements(env, targets, NULL);
+    if (!tgts) {
+        (*env)->ReleaseFloatArrayElements(env, inputs, ins, JNI_ABORT);
+        return (jint)NIMCP_OK; /* OOM — JVM already threw */
+    }
 
     nimcp_status_t rc = nimcp_network_train(
         (nimcp_network_t)(uintptr_t)h,
@@ -941,6 +991,7 @@ JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Ethics_nativeCheck(
     (void)cls;
     jint len = (*env)->GetArrayLength(env, situation);
     jfloat *arr = (*env)->GetFloatArrayElements(env, situation, NULL);
+    if (!arr) return 0.0f; /* OOM — JVM already threw */
 
     float score = 0;
     nimcp_status_t rc = nimcp_ethics_check(
@@ -975,8 +1026,18 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024KnowledgeGraph_nativeAddFact(
 {
     (void)cls;
     const char *c_subj = (*env)->GetStringUTFChars(env, subject, NULL);
+    if (!c_subj) return (jint)NIMCP_OK; /* OOM — JVM already threw */
     const char *c_pred = (*env)->GetStringUTFChars(env, predicate, NULL);
+    if (!c_pred) {
+        (*env)->ReleaseStringUTFChars(env, subject, c_subj);
+        return (jint)NIMCP_OK;
+    }
     const char *c_obj  = (*env)->GetStringUTFChars(env, object, NULL);
+    if (!c_obj) {
+        (*env)->ReleaseStringUTFChars(env, subject, c_subj);
+        (*env)->ReleaseStringUTFChars(env, predicate, c_pred);
+        return (jint)NIMCP_OK;
+    }
 
     nimcp_status_t rc = nimcp_knowledge_add_fact(
         (nimcp_knowledge_t)(uintptr_t)h, c_subj, c_pred, c_obj);
@@ -992,7 +1053,12 @@ JNIEXPORT jstring JNICALL Java_com_nimcp_NIMCP_00024KnowledgeGraph_nativeQuery(
 {
     (void)cls;
     const char *c_query = (*env)->GetStringUTFChars(env, query, NULL);
+    if (!c_query) return NULL; /* OOM — JVM already threw */
     char *buf = (char *)calloc((size_t)maxLen + 1, 1);
+    if (!buf) {
+        (*env)->ReleaseStringUTFChars(env, query, c_query);
+        return NULL;
+    }
 
     nimcp_status_t rc = nimcp_knowledge_query(
         (nimcp_knowledge_t)(uintptr_t)h, c_query, buf, (uint32_t)maxLen);

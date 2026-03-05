@@ -154,16 +154,9 @@ population_pink_bridge_t* population_pink_bridge_create(
     bridge->config = cfg;
     bridge->num_neurons = num_neurons;
 
-    // Create mutex
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
+    // Initialize bridge base (allocates mutex, sets module name)
+    if (bridge_base_init(&bridge->base, 0, "population_coding_pink_noise") != 0) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_pink_bridge_create: bridge->base is NULL");
-        return NULL;
-    }
-    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "population_pink_bridge_create: validation failed");
         return NULL;
     }
 
@@ -179,7 +172,7 @@ population_pink_bridge_t* population_pink_bridge_create(
 
     bridge->global_generator = pink_noise_create(&pink_cfg);
     if (!bridge->global_generator) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_pink_bridge_create: bridge->global_generator is NULL");
         return NULL;
@@ -192,7 +185,7 @@ population_pink_bridge_t* population_pink_bridge_create(
         );
         if (!bridge->per_neuron_generators) {
             pink_noise_destroy(bridge->global_generator);
-            nimcp_mutex_free(bridge->base.mutex);
+            bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_create: bridge->per_neuron_generators is NULL");
             return NULL;
@@ -209,7 +202,7 @@ population_pink_bridge_t* population_pink_bridge_create(
                 }
                 nimcp_free(bridge->per_neuron_generators);
                 pink_noise_destroy(bridge->global_generator);
-                nimcp_mutex_free(bridge->base.mutex);
+                bridge_base_cleanup(&bridge->base);
                 nimcp_free(bridge);
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_create: bridge->per_neuron_generators is NULL");
                 return NULL;
@@ -227,7 +220,7 @@ population_pink_bridge_t* population_pink_bridge_create(
             nimcp_free(bridge->per_neuron_generators);
         }
         pink_noise_destroy(bridge->global_generator);
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_create: validation failed");
         return NULL;
@@ -258,10 +251,8 @@ void population_pink_bridge_destroy(population_pink_bridge_t* bridge) {
         nimcp_free(bridge->current_noise_values);
     }
 
-    // Destroy mutex
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    // Cleanup bridge base (disconnects bio-async, destroys+frees mutex)
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }

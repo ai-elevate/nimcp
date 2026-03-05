@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 #include "security/nimcp_bbb_helpers.h"
@@ -199,15 +200,9 @@ axon_orchestrator_bridge_t* axon_orchestrator_bridge_create(
         bridge->activity_capacity = capacity;
     }
 
-    /* Create mutex */
-
-
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-
-
-    if (bridge->base.mutex && nimcp_mutex_init(bridge->base.mutex, NULL) == 0) {
-    } else {
-        NIMCP_LOGGING_WARN("axon_orchestrator_bridge_create: mutex creation failed");
+    /* Initialize bridge base (allocates mutex, sets module name) */
+    if (bridge_base_init(&bridge->base, 0, "axon_orchestrator") != 0) {
+        NIMCP_LOGGING_WARN("axon_orchestrator_bridge_create: bridge_base_init failed");
     }
 
     /* Initialize statistics */
@@ -223,16 +218,8 @@ void axon_orchestrator_bridge_destroy(axon_orchestrator_bridge_t* bridge) {
         return;
     }
 
-    /* Disconnect from bio-async */
-    if (bridge->base.bio_async_enabled) {
-        axon_orchestrator_disconnect_bio_async(bridge);
-    }
-
-    /* Free mutex */
-    if ((bridge->base.mutex != NULL)) {
-        nimcp_mutex_free(bridge->base.mutex);
-        bridge->base.mutex = NULL;
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free activity entries */
     if (bridge->activity_entries) {
@@ -499,8 +486,9 @@ void axon_orchestrator_spike_callback(
 
         /* Update EMA: instantaneous spike (value 1.0) mixed with decay */
         float dt_ms = (spike->arrival_time - entry->last_spike_time_us) / (float)US_TO_MS;
-        float decay = expf(-dt_ms / bridge->config.activity_ema_tau_ms);
+        float decay = nimcp_safe_expf(-dt_ms / bridge->config.activity_ema_tau_ms);
         entry->activity_ema = decay * entry->activity_ema + (1.0f - decay) * 1.0f;
+        if (!isfinite(entry->activity_ema)) entry->activity_ema = 1.0f;
         entry->last_spike_time_us = spike->arrival_time;
         entry->spike_count++;
     }

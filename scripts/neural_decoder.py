@@ -155,6 +155,10 @@ class VocabularyBank:
     def decode(self, embedding: np.ndarray, top_k: int = 1) -> list[tuple[str, float]]:
         """Find the nearest text(s) to the given embedding.
 
+        Args:
+            embedding: Query embedding vector.
+            top_k: Number of results to return.
+
         Returns list of (text, cosine_similarity) tuples, sorted by similarity.
         """
         if not self._texts:
@@ -170,8 +174,8 @@ class VocabularyBank:
 
         # Cosine similarity: (M @ q) / (||M|| * ||q||)
         similarities = (self._matrix @ q) / (self._norms.ravel() * q_norm)
-        top_indices = np.argsort(similarities)[-top_k:][::-1]
 
+        top_indices = np.argsort(similarities)[-top_k:][::-1]
         return [(self._texts[i], float(similarities[i])) for i in top_indices]
 
     def __len__(self):

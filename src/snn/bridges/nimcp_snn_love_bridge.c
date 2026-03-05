@@ -57,6 +57,7 @@ snn_love_bridge_t* snn_love_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_love_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_love") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->love_system = love_system;
     bridge->config = *config;
@@ -83,6 +84,7 @@ void snn_love_bridge_destroy(snn_love_bridge_t* bridge) {
     if (bridge->encoder) snn_encoder_destroy(bridge->encoder);
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-love bridge");
 }
@@ -168,8 +170,10 @@ int snn_love_bridge_update(snn_love_bridge_t* bridge, float dt) {
     bridge->state.sync_count++;
     bridge->state.avg_attachment_level = (bridge->state.avg_attachment_level * 0.95f +
                                           attachment_level * 0.05f);
+    if (!isfinite(bridge->state.avg_attachment_level)) bridge->state.avg_attachment_level = attachment_level;
     bridge->state.avg_synchrony = (bridge->state.avg_synchrony * 0.95f +
                                    bridge->state.population_synchrony * 0.05f);
+    if (!isfinite(bridge->state.avg_synchrony)) bridge->state.avg_synchrony = bridge->state.population_synchrony;
 
     return 0;
 }

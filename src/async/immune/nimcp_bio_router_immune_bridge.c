@@ -292,9 +292,7 @@ router_immune_bridge_t* router_immune_bridge_create(
     return bridge;
 
 cleanup:
-    if (bridge->base.mutex) {
-        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge->recent_anomalies);
     nimcp_free(bridge->quarantined_nodes);
     nimcp_free(bridge->inflammation_impacts);
@@ -308,10 +306,8 @@ void router_immune_bridge_destroy(router_immune_bridge_t* bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "bio_router_immune");
 
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free arrays */
     nimcp_free(bridge->recent_anomalies);

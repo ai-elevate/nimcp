@@ -123,14 +123,16 @@ int anomaly_fep_update(anomaly_fep_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    // Get current FEP state
+    /* Query FEP state outside lock to avoid deadlock with FEP mutex */
     float current_fe = fep_get_free_energy(bridge->fep_system);
     float surprise = fep_compute_surprise(bridge->fep_system);
+    float pred_error = fep_get_prediction_error(bridge->fep_system, 0);
+
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     // Update running averages
     bridge->state.avg_surprise = 0.9f * bridge->state.avg_surprise + 0.1f * surprise;
+    if (!isfinite(bridge->state.avg_surprise)) bridge->state.avg_surprise = surprise;
 
     // Compute FEP-based anomaly score
     bridge->fep_effects.fep_anomaly_score = current_fe / bridge->config.anomaly_fe_threshold;
@@ -148,7 +150,6 @@ int anomaly_fep_update(anomaly_fep_bridge_t* bridge) {
     bridge->fep_effects.detection_sensitivity = bridge->state.current_precision;
 
     // Confidence based on prediction stability
-    float pred_error = fep_get_prediction_error(bridge->fep_system, 0);
     bridge->fep_effects.confidence = 1.0f - (pred_error / 10.0f);
     if (bridge->fep_effects.confidence < 0.0f) {
         bridge->fep_effects.confidence = 0.0f;

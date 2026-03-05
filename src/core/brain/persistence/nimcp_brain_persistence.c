@@ -739,7 +739,12 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
         fprintf(stderr, "[INFO] Loading brain metadata (legacy format, no version header)\n");
     }
 
-    fread(&brain->config, sizeof(brain_config_t), 1, meta_file);
+    if (fread(&brain->config, sizeof(brain_config_t), 1, meta_file) != 1) {
+        fprintf(stderr, "ERROR: Short read loading brain config\n");
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "nimcp_brain_load_metadata: short read on brain config");
+        return false;
+    }
 
     // Validate brain->config fields after reading
     // Validate learning_rate (float field - NaN/Inf check)
@@ -791,7 +796,12 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
         return false;
     }
 
-    fread(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file);
+    if (fread(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file) != 1) {
+        fprintf(stderr, "ERROR: Short read loading num_output_labels\n");
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "nimcp_brain_load_metadata: short read on num_output_labels");
+        return false;
+    }
 
     // SECURITY: Strict validation limits to prevent buffer overflow attacks
     #define MAX_OUTPUT_LABELS 10000     // Maximum number of labels
@@ -835,7 +845,10 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
     uint32_t i;
     for (i = 0; i < brain->num_output_labels; i++) {
         uint32_t len;
-        fread(&len, sizeof(uint32_t), 1, meta_file);
+        if (fread(&len, sizeof(uint32_t), 1, meta_file) != 1) {
+            fprintf(stderr, "ERROR: Short read loading label length at index %u\n", i);
+            goto cleanup;
+        }
 
         // SECURITY: Validate label length to prevent buffer overflow
         if (len == 0 || len > MAX_LABEL_LENGTH) {
@@ -857,7 +870,10 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
             goto cleanup;
         }
 
-        fread(brain->output_labels[i], len, 1, meta_file);
+        if (fread(brain->output_labels[i], len, 1, meta_file) != 1) {
+            fprintf(stderr, "ERROR: Short read loading label data at index %u\n", i);
+            goto cleanup;
+        }
     }
 
     // Rebuild O(1) label lookup hash table from loaded labels
@@ -2003,8 +2019,12 @@ brain_t brain_load_ex(const char* filepath, const persistence_config_t* config)
         if (cf) {
             uint32_t stored_checksum = 0;
             long stored_size = 0;
-            fread(&stored_checksum, sizeof(uint32_t), 1, cf);
-            fread(&stored_size, sizeof(long), 1, cf);
+            if (fread(&stored_checksum, sizeof(uint32_t), 1, cf) != 1 ||
+                fread(&stored_size, sizeof(long), 1, cf) != 1) {
+                fprintf(stderr, "WARNING: Short read on checksum file, skipping verification\n");
+                fclose(cf);
+                goto skip_checksum_verify;
+            }
             fclose(cf);
 
             // Read file and verify checksum
@@ -2039,6 +2059,7 @@ brain_t brain_load_ex(const char* filepath, const persistence_config_t* config)
         }
         // No checksum file is not an error - file may have been saved without checksums
     }
+skip_checksum_verify:
 
     // Load using base brain_load function
     brain_t brain = brain_load(filepath);

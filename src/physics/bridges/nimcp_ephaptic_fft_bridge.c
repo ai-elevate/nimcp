@@ -273,6 +273,7 @@ ephaptic_fft_bridge_t* ephaptic_fft_bridge_create(
 ) {
     ephaptic_fft_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate ephaptic FFT bridge");
+    if (bridge_base_init(&bridge->base, 0, "ephaptic_fft") != 0) { nimcp_free(bridge); return NULL; }
 
     /* Apply configuration */
     if (config) {
@@ -385,6 +386,7 @@ void ephaptic_fft_bridge_destroy(ephaptic_fft_bridge_t* bridge) {
         fft_plan_destroy(bridge->fft_plan);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

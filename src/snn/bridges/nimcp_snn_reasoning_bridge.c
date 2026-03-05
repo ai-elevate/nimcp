@@ -54,6 +54,7 @@ snn_reasoning_bridge_t* snn_reasoning_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_reasoning_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_reasoning") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->reasoning = reasoning;
     bridge->config = *config;
@@ -71,6 +72,7 @@ void snn_reasoning_bridge_destroy(snn_reasoning_bridge_t* bridge) {
     if (bridge->base.bio_async_enabled) {
         snn_reasoning_bridge_disconnect_bio_async(bridge);
     }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-reasoning bridge");
 }
@@ -193,6 +195,7 @@ float snn_reasoning_accumulate_evidence(
     /* Temporal integration (leaky accumulation) */
     float alpha = 0.3f;
     float accumulated = bridge->state.evidence_accumulation * (1.0f - alpha) + normalized * alpha;
+    if (!isfinite(accumulated)) accumulated = normalized;
 
     return accumulated;
 }

@@ -410,6 +410,7 @@ int quantum_bio_async_broadcast_coherence(
     }
 
     bridge->stats.avg_coherence = (bridge->stats.avg_coherence * 0.99f) + (coherence_level * 0.01f);
+    if (!isfinite(bridge->stats.avg_coherence)) bridge->stats.avg_coherence = coherence_level;
     bridge->stats.min_coherence = bridge->state.min_coherence;
 
     if (msg.is_critical || msg.is_warning) {

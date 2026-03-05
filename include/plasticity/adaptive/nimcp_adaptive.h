@@ -599,6 +599,16 @@ bool adaptive_network_is_gpu_enabled(adaptive_network_t network);
  */
 void adaptive_network_mark_gpu_weights_dirty(adaptive_network_t network);
 
+/**
+ * @brief Invalidate GPU connected-neuron structure cache after synaptogenesis
+ *
+ * Frees cached connected_dst arrays so the GPU forward pass rebuilds them
+ * with newly sprouted neurons included. Also marks weights dirty.
+ *
+ * @param network Adaptive network (NULL-safe)
+ */
+void adaptive_network_invalidate_gpu_structure(adaptive_network_t network);
+
 //=============================================================================
 // Neuron (AWS Inferentia) Inference Accessors
 //=============================================================================

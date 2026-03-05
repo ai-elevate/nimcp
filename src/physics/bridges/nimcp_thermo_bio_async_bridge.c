@@ -123,6 +123,7 @@ thermo_bio_async_bridge_t* thermo_bio_async_bridge_create(
 ) {
     thermo_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate thermo bio-async bridge");
+    if (bridge_base_init(&bridge->base, 0, "thermo_bio_async") != 0) { nimcp_free(bridge); return NULL; }
 
     if (config) {
         bridge->config = *config;
@@ -153,6 +154,7 @@ void thermo_bio_async_bridge_destroy(thermo_bio_async_bridge_t* bridge) {
     }
 
     nimcp_free(bridge->subscriptions);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

@@ -2779,9 +2779,12 @@ uint32_t attention_sample_head_mc(const float* head_importances,
         }
     }
 
-    /* Compute softmax probabilities (inline to avoid allocation) */
+    /* Compute softmax probabilities */
     float sum_exp = 0.0f;
-    float* probs = alloca(num_heads * sizeof(float));
+    float* probs = (float*)nimcp_malloc(num_heads * sizeof(float));
+    if (!probs) {
+        return 0;
+    }
 
     for (uint32_t i = 0; i < num_heads; i++) {
         probs[i] = expf((head_importances[i] - max_imp) / temperature);
@@ -2795,10 +2798,12 @@ uint32_t attention_sample_head_mc(const float* head_importances,
     for (uint32_t i = 0; i < num_heads; i++) {
         cumulative += probs[i];
         if (r < cumulative) {
+            nimcp_free(probs);
             return i;
         }
     }
 
+    nimcp_free(probs);
     return num_heads - 1;
 }
 

@@ -56,6 +56,7 @@ snn_tom_bridge_t* snn_tom_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_tom_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_tom") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->tom = tom;
     bridge->config = *config;
@@ -75,6 +76,7 @@ void snn_tom_bridge_destroy(snn_tom_bridge_t* bridge) {
     }
     if (bridge->encoder) snn_encoder_destroy(bridge->encoder);
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-tom bridge");
 }
@@ -130,6 +132,7 @@ int snn_tom_bridge_update(snn_tom_bridge_t* bridge, float dt) {
         float spike_rate = snn_population_get_firing_rate(bridge->tom_pop);
         bridge->state.mentalizing_activity = snn_tom_compute_mentalizing(bridge, spike_rate);
         bridge->state.avg_tom_rate = (bridge->state.avg_tom_rate * 0.9f + spike_rate * 0.1f);
+        if (!isfinite(bridge->state.avg_tom_rate)) bridge->state.avg_tom_rate = spike_rate;
 
         if (bridge->state.mentalizing_activity >= bridge->config.mentalizing_threshold) {
             bridge->state.mentalizing_active = true;

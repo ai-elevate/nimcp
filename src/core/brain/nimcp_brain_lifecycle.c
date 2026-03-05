@@ -41,6 +41,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain_bio_async.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "plasticity/structural/nimcp_structural_plasticity.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "plasticity/attention/nimcp_attention.h"
 #include "core/brain_regions/nimcp_brain_regions.h"
@@ -59,6 +60,13 @@
 #include "core/brain/factory/init/nimcp_brain_init.h"
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/factory/nimcp_brain_init_state_manager.h"
+#include "core/brain/factory/init/nimcp_brain_init_white_matter.h"
+#include "core/brain/factory/init/nimcp_brain_init_inferior_colliculus.h"
+#include "core/brain/factory/init/nimcp_brain_init_spinal_cord.h"
+#include "core/brain/factory/init/nimcp_brain_init_cortical_interneurons.h"
+#include "core/brain/factory/init/nimcp_brain_init_neuropeptide.h"
+#include "core/brain/factory/init/nimcp_brain_init_endocannabinoid.h"
+#include "core/brain/factory/init/nimcp_brain_init_glymphatic.h"
 
 /* Coordinator/Orchestrator headers for cleanup */
 #include "async/nimcp_bio_async_orchestrator.h"
@@ -888,6 +896,13 @@ void brain_destroy(brain_t brain)
         brain->immune_bridge_coordinator_enabled = false;
     }
 
+    // 2b. Cleanup structural plasticity (before coordinator which registered it)
+    if (brain->structural_plasticity) {
+        structural_plasticity_destroy(brain->structural_plasticity);
+        brain->structural_plasticity = NULL;
+        brain->structural_plasticity_enabled = false;
+    }
+
     // 2. Cleanup plasticity coordinator
     if (brain->plasticity_coordinator) {
         plasticity_coordinator_disconnect_bio_async(brain->plasticity_coordinator);
@@ -930,6 +945,29 @@ void brain_destroy(brain_t brain)
         brain->directive_fep_bridge = NULL;     // Managed internally by directives
         brain->core_directives_enabled = false;
     }
+
+    // -0.1 Cleanup 7 new brain subsystems (reverse init order: glymphatic first, white matter last)
+
+    // Glymphatic System (brain waste clearance)
+    nimcp_brain_destroy_glymphatic_subsystem(brain);
+
+    // Endocannabinoid System (retrograde synaptic modulation)
+    nimcp_brain_factory_destroy_endocannabinoid_subsystem(brain);
+
+    // Neuropeptide System (slow neuromodulation)
+    nimcp_brain_factory_destroy_neuropeptide_subsystem(brain);
+
+    // Cortical Interneurons (inhibitory microcircuit control)
+    nimcp_brain_factory_destroy_cortical_interneurons_subsystem(brain);
+
+    // Spinal Cord (motor output, CPGs, reflex arcs)
+    nimcp_brain_factory_destroy_spinal_cord_subsystem(brain);
+
+    // Inferior Colliculus (auditory midbrain processing)
+    nimcp_brain_ic_destroy(brain);
+
+    // White Matter Tracts (long-range connectivity — foundational, destroyed last of the 7)
+    nimcp_brain_factory_destroy_white_matter_subsystem(brain);
 
     // -1. Cleanup Parietal Lobe (mathematical/scientific reasoning)
     // Parietal is destroyed before medulla since it's a higher cognitive function

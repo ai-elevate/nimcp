@@ -131,6 +131,7 @@ graph_theory_bridge_t graph_theory_bridge_create(
 {
     struct graph_theory_bridge* bridge = nimcp_calloc(1, sizeof(struct graph_theory_bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate graph theory bridge");
+    if (bridge_base_init(&bridge->base, 0, "graph_theory") != 0) { nimcp_free(bridge); return NULL; }
 
     /* Apply configuration */
     if (config) {
@@ -166,6 +167,7 @@ void graph_theory_bridge_destroy(graph_theory_bridge_t bridge)
         NIMCP_LOG_INFO(LOG_TAG, "Destroying graph theory bridge");
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

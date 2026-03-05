@@ -86,11 +86,8 @@ astro_immune_bridge_t* astro_cell_create(
     bridge->reactivity_state = ASTRO_QUIESCENT;
     bridge->glutamate_clearance_rate = bridge->config.glutamate_clearance_base;
 
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
-    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
+    if (bridge_base_init(&bridge->base, 0, "astrocytes_immune") != 0) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "astro_cell_create: validation failed");
         return NULL;
     }
 
@@ -102,8 +99,7 @@ astro_immune_bridge_t* astro_cell_create(
 void astro_cell_destroy(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return;
-    if (bridge->base.bio_async_enabled) astro_cell_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) { nimcp_mutex_free(bridge->base.mutex); }
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

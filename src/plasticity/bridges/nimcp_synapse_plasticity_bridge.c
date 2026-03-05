@@ -199,18 +199,8 @@ synapse_plasticity_bridge_t* synapse_plasticity_create(
     bridge->synapse = synapse;
     bridge->orch = orch;
 
-    /* Allocate mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_plasticity_create: failed to allocate mutex");
-        nimcp_free(bridge);
-        return NULL;
-    }
-    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "synapse_plasticity_create: failed to initialize mutex");
-        nimcp_free(bridge->base.mutex);
+    /* Initialize bridge base (allocates mutex, sets module name) */
+    if (bridge_base_init(&bridge->base, 0, "synapse_plasticity") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -226,15 +216,8 @@ void synapse_plasticity_destroy(synapse_plasticity_bridge_t* bridge)
 {
     if (!bridge) return;
 
-    /* Disconnect bio-async */
-    if (bridge->base.bio_async_enabled) {
-        synapse_plasticity_disconnect_bio_async(bridge);
-    }
-
-    /* Free mutex */
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed synapse-plasticity bridge");

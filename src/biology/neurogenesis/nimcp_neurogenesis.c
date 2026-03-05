@@ -440,6 +440,7 @@ nimcp_neurogenesis_error_t nimcp_neurogenesis_update(nimcp_neurogenesis_t ng, fl
     /* Update stats averages */
     ng->stats.avg_proliferation_rate = ng->stats.avg_proliferation_rate * 0.99f +
                                        ng->state.global_proliferation_rate * 0.01f;
+    if (!isfinite(ng->stats.avg_proliferation_rate)) ng->stats.avg_proliferation_rate = ng->state.global_proliferation_rate;
 
     return NEUROGENESIS_OK;
 }

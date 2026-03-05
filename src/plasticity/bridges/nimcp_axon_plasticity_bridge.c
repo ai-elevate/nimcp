@@ -186,14 +186,8 @@ axon_plasticity_bridge_t* axon_plasticity_create(
     memset(bridge->segments, 0,
            bridge->segment_capacity * sizeof(axon_segment_state_t));
 
-    /* Allocate mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_plasticity_create: failed to allocate mutex");
-        goto cleanup;
-    }
-    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "axon_plasticity_create: failed to initialize mutex");
+    /* Initialize bridge base (allocates mutex, sets module name) */
+    if (bridge_base_init(&bridge->base, 0, "axon_plasticity") != 0) {
         goto cleanup;
     }
 
@@ -205,7 +199,7 @@ axon_plasticity_bridge_t* axon_plasticity_create(
     return bridge;
 
 cleanup:
-    nimcp_free(bridge->base.mutex);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge->segments);
     nimcp_free(bridge);
     return NULL;
@@ -215,13 +209,8 @@ void axon_plasticity_destroy(axon_plasticity_bridge_t* bridge)
 {
     if (!bridge) return;
 
-    if (bridge->base.bio_async_enabled) {
-        axon_plasticity_disconnect_bio_async(bridge);
-    }
-
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     if (bridge->segments) {
         nimcp_free(bridge->segments);

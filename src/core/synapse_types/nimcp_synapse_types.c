@@ -10,6 +10,7 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include <math.h>
 #include <string.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 // === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
 #include "async/nimcp_bio_async.h"
@@ -100,7 +101,8 @@ float synapse_compute_ampa(
     ampa_state_t* state = &syn->type_state.ampa;
 
     // 1. Exponential decay of conductance
-    state->conductance *= expf(-dt / state->tau_decay);
+    state->conductance *= nimcp_safe_expf(-dt / state->tau_decay);
+    NIMCP_EMA_GUARD_ZERO(state->conductance);
 
     // 2. Add spike-triggered conductance increment
     if (pre_spike > 0.5F) {
@@ -178,7 +180,8 @@ float synapse_compute_nmda(
     nmda_state_t* state = &syn->type_state.nmda;
 
     // 1. Exponential decay of conductance
-    state->conductance *= expf(-dt / state->tau_decay);
+    state->conductance *= nimcp_safe_expf(-dt / state->tau_decay);
+    NIMCP_EMA_GUARD_ZERO(state->conductance);
 
     // 2. Add spike-triggered conductance increment
     if (pre_spike > 0.5F) {
@@ -188,7 +191,8 @@ float synapse_compute_nmda(
     // 3. Voltage-dependent Mg2+ block (Jahr-Stevens model)
     // B(V) = 1 / (1 + [Mg2+]_o * exp(-0.062*V) / 3.57)
     float voltage = post_neuron->state;
-    float mg_factor = state->mg_concentration * expf(-NMDA_MG_SLOPE * voltage) / NMDA_MG_IC50;
+    float mg_factor = state->mg_concentration * nimcp_safe_expf(-NMDA_MG_SLOPE * voltage) / NMDA_MG_IC50;
+    if (!isfinite(mg_factor)) mg_factor = 1.0F;
     float mg_block = 1.0F / (1.0F + mg_factor);
 
     // 4. Compute synaptic current with Mg2+ gating
@@ -202,7 +206,8 @@ float synapse_compute_nmda(
     }
 
     // Decay calcium over time (τ_ca ≈ 100 ms)
-    state->calcium_influx *= expf(-dt / 100.0F);
+    state->calcium_influx *= nimcp_safe_expf(-dt / 100.0F);
+    NIMCP_EMA_GUARD_ZERO(state->calcium_influx);
 
     return current;
 }
@@ -256,7 +261,8 @@ float synapse_compute_gaba_a(
     gaba_a_state_t* state = &syn->type_state.gaba_a;
 
     // 1. Exponential decay
-    state->conductance *= expf(-dt / state->tau_decay);
+    state->conductance *= nimcp_safe_expf(-dt / state->tau_decay);
+    NIMCP_EMA_GUARD_ZERO(state->conductance);
 
     // 2. Spike-triggered increment
     if (pre_spike > 0.5F) {
@@ -319,7 +325,8 @@ float synapse_compute_gaba_b(
     gaba_b_state_t* state = &syn->type_state.gaba_b;
 
     // 1. Exponential decay (much slower than GABA-A)
-    state->conductance *= expf(-dt / state->tau_decay);
+    state->conductance *= nimcp_safe_expf(-dt / state->tau_decay);
+    NIMCP_EMA_GUARD_ZERO(state->conductance);
 
     // 2. Spike-triggered increment
     if (pre_spike > 0.5F) {
@@ -395,8 +402,10 @@ float synapse_compute_dopamine(
     dopamine_state_t* state = &syn->type_state.dopamine;
 
     // 1. Exponential decay of D1/D2 receptor activation
-    state->d1_level *= expf(-dt / state->tau_d1);
-    state->d2_level *= expf(-dt / state->tau_d2);
+    state->d1_level *= nimcp_safe_expf(-dt / state->tau_d1);
+    NIMCP_EMA_GUARD_ZERO(state->d1_level);
+    state->d2_level *= nimcp_safe_expf(-dt / state->tau_d2);
+    NIMCP_EMA_GUARD_ZERO(state->d2_level);
 
     // 2. Compute net modulation (D1 - D2 competition)
     state->modulation = state->d1_level - state->d2_level;
@@ -462,8 +471,10 @@ float synapse_compute_serotonin(
     serotonin_state_t* state = &syn->type_state.serotonin;
 
     // 1. Exponential decay
-    state->ht1a_level *= expf(-dt / state->tau_ht1a);
-    state->ht2a_level *= expf(-dt / state->tau_ht2a);
+    state->ht1a_level *= nimcp_safe_expf(-dt / state->tau_ht1a);
+    NIMCP_EMA_GUARD_ZERO(state->ht1a_level);
+    state->ht2a_level *= nimcp_safe_expf(-dt / state->tau_ht2a);
+    NIMCP_EMA_GUARD_ZERO(state->ht2a_level);
 
     // 2. Compute net modulation (5-HT2A excitatory, 5-HT1A inhibitory)
     state->modulation = state->ht2a_level - state->ht1a_level;
@@ -531,8 +542,10 @@ float synapse_compute_acetylcholine(
     acetylcholine_state_t* state = &syn->type_state.acetylcholine;
 
     // 1. Exponential decay
-    state->nicotinic_level *= expf(-dt / state->tau_nicotinic);
-    state->muscarinic_level *= expf(-dt / state->tau_muscarinic);
+    state->nicotinic_level *= nimcp_safe_expf(-dt / state->tau_nicotinic);
+    NIMCP_EMA_GUARD_ZERO(state->nicotinic_level);
+    state->muscarinic_level *= nimcp_safe_expf(-dt / state->tau_muscarinic);
+    NIMCP_EMA_GUARD_ZERO(state->muscarinic_level);
 
     // 2. Compute net modulation (both enhance transmission)
     state->modulation = state->nicotinic_level + state->muscarinic_level;

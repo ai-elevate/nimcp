@@ -48,6 +48,7 @@ snn_wellbeing_bridge_t* snn_wellbeing_bridge_create(const snn_wellbeing_config_t
     }
 
     memset(bridge, 0, sizeof(snn_wellbeing_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_wellbeing") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->wellbeing_system = wellbeing_system;
     bridge->config = *config;
@@ -69,6 +70,7 @@ void snn_wellbeing_bridge_destroy(snn_wellbeing_bridge_t* bridge) {
         snn_wellbeing_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->wellbeing_buffer) nimcp_free(bridge->wellbeing_buffer);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-wellbeing bridge");
 }

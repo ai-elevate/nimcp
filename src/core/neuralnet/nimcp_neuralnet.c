@@ -716,9 +716,9 @@ neural_network_t neural_network_create(const network_config_t* config)
         for (uint32_t l = 1; l < config->num_layers - 1; l++) {
             total_hidden += config->layer_sizes[l];
         }
-        uint32_t backbone_target = output_size * 32;
+        uint32_t backbone_target = output_size * 16;
         if (backbone_target < 1024) backbone_target = 1024;
-        if (backbone_target > 16384) backbone_target = 16384;
+        if (backbone_target > 32768) backbone_target = 32768;
         uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
         backbone_connections = (uint64_t)backbone * ((uint64_t)input_size + output_size);
     }
@@ -806,9 +806,9 @@ neural_network_t neural_network_create(const network_config_t* config)
             // Each output class gets backbone/output_size dedicated neurons for
             // specialization. 32 backbone neurons per class is the sweet spot:
             // enough for complex decision boundaries, small enough for fast init.
-            uint32_t backbone_target = output_size * 4;
+            uint32_t backbone_target = output_size * 16;
             if (backbone_target < 1024) backbone_target = 1024;
-            if (backbone_target > 8192) backbone_target = 8192;
+            if (backbone_target > 32768) backbone_target = 32768;
             uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
 
             // Evenly space backbone neurons across the hidden layer
@@ -2009,18 +2009,84 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
 }
 
 /**
+ * Synaptogenesis: Activate dormant neurons near active backbone neurons.
+ *
+ * For each highly-active backbone neuron, check its nearest unwired neighbor.
+ * If that neighbor has zero connections, wire it in by copying a random subset
+ * of the backbone neuron's input sources with small initial weights.
+ *
+ * This implements axonal sprouting — new connections grow from active neurons
+ * toward nearby dormant neurons, gradually expanding the network's capacity.
+ */
+static uint32_t neural_network_sprout_connections_impl(neural_network_t network,
+                                                        uint32_t max_new_connections,
+                                                        float activity_threshold)
+{
+    if (!network || max_new_connections == 0) return 0;
+    if (network->config.num_layers < 3 || !network->config.layer_sizes) return 0;
+
+    uint32_t input_size = network->config.layer_sizes[0];
+    uint32_t output_size = network->config.layer_sizes[network->config.num_layers - 1];
+    uint32_t total_hidden = 0;
+    for (uint32_t l = 1; l < network->config.num_layers - 1; l++)
+        total_hidden += network->config.layer_sizes[l];
+    if (total_hidden < 100) return 0;
+
+    uint32_t hidden_start = input_size;
+    uint32_t output_start = 0;
+    for (uint32_t l = 0; l < network->config.num_layers - 1; l++)
+        output_start += network->config.layer_sizes[l];
+
+    uint32_t new_conns = 0;
+    float init_scale = 1.0f / sqrtf((float)input_size);
+
+    for (uint32_t h = hidden_start; h < hidden_start + total_hidden - 1 && new_conns < max_new_connections; h++) {
+        neuron_t* active = &network->neurons[h];
+        if (NEURON_IN_COUNT(active) == 0) continue;
+        if (fabsf(active->state) < activity_threshold) continue;
+
+        for (int32_t offset = 1; offset <= 8 && new_conns < max_new_connections; offset++) {
+            uint32_t neighbor_id = h + offset;
+            if (neighbor_id >= hidden_start + total_hidden) break;
+            neuron_t* neighbor = &network->neurons[neighbor_id];
+            if (NEURON_IN_COUNT(neighbor) > 0) continue;
+            if (NEURON_OUT_COUNT(neighbor) > 0) continue;
+
+            uint32_t in_count = NEURON_IN_COUNT(active);
+            uint32_t to_copy = (in_count > 16) ? 16 : in_count;
+            for (uint32_t s = 0; s < to_copy && new_conns < max_new_connections; s++) {
+                synapse_handle_t* src_h = NEURON_IN_HANDLE(active, s);
+                if (!src_h) continue;
+                float weight = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * init_scale * 0.5f;
+                neural_network_add_connection(network, src_h->target_neuron_id, neighbor_id, weight);
+                new_conns++;
+            }
+
+            uint32_t out_target = (output_size > 64) ? 64 : output_size;
+            uint32_t out_step = output_size / out_target;
+            for (uint32_t o = 0; o < out_target && new_conns < max_new_connections; o++) {
+                uint32_t output_id = output_start + o * out_step;
+                if (output_id >= network->num_neurons) break;
+                float weight = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * init_scale * 0.25f;
+                neural_network_add_connection(network, neighbor_id, output_id, weight);
+                new_conns++;
+            }
+        }
+    }
+
+    if (new_conns > 0) {
+        LOG_INFO(LOG_MODULE, "Synaptogenesis: %u new connections sprouted", new_conns);
+        fprintf(stderr, "[SYNAPTOGENESIS] %u new connections sprouted\n", new_conns);
+    }
+    return new_conns;
+}
+
+/**
  * @brief Apply reward-modulated bio-plasticity to ACTIVE neurons only.
  *
- * WHY: The full neural_network_apply_reward_learning() iterates ALL neurons
- *      twice (pre-pass + main loop), which costs ~80s at 1.5M neurons.
- *      This version samples only neurons with |state| > activity_threshold,
- *      making STDP/BCM/eligibility feasible at any network size.
- *
- * ALGORITHM:
- *   1. Scan neurons, collect indices where |state| > threshold (typically <1% are active)
- *   2. Set outgoing synapse traces only for active neurons
- *   3. Apply STDP/Oja/eligibility/BCM only to active neurons
- *   4. Sync outgoing→incoming weights only for modified synapses
+ * Includes Phase 5: synaptogenesis — grows new connections from active
+ * backbone neurons to nearby dormant neurons, breaking the chicken-and-egg
+ * problem where STDP needs connections but connections need STDP.
  */
 uint32_t neural_network_apply_reward_learning_active(neural_network_t network, float reward,
                                                      float learning_rate, uint64_t current_time,
@@ -2031,7 +2097,7 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
     if (activity_threshold <= 0.0f) activity_threshold = 0.01f;
 
     /* Phase 1: Collect active neuron indices */
-    uint32_t max_active = network->num_neurons / 10 + 256;  /* Expect <10% active */
+    uint32_t max_active = network->num_neurons / 10 + 256;
     uint32_t* active_ids = nimcp_malloc(max_active * sizeof(uint32_t));
     if (!active_ids) return 0;
     uint32_t num_active = 0;
@@ -2090,7 +2156,8 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
 
                 float dopamine = 0.5f;
                 if (network->neuromodulator_system) {
-                    dopamine = neuromodulator_get_level(network->neuromodulator_system, NEUROMOD_DOPAMINE);
+                    dopamine = neuromodulator_get_level(
+                        (neuromodulator_system_t)network->neuromodulator_system, NEUROMOD_DOPAMINE);
                 }
 
                 float old_weight = out_h->weight;
@@ -2151,7 +2218,20 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
         }
     }
 
+    /* Phase 5: Synaptogenesis — activate dormant neighbors of active neurons.
+     * Gate on num_active (not total_modified) to break chicken-and-egg:
+     * new connections need activity, but STDP/Oja need existing connections.
+     * Rate-limited: run every 10 learn steps to avoid metadata pool exhaustion. */
+    static uint32_t sprout_counter = 0;
+    if (network->num_neurons > 10000 && num_active > 0 && (++sprout_counter % 10) == 0) {
+        uint32_t sprout_budget = (num_active > 64) ? num_active : 64;
+        if (sprout_budget > 1024) sprout_budget = 1024;
+        neural_network_sprout_connections_impl(network, sprout_budget, activity_threshold);
+    }
+
     nimcp_free(active_ids);
+    LOG_INFO(LOG_MODULE, "Active reward learning: %u/%u neurons active, %u synapses modified (reward=%.3f)",
+             num_active, network->num_neurons, total_modified, reward);
     return total_modified;
 }
 

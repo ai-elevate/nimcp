@@ -577,6 +577,12 @@ float neuromodulator_get_level(neuromodulator_system_t system, neuromodulator_ty
     return level;
 }
 
+phasic_tonic_state_t* neuromodulator_get_dopamine_phasic_tonic(neuromodulator_system_t system)
+{
+    if (!system) return NULL;
+    return &system->dopamine_phasic_tonic;
+}
+
 bool neuromodulator_get_levels(neuromodulator_system_t system, neuromodulator_pool_t* pool)
 {
     if (!system || !pool || !pool->concentrations) return false;

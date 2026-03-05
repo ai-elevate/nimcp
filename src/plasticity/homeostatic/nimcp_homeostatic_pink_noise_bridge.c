@@ -181,12 +181,14 @@ int homeo_pink_noise_update(homeo_pink_noise_bridge_t* bridge) {
 
     float noise_amp = fabsf(bridge->target_rate_noise) * amp;
     bridge->avg_noise_amplitude = bridge->avg_noise_amplitude * 0.99f + noise_amp * 0.01f;
+    if (!isfinite(bridge->avg_noise_amplitude)) bridge->avg_noise_amplitude = noise_amp;
     if (noise_amp > bridge->max_noise_amplitude) {
         bridge->max_noise_amplitude = noise_amp;
     }
 
     float rate_shift = bridge->noisy_target_rate - base_target_rate;
     bridge->avg_target_rate_shift = bridge->avg_target_rate_shift * 0.99f + rate_shift * 0.01f;
+    if (!isfinite(bridge->avg_target_rate_shift)) bridge->avg_target_rate_shift = rate_shift;
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);

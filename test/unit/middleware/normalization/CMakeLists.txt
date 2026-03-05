@@ -78,3 +78,22 @@ target_link_libraries(unit_middleware_normalization_immune
     )
 add_test(NAME unit_middleware_normalization_immune
          COMMAND unit_middleware_normalization_immune)
+
+# Test Normalizer Thread Safety (Bug H13)
+add_executable(unit_middleware_normalization_thread_safety
+    test_normalizer_thread_safety.cpp
+)
+target_link_libraries(unit_middleware_normalization_thread_safety
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        Threads::Threads
+    )
+add_test(NAME unit_middleware_normalization_thread_safety
+         COMMAND unit_middleware_normalization_thread_safety)
+set_tests_properties(unit_middleware_normalization_thread_safety
+    PROPERTIES
+        LABELS "unit;middleware;normalization;thread_safety"
+        TIMEOUT 60)

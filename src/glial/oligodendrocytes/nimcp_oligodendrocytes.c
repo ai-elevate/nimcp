@@ -1370,6 +1370,7 @@ void oligodendrocyte_remodel_myelination(oligodendrocyte_t* oligo, float dt) {
         if (axon->myelination_level > base_target) {
             // Decay is much slower than growth (myelin maintenance is metabolically efficient)
             axon->target_myelination = axon->myelination_level * 0.99F + base_target * 0.01F;
+            if (!isfinite(axon->target_myelination)) axon->target_myelination = base_target;
         } else {
             axon->target_myelination = base_target;
         }

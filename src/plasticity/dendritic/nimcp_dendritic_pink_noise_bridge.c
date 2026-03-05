@@ -142,13 +142,9 @@ dendritic_pink_noise_bridge_t* dendritic_pink_noise_bridge_create(
     bridge->noise_effects.effective_amplitude = 1.0f;
     bridge->noise_effects.effective_alpha = bridge->config.pink_noise_alpha;
 
-    /* Create mutex for thread safety */
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_WARN("Failed to allocate mutex, continuing without thread safety");
-    } else if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        NIMCP_LOGGING_WARN("Failed to initialize mutex, continuing without thread safety");
-        bridge->base.mutex = NULL;
+    /* Initialize bridge base (allocates mutex, sets module name) */
+    if (bridge_base_init(&bridge->base, 0, "dendritic_pink_noise") != 0) {
+        NIMCP_LOGGING_WARN("Failed to init bridge base, continuing without thread safety");
     }
 
     NIMCP_LOGGING_INFO("Created dendritic-pink noise bridge");
@@ -159,20 +155,13 @@ void dendritic_pink_noise_bridge_destroy(dendritic_pink_noise_bridge_t* bridge) 
     /* Guard: Check for null */
     if (!bridge) return;
 
-    /* Disconnect bio-async if connected */
-    if (bridge->base.bio_async_enabled) {
-        dendritic_pink_noise_disconnect_bio_async(bridge);
-    }
-
     /* Destroy pink noise generator */
     if (bridge->noise_generator) {
         pink_noise_destroy(bridge->noise_generator);
     }
 
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge structure */
     nimcp_free(bridge);

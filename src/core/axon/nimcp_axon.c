@@ -561,24 +561,20 @@ bool axon_initiate_spike(axon_t* axon,
         return false;
     }
     if (!axon->is_functional) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_initiate_spike: axon->is_functional is NULL");
-        return false;
+        return false;  /* Normal: non-functional axon */
     }
     if (axon->damage >= 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_initiate_spike: capacity exceeded");
-        return false;
+        return false;  /* Normal: fully damaged axon */
     }
 
     // Check refractory period
     if (axon_is_refractory(axon, current_time)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_initiate_spike: validation failed");
-        return false;
+        return false;  /* Normal: refractory period */
     }
 
     // Check ATP level (metabolic gating)
     if (axon->atp_level < 0.1F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_initiate_spike: validation failed");
-        return false;
+        return false;  /* Normal: low ATP */
     }
 
     // Acquire lock
@@ -598,7 +594,8 @@ bool axon_initiate_spike(axon_t* axon,
     // Calculate inter-spike interval
     if (axon->activity.last_spike_time > 0) {
         float isi = (float)(current_time - axon->activity.last_spike_time) / 1000.0F;
-        axon->activity.mean_isi = 0.9F * axon->activity.mean_isi + 0.1F * isi;
+        float new_isi = 0.9F * axon->activity.mean_isi + 0.1F * isi;
+        if (isfinite(new_isi)) axon->activity.mean_isi = new_isi;
     }
     axon->activity.last_spike_time = current_time;
 
@@ -705,11 +702,17 @@ void axon_update_activity(axon_t* axon, uint64_t current_time)
 
     // Decay activity EMA
     float decay = powf(ACTIVITY_DECAY_FACTOR, dt_ms);
-    axon->activity.activity_ema *= decay;
+    float ema_tmp = axon->activity.activity_ema * decay;
+    if (isfinite(ema_tmp)) {
+        axon->activity.activity_ema = ema_tmp;
+    }
 
     // Add contribution from recent spikes
     if (axon->activity.recent_spikes > 0) {
-        axon->activity.activity_ema += (float)axon->activity.recent_spikes * 0.1F;
+        float ema_add = axon->activity.activity_ema + (float)axon->activity.recent_spikes * 0.1F;
+        if (isfinite(ema_add)) {
+            axon->activity.activity_ema = ema_add;
+        }
         if (axon->activity.activity_ema > 1.0F) {
             axon->activity.activity_ema = 1.0F;
         }
@@ -1073,7 +1076,10 @@ bool axon_spike_queue_pop(axon_spike_queue_t* queue,
         // Update running mean (online algorithm)
         queue->stats.latency_samples++;
         double delta = latency_d - queue->stats.mean_latency_us;
-        queue->stats.mean_latency_us += delta / queue->stats.latency_samples;
+        double mean_tmp = queue->stats.mean_latency_us + delta / queue->stats.latency_samples;
+        if (isfinite(mean_tmp)) {
+            queue->stats.mean_latency_us = mean_tmp;
+        }
     }
 
     nimcp_mutex_unlock(&queue->lock);
@@ -2122,7 +2128,9 @@ float axon_apply_activity_myelination(axon_t* axon, float activity, float dt)
                 current_lamellae, activity, dt, &kinetics);
 
             float delta = new_lamellae - current_lamellae;
-            total_delta += delta;
+            if (isfinite(delta)) {
+                total_delta += delta;
+            }
 
             // Update myelination level
             seg->myelination = nimcp_clampf(new_lamellae / 40.0F, 0.0F, 1.0F);

@@ -80,6 +80,37 @@ add_test(NAME regression_cognitive_immune_code_immune
 set_tests_properties(regression_cognitive_immune_code_immune PROPERTIES LABELS "regression")
 
 # ============================================================================
+# Race Condition + NULL Deref Regression Tests (2026-03-05)
+# ============================================================================
+# WHAT: Regression tests for C1/H2 (immune antigen race), C3 (sensory race),
+#       C2 (SNN surrogate NULL deref)
+# WHY:  Verify thread-safety fixes and NULL pointer guards
+# HOW:  Multi-threaded antigen tests, concurrent sensory updates, NULL gradient checks
+
+add_executable(regression_race_condition
+    test_race_condition_regression.cpp
+)
+target_link_libraries(regression_race_condition
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(regression_race_condition
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(regression_race_condition PRIVATE cxx_std_17)
+add_test(NAME regression_race_condition
+         COMMAND regression_race_condition)
+set_tests_properties(regression_race_condition PROPERTIES
+    LABELS "regression;race;immune;sensory;snn"
+    TIMEOUT 120
+)
+
+# ============================================================================
 # Brain Immune Tick Enhanced Regression Tests (Check Framework)
 # ============================================================================
 # WHAT: Regression tests for brain immune tick NIMCP utility enhancements

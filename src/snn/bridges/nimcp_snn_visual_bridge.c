@@ -104,6 +104,7 @@ snn_visual_bridge_t* snn_visual_bridge_create(
 
     /* Initialize structure */
     memset(bridge, 0, sizeof(snn_visual_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_visual") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->visual_cortex = visual_cortex;
     bridge->config = *config;
@@ -222,6 +223,7 @@ void snn_visual_bridge_destroy(snn_visual_bridge_t* bridge) {
     if (bridge->encoder) snn_encoder_destroy(bridge->encoder);
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-visual bridge");
 }

@@ -166,6 +166,7 @@ physics_percept_bridge_t* physics_percept_bridge_create(
 ) {
     physics_percept_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate physics-perception bridge");
+    if (bridge_base_init(&bridge->base, 0, "physics_perception") != 0) { nimcp_free(bridge); return NULL; }
 
     if (config) {
         bridge->config = *config;
@@ -214,6 +215,7 @@ void physics_percept_bridge_destroy(physics_percept_bridge_t* bridge) {
         (unsigned long)bridge->stats.auditory_inputs,
         (unsigned long)bridge->stats.binding_events);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

@@ -9,6 +9,7 @@
 #include "api/nimcp_api_exception.h"
 
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -35,6 +36,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(multimodal_integration)
 //=============================================================================
 
 struct multimodal_integration_struct {
+    // Thread safety
+    nimcp_mutex_t* mutex;
+
     // Configuration
     multimodal_config_t config;
 
@@ -64,14 +68,21 @@ struct multimodal_integration_struct {
 multimodal_integration_t multimodal_integration_create(const multimodal_config_t* config)
 {
     if (!config || config->output_dim == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_integration_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_integration_create: config is NULL");
         return NULL;
     }
 
     multimodal_integration_t integration = nimcp_calloc(1, sizeof(struct multimodal_integration_struct));
     if (!integration) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_integration_create: allocation failed");
+        return NULL;
+    }
 
+    // Create mutex for thread safety
+    integration->mutex = nimcp_mutex_create(NULL);
+    if (!integration->mutex) {
+        nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_integration_create: mutex allocation failed");
         return NULL;
     }
 
@@ -104,37 +115,55 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
 
     // Allocate learned weights if needed
     if (config->method == INTEGRATION_LEARNED) {
+        bool alloc_ok = true;
         if (config->visual_dim > 0) {
             integration->visual_weights = nimcp_calloc(config->visual_dim * config->output_dim, sizeof(float));
-            // Initialize with Xavier initialization
-            float scale = sqrtf(2.0F / (config->visual_dim + config->output_dim));
-            for (uint32_t i = 0; i < config->visual_dim * config->output_dim; i++) {
-                integration->visual_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+            if (!integration->visual_weights) { alloc_ok = false; }
+            else {
+                float scale = sqrtf(2.0F / (config->visual_dim + config->output_dim));
+                for (uint32_t i = 0; i < config->visual_dim * config->output_dim; i++) {
+                    integration->visual_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+                }
             }
         }
 
-        if (config->audio_dim > 0) {
+        if (alloc_ok && config->audio_dim > 0) {
             integration->audio_weights = nimcp_calloc(config->audio_dim * config->output_dim, sizeof(float));
-            float scale = sqrtf(2.0F / (config->audio_dim + config->output_dim));
-            for (uint32_t i = 0; i < config->audio_dim * config->output_dim; i++) {
-                integration->audio_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+            if (!integration->audio_weights) { alloc_ok = false; }
+            else {
+                float scale = sqrtf(2.0F / (config->audio_dim + config->output_dim));
+                for (uint32_t i = 0; i < config->audio_dim * config->output_dim; i++) {
+                    integration->audio_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+                }
             }
         }
 
-        if (config->speech_dim > 0) {
+        if (alloc_ok && config->speech_dim > 0) {
             integration->speech_weights = nimcp_calloc(config->speech_dim * config->output_dim, sizeof(float));
-            float scale = sqrtf(2.0F / (config->speech_dim + config->output_dim));
-            for (uint32_t i = 0; i < config->speech_dim * config->output_dim; i++) {
-                integration->speech_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+            if (!integration->speech_weights) { alloc_ok = false; }
+            else {
+                float scale = sqrtf(2.0F / (config->speech_dim + config->output_dim));
+                for (uint32_t i = 0; i < config->speech_dim * config->output_dim; i++) {
+                    integration->speech_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+                }
             }
         }
 
-        if (config->direct_dim > 0) {
+        if (alloc_ok && config->direct_dim > 0) {
             integration->direct_weights = nimcp_calloc(config->direct_dim * config->output_dim, sizeof(float));
-            float scale = sqrtf(2.0F / (config->direct_dim + config->output_dim));
-            for (uint32_t i = 0; i < config->direct_dim * config->output_dim; i++) {
-                integration->direct_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+            if (!integration->direct_weights) { alloc_ok = false; }
+            else {
+                float scale = sqrtf(2.0F / (config->direct_dim + config->output_dim));
+                for (uint32_t i = 0; i < config->direct_dim * config->output_dim; i++) {
+                    integration->direct_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+                }
             }
+        }
+
+        if (!alloc_ok) {
+            multimodal_integration_destroy(integration);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_integration_create: weight allocation failed");
+            return NULL;
         }
     }
 
@@ -145,6 +174,7 @@ void multimodal_integration_destroy(multimodal_integration_t integration)
 {
     if (!integration) return;
 
+    nimcp_mutex_free(integration->mutex);
     nimcp_free(integration->output_buffer);
     nimcp_free(integration->visual_weights);
     nimcp_free(integration->audio_weights);
@@ -308,6 +338,8 @@ bool multimodal_integrate(
         return false;
     }
 
+    nimcp_mutex_lock(integration->mutex);
+
     bool success = false;
 
     switch (integration->config.method) {
@@ -321,6 +353,7 @@ bool multimodal_integrate(
             success = integrate_learned(integration, input, output);
             break;
         default:
+            nimcp_mutex_unlock(integration->mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_integrate: operation failed");
             return false;
     }
@@ -328,6 +361,8 @@ bool multimodal_integrate(
     if (success) {
         integration->num_integrations++;
     }
+
+    nimcp_mutex_unlock(integration->mutex);
 
     return success;
 }
@@ -344,10 +379,14 @@ bool multimodal_get_attention(
         return false;
     }
 
+    nimcp_mutex_lock(integration->mutex);
+
     if (visual_attn) *visual_attn = integration->visual_attention;
     if (audio_attn) *audio_attn = integration->audio_attention;
     if (speech_attn) *speech_attn = integration->speech_attention;
     if (direct_attn) *direct_attn = integration->direct_attention;
+
+    nimcp_mutex_unlock(integration->mutex);
 
     return true;
 }
@@ -361,6 +400,8 @@ bool multimodal_update_weights(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_update_weights: integration is NULL");
         return false;
     }
+
+    nimcp_mutex_lock(integration->mutex);
 
     // Update attention weights using simple gradient ascent
     // Increase weight of modalities that led to good outcomes
@@ -389,6 +430,8 @@ bool multimodal_update_weights(
     integration->audio_attention = fmaxf(0.0F, fminf(1.0F, integration->audio_attention));
     integration->speech_attention = fmaxf(0.0F, fminf(1.0F, integration->speech_attention));
     integration->direct_attention = fmaxf(0.0F, fminf(1.0F, integration->direct_attention));
+
+    nimcp_mutex_unlock(integration->mutex);
 
     return true;
 }

@@ -119,3 +119,114 @@ gtest_discover_tests(integration_test_backprop_grad_clip
 # =============================================================================
 # Note: training subdirectory is added by test/CMakeLists.txt
 
+# =============================================================================
+# Brain Subsystem Integration Tests (Check Framework, C)
+# =============================================================================
+# WHAT: Integration tests for new brain subsystems (glymphatic, ECS, neuropeptide,
+#       cortical interneurons, white matter, inferior colliculus, spinal cord)
+# WHY:  Verify cross-module interactions for biologically-inspired subsystems
+# HOW:  Check framework tests with proper fixtures and lifecycle management
+
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(CHECK_LIB check)
+endif()
+
+if(CHECK_LIB_FOUND)
+    message(STATUS "Adding brain subsystem integration tests (Check framework)...")
+
+    # Macro for Check-based C integration tests
+    macro(add_check_integration_test TEST_TARGET TEST_SOURCE)
+        add_executable(${TEST_TARGET} ${TEST_SOURCE})
+        target_include_directories(${TEST_TARGET} PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(${TEST_TARGET}
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+        )
+        add_test(NAME ${TEST_TARGET} COMMAND ${TEST_TARGET})
+        set_tests_properties(${TEST_TARGET} PROPERTIES
+            LABELS "integration;brain_subsystems"
+            TIMEOUT 120
+        )
+    endmacro()
+
+    # 1. Glymphatic + Sleep Integration
+    add_check_integration_test(
+        integration_glymphatic_sleep
+        test_glymphatic_sleep_integration.c
+    )
+
+    # 2. Endocannabinoid + STDP Integration
+    add_check_integration_test(
+        integration_ecb_stdp
+        test_ecb_stdp_integration.c
+    )
+
+    # 3. Neuropeptide + Hypothalamus Integration
+    add_check_integration_test(
+        integration_neuropeptide_hypothalamus
+        test_neuropeptide_hypothalamus_integration.c
+    )
+
+    # 4. Cortical Interneurons + Columns Integration
+    add_check_integration_test(
+        integration_cortical_interneurons_columns
+        test_cortical_interneurons_columns_integration.c
+    )
+
+    # 5. White Matter + Thalamic Integration
+    add_check_integration_test(
+        integration_white_matter_thalamic
+        test_white_matter_thalamic_integration.c
+    )
+
+    # 6. Inferior Colliculus + Audio Integration
+    add_check_integration_test(
+        integration_ic_audio
+        test_ic_audio_integration.c
+    )
+
+    # 7. Spinal Cord + Motor Integration
+    add_check_integration_test(
+        integration_spinal_motor
+        test_spinal_motor_integration.c
+    )
+
+    # 8. Parallel Init Subsystem Integration
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_parallel_init_subsystem_integration.c)
+        add_executable(integration_parallel_init test_parallel_init_subsystem_integration.c)
+        target_include_directories(integration_parallel_init PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/src
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_parallel_init
+            nimcp ${CHECK_LIB_LIBRARIES} pthread m
+        )
+        add_test(NAME integration_parallel_init COMMAND integration_parallel_init)
+        set_tests_properties(integration_parallel_init PROPERTIES
+            LABELS "integration;brain_subsystems;parallel_init"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+        )
+    endif()
+
+    # 9. Bridge Base Lifecycle (verifies bridge_base_init/cleanup in all bridges)
+    add_check_integration_test(
+        integration_bridge_base_lifecycle
+        test_bridge_base_lifecycle_integration.c
+    )
+    set_tests_properties(integration_bridge_base_lifecycle PROPERTIES
+        RESOURCE_LOCK "brain_heavy"
+        TIMEOUT 600
+    )
+
+else()
+    message(STATUS "  [SKIP] Brain subsystem integration tests - Check library not found")
+endif()
+

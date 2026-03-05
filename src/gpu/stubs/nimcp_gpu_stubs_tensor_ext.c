@@ -13,6 +13,7 @@
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "utils/tensor/nimcp_tensor_ops.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -348,7 +349,7 @@ bool nimcp_gpu_argmax(
     size_t inner_stride = compute_axis_stride(x, axis);
 
     /* Track max values and indices */
-    float* max_vals = (float*)malloc(out->numel * sizeof(float));
+    float* max_vals = (float*)nimcp_malloc(out->numel * sizeof(float));
     if (!max_vals) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_argmax: allocation failed");
         return false;
@@ -368,7 +369,7 @@ bool nimcp_gpu_argmax(
             dst[out_idx] = (float)axis_idx;
         }
     }
-    free(max_vals);
+    nimcp_free(max_vals);
     return true;
 }
 
@@ -405,7 +406,7 @@ bool nimcp_gpu_argmin(
     size_t axis_size = x->dims[axis];
     size_t inner_stride = compute_axis_stride(x, axis);
 
-    float* min_vals = (float*)malloc(out->numel * sizeof(float));
+    float* min_vals = (float*)nimcp_malloc(out->numel * sizeof(float));
     if (!min_vals) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_argmin: allocation failed");
         return false;
@@ -425,7 +426,7 @@ bool nimcp_gpu_argmin(
             dst[out_idx] = (float)axis_idx;
         }
     }
-    free(min_vals);
+    nimcp_free(min_vals);
     return true;
 }
 
@@ -474,11 +475,11 @@ bool nimcp_gpu_var(
     size_t inner_stride = compute_axis_stride(x, axis);
 
     /* Accumulate sum for mean */
-    double* sums = (double*)calloc(out->numel, sizeof(double));
-    double* sum_sqs = (double*)calloc(out->numel, sizeof(double));
+    double* sums = (double*)nimcp_calloc(out->numel, sizeof(double));
+    double* sum_sqs = (double*)nimcp_calloc(out->numel, sizeof(double));
     if (!sums || !sum_sqs) {
-        free(sums);
-        free(sum_sqs);
+        nimcp_free(sums);
+        nimcp_free(sum_sqs);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_var: allocation failed");
         return false;
     }
@@ -502,8 +503,8 @@ bool nimcp_gpu_var(
         dst[i] = (float)var;
     }
 
-    free(sums);
-    free(sum_sqs);
+    nimcp_free(sums);
+    nimcp_free(sum_sqs);
     return true;
 }
 
@@ -784,12 +785,12 @@ bool nimcp_gpu_fft_1d(
     float* dst = (float*)out->data;
 
     /* Deinterleave */
-    float* real_in = (float*)malloc(n * sizeof(float));
-    float* imag_in = (float*)malloc(n * sizeof(float));
-    float* real_out = (float*)malloc(n * sizeof(float));
-    float* imag_out = (float*)malloc(n * sizeof(float));
+    float* real_in = (float*)nimcp_malloc(n * sizeof(float));
+    float* imag_in = (float*)nimcp_malloc(n * sizeof(float));
+    float* real_out = (float*)nimcp_malloc(n * sizeof(float));
+    float* imag_out = (float*)nimcp_malloc(n * sizeof(float));
     if (!real_in || !imag_in || !real_out || !imag_out) {
-        free(real_in); free(imag_in); free(real_out); free(imag_out);
+        nimcp_free(real_in); nimcp_free(imag_in); nimcp_free(real_out); nimcp_free(imag_out);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_fft_1d: allocation failed");
         return false;
     }
@@ -807,7 +808,7 @@ bool nimcp_gpu_fft_1d(
         dst[2 * i + 1] = imag_out[i];
     }
 
-    free(real_in); free(imag_in); free(real_out); free(imag_out);
+    nimcp_free(real_in); nimcp_free(imag_in); nimcp_free(real_out); nimcp_free(imag_out);
     return true;
 }
 
@@ -836,12 +837,12 @@ bool nimcp_gpu_fft_2d(
 
     float* data = (float*)out->data;
 
-    float* tmp_r = (float*)malloc(cols * sizeof(float));
-    float* tmp_i = (float*)malloc(cols * sizeof(float));
-    float* out_r = (float*)malloc(cols * sizeof(float));
-    float* out_i = (float*)malloc(cols * sizeof(float));
+    float* tmp_r = (float*)nimcp_malloc(cols * sizeof(float));
+    float* tmp_i = (float*)nimcp_malloc(cols * sizeof(float));
+    float* out_r = (float*)nimcp_malloc(cols * sizeof(float));
+    float* out_i = (float*)nimcp_malloc(cols * sizeof(float));
     if (!tmp_r || !tmp_i || !out_r || !out_i) {
-        free(tmp_r); free(tmp_i); free(out_r); free(out_i);
+        nimcp_free(tmp_r); nimcp_free(tmp_i); nimcp_free(out_r); nimcp_free(out_i);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_fft_2d: allocation failed");
         return false;
     }
@@ -861,15 +862,15 @@ bool nimcp_gpu_fft_2d(
     }
 
     /* Column-wise FFT - need buffers sized for rows */
-    float* col_r = (float*)realloc(tmp_r, rows * sizeof(float));
-    float* col_i = (float*)realloc(tmp_i, rows * sizeof(float));
-    float* col_or = (float*)realloc(out_r, rows * sizeof(float));
-    float* col_oi = (float*)realloc(out_i, rows * sizeof(float));
+    float* col_r = (float*)nimcp_realloc(tmp_r, rows * sizeof(float));
+    float* col_i = (float*)nimcp_realloc(tmp_i, rows * sizeof(float));
+    float* col_or = (float*)nimcp_realloc(out_r, rows * sizeof(float));
+    float* col_oi = (float*)nimcp_realloc(out_i, rows * sizeof(float));
     if (!col_r || !col_i || !col_or || !col_oi) {
-        free(col_r ? col_r : tmp_r);
-        free(col_i ? col_i : tmp_i);
-        free(col_or ? col_or : out_r);
-        free(col_oi ? col_oi : out_i);
+        nimcp_free(col_r ? col_r : tmp_r);
+        nimcp_free(col_i ? col_i : tmp_i);
+        nimcp_free(col_or ? col_or : out_r);
+        nimcp_free(col_oi ? col_oi : out_i);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_fft_2d: realloc failed");
         return false;
     }
@@ -886,7 +887,7 @@ bool nimcp_gpu_fft_2d(
         }
     }
 
-    free(col_r); free(col_i); free(col_or); free(col_oi);
+    nimcp_free(col_r); nimcp_free(col_i); nimcp_free(col_or); nimcp_free(col_oi);
     return true;
 }
 
@@ -909,11 +910,11 @@ bool nimcp_gpu_rfft(
     const float* src = (const float*)x->data;
     float* dst = (float*)out->data;
 
-    float* imag_in = (float*)calloc(n, sizeof(float));
-    float* real_out = (float*)malloc(n * sizeof(float));
-    float* imag_out = (float*)malloc(n * sizeof(float));
+    float* imag_in = (float*)nimcp_calloc(n, sizeof(float));
+    float* real_out = (float*)nimcp_malloc(n * sizeof(float));
+    float* imag_out = (float*)nimcp_malloc(n * sizeof(float));
     if (!imag_in || !real_out || !imag_out) {
-        free(imag_in); free(real_out); free(imag_out);
+        nimcp_free(imag_in); nimcp_free(real_out); nimcp_free(imag_out);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_rfft: allocation failed");
         return false;
     }
@@ -926,7 +927,7 @@ bool nimcp_gpu_rfft(
         dst[2 * i + 1] = imag_out[i];
     }
 
-    free(imag_in); free(real_out); free(imag_out);
+    nimcp_free(imag_in); nimcp_free(real_out); nimcp_free(imag_out);
     return true;
 }
 
@@ -950,12 +951,12 @@ bool nimcp_gpu_irfft(
     float* dst = (float*)out->data;
 
     /* Reconstruct full complex spectrum using conjugate symmetry */
-    float* full_r = (float*)malloc(out_n * sizeof(float));
-    float* full_i = (float*)malloc(out_n * sizeof(float));
-    float* result_r = (float*)malloc(out_n * sizeof(float));
-    float* result_i = (float*)malloc(out_n * sizeof(float));
+    float* full_r = (float*)nimcp_malloc(out_n * sizeof(float));
+    float* full_i = (float*)nimcp_malloc(out_n * sizeof(float));
+    float* result_r = (float*)nimcp_malloc(out_n * sizeof(float));
+    float* result_i = (float*)nimcp_malloc(out_n * sizeof(float));
     if (!full_r || !full_i || !result_r || !result_i) {
-        free(full_r); free(full_i); free(result_r); free(result_i);
+        nimcp_free(full_r); nimcp_free(full_i); nimcp_free(result_r); nimcp_free(result_i);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_irfft: allocation failed");
         return false;
     }
@@ -984,7 +985,7 @@ bool nimcp_gpu_irfft(
         dst[i] = result_r[i];
     }
 
-    free(full_r); free(full_i); free(result_r); free(result_i);
+    nimcp_free(full_r); nimcp_free(full_i); nimcp_free(result_r); nimcp_free(result_i);
     return true;
 }
 

@@ -291,12 +291,9 @@ lnn_immune_bridge_t* lnn_immune_bridge_create(
     bridge->stats.current_tau_scale = 1.0f;
     bridge->stats.current_lr_factor = 1.0f;
 
-    /* Create mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (bridge->base.mutex) {
-        nimcp_mutex_init(bridge->base.mutex, NULL);
-    } else {
-        NIMCP_LOGGING_WARN("Failed to create mutex for LNN immune bridge");
+    /* Initialize bridge base (allocates mutex, sets module name) */
+    if (bridge_base_init(&bridge->base, 0, "lnn_immune") != 0) {
+        NIMCP_LOGGING_WARN("Failed to init bridge base for LNN immune bridge");
     }
 
     NIMCP_LOGGING_INFO("Created LNN immune bridge");
@@ -310,10 +307,8 @@ void lnn_immune_bridge_destroy(lnn_immune_bridge_t* bridge)
         return;
     }
 
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge */
     nimcp_free(bridge);

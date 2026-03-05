@@ -1082,10 +1082,10 @@ static void lru_cache_destroy(nimcp_graph_lru_cache_t* cache)
         return;
     }
 
-    // Free all entries
+    // Free all entries (walk LRU list)
     nimcp_graph_cache_entry_t* entry = cache->head;
     while (entry) {
-        nimcp_graph_cache_entry_t* next = entry->next;
+        nimcp_graph_cache_entry_t* next = entry->lru_next;
         // Don't free graph_data here - it may be shared with GPU storage
         nimcp_free(entry);
         entry = next;
@@ -1162,19 +1162,20 @@ static bool lru_cache_put(nimcp_graph_lru_cache_t* cache, int id, void* data)
     entry->access_count = 1;
     entry->dirty = false;
 
-    // Add to hash table
+    // Add to hash table (uses next/prev for hash chain)
     int hash = hash_id(id);
     entry->next = cache->entries[hash];
+    entry->prev = NULL;
     if (cache->entries[hash]) {
         cache->entries[hash]->prev = entry;
     }
     cache->entries[hash] = entry;
 
-    // Add to LRU list (front)
-    entry->prev = NULL;
-    entry->next = cache->head;
+    // Add to LRU list (front, uses lru_next/lru_prev)
+    entry->lru_prev = NULL;
+    entry->lru_next = cache->head;
     if (cache->head) {
-        cache->head->prev = entry;
+        cache->head->lru_prev = entry;
     }
     cache->head = entry;
     if (!cache->tail) {
@@ -1197,24 +1198,27 @@ static void lru_cache_remove(nimcp_graph_lru_cache_t* cache, int id)
 
     while (entry) {
         if (entry->graph_id == id) {
-            // Remove from hash chain
+            // Remove from hash chain (uses next/prev)
             if (prev) {
                 prev->next = entry->next;
             } else {
                 cache->entries[hash] = entry->next;
             }
-
-            // Remove from LRU list
-            if (entry->prev) {
-                entry->prev->next = entry->next;
-            } else {
-                cache->head = entry->next;
-            }
-
             if (entry->next) {
                 entry->next->prev = entry->prev;
+            }
+
+            // Remove from LRU list (uses lru_next/lru_prev)
+            if (entry->lru_prev) {
+                entry->lru_prev->lru_next = entry->lru_next;
             } else {
-                cache->tail = entry->prev;
+                cache->head = entry->lru_next;
+            }
+
+            if (entry->lru_next) {
+                entry->lru_next->lru_prev = entry->lru_prev;
+            } else {
+                cache->tail = entry->lru_prev;
             }
 
             cache->count--;
@@ -1240,21 +1244,21 @@ static void lru_cache_touch(nimcp_graph_lru_cache_t* cache, nimcp_graph_cache_en
         return;  // Already at front
     }
 
-    // Remove from current position
-    if (entry->prev) {
-        entry->prev->next = entry->next;
+    // Remove from current LRU position
+    if (entry->lru_prev) {
+        entry->lru_prev->lru_next = entry->lru_next;
     }
-    if (entry->next) {
-        entry->next->prev = entry->prev;
+    if (entry->lru_next) {
+        entry->lru_next->lru_prev = entry->lru_prev;
     } else {
-        cache->tail = entry->prev;
+        cache->tail = entry->lru_prev;
     }
 
-    // Insert at front
-    entry->prev = NULL;
-    entry->next = cache->head;
+    // Insert at front of LRU list
+    entry->lru_prev = NULL;
+    entry->lru_next = cache->head;
     if (cache->head) {
-        cache->head->prev = entry;
+        cache->head->lru_prev = entry;
     }
     cache->head = entry;
 }
@@ -1268,29 +1272,32 @@ static nimcp_graph_cache_entry_t* lru_cache_evict(nimcp_graph_lru_cache_t* cache
 
     nimcp_graph_cache_entry_t* entry = cache->tail;
 
-    // Remove from LRU list
-    if (entry->prev) {
-        entry->prev->next = NULL;
+    // Remove from LRU list (uses lru_next/lru_prev)
+    if (entry->lru_prev) {
+        entry->lru_prev->lru_next = NULL;
     } else {
         cache->head = NULL;
     }
-    cache->tail = entry->prev;
+    cache->tail = entry->lru_prev;
 
-    // Remove from hash table
+    // Remove from hash table (uses next/prev)
     int hash = hash_id(entry->graph_id);
     nimcp_graph_cache_entry_t* curr = cache->entries[hash];
-    nimcp_graph_cache_entry_t* prev = NULL;
+    nimcp_graph_cache_entry_t* prev_hash = NULL;
 
     while (curr) {
         if (curr == entry) {
-            if (prev) {
-                prev->next = curr->next;
+            if (prev_hash) {
+                prev_hash->next = curr->next;
             } else {
                 cache->entries[hash] = curr->next;
             }
+            if (curr->next) {
+                curr->next->prev = prev_hash;
+            }
             break;
         }
-        prev = curr;
+        prev_hash = curr;
         curr = curr->next;
     }
 

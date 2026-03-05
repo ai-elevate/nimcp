@@ -261,7 +261,6 @@ def main():
         if output_vector and vocab and len(vocab) > 0:
             brain_emb = extract_embedding_from_output(np.array(output_vector))
 
-            # Use vocabulary bank directly for nearest-neighbor lookup
             results = vocab.decode(brain_emb, top_k=args.top_k)
 
             # Show best match as "Athena's response"

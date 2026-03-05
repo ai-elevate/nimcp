@@ -170,6 +170,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
 
     /* Initialize fields */
     memset(bridge, 0, sizeof(snn_prefrontal_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_prefrontal") != 0) { nimcp_free(bridge); return NULL; }
     bridge->network = network;
     bridge->prefrontal_region = prefrontal_region;
     bridge->config = *config;
@@ -320,6 +321,7 @@ void snn_prefrontal_bridge_destroy(snn_prefrontal_bridge_t* bridge) {
         snn_prefrontal_bridge_disconnect_bio_async(bridge);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

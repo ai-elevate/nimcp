@@ -111,20 +111,10 @@ calcium_pink_noise_bridge_t* calcium_pink_noise_bridge_create(
         return NULL;
     }
 
-    /* Create mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
+    /* Initialize bridge base (allocates mutex, sets module name) */
+    if (bridge_base_init(&bridge->base, 0, "calcium_pink_noise") != 0) {
         pink_noise_destroy(bridge->noise_gen);
         nimcp_free(bridge);
-        LOG_ERROR("Calcium-pink noise bridge mutex allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Calcium-pink noise bridge mutex allocation failed");
-        return NULL;
-    }
-    if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        pink_noise_destroy(bridge->noise_gen);
-        nimcp_free(bridge);
-        LOG_ERROR("Calcium-pink noise bridge mutex initialization failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "Calcium-pink noise bridge mutex initialization failed");
         return NULL;
     }
 
@@ -151,10 +141,8 @@ void calcium_pink_noise_bridge_destroy(calcium_pink_noise_bridge_t* bridge) {
         pink_noise_destroy(bridge->noise_gen);
     }
 
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge */
     nimcp_free(bridge);

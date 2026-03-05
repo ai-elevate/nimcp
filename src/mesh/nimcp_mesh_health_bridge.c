@@ -16,6 +16,7 @@
 #include "mesh/nimcp_mesh_integration.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -42,6 +43,7 @@ typedef struct health_record_entry {
  * @brief Internal health bridge structure
  */
 struct mesh_health_bridge {
+    bridge_base_t base;
     uint32_t magic;
     mesh_health_bridge_config_t config;
 
@@ -135,6 +137,8 @@ mesh_health_bridge_t* mesh_health_bridge_create(
         return NULL;
     }
 
+    bridge_base_init(&bridge->base, 0, "mesh_health_bridge");
+
     LOG_DEBUG("Health bridge created");
     return bridge;
 }
@@ -147,6 +151,7 @@ void mesh_health_bridge_destroy(mesh_health_bridge_t* bridge) {
     nimcp_mutex_unlock(bridge->mutex);
 
     nimcp_mutex_destroy(bridge->mutex);
+    bridge_base_cleanup(&bridge->base);
     bridge->magic = 0;
     nimcp_free(bridge);
 

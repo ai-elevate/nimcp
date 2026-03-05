@@ -166,8 +166,10 @@ typedef struct nimcp_graph_cache_entry_s {
     uint64_t access_time;            /**< Last access timestamp */
     uint64_t access_count;           /**< Access count for statistics */
     bool dirty;                      /**< Modified since last sync */
-    struct nimcp_graph_cache_entry_s* prev; /**< Previous in LRU list */
-    struct nimcp_graph_cache_entry_s* next; /**< Next in LRU list */
+    struct nimcp_graph_cache_entry_s* prev; /**< Previous in hash chain */
+    struct nimcp_graph_cache_entry_s* next; /**< Next in hash chain */
+    struct nimcp_graph_cache_entry_s* lru_prev; /**< Previous in LRU list */
+    struct nimcp_graph_cache_entry_s* lru_next; /**< Next in LRU list */
 } nimcp_graph_cache_entry_t;
 
 /**

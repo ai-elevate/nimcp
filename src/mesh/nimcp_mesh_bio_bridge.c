@@ -16,6 +16,7 @@
 #include "mesh/nimcp_mesh_integration.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -52,6 +53,7 @@ typedef struct pending_translation {
  * @brief Internal bio bridge structure
  */
 struct mesh_bio_bridge {
+    bridge_base_t base;
     uint32_t magic;
     mesh_bio_bridge_config_t config;
 
@@ -283,6 +285,8 @@ mesh_bio_bridge_t* mesh_bio_bridge_create(
     /* Initialize channel mappings */
     init_default_mappings(bridge);
 
+    bridge_base_init(&bridge->base, 0, "mesh_bio_bridge");
+
     LOG_DEBUG("Bio-mesh bridge created");
     return bridge;
 }
@@ -307,6 +311,7 @@ void mesh_bio_bridge_destroy(mesh_bio_bridge_t* bridge) {
 
     nimcp_mutex_unlock(bridge->mutex);
     nimcp_mutex_destroy(bridge->mutex);
+    bridge_base_cleanup(&bridge->base);
 
     bridge->magic = 0;
     nimcp_free(bridge);

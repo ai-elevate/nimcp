@@ -17,6 +17,7 @@
 
 #include <string.h>
 #include <math.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
@@ -561,12 +562,13 @@ int training_bio_bridge_signal_batch_complete(
 
     /* Update running average loss */
     bridge->stats.avg_loss = bridge->stats.avg_loss * NIMCP_EMA_DECAY_DEFAULT + loss * NIMCP_LEARNING_RATE_DEFAULT;
+    NIMCP_EMA_GUARD(bridge->stats.avg_loss, loss);
 
     /* Check for loss improvement */
     if (loss < bridge->best_loss) {
+        bridge->outgoing_effects.loss_improvement = (bridge->best_loss - loss) / bridge->best_loss;
         bridge->best_loss = loss;
         bridge->stats.best_loss = loss;
-        bridge->outgoing_effects.loss_improvement = (bridge->best_loss - loss) / bridge->best_loss;
 
         /* Release dopamine for improvement */
         bridge->outgoing_effects.dopamine_release =

@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/thread/nimcp_thread.h"
 
 
 
@@ -31,6 +32,7 @@ struct homeostatic_normalizer {
     float target_activity;
     float time_constant;
     homeostatic_channel_t* channels;
+    nimcp_mutex_t* mutex;
 };
 
 homeostatic_normalizer_t* homeostatic_normalizer_create(
@@ -66,11 +68,20 @@ homeostatic_normalizer_t* homeostatic_normalizer_create(
         norm->channels[i].accumulated_error = 0.0F;
     }
 
+    norm->mutex = nimcp_mutex_create(NULL);
+    if (!norm->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_normalizer_create: failed to create mutex");
+        nimcp_free(norm->channels);
+        nimcp_free(norm);
+        return NULL;
+    }
+
     return norm;
 }
 
 void homeostatic_normalizer_destroy(homeostatic_normalizer_t* normalizer) {
     if (!normalizer) return;
+    if (normalizer->mutex) nimcp_mutex_free(normalizer->mutex);
     nimcp_free(normalizer->channels);
     nimcp_free(normalizer);
 }
@@ -85,6 +96,8 @@ bool homeostatic_normalizer_update(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "homeostatic_normalizer_update: normalizer is NULL");
         return false;
     }
+
+    nimcp_mutex_lock(normalizer->mutex);
 
     homeostatic_channel_t* ch = &normalizer->channels[channel];
 
@@ -102,6 +115,8 @@ bool homeostatic_normalizer_update(
     // Clamp scaling factor
     if (ch->scaling_factor < 0.1F) ch->scaling_factor = 0.1F;
     if (ch->scaling_factor > 10.0F) ch->scaling_factor = 10.0F;
+
+    nimcp_mutex_unlock(normalizer->mutex);
 
     return true;
 }
@@ -132,19 +147,36 @@ bool homeostatic_normalizer_reset_channel(
         return false;
     }
 
+    nimcp_mutex_lock(normalizer->mutex);
+
     homeostatic_channel_t* ch = &normalizer->channels[channel];
     ch->current_activity = 0.0F;
     ch->scaling_factor = 1.0F;
     ch->accumulated_error = 0.0F;
 
+    nimcp_mutex_unlock(normalizer->mutex);
+
+    return true;
+}
+
+static bool homeostatic_normalizer_reset_channel_unlocked(
+    homeostatic_normalizer_t* normalizer,
+    size_t channel
+) {
+    homeostatic_channel_t* ch = &normalizer->channels[channel];
+    ch->current_activity = 0.0F;
+    ch->scaling_factor = 1.0F;
+    ch->accumulated_error = 0.0F;
     return true;
 }
 
 void homeostatic_normalizer_reset_all(homeostatic_normalizer_t* normalizer) {
     if (!normalizer) return;
+    nimcp_mutex_lock(normalizer->mutex);
     for (size_t i = 0; i < normalizer->num_channels; i++) {
-        homeostatic_normalizer_reset_channel(normalizer, i);
+        homeostatic_normalizer_reset_channel_unlocked(normalizer, i);
     }
+    nimcp_mutex_unlock(normalizer->mutex);
 }
 
 size_t homeostatic_normalizer_num_channels(const homeostatic_normalizer_t* normalizer) {

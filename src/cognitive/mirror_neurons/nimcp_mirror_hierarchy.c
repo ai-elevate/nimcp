@@ -632,7 +632,10 @@ uint32_t mirror_hierarchy_infer_goal(mirror_hierarchy_t hierarchy,
     mirror_hierarchy_heartbeat("mirror_hiera_infer_goal", 0.0f);
 
     // Compute likelihood for each goal given this motor
-    float* likelihoods = (float*)alloca(hierarchy->num_goals * sizeof(float));
+    float* likelihoods = (float*)nimcp_malloc(hierarchy->num_goals * sizeof(float));
+    if (!likelihoods) {
+        return 0;
+    }
     float total_likelihood = 0.0F;
 
     for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
@@ -703,6 +706,7 @@ uint32_t mirror_hierarchy_infer_goal(mirror_hierarchy_t hierarchy,
 
     hierarchy->goal_inferences++;
 
+    nimcp_free(likelihoods);
     return count;
 }
 

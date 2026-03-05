@@ -104,6 +104,7 @@ snn_memory_bridge_t* snn_memory_bridge_create(
 
     /* Initialize structure */
     memset(bridge, 0, sizeof(snn_memory_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_memory") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->working_memory = working_memory;
     bridge->config = *config;
@@ -211,6 +212,7 @@ void snn_memory_bridge_destroy(snn_memory_bridge_t* bridge) {
     /* Free populations array */
     nimcp_free(bridge->memory_pops);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-memory bridge");
 }

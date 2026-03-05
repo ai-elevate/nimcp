@@ -415,6 +415,7 @@ int eligibility_immune_detect_learning_failure(
 
     /* Compute average reward error (moving average) */
     stress->average_reward_error = stress->average_reward_error * 0.95f + fabsf(reward) * 0.05f;
+    if (!isfinite(stress->average_reward_error)) stress->average_reward_error = fabsf(reward);
 
     /* Detect learned helplessness */
     if (stress->consecutive_failures > 50 && stress->average_reward_error > 0.5f) {

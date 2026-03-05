@@ -333,15 +333,11 @@ hemispheric_immune_bridge_t* hemispheric_immune_create(
 
     bridge->current_inflammation = INFLAMMATION_NONE;
 
-    // Allocate mutex
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("hemispheric_immune_create: mutex allocation failed");
+    // Initialize bridge base (allocates mutex, sets module name)
+    if (bridge_base_init(&bridge->base, 0, "hemispheric_immune") != 0) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hemispheric_immune_create: bridge->base is NULL");
         return NULL;
     }
-    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     bridge->initialized = true;
 
@@ -352,15 +348,8 @@ hemispheric_immune_bridge_t* hemispheric_immune_create(
 void hemispheric_immune_destroy(hemispheric_immune_bridge_t* bridge) {
     if (!bridge) return;
 
-    // Disconnect bio-async if connected
-    if (bridge->base.bio_async_enabled) {
-        hemispheric_immune_disconnect_bio_async(bridge);
-    }
-
-    // Destroy mutex
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     bridge->initialized = false;
     nimcp_free(bridge);

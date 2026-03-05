@@ -294,7 +294,9 @@ int pink_immune_bridge_compute_effects(pink_immune_bridge_t* bridge) {
     bridge->update_count++;
     float w = 1.0f / (float)bridge->update_count;
     bridge->avg_amplitude_modifier = (1.0f - w) * bridge->avg_amplitude_modifier + w * amp_mod;
+    if (!isfinite(bridge->avg_amplitude_modifier)) bridge->avg_amplitude_modifier = amp_mod;
     bridge->avg_alpha_modifier = (1.0f - w) * bridge->avg_alpha_modifier + w * alpha_mod;
+    if (!isfinite(bridge->avg_alpha_modifier)) bridge->avg_alpha_modifier = alpha_mod;
 
     return 0;
 }

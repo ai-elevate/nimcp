@@ -234,7 +234,7 @@ static int init_cnn_training(brain_t brain, const nimcp_training_config_t* confi
 // SNN Training Step
 //=============================================================================
 
-static int snn_train_step(
+int training_dispatch_snn_step(
     brain_t brain,
     const float* inputs,
     uint32_t num_inputs,
@@ -243,7 +243,7 @@ static int snn_train_step(
     training_dispatch_result_t* result)
 {
     if (!brain->snn_network || !brain->snn_training_ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_train_step: required parameter is NULL (brain->snn_network, brain->snn_training_ctx)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_dispatch_snn_step: required parameter is NULL (brain->snn_network, brain->snn_training_ctx)");
         return -1;
     }
 
@@ -258,7 +258,7 @@ static int snn_train_step(
     int rc = snn_network_step(snn, dt);
     if (rc < 0) {
         NIMCP_LOGGING_ERROR("SNN network step failed: %d", rc);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_train_step: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_snn_step: SNN network step failed");
         return -1;
     }
 
@@ -319,7 +319,7 @@ static int snn_train_step(
 // LNN Training Step
 //=============================================================================
 
-static int lnn_train_step(
+int training_dispatch_lnn_step(
     brain_t brain,
     const float* inputs,
     uint32_t num_inputs,
@@ -328,7 +328,7 @@ static int lnn_train_step(
     training_dispatch_result_t* result)
 {
     if (!brain->lnn_network || !brain->lnn_training_ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_train_step: required parameter is NULL (brain->lnn_network, brain->lnn_training_ctx)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_dispatch_lnn_step: required parameter is NULL (brain->lnn_network, brain->lnn_training_ctx)");
         return -1;
     }
 
@@ -351,7 +351,7 @@ static int lnn_train_step(
     if (!input_tensor || !target_tensor) {
         if (input_tensor) nimcp_tensor_destroy(input_tensor);
         if (target_tensor) nimcp_tensor_destroy(target_tensor);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_train_step: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_lnn_step: LNN training step failed");
         return -1;
     }
 
@@ -386,7 +386,7 @@ static int lnn_train_step(
 
     if (rc < 0) {
         NIMCP_LOGGING_ERROR("LNN training step failed: %d", rc);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_train_step: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_lnn_step: LNN training step failed");
         return -1;
     }
 
@@ -558,10 +558,10 @@ int training_dispatch_step(
             return -2;
 
         case NIMCP_NETWORK_SNN:
-            return snn_train_step(brain, inputs, num_inputs, targets, num_targets, result);
+            return training_dispatch_snn_step(brain, inputs, num_inputs, targets, num_targets, result);
 
         case NIMCP_NETWORK_LNN:
-            return lnn_train_step(brain, inputs, num_inputs, targets, num_targets, result);
+            return training_dispatch_lnn_step(brain, inputs, num_inputs, targets, num_targets, result);
 
         case NIMCP_NETWORK_CNN:
             return cnn_train_step(brain, inputs, num_inputs, targets, num_targets, result);
@@ -575,7 +575,7 @@ int training_dispatch_step(
                 float min_loss = INFINITY;
 
                 if (brain->snn_network && brain->snn_training_ctx) {
-                    int rc = snn_train_step(brain, inputs, num_inputs, targets, num_targets, &snn_res);
+                    int rc = training_dispatch_snn_step(brain, inputs, num_inputs, targets, num_targets, &snn_res);
                     if (rc == 0 && snn_res.loss < min_loss) {
                         min_loss = snn_res.loss;
                         if (result) *result = snn_res;
@@ -583,7 +583,7 @@ int training_dispatch_step(
                 }
 
                 if (brain->lnn_network && brain->lnn_training_ctx) {
-                    int rc = lnn_train_step(brain, inputs, num_inputs, targets, num_targets, &lnn_res);
+                    int rc = training_dispatch_lnn_step(brain, inputs, num_inputs, targets, num_targets, &lnn_res);
                     if (rc == 0 && lnn_res.loss < min_loss) {
                         min_loss = lnn_res.loss;
                         if (result) *result = lnn_res;

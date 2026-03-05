@@ -109,3 +109,35 @@ target_link_libraries(unit_core_brain_kg_hierarchy
 target_compile_features(unit_core_brain_kg_hierarchy PRIVATE cxx_std_17)
 gtest_discover_tests(unit_core_brain_kg_hierarchy
     PROPERTIES LABELS "unit;core;brain_kg;hierarchy")
+
+# ============================================================================
+# Synapse Compute Bug Fix Tests (C7, H15, H16)
+# ============================================================================
+# WHAT: Unit tests for synapse compute + multimodal integration bug fixes
+# WHY:  Verify dopamine phasic-tonic accessor, expf overflow, thread safety
+# HOW:  Check framework C tests
+# ============================================================================
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/synapse_compute/test_synapse_compute_bugs.c)
+    add_executable(unit_core_synapse_compute_bugs
+        synapse_compute/test_synapse_compute_bugs.c
+    )
+    target_include_directories(unit_core_synapse_compute_bugs PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_core_synapse_compute_bugs PRIVATE c_std_11)
+    target_compile_options(unit_core_synapse_compute_bugs PRIVATE
+        -Wall -Wextra
+    )
+    target_link_libraries(unit_core_synapse_compute_bugs PRIVATE
+        nimcp Threads::Threads check_pic subunit rt m
+    )
+    add_test(NAME unit_core_synapse_compute_bugs
+             COMMAND unit_core_synapse_compute_bugs
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_core_synapse_compute_bugs
+        PROPERTIES
+            LABELS "unit;core;synapse_compute;multimodal;bugfix"
+            TIMEOUT 120)
+endif()

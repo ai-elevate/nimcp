@@ -58,6 +58,7 @@ snn_grief_bridge_t* snn_grief_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_grief_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_grief") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->grief_system = grief_system;
     bridge->config = *config;
@@ -82,6 +83,7 @@ void snn_grief_bridge_destroy(snn_grief_bridge_t* bridge) {
     if (bridge->encoder) snn_encoder_destroy(bridge->encoder);
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-grief bridge");
 }
@@ -163,7 +165,9 @@ int snn_grief_bridge_update(snn_grief_bridge_t* bridge, float dt) {
 
     bridge->state.sync_count++;
     bridge->state.avg_grief_intensity = (bridge->state.avg_grief_intensity * 0.95f + grief_intensity * 0.05f);
+    if (!isfinite(bridge->state.avg_grief_intensity)) bridge->state.avg_grief_intensity = grief_intensity;
     bridge->state.avg_recovery_progress = (bridge->state.avg_recovery_progress * 0.95f + recovery_progress * 0.05f);
+    if (!isfinite(bridge->state.avg_recovery_progress)) bridge->state.avg_recovery_progress = recovery_progress;
 
     return 0;
 }

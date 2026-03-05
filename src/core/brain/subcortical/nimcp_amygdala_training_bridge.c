@@ -136,15 +136,11 @@ amygdala_training_bridge_t* amygdala_training_create(
     bridge->lr_modulation = 1.0f;  /* Neutral */
     bridge->threat_learning_boost_active = 1.0f;
 
-    /* Allocate and initialize mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex");
+    /* Initialize bridge base (allocates mutex, sets module name) */
+    if (bridge_base_init(&bridge->base, 0, "amygdala_training") != 0) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "amygdala_training_create: bridge->base is NULL");
         return NULL;
     }
-    nimcp_mutex_init(bridge->base.mutex, NULL);
 
     /* Record creation time */
     bridge->creation_time_ms = nimcp_get_current_time_ms();
@@ -163,15 +159,8 @@ amygdala_training_bridge_t* amygdala_training_create(
 void amygdala_training_destroy(amygdala_training_bridge_t* bridge) {
     if (!bridge) return;
 
-    /* Disconnect bio-async */
-    if (bridge->base.bio_async_enabled) {
-        amygdala_training_disconnect_bio_async(bridge);
-    }
-
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    /* Cleanup bridge base (disconnects bio-async, destroys+frees mutex) */
+    bridge_base_cleanup(&bridge->base);
 
     NIMCP_LOGGING_INFO("Destroyed amygdala-training bridge");
 

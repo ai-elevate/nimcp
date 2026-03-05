@@ -20,3 +20,6 @@ endmacro()
 
 # Core thermodynamics tests
 add_thermodynamics_test(test_thermodynamics)
+
+# TLS-to-shared-state migration tests (Bug H7)
+add_thermodynamics_test(test_thermodynamics_tls_fix)

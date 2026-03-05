@@ -28,6 +28,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <stdatomic.h>
 
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -68,6 +69,9 @@ struct nimcp_gradient_manager_ctx {
     nimcp_grad_stats_t stats;
 
     bool initialized;
+
+    /* Shutdown flag for safe destroy (H12 race fix) */
+    _Atomic bool shutting_down;
 
     /* Security registration */
     nimcp_sec_integration_t* security_ctx;
@@ -179,6 +183,7 @@ nimcp_gradient_manager_ctx_t* nimcp_gradient_manager_create(
     ctx->stats.current_scale = ctx->current_scale;
 
     ctx->initialized = true;
+    atomic_store(&ctx->shutting_down, false);
 
     /* P0 fix: Initialize accum buffer mutex for thread safety */
     if (nimcp_platform_mutex_init(&ctx->accum_mutex, false) == 0) {
@@ -212,9 +217,15 @@ void nimcp_gradient_manager_destroy(nimcp_gradient_manager_ctx_t* ctx) {
         return;
     }
 
-    /* P0 fix: Acquire lock before destroying accum buffer */
+    /* H12 race fix: Signal shutdown to all concurrent users FIRST.
+     * Any thread checking shutting_down before acquiring the mutex
+     * will bail out, preventing use-after-free on the mutex itself. */
+    atomic_store(&ctx->shutting_down, true);
+
+    /* Lock/unlock to drain any thread currently holding the mutex */
     if (ctx->accum_mutex_initialized) {
         nimcp_platform_mutex_lock(&ctx->accum_mutex);
+        nimcp_platform_mutex_unlock(&ctx->accum_mutex);
     }
 
     /* Unregister from security module */
@@ -228,9 +239,8 @@ void nimcp_gradient_manager_destroy(nimcp_gradient_manager_ctx_t* ctx) {
         ctx->accum_buffer = NULL;
     }
 
-    /* P0 fix: Cleanup accum mutex */
+    /* Destroy mutex after all resources are freed */
     if (ctx->accum_mutex_initialized) {
-        nimcp_platform_mutex_unlock(&ctx->accum_mutex);
         nimcp_platform_mutex_destroy(&ctx->accum_mutex);
         ctx->accum_mutex_initialized = false;
     }
@@ -252,6 +262,11 @@ nimcp_result_t nimcp_gradient_accumulate(
     NIMCP_CHECK_THROW(num_gradients > 0, NIMCP_ERROR_INVALID_PARAM, "num_gradients must be > 0");
     NIMCP_CHECK_THROW(ctx->config.use_accumulation, NIMCP_ERROR_INVALID_PARAM,
         "accumulation not enabled in config");
+
+    /* H12 race fix: Bail out if destroy is in progress */
+    if (atomic_load(&ctx->shutting_down)) {
+        return NIMCP_ERROR_INVALID;
+    }
 
     /* P0 fix: Thread-safe accum buffer reallocation */
     if (!ctx->accum_initialized || ctx->accum_buffer_size < num_gradients) {
@@ -823,6 +838,11 @@ nimcp_result_t nimcp_gradient_accumulate_tensor(
     NIMCP_CHECK_THROW(grad_tensor != NULL, NIMCP_ERROR_INVALID_PARAM, "grad_tensor is NULL");
     NIMCP_CHECK_THROW(ctx->config.use_accumulation, NIMCP_ERROR_INVALID_PARAM,
         "accumulation not enabled in config");
+
+    /* H12 race fix: Bail out if destroy is in progress */
+    if (atomic_load(&ctx->shutting_down)) {
+        return NIMCP_ERROR_INVALID;
+    }
 
     size_t num_gradients = nimcp_tensor_numel(grad_tensor);
     NIMCP_CHECK_THROW(num_gradients > 0, NIMCP_ERROR_INVALID_PARAM, "tensor has 0 elements");

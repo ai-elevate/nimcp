@@ -216,17 +216,9 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
     bridge->connected = false;
     bridge->pool = NULL;
 
-    // Create mutex if threading enabled
+    // Initialize bridge base (allocates mutex, sets module name) if threading enabled
     if (cfg->enable_threading) {
-        bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-        if (!bridge->base.mutex) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vesicle_pink_noise_create: failed to allocate mutex");
-            vesicle_pink_noise_destroy(bridge);
-            return NULL;
-        }
-        if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vesicle_pink_noise_create: failed to initialize mutex");
-            bridge->base.mutex = NULL;
+        if (bridge_base_init(&bridge->base, 0, "vesicle_packaging_pink_noise") != 0) {
             vesicle_pink_noise_destroy(bridge);
             return NULL;
         }
@@ -263,10 +255,8 @@ void vesicle_pink_noise_destroy(vesicle_pink_noise_bridge_t* bridge) {
         pink_noise_destroy(bridge->refill_generator);
     }
 
-    // Destroy mutex
-    if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
-    }
+    // Cleanup bridge base (disconnects bio-async, destroys+frees mutex)
+    bridge_base_cleanup(&bridge->base);
 
     // Free bridge structure
     nimcp_free(bridge);

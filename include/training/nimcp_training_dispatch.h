@@ -176,6 +176,46 @@ const char* training_dispatch_type_name(uint8_t network_type);
  */
 bool training_dispatch_is_supported(uint8_t network_type);
 
+/**
+ * @brief Execute one SNN training step (STDP/R-STDP/eProp/surrogate)
+ *
+ * @param brain Brain with SNN network and training context
+ * @param inputs Input features
+ * @param num_inputs Number of inputs
+ * @param targets Target values
+ * @param num_targets Number of targets
+ * @param result Output result (may be NULL)
+ * @return 0 on success, negative on error
+ */
+int training_dispatch_snn_step(
+    brain_t brain,
+    const float* inputs,
+    uint32_t num_inputs,
+    const float* targets,
+    uint32_t num_targets,
+    training_dispatch_result_t* result
+);
+
+/**
+ * @brief Execute one LNN training step (adjoint ODE)
+ *
+ * @param brain Brain with LNN network and training context
+ * @param inputs Input features
+ * @param num_inputs Number of inputs
+ * @param targets Target values
+ * @param num_targets Number of targets
+ * @param result Output result (may be NULL)
+ * @return 0 on success, negative on error
+ */
+int training_dispatch_lnn_step(
+    brain_t brain,
+    const float* inputs,
+    uint32_t num_inputs,
+    const float* targets,
+    uint32_t num_targets,
+    training_dispatch_result_t* result
+);
+
 #ifdef __cplusplus
 }
 #endif

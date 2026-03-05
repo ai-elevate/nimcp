@@ -144,6 +144,7 @@ snn_cortical_bridge_t* snn_cortical_bridge_create(
 
     /* Initialize fields */
     memset(bridge, 0, sizeof(snn_cortical_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_cortical") != 0) { nimcp_free(bridge); return NULL; }
     bridge->network = network;
     bridge->pool = pool;
     bridge->hypercolumn = hypercolumn;
@@ -225,6 +226,7 @@ void snn_cortical_bridge_destroy(snn_cortical_bridge_t* bridge) {
         snn_cortical_bridge_disconnect_bio_async(bridge);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

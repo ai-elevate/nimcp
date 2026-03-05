@@ -60,6 +60,7 @@ snn_emotional_tagging_bridge_t* snn_emotional_tagging_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_emotional_tagging_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_emotional_tagging") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->tagging_system = tagging_system;
     bridge->config = *config;
@@ -98,6 +99,7 @@ void snn_emotional_tagging_bridge_destroy(snn_emotional_tagging_bridge_t* bridge
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
     if (bridge->tags) nimcp_free(bridge->tags);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-emotional-tagging bridge");
 }
@@ -177,6 +179,7 @@ int snn_emotional_tagging_bridge_update(snn_emotional_tagging_bridge_t* bridge, 
 
     /* Update statistics */
     bridge->state.avg_tag_intensity = bridge->state.avg_tag_intensity * 0.95f + tag_intensity * 0.05f;
+    if (!isfinite(bridge->state.avg_tag_intensity)) bridge->state.avg_tag_intensity = tag_intensity;
 
     /* Count active tags */
     uint32_t active = 0, consolidated = 0;

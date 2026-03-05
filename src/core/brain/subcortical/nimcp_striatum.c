@@ -215,7 +215,8 @@ void striatum_destroy(striatum_t* striatum) {
         nimcp_free(striatum->inhibition_matrix);
     }
 
-    nimcp_mutex_free(striatum->mutex);
+    nimcp_mutex_destroy(striatum->mutex);
+    nimcp_free(striatum->mutex);
 
     nimcp_free(striatum);
 

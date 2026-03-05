@@ -93,6 +93,7 @@ physics_immune_bridge_t* physics_immune_bridge_create(
 ) {
     physics_immune_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate physics-immune bridge");
+    if (bridge_base_init(&bridge->base, 0, "physics_immune") != 0) { nimcp_free(bridge); return NULL; }
 
     /* Apply configuration */
     if (config) {
@@ -129,6 +130,7 @@ void physics_immune_bridge_destroy(physics_immune_bridge_t* bridge) {
         (unsigned long)bridge->stats.physics_to_immune_count,
         (unsigned long)bridge->stats.immune_to_physics_count);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

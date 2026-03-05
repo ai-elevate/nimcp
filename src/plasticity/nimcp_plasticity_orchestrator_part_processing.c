@@ -104,15 +104,25 @@ int plasticity_orchestrator_update(
     /* Phase 8: Heartbeat at start of orchestrator update */
     plasticity_orchestrator_heartbeat("orchestrator_update", 0.0f);
 
-    /* Pre-update callbacks */
-    for (int i = 0; i < MAX_CALLBACKS; i++) {
-        if (orchestrator->pre_update_callbacks[i].active) {
-            orchestrator->pre_update_callbacks[i].callback(
-                orchestrator,
-                delta_ms,
-                orchestrator->pre_update_callbacks[i].user_data
-            );
+    /* Copy pre-update callbacks under lock, then invoke outside lock */
+    {
+        plasticity_update_callback_t pre_cbs[MAX_CALLBACKS];
+        void* pre_data[MAX_CALLBACKS];
+        int num_pre = 0;
+
+        for (int i = 0; i < MAX_CALLBACKS; i++) {
+            if (orchestrator->pre_update_callbacks[i].active) {
+                pre_cbs[num_pre] = orchestrator->pre_update_callbacks[i].callback;
+                pre_data[num_pre] = orchestrator->pre_update_callbacks[i].user_data;
+                num_pre++;
+            }
         }
+
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        for (int i = 0; i < num_pre; i++) {
+            pre_cbs[i](orchestrator, delta_ms, pre_data[i]);
+        }
+        nimcp_platform_mutex_lock(orchestrator->mutex);
     }
 
     /* Update sleep modulation */
@@ -325,21 +335,29 @@ int plasticity_orchestrator_update(
     /* Phase 8: Heartbeat before post-update callbacks */
     plasticity_orchestrator_heartbeat("orchestrator_update", 0.9f);
 
-    /* Post-update callbacks */
-    for (int i = 0; i < MAX_CALLBACKS; i++) {
-        if (orchestrator->post_update_callbacks[i].active) {
-            orchestrator->post_update_callbacks[i].callback(
-                orchestrator,
-                delta_ms,
-                orchestrator->post_update_callbacks[i].user_data
-            );
+    /* Copy post-update callbacks under lock, then invoke outside lock */
+    {
+        plasticity_update_callback_t post_cbs[MAX_CALLBACKS];
+        void* post_data[MAX_CALLBACKS];
+        int num_post = 0;
+
+        for (int i = 0; i < MAX_CALLBACKS; i++) {
+            if (orchestrator->post_update_callbacks[i].active) {
+                post_cbs[num_post] = orchestrator->post_update_callbacks[i].callback;
+                post_data[num_post] = orchestrator->post_update_callbacks[i].user_data;
+                num_post++;
+            }
+        }
+
+        orchestrator->stats.total_updates++;
+        orchestrator->stats.last_update_ms = orchestrator->current_time_ms;
+
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+
+        for (int i = 0; i < num_post; i++) {
+            post_cbs[i](orchestrator, delta_ms, post_data[i]);
         }
     }
-
-    orchestrator->stats.total_updates++;
-    orchestrator->stats.last_update_ms = orchestrator->current_time_ms;
-
-    nimcp_platform_mutex_unlock(orchestrator->mutex);
 
     return 0;
 }

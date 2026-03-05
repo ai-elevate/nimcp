@@ -193,7 +193,9 @@ static bool check_impairment(float inference_depth, float logical_accuracy)
  */
 static float update_running_average(float current_avg, float new_value)
 {
-    return current_avg * 0.95f + new_value * 0.05f;
+    float result = current_avg * 0.95f + new_value * 0.05f;
+    if (!isfinite(result)) return new_value;
+    return result;
 }
 
 /* ============================================================================

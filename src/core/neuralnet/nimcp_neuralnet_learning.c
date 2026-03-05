@@ -850,10 +850,96 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
         }
     }
 
+    /* Phase 5: Synaptogenesis — activate dormant neighbors of active neurons.
+     * Gate on num_active (not total_modified) to break chicken-and-egg:
+     * new connections need activity, but STDP/Oja need existing connections. */
+    if (network->num_neurons > 10000 && num_active > 0) {
+        uint32_t sprout_budget = (num_active > 64) ? num_active : 64;
+        if (sprout_budget > 1024) sprout_budget = 1024;
+        neural_network_sprout_connections(network, sprout_budget, activity_threshold);
+    }
+
     nimcp_free(active_ids);
     LOG_INFO(LOG_MODULE, "Active reward learning: %u/%u neurons active, %u synapses modified (reward=%.3f)",
              num_active, network->num_neurons, total_modified, reward);
     return total_modified;
+}
+
+/**
+ * Synaptogenesis: Activate dormant neurons near active backbone neurons.
+ *
+ * For each highly-active backbone neuron, check its nearest unwired neighbor.
+ * If that neighbor has zero connections, wire it in by copying a random subset
+ * of the backbone neuron's input sources with small initial weights.
+ *
+ * This implements axonal sprouting — new connections grow from active neurons
+ * toward nearby dormant neurons, gradually expanding the network's capacity.
+ */
+uint32_t neural_network_sprout_connections(neural_network_t network,
+                                           uint32_t max_new_connections,
+                                           float activity_threshold)
+{
+    if (!network || max_new_connections == 0) return 0;
+    if (network->config.num_layers < 3 || !network->config.layer_sizes) return 0;
+
+    uint32_t input_size = network->config.layer_sizes[0];
+    uint32_t output_size = network->config.layer_sizes[network->config.num_layers - 1];
+    uint32_t total_hidden = 0;
+    for (uint32_t l = 1; l < network->config.num_layers - 1; l++)
+        total_hidden += network->config.layer_sizes[l];
+    if (total_hidden < 100) return 0;  /* Too small for sprouting */
+
+    uint32_t hidden_start = input_size;
+    uint32_t output_start = 0;
+    for (uint32_t l = 0; l < network->config.num_layers - 1; l++)
+        output_start += network->config.layer_sizes[l];
+
+    uint32_t new_conns = 0;
+    float init_scale = 1.0f / sqrtf((float)input_size);
+
+    /* Scan hidden neurons: find active ones with connections next to dormant ones */
+    for (uint32_t h = hidden_start; h < hidden_start + total_hidden - 1 && new_conns < max_new_connections; h++) {
+        neuron_t* active = &network->neurons[h];
+        if (NEURON_IN_COUNT(active) == 0) continue;  /* Skip dormant neurons */
+        if (fabsf(active->state) < activity_threshold) continue;  /* Skip inactive */
+
+        /* Check immediate neighbor(s) — are they dormant? */
+        for (int32_t offset = 1; offset <= 8 && new_conns < max_new_connections; offset++) {
+            uint32_t neighbor_id = h + offset;
+            if (neighbor_id >= hidden_start + total_hidden) break;
+            neuron_t* neighbor = &network->neurons[neighbor_id];
+            if (NEURON_IN_COUNT(neighbor) > 0) continue;  /* Already wired */
+            if (NEURON_OUT_COUNT(neighbor) > 0) continue;
+
+            /* Sprout: wire neighbor with random subset of active neuron's input sources */
+            uint32_t in_count = NEURON_IN_COUNT(active);
+            uint32_t to_copy = (in_count > 16) ? 16 : in_count;
+            for (uint32_t s = 0; s < to_copy && new_conns < max_new_connections; s++) {
+                synapse_handle_t* src_h = NEURON_IN_HANDLE(active, s);
+                if (!src_h) continue;
+                float weight = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * init_scale * 0.5f;
+                neural_network_add_connection(network, src_h->target_neuron_id, neighbor_id, weight);
+                new_conns++;
+            }
+
+            /* Wire neighbor to a subset of outputs (up to 16) */
+            uint32_t out_target = (output_size > 64) ? 64 : output_size;
+            uint32_t out_step = output_size / out_target;
+            for (uint32_t o = 0; o < out_target && new_conns < max_new_connections; o++) {
+                uint32_t output_id = output_start + o * out_step;
+                if (output_id >= network->num_neurons) break;
+                float weight = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * init_scale * 0.25f;
+                neural_network_add_connection(network, neighbor_id, output_id, weight);
+                new_conns++;
+            }
+        }
+    }
+
+    /* Rebuild incoming handles after adding connections */
+    if (new_conns > 0) {
+        LOG_INFO(LOG_MODULE, "Synaptogenesis: %u new connections sprouted", new_conns);
+    }
+    return new_conns;
 }
 
 uint32_t neural_network_apply_generalized_oja(neural_network_t network, uint32_t neuron_id,

@@ -84,18 +84,8 @@ snn_immune_bridge_t* snn_immune_bridge_create(
     bridge->immune = immune;
     memcpy(&bridge->config, config, sizeof(snn_immune_config_t));
 
-    /* Create mutex */
-    bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->base.mutex) {
-        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_mutex_t),
-            "snn_immune_bridge_create: mutex allocation failed");
-        nimcp_free(bridge);
-        return NULL;
-    }
-
-    if (nimcp_mutex_init((nimcp_mutex_t*)bridge->base.mutex, NULL) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
-            "snn_immune_bridge_create: mutex init failed");
+    /* Initialize bridge base (mutex + module name) */
+    if (bridge_base_init(&bridge->base, 0, "snn_immune") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -121,17 +111,7 @@ snn_immune_bridge_t* snn_immune_bridge_create(
 
 void snn_immune_bridge_destroy(snn_immune_bridge_t* bridge) {
     if (!bridge) return;
-
-    /* Disconnect bio-async if connected */
-    if (bridge->base.bio_async_enabled) {
-        snn_immune_bridge_disconnect_bio_async(bridge);
-    }
-
-    /* Destroy mutex */
-    if (bridge->base.mutex) {
-        nimcp_mutex_free((nimcp_mutex_t*)bridge->base.mutex);
-    }
-
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

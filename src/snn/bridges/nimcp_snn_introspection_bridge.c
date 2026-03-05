@@ -60,6 +60,7 @@ snn_introspection_bridge_t* snn_introspection_bridge_create(
     }
 
     memset(bridge, 0, sizeof(snn_introspection_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_introspection") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->introspection = introspection;
     bridge->config = *config;
@@ -82,6 +83,7 @@ void snn_introspection_bridge_destroy(snn_introspection_bridge_t* bridge) {
     }
     if (bridge->encoder) snn_encoder_destroy(bridge->encoder);
     if (bridge->decoder) snn_decoder_destroy(bridge->decoder);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-introspection bridge");
 }
@@ -144,6 +146,7 @@ int snn_introspection_bridge_update(snn_introspection_bridge_t* bridge, float dt
         float spike_rate = snn_population_get_firing_rate(bridge->introspection_pop);
         bridge->state.phi_estimate = snn_introspection_estimate_phi(bridge, spike_rate);
         bridge->state.avg_metacog_rate = (bridge->state.avg_metacog_rate * 0.9f + spike_rate * 0.1f);
+        if (!isfinite(bridge->state.avg_metacog_rate)) bridge->state.avg_metacog_rate = spike_rate;
 
         if (bridge->state.phi_estimate >= bridge->config.consciousness_threshold) {
             bridge->state.consciousness_detected = true;

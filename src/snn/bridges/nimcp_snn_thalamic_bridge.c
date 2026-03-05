@@ -76,6 +76,7 @@ snn_thalamic_bridge_t* snn_thalamic_bridge_create(
 
     /* WHY: Initialize all fields to zero */
     memset(bridge, 0, sizeof(snn_thalamic_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_thalamic") != 0) { nimcp_free(bridge); return NULL; }
 
     /* HOW: Set configuration */
     if (config) {
@@ -175,6 +176,7 @@ void snn_thalamic_bridge_destroy(snn_thalamic_bridge_t* bridge) {
     if (bridge->trn_inhibition) nimcp_free(bridge->trn_inhibition);
     if (bridge->ct_feedback_buffer) nimcp_free(bridge->ct_feedback_buffer);
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("SNN thalamic bridge destroyed");
 }

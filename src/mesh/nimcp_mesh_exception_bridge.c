@@ -19,6 +19,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include <string.h>
@@ -47,6 +48,7 @@ typedef struct debounce_entry {
  * @brief Internal exception bridge structure
  */
 struct mesh_exception_bridge {
+    bridge_base_t base;
     uint32_t magic;
     mesh_exception_bridge_config_t config;
 
@@ -143,6 +145,8 @@ mesh_exception_bridge_t* mesh_exception_bridge_create(
         return NULL;
     }
 
+    bridge_base_init(&bridge->base, 0, "mesh_exception_bridge");
+
     LOG_DEBUG("Exception bridge created");
     return bridge;
 }
@@ -155,6 +159,7 @@ void mesh_exception_bridge_destroy(mesh_exception_bridge_t* bridge) {
     nimcp_mutex_unlock(bridge->mutex);
 
     nimcp_mutex_destroy(bridge->mutex);
+    bridge_base_cleanup(&bridge->base);
     bridge->magic = 0;
     nimcp_free(bridge);
 

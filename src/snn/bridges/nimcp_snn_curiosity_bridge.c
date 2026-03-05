@@ -49,6 +49,7 @@ snn_curiosity_bridge_t* snn_curiosity_bridge_create(const snn_curiosity_config_t
     }
 
     memset(bridge, 0, sizeof(snn_curiosity_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_curiosity") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->curiosity_system = curiosity_system;
     bridge->config = *config;
@@ -70,6 +71,7 @@ void snn_curiosity_bridge_destroy(snn_curiosity_bridge_t* bridge) {
         snn_curiosity_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->novelty_buffer) nimcp_free(bridge->novelty_buffer);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-curiosity bridge");
 }

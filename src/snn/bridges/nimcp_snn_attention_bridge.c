@@ -100,6 +100,7 @@ snn_attention_bridge_t* snn_attention_bridge_create(
 
     /* Initialize structure */
     memset(bridge, 0, sizeof(snn_attention_bridge_t));
+    if (bridge_base_init(&bridge->base, 0, "snn_attention") != 0) { nimcp_free(bridge); return NULL; }
     bridge->snn = snn;
     bridge->attention = attention;
     bridge->config = *config;
@@ -143,6 +144,7 @@ void snn_attention_bridge_destroy(snn_attention_bridge_t* bridge) {
         snn_attention_bridge_disconnect_bio_async(bridge);
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed SNN-attention bridge");
 }

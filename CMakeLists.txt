@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 project(NIMCP VERSION 2.6.3 LANGUAGES C CXX)
 
+# Default to RelWithDebInfo so debug symbols are always available for GDB
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
+endif()
+
 # Set prefix path for locally installed packages
 set(CMAKE_PREFIX_PATH $ENV{HOME}/.local ${CMAKE_PREFIX_PATH})
 

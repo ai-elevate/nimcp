@@ -60,6 +60,7 @@ info_geom_bridge_t info_geom_bridge_create(const info_geom_bridge_config_t* conf
 {
     struct info_geom_bridge_struct* bridge = nimcp_calloc(1, sizeof(struct info_geom_bridge_struct));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate information geometry bridge");
+    if (bridge_base_init(&bridge->base, 0, "information_geometry") != 0) { nimcp_free(bridge); return NULL; }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(info_geom_bridge_config_t));
@@ -85,6 +86,7 @@ void info_geom_bridge_destroy(info_geom_bridge_t bridge)
         NIMCP_LOG_INFO(LOG_TAG, "Destroying information geometry bridge");
     }
 
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

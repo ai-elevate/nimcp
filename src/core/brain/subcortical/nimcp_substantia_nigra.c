@@ -190,7 +190,8 @@ void substantia_nigra_destroy(substantia_nigra_t* sn) {
     if (sn->stn_input) nimcp_free(sn->stn_input);
 
     nimcp_mutex_unlock(sn->mutex);
-    nimcp_mutex_free(sn->mutex);
+    nimcp_mutex_destroy(sn->mutex);
+    nimcp_free(sn->mutex);
 
     nimcp_free(sn);
 

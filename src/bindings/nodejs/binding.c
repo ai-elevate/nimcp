@@ -59,6 +59,12 @@ static char* get_string(napi_env env, napi_value val) {
 static float* get_float_array(napi_env env, napi_value val, uint32_t* count) {
     uint32_t len;
     napi_get_array_length(env, val, &len);
+    /* Guard: integer overflow check before malloc */
+    if (len > SIZE_MAX / sizeof(float)) {
+        napi_throw_error(env, NULL, "array too large: integer overflow");
+        *count = 0;
+        return NULL;
+    }
     float* arr = (float*)malloc(len * sizeof(float));
     if (!arr) {
         napi_throw_error(env, NULL, "malloc failed");
@@ -68,8 +74,16 @@ static float* get_float_array(napi_env env, napi_value val, uint32_t* count) {
     for (uint32_t i = 0; i < len; i++) {
         napi_value elem;
         double dval;
-        napi_get_element(env, val, i, &elem);
-        napi_get_value_double(env, elem, &dval);
+        if (napi_get_element(env, val, i, &elem) != napi_ok) {
+            free(arr);
+            *count = 0;
+            return NULL;
+        }
+        if (napi_get_value_double(env, elem, &dval) != napi_ok) {
+            free(arr);
+            *count = 0;
+            return NULL;
+        }
         arr[i] = (float)dval;
     }
     *count = len;
@@ -90,6 +104,12 @@ static napi_value create_float_array(napi_env env, const float* data, uint32_t c
 static uint32_t* get_uint32_array(napi_env env, napi_value val, uint32_t* count) {
     uint32_t len;
     napi_get_array_length(env, val, &len);
+    /* Guard: integer overflow check before malloc */
+    if (len > SIZE_MAX / sizeof(uint32_t)) {
+        napi_throw_error(env, NULL, "array too large: integer overflow");
+        *count = 0;
+        return NULL;
+    }
     uint32_t* arr = (uint32_t*)malloc(len * sizeof(uint32_t));
     if (!arr) {
         napi_throw_error(env, NULL, "malloc failed");
@@ -98,8 +118,16 @@ static uint32_t* get_uint32_array(napi_env env, napi_value val, uint32_t* count)
     }
     for (uint32_t i = 0; i < len; i++) {
         napi_value elem;
-        napi_get_element(env, val, i, &elem);
-        napi_get_value_uint32(env, elem, &arr[i]);
+        if (napi_get_element(env, val, i, &elem) != napi_ok) {
+            free(arr);
+            *count = 0;
+            return NULL;
+        }
+        if (napi_get_value_uint32(env, elem, &arr[i]) != napi_ok) {
+            free(arr);
+            *count = 0;
+            return NULL;
+        }
     }
     *count = len;
     return arr;
@@ -307,6 +335,7 @@ static napi_value BrainInfer(napi_env env, napi_callback_info info) {
     uint32_t num_outputs;
     napi_get_value_uint32(env, args[2], &num_outputs);
 
+    if (num_outputs > SIZE_MAX / sizeof(float)) { free(features); napi_throw_error(env, NULL, "num_outputs overflow"); return NULL; }
     float* outputs = (float*)malloc(num_outputs * sizeof(float));
     if (!outputs) { free(features); napi_throw_error(env, NULL, "malloc failed"); return NULL; }
 
@@ -536,6 +565,12 @@ static napi_value BrainTrainBatch(napi_env env, napi_callback_info info) {
     napi_get_element(env, args[2], 0, &first_row);
     napi_get_array_length(env, first_row, &num_targets);
 
+    if (batch_size > 0 && num_features > SIZE_MAX / (batch_size * sizeof(float))) {
+        napi_throw_error(env, NULL, "features overflow"); return NULL;
+    }
+    if (batch_size > 0 && num_targets > SIZE_MAX / (batch_size * sizeof(float))) {
+        napi_throw_error(env, NULL, "targets overflow"); return NULL;
+    }
     float* all_features = (float*)malloc(batch_size * num_features * sizeof(float));
     float* all_targets = (float*)malloc(batch_size * num_targets * sizeof(float));
     if (!all_features || !all_targets) {
@@ -1196,6 +1231,7 @@ static napi_value BrainWorkspaceRead(napi_env env, napi_callback_info info) {
     uint32_t max_dim;
     napi_get_value_uint32(env, args[1], &max_dim);
 
+    if (max_dim > SIZE_MAX / sizeof(float)) { napi_throw_error(env, NULL, "max_dim overflow"); return NULL; }
     float* content = (float*)malloc(max_dim * sizeof(float));
     if (!content) { napi_throw_error(env, NULL, "malloc failed"); return NULL; }
 
@@ -1575,6 +1611,7 @@ static napi_value NetworkForward(napi_env env, napi_callback_info info) {
     uint32_t num_outputs;
     napi_get_value_uint32(env, args[2], &num_outputs);
 
+    if (num_outputs > SIZE_MAX / sizeof(float)) { free(inputs); napi_throw_error(env, NULL, "num_outputs overflow"); return NULL; }
     float* outputs = (float*)malloc(num_outputs * sizeof(float));
     if (!outputs) { free(inputs); napi_throw_error(env, NULL, "malloc failed"); return NULL; }
 

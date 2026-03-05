@@ -75,6 +75,39 @@ static inline float nimcp_sigmoid(float x) {
     return 1.0f / (1.0f + expf(-x));
 }
 
+/**
+ * @brief Guard an EMA value against NaN/Inf corruption.
+ *
+ * WHAT: Resets an EMA accumulator to a fallback value if it becomes non-finite.
+ * WHY:  A single NaN/Inf in an EMA permanently corrupts the running average
+ *       because NaN * decay + anything = NaN.
+ * HOW:  Call after every EMA update: NIMCP_EMA_GUARD(ema_var, fallback_value);
+ *
+ * @param ema_var   The EMA variable (lvalue) to check.
+ * @param fallback  The value to reset to if ema_var is NaN or Inf.
+ */
+#define NIMCP_EMA_GUARD(ema_var, fallback) \
+    do { if (!isfinite(ema_var)) (ema_var) = (fallback); } while (0)
+
+/**
+ * @brief Guard an EMA value, resetting to zero on NaN/Inf.
+ */
+#define NIMCP_EMA_GUARD_ZERO(ema_var) \
+    NIMCP_EMA_GUARD(ema_var, 0.0f)
+
+/**
+ * @brief Safe exponential that guards against overflow producing Inf.
+ *
+ * WHAT: Clamps input to [-88, 88] before calling expf().
+ * WHY:  expf(89) = Inf in single precision; expf(-89) = 0 (underflow is safe).
+ * HOW:  Returns expf(clamped_x) which is always finite and positive.
+ */
+static inline float nimcp_safe_expf(float x) {
+    if (x > 88.0f) x = 88.0f;
+    if (x < -88.0f) x = -88.0f;
+    return expf(x);
+}
+
 #ifdef __cplusplus
 }
 #endif
