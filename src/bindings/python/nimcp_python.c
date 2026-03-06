@@ -299,13 +299,14 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
     unsigned int num_outputs = 10;
     unsigned int neuron_count = 0;
     const char* checkpoint = NULL;
+    const char* init_mode = NULL;  // "full", "fast", or "minimal"
 
     static char* kwlist[] = {"name", "size", "task", "num_inputs", "num_outputs",
-                             "neuron_count", "checkpoint", NULL};
+                             "neuron_count", "checkpoint", "init_mode", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiIIIz", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiIIIzz", kwlist,
                                      &name, &size, &task, &num_inputs, &num_outputs,
-                                     &neuron_count, &checkpoint)) {
+                                     &neuron_count, &checkpoint, &init_mode)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_init: Invalid arguments");
         return -1;
     }
@@ -331,12 +332,30 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
         }
     }
 
-    if (neuron_count > 0) {
+    // Determine init mode: "fast" → nimcp_brain_create_fast, "minimal" → minimal, default → full
+    bool use_fast = (init_mode && strcmp(init_mode, "fast") == 0);
+    bool use_minimal = (init_mode && strcmp(init_mode, "minimal") == 0);
+
+    if (use_fast && neuron_count > 0) {
+        Py_BEGIN_ALLOW_THREADS
+        self->brain = nimcp_brain_create_fast(name, (nimcp_brain_task_t)task,
+                                              num_inputs, num_outputs, neuron_count);
+        Py_END_ALLOW_THREADS
+    } else if (use_minimal) {
+        Py_BEGIN_ALLOW_THREADS
+        self->brain = nimcp_brain_create(name, NIMCP_BRAIN_SMALL,
+                                         (nimcp_brain_task_t)task, num_inputs, num_outputs);
+        Py_END_ALLOW_THREADS
+    } else if (neuron_count > 0) {
+        Py_BEGIN_ALLOW_THREADS
         self->brain = nimcp_brain_create_with_neurons(name, (nimcp_brain_task_t)task,
                                                        num_inputs, num_outputs, neuron_count);
+        Py_END_ALLOW_THREADS
     } else {
+        Py_BEGIN_ALLOW_THREADS
         self->brain = nimcp_brain_create(name, (nimcp_brain_size_t)size,
                                          (nimcp_brain_task_t)task, num_inputs, num_outputs);
+        Py_END_ALLOW_THREADS
     }
 
     if (!self->brain) {

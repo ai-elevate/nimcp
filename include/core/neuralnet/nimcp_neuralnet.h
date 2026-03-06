@@ -372,6 +372,7 @@ typedef struct {
     uint32_t spike_history_capacity;     /**< 0 = use SPIKE_HISTORY_DEFAULT_CAPACITY */
     uint32_t activity_history_capacity;  /**< 0 = use ACTIVITY_HISTORY_DEFAULT_CAPACITY */
     bool skip_layer_wiring;              /**< Skip dense layer wiring during create (for resize) */
+    uint32_t wiring_threads;             /**< Thread pool size for parallel backbone wiring (0 = auto/4) */
 } network_config_t;
 
 /**

@@ -261,6 +261,28 @@ nimcp_brain_t nimcp_brain_create_full(
 );
 
 /**
+ * @brief Create brain with fast initialization (core + training only)
+ *
+ * Initializes only the subsystems required for training and inference.
+ * All other subsystems are deferred to first use (lazy initialization).
+ * 3-5x faster than full init for large brains.
+ *
+ * @param name Brain name
+ * @param task Task type
+ * @param num_inputs Input dimension
+ * @param num_outputs Output dimension
+ * @param neuron_count Number of neurons
+ * @return Brain handle or NULL on error
+ */
+nimcp_brain_t nimcp_brain_create_fast(
+    const char* name,
+    nimcp_brain_task_t task,
+    uint32_t num_inputs,
+    uint32_t num_outputs,
+    uint32_t neuron_count
+);
+
+/**
  * @brief Destroy a brain and free all resources
  *
  * @param brain Brain handle

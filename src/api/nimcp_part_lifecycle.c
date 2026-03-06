@@ -433,6 +433,54 @@ nimcp_brain_t nimcp_brain_create_full(
     return handle;
 }
 
+nimcp_brain_t nimcp_brain_create_fast(
+    const char* name,
+    nimcp_brain_task_t task,
+    uint32_t num_inputs,
+    uint32_t num_outputs,
+    uint32_t neuron_count)
+{
+    LOG_INFO("Creating FAST brain with %u neurons: name='%s', task=%d, inputs=%u, outputs=%u",
+             neuron_count, name ? name : "NULL", task, num_inputs, num_outputs);
+
+    NIMCP_API_CHECK_NULL_RET_NULL(name, "Brain name cannot be NULL");
+
+    nimcp_brain_t handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_create_fast: handle allocation failed");
+        return NULL;
+    }
+
+    brain_size_t internal_size = BRAIN_SIZE_LARGE;
+    brain_task_t internal_task = (brain_task_t)task;
+
+    brain_config_t config = {0};
+    config.init_mode = BRAIN_INIT_FAST;  // Set before init_brain_config so lazy flags propagate
+
+    task_strategy_t* strategy = strategy_create(internal_task);
+    if (!strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_create_fast: strategy allocation failed");
+        nimcp_free(handle);
+        return NULL;
+    }
+
+    nimcp_brain_factory_init_brain_config(&config, name, internal_size, internal_task,
+                                          num_inputs, num_outputs, strategy);
+    strategy_destroy(strategy);
+    config.neuron_count = neuron_count;
+
+    handle->internal_brain = brain_create_custom(&config);
+    if (!handle->internal_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_create_fast: brain_create_custom returned NULL");
+        nimcp_free(handle);
+        return NULL;
+    }
+
+    set_error("No error");
+    LOG_INFO("FAST brain '%s' created with %u neurons (handle=%p)", name, neuron_count, (void*)handle);
+    return handle;
+}
+
 nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
     if (!config_filepath) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_create_from_config: config_filepath is NULL");

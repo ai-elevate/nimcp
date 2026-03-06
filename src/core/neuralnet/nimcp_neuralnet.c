@@ -74,6 +74,8 @@
 #define LOG_MODULE "neuralnet"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/thread/nimcp_thread_pool.h"
+#include <stdatomic.h>
 #include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet)
@@ -548,6 +550,7 @@ static bool validate_network_config(const network_config_t* config)
  * @param config Network configuration
  * @return Network handle or NULL on failure
  */
+
 neural_network_t neural_network_create(const network_config_t* config)
 {
     // Guard clause: Validate configuration
@@ -802,66 +805,90 @@ neural_network_t neural_network_create(const network_config_t* config)
         }
 
         if (total_hidden > 0) {
-            // Backbone size: scale with output dimension for good per-class coverage.
-            // Each output class gets backbone/output_size dedicated neurons for
-            // specialization. 32 backbone neurons per class is the sweet spot:
-            // enough for complex decision boundaries, small enough for fast init.
-            uint32_t backbone_target = output_size * 16;
-            if (backbone_target < 1024) backbone_target = 1024;
-            if (backbone_target > 32768) backbone_target = 32768;
-            uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
-
-            // Evenly space backbone neurons across the hidden layer
-            uint32_t step = total_hidden / backbone;
-            if (step == 0) step = 1;
-
-            uint32_t hidden_start = input_size;  // First hidden neuron index
-
-            // Output layer start index
-            uint32_t output_start = 0;
-            for (uint32_t l = 0; l < config->num_layers - 1; l++) {
-                output_start += config->layer_sizes[l];
-            }
-
-            // Xavier-scale initialization to prevent activation explosion/vanishing.
-            // Dense wiring uses uniform [-0.5, 0.5] which works for small fan-in but
-            // causes sigmoid saturation with fan_in=256+ (sum variance = N * 1/12).
-            float input_scale = 1.0F / sqrtf((float)input_size);
-            float backbone_scale = 1.0F / sqrtf((float)backbone);
+            // LAYER-AWARE BACKBONE WIRING for multi-layer architectures.
+            // Wire backbone neurons layer-by-layer: input→L1→L2→...→Ln→output.
+            // Each layer transition gets its own backbone subset, ensuring
+            // gradient flow through all layers (not just input→output skip).
 
             uint32_t total_conns = 0;
+            uint32_t total_backbone = 0;
+            uint32_t num_transitions = config->num_layers - 1;
 
-            // Wire: all inputs → each backbone hidden neuron
-            for (uint32_t b = 0; b < backbone; b++) {
-                uint32_t hidden_id = hidden_start + b * step;
-                if (hidden_id >= hidden_start + total_hidden) break;
-
-                for (uint32_t i = 0; i < input_size && i < network->num_neurons; i++) {
-                    float weight = (((float)nimcp_tl_rand() / RAND_MAX) * 2.0F - 1.0F) * input_scale;
-                    neural_network_add_connection(network, i, hidden_id, weight);
-                    total_conns++;
+            // Pre-compute layer start indices
+            uint32_t* layer_starts = nimcp_calloc(config->num_layers, sizeof(uint32_t));
+            if (!layer_starts) {
+                LOG_ERROR(LOG_MODULE, "Failed to allocate layer_starts");
+            } else {
+                layer_starts[0] = 0;
+                for (uint32_t l = 1; l < config->num_layers; l++) {
+                    layer_starts[l] = layer_starts[l - 1] + config->layer_sizes[l - 1];
                 }
-            }
 
-            // Wire: each backbone hidden neuron → all outputs
-            for (uint32_t b = 0; b < backbone; b++) {
-                uint32_t hidden_id = hidden_start + b * step;
-                if (hidden_id >= hidden_start + total_hidden) break;
+                // Wire each layer transition: layer[l] → layer[l+1]
+                for (uint32_t t = 0; t < num_transitions; t++) {
+                    uint32_t src_size = config->layer_sizes[t];
+                    uint32_t dst_size = config->layer_sizes[t + 1];
+                    uint32_t src_start = layer_starts[t];
+                    uint32_t dst_start = layer_starts[t + 1];
 
-                for (uint32_t o = 0; o < output_size; o++) {
-                    uint32_t output_id = output_start + o;
-                    if (output_id >= network->num_neurons) break;
-                    float weight = (((float)nimcp_tl_rand() / RAND_MAX) * 2.0F - 1.0F) * backbone_scale;
-                    neural_network_add_connection(network, hidden_id, output_id, weight);
-                    total_conns++;
+                    // Per-transition backbone: cap total connections per transition.
+                    // Budget: ~200K connections per transition (keeps init under 1s).
+                    // For small layers, use all neurons. For large layers, subsample.
+                    uint32_t src_backbone = src_size;
+                    uint32_t dst_backbone = dst_size;
+
+                    // Cap: src_backbone * dst_backbone <= 200K
+                    uint32_t max_conns_per_transition = 200000;
+                    uint64_t raw_conns = (uint64_t)src_backbone * (uint64_t)dst_backbone;
+                    if (raw_conns > max_conns_per_transition) {
+                        // Reduce both sides proportionally, preserving aspect ratio
+                        float ratio = sqrtf((float)max_conns_per_transition / (float)raw_conns);
+                        src_backbone = (uint32_t)((float)src_size * ratio);
+                        dst_backbone = (uint32_t)((float)dst_size * ratio);
+                        if (src_backbone < 64) src_backbone = 64;
+                        if (dst_backbone < 64) dst_backbone = 64;
+                        if (src_backbone > src_size) src_backbone = src_size;
+                        if (dst_backbone > dst_size) dst_backbone = dst_size;
+                    }
+
+                    uint32_t src_step = src_size / src_backbone;
+                    if (src_step == 0) src_step = 1;
+                    uint32_t dst_step = dst_size / dst_backbone;
+                    if (dst_step == 0) dst_step = 1;
+
+                    // Xavier scale for this transition
+                    float scale = 1.0F / sqrtf((float)src_backbone);
+
+                    // Wire: src_backbone source neurons → dst_backbone dest neurons
+                    for (uint32_t d = 0; d < dst_backbone; d++) {
+                        uint32_t dst_id = dst_start + d * dst_step;
+                        if (dst_id >= dst_start + dst_size) break;
+                        if (dst_id >= network->num_neurons) break;
+
+                        for (uint32_t s = 0; s < src_backbone; s++) {
+                            uint32_t src_id = src_start + s * src_step;
+                            if (src_id >= src_start + src_size) break;
+                            if (src_id >= network->num_neurons) break;
+
+                            float weight = (((float)nimcp_tl_rand() / RAND_MAX) * 2.0F - 1.0F) * scale;
+                            neural_network_add_connection(network, src_id, dst_id, weight);
+                            total_conns++;
+                        }
+                    }
+
+                    total_backbone += src_backbone;
+                    LOG_INFO(LOG_MODULE, "Backbone L%u->L%u: %u src × %u dst = %u connections",
+                             t, t + 1, src_backbone, dst_backbone, src_backbone * dst_backbone);
                 }
-            }
 
-            LOG_INFO(LOG_MODULE, "Sparse backbone: %u/%u hidden neurons wired, %u connections "
-                     "(%.1f%% of dense %llu)",
-                     backbone, total_hidden, total_conns,
-                     (double)total_conns / (double)(dense_connections > 0 ? dense_connections : 1) * 100.0,
-                     (unsigned long long)dense_connections);
+                nimcp_free(layer_starts);
+
+                LOG_INFO(LOG_MODULE, "Sparse backbone: %u total connections across %u transitions "
+                         "(%.1f%% of dense %llu)",
+                         total_conns, num_transitions,
+                         (double)total_conns / (double)(dense_connections > 0 ? dense_connections : 1) * 100.0,
+                         (unsigned long long)dense_connections);
+            }
         }
     }
 

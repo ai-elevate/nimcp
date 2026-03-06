@@ -131,19 +131,125 @@ network_config_t nimcp_brain_factory_build_base_network_config(uint32_t num_inpu
     config.input_size = num_inputs;
     config.output_size = num_outputs;
     config.num_neurons = num_neurons;
-    config.num_layers = 3;
     config.integration_method = integration_method;
 
-    config.layer_sizes = nimcp_calloc(3, sizeof(uint32_t));
-    if (!config.layer_sizes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "nimcp_brain_factory_build_base_network_config: failed to allocate layer_sizes");
-        return config;
+    // ========================================================================
+    // MULTI-LAYER ARCHITECTURE: Diamond/pyramid topology
+    //
+    // WHY: A single hidden layer wastes neurons (1.5M in one flat layer means
+    //      no hierarchical feature extraction). Deep networks learn low-level
+    //      features early and compose them into abstractions in later layers.
+    //
+    // HOW: Distribute neurons across a diamond-shaped layer pyramid:
+    //      - Expand from input to a wide middle layer
+    //      - Contract from middle to output
+    //      - Layer count scales with log2(num_neurons)
+    //
+    // Small networks (<5000): 3 layers (input → hidden → output)
+    //   [64, 500, 32] — simple, proven architecture
+    //
+    // Medium networks (5K-100K): 5 layers (diamond)
+    //   [256, 2048, 8192, 2048, 128] — hierarchical features
+    //
+    // Large networks (100K+): 7 layers (deep diamond)
+    //   [1024, 16384, 131072, 524288, 131072, 16384, 2048]
+    // ========================================================================
+
+    uint32_t hidden_budget = num_neurons;  // Total hidden neurons to distribute
+
+    if (hidden_budget <= 5000) {
+        // Small: 3 layers — single hidden layer (backward compatible)
+        config.num_layers = 3;
+        config.layer_sizes = nimcp_calloc(3, sizeof(uint32_t));
+        if (!config.layer_sizes) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "nimcp_brain_factory_build_base_network_config: failed to allocate layer_sizes");
+            return config;
+        }
+        config.layer_sizes[0] = num_inputs;
+        config.layer_sizes[1] = hidden_budget;
+        config.layer_sizes[2] = num_outputs;
+
+    } else if (hidden_budget <= 100000) {
+        // Medium: 5 layers — diamond shape
+        // Ratios: 1/8, 3/8, 3/8, 1/8 of hidden budget
+        config.num_layers = 5;
+        config.layer_sizes = nimcp_calloc(5, sizeof(uint32_t));
+        if (!config.layer_sizes) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "nimcp_brain_factory_build_base_network_config: failed to allocate layer_sizes");
+            return config;
+        }
+        uint32_t h1 = hidden_budget / 8;       // Narrow entry
+        uint32_t h3 = hidden_budget / 8;       // Narrow exit
+        uint32_t h2 = hidden_budget - h1 - h3; // Wide middle (3/4 of budget)
+        // Split middle into 2 layers
+        uint32_t h2a = h2 / 2;
+        uint32_t h2b = h2 - h2a;
+
+        config.layer_sizes[0] = num_inputs;
+        config.layer_sizes[1] = h1 > 0 ? h1 : 1;
+        config.layer_sizes[2] = h2a > 0 ? h2a : 1;
+        config.layer_sizes[3] = h2b > 0 ? h2b : 1;
+        // Re-distribute: make it a proper diamond (expand then contract)
+        // [input, small, big, small, output]
+        config.layer_sizes[1] = hidden_budget / 6;        // ~17%
+        config.layer_sizes[2] = hidden_budget * 2 / 3;    // ~67% (widest)
+        config.layer_sizes[3] = hidden_budget - config.layer_sizes[1] - config.layer_sizes[2]; // ~17%
+        config.layer_sizes[4] = num_outputs;
+
+    } else {
+        // Large (100K+): 7 layers — deep diamond
+        // Distribution: expand to peak then contract
+        // Ratios: 2%, 12%, 36%, 36%, 12%, 2%
+        config.num_layers = 7;
+        config.layer_sizes = nimcp_calloc(7, sizeof(uint32_t));
+        if (!config.layer_sizes) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "nimcp_brain_factory_build_base_network_config: failed to allocate layer_sizes");
+            return config;
+        }
+
+        // Layer distribution for deep diamond:
+        // L1: entry projection (2%)
+        // L2: feature extraction (12%)
+        // L3: lower representation (36%)
+        // L4: upper representation (36%)
+        // L5: compression (12%)
+        // L6: exit projection (2%)  — but this is num_outputs, so redistribute
+        uint32_t l1 = hidden_budget * 2 / 100;
+        if (l1 < 256) l1 = 256;
+        uint32_t l5 = l1;   // Symmetric
+        uint32_t l2 = hidden_budget * 12 / 100;
+        uint32_t l4 = l2;   // Symmetric
+        uint32_t l3 = hidden_budget - l1 - l2 - l4 - l5;  // Remainder (~72%)
+        // Split l3 into two roughly equal layers for the wide middle
+        uint32_t l3a = l3 / 2;
+        uint32_t l3b = l3 - l3a;
+
+        config.layer_sizes[0] = num_inputs;
+        config.layer_sizes[1] = l1;
+        config.layer_sizes[2] = l2;
+        config.layer_sizes[3] = l3a;   // Peak layer
+        config.layer_sizes[4] = l3b;   // Second peak
+        config.layer_sizes[5] = l4;    // Compression mirrors l2
+        // Note: l5 would be here but we need output layer at the end
+        // Merge l5 into l4 to keep 7 layers total
+        config.layer_sizes[5] += l5;
+        config.layer_sizes[6] = num_outputs;
     }
 
-    config.layer_sizes[0] = num_inputs;
-    config.layer_sizes[1] = num_neurons;
-    config.layer_sizes[2] = num_outputs;
+    // Log the architecture
+    {
+        char buf[256];
+        int pos = 0;
+        for (uint32_t l = 0; l < config.num_layers && pos < 240; l++) {
+            pos += snprintf(buf + pos, sizeof(buf) - pos, "%s%u",
+                            l > 0 ? " → " : "", config.layer_sizes[l]);
+        }
+        LOG_INFO(LOG_MODULE, "Network architecture (%u layers, %u total neurons): %s",
+                 config.num_layers, num_neurons, buf);
+    }
 
     config.enable_stdp = true;
     config.enable_hebbian = true;
@@ -276,9 +382,13 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->enable_myelin_sheath = !minimal;
 
     // Lazy Initialization defaults (performance optimization)
-    // Check if lazy_init_mode was pre-set by caller (like minimal mode sets it)
-    bool lazy = config->lazy_init_mode || minimal;
+    // Check if lazy_init_mode or init_mode was pre-set by caller
+    bool fast = (config->init_mode == BRAIN_INIT_FAST);
+    bool lazy = config->lazy_init_mode || minimal || fast;
     config->lazy_init_mode = lazy;  // Propagate lazy mode
+    if (fast) {
+        config->minimal_mode = false;  // FAST is not minimal — subsystems exist, just deferred
+    }
     config->lazy_dendrite_init = lazy;
     config->lazy_axon_init = lazy;
     config->lazy_visual_init = lazy;

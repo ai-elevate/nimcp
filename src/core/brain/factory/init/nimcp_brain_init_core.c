@@ -180,6 +180,11 @@ adaptive_network_t nimcp_brain_factory_create_brain_network(uint32_t num_inputs,
         net_config.base_config.skip_layer_wiring = true;
     }
 
+    // Default wiring threads for parallel backbone wiring (overridable via brain_config)
+    if (net_config.base_config.wiring_threads == 0) {
+        net_config.base_config.wiring_threads = 4;
+    }
+
     adaptive_network_t network = adaptive_network_create(&net_config);
 
     // Free our copy of layer_sizes - adaptive_network_create makes its own deep copy

@@ -263,6 +263,32 @@ typedef enum {
     BRAIN_TASK_CUSTOM            /**< Custom task */
 } brain_task_t;
 
+/**
+ * @brief Brain initialization mode — controls subsystem init depth
+ *
+ * WHAT: Controls how many subsystems are initialized at brain creation
+ * WHY:  Large brains (>100K neurons) can take minutes to create with full init
+ * HOW:  FAST mode initializes only core + training, defers everything else
+ *
+ * | Mode    | Subsystems initialized       | Creation time (1.5M neurons) |
+ * |---------|------------------------------|------------------------------|
+ * | FULL    | All 80+ subsystems           | ~150-250s                    |
+ * | FAST    | Core + GPU + training only   | ~30-60s                      |
+ * | MINIMAL | Neural network only          | ~10-20s                      |
+ *
+ * FAST mode initializes: neural network, GPU context, GPU inference, security,
+ * immune system, training pipeline, plasticity coordinator, signal handler.
+ * All other subsystems are deferred to first use (lazy initialization).
+ *
+ * All modes support the full API — deferred subsystems are initialized on
+ * first access. FAST mode is recommended for large brains in production.
+ */
+typedef enum {
+    BRAIN_INIT_FULL    = 0,  /**< Initialize all subsystems (default) */
+    BRAIN_INIT_FAST    = 1,  /**< Core + GPU + training only, everything else lazy */
+    BRAIN_INIT_MINIMAL = 2   /**< Neural network only, no subsystems */
+} brain_init_mode_t;
+
 //=============================================================================
 // Configuration Profiles
 //=============================================================================
@@ -1690,9 +1716,11 @@ typedef struct {
     uint32_t inference_threads;           /**< Thread pool size for parallel stages (0 = auto/4, >0 = explicit) */
     bool force_serial_inference;          /**< Disable parallel cognitive stages (default: false) */
 
-    // === PARALLEL SUBSYSTEM INITIALIZATION ===
+    // === INITIALIZATION MODE & PARALLELISM ===
+    brain_init_mode_t init_mode;          /**< Init depth: FULL/FAST/MINIMAL (default: FULL) */
     bool parallel_init;                   /**< Enable parallel subsystem init via wave executor (default: true) */
     uint32_t init_threads;               /**< Thread pool size for parallel init (0 = auto/4, >0 = explicit) */
+    uint32_t wiring_threads;             /**< Thread pool size for backbone wiring (0 = auto/4, >0 = explicit) */
 
     // === PHASE 4 NEUROMODULATORY NUCLEI CONFIGURATION ===
     /**
@@ -1955,6 +1983,37 @@ brain_t brain_create_minimal(const char* task_name, brain_size_t size, brain_tas
  * @return Brain handle or NULL on error
  */
 brain_t brain_create_lazy(const char* task_name, brain_size_t size, brain_task_t task,
+                          uint32_t num_inputs, uint32_t num_outputs);
+
+/**
+ * @brief Create brain with fast initialization — core + training only
+ *
+ * WHY: 3-5x faster than full init. Only initializes subsystems required for
+ * training and inference. All other subsystems are deferred to first use.
+ * Recommended for large brains (>100K neurons) in production.
+ *
+ * INITIALIZED IMMEDIATELY:
+ * - Neural network + synapse pools
+ * - GPU context + inference + weight cache
+ * - Security + immune system + signal handler
+ * - Training pipeline + plasticity coordinator
+ * - STDP/eligibility bridges
+ *
+ * DEFERRED (initialized on first access):
+ * - All cognitive systems (working memory, ToM, ethics, etc.)
+ * - All perception systems (visual, audio, speech)
+ * - Structural subsystems (glial, axon, dendrite)
+ * - Memory systems (consolidation, world model)
+ * - Biological systems (medulla, hypothalamus, etc.)
+ *
+ * @param task_name Human-readable name
+ * @param size Brain size preset
+ * @param task Task template
+ * @param num_inputs Input dimension
+ * @param num_outputs Output dimension
+ * @return Brain handle or NULL on error
+ */
+brain_t brain_create_fast(const char* task_name, brain_size_t size, brain_task_t task,
                           uint32_t num_inputs, uint32_t num_outputs);
 
 //=============================================================================

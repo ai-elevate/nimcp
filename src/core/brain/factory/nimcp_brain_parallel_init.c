@@ -504,7 +504,9 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     size_t n;
     bool ok = true;
 
-    LOG_INFO(LOG_MODULE, "Starting parallel subsystem init with %u threads", num_threads);
+    bool fast_mode = (config->init_mode == BRAIN_INIT_FAST);
+    LOG_INFO(LOG_MODULE, "Starting %s parallel subsystem init with %u threads",
+             fast_mode ? "FAST" : "FULL", num_threads);
 
     // ========================================================================
     // WAVE 0 (serial): GPU context + inference + pool
@@ -521,6 +523,50 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
         }
     }
     if (!ok) goto cleanup;
+
+    // ========================================================================
+    // FAST MODE: Skip non-essential waves. Only init training-critical systems.
+    // All skipped subsystems will be lazy-initialized on first access.
+    // ========================================================================
+    if (fast_mode) {
+        // Wave 4 (inline): Lightweight field inits + emotional systems
+        ok = run_serial(&ctx, init_inline_fields, "inline_fields");
+        if (!ok) goto cleanup;
+
+        // Wave 11 (serial chain): security → immune → signal_handler
+        ok = run_serial(&ctx, nimcp_brain_factory_init_security_subsystem, "security");
+        if (ok) ok = run_serial(&ctx, nimcp_brain_factory_init_immune_subsystem, "immune");
+        if (ok) ok = run_serial(&ctx, init_signal_handler, "signal_handler");
+        if (!ok) goto cleanup;
+
+        // Wave 12: training pipeline + plasticity (parallel)
+        n = 0;
+        tasks[n++] = TASK(nimcp_brain_factory_init_homeostatic_plasticity_subsystem, "homeostatic_plasticity");
+        tasks[n++] = TASK(nimcp_brain_factory_init_dendritic_computation_subsystem, "dendritic_computation");
+        tasks[n++] = TASK(nimcp_brain_factory_init_biological_predictive_subsystem, "bio_predictive");
+        tasks[n++] = TASK(nimcp_brain_factory_init_training_subsystem, "training");
+        if (!execute_wave(pool, &ctx, tasks, n, 12)) goto cleanup;
+
+        // Wave 13 (serial): bio-router + bio-async init
+        ok = run_serial(&ctx, init_bio_async_serial, "bio_async");
+        if (!ok) goto cleanup;
+
+        // Wave 23-24 (serial): bio_async_orchestrator → plasticity_coordinator
+        ok = run_serial(&ctx, nimcp_brain_factory_init_bio_async_orchestrator_subsystem, "bio_async_orchestrator");
+        if (ok) ok = run_serial(&ctx, nimcp_brain_factory_init_plasticity_coordinator_subsystem, "plasticity_coordinator");
+        if (!ok) goto cleanup;
+
+        // Wave 25: STDP bridges (parallel)
+        n = 0;
+        tasks[n++] = TASK(nimcp_brain_factory_init_stdp_omni_bridge_subsystem, "stdp_omni_bridge");
+        tasks[n++] = TASK(nimcp_brain_factory_init_stdp_pr_bridge_subsystem, "stdp_pr_bridge");
+        tasks[n++] = TASK(nimcp_brain_factory_init_eligibility_pr_bridge_subsystem, "eligibility_pr_bridge");
+        tasks[n++] = TASK(nimcp_brain_factory_init_stdp_quantum_bridge_subsystem, "stdp_quantum_bridge");
+        if (!execute_wave(pool, &ctx, tasks, n, 25)) goto cleanup;
+
+        LOG_INFO(LOG_MODULE, "FAST parallel init complete (6 waves, skipped ~20 non-essential)");
+        goto cleanup;
+    }
 
     // ========================================================================
     // WAVE 1: glial, axon, dendrite, multimodal, pink_noise

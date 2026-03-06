@@ -1468,3 +1468,35 @@ brain_t brain_create_lazy(const char* task_name, brain_size_t size, brain_task_t
     // Delegate to main implementation
     return brain_create_custom(&config);
 }
+
+brain_t brain_create_fast(const char* task_name, brain_size_t size, brain_task_t task,
+                          uint32_t num_inputs, uint32_t num_outputs)
+{
+    // Guard: Validate parameters
+    if (!nimcp_brain_factory_validate_creation_params(task_name, num_inputs, num_outputs)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_fast: invalid params");
+        return NULL;
+    }
+
+    // Build configuration with fast init mode
+    brain_config_t config = {0};
+    config.init_mode = BRAIN_INIT_FAST;  // CRITICAL: Set before init_brain_config
+
+    // Create temporary strategy to get learning rate for config
+    task_strategy_t* strategy = strategy_create(task);
+    if (!strategy) {
+        set_error("Failed to create task strategy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_fast: strategy is NULL");
+        return NULL;
+    }
+
+    // Initialize config with defaults (respects init_mode)
+    nimcp_brain_factory_init_brain_config(&config, task_name, size, task,
+                                          num_inputs, num_outputs, strategy);
+
+    // Strategy will be recreated in brain_create_custom
+    strategy_destroy(strategy);
+
+    // Delegate to main implementation
+    return brain_create_custom(&config);
+}
