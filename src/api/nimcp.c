@@ -44,6 +44,7 @@ static void api_set_error(const char* fmt, ...);
 #include "core/brain/nimcp_brain_internal.h"     // For accessing brain->bbb_system
 #include "language/nimcp_language_orchestrator.h" // For nimcp_brain_speak
 #include "language/nimcp_language_types.h"        // LANGUAGE_OUTPUT_TEXT
+#include "cognitive/nimcp_emotional_system.h"     // For avatar emotional state
 #include "middleware/training/nimcp_brain_training_integration.h"  // Training coordinator
 #include "middleware/training/nimcp_loss_functions.h"              // Loss functions
 #include "middleware/training/nimcp_optimizers.h"                  // Optimizers

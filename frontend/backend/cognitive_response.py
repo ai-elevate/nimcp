@@ -59,6 +59,31 @@ _HOWAREYOU_PHRASES = {"how are you", "how do you feel", "how's it going", "how a
 _THANKS_WORDS = {"thanks", "thank", "thx", "ty", "appreciate"}
 _IDENTITY_PHRASES = {"who are you", "what are you", "what's your name", "whats your name",
                       "tell me about yourself", "describe yourself"}
+_APPEARANCE_PHRASES = {"what do you look like", "describe your appearance", "how do you look",
+                        "what color are your eyes", "what color is your hair",
+                        "show me what you look like"}
+
+# Color name to RGB mapping for identity learning
+_COLOR_MAP = {
+    "blue": (0.29, 0.48, 0.71), "green": (0.20, 0.60, 0.30),
+    "brown": (0.45, 0.28, 0.12), "hazel": (0.55, 0.45, 0.20),
+    "gray": (0.50, 0.50, 0.55), "grey": (0.50, 0.50, 0.55),
+    "amber": (0.65, 0.50, 0.15), "violet": (0.50, 0.20, 0.60),
+    "black": (0.08, 0.06, 0.05), "dark brown": (0.25, 0.15, 0.08),
+    "light brown": (0.55, 0.40, 0.25), "blonde": (0.85, 0.75, 0.50),
+    "red": (0.70, 0.20, 0.15), "auburn": (0.55, 0.20, 0.12),
+    "ginger": (0.72, 0.35, 0.15), "silver": (0.75, 0.75, 0.78),
+    "white": (0.90, 0.88, 0.85), "pink": (0.85, 0.55, 0.60),
+    "platinum": (0.88, 0.85, 0.78),
+}
+_SKIN_TONES = {
+    "fair": (28, 0.45, 0.82), "light": (28, 0.50, 0.78),
+    "medium": (28, 0.55, 0.68), "olive": (35, 0.40, 0.58),
+    "tan": (30, 0.50, 0.55), "brown": (25, 0.45, 0.42),
+    "dark": (22, 0.40, 0.32), "pale": (28, 0.35, 0.88),
+    "warm": (30, 0.60, 0.72), "cool": (20, 0.40, 0.75),
+}
+_HAIR_STYLES = {"straight", "wavy", "curly", "coily", "braided"}
 
 _GREETING_RESPONSES = [
     "Hello! Nice to talk with you.",
@@ -84,6 +109,18 @@ _THANKS_RESPONSES = [
     "Anytime!",
     "Glad I could help.",
 ]
+
+
+def _closest_color_name(r: float, g: float, b: float) -> str:
+    """Find the closest named color to an RGB triple."""
+    best_name = "blue"
+    best_dist = float("inf")
+    for name, (cr, cg, cb) in _COLOR_MAP.items():
+        dist = (r - cr) ** 2 + (g - cg) ** 2 + (b - cb) ** 2
+        if dist < best_dist:
+            best_dist = dist
+            best_name = name
+    return best_name
 
 
 def _hash_select(items: list, seed: str) -> str:
@@ -268,6 +305,10 @@ class CognitiveInterpreter:
             return (f"I'm {self.brain_name}, a neural brain with {neuron_count:,} neurons, "
                     f"{exp}. I can chat, learn from what you teach me, and share what I know.")
 
+        # Appearance questions — handled by caller which has access to identity
+        if any(p in text_lower for p in _APPEARANCE_PHRASES):
+            return "__DESCRIBE_APPEARANCE__"  # sentinel for caller
+
         # --- Content-aware fallback (brain produced output but no usable explanation) ---
         is_question = cognitive_state.get("is_question", False)
         output_vector = cognitive_state.get("output_vector", [])
@@ -434,6 +475,98 @@ class CognitiveInterpreter:
             return explanation
 
         return None
+
+    def parse_identity_update(self, text: str) -> list[tuple[str, object]]:
+        """Parse appearance-related phrases and return identity parameter updates.
+
+        Returns list of (key, value) tuples, e.g. [("eye_color_r", 0.29), ...].
+        """
+        text_lower = text.lower().strip()
+        updates = []
+
+        # Eye color: "my eyes are blue", "I have green eyes"
+        for color_name, (r, g, b) in _COLOR_MAP.items():
+            if (f"eyes are {color_name}" in text_lower
+                    or f"eye color is {color_name}" in text_lower
+                    or f"have {color_name} eyes" in text_lower
+                    or f"want {color_name} eyes" in text_lower):
+                updates.extend([("eye_color_r", r), ("eye_color_g", g), ("eye_color_b", b)])
+                break
+
+        # Hair color: "my hair is black", "I have red hair"
+        for color_name, (r, g, b) in _COLOR_MAP.items():
+            if (f"hair is {color_name}" in text_lower
+                    or f"hair color is {color_name}" in text_lower
+                    or f"have {color_name} hair" in text_lower
+                    or f"want {color_name} hair" in text_lower):
+                updates.extend([("hair_color_r", r), ("hair_color_g", g), ("hair_color_b", b)])
+                break
+
+        # Hair style
+        for style in _HAIR_STYLES:
+            if f"{style} hair" in text_lower or f"hair is {style}" in text_lower:
+                updates.append(("hair_style", style))
+                break
+
+        # Hair length
+        if "long hair" in text_lower or "hair is long" in text_lower:
+            updates.append(("hair_length", 0.9))
+        elif "short hair" in text_lower or "hair is short" in text_lower:
+            updates.append(("hair_length", 0.2))
+        elif "medium hair" in text_lower or "shoulder length" in text_lower:
+            updates.append(("hair_length", 0.5))
+
+        # Skin tone
+        for tone_name, (h, s, l) in _SKIN_TONES.items():
+            if (f"skin is {tone_name}" in text_lower
+                    or f"{tone_name} skin" in text_lower
+                    or f"complexion is {tone_name}" in text_lower):
+                updates.extend([("skin_hue", h), ("skin_saturation", s), ("skin_lightness", l)])
+                break
+
+        # Freckles
+        if "freckles" in text_lower:
+            if "no freckles" in text_lower or "without freckles" in text_lower:
+                updates.append(("freckles", 0.0))
+            elif "heavy freckles" in text_lower or "lots of freckles" in text_lower:
+                updates.append(("freckles", 0.8))
+            else:
+                updates.append(("freckles", 0.4))
+
+        return updates
+
+    def describe_identity(self, identity: dict) -> str:
+        """Generate natural language description of the avatar's appearance."""
+        parts = []
+
+        # Skin
+        lightness = identity.get("skin_lightness", 0.72)
+        if lightness > 0.75:
+            parts.append("fair skin")
+        elif lightness > 0.60:
+            parts.append("medium skin")
+        elif lightness > 0.45:
+            parts.append("olive skin")
+        else:
+            parts.append("dark skin")
+
+        # Eyes
+        er, eg, eb = identity.get("eye_color_r", 0.29), identity.get("eye_color_g", 0.48), identity.get("eye_color_b", 0.71)
+        eye_name = _closest_color_name(er, eg, eb)
+        parts.append(f"{eye_name} eyes")
+
+        # Hair
+        hr, hg, hb = identity.get("hair_color_r", 0.22), identity.get("hair_color_g", 0.15), identity.get("hair_color_b", 0.10)
+        hair_color = _closest_color_name(hr, hg, hb)
+        hair_style = identity.get("hair_style", "straight")
+        hair_len = identity.get("hair_length", 0.6)
+        len_word = "long" if hair_len > 0.7 else "short" if hair_len < 0.3 else "medium-length"
+        parts.append(f"{len_word} {hair_style} {hair_color} hair")
+
+        if identity.get("freckles", 0) > 0.2:
+            parts.append("freckles")
+
+        return f"I have {', '.join(parts)}."
 
     def _state_detail(self, confidence: float, utilization: float,
                       sparsity: float, learning_steps: int) -> str:

@@ -984,6 +984,255 @@ after_act_deriv:
 }
 
 //=============================================================================
+// Regression-mode Backprop: MSE on ALL outputs, no threshold/sampling
+//=============================================================================
+
+int backprop_sparse_full_regression(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float max_grad_norm,
+    float* out_grad_norm,
+    backprop_layer_grads_t* out_layer_grads)
+{
+    if (!net || num_layers < 2 || !layer_sizes || !target || !output || !out_grad_norm)
+        return -1;
+
+    atomic_fetch_add(&g_bp_refcount, 1);
+    if (atomic_load(&g_bp_shutting_down)) {
+        atomic_fetch_sub(&g_bp_refcount, 1);
+        return -1;
+    }
+
+    double grad_norm_sq = 0.0;
+    uint32_t num_weight_layers = num_layers - 1;
+    if (num_weight_layers > BP_MAX_GRAD_LAYERS)
+        num_weight_layers = BP_MAX_GRAD_LAYERS;
+    double layer_grad_sq[BP_MAX_GRAD_LAYERS];
+    memset(layer_grad_sq, 0, sizeof(layer_grad_sq));
+
+    uint32_t* layer_offsets = (uint32_t*)nimcp_malloc(num_layers * sizeof(uint32_t));
+    if (!layer_offsets) { atomic_fetch_sub(&g_bp_refcount, 1); return -1; }
+    layer_offsets[0] = 0;
+    for (uint32_t l = 1; l < num_layers; l++)
+        layer_offsets[l] = layer_offsets[l - 1] + layer_sizes[l - 1];
+
+    uint32_t output_size = layer_sizes[num_layers - 1];
+    uint32_t max_layer = 0;
+    for (uint32_t l = 0; l < num_layers; l++)
+        if (layer_sizes[l] > max_layer) max_layer = layer_sizes[l];
+
+    if (max_layer == 0) {
+        nimcp_free(layer_offsets);
+        *out_grad_norm = 0.0f;
+        atomic_fetch_sub(&g_bp_refcount, 1);
+        return 0;
+    }
+
+    float* delta_cur = (float*)bp_alloc_hot_buffer(max_layer * sizeof(float));
+    float* delta_prev = (float*)bp_alloc_hot_buffer(max_layer * sizeof(float));
+    if (!delta_cur || !delta_prev) {
+        if (delta_cur) bp_free_hot_buffer(delta_cur);
+        if (delta_prev) bp_free_hot_buffer(delta_prev);
+        nimcp_free(layer_offsets);
+        atomic_fetch_sub(&g_bp_refcount, 1);
+        return -1;
+    }
+
+    uint32_t* sparse_cur = (uint32_t*)nimcp_malloc(max_layer * sizeof(uint32_t));
+    uint32_t* sparse_prev = (uint32_t*)nimcp_malloc(max_layer * sizeof(uint32_t));
+    uint8_t* sparse_dedup = (uint8_t*)nimcp_calloc(max_layer, sizeof(uint8_t));
+    uint32_t nsparse_cur = 0, nsparse_prev = 0;
+    if (!sparse_cur || !sparse_prev || !sparse_dedup) {
+        nimcp_free(sparse_cur); nimcp_free(sparse_prev); nimcp_free(sparse_dedup);
+        bp_free_hot_buffer(delta_cur); bp_free_hot_buffer(delta_prev);
+        nimcp_free(layer_offsets);
+        atomic_fetch_sub(&g_bp_refcount, 1);
+        return -1;
+    }
+
+    memset(delta_cur, 0, max_layer * sizeof(float));
+    memset(delta_prev, 0, max_layer * sizeof(float));
+
+    // REGRESSION: MSE gradient on ALL outputs — delta = (2/N)(target - output)
+    // No threshold, no negative sampling. Every output dimension gets gradient.
+    uint32_t bp_min_output = output_size < target_size ? output_size : target_size;
+    float mse_scale = 2.0f / (float)bp_min_output;
+    for (uint32_t j = 0; j < bp_min_output; j++) {
+        float diff = target[j] - output[j];
+        delta_cur[j] = mse_scale * diff;
+        if (fabsf(delta_cur[j]) > 1e-10f) {
+            sparse_cur[nsparse_cur++] = j;
+        }
+    }
+
+    // Rest is identical to backprop_sparse_full_ex — layer-by-layer backprop
+    nimcp_thread_pool_t* tpool = get_bp_thread_pool();
+
+    for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
+        uint32_t cur_offset = layer_offsets[layer];
+        uint32_t prev_size = layer_sizes[layer - 1];
+        uint32_t prev_offset = layer_offsets[layer - 1];
+        bool is_output = (layer == (int32_t)num_layers - 1);
+
+        // No OUTPUT_LR_BOOST for regression — uniform LR across layers
+        float layer_lr;
+        if (is_output) {
+            layer_lr = learning_rate;
+        } else {
+            float fan_in = (float)prev_size;
+            layer_lr = learning_rate / powf(fmaxf(fan_in, 1.0f), 0.25f);
+        }
+
+        if (max_grad_norm > 0.0f && grad_norm_sq > 0.0) {
+            float running_norm = (float)sqrt(grad_norm_sq);
+            if (running_norm > max_grad_norm) {
+                layer_lr *= max_grad_norm / running_norm;
+            }
+        }
+
+        nsparse_prev = 0;
+
+        // Serial weight update (same as backprop_sparse_full_ex serial path)
+        {
+        double serial_layer_gnorm = 0.0;
+        for (uint32_t ai = 0; ai < nsparse_cur; ai++) {
+            uint32_t j = sparse_cur[ai];
+            if (is_output && j >= target_size) continue;
+
+            float dj = delta_cur[j];
+            if (dj > 1.0f) dj = 1.0f;
+            if (dj < -1.0f) dj = -1.0f;
+
+            neuron_t* cur_n = neural_network_get_neuron(net, cur_offset + j);
+            if (!cur_n) continue;
+
+            uint32_t in_count = NEURON_IN_COUNT(cur_n);
+            for (uint32_t k = 0; k < in_count; k++) {
+                synapse_handle_t* in_syn = NEURON_IN_HANDLE(cur_n, k);
+                if (!in_syn) continue;
+
+                uint32_t src_id = in_syn->target_neuron_id;
+                neuron_t* src = neural_network_get_neuron(net, src_id);
+                if (!src) continue;
+
+                float strength = in_syn->strength;
+                float weight_delta = layer_lr * dj * strength * src->state;
+                float max_delta = fmaxf(0.1f, layer_lr * 2.0f);
+                if (weight_delta > max_delta) weight_delta = max_delta;
+                if (weight_delta < -max_delta) weight_delta = -max_delta;
+
+                double wd_sq = (double)weight_delta * weight_delta;
+                grad_norm_sq += wd_sq;
+                serial_layer_gnorm += wd_sq;
+
+                if (src_id >= prev_offset && src_id < prev_offset + prev_size) {
+                    uint32_t prev_idx = src_id - prev_offset;
+                    delta_prev[prev_idx] += in_syn->weight * strength * dj;
+                    if (!sparse_dedup[prev_idx]) {
+                        sparse_dedup[prev_idx] = 1;
+                        sparse_prev[nsparse_prev++] = prev_idx;
+                    }
+                }
+
+                in_syn->weight += weight_delta;
+                if (in_syn->weight < min_weight) in_syn->weight = min_weight;
+                if (in_syn->weight > max_weight) in_syn->weight = max_weight;
+            }
+
+            float bias_delta = layer_lr * dj;
+            double bd_sq = (double)bias_delta * bias_delta;
+            grad_norm_sq += bd_sq;
+            serial_layer_gnorm += bd_sq;
+            cur_n->bias += bias_delta;
+            if (cur_n->bias > 10.0f) cur_n->bias = 10.0f;
+            if (cur_n->bias < -10.0f) cur_n->bias = -10.0f;
+        }
+        {
+            uint32_t wl_idx = (uint32_t)(layer - 1);
+            if (wl_idx < num_weight_layers)
+                layer_grad_sq[wl_idx] += serial_layer_gnorm;
+        }
+        }
+
+        // Clear dedup flags
+        for (uint32_t z = 0; z < nsparse_prev; z++) {
+            sparse_dedup[sparse_prev[z]] = 0;
+        }
+
+        // Activation derivative (same as backprop_sparse_full_ex)
+        if (layer > 1) {
+            for (uint32_t ai = 0; ai < nsparse_prev; ai++) {
+                uint32_t i = sparse_prev[ai];
+                neuron_t* prev_n = neural_network_get_neuron(net, prev_offset + i);
+                if (!prev_n) continue;
+                float s = prev_n->state;
+                float act_deriv;
+                switch (prev_n->activation_type) {
+                    case ACTIVATION_RELU:
+                        act_deriv = (s > 0.0f) ? 1.0f : 0.0f; break;
+                    case ACTIVATION_LEAKY_RELU:
+                        act_deriv = (s > 0.0f) ? 1.0f : 0.01f; break;
+                    case ACTIVATION_TANH:
+                        act_deriv = 1.0f - s * s;
+                        if (act_deriv < 0.0f) act_deriv = 0.0f;
+                        break;
+                    case ACTIVATION_SIGMOID:
+                        act_deriv = s * (1.0f - s);
+                        if (act_deriv < 0.01f) act_deriv = 0.01f; break;
+                    default:
+                        act_deriv = (s > 0.0f) ? 1.0f : 0.01f; break;
+                }
+                delta_prev[i] *= act_deriv;
+            }
+
+            for (uint32_t z = 0; z < nsparse_cur; z++) {
+                delta_cur[sparse_cur[z]] = 0.0f;
+            }
+
+            float* tmp_d = delta_cur;
+            delta_cur = delta_prev;
+            delta_prev = tmp_d;
+            uint32_t* tmp_s = sparse_cur;
+            sparse_cur = sparse_prev;
+            sparse_prev = tmp_s;
+            nsparse_cur = nsparse_prev;
+            nsparse_prev = 0;
+        }
+    }
+
+    bp_free_hot_buffer(delta_cur);
+    bp_free_hot_buffer(delta_prev);
+    nimcp_free(sparse_cur);
+    nimcp_free(sparse_prev);
+    nimcp_free(sparse_dedup);
+    nimcp_free(layer_offsets);
+
+    {
+        float norm = sqrtf((float)grad_norm_sq);
+        *out_grad_norm = isfinite(norm) ? norm : 0.0f;
+    }
+
+    if (out_layer_grads) {
+        out_layer_grads->num_layers = num_weight_layers;
+        for (uint32_t l = 0; l < num_weight_layers; l++) {
+            float ln = sqrtf((float)layer_grad_sq[l]);
+            out_layer_grads->norms[l] = isfinite(ln) ? ln : 0.0f;
+        }
+        for (uint32_t l = num_weight_layers; l < BP_MAX_GRAD_LAYERS; l++) {
+            out_layer_grads->norms[l] = 0.0f;
+        }
+    }
+
+    atomic_fetch_sub(&g_bp_refcount, 1);
+    return 0;
+}
+
+//=============================================================================
 // Gradient Accumulation via Learning Rate Scaling
 //=============================================================================
 

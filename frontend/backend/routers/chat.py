@@ -104,7 +104,7 @@ async def chat(brain_id: int, msg: ChatMessage) -> ChatResponse:
     if result is None:
         raise HTTPException(500, "Conversation failed")
 
-    return ChatResponse(
+    resp = ChatResponse(
         message=result.get("message", ""),
         label=result.get("label"),
         confidence=result.get("confidence"),
@@ -116,3 +116,21 @@ async def chat(brain_id: int, msg: ChatMessage) -> ChatResponse:
         output_vector=result.get("output_vector"),
         cognitive_state=result.get("cognitive_state"),
     )
+
+    # Speech: generate spoken text from output vector
+    output_vec = result.get("output_vector")
+    if output_vec:
+        spoken = await c_api_call(manager.speak, brain_id, output_vec,
+                                   timeout=C_API_TIMEOUT_SECONDS)
+        if spoken:
+            resp.spoken_text = spoken.get("text", "")
+            resp.speech_confidence = spoken.get("confidence", 0.0)
+            resp.speech_fluency = spoken.get("fluency", 0.0)
+
+    # Avatar: get visual state (FACS, visemes, gaze, emotion)
+    avatar = await c_api_call(manager.get_avatar_state, brain_id,
+                               timeout=C_API_TIMEOUT_SECONDS)
+    if avatar:
+        resp.avatar = avatar
+
+    return resp

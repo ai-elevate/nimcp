@@ -249,7 +249,7 @@ class AthenaBrain:
     def think_and_speak(self, text):
         """Process text input and generate spoken response.
 
-        Returns (response_text, confidence, fluency, output_vector).
+        Returns (response_text, confidence, fluency, output_vector, avatar_state).
         """
         features = self.composer.compose(text)
         result = self.brain.decide_full(features)
@@ -268,6 +268,13 @@ class AthenaBrain:
             except Exception as e:
                 logger.warning("speak() failed: %s", e)
 
+        # Get avatar visual state (FACS AUs, visemes, gaze, emotion, voice)
+        avatar_state = None
+        try:
+            avatar_state = self.brain.get_avatar_state()
+        except Exception as e:
+            logger.debug("get_avatar_state() failed: %s", e)
+
         self.conversation_history.append({
             "role": "user", "text": text,
             "timestamp": time.time()
@@ -278,7 +285,7 @@ class AthenaBrain:
             "timestamp": time.time()
         })
 
-        return response_text, confidence, fluency, output_vec
+        return response_text, confidence, fluency, output_vec, avatar_state
 
     def get_status(self):
         """Get brain health/stats."""
@@ -349,7 +356,7 @@ async def chat_endpoint(websocket: WebSocket):
                 continue
 
             # Normal text processing
-            response_text, confidence, fluency, _ = athena.think_and_speak(message)
+            response_text, confidence, fluency, _, avatar = athena.think_and_speak(message)
 
             response = {
                 "type": "response",
@@ -357,6 +364,10 @@ async def chat_endpoint(websocket: WebSocket):
                 "confidence": confidence,
                 "fluency": fluency,
             }
+
+            # Add avatar visual state (FACS, visemes, gaze, emotion)
+            if avatar:
+                response["avatar"] = avatar
 
             # Add TTS audio if available
             if response_text and tts:
@@ -389,13 +400,16 @@ async def voice_endpoint(websocket: WebSocket):
             # In production, wire to speech_cortex_process or whisper
             text = "(voice input)"
 
-            response_text, confidence, fluency, _ = athena.think_and_speak(text)
+            response_text, confidence, fluency, _, avatar = athena.think_and_speak(text)
 
             response = {
                 "type": "voice_response",
                 "text": response_text or "(silence)",
                 "confidence": confidence,
             }
+
+            if avatar:
+                response["avatar"] = avatar
 
             if response_text and tts:
                 audio_b64 = tts.synthesize_b64(response_text)
@@ -519,14 +533,37 @@ CHAT_HTML = """
         #mic-btn.recording { background: #e94560; animation: pulse 1s infinite; }
         @keyframes pulse { 50% { opacity: 0.7; } }
         .typing { color: #888; font-style: italic; padding: 8px 16px; }
+        #main-area { display: flex; flex: 1; overflow: hidden; }
+        #avatar-panel {
+            width: 300px; min-width: 300px;
+            background: #16213e;
+            border-right: 1px solid #0f3460;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 12px;
+        }
+        #avatar-panel canvas { border-radius: 8px; background: #1a1a2e; }
+        #avatar-panel .emotion-label {
+            margin-top: 8px; font-size: 0.85rem; color: #e94560; text-align: center;
+        }
+        #avatar-panel .avatar-stats {
+            margin-top: 8px; font-size: 0.7rem; color: #666; text-align: center; line-height: 1.6;
+        }
+        #chat-container { flex: 1; }
     </style>
 </head>
 <body>
     <header>
         <h1>Athena</h1>
-        <div class="subtitle">Biological Neural Brain &mdash; Language Production Interface</div>
+        <div class="subtitle">Biological Neural Brain &mdash; Language Production + Visual Avatar Interface</div>
     </header>
+    <div id="main-area">
+    <div id="avatar-panel">
+        <canvas id="face-canvas" width="280" height="320"></canvas>
+        <div class="emotion-label" id="emotion-label">neutral</div>
+        <div class="avatar-stats" id="avatar-stats"></div>
+    </div>
     <div id="chat-container"></div>
+    </div>
     <div id="input-area">
         <input id="msg-input" type="text" placeholder="Talk to Athena... (try: 'make a cat sound' or 'play bird sounds')" autocomplete="off">
         <button id="mic-btn" title="Hold to speak">&#127908;</button>
@@ -652,6 +689,168 @@ CHAT_HTML = """
                 micBtn.classList.remove('recording');
             }
         };
+
+        // =================================================================
+        // Parametric Face Renderer (Canvas 2D)
+        // Drives from FACS Action Units + visemes from avatar state
+        // =================================================================
+        const faceCanvas = document.getElementById('face-canvas');
+        const fctx = faceCanvas.getContext('2d');
+        const emotionLabel = document.getElementById('emotion-label');
+        const avatarStatsEl = document.getElementById('avatar-stats');
+        const EMOTIONS = ['happy','sad','angry','afraid','disgusted','surprised',
+                          'interested','confused','frustrated','bored','proud',
+                          'ashamed','enraged','hateful','despairing','panicked',
+                          'calm','contemptuous','neutral'];
+
+        let avatarState = null;  // Updated from WebSocket messages
+
+        function updateAvatar(state) {
+            avatarState = state;
+            if (state.emotion_id !== undefined && state.emotion_id < EMOTIONS.length) {
+                emotionLabel.textContent = EMOTIONS[state.emotion_id] +
+                    (state.emotion_intensity > 0.01 ? ` (${(state.emotion_intensity*100).toFixed(0)}%)` : '');
+            }
+            avatarStatsEl.innerHTML =
+                `valence: ${(state.valence||0).toFixed(2)} | arousal: ${(state.arousal||0).toFixed(2)}<br>` +
+                `viseme: ${state.current_viseme||0} | speaking: ${state.is_speaking?'yes':'no'}<br>` +
+                `pitch: ${(state.pitch_hz||0).toFixed(0)}Hz | rate: ${(state.speaking_rate||1).toFixed(2)}x`;
+        }
+
+        // Extend onmessage to also update avatar
+        const origOnMessage = ws.onmessage;
+        ws.onmessage = (event) => {
+            origOnMessage(event);
+            const msg = JSON.parse(event.data);
+            if (msg.avatar) updateAvatar(msg.avatar);
+        };
+
+        function drawFace() {
+            const W = faceCanvas.width, H = faceCanvas.height;
+            const cx = W/2, cy = H/2 - 10;
+            fctx.clearRect(0, 0, W, H);
+
+            const s = avatarState || {};
+            const blink = s.blink || 0;
+            const gazeX = (s.gaze_x || 0) * 30;
+            const gazeY = (s.gaze_y || 0) * 30;
+
+            // Head rotation (subtle)
+            const headYaw = (s.head_yaw || 0) * 0.5;
+
+            // Face outline
+            fctx.save();
+            fctx.translate(cx + headYaw, cy);
+            fctx.beginPath();
+            fctx.ellipse(0, 0, 90, 110, 0, 0, Math.PI*2);
+            fctx.fillStyle = '#f5d0a9';
+            fctx.fill();
+            fctx.strokeStyle = '#d4a574';
+            fctx.lineWidth = 2;
+            fctx.stroke();
+
+            // --- Eyebrows ---
+            const browRaise = (s.au1_inner_brow_raise||0) + (s.au2_outer_brow_raise||0);
+            const browLower = s.au4_brow_lower || 0;
+            const browY = -45 - browRaise*15 + browLower*10;
+
+            fctx.strokeStyle = '#8B6914';
+            fctx.lineWidth = 3;
+            // Left brow
+            fctx.beginPath();
+            fctx.moveTo(-50, browY);
+            fctx.quadraticCurveTo(-30, browY - 5 - browRaise*8, -10, browY + browLower*3);
+            fctx.stroke();
+            // Right brow
+            fctx.beginPath();
+            fctx.moveTo(50, browY);
+            fctx.quadraticCurveTo(30, browY - 5 - browRaise*8, 10, browY + browLower*3);
+            fctx.stroke();
+
+            // --- Eyes ---
+            const lidRaise = s.au5_upper_lid_raise || 0;
+            const lidTighten = s.au7_lid_tighten || 0;
+            const eyeOpenH = 12 * (1 - blink) * (1 + lidRaise*0.5 - lidTighten*0.3);
+            const cheekRaise = s.au6_cheek_raise || 0;
+            const eyeSquint = cheekRaise * 4;
+
+            for (const side of [-1, 1]) {
+                const ex = side * 30, ey = -25 + eyeSquint;
+                // Eye white
+                fctx.beginPath();
+                fctx.ellipse(ex, ey, 16, Math.max(1, eyeOpenH), 0, 0, Math.PI*2);
+                fctx.fillStyle = '#fff';
+                fctx.fill();
+                fctx.strokeStyle = '#999';
+                fctx.lineWidth = 1;
+                fctx.stroke();
+                // Iris + pupil (follow gaze)
+                if (eyeOpenH > 2) {
+                    const irisX = ex + gazeX * 0.3;
+                    const irisY = ey + gazeY * 0.2;
+                    fctx.beginPath();
+                    fctx.arc(irisX, irisY, 6, 0, Math.PI*2);
+                    fctx.fillStyle = '#4a7ab5';
+                    fctx.fill();
+                    fctx.beginPath();
+                    fctx.arc(irisX, irisY, 3, 0, Math.PI*2);
+                    fctx.fillStyle = '#111';
+                    fctx.fill();
+                }
+            }
+
+            // --- Nose ---
+            const noseWrinkle = s.au9_nose_wrinkle || 0;
+            fctx.beginPath();
+            fctx.moveTo(0, -10);
+            fctx.lineTo(-8 - noseWrinkle*3, 10);
+            fctx.lineTo(8 + noseWrinkle*3, 10);
+            fctx.strokeStyle = '#c4956a';
+            fctx.lineWidth = 1.5;
+            fctx.stroke();
+
+            // --- Mouth ---
+            const smile = s.au12_lip_corner_pull || 0;
+            const frown = s.au15_lip_corner_drop || 0;
+            const jawDrop = s.au26_jaw_drop || 0;
+            const lipsPart = s.au25_lips_part || 0;
+            const mouthOpen = (s.mouth_open || 0) + jawDrop * 0.5;
+            const lipRound = s.lip_round || 0;
+            const lipStretch = s.au20_lip_stretch || 0;
+
+            const mouthW = 30 + lipStretch*15 - lipRound*10;
+            const mouthH = Math.max(2, mouthOpen * 25 + lipsPart * 10 + jawDrop * 15);
+            const cornerCurve = (smile - frown) * 15;
+            const my = 35;
+
+            // Mouth shape
+            fctx.beginPath();
+            fctx.moveTo(-mouthW, my);
+            fctx.quadraticCurveTo(-mouthW*0.5, my - cornerCurve, 0, my - mouthH*0.3);
+            fctx.quadraticCurveTo(mouthW*0.5, my - cornerCurve, mouthW, my);
+            if (mouthH > 3) {
+                fctx.quadraticCurveTo(mouthW*0.5, my + mouthH, 0, my + mouthH);
+                fctx.quadraticCurveTo(-mouthW*0.5, my + mouthH, -mouthW, my);
+            }
+            fctx.fillStyle = mouthH > 5 ? '#8B2252' : '#cc7777';
+            fctx.fill();
+            fctx.strokeStyle = '#993333';
+            fctx.lineWidth = 1.5;
+            fctx.stroke();
+
+            // Teeth hint when mouth open
+            if (mouthH > 8) {
+                fctx.beginPath();
+                fctx.rect(-mouthW*0.6, my + 1, mouthW*1.2, Math.min(6, mouthH*0.3));
+                fctx.fillStyle = '#f0f0f0';
+                fctx.fill();
+            }
+
+            fctx.restore();
+
+            requestAnimationFrame(drawFace);
+        }
+        drawFace();  // Start render loop
     </script>
 </body>
 </html>

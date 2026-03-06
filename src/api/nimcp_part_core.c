@@ -2249,3 +2249,226 @@ nimcp_status_t nimcp_brain_speak(
     set_error("No error");
     return NIMCP_OK;
 }
+
+
+//=============================================================================
+// Avatar State API — Visual Communication
+//=============================================================================
+
+/* Forward declarations — emotion_state_t and emotional_system_t already visible
+ * via nimcp_emotional_system.h (pulled in by brain_internal.h).
+ * speech_motor types are NOT visible, so we forward-declare them. */
+typedef struct speech_motor_planner speech_motor_planner_t_api;
+typedef struct broca_adapter broca_adapter_t_api;
+
+/* articulator_type_t values (from nimcp_speech_motor.h, can't include due to conflicts) */
+#define API_ARTICULATOR_LIPS   0
+#define API_ARTICULATOR_TONGUE 1
+#define API_ARTICULATOR_JAW    2
+#define API_ARTICULATOR_LARYNX 3
+#define API_ARTICULATOR_VELUM  4
+
+extern speech_motor_planner_t_api* broca_get_speech_motor_planner(broca_adapter_t_api* adapter);
+extern bool speech_motor_get_articulator(const speech_motor_planner_t_api* planner,
+                                         int articulator, float* position);
+
+/**
+ * @brief Map emotion category to FACS Action Unit activations
+ *
+ * Based on Ekman's Facial Action Coding System. Each emotion maps to
+ * specific AU combinations at biologically-motivated intensities.
+ */
+static void emotion_to_facs(uint32_t emotion_id, float intensity, nimcp_avatar_state_t* s) {
+    /* Reset all AUs */
+    s->au1_inner_brow_raise = 0; s->au2_outer_brow_raise = 0; s->au4_brow_lower = 0;
+    s->au5_upper_lid_raise = 0;  s->au6_cheek_raise = 0;      s->au7_lid_tighten = 0;
+    s->au9_nose_wrinkle = 0;     s->au10_upper_lip_raise = 0;
+    s->au12_lip_corner_pull = 0; s->au15_lip_corner_drop = 0;
+    s->au17_chin_raise = 0;      s->au20_lip_stretch = 0;      s->au23_lip_tighten = 0;
+    s->au25_lips_part = 0;       s->au26_jaw_drop = 0;         s->au28_lip_suck = 0;
+
+    float em_i = fminf(1.0F, intensity);  /* Clamp */
+
+    switch (emotion_id) {
+        case 0: /* HAPPINESS */
+            s->au6_cheek_raise = 0.8F * em_i;
+            s->au12_lip_corner_pull = 0.9F * em_i;  /* Duchenne smile */
+            s->au25_lips_part = 0.3F * em_i;
+            break;
+        case 1: /* SADNESS */
+            s->au1_inner_brow_raise = 0.7F * em_i;
+            s->au4_brow_lower = 0.3F * em_i;
+            s->au15_lip_corner_drop = 0.6F * em_i;
+            s->au17_chin_raise = 0.4F * em_i;
+            break;
+        case 2: /* ANGER */
+            s->au4_brow_lower = 0.9F * em_i;
+            s->au5_upper_lid_raise = 0.5F * em_i;
+            s->au7_lid_tighten = 0.6F * em_i;
+            s->au23_lip_tighten = 0.7F * em_i;
+            break;
+        case 3: /* FEAR */
+            s->au1_inner_brow_raise = 0.8F * em_i;
+            s->au2_outer_brow_raise = 0.6F * em_i;
+            s->au4_brow_lower = 0.3F * em_i;
+            s->au5_upper_lid_raise = 0.7F * em_i;
+            s->au20_lip_stretch = 0.6F * em_i;
+            s->au26_jaw_drop = 0.4F * em_i;
+            break;
+        case 4: /* DISGUST */
+            s->au9_nose_wrinkle = 0.8F * em_i;
+            s->au10_upper_lip_raise = 0.7F * em_i;
+            s->au4_brow_lower = 0.4F * em_i;
+            break;
+        case 5: /* SURPRISE */
+            s->au1_inner_brow_raise = 0.9F * em_i;
+            s->au2_outer_brow_raise = 0.9F * em_i;
+            s->au5_upper_lid_raise = 0.8F * em_i;
+            s->au26_jaw_drop = 0.7F * em_i;
+            s->au25_lips_part = 0.5F * em_i;
+            break;
+        case 6: /* INTEREST */
+            s->au1_inner_brow_raise = 0.4F * em_i;
+            s->au2_outer_brow_raise = 0.3F * em_i;
+            s->au12_lip_corner_pull = 0.2F * em_i;
+            break;
+        case 7: /* CONFUSION */
+            s->au4_brow_lower = 0.5F * em_i;
+            s->au1_inner_brow_raise = 0.6F * em_i;  /* Asymmetric brow */
+            s->au7_lid_tighten = 0.3F * em_i;
+            break;
+        case 16: /* CALM */
+            s->au12_lip_corner_pull = 0.15F * em_i;  /* Subtle smile */
+            s->au6_cheek_raise = 0.1F * em_i;
+            break;
+        case 18: /* NEUTRAL */
+        default:
+            /* No strong AU activation */
+            break;
+    }
+}
+
+/**
+ * @brief Derive Preston Blair viseme from articulator positions
+ *
+ * Maps lip rounding, jaw opening, and tongue position to one of 22
+ * canonical viseme shapes used in lip-sync animation.
+ *
+ * 0=rest, 1=AA/AH, 2=AO, 3=EE, 4=EH, 5=IH, 6=OH, 7=OO/UH,
+ * 8=W, 9=R, 10=L, 11=S/Z, 12=SH/CH/J, 13=TH, 14=F/V,
+ * 15=T/D/N, 16=K/G/NG, 17=P/B/M, 18=silence
+ */
+static uint8_t derive_viseme(float lip_round, float jaw_open, float tongue_pos) {
+    if (jaw_open < 0.05F && lip_round < 0.1F) return 18; /* silence/rest */
+    if (jaw_open > 0.7F && lip_round < 0.3F) return 1;   /* AA wide open */
+    if (jaw_open > 0.5F && lip_round > 0.5F) return 2;   /* AO rounded open */
+    if (lip_round > 0.7F && jaw_open < 0.3F) return 7;   /* OO/UH tight round */
+    if (lip_round > 0.5F && jaw_open > 0.3F) return 6;   /* OH rounded */
+    if (lip_round > 0.5F && jaw_open < 0.2F) return 8;   /* W */
+    if (tongue_pos > 0.7F && jaw_open < 0.3F) return 3;  /* EE high tongue */
+    if (tongue_pos > 0.5F && jaw_open > 0.3F) return 4;  /* EH mid tongue */
+    if (tongue_pos > 0.3F) return 5;                       /* IH */
+    if (jaw_open > 0.3F) return 4;                         /* EH default open */
+    return 0;                                               /* rest */
+}
+
+
+nimcp_status_t nimcp_brain_get_avatar_state(
+    nimcp_brain_t brain,
+    nimcp_avatar_state_t* state)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(state, NIMCP_ERROR_NULL_ARG, "NULL avatar state pointer");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    brain_t ib = brain->internal_brain;
+    memset(state, 0, sizeof(*state));
+
+    /* --- 1. Speech motor articulators → viseme/mouth shape --- */
+    float lip_pos = 0.0F, tongue_pos = 0.0F, jaw_pos = 0.0F;
+    float larynx_pos = 0.0F, velum_pos = 0.0F;
+    bool has_motor = false;
+
+    if (ib->broca) {
+        speech_motor_planner_t_api* planner = broca_get_speech_motor_planner(
+            (broca_adapter_t_api*)ib->broca);
+        if (planner) {
+            has_motor = true;
+            speech_motor_get_articulator(planner, API_ARTICULATOR_LIPS,   &lip_pos);
+            speech_motor_get_articulator(planner, API_ARTICULATOR_TONGUE, &tongue_pos);
+            speech_motor_get_articulator(planner, API_ARTICULATOR_JAW,    &jaw_pos);
+            speech_motor_get_articulator(planner, API_ARTICULATOR_LARYNX, &larynx_pos);
+            speech_motor_get_articulator(planner, API_ARTICULATOR_VELUM,  &velum_pos);
+        }
+    }
+
+    state->mouth_open = jaw_pos;
+    state->lip_round = lip_pos;
+    state->lip_upper = fminf(1.0F, lip_pos * 0.8F + jaw_pos * 0.2F);
+    state->lip_lower = fminf(1.0F, lip_pos * 0.6F + jaw_pos * 0.4F);
+    state->tongue_position = tongue_pos;
+    state->current_viseme = derive_viseme(lip_pos, jaw_pos, tongue_pos);
+    state->is_speaking = has_motor && (jaw_pos > 0.05F || lip_pos > 0.1F);
+
+    /* --- 2. Emotional state → FACS Action Units --- */
+    emotion_state_t emo = {0};
+    bool has_emotion = false;
+
+    if (ib->emotional_system) {
+        has_emotion = emotion_system_get_state(ib->emotional_system, &emo);
+    }
+
+    if (has_emotion) {
+        state->valence = emo.valence;
+        state->arousal = emo.arousal;
+        state->emotion_id = emo.dominant_emotion;
+        state->emotion_intensity = emo.intensity;
+        /* Dominance approximation: high valence + low arousal = high dominance */
+        state->dominance = fminf(1.0F, fmaxf(-1.0F,
+            0.5F * emo.valence - 0.3F * (emo.arousal - 0.5F)));
+
+        emotion_to_facs(emo.dominant_emotion, emo.intensity, state);
+
+        /* Blend speech with emotion: speaking opens jaw/lips more */
+        if (state->is_speaking) {
+            state->au25_lips_part = fminf(1.0F, state->au25_lips_part + jaw_pos * 0.5F);
+            state->au26_jaw_drop = fminf(1.0F, state->au26_jaw_drop + jaw_pos * 0.3F);
+        }
+    }
+
+    /* --- 3. Gaze and head pose (idle animation from internal state) --- */
+    /* Use timestamp-based micro-saccades for natural idle gaze */
+    uint64_t now_us = nimcp_time_now_us();
+    state->timestamp_us = now_us;
+
+    /* Smooth sinusoidal idle gaze with arousal-modulated amplitude */
+    float gaze_amp = 0.05F + (has_emotion ? emo.arousal * 0.1F : 0.0F);
+    double t_sec = (double)now_us / 1000000.0;
+    state->gaze_x = gaze_amp * sinf((float)(t_sec * 0.7));
+    state->gaze_y = gaze_amp * 0.6F * sinf((float)(t_sec * 1.1 + 0.5));
+
+    /* Head follows gaze slightly */
+    state->head_yaw = state->gaze_x * 5.0F;   /* degrees */
+    state->head_pitch = state->gaze_y * 3.0F;
+    state->head_roll = 0.0F;
+
+    /* Blink: ~15 blinks/min (every ~4 sec), blink duration ~150ms */
+    double blink_phase = fmod(t_sec, 4.0);
+    state->blink = (blink_phase < 0.15) ? 1.0F : 0.0F;
+
+    /* --- 4. Voice parameters modulated by arousal --- */
+    float base_pitch = 180.0F;  /* Default female pitch Hz */
+    if (has_emotion) {
+        /* Arousal raises pitch, valence affects rate */
+        state->pitch_hz = base_pitch * (1.0F + 0.3F * emo.arousal);
+        state->speaking_rate = 1.0F + 0.2F * emo.arousal;
+        state->volume = 0.7F + 0.3F * emo.intensity;
+    } else {
+        state->pitch_hz = base_pitch;
+        state->speaking_rate = 1.0F;
+        state->volume = 0.7F;
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}

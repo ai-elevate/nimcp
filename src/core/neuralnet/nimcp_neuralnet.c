@@ -713,17 +713,15 @@ neural_network_t neural_network_create(const network_config_t* config)
     bool will_skip_dense = config->skip_layer_wiring || (dense_connections > 10000000);
     uint64_t backbone_connections = 0;
     if (will_skip_dense && config->num_layers > 1 && config->layer_sizes) {
-        uint32_t input_size = config->layer_sizes[0];
-        uint32_t output_size = config->layer_sizes[config->num_layers - 1];
-        uint32_t total_hidden = 0;
-        for (uint32_t l = 1; l < config->num_layers - 1; l++) {
-            total_hidden += config->layer_sizes[l];
+        // Scalable estimate: each non-input neuron gets ~16 backbone + ~4 skip connections
+        uint32_t total_non_input = 0;
+        for (uint32_t l = 1; l < config->num_layers; l++) {
+            total_non_input += config->layer_sizes[l];
         }
-        uint32_t backbone_target = output_size * 16;
-        if (backbone_target < 1024) backbone_target = 1024;
-        if (backbone_target > 32768) backbone_target = 32768;
-        uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
-        backbone_connections = (uint64_t)backbone * ((uint64_t)input_size + output_size);
+        // 20 connections per neuron (16 backbone + 4 skip), capped at 20M per transition
+        backbone_connections = (uint64_t)total_non_input * 20;
+        uint64_t max_backbone = (uint64_t)(config->num_layers - 1) * 20000000ULL;
+        if (backbone_connections > max_backbone) backbone_connections = max_backbone;
     }
 
     // NIMCP 2.11: Create sparse synapse pools
@@ -738,7 +736,7 @@ neural_network_t neural_network_create(const network_config_t* config)
         // wiring provides initial connectivity. Pool must fit backbone handles.
         uint32_t pool_min;
         if (actual_neurons < 100) pool_min = 5000;
-        else if (actual_neurons > 500000) pool_min = 1000000;  // 1M handles (~24MB)
+        else if (actual_neurons > 500000) pool_min = actual_neurons * 40;  // ~20 conns × 2 handles each
         else pool_min = actual_neurons * 64;
         uint64_t pool_size64 = handles_needed + handles_needed / 4;  // +25% headroom
         if (pool_size64 < pool_min) pool_size64 = pool_min;
@@ -831,54 +829,122 @@ neural_network_t neural_network_create(const network_config_t* config)
                     uint32_t src_start = layer_starts[t];
                     uint32_t dst_start = layer_starts[t + 1];
 
-                    // Per-transition backbone: cap total connections per transition.
-                    // Budget: ~200K connections per transition (keeps init under 1s).
-                    // For small layers, use all neurons. For large layers, subsample.
-                    uint32_t src_backbone = src_size;
-                    uint32_t dst_backbone = dst_size;
+                    // SCALABLE BACKBONE WIRING (v2):
+                    // Guarantee minimum fan-in per destination neuron so signal
+                    // can propagate through arbitrarily large/deep networks.
+                    //
+                    // Strategy: every dst neuron gets MIN_FAN_IN random connections
+                    // from the source layer. This scales linearly with dst_size
+                    // (not quadratically), keeping init time manageable while
+                    // ensuring no neuron is left unconnected.
+                    //
+                    // For a 1.5M neuron network with 7 layers:
+                    //   540K dst neurons × 16 fan-in = 8.6M connections per transition
+                    //   vs old: 200K total = 0.37 connections per dst neuron (dead)
 
-                    // Cap: src_backbone * dst_backbone <= 200K
-                    uint32_t max_conns_per_transition = 200000;
-                    uint64_t raw_conns = (uint64_t)src_backbone * (uint64_t)dst_backbone;
-                    if (raw_conns > max_conns_per_transition) {
-                        // Reduce both sides proportionally, preserving aspect ratio
-                        float ratio = sqrtf((float)max_conns_per_transition / (float)raw_conns);
-                        src_backbone = (uint32_t)((float)src_size * ratio);
-                        dst_backbone = (uint32_t)((float)dst_size * ratio);
-                        if (src_backbone < 64) src_backbone = 64;
-                        if (dst_backbone < 64) dst_backbone = 64;
-                        if (src_backbone > src_size) src_backbone = src_size;
-                        if (dst_backbone > dst_size) dst_backbone = dst_size;
+                    uint32_t MIN_FAN_IN = 16;   // each dst neuron gets at least this many inputs
+                    uint32_t MAX_FAN_IN = 64;   // cap for very small source layers
+
+                    // Scale fan-in: use MIN_FAN_IN, but don't exceed src_size
+                    uint32_t fan_in = MIN_FAN_IN;
+                    if (fan_in > src_size) fan_in = src_size;
+                    if (fan_in > MAX_FAN_IN) fan_in = MAX_FAN_IN;
+
+                    // For very large layers, cap total connections to avoid
+                    // multi-minute init: 20M connections per transition max
+                    uint32_t max_total = 20000000;
+                    uint32_t dst_wired = dst_size;
+                    uint64_t total_planned = (uint64_t)dst_wired * (uint64_t)fan_in;
+                    if (total_planned > max_total) {
+                        // Subsample destination neurons but keep fan_in intact
+                        dst_wired = max_total / fan_in;
+                        if (dst_wired < 1024) dst_wired = 1024;
                     }
 
-                    uint32_t src_step = src_size / src_backbone;
-                    if (src_step == 0) src_step = 1;
-                    uint32_t dst_step = dst_size / dst_backbone;
-                    if (dst_step == 0) dst_step = 1;
+                    // Xavier/He initialization scale
+                    float scale = sqrtf(2.0F / (float)fan_in);
 
-                    // Xavier scale for this transition
-                    float scale = 1.0F / sqrtf((float)src_backbone);
+                    // Wire: each destination neuron gets fan_in random source neurons
+                    uint32_t dst_step = (dst_wired < dst_size) ? (dst_size / dst_wired) : 1;
+                    uint32_t transition_conns = 0;
 
-                    // Wire: src_backbone source neurons → dst_backbone dest neurons
-                    for (uint32_t d = 0; d < dst_backbone; d++) {
-                        uint32_t dst_id = dst_start + d * dst_step;
-                        if (dst_id >= dst_start + dst_size) break;
+                    for (uint32_t d = 0; d < dst_wired; d++) {
+                        uint32_t dst_id = dst_start + (d * dst_step) % dst_size;
+                        if (dst_id >= dst_start + dst_size) dst_id = dst_start + (dst_id % dst_size);
                         if (dst_id >= network->num_neurons) break;
 
-                        for (uint32_t s = 0; s < src_backbone; s++) {
-                            uint32_t src_id = src_start + s * src_step;
-                            if (src_id >= src_start + src_size) break;
-                            if (src_id >= network->num_neurons) break;
+                        // Select fan_in random source neurons (strided for diversity)
+                        uint32_t base_offset = (nimcp_tl_rand() % src_size);
+                        uint32_t stride = src_size / fan_in;
+                        if (stride == 0) stride = 1;
+
+                        for (uint32_t f = 0; f < fan_in; f++) {
+                            uint32_t src_offset = (base_offset + f * stride) % src_size;
+                            uint32_t src_id = src_start + src_offset;
+                            if (src_id >= network->num_neurons) continue;
 
                             float weight = (((float)nimcp_tl_rand() / RAND_MAX) * 2.0F - 1.0F) * scale;
                             neural_network_add_connection(network, src_id, dst_id, weight);
-                            total_conns++;
+                            transition_conns++;
                         }
                     }
 
-                    total_backbone += src_backbone;
-                    LOG_INFO(LOG_MODULE, "Backbone L%u->L%u: %u src × %u dst = %u connections",
-                             t, t + 1, src_backbone, dst_backbone, src_backbone * dst_backbone);
+                    total_conns += transition_conns;
+                    total_backbone += dst_wired;
+                    LOG_INFO(LOG_MODULE, "Backbone L%u->L%u: %u dst × %u fan-in = %u connections",
+                             t, t + 1, dst_wired, fan_in, transition_conns);
+                }
+
+                // RESIDUAL / SKIP CONNECTIONS:
+                // Wire input layer directly to every hidden layer (not just L1).
+                // This creates "gradient highways" that let signal and gradients
+                // bypass intermediate layers — the key insight from ResNets.
+                // Each hidden layer neuron gets SKIP_FAN_IN connections from the
+                // input layer, weighted at 1/sqrt(fan_in) to be additive with
+                // the layer-to-layer signal.
+                //
+                // This ensures that even in a 7+ layer network, every neuron
+                // can receive input signal directly, preventing vanishing
+                // activations regardless of depth.
+
+                if (num_transitions > 1) {
+                    uint32_t SKIP_FAN_IN = 4;  // light residual, not overwhelming
+                    uint32_t skip_total = 0;
+
+                    for (uint32_t skip_layer = 2; skip_layer < config->num_layers; skip_layer++) {
+                        uint32_t skip_dst_size = config->layer_sizes[skip_layer];
+                        uint32_t skip_dst_start = layer_starts[skip_layer];
+                        uint32_t skip_fan = SKIP_FAN_IN;
+                        if (skip_fan > input_size) skip_fan = input_size;
+
+                        // Cap skip connections: max 2M per skip layer
+                        uint32_t skip_dst_wired = skip_dst_size;
+                        if ((uint64_t)skip_dst_wired * skip_fan > 2000000) {
+                            skip_dst_wired = 2000000 / skip_fan;
+                        }
+
+                        float skip_scale = 0.5F / sqrtf((float)skip_fan);  // weaker than direct
+                        uint32_t skip_dst_step = (skip_dst_wired < skip_dst_size) ?
+                            (skip_dst_size / skip_dst_wired) : 1;
+
+                        for (uint32_t d = 0; d < skip_dst_wired; d++) {
+                            uint32_t dst_id = skip_dst_start + (d * skip_dst_step) % skip_dst_size;
+                            if (dst_id >= network->num_neurons) break;
+
+                            uint32_t base = nimcp_tl_rand() % input_size;
+                            uint32_t stride = input_size / skip_fan;
+                            if (stride == 0) stride = 1;
+                            for (uint32_t f = 0; f < skip_fan; f++) {
+                                uint32_t src_id = (base + f * stride) % input_size;
+                                float w = (((float)nimcp_tl_rand() / RAND_MAX) * 2.0F - 1.0F) * skip_scale;
+                                neural_network_add_connection(network, src_id, dst_id, w);
+                                skip_total++;
+                            }
+                        }
+                    }
+
+                    total_conns += skip_total;
+                    LOG_INFO(LOG_MODULE, "Skip connections: %u (input -> all hidden layers)", skip_total);
                 }
 
                 nimcp_free(layer_starts);
@@ -914,11 +980,12 @@ neural_network_t neural_network_create(const network_config_t* config)
             network->neurons[i].activation_type = ACTIVATION_LEAKY_RELU;
         }
 
-        // Set output layer neurons to sigmoid
+        // Set output layer neurons to tanh [-1,1] — matches sentence-transformer
+        // target range. Sigmoid [0,1] destroys negative target values.
         uint32_t output_layer_start = hidden_end;
         uint32_t output_layer_size = config->layer_sizes[config->num_layers - 1];
         for (uint32_t i = 0; i < output_layer_size && output_layer_start + i < network->num_neurons; i++) {
-            network->neurons[output_layer_start + i].activation_type = ACTIVATION_SIGMOID;
+            network->neurons[output_layer_start + i].activation_type = ACTIVATION_TANH;
         }
     }
 
@@ -2102,8 +2169,7 @@ static uint32_t neural_network_sprout_connections_impl(neural_network_t network,
     }
 
     if (new_conns > 0) {
-        LOG_INFO(LOG_MODULE, "Synaptogenesis: %u new connections sprouted", new_conns);
-        fprintf(stderr, "[SYNAPTOGENESIS] %u new connections sprouted\n", new_conns);
+        LOG_DEBUG(LOG_MODULE, "Synaptogenesis: %u new connections sprouted", new_conns);
     }
     return new_conns;
 }
@@ -3734,6 +3800,36 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                     default:
                         // sigmoid [0,1], tanh [-1,1], adaptive uses tanh — already bounded
                         break;
+                }
+            }
+
+            // LAYER NORMALIZATION for hidden layers:
+            // Normalize activations to zero-mean, unit-variance across the layer.
+            // This prevents vanishing/exploding activations through deep networks
+            // (the same insight as BatchNorm/LayerNorm in transformers & ResNets).
+            // Skip the output layer — we want raw output values there.
+            if (layer < network->config.num_layers - 1 && layer_size > 1) {
+                // Compute mean
+                double sum = 0.0;
+                uint32_t count = 0;
+                for (uint32_t i = 0; i < layer_size && neuron_offset + i < network->num_neurons; i++) {
+                    sum += (double)network->neurons[neuron_offset + i].state;
+                    count++;
+                }
+                if (count > 0) {
+                    float mean = (float)(sum / count);
+                    // Compute variance
+                    double var_sum = 0.0;
+                    for (uint32_t i = 0; i < count; i++) {
+                        float diff = network->neurons[neuron_offset + i].state - mean;
+                        var_sum += (double)(diff * diff);
+                    }
+                    float inv_std = 1.0F / sqrtf((float)(var_sum / count) + 1e-5F);
+                    // Normalize: (x - mean) / std
+                    for (uint32_t i = 0; i < count; i++) {
+                        network->neurons[neuron_offset + i].state =
+                            (network->neurons[neuron_offset + i].state - mean) * inv_std;
+                    }
                 }
             }
 

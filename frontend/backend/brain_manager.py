@@ -25,6 +25,37 @@ import nimcp_logger
 from cognitive_response import CognitiveInterpreter
 from config import MAX_BRAIN_COUNT, PROBE_HISTORY_SIZE, BRAIN_STORAGE_DIR
 
+# Default avatar identity — Athena's self-chosen appearance
+DEFAULT_IDENTITY = {
+    "skin_hue": 28,           # HSL hue (0-360)
+    "skin_saturation": 0.55,  # HSL saturation (0-1)
+    "skin_lightness": 0.72,   # HSL lightness (0-1)
+    "eye_color_r": 0.29,      # RGB (0-1)
+    "eye_color_g": 0.48,
+    "eye_color_b": 0.71,
+    "hair_color_r": 0.22,
+    "hair_color_g": 0.15,
+    "hair_color_b": 0.10,
+    "hair_length": 0.6,       # 0=bald, 1=long
+    "hair_style": "straight", # straight, wavy, curly
+    "face_width": 0.5,        # 0=narrow, 1=wide
+    "face_height": 0.5,       # 0=short, 1=tall
+    "lip_fullness": 0.5,      # 0=thin, 1=full
+    "lip_color_r": 0.80,
+    "lip_color_g": 0.45,
+    "lip_color_b": 0.45,
+    "nose_width": 0.5,        # 0=narrow, 1=wide
+    "brow_thickness": 0.5,    # 0=thin, 1=thick
+    "brow_color_r": 0.30,
+    "brow_color_g": 0.22,
+    "brow_color_b": 0.15,
+    "cheek_roundness": 0.5,   # 0=angular, 1=round
+    "chin_shape": 0.5,        # 0=pointed, 1=rounded
+    "freckles": 0.0,          # 0=none, 1=heavy
+    "voice_pitch": 0.6,       # 0=low, 1=high (feminine default for Athena)
+    "voice_warmth": 0.7,      # 0=cold, 1=warm
+}
+
 _log = nimcp_logger.get("brain_manager")
 
 # Athena pretrained baseline — auto-applied to new brains when available
@@ -123,6 +154,7 @@ class BrainManager:
         self._interpreters: dict[tuple[int, str], CognitiveInterpreter] = {}
         self._snapshots: dict[int, dict] = {}  # brain_id -> {name: path}
         self._cow_snapshots: dict[int, dict] = {}  # brain_id -> {name: capsule}
+        self._identities: dict[int, dict] = {}  # brain_id -> identity params
 
     # --- Persistence ---
 
@@ -140,6 +172,9 @@ class BrainManager:
             brain.save(os.path.join(bdir, "brain.bin"))
             meta_dict = self._metadata[bid].to_dict()
             meta_dict["stats"] = self._stats[bid].to_dict()
+            identity = self._identities.get(bid)
+            if identity:
+                meta_dict["identity"] = identity
             with open(os.path.join(bdir, "meta.json"), "w") as f:
                 json.dump(meta_dict, f, indent=2)
             _log.debug("Saved brain %d to disk", bid)
@@ -207,6 +242,7 @@ class BrainManager:
                     self._probe_history[bid] = deque(maxlen=PROBE_HISTORY_SIZE)
                     self._snapshots[bid] = {}
                     self._cow_snapshots[bid] = {}
+                    self._identities[bid] = meta_dict.get("identity", dict(DEFAULT_IDENTITY))
                     if bid > max_id:
                         max_id = bid
                 loaded += 1
@@ -252,6 +288,7 @@ class BrainManager:
             self._probe_history[bid] = deque(maxlen=PROBE_HISTORY_SIZE)
             self._snapshots[bid] = {}
             self._cow_snapshots[bid] = {}
+            self._identities[bid] = dict(DEFAULT_IDENTITY)
             self._save_brain_to_disk(bid)
             _log.info("Created brain %d (%s) neurons=%s inputs=%d outputs=%d owner=%s",
                       bid, name, num_neurons or "preset", num_inputs, num_outputs, owner or "shared")
@@ -279,6 +316,7 @@ class BrainManager:
             self._interpreters.pop(bid, None)
             self._snapshots.pop(bid, None)
             self._cow_snapshots.pop(bid, None)
+            self._identities.pop(bid, None)
             self._delete_brain_from_disk(bid)
             _log.info("Destroyed brain %d", bid)
             return True
@@ -468,14 +506,37 @@ class BrainManager:
                 "total_learning_steps": stats.total_learning_steps,
             }
             response = interpreter.generate_response(cognitive_state, text, interpreter.history, stats_dict)
+
+            # Handle appearance description sentinel
+            identity = self._identities.get(bid, DEFAULT_IDENTITY)
+            if response == "__DESCRIBE_APPEARANCE__":
+                response = interpreter.describe_identity(identity)
+
+            # Check for identity-learning phrases ("my eyes are blue", etc.)
+            identity_updates = interpreter.parse_identity_update(text)
+            identity_learned = False
+            if identity_updates:
+                current = dict(identity)
+                for key, value in identity_updates:
+                    if key in DEFAULT_IDENTITY:
+                        current[key] = value
+                self._identities[bid] = current
+                self._save_brain_to_disk(bid)
+                identity_learned = True
+                _log.info("Identity updated from conversation: %s", identity_updates)
+
             interpreter.add_to_history("user", text)
             interpreter.add_to_history("brain", response)
 
             stats.total_inferences += 1
-            return {
+            result = {
                 "message": response,
                 "cognitive_state": cognitive_state,
             }
+            if identity_learned:
+                result["identity_updated"] = True
+                result["identity"] = self._identities[bid]
+            return result
 
     def teach_conversational(self, bid: int, text: str, label: str, username: str = "") -> Optional[dict]:
         """Teach the brain via the cognitive interpreter."""
@@ -664,6 +725,85 @@ class BrainManager:
             del snaps[name]
             return True
 
+    # --- Speech & Avatar ---
+
+    def speak(self, bid: int, semantic_vector: list[float] | None = None) -> dict | None:
+        """Generate spoken text from brain's language production pipeline.
+
+        Args:
+            bid: Brain ID
+            semantic_vector: Optional semantic vector (uses last decide output if None)
+
+        Returns:
+            dict with 'text', 'confidence', 'fluency' or None on failure
+        """
+        with self._lock:
+            brain = self._brains.get(bid)
+            if brain is None:
+                return None
+            try:
+                if semantic_vector:
+                    result = brain.speak(semantic_vector)
+                else:
+                    # Fallback: use a zero vector to trigger language production
+                    meta = self._metadata[bid]
+                    result = brain.speak([0.0] * min(meta.num_outputs, 256))
+                return result
+            except Exception as exc:
+                _log.debug("brain.speak() failed for brain %d: %s", bid, exc)
+                return None
+
+    def get_avatar_state(self, bid: int) -> dict | None:
+        """Get avatar visual state (FACS AUs, visemes, gaze, emotion, voice).
+
+        Returns:
+            dict with all avatar fields or None on failure
+        """
+        with self._lock:
+            brain = self._brains.get(bid)
+            if brain is None:
+                return None
+            try:
+                return brain.get_avatar_state()
+            except Exception as exc:
+                _log.debug("brain.get_avatar_state() failed for brain %d: %s", bid, exc)
+                return None
+
+    # --- Identity / Self-Image ---
+
+    def get_identity(self, bid: int) -> dict | None:
+        """Get avatar identity (appearance parameters) for a brain."""
+        with self._lock:
+            if bid not in self._brains:
+                return None
+            return dict(self._identities.get(bid, DEFAULT_IDENTITY))
+
+    def set_identity(self, bid: int, identity: dict) -> dict | None:
+        """Set avatar identity parameters. Merges with defaults."""
+        with self._lock:
+            if bid not in self._brains:
+                return None
+            current = dict(self._identities.get(bid, DEFAULT_IDENTITY))
+            # Only accept known keys
+            for key in DEFAULT_IDENTITY:
+                if key in identity:
+                    current[key] = identity[key]
+            self._identities[bid] = current
+            self._save_brain_to_disk(bid)
+            _log.info("Updated identity for brain %d", bid)
+            return current
+
+    def update_identity_from_text(self, bid: int, key: str, value) -> bool:
+        """Update a single identity parameter (used by conversational learning)."""
+        with self._lock:
+            if bid not in self._brains or key not in DEFAULT_IDENTITY:
+                return False
+            identity = self._identities.setdefault(bid, dict(DEFAULT_IDENTITY))
+            identity[key] = value
+            self._save_brain_to_disk(bid)
+            _log.info("Identity %s=%s for brain %d (learned from conversation)", key, value, bid)
+            return True
+
     def destroy_all(self):
         with self._lock:
             _log.info("Destroying all %d brains", len(self._brains))
@@ -674,6 +814,7 @@ class BrainManager:
             self._interpreters.clear()
             self._snapshots.clear()
             self._cow_snapshots.clear()
+            self._identities.clear()
 
 
 manager = BrainManager()

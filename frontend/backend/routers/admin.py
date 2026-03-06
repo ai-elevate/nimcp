@@ -97,4 +97,15 @@ async def live_probe_data(brain_id: int = 0):
     probe = manager.probe_brain(brain_id)
     if probe is None:
         raise HTTPException(404, f"Brain {brain_id} not found or probe unavailable")
+
+    # Augment probe with avatar/emotion state
+    avatar = manager.get_avatar_state(brain_id)
+    if avatar:
+        probe["emotion_valence"] = avatar.get("valence", 0.0)
+        probe["emotion_arousal"] = avatar.get("arousal", 0.0)
+        probe["emotion_id"] = avatar.get("emotion_id", 18)
+        probe["emotion_intensity"] = avatar.get("emotion_intensity", 0.0)
+        probe["is_speaking"] = avatar.get("is_speaking", False)
+        probe["speech_pitch_hz"] = avatar.get("pitch_hz", 0.0)
+
     return probe

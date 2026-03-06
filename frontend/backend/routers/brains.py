@@ -169,3 +169,50 @@ async def cow_restore(bid: int):
         raise HTTPException(404, "Brain not found or COW restore failed")
     probe = await c_api_call(manager.probe_brain, bid, timeout=C_API_TIMEOUT_SECONDS)
     return {"restored": True, "probe": probe}
+
+
+# --- Speech & Avatar ---
+
+@router.post("/{bid}/speak")
+async def speak(bid: int, body: dict = {}):
+    """Generate spoken text from brain's language production pipeline."""
+    if not manager.has_brain(bid):
+        raise HTTPException(404, "Brain not found")
+    semantic_vector = body.get("semantic_vector")
+    result = await c_api_call(manager.speak, bid, semantic_vector,
+                               timeout=C_API_TIMEOUT_SECONDS)
+    if result is None:
+        raise HTTPException(500, "Speech generation failed")
+    return result
+
+
+@router.get("/{bid}/avatar")
+async def get_avatar_state(bid: int):
+    """Get avatar visual state (FACS AUs, visemes, gaze, emotion, voice)."""
+    if not manager.has_brain(bid):
+        raise HTTPException(404, "Brain not found")
+    result = await c_api_call(manager.get_avatar_state, bid,
+                               timeout=C_API_TIMEOUT_SECONDS)
+    if result is None:
+        raise HTTPException(500, "Avatar state unavailable")
+    return result
+
+
+# --- Identity / Self-Image ---
+
+@router.get("/{bid}/identity")
+async def get_identity(bid: int):
+    """Get avatar identity (self-chosen appearance parameters)."""
+    result = manager.get_identity(bid)
+    if result is None:
+        raise HTTPException(404, "Brain not found")
+    return result
+
+
+@router.put("/{bid}/identity")
+async def set_identity(bid: int, body: dict):
+    """Set avatar identity parameters. Merges with existing values."""
+    result = manager.set_identity(bid, body)
+    if result is None:
+        raise HTTPException(404, "Brain not found")
+    return result

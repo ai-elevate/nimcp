@@ -219,6 +219,11 @@ export function ProbeMonitor({ brainId = 0 }: { brainId?: number }) {
       ['response_diversity', probe.response_diversity],
       ['total_learning_steps', probe.total_learning_steps],
       ['num_labels_tracked', probe.num_labels_tracked],
+      // Language & Emotion
+      ['emotion_valence', probe.emotion_valence as number | undefined],
+      ['emotion_arousal', probe.emotion_arousal as number | undefined],
+      ['emotion_intensity', probe.emotion_intensity as number | undefined],
+      ['speech_pitch_hz', probe.speech_pitch_hz as number | undefined],
     ];
     const next: Record<string, MetricHistory> = {};
     for (const [k, v] of keys) {
@@ -397,7 +402,52 @@ export function ProbeMonitor({ brainId = 0 }: { brainId?: number }) {
             </div>
           </div>
 
-          {/* Section 4: Conversational Readiness */}
+          {/* Section 4: Language & Emotion */}
+          <div className="pm-section">
+            <div className="pm-section-title">Language & Emotion</div>
+            <div className="pm-card-grid">
+              <MetricCard
+                label="Valence"
+                value={formatFloat(probe.emotion_valence as number | undefined, 2)}
+                history={h.emotion_valence}
+                color={healthColor(probe.emotion_valence as number | undefined, { green: 0.3, yellow: -0.3 }, true)}
+              />
+              <MetricCard
+                label="Arousal"
+                value={formatFloat(probe.emotion_arousal as number | undefined, 2)}
+                history={h.emotion_arousal}
+              />
+              <MetricCard
+                label="Emotion"
+                value={
+                  (['happy','sad','angry','afraid','disgust','surprise',
+                    'interest','confused','frustrated','bored','proud',
+                    'ashamed','enraged','hateful','despairing','panicked',
+                    'calm','contempt','neutral'] as const)[
+                    (probe.emotion_id as number | undefined) ?? 18
+                  ] || 'neutral'
+                }
+                color="var(--primary)"
+              />
+              <MetricCard
+                label="Intensity"
+                value={formatPercent(probe.emotion_intensity as number | undefined)}
+                history={h.emotion_intensity}
+              />
+              <MetricCard
+                label="Speaking"
+                value={(probe.is_speaking as boolean | undefined) ? 'Yes' : 'No'}
+                color={(probe.is_speaking as boolean | undefined) ? 'var(--success)' : 'var(--text-muted)'}
+              />
+              <MetricCard
+                label="Pitch"
+                value={`${formatFloat(probe.speech_pitch_hz as number | undefined, 0)} Hz`}
+                history={h.speech_pitch_hz}
+              />
+            </div>
+          </div>
+
+          {/* Section 5: Conversational Readiness */}
           <div className="pm-section">
             <div className="pm-section-title">Conversational Readiness</div>
             <div className="pm-card-grid">

@@ -1,5 +1,5 @@
 import api from './api';
-import type { BrainCreate, BrainInfo, BrainDetail, BrainProbe, AthenaStatus, ProbeConfig, ProbeData } from '../types';
+import type { BrainCreate, BrainInfo, BrainDetail, BrainProbe, AthenaStatus, ProbeConfig, ProbeData, AvatarState, SpeechResult, AvatarIdentity } from '../types';
 
 export const createBrain = (data: BrainCreate) =>
   api.post<{ id: number; probe: BrainProbe }>('/brains/', data);
@@ -80,3 +80,17 @@ export const getAuthMe = () =>
 /** Fetch live probe data for real-time monitoring. Defaults to Athena (brain_id=0). */
 export const fetchLiveProbeData = (brainId: number = 0) =>
   api.get<ProbeData>(`/admin/probes/live`, { params: { brain_id: brainId } });
+
+// Speech & Avatar
+export const speak = (id: number, semanticVector?: number[]) =>
+  api.post<SpeechResult>(`/brains/${id}/speak`, { semantic_vector: semanticVector });
+
+export const getAvatarState = (id: number) =>
+  api.get<AvatarState>(`/brains/${id}/avatar`);
+
+// Identity / Self-Image
+export const getIdentity = (id: number) =>
+  api.get<AvatarIdentity>(`/brains/${id}/identity`);
+
+export const setIdentity = (id: number, identity: Partial<AvatarIdentity>) =>
+  api.put<AvatarIdentity>(`/brains/${id}/identity`, identity);

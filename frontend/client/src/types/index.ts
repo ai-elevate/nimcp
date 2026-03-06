@@ -130,6 +130,11 @@ export interface ChatMessage {
   inference_time_us?: number;
   output_vector?: number[];
   cognitive_state?: Partial<CognitiveState>;
+  // Speech & Avatar
+  spoken_text?: string;
+  speech_confidence?: number;
+  speech_fluency?: number;
+  avatar?: AvatarState;
 }
 
 export interface WSMessage {
@@ -241,6 +246,89 @@ export interface BenchmarkInfo {
   description: string;
 }
 
+export interface AvatarState {
+  // Mouth / viseme
+  mouth_open: number;
+  lip_round: number;
+  lip_upper: number;
+  lip_lower: number;
+  tongue_position: number;
+  current_viseme: number;
+  // FACS Action Units
+  au1_inner_brow_raise: number;
+  au2_outer_brow_raise: number;
+  au4_brow_lower: number;
+  au5_upper_lid_raise: number;
+  au6_cheek_raise: number;
+  au7_lid_tighten: number;
+  au9_nose_wrinkle: number;
+  au10_upper_lip_raise: number;
+  au12_lip_corner_pull: number;
+  au15_lip_corner_drop: number;
+  au17_chin_raise: number;
+  au20_lip_stretch: number;
+  au23_lip_tighten: number;
+  au25_lips_part: number;
+  au26_jaw_drop: number;
+  au28_lip_suck: number;
+  // Emotion
+  valence: number;
+  arousal: number;
+  dominance: number;
+  emotion_id: number;
+  emotion_intensity: number;
+  // Gaze & head
+  gaze_x: number;
+  gaze_y: number;
+  head_pitch: number;
+  head_yaw: number;
+  head_roll: number;
+  blink: number;
+  // Voice
+  pitch_hz: number;
+  speaking_rate: number;
+  volume: number;
+  // Metadata
+  timestamp_us: number;
+  is_speaking: boolean;
+}
+
+export interface SpeechResult {
+  text: string;
+  confidence: number;
+  fluency: number;
+}
+
+export interface AvatarIdentity {
+  skin_hue: number;
+  skin_saturation: number;
+  skin_lightness: number;
+  eye_color_r: number;
+  eye_color_g: number;
+  eye_color_b: number;
+  hair_color_r: number;
+  hair_color_g: number;
+  hair_color_b: number;
+  hair_length: number;
+  hair_style: string;
+  face_width: number;
+  face_height: number;
+  lip_fullness: number;
+  lip_color_r: number;
+  lip_color_g: number;
+  lip_color_b: number;
+  nose_width: number;
+  brow_thickness: number;
+  brow_color_r: number;
+  brow_color_g: number;
+  brow_color_b: number;
+  cheek_roundness: number;
+  chin_shape: number;
+  freckles: number;
+  voice_pitch: number;
+  voice_warmth: number;
+}
+
 export interface AthenaStatus {
   loaded: boolean;
   name?: string;
@@ -301,6 +389,14 @@ export interface ProbeData {
   avg_sparsity?: number;
   current_learning_rate?: number;
   memory_bytes?: number;
+
+  // Language & Emotion (from avatar state)
+  emotion_valence?: number;
+  emotion_arousal?: number;
+  emotion_id?: number;
+  emotion_intensity?: number;
+  is_speaking?: boolean;
+  speech_pitch_hz?: number;
 
   // Allow extra keys from C probe
   [key: string]: unknown;

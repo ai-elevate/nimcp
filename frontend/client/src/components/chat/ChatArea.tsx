@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { ChatMessage, WSMessage, ConversationDetail } from '../../types';
+import type { ChatMessage, WSMessage, ConversationDetail, AvatarState, AvatarIdentity } from '../../types';
 import { getConversation } from '../../services/conversationApi';
+import { getIdentity } from '../../services/brainApi';
+import { AvatarFace } from './AvatarFace';
 
 interface Props {
   brainName: string;
@@ -76,12 +78,14 @@ const MODES = [
   { id: 'chat', label: 'Chat' },
   { id: 'teach', label: 'Teach' },
   { id: 'introspect', label: 'Introspect' },
+  { id: 'speak', label: 'Speak' },
 ];
 
 const PLACEHOLDERS: Record<string, string> = {
   chat: 'Message Athena...',
   teach: "Teach (e.g., 'cats: furry animals that purr')",
   introspect: 'Press Enter to ask about itself',
+  speak: 'Say something for Athena to respond to...',
 };
 
 export function ChatArea({
@@ -93,8 +97,16 @@ export function ChatArea({
   const [text, setText] = useState('');
   const [mode, setMode] = useState('chat');
   const [showModeMenu, setShowModeMenu] = useState(false);
+  const [avatarState, setAvatarState] = useState<AvatarState | null>(null);
+  const [identity, setIdentity] = useState<AvatarIdentity | null>(null);
+  const [showAvatar, setShowAvatar] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch identity for avatar rendering
+  useEffect(() => {
+    getIdentity(brainId).then(r => setIdentity(r.data)).catch(() => {});
+  }, [brainId]);
 
   // Load conversation history from REST
   useEffect(() => {
@@ -119,11 +131,29 @@ export function ChatArea({
       time_ms?: number; explanation?: string; sparsity?: number;
       num_active_neurons?: number; inference_time_us?: number;
       output_vector?: number[]; cognitive_state?: Record<string, unknown>;
+      spoken_text?: string; speech_confidence?: number; speech_fluency?: number;
+      avatar?: AvatarState;
+      identity_updated?: boolean; identity?: AvatarIdentity;
     };
+
+    // Update avatar state if present
+    if (resp.avatar) {
+      setAvatarState(resp.avatar);
+    }
+    // Update identity if brain learned new appearance from conversation
+    if (resp.identity_updated && resp.identity) {
+      setIdentity(resp.identity);
+    }
+
+    // Build display text: prefer spoken_text for speech mode
+    const displayText = resp.spoken_text
+      ? `${resp.message || ''}\n\n${resp.spoken_text}`
+      : resp.message || '';
+
     setMessages(prev => [...prev, {
       id: ++msgIdCounter,
       sender: 'brain' as const,
-      text: resp.message || '',
+      text: displayText,
       label: resp.label,
       confidence: resp.confidence,
       time_ms: resp.time_ms,
@@ -131,6 +161,10 @@ export function ChatArea({
       sparsity: resp.sparsity,
       num_active_neurons: resp.num_active_neurons,
       inference_time_us: resp.inference_time_us,
+      spoken_text: resp.spoken_text,
+      speech_confidence: resp.speech_confidence,
+      speech_fluency: resp.speech_fluency,
+      avatar: resp.avatar,
     }]);
   }, []);
 
@@ -162,11 +196,25 @@ export function ChatArea({
     <div className="chat-area">
       <div className="chat-area-header">
         <span className="chat-area-brain-name">{brainName}</span>
-        <span className={`chat-area-status ${connected ? 'connected' : 'disconnected'}`}>
-          <span className={`status-dot ${connected ? 'ok' : 'err'}`} />
-          {connected ? 'Connected' : 'Disconnected'}
-        </span>
+        <div className="chat-area-header-right">
+          <button
+            className={`chat-avatar-toggle ${showAvatar ? 'active' : ''}`}
+            onClick={() => setShowAvatar(!showAvatar)}
+            title={showAvatar ? 'Hide avatar' : 'Show avatar'}
+          >
+            Avatar
+          </button>
+          <span className={`chat-area-status ${connected ? 'connected' : 'disconnected'}`}>
+            <span className={`status-dot ${connected ? 'ok' : 'err'}`} />
+            {connected ? 'Connected' : 'Disconnected'}
+          </span>
+        </div>
       </div>
+
+      <div className="chat-area-body">
+      {showAvatar && (
+        <AvatarFace avatar={avatarState} identity={identity} />
+      )}
 
       <div className="chat-area-messages">
         {messages.length === 0 && (
@@ -182,7 +230,19 @@ export function ChatArea({
             <div className="chat-msg-sender">
               {m.sender === 'brain' ? brainName : 'You'}
             </div>
-            <div>{m.text}</div>
+            <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
+            {m.sender === 'brain' && m.spoken_text && (
+              <div className="chat-msg-speech">
+                <span className="chat-msg-speech-icon">&#128483;</span>
+                <span>{m.spoken_text}</span>
+                {m.speech_confidence !== undefined && (
+                  <span className="chat-msg-speech-meta">
+                    conf: {(m.speech_confidence * 100).toFixed(0)}%
+                    {m.speech_fluency !== undefined && ` | fluency: ${(m.speech_fluency * 100).toFixed(0)}%`}
+                  </span>
+                )}
+              </div>
+            )}
             {m.sender === 'brain' && m.confidence !== undefined && (
               <ConfidenceBar confidence={m.confidence} />
             )}
@@ -191,6 +251,7 @@ export function ChatArea({
         ))}
         <div ref={bottomRef} />
       </div>
+      </div>{/* close chat-area-body */}
 
       <div className="chat-area-input-container">
         <div className="chat-area-input-toolbar">

@@ -717,7 +717,43 @@ bool nimcp_gpu_forward_pass(
         }
         // sigmoid [0,1], tanh [-1,1] — already bounded, no clamp needed
 
-        // (debug prints removed — GPU forward pass verified working)
+        // LAYER NORMALIZATION for hidden layers:
+        // Normalize activations to zero-mean, unit-variance to prevent
+        // vanishing/exploding activations through deep networks.
+        // Skip output layer — we want raw output values there.
+        if (l + 1 < num_transitions) {  // not the output layer
+            uint32_t layer_size = cache->layer_sizes[l + 1];
+            if (layer_size > 1) {
+                if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
+                                              cache->host_activation_buf)) {
+                    return false;
+                }
+                // Compute mean
+                double sum = 0.0;
+                for (uint32_t ci = 0; ci < layer_size; ci++) {
+                    sum += (double)cache->host_activation_buf[ci];
+                }
+                float mean = (float)(sum / layer_size);
+                // Compute variance
+                double var_sum = 0.0;
+                for (uint32_t ci = 0; ci < layer_size; ci++) {
+                    float diff = cache->host_activation_buf[ci] - mean;
+                    var_sum += (double)(diff * diff);
+                }
+                float inv_std = 1.0f / sqrtf((float)(var_sum / layer_size) + 1e-5f);
+                // Normalize
+                for (uint32_t ci = 0; ci < layer_size; ci++) {
+                    cache->host_activation_buf[ci] = (cache->host_activation_buf[ci] - mean) * inv_std;
+                }
+                // Re-upload normalized activations
+                size_t a_dims[1] = { layer_size };
+                nimcp_gpu_tensor_t* normed = nimcp_gpu_tensor_from_host(
+                    cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
+                if (!normed) return false;
+                nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
+                cache->activations[l + 1] = normed;
+            }
+        }
     }
 
     // Step 3: Download output from last layer activation

@@ -196,7 +196,7 @@ async def websocket_handler(ws: WebSocket, brain_id: int, username: str = ""):
                     elapsed = (time.monotonic() - t0) * 1000
                     if result:
                         response_msg = result.get("message", "")
-                        await ws.send_text(json.dumps({
+                        response_data = {
                             "type": "chat_response",
                             "message": response_msg,
                             "label": result.get("label", ""),
@@ -208,7 +208,30 @@ async def websocket_handler(ws: WebSocket, brain_id: int, username: str = ""):
                             "inference_time_us": result.get("inference_time_us"),
                             "output_vector": result.get("output_vector"),
                             "cognitive_state": result.get("cognitive_state"),
-                        }))
+                        }
+
+                        # Speech: generate spoken text from output vector
+                        output_vec = result.get("output_vector")
+                        if output_vec:
+                            spoken = await c_api_call(manager.speak, brain_id,
+                                                      output_vec, timeout=C_API_TIMEOUT_SECONDS)
+                            if spoken:
+                                response_data["spoken_text"] = spoken.get("text", "")
+                                response_data["speech_confidence"] = spoken.get("confidence", 0.0)
+                                response_data["speech_fluency"] = spoken.get("fluency", 0.0)
+
+                        # Avatar: get visual state (FACS, visemes, gaze, emotion)
+                        avatar = await c_api_call(manager.get_avatar_state, brain_id,
+                                                   timeout=C_API_TIMEOUT_SECONDS)
+                        if avatar:
+                            response_data["avatar"] = avatar
+
+                        # Identity: pass through if conversation updated appearance
+                        if result.get("identity_updated"):
+                            response_data["identity_updated"] = True
+                            response_data["identity"] = result.get("identity")
+
+                        await ws.send_text(json.dumps(response_data))
                         if conv_id and username:
                             try:
                                 conversation_store.append_message(

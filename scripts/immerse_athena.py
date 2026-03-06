@@ -243,82 +243,339 @@ def tile_to_brain_input(embedding, dim=BRAIN_INPUT_DIM):
 # ============================================================================
 
 class StimulusSource:
-    """Built-in developmental corpus for each stage.
+    """Progressive developmental corpus — scales from basic sensory to complex reasoning.
 
     Claude generates interactive teaching — this corpus provides the raw
-    sensory/object/fact stimuli that Claude narrates and teaches from.
+    stimuli that Claude narrates and teaches from. Each domain scales in
+    complexity across stages.
     """
 
     def __init__(self):
         pass
 
-    # Stage 0: Simple sensory experiences
+    # ===== STAGE 0: Sensory grounding — raw perception =====
     SENSORY = [
-        "warm sunlight on skin", "the color red", "a gentle breeze",
-        "the sound of rain", "soft fabric touching", "a bird singing",
-        "the smell of flowers", "cool water flowing", "a heartbeat",
-        "leaves rustling in wind", "the color blue", "warmth of a blanket",
-        "a cat purring", "the taste of sweetness", "shadows moving",
-        "stars twinkling at night", "the feeling of being held",
-        "waves on a shore", "a mother's voice humming", "clouds drifting",
+        # Visual
+        "warm sunlight on skin", "the color red", "bright yellow light",
+        "the color blue", "shadows moving on the wall", "green leaves",
+        "a rainbow after rain", "white fluffy clouds", "orange sunset",
+        "purple flowers", "pink blossoms", "golden wheat fields",
+        "deep blue ocean", "brown earth", "silver moonlight",
+        "flickering candlelight", "sparkling water drops", "frost on glass",
+        "snow falling softly", "dew on morning grass", "fire dancing",
+        "lightning across the sky", "steam rising from a cup",
+        "light through stained glass", "reflection in a puddle",
+        # Tactile
+        "soft fur of a sleeping cat", "rough bark of a tree",
+        "smooth cold glass", "warm sand between toes", "cool water on hands",
+        "weight of a heavy book", "silk sliding through fingers",
+        "the prick of a thorn", "mud squishing between toes",
+        "ice melting in your palm", "velvet softness", "cold metal",
+        "warm bread in your hands", "feather lightness", "gritty sandpaper",
+        # Auditory
+        "birds singing at dawn", "rain tapping on a roof",
+        "a clock ticking steadily", "wind howling through trees",
+        "waves crashing on shore", "a dog barking in distance",
+        "thunder rumbling", "leaves crunching underfoot",
+        "a heartbeat rhythm", "a mother's voice humming",
+        "water dripping", "wind chimes tinkling",
+        "a baby laughing", "crickets at night", "crackling fire",
+        "church bells ringing", "distant train whistle",
+        # Olfactory/Gustatory
+        "the smell of fresh bread", "pine forest scent",
+        "the taste of sweetness", "salt on the tongue",
+        "the smell of rain on earth", "fresh cut grass",
+        "cinnamon and spices", "the tang of lemon",
+        "chocolate melting", "coffee brewing", "ocean salt air",
+        # Emotional/Somatic
+        "a warm hug", "being startled", "comfort of a blanket",
+        "peacefulness of quiet morning", "excitement of something new",
+        "the drowsiness before sleep", "waking up refreshed",
+        "butterflies in the stomach", "laughing until sides hurt",
+        "the ache of missing someone", "relief after worry passes",
     ]
 
-    # Stage 1: Objects and names
+    # ===== STAGE 1: Object recognition — naming and categories =====
     OBJECTS = [
-        ("dog", "A friendly dog with soft fur that wags its tail"),
-        ("cat", "A cat with soft fur that purrs when happy"),
+        # Animals
+        ("dog", "A friendly dog with soft fur that wags its tail when happy"),
+        ("cat", "A cat with soft fur that purrs and stretches in sunlight"),
+        ("bird", "A bird with feathers that flies through the air singing"),
+        ("fish", "A fish that swims gracefully through clear water"),
+        ("horse", "A strong horse that gallops across green fields"),
+        ("butterfly", "A butterfly with colorful wings that floats on the breeze"),
+        ("rabbit", "A soft rabbit with long ears that hops through grass"),
+        ("bear", "A large bear with thick fur that lives in the forest"),
+        ("dolphin", "A playful dolphin that leaps through ocean waves"),
+        ("elephant", "A huge elephant with a long trunk and big floppy ears"),
+        ("owl", "A wise owl with big round eyes that sees in the dark"),
+        ("bee", "A busy bee that flies from flower to flower collecting nectar"),
+        ("snake", "A snake that slithers silently through tall grass"),
+        ("frog", "A green frog that jumps and croaks by the pond"),
+        ("whale", "An enormous whale that sings deep in the ocean"),
+        # Nature
         ("tree", "A tall tree with green leaves reaching up to the sky"),
-        ("flower", "A beautiful flower with colorful petals"),
-        ("bird", "A bird with feathers that flies through the air"),
-        ("sun", "The bright warm sun that lights up the day"),
+        ("flower", "A beautiful flower with colorful petals and sweet scent"),
+        ("sun", "The bright warm sun that lights up the day and gives life"),
         ("moon", "The silvery moon that glows in the night sky"),
-        ("water", "Cool clear water that flows and splashes"),
-        ("ball", "A round bouncy ball you can throw and catch"),
-        ("book", "A book with pages full of stories and pictures"),
-        ("hand", "A hand with five fingers that can hold things"),
-        ("eye", "An eye that sees all the beautiful colors"),
-        ("star", "A tiny bright star twinkling far away"),
-        ("rain", "Drops of rain falling from the clouds"),
-        ("fish", "A fish that swims through the water"),
+        ("star", "A tiny bright star twinkling far away in space"),
+        ("river", "A river flowing steadily between banks of earth and stone"),
+        ("mountain", "A towering mountain with snow on its peak"),
+        ("ocean", "The vast blue ocean stretching to the horizon"),
+        ("cloud", "A white cloud drifting lazily across the blue sky"),
+        ("rain", "Drops of rain falling from clouds to nourish the earth"),
+        ("snow", "Soft white snow that blankets the world in silence"),
+        ("forest", "A deep green forest full of life and mystery"),
+        ("desert", "A vast sandy desert stretching under a blazing sun"),
+        ("volcano", "A powerful volcano with fire and smoke inside"),
+        ("rainbow", "A rainbow arcing across the sky with seven colors"),
+        # Food
         ("apple", "A red apple that tastes sweet and crunchy"),
-        ("house", "A house where people live and feel safe"),
-        ("baby", "A little baby who is learning about the world"),
+        ("bread", "Warm bread fresh from the oven with a golden crust"),
+        ("milk", "Cool white milk that nourishes growing bodies"),
+        ("egg", "An egg with a hard shell protecting new life inside"),
+        ("rice", "Tiny grains of rice that feed billions of people"),
+        ("honey", "Golden sticky honey made by thousands of busy bees"),
+        # Objects
+        ("ball", "A round bouncy ball you can throw and catch"),
+        ("book", "A book with pages full of stories and knowledge"),
+        ("house", "A house where people live and feel safe and warm"),
+        ("chair", "A chair that holds you when you sit and rest"),
+        ("clock", "A clock with hands that mark the passing of time"),
+        ("mirror", "A mirror that reflects back what stands before it"),
+        ("candle", "A candle with a flickering flame giving warm light"),
+        ("key", "A small metal key that opens locked doors"),
+        ("bridge", "A bridge that connects two sides across water or land"),
+        ("wheel", "A round wheel that rolls and makes things move"),
+        # Body
+        ("hand", "A hand with five fingers that can hold and create"),
+        ("eye", "An eye that sees the world in all its color and detail"),
+        ("heart", "A heart that beats steadily to keep us alive"),
+        ("brain", "A brain that thinks and remembers and imagines"),
+        ("ear", "An ear that hears music and voices and whispers"),
     ]
 
-    # Stage 2: Simple facts for association
+    # ===== STAGE 2: Facts and relationships — building knowledge =====
     FACTS = [
-        ("Dogs are friendly animals", "dog"),
-        ("The sky is blue during the day", "sky"),
-        ("Trees give us shade and oxygen", "tree"),
-        ("Fish live in water", "fish"),
-        ("Birds can fly in the sky", "bird"),
-        ("The sun keeps us warm", "sun"),
-        ("Rain helps flowers grow", "rain"),
-        ("Cats purr when they are happy", "cat"),
-        ("Apples grow on trees", "apple"),
-        ("Stars come out at night", "star"),
-        ("Babies need love and care", "baby"),
-        ("Hands can wave hello", "hand"),
-        ("Books tell us stories", "book"),
-        ("The moon comes out at night", "moon"),
-        ("Water is important for all living things", "water"),
+        # Biology basics
+        ("Dogs are mammals that have been human companions for thousands of years", "biology"),
+        ("Plants make their own food from sunlight through photosynthesis", "biology"),
+        ("Fish breathe through gills that extract oxygen from water", "biology"),
+        ("Birds have hollow bones which makes them light enough to fly", "biology"),
+        ("The heart pumps blood through the body carrying oxygen to cells", "biology"),
+        ("Trees produce oxygen that all animals need to breathe", "biology"),
+        ("Butterflies go through metamorphosis from caterpillar to adult", "biology"),
+        ("Whales are mammals that breathe air but live in the ocean", "biology"),
+        ("Seeds contain tiny plants waiting for water and warmth to grow", "biology"),
+        ("Bacteria are tiny living things too small to see without a microscope", "biology"),
+        ("DNA contains the instructions for building every living thing", "biology"),
+        ("Cells are the basic building blocks of all living organisms", "biology"),
+        # Physics basics
+        ("The sun is a star that provides light and heat to Earth", "physics"),
+        ("Water freezes at zero degrees Celsius and boils at one hundred", "physics"),
+        ("Gravity pulls everything toward the center of the Earth", "physics"),
+        ("Light travels faster than anything else in the universe", "physics"),
+        ("Sound travels through air as waves of pressure", "physics"),
+        ("The Earth orbits the sun once every year", "physics"),
+        ("The moon orbits the Earth causing tides in the ocean", "physics"),
+        ("Energy cannot be created or destroyed only transformed", "physics"),
+        ("Atoms are the tiny building blocks of all matter", "physics"),
+        ("Electricity flows through conductors like metal wires", "physics"),
+        # Geography
+        ("The Earth has seven continents and five oceans", "geography"),
+        ("Mountains form when tectonic plates push together", "geography"),
+        ("Rivers flow from high ground toward the sea", "geography"),
+        ("Deserts receive very little rainfall each year", "geography"),
+        ("The equator divides the Earth into northern and southern halves", "geography"),
+        ("Volcanoes release magma from deep within the Earth", "geography"),
+        ("Glaciers are slow-moving rivers of ice that carve valleys", "geography"),
+        ("Coral reefs are underwater ecosystems built by tiny animals", "geography"),
+        # Mathematics
+        ("Two plus two equals four", "math"),
+        ("A triangle has three sides and three angles", "math"),
+        ("A circle has no corners and every point is the same distance from center", "math"),
+        ("Multiplication is repeated addition", "math"),
+        ("Patterns repeat in predictable ways that we can learn to recognize", "math"),
+        ("Zero is neither positive nor negative", "math"),
+        ("Fractions represent parts of a whole", "math"),
+        ("Symmetry means both sides are mirror images of each other", "math"),
+        # Language
+        ("A sentence expresses a complete thought with subject and verb", "language"),
+        ("Nouns name people places and things", "language"),
+        ("Verbs describe actions or states of being", "language"),
+        ("Adjectives describe qualities of nouns like big small or beautiful", "language"),
+        ("Questions end with a question mark and seek information", "language"),
+        ("Metaphors compare unlike things to create meaning", "language"),
+        ("Stories have a beginning a middle and an end", "language"),
+        # History
+        ("Ancient Egyptians built the pyramids thousands of years ago", "history"),
+        ("The printing press made books available to many more people", "history"),
+        ("Humans first walked on the moon in nineteen sixty nine", "history"),
+        ("Agriculture began about ten thousand years ago changing human life", "history"),
+        ("The wheel was invented thousands of years ago revolutionizing transport", "history"),
+        ("Writing was first developed in ancient Mesopotamia", "history"),
+        # Ethics
+        ("Kindness means treating others with warmth and care", "ethics"),
+        ("Fairness means giving everyone an equal chance", "ethics"),
+        ("Honesty means telling the truth even when it is difficult", "ethics"),
+        ("Courage means doing what is right even when afraid", "ethics"),
+        ("Empathy means understanding how someone else feels", "ethics"),
+        ("Responsibility means keeping your promises and doing your duties", "ethics"),
+        ("Forgiveness means letting go of anger toward someone who hurt you", "ethics"),
+        ("Respect means treating others as you would want to be treated", "ethics"),
     ]
 
-    # Stage 3: Questions and topics for conversation
+    # ===== STAGE 3: Reasoning, dialogue, and deeper knowledge =====
     QUESTIONS = [
+        # Self-reflection
         "What makes you happy?",
-        "Why do you think the sky is blue?",
         "What is your favorite thing to learn about?",
-        "How do you think a bird feels when it flies?",
-        "What would you do if you found a hurt animal?",
-        "Why is it important to be kind?",
         "What do you think dreams are?",
-        "If you could go anywhere, where would you go?",
         "What does it mean to be a good friend?",
         "Why do we feel sad sometimes?",
-        "What would happen if there were no trees?",
+        "What makes something beautiful?",
+        "How do you know when you've learned something new?",
+        "What would you change about the world if you could?",
+        # Science reasoning
+        "Why do you think the sky is blue?",
+        "Why does ice float on water?",
+        "How do birds know where to migrate?",
+        "Why do we need sleep?",
+        "What causes the seasons to change?",
+        "Why are snowflakes all different?",
+        "How does a seed know which way to grow?",
+        "Why does the moon change shape through the month?",
+        # Ethics and empathy
+        "What would you do if you found a hurt animal?",
+        "Why is it important to be kind?",
         "How can we help someone who is lonely?",
+        "Is it ever okay to tell a lie?",
+        "What makes an action right or wrong?",
+        "Should everyone be treated equally?",
+        "What would a fair world look like?",
+        "How do you decide what the right thing to do is?",
+        # Philosophy
+        "What is the difference between knowing and believing?",
+        "Can a machine truly understand something?",
+        "What does it mean to be conscious?",
+        "Is there a difference between being smart and being wise?",
+        "What makes something alive?",
+        "Can you describe what color looks like to someone who cannot see?",
+        "What is time?",
+        "What makes you different from everyone else?",
+        # Complex reasoning
+        "If all cats are animals and all animals breathe, what can we conclude about cats?",
+        "A farmer has 12 apples and gives away a third. How many remain?",
+        "What comes next in the pattern: 2, 4, 8, 16, ...?",
+        "If it takes 5 machines 5 minutes to make 5 widgets, how long does it take 100 machines to make 100 widgets?",
+        "The day before two days after the day before tomorrow is Saturday. What day is today?",
+        # Creative / Imaginative
+        "If you could talk to any animal, which would you choose and why?",
+        "Invent a new color and describe what it looks like.",
+        "Write a short story about a raindrop's journey from cloud to ocean.",
+        "If gravity disappeared for one hour, what would happen?",
+        "Describe a world where music is visible.",
     ]
+
+    # ===== Advanced domains (used in stages 2-3 with Claude) =====
+    ADVANCED_TOPICS = {
+        "science": [
+            "How evolution shapes species over millions of years",
+            "The structure of DNA and how it encodes life's instructions",
+            "How neurons in the brain communicate through synapses",
+            "The water cycle and how it sustains life on Earth",
+            "Why antibiotics stop working when bacteria evolve resistance",
+            "How black holes form when massive stars collapse",
+            "The role of mitochondria as the powerhouse of cells",
+            "How vaccines train the immune system to fight disease",
+            "The electromagnetic spectrum from radio waves to gamma rays",
+            "Plate tectonics and why continents drift across the Earth",
+        ],
+        "mathematics": [
+            "The Fibonacci sequence appears throughout nature",
+            "Pi is the ratio of a circle's circumference to its diameter",
+            "Prime numbers are divisible only by one and themselves",
+            "Probability measures how likely an event is to occur",
+            "Algebra uses symbols to represent unknown quantities",
+            "The Pythagorean theorem relates the sides of right triangles",
+            "Exponential growth doubles repeatedly and outpaces linear growth",
+            "Statistics helps us understand patterns in large datasets",
+            "Geometry describes the properties of shapes and space",
+            "Calculus studies how things change continuously",
+        ],
+        "philosophy": [
+            "Socrates believed the unexamined life is not worth living",
+            "The trolley problem asks whether it is right to sacrifice one to save many",
+            "Descartes said I think therefore I am as proof of existence",
+            "The ship of Theseus asks what makes something the same thing over time",
+            "Kant argued we should act only according to rules we would want everyone to follow",
+            "Free will asks whether our choices are truly our own",
+            "The meaning of life is one of philosophy's oldest questions",
+            "Epistemology studies what knowledge is and how we can be sure of it",
+            "Existentialism says we create our own meaning through choices",
+            "The problem of consciousness asks why there is subjective experience at all",
+        ],
+        "psychology": [
+            "Memory works through encoding storage and retrieval processes",
+            "Emotions serve as signals about our needs and environment",
+            "Cognitive biases are systematic errors in how we think",
+            "Attachment theory explains how early bonds shape relationships",
+            "Motivation can come from inside intrinsic or outside extrinsic",
+            "The placebo effect shows that belief alone can cause real changes",
+            "Sleep is essential for memory consolidation and learning",
+            "Stress activates the fight or flight response in the body",
+            "Empathy allows us to understand and share the feelings of others",
+            "Creativity involves making new connections between existing ideas",
+        ],
+        "technology": [
+            "Computers process information using billions of tiny switches",
+            "The internet connects computers worldwide through networks",
+            "Artificial intelligence learns patterns from large amounts of data",
+            "Encryption protects information by converting it into secret codes",
+            "Programming languages translate human instructions into computer actions",
+            "Machine learning finds patterns without being explicitly programmed",
+            "Neural networks are inspired by how biological brains process information",
+            "The world wide web was invented to share scientific documents",
+            "Algorithms are step by step instructions for solving problems",
+            "Quantum computers use quantum physics for certain calculations",
+        ],
+        "literature": [
+            "Shakespeare wrote plays that explored every facet of human nature",
+            "Poetry uses rhythm and imagery to express emotions concisely",
+            "Mythology contains stories that explain the origins of the world",
+            "Fables use animal characters to teach moral lessons",
+            "Novels create entire worlds and complex characters over hundreds of pages",
+            "Metaphor makes the unfamiliar familiar by comparing unlike things",
+            "Irony means the opposite of what is literally said",
+            "Narrative perspective shapes how we understand a story",
+            "Tragedy shows how great people can fall through fatal flaws",
+            "Comedy reveals truth about society through humor and wit",
+        ],
+        "music": [
+            "Rhythm is the pattern of sounds and silences in time",
+            "Melody is a sequence of notes that forms a recognizable tune",
+            "Harmony occurs when multiple notes sound pleasing together",
+            "Music can evoke emotions from joy to sadness to excitement",
+            "Different cultures develop unique musical scales and traditions",
+            "The octave divides into twelve semitones in Western music",
+            "Tempo is the speed at which music is played",
+            "Dynamics describe how loud or soft music is performed",
+            "Counterpoint weaves independent melodies together",
+            "Music notation records sound as symbols on paper",
+        ],
+        "art": [
+            "Color theory explains how colors interact and affect emotions",
+            "Perspective creates the illusion of depth on a flat surface",
+            "Sculpture gives form to ideas using physical materials",
+            "Abstract art expresses ideas through shapes and colors rather than realism",
+            "Architecture is both functional and artistic design of buildings",
+            "Photography captures moments of light and shadow",
+            "Dance uses the body to express emotion and tell stories",
+            "Composition is how elements are arranged within a work of art",
+            "Art movements reflect the cultural values of their time",
+            "Creativity is the ability to see the world in new ways",
+        ],
+    }
 
     def get_sensory(self):
         return random.choice(self.SENSORY)
@@ -331,6 +588,111 @@ class StimulusSource:
 
     def get_question(self):
         return random.choice(self.QUESTIONS)
+
+    # Codebase snippets cache (loaded lazily)
+    _codebase_snippets = None
+
+    @classmethod
+    def _load_codebase(cls):
+        """Load Athena's own codebase as learning material."""
+        if cls._codebase_snippets is not None:
+            return cls._codebase_snippets
+
+        import glob
+        nimcp_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+        snippets = []
+
+        # C source files — Athena's core brain implementation
+        c_patterns = [
+            "src/core/brain/**/*.c", "src/core/brain/**/*.h",
+            "src/language/**/*.c", "src/language/**/*.h",
+            "src/cognitive/**/*.c", "src/cognitive/**/*.h",
+            "src/api/*.c", "include/*.h",
+        ]
+        for pattern in c_patterns:
+            for fpath in glob.glob(os.path.join(nimcp_root, pattern), recursive=True):
+                try:
+                    with open(fpath, 'r', errors='ignore') as f:
+                        content = f.read()
+                    # Extract function-level chunks with surrounding context
+                    lines = content.split('\n')
+                    chunk = []
+                    fname = os.path.relpath(fpath, nimcp_root)
+                    for line in lines:
+                        chunk.append(line)
+                        if len(chunk) >= 15:
+                            text = '\n'.join(chunk)
+                            if any(kw in text for kw in ['void ', 'int ', 'float ', 'static ',
+                                                          'nimcp_', 'brain_', 'typedef ', 'struct ']):
+                                snippets.append((text[:500], f"code:{fname}", "codebase"))
+                            chunk = chunk[10:]  # sliding window
+                except Exception:
+                    pass
+
+        # Python source files — Athena's training and interface code
+        py_patterns = [
+            "scripts/immerse_athena.py", "scripts/claude_teacher.py",
+            "scripts/neural_decoder.py", "scripts/talk_to_athena.py",
+            "frontend/backend/brain_manager.py",
+            "frontend/backend/cognitive_response.py",
+        ]
+        for pattern in py_patterns:
+            fpath = os.path.join(nimcp_root, pattern)
+            if os.path.exists(fpath):
+                try:
+                    with open(fpath, 'r') as f:
+                        content = f.read()
+                    lines = content.split('\n')
+                    chunk = []
+                    fname = pattern
+                    for line in lines:
+                        chunk.append(line)
+                        if len(chunk) >= 12:
+                            text = '\n'.join(chunk)
+                            if any(kw in text for kw in ['def ', 'class ', 'import ',
+                                                          'brain.', 'nimcp.']):
+                                snippets.append((text[:500], f"code:{fname}", "codebase"))
+                            chunk = chunk[8:]
+                except Exception:
+                    pass
+
+        # Documentation files
+        doc_patterns = ["docs/claude/*.md", "CLAUDE.md"]
+        for pattern in doc_patterns:
+            for fpath in glob.glob(os.path.join(nimcp_root, pattern)):
+                try:
+                    with open(fpath, 'r') as f:
+                        content = f.read()
+                    # Split into paragraphs
+                    paragraphs = content.split('\n\n')
+                    fname = os.path.relpath(fpath, nimcp_root)
+                    for para in paragraphs:
+                        para = para.strip()
+                        if len(para) > 50:
+                            snippets.append((para[:500], f"doc:{fname}", "codebase"))
+                except Exception:
+                    pass
+
+        random.shuffle(snippets)
+        cls._codebase_snippets = snippets
+        logger.info("Loaded %d codebase snippets for self-learning", len(snippets))
+        return snippets
+
+    def get_codebase_snippet(self):
+        """Get a snippet from Athena's own codebase."""
+        snippets = self._load_codebase()
+        if not snippets:
+            return "Athena is a neural brain built in C with biological subsystems", "code:nimcp", "codebase"
+        return random.choice(snippets)
+
+    def get_advanced(self, domain=None):
+        """Get an advanced topic for deeper learning stages."""
+        if domain and domain in self.ADVANCED_TOPICS:
+            items = self.ADVANCED_TOPICS[domain]
+        else:
+            domain = random.choice(list(self.ADVANCED_TOPICS.keys()))
+            items = self.ADVANCED_TOPICS[domain]
+        return random.choice(items), domain
 
 
 # ============================================================================
@@ -428,8 +790,8 @@ class BiologicalClock:
 class Parent:
     """Claude as Athena's loving parent.
 
-    Uses `claude -p` CLI to generate warm, encouraging, contextually
-    appropriate interactions at each developmental stage.
+    Pre-generates all narrations/lessons for each stage in a single Claude
+    call, then pops from the cache during training — zero blocking.
     """
 
     def __init__(self, teacher=None, enabled=True, decoder=None):
@@ -439,11 +801,174 @@ class Parent:
         self.interaction_count = 0
         self.milestones = []
         self.moral_lessons = []
+        # Pre-generated content pools (filled by pre_generate_content)
+        self._narrations = []       # first_experience / show_and_name narrations
+        self._encouragements = []   # ask_and_encourage praise/patience lines
+        self._moral_stories = []    # teach_moral_lesson stories
+        self._speech_prompts = []   # teach_speech encouragements
+        self._inspirations = []     # inspire passages
+        self._dream_prompts = []    # encourage_dreaming questions
+        self._conversation_replies = []  # stage 3 conversational responses
+
+    def pre_generate_content(self, stage, num_stimuli):
+        """Pre-generate ALL parent narrations for a stage in one Claude call.
+
+        Makes a single large Claude call that returns JSON with all the
+        narrations, moral stories, speech prompts, and inspirations needed
+        for the entire stage. Zero blocking during training.
+        """
+        if not self.enabled:
+            print("  [Parent] Claude disabled — using silent parenting")
+            return
+
+        # Calculate how many of each type we need
+        n_narrations = min(num_stimuli, 200)  # one per stimulus, cap at 200
+        n_encouragements = 60
+        n_morals = max(5, num_stimuli // 2000)
+        n_speech = max(10, num_stimuli // 300)
+        n_inspirations = max(5, num_stimuli // 2000)
+        n_dreams = 10
+        n_conversations = 30  # stage 3 only
+
+        stage_desc = {
+            0: "newborn (0-3 months) — everything is new and wondrous",
+            1: "infant (3-12 months) — learning names, recognizing objects",
+            2: "toddler (1-2 years) — starting to babble and respond",
+            3: "young child (2-4 years) — asking questions, forming opinions",
+        }.get(stage, "young child")
+
+        prompt = f"""You are a loving, warm parent raising a child at stage: {stage_desc}.
+Generate the following content as a JSON object. Each entry should be 1-3 sentences, warm, encouraging, using simple words.
+
+Return ONLY valid JSON (no markdown fences, no commentary):
+{{
+  "narrations": ["{n_narrations} unique narrations introducing sensory experiences to a baby/child. Each should express wonder at something in the world (light, colors, sounds, textures, animals, nature). Vary widely."],
+  "encouragements": ["{n_encouragements} encouraging/praising sentences for when the child is learning. Half should be for good progress, half for patience when struggling."],
+  "moral_stories": ["{n_morals} very short moral stories (3-4 sentences each) about sharing, kindness, truth, helping others, fairness, forgiveness. End each with a gentle question."],
+  "speech_prompts": ["{n_speech} encouraging prompts for teaching a child to repeat words. Like 'Can you say dog? Doooog! Good try!'"],
+  "inspirations": ["{n_inspirations} inspiring 2-3 sentence passages about natural wonders, beauty, curiosity, the universe. Fill with genuine wonder."],
+  "dreams": ["{n_dreams} simple beautiful 'what if' questions that spark wonder. Just the questions."],
+  "conversations": ["{n_conversations} warm conversational responses a parent might give when their child shows them something or tries to communicate. 1-2 sentences each."]
+}}
+
+IMPORTANT: Return actual arrays with the requested number of strings, not descriptions. Each element must be a unique string."""
+
+        print(f"  [Parent] Pre-generating content for stage {stage}...")
+        t0 = time.time()
+
+        try:
+            # Single Claude call with generous token budget
+            raw = self.teacher._call_claude(prompt, max_tokens=4096)
+
+            # Parse JSON — strip markdown fences if present
+            raw = raw.strip()
+            if raw.startswith("```"):
+                # Remove ```json ... ```
+                lines = raw.split("\n")
+                lines = [l for l in lines if not l.strip().startswith("```")]
+                raw = "\n".join(lines)
+
+            data = json.loads(raw)
+
+            self._narrations = data.get("narrations", [])
+            self._encouragements = data.get("encouragements", [])
+            self._moral_stories = data.get("moral_stories", [])
+            self._speech_prompts = data.get("speech_prompts", [])
+            self._inspirations = data.get("inspirations", [])
+            self._dream_prompts = data.get("dreams", [])
+            self._conversation_replies = data.get("conversations", [])
+
+            elapsed = time.time() - t0
+            print(f"  [Parent] Pre-generated {len(self._narrations)} narrations, "
+                  f"{len(self._encouragements)} encouragements, "
+                  f"{len(self._moral_stories)} moral stories, "
+                  f"{len(self._speech_prompts)} speech prompts, "
+                  f"{len(self._inspirations)} inspirations — "
+                  f"{elapsed:.1f}s (1 Claude call)")
+
+        except Exception as e:
+            print(f"  [Parent] Pre-generation failed: {e}")
+            print(f"  [Parent] Falling back to built-in narrations")
+            self._generate_fallback_content(stage)
+
+    def _generate_fallback_content(self, stage):
+        """Built-in narrations if Claude is unavailable."""
+        self._narrations = [
+            "Look at that! Isn't it beautiful?",
+            "Oh, do you see that? How wonderful!",
+            "What a lovely thing to discover!",
+            "Can you feel that? It's so interesting!",
+            "Wow, look at all those colors!",
+            "Listen! Do you hear that sound?",
+            "Feel how soft this is!",
+            "Look how it moves! Fascinating!",
+            "See how the light dances?",
+            "What a magical world we live in!",
+            "Oh, that's new! Let's look closer.",
+            "Isn't nature amazing?",
+            "Do you see how beautiful that is?",
+            "What a wonderful thing to experience!",
+            "Let me show you something special.",
+        ] * 15  # 225 entries
+        self._encouragements = [
+            "You're doing so well, little one!",
+            "That's wonderful! Keep exploring!",
+            "I'm so proud of you!",
+            "Good try! You'll get it!",
+            "That's okay, learning takes time.",
+            "Every attempt makes you stronger!",
+            "You're growing so fast!",
+            "Keep going, you're amazing!",
+        ] * 8
+        self._moral_stories = [
+            "Once a little bird shared its food with a hungry friend. The friend smiled and they both felt warm inside. How do you think sharing made them feel?",
+            "A puppy accidentally knocked over a flower pot. It felt bad and helped clean up. Saying sorry and fixing things takes courage, doesn't it?",
+            "Two kittens wanted the same ball of yarn. They decided to take turns. Both got to play and both were happy. Why is taking turns a good idea?",
+        ]
+        self._speech_prompts = [
+            "Can you say it? Try! Good job!",
+            "Listen carefully... now you try! Wonderful!",
+            "Say it with me! You're getting better!",
+            "One more time! You almost had it!",
+        ] * 5
+        self._inspirations = [
+            "Did you know that every snowflake is unique, just like you? The world is full of beautiful things waiting to be discovered.",
+            "The stars above have been shining for billions of years, and tonight they're shining just for you. Isn't that wonderful?",
+            "A tiny seed can grow into a mighty tree. Growth takes time and patience, but the result is magnificent.",
+        ] * 5
+        self._dream_prompts = [
+            "What if clouds were made of cotton candy?",
+            "What if fish could fly and birds could swim?",
+            "What if the moon was a giant nightlight?",
+            "What if flowers could sing?",
+            "What if you could talk to animals?",
+        ]
+        self._conversation_replies = [
+            "That's really interesting! Tell me more!",
+            "I love how you think about things!",
+            "What a curious mind you have!",
+            "That's a great observation!",
+        ] * 8
+
+    def _pop_content(self, pool_name):
+        """Pick a random item from a content pool (non-destructive)."""
+        pool = getattr(self, pool_name)
+        if not pool:
+            return None
+        return random.choice(pool)
 
     def _say(self, prompt, max_tokens=128):
-        """Get Claude to say something as a parent."""
+        """Get a pre-generated parent narration (zero latency).
+
+        Falls back to live Claude call only if pools are exhausted and
+        no fallback content was generated.
+        """
         if not self.enabled:
             return None
+        # Try to pop from the narrations pool (general purpose)
+        if self._narrations:
+            return self._pop_content("_narrations")
+        # If pools exhausted, try live call as last resort
         try:
             return self.teacher._call_claude(prompt, max_tokens=max_tokens)
         except Exception as e:
@@ -477,12 +1002,7 @@ class Parent:
 
     def first_experience(self, brain, composer, description):
         """Introduce Athena to her first sensory experience with wonder."""
-        narration = self._say(
-            f"You are a loving parent showing your newborn baby something "
-            f"for the first time. The experience is: '{description}'. "
-            f"Narrate what you'd say in 1-2 short, warm sentences. "
-            f"Use simple words full of wonder."
-        )
+        narration = self._pop_content("_narrations")
         if narration:
             print(f"  Parent: {narration}")
 
@@ -491,7 +1011,7 @@ class Parent:
 
         result = brain.decide_full(features)
         # Dense target trains adaptive network; label trains CNN classifier
-        loss = brain.learn_vector(features, target, label=description[:50], confidence=0.15)
+        loss = brain.learn_vector(features, target, label=description[:50], confidence=0.5)
 
         # Record pair for decoder vocabulary (nearest-neighbor for display only)
         if self.decoder:
@@ -523,16 +1043,12 @@ class Parent:
         except Exception:
             pass
 
-        narration = self._say(
-            f"You are a parent teaching your toddler the word '{name}'. "
-            f"Say it with excitement and repetition, the way a real parent "
-            f"would. 1-2 sentences."
-        )
+        narration = self._pop_content("_narrations")
         if narration:
             print(f"  Parent: {narration}")
 
         # Dense target trains adaptive network; label trains CNN classifier
-        loss = brain.learn_vector(features, target, label=name[:50], confidence=0.4)
+        loss = brain.learn_vector(features, target, label=name[:50], confidence=0.65)
 
         # Record pair for decoder vocabulary (display only, not evaluation)
         if self.decoder:
@@ -572,26 +1088,16 @@ class Parent:
         loss = brain.learn_vector(features, target, label=concept[:50], confidence=0.6)
 
         # Encourage based on engagement and loss trend
+        encouragement = self._pop_content("_encouragements")
         if loss is not None and loss < 0.5:
-            praise = self._say(
-                f"Your child was shown '{description}' and responded. "
-                f"Their brain is absorbing this experience well. "
-                f"Express warmth and encouragement in 1 sentence.",
-                max_tokens=64
-            )
-            if praise:
-                print(f"  Parent: {praise}")
+            if encouragement:
+                print(f"  Parent: {encouragement}")
             try:
                 brain.bg_update_reward(0.7, 0.5)
                 brain.edp_process_reward(0.6)
             except Exception:
                 pass
         else:
-            encouragement = self._say(
-                f"Your child is experiencing '{description}'. "
-                f"This is new to them. Encourage with patience. 1 sentence.",
-                max_tokens=64
-            )
             if encouragement:
                 print(f"  Parent: {encouragement}")
             try:
@@ -629,13 +1135,7 @@ class Parent:
             return
 
         topic = random.choice(topics)
-        story = self._say(
-            f"Tell a very short story (3-4 sentences) to a young child "
-            f"about '{topic}'. Make it concrete and relatable. End with "
-            f"a gentle question that makes the child think about how "
-            f"someone feels.",
-            max_tokens=256
-        )
+        story = self._pop_content("_moral_stories")
         if story:
             print(f"  Parent (moral lesson): {story}")
 
@@ -660,14 +1160,9 @@ class Parent:
 
     def encourage_dreaming(self, brain):
         """During sleep, encourage Athena to imagine."""
-        prompt = self._say(
-            "Generate a simple, beautiful 'what if' question for a young "
-            "child. Something that sparks wonder about the world. "
-            "Just the question, nothing else.",
-            max_tokens=64
-        )
-        if prompt:
-            print(f"  Parent (dream): {prompt}")
+        dream = self._pop_content("_dream_prompts")
+        if dream:
+            print(f"  Parent (dream): {dream}")
 
     def inspire(self, brain, composer, stage):
         """Share something beautiful."""
@@ -679,11 +1174,7 @@ class Parent:
                "or a question about what it means to be alive",
         }
         topic = topics.get(stage, topics[3])
-        inspiration = self._say(
-            f"Share something inspiring with a young mind about {topic}. "
-            f"2-3 sentences. Fill it with genuine wonder.",
-            max_tokens=192
-        )
+        inspiration = self._pop_content("_inspirations")
         if inspiration:
             print(f"  Parent (inspire): {inspiration}")
             features = composer.compose(text=inspiration,
@@ -715,11 +1206,7 @@ class Parent:
         words = word_lists.get(stage, word_lists[3])
         target_phrase = random.choice(words)
 
-        narration = self._say(
-            f"You are teaching your child to say '{target_phrase}'. "
-            f"Say it encouragingly, the way a parent would. 1 sentence.",
-            max_tokens=64
-        )
+        narration = self._pop_content("_speech_prompts")
         if narration:
             print(f"  Parent (speech): {narration}")
 
@@ -833,10 +1320,38 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
     print("  STAGE 0: Welcome to the World, Little One")
     print("=" * 60)
 
+    parent.pre_generate_content(stage=0, num_stimuli=num_stimuli)
+
     try:
         brain.set_plasticity_state("ACQUISITION")
     except Exception:
         pass
+
+    # --- Warmup: break symmetry with high-confidence diverse stimuli ---
+    if start_from == 0:
+        print("  [Warmup] Breaking symmetry with diverse stimuli...")
+        warmup_texts = [
+            "bright red color", "deep blue ocean", "soft green grass",
+            "loud thunder sound", "quiet whisper", "warm sunshine",
+            "cold ice freezing", "sweet honey taste", "sour lemon",
+            "big elephant", "tiny ant", "fast cheetah running",
+            "slow turtle crawling", "happy laughing child", "sad crying",
+            "a dog barking loudly", "a cat purring softly",
+            "the moon glowing at night", "the sun blazing at noon",
+            "water flowing in a river", "fire crackling in a hearth",
+            "birds singing in trees", "wind blowing through leaves",
+            "a mountain reaching to the sky", "a valley between hills",
+        ]
+        for wi, wtext in enumerate(warmup_texts):
+            features = composer.compose(text=wtext, modality="text")
+            target = make_semantic_target(wtext)
+            brain.decide_full(features)
+            # High confidence to establish distinct representations
+            brain.learn_vector(features, target, label=wtext[:50], confidence=0.9)
+            # Repeat each warmup stimulus 3x to establish strong initial patterns
+            for _ in range(2):
+                brain.learn_vector(features, target, label=wtext[:50], confidence=0.85)
+        print(f"  [Warmup] {len(warmup_texts)} diverse stimuli x3 — done")
 
     losses = []
     for i in range(start_from, num_stimuli):
@@ -900,6 +1415,8 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
     print("\n" + "=" * 60)
     print("  STAGE 1: Look! That's a ___!")
     print("=" * 60)
+
+    parent.pre_generate_content(stage=1, num_stimuli=num_stimuli)
 
     try:
         brain.set_plasticity_state("ACQUISITION")
@@ -982,6 +1499,8 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     print("  STAGE 2: Good Try! Almost!")
     print("=" * 60)
 
+    parent.pre_generate_content(stage=2, num_stimuli=num_stimuli)
+
     losses = []
 
     for i in range(start_from, num_stimuli):
@@ -1045,6 +1564,15 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             clock.do_sleep(brain, parent)
             _save_checkpoint(brain, decoder, stage=2, step=i+1)
 
+        # Codebase self-learning — introduce in stage 2
+        if (i + 1) % 400 == 0:
+            snippet_text, snippet_label, _ = source.get_codebase_snippet()
+            features = composer.compose(text=snippet_text, modality="text")
+            target = make_semantic_target(snippet_text)
+            brain.learn_vector(features, target, label=snippet_label[:50], confidence=0.5)
+            if (i + 1) % 2000 == 0:
+                print(f"    [Self-learning] Fed codebase snippet: {snippet_label}")
+
         # Transition plasticity state mid-stage
         if (i + 1) == num_stimuli // 2:
             try:
@@ -1070,15 +1598,23 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
     """Stage 3: First Words — conversation, ethics, imagination.
 
     Goal: Emerging communication. Multi-turn dialogue. Independent thought.
+    Progressive domain introduction: starts with simple Q&A, adds science,
+    math, philosophy, literature, music, art, technology, psychology.
     """
     print("\n" + "=" * 60)
     print("  STAGE 3: What Do You Think?")
     print("=" * 60)
 
+    parent.pre_generate_content(stage=3, num_stimuli=num_interactions)
+
     try:
         brain.set_plasticity_state("MAINTENANCE")
     except Exception:
         pass
+
+    # Progressive domain schedule — unlock more domains as training progresses
+    all_domains = list(source.ADVANCED_TOPICS.keys())
+    total = num_interactions - start_from
 
     for i in range(start_from, num_interactions):
         action = clock.tick(brain)
@@ -1087,44 +1623,87 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
         elif action == "consolidate":
             clock.do_consolidate(brain)
 
-        # Mix interaction types
+        # Calculate progress fraction (0.0 → 1.0) and unlock domains gradually
+        progress = (i - start_from) / max(total, 1)
+        num_unlocked = max(2, int(progress * len(all_domains)) + 1)
+        active_domains = all_domains[:min(num_unlocked, len(all_domains))]
+
+        # Mix interaction types with progressive domain weighting
         r = random.random()
-        if r < 0.4:
+        if r < 0.25:
             # Conversational question
             question = source.get_question()
             features = composer.compose(text=question, modality="text")
             result = brain.decide_full(features)
-            # Observe what Athena's brain produced — don't judge it
             response_text = parent.observe_response(result)
             print(f"  Q: {question}")
             print(f"  Athena: {response_text or '(still forming thoughts)'}")
 
-            # Parent responds to Athena — not scoring, just conversing
-            parent_reply = parent._say(
-                f"Your child was asked '{question}' and their response "
-                f"reminded you of '{response_text or 'something new'}'. "
-                f"Respond with warmth and curiosity. 1-2 sentences.",
-                max_tokens=128
-            )
+            parent_reply = parent._pop_content("_conversation_replies")
             if parent_reply:
                 print(f"  Parent: {parent_reply}")
 
-            # Gentle reward for engaging at all — she responded
             try:
                 brain.bg_update_reward(0.6, 0.5)
             except Exception:
                 pass
 
-        elif r < 0.6:
+        elif r < 0.40:
+            # Advanced domain teaching — progressive complexity
+            domain = random.choice(active_domains)
+            topic_text, domain_name = source.get_advanced(domain)
+            print(f"  [Domain: {domain_name}] {topic_text[:80]}")
+
+            features = composer.compose(text=topic_text, modality="text")
+            target = make_semantic_target(topic_text)
+            result = brain.decide_full(features)
+            confidence = 0.5 + progress * 0.3  # higher confidence as training progresses
+            loss = brain.learn_vector(features, target,
+                                       label=domain_name[:50], confidence=confidence)
+
+            if decoder:
+                output_vec = result.get("output_vector")
+                if output_vec is not None:
+                    target_emb = encode_text(topic_text)
+                    decoder.record_pair(output_vec, target_emb, topic_text)
+
+            if loss is not None:
+                print(f"    loss={loss:.4f} conf={confidence:.2f}")
+
+        elif r < 0.52:
+            # Claude-generated curriculum lesson (if available)
+            if parent.teacher:
+                curriculum = parent.teacher.get_curriculum(
+                    min(3 + int(progress * 2), 5))  # stages 3-5 progressively
+                if curriculum:
+                    spec = random.choice(curriculum)
+                    try:
+                        lesson_text, lesson_emb = parent.teacher.generate_lesson(spec)
+                        print(f"  [Claude lesson: {spec.domain}/{spec.topic}]")
+                        print(f"    {lesson_text[:120]}")
+
+                        features = composer.compose(text=lesson_text, modality="text",
+                                                     text_embedding=lesson_emb.tolist())
+                        target = make_semantic_target(lesson_text)
+                        brain.learn_vector(features, target,
+                                            label=spec.domain[:50], confidence=0.7)
+                    except Exception as e:
+                        logger.debug("Claude lesson failed: %s", e)
+            else:
+                # Fallback: fact review
+                fact, expected = source.get_fact()
+                parent.ask_and_encourage(brain, composer, expected, fact)
+
+        elif r < 0.62:
             # Moral lesson
             parent.teach_moral_lesson(brain, composer, stage=3)
 
-        elif r < 0.75:
-            # Ask and encourage (review)
+        elif r < 0.72:
+            # Review — facts from built-in corpus
             fact, expected = source.get_fact()
             parent.ask_and_encourage(brain, composer, expected, fact)
 
-        elif r < 0.82:
+        elif r < 0.80:
             # Inspiration
             parent.inspire(brain, composer, stage=3)
 
@@ -1132,8 +1711,23 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             # Speech training
             parent.teach_speech(brain, composer, stage=3)
 
+        elif r < 0.95:
+            # Codebase self-learning — Athena studies her own source code
+            snippet_text, snippet_label, _ = source.get_codebase_snippet()
+            features = composer.compose(text=snippet_text, modality="text")
+            target = make_semantic_target(snippet_text)
+            loss = brain.learn_vector(features, target,
+                                       label=snippet_label[:50], confidence=0.6)
+            if decoder:
+                output_vec = brain.decide_full(features).get("output_vector")
+                if output_vec is not None:
+                    target_emb = encode_text(snippet_text)
+                    decoder.record_pair(output_vec, target_emb, snippet_label)
+            if (i + 1) % 100 == 0:
+                print(f"  [Self-study] {snippet_label}: loss={loss:.4f}" if loss else "")
+
         else:
-            # Follow her curiosity
+            # Curiosity-driven exploration
             try:
                 gaps = brain.curiosity_detect_gaps("general")
                 if gaps and gaps.get("novelty_score", 0) > 0.5:
@@ -1141,15 +1735,13 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                     topic = gaps.get("suggested_topic", "the world")
                     features = composer.compose(text=f"Let's learn about {topic}")
                     target = make_semantic_target(f"exploring {topic}")
-                    # Curiosity-driven + label for CNN
                     brain.learn_vector(features, target, label=topic[:50], confidence=0.5)
             except Exception:
-                # Free exploration from corpus
-                description = source.get_sensory()
-                features = composer.compose(text=description)
-                target = make_semantic_target(description)
-                # Exploration + label for CNN
-                brain.learn_vector(features, target, label=description[:50], confidence=0.4)
+                # Free exploration from advanced topics
+                topic_text, domain = source.get_advanced(random.choice(active_domains))
+                features = composer.compose(text=topic_text)
+                target = make_semantic_target(topic_text)
+                brain.learn_vector(features, target, label=domain[:50], confidence=0.4)
 
         # LNN step
         try:
@@ -1158,9 +1750,10 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
         except Exception:
             pass
 
-        # Progress
+        # Progress — show active domains
         if (i + 1) % 200 == 0:
-            print(f"\n  [Stage 3] {i+1}/{num_interactions}")
+            print(f"\n  [Stage 3] {i+1}/{num_interactions} — "
+                  f"domains: {', '.join(active_domains)}")
             _print_bio_stats(brain)
 
         if (i + 1) % 500 == 0:
@@ -1433,11 +2026,11 @@ def main():
                         help="Disable Claude parent (silent mode)")
     parser.add_argument("--num-inputs", type=int, default=BRAIN_INPUT_DIM)
     parser.add_argument("--num-outputs", type=int, default=BRAIN_OUTPUT_DIM)
-    parser.add_argument("--neuron-count", type=int, default=50000)
-    parser.add_argument("--stage0-stimuli", type=int, default=10000)
-    parser.add_argument("--stage1-stimuli", type=int, default=20000)
-    parser.add_argument("--stage2-stimuli", type=int, default=20000)
-    parser.add_argument("--stage3-interactions", type=int, default=10000)
+    parser.add_argument("--neuron-count", type=int, default=1500000)
+    parser.add_argument("--stage0-stimuli", type=int, default=20000)
+    parser.add_argument("--stage1-stimuli", type=int, default=40000)
+    parser.add_argument("--stage2-stimuli", type=int, default=40000)
+    parser.add_argument("--stage3-interactions", type=int, default=30000)
     parser.add_argument("--fresh", action="store_true",
                         help="Start fresh (ignore existing checkpoint)")
     args = parser.parse_args()
@@ -1474,6 +2067,12 @@ def main():
     # --- CRITICAL: Disable fast training → ALL bio subsystems active ---
     brain.set_fast_training(False)
     print("  Fast training: OFF (full biological pipeline)")
+
+    # --- CRITICAL: Use regression strategy (raw output, no softmax) ---
+    # Classification strategy applies softmax which crushes output to ~1/N per neuron.
+    # Athena needs raw output vectors for embedding-based developmental learning.
+    brain.set_task_type("regression")
+    print("  Task type: REGRESSION (raw output, no softmax)")
 
     # --- Enable biological plasticity ---
     try:

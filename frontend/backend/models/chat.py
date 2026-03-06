@@ -20,3 +20,8 @@ class ChatResponse(BaseModel):
     inference_time_us: Optional[int] = None
     output_vector: Optional[list[float]] = None
     cognitive_state: Optional[dict] = None
+    # Speech & Avatar (new)
+    spoken_text: Optional[str] = None
+    speech_confidence: Optional[float] = None
+    speech_fluency: Optional[float] = None
+    avatar: Optional[dict] = None

@@ -108,6 +108,20 @@ int backprop_sparse_full_ex(
     float* out_grad_norm,
     backprop_layer_grads_t* out_layer_grads);
 
+/** @brief Regression-mode backprop: MSE gradients on ALL outputs.
+ *  No threshold filtering, no negative sampling. For continuous targets. */
+int backprop_sparse_full_regression(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float max_grad_norm,
+    float* out_grad_norm,
+    backprop_layer_grads_t* out_layer_grads);
+
 /**
  * @brief Run sparse backprop with gradient accumulation via LR scaling
  *

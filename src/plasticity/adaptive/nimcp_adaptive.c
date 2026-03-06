@@ -2062,12 +2062,20 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             goto cpu_learn_path;
         }
 
-        // 3. Compute loss using same BCE formula as CPU path to keep EMA consistent.
-        // BUG FIX: Previously used nimcp_gpu_compute_loss() which computes MSE,
-        // but CPU path uses binary cross-entropy. The EMA tracker aggregates both
-        // paths, so mismatched loss scales corrupt the running average.
+        // 3. Compute loss — MSE for distillation (continuous targets [-1,1]),
+        //    BCE for classification (binary targets [0,1]).
         float loss = 0.0f;
-        {
+        if (mode == LEARN_MODE_DISTILLATION) {
+            // MSE loss: targets are continuous embeddings in [-1, 1]
+            for (uint32_t li = 0; li < example->target_size; li++) {
+                float o = isfinite(output[li]) ? output[li] : 0.0f;
+                float diff = example->target[li] - o;
+                loss += diff * diff;
+            }
+            loss /= (float)example->target_size;
+            if (!isfinite(loss)) loss = 0.0f;
+        } else {
+            // BCE loss: targets are probabilities in [0, 1]
             float eps = 1e-7f;
             for (uint32_t li = 0; li < example->target_size; li++) {
                 float raw_o = isfinite(output[li]) ? output[li] : 0.5f;
@@ -2075,7 +2083,6 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 float t = fminf(fmaxf(example->target[li], 0.0f), 1.0f);
                 loss -= t * logf(o) + (1.0f - t) * logf(1.0f - o);
             }
-            // BCE loss dilution fix (GPU path): same normalization as CPU path
             int active_targets = 0;
             for (uint32_t li = 0; li < example->target_size; li++) {
                 if (example->target[li] > 0.01f) active_targets++;
@@ -2100,13 +2107,23 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             uint32_t num_layers = network->config.base_config.num_layers;
             uint32_t* layer_sizes = network->config.base_config.layer_sizes;
             if (num_layers >= 2 && layer_sizes) {
-                backprop_sparse_full_ex(network->base_network,
-                    num_layers, layer_sizes, learning_rate,
-                    network->config.base_config.min_weight,
-                    network->config.base_config.max_weight,
-                    example->target, output, example->target_size,
-                    1.0f,  // L-3 TODO: Make max_grad_norm configurable via adaptive_network_config_t
-                    &grad_norm, &layer_grads);
+                if (mode == LEARN_MODE_DISTILLATION) {
+                    // Regression: MSE gradients on ALL outputs, no threshold
+                    backprop_sparse_full_regression(network->base_network,
+                        num_layers, layer_sizes, learning_rate,
+                        network->config.base_config.min_weight,
+                        network->config.base_config.max_weight,
+                        example->target, output, example->target_size,
+                        1.0f, &grad_norm, &layer_grads);
+                } else {
+                    // Classification: BCE + negative sampling
+                    backprop_sparse_full_ex(network->base_network,
+                        num_layers, layer_sizes, learning_rate,
+                        network->config.base_config.min_weight,
+                        network->config.base_config.max_weight,
+                        example->target, output, example->target_size,
+                        1.0f, &grad_norm, &layer_grads);
+                }
             }
             network->last_grad_norm = grad_norm;
             network->num_grad_layers = layer_grads.num_layers;
@@ -2214,28 +2231,62 @@ cpu_learn_path:
     float loss = 0.0F;
 
     switch (mode) {
-        case LEARN_MODE_SUPERVISED:
         case LEARN_MODE_DISTILLATION:
+            // MSE loss for continuous embedding targets [-1, 1]
+            {
+                for (uint32_t i = 0; i < example->target_size; i++) {
+                    float o = isfinite(output[i]) ? output[i] : 0.0f;
+                    float diff = example->target[i] - o;
+                    loss += diff * diff;
+                }
+                loss /= (float)example->target_size;
+                if (!isfinite(loss)) loss = 0.0f;
+            }
+
+            // Regression backprop: MSE gradients on ALL outputs
+            {
+                float grad_norm = 0.0f;
+                backprop_layer_grads_t layer_grads = {0};
+                uint32_t num_layers = network->config.base_config.num_layers;
+                uint32_t* layer_sizes = network->config.base_config.layer_sizes;
+                if (num_layers >= 2 && layer_sizes) {
+                    backprop_sparse_full_regression(network->base_network,
+                        num_layers, layer_sizes, learning_rate,
+                        network->config.base_config.min_weight,
+                        network->config.base_config.max_weight,
+                        example->target, output, example->target_size,
+                        1.0f, &grad_norm, &layer_grads);
+                }
+                network->last_grad_norm = grad_norm;
+                network->num_grad_layers = layer_grads.num_layers;
+                memcpy(network->last_layer_grad_norms, layer_grads.norms,
+                       sizeof(network->last_layer_grad_norms));
+
+                if (network->gpu_weight_cache) {
+                    network->gpu_weight_cache->weights_dirty_on_cpu = true;
+                }
+
+                if (isfinite(grad_norm)) {
+                    if (network->ema_grad_norm < 0.0f) {
+                        network->ema_grad_norm = grad_norm;
+                    } else {
+                        network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                    }
+                    NIMCP_EMA_GUARD(network->ema_grad_norm, grad_norm);
+                }
+            }
+            break;
+
+        case LEARN_MODE_SUPERVISED:
             // Binary cross-entropy loss (natural pair with sigmoid activation)
             {
                 float eps = 1e-7f;
                 for (uint32_t i = 0; i < example->target_size; i++) {
-                    // M-3: Guard against NaN/Inf output propagating through BCE
                     float raw_o = isfinite(output[i]) ? output[i] : 0.5f;
                     float o = fmaxf(eps, fminf(1.0f - eps, raw_o));
-                    // C-ADP-10: Clamp target to [0,1] to prevent NaN from logf
-                    // with out-of-range targets (e.g., regression targets > 1)
                     float t = fminf(fmaxf(example->target[i], 0.0f), 1.0f);
                     loss -= t * logf(o) + (1.0f - t) * logf(1.0f - o);
                 }
-                // BCE loss dilution fix: With sparse labels (e.g., 19 active out
-                // of 2048 outputs), dividing by target_size lets 2029 zero-target
-                // outputs contribute near-zero loss, drowning out the gradient
-                // signal from active labels and causing mode collapse (network
-                // learns all-zeros).  Instead, normalize by 2x active targets:
-                // one count for the positive BCE term, one for the negative term
-                // of each active output.  With 19 active labels this gives ~54x
-                // stronger gradients vs dividing by 2048.
                 int active_targets = 0;
                 for (uint32_t i = 0; i < example->target_size; i++) {
                     if (example->target[i] > 0.01f) active_targets++;

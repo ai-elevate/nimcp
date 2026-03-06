@@ -2240,6 +2240,85 @@ static PyObject* Brain_speak(BrainObject* self, PyObject* args) {
 }
 
 /**
+ * WHAT: Get avatar visual state (FACS AUs, visemes, gaze, emotion, voice)
+ * WHY:  Drive real-time face animation and lip sync from brain state
+ * HOW:  Call nimcp_brain_get_avatar_state, return dict with all fields
+ */
+static PyObject* Brain_get_avatar_state(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    nimcp_avatar_state_t state;
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_get_avatar_state(self->brain, &state);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_Format(PyExc_RuntimeError, "get_avatar_state failed: %s", nimcp_get_error());
+        return NULL;
+    }
+
+    /* Build result dict with all avatar fields */
+    return Py_BuildValue(
+        "{s:f, s:f, s:f, s:f, s:f, s:i,"       /* mouth */
+        " s:f, s:f, s:f, s:f, s:f, s:f,"        /* AUs 1-7 */
+        " s:f, s:f, s:f, s:f, s:f, s:f,"        /* AUs 9-23 */
+        " s:f, s:f, s:f, s:f,"                  /* AUs 25-28 */
+        " s:f, s:f, s:f, s:I, s:f,"             /* emotion */
+        " s:f, s:f, s:f, s:f, s:f, s:f,"        /* gaze+head */
+        " s:f, s:f, s:f,"                        /* voice */
+        " s:K, s:O}",                            /* metadata */
+        "mouth_open", (double)state.mouth_open,
+        "lip_round", (double)state.lip_round,
+        "lip_upper", (double)state.lip_upper,
+        "lip_lower", (double)state.lip_lower,
+        "tongue_position", (double)state.tongue_position,
+        "current_viseme", (int)state.current_viseme,
+        /* FACS AUs */
+        "au1_inner_brow_raise", (double)state.au1_inner_brow_raise,
+        "au2_outer_brow_raise", (double)state.au2_outer_brow_raise,
+        "au4_brow_lower", (double)state.au4_brow_lower,
+        "au5_upper_lid_raise", (double)state.au5_upper_lid_raise,
+        "au6_cheek_raise", (double)state.au6_cheek_raise,
+        "au7_lid_tighten", (double)state.au7_lid_tighten,
+        "au9_nose_wrinkle", (double)state.au9_nose_wrinkle,
+        "au10_upper_lip_raise", (double)state.au10_upper_lip_raise,
+        "au12_lip_corner_pull", (double)state.au12_lip_corner_pull,
+        "au15_lip_corner_drop", (double)state.au15_lip_corner_drop,
+        "au17_chin_raise", (double)state.au17_chin_raise,
+        "au20_lip_stretch", (double)state.au20_lip_stretch,
+        "au23_lip_tighten", (double)state.au23_lip_tighten,
+        "au25_lips_part", (double)state.au25_lips_part,
+        "au26_jaw_drop", (double)state.au26_jaw_drop,
+        "au28_lip_suck", (double)state.au28_lip_suck,
+        /* Emotion */
+        "valence", (double)state.valence,
+        "arousal", (double)state.arousal,
+        "dominance", (double)state.dominance,
+        "emotion_id", (unsigned int)state.emotion_id,
+        "emotion_intensity", (double)state.emotion_intensity,
+        /* Gaze + head */
+        "gaze_x", (double)state.gaze_x,
+        "gaze_y", (double)state.gaze_y,
+        "head_pitch", (double)state.head_pitch,
+        "head_yaw", (double)state.head_yaw,
+        "head_roll", (double)state.head_roll,
+        "blink", (double)state.blink,
+        /* Voice */
+        "pitch_hz", (double)state.pitch_hz,
+        "speaking_rate", (double)state.speaking_rate,
+        "volume", (double)state.volume,
+        /* Metadata */
+        "timestamp_us", (unsigned long long)state.timestamp_us,
+        "is_speaking", state.is_speaking ? Py_True : Py_False
+    );
+}
+
+
+/**
  * WHAT: Get running label-match accuracy (EMA)
  * WHY:  Monitor training progress with a meaningful metric
  * HOW:  Call nimcp_brain_get_accuracy
@@ -4129,6 +4208,46 @@ static PyObject* Brain_set_fast_training(BrainObject* self, PyObject* args) {
 }
 
 // ==========================================================================
+// Task Type / Strategy Python Binding
+// ==========================================================================
+
+/**
+ * set_task_type(task_type: str)
+ * Set the brain's task strategy: "regression", "classification", "pattern", "association".
+ * IMPORTANT: Athena's developmental learning needs "regression" (raw output, no softmax).
+ */
+extern task_strategy_t* strategy_create(brain_task_t task);
+static PyObject* Brain_set_task_type(BrainObject* self, PyObject* args) {
+    const char* task_str = NULL;
+    if (!PyArg_ParseTuple(args, "s", &task_str)) return NULL;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    brain_t brain = self->brain->internal_brain;
+    brain_task_t task;
+    if (strcmp(task_str, "regression") == 0)       task = BRAIN_TASK_REGRESSION;
+    else if (strcmp(task_str, "classification") == 0) task = BRAIN_TASK_CLASSIFICATION;
+    else if (strcmp(task_str, "pattern") == 0)     task = BRAIN_TASK_PATTERN_MATCHING;
+    else if (strcmp(task_str, "association") == 0) task = BRAIN_TASK_ASSOCIATION;
+    else {
+        PyErr_Format(PyExc_ValueError, "Unknown task type: '%s' (use regression/classification/pattern/association)", task_str);
+        return NULL;
+    }
+    task_strategy_t* new_strategy = strategy_create(task);
+    if (!new_strategy) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create strategy");
+        return NULL;
+    }
+    if (brain->strategy && !brain->is_cow_clone) {
+        nimcp_free(brain->strategy);
+    }
+    brain->strategy = new_strategy;
+    brain->config.task = task;
+    Py_RETURN_TRUE;
+}
+
+// ==========================================================================
 // Biological Plasticity Python Bindings
 // ==========================================================================
 
@@ -4896,6 +5015,9 @@ static PyMethodDef Brain_methods[] = {
      "Configure training pipeline: configure_training(learning_rate=0.001, weight_decay=0.0001, gradient_clip=1.0) -> True\n"
      "WARNING: Must be called before starting concurrent training threads.\n"
      "This method mutates brain config without locking — not thread-safe."},
+    {"set_task_type", (PyCFunction)Brain_set_task_type, METH_VARARGS,
+     "Set task strategy: set_task_type('regression'|'classification'|'pattern'|'association')\n"
+     "Athena developmental learning needs 'regression' (raw output, no softmax).\n"},
     {"set_fast_training", (PyCFunction)Brain_set_fast_training, METH_VARARGS,
      "Toggle fast training mode: set_fast_training(True/False)\n"
      "When enabled, skips biological subsystems (VAE, attention, engram, emotions, etc.)\n"
@@ -5000,6 +5122,8 @@ static PyMethodDef Brain_methods[] = {
     // Language production
     {"speak", (PyCFunction)Brain_speak, METH_VARARGS,
      "Generate spoken text: speak(semantic_vector) -> dict with text, confidence, fluency"},
+    {"get_avatar_state", (PyCFunction)Brain_get_avatar_state, METH_NOARGS,
+     "Get avatar visual state: get_avatar_state() -> dict with FACS AUs, visemes, gaze, emotion, voice"},
 
     // Frozen inference
     {"freeze", (PyCFunction)Brain_freeze, METH_NOARGS,

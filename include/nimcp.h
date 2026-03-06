@@ -585,6 +585,81 @@ nimcp_status_t nimcp_brain_speak(
 );
 
 /**
+ * @brief Avatar face state — visemes, FACS action units, emotion, gaze
+ *
+ * Collected from Broca's speech motor planner, emotional system, and
+ * attention system. Drives a parameterized face mesh for synchronized
+ * audio-visual communication.
+ */
+typedef struct {
+    /* Viseme / mouth shape (from speech motor articulators) */
+    float mouth_open;           /**< Jaw opening [0=closed, 1=wide open] */
+    float lip_round;            /**< Lip rounding [0=spread, 1=rounded] */
+    float lip_upper;            /**< Upper lip raise [0,1] */
+    float lip_lower;            /**< Lower lip drop [0,1] */
+    float tongue_position;      /**< Tongue front-back [0=front, 1=back] */
+    uint8_t current_viseme;     /**< Active viseme ID (0-21, Preston Blair) */
+
+    /* FACS Action Units (Ekman) — primary face muscles */
+    float au1_inner_brow_raise; /**< AU1: Inner brow raiser (frontalis medial) */
+    float au2_outer_brow_raise; /**< AU2: Outer brow raiser (frontalis lateral) */
+    float au4_brow_lower;       /**< AU4: Brow lowerer (corrugator) */
+    float au5_upper_lid_raise;  /**< AU5: Upper lid raiser (levator) */
+    float au6_cheek_raise;      /**< AU6: Cheek raiser (orbicularis oculi) */
+    float au7_lid_tighten;      /**< AU7: Lid tightener */
+    float au9_nose_wrinkle;     /**< AU9: Nose wrinkler (levator labii) */
+    float au10_upper_lip_raise; /**< AU10: Upper lip raiser */
+    float au12_lip_corner_pull; /**< AU12: Lip corner puller (zygomatic) — SMILE */
+    float au15_lip_corner_drop; /**< AU15: Lip corner depressor — FROWN */
+    float au17_chin_raise;      /**< AU17: Chin raiser (mentalis) */
+    float au20_lip_stretch;     /**< AU20: Lip stretcher (risorius) */
+    float au23_lip_tighten;     /**< AU23: Lip tightener (orbicularis oris) */
+    float au25_lips_part;       /**< AU25: Lips part */
+    float au26_jaw_drop;        /**< AU26: Jaw drop (masseter relax) */
+    float au28_lip_suck;        /**< AU28: Lip suck */
+
+    /* Emotional state */
+    float valence;              /**< Emotional valence [-1=negative, +1=positive] */
+    float arousal;              /**< Emotional arousal [0=calm, 1=excited] */
+    float dominance;            /**< Dominance [-1=submissive, +1=dominant] */
+    uint32_t emotion_id;        /**< Primary emotion (0-18, emotion_category_t) */
+    float emotion_intensity;    /**< Emotion intensity [0,1] */
+
+    /* Gaze and head pose */
+    float gaze_x;               /**< Horizontal gaze [-1=left, +1=right] */
+    float gaze_y;               /**< Vertical gaze [-1=down, +1=up] */
+    float head_pitch;           /**< Head pitch (nod) [-1=down, +1=up] */
+    float head_yaw;             /**< Head yaw (turn) [-1=left, +1=right] */
+    float head_roll;            /**< Head roll (tilt) [-1=left, +1=right] */
+    float blink;                /**< Blink state [0=open, 1=closed] */
+
+    /* Voice parameters (for TTS prosody sync) */
+    float pitch_hz;             /**< Voice pitch (Hz) */
+    float speaking_rate;        /**< Speaking rate multiplier (1.0=normal) */
+    float volume;               /**< Voice volume [0,1] */
+
+    /* Metadata */
+    uint64_t timestamp_us;      /**< Timestamp in microseconds */
+    bool is_speaking;           /**< Whether currently producing speech */
+} nimcp_avatar_state_t;
+
+/**
+ * @brief Get current avatar face state for rendering
+ *
+ * Collects viseme data from speech motor planner, FACS action units from
+ * emotional system, and gaze from attention. Call after decide_full() or
+ * speak() to get synchronized state.
+ *
+ * @param brain Brain handle
+ * @param state Output avatar state
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_get_avatar_state(
+    nimcp_brain_t brain,
+    nimcp_avatar_state_t* state
+);
+
+/**
  * @brief Save brain to file
  *
  * @param brain Brain handle
