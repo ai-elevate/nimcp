@@ -1420,10 +1420,12 @@ static double op_add(double a, double b) { return a + b; }
 static double op_sub(double a, double b) { return a - b; }
 static double op_mul(double a, double b) { return a * b; }
 static double op_div(double a, double b) {
-    /* P2-U17: Guard against division by zero */
+    /* P2-U17: Guard against division by zero — use epsilon clamping.
+     * In numerical code (LNN ODE, normalization), near-zero denominators
+     * are common and expected. Clamp to epsilon to maintain gradient flow. */
     if (b == 0.0) {
-        LOG_WARN("tensor division by zero (a=%g, b=0), returning 0", a);
-        return 0.0;
+        if (a == 0.0) return 0.0;
+        return a / ((a > 0.0) ? 1e-7 : -1e-7);
     }
     return a / b;
 }
