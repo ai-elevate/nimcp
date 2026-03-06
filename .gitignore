@@ -206,6 +206,10 @@ systemd/
 src/bindings/web-demo/backend/*.log
 src/bindings/web-demo/frontend/*.log
 
+# Root-level clutter (screenshots moved to docs/screenshots/)
+/*.log
+/*.png
+
 # Brain data
 *.nimcp
 *.brain

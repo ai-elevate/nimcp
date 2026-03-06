@@ -1,8 +1,6 @@
 # NIMCP - Neuromorphic Infant Machine Cognitive Platform
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/yourusername/nimcp)
-[![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/yourusername/nimcp)
-[![Version](https://img.shields.io/badge/version-2.6.2-blue.svg)](https://github.com/yourusername/nimcp)
+[![Version](https://img.shields.io/badge/version-2.6.3-blue.svg)](https://github.com/redmage123/nimcp)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C Standard](https://img.shields.io/badge/C-C11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 
@@ -16,7 +14,7 @@ NIMCP is a sophisticated neural framework designed to mimic biological brain fun
 - **Cognitive Architecture**: 30+ modules including working memory, ethics, theory of mind, and emotional intelligence
 - **Multi-Modal Processing**: Unified processing of vision, audio, language, and structured data
 - **Distributed Computing**: P2P networking with efficient copy-on-write cloning (86% memory savings)
-- **Production Ready**: 100% test coverage (383/383 tests passing), extensive documentation, 7 language bindings
+- **Multiple Language Bindings**: Python (primary), Go, Rust, Java, Node.js, Ruby, C#
 
 ## Key Features
 
@@ -71,7 +69,7 @@ sudo apt-get install build-essential cmake python3-dev libjansson-dev liblz4-dev
 sudo apt-get install nvidia-cuda-toolkit
 
 # Clone and build
-git clone https://github.com/yourusername/nimcp.git
+git clone https://github.com/redmage123/nimcp.git
 cd nimcp
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -298,7 +296,7 @@ ctest -L e2e           # End-to-end tests
 # Verbose output
 ctest -V
 
-# Current status: 383/383 tests passing (100%)
+# Run with verbose output for details
 ```
 
 ## Contributing
@@ -323,7 +321,6 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - **v2.7**: Enhanced synapse computation strategies
 - **v2.8**: Advanced neuron type specialization
 - **v3.0**: Full neuromorphic hardware support
-- **v3.1**: Quantum-inspired algorithms integration
 - **v3.2**: Advanced emotional intelligence modules
 
 ## Citation
@@ -335,19 +332,19 @@ If you use NIMCP in your research, please cite:
   title = {NIMCP: Neuromorphic Infant Machine Cognitive Platform},
   author = {Brelin, Braun},
   year = {2024},
-  version = {2.6.2},
-  url = {https://github.com/yourusername/nimcp}
+  version = {2.6.3},
+  url = {https://github.com/redmage123/nimcp}
 }
 ```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+License TBD. Please contact braun.brelin@ai-elevate.ai regarding usage.
 
 ## Support
 
 - **Documentation**: [docs/](docs/)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/nimcp/issues)
+- **Issues**: [GitHub Issues](https://github.com/redmage123/nimcp/issues)
 - **Email**: braun.brelin@ai-elevate.ai
 
 ## Acknowledgments
@@ -361,4 +358,4 @@ NIMCP is inspired by decades of neuroscience research and builds upon:
 
 ---
 
-**Built with biological realism, designed for production use.**
+**Built with biological realism. Research in progress.**
