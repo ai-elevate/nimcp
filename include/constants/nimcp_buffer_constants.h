@@ -23,7 +23,9 @@ extern "C" {
  *===========================================================================*/
 
 /** @brief Maximum path length for file operations */
+#ifndef NIMCP_PATH_BUFFER_SIZE
 #define NIMCP_PATH_BUFFER_SIZE              4096
+#endif
 
 /** @brief Maximum path length for short paths */
 #define NIMCP_SHORT_PATH_SIZE               256

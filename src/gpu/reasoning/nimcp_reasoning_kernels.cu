@@ -13,6 +13,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <float.h>
@@ -911,8 +912,8 @@ bool nimcp_gpu_csp_step(
         size_t total = n_vars * dom_sz;
 
         // Read domains to host
-        float* host_domains = (float*)malloc(total * sizeof(float));
-        float* host_assign = (float*)malloc(n_vars * sizeof(float));
+        float* host_domains = (float*)nimcp_malloc(total * sizeof(float));
+        float* host_assign = (float*)nimcp_malloc(n_vars * sizeof(float));
         if (host_domains && host_assign) {
             cudaMemcpy(host_domains, state->domains->data,
                        total * sizeof(float), cudaMemcpyDeviceToHost);
@@ -939,13 +940,13 @@ bool nimcp_gpu_csp_step(
                 // Some variable has empty domain = failed
                 *solved = false;
                 *failed = true;
-                free(host_domains);
-                free(host_assign);
+                nimcp_free(host_domains);
+                nimcp_free(host_assign);
                 return true;
             }
         }
-        if (host_domains) free(host_domains);
-        if (host_assign) free(host_assign);
+        if (host_domains) nimcp_free(host_domains);
+        if (host_assign) nimcp_free(host_assign);
     }
 
     // Check constraints to determine solved/failed status
@@ -963,7 +964,7 @@ bool nimcp_gpu_csp_step(
     // Count violations on host
     size_t n_violations = 0;
     if (violations->numel > 0) {
-        float* host_v = (float*)malloc(violations->numel * sizeof(float));
+        float* host_v = (float*)nimcp_malloc(violations->numel * sizeof(float));
         if (host_v) {
             cudaMemcpy(host_v, violations->data,
                        violations->numel * sizeof(float),
@@ -971,7 +972,7 @@ bool nimcp_gpu_csp_step(
             for (size_t i = 0; i < violations->numel; i++) {
                 if (host_v[i] > 0.5f) n_violations++;
             }
-            free(host_v);
+            nimcp_free(host_v);
         }
     }
 
@@ -1476,7 +1477,7 @@ bool nimcp_gpu_causal_identify_effect(
     // Simplified: direct edge weight
     // Full version would use backdoor/frontdoor adjustment
 
-    float* h_weights = (float*)malloc(state->n_nodes * state->n_nodes * sizeof(float));
+    float* h_weights = (float*)nimcp_malloc(state->n_nodes * state->n_nodes * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpy(
         h_weights,
         state->edge_weights->data,
@@ -1485,7 +1486,7 @@ bool nimcp_gpu_causal_identify_effect(
 
     *causal_effect = h_weights[cause_node * state->n_nodes + effect_node];
 
-    free(h_weights);
+    nimcp_free(h_weights);
     return true;
 }
 

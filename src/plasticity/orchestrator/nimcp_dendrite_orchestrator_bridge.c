@@ -336,7 +336,7 @@ int dendrite_orchestrator_map_spine(
     }
 
     /* Check load factor */
-    float load_factor = (float)bridge->mapping_count / bridge->mapping_capacity;
+    float load_factor = (bridge->mapping_capacity > 0) ? (float)bridge->mapping_count / bridge->mapping_capacity : 1.0f;
     if (load_factor > 0.7f) {
         if (grow_mappings(bridge) != 0) {
             if ((bridge->base.mutex != NULL)) {

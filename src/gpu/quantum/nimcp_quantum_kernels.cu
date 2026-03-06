@@ -25,6 +25,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include <math.h>
@@ -253,7 +254,7 @@ nimcp_quantum_state_t* nimcp_quantum_state_create(
         return NULL;
     }
 
-    nimcp_quantum_state_t* state = (nimcp_quantum_state_t*)calloc(1, sizeof(nimcp_quantum_state_t));
+    nimcp_quantum_state_t* state = (nimcp_quantum_state_t*)nimcp_calloc(1, sizeof(nimcp_quantum_state_t));
     if (!state) return NULL;
 
     state->n_qubits = n_qubits;
@@ -292,7 +293,7 @@ void nimcp_quantum_state_destroy(nimcp_quantum_state_t* state)
 
     nimcp_gpu_tensor_destroy(state->amplitudes_real);
     nimcp_gpu_tensor_destroy(state->amplitudes_imag);
-    free(state);
+    nimcp_free(state);
 }
 
 bool nimcp_quantum_state_hadamard_all(
@@ -388,7 +389,7 @@ bool nimcp_quantum_measure(
         state->n_states);
 
     // Copy probabilities to host for sampling
-    float* h_probs = (float*)malloc(state->n_states * sizeof(float));
+    float* h_probs = (float*)nimcp_malloc(state->n_states * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_probs, d_probs, state->n_states * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Generate random number and sample
@@ -423,7 +424,7 @@ bool nimcp_quantum_measure(
     NIMCP_CUDA_RECOVER(cudaMemcpy((float*)state->amplitudes_real->data + result, &one, sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     cudaFree(d_probs);
-    free(h_probs);
+    nimcp_free(h_probs);
 
     return true;
 }
@@ -765,7 +766,7 @@ nimcp_ising_model_t* nimcp_ising_model_create(
 
     if (!ctx || n_spins == 0) return NULL;
 
-    nimcp_ising_model_t* model = (nimcp_ising_model_t*)calloc(1, sizeof(nimcp_ising_model_t));
+    nimcp_ising_model_t* model = (nimcp_ising_model_t*)nimcp_calloc(1, sizeof(nimcp_ising_model_t));
     if (!model) return NULL;
 
     model->n_spins = n_spins;
@@ -783,12 +784,12 @@ nimcp_ising_model_t* nimcp_ising_model_create(
     }
 
     // Initialize spins randomly to +1 or -1
-    float* h_spins = (float*)malloc(n_spins * sizeof(float));
+    float* h_spins = (float*)nimcp_malloc(n_spins * sizeof(float));
     for (uint32_t i = 0; i < n_spins; i++) {
         h_spins[i] = (rand() % 2) * 2.0f - 1.0f;  // Random +1 or -1
     }
     cudaMemcpy(model->spins->data, h_spins, n_spins * sizeof(float), cudaMemcpyHostToDevice);
-    free(h_spins);
+    nimcp_free(h_spins);
 
     model->energy = 0.0f;
 
@@ -803,7 +804,7 @@ void nimcp_ising_model_destroy(nimcp_ising_model_t* model)
     nimcp_gpu_tensor_destroy(model->J);
     nimcp_gpu_tensor_destroy(model->h);
     nimcp_gpu_tensor_destroy(model->spins);
-    free(model);
+    nimcp_free(model);
 }
 
 bool nimcp_ising_model_set_params(
@@ -969,12 +970,12 @@ float nimcp_pimc_anneal(
 
     for (uint32_t t = 0; t < n_trotter; t++) {
         // Reinitialize spins randomly
-        float* h_spins = (float*)malloc(model->n_spins * sizeof(float));
+        float* h_spins = (float*)nimcp_malloc(model->n_spins * sizeof(float));
         for (uint32_t i = 0; i < model->n_spins; i++) {
             h_spins[i] = (rand() % 2) * 2.0f - 1.0f;
         }
         cudaMemcpy(model->spins->data, h_spins, model->n_spins * sizeof(float), cudaMemcpyHostToDevice);
-        free(h_spins);
+        nimcp_free(h_spins);
 
         float energy = nimcp_quantum_anneal(ctx, model, config);
         total_energy += energy;
@@ -1002,13 +1003,13 @@ bool nimcp_vqc_init_params(
     size_t n_params = n_layers * n_qubits * 3;  // 3 rotation angles per qubit per layer
 
     // Initialize with random small values
-    float* h_params = (float*)malloc(n_params * sizeof(float));
+    float* h_params = (float*)nimcp_malloc(n_params * sizeof(float));
     for (size_t i = 0; i < n_params; i++) {
         h_params[i] = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;  // Small random values
     }
 
     NIMCP_CUDA_RECOVER(cudaMemcpy(params->data, h_params, n_params * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
-    free(h_params);
+    nimcp_free(h_params);
 
     return true;
 }
@@ -1025,7 +1026,7 @@ bool nimcp_vqc_apply_layer(
     if (!ctx || !state || !params) return false;
 
     // Copy parameters to host for gate construction
-    float* h_params = (float*)malloc(state->n_qubits * 3 * sizeof(float));
+    float* h_params = (float*)nimcp_malloc(state->n_qubits * 3 * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_params, params->data, state->n_qubits * 3 * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Apply Rx, Ry, Rz to each qubit
@@ -1068,7 +1069,7 @@ bool nimcp_vqc_apply_layer(
         nimcp_quantum_apply_gate(ctx, state, q, rz_real, rz_imag);
     }
 
-    free(h_params);
+    nimcp_free(h_params);
     return true;
 }
 
@@ -1162,23 +1163,23 @@ nimcp_quantum_state_t* nimcp_quantum_state_create(
     }
     (void)ctx;  // Context not used in CPU fallback but required for API consistency
 
-    nimcp_quantum_state_t* state = (nimcp_quantum_state_t*)calloc(1, sizeof(nimcp_quantum_state_t));
+    nimcp_quantum_state_t* state = (nimcp_quantum_state_t*)nimcp_calloc(1, sizeof(nimcp_quantum_state_t));
     if (!state) return NULL;
 
     state->n_qubits = n_qubits;
     state->n_states = 1U << n_qubits;
 
     // Allocate CPU tensors (using simple wrapper)
-    state->amplitudes_real = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
-    state->amplitudes_imag = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+    state->amplitudes_real = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
+    state->amplitudes_imag = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
 
     if (!state->amplitudes_real || !state->amplitudes_imag) {
         nimcp_quantum_state_destroy(state);
         return NULL;
     }
 
-    state->amplitudes_real->data = calloc(state->n_states, sizeof(float));
-    state->amplitudes_imag->data = calloc(state->n_states, sizeof(float));
+    state->amplitudes_real->data = nimcp_calloc(state->n_states, sizeof(float));
+    state->amplitudes_imag->data = nimcp_calloc(state->n_states, sizeof(float));
     state->amplitudes_real->numel = state->n_states;
     state->amplitudes_imag->numel = state->n_states;
 
@@ -1199,14 +1200,14 @@ void nimcp_quantum_state_destroy(nimcp_quantum_state_t* state)
     if (!state) return;
 
     if (state->amplitudes_real) {
-        free(state->amplitudes_real->data);
-        free(state->amplitudes_real);
+        nimcp_free(state->amplitudes_real->data);
+        nimcp_free(state->amplitudes_real);
     }
     if (state->amplitudes_imag) {
-        free(state->amplitudes_imag->data);
-        free(state->amplitudes_imag);
+        nimcp_free(state->amplitudes_imag->data);
+        nimcp_free(state->amplitudes_imag);
     }
-    free(state);
+    nimcp_free(state);
 }
 
 bool nimcp_quantum_state_hadamard_all(
@@ -1445,23 +1446,23 @@ nimcp_ising_model_t* nimcp_ising_model_create(
     (void)ctx;
     if (n_spins == 0) return NULL;
 
-    nimcp_ising_model_t* model = (nimcp_ising_model_t*)calloc(1, sizeof(nimcp_ising_model_t));
+    nimcp_ising_model_t* model = (nimcp_ising_model_t*)nimcp_calloc(1, sizeof(nimcp_ising_model_t));
     if (!model) return NULL;
 
     model->n_spins = n_spins;
 
-    model->J = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
-    model->h = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
-    model->spins = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+    model->J = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
+    model->h = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
+    model->spins = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
 
     if (!model->J || !model->h || !model->spins) {
         nimcp_ising_model_destroy(model);
         return NULL;
     }
 
-    model->J->data = calloc(n_spins * n_spins, sizeof(float));
-    model->h->data = calloc(n_spins, sizeof(float));
-    model->spins->data = malloc(n_spins * sizeof(float));
+    model->J->data = nimcp_calloc(n_spins * n_spins, sizeof(float));
+    model->h->data = nimcp_calloc(n_spins, sizeof(float));
+    model->spins->data = nimcp_malloc(n_spins * sizeof(float));
 
     model->J->numel = n_spins * n_spins;
     model->h->numel = n_spins;
@@ -1480,10 +1481,10 @@ void nimcp_ising_model_destroy(nimcp_ising_model_t* model)
 {
     if (!model) return;
 
-    if (model->J) { free(model->J->data); free(model->J); }
-    if (model->h) { free(model->h->data); free(model->h); }
-    if (model->spins) { free(model->spins->data); free(model->spins); }
-    free(model);
+    if (model->J) { nimcp_free(model->J->data); nimcp_free(model->J); }
+    if (model->h) { nimcp_free(model->h->data); nimcp_free(model->h); }
+    if (model->spins) { nimcp_free(model->spins->data); nimcp_free(model->spins); }
+    nimcp_free(model);
 }
 
 bool nimcp_ising_model_set_params(

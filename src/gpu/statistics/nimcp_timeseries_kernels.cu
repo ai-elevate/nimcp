@@ -31,6 +31,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <cufft.h>
 #include <math.h>
@@ -885,7 +886,7 @@ extern "C" bool nimcp_ts_gpu_init(size_t max_size) {
         return true;  // Already initialized
     }
 
-    g_ts_workspace = (ts_gpu_workspace_t*)calloc(1, sizeof(ts_gpu_workspace_t));
+    g_ts_workspace = (ts_gpu_workspace_t*)nimcp_calloc(1, sizeof(ts_gpu_workspace_t));
     if (!g_ts_workspace) {
         set_ts_error("Failed to allocate workspace");
         return false;
@@ -895,7 +896,7 @@ extern "C" bool nimcp_ts_gpu_init(size_t max_size) {
     cudaError_t err = cudaStreamCreate(&g_ts_workspace->stream);
     if (err != cudaSuccess) {
         set_ts_error("Failed to create CUDA stream: %s", cudaGetErrorString(err));
-        free(g_ts_workspace);
+        nimcp_free(g_ts_workspace);
         g_ts_workspace = NULL;
         return false;
     }
@@ -935,7 +936,7 @@ cleanup:
     if (g_ts_workspace->d_window) cudaFree(g_ts_workspace->d_window);
     if (g_ts_workspace->d_temp) cudaFree(g_ts_workspace->d_temp);
     cudaStreamDestroy(g_ts_workspace->stream);
-    free(g_ts_workspace);
+    nimcp_free(g_ts_workspace);
     g_ts_workspace = NULL;
     return false;
 }
@@ -958,7 +959,7 @@ extern "C" void nimcp_ts_gpu_shutdown(void) {
 
     cudaStreamDestroy(g_ts_workspace->stream);
 
-    free(g_ts_workspace);
+    nimcp_free(g_ts_workspace);
     g_ts_workspace = NULL;
 
     LOG_DEBUG("Time series GPU workspace shutdown");
@@ -1002,10 +1003,10 @@ extern "C" bool nimcp_ts_gpu_generate_window(
                 kernel_hann_window<<<grid, block>>>(d_window, n);
                 // Override with 1.0
                 cudaMemset(d_window, 0, n * sizeof(float));
-                float* h_ones = (float*)malloc(n * sizeof(float));
+                float* h_ones = (float*)nimcp_malloc(n * sizeof(float));
                 for (uint32_t i = 0; i < n; i++) h_ones[i] = 1.0f;
                 cudaMemcpy(d_window, h_ones, n * sizeof(float), cudaMemcpyHostToDevice);
-                free(h_ones);
+                nimcp_free(h_ones);
             }
             break;
 
@@ -1121,7 +1122,7 @@ extern "C" bool nimcp_ts_gpu_periodogram(
             g_ts_workspace->d_temp, d_partials, n);
 
         // Sum partials on host (small operation)
-        float* h_partials = (float*)malloc(n_blocks * sizeof(float));
+        float* h_partials = (float*)nimcp_malloc(n_blocks * sizeof(float));
         NIMCP_CUDA_RECOVER(cudaMemcpy(h_partials, d_partials, n_blocks * sizeof(float),
                                      cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
@@ -1130,7 +1131,7 @@ extern "C" bool nimcp_ts_gpu_periodogram(
             mean += h_partials[i];
         }
         mean /= n;
-        free(h_partials);
+        nimcp_free(h_partials);
         cudaFree(d_partials);
 
         // Subtract mean
@@ -1241,13 +1242,13 @@ extern "C" bool nimcp_ts_gpu_welch_psd(
 
     // Compute window energy for normalization
     {
-        float* h_window = (float*)malloc(segment_length * sizeof(float));
+        float* h_window = (float*)nimcp_malloc(segment_length * sizeof(float));
         NIMCP_CUDA_RECOVER(cudaMemcpy(h_window, g_ts_workspace->d_window,
                                      segment_length * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
         for (uint32_t i = 0; i < segment_length; i++) {
             window_energy += h_window[i] * h_window[i];
         }
-        free(h_window);
+        nimcp_free(h_window);
     }
 
     // Create FFT plan

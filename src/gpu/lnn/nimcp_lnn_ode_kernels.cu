@@ -20,6 +20,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include <math.h>
@@ -1275,9 +1276,9 @@ uint32_t nimcp_gpu_lnn_generate_wiring(
         d_row_nnz, n_neurons, target_density, seed);
 
     // Compute prefix sum for row_ptr (simplified CPU version)
-    h_row_nnz = (uint32_t*)malloc(n_neurons * sizeof(uint32_t));
+    h_row_nnz = (uint32_t*)nimcp_malloc(n_neurons * sizeof(uint32_t));
     if (!h_row_nnz) goto wiring_cleanup;
-    h_row_ptr = (uint32_t*)malloc((n_neurons + 1) * sizeof(uint32_t));
+    h_row_ptr = (uint32_t*)nimcp_malloc((n_neurons + 1) * sizeof(uint32_t));
     if (!h_row_ptr) goto wiring_cleanup;
 
     if (cudaMemcpy(h_row_nnz, d_row_nnz, n_neurons * sizeof(uint32_t), cudaMemcpyDeviceToHost) != cudaSuccess) goto wiring_cleanup;
@@ -1291,7 +1292,7 @@ uint32_t nimcp_gpu_lnn_generate_wiring(
     if (cudaMemcpy(row_ptr->data, h_row_ptr, (n_neurons + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto wiring_cleanup;
 
     // Generate column indices (simplified: random selection)
-    h_col_idx = (uint32_t*)malloc(total_edges * sizeof(uint32_t));
+    h_col_idx = (uint32_t*)nimcp_malloc(total_edges * sizeof(uint32_t));
     if (!h_col_idx) goto wiring_cleanup;
     srand((unsigned int)seed);
     for (uint32_t i = 0; i < total_edges; i++) {
@@ -1308,18 +1309,18 @@ uint32_t nimcp_gpu_lnn_generate_wiring(
 
     // Cleanup
     cudaFree(d_row_nnz);
-    free(h_row_nnz);
-    free(h_row_ptr);
-    free(h_col_idx);
+    nimcp_free(h_row_nnz);
+    nimcp_free(h_row_ptr);
+    nimcp_free(h_col_idx);
 
     LOG_DEBUG("Generated wiring with %u edges (density %.3f)", total_edges, target_density);
     return total_edges;
 
 wiring_cleanup:
     cudaFree(d_row_nnz);
-    free(h_row_nnz);
-    free(h_row_ptr);
-    free(h_col_idx);
+    nimcp_free(h_row_nnz);
+    nimcp_free(h_row_ptr);
+    nimcp_free(h_col_idx);
     return 0;
 }
 
@@ -1504,7 +1505,7 @@ nimcp_lnn_ode_batch_state_t* nimcp_lnn_ode_batch_state_create(
         return NULL;
     }
 
-    nimcp_lnn_ode_batch_state_t* state = (nimcp_lnn_ode_batch_state_t*)calloc(1, sizeof(nimcp_lnn_ode_batch_state_t));
+    nimcp_lnn_ode_batch_state_t* state = (nimcp_lnn_ode_batch_state_t*)nimcp_calloc(1, sizeof(nimcp_lnn_ode_batch_state_t));
     if (!state) return NULL;
 
     state->batch_size = batch_size;
@@ -1546,7 +1547,7 @@ void nimcp_lnn_ode_batch_state_destroy(nimcp_lnn_ode_batch_state_t* state)
     if (state->error) nimcp_gpu_tensor_destroy(state->error);
     if (state->dt_per_sample) nimcp_gpu_tensor_destroy(state->dt_per_sample);
 
-    free(state);
+    nimcp_free(state);
 }
 
 bool nimcp_lnn_ode_batch_state_reset(
@@ -1583,7 +1584,7 @@ nimcp_lnn_ode_cache_t* nimcp_lnn_ode_cache_create(
         return NULL;
     }
 
-    nimcp_lnn_ode_cache_t* cache = (nimcp_lnn_ode_cache_t*)calloc(1, sizeof(nimcp_lnn_ode_cache_t));
+    nimcp_lnn_ode_cache_t* cache = (nimcp_lnn_ode_cache_t*)nimcp_calloc(1, sizeof(nimcp_lnn_ode_cache_t));
     if (!cache) return NULL;
 
     cache->n_stages = n_stages;
@@ -1592,9 +1593,9 @@ nimcp_lnn_ode_cache_t* nimcp_lnn_ode_cache_create(
     size_t dims[] = {batch_size, n_neurons};
 
     // Allocate k stages
-    cache->k_stages = (nimcp_gpu_tensor_t**)calloc(n_stages, sizeof(nimcp_gpu_tensor_t*));
+    cache->k_stages = (nimcp_gpu_tensor_t**)nimcp_calloc(n_stages, sizeof(nimcp_gpu_tensor_t*));
     if (!cache->k_stages) {
-        free(cache);
+        nimcp_free(cache);
         return NULL;
     }
 
@@ -1628,13 +1629,13 @@ void nimcp_lnn_ode_cache_destroy(nimcp_lnn_ode_cache_t* cache)
                 nimcp_gpu_tensor_destroy(cache->k_stages[i]);
             }
         }
-        free(cache->k_stages);
+        nimcp_free(cache->k_stages);
     }
 
     if (cache->x_temp) nimcp_gpu_tensor_destroy(cache->x_temp);
     if (cache->x_checkpoint) nimcp_gpu_tensor_destroy(cache->x_checkpoint);
 
-    free(cache);
+    nimcp_free(cache);
 }
 
 //=============================================================================
@@ -1928,14 +1929,14 @@ bool nimcp_cpu_lnn_rk4_step_batched(
     if (!x || !tau || !input || !W_in || !W_rec || !b_in || !x_new) return false;
 
     // Allocate temporary storage
-    float* k1 = (float*)malloc(batch_size * n_neurons * sizeof(float));
-    float* k2 = (float*)malloc(batch_size * n_neurons * sizeof(float));
-    float* k3 = (float*)malloc(batch_size * n_neurons * sizeof(float));
-    float* k4 = (float*)malloc(batch_size * n_neurons * sizeof(float));
-    float* x_temp = (float*)malloc(batch_size * n_neurons * sizeof(float));
+    float* k1 = (float*)nimcp_malloc(batch_size * n_neurons * sizeof(float));
+    float* k2 = (float*)nimcp_malloc(batch_size * n_neurons * sizeof(float));
+    float* k3 = (float*)nimcp_malloc(batch_size * n_neurons * sizeof(float));
+    float* k4 = (float*)nimcp_malloc(batch_size * n_neurons * sizeof(float));
+    float* x_temp = (float*)nimcp_malloc(batch_size * n_neurons * sizeof(float));
 
     if (!k1 || !k2 || !k3 || !k4 || !x_temp) {
-        free(k1); free(k2); free(k3); free(k4); free(x_temp);
+        nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(k4); nimcp_free(x_temp);
         return false;
     }
 
@@ -1996,11 +1997,11 @@ bool nimcp_cpu_lnn_rk4_step_batched(
         x_new[i] = x[i] + (dt / 6.0f) * (k1[i] + 2.0f * k2[i] + 2.0f * k3[i] + k4[i]);
     }
 
-    free(k1);
-    free(k2);
-    free(k3);
-    free(k4);
-    free(x_temp);
+    nimcp_free(k1);
+    nimcp_free(k2);
+    nimcp_free(k3);
+    nimcp_free(k4);
+    nimcp_free(x_temp);
 
     return true;
 }
@@ -2185,7 +2186,7 @@ nimcp_lnn_ode_batch_state_t* nimcp_lnn_ode_batch_state_create(
 
 void nimcp_lnn_ode_batch_state_destroy(nimcp_lnn_ode_batch_state_t* state)
 {
-    if (state) free(state);
+    if (state) nimcp_free(state);
 }
 
 bool nimcp_lnn_ode_batch_state_reset(
@@ -2207,7 +2208,7 @@ nimcp_lnn_ode_cache_t* nimcp_lnn_ode_cache_create(
 
 void nimcp_lnn_ode_cache_destroy(nimcp_lnn_ode_cache_t* cache)
 {
-    if (cache) free(cache);
+    if (cache) nimcp_free(cache);
 }
 
 bool nimcp_gpu_lnn_check_stability(
@@ -2293,14 +2294,14 @@ bool nimcp_cpu_lnn_rk4_step_batched(
     if (!x || !tau || !input || !W_in || !W_rec || !b_in || !x_new) return false;
 
     // Allocate temporary storage
-    float* k1 = (float*)malloc(batch_size * n_neurons * sizeof(float));
-    float* k2 = (float*)malloc(batch_size * n_neurons * sizeof(float));
-    float* k3 = (float*)malloc(batch_size * n_neurons * sizeof(float));
-    float* k4 = (float*)malloc(batch_size * n_neurons * sizeof(float));
-    float* x_temp = (float*)malloc(batch_size * n_neurons * sizeof(float));
+    float* k1 = (float*)nimcp_malloc(batch_size * n_neurons * sizeof(float));
+    float* k2 = (float*)nimcp_malloc(batch_size * n_neurons * sizeof(float));
+    float* k3 = (float*)nimcp_malloc(batch_size * n_neurons * sizeof(float));
+    float* k4 = (float*)nimcp_malloc(batch_size * n_neurons * sizeof(float));
+    float* x_temp = (float*)nimcp_malloc(batch_size * n_neurons * sizeof(float));
 
     if (!k1 || !k2 || !k3 || !k4 || !x_temp) {
-        free(k1); free(k2); free(k3); free(k4); free(x_temp);
+        nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(k4); nimcp_free(x_temp);
         return false;
     }
 
@@ -2343,11 +2344,11 @@ bool nimcp_cpu_lnn_rk4_step_batched(
 
     #undef COMPUTE_DERIVATIVE
 
-    free(k1);
-    free(k2);
-    free(k3);
-    free(k4);
-    free(x_temp);
+    nimcp_free(k1);
+    nimcp_free(k2);
+    nimcp_free(k3);
+    nimcp_free(k4);
+    nimcp_free(x_temp);
 
     return true;
 }

@@ -19,6 +19,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdlib.h>
@@ -1152,7 +1153,7 @@ bool fin_risk_gpu_compute(
     kernel_compute_mean<<<reduce_blocks, block_size, block_size * sizeof(float), stream>>>(
         d_returns, d_partial, n);
 
-    float* h_partial = (float*)malloc(reduce_blocks * sizeof(float));
+    float* h_partial = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
     if (!h_partial) {
         cudaEventDestroy(start_event);
         cudaEventDestroy(end_event);
@@ -1198,7 +1199,7 @@ bool fin_risk_gpu_compute(
     // Compute CVaR (average of worst returns)
     float* d_cvar = NULL;
     if (cudaMalloc(&d_cvar, sizeof(float)) != cudaSuccess) {
-        free(h_partial);
+        nimcp_free(h_partial);
         cudaEventDestroy(start_event);
         cudaEventDestroy(end_event);
         cudaFree(d_returns);
@@ -1283,7 +1284,7 @@ bool fin_risk_gpu_compute(
         (excess_mean / std_dev) * sqrtf(252.0f) : 0.0f;
 
     // Compute Sortino ratio (downside deviation)
-    float* h_returns = (float*)malloc(n * sizeof(float));
+    float* h_returns = (float*)nimcp_malloc(n * sizeof(float));
     if (!h_returns) {
         // Fall back to using std_dev for downside deviation
         result->downside_deviation = std_dev;
@@ -1306,7 +1307,7 @@ bool fin_risk_gpu_compute(
         result->sortino_ratio = (downside_dev > 1e-10f) ?
             (excess_mean / downside_dev) * sqrtf(252.0f) : 0.0f;
 
-        free(h_returns);
+        nimcp_free(h_returns);
     }
 
     // Record timing
@@ -1319,7 +1320,7 @@ bool fin_risk_gpu_compute(
     cudaEventDestroy(end_event);
 
     // Cleanup
-    free(h_partial);
+    nimcp_free(h_partial);
     cudaFree(d_returns);
     cudaFree(d_sorted);
     cudaFree(d_partial);
@@ -1388,7 +1389,7 @@ bool fin_risk_gpu_volatility(
             kernel_compute_mean<<<ret_reduce, block_size, block_size * sizeof(float), stream>>>(
                 d_returns, d_partial, ret_n);
 
-            float* h_partial = (float*)malloc(ret_reduce * sizeof(float));
+            float* h_partial = (float*)nimcp_malloc(ret_reduce * sizeof(float));
             if (!h_partial) {
                 set_risk_error("Failed to allocate h_partial");
                 goto cleanup_vol;
@@ -1408,7 +1409,7 @@ bool fin_risk_gpu_volatility(
             for (uint32_t i = 0; i < ret_reduce; i++) sq_sum += h_partial[i];
             result_var = sq_sum / (float)(ret_n - 1);
 
-            free(h_partial);
+            nimcp_free(h_partial);
             break;
         }
 
@@ -1508,7 +1509,7 @@ bool fin_risk_gpu_volatility_ohlc(
     err = cudaMalloc(&d_partial, reduce_blocks * sizeof(float));
     if (err != cudaSuccess) goto cleanup_ohlc;
 
-    h_partial = (float*)malloc(reduce_blocks * sizeof(float));
+    h_partial = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
     if (!h_partial) goto cleanup_ohlc;
 
     cudaMemcpyAsync(d_open, open_prices, n * sizeof(float), cudaMemcpyHostToDevice, stream);
@@ -1555,7 +1556,7 @@ bool fin_risk_gpu_volatility_ohlc(
                 cudaFree(d_oc);
                 cudaFree(d_rs);
                 set_risk_error("Failed to allocate Yang-Zhang GPU buffers");
-                free(h_partial);
+                nimcp_free(h_partial);
                 goto cleanup_ohlc;
             }
 
@@ -1563,19 +1564,19 @@ bool fin_risk_gpu_volatility_ohlc(
                                            3 * block_size * sizeof(float), stream>>>(
                 d_open, d_high, d_low, d_close, d_overnight, d_oc, d_rs, n);
 
-            float* h_overnight = (float*)malloc(reduce_blocks * sizeof(float));
-            float* h_oc = (float*)malloc(reduce_blocks * sizeof(float));
-            float* h_rs = (float*)malloc(reduce_blocks * sizeof(float));
+            float* h_overnight = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
+            float* h_oc = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
+            float* h_rs = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
 
             if (!h_overnight || !h_oc || !h_rs) {
-                free(h_overnight);
-                free(h_oc);
-                free(h_rs);
+                nimcp_free(h_overnight);
+                nimcp_free(h_oc);
+                nimcp_free(h_rs);
                 cudaFree(d_overnight);
                 cudaFree(d_oc);
                 cudaFree(d_rs);
                 set_risk_error("Failed to allocate Yang-Zhang host buffers");
-                free(h_partial);
+                nimcp_free(h_partial);
                 goto cleanup_ohlc;
             }
 
@@ -1597,9 +1598,9 @@ bool fin_risk_gpu_volatility_ohlc(
 
             result_var = var_overnight + k * var_oc + (1.0f - k) * var_rs;
 
-            free(h_overnight);
-            free(h_oc);
-            free(h_rs);
+            nimcp_free(h_overnight);
+            nimcp_free(h_oc);
+            nimcp_free(h_rs);
             cudaFree(d_overnight);
             cudaFree(d_oc);
             cudaFree(d_rs);
@@ -1608,11 +1609,11 @@ bool fin_risk_gpu_volatility_ohlc(
 
         default:
             set_risk_error("Invalid method for OHLC volatility");
-            free(h_partial);
+            nimcp_free(h_partial);
             goto cleanup_ohlc;
     }
 
-    free(h_partial);
+    nimcp_free(h_partial);
     *volatility = sqrtf(result_var);
 
     cudaFree(d_open);
@@ -1746,21 +1747,21 @@ bool fin_risk_gpu_rolling(
 
     // Allocate output arrays if needed
     if (params->compute_var && !result->var_series) {
-        result->var_series = (float*)malloc(num_points * sizeof(float));
+        result->var_series = (float*)nimcp_malloc(num_points * sizeof(float));
         if (!result->var_series) {
             set_risk_error("Failed to allocate var_series");
             return false;
         }
     }
     if (params->compute_cvar && !result->cvar_series) {
-        result->cvar_series = (float*)malloc(num_points * sizeof(float));
+        result->cvar_series = (float*)nimcp_malloc(num_points * sizeof(float));
         if (!result->cvar_series) {
             set_risk_error("Failed to allocate cvar_series");
             return false;
         }
     }
     if (params->compute_volatility && !result->vol_series) {
-        result->vol_series = (float*)malloc(num_points * sizeof(float));
+        result->vol_series = (float*)nimcp_malloc(num_points * sizeof(float));
         if (!result->vol_series) {
             set_risk_error("Failed to allocate vol_series");
             return false;
@@ -1849,7 +1850,7 @@ static bool compute_moments_gpu(
     cudaError_t err = cudaMalloc(&d_partial, reduce_blocks * sizeof(float));
     if (err != cudaSuccess) return false;
 
-    h_partial = (float*)malloc(reduce_blocks * sizeof(float));
+    h_partial = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
     if (!h_partial) {
         cudaFree(d_partial);
         return false;
@@ -1902,7 +1903,7 @@ static bool compute_moments_gpu(
         *out_kurtosis = 0.0f;
     }
 
-    free(h_partial);
+    nimcp_free(h_partial);
     cudaFree(d_partial);
     return true;
 }
@@ -2047,7 +2048,7 @@ bool fin_risk_gpu_extended(
     result->base.sharpe_ratio = (std_dev > 1e-10f) ? excess_return / std_dev : 0.0f;
 
     // Compute Sortino ratio (using downside deviation)
-    float* h_returns = (float*)malloc(n * sizeof(float));
+    float* h_returns = (float*)nimcp_malloc(n * sizeof(float));
     if (!h_returns) {
         // Fall back to using std_dev for downside deviation
         result->base.downside_deviation = std_dev;
@@ -2068,7 +2069,7 @@ bool fin_risk_gpu_extended(
         result->base.downside_deviation = downside_dev;
         result->base.sortino_ratio = (downside_dev > 1e-10f) ? excess_return / downside_dev : 0.0f;
 
-        free(h_returns);
+        nimcp_free(h_returns);
     }
 
     cudaFree(d_returns);
@@ -2103,10 +2104,10 @@ bool fin_risk_gpu_rolling_extended(
     result->num_points = num_points;
 
     // Allocate output arrays
-    result->var_series = (float*)calloc(num_points, sizeof(float));
-    result->cvar_series = (float*)calloc(num_points, sizeof(float));
-    result->vol_series = (float*)calloc(num_points, sizeof(float));
-    result->drawdown_series = (float*)calloc(num_points, sizeof(float));
+    result->var_series = (float*)nimcp_calloc(num_points, sizeof(float));
+    result->cvar_series = (float*)nimcp_calloc(num_points, sizeof(float));
+    result->vol_series = (float*)nimcp_calloc(num_points, sizeof(float));
+    result->drawdown_series = (float*)nimcp_calloc(num_points, sizeof(float));
 
     if (!result->var_series || !result->cvar_series ||
         !result->vol_series || !result->drawdown_series) {
@@ -2227,7 +2228,7 @@ float fin_risk_gpu_var_parametric(
         return 0.0f;
     }
 
-    h_partial = (float*)malloc(reduce_blocks * sizeof(float));
+    h_partial = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
     if (!h_partial) {
         cudaFree(d_returns);
         cudaFree(d_partial);
@@ -2255,7 +2256,7 @@ float fin_risk_gpu_var_parametric(
     for (uint32_t i = 0; i < reduce_blocks; i++) sq_sum += h_partial[i];
     float std_dev = sqrtf(sq_sum / (float)(num_returns - 1));
 
-    free(h_partial);
+    nimcp_free(h_partial);
     cudaFree(d_returns);
     cudaFree(d_partial);
 
@@ -2413,12 +2414,12 @@ float fin_risk_gpu_max_drawdown(
         block_size * (sizeof(float) + sizeof(uint32_t)), stream>>>(
         d_drawdown, d_partial_min, d_partial_idx, num_prices);
 
-    float* h_partial_min = (float*)malloc(reduce_blocks * sizeof(float));
-    uint32_t* h_partial_idx = (uint32_t*)malloc(reduce_blocks * sizeof(uint32_t));
+    float* h_partial_min = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
+    uint32_t* h_partial_idx = (uint32_t*)nimcp_malloc(reduce_blocks * sizeof(uint32_t));
 
     if (!h_partial_min || !h_partial_idx) {
-        free(h_partial_min);
-        free(h_partial_idx);
+        nimcp_free(h_partial_min);
+        nimcp_free(h_partial_idx);
         cudaFree(d_prices);
         cudaFree(d_drawdown);
         cudaFree(d_peak);
@@ -2442,7 +2443,7 @@ float fin_risk_gpu_max_drawdown(
     }
 
     // Find start of drawdown (last peak before max_dd_end)
-    float* h_peak = (float*)malloc(num_prices * sizeof(float));
+    float* h_peak = (float*)nimcp_malloc(num_prices * sizeof(float));
     if (!h_peak) {
         if (out_start) *out_start = 0;
         if (out_end) *out_end = max_dd_end;
@@ -2459,11 +2460,11 @@ float fin_risk_gpu_max_drawdown(
 
         if (out_start) *out_start = max_dd_start;
         if (out_end) *out_end = max_dd_end;
-        free(h_peak);
+        nimcp_free(h_peak);
     }
 
-    free(h_partial_min);
-    free(h_partial_idx);
+    nimcp_free(h_partial_min);
+    nimcp_free(h_partial_idx);
     cudaFree(d_prices);
     cudaFree(d_drawdown);
     cudaFree(d_peak);
@@ -2573,7 +2574,7 @@ float fin_risk_gpu_portfolio_var_delta_normal(
     // For small portfolios, compute on CPU (simpler)
     // For large portfolios, could use cuBLAS
     if (num_assets <= 256) {
-        float* sigma_w = (float*)malloc(num_assets * sizeof(float));
+        float* sigma_w = (float*)nimcp_malloc(num_assets * sizeof(float));
         if (!sigma_w) return 0.0f;
 
         // Sigma * w
@@ -2589,7 +2590,7 @@ float fin_risk_gpu_portfolio_var_delta_normal(
             portfolio_variance += weights[i] * sigma_w[i];
         }
 
-        free(sigma_w);
+        nimcp_free(sigma_w);
     } else {
         // TODO: Use cuBLAS for large portfolios
         set_risk_error("Large portfolios (>256 assets) require cuBLAS - not yet implemented");
@@ -2676,12 +2677,12 @@ bool fin_risk_gpu_batch(
         d_returns, d_means, d_variances, num_portfolios, num_returns);
 
     // Copy results back
-    float* h_means = (float*)malloc(num_portfolios * sizeof(float));
-    float* h_variances = (float*)malloc(num_portfolios * sizeof(float));
+    float* h_means = (float*)nimcp_malloc(num_portfolios * sizeof(float));
+    float* h_variances = (float*)nimcp_malloc(num_portfolios * sizeof(float));
 
     if (!h_means || !h_variances) {
-        free(h_means);
-        free(h_variances);
+        nimcp_free(h_means);
+        nimcp_free(h_variances);
         cudaFree(d_returns);
         cudaFree(d_means);
         cudaFree(d_variances);
@@ -2723,8 +2724,8 @@ bool fin_risk_gpu_batch(
         results[p].sharpe_ratio = (std_dev > 1e-10f) ? excess / std_dev : 0.0f;
     }
 
-    free(h_means);
-    free(h_variances);
+    nimcp_free(h_means);
+    nimcp_free(h_variances);
     cudaFree(d_returns);
     cudaFree(d_means);
     cudaFree(d_variances);
@@ -2753,21 +2754,21 @@ bool fin_risk_gpu_correlation_matrix(
     }
 
     // First compute covariance matrix
-    float* covariance = (float*)malloc(num_assets * num_assets * sizeof(float));
+    float* covariance = (float*)nimcp_malloc(num_assets * num_assets * sizeof(float));
     if (!covariance) {
         set_risk_error("Memory allocation failed");
         return false;
     }
 
     if (!fin_risk_gpu_covariance_matrix(ctx, returns, num_assets, num_returns, covariance)) {
-        free(covariance);
+        nimcp_free(covariance);
         return false;
     }
 
     // Convert covariance to correlation: corr[i,j] = cov[i,j] / (std[i] * std[j])
-    float* std_devs = (float*)malloc(num_assets * sizeof(float));
+    float* std_devs = (float*)nimcp_malloc(num_assets * sizeof(float));
     if (!std_devs) {
-        free(covariance);
+        nimcp_free(covariance);
         set_risk_error("Memory allocation failed");
         return false;
     }
@@ -2794,8 +2795,8 @@ bool fin_risk_gpu_correlation_matrix(
         }
     }
 
-    free(covariance);
-    free(std_devs);
+    nimcp_free(covariance);
+    nimcp_free(std_devs);
     return true;
 }
 
@@ -3097,10 +3098,10 @@ void fin_risk_rolling_result_free(fin_risk_rolling_result_t* result)
 {
     if (!result) return;
 
-    free(result->var_series);
-    free(result->cvar_series);
-    free(result->vol_series);
-    free(result->drawdown_series);
+    nimcp_free(result->var_series);
+    nimcp_free(result->cvar_series);
+    nimcp_free(result->vol_series);
+    nimcp_free(result->drawdown_series);
 
     result->var_series = NULL;
     result->cvar_series = NULL;
@@ -3341,10 +3342,10 @@ float fin_risk_gpu_cvar(
 void fin_risk_rolling_result_free(fin_risk_rolling_result_t* result)
 {
     if (!result) return;
-    free(result->var_series);
-    free(result->cvar_series);
-    free(result->vol_series);
-    free(result->drawdown_series);
+    nimcp_free(result->var_series);
+    nimcp_free(result->cvar_series);
+    nimcp_free(result->vol_series);
+    nimcp_free(result->drawdown_series);
     result->var_series = NULL;
     result->cvar_series = NULL;
     result->vol_series = NULL;

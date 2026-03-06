@@ -24,6 +24,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
 #include <math.h>
@@ -650,11 +651,11 @@ extern "C" neural_stats_result_t nimcp_neural_isi_distribution_batch_gpu_impl(
     }
 
     // Count total spikes and prepare offsets
-    uint32_t* h_offsets = (uint32_t*)malloc((n_trains + 1) * sizeof(uint32_t));
-    uint32_t* h_lengths = (uint32_t*)malloc(n_trains * sizeof(uint32_t));
+    uint32_t* h_offsets = (uint32_t*)nimcp_malloc((n_trains + 1) * sizeof(uint32_t));
+    uint32_t* h_lengths = (uint32_t*)nimcp_malloc(n_trains * sizeof(uint32_t));
     if (!h_offsets || !h_lengths) {
-        free(h_offsets);
-        free(h_lengths);
+        nimcp_free(h_offsets);
+        nimcp_free(h_lengths);
         return NEURAL_STATS_ERROR_MEMORY;
     }
 
@@ -668,16 +669,16 @@ extern "C" neural_stats_result_t nimcp_neural_isi_distribution_batch_gpu_impl(
     }
 
     if (total_spikes == 0) {
-        free(h_offsets);
-        free(h_lengths);
+        nimcp_free(h_offsets);
+        nimcp_free(h_lengths);
         return NEURAL_STATS_OK;
     }
 
     // Flatten spike times
-    float* h_spikes = (float*)malloc(total_spikes * sizeof(float));
+    float* h_spikes = (float*)nimcp_malloc(total_spikes * sizeof(float));
     if (!h_spikes) {
-        free(h_offsets);
-        free(h_lengths);
+        nimcp_free(h_offsets);
+        nimcp_free(h_lengths);
         return NEURAL_STATS_ERROR_MEMORY;
     }
 
@@ -787,8 +788,8 @@ extern "C" neural_stats_result_t nimcp_neural_isi_distribution_batch_gpu_impl(
     cudaDeviceSynchronize();
 
     // Copy results back
-    h_stats = (float*)malloc(n_trains * 4 * sizeof(float));
-    h_cv2 = (float*)malloc(n_trains * sizeof(float));
+    h_stats = (float*)nimcp_malloc(n_trains * 4 * sizeof(float));
+    h_cv2 = (float*)nimcp_malloc(n_trains * sizeof(float));
 
     if (h_stats && h_cv2) {
         cudaMemcpy(h_stats, d_stats, n_trains * 4 * sizeof(float), cudaMemcpyDeviceToHost);
@@ -824,8 +825,8 @@ extern "C" neural_stats_result_t nimcp_neural_isi_distribution_batch_gpu_impl(
         }
     }
 
-    free(h_stats);
-    free(h_cv2);
+    nimcp_free(h_stats);
+    nimcp_free(h_cv2);
 
 cleanup:
     cudaFree(d_spikes);
@@ -834,9 +835,9 @@ cleanup:
     cudaFree(d_isis);
     cudaFree(d_stats);
     cudaFree(d_cv2);
-    free(h_spikes);
-    free(h_offsets);
-    free(h_lengths);
+    nimcp_free(h_spikes);
+    nimcp_free(h_offsets);
+    nimcp_free(h_lengths);
 
     return (err == cudaSuccess) ? NEURAL_STATS_OK : NEURAL_STATS_ERROR_GPU;
 }
@@ -878,18 +879,18 @@ extern "C" neural_stats_result_t nimcp_neural_cross_correlogram_batch_gpu_impl(
     }
 
     // Prepare data (similar structure to ISI batch)
-    uint32_t* h_offsets1 = (uint32_t*)malloc((n_pairs + 1) * sizeof(uint32_t));
-    uint32_t* h_offsets2 = (uint32_t*)malloc((n_pairs + 1) * sizeof(uint32_t));
-    uint32_t* h_lengths1 = (uint32_t*)malloc(n_pairs * sizeof(uint32_t));
-    uint32_t* h_lengths2 = (uint32_t*)malloc(n_pairs * sizeof(uint32_t));
-    float* h_spikes1 = (float*)malloc(total_spikes1 * sizeof(float));
-    float* h_spikes2 = (float*)malloc(total_spikes2 * sizeof(float));
+    uint32_t* h_offsets1 = (uint32_t*)nimcp_malloc((n_pairs + 1) * sizeof(uint32_t));
+    uint32_t* h_offsets2 = (uint32_t*)nimcp_malloc((n_pairs + 1) * sizeof(uint32_t));
+    uint32_t* h_lengths1 = (uint32_t*)nimcp_malloc(n_pairs * sizeof(uint32_t));
+    uint32_t* h_lengths2 = (uint32_t*)nimcp_malloc(n_pairs * sizeof(uint32_t));
+    float* h_spikes1 = (float*)nimcp_malloc(total_spikes1 * sizeof(float));
+    float* h_spikes2 = (float*)nimcp_malloc(total_spikes2 * sizeof(float));
 
     if (!h_offsets1 || !h_offsets2 || !h_lengths1 || !h_lengths2 ||
         !h_spikes1 || !h_spikes2) {
-        free(h_offsets1); free(h_offsets2);
-        free(h_lengths1); free(h_lengths2);
-        free(h_spikes1); free(h_spikes2);
+        nimcp_free(h_offsets1); nimcp_free(h_offsets2);
+        nimcp_free(h_lengths1); nimcp_free(h_lengths2);
+        nimcp_free(h_spikes1); nimcp_free(h_spikes2);
         return NEURAL_STATS_ERROR_MEMORY;
     }
 
@@ -962,7 +963,7 @@ extern "C" neural_stats_result_t nimcp_neural_cross_correlogram_batch_gpu_impl(
     cudaDeviceSynchronize();
 
     // Copy results back
-    h_correlograms = (float*)malloc(n_pairs * n_bins * sizeof(float));
+    h_correlograms = (float*)nimcp_malloc(n_pairs * n_bins * sizeof(float));
     if (h_correlograms) {
         cudaMemcpy(h_correlograms, d_correlograms,
                    n_pairs * n_bins * sizeof(float), cudaMemcpyDeviceToHost);
@@ -972,8 +973,8 @@ extern "C" neural_stats_result_t nimcp_neural_cross_correlogram_batch_gpu_impl(
             results[i].bin_width = bin_width;
             results[i].max_lag = max_lag;
 
-            results[i].correlogram = (float*)malloc(n_bins * sizeof(float));
-            results[i].lags = (float*)malloc(n_bins * sizeof(float));
+            results[i].correlogram = (float*)nimcp_malloc(n_bins * sizeof(float));
+            results[i].lags = (float*)nimcp_malloc(n_bins * sizeof(float));
 
             if (results[i].correlogram && results[i].lags) {
                 memcpy(results[i].correlogram, h_correlograms + i * n_bins,
@@ -994,7 +995,7 @@ extern "C" neural_stats_result_t nimcp_neural_cross_correlogram_batch_gpu_impl(
             }
         }
 
-        free(h_correlograms);
+        nimcp_free(h_correlograms);
     }
 
 cleanup_cc:
@@ -1005,9 +1006,9 @@ cleanup_cc:
     cudaFree(d_lengths1);
     cudaFree(d_lengths2);
     cudaFree(d_correlograms);
-    free(h_offsets1); free(h_offsets2);
-    free(h_lengths1); free(h_lengths2);
-    free(h_spikes1); free(h_spikes2);
+    nimcp_free(h_offsets1); nimcp_free(h_offsets2);
+    nimcp_free(h_lengths1); nimcp_free(h_lengths2);
+    nimcp_free(h_spikes1); nimcp_free(h_spikes2);
 
     return (err == cudaSuccess) ? NEURAL_STATS_OK : NEURAL_STATS_ERROR_GPU;
 }
@@ -1083,7 +1084,7 @@ extern "C" neural_stats_result_t nimcp_neural_fisher_information_batch_gpu_impl(
     cudaDeviceSynchronize();
 
     // Copy results back
-    h_fisher = (float*)malloc(n_populations * (n_stimuli - 1) * sizeof(float));
+    h_fisher = (float*)nimcp_malloc(n_populations * (n_stimuli - 1) * sizeof(float));
     if (h_fisher) {
         cudaMemcpy(h_fisher, d_fisher,
                    n_populations * (n_stimuli - 1) * sizeof(float),
@@ -1099,7 +1100,7 @@ extern "C" neural_stats_result_t nimcp_neural_fisher_information_batch_gpu_impl(
             results[p].total_info = total;
             results[p].n_params = 1;
 
-            results[p].cramer_rao_bounds = (float*)malloc(sizeof(float));
+            results[p].cramer_rao_bounds = (float*)nimcp_malloc(sizeof(float));
             if (results[p].cramer_rao_bounds) {
                 results[p].cramer_rao_bounds[0] =
                     (results[p].fisher_info > 1e-10f) ?
@@ -1107,7 +1108,7 @@ extern "C" neural_stats_result_t nimcp_neural_fisher_information_batch_gpu_impl(
             }
         }
 
-        free(h_fisher);
+        nimcp_free(h_fisher);
     }
 
 cleanup_fi:

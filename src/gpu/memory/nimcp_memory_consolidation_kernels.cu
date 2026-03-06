@@ -34,6 +34,7 @@
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/common/nimcp_device_utils.cuh"  // For nimcp_device_lcg_* RNG functions
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "MEMORY_GPU"
 
@@ -109,7 +110,7 @@ nimcp_gpu_engram_batch_t* nimcp_gpu_engram_batch_create(
     }
 
     nimcp_gpu_engram_batch_t* batch =
-        (nimcp_gpu_engram_batch_t*)calloc(1, sizeof(nimcp_gpu_engram_batch_t));
+        (nimcp_gpu_engram_batch_t*)nimcp_calloc(1, sizeof(nimcp_gpu_engram_batch_t));
     if (!batch) {
         LOG_ERROR("Failed to allocate engram batch structure");
         return NULL;
@@ -152,7 +153,7 @@ void nimcp_gpu_engram_batch_destroy(nimcp_gpu_engram_batch_t* batch)
     if (batch->emotional_salience) nimcp_gpu_tensor_destroy(batch->emotional_salience);
     if (batch->memory_age) nimcp_gpu_tensor_destroy(batch->memory_age);
 
-    free(batch);
+    nimcp_free(batch);
 }
 
 //=============================================================================
@@ -183,7 +184,7 @@ nimcp_gpu_cortical_batch_t* nimcp_gpu_cortical_batch_create(
     }
 
     nimcp_gpu_cortical_batch_t* batch =
-        (nimcp_gpu_cortical_batch_t*)calloc(1, sizeof(nimcp_gpu_cortical_batch_t));
+        (nimcp_gpu_cortical_batch_t*)nimcp_calloc(1, sizeof(nimcp_gpu_cortical_batch_t));
     if (!batch) {
         LOG_ERROR("Failed to allocate cortical batch structure");
         return NULL;
@@ -229,7 +230,7 @@ void nimcp_gpu_cortical_batch_destroy(nimcp_gpu_cortical_batch_t* batch)
     if (batch->neighbor_indices) nimcp_gpu_tensor_destroy(batch->neighbor_indices);
     if (batch->neighbor_weights) nimcp_gpu_tensor_destroy(batch->neighbor_weights);
 
-    free(batch);
+    nimcp_free(batch);
 }
 
 //=============================================================================
@@ -246,7 +247,7 @@ nimcp_gpu_replay_batch_t* nimcp_gpu_replay_batch_create(
     }
 
     nimcp_gpu_replay_batch_t* batch =
-        (nimcp_gpu_replay_batch_t*)calloc(1, sizeof(nimcp_gpu_replay_batch_t));
+        (nimcp_gpu_replay_batch_t*)nimcp_calloc(1, sizeof(nimcp_gpu_replay_batch_t));
     if (!batch) {
         LOG_ERROR("Failed to allocate replay batch structure");
         return NULL;
@@ -281,7 +282,7 @@ void nimcp_gpu_replay_batch_destroy(nimcp_gpu_replay_batch_t* batch)
     if (batch->emotional_salience) nimcp_gpu_tensor_destroy(batch->emotional_salience);
     if (batch->is_completed) nimcp_gpu_tensor_destroy(batch->is_completed);
 
-    free(batch);
+    nimcp_free(batch);
 }
 
 //=============================================================================

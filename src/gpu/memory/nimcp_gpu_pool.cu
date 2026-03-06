@@ -1591,7 +1591,7 @@ void* nimcp_gpu_pool_alloc_tagged(
     // Track allocation
     nimcp_gpu_block_t* block = pool_get_block_struct(pool);
     if (!block) {
-        pool->allocator->ops->free(pool->allocator, ptr);
+        pool->allocator->ops->nimcp_free(pool->allocator, ptr);
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)pool->mutex);
         return NULL;
     }
@@ -1689,7 +1689,7 @@ void nimcp_gpu_pool_free(nimcp_gpu_pool_t* pool, void* ptr) {
     pool_return_block_struct(pool, block);
 
     // Delegate to allocator
-    pool->allocator->ops->free(pool->allocator, ptr);
+    pool->allocator->ops->nimcp_free(pool->allocator, ptr);
 
     // Update stats
     if (pool->config.enable_stats) {

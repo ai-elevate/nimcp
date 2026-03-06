@@ -28,6 +28,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <math.h>
@@ -929,7 +930,7 @@ int nimcp_info_gpu_shannon_entropy(
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     /* Final reduction on host */
-    float* h_partial = (float*)malloc(n_blocks * sizeof(float));
+    float* h_partial = (float*)nimcp_malloc(n_blocks * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
                                       cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
@@ -941,7 +942,7 @@ int nimcp_info_gpu_shannon_entropy(
 
     *result = h;
 
-    free(h_partial);
+    nimcp_free(h_partial);
     cudaFree(d_partial);
 
     return 0;
@@ -987,7 +988,7 @@ int nimcp_info_gpu_renyi_entropy(
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    float* h_partial = (float*)malloc(n_blocks * sizeof(float));
+    float* h_partial = (float*)nimcp_malloc(n_blocks * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
                                       cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
@@ -1000,7 +1001,7 @@ int nimcp_info_gpu_renyi_entropy(
     /* H_alpha = (1/(1-alpha)) * log(sum) */
     *result = (sum > INFO_GPU_EPSILON) ? log2f(sum) / (1.0f - alpha) : 0.0f;
 
-    free(h_partial);
+    nimcp_free(h_partial);
     cudaFree(d_partial);
 
     return 0;
@@ -1050,7 +1051,7 @@ int nimcp_info_gpu_mutual_information(
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    float* h_partial = (float*)malloc(n_blocks * sizeof(float));
+    float* h_partial = (float*)nimcp_malloc(n_blocks * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
                                       cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
@@ -1062,7 +1063,7 @@ int nimcp_info_gpu_mutual_information(
 
     *result = mi;
 
-    free(h_partial);
+    nimcp_free(h_partial);
     cudaFree(d_partial);
     cudaFree(d_marginal_x);
     cudaFree(d_marginal_y);
@@ -1104,8 +1105,8 @@ int nimcp_info_gpu_discretize(
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     /* Final reduction on host */
-    float* h_partial_min = (float*)malloc(n_blocks * sizeof(float));
-    float* h_partial_max = (float*)malloc(n_blocks * sizeof(float));
+    float* h_partial_min = (float*)nimcp_malloc(n_blocks * sizeof(float));
+    float* h_partial_max = (float*)nimcp_malloc(n_blocks * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial_min, d_partial_min, n_blocks * sizeof(float),
                                       cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial_max, d_partial_max, n_blocks * sizeof(float),
@@ -1119,8 +1120,8 @@ int nimcp_info_gpu_discretize(
         max_val = fmaxf(max_val, h_partial_max[i]);
     }
 
-    free(h_partial_min);
-    free(h_partial_max);
+    nimcp_free(h_partial_min);
+    nimcp_free(h_partial_max);
     cudaFree(d_partial_min);
     cudaFree(d_partial_max);
 
@@ -1167,7 +1168,7 @@ int nimcp_info_gpu_kl_divergence(
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    float* h_partial = (float*)malloc(n_blocks * sizeof(float));
+    float* h_partial = (float*)nimcp_malloc(n_blocks * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
                                       cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
@@ -1183,7 +1184,7 @@ int nimcp_info_gpu_kl_divergence(
 
     *result = kl;
 
-    free(h_partial);
+    nimcp_free(h_partial);
     cudaFree(d_partial);
 
     return 0;

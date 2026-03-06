@@ -34,6 +34,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <cufft.h>
 #include <math.h>
@@ -1107,7 +1108,7 @@ extern "C" nimcp_speech_gpu_state_t* nimcp_speech_gpu_create_with_config(
         return NULL;
     }
 
-    nimcp_speech_gpu_state_t* state = (nimcp_speech_gpu_state_t*)calloc(1, sizeof(nimcp_speech_gpu_state_t));
+    nimcp_speech_gpu_state_t* state = (nimcp_speech_gpu_state_t*)nimcp_calloc(1, sizeof(nimcp_speech_gpu_state_t));
     if (!state) {
         LOG_ERROR("Failed to allocate speech GPU state");
         return NULL;
@@ -1147,7 +1148,7 @@ extern "C" nimcp_speech_gpu_state_t* nimcp_speech_gpu_create_with_config(
     cufftResult fft_result = cufftPlan1d(&state->fft_plan, fft_size, CUFFT_R2C, 1);
     if (fft_result != CUFFT_SUCCESS) {
         LOG_ERROR("Failed to create cuFFT plan: %d", fft_result);
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -1155,7 +1156,7 @@ extern "C" nimcp_speech_gpu_state_t* nimcp_speech_gpu_create_with_config(
     if (fft_result != CUFFT_SUCCESS) {
         LOG_ERROR("Failed to create inverse cuFFT plan: %d", fft_result);
         cufftDestroy(state->fft_plan);
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -1165,7 +1166,7 @@ extern "C" nimcp_speech_gpu_state_t* nimcp_speech_gpu_create_with_config(
         LOG_ERROR("Failed to create batched cuFFT plan: %d", fft_result);
         cufftDestroy(state->fft_plan);
         cufftDestroy(state->ifft_plan);
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -1287,7 +1288,7 @@ extern "C" void nimcp_speech_gpu_destroy(nimcp_speech_gpu_state_t* state) {
     nimcp_gpu_tensor_destroy(state->phoneme_weights);
     nimcp_gpu_tensor_destroy(state->phoneme_bias);
 
-    free(state);
+    nimcp_free(state);
     LOG_DEBUG("Speech GPU state destroyed");
 }
 
@@ -2101,7 +2102,7 @@ extern "C" nimcp_phoneme_result_gpu_t* nimcp_speech_gpu_recognize(
     // Note: feature_dim = mfcc->dims[1] used for classifier input dimension
 
     // Allocate result structure
-    nimcp_phoneme_result_gpu_t* result = (nimcp_phoneme_result_gpu_t*)calloc(
+    nimcp_phoneme_result_gpu_t* result = (nimcp_phoneme_result_gpu_t*)nimcp_calloc(
         1, sizeof(nimcp_phoneme_result_gpu_t));
     if (!result) {
         nimcp_gpu_tensor_destroy(mfcc);
@@ -2162,7 +2163,7 @@ extern "C" void nimcp_speech_gpu_free_phoneme_result(nimcp_phoneme_result_gpu_t*
     nimcp_gpu_tensor_destroy(result->phoneme_probs);
     nimcp_gpu_tensor_destroy(result->phoneme_ids);
     nimcp_gpu_tensor_destroy(result->phoneme_confidence);
-    free(result);
+    nimcp_free(result);
 }
 
 extern "C" bool nimcp_speech_gpu_load_phoneme_classifier(
@@ -2319,14 +2320,14 @@ extern "C" nimcp_speech_features_gpu_t* nimcp_speech_gpu_extract_features(
 ) {
     if (!state || !audio) return NULL;
 
-    nimcp_speech_features_gpu_t* features = (nimcp_speech_features_gpu_t*)calloc(
+    nimcp_speech_features_gpu_t* features = (nimcp_speech_features_gpu_t*)nimcp_calloc(
         1, sizeof(nimcp_speech_features_gpu_t));
     if (!features) return NULL;
 
     int num_samples = audio->dims[audio->ndim - 1];
     int num_frames = nimcp_speech_gpu_get_num_frames(state, num_samples);
     if (num_frames <= 0) {
-        free(features);
+        nimcp_free(features);
         return NULL;
     }
 
@@ -2370,7 +2371,7 @@ extern "C" void nimcp_speech_gpu_free_features(nimcp_speech_features_gpu_t* feat
     nimcp_gpu_tensor_destroy(features->zcr);
     nimcp_gpu_tensor_destroy(features->vad);
 
-    free(features);
+    nimcp_free(features);
 }
 
 //=============================================================================
@@ -2457,11 +2458,11 @@ extern "C" bool nimcp_speech_cpu_levinson_durbin(
 ) {
     if (!autocorr || !lpc_coeffs || !reflection_coeffs) return false;
 
-    float* a = (float*)calloc(order + 1, sizeof(float));
-    float* a_prev = (float*)calloc(order + 1, sizeof(float));
+    float* a = (float*)nimcp_calloc(order + 1, sizeof(float));
+    float* a_prev = (float*)nimcp_calloc(order + 1, sizeof(float));
     if (!a || !a_prev) {
-        free(a);
-        free(a_prev);
+        nimcp_free(a);
+        nimcp_free(a_prev);
         return false;
     }
 
@@ -2471,8 +2472,8 @@ extern "C" bool nimcp_speech_cpu_levinson_durbin(
     if (fabsf(error) < 1e-10f) {
         memset(lpc_coeffs, 0, order * sizeof(float));
         memset(reflection_coeffs, 0, order * sizeof(float));
-        free(a);
-        free(a_prev);
+        nimcp_free(a);
+        nimcp_free(a_prev);
         return true;
     }
 
@@ -2500,8 +2501,8 @@ extern "C" bool nimcp_speech_cpu_levinson_durbin(
         lpc_coeffs[i] = a[i + 1];
     }
 
-    free(a);
-    free(a_prev);
+    nimcp_free(a);
+    nimcp_free(a_prev);
     return true;
 }
 

@@ -19,6 +19,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdlib.h>
@@ -663,9 +664,9 @@ bool fin_derivatives_gpu_black_scholes_batch(
     if (err != cudaSuccess) goto cleanup_bs;
 
     // Fill spot prices (all same)
-    h_spots = (float*)malloc(n * sizeof(float));
-    h_rates = (float*)malloc(n * sizeof(float));
-    h_types = (int*)malloc(n * sizeof(int));
+    h_spots = (float*)nimcp_malloc(n * sizeof(float));
+    h_rates = (float*)nimcp_malloc(n * sizeof(float));
+    h_types = (int*)nimcp_malloc(n * sizeof(int));
 
     for (uint32_t i = 0; i < n; i++) {
         h_spots[i] = chain->spot;
@@ -689,9 +690,9 @@ bool fin_derivatives_gpu_black_scholes_batch(
     // Copy results
     cudaMemcpy(prices, d_prices, n * sizeof(float), cudaMemcpyDeviceToHost);
 
-    free(h_spots);
-    free(h_rates);
-    free(h_types);
+    nimcp_free(h_spots);
+    nimcp_free(h_rates);
+    nimcp_free(h_types);
 
     cudaFree(d_spots);
     cudaFree(d_strikes);
@@ -743,11 +744,11 @@ bool fin_derivatives_gpu_greeks_batch(
     uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
 
     // Allocate result arrays if not already allocated
-    if (!result->prices) result->prices = (float*)malloc(n * sizeof(float));
-    if (!result->deltas) result->deltas = (float*)malloc(n * sizeof(float));
-    if (!result->gammas) result->gammas = (float*)malloc(n * sizeof(float));
-    if (!result->thetas) result->thetas = (float*)malloc(n * sizeof(float));
-    if (!result->vegas) result->vegas = (float*)malloc(n * sizeof(float));
+    if (!result->prices) result->prices = (float*)nimcp_malloc(n * sizeof(float));
+    if (!result->deltas) result->deltas = (float*)nimcp_malloc(n * sizeof(float));
+    if (!result->gammas) result->gammas = (float*)nimcp_malloc(n * sizeof(float));
+    if (!result->thetas) result->thetas = (float*)nimcp_malloc(n * sizeof(float));
+    if (!result->vegas) result->vegas = (float*)nimcp_malloc(n * sizeof(float));
 
     result->num_options = n;
 
@@ -798,9 +799,9 @@ bool fin_derivatives_gpu_greeks_batch(
     if (err != cudaSuccess) goto cleanup_greeks;
 
     // Prepare input data
-    h_spots = (float*)malloc(n * sizeof(float));
-    h_rates = (float*)malloc(n * sizeof(float));
-    h_types = (int*)malloc(n * sizeof(int));
+    h_spots = (float*)nimcp_malloc(n * sizeof(float));
+    h_rates = (float*)nimcp_malloc(n * sizeof(float));
+    h_types = (int*)nimcp_malloc(n * sizeof(int));
 
     for (uint32_t i = 0; i < n; i++) {
         h_spots[i] = chain->spot;
@@ -833,9 +834,9 @@ bool fin_derivatives_gpu_greeks_batch(
     cudaMemcpy(result->thetas, d_thetas, n * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(result->vegas, d_vegas, n * sizeof(float), cudaMemcpyDeviceToHost);
 
-    free(h_spots);
-    free(h_rates);
-    free(h_types);
+    nimcp_free(h_spots);
+    nimcp_free(h_rates);
+    nimcp_free(h_types);
 
     cudaFree(d_spots);
     cudaFree(d_strikes);
@@ -928,9 +929,9 @@ bool fin_derivatives_gpu_implied_vol_batch(
     if (err != cudaSuccess) goto cleanup_iv;
 
     // Prepare inputs
-    h_spots = (float*)malloc(n * sizeof(float));
-    h_rates = (float*)malloc(n * sizeof(float));
-    h_types = (int*)malloc(n * sizeof(int));
+    h_spots = (float*)nimcp_malloc(n * sizeof(float));
+    h_rates = (float*)nimcp_malloc(n * sizeof(float));
+    h_types = (int*)nimcp_malloc(n * sizeof(int));
 
     for (uint32_t i = 0; i < n; i++) {
         h_spots[i] = chain->spot;
@@ -957,9 +958,9 @@ bool fin_derivatives_gpu_implied_vol_batch(
 
     cudaMemcpy(implied_vols, d_ivs, n * sizeof(float), cudaMemcpyDeviceToHost);
 
-    free(h_spots);
-    free(h_rates);
-    free(h_types);
+    nimcp_free(h_spots);
+    nimcp_free(h_rates);
+    nimcp_free(h_types);
 
     cudaFree(d_market);
     cudaFree(d_spots);
@@ -1419,7 +1420,7 @@ bool fin_deriv_gpu_american_with_boundary(
     result->base.price = h_price;
 
     // Copy exercise boundary
-    result->exercise_boundary = (float*)malloc(N * sizeof(float));
+    result->exercise_boundary = (float*)nimcp_malloc(N * sizeof(float));
     cudaMemcpy(result->exercise_boundary, d_boundary, N * sizeof(float), cudaMemcpyDeviceToHost);
 
     // Find optimal exercise step
@@ -1510,7 +1511,7 @@ bool fin_deriv_gpu_bermudan(
     bool is_call = (params->base.option_type == FIN_OPT_CALL);
 
     // Build exercise date lookup (on host for simplicity)
-    bool* h_can_exercise = (bool*)calloc(N, sizeof(bool));
+    bool* h_can_exercise = (bool*)nimcp_calloc(N, sizeof(bool));
     for (uint32_t i = 0; i < params->num_exercise_dates; i++) {
         if (params->exercise_dates[i] < N) {
             h_can_exercise[params->exercise_dates[i]] = true;
@@ -1525,7 +1526,7 @@ bool fin_deriv_gpu_bermudan(
 
     err = cudaMalloc(&d_values_a, (N + 1) * sizeof(float));
     if (err != cudaSuccess) {
-        free(h_can_exercise);
+        nimcp_free(h_can_exercise);
         set_deriv_error("Failed to allocate tree buffer A");
         return false;
     }
@@ -1533,7 +1534,7 @@ bool fin_deriv_gpu_bermudan(
     err = cudaMalloc(&d_values_b, (N + 1) * sizeof(float));
     if (err != cudaSuccess) {
         cudaFree(d_values_a);
-        free(h_can_exercise);
+        nimcp_free(h_can_exercise);
         set_deriv_error("Failed to allocate tree buffer B");
         return false;
     }
@@ -1600,7 +1601,7 @@ bool fin_deriv_gpu_bermudan(
     result->optimal_exercise_step = 0;
     result->tree_convergence_error = 0.0f;
 
-    free(h_can_exercise);
+    nimcp_free(h_can_exercise);
     cudaFree(d_values_a);
     cudaFree(d_values_b);
 
@@ -1637,16 +1638,16 @@ bool fin_deriv_gpu_price_chain(
     uint32_t n = chain->num_options;
 
     // Allocate result arrays
-    result->prices = (float*)malloc(n * sizeof(float));
-    result->deltas = (float*)malloc(n * sizeof(float));
-    result->gammas = (float*)malloc(n * sizeof(float));
-    result->thetas = (float*)malloc(n * sizeof(float));
-    result->vegas = (float*)malloc(n * sizeof(float));
+    result->prices = (float*)nimcp_malloc(n * sizeof(float));
+    result->deltas = (float*)nimcp_malloc(n * sizeof(float));
+    result->gammas = (float*)nimcp_malloc(n * sizeof(float));
+    result->thetas = (float*)nimcp_malloc(n * sizeof(float));
+    result->vegas = (float*)nimcp_malloc(n * sizeof(float));
     result->implied_vols = NULL;  // Not computing IV here
     result->num_options = n;
 
     // Create volatility array (all same value)
-    float* vols = (float*)malloc(n * sizeof(float));
+    float* vols = (float*)nimcp_malloc(n * sizeof(float));
     for (uint32_t i = 0; i < n; i++) {
         vols[i] = volatility;
     }
@@ -1654,7 +1655,7 @@ bool fin_deriv_gpu_price_chain(
     // Use existing Greeks batch function
     bool success = fin_derivatives_gpu_greeks_batch(ctx, chain, vols, result);
 
-    free(vols);
+    nimcp_free(vols);
 
     return success;
 }
@@ -1797,18 +1798,18 @@ bool fin_deriv_gpu_greeks_chain(
 
     // Create volatility array
     uint32_t n = chain->num_options;
-    float* vols = (float*)malloc(n * sizeof(float));
+    float* vols = (float*)nimcp_malloc(n * sizeof(float));
     for (uint32_t i = 0; i < n; i++) {
         vols[i] = volatility;
     }
 
     // Allocate only requested Greeks
     result->num_options = n;
-    result->prices = (float*)malloc(n * sizeof(float));
-    result->deltas = (greek_flags & FIN_GREEK_DELTA) ? (float*)malloc(n * sizeof(float)) : NULL;
-    result->gammas = (greek_flags & FIN_GREEK_GAMMA) ? (float*)malloc(n * sizeof(float)) : NULL;
-    result->thetas = (greek_flags & FIN_GREEK_THETA) ? (float*)malloc(n * sizeof(float)) : NULL;
-    result->vegas = (greek_flags & FIN_GREEK_VEGA) ? (float*)malloc(n * sizeof(float)) : NULL;
+    result->prices = (float*)nimcp_malloc(n * sizeof(float));
+    result->deltas = (greek_flags & FIN_GREEK_DELTA) ? (float*)nimcp_malloc(n * sizeof(float)) : NULL;
+    result->gammas = (greek_flags & FIN_GREEK_GAMMA) ? (float*)nimcp_malloc(n * sizeof(float)) : NULL;
+    result->thetas = (greek_flags & FIN_GREEK_THETA) ? (float*)nimcp_malloc(n * sizeof(float)) : NULL;
+    result->vegas = (greek_flags & FIN_GREEK_VEGA) ? (float*)nimcp_malloc(n * sizeof(float)) : NULL;
     result->implied_vols = NULL;
 
     // Use batch computation (it will fill all Greeks, we just allocated selectively)
@@ -1836,7 +1837,7 @@ bool fin_deriv_gpu_greeks_chain(
 
     // Free full result
     fin_option_chain_result_free(&full_result);
-    free(vols);
+    nimcp_free(vols);
 
     return success;
 }
@@ -2043,7 +2044,7 @@ bool fin_deriv_gpu_black_scholes_batch(
     if (err != cudaSuccess) goto cleanup_bs_batch;
 
     // Convert types to int array
-    h_types = (int*)malloc(n * sizeof(int));
+    h_types = (int*)nimcp_malloc(n * sizeof(int));
     for (uint32_t i = 0; i < n; i++) {
         h_types[i] = (types[i] == FIN_OPT_CALL) ? 0 : 1;
     }
@@ -2064,7 +2065,7 @@ bool fin_deriv_gpu_black_scholes_batch(
     // Copy results
     cudaMemcpy(prices, d_prices, n * sizeof(float), cudaMemcpyDeviceToHost);
 
-    free(h_types);
+    nimcp_free(h_types);
     cudaFree(d_spots);
     cudaFree(d_strikes);
     cudaFree(d_rates);
@@ -2090,19 +2091,19 @@ cleanup_bs_batch:
 void fin_deriv_extended_result_free(fin_deriv_extended_result_t* result)
 {
     if (result) {
-        free(result->exercise_boundary);
+        nimcp_free(result->exercise_boundary);
         memset(result, 0, sizeof(*result));
     }
 }
 
 void fin_option_chain_result_free(fin_option_chain_result_t* result) {
     if (result) {
-        free(result->prices);
-        free(result->deltas);
-        free(result->gammas);
-        free(result->thetas);
-        free(result->vegas);
-        free(result->implied_vols);
+        nimcp_free(result->prices);
+        nimcp_free(result->deltas);
+        nimcp_free(result->gammas);
+        nimcp_free(result->thetas);
+        nimcp_free(result->vegas);
+        nimcp_free(result->implied_vols);
         memset(result, 0, sizeof(*result));
     }
 }
@@ -2176,12 +2177,12 @@ bool fin_derivatives_gpu_implied_vol_batch(
 
 void fin_option_chain_result_free(fin_option_chain_result_t* result) {
     if (result) {
-        free(result->prices);
-        free(result->deltas);
-        free(result->gammas);
-        free(result->thetas);
-        free(result->vegas);
-        free(result->implied_vols);
+        nimcp_free(result->prices);
+        nimcp_free(result->deltas);
+        nimcp_free(result->gammas);
+        nimcp_free(result->thetas);
+        nimcp_free(result->vegas);
+        nimcp_free(result->implied_vols);
         memset(result, 0, sizeof(*result));
     }
 }
@@ -2317,7 +2318,7 @@ float fin_deriv_gpu_norm_cdf(float x)
 void fin_deriv_extended_result_free(fin_deriv_extended_result_t* result)
 {
     if (result) {
-        free(result->exercise_boundary);
+        nimcp_free(result->exercise_boundary);
         memset(result, 0, sizeof(*result));
     }
 }

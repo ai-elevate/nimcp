@@ -12,6 +12,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdio.h>
@@ -433,7 +434,7 @@ nimcp_gpu_fuzzy_inference_state_t* nimcp_gpu_fuzzy_state_create_with_capacity(
     }
 
     nimcp_gpu_fuzzy_inference_state_t* state =
-        (nimcp_gpu_fuzzy_inference_state_t*)calloc(1, sizeof(nimcp_gpu_fuzzy_inference_state_t));
+        (nimcp_gpu_fuzzy_inference_state_t*)nimcp_calloc(1, sizeof(nimcp_gpu_fuzzy_inference_state_t));
     if (!state) {
         set_inference_error("Failed to allocate state");
         NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, 0, "Failed to allocate inference state");
@@ -468,7 +469,7 @@ void nimcp_gpu_fuzzy_state_destroy(nimcp_gpu_fuzzy_inference_state_t* state) {
     if (state->d_aggregated) cudaFree(state->d_aggregated);
     if (state->d_outputs) cudaFree(state->d_outputs);
 
-    free(state);
+    nimcp_free(state);
 }
 
 bool nimcp_gpu_fuzzy_state_is_valid(const nimcp_gpu_fuzzy_inference_state_t* state) {

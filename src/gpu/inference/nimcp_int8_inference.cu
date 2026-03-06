@@ -20,6 +20,7 @@
  * @date 2025-12-31
  */
 
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -799,13 +800,13 @@ int nimcp_int8_params_init(nimcp_int8_quant_params_t* params) {
 }
 
 nimcp_int8_quant_params_t* nimcp_int8_params_create_per_channel(int num_channels) {
-    nimcp_int8_quant_params_t* params = (nimcp_int8_quant_params_t*)calloc(1, sizeof(nimcp_int8_quant_params_t));
+    nimcp_int8_quant_params_t* params = (nimcp_int8_quant_params_t*)nimcp_calloc(1, sizeof(nimcp_int8_quant_params_t));
     if (!params) return NULL;
 
     params->granularity = INT8_GRANULARITY_CHANNEL;
     params->num_channels = num_channels;
-    params->channel_scales = (float*)calloc(num_channels, sizeof(float));
-    params->channel_zero_points = (int32_t*)calloc(num_channels, sizeof(int32_t));
+    params->channel_scales = (float*)nimcp_calloc(num_channels, sizeof(float));
+    params->channel_zero_points = (int32_t*)nimcp_calloc(num_channels, sizeof(int32_t));
 
     if (!params->channel_scales || !params->channel_zero_points) {
         nimcp_int8_params_destroy(params);
@@ -822,14 +823,14 @@ nimcp_int8_quant_params_t* nimcp_int8_params_create_per_channel(int num_channels
 }
 
 nimcp_int8_quant_params_t* nimcp_int8_params_create_per_group(int num_elements, int group_size) {
-    nimcp_int8_quant_params_t* params = (nimcp_int8_quant_params_t*)calloc(1, sizeof(nimcp_int8_quant_params_t));
+    nimcp_int8_quant_params_t* params = (nimcp_int8_quant_params_t*)nimcp_calloc(1, sizeof(nimcp_int8_quant_params_t));
     if (!params) return NULL;
 
     params->granularity = INT8_GRANULARITY_GROUP;
     params->group_size = group_size;
     params->num_groups = (num_elements + group_size - 1) / group_size;
-    params->group_scales = (float*)calloc(params->num_groups, sizeof(float));
-    params->group_zero_points = (int32_t*)calloc(params->num_groups, sizeof(int32_t));
+    params->group_scales = (float*)nimcp_calloc(params->num_groups, sizeof(float));
+    params->group_zero_points = (int32_t*)nimcp_calloc(params->num_groups, sizeof(int32_t));
 
     if (!params->group_scales || !params->group_zero_points) {
         nimcp_int8_params_destroy(params);
@@ -847,11 +848,11 @@ nimcp_int8_quant_params_t* nimcp_int8_params_create_per_group(int num_elements, 
 void nimcp_int8_params_destroy(nimcp_int8_quant_params_t* params) {
     if (!params) return;
 
-    if (params->channel_scales) free(params->channel_scales);
-    if (params->channel_zero_points) free(params->channel_zero_points);
-    if (params->group_scales) free(params->group_scales);
-    if (params->group_zero_points) free(params->group_zero_points);
-    free(params);
+    if (params->channel_scales) nimcp_free(params->channel_scales);
+    if (params->channel_zero_points) nimcp_free(params->channel_zero_points);
+    if (params->group_scales) nimcp_free(params->group_scales);
+    if (params->group_zero_points) nimcp_free(params->group_zero_points);
+    nimcp_free(params);
 }
 
 int nimcp_int8_compute_params_from_minmax(
@@ -904,7 +905,7 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_create(
 
     if (!ctx || !dims || rank == 0) return NULL;
 
-    nimcp_int8_tensor_t* tensor = (nimcp_int8_tensor_t*)calloc(1, sizeof(nimcp_int8_tensor_t));
+    nimcp_int8_tensor_t* tensor = (nimcp_int8_tensor_t*)nimcp_calloc(1, sizeof(nimcp_int8_tensor_t));
     if (!tensor) return NULL;
 
     tensor->ctx = ctx;
@@ -912,9 +913,9 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_create(
     tensor->owns_data = true;
 
     // Allocate dims array
-    tensor->dims = (size_t*)malloc(rank * sizeof(size_t));
+    tensor->dims = (size_t*)nimcp_malloc(rank * sizeof(size_t));
     if (!tensor->dims) {
-        free(tensor);
+        nimcp_free(tensor);
         return NULL;
     }
 
@@ -923,8 +924,8 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_create(
     for (size_t i = 0; i < rank; i++) {
         tensor->dims[i] = dims[i];
         if (dims[i] != 0 && tensor->numel > SIZE_MAX / dims[i]) {
-            free(tensor->dims);
-            free(tensor);
+            nimcp_free(tensor->dims);
+            nimcp_free(tensor);
             return NULL;
         }
         tensor->numel *= dims[i];
@@ -932,8 +933,8 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_create(
 
     // Allocate device memory
     if (cudaMalloc(&tensor->data, tensor->numel * sizeof(int8_t)) != cudaSuccess) {
-        free(tensor->dims);
-        free(tensor);
+        nimcp_free(tensor->dims);
+        nimcp_free(tensor);
         return NULL;
     }
 
@@ -968,22 +969,22 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_from_fp32(
     tensor->params.group_zero_points = NULL;
 
     if (params->channel_scales && params->num_channels > 0) {
-        tensor->params.channel_scales = (float*)malloc(params->num_channels * sizeof(float));
+        tensor->params.channel_scales = (float*)nimcp_malloc(params->num_channels * sizeof(float));
         if (tensor->params.channel_scales)
             memcpy(tensor->params.channel_scales, params->channel_scales, params->num_channels * sizeof(float));
     }
     if (params->channel_zero_points && params->num_channels > 0) {
-        tensor->params.channel_zero_points = (int32_t*)malloc(params->num_channels * sizeof(int32_t));
+        tensor->params.channel_zero_points = (int32_t*)nimcp_malloc(params->num_channels * sizeof(int32_t));
         if (tensor->params.channel_zero_points)
             memcpy(tensor->params.channel_zero_points, params->channel_zero_points, params->num_channels * sizeof(int32_t));
     }
     if (params->group_scales && params->num_groups > 0) {
-        tensor->params.group_scales = (float*)malloc(params->num_groups * sizeof(float));
+        tensor->params.group_scales = (float*)nimcp_malloc(params->num_groups * sizeof(float));
         if (tensor->params.group_scales)
             memcpy(tensor->params.group_scales, params->group_scales, params->num_groups * sizeof(float));
     }
     if (params->group_zero_points && params->num_groups > 0) {
-        tensor->params.group_zero_points = (int32_t*)malloc(params->num_groups * sizeof(int32_t));
+        tensor->params.group_zero_points = (int32_t*)nimcp_malloc(params->num_groups * sizeof(int32_t));
         if (tensor->params.group_zero_points)
             memcpy(tensor->params.group_zero_points, params->group_zero_points, params->num_groups * sizeof(int32_t));
     }
@@ -1052,15 +1053,15 @@ void nimcp_int8_tensor_destroy(nimcp_int8_tensor_t* tensor) {
     if (tensor->owns_data && tensor->data) {
         cudaFree(tensor->data);
     }
-    if (tensor->dims) free(tensor->dims);
+    if (tensor->dims) nimcp_free(tensor->dims);
 
     // Free per-channel arrays if allocated
-    if (tensor->params.channel_scales) free(tensor->params.channel_scales);
-    if (tensor->params.channel_zero_points) free(tensor->params.channel_zero_points);
-    if (tensor->params.group_scales) free(tensor->params.group_scales);
-    if (tensor->params.group_zero_points) free(tensor->params.group_zero_points);
+    if (tensor->params.channel_scales) nimcp_free(tensor->params.channel_scales);
+    if (tensor->params.channel_zero_points) nimcp_free(tensor->params.channel_zero_points);
+    if (tensor->params.group_scales) nimcp_free(tensor->params.group_scales);
+    if (tensor->params.group_zero_points) nimcp_free(tensor->params.group_zero_points);
 
-    free(tensor);
+    nimcp_free(tensor);
 }
 
 nimcp_int8_tensor_t* nimcp_int8_tensor_clone(const nimcp_int8_tensor_t* tensor) {
@@ -1085,22 +1086,22 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_clone(const nimcp_int8_tensor_t* tensor) 
     clone->params.group_zero_points = NULL;
 
     if (tensor->params.channel_scales && tensor->params.num_channels > 0) {
-        clone->params.channel_scales = (float*)malloc(tensor->params.num_channels * sizeof(float));
+        clone->params.channel_scales = (float*)nimcp_malloc(tensor->params.num_channels * sizeof(float));
         if (clone->params.channel_scales)
             memcpy(clone->params.channel_scales, tensor->params.channel_scales, tensor->params.num_channels * sizeof(float));
     }
     if (tensor->params.channel_zero_points && tensor->params.num_channels > 0) {
-        clone->params.channel_zero_points = (int32_t*)malloc(tensor->params.num_channels * sizeof(int32_t));
+        clone->params.channel_zero_points = (int32_t*)nimcp_malloc(tensor->params.num_channels * sizeof(int32_t));
         if (clone->params.channel_zero_points)
             memcpy(clone->params.channel_zero_points, tensor->params.channel_zero_points, tensor->params.num_channels * sizeof(int32_t));
     }
     if (tensor->params.group_scales && tensor->params.num_groups > 0) {
-        clone->params.group_scales = (float*)malloc(tensor->params.num_groups * sizeof(float));
+        clone->params.group_scales = (float*)nimcp_malloc(tensor->params.num_groups * sizeof(float));
         if (clone->params.group_scales)
             memcpy(clone->params.group_scales, tensor->params.group_scales, tensor->params.num_groups * sizeof(float));
     }
     if (tensor->params.group_zero_points && tensor->params.num_groups > 0) {
-        clone->params.group_zero_points = (int32_t*)malloc(tensor->params.num_groups * sizeof(int32_t));
+        clone->params.group_zero_points = (int32_t*)nimcp_malloc(tensor->params.num_groups * sizeof(int32_t));
         if (clone->params.group_zero_points)
             memcpy(clone->params.group_zero_points, tensor->params.group_zero_points, tensor->params.num_groups * sizeof(int32_t));
     }
@@ -1124,7 +1125,7 @@ nimcp_int8_calibrator_t* nimcp_int8_calibrator_create(
     if (!ctx) return NULL;
     if (per_channel && num_channels <= 0) return NULL;
 
-    nimcp_int8_calibrator_t* cal = (nimcp_int8_calibrator_t*)calloc(1, sizeof(nimcp_int8_calibrator_t));
+    nimcp_int8_calibrator_t* cal = (nimcp_int8_calibrator_t*)nimcp_calloc(1, sizeof(nimcp_int8_calibrator_t));
     if (!cal) return NULL;
 
     cal->ctx = ctx;
@@ -1138,8 +1139,8 @@ nimcp_int8_calibrator_t* nimcp_int8_calibrator_create(
 
     // Allocate host arrays
     int num_stats = cal->per_channel ? num_channels : 1;
-    cal->running_min = (float*)malloc(num_stats * sizeof(float));
-    cal->running_max = (float*)malloc(num_stats * sizeof(float));
+    cal->running_min = (float*)nimcp_malloc(num_stats * sizeof(float));
+    cal->running_max = (float*)nimcp_malloc(num_stats * sizeof(float));
 
     if (!cal->running_min || !cal->running_max) {
         nimcp_int8_calibrator_destroy(cal);
@@ -1170,7 +1171,7 @@ nimcp_int8_calibrator_t* nimcp_int8_calibrator_create(
     // Allocate histogram if needed
     if (method == INT8_CALIB_HISTOGRAM || method == INT8_CALIB_ENTROPY ||
         method == INT8_CALIB_PERCENTILE) {
-        cal->histogram = (int*)calloc(cal->num_bins, sizeof(int));
+        cal->histogram = (int*)nimcp_calloc(cal->num_bins, sizeof(int));
         if (cudaMalloc(&cal->d_histogram, cal->num_bins * sizeof(int)) != cudaSuccess) {
             nimcp_int8_calibrator_destroy(cal);
             return NULL;
@@ -1184,15 +1185,15 @@ nimcp_int8_calibrator_t* nimcp_int8_calibrator_create(
 void nimcp_int8_calibrator_destroy(nimcp_int8_calibrator_t* cal) {
     if (!cal) return;
 
-    if (cal->running_min) free(cal->running_min);
-    if (cal->running_max) free(cal->running_max);
-    if (cal->histogram) free(cal->histogram);
+    if (cal->running_min) nimcp_free(cal->running_min);
+    if (cal->running_max) nimcp_free(cal->running_max);
+    if (cal->histogram) nimcp_free(cal->histogram);
 
     if (cal->d_running_min) cudaFree(cal->d_running_min);
     if (cal->d_running_max) cudaFree(cal->d_running_max);
     if (cal->d_histogram) cudaFree(cal->d_histogram);
 
-    free(cal);
+    nimcp_free(cal);
 }
 
 void nimcp_int8_calibrator_reset(nimcp_int8_calibrator_t* cal) {
@@ -1336,11 +1337,11 @@ int nimcp_int8_calibrator_compute_entropy(
         // Create reference distribution (original histogram)
         // Create candidate distribution (quantized to 128 bins)
 
-        float* ref_dist = (float*)calloc(threshold_bin, sizeof(float));
-        float* quant_dist = (float*)calloc(128, sizeof(float));
+        float* ref_dist = (float*)nimcp_calloc(threshold_bin, sizeof(float));
+        float* quant_dist = (float*)nimcp_calloc(128, sizeof(float));
         if (!ref_dist || !quant_dist) {
-            free(ref_dist);
-            free(quant_dist);
+            nimcp_free(ref_dist);
+            nimcp_free(quant_dist);
             continue;
         }
 
@@ -1363,10 +1364,10 @@ int nimcp_int8_calibrator_compute_entropy(
         }
 
         // Expand quantized distribution back
-        float* expanded = (float*)calloc(threshold_bin, sizeof(float));
+        float* expanded = (float*)nimcp_calloc(threshold_bin, sizeof(float));
         if (!expanded) {
-            free(ref_dist);
-            free(quant_dist);
+            nimcp_free(ref_dist);
+            nimcp_free(quant_dist);
             continue;
         }
         for (int i = 0; i < threshold_bin; i++) {
@@ -1396,9 +1397,9 @@ int nimcp_int8_calibrator_compute_entropy(
             best_threshold = cal->hist_min + threshold_bin * cal->bin_width;
         }
 
-        free(ref_dist);
-        free(quant_dist);
-        free(expanded);
+        nimcp_free(ref_dist);
+        nimcp_free(quant_dist);
+        nimcp_free(expanded);
     }
 
     // Use symmetric quantization with optimal threshold
@@ -1898,15 +1899,15 @@ nimcp_int8_model_t* nimcp_int8_model_create(
 {
     if (!ctx || num_layers <= 0) return NULL;
 
-    nimcp_int8_model_t* model = (nimcp_int8_model_t*)calloc(1, sizeof(nimcp_int8_model_t));
+    nimcp_int8_model_t* model = (nimcp_int8_model_t*)nimcp_calloc(1, sizeof(nimcp_int8_model_t));
     if (!model) return NULL;
 
     model->ctx = ctx;
     model->num_layers = num_layers;
-    model->layers = (nimcp_int8_layer_t*)calloc(num_layers, sizeof(nimcp_int8_layer_t));
+    model->layers = (nimcp_int8_layer_t*)nimcp_calloc(num_layers, sizeof(nimcp_int8_layer_t));
 
     if (!model->layers) {
-        free(model);
+        nimcp_free(model);
         return NULL;
     }
 
@@ -1929,14 +1930,14 @@ void nimcp_int8_model_destroy(nimcp_int8_model_t* model) {
                 nimcp_int8_tensor_destroy(model->layers[i].bias);
             }
         }
-        free(model->layers);
+        nimcp_free(model->layers);
     }
 
     if (model->workspace) {
         cudaFree(model->workspace);
     }
 
-    free(model);
+    nimcp_free(model);
 }
 
 int nimcp_int8_model_add_layer(
@@ -2206,17 +2207,17 @@ int nimcp_int8_params_init(nimcp_int8_quant_params_t* params) {
 }
 
 nimcp_int8_quant_params_t* nimcp_int8_params_create_per_channel(int num_channels) {
-    nimcp_int8_quant_params_t* params = (nimcp_int8_quant_params_t*)calloc(1, sizeof(nimcp_int8_quant_params_t));
+    nimcp_int8_quant_params_t* params = (nimcp_int8_quant_params_t*)nimcp_calloc(1, sizeof(nimcp_int8_quant_params_t));
     if (!params) return NULL;
     params->granularity = INT8_GRANULARITY_CHANNEL;
     params->num_channels = num_channels;
-    params->channel_scales = (float*)calloc(num_channels, sizeof(float));
-    params->channel_zero_points = (int32_t*)calloc(num_channels, sizeof(int32_t));
+    params->channel_scales = (float*)nimcp_calloc(num_channels, sizeof(float));
+    params->channel_zero_points = (int32_t*)nimcp_calloc(num_channels, sizeof(int32_t));
     return params;
 }
 
 nimcp_int8_quant_params_t* nimcp_int8_params_create_per_group(int num_elements, int group_size) {
-    nimcp_int8_quant_params_t* params = (nimcp_int8_quant_params_t*)calloc(1, sizeof(nimcp_int8_quant_params_t));
+    nimcp_int8_quant_params_t* params = (nimcp_int8_quant_params_t*)nimcp_calloc(1, sizeof(nimcp_int8_quant_params_t));
     if (!params) return NULL;
     params->granularity = INT8_GRANULARITY_GROUP;
     params->group_size = group_size;
@@ -2226,11 +2227,11 @@ nimcp_int8_quant_params_t* nimcp_int8_params_create_per_group(int num_elements, 
 
 void nimcp_int8_params_destroy(nimcp_int8_quant_params_t* params) {
     if (!params) return;
-    if (params->channel_scales) free(params->channel_scales);
-    if (params->channel_zero_points) free(params->channel_zero_points);
-    if (params->group_scales) free(params->group_scales);
-    if (params->group_zero_points) free(params->group_zero_points);
-    free(params);
+    if (params->channel_scales) nimcp_free(params->channel_scales);
+    if (params->channel_zero_points) nimcp_free(params->channel_zero_points);
+    if (params->group_scales) nimcp_free(params->group_scales);
+    if (params->group_zero_points) nimcp_free(params->group_zero_points);
+    nimcp_free(params);
 }
 
 int nimcp_int8_compute_params_from_minmax(float min_val, float max_val, bool symmetric,
@@ -2256,17 +2257,17 @@ int nimcp_int8_compute_params_from_minmax(float min_val, float max_val, bool sym
 nimcp_int8_tensor_t* nimcp_int8_tensor_create(nimcp_gpu_context_t* ctx,
                                                const size_t* dims, size_t rank) {
     (void)ctx;
-    nimcp_int8_tensor_t* tensor = (nimcp_int8_tensor_t*)calloc(1, sizeof(nimcp_int8_tensor_t));
+    nimcp_int8_tensor_t* tensor = (nimcp_int8_tensor_t*)nimcp_calloc(1, sizeof(nimcp_int8_tensor_t));
     if (!tensor) return NULL;
 
     tensor->rank = rank;
-    tensor->dims = (size_t*)malloc(rank * sizeof(size_t));
+    tensor->dims = (size_t*)nimcp_malloc(rank * sizeof(size_t));
     tensor->numel = 1;
     for (size_t i = 0; i < rank; i++) {
         tensor->dims[i] = dims[i];
         tensor->numel *= dims[i];
     }
-    tensor->data = (int8_t*)malloc(tensor->numel);
+    tensor->data = (int8_t*)nimcp_malloc(tensor->numel);
     tensor->owns_data = true;
     nimcp_int8_params_init(&tensor->params);
 
@@ -2288,9 +2289,9 @@ nimcp_gpu_tensor_t* nimcp_int8_tensor_to_fp32(const nimcp_int8_tensor_t* int8_te
 
 void nimcp_int8_tensor_destroy(nimcp_int8_tensor_t* tensor) {
     if (!tensor) return;
-    if (tensor->owns_data && tensor->data) free(tensor->data);
-    if (tensor->dims) free(tensor->dims);
-    free(tensor);
+    if (tensor->owns_data && tensor->data) nimcp_free(tensor->data);
+    if (tensor->dims) nimcp_free(tensor->dims);
+    nimcp_free(tensor);
 }
 
 nimcp_int8_tensor_t* nimcp_int8_tensor_clone(const nimcp_int8_tensor_t* tensor) {
@@ -2309,7 +2310,7 @@ nimcp_int8_calibrator_t* nimcp_int8_calibrator_create(nimcp_gpu_context_t* ctx,
 }
 
 void nimcp_int8_calibrator_destroy(nimcp_int8_calibrator_t* cal) {
-    if (cal) free(cal);
+    if (cal) nimcp_free(cal);
 }
 
 void nimcp_int8_calibrator_reset(nimcp_int8_calibrator_t* cal) {
@@ -2550,7 +2551,7 @@ nimcp_int8_model_t* nimcp_int8_model_create(nimcp_gpu_context_t* ctx, int num_la
 }
 
 void nimcp_int8_model_destroy(nimcp_int8_model_t* model) {
-    if (model) free(model);
+    if (model) nimcp_free(model);
 }
 
 int nimcp_int8_model_add_layer(nimcp_int8_model_t* model, int layer_idx, const char* layer_name,

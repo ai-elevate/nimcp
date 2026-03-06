@@ -341,8 +341,12 @@ bool axon_create_segments(axon_t* axon,
 
     // Calculate direction vector
     float dir[3];
-    for (int i = 0; i < 3; i++) {
-        dir[i] = (axon->end_pos[i] - axon->start_pos[i]) / axon->length;
+    if (axon->length > 0.0F) {
+        for (int i = 0; i < 3; i++) {
+            dir[i] = (axon->end_pos[i] - axon->start_pos[i]) / axon->length;
+        }
+    } else {
+        dir[0] = 1.0F; dir[1] = 0.0F; dir[2] = 0.0F;
     }
 
     // Create alternating node/internode pattern
@@ -1368,10 +1372,14 @@ void axon_network_get_stats(const axon_network_t* network,
     }
 
     if (network->count > 0) {
-        stats->mean_myelination = total_myelination / network->count;
-        stats->mean_velocity = total_velocity / network->count;
-        stats->mean_delay = total_delay / network->count;
-        stats->mean_firing_rate = total_rate / network->count;
+        stats->mean_myelination = total_myelination / (float)network->count;
+        stats->mean_velocity = total_velocity / (float)network->count;
+        stats->mean_delay = total_delay / (float)network->count;
+        stats->mean_firing_rate = total_rate / (float)network->count;
+        if (!isfinite(stats->mean_myelination)) stats->mean_myelination = 0.0F;
+        if (!isfinite(stats->mean_velocity)) stats->mean_velocity = 0.0F;
+        if (!isfinite(stats->mean_delay)) stats->mean_delay = 0.0F;
+        if (!isfinite(stats->mean_firing_rate)) stats->mean_firing_rate = 0.0F;
     }
 
     stats->spikes_in_transit = axon_spike_queue_size(network->spike_queue);

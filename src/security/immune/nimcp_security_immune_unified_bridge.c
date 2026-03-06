@@ -1222,9 +1222,9 @@ int sec_immune_unified_form_memory(
         return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
-    /* Get antigen info */
-    const brain_antigen_t* antigen = brain_immune_get_antigen(bridge->immune_system, antigen_id);
-    if (!antigen) {
+    /* Get antigen info (copy to avoid dangling pointer after immune mutex release) */
+    brain_antigen_t antigen_copy;
+    if (brain_immune_get_antigen_copy(bridge->immune_system, antigen_id, &antigen_copy) != 0) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -1235,11 +1235,11 @@ int sec_immune_unified_form_memory(
 
     cell->memory_id = bridge->next_memory_id++;
     cell->source_antigen_id = antigen_id;
-    memcpy(cell->epitope, antigen->epitope, antigen->epitope_len);
-    cell->epitope_len = antigen->epitope_len;
-    cell->original_source = antigen->source;
-    cell->bbb_threat_type = antigen->bbb_threat_type;
-    cell->confidence = antigen->confidence;
+    memcpy(cell->epitope, antigen_copy.epitope, antigen_copy.epitope_len);
+    cell->epitope_len = antigen_copy.epitope_len;
+    cell->original_source = antigen_copy.source;
+    cell->bbb_threat_type = antigen_copy.bbb_threat_type;
+    cell->confidence = antigen_copy.confidence;
     cell->neutralization_count = 1;
     cell->formation_time = get_current_time_ms();
 
@@ -1602,10 +1602,11 @@ int sec_immune_unified_feedback_false_positive(
     bridge->anomaly_state.false_positives++;
     bridge->stats.false_positives_prevented++;
 
-    /* Get antigen epitope for tolerance learning */
-    const brain_antigen_t* antigen = brain_immune_get_antigen(bridge->immune_system, antigen_id);
-    if (antigen && bridge->config.enable_tolerance_system) {
-        sec_immune_unified_confirm_benign(bridge, antigen->epitope, antigen->epitope_len);
+    /* Get antigen epitope for tolerance learning (copy to avoid dangling pointer) */
+    brain_antigen_t antigen_copy;
+    if (brain_immune_get_antigen_copy(bridge->immune_system, antigen_id, &antigen_copy) == 0
+        && bridge->config.enable_tolerance_system) {
+        sec_immune_unified_confirm_benign(bridge, antigen_copy.epitope, antigen_copy.epitope_len);
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);

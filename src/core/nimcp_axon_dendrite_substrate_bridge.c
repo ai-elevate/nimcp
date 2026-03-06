@@ -830,6 +830,8 @@ int axon_dendrite_substrate_bridge_update(
     bridge->stats.avg_integration_efficiency =
         alpha * bridge->dendrite_effects.integration_efficiency +
         (1.0f - alpha) * bridge->stats.avg_integration_efficiency;
+    if (!isfinite(bridge->stats.avg_integration_efficiency))
+        bridge->stats.avg_integration_efficiency = 0.0f;
 
     /* Clear accumulators periodically */
     static uint64_t last_clear = 0;

@@ -14,6 +14,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <cufft.h>
 #include <math.h>
@@ -130,7 +131,7 @@ nimcp_oscillation_state_t* nimcp_oscillation_state_create(
         return NULL;
     }
 
-    nimcp_oscillation_state_t* state = (nimcp_oscillation_state_t*)malloc(sizeof(nimcp_oscillation_state_t));
+    nimcp_oscillation_state_t* state = (nimcp_oscillation_state_t*)nimcp_malloc(sizeof(nimcp_oscillation_state_t));
     if (!state) {
         LOG_ERROR("Failed to allocate oscillation state");
         return NULL;
@@ -173,7 +174,7 @@ void nimcp_oscillation_state_destroy(nimcp_oscillation_state_t* state)
     if (state->power) nimcp_gpu_tensor_destroy(state->power);
     if (state->fft_buffer) nimcp_gpu_tensor_destroy(state->fft_buffer);
 
-    free(state);
+    nimcp_free(state);
 }
 
 nimcp_phase_sync_state_t* nimcp_phase_sync_state_create(
@@ -186,7 +187,7 @@ nimcp_phase_sync_state_t* nimcp_phase_sync_state_create(
         return NULL;
     }
 
-    nimcp_phase_sync_state_t* state = (nimcp_phase_sync_state_t*)malloc(sizeof(nimcp_phase_sync_state_t));
+    nimcp_phase_sync_state_t* state = (nimcp_phase_sync_state_t*)nimcp_malloc(sizeof(nimcp_phase_sync_state_t));
     if (!state) {
         LOG_ERROR("Failed to allocate phase sync state");
         return NULL;
@@ -224,7 +225,7 @@ void nimcp_phase_sync_state_destroy(nimcp_phase_sync_state_t* state)
     if (state->pli) nimcp_gpu_tensor_destroy(state->pli);
     if (state->sync_matrix) nimcp_gpu_tensor_destroy(state->sync_matrix);
 
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -600,7 +601,7 @@ nimcp_hilbert_ctx_t* nimcp_hilbert_create(nimcp_gpu_context_t* gpu_ctx, int sign
 {
     if (!gpu_ctx || signal_length <= 0) return NULL;
 
-    nimcp_hilbert_ctx_t* ctx = (nimcp_hilbert_ctx_t*)malloc(sizeof(nimcp_hilbert_ctx_t));
+    nimcp_hilbert_ctx_t* ctx = (nimcp_hilbert_ctx_t*)nimcp_malloc(sizeof(nimcp_hilbert_ctx_t));
     if (!ctx) return NULL;
 
     ctx->signal_length = signal_length;
@@ -608,21 +609,21 @@ nimcp_hilbert_ctx_t* nimcp_hilbert_create(nimcp_gpu_context_t* gpu_ctx, int sign
 
     // Create C2C FFT plan
     if (cufftPlan1d(&ctx->fft_plan, signal_length, CUFFT_C2C, 1) != CUFFT_SUCCESS) {
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
     // Allocate workspace
     if (cudaMalloc(&ctx->d_fft_buffer, signal_length * sizeof(cufftComplex)) != cudaSuccess) {
         cufftDestroy(ctx->fft_plan);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
     if (cudaMalloc(&ctx->d_filter, signal_length * sizeof(float)) != cudaSuccess) {
         cudaFree(ctx->d_fft_buffer);
         cufftDestroy(ctx->fft_plan);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -643,7 +644,7 @@ void nimcp_hilbert_destroy(nimcp_hilbert_ctx_t* ctx)
     cudaFree(ctx->d_fft_buffer);
     cudaFree(ctx->d_filter);
     cufftDestroy(ctx->fft_plan);
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 /**
@@ -1684,7 +1685,7 @@ bool nimcp_gpu_power_spectral_density(
 
     // Compute frequency array on host and copy to device
     {
-        float *h_freqs = (float*)malloc(n_freqs * sizeof(float));
+        float *h_freqs = (float*)nimcp_malloc(n_freqs * sizeof(float));
         if (!h_freqs) {
             LOG_ERROR("Failed to allocate host frequency array");
             goto cleanup_psd;
@@ -1694,11 +1695,11 @@ bool nimcp_gpu_power_spectral_density(
             h_freqs[k] = k * freq_resolution;
         }
         if (cudaMemcpy(freqs->data, h_freqs, n_freqs * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
-            free(h_freqs);
+            nimcp_free(h_freqs);
             LOG_ERROR("Failed to copy frequency array to device");
             goto cleanup_psd;
         }
-        free(h_freqs);
+        nimcp_free(h_freqs);
     }
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -1988,7 +1989,7 @@ bool nimcp_gpu_coherence_matrix(
     }
 
     // Compute pairwise coherence
-    float *h_coh_matrix = (float*)malloc(n_channels * n_channels * sizeof(float));
+    float *h_coh_matrix = (float*)nimcp_malloc(n_channels * n_channels * sizeof(float));
 
     for (uint32_t i = 0; i < n_channels; i++) {
         // Copy channel i
@@ -2014,7 +2015,7 @@ bool nimcp_gpu_coherence_matrix(
             }
 
             // Average coherence across frequency band
-            float *h_coh_spectrum = (float*)malloc(coh_dims[0] * sizeof(float));
+            float *h_coh_spectrum = (float*)nimcp_malloc(coh_dims[0] * sizeof(float));
             NIMCP_CUDA_RECOVER(cudaMemcpy(h_coh_spectrum, coh_spectrum->data,
                                   coh_dims[0] * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
@@ -2033,7 +2034,7 @@ bool nimcp_gpu_coherence_matrix(
             h_coh_matrix[i * n_channels + j] = avg_coh;
             h_coh_matrix[j * n_channels + i] = avg_coh;  // Symmetric
 
-            free(h_coh_spectrum);
+            nimcp_free(h_coh_spectrum);
         }
     }
 
@@ -2042,7 +2043,7 @@ bool nimcp_gpu_coherence_matrix(
                           n_channels * n_channels * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Cleanup
-    free(h_coh_matrix);
+    nimcp_free(h_coh_matrix);
     nimcp_gpu_tensor_destroy(signal1);
     nimcp_gpu_tensor_destroy(signal2);
     nimcp_gpu_tensor_destroy(coh_spectrum);
@@ -2307,7 +2308,7 @@ bool nimcp_gpu_relative_band_power(
     params.n_samples = signal->numel;
 
     // Allocate temporary for individual band powers
-    float *h_band_powers = (float*)malloc(n_bands * sizeof(float));
+    float *h_band_powers = (float*)nimcp_malloc(n_bands * sizeof(float));
     if (!h_band_powers) {
         LOG_ERROR("Failed to allocate band powers array");
         return false;
@@ -2319,7 +2320,7 @@ bool nimcp_gpu_relative_band_power(
     nimcp_gpu_tensor_t* band_power = nimcp_gpu_tensor_create(ctx, power_dims, 1, NIMCP_GPU_PRECISION_FP32);
 
     if (!band_power) {
-        free(h_band_powers);
+        nimcp_free(h_band_powers);
         return false;
     }
 
@@ -2335,7 +2336,7 @@ bool nimcp_gpu_relative_band_power(
 
         if (cudaMemcpy(&h_band_powers[i], band_power->data, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
             LOG_ERROR("Failed to copy band power from device");
-            free(h_band_powers);
+            nimcp_free(h_band_powers);
             nimcp_gpu_tensor_destroy(band_power);
             return false;
         }
@@ -2352,13 +2353,13 @@ bool nimcp_gpu_relative_band_power(
     // Copy to output
     if (cudaMemcpy(relative_power->data, h_band_powers, n_bands * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
         LOG_ERROR("Failed to copy relative power to device");
-        free(h_band_powers);
+        nimcp_free(h_band_powers);
         nimcp_gpu_tensor_destroy(band_power);
         return false;
     }
 
     // Cleanup
-    free(h_band_powers);
+    nimcp_free(h_band_powers);
     nimcp_gpu_tensor_destroy(band_power);
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -2388,7 +2389,7 @@ bool nimcp_gpu_plv_matrix(
     uint32_t n_samples = (uint32_t)phases->dims[1];
 
     // Allocate host PLV matrix
-    float *h_plv_matrix = (float*)malloc(n_channels * n_channels * sizeof(float));
+    float *h_plv_matrix = (float*)nimcp_malloc(n_channels * n_channels * sizeof(float));
 
     // Create temporary tensors for channel phases
     size_t phase_dims[] = {n_samples};
@@ -2396,7 +2397,7 @@ bool nimcp_gpu_plv_matrix(
     nimcp_gpu_tensor_t* phase2 = nimcp_gpu_tensor_create(ctx, phase_dims, 1, NIMCP_GPU_PRECISION_FP32);
 
     if (!phase1 || !phase2) {
-        free(h_plv_matrix);
+        nimcp_free(h_plv_matrix);
         if (phase1) nimcp_gpu_tensor_destroy(phase1);
         if (phase2) nimcp_gpu_tensor_destroy(phase2);
         return false;
@@ -2437,7 +2438,7 @@ bool nimcp_gpu_plv_matrix(
                           n_channels * n_channels * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Cleanup
-    free(h_plv_matrix);
+    nimcp_free(h_plv_matrix);
     nimcp_gpu_tensor_destroy(phase1);
     nimcp_gpu_tensor_destroy(phase2);
 
@@ -2469,7 +2470,7 @@ bool nimcp_gpu_pac_comodulogram(
     }
 
     // Allocate comodulogram on host
-    float *h_comodulogram = (float*)calloc(n_phase_freqs * n_amp_freqs, sizeof(float));
+    float *h_comodulogram = (float*)nimcp_calloc(n_phase_freqs * n_amp_freqs, sizeof(float));
 
     // Create PAC params template
     nimcp_pac_params_t pac_params = nimcp_pac_default_params();
@@ -2479,7 +2480,7 @@ bool nimcp_gpu_pac_comodulogram(
     nimcp_gpu_tensor_t* pac_val = nimcp_gpu_tensor_create(ctx, pac_dims, 1, NIMCP_GPU_PRECISION_FP32);
 
     if (!pac_val) {
-        free(h_comodulogram);
+        nimcp_free(h_comodulogram);
         return false;
     }
 
@@ -2509,7 +2510,7 @@ bool nimcp_gpu_pac_comodulogram(
                           n_phase_freqs * n_amp_freqs * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Cleanup
-    free(h_comodulogram);
+    nimcp_free(h_comodulogram);
     nimcp_gpu_tensor_destroy(pac_val);
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);

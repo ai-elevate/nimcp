@@ -17,6 +17,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <cusolverDn.h>
@@ -765,11 +766,11 @@ nimcp_mv_result_t nimcp_pca_fit_gpu(
     pca->n_features = n_features;
     pca->n_samples_seen = n_samples;
 
-    pca->mean = (float*)malloc(n_features * sizeof(float));
-    pca->components = (float*)malloc(n_comp * n_features * sizeof(float));
-    pca->explained_variance = (float*)malloc(n_comp * sizeof(float));
-    pca->explained_variance_ratio = (float*)malloc(n_comp * sizeof(float));
-    pca->singular_values = (float*)malloc(n_comp * sizeof(float));
+    pca->mean = (float*)nimcp_malloc(n_features * sizeof(float));
+    pca->components = (float*)nimcp_malloc(n_comp * n_features * sizeof(float));
+    pca->explained_variance = (float*)nimcp_malloc(n_comp * sizeof(float));
+    pca->explained_variance_ratio = (float*)nimcp_malloc(n_comp * sizeof(float));
+    pca->singular_values = (float*)nimcp_malloc(n_comp * sizeof(float));
 
     if (!pca->mean || !pca->components || !pca->explained_variance ||
         !pca->explained_variance_ratio || !pca->singular_values) {
@@ -798,7 +799,7 @@ nimcp_mv_result_t nimcp_pca_fit_gpu(
     CUDA_CHECK_MV(cudaMemcpy(pca->mean, d_mean, n_features * sizeof(float),
                                 cudaMemcpyDeviceToHost));
 
-    float* X_centered = (float*)malloc(X_size);
+    float* X_centered = (float*)nimcp_malloc(X_size);
     if (!X_centered) {
         cudaFree(d_X); cudaFree(d_mean); cudaFree(d_X_centered);
         return NIMCP_MV_ERROR_MEMORY;
@@ -806,12 +807,12 @@ nimcp_mv_result_t nimcp_pca_fit_gpu(
     CUDA_CHECK_MV(cudaMemcpy(X_centered, d_X_centered, X_size, cudaMemcpyDeviceToHost));
 
     uint32_t min_mn = (n_samples < n_features) ? n_samples : n_features;
-    float* U = (float*)malloc(n_samples * min_mn * sizeof(float));
-    float* S = (float*)malloc(min_mn * sizeof(float));
-    float* Vt = (float*)malloc(min_mn * n_features * sizeof(float));
+    float* U = (float*)nimcp_malloc(n_samples * min_mn * sizeof(float));
+    float* S = (float*)nimcp_malloc(min_mn * sizeof(float));
+    float* Vt = (float*)nimcp_malloc(min_mn * n_features * sizeof(float));
 
     if (!U || !S || !Vt) {
-        free(X_centered); free(U); free(S); free(Vt);
+        nimcp_free(X_centered); nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
         cudaFree(d_X); cudaFree(d_mean); cudaFree(d_X_centered);
         return NIMCP_MV_ERROR_MEMORY;
     }
@@ -819,7 +820,7 @@ nimcp_mv_result_t nimcp_pca_fit_gpu(
     nimcp_mv_result_t res = nimcp_mv_svd_gpu(X_centered, n_samples, n_features,
                                               U, S, Vt, false, gpu_ctx);
     if (res != NIMCP_MV_OK) {
-        free(X_centered); free(U); free(S); free(Vt);
+        nimcp_free(X_centered); nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
         cudaFree(d_X); cudaFree(d_mean); cudaFree(d_X_centered);
         return res;
     }
@@ -849,7 +850,7 @@ nimcp_mv_result_t nimcp_pca_fit_gpu(
     pca->noise_variance = (min_mn > n_comp) ?
         noise_var / ((float)(n_samples - 1) * (min_mn - n_comp)) : 0.0f;
 
-    free(X_centered); free(U); free(S); free(Vt);
+    nimcp_free(X_centered); nimcp_free(U); nimcp_free(S); nimcp_free(Vt);
     cudaFree(d_X); cudaFree(d_mean); cudaFree(d_X_centered);
 
     pca->gpu_ctx = gpu_ctx;

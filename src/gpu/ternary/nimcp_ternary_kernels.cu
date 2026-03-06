@@ -18,6 +18,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <math.h>
@@ -647,7 +648,7 @@ nimcp_ternary_tensor_t* nimcp_ternary_tensor_create(
         return NULL;
     }
 
-    nimcp_ternary_tensor_t* tensor = (nimcp_ternary_tensor_t*)malloc(sizeof(nimcp_ternary_tensor_t));
+    nimcp_ternary_tensor_t* tensor = (nimcp_ternary_tensor_t*)nimcp_malloc(sizeof(nimcp_ternary_tensor_t));
     if (!tensor) {
         LOG_ERROR("Failed to allocate ternary tensor");
         return NULL;
@@ -661,9 +662,9 @@ nimcp_ternary_tensor_t* nimcp_ternary_tensor_create(
     tensor->owns_data = true;
 
     // Copy dimensions
-    tensor->dims = (int64_t*)malloc(rank * sizeof(int64_t));
+    tensor->dims = (int64_t*)nimcp_malloc(rank * sizeof(int64_t));
     if (!tensor->dims) {
-        free(tensor);
+        nimcp_free(tensor);
         return NULL;
     }
     memcpy(tensor->dims, dims, rank * sizeof(int64_t));
@@ -687,8 +688,8 @@ nimcp_ternary_tensor_t* nimcp_ternary_tensor_create(
     cudaError_t err = cudaMalloc(&tensor->data, tensor->packed_size);
     if (err != cudaSuccess) {
         LOG_ERROR("CUDA malloc failed for ternary tensor: %s", cudaGetErrorString(err));
-        free(tensor->dims);
-        free(tensor);
+        nimcp_free(tensor->dims);
+        nimcp_free(tensor);
         return NULL;
     }
 
@@ -710,10 +711,10 @@ void nimcp_ternary_tensor_destroy(nimcp_ternary_tensor_t* tensor)
     }
 
     if (tensor->dims) {
-        free(tensor->dims);
+        nimcp_free(tensor->dims);
     }
 
-    free(tensor);
+    nimcp_free(tensor);
 }
 
 bool nimcp_ternary_tensor_is_valid(const nimcp_ternary_tensor_t* tensor)
@@ -1291,7 +1292,7 @@ nimcp_ternary_sparse_t* nimcp_ternary_sparse_from_dense(
     int cols = (int)dense->dims[1];
 
     // Allocate sparse structure
-    nimcp_ternary_sparse_t* sparse = (nimcp_ternary_sparse_t*)malloc(sizeof(nimcp_ternary_sparse_t));
+    nimcp_ternary_sparse_t* sparse = (nimcp_ternary_sparse_t*)nimcp_malloc(sizeof(nimcp_ternary_sparse_t));
     if (!sparse) return NULL;
 
     sparse->rows = rows;
@@ -1306,8 +1307,8 @@ nimcp_ternary_sparse_t* nimcp_ternary_sparse_from_dense(
         (const int8_t*)dense->data, d_row_counts, rows, cols);
 
     // Compute row pointers (prefix sum)
-    int* h_row_counts = (int*)malloc(rows * sizeof(int));
-    int* h_row_ptrs = (int*)malloc((rows + 1) * sizeof(int));
+    int* h_row_counts = (int*)nimcp_malloc(rows * sizeof(int));
+    int* h_row_ptrs = (int*)nimcp_malloc((rows + 1) * sizeof(int));
     cudaMemcpy(h_row_counts, d_row_counts, rows * sizeof(int), cudaMemcpyDeviceToHost);
 
     h_row_ptrs[0] = 0;
@@ -1332,8 +1333,8 @@ nimcp_ternary_sparse_t* nimcp_ternary_sparse_from_dense(
 
     sparse->sparsity = 1.0f - (float)sparse->nnz / (float)(rows * cols);
 
-    free(h_row_counts);
-    free(h_row_ptrs);
+    nimcp_free(h_row_counts);
+    nimcp_free(h_row_ptrs);
     cudaFree(d_row_counts);
 
     return sparse;
@@ -1347,7 +1348,7 @@ void nimcp_ternary_sparse_destroy(nimcp_ternary_sparse_t* sparse)
     if (sparse->col_indices) cudaFree(sparse->col_indices);
     if (sparse->signs) cudaFree(sparse->signs);
 
-    free(sparse);
+    nimcp_free(sparse);
 }
 
 nimcp_gpu_tensor_t* nimcp_ternary_sparse_gemv(

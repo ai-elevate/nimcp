@@ -29,6 +29,7 @@
 
 // GPU Recovery Integration
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Recovery Initialization Helper
@@ -301,7 +302,7 @@ nimcp_trt_network_def_t* nimcp_trt_network_create(const char* name, int num_laye
         return NULL;
     }
 
-    nimcp_trt_network_def_t* network = (nimcp_trt_network_def_t*)calloc(1, sizeof(nimcp_trt_network_def_t));
+    nimcp_trt_network_def_t* network = (nimcp_trt_network_def_t*)nimcp_calloc(1, sizeof(nimcp_trt_network_def_t));
     if (!network) return NULL;
 
     if (name) {
@@ -309,9 +310,9 @@ nimcp_trt_network_def_t* nimcp_trt_network_create(const char* name, int num_laye
     }
 
     network->num_layers = num_layers;
-    network->layers = (nimcp_trt_layer_def_t*)calloc(num_layers, sizeof(nimcp_trt_layer_def_t));
+    network->layers = (nimcp_trt_layer_def_t*)nimcp_calloc(num_layers, sizeof(nimcp_trt_layer_def_t));
     if (!network->layers) {
-        free(network);
+        nimcp_free(network);
         return NULL;
     }
 
@@ -326,29 +327,29 @@ nimcp_trt_network_def_t* nimcp_trt_network_create(const char* name, int num_laye
 void nimcp_trt_network_destroy(nimcp_trt_network_def_t* network) {
     if (!network) return;
 
-    if (network->layers) free(network->layers);
+    if (network->layers) nimcp_free(network->layers);
     if (network->input_names) {
         for (int i = 0; i < network->num_inputs; i++) {
-            if (network->input_names[i]) free(network->input_names[i]);
+            if (network->input_names[i]) nimcp_free(network->input_names[i]);
         }
-        free(network->input_names);
+        nimcp_free(network->input_names);
     }
     if (network->input_dims) {
         for (int i = 0; i < network->num_inputs; i++) {
-            if (network->input_dims[i]) free(network->input_dims[i]);
+            if (network->input_dims[i]) nimcp_free(network->input_dims[i]);
         }
-        free(network->input_dims);
+        nimcp_free(network->input_dims);
     }
-    if (network->input_ranks) free(network->input_ranks);
+    if (network->input_ranks) nimcp_free(network->input_ranks);
     if (network->output_names) {
         for (int i = 0; i < network->num_outputs; i++) {
-            if (network->output_names[i]) free(network->output_names[i]);
+            if (network->output_names[i]) nimcp_free(network->output_names[i]);
         }
-        free(network->output_names);
+        nimcp_free(network->output_names);
     }
-    if (network->calibration_data) free(network->calibration_data);
+    if (network->calibration_data) nimcp_free(network->calibration_data);
 
-    free(network);
+    nimcp_free(network);
 }
 
 int nimcp_trt_network_add_input(
@@ -362,15 +363,15 @@ int nimcp_trt_network_add_input(
     int idx = network->num_inputs;
 
     // Reallocate arrays
-    network->input_names = (char**)realloc(network->input_names,
+    network->input_names = (char**)nimcp_realloc(network->input_names,
                                            (idx + 1) * sizeof(char*));
-    network->input_dims = (int**)realloc(network->input_dims,
+    network->input_dims = (int**)nimcp_realloc(network->input_dims,
                                          (idx + 1) * sizeof(int*));
-    network->input_ranks = (int*)realloc(network->input_ranks,
+    network->input_ranks = (int*)nimcp_realloc(network->input_ranks,
                                          (idx + 1) * sizeof(int));
 
     network->input_names[idx] = strdup(name);
-    network->input_dims[idx] = (int*)malloc(rank * sizeof(int));
+    network->input_dims[idx] = (int*)nimcp_malloc(rank * sizeof(int));
     memcpy(network->input_dims[idx], dims, rank * sizeof(int));
     network->input_ranks[idx] = rank;
     network->num_inputs++;
@@ -386,7 +387,7 @@ int nimcp_trt_network_add_output(
 
     int idx = network->num_outputs;
 
-    network->output_names = (char**)realloc(network->output_names,
+    network->output_names = (char**)nimcp_realloc(network->output_names,
                                             (idx + 1) * sizeof(char*));
     network->output_names[idx] = strdup(name);
     network->num_outputs++;
@@ -421,11 +422,11 @@ int nimcp_trt_network_add_dense(
 
     // Copy weights
     size_t weight_size = (size_t)in_features * out_features * sizeof(float);
-    layer->weights = malloc(weight_size);
+    layer->weights = nimcp_malloc(weight_size);
     memcpy(layer->weights, weights, weight_size);
 
     if (bias) {
-        layer->bias = malloc(out_features * sizeof(float));
+        layer->bias = nimcp_malloc(out_features * sizeof(float));
         memcpy(layer->bias, bias, out_features * sizeof(float));
     }
 
@@ -471,11 +472,11 @@ int nimcp_trt_network_add_conv2d(
     layer->activation = activation;
 
     size_t weight_size = (size_t)out_channels * in_channels * kernel_h * kernel_w * sizeof(float);
-    layer->weights = malloc(weight_size);
+    layer->weights = nimcp_malloc(weight_size);
     memcpy(layer->weights, weights, weight_size);
 
     if (bias) {
-        layer->bias = malloc(out_channels * sizeof(float));
+        layer->bias = nimcp_malloc(out_channels * sizeof(float));
         memcpy(layer->bias, bias, out_channels * sizeof(float));
     }
 
@@ -555,7 +556,7 @@ nimcp_trt_exporter_t* nimcp_trt_exporter_create(
         return NULL;
     }
 
-    nimcp_trt_exporter_t* exporter = (nimcp_trt_exporter_t*)calloc(1, sizeof(nimcp_trt_exporter_t));
+    nimcp_trt_exporter_t* exporter = (nimcp_trt_exporter_t*)nimcp_calloc(1, sizeof(nimcp_trt_exporter_t));
     if (!exporter) return NULL;
 
     exporter->ctx = ctx;
@@ -565,7 +566,7 @@ nimcp_trt_exporter_t* nimcp_trt_exporter_create(
     exporter->builder = createInferBuilder(gLogger);
     if (!exporter->builder) {
         LOG_ERROR("Failed to create TensorRT builder");
-        free(exporter);
+        nimcp_free(exporter);
         return NULL;
     }
 
@@ -575,7 +576,7 @@ nimcp_trt_exporter_t* nimcp_trt_exporter_create(
     if (!exporter->network) {
         LOG_ERROR("Failed to create TensorRT network");
         exporter->builder->destroy();
-        free(exporter);
+        nimcp_free(exporter);
         return NULL;
     }
 
@@ -585,7 +586,7 @@ nimcp_trt_exporter_t* nimcp_trt_exporter_create(
         LOG_ERROR("Failed to create TensorRT builder config");
         exporter->network->destroy();
         exporter->builder->destroy();
-        free(exporter);
+        nimcp_free(exporter);
         return NULL;
     }
 
@@ -640,7 +641,7 @@ void nimcp_trt_exporter_destroy(nimcp_trt_exporter_t* exporter) {
     if (exporter->builder) {
         exporter->builder->destroy();
     }
-    free(exporter);
+    nimcp_free(exporter);
 }
 
 // Helper function to convert NIMCP activation to TensorRT
@@ -914,7 +915,7 @@ int nimcp_trt_export_int8_model(
 
         // Dequantize weights to FP32 for TensorRT
         size_t numel = layer->weight->numel;
-        float* fp32_weights = (float*)malloc(numel * sizeof(float));
+        float* fp32_weights = (float*)nimcp_malloc(numel * sizeof(float));
 
         // Simple dequantization
         for (size_t j = 0; j < numel; j++) {
@@ -935,7 +936,7 @@ int nimcp_trt_export_int8_model(
             );
         }
 
-        free(fp32_weights);
+        nimcp_free(fp32_weights);
     }
 
     // Mark output
@@ -1199,7 +1200,7 @@ nimcp_trt_network_def_t* nimcp_trt_network_create(const char* name, int num_laye
 }
 
 void nimcp_trt_network_destroy(nimcp_trt_network_def_t* network) {
-    if (network) free(network);
+    if (network) nimcp_free(network);
 }
 
 int nimcp_trt_network_add_input(nimcp_trt_network_def_t* network, const char* name,
@@ -1261,7 +1262,7 @@ nimcp_trt_exporter_t* nimcp_trt_exporter_create(nimcp_gpu_context_t* ctx,
 }
 
 void nimcp_trt_exporter_destroy(nimcp_trt_exporter_t* exporter) {
-    if (exporter) free(exporter);
+    if (exporter) nimcp_free(exporter);
 }
 
 int nimcp_trt_export(nimcp_trt_exporter_t* exporter, const nimcp_trt_network_def_t* network,

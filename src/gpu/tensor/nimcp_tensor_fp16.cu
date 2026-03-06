@@ -33,6 +33,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "TENSOR_FP16"
 
@@ -596,7 +597,7 @@ nimcp_mp_tensor_t* nimcp_mp_tensor_create(
         return NULL;
     }
 
-    nimcp_mp_tensor_t* tensor = (nimcp_mp_tensor_t*)calloc(1, sizeof(nimcp_mp_tensor_t));
+    nimcp_mp_tensor_t* tensor = (nimcp_mp_tensor_t*)nimcp_calloc(1, sizeof(nimcp_mp_tensor_t));
     if (!tensor) {
         LOG_ERROR("Failed to allocate mp tensor structure");
         return NULL;
@@ -610,7 +611,7 @@ nimcp_mp_tensor_t* nimcp_mp_tensor_create(
     tensor->fp16_data = nimcp_gpu_tensor_create(ctx, fp32_tensor->dims,
                                                  fp32_tensor->ndim, precision);
     if (!tensor->fp16_data) {
-        free(tensor);
+        nimcp_free(tensor);
         return NULL;
     }
     tensor->owns_compute = true;
@@ -632,7 +633,7 @@ nimcp_mp_tensor_t* nimcp_mp_tensor_create(
     if (err != cudaSuccess) {
         LOG_ERROR("Conversion kernel failed: %s", cudaGetErrorString(err));
         nimcp_gpu_tensor_destroy(tensor->fp16_data);
-        free(tensor);
+        nimcp_free(tensor);
         return NULL;
     }
 
@@ -641,7 +642,7 @@ nimcp_mp_tensor_t* nimcp_mp_tensor_create(
         tensor->fp32_master = nimcp_gpu_tensor_clone(fp32_tensor);
         if (!tensor->fp32_master) {
             nimcp_gpu_tensor_destroy(tensor->fp16_data);
-            free(tensor);
+            nimcp_free(tensor);
             return NULL;
         }
         tensor->owns_master = true;
@@ -669,7 +670,7 @@ nimcp_mp_tensor_t* nimcp_mp_tensor_create_empty(
         return NULL;
     }
 
-    nimcp_mp_tensor_t* tensor = (nimcp_mp_tensor_t*)calloc(1, sizeof(nimcp_mp_tensor_t));
+    nimcp_mp_tensor_t* tensor = (nimcp_mp_tensor_t*)nimcp_calloc(1, sizeof(nimcp_mp_tensor_t));
     if (!tensor) return NULL;
 
     tensor->compute_dtype = compute_dtype;
@@ -678,7 +679,7 @@ nimcp_mp_tensor_t* nimcp_mp_tensor_create_empty(
     nimcp_gpu_precision_t precision = mp_dtype_to_gpu_precision(compute_dtype);
     tensor->fp16_data = nimcp_gpu_tensor_create(ctx, dims, ndim, precision);
     if (!tensor->fp16_data) {
-        free(tensor);
+        nimcp_free(tensor);
         return NULL;
     }
     tensor->owns_compute = true;
@@ -687,7 +688,7 @@ nimcp_mp_tensor_t* nimcp_mp_tensor_create_empty(
         tensor->fp32_master = nimcp_gpu_tensor_create(ctx, dims, ndim, NIMCP_GPU_PRECISION_FP32);
         if (!tensor->fp32_master) {
             nimcp_gpu_tensor_destroy(tensor->fp16_data);
-            free(tensor);
+            nimcp_free(tensor);
             return NULL;
         }
         tensor->owns_master = true;
@@ -706,7 +707,7 @@ void nimcp_mp_tensor_destroy(nimcp_mp_tensor_t* tensor)
     if (tensor->owns_master && tensor->fp32_master) {
         nimcp_gpu_tensor_destroy(tensor->fp32_master);
     }
-    free(tensor);
+    nimcp_free(tensor);
 }
 
 bool nimcp_mp_tensor_sync_compute(nimcp_gpu_context_t* ctx, nimcp_mp_tensor_t* tensor)
@@ -775,7 +776,7 @@ nimcp_loss_scaler_t* nimcp_loss_scaler_create_custom(
     int growth_interval,
     bool dynamic)
 {
-    nimcp_loss_scaler_t* scaler = (nimcp_loss_scaler_t*)calloc(1, sizeof(nimcp_loss_scaler_t));
+    nimcp_loss_scaler_t* scaler = (nimcp_loss_scaler_t*)nimcp_calloc(1, sizeof(nimcp_loss_scaler_t));
     if (!scaler) return NULL;
 
     scaler->scale = init_scale;
@@ -792,7 +793,7 @@ nimcp_loss_scaler_t* nimcp_loss_scaler_create_custom(
 
 void nimcp_loss_scaler_destroy(nimcp_loss_scaler_t* scaler)
 {
-    free(scaler);
+    nimcp_free(scaler);
 }
 
 float nimcp_loss_scaler_scale(nimcp_loss_scaler_t* scaler, float loss)
@@ -899,7 +900,7 @@ nimcp_amp_context_t* nimcp_amp_create(
 
     if (!gpu_ctx) return NULL;
 
-    nimcp_amp_context_t* ctx = (nimcp_amp_context_t*)calloc(1, sizeof(nimcp_amp_context_t));
+    nimcp_amp_context_t* ctx = (nimcp_amp_context_t*)nimcp_calloc(1, sizeof(nimcp_amp_context_t));
     if (!ctx) return NULL;
 
     ctx->gpu_ctx = gpu_ctx;
@@ -937,7 +938,7 @@ void nimcp_amp_destroy(nimcp_amp_context_t* ctx)
     if (ctx->scaler) {
         nimcp_loss_scaler_destroy(ctx->scaler);
     }
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 bool nimcp_amp_autocast_enter(nimcp_amp_context_t* ctx)

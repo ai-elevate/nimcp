@@ -38,6 +38,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "BROCA_GPU"
 
@@ -432,7 +433,7 @@ extern "C" broca_gpu_context_t* broca_gpu_create(
         return NULL;
     }
 
-    broca_gpu_context_t* ctx = (broca_gpu_context_t*)calloc(1, sizeof(broca_gpu_context_t));
+    broca_gpu_context_t* ctx = (broca_gpu_context_t*)nimcp_calloc(1, sizeof(broca_gpu_context_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate Broca GPU context");
         return NULL;
@@ -445,7 +446,7 @@ extern "C" broca_gpu_context_t* broca_gpu_create(
     cudaError_t err = cudaStreamCreate(&ctx->stream);
     if (err != cudaSuccess) {
         LOG_ERROR("Failed to create CUDA stream: %s", cudaGetErrorString(err));
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -455,7 +456,7 @@ extern "C" broca_gpu_context_t* broca_gpu_create(
     if (err != cudaSuccess) {
         LOG_ERROR("Failed to allocate GPU lexicon: %s", cudaGetErrorString(err));
         cudaStreamDestroy(ctx->stream);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
     ctx->lexicon_capacity = ctx->config.max_lexicon_size;
@@ -527,7 +528,7 @@ extern "C" void broca_gpu_destroy(broca_gpu_context_t* ctx) {
     cudaFree(ctx->d_temp_boundaries);
     cudaFree(ctx->d_temp_counts);
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_DEBUG("GPU Broca context destroyed");
 }
 
@@ -726,7 +727,7 @@ extern "C" bool broca_gpu_encode_phonemes(
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Download boundaries to get total count
-    uint32_t* h_boundaries = (uint32_t*)malloc(word_count * sizeof(uint32_t));
+    uint32_t* h_boundaries = (uint32_t*)nimcp_malloc(word_count * sizeof(uint32_t));
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_boundaries, ctx->d_temp_boundaries,
                                word_count * sizeof(uint32_t),
                                cudaMemcpyDeviceToHost, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
@@ -735,7 +736,7 @@ extern "C" bool broca_gpu_encode_phonemes(
     uint32_t total_phonemes = h_boundaries[word_count - 1];
     if (total_phonemes > buffer_size) {
         LOG_ERROR("Phoneme buffer overflow: %u > %u", total_phonemes, buffer_size);
-        free(h_boundaries);
+        nimcp_free(h_boundaries);
         return false;
     }
 
@@ -750,7 +751,7 @@ extern "C" bool broca_gpu_encode_phonemes(
         memcpy(word_boundaries, h_boundaries, word_count * sizeof(uint32_t));
     }
 
-    free(h_boundaries);
+    nimcp_free(h_boundaries);
 
     ctx->stats.phonemes_encoded += total_phonemes;
     return true;
@@ -919,14 +920,14 @@ extern "C" bool broca_gpu_wm_push(
                                cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Set activations
-    float* h_activations = (float*)malloc(copy_count * sizeof(float));
+    float* h_activations = (float*)nimcp_malloc(copy_count * sizeof(float));
     for (uint32_t i = 0; i < copy_count; i++) {
         h_activations[i] = initial_activation;
     }
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->d_wm_activations + ctx->wm_count, h_activations,
                                copy_count * sizeof(float),
                                cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
-    free(h_activations);
+    nimcp_free(h_activations);
 
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
@@ -1005,13 +1006,13 @@ extern "C" bool broca_gpu_produce_utterance(
 
     // Step 1: Encode phonemes
     uint32_t max_phonemes = word_count * ctx->config.max_phonemes_per_word;
-    uint8_t* phoneme_buffer = (uint8_t*)malloc(max_phonemes);
+    uint8_t* phoneme_buffer = (uint8_t*)nimcp_malloc(max_phonemes);
     uint32_t phoneme_count = 0;
 
     if (!broca_gpu_encode_phonemes(ctx, word_ids, word_count,
                                    phoneme_buffer, max_phonemes,
                                    &phoneme_count, NULL)) {
-        free(phoneme_buffer);
+        nimcp_free(phoneme_buffer);
         return false;
     }
 
@@ -1025,7 +1026,7 @@ extern "C" bool broca_gpu_produce_utterance(
                                                      commands, max_commands,
                                                      command_count, base_timestamp);
 
-    free(phoneme_buffer);
+    nimcp_free(phoneme_buffer);
     return success;
 }
 

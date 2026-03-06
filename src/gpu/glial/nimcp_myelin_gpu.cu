@@ -29,6 +29,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdlib.h>
@@ -668,7 +669,7 @@ extern "C" nimcp_myelin_gpu_ctx_t* nimcp_myelin_gpu_create(
         return NULL;
     }
 
-    nimcp_myelin_gpu_ctx_t* ctx = (nimcp_myelin_gpu_ctx_t*)calloc(1, sizeof(nimcp_myelin_gpu_ctx_t));
+    nimcp_myelin_gpu_ctx_t* ctx = (nimcp_myelin_gpu_ctx_t*)nimcp_calloc(1, sizeof(nimcp_myelin_gpu_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate myelin GPU context");
         return NULL;
@@ -732,7 +733,7 @@ extern "C" void nimcp_myelin_gpu_destroy(nimcp_myelin_gpu_ctx_t* ctx)
     if (ctx->d_node_voltage) cudaFree(ctx->d_node_voltage);
     if (ctx->d_node_conductance) cudaFree(ctx->d_node_conductance);
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_DEBUG("Destroyed myelin GPU context");
 }
 
@@ -1091,7 +1092,7 @@ extern "C" myelin_gpu_context_t* myelin_gpu_create(
         return NULL;
     }
 
-    myelin_gpu_context_t* ctx = (myelin_gpu_context_t*)calloc(1, sizeof(myelin_gpu_context_t));
+    myelin_gpu_context_t* ctx = (myelin_gpu_context_t*)nimcp_calloc(1, sizeof(myelin_gpu_context_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate myelin GPU context");
         return NULL;
@@ -1107,7 +1108,7 @@ extern "C" myelin_gpu_context_t* myelin_gpu_create(
     cudaError_t err = cudaStreamCreate(&ctx->stream);
     if (err != cudaSuccess) {
         LOG_ERROR("Failed to create CUDA stream: %s", cudaGetErrorString(err));
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -1216,7 +1217,7 @@ extern "C" void myelin_gpu_destroy(myelin_gpu_context_t* ctx) {
     nimcp_gpu_tensor_destroy(ctx->mean_velocity);
     nimcp_gpu_tensor_destroy(ctx->mean_integrity);
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_DEBUG("GPU Myelin context destroyed");
 }
 
@@ -1326,7 +1327,7 @@ extern "C" bool myelin_gpu_upload_lamellae(
 
     // Convert uint32_t to float for GPU processing
     size_t total = ctx->n_axons * ctx->n_internodes;
-    float* h_lamellae_f = (float*)malloc(total * sizeof(float));
+    float* h_lamellae_f = (float*)nimcp_malloc(total * sizeof(float));
     if (!h_lamellae_f) return false;
 
     for (size_t i = 0; i < total; i++) {
@@ -1342,7 +1343,7 @@ extern "C" bool myelin_gpu_upload_lamellae(
                                total * sizeof(float),
                                cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
-    free(h_lamellae_f);
+    nimcp_free(h_lamellae_f);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }

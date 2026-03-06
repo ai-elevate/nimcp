@@ -14,6 +14,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdlib.h>
@@ -173,7 +174,7 @@ nimcp_sequential_checkpoint_t* nimcp_sequential_checkpoint_create_with_config(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    nimcp_sequential_checkpoint_t* ckpt = (nimcp_sequential_checkpoint_t*)calloc(1,
+    nimcp_sequential_checkpoint_t* ckpt = (nimcp_sequential_checkpoint_t*)nimcp_calloc(1,
         sizeof(nimcp_sequential_checkpoint_t));
     if (!ckpt) {
         LOG_ERROR("Failed to allocate sequential checkpoint context");
@@ -195,42 +196,42 @@ nimcp_sequential_checkpoint_t* nimcp_sequential_checkpoint_create_with_config(
                                                   num_layers, ckpt->config.memory_budget);
     if (!ckpt->ckpt_ctx) {
         LOG_ERROR("Failed to create underlying checkpoint context");
-        free(ckpt);
+        nimcp_free(ckpt);
         return NULL;
     }
 
     // Allocate layer contexts array
-    ckpt->layer_contexts = (void**)calloc(num_layers, sizeof(void*));
+    ckpt->layer_contexts = (void**)nimcp_calloc(num_layers, sizeof(void*));
     if (!ckpt->layer_contexts) {
         LOG_ERROR("Failed to allocate layer contexts");
         nimcp_checkpoint_ctx_destroy(ckpt->ckpt_ctx);
-        free(ckpt);
+        nimcp_free(ckpt);
         return NULL;
     }
 
     // Allocate layer output sizes array
-    ckpt->layer_output_sizes = (size_t*)calloc(num_layers, sizeof(size_t));
+    ckpt->layer_output_sizes = (size_t*)nimcp_calloc(num_layers, sizeof(size_t));
     if (!ckpt->layer_output_sizes) {
         LOG_ERROR("Failed to allocate layer sizes");
-        free(ckpt->layer_contexts);
+        nimcp_free(ckpt->layer_contexts);
         nimcp_checkpoint_ctx_destroy(ckpt->ckpt_ctx);
-        free(ckpt);
+        nimcp_free(ckpt);
         return NULL;
     }
 
     // Allocate activation storage (num_layers + 1 for input)
     int num_activations = num_layers + 1;
-    ckpt->activations = (nimcp_gpu_tensor_t**)calloc(num_activations,
+    ckpt->activations = (nimcp_gpu_tensor_t**)nimcp_calloc(num_activations,
                                                       sizeof(nimcp_gpu_tensor_t*));
-    ckpt->activation_stored = (bool*)calloc(num_activations, sizeof(bool));
+    ckpt->activation_stored = (bool*)nimcp_calloc(num_activations, sizeof(bool));
     if (!ckpt->activations || !ckpt->activation_stored) {
         LOG_ERROR("Failed to allocate activation storage");
-        free(ckpt->layer_output_sizes);
-        free(ckpt->layer_contexts);
-        free(ckpt->activations);
-        free(ckpt->activation_stored);
+        nimcp_free(ckpt->layer_output_sizes);
+        nimcp_free(ckpt->layer_contexts);
+        nimcp_free(ckpt->activations);
+        nimcp_free(ckpt->activation_stored);
         nimcp_checkpoint_ctx_destroy(ckpt->ckpt_ctx);
-        free(ckpt);
+        nimcp_free(ckpt);
         return NULL;
     }
 
@@ -261,13 +262,13 @@ void nimcp_sequential_checkpoint_destroy(nimcp_sequential_checkpoint_t* ckpt) {
                 nimcp_gpu_tensor_destroy(ckpt->activations[i]);
             }
         }
-        free(ckpt->activations);
+        nimcp_free(ckpt->activations);
     }
-    free(ckpt->activation_stored);
+    nimcp_free(ckpt->activation_stored);
 
     // Free layer arrays
-    free(ckpt->layer_contexts);
-    free(ckpt->layer_output_sizes);
+    nimcp_free(ckpt->layer_contexts);
+    nimcp_free(ckpt->layer_output_sizes);
 
     // Free current input/output
     if (ckpt->current_input) {
@@ -281,7 +282,7 @@ void nimcp_sequential_checkpoint_destroy(nimcp_sequential_checkpoint_t* ckpt) {
     nimcp_checkpoint_ctx_destroy(ckpt->ckpt_ctx);
 
     LOG_DEBUG("Destroyed sequential checkpoint context");
-    free(ckpt);
+    nimcp_free(ckpt);
 }
 
 bool nimcp_sequential_checkpoint_reset(nimcp_sequential_checkpoint_t* ckpt) {
@@ -971,7 +972,7 @@ nimcp_transformer_checkpoint_t* nimcp_transformer_checkpoint_create(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    nimcp_transformer_checkpoint_t* ckpt = (nimcp_transformer_checkpoint_t*)calloc(1,
+    nimcp_transformer_checkpoint_t* ckpt = (nimcp_transformer_checkpoint_t*)nimcp_calloc(1,
         sizeof(nimcp_transformer_checkpoint_t));
     if (!ckpt) return NULL;
 
@@ -982,30 +983,30 @@ nimcp_transformer_checkpoint_t* nimcp_transformer_checkpoint_create(
 
     ckpt->seq_ckpt = nimcp_sequential_checkpoint_create(gpu_ctx, num_layers, memory_budget);
     if (!ckpt->seq_ckpt) {
-        free(ckpt);
+        nimcp_free(ckpt);
         return NULL;
     }
 
     // Allocate block configurations
-    ckpt->blocks = (nimcp_transformer_block_t*)calloc(num_blocks,
+    ckpt->blocks = (nimcp_transformer_block_t*)nimcp_calloc(num_blocks,
                                                        sizeof(nimcp_transformer_block_t));
     if (!ckpt->blocks) {
         nimcp_sequential_checkpoint_destroy(ckpt->seq_ckpt);
-        free(ckpt);
+        nimcp_free(ckpt);
         return NULL;
     }
 
     // Allocate specialized storage
-    ckpt->attention_scores = (nimcp_gpu_tensor_t**)calloc(num_blocks,
+    ckpt->attention_scores = (nimcp_gpu_tensor_t**)nimcp_calloc(num_blocks,
                                                            sizeof(nimcp_gpu_tensor_t*));
-    ckpt->ffn_intermediate = (nimcp_gpu_tensor_t**)calloc(num_blocks,
+    ckpt->ffn_intermediate = (nimcp_gpu_tensor_t**)nimcp_calloc(num_blocks,
                                                            sizeof(nimcp_gpu_tensor_t*));
     if (!ckpt->attention_scores || !ckpt->ffn_intermediate) {
-        free(ckpt->blocks);
-        free(ckpt->attention_scores);
-        free(ckpt->ffn_intermediate);
+        nimcp_free(ckpt->blocks);
+        nimcp_free(ckpt->attention_scores);
+        nimcp_free(ckpt->ffn_intermediate);
         nimcp_sequential_checkpoint_destroy(ckpt->seq_ckpt);
-        free(ckpt);
+        nimcp_free(ckpt);
         return NULL;
     }
 
@@ -1042,7 +1043,7 @@ void nimcp_transformer_checkpoint_destroy(nimcp_transformer_checkpoint_t* ckpt) 
                 nimcp_gpu_tensor_destroy(ckpt->attention_scores[i]);
             }
         }
-        free(ckpt->attention_scores);
+        nimcp_free(ckpt->attention_scores);
     }
 
     // Free FFN intermediates
@@ -1052,12 +1053,12 @@ void nimcp_transformer_checkpoint_destroy(nimcp_transformer_checkpoint_t* ckpt) 
                 nimcp_gpu_tensor_destroy(ckpt->ffn_intermediate[i]);
             }
         }
-        free(ckpt->ffn_intermediate);
+        nimcp_free(ckpt->ffn_intermediate);
     }
 
-    free(ckpt->blocks);
+    nimcp_free(ckpt->blocks);
     nimcp_sequential_checkpoint_destroy(ckpt->seq_ckpt);
-    free(ckpt);
+    nimcp_free(ckpt);
 }
 
 //=============================================================================

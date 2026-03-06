@@ -29,6 +29,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <curand_kernel.h>
@@ -919,11 +920,11 @@ bool fin_monte_carlo_gpu_simulate(
         float discount = expf(-params->drift * params->time_horizon);
 
         // Copy terminal values to host for comprehensive statistics
-        float* h_terminal = (float*)malloc(num_paths * sizeof(float));
-        float* h_returns = (float*)malloc(num_paths * sizeof(float));
+        float* h_terminal = (float*)nimcp_malloc(num_paths * sizeof(float));
+        float* h_returns = (float*)nimcp_malloc(num_paths * sizeof(float));
         if (!h_terminal || !h_returns) {
-            free(h_terminal);
-            free(h_returns);
+            nimcp_free(h_terminal);
+            nimcp_free(h_returns);
             set_mc_error("Host allocation failed for statistics");
             goto cleanup;
         }
@@ -1027,8 +1028,8 @@ bool fin_monte_carlo_gpu_simulate(
         }
 
         // Cleanup
-        free(h_terminal);
-        free(h_returns);
+        nimcp_free(h_terminal);
+        nimcp_free(h_returns);
     }
 
     // Handle path storage if requested
@@ -1206,8 +1207,8 @@ bool fin_monte_carlo_gpu_option_price(
         d_payoffs, d_partial_sums, d_partial_sq_sums, params->base.num_paths);
 
     // Copy and finalize
-    float* h_partial_sums = (float*)malloc(reduce_blocks * sizeof(float));
-    float* h_partial_sq_sums = (float*)malloc(reduce_blocks * sizeof(float));
+    float* h_partial_sums = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
+    float* h_partial_sq_sums = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
 
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial_sums, d_partial_sums,
                                       reduce_blocks * sizeof(float),
@@ -1237,8 +1238,8 @@ bool fin_monte_carlo_gpu_option_price(
     result->gamma = 0.0f;
 
     // Cleanup
-    free(h_partial_sums);
-    free(h_partial_sq_sums);
+    nimcp_free(h_partial_sums);
+    nimcp_free(h_partial_sq_sums);
     cudaFree(d_partial_sums);
     cudaFree(d_partial_sq_sums);
     cudaFree(d_payoffs);
@@ -1333,8 +1334,8 @@ bool fin_monte_carlo_gpu_heston(
                                   2 * block_size * sizeof(float), stream>>>(
         d_terminal_values, d_partial_sums, d_partial_sq_sums, num_paths);
 
-    float* h_partial_sums = (float*)malloc(reduce_blocks * sizeof(float));
-    float* h_partial_sq_sums = (float*)malloc(reduce_blocks * sizeof(float));
+    float* h_partial_sums = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
+    float* h_partial_sq_sums = (float*)nimcp_malloc(reduce_blocks * sizeof(float));
 
     cudaMemcpy(h_partial_sums, d_partial_sums, reduce_blocks * sizeof(float),
                cudaMemcpyDeviceToHost);
@@ -1360,7 +1361,7 @@ bool fin_monte_carlo_gpu_heston(
     result->paths_completed = num_paths;
 
     // Compute min/max terminal values
-    float* h_terminal = (float*)malloc(num_paths * sizeof(float));
+    float* h_terminal = (float*)nimcp_malloc(num_paths * sizeof(float));
     if (h_terminal) {
         cudaMemcpy(h_terminal, d_terminal_values, num_paths * sizeof(float), cudaMemcpyDeviceToHost);
         float min_t = FLT_MAX, max_t = -FLT_MAX;
@@ -1370,12 +1371,12 @@ bool fin_monte_carlo_gpu_heston(
         }
         result->min_terminal = min_t;
         result->max_terminal = max_t;
-        free(h_terminal);
+        nimcp_free(h_terminal);
     }
 
     // Cleanup
-    free(h_partial_sums);
-    free(h_partial_sq_sums);
+    nimcp_free(h_partial_sums);
+    nimcp_free(h_partial_sq_sums);
     cudaFree(d_partial_sums);
     cudaFree(d_partial_sq_sums);
     cudaFree(d_terminal_values);
@@ -1558,10 +1559,10 @@ bool fin_mc_gpu_heston(
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    float* h_terminal = (float*)malloc(num_paths * sizeof(float));
-    float* h_returns = (float*)malloc(num_paths * sizeof(float));
+    float* h_terminal = (float*)nimcp_malloc(num_paths * sizeof(float));
+    float* h_returns = (float*)nimcp_malloc(num_paths * sizeof(float));
     if (!h_terminal || !h_returns) {
-        free(h_terminal); free(h_returns);
+        nimcp_free(h_terminal); nimcp_free(h_returns);
         cudaFree(d_terminal_values); cudaFree(d_terminal_vols); cudaFree(d_rng_states);
         return false;
     }
@@ -1605,7 +1606,7 @@ bool fin_mc_gpu_heston(
     for (uint32_t i = 0; i < num_paths; i++) mean_return += h_returns[i];
     result->base.mean_return = mean_return / n;
 
-    free(h_terminal); free(h_returns);
+    nimcp_free(h_terminal); nimcp_free(h_returns);
     cudaFree(d_terminal_values); cudaFree(d_terminal_vols); cudaFree(d_rng_states);
     return true;
 }
@@ -1666,10 +1667,10 @@ bool fin_mc_gpu_jump_diffusion(
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    float* h_terminal = (float*)malloc(num_paths * sizeof(float));
-    float* h_returns = (float*)malloc(num_paths * sizeof(float));
+    float* h_terminal = (float*)nimcp_malloc(num_paths * sizeof(float));
+    float* h_returns = (float*)nimcp_malloc(num_paths * sizeof(float));
     if (!h_terminal || !h_returns) {
-        free(h_terminal); free(h_returns);
+        nimcp_free(h_terminal); nimcp_free(h_returns);
         cudaFree(d_terminal_values); cudaFree(d_rng_states);
         return false;
     }
@@ -1713,7 +1714,7 @@ bool fin_mc_gpu_jump_diffusion(
     for (uint32_t i = 0; i < num_paths; i++) mean_return += h_returns[i];
     result->base.mean_return = mean_return / n;
 
-    free(h_terminal); free(h_returns);
+    nimcp_free(h_terminal); nimcp_free(h_returns);
     cudaFree(d_terminal_values); cudaFree(d_rng_states);
     return true;
 }
@@ -1807,7 +1808,7 @@ bool fin_mc_gpu_path_dependent_option(
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    float* h_payoffs = (float*)malloc(num_paths * sizeof(float));
+    float* h_payoffs = (float*)nimcp_malloc(num_paths * sizeof(float));
     if (!h_payoffs) { cudaFree(d_payoffs); cudaFree(d_rng_states); return false; }
 
     cudaMemcpy(h_payoffs, d_payoffs, num_paths * sizeof(float), cudaMemcpyDeviceToHost);
@@ -1846,7 +1847,7 @@ bool fin_mc_gpu_path_dependent_option(
         kernel_european_payoff<<<grid_size, block_size, 0, stream>>>(
             d_terminal_up, d_payoffs_up, strike, num_paths, is_call);
 
-        float* h_payoffs_up = (float*)malloc(num_paths * sizeof(float));
+        float* h_payoffs_up = (float*)nimcp_malloc(num_paths * sizeof(float));
         cudaMemcpy(h_payoffs_up, d_payoffs_up, num_paths * sizeof(float), cudaMemcpyDeviceToHost);
 
         float up_sum = 0.0f;
@@ -1854,12 +1855,12 @@ bool fin_mc_gpu_path_dependent_option(
         float price_up = (up_sum / n) * discount;
         result->delta = (price_up - result->option_price) / bump;
 
-        free(h_payoffs_up);
+        nimcp_free(h_payoffs_up);
         cudaFree(d_terminal_up);
         cudaFree(d_payoffs_up);
     }
 
-    free(h_payoffs);
+    nimcp_free(h_payoffs);
     cudaFree(d_payoffs);
     cudaFree(d_rng_states);
     return true;
@@ -1900,7 +1901,7 @@ bool fin_mc_gpu_correlated_assets(
     float dt = params->time_horizon / (float)params->num_steps;
 
     // Compute Cholesky decomposition on CPU
-    float* h_cholesky = (float*)calloc(num_assets * num_assets, sizeof(float));
+    float* h_cholesky = (float*)nimcp_calloc(num_assets * num_assets, sizeof(float));
     if (!h_cholesky) return false;
 
     for (uint32_t j = 0; j < num_assets; j++) {
@@ -1944,13 +1945,13 @@ bool fin_mc_gpu_correlated_assets(
 
     cudaFree(d_terminal); cudaFree(d_initial); cudaFree(d_drifts);
     cudaFree(d_vols); cudaFree(d_cholesky); cudaFree(d_rng_states);
-    free(h_cholesky);
+    nimcp_free(h_cholesky);
     return true;
 
 cleanup_corr:
     cudaFree(d_terminal); cudaFree(d_initial); cudaFree(d_drifts);
     cudaFree(d_vols); cudaFree(d_cholesky); cudaFree(d_rng_states);
-    free(h_cholesky);
+    nimcp_free(h_cholesky);
     return false;
 }
 
@@ -2042,11 +2043,11 @@ bool fin_monte_carlo_gpu_portfolio(
     float dt = params->time_horizon / (float)params->num_steps;
 
     // Extract volatilities and compute correlation/Cholesky
-    float* h_volatilities = (float*)malloc(num_assets * sizeof(float));
-    float* h_correlation = (float*)malloc(num_assets * num_assets * sizeof(float));
-    float* h_cholesky = (float*)calloc(num_assets * num_assets, sizeof(float));
+    float* h_volatilities = (float*)nimcp_malloc(num_assets * sizeof(float));
+    float* h_correlation = (float*)nimcp_malloc(num_assets * num_assets * sizeof(float));
+    float* h_cholesky = (float*)nimcp_calloc(num_assets * num_assets, sizeof(float));
     if (!h_volatilities || !h_correlation || !h_cholesky) {
-        free(h_volatilities); free(h_correlation); free(h_cholesky);
+        nimcp_free(h_volatilities); nimcp_free(h_correlation); nimcp_free(h_cholesky);
         return false;
     }
 
@@ -2101,10 +2102,10 @@ bool fin_monte_carlo_gpu_portfolio(
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     {
-        float* h_portfolio_values = (float*)malloc(num_paths * sizeof(float));
-        float* h_returns_arr = (float*)malloc(num_paths * sizeof(float));
+        float* h_portfolio_values = (float*)nimcp_malloc(num_paths * sizeof(float));
+        float* h_returns_arr = (float*)nimcp_malloc(num_paths * sizeof(float));
         if (!h_portfolio_values || !h_returns_arr) {
-            free(h_portfolio_values); free(h_returns_arr);
+            nimcp_free(h_portfolio_values); nimcp_free(h_returns_arr);
             goto cleanup_port;
         }
 
@@ -2142,19 +2143,19 @@ bool fin_monte_carlo_gpu_portfolio(
         for (uint32_t i = 0; i < num_paths; i++) mean_return += h_returns_arr[i];
         result->mean_return = mean_return / n;
 
-        free(h_portfolio_values);
-        free(h_returns_arr);
+        nimcp_free(h_portfolio_values);
+        nimcp_free(h_returns_arr);
     }
 
     cudaFree(d_portfolio_values); cudaFree(d_weights); cudaFree(d_returns);
     cudaFree(d_cholesky); cudaFree(d_rng_states);
-    free(h_volatilities); free(h_correlation); free(h_cholesky);
+    nimcp_free(h_volatilities); nimcp_free(h_correlation); nimcp_free(h_cholesky);
     return true;
 
 cleanup_port:
     cudaFree(d_portfolio_values); cudaFree(d_weights); cudaFree(d_returns);
     cudaFree(d_cholesky); cudaFree(d_rng_states);
-    free(h_volatilities); free(h_correlation); free(h_cholesky);
+    nimcp_free(h_volatilities); nimcp_free(h_correlation); nimcp_free(h_cholesky);
     return false;
 }
 

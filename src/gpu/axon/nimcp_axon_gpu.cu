@@ -40,6 +40,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "AXON_GPU"
 
@@ -501,7 +502,7 @@ extern "C" axon_gpu_context_t* axon_gpu_create(
         return NULL;
     }
 
-    axon_gpu_context_t* ctx = (axon_gpu_context_t*)calloc(1, sizeof(axon_gpu_context_t));
+    axon_gpu_context_t* ctx = (axon_gpu_context_t*)nimcp_calloc(1, sizeof(axon_gpu_context_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate Axon GPU context");
         return NULL;
@@ -515,7 +516,7 @@ extern "C" axon_gpu_context_t* axon_gpu_create(
     cudaError_t err = cudaStreamCreate(&stream);
     if (err != cudaSuccess) {
         LOG_ERROR("Failed to create CUDA stream: %s", cudaGetErrorString(err));
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
     ctx->stream = stream;
@@ -574,7 +575,7 @@ extern "C" void axon_gpu_destroy(axon_gpu_context_t* ctx) {
     if (ctx->source_neurons) nimcp_gpu_tensor_destroy(ctx->source_neurons);
     if (ctx->target_synapses) nimcp_gpu_tensor_destroy(ctx->target_synapses);
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_DEBUG("GPU Axon context destroyed");
 }
 
@@ -704,7 +705,7 @@ extern "C" bool axon_gpu_upload_properties(
                                cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Calculate segment lengths (uniform distribution for now)
-    float* seg_lengths_host = (float*)malloc(num_axons * ctx->num_segments * sizeof(float));
+    float* seg_lengths_host = (float*)nimcp_malloc(num_axons * ctx->num_segments * sizeof(float));
     for (uint32_t a = 0; a < num_axons; a++) {
         float seg_len = lengths[a] / (float)ctx->num_segments;
         for (uint32_t s = 0; s < ctx->num_segments; s++) {
@@ -714,7 +715,7 @@ extern "C" bool axon_gpu_upload_properties(
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->seg_lengths->data, seg_lengths_host,
                                num_axons * ctx->num_segments * sizeof(float),
                                cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
-    free(seg_lengths_host);
+    nimcp_free(seg_lengths_host);
 
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
@@ -966,7 +967,7 @@ extern "C" bool axon_gpu_update_myelination(
 
     // Update myelination on host side and re-upload
     // (For simplicity - could be optimized with a kernel)
-    float* h_myelination = (float*)malloc(ctx->num_axons * ctx->num_segments * sizeof(float));
+    float* h_myelination = (float*)nimcp_malloc(ctx->num_axons * ctx->num_segments * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_myelination, ctx->myelination->data,
                           ctx->num_axons * ctx->num_segments * sizeof(float),
                           cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
@@ -992,7 +993,7 @@ extern "C" bool axon_gpu_update_myelination(
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->myelination->data, h_myelination,
                                ctx->num_axons * ctx->num_segments * sizeof(float),
                                cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
-    free(h_myelination);
+    nimcp_free(h_myelination);
 
     // Recalculate velocities
     return axon_gpu_update_velocities(ctx);
@@ -1155,7 +1156,7 @@ extern "C" bool axon_gpu_get_delays(
     if (num_axons > ctx->num_axons) num_axons = ctx->num_axons;
 
     // Calculate total delay from segment delays (last segment cumulative)
-    float* h_seg_delays = (float*)malloc(num_axons * ctx->num_segments * sizeof(float));
+    float* h_seg_delays = (float*)nimcp_malloc(num_axons * ctx->num_segments * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_seg_delays, ctx->seg_delays->data,
                           num_axons * ctx->num_segments * sizeof(float),
                           cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
@@ -1164,7 +1165,7 @@ extern "C" bool axon_gpu_get_delays(
         delays[a] = h_seg_delays[a * ctx->num_segments + ctx->num_segments - 1];
     }
 
-    free(h_seg_delays);
+    nimcp_free(h_seg_delays);
     return true;
 }
 
@@ -1223,8 +1224,8 @@ extern "C" bool axon_gpu_get_stats(
 
     // Calculate means from device data
     if (ctx->num_axons > 0) {
-        float* h_velocities = (float*)malloc(ctx->num_axons * sizeof(float));
-        float* h_myelination = (float*)malloc(ctx->num_axons * ctx->num_segments * sizeof(float));
+        float* h_velocities = (float*)nimcp_malloc(ctx->num_axons * sizeof(float));
+        float* h_myelination = (float*)nimcp_malloc(ctx->num_axons * ctx->num_segments * sizeof(float));
 
         cudaMemcpy(h_velocities, ctx->velocities->data,
                    ctx->num_axons * sizeof(float), cudaMemcpyDeviceToHost);
@@ -1242,8 +1243,8 @@ extern "C" bool axon_gpu_get_stats(
         stats->mean_velocity = sum_vel / ctx->num_axons;
         stats->mean_myelination = sum_myelin / (ctx->num_axons * ctx->num_segments);
 
-        free(h_velocities);
-        free(h_myelination);
+        nimcp_free(h_velocities);
+        nimcp_free(h_myelination);
     }
 
     return true;

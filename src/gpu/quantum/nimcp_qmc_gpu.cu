@@ -24,6 +24,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include <math.h>
@@ -196,7 +197,7 @@ qmc_gpu_rng_t qmc_gpu_rng_create(
         num_generators = QMC_BLOCK_SIZE;
     }
 
-    qmc_gpu_rng_t rng = (qmc_gpu_rng_t)calloc(1, sizeof(struct qmc_gpu_rng_struct));
+    qmc_gpu_rng_t rng = (qmc_gpu_rng_t)nimcp_calloc(1, sizeof(struct qmc_gpu_rng_struct));
     if (!rng) return NULL;
 
     rng->num_generators = num_generators;
@@ -204,7 +205,7 @@ qmc_gpu_rng_t qmc_gpu_rng_create(
 
     cudaError_t err = cudaMalloc(&rng->states, num_generators * sizeof(curandState));
     if (err != cudaSuccess) {
-        free(rng);
+        nimcp_free(rng);
         return NULL;
     }
 
@@ -214,7 +215,7 @@ qmc_gpu_rng_t qmc_gpu_rng_create(
     err = cudaGetLastError();
     if (err != cudaSuccess) {
         cudaFree(rng->states);
-        free(rng);
+        nimcp_free(rng);
         return NULL;
     }
 
@@ -227,7 +228,7 @@ void qmc_gpu_rng_destroy(qmc_gpu_rng_t rng)
     if (!rng) return;
 
     cudaFree(rng->states);
-    free(rng);
+    nimcp_free(rng);
 }
 
 bool qmc_gpu_rng_reseed(qmc_gpu_rng_t rng, uint64_t seed)
@@ -592,7 +593,7 @@ qmc_gpu_mcts_t qmcts_gpu_create(
     (void)ctx;
     if (!config || max_nodes == 0) return NULL;
 
-    qmc_gpu_mcts_t mcts = (qmc_gpu_mcts_t)calloc(1, sizeof(struct qmc_gpu_mcts_struct));
+    qmc_gpu_mcts_t mcts = (qmc_gpu_mcts_t)nimcp_calloc(1, sizeof(struct qmc_gpu_mcts_struct));
     if (!mcts) return NULL;
 
     mcts->config = *config;
@@ -631,7 +632,7 @@ void qmcts_gpu_destroy(qmc_gpu_mcts_t mcts)
     cudaFree(mcts->first_child_indices);
     cudaFree(mcts->actions);
 
-    free(mcts);
+    nimcp_free(mcts);
 }
 
 bool qmcts_gpu_reset(qmc_gpu_mcts_t mcts)
@@ -833,7 +834,7 @@ qmc_gpu_sat_t qmc_sat_gpu_create(
     (void)ctx;
     if (!config) return NULL;
 
-    qmc_gpu_sat_t sat = (qmc_gpu_sat_t)calloc(1, sizeof(struct qmc_gpu_sat_struct));
+    qmc_gpu_sat_t sat = (qmc_gpu_sat_t)nimcp_calloc(1, sizeof(struct qmc_gpu_sat_struct));
     if (!sat) return NULL;
 
     sat->config = *config;
@@ -867,7 +868,7 @@ void qmc_sat_gpu_destroy(qmc_gpu_sat_t sat)
     cudaFree(sat->assignments);
     cudaFree(sat->clause_sat);
 
-    free(sat);
+    nimcp_free(sat);
 }
 
 bool qmc_sat_gpu_set_cnf(
@@ -883,7 +884,7 @@ bool qmc_sat_gpu_set_cnf(
     if (!sat || !clauses || !clause_sizes) return false;
 
     /* Compute offsets */
-    uint32_t* h_offsets = (uint32_t*)malloc(num_clauses * sizeof(uint32_t));
+    uint32_t* h_offsets = (uint32_t*)nimcp_malloc(num_clauses * sizeof(uint32_t));
     uint32_t offset = 0;
     for (uint32_t i = 0; i < num_clauses; i++) {
         h_offsets[i] = offset;
@@ -896,7 +897,7 @@ bool qmc_sat_gpu_set_cnf(
     NIMCP_CUDA_RECOVER(cudaMemcpy(sat->clause_offsets, h_offsets, num_clauses * sizeof(uint32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaMemcpy(sat->clause_sizes, clause_sizes, num_clauses * sizeof(uint32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
-    free(h_offsets);
+    nimcp_free(h_offsets);
     return true;
 }
 
@@ -938,7 +939,7 @@ bool qmc_sat_gpu_estimate_probability(
         d_assignments, d_scores, num_clauses, num_vars, num_samples);
 
     /* Copy scores back and count SAT */
-    uint32_t* h_scores = (uint32_t*)malloc(num_samples * sizeof(uint32_t));
+    uint32_t* h_scores = (uint32_t*)nimcp_malloc(num_samples * sizeof(uint32_t));
     cudaMemcpy(h_scores, d_scores, num_samples * sizeof(uint32_t), cudaMemcpyDeviceToHost);
 
     uint32_t sat_count = 0;
@@ -956,7 +957,7 @@ bool qmc_sat_gpu_estimate_probability(
 
     cudaFree(d_assignments);
     cudaFree(d_scores);
-    free(h_scores);
+    nimcp_free(h_scores);
 
     return true;
 }
@@ -983,7 +984,7 @@ bool qmc_sat_gpu_solve_mcts(
     uint32_t batch_size = 256;
 
     /* Best assignment found */
-    bool* best_assignment = (bool*)malloc(num_vars * sizeof(bool));
+    bool* best_assignment = (bool*)nimcp_malloc(num_vars * sizeof(bool));
     uint32_t best_score = 0;
 
     /* MCTS-inspired search with GPU batch evaluation */
@@ -1007,7 +1008,7 @@ bool qmc_sat_gpu_solve_mcts(
             d_assignments, d_scores, num_clauses, num_vars, batch_size);
 
         /* Find best in batch */
-        uint32_t* h_scores = (uint32_t*)malloc(batch_size * sizeof(uint32_t));
+        uint32_t* h_scores = (uint32_t*)nimcp_malloc(batch_size * sizeof(uint32_t));
         cudaMemcpy(h_scores, d_scores, batch_size * sizeof(uint32_t), cudaMemcpyDeviceToHost);
 
         for (uint32_t i = 0; i < batch_size; i++) {
@@ -1029,7 +1030,7 @@ bool qmc_sat_gpu_solve_mcts(
 
         cudaFree(d_assignments);
         cudaFree(d_scores);
-        free(h_scores);
+        nimcp_free(h_scores);
 
         if (best_score == num_clauses) {
             break;
@@ -1058,7 +1059,7 @@ bool qmc_sat_gpu_solve_mcts(
 void qmc_sat_gpu_result_free(qmc_sat_gpu_result_t* result)
 {
     if (!result) return;
-    free(result->assignment);
+    nimcp_free(result->assignment);
     result->assignment = NULL;
 }
 
@@ -1220,7 +1221,7 @@ bool qmc_sat_gpu_evaluate_batch(nimcp_gpu_context_t* ctx, qmc_gpu_sat_t s,
     (void)ctx; (void)s; (void)a; (void)n; (void)sc; return false;
 }
 
-void qmc_sat_gpu_result_free(qmc_sat_gpu_result_t* r) { if (r) { free(r->assignment); } }
+void qmc_sat_gpu_result_free(qmc_sat_gpu_result_t* r) { if (r) { nimcp_free(r->assignment); } }
 
 bool qmc_gpu_is_available(void) { return false; }
 const char* qmc_gpu_version(void) { return "1.0.0-cpu"; }

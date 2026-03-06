@@ -35,6 +35,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "AMP_AUTOCAST"
 
@@ -789,7 +790,7 @@ nimcp_autocast_ctx_t* nimcp_autocast_create_with_config(
         return NULL;
     }
 
-    nimcp_autocast_ctx_t* ctx = (nimcp_autocast_ctx_t*)calloc(1, sizeof(nimcp_autocast_ctx_t));
+    nimcp_autocast_ctx_t* ctx = (nimcp_autocast_ctx_t*)nimcp_calloc(1, sizeof(nimcp_autocast_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate autocast context");
         return NULL;
@@ -842,7 +843,7 @@ void nimcp_autocast_destroy(nimcp_autocast_ctx_t* ctx)
         nimcp_loss_scaler_destroy(ctx->scaler);
     }
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_DEBUG("Autocast context destroyed");
 }
 

@@ -15,6 +15,7 @@
  */
 
 // Standard library headers (no extern "C" conflicts)
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -920,7 +921,7 @@ nimcp_infer_session_t* nimcp_infer_session_create(
 
     if (!ctx) return NULL;
 
-    nimcp_infer_session_t* session = (nimcp_infer_session_t*)calloc(1, sizeof(nimcp_infer_session_t));
+    nimcp_infer_session_t* session = (nimcp_infer_session_t*)nimcp_calloc(1, sizeof(nimcp_infer_session_t));
     if (!session) return NULL;
 
     session->ctx = ctx;
@@ -948,7 +949,7 @@ void nimcp_infer_session_destroy(nimcp_infer_session_t* session)
         // cuda_graph is actually a cudaGraphExec_t, not cudaGraph_t
         cudaGraphExecDestroy((cudaGraphExec_t)session->cuda_graph);
     }
-    free(session);
+    nimcp_free(session);
 }
 
 bool nimcp_infer_session_begin_capture(nimcp_infer_session_t* session)
@@ -1587,14 +1588,14 @@ nimcp_infer_session_t* nimcp_infer_session_create(
     nimcp_infer_precision_t precision,
     size_t workspace_size)
 {
-    nimcp_infer_session_t* session = (nimcp_infer_session_t*)calloc(1, sizeof(nimcp_infer_session_t));
+    nimcp_infer_session_t* session = (nimcp_infer_session_t*)nimcp_calloc(1, sizeof(nimcp_infer_session_t));
     if (!session) return NULL;
 
     session->ctx = ctx;
     session->precision = precision;
     session->graph_captured = false;
     session->workspace_size = workspace_size ? workspace_size : 64 * 1024 * 1024;
-    session->workspace = malloc(session->workspace_size);
+    session->workspace = nimcp_malloc(session->workspace_size);
 
     return session;
 }
@@ -1604,9 +1605,9 @@ void nimcp_infer_session_destroy(nimcp_infer_session_t* session)
     if (!session) return;
 
     if (session->workspace) {
-        free(session->workspace);
+        nimcp_free(session->workspace);
     }
-    free(session);
+    nimcp_free(session);
 }
 
 bool nimcp_infer_session_begin_capture(nimcp_infer_session_t* session)

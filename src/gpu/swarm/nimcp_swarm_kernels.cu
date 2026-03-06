@@ -27,6 +27,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "SWARM_GPU"
 
@@ -1147,7 +1148,7 @@ extern "C" nimcp_flocking_gpu_state_t* nimcp_flocking_gpu_create(
         return NULL;
     }
 
-    nimcp_flocking_gpu_state_t* state = (nimcp_flocking_gpu_state_t*)calloc(1, sizeof(nimcp_flocking_gpu_state_t));
+    nimcp_flocking_gpu_state_t* state = (nimcp_flocking_gpu_state_t*)nimcp_calloc(1, sizeof(nimcp_flocking_gpu_state_t));
     if (!state) return NULL;
 
     state->n_agents = n_agents;
@@ -1203,7 +1204,7 @@ extern "C" void nimcp_flocking_gpu_destroy(nimcp_flocking_gpu_state_t* state)
     if (state->neighbor_counts) nimcp_gpu_tensor_destroy(state->neighbor_counts);
     if (state->neighbor_indices) nimcp_gpu_tensor_destroy(state->neighbor_indices);
 
-    free(state);
+    nimcp_free(state);
     LOG_DEBUG("Destroyed flocking GPU state");
 }
 
@@ -1321,7 +1322,7 @@ extern "C" nimcp_spatial_hash_t* nimcp_spatial_hash_create(
 {
     if (!ctx || cell_size <= 0.0f) return NULL;
 
-    nimcp_spatial_hash_t* hash = (nimcp_spatial_hash_t*)calloc(1, sizeof(nimcp_spatial_hash_t));
+    nimcp_spatial_hash_t* hash = (nimcp_spatial_hash_t*)nimcp_calloc(1, sizeof(nimcp_spatial_hash_t));
     if (!hash) return NULL;
 
     hash->cell_size = cell_size;
@@ -1358,7 +1359,7 @@ extern "C" void nimcp_spatial_hash_destroy(nimcp_spatial_hash_t* hash)
     if (hash->particle_cells) nimcp_gpu_tensor_destroy(hash->particle_cells);
     if (hash->sorted_indices) nimcp_gpu_tensor_destroy(hash->sorted_indices);
 
-    free(hash);
+    nimcp_free(hash);
 }
 
 extern "C" bool nimcp_spatial_hash_clear(
@@ -1415,7 +1416,7 @@ extern "C" nimcp_consensus_gpu_state_t* nimcp_consensus_gpu_create(
 {
     if (!ctx || n_agents == 0 || belief_dim == 0) return NULL;
 
-    nimcp_consensus_gpu_state_t* state = (nimcp_consensus_gpu_state_t*)calloc(1, sizeof(nimcp_consensus_gpu_state_t));
+    nimcp_consensus_gpu_state_t* state = (nimcp_consensus_gpu_state_t*)nimcp_calloc(1, sizeof(nimcp_consensus_gpu_state_t));
     if (!state) return NULL;
 
     state->n_agents = n_agents;
@@ -1461,7 +1462,7 @@ extern "C" void nimcp_consensus_gpu_destroy(nimcp_consensus_gpu_state_t* state)
     if (state->weights) nimcp_gpu_tensor_destroy(state->weights);
     if (state->new_beliefs) nimcp_gpu_tensor_destroy(state->new_beliefs);
 
-    free(state);
+    nimcp_free(state);
 }
 
 extern "C" bool nimcp_gpu_consensus_averaging(
@@ -1581,7 +1582,7 @@ extern "C" bool nimcp_gpu_consensus_check_convergence(
     }
 
     // Copy back and compute total variance
-    h_variances = (float*)malloc(state->belief_dim * sizeof(float));
+    h_variances = (float*)nimcp_malloc(state->belief_dim * sizeof(float));
     if (!h_variances) {
         LOG_ERROR("Failed to allocate host variances");
         goto cleanup_convergence;
@@ -1607,7 +1608,7 @@ extern "C" bool nimcp_gpu_consensus_check_convergence(
     success = true;
 
 cleanup_convergence:
-    free(h_variances);
+    nimcp_free(h_variances);
     cudaFree(d_variances);
 
     return success;
@@ -1632,7 +1633,7 @@ extern "C" nimcp_pheromone_gpu_state_t* nimcp_pheromone_gpu_create(
         return NULL;
     }
 
-    nimcp_pheromone_gpu_state_t* state = (nimcp_pheromone_gpu_state_t*)calloc(1, sizeof(nimcp_pheromone_gpu_state_t));
+    nimcp_pheromone_gpu_state_t* state = (nimcp_pheromone_gpu_state_t*)nimcp_calloc(1, sizeof(nimcp_pheromone_gpu_state_t));
     if (!state) return NULL;
 
     state->grid_x = grid_x;
@@ -1675,7 +1676,7 @@ extern "C" void nimcp_pheromone_gpu_destroy(nimcp_pheromone_gpu_state_t* state)
     if (state->temp_buffer) nimcp_gpu_tensor_destroy(state->temp_buffer);
     if (state->gradient) nimcp_gpu_tensor_destroy(state->gradient);
 
-    free(state);
+    nimcp_free(state);
 }
 
 extern "C" bool nimcp_gpu_pheromone_diffusion(
@@ -1859,7 +1860,7 @@ extern "C" nimcp_quorum_gpu_state_t* nimcp_quorum_gpu_create(
         return NULL;
     }
 
-    nimcp_quorum_gpu_state_t* state = (nimcp_quorum_gpu_state_t*)calloc(1, sizeof(nimcp_quorum_gpu_state_t));
+    nimcp_quorum_gpu_state_t* state = (nimcp_quorum_gpu_state_t*)nimcp_calloc(1, sizeof(nimcp_quorum_gpu_state_t));
     if (!state) return NULL;
 
     state->n_agents = n_agents;
@@ -1895,10 +1896,10 @@ extern "C" nimcp_quorum_gpu_state_t* nimcp_quorum_gpu_create(
     // Initialize commitments to -1 (uncommitted)
     float neg_one = -1.0f;
     size_t numel = state->agent_commitments->numel;
-    float* h_data = (float*)malloc(numel * sizeof(float));
+    float* h_data = (float*)nimcp_malloc(numel * sizeof(float));
     for (size_t i = 0; i < numel; i++) h_data[i] = neg_one;
     cudaMemcpy(state->agent_commitments->data, h_data, numel * sizeof(float), cudaMemcpyHostToDevice);
-    free(h_data);
+    nimcp_free(h_data);
 
     LOG_INFO("Created quorum GPU state: %zu agents, %zu signal types",
              n_agents, n_signal_types);
@@ -1916,7 +1917,7 @@ extern "C" void nimcp_quorum_gpu_destroy(nimcp_quorum_gpu_state_t* state)
     if (state->agent_strengths) nimcp_gpu_tensor_destroy(state->agent_strengths);
     if (state->threshold_reached) nimcp_gpu_tensor_destroy(state->threshold_reached);
 
-    free(state);
+    nimcp_free(state);
 }
 
 extern "C" bool nimcp_gpu_quorum_compute_concentration(
@@ -2027,7 +2028,7 @@ extern "C" nimcp_task_alloc_gpu_state_t* nimcp_task_alloc_gpu_create(
 {
     if (!ctx || n_agents == 0 || n_tasks == 0 || n_capability_types == 0) return NULL;
 
-    nimcp_task_alloc_gpu_state_t* state = (nimcp_task_alloc_gpu_state_t*)calloc(1, sizeof(nimcp_task_alloc_gpu_state_t));
+    nimcp_task_alloc_gpu_state_t* state = (nimcp_task_alloc_gpu_state_t*)nimcp_calloc(1, sizeof(nimcp_task_alloc_gpu_state_t));
     if (!state) return NULL;
 
     state->n_agents = n_agents;
@@ -2064,10 +2065,10 @@ extern "C" nimcp_task_alloc_gpu_state_t* nimcp_task_alloc_gpu_create(
     nimcp_gpu_zeros(ctx, state->bids);
 
     // Initialize assignments to -1
-    int32_t* h_assign = (int32_t*)malloc(n_agents * sizeof(int32_t));
+    int32_t* h_assign = (int32_t*)nimcp_malloc(n_agents * sizeof(int32_t));
     for (size_t i = 0; i < n_agents; i++) h_assign[i] = -1;
     cudaMemcpy(state->assignments->data, h_assign, n_agents * sizeof(int32_t), cudaMemcpyHostToDevice);
-    free(h_assign);
+    nimcp_free(h_assign);
 
     LOG_INFO("Created task allocation GPU state: %zu agents, %zu tasks, %zu capabilities",
              n_agents, n_tasks, n_capability_types);
@@ -2087,7 +2088,7 @@ extern "C" void nimcp_task_alloc_gpu_destroy(nimcp_task_alloc_gpu_state_t* state
     if (state->best_bids) nimcp_gpu_tensor_destroy(state->best_bids);
     if (state->best_agents) nimcp_gpu_tensor_destroy(state->best_agents);
 
-    free(state);
+    nimcp_free(state);
 }
 
 extern "C" bool nimcp_gpu_task_compute_matches(
@@ -2197,7 +2198,7 @@ extern "C" nimcp_collision_gpu_state_t* nimcp_collision_gpu_create(
 {
     if (!ctx || n_agents == 0) return NULL;
 
-    nimcp_collision_gpu_state_t* state = (nimcp_collision_gpu_state_t*)calloc(1, sizeof(nimcp_collision_gpu_state_t));
+    nimcp_collision_gpu_state_t* state = (nimcp_collision_gpu_state_t*)nimcp_calloc(1, sizeof(nimcp_collision_gpu_state_t));
     if (!state) return NULL;
 
     state->n_agents = n_agents;
@@ -2232,10 +2233,10 @@ extern "C" nimcp_collision_gpu_state_t* nimcp_collision_gpu_create(
 
     // Initialize radii to default
     float default_radius = state->params.collision_radius;
-    float* h_radii = (float*)malloc(n_agents * sizeof(float));
+    float* h_radii = (float*)nimcp_malloc(n_agents * sizeof(float));
     for (size_t i = 0; i < n_agents; i++) h_radii[i] = default_radius;
     cudaMemcpy(state->radii->data, h_radii, n_agents * sizeof(float), cudaMemcpyHostToDevice);
-    free(h_radii);
+    nimcp_free(h_radii);
 
     LOG_INFO("Created collision GPU state: %zu agents, %zu max pairs",
              n_agents, state->max_pairs);
@@ -2254,7 +2255,7 @@ extern "C" void nimcp_collision_gpu_destroy(nimcp_collision_gpu_state_t* state)
     if (state->pair_count) nimcp_gpu_tensor_destroy(state->pair_count);
     if (state->spatial_hash) nimcp_spatial_hash_destroy(state->spatial_hash);
 
-    free(state);
+    nimcp_free(state);
 }
 
 extern "C" bool nimcp_gpu_collision_detect(

@@ -14,6 +14,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <math.h>
@@ -1133,9 +1134,9 @@ bool nimcp_gpu_sparse_add(
 
     // Phase 2: Compute row pointers via prefix sum
     // Simple sequential prefix sum on CPU for now (can be parallelized)
-    h_C_row_nnz = (uint32_t*)malloc(n_rows * sizeof(uint32_t));
+    h_C_row_nnz = (uint32_t*)nimcp_malloc(n_rows * sizeof(uint32_t));
     if (!h_C_row_nnz) goto sparse_add_cleanup;
-    h_C_row_ptr = (uint32_t*)malloc((n_rows + 1) * sizeof(uint32_t));
+    h_C_row_ptr = (uint32_t*)nimcp_malloc((n_rows + 1) * sizeof(uint32_t));
     if (!h_C_row_ptr) goto sparse_add_cleanup;
 
     if (cudaMemcpy(h_C_row_nnz, d_C_row_nnz, n_rows * sizeof(uint32_t), cudaMemcpyDeviceToHost) != cudaSuccess) goto sparse_add_cleanup;
@@ -1165,8 +1166,8 @@ bool nimcp_gpu_sparse_add(
 
 sparse_add_cleanup:
     cudaFree(d_C_row_nnz);
-    free(h_C_row_nnz);
-    free(h_C_row_ptr);
+    nimcp_free(h_C_row_nnz);
+    nimcp_free(h_C_row_ptr);
 
     return success;
 }
@@ -1325,7 +1326,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
 {
     if (!ctx || !cpu_layer) return NULL;
 
-    nimcp_lnn_layer_gpu_t* layer = (nimcp_lnn_layer_gpu_t*)calloc(1, sizeof(nimcp_lnn_layer_gpu_t));
+    nimcp_lnn_layer_gpu_t* layer = (nimcp_lnn_layer_gpu_t*)nimcp_calloc(1, sizeof(nimcp_lnn_layer_gpu_t));
     if (!layer) return NULL;
 
     layer->n_neurons = cpu_layer->n_neurons;
@@ -1425,7 +1426,7 @@ void nimcp_lnn_layer_gpu_destroy(nimcp_lnn_layer_gpu_t* layer)
     nimcp_gpu_tensor_destroy(layer->col_idx);
     nimcp_gpu_tensor_destroy(layer->edge_weights);
 
-    free(layer);
+    nimcp_free(layer);
 }
 
 bool nimcp_lnn_layer_gpu_to_cpu(
@@ -1520,7 +1521,7 @@ nimcp_lnn_layer_gpu_extended_t* nimcp_lnn_layer_gpu_create_from_config(
     if (!ctx || !config) return NULL;
     if (config->input_dim == 0 || config->hidden_dim == 0) return NULL;
 
-    nimcp_lnn_layer_gpu_extended_t* ext = (nimcp_lnn_layer_gpu_extended_t*)calloc(
+    nimcp_lnn_layer_gpu_extended_t* ext = (nimcp_lnn_layer_gpu_extended_t*)nimcp_calloc(
         1, sizeof(nimcp_lnn_layer_gpu_extended_t));
     if (!ext) return NULL;
 
@@ -1634,7 +1635,7 @@ void nimcp_lnn_layer_gpu_extended_destroy(nimcp_lnn_layer_gpu_extended_t* layer)
     nimcp_gpu_tensor_destroy(base->col_idx);
     nimcp_gpu_tensor_destroy(base->edge_weights);
 
-    free(layer);
+    nimcp_free(layer);
 }
 
 //=============================================================================
@@ -2032,7 +2033,7 @@ nimcp_lnn_csr_weights_t* nimcp_lnn_csr_create(void* ctx_ptr, size_t rows, size_t
 {
     if (!ctx_ptr || rows == 0 || cols == 0) return NULL;
 
-    nimcp_lnn_csr_weights_t* csr = (nimcp_lnn_csr_weights_t*)calloc(1, sizeof(nimcp_lnn_csr_weights_t));
+    nimcp_lnn_csr_weights_t* csr = (nimcp_lnn_csr_weights_t*)nimcp_calloc(1, sizeof(nimcp_lnn_csr_weights_t));
     if (!csr) return NULL;
 
     csr->rows = rows;
@@ -2043,14 +2044,14 @@ nimcp_lnn_csr_weights_t* nimcp_lnn_csr_create(void* ctx_ptr, size_t rows, size_t
     cudaError_t err;
     err = cudaMalloc(&csr->d_row_offsets, (rows + 1) * sizeof(int));
     if (err != cudaSuccess) {
-        free(csr);
+        nimcp_free(csr);
         return NULL;
     }
 
     err = cudaMalloc(&csr->d_col_indices, nnz * sizeof(int));
     if (err != cudaSuccess) {
         cudaFree(csr->d_row_offsets);
-        free(csr);
+        nimcp_free(csr);
         return NULL;
     }
 
@@ -2058,7 +2059,7 @@ nimcp_lnn_csr_weights_t* nimcp_lnn_csr_create(void* ctx_ptr, size_t rows, size_t
     if (err != cudaSuccess) {
         cudaFree(csr->d_row_offsets);
         cudaFree(csr->d_col_indices);
-        free(csr);
+        nimcp_free(csr);
         return NULL;
     }
 
@@ -2074,7 +2075,7 @@ void nimcp_lnn_csr_destroy(nimcp_lnn_csr_weights_t* csr)
     if (csr->d_col_indices) cudaFree(csr->d_col_indices);
     if (csr->d_values) cudaFree(csr->d_values);
 
-    free(csr);
+    nimcp_free(csr);
     LOG_DEBUG("Destroyed CSR weights");
 }
 
@@ -2238,13 +2239,13 @@ float nimcp_lnn_compute_spectral_radius(void* ctx_ptr, const float* weight_matri
     cudaMemcpy(d_A, weight_matrix, n * n * sizeof(float), cudaMemcpyHostToDevice);
 
     // Initialize v to [1, 0, 0, ..., 0] (or uniform would work too)
-    h_v = (float*)calloc(n, sizeof(float));
+    h_v = (float*)nimcp_calloc(n, sizeof(float));
     if (!h_v) goto spectral_cleanup;
     for (size_t i = 0; i < n; i++) {
         h_v[i] = 1.0f / sqrtf((float)n);  // Normalized uniform
     }
     cudaMemcpy(d_v, h_v, n * sizeof(float), cudaMemcpyHostToDevice);
-    free(h_v);
+    nimcp_free(h_v);
     h_v = NULL;
 
     // Power iteration
@@ -2596,13 +2597,13 @@ bool nimcp_gpu_lnn_heun_step(
     size_t n = layer->n_neurons;
 
     // Allocate temporary arrays
-    float* k1 = (float*)malloc(n * sizeof(float));
-    float* k2 = (float*)malloc(n * sizeof(float));
-    float* x_orig = (float*)malloc(n * sizeof(float));
-    float* x_temp = (float*)malloc(n * sizeof(float));
+    float* k1 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k2 = (float*)nimcp_malloc(n * sizeof(float));
+    float* x_orig = (float*)nimcp_malloc(n * sizeof(float));
+    float* x_temp = (float*)nimcp_malloc(n * sizeof(float));
 
     if (!k1 || !k2 || !x_orig || !x_temp) {
-        free(k1); free(k2); free(x_orig); free(x_temp);
+        nimcp_free(k1); nimcp_free(k2); nimcp_free(x_orig); nimcp_free(x_temp);
         return false;
     }
 
@@ -2635,7 +2636,7 @@ bool nimcp_gpu_lnn_heun_step(
     // Clamp to prevent numerical explosion
     cpu_clamp_state(x_data, n, LNN_STATE_CLAMP_MIN, LNN_STATE_CLAMP_MAX);
 
-    free(k1); free(k2); free(x_orig); free(x_temp);
+    nimcp_free(k1); nimcp_free(k2); nimcp_free(x_orig); nimcp_free(x_temp);
     return true;
 }
 
@@ -2656,15 +2657,15 @@ bool nimcp_gpu_lnn_rk4_step(
     size_t n = layer->n_neurons;
 
     // Allocate temporary arrays
-    float* k1 = (float*)malloc(n * sizeof(float));
-    float* k2 = (float*)malloc(n * sizeof(float));
-    float* k3 = (float*)malloc(n * sizeof(float));
-    float* k4 = (float*)malloc(n * sizeof(float));
-    float* x_orig = (float*)malloc(n * sizeof(float));
-    float* x_temp = (float*)malloc(n * sizeof(float));
+    float* k1 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k2 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k3 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k4 = (float*)nimcp_malloc(n * sizeof(float));
+    float* x_orig = (float*)nimcp_malloc(n * sizeof(float));
+    float* x_temp = (float*)nimcp_malloc(n * sizeof(float));
 
     if (!k1 || !k2 || !k3 || !k4 || !x_orig || !x_temp) {
-        free(k1); free(k2); free(k3); free(k4); free(x_orig); free(x_temp);
+        nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(k4); nimcp_free(x_orig); nimcp_free(x_temp);
         return false;
     }
 
@@ -2719,7 +2720,7 @@ bool nimcp_gpu_lnn_rk4_step(
     // Clamp to prevent numerical explosion
     cpu_clamp_state(x_data, n, LNN_STATE_CLAMP_MIN, LNN_STATE_CLAMP_MAX);
 
-    free(k1); free(k2); free(k3); free(k4); free(x_orig); free(x_temp);
+    nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(k4); nimcp_free(x_orig); nimcp_free(x_temp);
     return true;
 }
 
@@ -2740,21 +2741,21 @@ bool nimcp_gpu_lnn_dopri5_step(
     size_t n = layer->n_neurons;
 
     // Allocate arrays for k1-k7
-    float* k1 = (float*)malloc(n * sizeof(float));
-    float* k2 = (float*)malloc(n * sizeof(float));
-    float* k3 = (float*)malloc(n * sizeof(float));
-    float* k4 = (float*)malloc(n * sizeof(float));
-    float* k5 = (float*)malloc(n * sizeof(float));
-    float* k6 = (float*)malloc(n * sizeof(float));
-    float* k7 = (float*)malloc(n * sizeof(float));
-    float* x_orig = (float*)malloc(n * sizeof(float));
-    float* x_temp = (float*)malloc(n * sizeof(float));
-    float* x_new = (float*)malloc(n * sizeof(float));
-    float* error_vec = (float*)malloc(n * sizeof(float));
+    float* k1 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k2 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k3 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k4 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k5 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k6 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k7 = (float*)nimcp_malloc(n * sizeof(float));
+    float* x_orig = (float*)nimcp_malloc(n * sizeof(float));
+    float* x_temp = (float*)nimcp_malloc(n * sizeof(float));
+    float* x_new = (float*)nimcp_malloc(n * sizeof(float));
+    float* error_vec = (float*)nimcp_malloc(n * sizeof(float));
 
     if (!k1 || !k2 || !k3 || !k4 || !k5 || !k6 || !k7 || !x_orig || !x_temp || !x_new || !error_vec) {
-        free(k1); free(k2); free(k3); free(k4); free(k5); free(k6); free(k7);
-        free(x_orig); free(x_temp); free(x_new); free(error_vec);
+        nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(k4); nimcp_free(k5); nimcp_free(k6); nimcp_free(k7);
+        nimcp_free(x_orig); nimcp_free(x_temp); nimcp_free(x_new); nimcp_free(error_vec);
         return false;
     }
 
@@ -2884,8 +2885,8 @@ bool nimcp_gpu_lnn_dopri5_step(
     // Clamp to prevent numerical explosion
     cpu_clamp_state(x_data, n, LNN_STATE_CLAMP_MIN, LNN_STATE_CLAMP_MAX);
 
-    free(k1); free(k2); free(k3); free(k4); free(k5); free(k6); free(k7);
-    free(x_orig); free(x_temp); free(x_new); free(error_vec);
+    nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(k4); nimcp_free(k5); nimcp_free(k6); nimcp_free(k7);
+    nimcp_free(x_orig); nimcp_free(x_temp); nimcp_free(x_new); nimcp_free(error_vec);
 
     return accepted;
 }
@@ -2995,7 +2996,7 @@ bool nimcp_gpu_sparse_add(
     float* C_v = (float*)C_values->data;
 
     // First pass: count nnz per row
-    uint32_t* row_nnz = (uint32_t*)calloc(n_rows, sizeof(uint32_t));
+    uint32_t* row_nnz = (uint32_t*)nimcp_calloc(n_rows, sizeof(uint32_t));
     if (!row_nnz) return false;
 
     for (uint32_t row = 0; row < n_rows; row++) {
@@ -3057,7 +3058,7 @@ bool nimcp_gpu_sparse_add(
         }
     }
 
-    free(row_nnz);
+    nimcp_free(row_nnz);
     return true;
 }
 
@@ -3143,7 +3144,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     (void)ctx;
     if (!cpu_layer) return NULL;
 
-    nimcp_lnn_layer_gpu_t* layer = (nimcp_lnn_layer_gpu_t*)calloc(1, sizeof(nimcp_lnn_layer_gpu_t));
+    nimcp_lnn_layer_gpu_t* layer = (nimcp_lnn_layer_gpu_t*)nimcp_calloc(1, sizeof(nimcp_lnn_layer_gpu_t));
     if (!layer) return NULL;
 
     layer->n_neurons = cpu_layer->n_neurons;
@@ -3153,7 +3154,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     // For CPU mode, we can reference the existing tensors directly or copy
     // Here we'll create wrappers that point to the CPU data
     if (cpu_layer->x) {
-        layer->x = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+        layer->x = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->x) {
             const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->x);
             layer->x->data = nimcp_tensor_data(cpu_layer->x);
@@ -3162,22 +3163,22 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     }
 
     if (cpu_layer->dx_dt) {
-        layer->dx_dt = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+        layer->dx_dt = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->dx_dt) {
             const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->dx_dt);
             layer->dx_dt->data = nimcp_tensor_data(cpu_layer->dx_dt);
             layer->dx_dt->numel = shape->dims[0];
         }
     } else {
-        layer->dx_dt = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+        layer->dx_dt = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->dx_dt) {
-            layer->dx_dt->data = calloc(layer->n_neurons, sizeof(float));
+            layer->dx_dt->data = nimcp_calloc(layer->n_neurons, sizeof(float));
             layer->dx_dt->numel = layer->n_neurons;
         }
     }
 
     if (cpu_layer->tau) {
-        layer->tau = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+        layer->tau = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->tau) {
             const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->tau);
             layer->tau->data = nimcp_tensor_data(cpu_layer->tau);
@@ -3186,7 +3187,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     }
 
     if (cpu_layer->tau_base) {
-        layer->tau_base = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+        layer->tau_base = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->tau_base) {
             const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->tau_base);
             layer->tau_base->data = nimcp_tensor_data(cpu_layer->tau_base);
@@ -3195,7 +3196,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     }
 
     if (cpu_layer->W_in) {
-        layer->W_in = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+        layer->W_in = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->W_in) {
             const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->W_in);
             layer->W_in->data = nimcp_tensor_data(cpu_layer->W_in);
@@ -3204,7 +3205,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     }
 
     if (cpu_layer->W_rec) {
-        layer->W_rec = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+        layer->W_rec = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->W_rec) {
             const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->W_rec);
             layer->W_rec->data = nimcp_tensor_data(cpu_layer->W_rec);
@@ -3213,7 +3214,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     }
 
     if (cpu_layer->W_tau) {
-        layer->W_tau = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+        layer->W_tau = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->W_tau) {
             const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->W_tau);
             layer->W_tau->data = nimcp_tensor_data(cpu_layer->W_tau);
@@ -3222,7 +3223,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     }
 
     if (cpu_layer->b_in) {
-        layer->b_in = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+        layer->b_in = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->b_in) {
             const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->b_in);
             layer->b_in->data = nimcp_tensor_data(cpu_layer->b_in);
@@ -3231,7 +3232,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     }
 
     if (cpu_layer->b_tau) {
-        layer->b_tau = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+        layer->b_tau = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->b_tau) {
             const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->b_tau);
             layer->b_tau->data = nimcp_tensor_data(cpu_layer->b_tau);
@@ -3244,7 +3245,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
         layer->n_edges = cpu_layer->wiring->n_edges;
 
         if (cpu_layer->wiring->row_ptr) {
-            layer->row_ptr = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+            layer->row_ptr = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
             if (layer->row_ptr) {
                 layer->row_ptr->data = cpu_layer->wiring->row_ptr;
                 layer->row_ptr->numel = layer->n_neurons + 1;
@@ -3252,7 +3253,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
         }
 
         if (cpu_layer->wiring->col_idx) {
-            layer->col_idx = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+            layer->col_idx = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
             if (layer->col_idx) {
                 layer->col_idx->data = cpu_layer->wiring->col_idx;
                 layer->col_idx->numel = layer->n_edges;
@@ -3260,7 +3261,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
         }
 
         if (cpu_layer->wiring->edge_weights) {
-            layer->edge_weights = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+            layer->edge_weights = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
             if (layer->edge_weights) {
                 layer->edge_weights->data = cpu_layer->wiring->edge_weights;
                 layer->edge_weights->numel = layer->n_edges;
@@ -3277,24 +3278,24 @@ void nimcp_lnn_layer_gpu_destroy(nimcp_lnn_layer_gpu_t* layer)
     if (!layer) return;
 
     // Free wrapper structures (data is owned by CPU layer)
-    free(layer->x);
+    nimcp_free(layer->x);
     if (layer->dx_dt && layer->dx_dt->data) {
         // dx_dt may have been allocated by us
         // Check if it's different from any cpu_layer tensor
     }
-    free(layer->dx_dt);
-    free(layer->tau);
-    free(layer->tau_base);
-    free(layer->W_in);
-    free(layer->W_rec);
-    free(layer->W_tau);
-    free(layer->b_in);
-    free(layer->b_tau);
-    free(layer->row_ptr);
-    free(layer->col_idx);
-    free(layer->edge_weights);
+    nimcp_free(layer->dx_dt);
+    nimcp_free(layer->tau);
+    nimcp_free(layer->tau_base);
+    nimcp_free(layer->W_in);
+    nimcp_free(layer->W_rec);
+    nimcp_free(layer->W_tau);
+    nimcp_free(layer->b_in);
+    nimcp_free(layer->b_tau);
+    nimcp_free(layer->row_ptr);
+    nimcp_free(layer->col_idx);
+    nimcp_free(layer->edge_weights);
 
-    free(layer);
+    nimcp_free(layer);
 }
 
 bool nimcp_lnn_layer_gpu_to_cpu(
@@ -3358,7 +3359,7 @@ nimcp_lnn_layer_gpu_extended_t* nimcp_lnn_layer_gpu_create_from_config(
     if (!config) return NULL;
     if (config->input_dim == 0 || config->hidden_dim == 0) return NULL;
 
-    nimcp_lnn_layer_gpu_extended_t* ext = (nimcp_lnn_layer_gpu_extended_t*)calloc(
+    nimcp_lnn_layer_gpu_extended_t* ext = (nimcp_lnn_layer_gpu_extended_t*)nimcp_calloc(
         1, sizeof(nimcp_lnn_layer_gpu_extended_t));
     if (!ext) return NULL;
 
@@ -3388,9 +3389,9 @@ nimcp_lnn_layer_gpu_extended_t* nimcp_lnn_layer_gpu_create_from_config(
 
     // Allocate tensors (CPU wrappers with allocated data)
     #define ALLOC_TENSOR_1D(tensor, size) do { \
-        tensor = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t)); \
+        tensor = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t)); \
         if (tensor) { \
-            tensor->data = calloc(size, sizeof(float)); \
+            tensor->data = nimcp_calloc(size, sizeof(float)); \
             tensor->numel = size; \
             tensor->ndim = 1; \
             tensor->dims[0] = size; \
@@ -3398,9 +3399,9 @@ nimcp_lnn_layer_gpu_extended_t* nimcp_lnn_layer_gpu_create_from_config(
     } while(0)
 
     #define ALLOC_TENSOR_2D(tensor, rows, cols) do { \
-        tensor = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t)); \
+        tensor = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t)); \
         if (tensor) { \
-            tensor->data = calloc((rows) * (cols), sizeof(float)); \
+            tensor->data = nimcp_calloc((rows) * (cols), sizeof(float)); \
             tensor->numel = (rows) * (cols); \
             tensor->ndim = 2; \
             tensor->dims[0] = rows; \
@@ -3474,20 +3475,20 @@ void nimcp_lnn_layer_gpu_extended_destroy(nimcp_lnn_layer_gpu_extended_t* layer)
     nimcp_lnn_layer_gpu_t* base = &layer->base;
 
     // Free tensor data and wrappers
-    if (base->x) { free(base->x->data); free(base->x); }
-    if (base->dx_dt) { free(base->dx_dt->data); free(base->dx_dt); }
-    if (base->tau) { free(base->tau->data); free(base->tau); }
-    if (base->tau_base) { free(base->tau_base->data); free(base->tau_base); }
-    if (base->b_in) { free(base->b_in->data); free(base->b_in); }
-    if (base->b_tau) { free(base->b_tau->data); free(base->b_tau); }
-    if (base->W_in) { free(base->W_in->data); free(base->W_in); }
-    if (base->W_rec) { free(base->W_rec->data); free(base->W_rec); }
-    if (base->W_tau) { free(base->W_tau->data); free(base->W_tau); }
-    if (base->row_ptr) { free(base->row_ptr->data); free(base->row_ptr); }
-    if (base->col_idx) { free(base->col_idx->data); free(base->col_idx); }
-    if (base->edge_weights) { free(base->edge_weights->data); free(base->edge_weights); }
+    if (base->x) { nimcp_free(base->x->data); nimcp_free(base->x); }
+    if (base->dx_dt) { nimcp_free(base->dx_dt->data); nimcp_free(base->dx_dt); }
+    if (base->tau) { nimcp_free(base->tau->data); nimcp_free(base->tau); }
+    if (base->tau_base) { nimcp_free(base->tau_base->data); nimcp_free(base->tau_base); }
+    if (base->b_in) { nimcp_free(base->b_in->data); nimcp_free(base->b_in); }
+    if (base->b_tau) { nimcp_free(base->b_tau->data); nimcp_free(base->b_tau); }
+    if (base->W_in) { nimcp_free(base->W_in->data); nimcp_free(base->W_in); }
+    if (base->W_rec) { nimcp_free(base->W_rec->data); nimcp_free(base->W_rec); }
+    if (base->W_tau) { nimcp_free(base->W_tau->data); nimcp_free(base->W_tau); }
+    if (base->row_ptr) { nimcp_free(base->row_ptr->data); nimcp_free(base->row_ptr); }
+    if (base->col_idx) { nimcp_free(base->col_idx->data); nimcp_free(base->col_idx); }
+    if (base->edge_weights) { nimcp_free(base->edge_weights->data); nimcp_free(base->edge_weights); }
 
-    free(layer);
+    nimcp_free(layer);
 }
 
 //=============================================================================

@@ -566,9 +566,12 @@ int training_bio_bridge_signal_batch_complete(
 
     /* Check for loss improvement */
     if (loss < bridge->best_loss) {
-        bridge->outgoing_effects.loss_improvement = (bridge->best_loss - loss) / bridge->best_loss;
+        float old_best = bridge->best_loss;
         bridge->best_loss = loss;
         bridge->stats.best_loss = loss;
+        /* Guard: first batch has old_best=INFINITY → use 1.0 as max improvement */
+        bridge->outgoing_effects.loss_improvement =
+            (isfinite(old_best) && old_best > 0.0f) ? (old_best - loss) / old_best : 1.0f;
 
         /* Release dopamine for improvement */
         bridge->outgoing_effects.dopamine_release =

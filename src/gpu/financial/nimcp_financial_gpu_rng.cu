@@ -27,6 +27,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <curand_kernel.h>
@@ -190,7 +191,7 @@ fin_gpu_rng_t* fin_gpu_rng_create(
         return NULL;
     }
 
-    fin_gpu_rng_t* rng = (fin_gpu_rng_t*)calloc(1, sizeof(fin_gpu_rng_t));
+    fin_gpu_rng_t* rng = (fin_gpu_rng_t*)nimcp_calloc(1, sizeof(fin_gpu_rng_t));
     if (!rng) {
         set_rng_error("Failed to allocate RNG structure");
         return NULL;
@@ -211,7 +212,7 @@ fin_gpu_rng_t* fin_gpu_rng_create(
         if (err != cudaSuccess) {
             set_rng_error("Failed to allocate RNG states: %s", cudaGetErrorString(err));
             NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate RNG states: %s", cudaGetErrorString(err));
-            free(rng);
+            nimcp_free(rng);
             return NULL;
         }
     }
@@ -231,7 +232,7 @@ fin_gpu_rng_t* fin_gpu_rng_create(
             set_rng_error("RNG init kernel failed: %s", cudaGetErrorString(err));
             NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "RNG init kernel failed: %s", cudaGetErrorString(err));
             cudaFree(rng->d_states);
-            free(rng);
+            nimcp_free(rng);
             return NULL;
         }
     }
@@ -249,7 +250,7 @@ void fin_gpu_rng_destroy(fin_gpu_rng_t* rng) {
         cudaFree(rng->d_states);
     }
 
-    free(rng);
+    nimcp_free(rng);
 }
 
 bool fin_gpu_rng_reseed(fin_gpu_rng_t* rng, uint64_t seed) {

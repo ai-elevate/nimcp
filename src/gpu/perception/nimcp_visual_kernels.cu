@@ -24,6 +24,7 @@
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "VISUAL_GPU"
 
@@ -538,7 +539,7 @@ nimcp_optical_flow_result_t* nimcp_optical_flow_create(void* gpu_ctx, int width,
 {
     if (!gpu_ctx || width <= 0 || height <= 0) return NULL;
 
-    nimcp_optical_flow_result_t* result = (nimcp_optical_flow_result_t*)malloc(sizeof(nimcp_optical_flow_result_t));
+    nimcp_optical_flow_result_t* result = (nimcp_optical_flow_result_t*)nimcp_malloc(sizeof(nimcp_optical_flow_result_t));
     if (!result) return NULL;
 
     result->width = width;
@@ -548,16 +549,16 @@ nimcp_optical_flow_result_t* nimcp_optical_flow_create(void* gpu_ctx, int width,
     cudaError_t err;
 
     err = cudaMalloc(&result->d_flow_x, size);
-    if (err != cudaSuccess) { free(result); return NULL; }
+    if (err != cudaSuccess) { nimcp_free(result); return NULL; }
 
     err = cudaMalloc(&result->d_flow_y, size);
-    if (err != cudaSuccess) { cudaFree(result->d_flow_x); free(result); return NULL; }
+    if (err != cudaSuccess) { cudaFree(result->d_flow_x); nimcp_free(result); return NULL; }
 
     err = cudaMalloc(&result->d_confidence, size);
     if (err != cudaSuccess) {
         cudaFree(result->d_flow_x);
         cudaFree(result->d_flow_y);
-        free(result);
+        nimcp_free(result);
         return NULL;
     }
 
@@ -580,7 +581,7 @@ void nimcp_optical_flow_destroy(nimcp_optical_flow_result_t* result)
     if (result->d_flow_y) cudaFree(result->d_flow_y);
     if (result->d_confidence) cudaFree(result->d_confidence);
 
-    free(result);
+    nimcp_free(result);
 }
 
 /**
@@ -713,12 +714,12 @@ int nimcp_optical_flow_pyramidal(void* gpu_ctx,
     if (num_levels > 8) num_levels = 8;
 
     // Build image pyramids
-    float** pyramid1 = (float**)malloc(num_levels * sizeof(float*));
-    float** pyramid2 = (float**)malloc(num_levels * sizeof(float*));
-    int* widths = (int*)malloc(num_levels * sizeof(int));
-    int* heights = (int*)malloc(num_levels * sizeof(int));
+    float** pyramid1 = (float**)nimcp_malloc(num_levels * sizeof(float*));
+    float** pyramid2 = (float**)nimcp_malloc(num_levels * sizeof(float*));
+    int* widths = (int*)nimcp_malloc(num_levels * sizeof(int));
+    int* heights = (int*)nimcp_malloc(num_levels * sizeof(int));
     if (!pyramid1 || !pyramid2 || !widths || !heights) {
-        free(pyramid1); free(pyramid2); free(widths); free(heights);
+        nimcp_free(pyramid1); nimcp_free(pyramid2); nimcp_free(widths); nimcp_free(heights);
         return -1;
     }
 
@@ -727,10 +728,10 @@ int nimcp_optical_flow_pyramidal(void* gpu_ctx,
     heights[0] = height;
     size_t size0 = width * height * sizeof(float);
     if (cudaMalloc(&pyramid1[0], size0) != cudaSuccess) {
-        free(pyramid1); free(pyramid2); free(widths); free(heights); return -1;
+        nimcp_free(pyramid1); nimcp_free(pyramid2); nimcp_free(widths); nimcp_free(heights); return -1;
     }
     if (cudaMalloc(&pyramid2[0], size0) != cudaSuccess) {
-        cudaFree(pyramid1[0]); free(pyramid1); free(pyramid2); free(widths); free(heights); return -1;
+        cudaFree(pyramid1[0]); nimcp_free(pyramid1); nimcp_free(pyramid2); nimcp_free(widths); nimcp_free(heights); return -1;
     }
     cudaMemcpy(pyramid1[0], frame1, size0, cudaMemcpyDeviceToDevice);
     cudaMemcpy(pyramid2[0], frame2, size0, cudaMemcpyDeviceToDevice);
@@ -773,13 +774,13 @@ int nimcp_optical_flow_pyramidal(void* gpu_ctx,
     }
 
     // Allocate flow fields for each level
-    float** flow_x = (float**)malloc(num_levels * sizeof(float*));
-    float** flow_y = (float**)malloc(num_levels * sizeof(float*));
-    float** conf = (float**)malloc(num_levels * sizeof(float*));
+    float** flow_x = (float**)nimcp_malloc(num_levels * sizeof(float*));
+    float** flow_y = (float**)nimcp_malloc(num_levels * sizeof(float*));
+    float** conf = (float**)nimcp_malloc(num_levels * sizeof(float*));
     if (!flow_x || !flow_y || !conf) {
         for (int l = 0; l < num_levels; l++) { cudaFree(pyramid1[l]); cudaFree(pyramid2[l]); }
-        free(pyramid1); free(pyramid2); free(widths); free(heights);
-        free(flow_x); free(flow_y); free(conf);
+        nimcp_free(pyramid1); nimcp_free(pyramid2); nimcp_free(widths); nimcp_free(heights);
+        nimcp_free(flow_x); nimcp_free(flow_y); nimcp_free(conf);
         return -1;
     }
 
@@ -876,13 +877,13 @@ int nimcp_optical_flow_pyramidal(void* gpu_ctx,
         cudaFree(flow_y[level]);
         cudaFree(conf[level]);
     }
-    free(pyramid1);
-    free(pyramid2);
-    free(flow_x);
-    free(flow_y);
-    free(conf);
-    free(widths);
-    free(heights);
+    nimcp_free(pyramid1);
+    nimcp_free(pyramid2);
+    nimcp_free(flow_x);
+    nimcp_free(flow_y);
+    nimcp_free(conf);
+    nimcp_free(widths);
+    nimcp_free(heights);
 
     return 0;
 }
@@ -1734,7 +1735,7 @@ nimcp_visual_gpu_state_t* nimcp_visual_gpu_create(
         return NULL;
     }
 
-    nimcp_visual_gpu_state_t* state = (nimcp_visual_gpu_state_t*)calloc(1, sizeof(nimcp_visual_gpu_state_t));
+    nimcp_visual_gpu_state_t* state = (nimcp_visual_gpu_state_t*)nimcp_calloc(1, sizeof(nimcp_visual_gpu_state_t));
     if (!state) {
         LOG_ERROR("Failed to allocate visual GPU state");
         return NULL;
@@ -1790,7 +1791,7 @@ void nimcp_visual_gpu_destroy(nimcp_visual_gpu_state_t* state)
     if (state->stream_mt) cudaStreamDestroy((cudaStream_t)state->stream_mt);
 
     LOG_INFO("Visual GPU state destroyed");
-    free(state);
+    nimcp_free(state);
 }
 
 /**
@@ -2249,7 +2250,7 @@ nimcp_gabor_bank_gpu_t* nimcp_gabor_bank_gpu_create(
 {
     if (!ctx) return NULL;
 
-    nimcp_gabor_bank_gpu_t* bank = (nimcp_gabor_bank_gpu_t*)calloc(1, sizeof(nimcp_gabor_bank_gpu_t));
+    nimcp_gabor_bank_gpu_t* bank = (nimcp_gabor_bank_gpu_t*)nimcp_calloc(1, sizeof(nimcp_gabor_bank_gpu_t));
     if (!bank) return NULL;
 
     nimcp_gabor_config_t cfg = config ? *config : nimcp_gabor_config_default();
@@ -2261,9 +2262,9 @@ nimcp_gabor_bank_gpu_t* nimcp_gabor_bank_gpu_create(
     bank->gamma = cfg.gamma;
     bank->psi = 0.0f;
 
-    bank->orientations = (float*)calloc(cfg.num_orientations, sizeof(float));
-    bank->frequencies = (float*)calloc(cfg.num_scales, sizeof(float));
-    bank->sigmas = (float*)calloc(cfg.num_scales, sizeof(float));
+    bank->orientations = (float*)nimcp_calloc(cfg.num_orientations, sizeof(float));
+    bank->frequencies = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
+    bank->sigmas = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
 
     if (!bank->orientations || !bank->frequencies || !bank->sigmas) {
         nimcp_gabor_bank_gpu_destroy(bank);
@@ -2294,10 +2295,10 @@ void nimcp_gabor_bank_gpu_destroy(nimcp_gabor_bank_gpu_t* bank)
 {
     if (!bank) return;
     if (bank->filters) nimcp_gpu_tensor_destroy(bank->filters);
-    free(bank->orientations);
-    free(bank->frequencies);
-    free(bank->sigmas);
-    free(bank);
+    nimcp_free(bank->orientations);
+    nimcp_free(bank->frequencies);
+    nimcp_free(bank->sigmas);
+    nimcp_free(bank);
 }
 
 nimcp_image_pyramid_gpu_t* nimcp_pyramid_gpu_create(
@@ -2306,7 +2307,7 @@ nimcp_image_pyramid_gpu_t* nimcp_pyramid_gpu_create(
     if (!ctx || width <= 0 || height <= 0 || num_levels <= 0) return NULL;
     if (num_levels > VISUAL_GPU_MAX_PYRAMID_LEVELS) return NULL;
 
-    nimcp_image_pyramid_gpu_t* pyramid = (nimcp_image_pyramid_gpu_t*)calloc(1, sizeof(nimcp_image_pyramid_gpu_t));
+    nimcp_image_pyramid_gpu_t* pyramid = (nimcp_image_pyramid_gpu_t*)nimcp_calloc(1, sizeof(nimcp_image_pyramid_gpu_t));
     if (!pyramid) return NULL;
 
     pyramid->ctx = ctx;
@@ -2325,7 +2326,7 @@ void nimcp_pyramid_gpu_destroy(nimcp_image_pyramid_gpu_t* pyramid)
         if (pyramid->levels[i]) nimcp_gpu_tensor_destroy(pyramid->levels[i]);
         if (pyramid->dog_levels[i]) nimcp_gpu_tensor_destroy(pyramid->dog_levels[i]);
     }
-    free(pyramid);
+    nimcp_free(pyramid);
 }
 
 nimcp_color_opponent_gpu_t* nimcp_color_opponent_gpu_create(
@@ -2333,7 +2334,7 @@ nimcp_color_opponent_gpu_t* nimcp_color_opponent_gpu_create(
 {
     if (!ctx || width <= 0 || height <= 0) return NULL;
 
-    nimcp_color_opponent_gpu_t* state = (nimcp_color_opponent_gpu_t*)calloc(1, sizeof(nimcp_color_opponent_gpu_t));
+    nimcp_color_opponent_gpu_t* state = (nimcp_color_opponent_gpu_t*)nimcp_calloc(1, sizeof(nimcp_color_opponent_gpu_t));
     if (!state) return NULL;
 
     state->ctx = ctx;
@@ -2367,7 +2368,7 @@ void nimcp_color_opponent_gpu_destroy(nimcp_color_opponent_gpu_t* state)
     if (state->l_cone) nimcp_gpu_tensor_destroy(state->l_cone);
     if (state->m_cone) nimcp_gpu_tensor_destroy(state->m_cone);
     if (state->s_cone) nimcp_gpu_tensor_destroy(state->s_cone);
-    free(state);
+    nimcp_free(state);
 }
 
 nimcp_double_opponent_gpu_t* nimcp_double_opponent_gpu_create(
@@ -2375,7 +2376,7 @@ nimcp_double_opponent_gpu_t* nimcp_double_opponent_gpu_create(
 {
     if (!ctx || width <= 0 || height <= 0) return NULL;
 
-    nimcp_double_opponent_gpu_t* state = (nimcp_double_opponent_gpu_t*)calloc(1, sizeof(nimcp_double_opponent_gpu_t));
+    nimcp_double_opponent_gpu_t* state = (nimcp_double_opponent_gpu_t*)nimcp_calloc(1, sizeof(nimcp_double_opponent_gpu_t));
     if (!state) return NULL;
 
     state->ctx = ctx;
@@ -2402,7 +2403,7 @@ void nimcp_double_opponent_gpu_destroy(nimcp_double_opponent_gpu_t* state)
     if (state->center_surround_rg) nimcp_gpu_tensor_destroy(state->center_surround_rg);
     if (state->center_surround_by) nimcp_gpu_tensor_destroy(state->center_surround_by);
     if (state->color_edges) nimcp_gpu_tensor_destroy(state->color_edges);
-    free(state);
+    nimcp_free(state);
 }
 
 nimcp_association_field_gpu_t* nimcp_association_field_gpu_create(
@@ -2411,7 +2412,7 @@ nimcp_association_field_gpu_t* nimcp_association_field_gpu_create(
 {
     if (!ctx || field_size <= 0 || num_orientations <= 0) return NULL;
 
-    nimcp_association_field_gpu_t* field = (nimcp_association_field_gpu_t*)calloc(1, sizeof(nimcp_association_field_gpu_t));
+    nimcp_association_field_gpu_t* field = (nimcp_association_field_gpu_t*)nimcp_calloc(1, sizeof(nimcp_association_field_gpu_t));
     if (!field) return NULL;
 
     field->ctx = ctx;
@@ -2428,14 +2429,14 @@ void nimcp_association_field_gpu_destroy(nimcp_association_field_gpu_t* field)
 {
     if (!field) return;
     if (field->field) nimcp_gpu_tensor_destroy(field->field);
-    free(field);
+    nimcp_free(field);
 }
 
 nimcp_saliency_gpu_t* nimcp_saliency_gpu_create(nimcp_gpu_context_t* ctx, int width, int height)
 {
     if (!ctx || width <= 0 || height <= 0) return NULL;
 
-    nimcp_saliency_gpu_t* state = (nimcp_saliency_gpu_t*)calloc(1, sizeof(nimcp_saliency_gpu_t));
+    nimcp_saliency_gpu_t* state = (nimcp_saliency_gpu_t*)nimcp_calloc(1, sizeof(nimcp_saliency_gpu_t));
     if (!state) return NULL;
 
     state->ctx = ctx;
@@ -2457,7 +2458,7 @@ void nimcp_saliency_gpu_destroy(nimcp_saliency_gpu_t* state)
     if (state->conspicuity_motion) nimcp_gpu_tensor_destroy(state->conspicuity_motion);
     if (state->saliency_map) nimcp_gpu_tensor_destroy(state->saliency_map);
     if (state->inhibition_of_return) nimcp_gpu_tensor_destroy(state->inhibition_of_return);
-    free(state);
+    nimcp_free(state);
 }
 
 void nimcp_motion_energy_gpu_destroy(nimcp_motion_energy_gpu_t* state)
@@ -2468,7 +2469,7 @@ void nimcp_motion_energy_gpu_destroy(nimcp_motion_energy_gpu_t* state)
     if (state->motion_energy) nimcp_gpu_tensor_destroy(state->motion_energy);
     if (state->flow_u) nimcp_gpu_tensor_destroy(state->flow_u);
     if (state->flow_v) nimcp_gpu_tensor_destroy(state->flow_v);
-    free(state);
+    nimcp_free(state);
 }
 
 } // extern "C"
@@ -2607,7 +2608,7 @@ nimcp_gabor_bank_gpu_t* nimcp_gabor_bank_gpu_create(
 {
     if (!ctx) return NULL;
 
-    nimcp_gabor_bank_gpu_t* bank = (nimcp_gabor_bank_gpu_t*)calloc(1, sizeof(nimcp_gabor_bank_gpu_t));
+    nimcp_gabor_bank_gpu_t* bank = (nimcp_gabor_bank_gpu_t*)nimcp_calloc(1, sizeof(nimcp_gabor_bank_gpu_t));
     if (!bank) return NULL;
 
     nimcp_gabor_config_t cfg = config ? *config : nimcp_gabor_config_default();
@@ -2620,9 +2621,9 @@ nimcp_gabor_bank_gpu_t* nimcp_gabor_bank_gpu_create(
     bank->psi = 0.0f;
 
     // Allocate host arrays
-    bank->orientations = (float*)calloc(cfg.num_orientations, sizeof(float));
-    bank->frequencies = (float*)calloc(cfg.num_scales, sizeof(float));
-    bank->sigmas = (float*)calloc(cfg.num_scales, sizeof(float));
+    bank->orientations = (float*)nimcp_calloc(cfg.num_orientations, sizeof(float));
+    bank->frequencies = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
+    bank->sigmas = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
 
     if (!bank->orientations || !bank->frequencies || !bank->sigmas) {
         nimcp_gabor_bank_gpu_destroy(bank);
@@ -2656,10 +2657,10 @@ void nimcp_gabor_bank_gpu_destroy(nimcp_gabor_bank_gpu_t* bank)
     if (!bank) return;
 
     if (bank->filters) nimcp_gpu_tensor_destroy(bank->filters);
-    free(bank->orientations);
-    free(bank->frequencies);
-    free(bank->sigmas);
-    free(bank);
+    nimcp_free(bank->orientations);
+    nimcp_free(bank->frequencies);
+    nimcp_free(bank->sigmas);
+    nimcp_free(bank);
 }
 
 nimcp_image_pyramid_gpu_t* nimcp_pyramid_gpu_create(
@@ -2668,7 +2669,7 @@ nimcp_image_pyramid_gpu_t* nimcp_pyramid_gpu_create(
     if (!ctx || width <= 0 || height <= 0 || num_levels <= 0) return NULL;
     if (num_levels > VISUAL_GPU_MAX_PYRAMID_LEVELS) return NULL;
 
-    nimcp_image_pyramid_gpu_t* pyramid = (nimcp_image_pyramid_gpu_t*)calloc(1, sizeof(nimcp_image_pyramid_gpu_t));
+    nimcp_image_pyramid_gpu_t* pyramid = (nimcp_image_pyramid_gpu_t*)nimcp_calloc(1, sizeof(nimcp_image_pyramid_gpu_t));
     if (!pyramid) return NULL;
 
     pyramid->ctx = ctx;
@@ -2688,7 +2689,7 @@ void nimcp_pyramid_gpu_destroy(nimcp_image_pyramid_gpu_t* pyramid)
         if (pyramid->levels[i]) nimcp_gpu_tensor_destroy(pyramid->levels[i]);
         if (pyramid->dog_levels[i]) nimcp_gpu_tensor_destroy(pyramid->dog_levels[i]);
     }
-    free(pyramid);
+    nimcp_free(pyramid);
 }
 
 nimcp_color_opponent_gpu_t* nimcp_color_opponent_gpu_create(
@@ -2696,7 +2697,7 @@ nimcp_color_opponent_gpu_t* nimcp_color_opponent_gpu_create(
 {
     if (!ctx || width <= 0 || height <= 0) return NULL;
 
-    nimcp_color_opponent_gpu_t* state = (nimcp_color_opponent_gpu_t*)calloc(1, sizeof(nimcp_color_opponent_gpu_t));
+    nimcp_color_opponent_gpu_t* state = (nimcp_color_opponent_gpu_t*)nimcp_calloc(1, sizeof(nimcp_color_opponent_gpu_t));
     if (!state) return NULL;
 
     state->ctx = ctx;
@@ -2731,7 +2732,7 @@ void nimcp_color_opponent_gpu_destroy(nimcp_color_opponent_gpu_t* state)
     if (state->l_cone) nimcp_gpu_tensor_destroy(state->l_cone);
     if (state->m_cone) nimcp_gpu_tensor_destroy(state->m_cone);
     if (state->s_cone) nimcp_gpu_tensor_destroy(state->s_cone);
-    free(state);
+    nimcp_free(state);
 }
 
 nimcp_double_opponent_gpu_t* nimcp_double_opponent_gpu_create(
@@ -2739,7 +2740,7 @@ nimcp_double_opponent_gpu_t* nimcp_double_opponent_gpu_create(
 {
     if (!ctx || width <= 0 || height <= 0) return NULL;
 
-    nimcp_double_opponent_gpu_t* state = (nimcp_double_opponent_gpu_t*)calloc(1, sizeof(nimcp_double_opponent_gpu_t));
+    nimcp_double_opponent_gpu_t* state = (nimcp_double_opponent_gpu_t*)nimcp_calloc(1, sizeof(nimcp_double_opponent_gpu_t));
     if (!state) return NULL;
 
     state->ctx = ctx;
@@ -2767,7 +2768,7 @@ void nimcp_double_opponent_gpu_destroy(nimcp_double_opponent_gpu_t* state)
     if (state->center_surround_rg) nimcp_gpu_tensor_destroy(state->center_surround_rg);
     if (state->center_surround_by) nimcp_gpu_tensor_destroy(state->center_surround_by);
     if (state->color_edges) nimcp_gpu_tensor_destroy(state->color_edges);
-    free(state);
+    nimcp_free(state);
 }
 
 nimcp_association_field_gpu_t* nimcp_association_field_gpu_create(
@@ -2776,7 +2777,7 @@ nimcp_association_field_gpu_t* nimcp_association_field_gpu_create(
 {
     if (!ctx || field_size <= 0 || num_orientations <= 0) return NULL;
 
-    nimcp_association_field_gpu_t* field = (nimcp_association_field_gpu_t*)calloc(1, sizeof(nimcp_association_field_gpu_t));
+    nimcp_association_field_gpu_t* field = (nimcp_association_field_gpu_t*)nimcp_calloc(1, sizeof(nimcp_association_field_gpu_t));
     if (!field) return NULL;
 
     field->ctx = ctx;
@@ -2794,14 +2795,14 @@ void nimcp_association_field_gpu_destroy(nimcp_association_field_gpu_t* field)
     if (!field) return;
 
     if (field->field) nimcp_gpu_tensor_destroy(field->field);
-    free(field);
+    nimcp_free(field);
 }
 
 nimcp_saliency_gpu_t* nimcp_saliency_gpu_create(nimcp_gpu_context_t* ctx, int width, int height)
 {
     if (!ctx || width <= 0 || height <= 0) return NULL;
 
-    nimcp_saliency_gpu_t* state = (nimcp_saliency_gpu_t*)calloc(1, sizeof(nimcp_saliency_gpu_t));
+    nimcp_saliency_gpu_t* state = (nimcp_saliency_gpu_t*)nimcp_calloc(1, sizeof(nimcp_saliency_gpu_t));
     if (!state) return NULL;
 
     state->ctx = ctx;
@@ -2824,7 +2825,7 @@ void nimcp_saliency_gpu_destroy(nimcp_saliency_gpu_t* state)
     if (state->conspicuity_motion) nimcp_gpu_tensor_destroy(state->conspicuity_motion);
     if (state->saliency_map) nimcp_gpu_tensor_destroy(state->saliency_map);
     if (state->inhibition_of_return) nimcp_gpu_tensor_destroy(state->inhibition_of_return);
-    free(state);
+    nimcp_free(state);
 }
 
 void nimcp_motion_energy_gpu_destroy(nimcp_motion_energy_gpu_t* state)
@@ -2836,7 +2837,7 @@ void nimcp_motion_energy_gpu_destroy(nimcp_motion_energy_gpu_t* state)
     if (state->motion_energy) nimcp_gpu_tensor_destroy(state->motion_energy);
     if (state->flow_u) nimcp_gpu_tensor_destroy(state->flow_u);
     if (state->flow_v) nimcp_gpu_tensor_destroy(state->flow_v);
-    free(state);
+    nimcp_free(state);
 }
 
 #ifdef __cplusplus

@@ -705,10 +705,13 @@ static float calculate_attenuation(dendrite_t* dendrite, uint32_t segment_id) {
     dendritic_segment_t* segment = &dendrite->segments[segment_id];
 
     // Length constant λ = sqrt(R_m / R_a)
-    float lambda = sqrtf(segment->R_m / segment->R_a);
+    float lambda = (segment->R_a > 1e-10f) ? sqrtf(segment->R_m / segment->R_a) : 1.0f;
 
     // Attenuation factor: exp(-distance / lambda)
-    float attenuation = expf(fminf(-segment->path_distance / lambda, 88.0f));
+    float attenuation = (lambda > 1e-10f)
+        ? expf(fminf(-segment->path_distance / lambda, 88.0f))
+        : 0.0f;
+    if (!isfinite(attenuation)) attenuation = 0.0f;
 
     return attenuation;
 }
@@ -769,6 +772,7 @@ void dendrite_step(dendrite_t* dendrite, float dt_ms, uint64_t timestamp) {
             calcium_sum += dendrite->segments[i].calcium;
         }
         dendrite->calcium_level = calcium_sum / (float)dendrite->num_segments;
+        if (!isfinite(dendrite->calcium_level)) dendrite->calcium_level = 0.0F;
 
         // Update activity stats
         dendrite->activity.mean_voltage = dendrite->mean_voltage;
@@ -813,8 +817,9 @@ static void update_segment_voltage(dendritic_segment_t* segment, float dt_ms) {
     float I_total = I_leak + I_axial + I_active;
 
     // Update voltage: dV/dt = I / C_m
-    float dV = (I_total / segment->C_m) * (dt_ms / 1000.0F);  // Convert ms to s
+    float dV = (segment->C_m > 1e-10f) ? (I_total / segment->C_m) * (dt_ms / 1000.0F) : 0.0F;
     segment->voltage += dV;
+    if (!isfinite(segment->voltage)) segment->voltage = 0.0F;
 
     // Clamp voltage
     if (segment->voltage < -0.080F) segment->voltage = -0.080F;  // -80 mV
@@ -1283,9 +1288,10 @@ dendrite_network_stats_t dendrite_network_get_stats(dendrite_network_t* network)
  * HOW:  Boltzmann function: B(V) = 1 / (1 + [Mg]_o * exp(-0.062*V))
  */
 static float calculate_mg_block(float voltage_mv) {
+    if (!isfinite(voltage_mv)) return 0.0F;
     float block = 1.0F / (1.0F + NMDA_MG_CONCENTRATION *
                           expf(fminf(-NMDA_MG_BLOCK_CONSTANT * voltage_mv, 88.0f)));
-    return block;
+    return isfinite(block) ? block : 0.0F;
 }
 
 bool dendrite_initiate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id,
@@ -2198,6 +2204,7 @@ float dendrite_spine_process_input(dendrite_t* dendrite, uint32_t spine_id,
     // Simple first-order filter
     float alpha = 0.1F;  // Integration rate
     spine->voltage = (1.0F - alpha) * spine->voltage + alpha * (current * spine->neck_resistance * 1e-6F);
+    if (!isfinite(spine->voltage)) spine->voltage = 0.0F;
 
     // AMPA receptor activation
     float I_ampa = spine->g_ampa * spine->ampa_receptors * spine->voltage;

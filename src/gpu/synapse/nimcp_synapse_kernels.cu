@@ -20,6 +20,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <float.h>
@@ -107,7 +108,7 @@ nimcp_gpu_vesicle_state_t* nimcp_gpu_vesicle_state_create(
         return NULL;
     }
 
-    nimcp_gpu_vesicle_state_t* state = (nimcp_gpu_vesicle_state_t*)malloc(sizeof(nimcp_gpu_vesicle_state_t));
+    nimcp_gpu_vesicle_state_t* state = (nimcp_gpu_vesicle_state_t*)nimcp_malloc(sizeof(nimcp_gpu_vesicle_state_t));
     if (!state) {
         LOG_ERROR("Failed to allocate vesicle state");
         return NULL;
@@ -152,7 +153,7 @@ void nimcp_gpu_vesicle_state_destroy(nimcp_gpu_vesicle_state_t* state)
     nimcp_gpu_tensor_destroy(state->x);
     nimcp_gpu_tensor_destroy(state->y);
     nimcp_gpu_tensor_destroy(state->z);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -169,7 +170,7 @@ nimcp_gpu_receptor_state_t* nimcp_gpu_receptor_state_create(
         return NULL;
     }
 
-    nimcp_gpu_receptor_state_t* state = (nimcp_gpu_receptor_state_t*)malloc(sizeof(nimcp_gpu_receptor_state_t));
+    nimcp_gpu_receptor_state_t* state = (nimcp_gpu_receptor_state_t*)nimcp_malloc(sizeof(nimcp_gpu_receptor_state_t));
     if (!state) {
         LOG_ERROR("Failed to allocate receptor state");
         return NULL;
@@ -211,7 +212,7 @@ void nimcp_gpu_receptor_state_destroy(nimcp_gpu_receptor_state_t* state)
     nimcp_gpu_tensor_destroy(state->occupancy);
     nimcp_gpu_tensor_destroy(state->desensitization);
     nimcp_gpu_tensor_destroy(state->conductance);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -231,7 +232,7 @@ nimcp_gpu_synapse_state_t* nimcp_gpu_synapse_state_create(
         return NULL;
     }
 
-    nimcp_gpu_synapse_state_t* state = (nimcp_gpu_synapse_state_t*)malloc(sizeof(nimcp_gpu_synapse_state_t));
+    nimcp_gpu_synapse_state_t* state = (nimcp_gpu_synapse_state_t*)nimcp_malloc(sizeof(nimcp_gpu_synapse_state_t));
     if (!state) {
         LOG_ERROR("Failed to allocate synapse state");
         return NULL;
@@ -330,7 +331,7 @@ void nimcp_gpu_synapse_state_destroy(nimcp_gpu_synapse_state_t* state)
     nimcp_gpu_vesicle_state_destroy(state->vesicle_state);
     nimcp_gpu_receptor_state_destroy(state->receptor_state);
 
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================

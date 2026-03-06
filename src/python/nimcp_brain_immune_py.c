@@ -380,12 +380,12 @@ static PyObject* BrainImmuneSystem_get_antigen(BrainImmuneSystemObject* self, Py
         return NULL;
     }
 
-    const brain_antigen_t* antigen = brain_immune_get_antigen(self->system, antigen_id);
-    if (antigen == NULL) {
+    brain_antigen_t antigen_copy;
+    if (brain_immune_get_antigen_copy(self->system, antigen_id, &antigen_copy) != 0) {
         Py_RETURN_NONE;
     }
 
-    return BrainAntigen_FromC(antigen);
+    return BrainAntigen_FromC(&antigen_copy);
 }
 
 /**

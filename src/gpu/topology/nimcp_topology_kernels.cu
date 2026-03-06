@@ -24,6 +24,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <curand_kernel.h>
@@ -991,7 +992,7 @@ nimcp_graph_gpu_t* nimcp_graph_gpu_create(
         return NULL;
     }
 
-    nimcp_graph_gpu_t* graph = (nimcp_graph_gpu_t*)calloc(1, sizeof(nimcp_graph_gpu_t));
+    nimcp_graph_gpu_t* graph = (nimcp_graph_gpu_t*)nimcp_calloc(1, sizeof(nimcp_graph_gpu_t));
     if (!graph) {
         LOG_ERROR("Failed to allocate graph structure");
         return NULL;
@@ -1008,7 +1009,7 @@ nimcp_graph_gpu_t* nimcp_graph_gpu_create(
         graph->adjacency = nimcp_gpu_tensor_create(ctx, 2, dims, NIMCP_DTYPE_FLOAT32);
         if (!graph->adjacency) {
             LOG_ERROR("Failed to allocate adjacency matrix");
-            free(graph);
+            nimcp_free(graph);
             return NULL;
         }
 
@@ -1112,7 +1113,7 @@ void nimcp_graph_gpu_destroy(nimcp_graph_gpu_t* graph)
     if (graph->row_ptrs) nimcp_gpu_tensor_destroy(graph->row_ptrs);
     if (graph->col_indices) nimcp_gpu_tensor_destroy(graph->col_indices);
 
-    free(graph);
+    nimcp_free(graph);
 }
 
 bool nimcp_graph_gpu_is_valid(const nimcp_graph_gpu_t* graph)
@@ -1458,7 +1459,7 @@ nimcp_community_result_gpu_t* nimcp_community_detect_louvain(
 
     int n = graph->num_nodes;
 
-    nimcp_community_result_gpu_t* result = (nimcp_community_result_gpu_t*)calloc(1, sizeof(nimcp_community_result_gpu_t));
+    nimcp_community_result_gpu_t* result = (nimcp_community_result_gpu_t*)nimcp_calloc(1, sizeof(nimcp_community_result_gpu_t));
     if (!result) return NULL;
 
     // Allocate result tensors
@@ -1576,7 +1577,7 @@ nimcp_community_result_gpu_t* nimcp_community_detect_label_prop(
 
     int n = graph->num_nodes;
 
-    nimcp_community_result_gpu_t* result = (nimcp_community_result_gpu_t*)calloc(1, sizeof(nimcp_community_result_gpu_t));
+    nimcp_community_result_gpu_t* result = (nimcp_community_result_gpu_t*)nimcp_calloc(1, sizeof(nimcp_community_result_gpu_t));
     if (!result) return NULL;
 
     int64_t dims[1] = {n};
@@ -1630,7 +1631,7 @@ void nimcp_community_result_gpu_destroy(nimcp_community_result_gpu_t* result)
     if (!result) return;
     if (result->node_communities) nimcp_gpu_tensor_destroy(result->node_communities);
     if (result->community_sizes) nimcp_gpu_tensor_destroy(result->community_sizes);
-    free(result);
+    nimcp_free(result);
 }
 
 //=============================================================================
@@ -1833,7 +1834,7 @@ void nimcp_topology_metrics_gpu_destroy(nimcp_topology_metrics_gpu_t* metrics)
     if (metrics->clustering_coeff) nimcp_gpu_tensor_destroy(metrics->clustering_coeff);
     if (metrics->betweenness) nimcp_gpu_tensor_destroy(metrics->betweenness);
     if (metrics->pagerank) nimcp_gpu_tensor_destroy(metrics->pagerank);
-    free(metrics);
+    nimcp_free(metrics);
 }
 
 #else // !NIMCP_ENABLE_CUDA

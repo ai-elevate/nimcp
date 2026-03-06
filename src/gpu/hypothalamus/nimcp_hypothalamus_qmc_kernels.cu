@@ -36,6 +36,7 @@
 #include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "utils/memory/nimcp_memory.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -841,7 +842,7 @@ nimcp_hypo_qmc_efe_state_t* nimcp_hypo_qmc_efe_state_create(
     }
 
     nimcp_hypo_qmc_efe_state_t* state = (nimcp_hypo_qmc_efe_state_t*)
-        calloc(1, sizeof(nimcp_hypo_qmc_efe_state_t));
+        nimcp_calloc(1, sizeof(nimcp_hypo_qmc_efe_state_t));
     if (!state) return NULL;
 
     state->num_samples = num_samples;
@@ -856,7 +857,7 @@ nimcp_hypo_qmc_efe_state_t* nimcp_hypo_qmc_efe_state_create(
     curandState* rng_states;
     err = cudaMalloc(&rng_states, num_samples * sizeof(curandState));
     if (err != cudaSuccess) {
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -870,7 +871,7 @@ nimcp_hypo_qmc_efe_state_t* nimcp_hypo_qmc_efe_state_create(
     err = cudaMalloc(&risk, num_samples * sizeof(float));
     if (err != cudaSuccess) {
         cudaFree(rng_states);
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -878,7 +879,7 @@ nimcp_hypo_qmc_efe_state_t* nimcp_hypo_qmc_efe_state_create(
     if (err != cudaSuccess) {
         cudaFree(risk);
         cudaFree(rng_states);
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -908,7 +909,7 @@ void nimcp_hypo_qmc_efe_state_destroy(nimcp_hypo_qmc_efe_state_t* state) {
         cudaFree(state->efe_values);
     }
 
-    free(state);
+    nimcp_free(state);
 }
 
 nimcp_hypo_qmc_policy_state_t* nimcp_hypo_qmc_policy_state_create(
@@ -920,7 +921,7 @@ nimcp_hypo_qmc_policy_state_t* nimcp_hypo_qmc_policy_state_create(
     }
 
     nimcp_hypo_qmc_policy_state_t* state = (nimcp_hypo_qmc_policy_state_t*)
-        calloc(1, sizeof(nimcp_hypo_qmc_policy_state_t));
+        nimcp_calloc(1, sizeof(nimcp_hypo_qmc_policy_state_t));
     if (!state) return NULL;
 
     state->num_policies = num_policies;
@@ -929,7 +930,7 @@ nimcp_hypo_qmc_policy_state_t* nimcp_hypo_qmc_policy_state_create(
     float* probs;
     cudaError_t err = cudaMalloc(&probs, num_policies * sizeof(float));
     if (err != cudaSuccess) {
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
     state->policy_probs = (nimcp_gpu_tensor_t*)probs;
@@ -946,7 +947,7 @@ void nimcp_hypo_qmc_policy_state_destroy(nimcp_hypo_qmc_policy_state_t* state) {
     if (state->gradients) cudaFree(state->gradients);
     if (state->baseline) cudaFree(state->baseline);
 
-    free(state);
+    nimcp_free(state);
 }
 
 nimcp_hypo_qmc_dynamics_t* nimcp_hypo_qmc_dynamics_create(
@@ -958,7 +959,7 @@ nimcp_hypo_qmc_dynamics_t* nimcp_hypo_qmc_dynamics_create(
     }
 
     nimcp_hypo_qmc_dynamics_t* dynamics = (nimcp_hypo_qmc_dynamics_t*)
-        calloc(1, sizeof(nimcp_hypo_qmc_dynamics_t));
+        nimcp_calloc(1, sizeof(nimcp_hypo_qmc_dynamics_t));
     if (!dynamics) return NULL;
 
     /* Initialize with identity transition (stable dynamics) */
@@ -966,19 +967,19 @@ nimcp_hypo_qmc_dynamics_t* nimcp_hypo_qmc_dynamics_create(
 
     cudaError_t err = cudaMalloc(&dynamics->transition_mean, mat_size);
     if (err != cudaSuccess) {
-        free(dynamics);
+        nimcp_free(dynamics);
         return NULL;
     }
 
     err = cudaMalloc(&dynamics->transition_cov, mat_size);
     if (err != cudaSuccess) {
         cudaFree(dynamics->transition_mean);
-        free(dynamics);
+        nimcp_free(dynamics);
         return NULL;
     }
 
     /* Initialize to identity on host, then copy */
-    float* host_mat = (float*)calloc(NIMCP_HYPO_GPU_DRIVE_COUNT * NIMCP_HYPO_GPU_DRIVE_COUNT, sizeof(float));
+    float* host_mat = (float*)nimcp_calloc(NIMCP_HYPO_GPU_DRIVE_COUNT * NIMCP_HYPO_GPU_DRIVE_COUNT, sizeof(float));
     if (host_mat) {
         for (int i = 0; i < NIMCP_HYPO_GPU_DRIVE_COUNT; i++) {
             host_mat[i * NIMCP_HYPO_GPU_DRIVE_COUNT + i] = 1.0f;
@@ -992,7 +993,7 @@ nimcp_hypo_qmc_dynamics_t* nimcp_hypo_qmc_dynamics_create(
         }
         cudaMemcpy(dynamics->transition_cov, host_mat, mat_size, cudaMemcpyHostToDevice);
 
-        free(host_mat);
+        nimcp_free(host_mat);
     }
 
     return dynamics;
@@ -1006,7 +1007,7 @@ void nimcp_hypo_qmc_dynamics_destroy(nimcp_hypo_qmc_dynamics_t* dynamics) {
     if (dynamics->observation_model) cudaFree(dynamics->observation_model);
     if (dynamics->noise_samples) cudaFree(dynamics->noise_samples);
 
-    free(dynamics);
+    nimcp_free(dynamics);
 }
 
 /* EFE computation */

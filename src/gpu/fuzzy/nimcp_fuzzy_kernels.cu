@@ -18,6 +18,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdarg.h>
@@ -541,11 +542,11 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_memberships, memberships_size), GPU_ERROR_OUT_OF_MEMORY);
 
     // Prepare host arrays
-    uint32_t* h_types = (uint32_t*)malloc(types_size);
-    uint32_t* h_hedges = (uint32_t*)malloc(types_size);
-    float* h_params = (float*)malloc(params_size);
-    uint32_t* h_num_params = (uint32_t*)malloc(types_size);
-    float* h_alpha_cuts = (float*)malloc(num_mfs * sizeof(float));
+    uint32_t* h_types = (uint32_t*)nimcp_malloc(types_size);
+    uint32_t* h_hedges = (uint32_t*)nimcp_malloc(types_size);
+    float* h_params = (float*)nimcp_malloc(params_size);
+    uint32_t* h_num_params = (uint32_t*)nimcp_malloc(types_size);
+    float* h_alpha_cuts = (float*)nimcp_malloc(num_mfs * sizeof(float));
 
     if (!h_types || !h_hedges || !h_params || !h_num_params || !h_alpha_cuts) {
         set_fuzzy_error("Host memory allocation failed");
@@ -599,11 +600,11 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
                                   cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Cleanup
-    free(h_types);
-    free(h_hedges);
-    free(h_params);
-    free(h_num_params);
-    free(h_alpha_cuts);
+    nimcp_free(h_types);
+    nimcp_free(h_hedges);
+    nimcp_free(h_params);
+    nimcp_free(h_num_params);
+    nimcp_free(h_alpha_cuts);
     cudaFree(d_types);
     cudaFree(d_hedges);
     cudaFree(d_params);
@@ -615,11 +616,11 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
     return true;
 
 cleanup_error:
-    if (h_types) free(h_types);
-    if (h_hedges) free(h_hedges);
-    if (h_params) free(h_params);
-    if (h_num_params) free(h_num_params);
-    if (h_alpha_cuts) free(h_alpha_cuts);
+    if (h_types) nimcp_free(h_types);
+    if (h_hedges) nimcp_free(h_hedges);
+    if (h_params) nimcp_free(h_params);
+    if (h_num_params) nimcp_free(h_num_params);
+    if (h_alpha_cuts) nimcp_free(h_alpha_cuts);
     if (d_types) cudaFree(d_types);
     if (d_hedges) cudaFree(d_hedges);
     if (d_params) cudaFree(d_params);
@@ -692,10 +693,10 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_discretized, disc_size), GPU_ERROR_OUT_OF_MEMORY);
 
     // Prepare and upload (same pattern as evaluate)
-    uint32_t* h_types = (uint32_t*)malloc(types_size);
-    uint32_t* h_hedges = (uint32_t*)malloc(types_size);
-    float* h_params = (float*)malloc(params_size);
-    uint32_t* h_num_params = (uint32_t*)malloc(types_size);
+    uint32_t* h_types = (uint32_t*)nimcp_malloc(types_size);
+    uint32_t* h_hedges = (uint32_t*)nimcp_malloc(types_size);
+    float* h_params = (float*)nimcp_malloc(params_size);
+    uint32_t* h_num_params = (uint32_t*)nimcp_malloc(types_size);
 
     if (!h_types || !h_hedges || !h_params || !h_num_params) {
         set_fuzzy_error("Host memory allocation failed");
@@ -736,10 +737,10 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
     NIMCP_CUDA_RECOVER(cudaMemcpy(discretized, d_discretized, disc_size,
                                   cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
-    free(h_types);
-    free(h_hedges);
-    free(h_params);
-    free(h_num_params);
+    nimcp_free(h_types);
+    nimcp_free(h_hedges);
+    nimcp_free(h_params);
+    nimcp_free(h_num_params);
     cudaFree(d_types);
     cudaFree(d_hedges);
     cudaFree(d_params);
@@ -749,10 +750,10 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
     return true;
 
 cleanup_discretize:
-    if (h_types) free(h_types);
-    if (h_hedges) free(h_hedges);
-    if (h_params) free(h_params);
-    if (h_num_params) free(h_num_params);
+    if (h_types) nimcp_free(h_types);
+    if (h_hedges) nimcp_free(h_hedges);
+    if (h_params) nimcp_free(h_params);
+    if (h_num_params) nimcp_free(h_num_params);
     if (d_types) cudaFree(d_types);
     if (d_hedges) cudaFree(d_hedges);
     if (d_params) cudaFree(d_params);

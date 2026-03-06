@@ -14,6 +14,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 
@@ -640,7 +641,7 @@ nimcp_lpc_ctx_t* nimcp_lpc_create(void* gpu_ctx, int order, int frame_size)
 {
     if (!gpu_ctx || order <= 0 || frame_size <= 0) return NULL;
 
-    nimcp_lpc_ctx_t* ctx = (nimcp_lpc_ctx_t*)malloc(sizeof(nimcp_lpc_ctx_t));
+    nimcp_lpc_ctx_t* ctx = (nimcp_lpc_ctx_t*)nimcp_malloc(sizeof(nimcp_lpc_ctx_t));
     if (!ctx) return NULL;
 
     ctx->order = order;
@@ -649,25 +650,25 @@ nimcp_lpc_ctx_t* nimcp_lpc_create(void* gpu_ctx, int order, int frame_size)
 
     // Allocate GPU memory
     if (cudaMalloc(&ctx->d_autocorr, (order + 1) * sizeof(float)) != cudaSuccess) {
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
     if (cudaMalloc(&ctx->d_lpc_coeffs, order * sizeof(float)) != cudaSuccess) {
         cudaFree(ctx->d_autocorr);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
     if (cudaMalloc(&ctx->d_reflection, order * sizeof(float)) != cudaSuccess) {
         cudaFree(ctx->d_autocorr);
         cudaFree(ctx->d_lpc_coeffs);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
     if (cudaMalloc(&ctx->d_prediction_error, sizeof(float)) != cudaSuccess) {
         cudaFree(ctx->d_autocorr);
         cudaFree(ctx->d_lpc_coeffs);
         cudaFree(ctx->d_reflection);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -682,7 +683,7 @@ void nimcp_lpc_destroy(nimcp_lpc_ctx_t* ctx)
     cudaFree(ctx->d_lpc_coeffs);
     cudaFree(ctx->d_reflection);
     cudaFree(ctx->d_prediction_error);
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 int nimcp_lpc_autocorrelation(nimcp_lpc_ctx_t* ctx, const float* d_frame, float* d_autocorr)

@@ -34,6 +34,7 @@
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "DFV_GPU"
 
@@ -110,7 +111,7 @@ dfv_gpu_context_t* dfv_gpu_context_create(
         return NULL;
     }
 
-    dfv_gpu_context_t* ctx = (dfv_gpu_context_t*)calloc(1, sizeof(dfv_gpu_context_t));
+    dfv_gpu_context_t* ctx = (dfv_gpu_context_t*)nimcp_calloc(1, sizeof(dfv_gpu_context_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate dragonfly vision context");
         return NULL;
@@ -185,7 +186,7 @@ void dfv_gpu_context_destroy(dfv_gpu_context_t* ctx)
     dfv_collision_state_destroy(ctx->collision);
     dfv_tsdn_state_destroy(ctx->tsdn);
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_DEBUG("Destroyed dragonfly vision GPU context");
 }
 
@@ -236,7 +237,7 @@ dfv_target_state_t* dfv_target_state_create(
 {
     if (!gpu_ctx || max_targets == 0) return NULL;
 
-    dfv_target_state_t* state = (dfv_target_state_t*)calloc(1, sizeof(dfv_target_state_t));
+    dfv_target_state_t* state = (dfv_target_state_t*)nimcp_calloc(1, sizeof(dfv_target_state_t));
     if (!state) return NULL;
 
     state->max_targets = max_targets;
@@ -267,7 +268,7 @@ dfv_target_state_t* dfv_target_state_create(
     }
 
     // Initialize covariance to identity
-    float* h_cov = (float*)calloc(max_targets * 36, sizeof(float));
+    float* h_cov = (float*)nimcp_calloc(max_targets * 36, sizeof(float));
     if (h_cov) {
         for (uint32_t t = 0; t < max_targets; t++) {
             for (int i = 0; i < 6; i++) {
@@ -276,7 +277,7 @@ dfv_target_state_t* dfv_target_state_create(
         }
         cudaMemcpy(state->covariance->data, h_cov,
                    max_targets * 36 * sizeof(float), cudaMemcpyHostToDevice);
-        free(h_cov);
+        nimcp_free(h_cov);
     }
 
     return state;
@@ -291,7 +292,7 @@ void dfv_target_state_destroy(dfv_target_state_t* state)
     nimcp_gpu_tensor_destroy(state->confidence);
     nimcp_gpu_tensor_destroy(state->priority);
     nimcp_gpu_tensor_destroy(state->visible);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -306,7 +307,7 @@ dfv_optical_flow_state_t* dfv_optical_flow_state_create(
 {
     if (!gpu_ctx || width == 0 || height == 0) return NULL;
 
-    dfv_optical_flow_state_t* state = (dfv_optical_flow_state_t*)calloc(1, sizeof(dfv_optical_flow_state_t));
+    dfv_optical_flow_state_t* state = (dfv_optical_flow_state_t*)nimcp_calloc(1, sizeof(dfv_optical_flow_state_t));
     if (!state) return NULL;
 
     state->width = width;
@@ -341,7 +342,7 @@ void dfv_optical_flow_state_destroy(dfv_optical_flow_state_t* state)
     nimcp_gpu_tensor_destroy(state->direction);
     nimcp_gpu_tensor_destroy(state->confidence);
     nimcp_gpu_tensor_destroy(state->prev_frame);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -355,7 +356,7 @@ dfv_gaze_state_t* dfv_gaze_state_create(
 {
     if (!gpu_ctx) return NULL;
 
-    dfv_gaze_state_t* state = (dfv_gaze_state_t*)calloc(1, sizeof(dfv_gaze_state_t));
+    dfv_gaze_state_t* state = (dfv_gaze_state_t*)nimcp_calloc(1, sizeof(dfv_gaze_state_t));
     if (!state) return NULL;
 
     size_t dims_2d[] = {height, width};
@@ -391,7 +392,7 @@ void dfv_gaze_state_destroy(dfv_gaze_state_t* state)
     nimcp_gpu_tensor_destroy(state->pursuit_velocity);
     nimcp_gpu_tensor_destroy(state->head_position);
     nimcp_gpu_tensor_destroy(state->sector_priority);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -406,7 +407,7 @@ dfv_stmd_state_t* dfv_stmd_state_create(
 {
     if (!gpu_ctx) return NULL;
 
-    dfv_stmd_state_t* state = (dfv_stmd_state_t*)calloc(1, sizeof(dfv_stmd_state_t));
+    dfv_stmd_state_t* state = (dfv_stmd_state_t*)nimcp_calloc(1, sizeof(dfv_stmd_state_t));
     if (!state) return NULL;
 
     state->buffer_depth = buffer_depth > 0 ? buffer_depth : 8;
@@ -441,7 +442,7 @@ void dfv_stmd_state_destroy(dfv_stmd_state_t* state)
     nimcp_gpu_tensor_destroy(state->temporal_buffer);
     nimcp_gpu_tensor_destroy(state->fg_mask);
     nimcp_gpu_tensor_destroy(state->detection_map);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -455,7 +456,7 @@ dfv_collision_state_t* dfv_collision_state_create(
 {
     if (!gpu_ctx) return NULL;
 
-    dfv_collision_state_t* state = (dfv_collision_state_t*)calloc(1, sizeof(dfv_collision_state_t));
+    dfv_collision_state_t* state = (dfv_collision_state_t*)nimcp_calloc(1, sizeof(dfv_collision_state_t));
     if (!state) return NULL;
 
     state->min_ttc_threshold = 0.5f;       // 500ms warning
@@ -497,7 +498,7 @@ void dfv_collision_state_destroy(dfv_collision_state_t* state)
     nimcp_gpu_tensor_destroy(state->escape_vector);
     nimcp_gpu_tensor_destroy(state->obstacle_mask);
     nimcp_gpu_tensor_destroy(state->sector_clearance);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -508,7 +509,7 @@ dfv_tsdn_state_t* dfv_tsdn_state_create(nimcp_gpu_context_t* gpu_ctx)
 {
     if (!gpu_ctx) return NULL;
 
-    dfv_tsdn_state_t* state = (dfv_tsdn_state_t*)calloc(1, sizeof(dfv_tsdn_state_t));
+    dfv_tsdn_state_t* state = (dfv_tsdn_state_t*)nimcp_calloc(1, sizeof(dfv_tsdn_state_t));
     if (!state) return NULL;
 
     state->tuning_width = M_PI / 4.0f;  // 45 degree tuning width
@@ -556,7 +557,7 @@ void dfv_tsdn_state_destroy(dfv_tsdn_state_t* state)
     nimcp_gpu_tensor_destroy(state->preferred_dirs);
     nimcp_gpu_tensor_destroy(state->population_vector);
     nimcp_gpu_tensor_destroy(state->facilitation);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -1049,7 +1050,7 @@ bool dfv_gpu_detect_looming(
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Find max vote location (simple reduction on host for now)
-    float* h_votes = (float*)malloc(width * height * sizeof(float));
+    float* h_votes = (float*)nimcp_malloc(width * height * sizeof(float));
     if (!h_votes) {
         nimcp_gpu_tensor_destroy(foe_votes);
         return false;
@@ -1072,7 +1073,7 @@ bool dfv_gpu_detect_looming(
         }
     }
 
-    free(h_votes);
+    nimcp_free(h_votes);
     nimcp_gpu_tensor_destroy(foe_votes);
 
     // Store FOE
@@ -2113,14 +2114,14 @@ bool dfv_gpu_data_association(
     }
     if (n_detections == 0 || state->n_targets == 0) {
         // All detections are new tracks
-        int* h_assoc = (int*)malloc(n_detections * sizeof(int));
+        int* h_assoc = (int*)nimcp_malloc(n_detections * sizeof(int));
         if (!h_assoc) return false;
         for (uint32_t i = 0; i < n_detections; i++) {
             h_assoc[i] = -1;
         }
         NIMCP_CUDA_RECOVER(cudaMemcpy(association->data, h_assoc,
                               n_detections * sizeof(int), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
-        free(h_assoc);
+        nimcp_free(h_assoc);
         return true;
     }
 
@@ -2141,10 +2142,10 @@ bool dfv_gpu_data_association(
 
     // Copy position portion of state to predictions
     // State is [n, 6], we want [n, 3]
-    float* h_state = (float*)malloc(state->n_targets * 6 * sizeof(float));
-    float* h_pred = (float*)malloc(state->n_targets * 3 * sizeof(float));
+    float* h_state = (float*)nimcp_malloc(state->n_targets * 6 * sizeof(float));
+    float* h_pred = (float*)nimcp_malloc(state->n_targets * 3 * sizeof(float));
     if (!h_state || !h_pred) {
-        free(h_state); free(h_pred);
+        nimcp_free(h_state); nimcp_free(h_pred);
         nimcp_gpu_tensor_destroy(predictions);
         nimcp_gpu_tensor_destroy(cost_matrix);
         return false;
@@ -2162,8 +2163,8 @@ bool dfv_gpu_data_association(
     NIMCP_CUDA_RECOVER(cudaMemcpy(predictions->data, h_pred,
                           state->n_targets * 3 * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
-    free(h_state);
-    free(h_pred);
+    nimcp_free(h_state);
+    nimcp_free(h_pred);
 
     // Compute cost matrix
     dim3 grid(state->n_targets);
@@ -2214,20 +2215,20 @@ bool dfv_gpu_track_management(
     }
 
     // Read association results
-    int* h_assoc = (int*)malloc(n_detections * sizeof(int));
+    int* h_assoc = (int*)nimcp_malloc(n_detections * sizeof(int));
     if (!h_assoc) return false;
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_assoc, association->data,
                           n_detections * sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Read detections
-    float* h_dets = (float*)malloc(n_detections * 3 * sizeof(float));
-    if (!h_dets) { free(h_assoc); return false; }
+    float* h_dets = (float*)nimcp_malloc(n_detections * 3 * sizeof(float));
+    if (!h_dets) { nimcp_free(h_assoc); return false; }
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_dets, detections->data,
                           n_detections * 3 * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Read current state
-    float* h_state = (float*)malloc(state->max_targets * 6 * sizeof(float));
-    if (!h_state) { free(h_assoc); free(h_dets); return false; }
+    float* h_state = (float*)nimcp_malloc(state->max_targets * 6 * sizeof(float));
+    if (!h_state) { nimcp_free(h_assoc); nimcp_free(h_dets); return false; }
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_state, state->state->data,
                           state->n_targets * 6 * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
@@ -2252,9 +2253,9 @@ bool dfv_gpu_track_management(
     NIMCP_CUDA_RECOVER(cudaMemcpy(state->state->data, h_state,
                           state->n_targets * 6 * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
-    free(h_assoc);
-    free(h_dets);
-    free(h_state);
+    nimcp_free(h_assoc);
+    nimcp_free(h_dets);
+    nimcp_free(h_state);
 
     return true;
 }
@@ -2283,15 +2284,15 @@ bool dfv_gpu_detect_targets(
     uint32_t height = ctx->frame_height;
 
     // Copy detection map to host for analysis
-    float* h_detection = (float*)malloc(width * height * sizeof(float));
+    float* h_detection = (float*)nimcp_malloc(width * height * sizeof(float));
     if (!h_detection) return false;
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_detection, ctx->stmd->detection_map->data,
                           width * height * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Find local maxima in detection map
-    float* h_dets = (float*)malloc(DFV_MAX_TARGETS * 3 * sizeof(float));
-    float* h_scores = (float*)malloc(DFV_MAX_TARGETS * sizeof(float));
-    if (!h_dets || !h_scores) { free(h_detection); free(h_dets); free(h_scores); return false; }
+    float* h_dets = (float*)nimcp_malloc(DFV_MAX_TARGETS * 3 * sizeof(float));
+    float* h_scores = (float*)nimcp_malloc(DFV_MAX_TARGETS * sizeof(float));
+    if (!h_dets || !h_scores) { nimcp_free(h_detection); nimcp_free(h_dets); nimcp_free(h_scores); return false; }
     uint32_t det_count = 0;
 
     float threshold = 0.5f;
@@ -2333,9 +2334,9 @@ bool dfv_gpu_detect_targets(
                               det_count * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
     }
 
-    free(h_detection);
-    free(h_dets);
-    free(h_scores);
+    nimcp_free(h_detection);
+    nimcp_free(h_dets);
+    nimcp_free(h_scores);
 
     return true;
 }

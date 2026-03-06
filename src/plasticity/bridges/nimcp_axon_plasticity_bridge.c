@@ -382,6 +382,7 @@ int axon_plasticity_update_conduction(axon_plasticity_bridge_t* bridge)
 
     if (bridge->num_segments > 0) {
         bridge->avg_conduction_velocity = sum_velocity / (float)bridge->num_segments;
+        if (!isfinite(bridge->avg_conduction_velocity)) bridge->avg_conduction_velocity = 1.0f;
         bridge->stats.avg_conduction_velocity = bridge->avg_conduction_velocity;
     }
 
@@ -469,6 +470,7 @@ int axon_plasticity_update_myelination(axon_plasticity_bridge_t* bridge)
 
     if (bridge->num_segments > 0) {
         bridge->avg_myelination_factor = sum_myelin / (float)bridge->num_segments;
+        if (!isfinite(bridge->avg_myelination_factor)) bridge->avg_myelination_factor = 0.0f;
         bridge->stats.avg_myelination = bridge->avg_myelination_factor;
     }
 
@@ -561,6 +563,7 @@ int axon_plasticity_update(axon_plasticity_bridge_t* bridge, float dt_ms)
 
     if (bridge->num_segments > 0) {
         bridge->stats.avg_excitability = sum_excitability / (float)bridge->num_segments;
+        if (!isfinite(bridge->stats.avg_excitability)) bridge->stats.avg_excitability = 1.0f;
     }
 
     bridge->last_update_time = nimcp_time_get_us();

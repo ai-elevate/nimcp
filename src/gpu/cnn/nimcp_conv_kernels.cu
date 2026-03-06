@@ -10,6 +10,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <math.h>
@@ -349,7 +350,7 @@ nimcp_conv2d_backward_ctx_t* nimcp_conv2d_backward_create(
     if (!ctx) return NULL;
 
     nimcp_conv2d_backward_ctx_t* bwd_ctx =
-        (nimcp_conv2d_backward_ctx_t*)malloc(sizeof(nimcp_conv2d_backward_ctx_t));
+        (nimcp_conv2d_backward_ctx_t*)nimcp_malloc(sizeof(nimcp_conv2d_backward_ctx_t));
     if (!bwd_ctx) return NULL;
 
     // Compute output dimensions
@@ -410,7 +411,7 @@ void nimcp_conv2d_backward_destroy(nimcp_conv2d_backward_ctx_t* bwd_ctx)
         if (bwd_ctx->d_input_cache) nimcp_gpu_free(bwd_ctx->ctx, bwd_ctx->d_input_cache);
     }
 
-    free(bwd_ctx);
+    nimcp_free(bwd_ctx);
 }
 
 int nimcp_conv2d_backward(
@@ -1154,7 +1155,7 @@ nimcp_layer_norm_ctx_t* nimcp_layer_norm_create(
     if (!ctx || normalized_shape <= 0) return NULL;
 
     nimcp_layer_norm_ctx_t* ln_ctx =
-        (nimcp_layer_norm_ctx_t*)malloc(sizeof(nimcp_layer_norm_ctx_t));
+        (nimcp_layer_norm_ctx_t*)nimcp_malloc(sizeof(nimcp_layer_norm_ctx_t));
     if (!ln_ctx) return NULL;
 
     ln_ctx->normalized_shape = normalized_shape;
@@ -1193,7 +1194,7 @@ void nimcp_layer_norm_destroy(nimcp_layer_norm_ctx_t* ln_ctx)
         if (ln_ctx->d_var) nimcp_gpu_free(ln_ctx->ctx, ln_ctx->d_var);
     }
 
-    free(ln_ctx);
+    nimcp_free(ln_ctx);
 }
 
 int nimcp_layer_norm_forward(
@@ -1465,7 +1466,7 @@ nimcp_instance_norm_ctx_t* nimcp_instance_norm_create(
     if (!ctx || num_features <= 0) return NULL;
 
     nimcp_instance_norm_ctx_t* in_ctx =
-        (nimcp_instance_norm_ctx_t*)malloc(sizeof(nimcp_instance_norm_ctx_t));
+        (nimcp_instance_norm_ctx_t*)nimcp_malloc(sizeof(nimcp_instance_norm_ctx_t));
     if (!in_ctx) return NULL;
 
     in_ctx->num_features = num_features;
@@ -1509,7 +1510,7 @@ void nimcp_instance_norm_destroy(nimcp_instance_norm_ctx_t* in_ctx)
         if (in_ctx->d_var) nimcp_gpu_free(in_ctx->ctx, in_ctx->d_var);
     }
 
-    free(in_ctx);
+    nimcp_free(in_ctx);
 }
 
 int nimcp_instance_norm_forward(

@@ -21,6 +21,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <float.h>
@@ -613,7 +614,7 @@ nimcp_gpu_bcm_state_t* nimcp_gpu_bcm_state_create(
         return NULL;
     }
 
-    nimcp_gpu_bcm_state_t* state = (nimcp_gpu_bcm_state_t*)calloc(1, sizeof(nimcp_gpu_bcm_state_t));
+    nimcp_gpu_bcm_state_t* state = (nimcp_gpu_bcm_state_t*)nimcp_calloc(1, sizeof(nimcp_gpu_bcm_state_t));
     if (!state) return NULL;
 
     size_t syn_dims[2] = {n_post, n_pre};
@@ -649,7 +650,7 @@ void nimcp_gpu_bcm_state_destroy(nimcp_gpu_bcm_state_t* state)
     if (state->thresholds) nimcp_gpu_tensor_destroy(state->thresholds);
     if (state->avg_activity) nimcp_gpu_tensor_destroy(state->avg_activity);
     if (state->eligibility) nimcp_gpu_tensor_destroy(state->eligibility);
-    free(state);
+    nimcp_free(state);
 }
 
 /**
@@ -871,7 +872,7 @@ nimcp_gpu_homeostatic_state_t* nimcp_gpu_homeostatic_state_create(
     }
 
     nimcp_gpu_homeostatic_state_t* state =
-        (nimcp_gpu_homeostatic_state_t*)calloc(1, sizeof(nimcp_gpu_homeostatic_state_t));
+        (nimcp_gpu_homeostatic_state_t*)nimcp_calloc(1, sizeof(nimcp_gpu_homeostatic_state_t));
     if (!state) return NULL;
 
     size_t dims[1] = {n_neurons};
@@ -906,7 +907,7 @@ void nimcp_gpu_homeostatic_state_destroy(nimcp_gpu_homeostatic_state_t* state)
     if (state->avg_rates) nimcp_gpu_tensor_destroy(state->avg_rates);
     if (state->thresholds) nimcp_gpu_tensor_destroy(state->thresholds);
     if (state->gains) nimcp_gpu_tensor_destroy(state->gains);
-    free(state);
+    nimcp_free(state);
 }
 
 /**
@@ -1161,7 +1162,7 @@ nimcp_gpu_stp_state_t* nimcp_gpu_stp_state_create(
         return NULL;
     }
 
-    nimcp_gpu_stp_state_t* state = (nimcp_gpu_stp_state_t*)calloc(1, sizeof(nimcp_gpu_stp_state_t));
+    nimcp_gpu_stp_state_t* state = (nimcp_gpu_stp_state_t*)nimcp_calloc(1, sizeof(nimcp_gpu_stp_state_t));
     if (!state) return NULL;
 
     size_t dims[1] = {n_synapses};
@@ -1193,7 +1194,7 @@ void nimcp_gpu_stp_state_destroy(nimcp_gpu_stp_state_t* state)
     if (state->x) nimcp_gpu_tensor_destroy(state->x);
     if (state->u) nimcp_gpu_tensor_destroy(state->u);
     if (state->last_spike) nimcp_gpu_tensor_destroy(state->last_spike);
-    free(state);
+    nimcp_free(state);
 }
 
 /**
@@ -1439,7 +1440,7 @@ nimcp_gpu_calcium_state_t* nimcp_gpu_calcium_state_create(
     }
 
     nimcp_gpu_calcium_state_t* state =
-        (nimcp_gpu_calcium_state_t*)calloc(1, sizeof(nimcp_gpu_calcium_state_t));
+        (nimcp_gpu_calcium_state_t*)nimcp_calloc(1, sizeof(nimcp_gpu_calcium_state_t));
     if (!state) return NULL;
 
     size_t dims[1] = {n_synapses};
@@ -1471,7 +1472,7 @@ void nimcp_gpu_calcium_state_destroy(nimcp_gpu_calcium_state_t* state)
     if (state->concentration) nimcp_gpu_tensor_destroy(state->concentration);
     if (state->learning_rate) nimcp_gpu_tensor_destroy(state->learning_rate);
     if (state->nmda_activation) nimcp_gpu_tensor_destroy(state->nmda_activation);
-    free(state);
+    nimcp_free(state);
 }
 
 /**
@@ -2037,7 +2038,7 @@ nimcp_gpu_bcm_state_t* nimcp_gpu_bcm_state_create(nimcp_gpu_context_t* ctx,
 
 void nimcp_gpu_bcm_state_destroy(nimcp_gpu_bcm_state_t* state)
 {
-    if (state) free(state);
+    if (state) nimcp_free(state);
 }
 
 bool nimcp_gpu_bcm_update_threshold(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* thresholds,
@@ -2073,7 +2074,7 @@ nimcp_gpu_homeostatic_state_t* nimcp_gpu_homeostatic_state_create(
 
 void nimcp_gpu_homeostatic_state_destroy(nimcp_gpu_homeostatic_state_t* state)
 {
-    if (state) free(state);
+    if (state) nimcp_free(state);
 }
 
 bool nimcp_gpu_homeostatic_update_rates(nimcp_gpu_context_t* ctx,
@@ -2117,7 +2118,7 @@ nimcp_gpu_stp_state_t* nimcp_gpu_stp_state_create(nimcp_gpu_context_t* ctx,
 
 void nimcp_gpu_stp_state_destroy(nimcp_gpu_stp_state_t* state)
 {
-    if (state) free(state);
+    if (state) nimcp_free(state);
 }
 
 bool nimcp_gpu_stp_update(nimcp_gpu_context_t* ctx, nimcp_gpu_stp_state_t* state, float dt)
@@ -2162,7 +2163,7 @@ nimcp_gpu_calcium_state_t* nimcp_gpu_calcium_state_create(nimcp_gpu_context_t* c
 
 void nimcp_gpu_calcium_state_destroy(nimcp_gpu_calcium_state_t* state)
 {
-    if (state) free(state);
+    if (state) nimcp_free(state);
 }
 
 bool nimcp_gpu_calcium_update(nimcp_gpu_context_t* ctx,

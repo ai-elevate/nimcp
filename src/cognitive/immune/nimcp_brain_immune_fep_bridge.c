@@ -464,9 +464,13 @@ int brain_immune_fep_assess_threat(
     NIMCP_FEP_CHECK_THROW(bridge && threat_prob, NIMCP_ERROR_NULL_POINTER, "bridge or threat_prob is NULL");
     NIMCP_FEP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system is NULL");
 
-    /* Get antigen outside lock to avoid external call under lock */
-    const brain_antigen_t* antigen = bridge->immune_system ?
-        brain_immune_get_antigen(bridge->immune_system, antigen_id) : NULL;
+    /* Get antigen outside lock to avoid external call under lock (copy to avoid dangling pointer) */
+    brain_antigen_t antigen_copy;
+    const brain_antigen_t* antigen = NULL;
+    if (bridge->immune_system &&
+        brain_immune_get_antigen_copy(bridge->immune_system, antigen_id, &antigen_copy) == 0) {
+        antigen = &antigen_copy;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 

@@ -26,6 +26,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "TENSOR_GPU"
 
@@ -98,7 +99,7 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
         return NULL;
     }
 
-    nimcp_gpu_tensor_t* tensor = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
+    nimcp_gpu_tensor_t* tensor = (nimcp_gpu_tensor_t*)nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
     if (!tensor) {
         LOG_ERROR("Failed to allocate tensor structure");
         return NULL;
@@ -112,13 +113,13 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
     tensor->elem_size = get_elem_size(precision);
 
     // Allocate dimensions array on host
-    tensor->dims = (size_t*)malloc(ndim * sizeof(size_t));
-    tensor->strides = (size_t*)malloc(ndim * sizeof(size_t));
+    tensor->dims = (size_t*)nimcp_malloc(ndim * sizeof(size_t));
+    tensor->strides = (size_t*)nimcp_malloc(ndim * sizeof(size_t));
     if (!tensor->dims || !tensor->strides) {
         LOG_ERROR("Failed to allocate dimension arrays");
-        free(tensor->dims);
-        free(tensor->strides);
-        free(tensor);
+        nimcp_free(tensor->dims);
+        nimcp_free(tensor->strides);
+        nimcp_free(tensor);
         return NULL;
     }
 
@@ -126,9 +127,9 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
     size_t safe_numel = compute_numel(dims, ndim);
     if (safe_numel == 0 && ndim > 0) {
         LOG_ERROR("Dimension overflow in tensor creation");
-        free(tensor->dims);
-        free(tensor->strides);
-        free(tensor);
+        nimcp_free(tensor->dims);
+        nimcp_free(tensor->strides);
+        nimcp_free(tensor);
         return NULL;
     }
 
@@ -153,9 +154,9 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
             LOG_ERROR("Failed to allocate %zu bytes on GPU: %s", data_size, cudaGetErrorString(err));
             NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, err,
                 "GPU memory allocation failed (unrecoverable): %zu bytes", data_size);
-            free(tensor->dims);
-            free(tensor->strides);
-            free(tensor);
+            nimcp_free(tensor->dims);
+            nimcp_free(tensor->strides);
+            nimcp_free(tensor);
             return NULL;
         }
     }
@@ -227,9 +228,9 @@ void nimcp_gpu_tensor_destroy(nimcp_gpu_tensor_t* tensor)
         cudaFree(tensor->data);
     }
 
-    free(tensor->dims);
-    free(tensor->strides);
-    free(tensor);
+    nimcp_free(tensor->dims);
+    nimcp_free(tensor->strides);
+    nimcp_free(tensor);
 }
 
 nimcp_gpu_tensor_t* nimcp_gpu_tensor_clone(const nimcp_gpu_tensor_t* tensor)
@@ -1681,7 +1682,7 @@ bool nimcp_gpu_var(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
     }
 
     // Compute variance on CPU (temporary solution)
-    float* host_data = (float*)malloc(x->numel * sizeof(float));
+    float* host_data = (float*)nimcp_malloc(x->numel * sizeof(float));
     /* P1-T2: Check malloc result for host_data */
     if (!host_data) {
         nimcp_gpu_tensor_destroy(mean_tensor);
@@ -1698,7 +1699,7 @@ bool nimcp_gpu_var(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
 
     cudaMemcpy(out->data, &var, sizeof(float), cudaMemcpyHostToDevice);
 
-    free(host_data);
+    nimcp_free(host_data);
     nimcp_gpu_tensor_destroy(mean_tensor);
     return true;
 }
@@ -1962,11 +1963,11 @@ bool nimcp_gpu_reshape(nimcp_gpu_tensor_t* tensor, const size_t* new_dims, uint3
     /* P1-T3: Assign realloc result to tensor->dims immediately to prevent
      * use-after-free if the second realloc fails (the first realloc may have
      * freed the original pointer, leaving tensor->dims dangling) */
-    size_t* new_dims_array = (size_t*)realloc(tensor->dims, new_ndim * sizeof(size_t));
+    size_t* new_dims_array = (size_t*)nimcp_realloc(tensor->dims, new_ndim * sizeof(size_t));
     if (!new_dims_array) return false;
     tensor->dims = new_dims_array;  /* Update immediately */
 
-    size_t* new_strides = (size_t*)realloc(tensor->strides, new_ndim * sizeof(size_t));
+    size_t* new_strides = (size_t*)nimcp_realloc(tensor->strides, new_ndim * sizeof(size_t));
     if (!new_strides) return false;
     tensor->strides = new_strides;
     tensor->ndim = new_ndim;

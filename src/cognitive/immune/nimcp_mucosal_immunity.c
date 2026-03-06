@@ -590,10 +590,9 @@ int mucosal_produce_siga(
         return -1;
     }
 
-    /* Get antigen from brain immune */
-    const brain_antigen_t* antigen = brain_immune_get_antigen(
-        system->immune_system, antigen_id);
-    if (!antigen) {
+    /* Get antigen from brain immune (copy to avoid dangling pointer) */
+    brain_antigen_t antigen_copy;
+    if (brain_immune_get_antigen_copy(system->immune_system, antigen_id, &antigen_copy) != 0) {
         nimcp_mutex_unlock(system->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_produce_siga: antigen is NULL");
         return -1;
@@ -606,8 +605,8 @@ int mucosal_produce_siga(
     siga->target_antigen_id = antigen_id;
 
     /* Copy epitope to paratope */
-    memcpy(siga->paratope, antigen->epitope, antigen->epitope_len);
-    siga->paratope_len = antigen->epitope_len;
+    memcpy(siga->paratope, antigen_copy.epitope, antigen_copy.epitope_len);
+    siga->paratope_len = antigen_copy.epitope_len;
     siga->has_secretory_component = true;
 
     /* Set properties */

@@ -31,6 +31,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "OMNI_GPU"
 
@@ -646,7 +647,7 @@ nimcp_omni_gpu_state_t* nimcp_omni_gpu_create(
         return NULL;
     }
 
-    nimcp_omni_gpu_state_t* state = (nimcp_omni_gpu_state_t*)calloc(1, sizeof(*state));
+    nimcp_omni_gpu_state_t* state = (nimcp_omni_gpu_state_t*)nimcp_calloc(1, sizeof(*state));
     if (!state) {
         LOG_ERROR("Failed to allocate GPU state");
         return NULL;
@@ -655,7 +656,7 @@ nimcp_omni_gpu_state_t* nimcp_omni_gpu_create(
     state->ctx = ctx;
 
     /* Allocate bidirectional predictor */
-    state->bidirectional = (nimcp_omni_gpu_bidirectional_t*)calloc(1, sizeof(*state->bidirectional));
+    state->bidirectional = (nimcp_omni_gpu_bidirectional_t*)nimcp_calloc(1, sizeof(*state->bidirectional));
     if (!state->bidirectional) {
         nimcp_omni_gpu_destroy(state);
         return NULL;
@@ -666,7 +667,7 @@ nimcp_omni_gpu_state_t* nimcp_omni_gpu_create(
     state->bidirectional->output_dim = latent_dim;
 
     /* Allocate Hopfield state */
-    state->hopfield = (nimcp_omni_gpu_hopfield_t*)calloc(1, sizeof(*state->hopfield));
+    state->hopfield = (nimcp_omni_gpu_hopfield_t*)nimcp_calloc(1, sizeof(*state->hopfield));
     if (!state->hopfield) {
         nimcp_omni_gpu_destroy(state);
         return NULL;
@@ -678,7 +679,7 @@ nimcp_omni_gpu_state_t* nimcp_omni_gpu_create(
     state->hopfield->mode = NIMCP_HOPFIELD_GPU_SOFTMAX;
 
     /* Allocate hierarchy state */
-    state->hierarchy = (nimcp_omni_gpu_hierarchy_t*)calloc(1, sizeof(*state->hierarchy));
+    state->hierarchy = (nimcp_omni_gpu_hierarchy_t*)nimcp_calloc(1, sizeof(*state->hierarchy));
     if (!state->hierarchy) {
         nimcp_omni_gpu_destroy(state);
         return NULL;
@@ -687,7 +688,7 @@ nimcp_omni_gpu_state_t* nimcp_omni_gpu_create(
     state->hierarchy->num_levels = num_levels;
 
     /* Allocate replay state */
-    state->replay = (nimcp_omni_gpu_replay_t*)calloc(1, sizeof(*state->replay));
+    state->replay = (nimcp_omni_gpu_replay_t*)nimcp_calloc(1, sizeof(*state->replay));
     if (!state->replay) {
         nimcp_omni_gpu_destroy(state);
         return NULL;
@@ -716,7 +717,7 @@ void nimcp_omni_gpu_destroy(nimcp_omni_gpu_state_t* state)
         if (state->bidirectional->lateral_weights) {
             nimcp_gpu_tensor_destroy(state->bidirectional->lateral_weights);
         }
-        free(state->bidirectional);
+        nimcp_free(state->bidirectional);
     }
 
     if (state->hopfield) {
@@ -729,7 +730,7 @@ void nimcp_omni_gpu_destroy(nimcp_omni_gpu_state_t* state)
         if (state->hopfield->attention) {
             nimcp_gpu_tensor_destroy(state->hopfield->attention);
         }
-        free(state->hopfield);
+        nimcp_free(state->hopfield);
     }
 
     if (state->hierarchy) {
@@ -747,12 +748,12 @@ void nimcp_omni_gpu_destroy(nimcp_omni_gpu_state_t* state)
                 nimcp_gpu_tensor_destroy(state->hierarchy->states[i]);
             }
         }
-        free(state->hierarchy->predictions);
-        free(state->hierarchy->errors);
-        free(state->hierarchy->precisions);
-        free(state->hierarchy->states);
-        free(state->hierarchy->level_dims);
-        free(state->hierarchy);
+        nimcp_free(state->hierarchy->predictions);
+        nimcp_free(state->hierarchy->errors);
+        nimcp_free(state->hierarchy->precisions);
+        nimcp_free(state->hierarchy->states);
+        nimcp_free(state->hierarchy->level_dims);
+        nimcp_free(state->hierarchy);
     }
 
     if (state->replay) {
@@ -762,7 +763,7 @@ void nimcp_omni_gpu_destroy(nimcp_omni_gpu_state_t* state)
         if (state->replay->priorities) {
             nimcp_gpu_tensor_destroy(state->replay->priorities);
         }
-        free(state->replay);
+        nimcp_free(state->replay);
     }
 
     if (state->global_precision) {
@@ -772,7 +773,7 @@ void nimcp_omni_gpu_destroy(nimcp_omni_gpu_state_t* state)
         nimcp_gpu_tensor_destroy(state->free_energy);
     }
 
-    free(state);
+    nimcp_free(state);
     LOG_DEBUG("Destroyed omni GPU state");
 }
 
@@ -1153,16 +1154,16 @@ bool nimcp_omni_gpu_hierarchy_init(
     state->hierarchy->precision_mode = precision_mode;
 
     /* Allocate level dimension array */
-    state->hierarchy->level_dims = (uint32_t*)malloc(num_levels * sizeof(uint32_t));
+    state->hierarchy->level_dims = (uint32_t*)nimcp_malloc(num_levels * sizeof(uint32_t));
     memcpy(state->hierarchy->level_dims, level_dims, num_levels * sizeof(uint32_t));
 
     /* Allocate tensor arrays */
-    state->hierarchy->predictions = (nimcp_gpu_tensor_t**)calloc(num_levels, sizeof(void*));
-    state->hierarchy->errors = (nimcp_gpu_tensor_t**)calloc(num_levels, sizeof(void*));
-    state->hierarchy->precisions = (nimcp_gpu_tensor_t**)calloc(num_levels, sizeof(void*));
-    state->hierarchy->states = (nimcp_gpu_tensor_t**)calloc(num_levels, sizeof(void*));
-    state->hierarchy->up_weights = (nimcp_gpu_tensor_t**)calloc(num_levels, sizeof(void*));
-    state->hierarchy->down_weights = (nimcp_gpu_tensor_t**)calloc(num_levels, sizeof(void*));
+    state->hierarchy->predictions = (nimcp_gpu_tensor_t**)nimcp_calloc(num_levels, sizeof(void*));
+    state->hierarchy->errors = (nimcp_gpu_tensor_t**)nimcp_calloc(num_levels, sizeof(void*));
+    state->hierarchy->precisions = (nimcp_gpu_tensor_t**)nimcp_calloc(num_levels, sizeof(void*));
+    state->hierarchy->states = (nimcp_gpu_tensor_t**)nimcp_calloc(num_levels, sizeof(void*));
+    state->hierarchy->up_weights = (nimcp_gpu_tensor_t**)nimcp_calloc(num_levels, sizeof(void*));
+    state->hierarchy->down_weights = (nimcp_gpu_tensor_t**)nimcp_calloc(num_levels, sizeof(void*));
 
     if (!state->hierarchy->predictions || !state->hierarchy->errors ||
         !state->hierarchy->precisions || !state->hierarchy->states) {
@@ -1183,11 +1184,11 @@ bool nimcp_omni_gpu_hierarchy_init(
             state->ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
 
         /* Initialize precision to 1.0 */
-        float* h_ones = (float*)malloc(level_dims[i] * sizeof(float));
+        float* h_ones = (float*)nimcp_malloc(level_dims[i] * sizeof(float));
         for (uint32_t j = 0; j < level_dims[i]; j++) h_ones[j] = 1.0f;
         NIMCP_CUDA_RECOVER(cudaMemcpy(state->hierarchy->precisions[i]->data, h_ones,
                    level_dims[i] * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
-        free(h_ones);
+        nimcp_free(h_ones);
 
         if (!state->hierarchy->predictions[i] || !state->hierarchy->errors[i] ||
             !state->hierarchy->precisions[i] || !state->hierarchy->states[i]) {
@@ -1356,11 +1357,11 @@ bool nimcp_omni_gpu_replay_init(
 
     /* Initialize priorities to uniform */
     float uniform = 1.0f / capacity;
-    float* h_prio = (float*)malloc(capacity * sizeof(float));
+    float* h_prio = (float*)nimcp_malloc(capacity * sizeof(float));
     for (uint32_t i = 0; i < capacity; i++) h_prio[i] = uniform;
     NIMCP_CUDA_RECOVER(cudaMemcpy(state->replay->priorities->data, h_prio,
                capacity * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
-    free(h_prio);
+    nimcp_free(h_prio);
 
     LOG_INFO("Initialized replay GPU: dim=%u, capacity=%u, seq_len=%u",
              state_dim, capacity, sequence_len);

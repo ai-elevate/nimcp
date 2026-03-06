@@ -23,6 +23,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdlib.h>
@@ -678,8 +679,8 @@ bool nimcp_gpu_anfis_train_raw(
 
     // Initialize parameters
     {
-        h_mf_params = (float*)malloc(mf_params_size);
-        h_consequent = (float*)malloc(consequent_size);
+        h_mf_params = (float*)nimcp_malloc(mf_params_size);
+        h_consequent = (float*)nimcp_malloc(consequent_size);
 
         // Initialize MF params: spread centers evenly, reasonable sigmas
         for (uint32_t i = 0; i < num_inputs; i++) {
@@ -701,8 +702,8 @@ bool nimcp_gpu_anfis_train_raw(
         NIMCP_CUDA_RECOVER(cudaMemcpy(d_mf_params, h_mf_params, mf_params_size, cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
         NIMCP_CUDA_RECOVER(cudaMemcpy(d_consequent, h_consequent, consequent_size, cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
-        free(h_mf_params);
-        free(h_consequent);
+        nimcp_free(h_mf_params);
+        nimcp_free(h_consequent);
     }
 
     // Training loop
@@ -836,7 +837,7 @@ nimcp_gpu_anfis_state_t* nimcp_gpu_anfis_create(
         return NULL;
     }
 
-    anfis_gpu_state_t* state = (anfis_gpu_state_t*)calloc(1, sizeof(anfis_gpu_state_t));
+    anfis_gpu_state_t* state = (anfis_gpu_state_t*)nimcp_calloc(1, sizeof(anfis_gpu_state_t));
     if (!state) {
         NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, 0, "Failed to allocate ANFIS state structure");
         return NULL;
@@ -864,17 +865,17 @@ nimcp_gpu_anfis_state_t* nimcp_gpu_anfis_create(
         if (err != cudaSuccess) {
             NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, (int)err,
                 "Failed to allocate ANFIS MF params: %s", cudaGetErrorString(err));
-            free(state);
+            nimcp_free(state);
             return NULL;
         }
     }
 
     // Initialize MF params with reasonable defaults
-    float* h_mf_params = (float*)malloc(mf_param_count * sizeof(float));
+    float* h_mf_params = (float*)nimcp_malloc(mf_param_count * sizeof(float));
     if (!h_mf_params) {
         NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, 0, "Failed to allocate host MF params buffer");
         cudaFree(state->d_mf_params);
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -889,7 +890,7 @@ nimcp_gpu_anfis_state_t* nimcp_gpu_anfis_create(
     }
     NIMCP_CUDA_RECOVER_NULL(cudaMemcpy(state->d_mf_params, h_mf_params, mf_param_count * sizeof(float),
                cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
-    free(h_mf_params);
+    nimcp_free(h_mf_params);
 
     // Allocate consequent params (Sugeno: num_rules * (num_inputs + 1))
     uint32_t cons_param_count = state->num_rules * (params->num_inputs + 1);
@@ -903,18 +904,18 @@ nimcp_gpu_anfis_state_t* nimcp_gpu_anfis_create(
             NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, (int)err,
                 "Failed to allocate ANFIS consequent params: %s", cudaGetErrorString(err));
             cudaFree(state->d_mf_params);
-            free(state);
+            nimcp_free(state);
             return NULL;
         }
     }
 
     // Initialize consequent params to small random values
-    float* h_cons = (float*)malloc(cons_param_count * sizeof(float));
+    float* h_cons = (float*)nimcp_malloc(cons_param_count * sizeof(float));
     if (!h_cons) {
         NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, 0, "Failed to allocate host consequent buffer");
         cudaFree(state->d_mf_params);
         cudaFree(state->d_consequent_params);
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -923,7 +924,7 @@ nimcp_gpu_anfis_state_t* nimcp_gpu_anfis_create(
     }
     NIMCP_CUDA_RECOVER_NULL(cudaMemcpy(state->d_consequent_params, h_cons, cons_param_count * sizeof(float),
                cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
-    free(h_cons);
+    nimcp_free(h_cons);
 
     state->initialized = true;
     return (nimcp_gpu_anfis_state_t*)state;
@@ -944,7 +945,7 @@ void nimcp_gpu_anfis_destroy(nimcp_gpu_anfis_state_t* anfis_pub)
     cudaFree(anfis->d_grad_mf_params);
     cudaFree(anfis->d_grad_consequent);
 
-    free(anfis);
+    nimcp_free(anfis);
 }
 
 bool nimcp_gpu_anfis_train(

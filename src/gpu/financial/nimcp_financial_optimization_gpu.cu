@@ -19,6 +19,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <math.h>
@@ -560,14 +561,14 @@ bool fin_optimization_gpu_mean_variance(
 
     // Initialize weights uniformly
     init_weight = 1.0f / (float)n;
-    h_init = (float*)malloc(n * sizeof(float));
+    h_init = (float*)nimcp_malloc(n * sizeof(float));
     for (uint32_t i = 0; i < n; i++) {
         h_init[i] = init_weight;
     }
     cudaMemcpyAsync(d_weights, h_init, n * sizeof(float),
                     cudaMemcpyHostToDevice, stream);
     cudaMemsetAsync(d_momentum, 0, n * sizeof(float), stream);
-    free(h_init);
+    nimcp_free(h_init);
 
     // Handle constraints - use explicit arrays or create from scalar bounds
     if (params->lower_bounds && params->upper_bounds) {
@@ -583,8 +584,8 @@ bool fin_optimization_gpu_mean_variance(
                         cudaMemcpyHostToDevice, stream);
     } else if (params->min_weight > 0.0f || params->max_weight < 1.0f) {
         // Create bounds from scalar min/max
-        h_lower_tmp = (float*)malloc(n * sizeof(float));
-        h_upper_tmp = (float*)malloc(n * sizeof(float));
+        h_lower_tmp = (float*)nimcp_malloc(n * sizeof(float));
+        h_upper_tmp = (float*)nimcp_malloc(n * sizeof(float));
         if (h_lower_tmp && h_upper_tmp) {
             float min_w = params->min_weight > 0.0f ? params->min_weight : 0.0f;
             float max_w = params->max_weight > 0.0f && params->max_weight <= 1.0f ? params->max_weight : 1.0f;
@@ -593,9 +594,9 @@ bool fin_optimization_gpu_mean_variance(
                 h_upper_tmp[i] = max_w;
             }
             err = cudaMalloc(&d_lower, n * sizeof(float));
-            if (err != cudaSuccess) { free(h_lower_tmp); free(h_upper_tmp); goto cleanup_mv; }
+            if (err != cudaSuccess) { nimcp_free(h_lower_tmp); nimcp_free(h_upper_tmp); goto cleanup_mv; }
             err = cudaMalloc(&d_upper, n * sizeof(float));
-            if (err != cudaSuccess) { free(h_lower_tmp); free(h_upper_tmp); goto cleanup_mv; }
+            if (err != cudaSuccess) { nimcp_free(h_lower_tmp); nimcp_free(h_upper_tmp); goto cleanup_mv; }
 
             cudaMemcpyAsync(d_lower, h_lower_tmp, n * sizeof(float), cudaMemcpyHostToDevice, stream);
             cudaMemcpyAsync(d_upper, h_upper_tmp, n * sizeof(float), cudaMemcpyHostToDevice, stream);
@@ -603,16 +604,16 @@ bool fin_optimization_gpu_mean_variance(
         }
     } else if (params->long_only) {
         // Long-only constraint: weights >= 0
-        h_lower_tmp = (float*)calloc(n, sizeof(float));  // All zeros
-        h_upper_tmp = (float*)malloc(n * sizeof(float));
+        h_lower_tmp = (float*)nimcp_calloc(n, sizeof(float));  // All zeros
+        h_upper_tmp = (float*)nimcp_malloc(n * sizeof(float));
         if (h_lower_tmp && h_upper_tmp) {
             for (uint32_t i = 0; i < n; i++) {
                 h_upper_tmp[i] = 1.0f;
             }
             err = cudaMalloc(&d_lower, n * sizeof(float));
-            if (err != cudaSuccess) { free(h_lower_tmp); free(h_upper_tmp); goto cleanup_mv; }
+            if (err != cudaSuccess) { nimcp_free(h_lower_tmp); nimcp_free(h_upper_tmp); goto cleanup_mv; }
             err = cudaMalloc(&d_upper, n * sizeof(float));
-            if (err != cudaSuccess) { free(h_lower_tmp); free(h_upper_tmp); goto cleanup_mv; }
+            if (err != cudaSuccess) { nimcp_free(h_lower_tmp); nimcp_free(h_upper_tmp); goto cleanup_mv; }
 
             cudaMemcpyAsync(d_lower, h_lower_tmp, n * sizeof(float), cudaMemcpyHostToDevice, stream);
             cudaMemcpyAsync(d_upper, h_upper_tmp, n * sizeof(float), cudaMemcpyHostToDevice, stream);
@@ -621,8 +622,8 @@ bool fin_optimization_gpu_mean_variance(
     }
 
     if (free_bounds_tmp) {
-        free(h_lower_tmp);
-        free(h_upper_tmp);
+        nimcp_free(h_lower_tmp);
+        nimcp_free(h_upper_tmp);
     }
 
     // Use power-of-2 block size for reduction kernels
@@ -715,7 +716,7 @@ bool fin_optimization_gpu_mean_variance(
     cudaStreamSynchronize(stream);
 
     // Copy results
-    result->optimal_weights = (float*)malloc(n * sizeof(float));
+    result->optimal_weights = (float*)nimcp_malloc(n * sizeof(float));
     if (!result->optimal_weights) {
         set_opt_error("Failed to allocate result weights");
         goto cleanup_mv;
@@ -799,18 +800,18 @@ bool fin_optimization_gpu_efficient_frontier(
     }
 
     // Allocate result arrays
-    result->returns = (float*)malloc(num_points * sizeof(float));
-    result->volatilities = (float*)malloc(num_points * sizeof(float));
-    result->sharpe_ratios = (float*)malloc(num_points * sizeof(float));
-    result->weights = (float*)malloc(num_points * n * sizeof(float));
+    result->returns = (float*)nimcp_malloc(num_points * sizeof(float));
+    result->volatilities = (float*)nimcp_malloc(num_points * sizeof(float));
+    result->sharpe_ratios = (float*)nimcp_malloc(num_points * sizeof(float));
+    result->weights = (float*)nimcp_malloc(num_points * n * sizeof(float));
     result->num_points = num_points;
 
     if (!result->returns || !result->volatilities ||
         !result->sharpe_ratios || !result->weights) {
-        free(result->returns);
-        free(result->volatilities);
-        free(result->sharpe_ratios);
-        free(result->weights);
+        nimcp_free(result->returns);
+        nimcp_free(result->volatilities);
+        nimcp_free(result->sharpe_ratios);
+        nimcp_free(result->weights);
         set_opt_error("Failed to allocate frontier results");
         return false;
     }
@@ -834,7 +835,7 @@ bool fin_optimization_gpu_efficient_frontier(
             result->sharpe_ratios[p] = point_result.sharpe_ratio;
             memcpy(&result->weights[p * n], point_result.optimal_weights,
                    n * sizeof(float));
-            free(point_result.optimal_weights);
+            nimcp_free(point_result.optimal_weights);
         } else {
             // Use default values for failed point
             result->returns[p] = target_return;
@@ -851,17 +852,17 @@ bool fin_optimization_gpu_efficient_frontier(
 
 void fin_optimization_gpu_result_free(fin_optimization_gpu_result_t* result) {
     if (result) {
-        free(result->optimal_weights);
+        nimcp_free(result->optimal_weights);
         result->optimal_weights = NULL;
     }
 }
 
 void fin_efficient_frontier_result_free(fin_efficient_frontier_result_t* result) {
     if (result) {
-        free(result->returns);
-        free(result->volatilities);
-        free(result->sharpe_ratios);
-        free(result->weights);
+        nimcp_free(result->returns);
+        nimcp_free(result->volatilities);
+        nimcp_free(result->sharpe_ratios);
+        nimcp_free(result->weights);
         result->returns = NULL;
         result->volatilities = NULL;
         result->sharpe_ratios = NULL;
@@ -873,25 +874,25 @@ void fin_opt_extended_result_free(fin_opt_extended_result_t* result) {
     if (!result) return;
 
     // Free base result
-    free(result->base.optimal_weights);
+    nimcp_free(result->base.optimal_weights);
     result->base.optimal_weights = NULL;
 
     // Free risk attribution
-    free(result->marginal_risk);
+    nimcp_free(result->marginal_risk);
     result->marginal_risk = NULL;
-    free(result->risk_contribution);
+    nimcp_free(result->risk_contribution);
     result->risk_contribution = NULL;
 
     // Free Black-Litterman outputs
-    free(result->posterior_returns);
+    nimcp_free(result->posterior_returns);
     result->posterior_returns = NULL;
-    free(result->posterior_covariance);
+    nimcp_free(result->posterior_covariance);
     result->posterior_covariance = NULL;
 
     // Free constraint analysis
-    free(result->constraint_slackness);
+    nimcp_free(result->constraint_slackness);
     result->constraint_slackness = NULL;
-    free(result->active_constraints);
+    nimcp_free(result->active_constraints);
     result->active_constraints = NULL;
 }
 
@@ -1234,8 +1235,8 @@ bool fin_opt_gpu_invert_covariance(
     }
 
     // Allocate host memory for LU with pivoting
-    h_LU = (float*)malloc(n * n * sizeof(float));
-    h_pivot = (int*)malloc(n * sizeof(int));
+    h_LU = (float*)nimcp_malloc(n * n * sizeof(float));
+    h_pivot = (int*)nimcp_malloc(n * sizeof(int));
     if (!h_LU || !h_pivot) {
         set_opt_error("Host memory allocation failed");
         goto cleanup_inv;
@@ -1305,7 +1306,7 @@ bool fin_opt_gpu_invert_covariance(
 
     // Copy result back, applying pivot permutation
     {
-        float* h_inv_temp = (float*)malloc(n * n * sizeof(float));
+        float* h_inv_temp = (float*)nimcp_malloc(n * n * sizeof(float));
         if (h_inv_temp) {
             cudaMemcpy(h_inv_temp, d_inv, n * n * sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -1322,7 +1323,7 @@ bool fin_opt_gpu_invert_covariance(
             }
 
             memcpy(inverse, h_inv_temp, n * n * sizeof(float));
-            free(h_inv_temp);
+            nimcp_free(h_inv_temp);
             success = true;
         }
     }
@@ -1331,8 +1332,8 @@ cleanup_inv:
     cudaFree(d_LU);
     cudaFree(d_Y);
     cudaFree(d_inv);
-    free(h_LU);
-    free(h_pivot);
+    nimcp_free(h_LU);
+    nimcp_free(h_pivot);
 
     return success;
 }
@@ -1596,12 +1597,12 @@ bool fin_opt_gpu_risk_parity(
 
     // Initialize weights uniformly
     init_weight = 1.0f / (float)n;
-    h_weights = (float*)malloc(n * sizeof(float));
-    h_target_rc = (float*)malloc(n * sizeof(float));
+    h_weights = (float*)nimcp_malloc(n * sizeof(float));
+    h_target_rc = (float*)nimcp_malloc(n * sizeof(float));
     if (!h_weights || !h_target_rc) {
         set_opt_error("Host memory allocation failed");
-        free(h_weights);
-        free(h_target_rc);
+        nimcp_free(h_weights);
+        nimcp_free(h_target_rc);
         goto cleanup_rp2;
     }
 
@@ -1611,8 +1612,8 @@ bool fin_opt_gpu_risk_parity(
     }
     cudaMemcpyAsync(d_weights, h_weights, n * sizeof(float), cudaMemcpyHostToDevice, stream);
 
-    free(h_weights);
-    free(h_target_rc);
+    nimcp_free(h_weights);
+    nimcp_free(h_target_rc);
 
     // Use power-of-2 block size
     block_size = 1;
@@ -1630,7 +1631,7 @@ bool fin_opt_gpu_risk_parity(
     // For risk parity with equal risk contribution target, the analytical solution
     // is approximately the inverse-volatility portfolio (exact for diagonal covariance)
     // We use this as the starting point and refine with optimization
-    h_init = (float*)malloc(n * sizeof(float));
+    h_init = (float*)nimcp_malloc(n * sizeof(float));
     if (h_init) {
         float sum_inv_vol = 0.0f;
         for (uint32_t i = 0; i < n; i++) {
@@ -1642,7 +1643,7 @@ bool fin_opt_gpu_risk_parity(
             h_init[i] /= sum_inv_vol;
         }
         cudaMemcpy(d_weights, h_init, n * sizeof(float), cudaMemcpyHostToDevice);
-        free(h_init);
+        nimcp_free(h_init);
         h_init = NULL;
     }
 
@@ -1674,8 +1675,8 @@ bool fin_opt_gpu_risk_parity(
             d_weights, d_mrc, d_rc, n);
 
         // Copy RC to host for rescaling computation
-        h_rc = (float*)malloc(n * sizeof(float));
-        h_w = (float*)malloc(n * sizeof(float));
+        h_rc = (float*)nimcp_malloc(n * sizeof(float));
+        h_w = (float*)nimcp_malloc(n * sizeof(float));
         if (h_rc && h_w) {
             cudaMemcpy(h_rc, d_rc, n * sizeof(float), cudaMemcpyDeviceToHost);
             cudaMemcpy(h_w, d_weights, n * sizeof(float), cudaMemcpyDeviceToHost);
@@ -1697,8 +1698,8 @@ bool fin_opt_gpu_risk_parity(
             }
             cudaMemcpy(d_weights, h_w, n * sizeof(float), cudaMemcpyHostToDevice);
         }
-        free(h_rc);
-        free(h_w);
+        nimcp_free(h_rc);
+        nimcp_free(h_w);
         h_rc = NULL;
         h_w = NULL;
     }
@@ -1712,7 +1713,7 @@ bool fin_opt_gpu_risk_parity(
     cudaStreamSynchronize(stream);
 
     // Copy results
-    result->optimal_weights = (float*)malloc(n * sizeof(float));
+    result->optimal_weights = (float*)nimcp_malloc(n * sizeof(float));
     if (!result->optimal_weights) {
         set_opt_error("Failed to allocate result weights");
         goto cleanup_rp2;
@@ -1837,7 +1838,7 @@ bool fin_opt_gpu_constrained(
         params->sector_min_weights && params->sector_max_weights) {
 
         // Compute sector weights and adjust
-        float* sector_weights = (float*)calloc(params->num_sectors, sizeof(float));
+        float* sector_weights = (float*)nimcp_calloc(params->num_sectors, sizeof(float));
         if (sector_weights) {
             for (uint32_t i = 0; i < n; i++) {
                 uint32_t sector = params->sector_ids[i];
@@ -1880,13 +1881,13 @@ bool fin_opt_gpu_constrained(
                 }
             }
 
-            free(sector_weights);
+            nimcp_free(sector_weights);
         }
     }
 
     // Compute risk contributions
-    result->marginal_risk = (float*)malloc(n * sizeof(float));
-    result->risk_contribution = (float*)malloc(n * sizeof(float));
+    result->marginal_risk = (float*)nimcp_malloc(n * sizeof(float));
+    result->risk_contribution = (float*)nimcp_malloc(n * sizeof(float));
 
     if (result->marginal_risk && result->risk_contribution) {
         fin_opt_gpu_risk_contribution(ctx, result->base.optimal_weights,
@@ -2040,14 +2041,14 @@ bool fin_opt_gpu_black_litterman(
 
         // Posterior covariance = (1 + tau) * Cov
         scale = 1.0f + tau;
-        h_cov = (float*)malloc(n * n * sizeof(float));
+        h_cov = (float*)nimcp_malloc(n * n * sizeof(float));
         if (h_cov) {
             memcpy(h_cov, market_covariance, n * n * sizeof(float));
             for (uint32_t i = 0; i < n * n; i++) {
                 h_cov[i] *= scale;
             }
             cudaMemcpyAsync(d_posterior_cov, h_cov, n * n * sizeof(float), cudaMemcpyHostToDevice, stream);
-            free(h_cov);
+            nimcp_free(h_cov);
             h_cov = NULL;
         }
     } else {
@@ -2057,7 +2058,7 @@ bool fin_opt_gpu_black_litterman(
         // Posterior returns: E[r] = pi + tau * Cov * P' * (P * tau * Cov * P' + Omega)^-1 * (Q - P * pi)
         // For simplicity, we use a blended approach
 
-        h_views_adj = (float*)calloc(n, sizeof(float));
+        h_views_adj = (float*)nimcp_calloc(n, sizeof(float));
         if (h_views_adj) {
             // Apply views with confidence weighting
             for (uint32_t v = 0; v < num_views && v < n; v++) {
@@ -2068,17 +2069,17 @@ bool fin_opt_gpu_black_litterman(
             }
 
             // Copy equilibrium returns to host, add views adjustment
-            h_pi = (float*)malloc(n * sizeof(float));
+            h_pi = (float*)nimcp_malloc(n * sizeof(float));
             if (h_pi) {
                 cudaMemcpy(h_pi, d_pi, n * sizeof(float), cudaMemcpyDeviceToHost);
                 for (uint32_t i = 0; i < n; i++) {
                     h_pi[i] += h_views_adj[i];
                 }
                 cudaMemcpyAsync(d_posterior_returns, h_pi, n * sizeof(float), cudaMemcpyHostToDevice, stream);
-                free(h_pi);
+                nimcp_free(h_pi);
                 h_pi = NULL;
             }
-            free(h_views_adj);
+            nimcp_free(h_views_adj);
             h_views_adj = NULL;
         }
 
@@ -2089,13 +2090,13 @@ bool fin_opt_gpu_black_litterman(
     cudaStreamSynchronize(stream);
 
     // Allocate and copy results
-    h_posterior_returns = (float*)malloc(n * sizeof(float));
-    h_posterior_cov = (float*)malloc(n * n * sizeof(float));
+    h_posterior_returns = (float*)nimcp_malloc(n * sizeof(float));
+    h_posterior_cov = (float*)nimcp_malloc(n * n * sizeof(float));
 
     if (!h_posterior_returns || !h_posterior_cov) {
         set_opt_error("Failed to allocate posterior arrays");
-        free(h_posterior_returns);
-        free(h_posterior_cov);
+        nimcp_free(h_posterior_returns);
+        nimcp_free(h_posterior_cov);
         goto cleanup_bl;
     }
 
@@ -2108,8 +2109,8 @@ bool fin_opt_gpu_black_litterman(
 
     if (!fin_optimization_gpu_mean_variance(ctx, h_posterior_returns, h_posterior_cov,
                                              &opt_params, &result->base)) {
-        free(h_posterior_returns);
-        free(h_posterior_cov);
+        nimcp_free(h_posterior_returns);
+        nimcp_free(h_posterior_cov);
         goto cleanup_bl;
     }
 
@@ -2117,8 +2118,8 @@ bool fin_opt_gpu_black_litterman(
     result->posterior_covariance = h_posterior_cov;
 
     // Compute risk contributions
-    result->marginal_risk = (float*)malloc(n * sizeof(float));
-    result->risk_contribution = (float*)malloc(n * sizeof(float));
+    result->marginal_risk = (float*)nimcp_malloc(n * sizeof(float));
+    result->risk_contribution = (float*)nimcp_malloc(n * sizeof(float));
 
     if (result->marginal_risk && result->risk_contribution) {
         fin_opt_gpu_risk_contribution(ctx, result->base.optimal_weights,
@@ -2173,13 +2174,13 @@ bool fin_opt_gpu_robust(
     // Worst-case return: r_robust = r - kappa * delta_r
     // where delta_r is the uncertainty in returns
 
-    float* robust_returns = (float*)malloc(n * sizeof(float));
-    float* robust_cov = (float*)malloc(n * n * sizeof(float));
+    float* robust_returns = (float*)nimcp_malloc(n * sizeof(float));
+    float* robust_cov = (float*)nimcp_malloc(n * n * sizeof(float));
 
     if (!robust_returns || !robust_cov) {
         set_opt_error("Failed to allocate robust arrays");
-        free(robust_returns);
-        free(robust_cov);
+        nimcp_free(robust_returns);
+        nimcp_free(robust_cov);
         return false;
     }
 
@@ -2211,8 +2212,8 @@ bool fin_opt_gpu_robust(
 
     if (success) {
         // Compute risk contributions using original covariance
-        result->marginal_risk = (float*)malloc(n * sizeof(float));
-        result->risk_contribution = (float*)malloc(n * sizeof(float));
+        result->marginal_risk = (float*)nimcp_malloc(n * sizeof(float));
+        result->risk_contribution = (float*)nimcp_malloc(n * sizeof(float));
 
         if (result->marginal_risk && result->risk_contribution) {
             fin_opt_gpu_risk_contribution(ctx, result->base.optimal_weights,
@@ -2221,8 +2222,8 @@ bool fin_opt_gpu_robust(
         }
     }
 
-    free(robust_returns);
-    free(robust_cov);
+    nimcp_free(robust_returns);
+    nimcp_free(robust_cov);
 
     return success;
 }

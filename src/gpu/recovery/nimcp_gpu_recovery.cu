@@ -9,6 +9,7 @@
  * HOW:  Recovery strategies, parameter correction, CPU fallback, memory management
  */
 
+#include "utils/memory/nimcp_memory.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
@@ -117,7 +118,7 @@ nimcp_gpu_recovery_context_t* nimcp_gpu_recovery_context_create(
     const nimcp_gpu_recovery_config_t* config)
 {
     nimcp_gpu_recovery_context_t* ctx = (nimcp_gpu_recovery_context_t*)
-        calloc(1, sizeof(nimcp_gpu_recovery_context_t));
+        nimcp_calloc(1, sizeof(nimcp_gpu_recovery_context_t));
 
     if (!ctx) return NULL;
 
@@ -135,7 +136,7 @@ nimcp_gpu_recovery_context_t* nimcp_gpu_recovery_context_create(
 void nimcp_gpu_recovery_context_destroy(nimcp_gpu_recovery_context_t* ctx)
 {
     if (!ctx) return;
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 void nimcp_gpu_recovery_context_reset(nimcp_gpu_recovery_context_t* ctx)

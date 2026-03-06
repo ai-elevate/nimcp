@@ -28,9 +28,8 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
             existing->user_data = info->user_data;
             /* Allocate context INSIDE lock to prevent TOCTOU race where
              * existing entry could be unregistered between unlock and use. */
-            LOG_WARN("Module ID %u (%s) already registered - caller must free "
-                     "previous context to avoid memory leak",
-                     info->module_id, existing->module_name);
+            LOG_DEBUG("Module ID %u (%s) re-registered (multi-brain or reinit)",
+                      info->module_id, existing->module_name);
             bio_module_context_t ctx = nimcp_calloc(1, sizeof(struct bio_module_context_struct));
             if (!ctx) {
                 nimcp_platform_mutex_unlock(&g_router->modules_mutex);

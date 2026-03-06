@@ -449,11 +449,12 @@ float dendrite_plasticity_apply_stdp(
 
     if (dt > 0) {
         /* Pre before post: LTP */
-        weight_change = a_plus * expf(-dt / tau_plus);
+        weight_change = a_plus * expf(fmaxf(-dt / tau_plus, -88.0f));
     } else if (dt < 0) {
         /* Post before pre: LTD */
-        weight_change = -a_minus * expf(dt / tau_minus);
+        weight_change = -a_minus * expf(fminf(dt / tau_minus, 88.0f));
     }
+    if (!isfinite(weight_change)) weight_change = 0.0f;
 
     /* Apply gain and BCM modulation */
     weight_change *= bridge->config.stdp_gain;
@@ -576,7 +577,7 @@ int dendrite_plasticity_update_bcm(
     /* Slide threshold toward activity squared (BCM rule) */
     float activity_sq = activity * activity;
     float tau = bridge->config.bcm_tau_ms;
-    float alpha = 1.0f / tau; /* Adaptation rate */
+    float alpha = (tau > 0.001f) ? 1.0f / tau : 1.0f; /* Adaptation rate */
 
     comp->bcm_threshold += alpha * (activity_sq - comp->bcm_threshold);
 
@@ -639,6 +640,8 @@ int dendrite_plasticity_update(
     if (bridge->num_compartments > 0) {
         bridge->stats.avg_calcium_level = sum_calcium / (float)bridge->num_compartments;
         bridge->stats.avg_bcm_threshold = sum_bcm / (float)bridge->num_compartments;
+        if (!isfinite(bridge->stats.avg_calcium_level)) bridge->stats.avg_calcium_level = 0.0f;
+        if (!isfinite(bridge->stats.avg_bcm_threshold)) bridge->stats.avg_bcm_threshold = 0.5f;
     }
 
     bridge->last_update_time = nimcp_time_get_us();

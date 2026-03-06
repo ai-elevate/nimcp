@@ -14,6 +14,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <cufft.h>
 #include <cublas_v2.h>
@@ -74,7 +75,7 @@ nimcp_audio_matmul_ctx_t* nimcp_audio_matmul_create(void* gpu_ctx, int max_batch
 {
     if (!gpu_ctx || max_batch <= 0) return NULL;
 
-    nimcp_audio_matmul_ctx_t* ctx = (nimcp_audio_matmul_ctx_t*)malloc(sizeof(nimcp_audio_matmul_ctx_t));
+    nimcp_audio_matmul_ctx_t* ctx = (nimcp_audio_matmul_ctx_t*)nimcp_malloc(sizeof(nimcp_audio_matmul_ctx_t));
     if (!ctx) return NULL;
 
     ctx->gpu_context = gpu_ctx;
@@ -85,41 +86,41 @@ nimcp_audio_matmul_ctx_t* nimcp_audio_matmul_create(void* gpu_ctx, int max_batch
     cublasStatus_t status = cublasCreate(&ctx->cublas_handle);
     if (status != CUBLAS_STATUS_SUCCESS) {
         LOG_ERROR("Failed to create cuBLAS handle: %d", (int)status);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
     // Allocate device arrays for batch pointers
     cudaError_t err;
     err = cudaMalloc(&ctx->d_A_array, max_batch * sizeof(float*));
-    if (err != cudaSuccess) { cublasDestroy(ctx->cublas_handle); free(ctx); return NULL; }
+    if (err != cudaSuccess) { cublasDestroy(ctx->cublas_handle); nimcp_free(ctx); return NULL; }
 
     err = cudaMalloc(&ctx->d_B_array, max_batch * sizeof(float*));
-    if (err != cudaSuccess) { cudaFree(ctx->d_A_array); cublasDestroy(ctx->cublas_handle); free(ctx); return NULL; }
+    if (err != cudaSuccess) { cudaFree(ctx->d_A_array); cublasDestroy(ctx->cublas_handle); nimcp_free(ctx); return NULL; }
 
     err = cudaMalloc(&ctx->d_C_array, max_batch * sizeof(float*));
     if (err != cudaSuccess) {
         cudaFree(ctx->d_A_array);
         cudaFree(ctx->d_B_array);
         cublasDestroy(ctx->cublas_handle);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
     // Allocate host arrays for batch pointers
-    ctx->h_A_array = (float**)malloc(max_batch * sizeof(float*));
-    ctx->h_B_array = (float**)malloc(max_batch * sizeof(float*));
-    ctx->h_C_array = (float**)malloc(max_batch * sizeof(float*));
+    ctx->h_A_array = (float**)nimcp_malloc(max_batch * sizeof(float*));
+    ctx->h_B_array = (float**)nimcp_malloc(max_batch * sizeof(float*));
+    ctx->h_C_array = (float**)nimcp_malloc(max_batch * sizeof(float*));
 
     if (!ctx->h_A_array || !ctx->h_B_array || !ctx->h_C_array) {
-        if (ctx->h_A_array) free(ctx->h_A_array);
-        if (ctx->h_B_array) free(ctx->h_B_array);
-        if (ctx->h_C_array) free(ctx->h_C_array);
+        if (ctx->h_A_array) nimcp_free(ctx->h_A_array);
+        if (ctx->h_B_array) nimcp_free(ctx->h_B_array);
+        if (ctx->h_C_array) nimcp_free(ctx->h_C_array);
         cudaFree(ctx->d_A_array);
         cudaFree(ctx->d_B_array);
         cudaFree(ctx->d_C_array);
         cublasDestroy(ctx->cublas_handle);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -138,15 +139,15 @@ void nimcp_audio_matmul_destroy(nimcp_audio_matmul_ctx_t* ctx)
     if (ctx->d_A_array) cudaFree(ctx->d_A_array);
     if (ctx->d_B_array) cudaFree(ctx->d_B_array);
     if (ctx->d_C_array) cudaFree(ctx->d_C_array);
-    if (ctx->h_A_array) free(ctx->h_A_array);
-    if (ctx->h_B_array) free(ctx->h_B_array);
-    if (ctx->h_C_array) free(ctx->h_C_array);
+    if (ctx->h_A_array) nimcp_free(ctx->h_A_array);
+    if (ctx->h_B_array) nimcp_free(ctx->h_B_array);
+    if (ctx->h_C_array) nimcp_free(ctx->h_C_array);
 
     if (ctx->cublas_handle) {
         cublasDestroy(ctx->cublas_handle);
     }
 
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 /**
@@ -610,7 +611,7 @@ nimcp_stft_ctx_t* nimcp_stft_create(void* gpu_ctx, int fft_size, int hop_size, i
         return NULL;
     }
 
-    nimcp_stft_ctx_t* ctx = (nimcp_stft_ctx_t*)malloc(sizeof(nimcp_stft_ctx_t));
+    nimcp_stft_ctx_t* ctx = (nimcp_stft_ctx_t*)nimcp_malloc(sizeof(nimcp_stft_ctx_t));
     if (!ctx) return NULL;
 
     ctx->fft_size = fft_size;
@@ -625,7 +626,7 @@ nimcp_stft_ctx_t* nimcp_stft_create(void* gpu_ctx, int fft_size, int hop_size, i
     cudaError_t err = cudaMalloc(&ctx->d_window, fft_size * sizeof(float));
     if (err != cudaSuccess) {
         LOG_ERROR("Failed to allocate window buffer");
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -642,10 +643,10 @@ nimcp_stft_ctx_t* nimcp_stft_create(void* gpu_ctx, int fft_size, int hop_size, i
             cudaMemset(ctx->d_window, 0, fft_size * sizeof(float));
             // Set all to 1.0
             {
-                float* h_window = (float*)malloc(fft_size * sizeof(float));
+                float* h_window = (float*)nimcp_malloc(fft_size * sizeof(float));
                 for (int i = 0; i < fft_size; i++) h_window[i] = 1.0f;
                 cudaMemcpy(ctx->d_window, h_window, fft_size * sizeof(float), cudaMemcpyHostToDevice);
-                free(h_window);
+                nimcp_free(h_window);
             }
             break;
         case STFT_WINDOW_HANN:
@@ -672,7 +673,7 @@ void nimcp_stft_destroy(nimcp_stft_ctx_t* ctx)
     if (ctx->plan_created) cufftDestroy(ctx->plan);
     if (ctx->inverse_plan_created) cufftDestroy(ctx->inverse_plan);
 
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 /**
@@ -680,7 +681,7 @@ void nimcp_stft_destroy(nimcp_stft_ctx_t* ctx)
  */
 nimcp_stft_result_t* nimcp_stft_result_create(int num_frames, int num_bins)
 {
-    nimcp_stft_result_t* result = (nimcp_stft_result_t*)malloc(sizeof(nimcp_stft_result_t));
+    nimcp_stft_result_t* result = (nimcp_stft_result_t*)nimcp_malloc(sizeof(nimcp_stft_result_t));
     if (!result) return NULL;
 
     result->num_frames = num_frames;
@@ -691,16 +692,16 @@ nimcp_stft_result_t* nimcp_stft_result_create(int num_frames, int num_bins)
 
     cudaError_t err;
     err = cudaMalloc(&result->d_magnitude, size);
-    if (err != cudaSuccess) { free(result); return NULL; }
+    if (err != cudaSuccess) { nimcp_free(result); return NULL; }
 
     err = cudaMalloc(&result->d_phase, size);
-    if (err != cudaSuccess) { cudaFree(result->d_magnitude); free(result); return NULL; }
+    if (err != cudaSuccess) { cudaFree(result->d_magnitude); nimcp_free(result); return NULL; }
 
     err = cudaMalloc(&result->d_power, size);
     if (err != cudaSuccess) {
         cudaFree(result->d_magnitude);
         cudaFree(result->d_phase);
-        free(result);
+        nimcp_free(result);
         return NULL;
     }
 
@@ -724,7 +725,7 @@ void nimcp_stft_result_destroy(nimcp_stft_result_t* result)
         if (result->d_power) cudaFree(result->d_power);
     }
 
-    free(result);
+    nimcp_free(result);
 }
 
 /**

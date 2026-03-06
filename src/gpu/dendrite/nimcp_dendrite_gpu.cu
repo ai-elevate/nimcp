@@ -28,6 +28,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdlib.h>
@@ -544,7 +545,7 @@ extern "C" dendrite_gpu_context_t* dendrite_gpu_create(
         return NULL;
     }
 
-    dendrite_gpu_context_t* ctx = (dendrite_gpu_context_t*)calloc(1, sizeof(dendrite_gpu_context_t));
+    dendrite_gpu_context_t* ctx = (dendrite_gpu_context_t*)nimcp_calloc(1, sizeof(dendrite_gpu_context_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate dendrite GPU context");
         return NULL;
@@ -557,7 +558,7 @@ extern "C" dendrite_gpu_context_t* dendrite_gpu_create(
     cudaError_t err = cudaStreamCreate((cudaStream_t*)&ctx->stream);
     if (err != cudaSuccess) {
         LOG_ERROR("Failed to create CUDA stream: %s", cudaGetErrorString(err));
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -656,7 +657,7 @@ extern "C" void dendrite_gpu_destroy(dendrite_gpu_context_t* ctx) {
     if (ctx->temp_buffer_1) nimcp_gpu_tensor_destroy(ctx->temp_buffer_1);
     if (ctx->temp_buffer_2) nimcp_gpu_tensor_destroy(ctx->temp_buffer_2);
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_DEBUG("GPU Dendrite context destroyed");
 }
 
@@ -694,18 +695,18 @@ extern "C" bool dendrite_gpu_upload_segments(
     uint32_t total = num_dendrites * segments_per_dendrite;
 
     // Allocate host arrays
-    float* h_voltages = (float*)malloc(total * sizeof(float));
-    float* h_lengths = (float*)malloc(total * sizeof(float));
-    float* h_diameters = (float*)malloc(total * sizeof(float));
-    float* h_distances = (float*)malloc(total * sizeof(float));
-    uint32_t* h_parents = (uint32_t*)malloc(total * sizeof(uint32_t));
-    uint32_t* h_active = (uint32_t*)malloc(total * sizeof(uint32_t));
-    float* h_cable = (float*)malloc(num_dendrites * 3 * sizeof(float));
+    float* h_voltages = (float*)nimcp_malloc(total * sizeof(float));
+    float* h_lengths = (float*)nimcp_malloc(total * sizeof(float));
+    float* h_diameters = (float*)nimcp_malloc(total * sizeof(float));
+    float* h_distances = (float*)nimcp_malloc(total * sizeof(float));
+    uint32_t* h_parents = (uint32_t*)nimcp_malloc(total * sizeof(uint32_t));
+    uint32_t* h_active = (uint32_t*)nimcp_malloc(total * sizeof(uint32_t));
+    float* h_cable = (float*)nimcp_malloc(num_dendrites * 3 * sizeof(float));
 
     if (!h_voltages || !h_lengths || !h_diameters || !h_distances ||
         !h_parents || !h_active || !h_cable) {
-        free(h_voltages); free(h_lengths); free(h_diameters);
-        free(h_distances); free(h_parents); free(h_active); free(h_cable);
+        nimcp_free(h_voltages); nimcp_free(h_lengths); nimcp_free(h_diameters);
+        nimcp_free(h_distances); nimcp_free(h_parents); nimcp_free(h_active); nimcp_free(h_cable);
         return false;
     }
 
@@ -746,8 +747,8 @@ extern "C" bool dendrite_gpu_upload_segments(
     ctx->num_dendrites = num_dendrites;
     ctx->num_segments = segments_per_dendrite;
 
-    free(h_voltages); free(h_lengths); free(h_diameters);
-    free(h_distances); free(h_parents); free(h_active); free(h_cable);
+    nimcp_free(h_voltages); nimcp_free(h_lengths); nimcp_free(h_diameters);
+    nimcp_free(h_distances); nimcp_free(h_parents); nimcp_free(h_active); nimcp_free(h_cable);
 
     LOG_DEBUG("Uploaded %u segments for %u dendrites", total, num_dendrites);
     return true;
@@ -773,15 +774,15 @@ extern "C" bool dendrite_gpu_upload_spines(
     uint32_t total = num_dendrites * spines_per_dendrite;
 
     // Allocate host arrays
-    float* h_calcium = (float*)malloc(total * sizeof(float));
-    float* h_weights = (float*)malloc(total * sizeof(float));
-    uint32_t* h_segments = (uint32_t*)malloc(total * sizeof(uint32_t));
-    float* h_pre = (float*)malloc(total * sizeof(float));
-    float* h_post = (float*)malloc(total * sizeof(float));
+    float* h_calcium = (float*)nimcp_malloc(total * sizeof(float));
+    float* h_weights = (float*)nimcp_malloc(total * sizeof(float));
+    uint32_t* h_segments = (uint32_t*)nimcp_malloc(total * sizeof(uint32_t));
+    float* h_pre = (float*)nimcp_malloc(total * sizeof(float));
+    float* h_post = (float*)nimcp_malloc(total * sizeof(float));
 
     if (!h_calcium || !h_weights || !h_segments || !h_pre || !h_post) {
-        free(h_calcium); free(h_weights); free(h_segments);
-        free(h_pre); free(h_post);
+        nimcp_free(h_calcium); nimcp_free(h_weights); nimcp_free(h_segments);
+        nimcp_free(h_pre); nimcp_free(h_post);
         return false;
     }
 
@@ -808,8 +809,8 @@ extern "C" bool dendrite_gpu_upload_spines(
 
     ctx->num_spines = spines_per_dendrite;
 
-    free(h_calcium); free(h_weights); free(h_segments);
-    free(h_pre); free(h_post);
+    nimcp_free(h_calcium); nimcp_free(h_weights); nimcp_free(h_segments);
+    nimcp_free(h_pre); nimcp_free(h_post);
 
     LOG_DEBUG("Uploaded %u spines for %u dendrites", total, num_dendrites);
     return true;
@@ -828,7 +829,7 @@ extern "C" bool dendrite_gpu_upload_cable_params(
 
     if (!ctx || !rm || !cm || !ra) return false;
 
-    float* h_cable = (float*)malloc(num_dendrites * 3 * sizeof(float));
+    float* h_cable = (float*)nimcp_malloc(num_dendrites * 3 * sizeof(float));
     if (!h_cable) return false;
 
     for (uint32_t d = 0; d < num_dendrites; d++) {
@@ -840,7 +841,7 @@ extern "C" bool dendrite_gpu_upload_cable_params(
     NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->cable_params->data, h_cable,
                           num_dendrites * 3 * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
-    free(h_cable);
+    nimcp_free(h_cable);
     return true;
 }
 

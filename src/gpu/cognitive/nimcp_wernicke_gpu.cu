@@ -40,6 +40,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "WERNICKE_GPU"
 
@@ -522,7 +523,7 @@ extern "C" wernicke_gpu_context_t* wernicke_gpu_create(
     }
 
     wernicke_gpu_context_t* ctx =
-        (wernicke_gpu_context_t*)calloc(1, sizeof(wernicke_gpu_context_t));
+        (wernicke_gpu_context_t*)nimcp_calloc(1, sizeof(wernicke_gpu_context_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate Wernicke GPU context");
         return NULL;
@@ -535,7 +536,7 @@ extern "C" wernicke_gpu_context_t* wernicke_gpu_create(
     cudaError_t err = cudaStreamCreate(&ctx->stream);
     if (err != cudaSuccess) {
         LOG_ERROR("Failed to create CUDA stream: %s", cudaGetErrorString(err));
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -548,7 +549,7 @@ extern "C" wernicke_gpu_context_t* wernicke_gpu_create(
     if (err != cudaSuccess) {
         LOG_ERROR("Failed to allocate phoneme embeddings: %s", cudaGetErrorString(err));
         cudaStreamDestroy(ctx->stream);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -559,7 +560,7 @@ extern "C" wernicke_gpu_context_t* wernicke_gpu_create(
         LOG_ERROR("Failed to allocate lexicon: %s", cudaGetErrorString(err));
         cudaFree(ctx->d_phoneme_embeddings);
         cudaStreamDestroy(ctx->stream);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
     ctx->lexicon_capacity = ctx->config.max_lexicon_size;
@@ -615,7 +616,7 @@ cleanup_lexicon:
     cudaFree(ctx->d_lexicon);
     cudaFree(ctx->d_phoneme_embeddings);
     cudaStreamDestroy(ctx->stream);
-    free(ctx);
+    nimcp_free(ctx);
     return NULL;
 }
 
@@ -639,7 +640,7 @@ extern "C" void wernicke_gpu_destroy(wernicke_gpu_context_t* ctx) {
 
     if (ctx->stream) cudaStreamDestroy(ctx->stream);
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_DEBUG("Destroyed Wernicke GPU context");
 }
 
@@ -770,12 +771,12 @@ extern "C" bool wernicke_gpu_recognize_phonemes(
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Copy results back
-    uint8_t* h_phoneme_ids = (uint8_t*)malloc(num_frames);
-    float* h_confidences = (float*)malloc(num_frames * sizeof(float));
+    uint8_t* h_phoneme_ids = (uint8_t*)nimcp_malloc(num_frames);
+    float* h_confidences = (float*)nimcp_malloc(num_frames * sizeof(float));
     /* P1-18: NULL check after malloc to prevent NULL dereference */
     if (!h_phoneme_ids || !h_confidences) {
-        free(h_phoneme_ids);
-        free(h_confidences);
+        nimcp_free(h_phoneme_ids);
+        nimcp_free(h_confidences);
         cudaFree(d_spectral);
         cudaFree(d_phoneme_ids);
         cudaFree(d_confidences);
@@ -797,8 +798,8 @@ extern "C" bool wernicke_gpu_recognize_phonemes(
     }
 
     // Cleanup
-    free(h_phoneme_ids);
-    free(h_confidences);
+    nimcp_free(h_phoneme_ids);
+    nimcp_free(h_confidences);
     cudaFree(d_spectral);
     cudaFree(d_phoneme_ids);
     cudaFree(d_confidences);
@@ -1230,7 +1231,7 @@ extern "C" bool wernicke_gpu_spread_activation(
                 needed * sizeof(float), ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
             // Set seed activations
-            float* h_acts = (float*)calloc(needed, sizeof(float));
+            float* h_acts = (float*)nimcp_calloc(needed, sizeof(float));
             /* P2: NULL check after calloc */
             if (!h_acts) {
                 LOG_ERROR("Failed to allocate seed activations buffer");
@@ -1246,7 +1247,7 @@ extern "C" bool wernicke_gpu_spread_activation(
                 needed * sizeof(float), cudaMemcpyHostToDevice, ctx->stream),
                 GPU_ERROR_CUDA_RUNTIME);
             NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
-            free(h_acts);
+            nimcp_free(h_acts);
             ctx->num_concepts = needed;
         }
 
@@ -1333,7 +1334,7 @@ extern "C" bool wernicke_gpu_spread_activation(
     }
 
     // Copy final activations to host and sort
-    float* h_activations = (float*)malloc(ctx->num_concepts * sizeof(float));
+    float* h_activations = (float*)nimcp_malloc(ctx->num_concepts * sizeof(float));
     /* P2: NULL check after malloc */
     if (!h_activations) {
         LOG_ERROR("Failed to allocate host activations buffer");
@@ -1350,11 +1351,11 @@ extern "C" bool wernicke_gpu_spread_activation(
     if (results && num_results) {
         // Find top activated (simple CPU sort for now)
         typedef struct { uint32_t id; float activation; } act_pair_t;
-        act_pair_t* pairs = (act_pair_t*)malloc(ctx->num_concepts * sizeof(act_pair_t));
+        act_pair_t* pairs = (act_pair_t*)nimcp_malloc(ctx->num_concepts * sizeof(act_pair_t));
         /* P2: NULL check after malloc */
         if (!pairs) {
             LOG_ERROR("Failed to allocate pairs buffer");
-            free(h_activations);
+            nimcp_free(h_activations);
             cudaFree(d_new_activations);
             cudaFree(d_seed_acts);
             cudaFree(d_seeds);
@@ -1392,13 +1393,13 @@ extern "C" bool wernicke_gpu_spread_activation(
         }
         *num_results = result_count;
 
-        free(pairs);
+        nimcp_free(pairs);
     } else if (num_results) {
         *num_results = 0;
     }
 
     // Cleanup
-    free(h_activations);
+    nimcp_free(h_activations);
     cudaFree(d_new_activations);
     cudaFree(d_seed_acts);
     cudaFree(d_seeds);
@@ -1424,7 +1425,7 @@ extern "C" bool wernicke_gpu_get_top_activated(
     }
 
     // Copy activations to host
-    float* h_activations = (float*)malloc(ctx->num_concepts * sizeof(float));
+    float* h_activations = (float*)nimcp_malloc(ctx->num_concepts * sizeof(float));
     /* P2: NULL check after malloc */
     if (!h_activations) {
         LOG_ERROR("Failed to allocate host activations buffer");
@@ -1438,11 +1439,11 @@ extern "C" bool wernicke_gpu_get_top_activated(
 
     // Find top-k
     typedef struct { uint32_t id; float activation; } act_pair_t;
-    act_pair_t* top = (act_pair_t*)calloc(top_k, sizeof(act_pair_t));
+    act_pair_t* top = (act_pair_t*)nimcp_calloc(top_k, sizeof(act_pair_t));
     /* P2: NULL check after calloc */
     if (!top) {
         LOG_ERROR("Failed to allocate top-k buffer");
-        free(h_activations);
+        nimcp_free(h_activations);
         *actual_count = 0;
         return false;
     }
@@ -1475,8 +1476,8 @@ extern "C" bool wernicke_gpu_get_top_activated(
     }
     *actual_count = count;
 
-    free(top);
-    free(h_activations);
+    nimcp_free(top);
+    nimcp_free(h_activations);
 
     return true;
 }
@@ -1545,7 +1546,7 @@ extern "C" bool wernicke_gpu_wm_push(
                                cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Initialize activations to 1.0
-    float* h_ones = (float*)malloc(to_push * sizeof(float));
+    float* h_ones = (float*)nimcp_malloc(to_push * sizeof(float));
     /* P2: NULL check after malloc */
     if (!h_ones) {
         LOG_ERROR("Failed to allocate working memory activation buffer");
@@ -1557,7 +1558,7 @@ extern "C" bool wernicke_gpu_wm_push(
                                h_ones, to_push * sizeof(float),
                                cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
-    free(h_ones);
+    nimcp_free(h_ones);
     ctx->wm_count += to_push;
     ctx->stats.wm_operations++;
 
@@ -1671,7 +1672,7 @@ extern "C" bool wernicke_gpu_comprehend(
 
     // Step 1: Recognize phonemes
     wernicke_gpu_phoneme_result_t* phonemes =
-        (wernicke_gpu_phoneme_result_t*)malloc(num_frames * sizeof(wernicke_gpu_phoneme_result_t));
+        (wernicke_gpu_phoneme_result_t*)nimcp_malloc(num_frames * sizeof(wernicke_gpu_phoneme_result_t));
     /* P2: NULL check after malloc */
     if (!phonemes) {
         LOG_ERROR("Failed to allocate phoneme results buffer");
@@ -1679,16 +1680,16 @@ extern "C" bool wernicke_gpu_comprehend(
     }
 
     if (!wernicke_gpu_recognize_phonemes(ctx, frames, num_frames, phonemes)) {
-        free(phonemes);
+        nimcp_free(phonemes);
         return false;
     }
 
     // Step 2: Extract phoneme sequence
-    uint8_t* phoneme_seq = (uint8_t*)malloc(num_frames);
+    uint8_t* phoneme_seq = (uint8_t*)nimcp_malloc(num_frames);
     /* P2: NULL check after malloc */
     if (!phoneme_seq) {
         LOG_ERROR("Failed to allocate phoneme sequence buffer");
-        free(phonemes);
+        nimcp_free(phonemes);
         return false;
     }
     for (uint32_t i = 0; i < num_frames; i++) {
@@ -1722,7 +1723,7 @@ extern "C" bool wernicke_gpu_comprehend(
         if (*num_word_candidates == 0 && ctx->lexicon_size > 0) {
             // Get posteriors for first frame
             /* P1-W4: NULL check after calloc for posteriors */
-            float* posteriors = (float*)calloc(ctx->num_phonemes, sizeof(float));
+            float* posteriors = (float*)nimcp_calloc(ctx->num_phonemes, sizeof(float));
             if (!posteriors) {
                 LOG_ERROR("Failed to allocate posteriors buffer");
                 goto skip_soft_matching;
@@ -1737,9 +1738,9 @@ extern "C" bool wernicke_gpu_comprehend(
             // Read lexicon back from GPU
             /* P1-W3: NULL check after malloc for h_lexicon */
             wernicke_gpu_lexical_entry_t* h_lexicon =
-                (wernicke_gpu_lexical_entry_t*)malloc(ctx->lexicon_size * sizeof(wernicke_gpu_lexical_entry_t));
+                (wernicke_gpu_lexical_entry_t*)nimcp_malloc(ctx->lexicon_size * sizeof(wernicke_gpu_lexical_entry_t));
             if (!h_lexicon) {
-                free(posteriors);
+                nimcp_free(posteriors);
                 goto skip_soft_matching;
             }
             cudaMemcpy(h_lexicon, ctx->d_lexicon,
@@ -1766,8 +1767,8 @@ extern "C" bool wernicke_gpu_comprehend(
                 }
             }
 
-            free(h_lexicon);
-            free(posteriors);
+            nimcp_free(h_lexicon);
+            nimcp_free(posteriors);
         }
         skip_soft_matching: ; /* P1-W3/W4: goto target for allocation failures */
     }
@@ -1778,12 +1779,12 @@ extern "C" bool wernicke_gpu_comprehend(
 
         if (num_word_candidates && *num_word_candidates > 0 && ctx->num_concepts > 0) {
             // Use recognized word concepts as seeds
-            uint32_t* seed_concepts = (uint32_t*)malloc(*num_word_candidates * sizeof(uint32_t));
-            float* seed_activations_arr = (float*)malloc(*num_word_candidates * sizeof(float));
+            uint32_t* seed_concepts = (uint32_t*)nimcp_malloc(*num_word_candidates * sizeof(uint32_t));
+            float* seed_activations_arr = (float*)nimcp_malloc(*num_word_candidates * sizeof(float));
             /* P2: NULL check after malloc */
             if (!seed_concepts || !seed_activations_arr) {
-                free(seed_concepts);
-                free(seed_activations_arr);
+                nimcp_free(seed_concepts);
+                nimcp_free(seed_activations_arr);
                 LOG_ERROR("Failed to allocate seed buffers for semantic activation");
                 /* Continue without semantic activation rather than failing entirely */
             } else {
@@ -1801,14 +1802,14 @@ extern "C" bool wernicke_gpu_comprehend(
                                            max_semantic_activations,
                                            num_semantic_activations);
 
-            free(seed_activations_arr);
-            free(seed_concepts);
+            nimcp_free(seed_activations_arr);
+            nimcp_free(seed_concepts);
             } /* end else (successful malloc) */
         }
     }
 
-    free(phoneme_seq);
-    free(phonemes);
+    nimcp_free(phoneme_seq);
+    nimcp_free(phonemes);
 
     return true;
 }
@@ -1860,7 +1861,7 @@ extern "C" bool wernicke_cpu_recognize_phonemes(
 
     const uint32_t feature_dim = WERNICKE_SPECTRAL_FEATURE_DIM;  // Match GPU
 
-    float* similarities = (float*)malloc(num_phonemes * sizeof(float));
+    float* similarities = (float*)nimcp_malloc(num_phonemes * sizeof(float));
     if (!similarities) return false;
 
     for (uint32_t f = 0; f < num_frames; f++) {
@@ -1908,7 +1909,7 @@ extern "C" bool wernicke_cpu_recognize_phonemes(
         results[f].posterior = NULL;
     }
 
-    free(similarities);
+    nimcp_free(similarities);
     return true;
 }
 
@@ -1966,11 +1967,11 @@ extern "C" bool wernicke_cpu_spread_activation(
         return false;
     }
 
-    float* current = (float*)calloc(num_concepts, sizeof(float));
-    float* next = (float*)calloc(num_concepts, sizeof(float));
+    float* current = (float*)nimcp_calloc(num_concepts, sizeof(float));
+    float* next = (float*)nimcp_calloc(num_concepts, sizeof(float));
     if (!current || !next) {
-        free(current);
-        free(next);
+        nimcp_free(current);
+        nimcp_free(next);
         return false;
     }
 
@@ -2002,8 +2003,8 @@ extern "C" bool wernicke_cpu_spread_activation(
     // Copy result
     memcpy(output_activations, current, num_concepts * sizeof(float));
 
-    free(next);
-    free(current);
+    nimcp_free(next);
+    nimcp_free(current);
 
     return true;
 }

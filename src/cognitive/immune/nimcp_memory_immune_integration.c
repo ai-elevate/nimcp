@@ -1313,17 +1313,15 @@ int memory_immune_check_threat_memory_in_engrams(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_check_", 0.0f);
 
 
-    const brain_antigen_t* antigen = brain_immune_get_antigen(
-        integration->immune_system,
-        antigen_id
-    );
-    if (!antigen) {
+    brain_antigen_t antigen_copy;
+    if (brain_immune_get_antigen_copy(integration->immune_system, antigen_id, &antigen_copy) != 0) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "antigen is NULL");
 
         return -1;
 
     }
+    const brain_antigen_t* antigen = &antigen_copy;
 
     /* Search engrams for matching pattern */
     engram_system_t* engram_sys = integration->engram_system;
@@ -1522,17 +1520,16 @@ uint32_t memory_immune_query_semantic_threats(
     memory_immune_integration_heartbeat("memory_immun_memory_immune_query_", 0.0f);
 
 
-    const brain_antigen_t* antigen = brain_immune_get_antigen(
-        integration->immune_system,
-        antigen_id
-    );
-    if (!antigen) return 0;
+    brain_antigen_t antigen_copy2;
+    if (brain_immune_get_antigen_copy(integration->immune_system, antigen_id, &antigen_copy2) != 0) {
+        return 0;
+    }
 
     /* Convert antigen epitope to feature vector */
     float features[32];
     memset(features, 0, sizeof(features));
-    for (size_t i = 0; i < antigen->epitope_len && i < 32; i++) {
-        features[i] = (float)antigen->epitope[i] / 255.0f;
+    for (size_t i = 0; i < antigen_copy2.epitope_len && i < 32; i++) {
+        features[i] = (float)antigen_copy2.epitope[i] / 255.0f;
     }
 
     /* Query semantic memory for similar concepts */

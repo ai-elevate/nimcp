@@ -32,6 +32,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "SWARM_MEMORY_GPU"
 
@@ -711,7 +712,7 @@ extern "C" nimcp_radix_sort_ctx_t* nimcp_radix_sort_create(void* gpu_ctx, size_t
         return NULL;
     }
 
-    nimcp_radix_sort_ctx_t* ctx = (nimcp_radix_sort_ctx_t*)calloc(1, sizeof(nimcp_radix_sort_ctx_t));
+    nimcp_radix_sort_ctx_t* ctx = (nimcp_radix_sort_ctx_t*)nimcp_calloc(1, sizeof(nimcp_radix_sort_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate radix sort context");
         return NULL;
@@ -764,7 +765,7 @@ extern "C" void nimcp_radix_sort_destroy(nimcp_radix_sort_ctx_t* ctx)
     if (ctx->d_prefix_sum) cudaFree(ctx->d_prefix_sum);
     if (ctx->d_ranks) cudaFree(ctx->d_ranks);
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_DEBUG("Destroyed radix sort context");
 }
 
@@ -800,7 +801,7 @@ extern "C" int nimcp_radix_sort_keys(
         unsigned int h_prefix[RADIX_SIZE + 1];
 
         // Sum across all blocks
-        unsigned int* h_hist = (unsigned int*)malloc(GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int));
+        unsigned int* h_hist = (unsigned int*)nimcp_malloc(GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int));
         if (!h_hist) {
             LOG_ERROR("Failed to allocate histogram buffer");
             return false;
@@ -812,7 +813,7 @@ extern "C" int nimcp_radix_sort_keys(
                 h_counts[d] += h_hist[b * RADIX_SIZE + d];
             }
         }
-        free(h_hist);
+        nimcp_free(h_hist);
 
         // Compute prefix sum
         h_prefix[0] = 0;
@@ -873,7 +874,7 @@ extern "C" int nimcp_radix_sort_pairs(
         // Compute prefix sum
         unsigned int h_counts[RADIX_SIZE] = {0};
         unsigned int h_prefix[RADIX_SIZE + 1];
-        unsigned int* h_hist = (unsigned int*)malloc(GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int));
+        unsigned int* h_hist = (unsigned int*)nimcp_malloc(GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int));
         if (!h_hist) {
             LOG_ERROR("Failed to allocate histogram buffer");
             return false;
@@ -885,7 +886,7 @@ extern "C" int nimcp_radix_sort_pairs(
                 h_counts[d] += h_hist[b * RADIX_SIZE + d];
             }
         }
-        free(h_hist);
+        nimcp_free(h_hist);
 
         h_prefix[0] = 0;
         for (int d = 0; d < RADIX_SIZE; d++) {
@@ -941,12 +942,12 @@ extern "C" int nimcp_radix_sort_floats(
     // Initialize indices if not already done
     // Kernel to convert and initialize
     // For now, do on host (production would use kernel)
-    float* h_keys = (float*)malloc(n * sizeof(float));
-    unsigned int* h_indices = (unsigned int*)malloc(n * sizeof(unsigned int));
+    float* h_keys = (float*)nimcp_malloc(n * sizeof(float));
+    unsigned int* h_indices = (unsigned int*)nimcp_malloc(n * sizeof(unsigned int));
 
     if (!h_keys || !h_indices) {
-        free(h_keys);
-        free(h_indices);
+        nimcp_free(h_keys);
+        nimcp_free(h_indices);
         return -1;
     }
 
@@ -980,8 +981,8 @@ extern "C" int nimcp_radix_sort_floats(
     }
     cudaMemcpy(keys, h_keys, n * sizeof(float), cudaMemcpyHostToDevice);
 
-    free(h_keys);
-    free(h_indices);
+    nimcp_free(h_keys);
+    nimcp_free(h_indices);
 
     return result;
 }
@@ -1393,7 +1394,7 @@ extern "C" nimcp_replay_buffer_gpu_t* nimcp_replay_buffer_gpu_create(
     }
 
     nimcp_replay_buffer_gpu_t* buffer =
-        (nimcp_replay_buffer_gpu_t*)malloc(sizeof(nimcp_replay_buffer_gpu_t));
+        (nimcp_replay_buffer_gpu_t*)nimcp_malloc(sizeof(nimcp_replay_buffer_gpu_t));
     if (!buffer) {
         LOG_ERROR("Failed to allocate replay buffer structure");
         return NULL;
@@ -1474,7 +1475,7 @@ extern "C" void nimcp_replay_buffer_gpu_destroy(nimcp_replay_buffer_gpu_t* buffe
     if (buffer->sum_tree) nimcp_gpu_tensor_destroy(buffer->sum_tree);
     if (buffer->min_tree) nimcp_gpu_tensor_destroy(buffer->min_tree);
 
-    free(buffer);
+    nimcp_free(buffer);
     LOG_DEBUG("Destroyed replay buffer");
 }
 
@@ -1518,7 +1519,7 @@ extern "C" nimcp_swarm_memory_gpu_t* nimcp_swarm_memory_gpu_create(
     }
 
     nimcp_swarm_memory_gpu_t* mem =
-        (nimcp_swarm_memory_gpu_t*)malloc(sizeof(nimcp_swarm_memory_gpu_t));
+        (nimcp_swarm_memory_gpu_t*)nimcp_malloc(sizeof(nimcp_swarm_memory_gpu_t));
     if (!mem) {
         LOG_ERROR("Failed to allocate swarm memory structure");
         return NULL;
@@ -1539,7 +1540,7 @@ extern "C" nimcp_swarm_memory_gpu_t* nimcp_swarm_memory_gpu_create(
     mem->replay_buffer = nimcp_replay_buffer_gpu_create(ctx, &rb_config);
     if (!mem->replay_buffer) {
         LOG_ERROR("Failed to create replay buffer");
-        free(mem);
+        nimcp_free(mem);
         return NULL;
     }
 
@@ -1630,7 +1631,7 @@ extern "C" void nimcp_swarm_memory_gpu_destroy(nimcp_swarm_memory_gpu_t* mem)
     if (mem->temp_batch_indices) nimcp_gpu_tensor_destroy(mem->temp_batch_indices);
     if (mem->temp_random) nimcp_gpu_tensor_destroy(mem->temp_random);
 
-    free(mem);
+    nimcp_free(mem);
     LOG_DEBUG("Destroyed swarm memory");
 }
 
@@ -1646,7 +1647,7 @@ extern "C" nimcp_replay_batch_t* nimcp_replay_batch_create(
 {
     if (!ctx || batch_size == 0) return NULL;
 
-    nimcp_replay_batch_t* batch = (nimcp_replay_batch_t*)malloc(sizeof(nimcp_replay_batch_t));
+    nimcp_replay_batch_t* batch = (nimcp_replay_batch_t*)nimcp_malloc(sizeof(nimcp_replay_batch_t));
     if (!batch) return NULL;
     memset(batch, 0, sizeof(nimcp_replay_batch_t));
 
@@ -1685,7 +1686,7 @@ extern "C" void nimcp_replay_batch_destroy(nimcp_replay_batch_t* batch)
     if (batch->weights) nimcp_gpu_tensor_destroy(batch->weights);
     if (batch->indices) nimcp_gpu_tensor_destroy(batch->indices);
 
-    free(batch);
+    nimcp_free(batch);
 }
 
 //=============================================================================
@@ -1853,7 +1854,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
     }
 
     // Generate random values on host and copy (simple approach)
-    float* host_random = (float*)malloc(batch_size * sizeof(float));
+    float* host_random = (float*)nimcp_malloc(batch_size * sizeof(float));
     if (!host_random) {
         LOG_ERROR("Failed to allocate random values buffer");
         return false;
@@ -1863,7 +1864,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
     }
     nimcp_gpu_memcpy(mem->ctx, mem->temp_random->data, host_random,
                      batch_size * sizeof(float), GPU_MEMCPY_HOST_TO_DEVICE);
-    free(host_random);
+    nimcp_free(host_random);
 
     // Sample indices using sum-tree
     if (buf->use_per && buf->sum_tree) {
@@ -1880,7 +1881,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
         NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     } else {
         // Uniform random sampling
-        int* host_indices = (int*)malloc(batch_size * sizeof(int));
+        int* host_indices = (int*)nimcp_malloc(batch_size * sizeof(int));
         if (!host_indices) {
             LOG_ERROR("Failed to allocate host indices buffer");
             return false;
@@ -1890,7 +1891,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
         }
         nimcp_gpu_memcpy(mem->ctx, batch->indices->data, host_indices,
                          batch_size * sizeof(int), GPU_MEMCPY_HOST_TO_DEVICE);
-        free(host_indices);
+        nimcp_free(host_indices);
     }
 
     // Gather samples
@@ -2241,12 +2242,12 @@ extern "C" bool nimcp_swarm_memory_gpu_sws_replay(
     // For now, just copy indices in order of importance
     // This is a placeholder - full implementation would use radix sort
 
-    float* host_importance = (float*)malloc(num_memories * sizeof(float));
-    int* host_order = (int*)malloc(replay_count * sizeof(int));
+    float* host_importance = (float*)nimcp_malloc(num_memories * sizeof(float));
+    int* host_order = (int*)nimcp_malloc(replay_count * sizeof(int));
 
     if (!host_importance || !host_order) {
-        free(host_importance);
-        free(host_order);
+        nimcp_free(host_importance);
+        nimcp_free(host_order);
         LOG_ERROR("Failed to allocate host buffers for replay selection");
         return false;
     }
@@ -2271,8 +2272,8 @@ extern "C" bool nimcp_swarm_memory_gpu_sws_replay(
     nimcp_gpu_memcpy(ctx, replay_order->data, host_order,
                      replay_count * sizeof(int), GPU_MEMCPY_HOST_TO_DEVICE);
 
-    free(host_importance);
-    free(host_order);
+    nimcp_free(host_importance);
+    nimcp_free(host_order);
 
     return true;
 }

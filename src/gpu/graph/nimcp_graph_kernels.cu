@@ -25,6 +25,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // CUDA Error Checking - Using recovery-integrated macros
@@ -407,7 +408,7 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_create(
         return NULL;
     }
 
-    nimcp_gpu_graph_t* graph = (nimcp_gpu_graph_t*)calloc(1, sizeof(nimcp_gpu_graph_t));
+    nimcp_gpu_graph_t* graph = (nimcp_gpu_graph_t*)nimcp_calloc(1, sizeof(nimcp_gpu_graph_t));
     if (!graph) {
         return NULL;
     }
@@ -446,7 +447,7 @@ void nimcp_gpu_graph_destroy(nimcp_gpu_graph_t* graph)
         if (graph->d_degree_centrality) cudaFree(graph->d_degree_centrality);
     }
 
-    free(graph);
+    nimcp_free(graph);
 }
 
 nimcp_gpu_graph_t* nimcp_gpu_graph_from_adjacency(
@@ -477,10 +478,10 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_from_adjacency(
     cudaDeviceSynchronize();
 
     // Copy edge counts to host and compute row_offsets
-    int* h_edge_counts = (int*)malloc(n * sizeof(int));
+    int* h_edge_counts = (int*)nimcp_malloc(n * sizeof(int));
     cudaMemcpy(h_edge_counts, d_edge_counts, n * sizeof(int), cudaMemcpyDeviceToHost);
 
-    int* h_row_offsets = (int*)malloc((n + 1) * sizeof(int));
+    int* h_row_offsets = (int*)nimcp_malloc((n + 1) * sizeof(int));
     h_row_offsets[0] = 0;
     for (size_t i = 0; i < n; i++) {
         h_row_offsets[i + 1] = h_row_offsets[i] + h_edge_counts[i];
@@ -492,8 +493,8 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_from_adjacency(
     if (!graph) {
         cudaFree(d_adj);
         cudaFree(d_edge_counts);
-        free(h_edge_counts);
-        free(h_row_offsets);
+        nimcp_free(h_edge_counts);
+        nimcp_free(h_row_offsets);
         return NULL;
     }
 
@@ -508,8 +509,8 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_from_adjacency(
     // Cleanup
     cudaFree(d_adj);
     cudaFree(d_edge_counts);
-    free(h_edge_counts);
-    free(h_row_offsets);
+    nimcp_free(h_edge_counts);
+    nimcp_free(h_row_offsets);
 
     return graph;
 }
@@ -539,23 +540,23 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_from_edge_list(
     }
 
     // Count edges per source vertex
-    int* edge_counts = (int*)calloc(num_vertices, sizeof(int));
+    int* edge_counts = (int*)nimcp_calloc(num_vertices, sizeof(int));
     for (size_t i = 0; i < num_edges; i++) {
         edge_counts[src_vertices[i]]++;
     }
 
     // Build row_offsets
-    int* row_offsets = (int*)malloc((num_vertices + 1) * sizeof(int));
+    int* row_offsets = (int*)nimcp_malloc((num_vertices + 1) * sizeof(int));
     row_offsets[0] = 0;
     for (size_t i = 0; i < num_vertices; i++) {
         row_offsets[i + 1] = row_offsets[i] + edge_counts[i];
     }
 
     // Build col_indices and weights (using insertion sort per row)
-    int* col_indices = (int*)malloc(num_edges * sizeof(int));
-    float* edge_weights = weights ? (float*)malloc(num_edges * sizeof(float)) : NULL;
+    int* col_indices = (int*)nimcp_malloc(num_edges * sizeof(int));
+    float* edge_weights = weights ? (float*)nimcp_malloc(num_edges * sizeof(float)) : NULL;
 
-    int* current_pos = (int*)calloc(num_vertices, sizeof(int));
+    int* current_pos = (int*)nimcp_calloc(num_vertices, sizeof(int));
     for (size_t i = 0; i < num_edges; i++) {
         int src = src_vertices[i];
         int pos = row_offsets[src] + current_pos[src];
@@ -571,11 +572,11 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_from_edge_list(
         ctx, row_offsets, col_indices, edge_weights, num_vertices, num_edges);
 
     // Cleanup
-    free(edge_counts);
-    free(row_offsets);
-    free(col_indices);
-    if (edge_weights) free(edge_weights);
-    free(current_pos);
+    nimcp_free(edge_counts);
+    nimcp_free(row_offsets);
+    nimcp_free(col_indices);
+    if (edge_weights) nimcp_free(edge_weights);
+    nimcp_free(current_pos);
 
     return graph;
 }
@@ -626,10 +627,10 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_from_csr(
         }
     } else {
         // Fill with 1.0 for unweighted
-        float* h_ones = (float*)malloc(num_edges * sizeof(float));
+        float* h_ones = (float*)nimcp_malloc(num_edges * sizeof(float));
         for (size_t i = 0; i < num_edges; i++) h_ones[i] = 1.0f;
         cudaMemcpy(graph->d_edge_weights, h_ones, num_edges * sizeof(float), cudaMemcpyHostToDevice);
-        free(h_ones);
+        nimcp_free(h_ones);
     }
 
     return graph;
@@ -788,7 +789,7 @@ nimcp_error_t nimcp_gpu_graph_bfs_full(
 
     int n = (int)graph->num_vertices;
 
-    nimcp_graph_bfs_result_t* res = (nimcp_graph_bfs_result_t*)calloc(1, sizeof(nimcp_graph_bfs_result_t));
+    nimcp_graph_bfs_result_t* res = (nimcp_graph_bfs_result_t*)nimcp_calloc(1, sizeof(nimcp_graph_bfs_result_t));
     if (!res) {
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -817,7 +818,7 @@ void nimcp_gpu_graph_bfs_result_destroy(nimcp_graph_bfs_result_t* result)
     if (result->d_predecessors) cudaFree(result->d_predecessors);
     if (result->d_visited) cudaFree(result->d_visited);
 
-    free(result);
+    nimcp_free(result);
 }
 
 //=============================================================================
@@ -888,7 +889,7 @@ nimcp_error_t nimcp_gpu_graph_avg_clustering(
     }
 
     // Sum and average (simplified - should use reduction kernel)
-    float* h_coefficients = (float*)malloc(n * sizeof(float));
+    float* h_coefficients = (float*)nimcp_malloc(n * sizeof(float));
     cudaMemcpy(h_coefficients, d_coefficients, n * sizeof(float), cudaMemcpyDeviceToHost);
 
     float sum = 0.0f;
@@ -897,7 +898,7 @@ nimcp_error_t nimcp_gpu_graph_avg_clustering(
     }
     *avg_clustering = sum / (float)n;
 
-    free(h_coefficients);
+    nimcp_free(h_coefficients);
     cudaFree(d_coefficients);
 
     return NIMCP_SUCCESS;
@@ -964,7 +965,7 @@ size_t nimcp_gpu_graph_find_hubs(
     }
 
     // Copy to host and find hubs
-    float* h_centrality = (float*)malloc(n * sizeof(float));
+    float* h_centrality = (float*)nimcp_malloc(n * sizeof(float));
     cudaMemcpy(h_centrality, d_centrality, n * sizeof(float), cudaMemcpyDeviceToHost);
 
     size_t count = 0;
@@ -974,7 +975,7 @@ size_t nimcp_gpu_graph_find_hubs(
         }
     }
 
-    free(h_centrality);
+    nimcp_free(h_centrality);
     cudaFree(d_centrality);
 
     return count;
@@ -1083,7 +1084,7 @@ nimcp_error_t nimcp_gpu_graph_avg_path_length(
         }
 
         // Sum distances on host (should use reduction kernel)
-        float* h_distances = (float*)malloc(n * sizeof(float));
+        float* h_distances = (float*)nimcp_malloc(n * sizeof(float));
         cudaMemcpy(h_distances, d_distances, n * sizeof(float), cudaMemcpyDeviceToHost);
 
         for (int i = 0; i < n; i++) {
@@ -1093,7 +1094,7 @@ nimcp_error_t nimcp_gpu_graph_avg_path_length(
             }
         }
 
-        free(h_distances);
+        nimcp_free(h_distances);
     }
 
     cudaFree(d_distances);
@@ -1157,7 +1158,7 @@ nimcp_error_t nimcp_gpu_graph_modularity(
     cudaDeviceSynchronize();
 
     // Sum contributions (should use reduction kernel)
-    float* h_contrib = (float*)malloc(n * sizeof(float));
+    float* h_contrib = (float*)nimcp_malloc(n * sizeof(float));
     cudaMemcpy(h_contrib, d_contrib, n * sizeof(float), cudaMemcpyDeviceToHost);
 
     float sum = 0.0f;
@@ -1166,7 +1167,7 @@ nimcp_error_t nimcp_gpu_graph_modularity(
     }
     *modularity = sum / (2.0f * total_weight);
 
-    free(h_contrib);
+    nimcp_free(h_contrib);
     cudaFree(d_labels);
     cudaFree(d_degrees);
     cudaFree(d_contrib);
@@ -1192,7 +1193,7 @@ nimcp_error_t nimcp_gpu_graph_subgraph_match(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    nimcp_graph_match_result_t* res = (nimcp_graph_match_result_t*)calloc(
+    nimcp_graph_match_result_t* res = (nimcp_graph_match_result_t*)nimcp_calloc(
         1, sizeof(nimcp_graph_match_result_t));
     if (!res) {
         return NIMCP_ERROR_NO_MEMORY;
@@ -1221,7 +1222,7 @@ void nimcp_gpu_graph_match_result_destroy(nimcp_graph_match_result_t* result)
     if (result->d_vertex_mappings) cudaFree(result->d_vertex_mappings);
     if (result->d_scores) cudaFree(result->d_scores);
 
-    free(result);
+    nimcp_free(result);
 }
 
 //=============================================================================
@@ -1273,7 +1274,7 @@ nimcp_error_t nimcp_gpu_graph_stats(
     cudaDeviceSynchronize();
 
     // Copy to host and compute stats
-    int* h_degrees = (int*)malloc(n * sizeof(int));
+    int* h_degrees = (int*)nimcp_malloc(n * sizeof(int));
     cudaMemcpy(h_degrees, d_degrees, n * sizeof(int), cudaMemcpyDeviceToHost);
 
     int sum = 0;
@@ -1293,7 +1294,7 @@ nimcp_error_t nimcp_gpu_graph_stats(
     // so num_edges is already 2x the undirected edge count
     if (density) *density = (float)graph->num_edges / (float)(n * (n - 1));
 
-    free(h_degrees);
+    nimcp_free(h_degrees);
     cudaFree(d_degrees);
 
     return NIMCP_SUCCESS;

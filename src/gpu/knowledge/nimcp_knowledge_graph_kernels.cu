@@ -32,6 +32,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "KNOWLEDGE_GPU"
 
@@ -165,7 +166,7 @@ nimcp_gpu_knowledge_graph_t* nimcp_gpu_knowledge_graph_create(
         return NULL;
     }
 
-    nimcp_gpu_knowledge_graph_t* graph = (nimcp_gpu_knowledge_graph_t*)calloc(1, sizeof(nimcp_gpu_knowledge_graph_t));
+    nimcp_gpu_knowledge_graph_t* graph = (nimcp_gpu_knowledge_graph_t*)nimcp_calloc(1, sizeof(nimcp_gpu_knowledge_graph_t));
     if (!graph) {
         LOG_ERROR("Failed to allocate graph structure");
         return NULL;
@@ -233,7 +234,7 @@ void nimcp_gpu_knowledge_graph_destroy(nimcp_gpu_knowledge_graph_t* graph)
     nimcp_gpu_tensor_destroy(graph->node_embeddings);
     nimcp_gpu_tensor_destroy(graph->edge_embeddings);
 
-    free(graph);
+    nimcp_free(graph);
 }
 
 bool nimcp_gpu_knowledge_graph_set_embeddings(
@@ -845,12 +846,12 @@ bool nimcp_gpu_shortest_path(
     }
 
     // Check if target was reached
-    uint32_t* h_distances = (uint32_t*)malloc(graph->num_nodes * sizeof(uint32_t));
-    uint32_t* h_parents = (uint32_t*)malloc(graph->num_nodes * sizeof(uint32_t));
+    uint32_t* h_distances = (uint32_t*)nimcp_malloc(graph->num_nodes * sizeof(uint32_t));
+    uint32_t* h_parents = (uint32_t*)nimcp_malloc(graph->num_nodes * sizeof(uint32_t));
 
     if (!h_distances || !h_parents) {
-        free(h_distances);
-        free(h_parents);
+        nimcp_free(h_distances);
+        nimcp_free(h_parents);
         nimcp_graph_traversal_result_destroy(&result);
         return false;
     }
@@ -860,8 +861,8 @@ bool nimcp_gpu_shortest_path(
 
     if (h_distances[target] == INVALID_NODE) {
         // No path exists
-        free(h_distances);
-        free(h_parents);
+        nimcp_free(h_distances);
+        nimcp_free(h_parents);
         nimcp_graph_traversal_result_destroy(&result);
         *path_length = 0;
         return false;
@@ -878,8 +879,8 @@ bool nimcp_gpu_shortest_path(
         current = h_parents[current];
     }
 
-    free(h_distances);
-    free(h_parents);
+    nimcp_free(h_distances);
+    nimcp_free(h_parents);
     nimcp_graph_traversal_result_destroy(&result);
 
     return true;
@@ -1478,7 +1479,7 @@ bool nimcp_gpu_triplet_loss(
     if (cudaGetLastError() != cudaSuccess) goto triplet_cleanup;
 
     // Sum losses on host
-    h_losses = (float*)malloc(batch_size * sizeof(float));
+    h_losses = (float*)nimcp_malloc(batch_size * sizeof(float));
     if (!h_losses) goto triplet_cleanup;
     if (cudaMemcpy(h_losses, d_losses, batch_size * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto triplet_cleanup;
 
@@ -1493,7 +1494,7 @@ bool nimcp_gpu_triplet_loss(
     success = true;
 
 triplet_cleanup:
-    free(h_losses);
+    nimcp_free(h_losses);
     cudaFree(d_anchors);
     cudaFree(d_positives);
     cudaFree(d_negatives);
@@ -2503,13 +2504,13 @@ bool nimcp_gpu_hyperbolic_knn(
 
     // Top-k selection (smallest distances)
     // For now, copy to host and do selection there
-    h_distances = (float*)malloc(graph->num_nodes * sizeof(float));
+    h_distances = (float*)nimcp_malloc(graph->num_nodes * sizeof(float));
     if (!h_distances) goto hyp_knn_cleanup;
     if (cudaMemcpy(h_distances, d_distances, graph->num_nodes * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto hyp_knn_cleanup;
 
-    h_indices = (uint32_t*)malloc(k * sizeof(uint32_t));
+    h_indices = (uint32_t*)nimcp_malloc(k * sizeof(uint32_t));
     if (!h_indices) goto hyp_knn_cleanup;
-    h_scores = (float*)malloc(k * sizeof(float));
+    h_scores = (float*)nimcp_malloc(k * sizeof(float));
     if (!h_scores) goto hyp_knn_cleanup;
 
     // Initialize with worst values
@@ -2546,9 +2547,9 @@ bool nimcp_gpu_hyperbolic_knn(
     success = true;
 
 hyp_knn_cleanup:
-    free(h_distances);
-    free(h_indices);
-    free(h_scores);
+    nimcp_free(h_distances);
+    nimcp_free(h_indices);
+    nimcp_free(h_scores);
     cudaFree(d_distances);
 
     return success;
@@ -2615,12 +2616,12 @@ bool nimcp_gpu_knowledge_graph_stats(
 
     // Compute average embedding norm if embeddings exist
     if (graph->node_embeddings && embedding_norm) {
-        float* h_embeddings = (float*)malloc(graph->num_nodes * graph->embed_dim * sizeof(float));
+        float* h_embeddings = (float*)nimcp_malloc(graph->num_nodes * graph->embed_dim * sizeof(float));
         if (!h_embeddings) goto stats_cleanup;
         if (cudaMemcpy(h_embeddings, graph->node_embeddings->data,
                               graph->num_nodes * graph->embed_dim * sizeof(float),
                               cudaMemcpyDeviceToHost) != cudaSuccess) {
-            free(h_embeddings);
+            nimcp_free(h_embeddings);
             goto stats_cleanup;
         }
 
@@ -2635,7 +2636,7 @@ bool nimcp_gpu_knowledge_graph_stats(
         }
         *embedding_norm = total_norm / graph->num_nodes;
 
-        free(h_embeddings);
+        nimcp_free(h_embeddings);
     } else if (embedding_norm) {
         *embedding_norm = 0.0f;
     }
@@ -3084,14 +3085,14 @@ static int dao_create_embedding_impl(nimcp_knowledge_embedding_dao_t* self, int 
     }
 
     // Check if already exists
-    int* h_valid = (int*)malloc(sizeof(int));
+    int* h_valid = (int*)nimcp_malloc(sizeof(int));
     if (!h_valid) return -1;
     cudaMemcpy(h_valid, self->d_entity_valid + entity_id, sizeof(int), cudaMemcpyDeviceToHost);
     if (*h_valid) {
-        free(h_valid);
+        nimcp_free(h_valid);
         return -1;  // Already exists
     }
-    free(h_valid);
+    nimcp_free(h_valid);
 
     // Copy embedding to device
     cudaMemcpy(self->d_entity_embeddings + entity_id * self->embedding_dim,
@@ -3199,7 +3200,7 @@ static int dao_find_similar_impl(nimcp_knowledge_embedding_dao_t* self, const fl
     cudaDeviceSynchronize();
 
     // Get top-k (for now, copy to host and do selection there)
-    float* h_scores = (float*)malloc(self->max_entities * sizeof(float));
+    float* h_scores = (float*)nimcp_malloc(self->max_entities * sizeof(float));
     if (!h_scores) {
         cudaFree(d_query);
         cudaFree(d_scores);
@@ -3233,7 +3234,7 @@ static int dao_find_similar_impl(nimcp_knowledge_embedding_dao_t* self, const fl
         }
     }
 
-    free(h_scores);
+    nimcp_free(h_scores);
     cudaFree(d_query);
     cudaFree(d_scores);
 
@@ -3252,7 +3253,7 @@ nimcp_knowledge_embedding_dao_t* nimcp_knowledge_embedding_dao_create(
         return NULL;
     }
 
-    nimcp_knowledge_embedding_dao_t* dao = (nimcp_knowledge_embedding_dao_t*)calloc(1, sizeof(nimcp_knowledge_embedding_dao_t));
+    nimcp_knowledge_embedding_dao_t* dao = (nimcp_knowledge_embedding_dao_t*)nimcp_calloc(1, sizeof(nimcp_knowledge_embedding_dao_t));
     if (!dao) {
         LOG_ERROR("Failed to allocate DAO structure");
         return NULL;
@@ -3268,7 +3269,7 @@ nimcp_knowledge_embedding_dao_t* nimcp_knowledge_embedding_dao_create(
     // Allocate device memory for entity embeddings
     if (cudaMalloc(&dao->d_entity_embeddings, max_entities * embedding_dim * sizeof(float)) != cudaSuccess) {
         LOG_ERROR("Failed to allocate entity embeddings");
-        free(dao);
+        nimcp_free(dao);
         return NULL;
     }
     cudaMemset(dao->d_entity_embeddings, 0, max_entities * embedding_dim * sizeof(float));
@@ -3277,7 +3278,7 @@ nimcp_knowledge_embedding_dao_t* nimcp_knowledge_embedding_dao_create(
     if (cudaMalloc(&dao->d_relation_embeddings, max_relations * embedding_dim * sizeof(float)) != cudaSuccess) {
         LOG_ERROR("Failed to allocate relation embeddings");
         cudaFree(dao->d_entity_embeddings);
-        free(dao);
+        nimcp_free(dao);
         return NULL;
     }
     cudaMemset(dao->d_relation_embeddings, 0, max_relations * embedding_dim * sizeof(float));
@@ -3287,7 +3288,7 @@ nimcp_knowledge_embedding_dao_t* nimcp_knowledge_embedding_dao_create(
         LOG_ERROR("Failed to allocate entity validity flags");
         cudaFree(dao->d_entity_embeddings);
         cudaFree(dao->d_relation_embeddings);
-        free(dao);
+        nimcp_free(dao);
         return NULL;
     }
     cudaMemset(dao->d_entity_valid, 0, max_entities * sizeof(int));
@@ -3297,7 +3298,7 @@ nimcp_knowledge_embedding_dao_t* nimcp_knowledge_embedding_dao_create(
         cudaFree(dao->d_entity_embeddings);
         cudaFree(dao->d_relation_embeddings);
         cudaFree(dao->d_entity_valid);
-        free(dao);
+        nimcp_free(dao);
         return NULL;
     }
     cudaMemset(dao->d_relation_valid, 0, max_relations * sizeof(int));
@@ -3325,7 +3326,7 @@ void nimcp_knowledge_embedding_dao_destroy(nimcp_knowledge_embedding_dao_t* dao)
     if (dao->d_entity_valid) cudaFree(dao->d_entity_valid);
     if (dao->d_relation_valid) cudaFree(dao->d_relation_valid);
 
-    free(dao);
+    nimcp_free(dao);
 }
 
 //=============================================================================
@@ -3343,8 +3344,8 @@ int nimcp_kg_semantic_search(
     }
 
     // Allocate result arrays
-    result->matched_entities = (int*)malloc(k * sizeof(int));
-    result->scores = (float*)malloc(k * sizeof(float));
+    result->matched_entities = (int*)nimcp_malloc(k * sizeof(int));
+    result->scores = (float*)nimcp_malloc(k * sizeof(float));
     result->matched_relations = NULL;
     result->path_lengths = NULL;
 
@@ -3389,10 +3390,10 @@ int nimcp_kg_find_path(
     }
 
     // For now, return a simple result (full implementation would require graph structure)
-    result->matched_entities = (int*)malloc(2 * sizeof(int));
-    result->scores = (float*)malloc(sizeof(float));
+    result->matched_entities = (int*)nimcp_malloc(2 * sizeof(int));
+    result->scores = (float*)nimcp_malloc(sizeof(float));
     result->matched_relations = NULL;
-    result->path_lengths = (int*)malloc(sizeof(int));
+    result->path_lengths = (int*)nimcp_malloc(sizeof(int));
 
     if (!result->matched_entities || !result->scores || !result->path_lengths) {
         nimcp_kg_result_destroy(result);
@@ -3409,19 +3410,19 @@ int nimcp_kg_find_path(
     }
 
     // Compute embedding similarity as a proxy for path likelihood
-    float* source_emb = (float*)malloc(dao->embedding_dim * sizeof(float));
-    float* target_emb = (float*)malloc(dao->embedding_dim * sizeof(float));
+    float* source_emb = (float*)nimcp_malloc(dao->embedding_dim * sizeof(float));
+    float* target_emb = (float*)nimcp_malloc(dao->embedding_dim * sizeof(float));
     if (!source_emb || !target_emb) {
-        free(source_emb);
-        free(target_emb);
+        nimcp_free(source_emb);
+        nimcp_free(target_emb);
         nimcp_kg_result_destroy(result);
         return -1;
     }
 
     if (dao->read_embedding(dao, source_entity, source_emb) != 0 ||
         dao->read_embedding(dao, target_entity, target_emb) != 0) {
-        free(source_emb);
-        free(target_emb);
+        nimcp_free(source_emb);
+        nimcp_free(target_emb);
         nimcp_kg_result_destroy(result);
         return -1;
     }
@@ -3445,8 +3446,8 @@ int nimcp_kg_find_path(
     result->path_lengths[0] = (similarity > 0.5f) ? 1 : max_hops;  // Heuristic
     result->num_results = 1;
 
-    free(source_emb);
-    free(target_emb);
+    nimcp_free(source_emb);
+    nimcp_free(target_emb);
 
     LOG_WARN("Path finding returns embedding-based estimate (full BFS not implemented for DAO)");
     return 0;
@@ -3481,10 +3482,10 @@ void nimcp_kg_result_destroy(nimcp_kg_result_t* result)
 {
     if (!result) return;
 
-    if (result->matched_entities) free(result->matched_entities);
-    if (result->matched_relations) free(result->matched_relations);
-    if (result->scores) free(result->scores);
-    if (result->path_lengths) free(result->path_lengths);
+    if (result->matched_entities) nimcp_free(result->matched_entities);
+    if (result->matched_relations) nimcp_free(result->matched_relations);
+    if (result->scores) nimcp_free(result->scores);
+    if (result->path_lengths) nimcp_free(result->path_lengths);
 
     result->matched_entities = NULL;
     result->matched_relations = NULL;
@@ -3547,18 +3548,18 @@ int nimcp_kg_train_step(
 
     // Generate negative samples (for simplicity, use random valid entities)
     // In a full implementation, this would sample corrupted triples
-    neg_tail_idx = (int*)malloc(batch_size * sizeof(int));
+    neg_tail_idx = (int*)nimcp_malloc(batch_size * sizeof(int));
     if (!neg_tail_idx) goto train_cleanup;
     for (int i = 0; i < batch_size; i++) {
         // Simple corruption: shift tail by 1
         neg_tail_idx[i] = (tail_entities[i] + 1) % dao->max_entities;
     }
     if (cudaMalloc(&d_neg_idx, batch_size * sizeof(int)) != cudaSuccess) {
-        free(neg_tail_idx);
+        nimcp_free(neg_tail_idx);
         goto train_cleanup;
     }
     cudaMemcpy(d_neg_idx, neg_tail_idx, batch_size * sizeof(int), cudaMemcpyHostToDevice);
-    free(neg_tail_idx);
+    nimcp_free(neg_tail_idx);
 
     kernel_embedding_lookup<<<GRID_SIZE(batch_size * dim), BLOCK_SIZE>>>(
         dao->d_entity_embeddings, d_neg_idx, d_neg_tail, dim, batch_size);
@@ -3626,13 +3627,13 @@ int nimcp_kg_transe_score(
     int dim = dao->embedding_dim;
 
     // Read embeddings
-    float* h_emb = (float*)malloc(dim * sizeof(float));
-    float* r_emb = (float*)malloc(dim * sizeof(float));
-    float* t_emb = (float*)malloc(dim * sizeof(float));
+    float* h_emb = (float*)nimcp_malloc(dim * sizeof(float));
+    float* r_emb = (float*)nimcp_malloc(dim * sizeof(float));
+    float* t_emb = (float*)nimcp_malloc(dim * sizeof(float));
     if (!h_emb || !r_emb || !t_emb) {
-        free(h_emb);
-        free(r_emb);
-        free(t_emb);
+        nimcp_free(h_emb);
+        nimcp_free(r_emb);
+        nimcp_free(t_emb);
         return -1;
     }
 
@@ -3648,9 +3649,9 @@ int nimcp_kg_transe_score(
     }
     *score_out = sqrtf(sum);
 
-    free(h_emb);
-    free(r_emb);
-    free(t_emb);
+    nimcp_free(h_emb);
+    nimcp_free(r_emb);
+    nimcp_free(t_emb);
 
     return 0;
 }
@@ -3667,13 +3668,13 @@ int nimcp_kg_predict_tail(
     int dim = dao->embedding_dim;
 
     // Compute h + r
-    float* h_emb = (float*)malloc(dim * sizeof(float));
-    float* r_emb = (float*)malloc(dim * sizeof(float));
-    float* query = (float*)malloc(dim * sizeof(float));
+    float* h_emb = (float*)nimcp_malloc(dim * sizeof(float));
+    float* r_emb = (float*)nimcp_malloc(dim * sizeof(float));
+    float* query = (float*)nimcp_malloc(dim * sizeof(float));
     if (!h_emb || !r_emb || !query) {
-        free(h_emb);
-        free(r_emb);
-        free(query);
+        nimcp_free(h_emb);
+        nimcp_free(r_emb);
+        nimcp_free(query);
         return -1;
     }
 
@@ -3695,9 +3696,9 @@ int nimcp_kg_predict_tail(
         }
     }
 
-    free(h_emb);
-    free(r_emb);
-    free(query);
+    nimcp_free(h_emb);
+    nimcp_free(r_emb);
+    nimcp_free(query);
 
     return result;
 }
@@ -3714,13 +3715,13 @@ int nimcp_kg_predict_head(
     int dim = dao->embedding_dim;
 
     // Compute t - r (looking for h such that h + r ≈ t)
-    float* t_emb = (float*)malloc(dim * sizeof(float));
-    float* r_emb = (float*)malloc(dim * sizeof(float));
-    float* query = (float*)malloc(dim * sizeof(float));
+    float* t_emb = (float*)nimcp_malloc(dim * sizeof(float));
+    float* r_emb = (float*)nimcp_malloc(dim * sizeof(float));
+    float* query = (float*)nimcp_malloc(dim * sizeof(float));
     if (!t_emb || !r_emb || !query) {
-        free(t_emb);
-        free(r_emb);
-        free(query);
+        nimcp_free(t_emb);
+        nimcp_free(r_emb);
+        nimcp_free(query);
         return -1;
     }
 
@@ -3741,9 +3742,9 @@ int nimcp_kg_predict_head(
         }
     }
 
-    free(t_emb);
-    free(r_emb);
-    free(query);
+    nimcp_free(t_emb);
+    nimcp_free(r_emb);
+    nimcp_free(query);
 
     return result;
 }

@@ -36,6 +36,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "JEPA_GPU"
 
@@ -578,7 +579,7 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
         return NULL;
     }
 
-    nimcp_jepa_gpu_predictor_t* pred = (nimcp_jepa_gpu_predictor_t*)calloc(1, sizeof(nimcp_jepa_gpu_predictor_t));
+    nimcp_jepa_gpu_predictor_t* pred = (nimcp_jepa_gpu_predictor_t*)nimcp_calloc(1, sizeof(nimcp_jepa_gpu_predictor_t));
     if (!pred) return NULL;
 
     pred->ctx = ctx;
@@ -588,20 +589,20 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
     pred->num_layers = num_layers;
 
     // Allocate layer array
-    pred->layers = (nimcp_jepa_gpu_layer_t*)calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
+    pred->layers = (nimcp_jepa_gpu_layer_t*)nimcp_calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
     if (!pred->layers) {
-        free(pred);
+        nimcp_free(pred);
         return NULL;
     }
 
     // Allocate activation buffers
-    pred->activations = (nimcp_gpu_tensor_t**)calloc(num_layers, sizeof(nimcp_gpu_tensor_t*));
-    pred->pre_activations = (nimcp_gpu_tensor_t**)calloc(num_layers, sizeof(nimcp_gpu_tensor_t*));
+    pred->activations = (nimcp_gpu_tensor_t**)nimcp_calloc(num_layers, sizeof(nimcp_gpu_tensor_t*));
+    pred->pre_activations = (nimcp_gpu_tensor_t**)nimcp_calloc(num_layers, sizeof(nimcp_gpu_tensor_t*));
     if (!pred->activations || !pred->pre_activations) {
-        free(pred->layers);
-        free(pred->activations);
-        free(pred->pre_activations);
-        free(pred);
+        nimcp_free(pred->layers);
+        nimcp_free(pred->activations);
+        nimcp_free(pred->pre_activations);
+        nimcp_free(pred);
         return NULL;
     }
 
@@ -674,10 +675,10 @@ void nimcp_jepa_gpu_predictor_destroy(nimcp_jepa_gpu_predictor_t* predictor) {
         }
     }
 
-    free(predictor->layers);
-    free(predictor->activations);
-    free(predictor->pre_activations);
-    free(predictor);
+    nimcp_free(predictor->layers);
+    nimcp_free(predictor->activations);
+    nimcp_free(predictor->pre_activations);
+    nimcp_free(predictor);
 }
 
 bool nimcp_jepa_gpu_predictor_upload_weights(
@@ -846,7 +847,7 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
 
     if (!ctx || state_dim == 0 || action_dim == 0) return NULL;
 
-    nimcp_jepa_gpu_inverse_t* inv = (nimcp_jepa_gpu_inverse_t*)calloc(1, sizeof(nimcp_jepa_gpu_inverse_t));
+    nimcp_jepa_gpu_inverse_t* inv = (nimcp_jepa_gpu_inverse_t*)nimcp_calloc(1, sizeof(nimcp_jepa_gpu_inverse_t));
     if (!inv) return NULL;
 
     inv->ctx = ctx;
@@ -855,9 +856,9 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
     inv->num_layers = num_layers;
 
     // Allocate layers
-    inv->layers = (nimcp_jepa_gpu_layer_t*)calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
+    inv->layers = (nimcp_jepa_gpu_layer_t*)nimcp_calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
     if (!inv->layers) {
-        free(inv);
+        nimcp_free(inv);
         return NULL;
     }
 
@@ -899,8 +900,8 @@ void nimcp_jepa_gpu_inverse_destroy(nimcp_jepa_gpu_inverse_t* inverse) {
         if (inverse->layers[i].grad_w) nimcp_gpu_tensor_destroy(inverse->layers[i].grad_w);
         if (inverse->layers[i].grad_b) nimcp_gpu_tensor_destroy(inverse->layers[i].grad_b);
     }
-    free(inverse->layers);
-    free(inverse);
+    nimcp_free(inverse->layers);
+    nimcp_free(inverse);
 }
 
 bool nimcp_jepa_gpu_inverse_infer(
@@ -1046,7 +1047,7 @@ bool nimcp_jepa_gpu_compute_loss(
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Reduce partial sums on host
-    float* h_partial_sums = (float*)malloc(num_blocks * sizeof(float));
+    float* h_partial_sums = (float*)nimcp_malloc(num_blocks * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_partial_sums, d_partial_sums, num_blocks * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     double total = 0.0;
@@ -1055,7 +1056,7 @@ bool nimcp_jepa_gpu_compute_loss(
     }
     *loss = (float)(total / n);
 
-    free(h_partial_sums);
+    nimcp_free(h_partial_sums);
     cudaFree(d_partial_sums);
 
     return true;
@@ -1087,7 +1088,7 @@ bool nimcp_jepa_gpu_compute_precision_loss(
         n);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    float* h_partial_sums = (float*)malloc(num_blocks * sizeof(float));
+    float* h_partial_sums = (float*)nimcp_malloc(num_blocks * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_partial_sums, d_partial_sums, num_blocks * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     double total = 0.0;
@@ -1096,7 +1097,7 @@ bool nimcp_jepa_gpu_compute_precision_loss(
     }
     *loss = (float)(total / n);
 
-    free(h_partial_sums);
+    nimcp_free(h_partial_sums);
     cudaFree(d_partial_sums);
 
     return true;
@@ -1281,7 +1282,7 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
 }
 
 void nimcp_jepa_gpu_predictor_destroy(nimcp_jepa_gpu_predictor_t* predictor) {
-    if (predictor) free(predictor);
+    if (predictor) nimcp_free(predictor);
 }
 
 bool nimcp_jepa_gpu_predictor_upload_weights(nimcp_jepa_gpu_predictor_t* predictor,
@@ -1321,7 +1322,7 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(nimcp_gpu_context_t* ctx
 }
 
 void nimcp_jepa_gpu_inverse_destroy(nimcp_jepa_gpu_inverse_t* inverse) {
-    if (inverse) free(inverse);
+    if (inverse) nimcp_free(inverse);
 }
 
 bool nimcp_jepa_gpu_inverse_infer(nimcp_jepa_gpu_inverse_t* inverse,

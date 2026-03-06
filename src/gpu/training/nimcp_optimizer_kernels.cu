@@ -14,6 +14,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <stdlib.h>
 #include <math.h>
@@ -45,7 +46,7 @@ nimcp_optim_state_t* nimcp_optim_state_create(
         return NULL;
     }
 
-    nimcp_optim_state_t* state = (nimcp_optim_state_t*)calloc(1, sizeof(nimcp_optim_state_t));
+    nimcp_optim_state_t* state = (nimcp_optim_state_t*)nimcp_calloc(1, sizeof(nimcp_optim_state_t));
     if (!state) {
         LOG_ERROR("Failed to allocate optimizer state");
         return NULL;
@@ -108,7 +109,7 @@ cleanup:
     if (state->m) nimcp_gpu_tensor_destroy(state->m);
     if (state->v) nimcp_gpu_tensor_destroy(state->v);
     if (state->v_hat) nimcp_gpu_tensor_destroy(state->v_hat);
-    free(state);
+    nimcp_free(state);
     return NULL;
 }
 
@@ -119,7 +120,7 @@ void nimcp_optim_state_destroy(nimcp_optim_state_t* state)
     if (state->m) nimcp_gpu_tensor_destroy(state->m);
     if (state->v) nimcp_gpu_tensor_destroy(state->v);
     if (state->v_hat) nimcp_gpu_tensor_destroy(state->v_hat);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -476,7 +477,7 @@ nimcp_optim_state_t* nimcp_optim_state_create(nimcp_gpu_context_t* ctx,
 
 void nimcp_optim_state_destroy(nimcp_optim_state_t* state)
 {
-    if (state) free(state);
+    if (state) nimcp_free(state);
 }
 
 bool nimcp_gpu_optim_sgd(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* param,

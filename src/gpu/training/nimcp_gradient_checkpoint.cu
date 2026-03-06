@@ -14,6 +14,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdlib.h>
@@ -127,13 +128,13 @@ static bool build_segments(nimcp_checkpoint_ctx_t* ctx) {
                 nimcp_gpu_tensor_destroy(ctx->segments[i].saved_output);
             }
         }
-        free(ctx->segments);
+        nimcp_free(ctx->segments);
         ctx->segments = NULL;
         ctx->num_segments = 0;
     }
 
     // Determine checkpoint layers based on strategy
-    bool* is_checkpoint = (bool*)calloc(ctx->total_layers + 1, sizeof(bool));
+    bool* is_checkpoint = (bool*)nimcp_calloc(ctx->total_layers + 1, sizeof(bool));
     if (!is_checkpoint) return false;
 
     // Layer 0 is always a checkpoint (input)
@@ -205,10 +206,10 @@ static bool build_segments(nimcp_checkpoint_ctx_t* ctx) {
     }
 
     // Allocate segments
-    ctx->segments = (nimcp_checkpoint_segment_t*)calloc(segment_count,
+    ctx->segments = (nimcp_checkpoint_segment_t*)nimcp_calloc(segment_count,
                                                          sizeof(nimcp_checkpoint_segment_t));
     if (!ctx->segments) {
-        free(is_checkpoint);
+        nimcp_free(is_checkpoint);
         return false;
     }
     ctx->max_segments = segment_count;
@@ -250,7 +251,7 @@ static bool build_segments(nimcp_checkpoint_ctx_t* ctx) {
     ctx->num_segments = seg_idx;
     ctx->configured = true;
 
-    free(is_checkpoint);
+    nimcp_free(is_checkpoint);
 
     LOG_DEBUG("Built %d segments for %d layers (strategy=%d)",
               ctx->num_segments, ctx->total_layers, ctx->strategy);
@@ -279,7 +280,7 @@ nimcp_checkpoint_ctx_t* nimcp_checkpoint_ctx_create(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    nimcp_checkpoint_ctx_t* ctx = (nimcp_checkpoint_ctx_t*)calloc(1, sizeof(nimcp_checkpoint_ctx_t));
+    nimcp_checkpoint_ctx_t* ctx = (nimcp_checkpoint_ctx_t*)nimcp_calloc(1, sizeof(nimcp_checkpoint_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate checkpoint context");
         return NULL;
@@ -292,11 +293,11 @@ nimcp_checkpoint_ctx_t* nimcp_checkpoint_ctx_create(
     ctx->checkpoint_every_n = int_sqrt_ceil(total_layers);  // Default
 
     // Allocate layer info
-    ctx->layer_info = (nimcp_layer_activation_info_t*)calloc(total_layers,
+    ctx->layer_info = (nimcp_layer_activation_info_t*)nimcp_calloc(total_layers,
                                                               sizeof(nimcp_layer_activation_info_t));
     if (!ctx->layer_info) {
         LOG_ERROR("Failed to allocate layer info array");
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -312,15 +313,15 @@ nimcp_checkpoint_ctx_t* nimcp_checkpoint_ctx_create(
 
     // Allocate tensor pool
     ctx->pool_capacity = INITIAL_POOL_CAPACITY;
-    ctx->tensor_pool = (nimcp_gpu_tensor_t**)calloc(ctx->pool_capacity,
+    ctx->tensor_pool = (nimcp_gpu_tensor_t**)nimcp_calloc(ctx->pool_capacity,
                                                      sizeof(nimcp_gpu_tensor_t*));
-    ctx->pool_in_use = (bool*)calloc(ctx->pool_capacity, sizeof(bool));
+    ctx->pool_in_use = (bool*)nimcp_calloc(ctx->pool_capacity, sizeof(bool));
     if (!ctx->tensor_pool || !ctx->pool_in_use) {
         LOG_ERROR("Failed to allocate tensor pool");
-        free(ctx->layer_info);
-        free(ctx->tensor_pool);
-        free(ctx->pool_in_use);
-        free(ctx);
+        nimcp_free(ctx->layer_info);
+        nimcp_free(ctx->tensor_pool);
+        nimcp_free(ctx->pool_in_use);
+        nimcp_free(ctx);
         return NULL;
     }
     ctx->pool_size = 0;
@@ -366,7 +367,7 @@ void nimcp_checkpoint_ctx_destroy(nimcp_checkpoint_ctx_t* ctx) {
                 nimcp_gpu_tensor_destroy(ctx->segments[i].saved_output);
             }
         }
-        free(ctx->segments);
+        nimcp_free(ctx->segments);
     }
 
     // Free layer info and activations
@@ -376,7 +377,7 @@ void nimcp_checkpoint_ctx_destroy(nimcp_checkpoint_ctx_t* ctx) {
                 nimcp_gpu_tensor_destroy(ctx->layer_info[i].activation);
             }
         }
-        free(ctx->layer_info);
+        nimcp_free(ctx->layer_info);
     }
 
     // Free tensor pool
@@ -386,15 +387,15 @@ void nimcp_checkpoint_ctx_destroy(nimcp_checkpoint_ctx_t* ctx) {
                 nimcp_gpu_tensor_destroy(ctx->tensor_pool[i]);
             }
         }
-        free(ctx->tensor_pool);
+        nimcp_free(ctx->tensor_pool);
     }
-    free(ctx->pool_in_use);
+    nimcp_free(ctx->pool_in_use);
 
     // Free selective layers array
-    free(ctx->selective_layers);
+    nimcp_free(ctx->selective_layers);
 
     LOG_DEBUG("Destroyed checkpoint context");
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 bool nimcp_checkpoint_ctx_reset(nimcp_checkpoint_ctx_t* ctx) {
@@ -462,10 +463,10 @@ bool nimcp_checkpoint_configure_selective(
     if (!ctx || !layer_indices || num_layers <= 0) return false;
 
     // Free existing selective layers
-    free(ctx->selective_layers);
+    nimcp_free(ctx->selective_layers);
 
     // Copy new selective layers
-    ctx->selective_layers = (int*)malloc(num_layers * sizeof(int));
+    ctx->selective_layers = (int*)nimcp_malloc(num_layers * sizeof(int));
     if (!ctx->selective_layers) return false;
 
     memcpy(ctx->selective_layers, layer_indices, num_layers * sizeof(int));
@@ -852,7 +853,7 @@ nimcp_checkpointed_fn_t* nimcp_checkpointed_fn_create(
 {
     if (!forward) return NULL;
 
-    nimcp_checkpointed_fn_t* fn = (nimcp_checkpointed_fn_t*)calloc(1,
+    nimcp_checkpointed_fn_t* fn = (nimcp_checkpointed_fn_t*)nimcp_calloc(1,
                                                                     sizeof(nimcp_checkpointed_fn_t));
     if (!fn) return NULL;
 
@@ -878,7 +879,7 @@ void nimcp_checkpointed_fn_destroy(nimcp_checkpointed_fn_t* fn) {
         nimcp_gpu_tensor_destroy(fn->cached_output);
     }
 
-    free(fn);
+    nimcp_free(fn);
 }
 
 nimcp_gpu_tensor_t* nimcp_checkpoint_function(

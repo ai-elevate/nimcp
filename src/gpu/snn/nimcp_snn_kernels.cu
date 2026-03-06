@@ -14,6 +14,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdlib.h>
@@ -46,7 +47,7 @@ nimcp_lif_state_t* nimcp_lif_state_create(
         return NULL;
     }
 
-    nimcp_lif_state_t* state = (nimcp_lif_state_t*)calloc(1, sizeof(nimcp_lif_state_t));
+    nimcp_lif_state_t* state = (nimcp_lif_state_t*)nimcp_calloc(1, sizeof(nimcp_lif_state_t));
     if (!state) return NULL;
 
     size_t dims[1] = {n_neurons};
@@ -78,7 +79,7 @@ void nimcp_lif_state_destroy(nimcp_lif_state_t* state)
     if (state->v) nimcp_gpu_tensor_destroy(state->v);
     if (state->i_syn) nimcp_gpu_tensor_destroy(state->i_syn);
     if (state->spikes) nimcp_gpu_tensor_destroy(state->spikes);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -354,7 +355,7 @@ nimcp_izhikevich_state_t* nimcp_izhikevich_state_create(
 {
     if (!ctx || !params || n_neurons == 0) return NULL;
 
-    nimcp_izhikevich_state_t* state = (nimcp_izhikevich_state_t*)calloc(1, sizeof(nimcp_izhikevich_state_t));
+    nimcp_izhikevich_state_t* state = (nimcp_izhikevich_state_t*)nimcp_calloc(1, sizeof(nimcp_izhikevich_state_t));
     if (!state) return NULL;
 
     size_t dims[1] = {n_neurons};
@@ -384,7 +385,7 @@ void nimcp_izhikevich_state_destroy(nimcp_izhikevich_state_t* state)
     if (state->v) nimcp_gpu_tensor_destroy(state->v);
     if (state->u) nimcp_gpu_tensor_destroy(state->u);
     if (state->spikes) nimcp_gpu_tensor_destroy(state->spikes);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -459,7 +460,7 @@ nimcp_adex_state_t* nimcp_adex_state_create(
 {
     if (!ctx || !params || n_neurons == 0) return NULL;
 
-    nimcp_adex_state_t* state = (nimcp_adex_state_t*)calloc(1, sizeof(nimcp_adex_state_t));
+    nimcp_adex_state_t* state = (nimcp_adex_state_t*)nimcp_calloc(1, sizeof(nimcp_adex_state_t));
     if (!state) return NULL;
 
     size_t dims[1] = {n_neurons};
@@ -488,7 +489,7 @@ void nimcp_adex_state_destroy(nimcp_adex_state_t* state)
     if (state->v) nimcp_gpu_tensor_destroy(state->v);
     if (state->w) nimcp_gpu_tensor_destroy(state->w);
     if (state->spikes) nimcp_gpu_tensor_destroy(state->spikes);
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -1121,16 +1122,16 @@ nimcp_stdp_dao_t* nimcp_triplet_stdp_create(
         return NULL;
     }
 
-    nimcp_stdp_dao_t* dao = (nimcp_stdp_dao_t*)calloc(1, sizeof(nimcp_stdp_dao_t));
+    nimcp_stdp_dao_t* dao = (nimcp_stdp_dao_t*)nimcp_calloc(1, sizeof(nimcp_stdp_dao_t));
     if (!dao) {
         LOG_ERROR("Failed to allocate DAO structure");
         return NULL;
     }
 
-    dao->state = (nimcp_triplet_stdp_state_t*)calloc(1, sizeof(nimcp_triplet_stdp_state_t));
+    dao->state = (nimcp_triplet_stdp_state_t*)nimcp_calloc(1, sizeof(nimcp_triplet_stdp_state_t));
     if (!dao->state) {
         LOG_ERROR("Failed to allocate state structure");
-        free(dao);
+        nimcp_free(dao);
         return NULL;
     }
 
@@ -1181,8 +1182,8 @@ cleanup:
     if (dao->state->d_r2) cudaFree(dao->state->d_r2);
     if (dao->state->d_o1) cudaFree(dao->state->d_o1);
     if (dao->state->d_o2) cudaFree(dao->state->d_o2);
-    free(dao->state);
-    free(dao);
+    nimcp_free(dao->state);
+    nimcp_free(dao);
     return NULL;
 }
 
@@ -1195,9 +1196,9 @@ void nimcp_triplet_stdp_destroy(nimcp_stdp_dao_t* dao)
         if (dao->state->d_r2) cudaFree(dao->state->d_r2);
         if (dao->state->d_o1) cudaFree(dao->state->d_o1);
         if (dao->state->d_o2) cudaFree(dao->state->d_o2);
-        free(dao->state);
+        nimcp_free(dao->state);
     }
-    free(dao);
+    nimcp_free(dao);
 }
 
 /**
@@ -1537,7 +1538,7 @@ nimcp_snn_layer_t* nimcp_snn_lif_layer_create(
 {
     if (!ctx || !config || config->num_neurons == 0) return NULL;
 
-    nimcp_snn_layer_t* layer = (nimcp_snn_layer_t*)calloc(1, sizeof(nimcp_snn_layer_t));
+    nimcp_snn_layer_t* layer = (nimcp_snn_layer_t*)nimcp_calloc(1, sizeof(nimcp_snn_layer_t));
     if (!layer) return NULL;
 
     layer->model = NIMCP_SNN_LIF;
@@ -1557,7 +1558,7 @@ nimcp_snn_layer_t* nimcp_snn_lif_layer_create(
 
     layer->lif_state = nimcp_lif_state_create(ctx, config->num_neurons, &params);
     if (!layer->lif_state) {
-        free(layer);
+        nimcp_free(layer);
         return NULL;
     }
 
@@ -1591,7 +1592,7 @@ void nimcp_snn_layer_destroy(nimcp_snn_layer_t* layer)
         nimcp_gpu_tensor_destroy(layer->refractory_timer);
     }
 
-    free(layer);
+    nimcp_free(layer);
 }
 
 nimcp_gpu_tensor_t* nimcp_snn_layer_get_membrane(nimcp_snn_layer_t* layer)
@@ -1736,7 +1737,7 @@ nimcp_gpu_tensor_t* nimcp_snn_spike_tensor_create(
     if (!tensor) return NULL;
 
     // Convert uint8 spikes to float and upload
-    float* host_data = (float*)malloc(total * sizeof(float));
+    float* host_data = (float*)nimcp_malloc(total * sizeof(float));
     if (!host_data) {
         nimcp_gpu_tensor_destroy(tensor);
         return NULL;
@@ -1747,7 +1748,7 @@ nimcp_gpu_tensor_t* nimcp_snn_spike_tensor_create(
     }
 
     cudaError_t err = cudaMemcpy(tensor->data, host_data, total * sizeof(float), cudaMemcpyHostToDevice);
-    free(host_data);
+    nimcp_free(host_data);
 
     if (err != cudaSuccess) {
         nimcp_gpu_tensor_destroy(tensor);
@@ -1764,12 +1765,12 @@ bool nimcp_snn_spike_tensor_to_host(
     if (!tensor || !data) return false;
 
     // Download float data
-    float* host_data = (float*)malloc(tensor->numel * sizeof(float));
+    float* host_data = (float*)nimcp_malloc(tensor->numel * sizeof(float));
     if (!host_data) return false;
 
     cudaError_t err = cudaMemcpy(host_data, tensor->data, tensor->numel * sizeof(float), cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
-        free(host_data);
+        nimcp_free(host_data);
         return false;
     }
 
@@ -1778,7 +1779,7 @@ bool nimcp_snn_spike_tensor_to_host(
         data[i] = host_data[i] > 0.5f ? 1 : 0;
     }
 
-    free(host_data);
+    nimcp_free(host_data);
     return true;
 }
 
@@ -1799,7 +1800,7 @@ nimcp_lif_state_t* nimcp_lif_state_create(nimcp_gpu_context_t* ctx, size_t n_neu
 
 void nimcp_lif_state_destroy(nimcp_lif_state_t* state)
 {
-    if (state) free(state);
+    if (state) nimcp_free(state);
 }
 
 bool nimcp_gpu_lif_forward(nimcp_gpu_context_t* ctx, nimcp_lif_state_t* state,
@@ -1823,7 +1824,7 @@ nimcp_izhikevich_state_t* nimcp_izhikevich_state_create(nimcp_gpu_context_t* ctx
 
 void nimcp_izhikevich_state_destroy(nimcp_izhikevich_state_t* state)
 {
-    if (state) free(state);
+    if (state) nimcp_free(state);
 }
 
 bool nimcp_gpu_izhikevich_forward(nimcp_gpu_context_t* ctx, nimcp_izhikevich_state_t* state,
@@ -1840,7 +1841,7 @@ nimcp_adex_state_t* nimcp_adex_state_create(nimcp_gpu_context_t* ctx, size_t n_n
 
 void nimcp_adex_state_destroy(nimcp_adex_state_t* state)
 {
-    if (state) free(state);
+    if (state) nimcp_free(state);
 }
 
 bool nimcp_gpu_adex_forward(nimcp_gpu_context_t* ctx, nimcp_adex_state_t* state,
@@ -1913,8 +1914,8 @@ nimcp_stdp_dao_t* nimcp_triplet_stdp_create(void* gpu_ctx, size_t num_pre,
 void nimcp_triplet_stdp_destroy(nimcp_stdp_dao_t* dao)
 {
     if (dao) {
-        if (dao->state) free(dao->state);
-        free(dao);
+        if (dao->state) nimcp_free(dao->state);
+        nimcp_free(dao);
     }
 }
 
@@ -1980,7 +1981,7 @@ nimcp_snn_layer_t* nimcp_snn_lif_layer_create(
 
 void nimcp_snn_layer_destroy(nimcp_snn_layer_t* layer)
 {
-    if (layer) free(layer);
+    if (layer) nimcp_free(layer);
 }
 
 nimcp_gpu_tensor_t* nimcp_snn_layer_get_membrane(nimcp_snn_layer_t* layer)

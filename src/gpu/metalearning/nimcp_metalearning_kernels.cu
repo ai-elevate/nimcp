@@ -13,6 +13,7 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+#include "utils/memory/nimcp_memory.h"
 #include <cuda_runtime.h>
 #include <math.h>
 #include <float.h>
@@ -693,11 +694,11 @@ bool nimcp_gpu_protonet_classify(
         // Copy logits to host for argmax (n_queries * n_classes)
         /* P2: Cast before multiply to prevent integer overflow */
         size_t logit_count = (size_t)n_queries * (size_t)state->n_classes;
-        float* h_logits = (float*)malloc(logit_count * sizeof(float));
-        float* h_preds = (float*)malloc(n_queries * sizeof(float));
+        float* h_logits = (float*)nimcp_malloc(logit_count * sizeof(float));
+        float* h_preds = (float*)nimcp_malloc(n_queries * sizeof(float));
         if (!h_logits || !h_preds) {
-            free(h_logits);
-            free(h_preds);
+            nimcp_free(h_logits);
+            nimcp_free(h_preds);
             LOG_ERROR("Failed to allocate host buffers for argmax");
             return false;
         }
@@ -721,8 +722,8 @@ bool nimcp_gpu_protonet_classify(
         NIMCP_CUDA_RECOVER(cudaMemcpy(predictions->data, h_preds,
             n_queries * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
-        free(h_logits);
-        free(h_preds);
+        nimcp_free(h_logits);
+        nimcp_free(h_preds);
     }
 
     return true;
@@ -1190,11 +1191,11 @@ bool nimcp_gpu_task_embed_similarity(
 
     // Cosine similarity (computed on CPU for simplicity)
     size_t n = task_embed1->numel;
-    float* h_embed1 = (float*)malloc(n * sizeof(float));
-    float* h_embed2 = (float*)malloc(n * sizeof(float));
+    float* h_embed1 = (float*)nimcp_malloc(n * sizeof(float));
+    float* h_embed2 = (float*)nimcp_malloc(n * sizeof(float));
     if (!h_embed1 || !h_embed2) {
-        free(h_embed1);
-        free(h_embed2);
+        nimcp_free(h_embed1);
+        nimcp_free(h_embed2);
         return false;
     }
 
@@ -1210,8 +1211,8 @@ bool nimcp_gpu_task_embed_similarity(
 
     *similarity_out = dot / (sqrtf(norm1 * norm2) + 1e-8f);
 
-    free(h_embed1);
-    free(h_embed2);
+    nimcp_free(h_embed1);
+    nimcp_free(h_embed2);
     return true;
 }
 
@@ -1268,12 +1269,12 @@ bool nimcp_gpu_few_shot_accuracy(
     int n_classes = predictions->numel / n;
 
     // Copy to CPU for argmax and comparison
-    float* h_pred = (float*)malloc(predictions->numel * sizeof(float));
-    float* h_labels = (float*)malloc(n * sizeof(float));
+    float* h_pred = (float*)nimcp_malloc(predictions->numel * sizeof(float));
+    float* h_labels = (float*)nimcp_malloc(n * sizeof(float));
     /* P2: NULL check after malloc */
     if (!h_pred || !h_labels) {
-        free(h_pred);
-        free(h_labels);
+        nimcp_free(h_pred);
+        nimcp_free(h_labels);
         LOG_ERROR("Failed to allocate host buffers for accuracy");
         return false;
     }
@@ -1296,8 +1297,8 @@ bool nimcp_gpu_few_shot_accuracy(
 
     *accuracy_out = (float)correct / n;
 
-    free(h_pred);
-    free(h_labels);
+    nimcp_free(h_pred);
+    nimcp_free(h_labels);
     return true;
 }
 

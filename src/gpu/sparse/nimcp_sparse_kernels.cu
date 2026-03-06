@@ -42,6 +42,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define LOG_MODULE "SPARSE_GPU"
 
@@ -84,7 +85,7 @@ nimcp_sparse_ctx_t* nimcp_sparse_ctx_create(nimcp_gpu_context_t* gpu_ctx)
         return NULL;
     }
 
-    nimcp_sparse_ctx_t* ctx = (nimcp_sparse_ctx_t*)calloc(1, sizeof(nimcp_sparse_ctx_t));
+    nimcp_sparse_ctx_t* ctx = (nimcp_sparse_ctx_t*)nimcp_calloc(1, sizeof(nimcp_sparse_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate sparse context");
         return NULL;
@@ -99,7 +100,7 @@ nimcp_sparse_ctx_t* nimcp_sparse_ctx_create(nimcp_gpu_context_t* gpu_ctx)
     cusparseStatus_t status = cusparseCreate(&ctx->cusparse_handle);
     if (status != CUSPARSE_STATUS_SUCCESS) {
         LOG_ERROR("Failed to create cuSPARSE handle: %d", status);
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -134,7 +135,7 @@ void nimcp_sparse_ctx_destroy(nimcp_sparse_ctx_t* ctx)
         cudaFree(ctx->workspace);
     }
 
-    free(ctx);
+    nimcp_free(ctx);
     LOG_DEBUG("Destroyed sparse context");
 }
 
@@ -631,7 +632,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
               rows, cols, nnz, 100.0f * (1.0f - (float)nnz / total));
 
     // Allocate sparse tensor
-    nimcp_sparse_tensor_t* sparse = (nimcp_sparse_tensor_t*)calloc(1, sizeof(nimcp_sparse_tensor_t));
+    nimcp_sparse_tensor_t* sparse = (nimcp_sparse_tensor_t*)nimcp_calloc(1, sizeof(nimcp_sparse_tensor_t));
     if (!sparse) return NULL;
 
     sparse->format = format;
@@ -771,7 +772,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
         return NULL;
     }
 
-    nimcp_sparse_tensor_t* sparse = (nimcp_sparse_tensor_t*)calloc(1, sizeof(nimcp_sparse_tensor_t));
+    nimcp_sparse_tensor_t* sparse = (nimcp_sparse_tensor_t*)nimcp_calloc(1, sizeof(nimcp_sparse_tensor_t));
     if (!sparse) return NULL;
 
     sparse->format = target_format;
@@ -842,7 +843,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
         cudaFree(d_values);
         cudaFree(d_row_indices);
         cudaFree(d_col_indices);
-        free(sparse);
+        nimcp_free(sparse);
         return NULL;
     }
 
@@ -867,7 +868,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_csr(
         return NULL;
     }
 
-    nimcp_sparse_tensor_t* sparse = (nimcp_sparse_tensor_t*)calloc(1, sizeof(nimcp_sparse_tensor_t));
+    nimcp_sparse_tensor_t* sparse = (nimcp_sparse_tensor_t*)nimcp_calloc(1, sizeof(nimcp_sparse_tensor_t));
     if (!sparse) return NULL;
 
     sparse->format = SPARSE_FORMAT_CSR;
@@ -935,10 +936,10 @@ nimcp_gpu_tensor_t* nimcp_sparse_to_dense(
     }
     else if (sparse->format == SPARSE_FORMAT_COO) {
         // Simple COO to dense
-        float* h_values = (float*)malloc(nnz * sizeof(float));
-        int* h_row_idx = (int*)malloc(nnz * sizeof(int));
-        int* h_col_idx = (int*)malloc(nnz * sizeof(int));
-        float* h_dense = (float*)calloc(rows * cols, sizeof(float));
+        float* h_values = (float*)nimcp_malloc(nnz * sizeof(float));
+        int* h_row_idx = (int*)nimcp_malloc(nnz * sizeof(int));
+        int* h_col_idx = (int*)nimcp_malloc(nnz * sizeof(int));
+        float* h_dense = (float*)nimcp_calloc(rows * cols, sizeof(float));
 
         cudaMemcpy(h_values, sparse->data.coo.values, nnz * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(h_row_idx, sparse->data.coo.row_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost);
@@ -950,10 +951,10 @@ nimcp_gpu_tensor_t* nimcp_sparse_to_dense(
 
         cudaMemcpy(dense->data, h_dense, rows * cols * sizeof(float), cudaMemcpyHostToDevice);
 
-        free(h_values);
-        free(h_row_idx);
-        free(h_col_idx);
-        free(h_dense);
+        nimcp_free(h_values);
+        nimcp_free(h_row_idx);
+        nimcp_free(h_col_idx);
+        nimcp_free(h_dense);
     }
     else {
         LOG_ERROR("Format %d not supported for to_dense", sparse->format);
@@ -974,7 +975,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_tensor_clone(
 
     if (!ctx || !tensor) return NULL;
 
-    nimcp_sparse_tensor_t* clone = (nimcp_sparse_tensor_t*)calloc(1, sizeof(nimcp_sparse_tensor_t));
+    nimcp_sparse_tensor_t* clone = (nimcp_sparse_tensor_t*)nimcp_calloc(1, sizeof(nimcp_sparse_tensor_t));
     if (!clone) return NULL;
 
     clone->format = tensor->format;
@@ -1034,7 +1035,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_tensor_clone(
     }
     else {
         LOG_ERROR("Clone not implemented for format %d", tensor->format);
-        free(clone);
+        nimcp_free(clone);
         return NULL;
     }
 
@@ -1078,7 +1079,7 @@ void nimcp_sparse_tensor_destroy(nimcp_sparse_tensor_t* tensor)
         }
     }
 
-    free(tensor);
+    nimcp_free(tensor);
 }
 
 nimcp_sparse_tensor_t* nimcp_sparse_convert(
@@ -1681,7 +1682,7 @@ nimcp_sparse_tensor_t* nimcp_magnitude_prune(
 
     // Find threshold using histogram approach
     // First, find max absolute value
-    float* h_data = (float*)malloc(n * sizeof(float));
+    float* h_data = (float*)nimcp_malloc(n * sizeof(float));
     cudaMemcpy(h_data, dense->data, n * sizeof(float), cudaMemcpyDeviceToHost);
 
     float max_abs = 0.0f;
@@ -1707,7 +1708,7 @@ nimcp_sparse_tensor_t* nimcp_magnitude_prune(
         }
     }
 
-    free(h_data);
+    nimcp_free(h_data);
 
     return nimcp_sparse_from_dense(ctx, dense, SPARSE_FORMAT_CSR, threshold);
 }
@@ -1790,9 +1791,9 @@ nimcp_sparse_tensor_t* nimcp_sparse_random(
     cudaDeviceSynchronize();
 
     // Copy to host and create sparse tensor
-    float* h_values = (float*)malloc(nnz * sizeof(float));
-    int* h_rows = (int*)malloc(nnz * sizeof(int));
-    int* h_cols = (int*)malloc(nnz * sizeof(int));
+    float* h_values = (float*)nimcp_malloc(nnz * sizeof(float));
+    int* h_rows = (int*)nimcp_malloc(nnz * sizeof(int));
+    int* h_cols = (int*)nimcp_malloc(nnz * sizeof(int));
 
     cudaMemcpy(h_values, d_values, nnz * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(h_rows, d_row_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost);
@@ -1804,9 +1805,9 @@ nimcp_sparse_tensor_t* nimcp_sparse_random(
 
     nimcp_sparse_tensor_t* sparse = nimcp_sparse_from_coo(ctx, h_values, h_rows, h_cols, rows, cols, nnz, format);
 
-    free(h_values);
-    free(h_rows);
-    free(h_cols);
+    nimcp_free(h_values);
+    nimcp_free(h_rows);
+    nimcp_free(h_cols);
 
     return sparse;
 }
@@ -1832,7 +1833,7 @@ nimcp_sparsity_stats_t nimcp_sparse_get_stats(nimcp_sparse_tensor_t* tensor)
 
     // Compute row statistics for CSR
     if (tensor->format == SPARSE_FORMAT_CSR) {
-        int* h_row_ptrs = (int*)malloc((rows + 1) * sizeof(int));
+        int* h_row_ptrs = (int*)nimcp_malloc((rows + 1) * sizeof(int));
         cudaMemcpy(h_row_ptrs, tensor->data.csr.row_ptrs, (rows + 1) * sizeof(int), cudaMemcpyDeviceToHost);
 
         stats.min_nnz_per_row = INT_MAX;
@@ -1848,7 +1849,7 @@ nimcp_sparsity_stats_t nimcp_sparse_get_stats(nimcp_sparse_tensor_t* tensor)
         }
 
         stats.std_nnz_per_row = sqrtf(sum_sq / rows);
-        free(h_row_ptrs);
+        nimcp_free(h_row_ptrs);
     }
 
     // Memory calculations
@@ -2086,7 +2087,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_tensor_clone(nimcp_sparse_ctx_t* ctx, const 
 
 void nimcp_sparse_tensor_destroy(nimcp_sparse_tensor_t* tensor)
 {
-    if (tensor) free(tensor);
+    if (tensor) nimcp_free(tensor);
 }
 
 nimcp_gpu_tensor_t* nimcp_sparse_mm(nimcp_sparse_ctx_t* ctx, nimcp_sparse_tensor_t* A,

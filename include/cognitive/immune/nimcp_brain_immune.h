@@ -1578,6 +1578,16 @@ const brain_antigen_t* brain_immune_get_antigen(
 );
 
 /**
+ * @brief Thread-safe antigen copy by ID (no dangling pointer risk)
+ * @return 0 on success, -1 if not found
+ */
+int brain_immune_get_antigen_copy(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    brain_antigen_t* out
+);
+
+/**
  * @brief Compute affinity between patterns
  *
  * WHAT: Calculate pattern similarity
