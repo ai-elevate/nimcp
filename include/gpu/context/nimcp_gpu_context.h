@@ -108,6 +108,12 @@ typedef struct nimcp_gpu_context_s {
     nimcp_cuda_stream_t transfer_stream; /**< Stream for memory transfers */
     nimcp_cuda_stream_t aux_stream;      /**< Auxiliary stream for overlapping */
 
+    // Stream pool for concurrent kernel execution
+    #define NIMCP_GPU_STREAM_POOL_SIZE 8
+    nimcp_cuda_stream_t stream_pool[8];  /**< Pool of streams for parallel kernels */
+    uint32_t stream_pool_count;          /**< Number of streams created in pool */
+    volatile uint32_t stream_pool_next;  /**< Round-robin index for stream selection (use __atomic builtins) */
+
     // Library handles
     nimcp_cublas_handle_t cublas_handle; /**< cuBLAS handle for BLAS ops */
     nimcp_cufft_handle_t cufft_plan_1d;  /**< cuFFT plan for 1D transforms */
@@ -181,6 +187,28 @@ NIMCP_EXPORT void nimcp_gpu_context_destroy(nimcp_gpu_context_t* ctx);
  * @return true if context is valid and initialized
  */
 NIMCP_EXPORT bool nimcp_gpu_context_is_valid(const nimcp_gpu_context_t* ctx);
+
+/**
+ * @brief Get a stream from the pool for concurrent kernel execution
+ *
+ * WHAT: Returns next available stream from the round-robin pool
+ * WHY:  Enables independent kernels to run concurrently on different streams
+ * HOW:  Atomic increment of pool index, modulo pool size
+ *
+ * @param ctx GPU context
+ * @return CUDA stream from pool, or compute_stream if pool not initialized
+ */
+NIMCP_EXPORT nimcp_cuda_stream_t nimcp_gpu_get_pool_stream(nimcp_gpu_context_t* ctx);
+
+/**
+ * @brief Synchronize all streams in the pool
+ *
+ * WHAT: Waits for all pool streams to finish
+ * WHY:  Needed at synchronization points (end of forward pass, before backward)
+ *
+ * @param ctx GPU context
+ */
+NIMCP_EXPORT void nimcp_gpu_sync_pool(nimcp_gpu_context_t* ctx);
 
 //=============================================================================
 // Device Management API

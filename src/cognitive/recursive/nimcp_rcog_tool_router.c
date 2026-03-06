@@ -217,7 +217,7 @@ static int find_category_index(const rcog_tool_router_t* router, const char* nam
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_category_index: operation failed");
+    /* Category not found — normal lookup failure, not an error */
     return -1;
 }
 

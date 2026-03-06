@@ -185,6 +185,19 @@ nimcp_gpu_context_t* nimcp_gpu_context_create(int device_id) {
     // Execution mode
     ctx->execution_mode = EXEC_MODE_GPU_CUDA;
 
+    // Stream pool for concurrent kernel execution
+    ctx->stream_pool_count = 0;
+    __atomic_store_n(&ctx->stream_pool_next, 0, __ATOMIC_RELAXED);
+    for (uint32_t i = 0; i < NIMCP_GPU_STREAM_POOL_SIZE; i++) {
+        cudaError_t serr = cudaStreamCreateWithFlags(&ctx->stream_pool[i], cudaStreamNonBlocking);
+        if (serr != cudaSuccess) {
+            LOG_WARN("Failed to create stream pool[%u]: %s", i, cudaGetErrorString(serr));
+            break;
+        }
+        ctx->stream_pool_count++;
+    }
+    LOG_INFO("GPU stream pool: %u/%d streams created", ctx->stream_pool_count, NIMCP_GPU_STREAM_POOL_SIZE);
+
     ctx->initialized = true;
     ctx->last_error = 0;
     ctx->last_error_msg[0] = '\0';
@@ -221,6 +234,12 @@ void nimcp_gpu_context_destroy(nimcp_gpu_context_t* ctx) {
     if (ctx->cublas_initialized) {
         cublasDestroy(ctx->cublas_handle);
     }
+
+    // Destroy stream pool
+    for (uint32_t i = 0; i < ctx->stream_pool_count; i++) {
+        if (ctx->stream_pool[i]) cudaStreamDestroy(ctx->stream_pool[i]);
+    }
+    ctx->stream_pool_count = 0;
 
     // Destroy streams
     if (ctx->aux_stream) cudaStreamDestroy(ctx->aux_stream);
@@ -463,6 +482,22 @@ int nimcp_gpu_stream_synchronize(nimcp_gpu_context_t* ctx) {
     return 0;
 }
 
+nimcp_cuda_stream_t nimcp_gpu_get_pool_stream(nimcp_gpu_context_t* ctx) {
+    if (!nimcp_gpu_context_is_valid(ctx) || ctx->stream_pool_count == 0) {
+        return ctx ? ctx->compute_stream : NULL;
+    }
+    uint32_t idx = __atomic_fetch_add(&ctx->stream_pool_next, 1, __ATOMIC_RELAXED) % ctx->stream_pool_count;
+    return ctx->stream_pool[idx];
+}
+
+void nimcp_gpu_sync_pool(nimcp_gpu_context_t* ctx) {
+    if (!nimcp_gpu_context_is_valid(ctx)) return;
+    cudaSetDevice(ctx->device_id);
+    for (uint32_t i = 0; i < ctx->stream_pool_count; i++) {
+        cudaStreamSynchronize(ctx->stream_pool[i]);
+    }
+}
+
 nimcp_cublas_handle_t nimcp_gpu_get_cublas(nimcp_gpu_context_t* ctx) {
     if (!nimcp_gpu_context_is_valid(ctx) || !ctx->cublas_initialized) return NULL;
     return ctx->cublas_handle;
@@ -681,6 +716,15 @@ nimcp_cuda_stream_t nimcp_gpu_get_transfer_stream(nimcp_gpu_context_t* ctx) {
 int nimcp_gpu_stream_synchronize(nimcp_gpu_context_t* ctx) {
     (void)ctx;
     return -1;
+}
+
+nimcp_cuda_stream_t nimcp_gpu_get_pool_stream(nimcp_gpu_context_t* ctx) {
+    (void)ctx;
+    return NULL;
+}
+
+void nimcp_gpu_sync_pool(nimcp_gpu_context_t* ctx) {
+    (void)ctx;
 }
 
 nimcp_cublas_handle_t nimcp_gpu_get_cublas(nimcp_gpu_context_t* ctx) {

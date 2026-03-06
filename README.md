@@ -89,6 +89,7 @@ make -j$(nproc)
 For detailed usage, see:
 - [External API Guide](docs/EXTERNAL_API_GUIDE.md) — public C and Python APIs
 - [Quick Start](docs/QUICKSTART.md) — first program walkthrough
+- [Training Pipeline](docs/TRAINING_PIPELINE.md) — what data flows into the brain during training
 
 ## Current Status
 

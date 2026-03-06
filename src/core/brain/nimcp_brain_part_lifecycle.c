@@ -593,6 +593,37 @@ void brain_destroy(brain_t brain)
         self_model_destroy(brain->self_model);
     }
 
+    // Cleanup Recursive Cognition Engine
+    if (brain->rcog_engine) {
+        rcog_engine_stop(brain->rcog_engine, 1000);  // 1s timeout
+        rcog_engine_destroy(brain->rcog_engine);
+        brain->rcog_engine = NULL;
+    }
+
+    // Cleanup Inner Dialogue Engine
+    if (brain->inner_dialogue) {
+        inner_dialogue_engine_destroy(brain->inner_dialogue);
+        brain->inner_dialogue = NULL;
+    }
+
+    // Cleanup Reasoning Engine
+    if (brain->reasoning_engine) {
+        reasoning_engine_destroy(brain->reasoning_engine);
+        brain->reasoning_engine = NULL;
+    }
+
+    // Cleanup Imagination Engine
+    if (brain->imagination) {
+        imagination_engine_destroy(brain->imagination);
+        brain->imagination = NULL;
+    }
+
+    // Cleanup Collective Cognition
+    if (brain->collective_cognition) {
+        collective_cognition_destroy(brain->collective_cognition);
+        brain->collective_cognition = NULL;
+    }
+
     // Phase 12: Cleanup personality profile
     // NOTE: personality_profile_t is assumed to be a flat POD type (no internal allocations).
     // If personality_profile_t ever gains dynamically allocated fields, this must change

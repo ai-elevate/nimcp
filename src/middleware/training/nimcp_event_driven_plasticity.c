@@ -76,6 +76,10 @@ typedef struct {
  * @brief EDP context structure
  */
 struct edp_context {
+    /* Magic number for dangling pointer detection */
+    uint32_t magic;
+#define EDP_CONTEXT_MAGIC 0xED90CAFE
+
     /* Configuration */
     edp_config_t config;
 
@@ -629,6 +633,7 @@ edp_context_t* edp_create(const edp_config_t* config)
         return NULL;
     }
 
+    ctx->magic = EDP_CONTEXT_MAGIC;
     ctx->memory_mgr = local_config.memory_mgr;
     ctx->active = false;
     ctx->running = false;
@@ -793,6 +798,7 @@ void edp_destroy(edp_context_t* ctx)
     nimcp_platform_mutex_destroy(&ctx->stats_mutex);
     nimcp_platform_mutex_destroy(&ctx->state_mutex);
 
+    ctx->magic = 0;  /* Invalidate before free */
     LOG_INFO("Event-Driven Plasticity adapter destroyed");
     nimcp_free(ctx);
 }
@@ -1258,7 +1264,7 @@ void edp_print_status(const edp_context_t* ctx)
 
 bool edp_is_active(const edp_context_t* ctx)
 {
-    if (!ctx) {
+    if (!ctx || ctx->magic != EDP_CONTEXT_MAGIC) {
         return false;
     }
     return ctx->active && ctx->running;

@@ -494,6 +494,13 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
 
     // Parallel subsystem initialization (wave-based thread pool)
     config->parallel_init = true;
+
+    // Cognitive stage parameters (used in brain_decide())
+    config->reasoning_blend_weight = 0.3F;
+    config->dialogue_confidence_min = 0.2F;
+    config->dialogue_confidence_max = 0.85F;
+    config->imagination_confidence_min = 0.3F;
+    config->rcog_confidence_max = 0.5F;
 }
 
 void nimcp_brain_factory_init_brain_stats(brain_stats_t* stats, const char* task_name, brain_size_t size,

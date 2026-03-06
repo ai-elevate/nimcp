@@ -842,8 +842,8 @@ neural_network_t neural_network_create(const network_config_t* config)
                     //   540K dst neurons × 16 fan-in = 8.6M connections per transition
                     //   vs old: 200K total = 0.37 connections per dst neuron (dead)
 
-                    uint32_t MIN_FAN_IN = 16;   // each dst neuron gets at least this many inputs
-                    uint32_t MAX_FAN_IN = 64;   // cap for very small source layers
+                    uint32_t MIN_FAN_IN = 32;   // each dst neuron gets at least this many inputs
+                    uint32_t MAX_FAN_IN = 128;  // cap — matches embedded synapse capacity
 
                     // Scale fan-in: use MIN_FAN_IN, but don't exceed src_size
                     uint32_t fan_in = MIN_FAN_IN;

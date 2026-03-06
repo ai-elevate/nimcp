@@ -35,6 +35,7 @@ static void api_set_error(const char* fmt, ...);
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "cognitive/nimcp_working_memory.h"  // Phase 10.2: Working Memory API
 #include "cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace Architecture
+#include "cognitive/collective_cognition/nimcp_collective_cognition.h"  // Multi-brain collective
 #include "utils/memory/nimcp_memory.h"
 #include "utils/config/nimcp_config.h"
 #include "utils/cache/nimcp_cache.h"

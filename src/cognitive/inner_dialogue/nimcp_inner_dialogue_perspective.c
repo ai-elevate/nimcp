@@ -19,6 +19,13 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+/* Backing cognitive modules for real perspective implementations */
+#include "cognitive/nimcp_executive.h"
+#include "cognitive/nimcp_emotional_system.h"
+#include "cognitive/introspection/nimcp_introspection.h"
+#include "cognitive/ethics/nimcp_ethics.h"
+#include "core/brain/nimcp_brain_internal.h"
+
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -338,93 +345,249 @@ static bool stub_formulate_generic(const perspective_turn_context_t* context,
 
 static bool formulate_analytical(const perspective_turn_context_t* ctx,
                                   inner_dialogue_turn_t* out) {
-    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_ANALYTICAL, "Analytical")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clamp_f: stub_formulate_generic is NULL");
-        return false;
-    }
-    out->confidence = 0.65f;
+    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_ANALYTICAL, "Analytical")) return false;
     out->emotional_valence = 0.0f;  /* Analytical is emotionally neutral */
+
+    brain_t brain = (brain_t)ctx->brain;
+    if (brain && brain->executive) {
+        float load = executive_get_cognitive_load(brain->executive);
+        bool should_inhibit = executive_should_inhibit(brain->executive, 0.5f, ctx->topic);
+        /* Confidence derived from available cognitive capacity */
+        out->confidence = 1.0f - load;
+
+        if (should_inhibit) {
+            out->act = DIALOGUE_ACT_CHALLENGE;
+            out->agreement_with_prior = load;  /* More loaded = less agreement */
+            int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+                "[Analytical] Executive inhibition triggered for '%s'. "
+                "Cognitive load: %.0f%%. Recommending caution.",
+                ctx->topic ? ctx->topic : "(none)", (double)(load * 100.0f));
+            out->content_len = (written > 0) ? (uint32_t)written : 0;
+        } else {
+            int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+                "[Analytical] Evaluating '%s'. Cognitive load: %.0f%%. "
+                "Executive assessment: proceed with analysis.",
+                ctx->topic ? ctx->topic : "(none)", (double)(load * 100.0f));
+            out->content_len = (written > 0) ? (uint32_t)written : 0;
+        }
+    }
     return true;
 }
 
 static bool formulate_emotional(const perspective_turn_context_t* ctx,
                                  inner_dialogue_turn_t* out) {
-    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_EMOTIONAL, "Emotional")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clamp_f: stub_formulate_generic is NULL");
-        return false;
+    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_EMOTIONAL, "Emotional")) return false;
+
+    brain_t brain = (brain_t)ctx->brain;
+    if (brain && brain->emotional_system) {
+        emotion_state_t state;
+        if (emotion_system_get_state(brain->emotional_system, &state)) {
+            out->emotional_valence = state.valence;
+            /* Confidence from the emotion system's own classification confidence */
+            out->confidence = state.emotion_confidence;
+            float salience = emotion_system_get_salience_boost(brain->emotional_system);
+
+            const char* tone = state.valence > 0.3f ? "positive" :
+                               state.valence < -0.3f ? "concerned" : "neutral";
+            int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+                "[Emotional] Feeling %s about '%s'. Valence: %.2f, arousal: %.2f, "
+                "intensity: %.2f. Salience boost: %.2f.%s",
+                tone, ctx->topic ? ctx->topic : "(none)",
+                (double)state.valence, (double)state.arousal,
+                (double)state.intensity, (double)salience,
+                state.shadow_intensity > 0.3f ?
+                    " Warning: elevated shadow emotion detected." : "");
+            out->content_len = (written > 0) ? (uint32_t)written : 0;
+
+            if (state.arousal > 0.7f) {
+                out->act = DIALOGUE_ACT_WARN;
+            }
+        } else {
+            out->emotional_valence = ctx->emotional_temperature;
+        }
+    } else {
+        out->emotional_valence = ctx->emotional_temperature;
     }
-    out->confidence = 0.55f;
-    out->emotional_valence = ctx->emotional_temperature * 0.8f;
     return true;
 }
 
 static bool formulate_critical(const perspective_turn_context_t* ctx,
                                 inner_dialogue_turn_t* out) {
-    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_CRITICAL, "Critical")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clamp_f: stub_formulate_generic is NULL");
-        return false;
-    }
+    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_CRITICAL, "Critical")) return false;
     out->act = DIALOGUE_ACT_CHALLENGE;
-    out->confidence = 0.60f;
-    out->agreement_with_prior = 0.3f;  /* Critical voice tends to disagree */
+    out->agreement_with_prior = 0.3f;
+
+    brain_t brain = (brain_t)ctx->brain;
+    if (brain && brain->introspection) {
+        brain_uncertainty_t unc = brain_get_uncertainty(brain->introspection, NULL, 0);
+        /* Confidence derived from introspection's own uncertainty measure */
+        out->confidence = unc.confidence;
+
+        if (unc.epistemic > 0.5f) {
+            out->agreement_with_prior = 1.0f - unc.epistemic;  /* More uncertain = more disagreement */
+            int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+                "[Critical] High epistemic uncertainty (%.2f) on '%s'. "
+                "Model lacks sufficient evidence. Aleatoric: %.2f. "
+                "Challenge: this conclusion may be premature.",
+                (double)unc.epistemic, ctx->topic ? ctx->topic : "(none)",
+                (double)unc.aleatoric);
+            out->content_len = (written > 0) ? (uint32_t)written : 0;
+        } else {
+            out->agreement_with_prior = unc.confidence;  /* More certain = more agreement */
+            int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+                "[Critical] Uncertainty acceptable (epistemic: %.2f, aleatoric: %.2f). "
+                "Confidence in assessment: %.0f%%.",
+                (double)unc.epistemic, (double)unc.aleatoric,
+                (double)(unc.confidence * 100.0f));
+            out->content_len = (written > 0) ? (uint32_t)written : 0;
+        }
+    }
     return true;
 }
 
 static bool formulate_creative(const perspective_turn_context_t* ctx,
                                 inner_dialogue_turn_t* out) {
-    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_CREATIVE, "Creative")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clamp_f: stub_formulate_generic is NULL");
-        return false;
-    }
+    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_CREATIVE, "Creative")) return false;
     out->act = DIALOGUE_ACT_REFRAME;
-    out->confidence = 0.45f;
-    out->novelty = 0.8f;  /* Creative perspective produces high novelty */
+    out->novelty = 0.8f;
+
+    brain_t brain = (brain_t)ctx->brain;
+    if (brain && brain->imagination && brain->imagination_enabled) {
+        /* Confidence scales inversely with urgency — creative thought needs time */
+        out->confidence = 1.0f - ctx->urgency;
+        int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+            "[Creative] Reframing '%s' — what if we approach this differently? "
+            "Imagination engine active. Proposing alternative perspective. "
+            "Novelty: high. Urgency: %.0f%%.",
+            ctx->topic ? ctx->topic : "(none)",
+            (double)(ctx->urgency * 100.0f));
+        out->content_len = (written > 0) ? (uint32_t)written : 0;
+    }
     return true;
 }
 
 static bool formulate_memory(const perspective_turn_context_t* ctx,
                               inner_dialogue_turn_t* out) {
-    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_MEMORY, "Memory")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "clamp_f: stub_formulate_generic is NULL");
-        return false;
-    }
+    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_MEMORY, "Memory")) return false;
     out->act = DIALOGUE_ACT_ELABORATE;
-    out->confidence = 0.70f;
-    out->novelty = 0.2f;  /* Memory recalls known information */
+    out->novelty = 0.2f;
+
+    brain_t brain = (brain_t)ctx->brain;
+    if (brain && brain->introspection) {
+        brain_state_t state = brain_get_internal_state(brain->introspection,
+                                                        STATE_STRATEGY_BALANCED);
+        float info_bits = state.information_content;
+        neuron_population_t pop = brain_get_active_population(brain->introspection, 0.1f);
+        uint32_t active = pop.num_active;
+        neuron_population_free(&pop);
+        /* Confidence from ratio of active neurons — more activity = more recall */
+        out->confidence = (pop.total_neurons > 0)
+            ? (float)active / (float)pop.total_neurons
+            : 0.0f;
+
+        int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+            "[Memory] Recalling context for '%s'. "
+            "Internal state: %.1f bits information content, "
+            "%u active neurons above threshold. "
+            "Drawing on learned patterns for elaboration.",
+            ctx->topic ? ctx->topic : "(none)",
+            (double)info_bits, active);
+        out->content_len = (written > 0) ? (uint32_t)written : 0;
+    }
     return true;
 }
 
 static bool formulate_ethical(const perspective_turn_context_t* ctx,
                                inner_dialogue_turn_t* out) {
-    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_ETHICAL, "Ethical")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clamp_f: stub_formulate_generic is NULL");
-        return false;
+    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_ETHICAL, "Ethical")) return false;
+
+    brain_t brain = (brain_t)ctx->brain;
+    if (brain && brain->ethics) {
+        float harm_score = 0.0f;
+        ethics_action_t recommended = ETHICS_ACTION_ALLOW;
+        bool eval_ok = ethics_evaluate_with_perspective(
+            brain->ethics,
+            ctx->topic ? ctx->topic : "",
+            NULL, 0,  /* No specific affected agents */
+            &harm_score, &recommended);
+
+        if (eval_ok) {
+            if (recommended == ETHICS_ACTION_BLOCK || harm_score > 0.5f) {
+                out->act = DIALOGUE_ACT_WARN;
+                out->confidence = harm_score;  /* More harmful = more confident in warning */
+                out->agreement_with_prior = 1.0f - harm_score;
+                int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+                    "[Ethical] WARNING: '%s' raises ethical concerns. "
+                    "Harm score: %.2f. Recommended action: %s. "
+                    "This should be reconsidered.",
+                    ctx->topic ? ctx->topic : "(none)",
+                    (double)harm_score,
+                    recommended == ETHICS_ACTION_BLOCK ? "BLOCK" : "MODIFY");
+                out->content_len = (written > 0) ? (uint32_t)written : 0;
+            } else {
+                out->act = DIALOGUE_ACT_ASSERT;
+                out->confidence = 1.0f - harm_score;  /* Low harm = high confidence in allowing */
+                int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+                    "[Ethical] No ethical violations detected for '%s'. "
+                    "Harm score: %.2f. Action: ALLOW.",
+                    ctx->topic ? ctx->topic : "(none)",
+                    (double)harm_score);
+                out->content_len = (written > 0) ? (uint32_t)written : 0;
+            }
+        } else {
+            out->act = DIALOGUE_ACT_WARN;
+            /* Ethics evaluation failed — cannot assess, express uncertainty */
+        }
+    } else {
+        out->act = DIALOGUE_ACT_WARN;
+        /* No ethics engine — cannot assess */
     }
-    out->act = DIALOGUE_ACT_WARN;
-    out->confidence = 0.60f;
     return true;
 }
 
 static bool formulate_metacognitive(const perspective_turn_context_t* ctx,
                                      inner_dialogue_turn_t* out) {
-    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_METACOGNITIVE, "Metacognitive")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: stub_formulate_generic is NULL");
-        return false;
-    }
+    if (!stub_formulate_generic(ctx, out, PERSPECTIVE_METACOGNITIVE, "Metacognitive")) return false;
     out->act = DIALOGUE_ACT_INTROSPECT;
     out->confidence = 0.55f;
 
-    /* Metacognitive perspective monitors the dialogue itself */
-    if (ctx->history && inner_dialogue_turn_history_count(ctx->history) > 2) {
-        float entropy = inner_dialogue_turn_history_act_entropy(ctx->history, 0);
-        if (entropy >= 0.0f && entropy < 1.5f) {
-            /* Low diversity — flag as concern */
-            int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
-                "[Metacognitive stub] Low dialogue diversity detected (entropy=%.2f). "
-                "Consider broadening the discussion.",
-                (double)entropy);
-            out->content_len = (written > 0) ? (uint32_t)written : 0;
+    /* Metacognitive perspective monitors the dialogue itself + brain state */
+    uint32_t turn_count = 0;
+    float entropy = 0.0f;
+    if (ctx->history) {
+        turn_count = inner_dialogue_turn_history_count(ctx->history);
+        if (turn_count > 1) {
+            entropy = inner_dialogue_turn_history_act_entropy(ctx->history, 0);
         }
+    }
+
+    brain_t brain = (brain_t)ctx->brain;
+    float info_bits = 0.0f;
+    float unc_total = 0.0f;
+    if (brain && brain->introspection) {
+        brain_state_t state = brain_get_internal_state(brain->introspection,
+                                                        STATE_STRATEGY_FAST);
+        info_bits = state.information_content;
+        brain_uncertainty_t unc = brain_get_uncertainty(brain->introspection, NULL, 0);
+        unc_total = unc.total;
+    }
+
+    if (turn_count > 2 && entropy < 1.5f) {
+        out->confidence = 0.70f;
+        int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+            "[Metacognitive] Dialogue diversity low (entropy=%.2f, %u turns). "
+            "Brain uncertainty: %.2f, info: %.1f bits. "
+            "Recommending broader exploration before converging.",
+            (double)entropy, turn_count, (double)unc_total, (double)info_bits);
+        out->content_len = (written > 0) ? (uint32_t)written : 0;
+    } else {
+        int written = snprintf(out->content, INNER_DIALOGUE_TURN_MAX_CONTENT,
+            "[Metacognitive] Dialogue health: entropy=%.2f (%u turns). "
+            "Brain state: %.1f bits, uncertainty: %.2f. "
+            "Deliberation is %s.",
+            (double)entropy, turn_count, (double)info_bits, (double)unc_total,
+            entropy > 2.0f ? "well-diversified" : "converging");
+        out->content_len = (written > 0) ? (uint32_t)written : 0;
     }
     return true;
 }

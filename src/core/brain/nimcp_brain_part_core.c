@@ -2,6 +2,15 @@
 // Part of nimcp_brain.c (SRP #include-based split)
 // DO NOT compile separately - #included from nimcp_brain.c
 
+/* Cognitive stage constants */
+static const float DIALOGUE_AGREEMENT_HIGH   = 0.8F;   /* Above this: perspectives agree → boost */
+static const float DIALOGUE_AGREEMENT_LOW    = 0.4F;   /* Below this: perspectives disagree → reduce */
+static const float DIALOGUE_BOOST_FACTOR     = 1.1F;   /* Confidence multiplier on high agreement */
+static const float DIALOGUE_REDUCE_FACTOR    = 0.8F;   /* Confidence multiplier on low agreement */
+static const float IMAGINATION_FAIL_PENALTY  = 0.95F;  /* Confidence multiplier when simulation fails */
+static const float RCOG_CONFIDENCE_FLOOR     = 0.1F;   /* Min confidence to invoke recursive cognition */
+static const int   IMAGINATION_SIM_STEPS     = 3;      /* Number of prospective simulation steps */
+
 
 /**
  * @brief Clear decision cache (thread-safe with deadlock protection)
@@ -1464,6 +1473,179 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // Periodically extract new concepts from Phase M2 during inference
         // This keeps the semantic network growing with experience
         semantic_memory_extract_from_consolidation(brain->semantic_memory);
+    }
+
+    // ========================================================================
+    // STAGE 4.1: REASONING ENGINE (Causal/Abductive/Convergent)
+    // ========================================================================
+    // WHAT: Execute multi-step reasoning on decision context
+    // WHY:  Enable causal inference, evidence synthesis, epistemic verification
+    // HOW:  Connect engine to brain, run reasoning pipeline on decision label
+    //
+    // BIOLOGICAL BASIS:
+    // - Prefrontal cortex: Multi-step planning and inference (Miller & Cohen, 2001)
+    // - Working memory-guided reasoning (Baddeley, 2003)
+    // - Bayesian inference in neural circuits (Ma et al., 2006)
+    //
+    // COMPLEXITY: O(steps * module_cost)
+    float reasoning_confidence = 0.0F;
+    if (brain->reasoning_engine && brain->reasoning_engine_enabled && decision->label[0]) {
+        reasoning_chain_t chain;
+        reasoning_chain_init(&chain);
+
+        // Connect engine to brain (extracts subsystem pointers)
+        reasoning_engine_connect_brain(brain->reasoning_engine, brain);
+
+        // Run reasoning on the decision label as query
+        int reason_rc = reasoning_engine_reason(brain->reasoning_engine,
+                                                 decision->label, &chain);
+        if (reason_rc == 0 && chain.num_steps > 0) {
+            reasoning_confidence = chain.overall_confidence;
+            // Blend reasoning confidence with network confidence
+            float rw = brain->config.reasoning_blend_weight;
+            decision->confidence = decision->confidence * (1.0F - rw) +
+                                   reasoning_confidence * rw;
+        }
+
+        reasoning_chain_cleanup(&chain);
+    }
+
+    // ========================================================================
+    // STAGE 4.2a: INNER DIALOGUE (Multi-Perspective Deliberation)
+    // ========================================================================
+    // WHAT: Run 7-perspective deliberation on the decision
+    // WHY:  Analytical, emotional, critical, creative, memory, ethical, and
+    //       metacognitive viewpoints catch blind spots single-pass misses
+    // HOW:  Start conversation on decision topic, run to convergence
+    //
+    // BIOLOGICAL BASIS:
+    // - Internal speech (Vygotsky, 1934): verbal self-regulation
+    // - Default mode network (Raichle, 2001): self-referential processing
+    // - Metacognitive monitoring (Flavell, 1979): thinking about thinking
+    //
+    // COMPLEXITY: O(turns * perspectives) — bounded by max_turns config
+    if (brain->inner_dialogue && brain->inner_dialogue_enabled && decision->label[0]) {
+        // Only deliberate on decisions with moderate confidence (uncertain territory)
+        // High confidence = brain is sure, low confidence = too noisy to deliberate on
+        if (decision->confidence > brain->config.dialogue_confidence_min &&
+            decision->confidence < brain->config.dialogue_confidence_max) {
+            inner_dialogue_result_t dialogue_result;
+            memset(&dialogue_result, 0, sizeof(dialogue_result));
+
+            // Start conversation on the decision topic
+            int start_rc = inner_dialogue_engine_start(brain->inner_dialogue,
+                                                        decision->label);
+            if (start_rc == 0) {
+                int run_rc = inner_dialogue_engine_run(brain->inner_dialogue,
+                                                       &dialogue_result);
+                if (run_rc == 0 && dialogue_result.has_conclusion) {
+                    // Modulate confidence based on agreement among perspectives
+                    // High agreement (>0.8) → boost confidence
+                    // Low agreement (<0.4) → reduce confidence (disagreement = uncertainty)
+                    if (dialogue_result.final_agreement > DIALOGUE_AGREEMENT_HIGH) {
+                        decision->confidence *= DIALOGUE_BOOST_FACTOR;
+                    } else if (dialogue_result.final_agreement < DIALOGUE_AGREEMENT_LOW) {
+                        decision->confidence *= DIALOGUE_REDUCE_FACTOR;
+                    }
+                    decision->confidence = fminf(decision->confidence, 1.0F);
+                }
+            }
+        }
+    }
+
+    // ========================================================================
+    // STAGE 4.2b: IMAGINATION ENGINE (Prospective Simulation)
+    // ========================================================================
+    // WHAT: Run mental simulation to test the decision before committing
+    // WHY:  Prospective simulation prevents harmful/suboptimal actions
+    // HOW:  Begin scenario, step forward, evaluate coherence as quality signal
+    //
+    // BIOLOGICAL BASIS:
+    // - Hippocampal prospection (Schacter & Addis, 2007): future imagination
+    // - Default mode network (Buckner et al., 2008): episodic simulation
+    // - Mental rehearsal (Jeannerod, 2001): motor imagery improves execution
+    //
+    // COMPLEXITY: O(simulation_steps)
+    if (brain->imagination && brain->imagination_enabled) {
+        // Only simulate for decisions with enough confidence to be worth testing
+        if (decision->confidence > brain->config.imagination_confidence_min) {
+            imagination_scenario_t* scenario = imagination_begin_scenario(
+                brain->imagination,
+                IMAGINATION_MODE_PROSPECTIVE,
+                NULL  // No specific goal — evaluate decision outcome
+            );
+
+            if (scenario) {
+                // Run a few simulation steps to let the scenario evolve
+                bool sim_ok = true;
+                for (int sim_step = 0; sim_step < IMAGINATION_SIM_STEPS && sim_ok; sim_step++) {
+                    sim_ok = (imagination_step_scenario(brain->imagination, scenario) == 0);
+                }
+
+                // If simulation failed to evolve, slight confidence reduction
+                // (inability to simulate = uncertain territory)
+                if (!sim_ok) {
+                    decision->confidence *= IMAGINATION_FAIL_PENALTY;
+                }
+
+                imagination_end_scenario(brain->imagination, scenario);
+            }
+        }
+    }
+
+    // ========================================================================
+    // STAGE 4.3: RECURSIVE COGNITION (Goal Decomposition)
+    // ========================================================================
+    // WHAT: For complex decisions, decompose into sub-goals and orchestrate
+    // WHY:  Complex tasks require multi-step decomposition and delegation
+    // HOW:  Create goal from decision, process through engine, refine answer
+    //
+    // BIOLOGICAL BASIS:
+    // - Hierarchical planning in prefrontal cortex (Koechlin et al., 2003)
+    // - Goal-directed behavior (Balleine & Dickinson, 1998)
+    // - Cognitive control hierarchy (Badre, 2008)
+    //
+    // COMPLEXITY: O(subtasks * depth)
+    if (brain->rcog_engine && brain->rcog_engine_enabled && decision->label[0]) {
+        // Only invoke recursive cognition for low-confidence complex decisions
+        // where simple forward pass wasn't enough
+        if (decision->confidence < brain->config.rcog_confidence_max &&
+            decision->confidence > RCOG_CONFIDENCE_FLOOR) {
+            rcog_goal_t goal = rcog_engine_create_goal(
+                decision->label,
+                RCOG_GOAL_ANALYSIS  // Analysis goal type
+            );
+
+            rcog_process_result_t rcog_result;
+            memset(&rcog_result, 0, sizeof(rcog_result));
+
+            int rcog_rc = rcog_engine_process(brain->rcog_engine, &goal, &rcog_result);
+            if (rcog_rc == 0 && rcog_result.success) {
+                // Recursive processing improved confidence
+                // Use geometric mean of original and recursive confidence
+                float rcog_conf = rcog_result.answer.confidence;
+                if (rcog_conf > decision->confidence) {
+                    decision->confidence = sqrtf(decision->confidence * rcog_conf);
+                }
+            }
+        }
+    }
+
+    // ========================================================================
+    // STAGE 4.4: COLLECTIVE COGNITION UPDATE (Multi-Brain Sync)
+    // ========================================================================
+    // WHAT: Broadcast decision state to collective and receive group influence
+    // WHY:  Enable distributed consciousness, swarm intelligence, shared goals
+    // HOW:  Update collective cognition with current decision context
+    //
+    // BIOLOGICAL BASIS:
+    // - Social cognition (Tomasello, 2014): shared intentionality
+    // - Group decision-making (Couzin et al., 2005): emergent collective intelligence
+    // - Inter-brain synchronization (Hasson et al., 2012): neural coupling
+    //
+    // COMPLEXITY: O(connected_instances)
+    if (brain->collective_cognition && brain->collective_cognition_enabled) {
+        collective_cognition_update(brain->collective_cognition);
     }
 
     // ========================================================================

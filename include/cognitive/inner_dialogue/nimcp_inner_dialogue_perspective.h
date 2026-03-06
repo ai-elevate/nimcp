@@ -109,6 +109,7 @@ typedef struct {
     const inner_dialogue_turn_history_t* history; /**< Full history (read-only) */
     float urgency;                              /**< Time-pressure factor [0-1] */
     float emotional_temperature;                /**< Current emotional state [0-1] */
+    void* brain;                                /**< Opaque brain_t pointer for module access */
 } perspective_turn_context_t;
 
 /**

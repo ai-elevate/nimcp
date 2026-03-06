@@ -129,6 +129,28 @@ void rubric_evaluator_destroy(struct rubric_evaluator* eval);
 #include "core/brain/accessors/nimcp_brain_accessors.h" // Extracted accessor functions module
 #include "core/brain/analysis/nimcp_brain_topology.h"  // Extracted topology/graph analysis module
 
+// === COGNITIVE MODULE ENGINES (Decision Pipeline Integration) ===
+#include "cognitive/recursive/nimcp_rcog_engine.h"       // Recursive Cognition Engine
+#include "cognitive/inner_dialogue/nimcp_inner_dialogue.h" // Inner Dialogue Engine
+#include "cognitive/reasoning/nimcp_reasoning_chain.h"    // Reasoning Engine
+#include "cognitive/collective_cognition/nimcp_collective_cognition.h" // Collective Cognition
+
+// Imagination Engine: Forward declarations to avoid type conflicts with
+// audio_cortex_t, visual_training_state_t, etc. already defined above.
+// The full header is included in nimcp_brain_init_cognitive_engines.c.
+#ifndef NIMCP_IMAGINATION_ENGINE_H
+typedef struct imagination_engine imagination_engine_t;
+typedef struct imagination_scenario imagination_scenario_t;
+#define IMAGINATION_MODE_PROSPECTIVE 3  // From imagination_mode_t enum
+extern imagination_scenario_t* imagination_begin_scenario(
+    imagination_engine_t* engine, int mode, const void* goal);
+extern int imagination_step_scenario(
+    imagination_engine_t* engine, imagination_scenario_t* scenario);
+extern int imagination_end_scenario(
+    imagination_engine_t* engine, imagination_scenario_t* scenario);
+extern void imagination_engine_destroy(imagination_engine_t* engine);
+#endif
+
 // === PHASE E: HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
 #include "cognitive/nimcp_shadow_emotions.h"   // Phase E5: Shadow Emotions (jealousy, envy, obsession, hubris, greed, narcissism)
 #include "cognitive/nimcp_bias_detection.h"    // Phase E6: Bias Detection & Correction (racial, LGBTQ+, gender, misogyny, etc.)

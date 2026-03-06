@@ -13,6 +13,7 @@ This is the master index for all NIMCP documentation. For developer workflow and
 |---------|----------|
 | **Getting Started** | [QUICKSTART.md](QUICKSTART.md) |
 | **External API Guide** | [EXTERNAL_API_GUIDE.md](EXTERNAL_API_GUIDE.md) |
+| **Training Pipeline** | [TRAINING_PIPELINE.md](TRAINING_PIPELINE.md) |
 | **Build Instructions** | [build/BUILD_INSTRUCTIONS.md](build/BUILD_INSTRUCTIONS.md) |
 | **API Reference** | [api/API_REFERENCE.md](api/API_REFERENCE.md) |
 | **Coding Standards** | [claude/02-coding-standards.md](claude/02-coding-standards.md) |

@@ -70,6 +70,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "generation/nimcp_tokenizer.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "plasticity/adaptive/nimcp_backprop_kernel.h"
 #include <string.h>
@@ -86,6 +87,8 @@
 #include "utils/signal/nimcp_signal_handler.h"
 #include "middleware/training/nimcp_training_convergent_decision.h"
 #include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
+#include "cognitive/reasoning/nimcp_reasoning_chain.h"
+#include "cognitive/inner_dialogue/nimcp_inner_dialogue.h"
 #include "cognitive/nimcp_sleep_wake.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/nimcp_brain_state.h"
@@ -487,16 +490,18 @@ static PyObject* Brain_learn_vector(BrainObject* self, PyObject* args, PyObject*
     PyObject* target_list;
     const char* label = NULL;
     float confidence = 1.0f;
+    float learning_rate = 0.0f;
 
-    static char* kwlist[] = {"features", "target", "label", "confidence", NULL};
+    static char* kwlist[] = {"features", "target", "label", "confidence", "learning_rate", NULL};
 
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO|zf", kwlist,
-                                      &features_list, &target_list, &label, &confidence)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO|zff", kwlist,
+                                      &features_list, &target_list, &label, &confidence,
+                                      &learning_rate)) {
         return NULL;
     }
 
@@ -530,6 +535,15 @@ static PyObject* Brain_learn_vector(BrainObject* self, PyObject* args, PyObject*
     uint32_t nt = (uint32_t)num_targets;
     volatile bool learn_crashed = false;
 
+    /* Per-call learning rate override (same pattern as Brain_learn) */
+    float saved_lr = 0.0F;
+    bool lr_overridden = false;
+    if (learning_rate > 0.0F && brain_ref->internal_brain) {
+        saved_lr = brain_ref->internal_brain->config.learning_rate;
+        brain_ref->internal_brain->config.learning_rate = learning_rate;
+        lr_overridden = true;
+    }
+
     Py_BEGIN_ALLOW_THREADS
 
     SIGNAL_TRY_RECOVER(0, "Brain_learn_vector") {
@@ -541,6 +555,11 @@ static PyObject* Brain_learn_vector(BrainObject* self, PyObject* args, PyObject*
     } SIGNAL_TRY_END;
 
     Py_END_ALLOW_THREADS
+
+    /* Restore original learning rate */
+    if (lr_overridden) {
+        brain_ref->internal_brain->config.learning_rate = saved_lr;
+    }
 
     nimcp_free(features);
     nimcp_free(target);
@@ -2238,6 +2257,149 @@ static PyObject* Brain_speak(BrainObject* self, PyObject* args) {
 
     return result;
 }
+
+/**
+ * WHAT: Prune weak synapses from the neural network
+ * WHY:  Prevent unbounded memory growth during long training runs
+ * HOW:  Call neural_network_prune_synapses on the brain's base network
+ */
+static PyObject* Brain_prune_synapses(BrainObject* self, PyObject* args) {
+    float threshold = 0.01f;
+    if (!PyArg_ParseTuple(args, "|f", &threshold))
+        return NULL;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    brain_t ib = self->brain->internal_brain;
+    if (!ib->network) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain has no neural network");
+        return NULL;
+    }
+
+    extern neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
+    extern uint32_t neural_network_prune_synapses(neural_network_t network, float threshold);
+
+    neural_network_t base_net = adaptive_network_get_base_network(ib->network);
+    if (!base_net) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to get base network");
+        return NULL;
+    }
+
+    uint32_t pruned = 0;
+    Py_BEGIN_ALLOW_THREADS
+    pruned = neural_network_prune_synapses(base_net, threshold);
+    Py_END_ALLOW_THREADS
+
+    return PyLong_FromUnsignedLong(pruned);
+}
+
+/**
+ * WHAT: Tokenize text using the brain's C-level tokenizer
+ * WHY:  Language grounding — map text to token IDs that align with embeddings
+ * HOW:  Create/reuse tokenizer, call tokenizer_encode
+ */
+static PyObject* Brain_tokenize(BrainObject* self, PyObject* args) {
+    const char* text = NULL;
+    if (!PyArg_ParseTuple(args, "s", &text))
+        return NULL;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    /* Create tokenizer and build vocab from input if needed */
+    tokenizer_t* tok = tokenizer_create(NULL);
+    if (!tok) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create tokenizer");
+        return NULL;
+    }
+
+    /* Build minimal vocabulary from the input text */
+    tokenizer_build_from_text(tok, text, 1024);
+
+    uint32_t token_ids[512];
+    uint32_t num_tokens = 0;
+    int rc = tokenizer_encode(tok, text, token_ids, 512, &num_tokens);
+    if (rc != 0) {
+        tokenizer_destroy(tok);
+        PyErr_SetString(PyExc_RuntimeError, "Tokenization failed");
+        return NULL;
+    }
+
+    PyObject* list = PyList_New((Py_ssize_t)num_tokens);
+    if (!list) { tokenizer_destroy(tok); return NULL; }
+    for (uint32_t i = 0; i < num_tokens; i++) {
+        PyList_SET_ITEM(list, i, PyLong_FromUnsignedLong(token_ids[i]));
+    }
+
+    tokenizer_destroy(tok);
+    return list;
+}
+
+/**
+ * WHAT: Generate text from a semantic vector using the language generator
+ * WHY:  Converts brain's internal representations to natural language
+ * HOW:  Uses language_orchestrator_generate_output with LANGUAGE_OUTPUT_TEXT
+ */
+static PyObject* Brain_generate_text(BrainObject* self, PyObject* args) {
+    PyObject* semantic_list = NULL;
+    if (!PyArg_ParseTuple(args, "O", &semantic_list))
+        return NULL;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    Py_ssize_t num_features;
+    float* semantic = py_list_to_float_array(semantic_list, &num_features);
+    if (!semantic) return NULL;
+
+    enum { GEN_MAX_TEXT = 4096 };
+    char text[GEN_MAX_TEXT];
+    memset(text, 0, sizeof(text));
+    float confidence = 0.0f;
+    float fluency = 0.0f;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_speak(
+        self->brain, semantic, (uint32_t)num_features,
+        text, GEN_MAX_TEXT, &confidence, &fluency);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(semantic);
+
+    if (status != NIMCP_OK) {
+        /* Fallback: return empty result instead of error for uninitialized language layer */
+        PyObject* result = PyDict_New();
+        if (!result) return NULL;
+        PyObject* empty = PyUnicode_FromString("");
+        PyDict_SetItemString(result, "text", empty);
+        Py_DECREF(empty);
+        PyObject* zero = PyFloat_FromDouble(0.0);
+        PyDict_SetItemString(result, "confidence", zero);
+        PyDict_SetItemString(result, "fluency", zero);
+        PyDict_SetItemString(result, "error", PyUnicode_FromString(nimcp_get_error()));
+        Py_DECREF(zero);
+        return result;
+    }
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+
+    PyObject* tmp;
+    tmp = PyUnicode_FromString(text);
+    PyDict_SetItemString(result, "text", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(confidence);
+    PyDict_SetItemString(result, "confidence", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(fluency);
+    PyDict_SetItemString(result, "fluency", tmp); Py_DECREF(tmp);
+
+    return result;
+}
+
 
 /**
  * WHAT: Get avatar visual state (FACS AUs, visemes, gaze, emotion, voice)
@@ -4304,9 +4466,10 @@ static PyObject* Brain_get_plasticity_stats(BrainObject* self, PyObject* Py_UNUS
         }
     }
 
-    /* EDP stats */
-    if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity) {
-        PyDict_SetItemString(d, "edp_active", PyBool_FromLong(edp_is_active(brain->event_driven_plasticity)));
+    /* EDP stats — guard against dangling pointer (SIGSEGV in edp_is_active seen in production) */
+    if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity
+        && edp_is_active(brain->event_driven_plasticity)) {
+        PyDict_SetItemString(d, "edp_active", Py_True);
         edp_stats_t edp_stats;
         if (edp_get_stats(brain->event_driven_plasticity, &edp_stats) == NIMCP_OK) {
             PyDict_SetItemString(d, "edp_plasticity_updates", PyLong_FromUnsignedLongLong(edp_stats.total_plasticity_updates));
@@ -4940,6 +5103,113 @@ static PyObject* Brain_thalamus_get_mode(BrainObject* self, PyObject* args) {
     return PyUnicode_FromString("TONIC");
 }
 
+/**
+ * @brief Run deliberation pipeline: reasoning + inner dialogue on a topic
+ *
+ * WHAT: Expose the cognitive deliberation modules to Python
+ * WHY:  Allow training scripts and interactive sessions to invoke reasoning
+ * @brief Connect this brain to another brain's collective cognition system
+ *
+ * @param other_brain BrainObject to connect with
+ * @param instance_id Unique ID for this brain in the collective (int)
+ * @return None on success, raises RuntimeError on failure
+ */
+static PyObject* Brain_connect_collective(BrainObject* self, PyObject* args) {
+    PyObject* other_obj;
+    uint32_t instance_id;
+    if (!PyArg_ParseTuple(args, "OI", &other_obj, &instance_id))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    /* Verify other_obj is a BrainObject */
+    if (!PyObject_TypeCheck(other_obj, Py_TYPE((PyObject*)self))) {
+        PyErr_SetString(PyExc_TypeError, "First argument must be a Brain object");
+        return NULL;
+    }
+    BrainObject* other = (BrainObject*)other_obj;
+    if (!other->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Other brain not initialized");
+        return NULL;
+    }
+
+    nimcp_status_t status = nimcp_brain_connect_collective(
+        self->brain, other->brain, instance_id);
+    if (status != NIMCP_OK) {
+        PyErr_Format(PyExc_RuntimeError,
+            "Failed to connect collective (status=%d)", status);
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/**
+ * HOW:  Run reasoning engine on query, then inner dialogue for multi-perspective check
+ *
+ * @param topic String topic/query to deliberate on
+ * @return dict with keys: reasoning_confidence, dialogue_agreement, has_conclusion, total_turns
+ */
+static PyObject* Brain_deliberate(BrainObject* self, PyObject* args) {
+    const char* topic;
+    if (!PyArg_ParseTuple(args, "s", &topic))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+
+    brain_t brain = self->brain->internal_brain;
+    float reasoning_confidence = 0.0f;
+    float dialogue_agreement = 0.0f;
+    int has_conclusion = 0;
+    uint32_t total_turns = 0;
+
+    Py_BEGIN_ALLOW_THREADS
+
+    /* Phase 1: Reasoning engine */
+    if (brain->reasoning_engine && brain->reasoning_engine_enabled) {
+        reasoning_chain_t chain;
+        reasoning_chain_init(&chain);
+        reasoning_engine_connect_brain(brain->reasoning_engine, brain);
+        if (reasoning_engine_reason(brain->reasoning_engine, topic, &chain) == 0) {
+            reasoning_confidence = chain.overall_confidence;
+        }
+        reasoning_chain_cleanup(&chain);
+    }
+
+    /* Phase 2: Inner dialogue */
+    if (brain->inner_dialogue && brain->inner_dialogue_enabled) {
+        inner_dialogue_result_t result;
+        memset(&result, 0, sizeof(result));
+        if (inner_dialogue_engine_start(brain->inner_dialogue, topic) == 0) {
+            if (inner_dialogue_engine_run(brain->inner_dialogue, &result) == 0) {
+                dialogue_agreement = result.final_agreement;
+                has_conclusion = result.has_conclusion ? 1 : 0;
+                total_turns = result.total_turns;
+            }
+        }
+    }
+
+    Py_END_ALLOW_THREADS
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+
+    PyObject* tmp;
+    tmp = PyFloat_FromDouble(reasoning_confidence);
+    PyDict_SetItemString(dict, "reasoning_confidence", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(dialogue_agreement);
+    PyDict_SetItemString(dict, "dialogue_agreement", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(has_conclusion);
+    PyDict_SetItemString(dict, "has_conclusion", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLong(total_turns);
+    PyDict_SetItemString(dict, "total_turns", tmp); Py_DECREF(tmp);
+
+    return dict;
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
      "Learn from example: learn(features, label, lr=0.0, confidence=1.0) -> float (loss value)\n"
@@ -5242,6 +5512,23 @@ static PyMethodDef Brain_methods[] = {
     // Decision cycle orchestrator (Layer 1 + 2 + 3)
     {"ti_compute_decision_cycle", (PyCFunction)Brain_ti_compute_decision_cycle, METH_VARARGS,
      "Run full training decision cycle: ti_compute_decision_cycle(loss_cur, loss_prev, grad_norm, grad_norm_prev, loss_vol, grad_var, lr, batch) -> dict"},
+
+    // Cognitive deliberation (reasoning + inner dialogue)
+    {"connect_collective", (PyCFunction)Brain_connect_collective, METH_VARARGS,
+     "Connect this brain to another brain's collective cognition system.\n"
+     "Args: other_brain (Brain), instance_id (int)"},
+    {"deliberate", (PyCFunction)Brain_deliberate, METH_VARARGS,
+     "Run cognitive deliberation on a topic: deliberate(topic) -> dict with reasoning_confidence, dialogue_agreement, has_conclusion, total_turns"},
+
+    // Synapse pruning
+    {"prune_synapses", (PyCFunction)Brain_prune_synapses, METH_VARARGS,
+     "Prune weak synapses: prune_synapses(threshold=0.01) -> int (number pruned)"},
+
+    // Language grounding
+    {"tokenize", (PyCFunction)Brain_tokenize, METH_VARARGS,
+     "Tokenize text to token IDs: tokenize(text) -> list of int"},
+    {"generate_text", (PyCFunction)Brain_generate_text, METH_VARARGS,
+     "Generate text from semantic vector: generate_text(semantic_vector) -> dict with text, confidence, fluency"},
 
     {NULL}
 };

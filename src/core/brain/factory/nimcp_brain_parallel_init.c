@@ -183,6 +183,13 @@ extern bool nimcp_brain_factory_init_cognitive_meta_controller_subsystem(brain_t
 extern bool nimcp_brain_factory_init_security_perception_bridge_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_swarm_module_registry_subsystem(brain_t brain);
 
+// Wave 27: Cognitive engines (rcog, inner dialogue, reasoning, imagination)
+extern bool nimcp_brain_factory_init_rcog_engine_subsystem(brain_t brain);
+extern bool nimcp_brain_factory_init_inner_dialogue_subsystem(brain_t brain);
+extern bool nimcp_brain_factory_init_reasoning_engine_subsystem(brain_t brain);
+extern bool nimcp_brain_factory_init_imagination_subsystem(brain_t brain);
+extern bool nimcp_brain_factory_init_collective_cognition_subsystem(brain_t brain);
+
 // Emotional + spike analysis + Shannon headers pulled in via nimcp_brain_internal.h
 // Additional headers for inline init functions
 #include "information/nimcp_shannon.h"
@@ -802,7 +809,18 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     tasks[n++] = TASK(nimcp_brain_factory_init_swarm_module_registry_subsystem, "swarm_registry");
     if (!execute_wave(pool, &ctx, tasks, n, 26)) goto cleanup;
 
-    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (27 waves)");
+    // ========================================================================
+    // WAVE 27: Cognitive engines (rcog, inner dialogue, reasoning, imagination, collective)
+    // ========================================================================
+    n = 0;
+    tasks[n++] = TASK(nimcp_brain_factory_init_rcog_engine_subsystem, "rcog_engine");
+    tasks[n++] = TASK(nimcp_brain_factory_init_inner_dialogue_subsystem, "inner_dialogue");
+    tasks[n++] = TASK(nimcp_brain_factory_init_reasoning_engine_subsystem, "reasoning_engine");
+    tasks[n++] = TASK(nimcp_brain_factory_init_imagination_subsystem, "imagination");
+    tasks[n++] = TASK(nimcp_brain_factory_init_collective_cognition_subsystem, "collective_cognition");
+    if (!execute_wave(pool, &ctx, tasks, n, 27)) goto cleanup;
+
+    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (28 waves)");
 
 cleanup:
     nimcp_pool_destroy(pool);

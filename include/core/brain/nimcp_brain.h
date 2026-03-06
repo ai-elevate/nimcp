@@ -1894,6 +1894,13 @@ typedef struct {
 
     // Direct neuron count override
     uint32_t neuron_count;                        /**< If >0, override size-preset neuron count */
+
+    // Cognitive stage parameters (used in brain_decide())
+    float reasoning_blend_weight;                 /**< Reasoning vs network blend [0-1], 0=all network (default: 0.3) */
+    float dialogue_confidence_min;                /**< Min confidence to trigger inner dialogue (default: 0.2) */
+    float dialogue_confidence_max;                /**< Max confidence to trigger inner dialogue (default: 0.85) */
+    float imagination_confidence_min;             /**< Min confidence to trigger imagination (default: 0.3) */
+    float rcog_confidence_max;                    /**< Max confidence to trigger recursive cognition (default: 0.5) */
 } brain_config_t;
 
 /**

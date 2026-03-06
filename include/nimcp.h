@@ -585,6 +585,24 @@ nimcp_status_t nimcp_brain_speak(
 );
 
 /**
+ * @brief Connect two brains through collective cognition
+ *
+ * Links brain_b into brain_a's collective cognition system so they
+ * share consciousness metrics, hyperscanning sync, and load balancing.
+ * Both brains must have collective cognition enabled.
+ *
+ * @param brain_a First brain (host collective)
+ * @param brain_b Second brain (joining collective)
+ * @param instance_id Unique ID for brain_b in the collective
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_connect_collective(
+    nimcp_brain_t brain_a,
+    nimcp_brain_t brain_b,
+    uint32_t instance_id
+);
+
+/**
  * @brief Avatar face state — visemes, FACS action units, emotion, gaze
  *
  * Collected from Broca's speech motor planner, emotional system, and

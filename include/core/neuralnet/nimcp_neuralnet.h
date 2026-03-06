@@ -280,8 +280,8 @@ typedef struct neuron_struct {
     homeostatic_params_t homeostatic;  /**< Homeostatic parameters */
 
     // NIMCP 2.11: Sparse synapse storage (replaces fixed arrays)
-    // Memory reduction: 106,496 bytes → ~3,112 bytes per neuron (97% savings)
-    sparse_synapse_storage_t outgoing;   /**< Outgoing synapses (embedded[64] + overflow) */
+    // Memory: ~6,164 bytes per neuron (128 embedded synapses × 24 bytes + metadata)
+    sparse_synapse_storage_t outgoing;   /**< Outgoing synapses (embedded[128] + overflow) */
     sparse_synapse_storage_t incoming;   /**< Incoming synapses (for O(S) forward pass) */
 
     // Plasticity parameters

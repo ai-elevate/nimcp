@@ -35,6 +35,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_thread_pool.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "async/nimcp_bio_messages.h"
@@ -101,6 +102,7 @@ struct inner_dialogue_engine {
     brain_cycle_coordinator_t* cycle_coordinator;
     ethics_engine_t ethics;
     const safety_kb_t* lgss_kb;
+    void* brain;                    /**< Opaque brain_t for perspective module access */
 
     /* Thread safety */
     nimcp_mutex_t* mutex;
@@ -431,6 +433,19 @@ int inner_dialogue_engine_set_bbb(inner_dialogue_engine_t* engine,
     engine->bbb = bbb;
     NIMCP_LOGGING_INFO("inner_dialogue: BBB %s",
                        bbb ? "connected" : "disconnected");
+    return 0;
+}
+
+int inner_dialogue_engine_connect_brain(inner_dialogue_engine_t* engine,
+                                          void* brain) {
+    if (!engine_valid(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_INNER_DIALOGUE_ERROR_NULL,
+                              "inner_dialogue: connect_brain with invalid engine");
+        return NIMCP_INNER_DIALOGUE_ERROR_NULL;
+    }
+    engine->brain = brain;
+    NIMCP_LOGGING_INFO("inner_dialogue: brain %s",
+                       brain ? "connected" : "disconnected");
     return 0;
 }
 
@@ -902,6 +917,7 @@ int inner_dialogue_engine_step(inner_dialogue_engine_t* engine,
     ctx.history = engine->history;
     ctx.urgency = nimcp_clampf(engine->config.urgency + cycle_urgency_boost, 0.0f, 1.0f);
     ctx.emotional_temperature = engine->last_analysis.emotional_temperature;
+    ctx.brain = engine->brain;
 
     /* 3. Select perspective */
     int persp_idx = inner_dialogue_perspective_select_next(
@@ -1097,6 +1113,235 @@ int inner_dialogue_engine_step(inner_dialogue_engine_t* engine,
     return result;
 }
 
+/* ============================================================================
+ * Parallel Batch Formulation
+ * ============================================================================
+ *
+ * WHAT: Formulate all registered perspectives in parallel, select best turn
+ * WHY:  Sequential formulation is the bottleneck — each calls cognitive modules
+ * HOW:  Submit formulate() calls to thread pool, wait, pick highest-confidence
+ *       turn, then validate + record sequentially (validation must be serial)
+ */
+
+typedef struct {
+    const perspective_turn_context_t* ctx;
+    inner_dialogue_perspective_entry_t* entry;
+    inner_dialogue_turn_t turn;
+    bool produced;
+    uint64_t formulation_time_ms;
+    uint32_t conversation_id;
+} parallel_formulate_arg_t;
+
+static void parallel_formulate_task(void* arg) {
+    parallel_formulate_arg_t* pfa = (parallel_formulate_arg_t*)arg;
+    memset(&pfa->turn, 0, sizeof(inner_dialogue_turn_t));
+    pfa->turn.conversation_id = pfa->conversation_id;
+    pfa->turn.timestamp_us = get_timestamp_us();
+
+    uint64_t start = nimcp_time_get_ms();
+    pfa->produced = pfa->entry->desc.formulate(pfa->ctx, &pfa->turn);
+    uint64_t end = nimcp_time_get_ms();
+    pfa->formulation_time_ms = end - start;
+    pfa->turn.formulation_time_ms = (float)(end - start);
+}
+
+/**
+ * @brief Parallel batch step — formulate all perspectives, select best
+ *
+ * Replaces the single-perspective step() in the run loop.
+ * Formulates all registered perspectives in parallel via thread pool,
+ * picks the turn with highest confidence, validates it, records it.
+ *
+ * @return 0 = continue, >0 = termination reason, <0 = error
+ */
+static int inner_dialogue_engine_step_parallel(
+    inner_dialogue_engine_t* engine,
+    inner_dialogue_turn_t* turn_out,
+    nimcp_thread_pool_t* pool)
+{
+    if (!engine_valid(engine)) return -NIMCP_INNER_DIALOGUE_ERROR_NULL;
+
+    if (engine->mutex) nimcp_mutex_lock(engine->mutex);
+
+    /* Guard state */
+    if (engine->state != DIALOGUE_STATE_INITIATED &&
+        engine->state != DIALOGUE_STATE_DELIBERATING &&
+        engine->state != DIALOGUE_STATE_CONVERGING) {
+        if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+        return -NIMCP_INNER_DIALOGUE_ERROR_INVALID_STATE;
+    }
+    if (engine->state == DIALOGUE_STATE_INITIATED) {
+        engine->state = DIALOGUE_STATE_DELIBERATING;
+    }
+
+    /* Check cycle coordinator health */
+    float cycle_urgency_boost = 0.0f;
+    if (!query_cycle_coordinator_health(engine, &cycle_urgency_boost)) {
+        if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+        return -NIMCP_INNER_DIALOGUE_ERROR_IMMUNE_SUPPRESSED;
+    }
+
+    if (engine->turn_number >= engine->config.max_turns) {
+        engine->state = DIALOGUE_STATE_CONCLUDED;
+        if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+        return (int)TERMINATION_MAX_TURNS;
+    }
+
+    /* Build shared context */
+    perspective_turn_context_t ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.conversation_id = engine->conversation_id;
+    ctx.turn_number = engine->turn_number;
+    ctx.topic = engine->topic;
+    ctx.last_turn = inner_dialogue_turn_history_get_latest(engine->history);
+    ctx.history = engine->history;
+    ctx.urgency = nimcp_clampf(engine->config.urgency + cycle_urgency_boost, 0.0f, 1.0f);
+    ctx.emotional_temperature = engine->last_analysis.emotional_temperature;
+    ctx.brain = engine->brain;
+
+    /* Collect registered perspectives */
+    parallel_formulate_arg_t batch[INNER_DIALOGUE_MAX_PERSPECTIVES];
+    uint32_t batch_count = 0;
+
+    for (uint32_t i = 0; i < INNER_DIALOGUE_MAX_PERSPECTIVES; i++) {
+        if (!engine->registry.entries[i].registered) continue;
+        batch[batch_count].ctx = &ctx;
+        batch[batch_count].entry = &engine->registry.entries[i];
+        batch[batch_count].produced = false;
+        batch[batch_count].conversation_id = engine->conversation_id;
+        batch_count++;
+    }
+
+    if (batch_count == 0) {
+        if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+        return -NIMCP_INNER_DIALOGUE_ERROR_TURN_FAILED;
+    }
+
+    /* Release mutex during parallel formulation (perspectives read-only) */
+    if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+
+    /* Submit all formulations to thread pool */
+    for (uint32_t i = 0; i < batch_count; i++) {
+        nimcp_pool_submit(pool, parallel_formulate_task, &batch[i]);
+    }
+    nimcp_pool_wait(pool);
+
+    /* Re-acquire mutex for validation + recording */
+    if (engine->mutex) nimcp_mutex_lock(engine->mutex);
+
+    /* Select best turn: highest confidence among produced turns */
+    int best_idx = -1;
+    float best_confidence = -1.0f;
+    for (uint32_t i = 0; i < batch_count; i++) {
+        if (batch[i].produced && batch[i].turn.confidence > best_confidence) {
+            best_confidence = batch[i].turn.confidence;
+            best_idx = (int)i;
+        }
+    }
+
+    /* Update stats for all perspectives */
+    for (uint32_t i = 0; i < batch_count; i++) {
+        if (batch[i].produced) {
+            batch[i].entry->turns_produced++;
+            batch[i].entry->cumulative_confidence += batch[i].turn.confidence;
+            batch[i].entry->last_turn_timestamp_us = batch[i].turn.timestamp_us;
+        } else {
+            batch[i].entry->turns_skipped++;
+        }
+    }
+
+    if (best_idx < 0) {
+        /* All perspectives skipped */
+        if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+        return 0;
+    }
+
+    inner_dialogue_turn_t* turn = &batch[best_idx].turn;
+
+    /* Validate sequentially: LGSS → Ethics → BBB */
+    if (!validate_turn_through_lgss(engine, turn) ||
+        !validate_turn_through_ethics(engine, turn) ||
+        !validate_turn_through_bbb(engine, turn)) {
+        if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+        return 0;
+    }
+
+    /* Record turn */
+    int turn_id = inner_dialogue_turn_history_record(engine->history, turn);
+    if (turn_id < 0) {
+        if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+        return -NIMCP_INNER_DIALOGUE_ERROR_TURN_FAILED;
+    }
+    engine->turn_number++;
+    engine->stats.total_turns_produced++;
+
+    if (turn_out) {
+        memcpy(turn_out, turn, sizeof(inner_dialogue_turn_t));
+        turn_out->turn_id = (uint32_t)turn_id;
+    }
+
+    /* Notify observers (outside lock) */
+    inner_dialogue_turn_t recorded_copy;
+    const inner_dialogue_turn_t* recorded = inner_dialogue_turn_history_get_latest(engine->history);
+    if (recorded) {
+        memcpy(&recorded_copy, recorded, sizeof(inner_dialogue_turn_t));
+    }
+
+    struct { perspective_observe_fn fn; void* user_data; } observers[INNER_DIALOGUE_MAX_PERSPECTIVES];
+    uint32_t num_observers = 0;
+    for (uint32_t i = 0; i < INNER_DIALOGUE_MAX_PERSPECTIVES; i++) {
+        if (engine->registry.entries[i].registered &&
+            engine->registry.entries[i].desc.observe) {
+            observers[num_observers].fn = engine->registry.entries[i].desc.observe;
+            observers[num_observers].user_data = engine->registry.entries[i].desc.user_data;
+            num_observers++;
+        }
+    }
+    if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+
+    if (recorded) {
+        for (uint32_t i = 0; i < num_observers; i++) {
+            observers[i].fn(&recorded_copy, observers[i].user_data);
+        }
+    }
+
+    if (engine->mutex) nimcp_mutex_lock(engine->mutex);
+
+    /* Convergence analysis */
+    convergence_analysis_t analysis;
+    int rc = inner_dialogue_convergence_analyse(
+        engine->history, &engine->config.convergence, &analysis);
+    if (rc == 0) {
+        memcpy(&engine->last_analysis, &analysis, sizeof(convergence_analysis_t));
+    }
+
+    int result = 0;
+    if (analysis.recommended_action == TERMINATION_CONVERGED) {
+        engine->state = DIALOGUE_STATE_CONVERGING;
+        if (turn->act == DIALOGUE_ACT_CONCLUDE ||
+            analysis.agreement_score >= engine->config.convergence.agreement_threshold + 0.1f) {
+            engine->state = DIALOGUE_STATE_CONCLUDED;
+            engine->stats.conversations_completed++;
+            result = (int)TERMINATION_CONVERGED;
+        }
+    } else if (analysis.recommended_action == TERMINATION_DEADLOCKED) {
+        engine->state = DIALOGUE_STATE_DEADLOCKED;
+        engine->stats.conversations_deadlocked++;
+        result = (int)TERMINATION_DEADLOCKED;
+    } else if (analysis.recommended_action == TERMINATION_RUMINATING) {
+        engine->state = DIALOGUE_STATE_RUMINATING;
+        engine->stats.conversations_ruminated++;
+        result = (int)TERMINATION_RUMINATING;
+    } else if (analysis.recommended_action == TERMINATION_EMOTIONAL_SPIRAL) {
+        engine->state = DIALOGUE_STATE_CONCLUDED;
+        result = (int)TERMINATION_EMOTIONAL_SPIRAL;
+    }
+
+    if (engine->mutex) nimcp_mutex_unlock(engine->mutex);
+    return result;
+}
+
+
 int inner_dialogue_engine_run(inner_dialogue_engine_t* engine,
                                inner_dialogue_result_t* result) {
     if (!engine_valid(engine)) {
@@ -1118,9 +1363,18 @@ int inner_dialogue_engine_run(inner_dialogue_engine_t* engine,
     uint32_t step_count = 0;
     uint32_t max_steps = engine->config.max_turns * 2;  /* Allow skip retries */
 
+    /* Create thread pool for parallel formulation (one per perspective) */
+    static const uint32_t PARALLEL_THREADS = 4;
+    nimcp_thread_pool_t* pool = nimcp_pool_create(PARALLEL_THREADS);
+
     while (step_count < max_steps) {
         inner_dialogue_turn_t turn;
-        step_result = inner_dialogue_engine_step(engine, &turn);
+
+        if (pool) {
+            step_result = inner_dialogue_engine_step_parallel(engine, &turn, pool);
+        } else {
+            step_result = inner_dialogue_engine_step(engine, &turn);
+        }
 
         if (step_result > 0) {
             /* Termination reason returned */
@@ -1139,6 +1393,8 @@ int inner_dialogue_engine_run(inner_dialogue_engine_t* engine,
         engine_heartbeat(engine, "run_loop",
                          (float)engine->turn_number / (float)engine->config.max_turns);
     }
+
+    if (pool) nimcp_pool_destroy(pool);
 
     /* If we exhausted max_steps without termination */
     if (step_result == 0 && step_count >= max_steps) {

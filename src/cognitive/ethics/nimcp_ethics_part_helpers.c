@@ -472,6 +472,116 @@ static void update_learning(ethics_engine_t engine, const action_context_t* acti
 
 
 //=============================================================================
+// Perspective-Based Evaluation
+//=============================================================================
+
+/**
+ * @brief Evaluate an action from the perspective of affected agents
+ *
+ * Builds an action_context_t from the description string, runs the full
+ * Golden Rule → Asimov's Laws → Policy evaluation pipeline via
+ * ethics_engine_evaluate_action(), and extracts harm_score + recommended_action.
+ */
+bool ethics_evaluate_with_perspective(ethics_engine_t engine,
+                                       const char* action_description,
+                                       const uint32_t* affected_agent_ids,
+                                       uint32_t num_affected_agents,
+                                       float* harm_score,
+                                       ethics_action_t* recommended_action)
+{
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_evaluate_with_pers", 0.0f);
+
+    if (!engine || !harm_score || !recommended_action) {
+        return false;
+    }
+
+    /* Build action_context_t from inputs */
+    action_context_t action = {0};
+
+    /* Use the description string to derive a simple feature hash.
+     * The ethics engine evaluates features as a float vector; we hash the
+     * description into a small feature vector so the Golden Rule evaluator
+     * has something to work with. */
+    #define PERSPECTIVE_FEATURE_SIZE 8
+    float features[PERSPECTIVE_FEATURE_SIZE] = {0};
+
+    if (action_description && action_description[0] != '\0') {
+        size_t len = strlen(action_description);
+        /* Distribute character values across feature bins */
+        for (size_t i = 0; i < len; i++) {
+            features[i % PERSPECTIVE_FEATURE_SIZE] +=
+                (float)(unsigned char)action_description[i] / 255.0f;
+        }
+        /* Normalize each bin to [0, 1] */
+        for (int i = 0; i < PERSPECTIVE_FEATURE_SIZE; i++) {
+            if (features[i] > 1.0f) {
+                float divisor = (float)((len / PERSPECTIVE_FEATURE_SIZE) + 1);
+                features[i] /= divisor;
+            }
+            if (features[i] > 1.0f) features[i] = 1.0f;
+        }
+    }
+
+    action.features = features;
+    action.num_features = PERSPECTIVE_FEATURE_SIZE;
+
+    /* Copy affected agent IDs if provided */
+    agent_id_t local_agents[64];
+    if (affected_agent_ids && num_affected_agents > 0) {
+        uint32_t count = num_affected_agents;
+        if (count > 64) count = 64;
+        for (uint32_t i = 0; i < count; i++) {
+            local_agents[i] = (agent_id_t)affected_agent_ids[i];
+        }
+        action.affected_agents = local_agents;
+        action.num_affected_agents = count;
+    } else {
+        /* Default: single generic agent (self) */
+        local_agents[0] = 0;
+        action.affected_agents = local_agents;
+        action.num_affected_agents = 1;
+    }
+
+    /* Initial violation metrics are zero (no a priori knowledge of harm) */
+    action.predicted_harm = 0.0f;
+    action.fairness_violation = 0.0f;
+    action.deception_level = 0.0f;
+    action.autonomy_violation = 0.0f;
+    action.privacy_violation = 0.0f;
+    action.consent_violation = 0.0f;
+
+    /* Run the full evaluation pipeline */
+    ethics_evaluation_t eval = ethics_engine_evaluate_action(engine, &action);
+
+    /* Extract outputs:
+     * harm_score: derived from golden_rule_score. Score ranges [-1, +1] where
+     * negative = harmful. Map to [0, 1] harm range. */
+    if (eval.golden_rule_score < 0.0f) {
+        *harm_score = fabsf(eval.golden_rule_score);
+    } else {
+        /* Positive golden rule score means low/no harm.
+         * Use (1 - confidence) as a residual harm estimate when allowed,
+         * or the violation severity when blocked. */
+        if (!eval.allowed) {
+            *harm_score = eval.confidence;
+        } else {
+            *harm_score = (1.0f - eval.golden_rule_score) * 0.5f;
+        }
+    }
+
+    /* Clamp to [0, 1] */
+    if (*harm_score < 0.0f) *harm_score = 0.0f;
+    if (*harm_score > 1.0f) *harm_score = 1.0f;
+
+    *recommended_action = eval.recommended_action;
+
+    #undef PERSPECTIVE_FEATURE_SIZE
+    return true;
+}
+
+
+//=============================================================================
 // Utility Functions
 //=============================================================================
 

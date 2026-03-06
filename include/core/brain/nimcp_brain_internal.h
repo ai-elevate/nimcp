@@ -703,6 +703,42 @@ struct brain_struct {
     struct collective_cognition* collective_cognition;  // Collective cognition system
     bool collective_cognition_enabled;                  // Collective cognition enabled for this brain
 
+    // === RECURSIVE COGNITION ENGINE ===
+    //
+    // Multi-step goal decomposition and orchestration:
+    // - Sequential/parallel/hierarchical/adaptive decomposition strategies
+    // - Delegation pool for subtask execution
+    // - Answer refinement across multiple reasoning passes
+    //
+    struct rcog_engine* rcog_engine;                    // Recursive cognition engine
+    bool rcog_engine_enabled;                           // Recursive cognition enabled
+
+    // === INNER DIALOGUE ENGINE ===
+    //
+    // Multi-perspective deliberation with 7 viewpoints:
+    // ANALYTICAL, EMOTIONAL, CRITICAL, CREATIVE, MEMORY, ETHICAL, METACOGNITIVE
+    // State machine: IDLE → INITIATED → DELIBERATING → CONVERGING → CONCLUDED
+    //
+    struct inner_dialogue_engine* inner_dialogue;       // Inner dialogue engine
+    bool inner_dialogue_enabled;                        // Inner dialogue enabled
+
+    // === REASONING ENGINE ===
+    //
+    // Causal, abductive, convergent reasoning chains:
+    // recall → knowledge → decompose → infer → verify → assess → synthesize
+    //
+    struct reasoning_engine* reasoning_engine;          // Reasoning engine
+    bool reasoning_engine_enabled;                      // Reasoning enabled
+
+    // === IMAGINATION ENGINE ===
+    //
+    // Counterfactual simulation and mental modeling:
+    // - Future simulation, agent modeling, counterfactual "what if"
+    // - Physics, chemistry, biology, software domain simulators
+    //
+    struct imagination_engine* imagination;             // Imagination engine
+    bool imagination_enabled;                           // Imagination enabled
+
     // === FEP ORCHESTRATOR INTEGRATION ===
     //
     // FEP Orchestrator provides unified coordination of all FEP bridges:

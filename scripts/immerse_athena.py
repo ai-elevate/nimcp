@@ -117,6 +117,173 @@ CONTEXT_DIM = 112      # [912:1024] biological context (arousal, sleep, dopamine
 CHECKPOINT_DIR = "checkpoints/athena"
 DECODER_DIR = "checkpoints/athena/decoder"
 STATE_FILE = "checkpoints/athena/immersive_state.json"
+MASTERY_FILE = "checkpoints/athena/mastery_state.json"
+
+# Adaptive curriculum constants
+MASTERY_WINDOW = 20          # Rolling window for accuracy tracking
+MASTERY_THRESHOLD_LOW = 0.3  # Below this: remedial (reduce difficulty)
+MASTERY_THRESHOLD_HIGH = 0.8 # Above this: advance (increase difficulty)
+ZPD_TARGET = 0.65            # Zone of Proximal Development target accuracy
+DIFFICULTY_STEP = 0.1        # How much to adjust difficulty per evaluation
+
+# Adaptive learning rate constants
+BASE_LEARNING_RATE = 0.001   # Default brain learning rate
+MIN_LEARNING_RATE = 0.0001   # Floor — prevents stalling
+MAX_LEARNING_RATE = 0.005    # Ceiling — prevents divergence
+LR_SCALE_STRUGGLING = 1.5    # Scale up when mastery < THRESHOLD_LOW
+LR_SCALE_MASTERED = 0.5      # Scale down when mastery > THRESHOLD_HIGH
+LR_EVAL_INTERVAL = 100       # Steps between LR recalculations
+
+# ============================================================================
+# Adaptive Curriculum: Mastery tracking + difficulty adjustment
+# ============================================================================
+
+class MasteryTracker:
+    """Track per-domain mastery using rolling accuracy windows."""
+
+    def __init__(self):
+        self.domains = {}  # domain -> {attempts: [], difficulty: float}
+
+    def record(self, domain, loss, confidence):
+        """Record a training attempt for a domain."""
+        if domain not in self.domains:
+            self.domains[domain] = {
+                "attempts": [],
+                "difficulty": 0.5,
+                "total_attempts": 0,
+                "total_correct": 0,
+            }
+        entry = self.domains[domain]
+        # Accuracy proxy: low loss + high confidence = correct
+        correct = loss is not None and loss < 0.5 and confidence > 0.4
+        entry["attempts"].append(1.0 if correct else 0.0)
+        entry["total_attempts"] += 1
+        if correct:
+            entry["total_correct"] += 1
+        # Keep rolling window
+        if len(entry["attempts"]) > MASTERY_WINDOW:
+            entry["attempts"] = entry["attempts"][-MASTERY_WINDOW:]
+
+    def get_mastery(self, domain):
+        """Get current mastery level [0-1] for a domain."""
+        if domain not in self.domains:
+            return 0.0
+        attempts = self.domains[domain]["attempts"]
+        if not attempts:
+            return 0.0
+        return sum(attempts) / len(attempts)
+
+    def get_difficulty(self, domain):
+        """Get current difficulty level [0-1] for a domain."""
+        if domain not in self.domains:
+            return 0.5
+        return self.domains[domain]["difficulty"]
+
+    def adapt_difficulty(self, domain):
+        """Adjust difficulty based on mastery — target ZPD."""
+        mastery = self.get_mastery(domain)
+        if domain not in self.domains:
+            return 0.5
+        entry = self.domains[domain]
+        if mastery > MASTERY_THRESHOLD_HIGH:
+            entry["difficulty"] = min(1.0, entry["difficulty"] + DIFFICULTY_STEP)
+        elif mastery < MASTERY_THRESHOLD_LOW:
+            entry["difficulty"] = max(0.1, entry["difficulty"] - DIFFICULTY_STEP)
+        return entry["difficulty"]
+
+    def select_domain(self, available_domains):
+        """Select next domain — prioritize those in ZPD, avoid mastered ones."""
+        scored = []
+        for domain in available_domains:
+            mastery = self.get_mastery(domain)
+            # Score: distance from ZPD target (closer = higher priority)
+            # Untried domains get high priority (novelty)
+            if domain not in self.domains or len(self.domains[domain]["attempts"]) < 3:
+                score = 1.0  # Unexplored — high priority
+            else:
+                score = 1.0 - abs(mastery - ZPD_TARGET)
+            scored.append((domain, score))
+
+        # Weighted random selection by score
+        total = sum(s for _, s in scored)
+        if total <= 0:
+            return random.choice(available_domains)
+        r = random.random() * total
+        cumulative = 0
+        for domain, score in scored:
+            cumulative += score
+            if r <= cumulative:
+                return domain
+        return scored[-1][0]
+
+    def get_confidence_for_domain(self, domain, base_progress):
+        """Compute training confidence from mastery + difficulty."""
+        difficulty = self.get_difficulty(domain)
+        mastery = self.get_mastery(domain)
+        # Higher difficulty + higher mastery = higher training confidence
+        return min(0.95, max(0.3, difficulty * 0.5 + mastery * 0.3 + base_progress * 0.2))
+
+    def get_adaptive_lr(self, domain):
+        """Compute adaptive learning rate based on domain mastery.
+
+        Struggling domains (mastery < 0.3) get higher LR for faster learning.
+        Mastered domains (mastery > 0.8) get lower LR for fine-tuning.
+        ZPD domains use baseline LR.
+        """
+        mastery = self.get_mastery(domain)
+        if mastery < MASTERY_THRESHOLD_LOW:
+            lr = BASE_LEARNING_RATE * LR_SCALE_STRUGGLING
+        elif mastery > MASTERY_THRESHOLD_HIGH:
+            lr = BASE_LEARNING_RATE * LR_SCALE_MASTERED
+        else:
+            # Smooth interpolation within ZPD
+            # At ZPD_TARGET, use BASE_LEARNING_RATE exactly
+            # Scale linearly between thresholds
+            lr = BASE_LEARNING_RATE
+        return max(MIN_LEARNING_RATE, min(MAX_LEARNING_RATE, lr))
+
+    def save(self, filepath):
+        """Persist mastery state to JSON."""
+        import json
+        data = {}
+        for domain, entry in self.domains.items():
+            data[domain] = {
+                "difficulty": entry["difficulty"],
+                "total_attempts": entry["total_attempts"],
+                "total_correct": entry["total_correct"],
+                "recent_accuracy": self.get_mastery(domain),
+            }
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "w") as f:
+            json.dump(data, f, indent=2)
+
+    def load(self, filepath):
+        """Load mastery state from JSON."""
+        import json
+        if not os.path.exists(filepath):
+            return
+        with open(filepath) as f:
+            data = json.load(f)
+        for domain, entry in data.items():
+            self.domains[domain] = {
+                "attempts": [],
+                "difficulty": entry.get("difficulty", 0.5),
+                "total_attempts": entry.get("total_attempts", 0),
+                "total_correct": entry.get("total_correct", 0),
+            }
+
+    def summary(self):
+        """Print mastery summary."""
+        if not self.domains:
+            return "  No mastery data yet."
+        lines = []
+        for domain in sorted(self.domains.keys()):
+            m = self.get_mastery(domain)
+            d = self.get_difficulty(domain)
+            n = self.domains[domain]["total_attempts"]
+            lines.append(f"    {domain:20s}: mastery={m:.2f} difficulty={d:.2f} attempts={n}")
+        return "\n".join(lines)
+
 
 # ============================================================================
 # Sensory Composer: 1024-dim cortex-native input with biological context
@@ -1612,6 +1779,10 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
     except Exception:
         pass
 
+    # Adaptive mastery tracker
+    mastery = MasteryTracker()
+    mastery.load(MASTERY_FILE)
+
     # Progressive domain schedule — unlock more domains as training progresses
     all_domains = list(source.ADVANCED_TOPICS.keys())
     total = num_interactions - start_from
@@ -1649,17 +1820,20 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                 pass
 
         elif r < 0.40:
-            # Advanced domain teaching — progressive complexity
-            domain = random.choice(active_domains)
+            # Advanced domain teaching — adaptive difficulty
+            domain = mastery.select_domain(active_domains)
             topic_text, domain_name = source.get_advanced(domain)
             print(f"  [Domain: {domain_name}] {topic_text[:80]}")
 
             features = composer.compose(text=topic_text, modality="text")
             target = make_semantic_target(topic_text)
             result = brain.decide_full(features)
-            confidence = 0.5 + progress * 0.3  # higher confidence as training progresses
+            confidence = mastery.get_confidence_for_domain(domain_name, progress)
+            adaptive_lr = mastery.get_adaptive_lr(domain_name)
             loss = brain.learn_vector(features, target,
-                                       label=domain_name[:50], confidence=confidence)
+                                       label=domain_name[:50], confidence=confidence,
+                                       learning_rate=adaptive_lr)
+            mastery.record(domain_name, loss, confidence)
 
             if decoder:
                 output_vec = result.get("output_vector")
@@ -1751,9 +1925,20 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             pass
 
         # Progress — show active domains
+        # Adapt difficulty every 50 steps
+        if (i + 1) % 50 == 0:
+            for d in active_domains:
+                mastery.adapt_difficulty(d)
+
         if (i + 1) % 200 == 0:
             print(f"\n  [Stage 3] {i+1}/{num_interactions} — "
                   f"domains: {', '.join(active_domains)}")
+            # Show adaptive LR per domain
+            lr_info = ", ".join(
+                f"{d}={mastery.get_adaptive_lr(d):.5f}" for d in active_domains[:5]
+            )
+            print(f"  Adaptive LR: {lr_info}")
+            print(f"  Mastery:\n{mastery.summary()}")
             _print_bio_stats(brain)
 
         if (i + 1) % 500 == 0:
@@ -1761,10 +1946,18 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                 decoder.force_refit()
             evaluate_performance(brain, composer, decoder, stage=3, step=i+1)
 
-        # Deep consolidation every 2000
+        # Deep consolidation + synapse pruning every 2000
         if (i + 1) % 2000 == 0:
             clock.do_sleep(brain, parent)
+            # Prune weak synapses to prevent unbounded memory growth
+            try:
+                pruned = brain.prune_synapses(0.01)
+                if pruned > 0:
+                    print(f"    [Prune] Removed {pruned} weak synapses (threshold=0.01)")
+            except Exception as e:
+                logger.debug("Synapse pruning failed: %s", e)
             _save_checkpoint(brain, decoder, stage=3, step=i+1)
+            mastery.save(MASTERY_FILE)
 
         # Forward chain KB
         if (i + 1) % 1000 == 0:

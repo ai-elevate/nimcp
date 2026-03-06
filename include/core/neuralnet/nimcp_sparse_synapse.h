@@ -23,15 +23,15 @@
  *   │ ┌────────────────────────────────────────────────────────┐ │
  *   │ │ sparse_synapse_storage_t synapses                      │ │
  *   │ │ ┌──────────────────────────────────────────────────┐   │ │
- *   │ │ │ synapse_handle_t embedded[64]   (512 bytes)      │   │ │
+ *   │ │ │ synapse_handle_t embedded[128]  (3072 bytes)     │   │ │
  *   │ │ │   [0]: {target_id=42, weight=0.5}                │   │ │
  *   │ │ │   [1]: {target_id=17, weight=0.8}                │   │ │
  *   │ │ │   ...                                             │   │ │
- *   │ │ │   [63]: {target_id=99, weight=0.2}               │   │ │
+ *   │ │ │   [127]: {target_id=99, weight=0.2}              │   │ │
  *   │ │ ├──────────────────────────────────────────────────┤   │ │
- *   │ │ │ uint32_t embedded_count = 64                     │   │ │
+ *   │ │ │ uint32_t embedded_count = 128                    │   │ │
  *   │ │ ├──────────────────────────────────────────────────┤   │ │
- *   │ │ │ synapse_handle_t* overflow = NULL  (for >64)     │   │ │
+ *   │ │ │ synapse_handle_t* overflow = NULL  (for >128)    │   │ │
  *   │ │ │ uint32_t overflow_count = 0                      │   │ │
  *   │ │ │ uint32_t overflow_capacity = 0                   │   │ │
  *   │ │ └──────────────────────────────────────────────────┘   │ │
@@ -119,15 +119,16 @@ extern "C" {
  * @brief Default embedded synapse capacity
  *
  * WHAT: Number of synapses stored inline in each neuron
- * WHY:  99% of neurons in typical networks have ≤64 synapses
+ * WHY:  Most neurons in typical networks have ≤128 synapses
  * HOW:  Empirically determined from cortical network simulations
  *
  * TUNING NOTES:
  * - Smaller (32): Lower per-neuron memory, more overflow allocations
- * - Larger (128): Higher per-neuron memory, fewer overflow allocations
- * - Sweet spot (64): Balance for cortical-like connectivity
+ * - Larger (256): Higher per-neuron memory, fewer overflow allocations
+ * - 128: Good balance for 1.5M neuron networks (~3KB/neuron inline)
+ * - Original (64): Conservative for smaller networks
  */
-#define SPARSE_SYNAPSE_EMBEDDED_CAPACITY 64
+#define SPARSE_SYNAPSE_EMBEDDED_CAPACITY 128
 
 /**
  * @brief Default pool capacity
@@ -232,12 +233,12 @@ typedef struct {
  * @brief Sparse synapse storage (embedded + overflow)
  *
  * WHAT: Hybrid storage combining inline array with dynamic overflow
- * WHY:  Optimize for common case (≤64 synapses) while supporting outliers
- * HOW:  Inline array for first 64, heap allocation only when needed
+ * WHY:  Optimize for common case (≤128 synapses) while supporting outliers
+ * HOW:  Inline array for first 128, heap allocation only when needed
  *
  * MEMORY LAYOUT:
  * ┌────────────────────────────────────────────────────────┐
- * │ embedded[64]: 64 × 24 bytes = 1,536 bytes (inline)     │
+ * │ embedded[128]: 128 × 24 bytes = 3,072 bytes (inline)    │
  * ├────────────────────────────────────────────────────────┤
  * │ embedded_count: 4 bytes                                │
  * │ overflow: 8 bytes (pointer)                            │
@@ -247,8 +248,8 @@ typedef struct {
  * Total: 1,556 bytes per neuron (vs 53 KB in dense allocation)
  *
  * GROWTH STRATEGY:
- * - embedded_count ≤ 64: Store in embedded array (no allocation)
- * - embedded_count > 64: Allocate overflow from pool
+ * - embedded_count ≤ 128: Store in embedded array (no allocation)
+ * - embedded_count > 128: Allocate overflow from pool
  * - Overflow grows in chunks (2x capacity) to amortize allocations
  */
 typedef struct {
@@ -429,7 +430,7 @@ NIMCP_EXPORT void sparse_synapse_storage_cleanup(
  * HOW:  Add to embedded if space, else allocate/grow overflow
  *
  * ALGORITHM:
- * 1. If embedded_count < 64: Add to embedded[embedded_count++]
+ * 1. If embedded_count < 128: Add to embedded[embedded_count++]
  * 2. Else if overflow == NULL: Allocate overflow from pool
  * 3. Else if overflow_count == overflow_capacity: Grow overflow (2x)
  * 4. Add to overflow[overflow_count++]

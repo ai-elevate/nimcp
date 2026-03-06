@@ -473,6 +473,20 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         }
     }
 
+    // Save training state for checkpoint-resume
+    // WHY: Without this, optimizer momentum and LR schedule are lost on restart
+    uint32_t training_state_magic = 0x54524E53; /* "TRNS" */
+    fwrite(&training_state_magic, sizeof(uint32_t), 1, meta_file);
+    fwrite(brain->loss_history, sizeof(float), 10, meta_file);
+    fwrite(&brain->loss_history_index, sizeof(uint32_t), 1, meta_file);
+    fwrite(&brain->loss_history_count, sizeof(uint32_t), 1, meta_file);
+    fwrite(&brain->base_learning_rate, sizeof(float), 1, meta_file);
+    fwrite(&brain->config.learning_rate, sizeof(float), 1, meta_file);
+    fwrite(&brain->last_curiosity_drive, sizeof(float), 1, meta_file);
+    fwrite(&brain->last_novelty_score, sizeof(float), 1, meta_file);
+    fwrite(&brain->stats.total_inferences, sizeof(uint64_t), 1, meta_file);
+    fwrite(&brain->stats.total_learning_steps, sizeof(uint64_t), 1, meta_file);
+
     fclose(meta_file);
     return true;
 }
@@ -993,6 +1007,30 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                 mirror_neurons_set_brain(brain->mirror_neurons, brain);
             }
         }
+    }
+
+    // Load training state for checkpoint-resume (optional — old saves won't have this)
+    uint32_t training_state_magic = 0;
+    if (fread(&training_state_magic, sizeof(uint32_t), 1, meta_file) == 1 &&
+        training_state_magic == 0x54524E53 /* "TRNS" */) {
+        fread(brain->loss_history, sizeof(float), 10, meta_file);
+        fread(&brain->loss_history_index, sizeof(uint32_t), 1, meta_file);
+        fread(&brain->loss_history_count, sizeof(uint32_t), 1, meta_file);
+        fread(&brain->base_learning_rate, sizeof(float), 1, meta_file);
+
+        float saved_lr = 0.0f;
+        if (fread(&saved_lr, sizeof(float), 1, meta_file) == 1 && saved_lr > 0.0f) {
+            brain->config.learning_rate = saved_lr;
+        }
+        fread(&brain->last_curiosity_drive, sizeof(float), 1, meta_file);
+        fread(&brain->last_novelty_score, sizeof(float), 1, meta_file);
+        fread(&brain->stats.total_inferences, sizeof(uint64_t), 1, meta_file);
+        fread(&brain->stats.total_learning_steps, sizeof(uint64_t), 1, meta_file);
+        fprintf(stderr, "[INFO] Restored training state: LR=%.6f, loss_count=%u, "
+                "inferences=%lu, learning_steps=%lu\n",
+                brain->config.learning_rate, brain->loss_history_count,
+                (unsigned long)brain->stats.total_inferences,
+                (unsigned long)brain->stats.total_learning_steps);
     }
 
     fclose(meta_file);

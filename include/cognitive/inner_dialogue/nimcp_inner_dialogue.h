@@ -407,6 +407,11 @@ inner_dialogue_perspective_registry_t* inner_dialogue_engine_get_registry(
     inner_dialogue_engine_t* engine);
 
 /**
+ * @brief Connect brain to inner dialogue for perspective module access
+ */
+int inner_dialogue_engine_connect_brain(inner_dialogue_engine_t* engine, void* brain);
+
+/**
  * @brief Register built-in perspectives with default stub callbacks
  *
  * @param engine Engine

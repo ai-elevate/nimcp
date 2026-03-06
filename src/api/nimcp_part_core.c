@@ -2252,6 +2252,54 @@ nimcp_status_t nimcp_brain_speak(
 
 
 //=============================================================================
+// Multi-Brain Collective API
+//=============================================================================
+
+nimcp_status_t nimcp_brain_connect_collective(
+    nimcp_brain_t brain_a,
+    nimcp_brain_t brain_b,
+    uint32_t instance_id)
+{
+    API_CHECK_THROW(brain_a, NIMCP_ERROR_NULL_ARG, "NULL brain_a handle");
+    API_CHECK_THROW(brain_b, NIMCP_ERROR_NULL_ARG, "NULL brain_b handle");
+    API_CHECK_THROW(brain_a->internal_brain, NIMCP_ERROR_INVALID, "brain_a has NULL internal_brain");
+    API_CHECK_THROW(brain_b->internal_brain, NIMCP_ERROR_INVALID, "brain_b has NULL internal_brain");
+
+    brain_t a = brain_a->internal_brain;
+    brain_t b = brain_b->internal_brain;
+
+    /* Lazily initialize collective cognition if not already enabled */
+    if (!a->collective_cognition || !a->collective_cognition_enabled) {
+        extern bool nimcp_brain_factory_init_collective_cognition_subsystem(brain_t brain);
+        a->config.enable_collective_cognition = true;
+        bool ok = nimcp_brain_factory_init_collective_cognition_subsystem(a);
+        if (!ok || !a->collective_cognition) {
+            set_error("Failed to initialize collective cognition on brain_a");
+            return NIMCP_ERROR_OPERATION_FAILED;
+        }
+    }
+
+    /* Register brain_b as an instance in brain_a's collective */
+    int rc = collective_cognition_register_instance(
+        a->collective_cognition, instance_id, &b);
+    if (rc != 0) {
+        set_error("Failed to register brain_b (id=%u) in collective", instance_id);
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
+    /* Also share brain_a's collective with brain_b so both reference the same system */
+    if (b->collective_cognition && b->collective_cognition != a->collective_cognition) {
+        /* brain_b has its own — replace with shared reference */
+        /* NOTE: Don't destroy brain_b's old one here; lifecycle will handle it */
+    }
+    b->collective_cognition = a->collective_cognition;
+    b->collective_cognition_enabled = true;
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+//=============================================================================
 // Avatar State API — Visual Communication
 //=============================================================================
 
