@@ -565,6 +565,15 @@ brain_t brain_create_custom(const brain_config_t* config)
         brain->stats.num_active_synapses = brain->stats.num_synapses;
     }
 
+    // Initialize unified experience API (developmental learning)
+    brain->experience_config = brain_experience_default_config();
+    brain->inference_learning_enabled = false;  // Off by default — enable via brain_experience_configure()
+    brain->last_experience_prediction = NULL;
+    brain->last_experience_input = NULL;
+    brain->last_experience_input_size = 0;
+    brain->last_experience_output_size = 0;
+    brain->experience_count = 0;
+
     // Pre-allocate scratch buffers for learn() hot path (eliminates 4 malloc/free per call)
     brain->learn_scratch.target_cap = config->num_outputs;
     brain->learn_scratch.features_cap = config->num_inputs;

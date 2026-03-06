@@ -2082,3 +2082,102 @@ nimcp_status_t nimcp_brain_get_synapse_stats(nimcp_brain_t brain, nimcp_synapse_
     set_error("No error");
     return NIMCP_OK;
 }
+
+
+/* ============================================================================
+ * Unified Experience API (Developmental Learning)
+ * ============================================================================ */
+
+nimcp_status_t nimcp_brain_innate_hardwire(
+    nimcp_brain_t brain,
+    const innate_config_t* config)
+{
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(config, NIMCP_ERROR_NULL_ARG, "Config is NULL");
+    NIMCP_API_CHECK_NULL(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    int rc = brain_innate_hardwire(brain->internal_brain, config);
+    if (rc != 0) {
+        set_error("brain_innate_hardwire failed");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_experience(
+    nimcp_brain_t brain,
+    const float* input,
+    uint32_t input_size,
+    float* output,
+    uint32_t output_size,
+    float teacher_reward,
+    brain_experience_result_t* result)
+{
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(input, NIMCP_ERROR_NULL_ARG, "Input array is NULL");
+    NIMCP_API_CHECK_NULL(output, NIMCP_ERROR_NULL_ARG, "Output array is NULL");
+    NIMCP_API_CHECK_NULL(result, NIMCP_ERROR_NULL_ARG, "Result struct is NULL");
+    NIMCP_API_CHECK_NULL(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    bool ok = brain_experience(brain->internal_brain, input, input_size,
+                                output, output_size, teacher_reward, result);
+    if (!ok) {
+        set_error("brain_experience failed");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_experience_configure(
+    nimcp_brain_t brain,
+    const brain_experience_config_t* config)
+{
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(config, NIMCP_ERROR_NULL_ARG, "Config is NULL");
+    NIMCP_API_CHECK_NULL(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    int rc = brain_experience_configure(brain->internal_brain, config);
+    if (rc != 0) {
+        set_error("brain_experience_configure failed");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+float nimcp_brain_experience_correct(
+    nimcp_brain_t brain,
+    const float* expected,
+    uint32_t expected_size)
+{
+    if (!brain || !expected || !brain->internal_brain) return -1.0f;
+    return brain_experience_correct(brain->internal_brain, expected, expected_size);
+}
+
+
+nimcp_status_t nimcp_brain_experience_attend(
+    nimcp_brain_t brain,
+    const char* modality,
+    float strength)
+{
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(modality, NIMCP_ERROR_NULL_ARG, "Modality is NULL");
+    NIMCP_API_CHECK_NULL(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    int rc = brain_experience_attend(brain->internal_brain, modality, strength);
+    if (rc != 0) {
+        set_error("brain_experience_attend failed");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}

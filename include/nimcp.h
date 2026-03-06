@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "core/brain/learning/nimcp_brain_experience.h"
+#include "core/brain/factory/nimcp_brain_innate.h"
 
 /* Deprecation macro for API evolution */
 #if defined(__GNUC__) || defined(__clang__)
@@ -307,6 +309,56 @@ nimcp_status_t nimcp_brain_learn_vector(
     uint32_t target_size,
     const char* label,
     float confidence
+);
+
+/**
+ * @brief Unified experience: perceive input, predict output, and learn
+ * @see brain_experience() for detailed documentation
+ */
+nimcp_status_t nimcp_brain_experience(
+    nimcp_brain_t brain,
+    const float* input,
+    uint32_t input_size,
+    float* output,
+    uint32_t output_size,
+    float teacher_reward,
+    brain_experience_result_t* result
+);
+
+/**
+ * @brief Configure experience-based learning
+ */
+nimcp_status_t nimcp_brain_experience_configure(
+    nimcp_brain_t brain,
+    const brain_experience_config_t* config
+);
+
+/**
+ * @brief Provide a correction after an experience
+ * @return Loss value (0=perfect), -1.0 on error
+ */
+float nimcp_brain_experience_correct(
+    nimcp_brain_t brain,
+    const float* expected,
+    uint32_t expected_size
+);
+
+/**
+ * @brief Direct attention to a specific modality
+ */
+nimcp_status_t nimcp_brain_experience_attend(
+    nimcp_brain_t brain,
+    const char* modality,
+    float strength
+);
+
+/**
+ * @brief Hardwire innate circuits into a brain
+ * @see brain_innate_hardwire() for detailed documentation
+ */
+nimcp_status_t nimcp_brain_innate_hardwire(
+    nimcp_brain_t brain,
+    const innate_config_t* config
 );
 
 /**

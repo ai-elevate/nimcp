@@ -45,6 +45,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_security_integration.h"  // Phase SC-4: Universal Security Integration
 #include "security/nimcp_blood_brain_barrier.h"   // Phase IS-1: BBB Perimeter Defense
+#include "core/brain/learning/nimcp_brain_experience.h"  // Unified Experience API
 
 //=============================================================================
 // COGNITIVE SUBSYSTEMS - Using Aggregate Headers
@@ -1845,6 +1846,19 @@ struct brain_struct {
     struct glymphatic_system* glymphatic;                // Glymphatic waste clearance system
     bool glymphatic_enabled;                             // Glymphatic enabled for this brain
     uint64_t last_glymphatic_update_us;                  // Last glymphatic update timestamp
+
+    // === UNIFIED EXPERIENCE API (Developmental Learning) ===
+    //
+    // brain_experience() merges inference + learning into a single call.
+    // Every perception triggers both prediction and attention-gated plasticity.
+    //
+    brain_experience_config_t experience_config;    // Experience learning configuration
+    bool inference_learning_enabled;                // Master switch for inference-time learning
+    float* last_experience_prediction;              // Cached output from last experience (for prediction error)
+    float* last_experience_input;                   // Cached input from last experience (for correction)
+    uint32_t last_experience_input_size;            // Size of cached input
+    uint32_t last_experience_output_size;           // Size of cached output
+    uint64_t experience_count;                      // Monotonic experience counter
 
     // === PRE-ALLOCATED SCRATCH BUFFERS FOR learn() HOT PATH ===
     //

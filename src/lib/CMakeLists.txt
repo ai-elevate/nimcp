@@ -46,6 +46,7 @@ set(NIMCP_CORE_SOURCES
     # Brain factory (Phase 11: SRP Split - Refactored into 7 modules)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/nimcp_brain_factory.c                        # Main factory orchestration (685 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/nimcp_brain_parallel_init.c                  # Parallel wave-based subsystem init
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/nimcp_brain_innate.c                        # Innate circuit hardwiring
     # Brain initialization - REFACTORED into 5 modular files (2025-12-08)
     # Original nimcp_brain_init.c (4107 lines) has been split into:
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_config.c              # Configuration builders (280 lines)
@@ -133,6 +134,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_glymphatic.c            # Glymphatic factory init
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_experience.c   # Unified experience API (inference + learning)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_association_learning.c  # Association learning (A→B implications)

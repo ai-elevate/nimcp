@@ -547,6 +547,284 @@ static PyObject* Brain_learn_vector(BrainObject* self, PyObject* args, PyObject*
 
 
 /**
+ * WHAT: Unified experience — perceive input, predict output, and learn
+ * WHY:  Merges inference + training for developmental online learning
+ * HOW:  Forward pass → prediction error → attention-gated plasticity → reward
+ */
+static PyObject* Brain_experience(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    PyObject* input_list;
+    uint32_t output_size;
+    float teacher_reward = 0.0f;
+
+    static char* kwlist[] = {"input", "output_size", "teacher_reward", NULL};
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OI|f", kwlist,
+                                      &input_list, &output_size, &teacher_reward)) {
+        return NULL;
+    }
+
+    Py_ssize_t num_inputs;
+    float* input = py_list_to_float_array(input_list, &num_inputs);
+    if (!input) return NULL;
+
+    if (num_inputs > UINT32_MAX || num_inputs < 1) {
+        nimcp_free(input);
+        PyErr_SetString(PyExc_ValueError, "Invalid input size");
+        return NULL;
+    }
+    if (output_size == 0 || output_size > 1048576) {
+        nimcp_free(input);
+        PyErr_SetString(PyExc_ValueError, "Invalid output_size");
+        return NULL;
+    }
+
+    float* output = nimcp_calloc(output_size, sizeof(float));
+    if (!output) {
+        nimcp_free(input);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output buffer");
+        return NULL;
+    }
+
+    brain_experience_result_t result;
+    volatile nimcp_status_t status = NIMCP_ERROR_UNKNOWN;
+    volatile bool crashed = false;
+
+    Py_BEGIN_ALLOW_THREADS
+
+    SIGNAL_TRY_RECOVER(0, "Brain_experience") {
+        status = nimcp_brain_experience(self->brain, input, (uint32_t)num_inputs,
+                                        output, output_size, teacher_reward, &result);
+    } SIGNAL_ON_CRASH {
+        crashed = true;
+        status = NIMCP_ERROR_UNKNOWN;
+    } SIGNAL_TRY_END;
+
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(input);
+
+    if (crashed) {
+        nimcp_free(output);
+        PyErr_SetString(PyExc_RuntimeError,
+            "Brain.experience() crashed (SIGSEGV) — reported to immune system");
+        return NULL;
+    }
+
+    if (status != NIMCP_OK) {
+        nimcp_free(output);
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        return NULL;
+    }
+
+    /* Build output list */
+    PyObject* output_list = PyList_New(output_size);
+    if (!output_list) {
+        nimcp_free(output);
+        return NULL;
+    }
+    for (uint32_t i = 0; i < output_size; i++) {
+        PyList_SET_ITEM(output_list, i, PyFloat_FromDouble((double)output[i]));
+    }
+    nimcp_free(output);
+
+    /* Build result dict */
+    PyObject* result_dict = Py_BuildValue(
+        "{s:f, s:f, s:f, s:O, s:f, s:K, s:O}",
+        "prediction_error", (double)result.prediction_error,
+        "attention_level", (double)result.attention_level,
+        "learning_rate_used", (double)result.learning_rate_used,
+        "learning_applied", result.learning_applied ? Py_True : Py_False,
+        "reward_signal", (double)result.reward_signal,
+        "experience_id", (unsigned long long)result.experience_id,
+        "output", output_list
+    );
+    Py_DECREF(output_list);
+
+    return result_dict;
+}
+
+
+/**
+ * WHAT: Configure experience-based learning
+ * WHY:  Enable/disable and tune developmental learning parameters
+ */
+static PyObject* Brain_experience_configure(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    int enabled = 1;
+    float base_lr = 0.001f;
+    float attention_threshold = 0.3f;
+    float attention_lr_scale = 3.0f;
+    float novelty_boost = 1.5f;
+    int enable_hebbian = 1;
+    int enable_reward = 1;
+    int enable_world_model = 1;
+    int enable_structural = 0;
+    uint32_t consolidation_interval = 1000;
+
+    static char* kwlist[] = {
+        "enabled", "base_lr", "attention_threshold", "attention_lr_scale",
+        "novelty_boost", "enable_hebbian", "enable_reward", "enable_world_model",
+        "enable_structural", "consolidation_interval", NULL
+    };
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|pffffppppI", kwlist,
+            &enabled, &base_lr, &attention_threshold, &attention_lr_scale,
+            &novelty_boost, &enable_hebbian, &enable_reward, &enable_world_model,
+            &enable_structural, &consolidation_interval)) {
+        return NULL;
+    }
+
+    brain_experience_config_t config = {
+        .enabled = (bool)enabled,
+        .base_learning_rate = base_lr,
+        .attention_threshold = attention_threshold,
+        .attention_lr_scale = attention_lr_scale,
+        .novelty_boost = novelty_boost,
+        .enable_hebbian = (bool)enable_hebbian,
+        .enable_reward_learning = (bool)enable_reward,
+        .enable_world_model_update = (bool)enable_world_model,
+        .enable_structural_plasticity = (bool)enable_structural,
+        .consolidation_interval = consolidation_interval
+    };
+
+    nimcp_status_t status = nimcp_brain_experience_configure(self->brain, &config);
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+
+/**
+ * WHAT: Correct the brain's last experience with expected output
+ * WHY:  Supervised teaching signal — Claude tells Athena the right answer
+ */
+static PyObject* Brain_experience_correct(BrainObject* self, PyObject* args) {
+    PyObject* expected_list;
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "O", &expected_list)) {
+        return NULL;
+    }
+
+    Py_ssize_t num_expected;
+    float* expected = py_list_to_float_array(expected_list, &num_expected);
+    if (!expected) return NULL;
+
+    if (num_expected > UINT32_MAX || num_expected < 1) {
+        nimcp_free(expected);
+        PyErr_SetString(PyExc_ValueError, "Invalid expected size");
+        return NULL;
+    }
+
+    float loss = nimcp_brain_experience_correct(self->brain, expected, (uint32_t)num_expected);
+    nimcp_free(expected);
+
+    if (loss < 0.0f) {
+        PyErr_SetString(PyExc_RuntimeError, "brain_experience_correct failed (no prior experience?)");
+        return NULL;
+    }
+
+    return PyFloat_FromDouble((double)loss);
+}
+
+
+/**
+ * WHAT: Direct attention to a specific sensory modality
+ * WHY:  Claude can tell Athena what to focus on
+ */
+static PyObject* Brain_experience_attend(BrainObject* self, PyObject* args) {
+    const char* modality;
+    float strength = 1.0f;
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "s|f", &modality, &strength)) {
+        return NULL;
+    }
+
+    nimcp_status_t status = nimcp_brain_experience_attend(self->brain, modality, strength);
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+
+/**
+ * WHAT: Hardwire innate circuits into the brain
+ * WHY:  Pre-configure infant-like biases for face/voice/reflex/social reward
+ */
+static PyObject* Brain_innate_hardwire(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    int stage = 0;
+    int face = 1, voice = 1, motion = -1, reflexes = 1, cry = 1;
+    int social_reward = 1, habituation = 1, novelty = 1;
+    float strength = -1.0f;  /* -1 = use stage default */
+
+    static char* kwlist[] = {
+        "stage", "face", "voice", "motion", "reflexes", "cry",
+        "social_reward", "habituation", "novelty", "strength", NULL
+    };
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ippppppppf", kwlist,
+            &stage, &face, &voice, &motion, &reflexes, &cry,
+            &social_reward, &habituation, &novelty, &strength)) {
+        return NULL;
+    }
+
+    if (stage < 0 || stage >= INNATE_STAGE_COUNT) {
+        PyErr_Format(PyExc_ValueError, "Invalid stage %d (must be 0-%d)", stage, INNATE_STAGE_COUNT - 1);
+        return NULL;
+    }
+
+    /* Start with stage defaults, then override */
+    innate_config_t config = innate_default_config((innate_stage_t)stage);
+    config.enable_face_bias = (bool)face;
+    config.enable_voice_bias = (bool)voice;
+    if (motion >= 0) config.enable_motion_bias = (bool)motion;
+    config.enable_reflexes = (bool)reflexes;
+    config.enable_cry = (bool)cry;
+    config.enable_social_reward = (bool)social_reward;
+    config.enable_habituation = (bool)habituation;
+    config.enable_novelty = (bool)novelty;
+    if (strength >= 0.0f) config.bias_strength = strength;
+
+    nimcp_status_t status = nimcp_brain_innate_hardwire(self->brain, &config);
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+
+/**
  * WHAT: Learn from a batch of examples in a single C call
  * WHY:  10-20x throughput improvement — one lock acquisition, one GPU weight
  *       upload, amortized overhead across N examples
@@ -4458,6 +4736,23 @@ static PyMethodDef Brain_methods[] = {
     {"learn_vector", (PyCFunction)Brain_learn_vector, METH_VARARGS | METH_KEYWORDS,
      "Learn from dense target vector: learn_vector(features, target, label=None, confidence=1.0) -> float (loss)\n"
      "  Trains toward a dense embedding vector instead of a one-hot label."},
+    {"experience", (PyCFunction)Brain_experience, METH_VARARGS | METH_KEYWORDS,
+     "Unified experience: experience(input, output_size, teacher_reward=0.0) -> dict\n"
+     "  Merged inference + learning. Returns dict with 'output', 'prediction_error',\n"
+     "  'attention_level', 'learning_rate_used', 'learning_applied', 'reward_signal', 'experience_id'."},
+    {"experience_configure", (PyCFunction)Brain_experience_configure, METH_VARARGS | METH_KEYWORDS,
+     "Configure experience learning: experience_configure(enabled=True, base_lr=0.001, ...)\n"
+     "  Must be called before experience() to enable developmental learning."},
+    {"experience_correct", (PyCFunction)Brain_experience_correct, METH_VARARGS,
+     "Correct last experience: experience_correct(expected) -> float (loss)\n"
+     "  Provide the correct output vector as supervised teaching signal."},
+    {"experience_attend", (PyCFunction)Brain_experience_attend, METH_VARARGS,
+     "Direct attention: experience_attend(modality, strength=1.0)\n"
+     "  Focus attention on 'visual', 'auditory', 'speech', or 'somatosensory'."},
+    {"innate_hardwire", (PyCFunction)Brain_innate_hardwire, METH_VARARGS | METH_KEYWORDS,
+     "Hardwire innate circuits: innate_hardwire(stage=0, face=True, voice=True, ...)\n"
+     "  Stages: 0=newborn, 1=infant, 2=crawler, 3=toddler, 4=child.\n"
+     "  Pre-configures biologically-inspired biases for perception and reflexes."},
     {"learn_batch", (PyCFunction)Brain_learn_batch, METH_VARARGS,
      "Learn from batch: learn_batch([(features, label, confidence), ...]) -> [loss, ...]"},
     {"predict", (PyCFunction)Brain_predict, METH_VARARGS,

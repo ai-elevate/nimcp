@@ -1063,6 +1063,10 @@ void brain_destroy(brain_t brain)
         brain->bio_async_enabled = false;
     }
 
+    // Free experience API caches
+    nimcp_free(brain->last_experience_prediction);
+    nimcp_free(brain->last_experience_input);
+
     // Free learn() scratch buffers
     nimcp_free(brain->learn_scratch.target);
     nimcp_free(brain->learn_scratch.prediction);
