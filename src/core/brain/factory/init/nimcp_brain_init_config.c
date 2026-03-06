@@ -381,6 +381,9 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->gradient_accumulation_steps = 1;
     config->gradient_clip_value = 1.0F;
     config->gradient_clip_norm = 1.0F;
+
+    // Parallel subsystem initialization (wave-based thread pool)
+    config->parallel_init = true;
 }
 
 void nimcp_brain_factory_init_brain_stats(brain_stats_t* stats, const char* task_name, brain_size_t size,
