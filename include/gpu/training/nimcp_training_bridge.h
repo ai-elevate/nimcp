@@ -248,6 +248,39 @@ NIMCP_EXPORT bool nimcp_gpu_forward_pass_batch(
     uint32_t output_size
 );
 
+//=============================================================================
+// GPU Backward Pass
+//=============================================================================
+
+/**
+ * @brief Run sparse backward pass on GPU, updating weight cache and syncing back
+ *
+ * WHAT: GPU-accelerated backpropagation using the existing weight cache
+ * WHY:  Replaces CPU backprop_sparse_full for ~3-4x training speedup
+ * HOW:  Runs GPU sparse kernels, then downloads weights to CPU synapse structs
+ *
+ * @param cache Weight cache (must have valid sparse weights + activations)
+ * @param net Neural network (for weight writeback)
+ * @param target Target vector (host memory)
+ * @param output Network output (host memory)
+ * @param target_size Target vector size
+ * @param learning_rate Learning rate
+ * @param min_weight Minimum weight clamp
+ * @param max_weight Maximum weight clamp
+ * @param out_grad_norm Output gradient norm
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_backward_pass(
+    nimcp_gpu_weight_cache_t* cache,
+    neural_network_t net,
+    const float* target,
+    const float* output,
+    uint32_t target_size,
+    float learning_rate,
+    float min_weight, float max_weight,
+    float* out_grad_norm
+);
+
 #ifdef __cplusplus
 }
 #endif

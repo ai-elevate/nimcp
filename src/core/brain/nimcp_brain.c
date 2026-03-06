@@ -185,6 +185,9 @@ extern void imagination_engine_destroy(imagination_engine_t* engine);
 // Multi-network inference includes (CNN / SNN / LNN forward passes)
 #include "training/nimcp_cnn_training.h"
 #include "snn/nimcp_snn_network.h"
+/* Forward-declare to avoid header conflict (thalamic_router_t typedef clash) */
+struct snn_routing_bridge_s;
+int snn_routing_bridge_update(struct snn_routing_bridge_s* bridge, float dt);
 #include "lnn/nimcp_lnn.h"
 #include "utils/tensor/nimcp_tensor.h"
 

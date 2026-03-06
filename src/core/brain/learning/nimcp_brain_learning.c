@@ -875,6 +875,14 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         nimcp_brain_learning_adapt_learning_rate(brain, fast_loss);
         __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
 
+        // EDP: Feed loss as reward for online three-factor learning
+        if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity
+            && edp_is_active(brain->event_driven_plasticity)) {
+            float reward = -fast_loss;
+            edp_process_reward(brain->event_driven_plasticity, reward);
+            edp_consolidate_eligibility(brain->event_driven_plasticity, reward);
+        }
+
         // Track label-match accuracy by reading output neuron states directly.
         // After adaptive_network_learn (GPU path), sync_activations wrote the
         // forward pass outputs to neuron->state. Backprop only modifies weights
@@ -1330,6 +1338,11 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     }
     if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity) {
         edp_process_prediction_error(brain->event_driven_plasticity, network_loss, 0);
+        if (edp_is_active(brain->event_driven_plasticity)) {
+            float reward = -network_loss;
+            edp_process_reward(brain->event_driven_plasticity, reward);
+            edp_consolidate_eligibility(brain->event_driven_plasticity, reward);
+        }
     }
     if (brain->plasticity_coordinator && brain->plasticity_coordinator_enabled) {
         uint64_t now_ms = nimcp_time_get_us() / 1000;

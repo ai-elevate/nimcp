@@ -1485,6 +1485,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_bio_async.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_immune.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_ternary.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/bridges/nimcp_snn_routing_bridge.c  # SNN routing bridge for cross-region spike routing
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_thalamic_bridge.c  # Personality-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_thalamic_bridge.c  # Self-awareness-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_thalamic_bridge.c  # Predictive-thalamic integration

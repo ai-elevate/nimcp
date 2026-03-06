@@ -110,7 +110,7 @@ bool nimcp_gpu_loss_mse(
     // Compute forward loss
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
-    kernel_mse_loss_forward<<<grid, BLOCK_SIZE>>>(
+    kernel_mse_loss_forward<<<grid, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, n);
 
     // Copy result back
@@ -123,7 +123,7 @@ bool nimcp_gpu_loss_mse(
     // Compute gradient if requested
     if (grad) {
         float scale = 2.0f / (float)n;
-        kernel_mse_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        kernel_mse_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, scale, n);
         NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -195,7 +195,7 @@ bool nimcp_gpu_loss_mae(
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
-    kernel_mae_loss_forward<<<grid, BLOCK_SIZE>>>(
+    kernel_mae_loss_forward<<<grid, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, n);
 
     float loss_sum;
@@ -206,7 +206,7 @@ bool nimcp_gpu_loss_mae(
 
     if (grad) {
         float scale = 1.0f / (float)n;
-        kernel_mae_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        kernel_mae_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, scale, n);
         NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -341,7 +341,7 @@ bool nimcp_gpu_loss_cross_entropy(
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_loss_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
     NIMCP_CUDA_RECOVER(cudaMemset(d_loss_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
-    kernel_cross_entropy_forward<<<batch_size, BLOCK_SIZE>>>(
+    kernel_cross_entropy_forward<<<batch_size, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)logits->data, (const float*)target->data,
         d_loss_sum, batch_size, num_classes);
 
@@ -360,7 +360,7 @@ bool nimcp_gpu_loss_cross_entropy(
 
     if (grad) {
         float scale = (reduction == 1) ? 1.0f / (float)batch_size : 1.0f;
-        kernel_cross_entropy_backward<<<batch_size, BLOCK_SIZE>>>(
+        kernel_cross_entropy_backward<<<batch_size, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
             (const float*)logits->data, (const float*)target->data,
             (float*)grad->data, batch_size, num_classes, scale);
         NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -431,7 +431,7 @@ bool nimcp_gpu_loss_bce(
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
-    kernel_bce_loss_forward<<<grid, BLOCK_SIZE>>>(
+    kernel_bce_loss_forward<<<grid, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, n);
 
     float loss_sum;
@@ -442,7 +442,7 @@ bool nimcp_gpu_loss_bce(
 
     if (grad) {
         float scale = 1.0f / (float)n;
-        kernel_bce_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        kernel_bce_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, scale, n);
         NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -507,7 +507,7 @@ bool nimcp_gpu_loss_focal(
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
-    kernel_focal_loss_forward<<<grid, BLOCK_SIZE>>>(
+    kernel_focal_loss_forward<<<grid, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)pred->data, (const float*)target->data,
         d_loss_sum, alpha, gamma, n);
 
@@ -597,7 +597,7 @@ bool nimcp_gpu_loss_huber(
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
-    kernel_huber_loss_forward<<<grid, BLOCK_SIZE>>>(
+    kernel_huber_loss_forward<<<grid, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, delta, n);
 
     float loss_sum;
@@ -608,7 +608,7 @@ bool nimcp_gpu_loss_huber(
 
     if (grad) {
         float scale = 1.0f / (float)n;
-        kernel_huber_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        kernel_huber_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, delta, scale, n);
         NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -641,7 +641,7 @@ bool nimcp_gpu_gradient_accumulate(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    kernel_gradient_accumulate<<<GRID_SIZE(grad->numel), BLOCK_SIZE>>>(
+    kernel_gradient_accumulate<<<GRID_SIZE(grad->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)grad->data, (float*)accum->data, grad->numel);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
@@ -667,7 +667,7 @@ bool nimcp_gpu_gradient_scale(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    kernel_gradient_scale<<<GRID_SIZE(grad->numel), BLOCK_SIZE>>>(
+    kernel_gradient_scale<<<GRID_SIZE(grad->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (float*)grad->data, scale, grad->numel);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
@@ -730,7 +730,7 @@ bool nimcp_gpu_gradient_clip_value(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    kernel_gradient_clip_value<<<GRID_SIZE(grad->numel), BLOCK_SIZE>>>(
+    kernel_gradient_clip_value<<<GRID_SIZE(grad->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (float*)grad->data, clip_value, grad->numel);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;

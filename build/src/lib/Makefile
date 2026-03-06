@@ -45548,6 +45548,30 @@ __/security/training/nimcp_security_training_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/training/nimcp_security_training_fep_bridge.c.s
 .PHONY : __/security/training/nimcp_security_training_fep_bridge.c.s
 
+__/snn/bridges/nimcp_snn_routing_bridge.o: __/snn/bridges/nimcp_snn_routing_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_routing_bridge.o
+
+# target to build an object file
+__/snn/bridges/nimcp_snn_routing_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_routing_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_routing_bridge.c.o
+
+__/snn/bridges/nimcp_snn_routing_bridge.i: __/snn/bridges/nimcp_snn_routing_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_routing_bridge.i
+
+# target to preprocess a source file
+__/snn/bridges/nimcp_snn_routing_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_routing_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_routing_bridge.c.i
+
+__/snn/bridges/nimcp_snn_routing_bridge.s: __/snn/bridges/nimcp_snn_routing_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_routing_bridge.s
+
+# target to generate assembly for a file
+__/snn/bridges/nimcp_snn_routing_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_routing_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_routing_bridge.c.s
+
 __/snn/nimcp_snn_bio_async.o: __/snn/nimcp_snn_bio_async.c.o
 .PHONY : __/snn/nimcp_snn_bio_async.o
 
@@ -57448,6 +57472,9 @@ help:
 	@echo "... __/security/training/nimcp_security_training_fep_bridge.o"
 	@echo "... __/security/training/nimcp_security_training_fep_bridge.i"
 	@echo "... __/security/training/nimcp_security_training_fep_bridge.s"
+	@echo "... __/snn/bridges/nimcp_snn_routing_bridge.o"
+	@echo "... __/snn/bridges/nimcp_snn_routing_bridge.i"
+	@echo "... __/snn/bridges/nimcp_snn_routing_bridge.s"
 	@echo "... __/snn/nimcp_snn_bio_async.o"
 	@echo "... __/snn/nimcp_snn_bio_async.i"
 	@echo "... __/snn/nimcp_snn_bio_async.s"

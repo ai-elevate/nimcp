@@ -252,6 +252,12 @@ void brain_destroy(brain_t brain)
         nimcp_free(brain->output_labels);
     }
 
+    // Cleanup persistent tokenizer (lazy-initialized, may be NULL)
+    if (brain->tokenizer) {
+        tokenizer_destroy(brain->tokenizer);
+        brain->tokenizer = NULL;
+    }
+
     // Cleanup rubric evaluator (lazy-initialized, may be NULL)
     if (brain->rubric_evaluator) {
         rubric_evaluator_destroy(brain->rubric_evaluator);

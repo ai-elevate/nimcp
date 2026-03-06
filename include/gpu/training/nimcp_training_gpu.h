@@ -26,6 +26,7 @@
 // Include headers with CUDA dependencies BEFORE extern "C" block
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
+#include "gpu/sparse/nimcp_sparse_gpu.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -538,6 +539,51 @@ NIMCP_EXPORT float nimcp_lr_exponential(
     float initial_lr,
     uint64_t step,
     float decay_rate
+);
+
+//=============================================================================
+// GPU Sparse Backpropagation
+//=============================================================================
+
+/**
+ * @brief Full GPU sparse backward pass over weight cache
+ *
+ * WHAT: GPU-accelerated backpropagation for sparse CSR weight matrices
+ * WHY:  Replaces CPU backprop_sparse_full for ~3-4x training speedup
+ * HOW:  Custom CUDA kernels for CSR weight update + delta propagation
+ *
+ * @param gpu_ctx GPU context
+ * @param sparse_ctx cuSPARSE context
+ * @param sparse_weights Per-transition sparse CSR weight tensors
+ * @param biases Per-transition bias tensors
+ * @param activations Per-layer activation tensors (from forward pass)
+ * @param layer_act_types Per-layer activation type (0=relu,1=leaky,2=tanh,3=sigmoid)
+ * @param num_layers Number of layers
+ * @param layer_sizes Array of layer sizes
+ * @param target_host Target vector (host memory)
+ * @param output_host Network output (host memory)
+ * @param output_size Output vector size
+ * @param learning_rate Learning rate
+ * @param min_weight Minimum weight clamp
+ * @param max_weight Maximum weight clamp
+ * @param out_grad_norm Output gradient norm
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_sparse_backward_pass(
+    nimcp_gpu_context_t* gpu_ctx,
+    nimcp_sparse_ctx_t* sparse_ctx,
+    nimcp_sparse_tensor_t** sparse_weights,
+    nimcp_gpu_tensor_t** biases,
+    nimcp_gpu_tensor_t** activations,
+    int* layer_act_types,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    const float* target_host,
+    const float* output_host,
+    uint32_t output_size,
+    float learning_rate,
+    float min_weight, float max_weight,
+    float* out_grad_norm
 );
 
 #ifdef __cplusplus

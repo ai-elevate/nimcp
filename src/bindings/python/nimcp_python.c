@@ -2296,9 +2296,10 @@ static PyObject* Brain_prune_synapses(BrainObject* self, PyObject* args) {
 }
 
 /**
- * WHAT: Tokenize text using the brain's C-level tokenizer
+ * WHAT: Tokenize text using the brain's persistent C-level tokenizer
  * WHY:  Language grounding — map text to token IDs that align with embeddings
- * HOW:  Create/reuse tokenizer, call tokenizer_encode
+ * HOW:  Reuse brain->tokenizer if it exists; lazy-create and store if not.
+ *       Vocabulary grows across calls, giving consistent token IDs.
  */
 static PyObject* Brain_tokenize(BrainObject* self, PyObject* args) {
     const char* text = NULL;
@@ -2309,32 +2310,33 @@ static PyObject* Brain_tokenize(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
-    /* Create tokenizer and build vocab from input if needed */
-    tokenizer_t* tok = tokenizer_create(NULL);
-    if (!tok) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to create tokenizer");
-        return NULL;
-    }
+    brain_t brain = self->brain->internal_brain;
 
-    /* Build minimal vocabulary from the input text */
-    tokenizer_build_from_text(tok, text, 1024);
+    /* Lazy-init: create tokenizer on first use and persist on brain */
+    if (!brain->tokenizer) {
+        brain->tokenizer = tokenizer_create(NULL);
+        if (!brain->tokenizer) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to create tokenizer");
+            return NULL;
+        }
+        /* Build initial vocabulary from the first input text */
+        tokenizer_build_from_text(brain->tokenizer, text, 1024);
+    }
 
     uint32_t token_ids[512];
     uint32_t num_tokens = 0;
-    int rc = tokenizer_encode(tok, text, token_ids, 512, &num_tokens);
+    int rc = tokenizer_encode(brain->tokenizer, text, token_ids, 512, &num_tokens);
     if (rc != 0) {
-        tokenizer_destroy(tok);
         PyErr_SetString(PyExc_RuntimeError, "Tokenization failed");
         return NULL;
     }
 
     PyObject* list = PyList_New((Py_ssize_t)num_tokens);
-    if (!list) { tokenizer_destroy(tok); return NULL; }
+    if (!list) { return NULL; }
     for (uint32_t i = 0; i < num_tokens; i++) {
         PyList_SET_ITEM(list, i, PyLong_FromUnsignedLong(token_ids[i]));
     }
 
-    tokenizer_destroy(tok);
     return list;
 }
 

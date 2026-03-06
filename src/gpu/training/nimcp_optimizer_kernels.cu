@@ -179,11 +179,11 @@ bool nimcp_gpu_optim_sgd(
     size_t n = param->numel;
 
     if (state->momentum != 0.0f && state->m) {
-        kernel_sgd_momentum_step<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        kernel_sgd_momentum_step<<<GRID_SIZE(n), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
             (float*)param->data, (const float*)grad->data, (float*)state->m->data,
             state->lr, state->momentum, state->weight_decay, state->nesterov, n);
     } else {
-        kernel_sgd_step<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        kernel_sgd_step<<<GRID_SIZE(n), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
             (float*)param->data, (const float*)grad->data,
             state->lr, state->weight_decay, n);
     }
@@ -248,7 +248,7 @@ bool nimcp_gpu_optim_adam(
     state->t++;
     size_t n = param->numel;
 
-    kernel_adam_step<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+    kernel_adam_step<<<GRID_SIZE(n), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (float*)param->data, (const float*)grad->data,
         (float*)state->m->data, (float*)state->v->data,
         state->lr, state->beta1, state->beta2, state->eps,
@@ -311,7 +311,7 @@ bool nimcp_gpu_optim_adamw(
     state->t++;
     size_t n = param->numel;
 
-    kernel_adamw_step<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+    kernel_adamw_step<<<GRID_SIZE(n), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (float*)param->data, (const float*)grad->data,
         (float*)state->m->data, (float*)state->v->data,
         state->lr, state->beta1, state->beta2, state->eps,
@@ -365,7 +365,7 @@ bool nimcp_gpu_optim_rmsprop(
     size_t n = param->numel;
 
     // RMSprop uses beta2 as alpha (decay factor)
-    kernel_rmsprop_step<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+    kernel_rmsprop_step<<<GRID_SIZE(n), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (float*)param->data, (const float*)grad->data, (float*)state->v->data,
         state->lr, state->beta2, state->eps, state->weight_decay, n);
 
@@ -417,7 +417,7 @@ bool nimcp_gpu_optim_adagrad(
 
     size_t n = param->numel;
 
-    kernel_adagrad_step<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+    kernel_adagrad_step<<<GRID_SIZE(n), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (float*)param->data, (const float*)grad->data, (float*)state->v->data,
         state->lr, state->eps, state->weight_decay, n);
 

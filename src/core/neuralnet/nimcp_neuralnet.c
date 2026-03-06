@@ -3024,7 +3024,10 @@ uint32_t neural_network_prune_synapses(neural_network_t network, float threshold
             synapse_handle_t* out_h = NEURON_OUT_HANDLE(neuron, (uint32_t)idx);
             if (!out_h) continue;
 
-            if (fabsf(out_h->weight) * out_h->strength < threshold) {
+            // Activity-based pruning: require BOTH low weight AND low strength.
+            // Preserves structurally important synapses (high strength) even if
+            // their weight is temporarily low during training.
+            if (fabsf(out_h->weight) < threshold && out_h->strength < 0.5f) {
                 // Also remove the peer incoming synapse
                 if (out_h->peer_index != SPARSE_SYNAPSE_NO_PEER &&
                     out_h->target_neuron_id < network->num_neurons) {

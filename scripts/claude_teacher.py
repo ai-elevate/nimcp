@@ -37,6 +37,14 @@ def encode_text(text: str):
     return np.asarray(emb, dtype=np.float32).ravel()
 
 
+def batch_encode_texts(texts):
+    """Batch-encode multiple texts — ~10x faster than encoding one-at-a-time."""
+    import numpy as np
+    model = _get_embed_model()
+    embs = model.encode(texts, convert_to_numpy=True, batch_size=64)
+    return [np.asarray(e, dtype=np.float32).ravel() for e in embs]
+
+
 # ---------------------------------------------------------------------------
 # Lesson specification
 # ---------------------------------------------------------------------------

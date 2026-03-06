@@ -488,6 +488,14 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     fwrite(&brain->stats.total_learning_steps, sizeof(uint64_t), 1, meta_file);
 
     fclose(meta_file);
+
+    // Save persistent tokenizer (separate file, optional)
+    if (brain->tokenizer) {
+        char tok_path[512];
+        snprintf(tok_path, sizeof(tok_path), "%s.tokenizer", filepath);
+        tokenizer_save(brain->tokenizer, tok_path);
+    }
+
     return true;
 }
 
@@ -1034,6 +1042,14 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
     }
 
     fclose(meta_file);
+
+    // Load persistent tokenizer (optional — returns NULL if file doesn't exist)
+    {
+        char tok_path[512];
+        snprintf(tok_path, sizeof(tok_path), "%s.tokenizer", filepath);
+        brain->tokenizer = tokenizer_load(tok_path);
+    }
+
     return true;
 
 cleanup:

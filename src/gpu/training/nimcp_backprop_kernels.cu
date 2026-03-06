@@ -141,7 +141,7 @@ bool nimcp_gpu_backward_relu(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    kernel_backward_relu<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
+    kernel_backward_relu<<<GRID_SIZE(x->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)x->data, (const float*)grad_output->data,
         (float*)grad_input->data, x->numel);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -171,7 +171,7 @@ bool nimcp_gpu_backward_sigmoid(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    kernel_backward_sigmoid<<<GRID_SIZE(output->numel), BLOCK_SIZE>>>(
+    kernel_backward_sigmoid<<<GRID_SIZE(output->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)output->data, (const float*)grad_output->data,
         (float*)grad_input->data, output->numel);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -201,7 +201,7 @@ bool nimcp_gpu_backward_tanh(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    kernel_backward_tanh<<<GRID_SIZE(output->numel), BLOCK_SIZE>>>(
+    kernel_backward_tanh<<<GRID_SIZE(output->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)output->data, (const float*)grad_output->data,
         (float*)grad_input->data, output->numel);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -245,7 +245,7 @@ bool nimcp_gpu_backward_gelu(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    kernel_backward_gelu<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
+    kernel_backward_gelu<<<GRID_SIZE(x->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)x->data, (const float*)grad_output->data,
         (float*)grad_input->data, x->numel);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -315,7 +315,7 @@ bool nimcp_gpu_backward_softmax(
     size_t num_classes = output->dims[output->ndim - 1];
     size_t batch_size = output->numel / num_classes;
 
-    kernel_backward_softmax<<<batch_size, BLOCK_SIZE>>>(
+    kernel_backward_softmax<<<batch_size, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)output->data, (const float*)grad_output->data,
         (float*)grad_input->data, batch_size, num_classes);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -419,7 +419,7 @@ bool nimcp_gpu_backward_batchnorm(
     size_t features = x->dims[x->ndim - 1];
     size_t batch_size = x->numel / features;
 
-    kernel_backward_batchnorm<<<features, BLOCK_SIZE>>>(
+    kernel_backward_batchnorm<<<features, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)x->data, (const float*)gamma->data,
         (const float*)mean->data, (const float*)var->data,
         (const float*)grad_output->data,
@@ -484,10 +484,281 @@ bool nimcp_gpu_backward_dropout(
 
     float scale = 1.0f / (1.0f - p);
 
-    kernel_backward_dropout<<<GRID_SIZE(mask->numel), BLOCK_SIZE>>>(
+    kernel_backward_dropout<<<GRID_SIZE(mask->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)mask->data, (const float*)grad_output->data,
         (float*)grad_input->data, scale, mask->numel);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
+}
+
+//=============================================================================
+// Sparse CSR Weight Update + Delta Propagation Kernels
+//=============================================================================
+
+/**
+ * Kernel: Update CSR weight values in-place using delta and activation vectors.
+ *
+ * For each non-zero entry W[row][col]:
+ *   W[row][col] += lr * delta[row] * activation[col]
+ *   W[row][col] = clamp(W[row][col], min_w, max_w)
+ *
+ * Also accumulates squared gradient norm via atomicAdd.
+ *
+ * Each thread handles one CSR entry.
+ */
+__global__ void kernel_sparse_csr_weight_update(
+    float* __restrict__ csr_values,
+    const int* __restrict__ csr_row_ptrs,
+    const int* __restrict__ csr_col_indices,
+    const float* __restrict__ delta,
+    const float* __restrict__ activation,
+    int nnz, int rows,
+    float lr, float min_w, float max_w,
+    float* __restrict__ grad_norm_partial)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= nnz) return;
+
+    // Binary search row_ptrs to find which row this entry belongs to
+    int lo = 0, hi = rows - 1, row = 0;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (csr_row_ptrs[mid + 1] <= idx) {
+            lo = mid + 1;
+        } else if (csr_row_ptrs[mid] > idx) {
+            hi = mid - 1;
+        } else {
+            row = mid;
+            break;
+        }
+    }
+    if (lo > hi) row = lo;
+
+    int col = csr_col_indices[idx];
+    float dj = delta[row];
+    if (dj > 1.0f) dj = 1.0f;
+    if (dj < -1.0f) dj = -1.0f;
+
+    float act = activation[col];
+    float weight_delta = lr * dj * act;
+
+    float max_delta = fmaxf(0.1f, lr * 2.0f);
+    if (weight_delta > max_delta) weight_delta = max_delta;
+    if (weight_delta < -max_delta) weight_delta = -max_delta;
+
+    atomicAdd(grad_norm_partial, weight_delta * weight_delta);
+
+    float new_w = csr_values[idx] + weight_delta;
+    if (new_w < min_w) new_w = min_w;
+    if (new_w > max_w) new_w = max_w;
+    csr_values[idx] = new_w;
+}
+
+__global__ void kernel_bias_update(
+    float* __restrict__ bias,
+    const float* __restrict__ delta,
+    int size, float lr,
+    float* __restrict__ grad_norm_partial)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+
+    float bd = lr * delta[idx];
+    atomicAdd(grad_norm_partial, bd * bd);
+    float new_b = bias[idx] + bd;
+    if (new_b > 10.0f) new_b = 10.0f;
+    if (new_b < -10.0f) new_b = -10.0f;
+    bias[idx] = new_b;
+}
+
+__global__ void kernel_compute_deltas_mse(
+    float* __restrict__ delta,
+    const float* __restrict__ target,
+    const float* __restrict__ output,
+    int size)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+    delta[idx] = target[idx] - output[idx];
+}
+
+__global__ void kernel_activation_derivative(
+    float* __restrict__ delta,
+    const float* __restrict__ activation,
+    int size, int act_type)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+
+    float s = activation[idx];
+    float deriv;
+    switch (act_type) {
+        case 0: deriv = (s > 0.0f) ? 1.0f : 0.0f; break;
+        case 1: deriv = (s > 0.0f) ? 1.0f : 0.01f; break;
+        case 2: deriv = 1.0f - s * s; if (deriv < 0.0f) deriv = 0.0f; break;
+        case 3: deriv = s * (1.0f - s); if (deriv < 0.01f) deriv = 0.01f; break;
+        default: deriv = (s > 0.0f) ? 1.0f : 0.01f; break;
+    }
+    delta[idx] *= deriv;
+}
+
+__global__ void kernel_sparse_delta_propagate(
+    const float* __restrict__ csr_values,
+    const int* __restrict__ csr_row_ptrs,
+    const int* __restrict__ csr_col_indices,
+    const float* __restrict__ delta_cur,
+    float* __restrict__ delta_prev,
+    int nnz, int rows)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= nnz) return;
+
+    int lo = 0, hi = rows - 1, row = 0;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (csr_row_ptrs[mid + 1] <= idx) { lo = mid + 1; }
+        else if (csr_row_ptrs[mid] > idx) { hi = mid - 1; }
+        else { row = mid; break; }
+    }
+    if (lo > hi) row = lo;
+
+    int col = csr_col_indices[idx];
+    atomicAdd(&delta_prev[col], csr_values[idx] * delta_cur[row]);
+}
+
+//=============================================================================
+// GPU Sparse Backward Pass — Orchestrator
+//=============================================================================
+
+bool nimcp_gpu_sparse_backward_pass(
+    nimcp_gpu_context_t* gpu_ctx,
+    nimcp_sparse_ctx_t* sparse_ctx,
+    nimcp_sparse_tensor_t** sparse_weights,
+    nimcp_gpu_tensor_t** biases,
+    nimcp_gpu_tensor_t** activations,
+    int* layer_act_types,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    const float* target_host,
+    const float* output_host,
+    uint32_t output_size,
+    float learning_rate,
+    float min_weight, float max_weight,
+    float* out_grad_norm)
+{
+    if (!gpu_ctx || !sparse_ctx || !sparse_weights || !biases || !activations
+        || !target_host || !output_host || !out_grad_norm || num_layers < 2) {
+        return false;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_pool_stream(gpu_ctx);
+
+    float* d_grad_norm;
+    float zero = 0.0f;
+    if (cudaMalloc(&d_grad_norm, sizeof(float)) != cudaSuccess) return false;
+    cudaMemcpy(d_grad_norm, &zero, sizeof(float), cudaMemcpyHostToDevice);
+
+    uint32_t out_layer_size = layer_sizes[num_layers - 1];
+    uint32_t bp_size = out_layer_size < output_size ? out_layer_size : output_size;
+
+    float* d_target;
+    float* d_output;
+    if (cudaMalloc(&d_target, bp_size * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_grad_norm); return false;
+    }
+    if (cudaMalloc(&d_output, bp_size * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_target); cudaFree(d_grad_norm); return false;
+    }
+    cudaMemcpy(d_target, target_host, bp_size * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_output, output_host, bp_size * sizeof(float), cudaMemcpyHostToDevice);
+
+    uint32_t max_layer = 0;
+    for (uint32_t l = 0; l < num_layers; l++) {
+        if (layer_sizes[l] > max_layer) max_layer = layer_sizes[l];
+    }
+
+    float* d_delta_cur;
+    float* d_delta_prev;
+    if (cudaMalloc(&d_delta_cur, max_layer * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_target); cudaFree(d_output); cudaFree(d_grad_norm); return false;
+    }
+    if (cudaMalloc(&d_delta_prev, max_layer * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_delta_cur); cudaFree(d_target); cudaFree(d_output); cudaFree(d_grad_norm);
+        return false;
+    }
+    cudaMemset(d_delta_cur, 0, max_layer * sizeof(float));
+    cudaMemset(d_delta_prev, 0, max_layer * sizeof(float));
+
+    kernel_compute_deltas_mse<<<GRID_SIZE(bp_size), BLOCK_SIZE, 0, stream>>>(
+        d_delta_cur, d_target, d_output, bp_size);
+
+    cudaFree(d_target);
+    cudaFree(d_output);
+
+    float output_lr_boost = 10.0f;
+
+    for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
+        uint32_t cur_size = layer_sizes[layer];
+        uint32_t prev_size = layer_sizes[layer - 1];
+        bool is_output = (layer == (int32_t)num_layers - 1);
+
+        float layer_lr;
+        if (is_output) {
+            layer_lr = learning_rate * output_lr_boost;
+        } else {
+            layer_lr = learning_rate / powf(fmaxf((float)prev_size, 1.0f), 0.25f);
+        }
+
+        nimcp_sparse_tensor_t* W = sparse_weights[layer - 1];
+        if (!W || W->format != SPARSE_FORMAT_CSR) {
+            cudaMemset(d_delta_cur, 0, max_layer * sizeof(float));
+            continue;
+        }
+
+        int nnz = W->data.csr.nnz;
+        if (nnz == 0) continue;
+
+        if (biases[layer - 1]) {
+            kernel_bias_update<<<GRID_SIZE(cur_size), BLOCK_SIZE, 0, stream>>>(
+                (float*)biases[layer - 1]->data, d_delta_cur,
+                cur_size, layer_lr, d_grad_norm);
+        }
+
+        kernel_sparse_csr_weight_update<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
+            W->data.csr.values, W->data.csr.row_ptrs, W->data.csr.col_indices,
+            d_delta_cur,
+            (const float*)activations[layer - 1]->data,
+            nnz, W->data.csr.rows,
+            layer_lr, min_weight, max_weight, d_grad_norm);
+
+        if (layer > 1) {
+            cudaMemset(d_delta_prev, 0, prev_size * sizeof(float));
+
+            kernel_sparse_delta_propagate<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
+                W->data.csr.values, W->data.csr.row_ptrs, W->data.csr.col_indices,
+                d_delta_cur, d_delta_prev, nnz, W->data.csr.rows);
+
+            int act_type = layer_act_types[layer - 1];
+            kernel_activation_derivative<<<GRID_SIZE(prev_size), BLOCK_SIZE, 0, stream>>>(
+                d_delta_prev, (const float*)activations[layer - 1]->data,
+                prev_size, act_type);
+
+            float* tmp = d_delta_cur;
+            d_delta_cur = d_delta_prev;
+            d_delta_prev = tmp;
+        }
+    }
+
+    cudaStreamSynchronize(stream);
+    float grad_norm_sq;
+    cudaMemcpy(&grad_norm_sq, d_grad_norm, sizeof(float), cudaMemcpyDeviceToHost);
+    *out_grad_norm = sqrtf(grad_norm_sq);
+    if (!isfinite(*out_grad_norm)) *out_grad_norm = 0.0f;
+
+    cudaFree(d_delta_cur);
+    cudaFree(d_delta_prev);
+    cudaFree(d_grad_norm);
+
     return true;
 }
 
@@ -555,6 +826,29 @@ bool nimcp_gpu_backward_layernorm(nimcp_gpu_context_t* ctx, const nimcp_gpu_tens
 bool nimcp_gpu_backward_dropout(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* mask,
     const nimcp_gpu_tensor_t* grad_output, nimcp_gpu_tensor_t* grad_input, float p)
 {
+    return false;
+}
+
+bool nimcp_gpu_sparse_backward_pass(
+    nimcp_gpu_context_t* gpu_ctx,
+    nimcp_sparse_ctx_t* sparse_ctx,
+    nimcp_sparse_tensor_t** sparse_weights,
+    nimcp_gpu_tensor_t** biases,
+    nimcp_gpu_tensor_t** activations,
+    int* layer_act_types,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    const float* target_host,
+    const float* output_host,
+    uint32_t output_size,
+    float learning_rate,
+    float min_weight, float max_weight,
+    float* out_grad_norm)
+{
+    (void)gpu_ctx; (void)sparse_ctx; (void)sparse_weights; (void)biases;
+    (void)activations; (void)layer_act_types; (void)num_layers; (void)layer_sizes;
+    (void)target_host; (void)output_host; (void)output_size;
+    (void)learning_rate; (void)min_weight; (void)max_weight; (void)out_grad_norm;
     return false;
 }
 

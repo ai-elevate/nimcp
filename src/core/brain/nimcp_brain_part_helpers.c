@@ -1161,6 +1161,11 @@ sequential_fallback:
         }
     }
 
+    /* 3.5. SNN routing bridge — update cross-region spike routing */
+    if (brain->snn_routing_bridge) {
+        snn_routing_bridge_update(brain->snn_routing_bridge, 1.0f);
+    }
+
 lnn_gating:
 
     /* 4. LNN forward — temporal context modulation (multiplicative sigmoid gating) */

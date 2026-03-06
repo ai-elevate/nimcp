@@ -46,6 +46,7 @@
 #include "security/nimcp_security_integration.h"  // Phase SC-4: Universal Security Integration
 #include "security/nimcp_blood_brain_barrier.h"   // Phase IS-1: BBB Perimeter Defense
 #include "core/brain/learning/nimcp_brain_experience.h"  // Unified Experience API
+#include "generation/nimcp_tokenizer.h"                  // Persistent tokenizer
 
 //=============================================================================
 // COGNITIVE SUBSYSTEMS - Using Aggregate Headers
@@ -190,6 +191,7 @@ struct brain_struct {
     // These are optional, created based on config.network_type
     // Only one is typically active at a time (unless HYBRID mode)
     struct snn_network_s* snn_network;       // SNN implementation (if network_type=SNN)
+    struct snn_routing_bridge_s* snn_routing_bridge; // Cross-region spike routing
     struct lnn_network_s* lnn_network;       // LNN implementation (if network_type=LNN)
     struct cnn_trainer_s* cnn_trainer;       // CNN implementation (if network_type=CNN)
     uint8_t active_network_type;             // Currently active network type (nimcp_network_type_t)
@@ -363,6 +365,7 @@ struct brain_struct {
     neuromod_pink_noise_t* pink_noise;           // Pink noise neuromodulation (struct type, needs *)
     neuromodulator_system_t neuromodulator_system; // Full neuromodulator system (DA, 5-HT, ACh, NE, GABA, GLU)
     multihead_attention_t multihead_attention;   // Attention mechanism for selective feature processing (typedef already includes *)
+    struct nimcp_pos_encoder_s* positional_encoder; // Positional encoding for sequence-aware features
     void* attention_plasticity;                  // attention_plasticity_bridge_t* (attention-plasticity STDP bridge)
     bool attention_training_enabled;             // Whether attention modulates learning
     float last_attention_strength;               // Running attention strength from last forward pass [0-1]
@@ -1167,6 +1170,7 @@ struct brain_struct {
     struct language_logic_bridge* language_logic_bridge;              // Symbolic logic integration
     bool language_layer_enabled;                                      // Language layer enabled
     uint64_t last_language_update_us;                                 // Last language update timestamp
+    tokenizer_t* tokenizer;                                           // Persistent tokenizer (lazy-init, reused across calls)
 
     // =========================================================================
     // BRAINSTEM INTEGRATION (Midbrain, Pons, Medulla, Reticular Formation)

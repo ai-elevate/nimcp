@@ -1234,6 +1234,24 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+    // Attention-guided feature processing (positional encoding + multi-head attention)
+    if (brain->positional_encoder) {
+        nimcp_pos_apply_encoding(brain->positional_encoder, local_features,
+                                1, local_features, true);
+    }
+    if (brain->multihead_attention) {
+        float* attended = nimcp_malloc(num_features * sizeof(float));
+        if (attended) {
+            if (multihead_attention_forward(brain->multihead_attention,
+                                           features, 1, NULL, attended)) {
+                for (uint32_t i = 0; i < num_features; i++) {
+                    local_features[i] = 0.6f * local_features[i] + 0.4f * attended[i];
+                }
+            }
+            nimcp_free(attended);
+        }
+    }
+
     // Perform forward pass
     uint32_t active_neurons = perform_forward_pass(brain, features, num_features, decision);
 
@@ -1258,6 +1276,13 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
         nimcp_free(prediction);
         prediction = NULL;
+    }
+
+    // EDP Online Learning: Feed prediction error for continuous STDP
+    if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity
+        && edp_is_active(brain->event_driven_plasticity)) {
+        edp_process_prediction_error(brain->event_driven_plasticity, prediction_error, 0);
+        edp_update_eligibility(brain->event_driven_plasticity, 0.001f);
     }
 
     // Apply task-specific output transformation

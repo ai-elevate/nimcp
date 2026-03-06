@@ -2091,24 +2091,32 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             if (!isfinite(loss) || loss < 0.0f) loss = 0.0f;
         }
 
-        // 4. Download activations so CPU backprop can read neuron states.
-        // CRITICAL: backprop_sparse_full() computes weight_delta = lr * delta * src->state
-        // where src->state must reflect the GPU forward pass activations. Without this
-        // sync, src->state is zero/stale and ALL weight updates become zero — only biases
-        // update, capping accuracy around 33-35%.
-        nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
-                                                network->base_network);
-
-        // 4.5 Full backprop through all layers (GPU forward, CPU backward)
-        // Delegated to shared kernel with parallel + SIMD optimizations
+        // 4. GPU backward pass — weights updated on GPU, then downloaded to CPU.
+        // Falls back to CPU backprop if GPU backward fails.
         {
             float grad_norm = 0.0f;
             backprop_layer_grads_t layer_grads = {0};
             uint32_t num_layers = network->config.base_config.num_layers;
             uint32_t* layer_sizes = network->config.base_config.layer_sizes;
-            if (num_layers >= 2 && layer_sizes) {
+            bool gpu_backprop_done = false;
+
+            if (num_layers >= 2 && layer_sizes && network->gpu_weight_cache) {
+                // Try GPU sparse backward pass (activations already on GPU from forward)
+                gpu_backprop_done = nimcp_gpu_backward_pass(
+                    network->gpu_weight_cache,
+                    network->base_network,
+                    example->target, output, example->target_size,
+                    learning_rate,
+                    network->config.base_config.min_weight,
+                    network->config.base_config.max_weight,
+                    &grad_norm);
+            }
+
+            if (!gpu_backprop_done && num_layers >= 2 && layer_sizes) {
+                // CPU fallback: sync activations first
+                nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
+                                                        network->base_network);
                 if (mode == LEARN_MODE_DISTILLATION) {
-                    // Regression: MSE gradients on ALL outputs, no threshold
                     backprop_sparse_full_regression(network->base_network,
                         num_layers, layer_sizes, learning_rate,
                         network->config.base_config.min_weight,
@@ -2116,7 +2124,6 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                         example->target, output, example->target_size,
                         1.0f, &grad_norm, &layer_grads);
                 } else {
-                    // Classification: BCE + negative sampling
                     backprop_sparse_full_ex(network->base_network,
                         num_layers, layer_sizes, learning_rate,
                         network->config.base_config.min_weight,

@@ -923,3 +923,53 @@ bool nimcp_gpu_forward_pass_batch(
     nimcp_free(clamp_buf);
     return true;
 }
+
+//=============================================================================
+// GPU Backward Pass (uses GPU sparse backprop kernels)
+//=============================================================================
+
+bool nimcp_gpu_backward_pass(
+    nimcp_gpu_weight_cache_t* cache,
+    neural_network_t net,
+    const float* target,
+    const float* output,
+    uint32_t target_size,
+    float learning_rate,
+    float min_weight, float max_weight,
+    float* out_grad_norm)
+{
+    if (!cache || !net || !target || !output || !out_grad_norm) return false;
+
+    // Build activation type array for the kernel
+    uint32_t num_layers = cache->num_layers;
+    int* act_types = nimcp_calloc(num_layers, sizeof(int));
+    if (!act_types) return false;
+    for (uint32_t l = 0; l < num_layers; l++) {
+        // Map activation_type_t enum to kernel int codes
+        switch (cache->layer_activations[l]) {
+            case ACTIVATION_RELU:       act_types[l] = 0; break;
+            case ACTIVATION_LEAKY_RELU: act_types[l] = 1; break;
+            case ACTIVATION_TANH:       act_types[l] = 2; break;
+            case ACTIVATION_SIGMOID:    act_types[l] = 3; break;
+            default:                    act_types[l] = 1; break;  // leaky_relu default
+        }
+    }
+
+    bool ok = nimcp_gpu_sparse_backward_pass(
+        cache->ctx, cache->sparse_ctx,
+        cache->sparse_weights, cache->biases, cache->activations,
+        act_types, num_layers, cache->layer_sizes,
+        target, output, target_size,
+        learning_rate, min_weight, max_weight,
+        out_grad_norm);
+
+    nimcp_free(act_types);
+
+    if (ok) {
+        // Download updated weights back to CPU synapse structs
+        nimcp_gpu_weight_cache_download(cache, net);
+        cache->weights_dirty_on_cpu = true;
+    }
+
+    return ok;
+}

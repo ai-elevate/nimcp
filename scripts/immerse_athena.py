@@ -12,7 +12,7 @@ No shortcuts. No fast-training mode. Full biological immersion.
 
 IMPORTANT — ATHENA IS NOT A CLASSIFIER OR A PREDICTOR.
     She does not produce labels, categories, class predictions, or scored
-    outputs. She is a developing biological brain. Her 2048-dim output
+    outputs. She is a developing biological brain. Her 4096-dim output
     is her neural response — a continuous representation of her experience.
     We do not score her responses against expected answers. We do not
     measure accuracy or similarity to a "correct" output.
@@ -50,7 +50,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 
 import nimcp
-from claude_teacher import ClaudeTeacher, encode_text
+from claude_teacher import ClaudeTeacher, encode_text, batch_encode_texts
 from talk_to_athena import extract_embedding_from_output
 from neural_decoder import NeuralDecoder
 
@@ -108,7 +108,7 @@ logger = logging.getLogger("immerse_athena")
 # ============================================================================
 
 BRAIN_INPUT_DIM = 1024
-BRAIN_OUTPUT_DIM = 2048
+BRAIN_OUTPUT_DIM = 4096
 TAG_DIM = 16           # [0:16]   modality flags + brain state
 PRIMARY_DIM = 512      # [16:528] primary modality features
 TEXT_DIM = 384         # [528:912] text semantic embedding
@@ -403,6 +403,64 @@ def tile_to_brain_input(embedding, dim=BRAIN_INPUT_DIM):
         n = min(len(emb), dim - i)
         vec[i:i + n] = emb[:n]
     return vec.tolist()
+
+
+def batch_make_semantic_targets(texts, target_dim=BRAIN_OUTPUT_DIM):
+    """Batch-compute semantic targets — uses batch encoding for ~10x speedup."""
+    embeddings = batch_encode_texts(texts)
+    targets = []
+    for emb in embeddings:
+        target = np.zeros(target_dim, dtype=np.float32)
+        for i in range(0, target_dim, len(emb)):
+            n = min(len(emb), target_dim - i)
+            target[i:i + n] = emb[:n]
+        targets.append(target.tolist())
+    return targets
+
+
+class StimulusPrefetcher:
+    """Pre-generates and batch-encodes stimuli in a background thread.
+
+    Overlaps embedding computation with brain training for ~2x throughput.
+    """
+
+    def __init__(self, source, composer, batch_size=64):
+        from threading import Thread
+        from queue import Queue
+        self.source = source
+        self.composer = composer
+        self.batch_size = batch_size
+        self.queue = Queue(maxsize=2)  # 2 batches buffered
+        self._stop = False
+        self._thread = Thread(target=self._worker, daemon=True)
+        self._thread.start()
+
+    def _generate_descriptions(self, n):
+        descs = []
+        for _ in range(n):
+            if random.random() < 0.5:
+                descs.append(self.source.get_sensory())
+            else:
+                desc, _ = generate_sensory_exposure()
+                descs.append(desc)
+        return descs
+
+    def _worker(self):
+        while not self._stop:
+            descs = self._generate_descriptions(self.batch_size)
+            # Batch-encode all targets at once (~10x faster than one-by-one)
+            targets = batch_make_semantic_targets(descs)
+            # Compose features (uses cached embeddings where possible)
+            features_list = [self.composer.compose(text=d, modality="text") for d in descs]
+            batch = list(zip(descs, features_list, targets))
+            self.queue.put(batch)
+
+    def get_batch(self):
+        """Get next pre-computed batch of (description, features, target) tuples."""
+        return self.queue.get()
+
+    def stop(self):
+        self._stop = True
 
 
 # ============================================================================
@@ -1155,7 +1213,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         if output_vec is None:
             return ""
 
-        # Extract her 384-dim embedding from the 2048-dim tiled output
+        # Extract her 384-dim embedding from the 4096-dim tiled output
         output_emb = extract_embedding_from_output(np.array(output_vec))
 
         # Describe what her response is nearest to (for human readability)
@@ -1521,6 +1579,9 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         print(f"  [Warmup] {len(warmup_texts)} diverse stimuli x3 — done")
 
     losses = []
+    prefetcher = StimulusPrefetcher(source, composer, batch_size=64)
+    batch = []
+    batch_idx = 0
     for i in range(start_from, num_stimuli):
         # Check biological clock
         action = clock.tick(brain)
@@ -1529,18 +1590,33 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         elif action == "consolidate":
             clock.do_consolidate(brain)
 
-        # Get a sensory stimulus
-        if random.random() < 0.5:
-            description = source.get_sensory()
-        else:
-            description, _ = generate_sensory_exposure()
+        # Get pre-computed stimulus from prefetcher (batch-encoded)
+        if batch_idx >= len(batch):
+            batch = prefetcher.get_batch()
+            batch_idx = 0
+        description, features, target = batch[batch_idx]
+        batch_idx += 1
 
-        loss, result = parent.first_experience(brain, composer, description)
+        # Train using pre-computed features and target
+        narration = parent._pop_content("_narrations")
+        if narration:
+            print(f"  Parent: {narration}")
+        result = brain.decide_full(features)
+        loss = brain.learn_vector(features, target, label=description[:50], confidence=0.5)
+        if parent.decoder:
+            output_vec = result.get("output_vector")
+            if output_vec is not None:
+                target_emb = encode_text(description)
+                parent.decoder.record_pair(output_vec, target_emb, description)
+        try:
+            brain.bg_update_reward(0.5, 0.3)
+        except Exception:
+            pass
+        parent.interaction_count += 1
         losses.append(loss)
 
         # Periodic LNN forward step for temporal context
         try:
-            features = composer.compose(text=description)
             brain.lnn_forward_step(features[:128])
         except Exception:
             pass
@@ -1569,6 +1645,7 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         # Checkpoint every 5000
         if (i + 1) % 5000 == 0:
             _save_checkpoint(brain, decoder, stage=0, step=i+1)
+    prefetcher.stop()
 
     return losses
 
