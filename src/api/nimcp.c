@@ -42,6 +42,8 @@ static void api_set_error(const char* fmt, ...);
 #include "security/nimcp_blood_brain_barrier.h"  // Phase IS-1: BBB perimeter defense
 #include "security/nimcp_constant_time.h"        // Constant-time crypto operations
 #include "core/brain/nimcp_brain_internal.h"     // For accessing brain->bbb_system
+#include "language/nimcp_language_orchestrator.h" // For nimcp_brain_speak
+#include "language/nimcp_language_types.h"        // LANGUAGE_OUTPUT_TEXT
 #include "middleware/training/nimcp_brain_training_integration.h"  // Training coordinator
 #include "middleware/training/nimcp_loss_functions.h"              // Loss functions
 #include "middleware/training/nimcp_optimizers.h"                  // Optimizers

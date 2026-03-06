@@ -2170,6 +2170,76 @@ static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
 }
 
 /**
+ * WHAT: Generate spoken text from brain's neural state
+ * WHY:  Athena needs to express thoughts as language
+ * HOW:  Call nimcp_brain_speak() with semantic vector
+ */
+static PyObject* Brain_speak(BrainObject* self, PyObject* args) {
+    PyObject* features_list = NULL;
+    if (!PyArg_ParseTuple(args, "|O", &features_list))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    float* features = NULL;
+    Py_ssize_t num_features = 0;
+
+    if (features_list && features_list != Py_None) {
+        features = py_list_to_float_array(features_list, &num_features);
+        if (!features)
+            return NULL;
+        if (num_features > UINT32_MAX) {
+            nimcp_free(features);
+            PyErr_SetString(PyExc_OverflowError, "Input too large for uint32_t");
+            return NULL;
+        }
+    }
+
+    enum { SPEAK_MAX_TEXT = 4096 };
+    char text[SPEAK_MAX_TEXT];
+    memset(text, 0, sizeof(text));
+    float confidence = 0.0f;
+    float fluency = 0.0f;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_speak(
+        self->brain, features, (uint32_t)num_features,
+        text, SPEAK_MAX_TEXT, &confidence, &fluency);
+    Py_END_ALLOW_THREADS
+
+    if (features) nimcp_free(features);
+
+    if (status != NIMCP_OK) {
+        PyErr_Format(PyExc_RuntimeError, "speak failed: %s", nimcp_get_error());
+        return NULL;
+    }
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+
+    PyObject* tmp;
+    tmp = PyUnicode_FromString(text);
+    if (!tmp) { Py_DECREF(result); return NULL; }
+    if (PyDict_SetItemString(result, "text", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
+
+    tmp = PyFloat_FromDouble(confidence);
+    if (!tmp) { Py_DECREF(result); return NULL; }
+    if (PyDict_SetItemString(result, "confidence", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
+
+    tmp = PyFloat_FromDouble(fluency);
+    if (!tmp) { Py_DECREF(result); return NULL; }
+    if (PyDict_SetItemString(result, "fluency", tmp) < 0) { Py_DECREF(tmp); Py_DECREF(result); return NULL; }
+    Py_DECREF(tmp);
+
+    return result;
+}
+
+/**
  * WHAT: Get running label-match accuracy (EMA)
  * WHY:  Monitor training progress with a meaningful metric
  * HOW:  Call nimcp_brain_get_accuracy
@@ -4926,6 +4996,10 @@ static PyMethodDef Brain_methods[] = {
     // Full cognitive decision
     {"decide_full", (PyCFunction)Brain_decide_full, METH_VARARGS,
      "Run full cognitive pipeline: decide_full(features) -> dict"},
+
+    // Language production
+    {"speak", (PyCFunction)Brain_speak, METH_VARARGS,
+     "Generate spoken text: speak(semantic_vector) -> dict with text, confidence, fluency"},
 
     // Frozen inference
     {"freeze", (PyCFunction)Brain_freeze, METH_NOARGS,

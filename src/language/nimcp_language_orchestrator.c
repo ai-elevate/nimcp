@@ -140,6 +140,41 @@ static void orchestrator_emit_event(language_orchestrator_t* orch,
 static int orchestrator_update_bridges(language_orchestrator_t* orch,
                                        uint64_t current_time_ms);
 
+// Forward declarations for language production (used by part_core.c)
+struct lexical_access;
+typedef struct lexical_access lexical_access_t;
+extern lexical_access_t* wernicke_get_lexical_access(wernicke_adapter_t* adapter);
+extern uint32_t lexical_get_size(const lexical_access_t* lex);
+
+// Lexical entry for word lookup (simplified local copy to avoid header conflicts)
+typedef struct {
+    uint32_t word_id;
+    char orthography[32];
+    uint8_t phonemes[24];
+    uint32_t phoneme_count;
+    int pos;
+    float frequency;
+    uint32_t syllable_count;
+    uint32_t concept_id;
+    uint32_t* sense_ids;
+    uint32_t num_senses;
+    uint32_t* neighbors;
+    uint32_t num_neighbors;
+    float* embedding;
+} lexical_entry_t;
+
+extern bool lexical_get_entry(const lexical_access_t* lex, uint32_t word_id, lexical_entry_t* entry);
+extern bool broca_produce_from_strings(broca_adapter_t* adapter, const char* const* words, uint32_t num_words, void* result);
+
+// lpb_token_t (local copy to avoid header conflicts)
+typedef struct {
+    uint32_t token_id;
+    char token_str[32];
+    uint8_t pos;
+    float activation;
+    float frequency;
+} lpb_token_t;
+
 
 //=============================================================================
 // SRP Split: Function implementations organized by responsibility

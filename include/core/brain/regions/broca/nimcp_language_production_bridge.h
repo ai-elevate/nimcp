@@ -62,6 +62,7 @@ typedef struct language_production_bridge language_production_bridge_t;
 typedef struct speech_cortex speech_cortex_t;
 typedef struct nlp_network nlp_network_t;
 typedef struct working_memory working_memory_t;
+typedef struct lexical_access lexical_access_t;
 
 /*=============================================================================
  * CONFIGURATION
@@ -339,6 +340,18 @@ bool lpb_connect_nlp(
 bool lpb_connect_working_memory(
     language_production_bridge_t* bridge,
     working_memory_t* wm
+);
+
+/**
+ * @brief Connect lexical access module for word lookup during production
+ *
+ * @param bridge Bridge instance
+ * @param lexical Lexical access module (from Wernicke's area)
+ * @return true on success
+ */
+bool lpb_connect_lexical_access(
+    language_production_bridge_t* bridge,
+    lexical_access_t* lexical
 );
 
 /*=============================================================================

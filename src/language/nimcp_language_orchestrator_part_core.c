@@ -312,12 +312,168 @@ int language_orchestrator_generate_output(
         LANGUAGE_STATE_GENERATING,
         orchestrator->last_update_ms);
 
-    /* Production would be handled by Broca adapter */
-    /* For now, mark as pending */
-
     if (output_size) {
-        *output_size = 0;  /* Will be filled when production completes */
+        *output_size = 0;
     }
+
+    /* ===== LANGUAGE PRODUCTION PIPELINE ===== */
+
+    /* Step 1: Select lexical items from semantic vector via LPB or inline */
+    enum { MAX_SPEAK_TOKENS = 32 };
+    lpb_token_t tokens[MAX_SPEAK_TOKENS];
+    uint32_t num_tokens = 0;
+
+    /* Try to use Wernicke's lexicon if available */
+    lexical_access_t* lexical = NULL;
+    if (orchestrator->wernicke) {
+        lexical = wernicke_get_lexical_access(orchestrator->wernicke);
+    }
+
+    if (lexical && lexical_get_size(lexical) > 0) {
+        /* Compute semantic magnitude */
+        float mag2 = 0.0F;
+        for (uint32_t i = 0; i < semantic_dim && i < 256; i++) {
+            mag2 += semantic_input[i] * semantic_input[i];
+        }
+        float magnitude = sqrtf(mag2);
+        float base_act = magnitude > 0.0F ? magnitude / sqrtf((float)semantic_dim) : 0.5F;
+
+        /* Score each word in lexicon */
+        uint32_t lex_size = lexical_get_size(lexical);
+        struct { uint32_t id; char word[32]; float score; } best[MAX_SPEAK_TOKENS];
+        uint32_t nbest = 0;
+        float min_best = 0.0F;
+
+        for (uint32_t wid = 1; wid <= lex_size; wid++) {
+            lexical_entry_t entry;
+            if (!lexical_get_entry(lexical, wid, &entry)) continue;
+
+            /* Concept-positional activation */
+            float act = 0.0F;
+            uint32_t fidx = (entry.concept_id * 5) % semantic_dim;
+            uint32_t win = 8;
+            for (uint32_t d = fidx; d < fidx + win && d < semantic_dim; d++) {
+                act += fabsf(semantic_input[d]);
+            }
+            act /= (float)win;
+
+            float freq_w = 0.5F + 0.5F * (entry.frequency / 7.0F);
+            float score = act * freq_w * base_act;
+
+            if (score > 0.05F) {
+                if (nbest < MAX_SPEAK_TOKENS) {
+                    best[nbest].id = wid;
+                    strncpy(best[nbest].word, entry.orthography, 31);
+                    best[nbest].word[31] = '\0';
+                    best[nbest].score = score;
+                    nbest++;
+                    if (score < min_best || nbest == 1) min_best = score;
+                } else if (score > min_best) {
+                    /* Replace worst */
+                    uint32_t worst = 0;
+                    for (uint32_t k = 1; k < nbest; k++) {
+                        if (best[k].score < best[worst].score) worst = k;
+                    }
+                    best[worst].id = wid;
+                    strncpy(best[worst].word, entry.orthography, 31);
+                    best[worst].word[31] = '\0';
+                    best[worst].score = score;
+                    min_best = best[0].score;
+                    for (uint32_t k = 1; k < nbest; k++) {
+                        if (best[k].score < min_best) min_best = best[k].score;
+                    }
+                }
+            }
+        }
+
+        /* Sort by score descending */
+        for (uint32_t i = 1; i < nbest; i++) {
+            for (uint32_t j = i; j > 0 && best[j].score > best[j - 1].score; j--) {
+                __typeof__(best[0]) tmp = best[j];
+                best[j] = best[j - 1];
+                best[j - 1] = tmp;
+            }
+        }
+
+        for (uint32_t i = 0; i < nbest; i++) {
+            tokens[i].token_id = best[i].id;
+            strncpy(tokens[i].token_str, best[i].word, sizeof(tokens[i].token_str) - 1);
+            tokens[i].token_str[sizeof(tokens[i].token_str) - 1] = '\0';
+            tokens[i].activation = best[i].score;
+        }
+        num_tokens = nbest;
+    }
+
+    /* Fallback: feature-based heuristic */
+    if (num_tokens == 0) {
+        float regions[3] = {0};
+        for (uint32_t i = 0; i < 32 && i < semantic_dim; i++)
+            regions[0] += fabsf(semantic_input[i]);
+        for (uint32_t i = 32; i < 64 && i < semantic_dim; i++)
+            regions[1] += fabsf(semantic_input[i]);
+        for (uint32_t i = 64; i < 96 && i < semantic_dim; i++)
+            regions[2] += fabsf(semantic_input[i]);
+        regions[0] /= 32.0F; regions[1] /= 32.0F; regions[2] /= 32.0F;
+
+        const char* fallback_words[] = {"it", "does", "good"};
+        for (int r = 0; r < 3 && num_tokens < MAX_SPEAK_TOKENS; r++) {
+            if (regions[r] > 0.1F) {
+                strncpy(tokens[num_tokens].token_str, fallback_words[r],
+                        sizeof(tokens[num_tokens].token_str) - 1);
+                tokens[num_tokens].token_str[sizeof(tokens[num_tokens].token_str) - 1] = '\0';
+                tokens[num_tokens].activation = regions[r];
+                num_tokens++;
+            }
+        }
+    }
+
+    if (num_tokens == 0) {
+        orchestrator_transition_state(orchestrator,
+            LANGUAGE_STATE_IDLE, orchestrator->last_update_ms);
+        return 0;
+    }
+
+    /* Step 2: Produce through Broca if available */
+    if (orchestrator->broca) {
+        const char* word_ptrs[MAX_SPEAK_TOKENS];
+        for (uint32_t i = 0; i < num_tokens; i++) {
+            word_ptrs[i] = tokens[i].token_str;
+        }
+        broca_produce_from_strings(orchestrator->broca, word_ptrs, num_tokens, NULL);
+    }
+
+    /* Step 3: Concatenate token strings into output text */
+    if (output && max_output > 0 && output_type == LANGUAGE_OUTPUT_TEXT) {
+        char* out_text = (char*)output;
+        uint32_t pos = 0;
+        for (uint32_t i = 0; i < num_tokens && pos < max_output - 1; i++) {
+            if (i > 0 && pos < max_output - 1) {
+                out_text[pos++] = ' ';
+            }
+            uint32_t wlen = (uint32_t)strlen(tokens[i].token_str);
+            uint32_t copy_len = (wlen < max_output - 1 - pos) ? wlen : (max_output - 1 - pos);
+            memcpy(out_text + pos, tokens[i].token_str, copy_len);
+            pos += copy_len;
+        }
+        out_text[pos] = '\0';
+
+        if (output_size) {
+            *output_size = pos;
+        }
+    } else if (output_size) {
+        /* For non-text modes, just report token count */
+        *output_size = num_tokens;
+    }
+
+    /* Update production plan */
+    orchestrator->current_production.fluency_score =
+        (num_tokens > 0) ? tokens[0].activation : 0.0F;
+    orchestrator->current_production.valid = true;
+    orchestrator->current_production.complete = true;
+
+    /* Transition back to idle */
+    orchestrator_transition_state(orchestrator,
+        LANGUAGE_STATE_IDLE, orchestrator->last_update_ms);
 
     return 0;
 }

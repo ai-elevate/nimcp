@@ -80,6 +80,12 @@ extern wernicke_config_local_t wernicke_default_config(void);
 extern wernicke_adapter_t* wernicke_create(const wernicke_config_local_t* config);
 extern void wernicke_destroy(wernicke_adapter_t* adapter);
 
+// Lexical access forward declarations for lexicon seeding
+struct lexical_access;
+typedef struct lexical_access lexical_access_t;
+extern lexical_access_t* wernicke_get_lexical_access(wernicke_adapter_t* adapter);
+extern uint32_t lexical_build_common_english(lexical_access_t* lex);
+
 //=============================================================================
 // Internal Helper Functions
 //=============================================================================
@@ -200,6 +206,15 @@ bool nimcp_brain_factory_init_wernicke_subsystem(brain_t brain) {
     /* Connect to bio-async */
     if (!connect_wernicke_to_bio_async_internal(brain)) {
         LOG_WARN(LOG_MODULE, "Wernicke bio-async connection failed (non-fatal)");
+    }
+
+    /* Seed lexicon with common English words for language production */
+    lexical_access_t* lexical = wernicke_get_lexical_access(brain->wernicke);
+    if (lexical) {
+        uint32_t word_count = lexical_build_common_english(lexical);
+        LOG_INFO(LOG_MODULE, "Seeded Wernicke lexicon with %u common English words", word_count);
+    } else {
+        LOG_WARN(LOG_MODULE, "Could not seed lexicon — lexical access unavailable");
     }
 
     LOG_INFO(LOG_MODULE, "Wernicke's region initialized successfully");
@@ -594,7 +609,7 @@ bool nimcp_brain_factory_init_wernicke_immune_bridge(brain_t brain) {
     wernicke_immune_config_t config;
     wernicke_immune_default_config(&config);
 
-    brain->wernicke_immune_bridge = wernicke_immune_bridge_create(
+    brain->wernicke_immune_bridge = (struct wernicke_immune_bridge*)wernicke_immune_bridge_create(
         &config, brain->immune_system, brain->wernicke);
 
     if (!brain->wernicke_immune_bridge) {
@@ -604,7 +619,7 @@ bool nimcp_brain_factory_init_wernicke_immune_bridge(brain_t brain) {
     }
 
     /* Start immune integration monitoring */
-    if (wernicke_immune_bridge_start(brain->wernicke_immune_bridge) != 0) {
+    if (wernicke_immune_bridge_start((wernicke_immune_bridge_t*)brain->wernicke_immune_bridge) != 0) {
         LOG_WARN(LOG_MODULE, "Failed to start Wernicke immune bridge");
     }
 
@@ -698,7 +713,7 @@ void nimcp_brain_factory_destroy_wernicke_subsystem(brain_t brain) {
 
     /* Destroy immune bridge */
     if (brain->wernicke_immune_bridge) {
-        wernicke_immune_bridge_destroy(brain->wernicke_immune_bridge);
+        wernicke_immune_bridge_destroy((wernicke_immune_bridge_t*)brain->wernicke_immune_bridge);
         brain->wernicke_immune_bridge = NULL;
     }
 

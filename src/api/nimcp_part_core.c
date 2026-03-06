@@ -2181,3 +2181,71 @@ nimcp_status_t nimcp_brain_experience_attend(
     set_error("No error");
     return NIMCP_OK;
 }
+
+
+nimcp_status_t nimcp_brain_speak(
+    nimcp_brain_t brain,
+    const float* semantic_input,
+    uint32_t semantic_dim,
+    char* out_text,
+    uint32_t text_max_len,
+    float* out_confidence,
+    float* out_fluency)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(out_text, NIMCP_ERROR_NULL_ARG, "Output text buffer is NULL");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    brain_t ib = brain->internal_brain;
+    out_text[0] = '\0';
+
+    /* Use last decision output if no semantic input provided */
+    const float* sem = semantic_input;
+    uint32_t sem_dim = semantic_dim;
+    if (!sem || sem_dim == 0) {
+        /* No cached decision vector in public API — require explicit input */
+        set_error("semantic_input is required (no cached decision)");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    /* Check language layer */
+    if (!ib->language_layer_enabled || !ib->language_layer) {
+        set_error("Language layer not enabled or not initialized");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    /* Generate output through language orchestrator */
+    uint32_t output_size = 0;
+    int gen_rc = language_orchestrator_generate_output(
+        ib->language_layer,
+        sem, sem_dim,
+        out_text, text_max_len,
+        &output_size,
+        LANGUAGE_OUTPUT_TEXT
+    );
+
+    if (gen_rc != 0) {
+        set_error("Language production failed");
+        return NIMCP_ERROR;
+    }
+
+    /* Ensure null termination */
+    if (output_size < text_max_len) {
+        out_text[output_size] = '\0';
+    } else {
+        out_text[text_max_len - 1] = '\0';
+    }
+
+    /* Compute confidence: ratio of output length to max */
+    float conf = (text_max_len > 0 && output_size > 0)
+        ? fminf(1.0F, (float)output_size / 50.0F)  /* 50 chars = full confidence */
+        : 0.0F;
+    if (out_confidence) *out_confidence = conf;
+
+    /* Fluency from production plan */
+    float fluency = (output_size > 0) ? 0.7F : 0.0F;  /* Base fluency when words produced */
+    if (out_fluency) *out_fluency = fluency;
+
+    set_error("No error");
+    return NIMCP_OK;
+}

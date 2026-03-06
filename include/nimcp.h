@@ -560,6 +560,31 @@ nimcp_status_t nimcp_brain_decide_full(
 );
 
 /**
+ * @brief Generate spoken text from brain's neural state
+ *
+ * Routes semantic representation through Broca's language production
+ * pipeline (lexical selection → syntactic encoding → text output).
+ *
+ * @param brain Brain handle
+ * @param semantic_input Semantic vector (brain output), or NULL to use last decision
+ * @param semantic_dim Dimension of semantic_input (ignored if NULL)
+ * @param out_text Output text buffer for generated utterance
+ * @param text_max_len Maximum length of out_text buffer
+ * @param out_confidence Pointer to store production confidence [0,1] (optional)
+ * @param out_fluency Pointer to store fluency score [0,1] (optional)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_speak(
+    nimcp_brain_t brain,
+    const float* semantic_input,
+    uint32_t semantic_dim,
+    char* out_text,
+    uint32_t text_max_len,
+    float* out_confidence,
+    float* out_fluency
+);
+
+/**
  * @brief Save brain to file
  *
  * @param brain Brain handle

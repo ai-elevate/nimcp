@@ -33,6 +33,7 @@
 
 #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
+#include "core/brain/regions/wernicke/nimcp_lexical_access.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -68,6 +69,7 @@ struct language_production_bridge {
     speech_cortex_t* speech_cortex;
     nlp_network_t* nlp;
     working_memory_t* wm;
+    lexical_access_t* lexical;          /**< Wernicke's lexicon for word lookup */
 
     /* Neuromodulation */
     second_messenger_system_t* second_messengers;
@@ -164,10 +166,13 @@ static uint32_t lpb_hash_string(const char* str) {
 }
 
 /**
- * @brief Map semantic vector to tokens (simplified spreading activation)
+ * @brief Map semantic vector to tokens using Wernicke's lexicon
  *
  * BIOLOGICAL BASIS: Semantic vectors activate lemmas in mental lexicon
- * Higher activation = better semantic match = more likely selection
+ * via spreading activation. When a lexicon is connected, we compute
+ * cosine similarity between the semantic vector and each word's embedding
+ * to find the best-matching words. Falls back to feature-based heuristic
+ * when no lexicon is available.
  */
 static uint32_t lpb_semantic_to_tokens(language_production_bridge_t* bridge,
                                        const float* semantic_vector,
@@ -178,23 +183,12 @@ static uint32_t lpb_semantic_to_tokens(language_production_bridge_t* bridge,
         return 0;
     }
 
-    /*
-     * Simplified lexical selection:
-     * - Compute activation from semantic vector magnitude/features
-     * - Map to common function words and content words
-     * - Apply priming if available
-     */
-
-    uint32_t count = 0;
+    /* Compute semantic magnitude for activation scaling */
     float activation_sum = 0.0F;
-
-    /* Compute semantic magnitude for activation */
     for (uint32_t i = 0; i < dim && i < 256; i++) {
         activation_sum += semantic_vector[i] * semantic_vector[i];
     }
     float magnitude = sqrtf(activation_sum);
-
-    /* Scale activations */
     float base_activation = magnitude > 0.0F ? magnitude / sqrtf((float)dim) : 0.5F;
 
     /* Apply priming boost if available */
@@ -208,15 +202,116 @@ static uint32_t lpb_semantic_to_tokens(language_production_bridge_t* bridge,
         prime_boost = 1.0F + (bridge->priming_strength * fmaxf(0.0F, dot));
     }
 
-    /* Generate tokens based on semantic features */
-    /* Feature indices (simplified model):
-     * 0-31: entity features
-     * 32-63: action features
-     * 64-95: property features
-     * 96-127: relation features
+    /*
+     * LEXICON-BASED SELECTION: When a real lexicon is connected, iterate
+     * through entries and score each by cosine similarity with the semantic
+     * vector. Select top-K words sorted by activation score.
      */
+    if (bridge->lexical) {
+        uint32_t lexicon_size = lexical_get_size(bridge->lexical);
+        if (lexicon_size > 0) {
+            /* Score all lexicon entries — collect candidates */
+            enum { MAX_CANDIDATES = 128 };
+            struct {
+                uint32_t word_id;
+                char word[32];
+                uint8_t pos;
+                float score;
+                float freq;
+            } candidates[MAX_CANDIDATES];
+            uint32_t num_candidates = 0;
 
-    /* Check for subject entity (high activation in entity features) */
+            for (uint32_t wid = 1; wid <= lexicon_size && num_candidates < MAX_CANDIDATES; wid++) {
+                lexical_entry_t entry;
+                if (!lexical_get_entry(bridge->lexical, wid, &entry)) {
+                    continue;
+                }
+
+                /* Compute activation: frequency-weighted dot product with
+                 * semantic vector features mapped to concept_id space.
+                 * Words with embeddings use cosine similarity; without
+                 * embeddings, use concept_id-based positional activation. */
+                float word_activation = 0.0F;
+
+                if (entry.embedding && dim > 0) {
+                    /* Cosine similarity with word embedding */
+                    float dot = 0.0F;
+                    float emb_norm = 0.0F;
+                    uint32_t match_dim = dim < 256 ? dim : 256;
+                    for (uint32_t d = 0; d < match_dim; d++) {
+                        dot += semantic_vector[d] * entry.embedding[d];
+                        emb_norm += entry.embedding[d] * entry.embedding[d];
+                    }
+                    emb_norm = sqrtf(emb_norm);
+                    if (emb_norm > 1e-7F && magnitude > 1e-7F) {
+                        word_activation = dot / (emb_norm * magnitude);
+                    }
+                } else {
+                    /* Concept-based positional activation:
+                     * Map concept_id to a feature region and check activation */
+                    uint32_t feature_idx = (entry.concept_id * 5) % dim;
+                    uint32_t window = 8;
+                    float region_sum = 0.0F;
+                    for (uint32_t d = feature_idx; d < feature_idx + window && d < dim; d++) {
+                        region_sum += fabsf(semantic_vector[d]);
+                    }
+                    word_activation = region_sum / (float)window;
+                }
+
+                /* Frequency weighting (Zipf scale: higher = more common) */
+                float freq_weight = 0.5F + 0.5F * (entry.frequency / 7.0F);
+                float final_score = word_activation * freq_weight * base_activation * prime_boost;
+
+                if (final_score > 0.05F) {
+                    candidates[num_candidates].word_id = wid;
+                    strncpy(candidates[num_candidates].word, entry.orthography,
+                            sizeof(candidates[num_candidates].word) - 1);
+                    candidates[num_candidates].word[sizeof(candidates[num_candidates].word) - 1] = '\0';
+                    candidates[num_candidates].pos = (uint8_t)entry.pos;
+                    candidates[num_candidates].score = final_score;
+                    candidates[num_candidates].freq = entry.frequency / 7.0F;
+                    num_candidates++;
+                }
+            }
+
+            /* Sort candidates by score (simple insertion sort, small N) */
+            for (uint32_t i = 1; i < num_candidates; i++) {
+                for (uint32_t j = i; j > 0 && candidates[j].score > candidates[j - 1].score; j--) {
+                    /* swap */
+                    __typeof__(candidates[0]) tmp = candidates[j];
+                    candidates[j] = candidates[j - 1];
+                    candidates[j - 1] = tmp;
+                }
+            }
+
+            /* Take top-K */
+            uint32_t count = 0;
+            for (uint32_t i = 0; i < num_candidates && count < max_tokens; i++) {
+                tokens[count].token_id = candidates[i].word_id;
+                strncpy(tokens[count].token_str, candidates[i].word,
+                        sizeof(tokens[count].token_str) - 1);
+                tokens[count].token_str[sizeof(tokens[count].token_str) - 1] = '\0';
+                tokens[count].pos = candidates[i].pos;
+                tokens[count].activation = candidates[i].score;
+                tokens[count].frequency = candidates[i].freq;
+                count++;
+            }
+            if (count > 0) {
+                return count;
+            }
+            /* Fall through to heuristic if lexicon yielded nothing */
+        }
+    }
+
+    /*
+     * FALLBACK: Feature-based heuristic when no lexicon is available
+     * Feature indices (simplified model):
+     *   0-31: entity features → "it"
+     *   32-63: action features → "does"
+     *   64-95: property features → "good"
+     */
+    uint32_t count = 0;
+
     float entity_activation = 0.0F;
     for (uint32_t i = 0; i < 32 && i < dim; i++) {
         entity_activation += fabsf(semantic_vector[i]);
@@ -227,13 +322,12 @@ static uint32_t lpb_semantic_to_tokens(language_production_bridge_t* bridge,
         tokens[count].token_id = lpb_hash_string("entity") % 10000;
         strncpy(tokens[count].token_str, "it", sizeof(tokens[count].token_str) - 1);
         tokens[count].token_str[sizeof(tokens[count].token_str) - 1] = '\0';
-        tokens[count].pos = 0; /* Noun/pronoun */
+        tokens[count].pos = 0;
         tokens[count].activation = entity_activation * base_activation * prime_boost;
-        tokens[count].frequency = 0.9F; /* High frequency pronoun */
+        tokens[count].frequency = 0.9F;
         count++;
     }
 
-    /* Check for action (high activation in action features) */
     float action_activation = 0.0F;
     for (uint32_t i = 32; i < 64 && i < dim; i++) {
         action_activation += fabsf(semantic_vector[i]);
@@ -244,13 +338,12 @@ static uint32_t lpb_semantic_to_tokens(language_production_bridge_t* bridge,
         tokens[count].token_id = lpb_hash_string("action") % 10000;
         strncpy(tokens[count].token_str, "does", sizeof(tokens[count].token_str) - 1);
         tokens[count].token_str[sizeof(tokens[count].token_str) - 1] = '\0';
-        tokens[count].pos = 1; /* Verb */
+        tokens[count].pos = 1;
         tokens[count].activation = action_activation * base_activation * prime_boost;
         tokens[count].frequency = 0.85F;
         count++;
     }
 
-    /* Check for property (adjective/adverb features) */
     float property_activation = 0.0F;
     for (uint32_t i = 64; i < 96 && i < dim; i++) {
         property_activation += fabsf(semantic_vector[i]);
@@ -261,7 +354,7 @@ static uint32_t lpb_semantic_to_tokens(language_production_bridge_t* bridge,
         tokens[count].token_id = lpb_hash_string("property") % 10000;
         strncpy(tokens[count].token_str, "good", sizeof(tokens[count].token_str) - 1);
         tokens[count].token_str[sizeof(tokens[count].token_str) - 1] = '\0';
-        tokens[count].pos = 2; /* Adjective */
+        tokens[count].pos = 2;
         tokens[count].activation = property_activation * base_activation * prime_boost;
         tokens[count].frequency = 0.8F;
         count++;
@@ -497,6 +590,17 @@ bool lpb_connect_working_memory(language_production_bridge_t* bridge,
     }
 
     bridge->wm = wm;
+    return true;
+}
+
+bool lpb_connect_lexical_access(language_production_bridge_t* bridge,
+                                 lexical_access_t* lexical) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_connect_lexical_access: bridge is NULL");
+        return false;
+    }
+
+    bridge->lexical = lexical;
     return true;
 }
 

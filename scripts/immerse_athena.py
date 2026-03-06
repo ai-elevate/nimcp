@@ -51,9 +51,55 @@ logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 
 import nimcp
 from claude_teacher import ClaudeTeacher, encode_text
-from teach_athena import generate_sensory_exposure
 from talk_to_athena import extract_embedding_from_output
 from neural_decoder import NeuralDecoder
+
+
+def generate_sensory_exposure():
+    """Generate raw sensory exposure — things a newborn would experience."""
+    experiences = [
+        "bright red ball rolling across the floor",
+        "sunlight streaming through the window making warm patches",
+        "shadows moving on the wall as clouds pass by",
+        "a blue sky with white fluffy clouds",
+        "green leaves rustling in the breeze",
+        "water drops splashing in a puddle",
+        "a yellow flower swaying gently",
+        "colorful blocks stacked in a tower",
+        "a cat stretching and yawning",
+        "rain drops running down the window glass",
+        "a candle flame flickering in the dark",
+        "snow falling softly and covering the ground",
+        "bubbles floating up and popping in the air",
+        "a rainbow arcing across the sky after rain",
+        "fireflies blinking in the garden at night",
+        "smooth cold glass under fingers",
+        "rough warm sand between toes",
+        "soft fur of a sleeping cat",
+        "cool water flowing over hands",
+        "the weight of a heavy book in your lap",
+        "birds singing at dawn",
+        "rain tapping on a tin roof",
+        "a clock ticking steadily in a quiet room",
+        "wind howling through trees at night",
+        "waves crashing on the shore rhythmically",
+        "a dog barking in the distance",
+        "thunder rumbling across the sky",
+        "leaves crunching underfoot in autumn",
+        "a tall tree next to a small bush",
+        "a ball rolling under the table",
+        "a bird flying high above the houses",
+        "a bridge stretching over a wide river",
+        "stairs going up and up and up",
+        "a warm hug from someone who cares",
+        "laughing so hard your sides hurt",
+        "the comfort of a familiar blanket",
+        "being startled by a sudden loud noise",
+        "the peacefulness of a quiet morning",
+    ]
+    text = random.choice(experiences)
+    embedding = encode_text(text)
+    return text, embedding
 
 logger = logging.getLogger("immerse_athena")
 
@@ -199,62 +245,12 @@ def tile_to_brain_input(embedding, dim=BRAIN_INPUT_DIM):
 class StimulusSource:
     """Built-in developmental corpus for each stage.
 
-    When languages other than English are requested, loads Tatoeba parallel
-    sentences from HuggingFace via LanguageTextDatasetLoader.
+    Claude generates interactive teaching — this corpus provides the raw
+    sensory/object/fact stimuli that Claude narrates and teaches from.
     """
 
-    # Fallback English utterances (used when HF unavailable)
-    _FALLBACK_UTTERANCES = [
-        "The dog runs in the park", "I like to read books",
-        "The sun is shining today", "She plays the piano beautifully",
-        "We went to the store", "Birds fly south in winter",
-        "He drinks a glass of water", "The children are playing outside",
-        "It is raining heavily", "They walk to school every day",
-        "The cat sleeps on the bed", "I eat breakfast in the morning",
-        "Flowers bloom in spring", "The moon shines at night",
-        "We learn something new every day", "Fish swim in the ocean",
-        "The wind blows through the trees", "She sings a happy song",
-        "He writes a letter to his friend", "The stars twinkle in the sky",
-    ]
-
-    def __init__(self, languages=("en",)):
-        self._languages = tuple(languages)
-        self._lang_loader = None
-        self._lang_iter = None
-        self.lang_counts = {}  # per-language exposure counter
-
-        if len(self._languages) > 1 or self._languages[0] != "en":
-            try:
-                from multimodal_datasets import LanguageTextDatasetLoader
-                self._lang_loader = LanguageTextDatasetLoader(
-                    languages=self._languages, max_examples_per_lang=50000)
-                self._lang_iter = iter(self._lang_loader)
-                logger.info("Multilingual Tatoeba loader active: %s",
-                            ",".join(self._languages))
-            except Exception as e:
-                logger.warning("Tatoeba loader unavailable, using fallback: %s", e)
-                self._lang_loader = None
-
-    def get_language_text(self, stage=0):
-        """Get a text stimulus, weighted by stage curriculum.
-
-        Returns (text, lang_code).
-        """
-        if self._lang_loader is None:
-            text = random.choice(self._FALLBACK_UTTERANCES)
-            self.lang_counts["en"] = self.lang_counts.get("en", 0) + 1
-            return text, "en"
-        try:
-            text, lang = next(self._lang_iter)
-        except StopIteration:
-            self._lang_iter = iter(self._lang_loader)
-            try:
-                text, lang = next(self._lang_iter)
-            except StopIteration:
-                text = random.choice(self._FALLBACK_UTTERANCES)
-                lang = "en"
-        self.lang_counts[lang] = self.lang_counts.get(lang, 0) + 1
-        return text, lang
+    def __init__(self):
+        pass
 
     # Stage 0: Simple sensory experiences
     SENSORY = [
@@ -700,6 +696,128 @@ class Parent:
             except Exception:
                 pass
 
+    # --- Speech production training ---
+
+    def teach_speech(self, brain, composer, stage):
+        """Teach Athena to produce words through 'repeat after me' exercises.
+
+        Stage 0-1: Single words (dog, cat, water)
+        Stage 2: Two-word phrases (big dog, red ball)
+        Stage 3: Short sentences (the dog runs, I see you)
+        """
+        word_lists = {
+            0: ["dog", "cat", "water", "ball", "sun", "tree"],
+            1: ["hello", "yes", "no", "good", "come", "go", "see", "the", "is"],
+            2: ["big dog", "red ball", "I see", "come here", "good day"],
+            3: ["the dog runs", "I see you", "it is good", "come and see",
+                "the cat is here", "water is good"],
+        }
+        words = word_lists.get(stage, word_lists[3])
+        target_phrase = random.choice(words)
+
+        narration = self._say(
+            f"You are teaching your child to say '{target_phrase}'. "
+            f"Say it encouragingly, the way a parent would. 1 sentence.",
+            max_tokens=64
+        )
+        if narration:
+            print(f"  Parent (speech): {narration}")
+
+        # Teach: present the word/phrase, learn the embedding
+        features = composer.compose(text=target_phrase, modality="speech")
+        target = make_semantic_target(target_phrase)
+        loss = brain.learn_vector(features, target, label=target_phrase[:50],
+                                   confidence=0.6)
+
+        # Now ask the brain to speak — see what it produces
+        try:
+            result = brain.decide_full(features)
+            output_vec = result.get("output_vector")
+            if output_vec:
+                spoken = brain.speak(output_vec)
+                spoken_text = spoken.get("text", "")
+                if spoken_text:
+                    print(f"  Athena says: \"{spoken_text}\"")
+                    # Reward if the response contains any of the target words
+                    target_words = set(target_phrase.lower().split())
+                    spoken_words = set(spoken_text.lower().split())
+                    overlap = len(target_words & spoken_words)
+                    if overlap > 0:
+                        reward = min(0.8, 0.3 + 0.2 * overlap)
+                        try:
+                            brain.bg_update_reward(reward, 0.5)
+                        except Exception:
+                            pass
+                        print(f"    (matched {overlap} word(s) — reward {reward:.1f})")
+                else:
+                    print(f"  Athena: (silence)")
+        except Exception as e:
+            logger.debug("Speech attempt failed: %s", e)
+
+        self.interaction_count += 1
+        return loss
+
+
+# ============================================================================
+# Language Producer: autoregressive generation using the brain
+# ============================================================================
+
+class LanguageProducer:
+    """Generate multi-token utterances using Athena's brain autoregressively."""
+
+    def generate(self, brain, composer, prompt=None, max_words=30):
+        """Generate an utterance using Athena's brain in a feedback loop.
+
+        1. Present prompt → decide_full → get initial response
+        2. Call brain.speak(output_vector) → get first word(s)
+        3. Feed accumulated words back as context input
+        4. Repeat until period/EOS or max_words
+        5. Return complete utterance
+        """
+        accumulated = []
+
+        if prompt:
+            features = composer.compose(text=prompt, modality="text")
+        else:
+            features = composer.compose(text="speak", modality="speech")
+
+        for step in range(max_words):
+            result = brain.decide_full(features)
+            output_vec = result.get("output_vector")
+            if not output_vec:
+                break
+
+            try:
+                spoken = brain.speak(output_vec)
+            except Exception:
+                break
+
+            text = spoken.get("text", "").strip()
+            if not text:
+                break
+
+            # Take the first new word(s) that aren't already in our accumulation
+            new_words = text.split()
+            added = False
+            for w in new_words:
+                if len(accumulated) < max_words:
+                    accumulated.append(w)
+                    added = True
+
+            if not added:
+                break
+
+            # Check for sentence-ending punctuation in the generated text
+            full_text = " ".join(accumulated)
+            if full_text.endswith((".", "!", "?")):
+                break
+
+            # Feed accumulated context back for next iteration
+            context = " ".join(accumulated)
+            features = composer.compose(text=context, modality="speech")
+
+        return " ".join(accumulated) if accumulated else ""
+
 
 # ============================================================================
 # Stage Runners
@@ -802,14 +920,6 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         loss, result = parent.show_and_name(brain, composer, name, description)
         losses.append(loss if loss is not None else 0)
 
-        # Also expose via language (multilingual if configured)
-        if random.random() < 0.3:
-            lang_text, lang_code = source.get_language_text(stage=1)
-            features = composer.compose(text=lang_text, modality="text")
-            target = make_semantic_target(lang_text)
-            label = f"{lang_code}:{lang_text[:45]}"
-            brain.learn_vector(features, target, label=label, confidence=0.3)
-
         # LNN temporal step
         try:
             features = composer.compose(text=description)
@@ -830,7 +940,6 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             print(f"\n  [Stage 1] {i+1}/{num_stimuli} — "
                   f"avg_loss={avg_loss:.4f}")
             _print_bio_stats(brain)
-            _print_lang_stats(source)
             if decoder:
                 decoder.force_refit()
             evaluate_performance(brain, composer, decoder, stage=1, step=i+1)
@@ -838,6 +947,10 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         # Moral lesson every 3000
         if (i + 1) % 3000 == 0:
             parent.teach_moral_lesson(brain, composer, stage=1)
+
+        # Speech training every 500
+        if (i + 1) % 500 == 0:
+            parent.teach_speech(brain, composer, stage=1)
 
         # Inspire every 5000
         if (i + 1) % 5000 == 0:
@@ -918,6 +1031,10 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         # Moral lesson every 2000
         if (i + 1) % 2000 == 0:
             parent.teach_moral_lesson(brain, composer, stage=2)
+
+        # Speech training every 300
+        if (i + 1) % 300 == 0:
+            parent.teach_speech(brain, composer, stage=2)
 
         # Inspire every 3000
         if (i + 1) % 3000 == 0:
@@ -1007,9 +1124,13 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             fact, expected = source.get_fact()
             parent.ask_and_encourage(brain, composer, expected, fact)
 
-        elif r < 0.85:
+        elif r < 0.82:
             # Inspiration
             parent.inspire(brain, composer, stage=3)
+
+        elif r < 0.90:
+            # Speech training
+            parent.teach_speech(brain, composer, stage=3)
 
         else:
             # Follow her curiosity
@@ -1256,14 +1377,6 @@ def evaluate_performance(brain, composer, decoder, stage, step):
     print(f"  {'─' * 56}\n")
 
 
-def _print_lang_stats(source):
-    """Print per-language exposure counts if multilingual."""
-    if hasattr(source, 'lang_counts') and source.lang_counts:
-        parts = [f"{lang}={count}" for lang, count in
-                 sorted(source.lang_counts.items())]
-        print(f"    Languages: {' '.join(parts)}")
-
-
 def _save_checkpoint(brain, decoder, stage, step):
     """Save brain checkpoint and decoder state."""
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
@@ -1325,9 +1438,6 @@ def main():
     parser.add_argument("--stage1-stimuli", type=int, default=20000)
     parser.add_argument("--stage2-stimuli", type=int, default=20000)
     parser.add_argument("--stage3-interactions", type=int, default=10000)
-    parser.add_argument("--languages", type=str, default="en",
-                        help="Comma-separated language codes for multilingual "
-                             "training (e.g. en,fr,es,de)")
     parser.add_argument("--fresh", action="store_true",
                         help="Start fresh (ignore existing checkpoint)")
     args = parser.parse_args()
@@ -1416,10 +1526,7 @@ def main():
     parent = Parent(teacher=teacher, enabled=not args.no_claude, decoder=decoder)
     composer = SensoryComposer(brain)
     clock = BiologicalClock(rest_interval=2000)
-    languages = tuple(args.languages.split(","))
-    source = StimulusSource(languages=languages)
-    if len(languages) > 1:
-        print(f"  Languages: {', '.join(languages)}")
+    source = StimulusSource()
 
     # --- Resume state ---
     start_stage = args.stage
