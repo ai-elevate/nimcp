@@ -573,6 +573,7 @@ brain_t brain_create_custom(const brain_config_t* config)
     brain->last_experience_input_size = 0;
     brain->last_experience_output_size = 0;
     brain->experience_count = 0;
+    brain->synaptogenesis_count = 0;
 
     // Pre-allocate scratch buffers for learn() hot path (eliminates 4 malloc/free per call)
     brain->learn_scratch.target_cap = config->num_outputs;

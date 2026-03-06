@@ -46,6 +46,7 @@ typedef struct {
     float attention_level;      /**< Thalamic attention during this experience (0-1) */
     float learning_rate_used;   /**< Effective LR after attention modulation */
     bool  learning_applied;     /**< Whether plasticity was triggered */
+    bool  synapse_formed;       /**< Whether synaptogenesis occurred this experience */
     float reward_signal;        /**< Teacher reward if provided (-1 to 1, 0=none) */
     uint64_t experience_id;     /**< Monotonic experience counter */
 } brain_experience_result_t;
@@ -63,6 +64,7 @@ typedef struct {
     bool enable_reward_learning;        /**< Enable reward-based weight updates */
     bool enable_world_model_update;     /**< Update world model with each experience */
     bool enable_structural_plasticity;  /**< Allow new synapse formation during experience */
+    float synaptogenesis_threshold;     /**< Min prediction error to trigger synaptogenesis (default 0.7) */
     uint32_t consolidation_interval;    /**< Auto-consolidate every N experiences (0=disabled) */
 } brain_experience_config_t;
 

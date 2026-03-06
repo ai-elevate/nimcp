@@ -634,11 +634,12 @@ static PyObject* Brain_experience(BrainObject* self, PyObject* args, PyObject* k
 
     /* Build result dict */
     PyObject* result_dict = Py_BuildValue(
-        "{s:f, s:f, s:f, s:O, s:f, s:K, s:O}",
+        "{s:f, s:f, s:f, s:O, s:O, s:f, s:K, s:O}",
         "prediction_error", (double)result.prediction_error,
         "attention_level", (double)result.attention_level,
         "learning_rate_used", (double)result.learning_rate_used,
         "learning_applied", result.learning_applied ? Py_True : Py_False,
+        "synapse_formed", result.synapse_formed ? Py_True : Py_False,
         "reward_signal", (double)result.reward_signal,
         "experience_id", (unsigned long long)result.experience_id,
         "output", output_list
@@ -663,12 +664,13 @@ static PyObject* Brain_experience_configure(BrainObject* self, PyObject* args, P
     int enable_reward = 1;
     int enable_world_model = 1;
     int enable_structural = 0;
+    float synaptogenesis_threshold = 0.7f;
     uint32_t consolidation_interval = 1000;
 
     static char* kwlist[] = {
         "enabled", "base_lr", "attention_threshold", "attention_lr_scale",
         "novelty_boost", "enable_hebbian", "enable_reward", "enable_world_model",
-        "enable_structural", "consolidation_interval", NULL
+        "enable_structural", "synaptogenesis_threshold", "consolidation_interval", NULL
     };
 
     if (!self->brain) {
@@ -676,10 +678,10 @@ static PyObject* Brain_experience_configure(BrainObject* self, PyObject* args, P
         return NULL;
     }
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|pffffppppI", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|pffffpppfpI", kwlist,
             &enabled, &base_lr, &attention_threshold, &attention_lr_scale,
             &novelty_boost, &enable_hebbian, &enable_reward, &enable_world_model,
-            &enable_structural, &consolidation_interval)) {
+            &enable_structural, &synaptogenesis_threshold, &consolidation_interval)) {
         return NULL;
     }
 
@@ -693,6 +695,7 @@ static PyObject* Brain_experience_configure(BrainObject* self, PyObject* args, P
         .enable_reward_learning = (bool)enable_reward,
         .enable_world_model_update = (bool)enable_world_model,
         .enable_structural_plasticity = (bool)enable_structural,
+        .synaptogenesis_threshold = synaptogenesis_threshold,
         .consolidation_interval = consolidation_interval
     };
 

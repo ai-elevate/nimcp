@@ -1859,6 +1859,7 @@ struct brain_struct {
     uint32_t last_experience_input_size;            // Size of cached input
     uint32_t last_experience_output_size;           // Size of cached output
     uint64_t experience_count;                      // Monotonic experience counter
+    uint64_t synaptogenesis_count;                  // Total new synapses formed via experience
 
     // === PRE-ALLOCATED SCRATCH BUFFERS FOR learn() HOT PATH ===
     //

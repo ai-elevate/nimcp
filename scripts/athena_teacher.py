@@ -183,9 +183,8 @@ class Teacher:
 
         if checkpoint_path and os.path.exists(checkpoint_path):
             logger.info(f"Loading brain from {checkpoint_path}")
-            brain = nimcp.Brain("athena", INPUT_DIM, OUTPUT_DIM,
-                                neuron_count=500000,
-                                fast_training_mode=False)
+            brain = nimcp.Brain("athena", num_inputs=INPUT_DIM, num_outputs=OUTPUT_DIM,
+                                neuron_count=500000)
             try:
                 brain.load(checkpoint_path)
                 logger.info("Brain loaded from checkpoint")
@@ -194,9 +193,8 @@ class Teacher:
             return brain
 
         logger.info("Creating new Athena brain")
-        brain = nimcp.Brain("athena", INPUT_DIM, OUTPUT_DIM,
-                            neuron_count=500000,
-                            fast_training_mode=False)
+        brain = nimcp.Brain("athena", num_inputs=INPUT_DIM, num_outputs=OUTPUT_DIM,
+                            neuron_count=500000)
         return brain
 
     # ------------------------------------------------------------------

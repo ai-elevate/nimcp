@@ -54,6 +54,7 @@ brain_experience_config_t brain_experience_default_config(void) {
         .enable_reward_learning = true,
         .enable_world_model_update = true,
         .enable_structural_plasticity = false,  /* Conservative default */
+        .synaptogenesis_threshold = 0.7f,       /* Default: high novelty required */
         .consolidation_interval = 1000          /* Consolidate every 1000 experiences */
     };
 }
@@ -122,13 +123,14 @@ static float get_attention_level(brain_t brain) {
  * Internal: Apply lightweight plasticity
  * ============================================================================ */
 
-static void apply_experience_plasticity(
+static bool apply_experience_plasticity(
     brain_t brain,
     const float* input,
     uint32_t input_size,
     float prediction_error,
     float effective_lr)
 {
+    bool synapse_formed = false;
     /* Plasticity coordinator: STDP/BCM/homeostatic */
     if (brain->experience_config.enable_hebbian &&
         brain->plasticity_coordinator && brain->plasticity_coordinator_enabled) {
@@ -141,19 +143,47 @@ static void apply_experience_plasticity(
         edp_process_prediction_error(brain->event_driven_plasticity, prediction_error, 0);
     }
 
-    /* Structural plasticity: form new synapses if enabled and high prediction error */
+    /* Structural plasticity (synaptogenesis): form new synapses on high prediction error */
+    float syn_threshold = brain->experience_config.synaptogenesis_threshold;
+    if (syn_threshold <= 0.0f) syn_threshold = 0.7f;  /* Safety fallback */
     if (brain->experience_config.enable_structural_plasticity &&
         brain->structural_plasticity && brain->structural_plasticity_enabled &&
-        prediction_error > 0.7f) {
+        prediction_error > syn_threshold) {
         float activity_hz = 30.0f * prediction_error;
         if (structural_plasticity_should_form(brain->structural_plasticity, activity_hz)) {
-            uint32_t pre = (uint32_t)(input[0] * 997.0f) % input_size;
-            uint32_t post = (uint32_t)(input[input_size > 1 ? 1 : 0] * 991.0f) % brain->config.num_outputs;
-            uint32_t syn_id = 0;
-            structural_plasticity_form_synapse(
-                brain->structural_plasticity, pre, post, activity_hz, &syn_id);
+            /* Select pre/post neurons from the hidden layer based on input hash.
+             * Uses input-derived hash to pick neurons that were likely active
+             * during this experience — connecting co-active neurons. */
+            neural_network_t base_net = adaptive_network_get_base_network(brain->network);
+            uint32_t total_neurons = base_net ? neural_network_get_num_neurons(base_net) : 0;
+            uint32_t num_inputs = brain->config.num_inputs;
+            uint32_t num_outputs = brain->config.num_outputs;
+            uint32_t num_hidden = (total_neurons > num_inputs + num_outputs)
+                                  ? (total_neurons - num_inputs - num_outputs) : 0;
+
+            if (num_hidden > 1) {
+                /* Hash input values to select hidden-layer neuron IDs */
+                uint32_t h1 = (uint32_t)(fabsf(input[0]) * 997.0f);
+                uint32_t h2 = (uint32_t)(fabsf(input[input_size > 1 ? 1 : 0]) * 991.0f);
+                uint32_t pre  = num_inputs + (h1 % num_hidden);
+                uint32_t post = num_inputs + (h2 % num_hidden);
+                if (pre == post) post = num_inputs + ((h2 + 1) % num_hidden);
+
+                uint32_t syn_id = 0;
+                int rc = structural_plasticity_form_synapse(
+                    brain->structural_plasticity, pre, post, activity_hz, &syn_id);
+                if (rc == 0) {
+                    brain->synaptogenesis_count++;
+                    synapse_formed = true;
+                    LOG_MODULE_DEBUG(LOG_MODULE,
+                        "Synaptogenesis: new synapse %u (%u→%u), PE=%.3f, hz=%.1f [total=%lu]",
+                        syn_id, pre, post, prediction_error, activity_hz,
+                        (unsigned long)brain->synaptogenesis_count);
+                }
+            }
         }
     }
+    return synapse_formed;
 }
 
 /* ============================================================================
@@ -257,6 +287,7 @@ bool brain_experience(
 
     /* ---- Step 4: Attention-gated learning ---- */
     bool learning_applied = false;
+    bool synapse_formed = false;
     float effective_lr = 0.0f;
 
     if (brain->inference_learning_enabled && brain->experience_config.enabled) {
@@ -276,8 +307,8 @@ bool brain_experience(
             /* Cap learning rate */
             effective_lr = fminf(effective_lr, 0.01f);
 
-            /* Apply Hebbian/STDP plasticity */
-            apply_experience_plasticity(brain, input, input_size,
+            /* Apply Hebbian/STDP plasticity + synaptogenesis */
+            synapse_formed = apply_experience_plasticity(brain, input, input_size,
                                         prediction_error, effective_lr);
 
             /* Apply reward learning if teacher signal present */
@@ -315,6 +346,7 @@ bool brain_experience(
     result->attention_level = attention;
     result->learning_rate_used = effective_lr;
     result->learning_applied = learning_applied;
+    result->synapse_formed = synapse_formed;
     result->reward_signal = teacher_reward;
     result->experience_id = brain->experience_count;
 
