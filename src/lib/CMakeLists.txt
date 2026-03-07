@@ -1998,6 +1998,9 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Geometry (Phase B1.1: Hyperbolic Knowledge Graph Embeddings)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/geometry/nimcp_hyperbolic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/geometry/nimcp_differential_geometry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/geometry/nimcp_lorentz.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/geometry/nimcp_lie_group.c
 
     # Core - Surface Geometry (Meng et al. Nature 2026: Surface optimization for physical networks)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/geometry/nimcp_surface_manifold.c
