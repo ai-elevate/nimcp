@@ -2553,21 +2553,122 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
     if (!network || !examples || num_examples == 0)
         return -1.0F;
 
-    /* GPU batch optimization: upload weights ONCE before the batch loop, then
-     * suppress per-example re-uploads by clearing weights_dirty_on_cpu after
-     * each learn call.  The GPU weights will be slightly stale for examples 2+
-     * (they don't reflect the previous example's backprop update), but this is
-     * standard mini-batch behavior and saves ~0.5s per extra example. */
     bool gpu_batch_opt = (network->gpu_enabled && network->gpu_weight_cache &&
         (mode == LEARN_MODE_SUPERVISED || mode == LEARN_MODE_DISTILLATION || mode == LEARN_MODE_HYBRID));
 
+    /* GPU gradient accumulation: run forward+backward for each sample but accumulate
+     * gradients on GPU without updating weights. After all samples, apply averaged
+     * gradients in one shot. This gives true mini-batch gradient descent. */
+    if (gpu_batch_opt && num_examples >= 2) {
+        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
+            nimcp_gpu_weight_cache_upload(network->gpu_weight_cache, network->base_network);
+            network->gpu_weight_cache->weights_dirty_on_cpu = false;
+        }
+
+        float fixed_threshold = network->config.spike_params.min_threshold;
+        if (fixed_threshold <= 0.0f) fixed_threshold = 0.1f;
+
+        float total_loss = 0.0f;
+        uint32_t successful = 0;
+
+        for (uint32_t i = 0; i < num_examples; i++) {
+            const training_example_t* ex = &examples[i];
+            if (!ex->input || !ex->target || ex->target_size == 0) continue;
+
+            /* Spike-encode input */
+            float* spike_input = convert_input_to_spikes(ex->input, ex->input_size,
+                                                          fixed_threshold,
+                                                          network->config.spike_params.encoding);
+            if (!spike_input) continue;
+
+            uint32_t out_buf_size = ex->target_size > network->config.base_config.output_size
+                ? ex->target_size : network->config.base_config.output_size;
+            float* output = (float*)alloc_hot_buffer(out_buf_size * sizeof(float));
+            if (!output) { free_hot_buffer(spike_input); continue; }
+
+            /* GPU forward pass */
+            bool fwd_ok = nimcp_gpu_forward_pass(network->gpu_weight_cache,
+                                                  spike_input, ex->input_size,
+                                                  output, ex->target_size);
+            free_hot_buffer(spike_input);
+
+            if (!fwd_ok) { free_hot_buffer(output); continue; }
+
+            /* Compute loss */
+            float loss = 0.0f;
+            if (mode == LEARN_MODE_DISTILLATION) {
+                for (uint32_t li = 0; li < ex->target_size; li++) {
+                    float o = isfinite(output[li]) ? output[li] : 0.0f;
+                    float diff = ex->target[li] - o;
+                    loss += diff * diff;
+                }
+                loss /= (float)ex->target_size;
+                if (!isfinite(loss)) loss = 0.0f;
+            } else {
+                float eps = 1e-7f;
+                for (uint32_t li = 0; li < ex->target_size; li++) {
+                    float raw_o = isfinite(output[li]) ? output[li] : 0.5f;
+                    float o = fmaxf(eps, fminf(1.0f - eps, raw_o));
+                    float t = fminf(fmaxf(ex->target[li], 0.0f), 1.0f);
+                    loss -= t * logf(o) + (1.0f - t) * logf(1.0f - o);
+                }
+                int active_targets = 0;
+                for (uint32_t li = 0; li < ex->target_size; li++) {
+                    if (ex->target[li] > 0.01f) active_targets++;
+                }
+                loss /= fmaxf(2.0f * active_targets, 1.0f);
+                if (!isfinite(loss) || loss < 0.0f) loss = 0.0f;
+            }
+
+            /* Accumulate gradients on GPU (no weight update) */
+            nimcp_gpu_backward_accumulate(network->gpu_weight_cache,
+                                           ex->target, output, ex->target_size,
+                                           learning_rate);
+
+            if (loss >= 0.0f && isfinite(loss)) {
+                total_loss += loss;
+                successful++;
+            }
+
+            free_hot_buffer(output);
+        }
+
+        /* Flush: apply averaged gradients and download weights to CPU */
+        float grad_norm = 0.0f;
+        nimcp_gpu_gradient_flush_and_sync(network->gpu_weight_cache,
+                                          network->base_network,
+                                          network->config.base_config.min_weight,
+                                          network->config.base_config.max_weight,
+                                          &grad_norm);
+        network->last_grad_norm = grad_norm;
+        network->gpu_weight_cache->weights_dirty_on_cpu = true;
+        network->total_learning_steps += successful;
+
+        if (isfinite(grad_norm)) {
+            if (network->ema_grad_norm < 0.0f)
+                network->ema_grad_norm = grad_norm;
+            else
+                network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+        }
+
+        float avg_loss = (successful > 0) ? (total_loss / successful) : -1.0f;
+        if (avg_loss >= 0.0f && isfinite(avg_loss)) {
+            if (network->ema_loss < 0.0f)
+                network->ema_loss = avg_loss;
+            else
+                network->ema_loss = 0.99f * network->ema_loss + 0.01f * avg_loss;
+            NIMCP_EMA_GUARD(network->ema_loss, avg_loss);
+        }
+
+        return avg_loss;
+    }
+
+    /* Fallback: per-sample learning (original path, for GPU batch_size=1 or CPU) */
     if (gpu_batch_opt) {
-        /* Force single weight upload before batch starts */
         if (network->gpu_weight_cache->weights_dirty_on_cpu) {
             nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
                                          network->base_network);
         }
-        /* Pre-clear so the first adaptive_network_learn doesn't re-upload */
         network->gpu_weight_cache->weights_dirty_on_cpu = false;
     }
 
@@ -2576,21 +2677,16 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
 
     for (uint32_t i = 0; i < num_examples; i++) {
         float loss = adaptive_network_learn(network, &examples[i], mode, learning_rate);
-        // W6-09 FIX: Add isfinite check to prevent total_loss from overflowing to Inf
-        // when accumulating across many examples. NaN/Inf would poison the average.
         if (loss >= 0.0F && isfinite(loss)) {
             total_loss += loss;
             successful++;
         }
-        /* Skip examples that return -1.0f (error) or non-finite to avoid corrupting average */
 
-        /* Suppress per-example re-upload — weights stay on GPU from batch start */
         if (gpu_batch_opt && network->gpu_weight_cache) {
             network->gpu_weight_cache->weights_dirty_on_cpu = false;
         }
     }
 
-    /* Re-mark dirty so the next non-batch operation does a proper sync */
     if (gpu_batch_opt && network->gpu_weight_cache) {
         network->gpu_weight_cache->weights_dirty_on_cpu = true;
     }

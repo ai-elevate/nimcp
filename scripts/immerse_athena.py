@@ -1582,6 +1582,8 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
     prefetcher = StimulusPrefetcher(source, composer, batch_size=64)
     batch = []
     batch_idx = 0
+    MINI_BATCH_SIZE = 8  # Gradient accumulation mini-batch size
+    mini_batch_buf = []
     for i in range(start_from, num_stimuli):
         # Check biological clock
         action = clock.tick(brain)
@@ -1597,23 +1599,42 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         description, features, target = batch[batch_idx]
         batch_idx += 1
 
-        # Train using pre-computed features and target
+        # Forward pass for observation
         narration = parent._pop_content("_narrations")
         if narration:
             print(f"  Parent: {narration}")
         result = brain.decide_full(features)
-        loss = brain.learn_vector(features, target, label=description[:50], confidence=0.5)
-        if parent.decoder:
-            output_vec = result.get("output_vector")
-            if output_vec is not None:
-                target_emb = encode_text(description)
-                parent.decoder.record_pair(output_vec, target_emb, description)
+
+        # Accumulate into mini-batch
+        mini_batch_buf.append((features, target, description))
+
+        if len(mini_batch_buf) >= MINI_BATCH_SIZE or i == num_stimuli - 1:
+            # Flush mini-batch with GPU gradient accumulation
+            try:
+                batch_pairs = [(f, t) for f, t, _ in mini_batch_buf]
+                avg_loss = brain.learn_vector_batch(batch_pairs)
+                if avg_loss is not None and avg_loss >= 0:
+                    for _ in mini_batch_buf:
+                        losses.append(avg_loss)
+            except (AttributeError, Exception):
+                # Fallback: per-sample learning if batch API unavailable
+                for f, t, desc in mini_batch_buf:
+                    loss = brain.learn_vector(f, t, label=desc[:50], confidence=0.5)
+                    losses.append(loss)
+
+            if parent.decoder:
+                for f, t, desc in mini_batch_buf:
+                    out_vec = brain.decide_full(f).get("output_vector")
+                    if out_vec is not None:
+                        target_emb = encode_text(desc)
+                        parent.decoder.record_pair(out_vec, target_emb, desc)
+            mini_batch_buf = []
+
         try:
             brain.bg_update_reward(0.5, 0.3)
         except Exception:
             pass
         parent.interaction_count += 1
-        losses.append(loss)
 
         # Periodic LNN forward step for temporal context
         try:
@@ -2325,14 +2346,15 @@ def main():
     if checkpoint_path and os.path.exists(checkpoint_path):
         print(f"  Loading from checkpoint: {checkpoint_path}")
     else:
-        print("  Creating fresh brain (full biological init)")
+        print("  Creating fresh brain (FAST init — GPU, training, plasticity, security)")
         checkpoint_path = None
 
     brain = nimcp.Brain("athena",
                         num_inputs=args.num_inputs,
                         num_outputs=args.num_outputs,
                         neuron_count=args.neuron_count,
-                        checkpoint=checkpoint_path)
+                        checkpoint=checkpoint_path,
+                        init_mode='fast')
 
     # --- CRITICAL: Disable fast training → ALL bio subsystems active ---
     brain.set_fast_training(False)

@@ -586,6 +586,57 @@ NIMCP_EXPORT bool nimcp_gpu_sparse_backward_pass(
     float* out_grad_norm
 );
 
+/**
+ * @brief GPU sparse backward pass — accumulate gradients (no weight update)
+ *
+ * Same as nimcp_gpu_sparse_backward_pass but accumulates gradients into
+ * separate GPU buffers instead of updating weights in-place. Call
+ * nimcp_gpu_gradient_flush() after N samples to apply averaged gradients.
+ *
+ * @param d_weight_grad_accum Per-transition GPU gradient buffers [num_layers-1], same nnz as sparse_weights
+ * @param d_bias_grad_accum Per-transition GPU bias gradient buffers [num_layers-1]
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_sparse_backward_accumulate(
+    nimcp_gpu_context_t* gpu_ctx,
+    nimcp_sparse_ctx_t* sparse_ctx,
+    nimcp_sparse_tensor_t** sparse_weights,
+    nimcp_gpu_tensor_t** biases,
+    nimcp_gpu_tensor_t** activations,
+    float** d_weight_grad_accum,
+    float** d_bias_grad_accum,
+    int* layer_act_types,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    const float* target_host,
+    const float* output_host,
+    uint32_t output_size,
+    float learning_rate
+);
+
+/**
+ * @brief Apply accumulated gradients / batch_size to weights and biases
+ *
+ * Divides accumulated gradients by batch_size, applies to weights with clamping,
+ * resets gradient buffers to zero.
+ *
+ * @param batch_size Number of samples accumulated
+ * @param out_grad_norm Output: L2 norm of averaged gradients
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_gradient_flush(
+    nimcp_gpu_context_t* gpu_ctx,
+    nimcp_sparse_tensor_t** sparse_weights,
+    nimcp_gpu_tensor_t** biases,
+    float** d_weight_grad_accum,
+    float** d_bias_grad_accum,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    uint32_t batch_size,
+    float min_weight, float max_weight,
+    float* out_grad_norm
+);
+
 #ifdef __cplusplus
 }
 #endif

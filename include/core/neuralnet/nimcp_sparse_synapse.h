@@ -143,7 +143,7 @@ extern "C" {
  * @brief Maximum allowed pool size
  * WHY:  Prevents multi-GB allocations; pool falls back to malloc beyond this
  */
-#define SPARSE_SYNAPSE_MAX_POOL_SIZE 100000000
+#define SPARSE_SYNAPSE_MAX_POOL_SIZE 250000000
 
 /**
  * @brief Magic number for validation

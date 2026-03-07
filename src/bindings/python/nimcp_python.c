@@ -585,6 +585,92 @@ static PyObject* Brain_learn_vector(BrainObject* self, PyObject* args, PyObject*
 
 
 /**
+ * WHAT: Batch vector learning with GPU gradient accumulation
+ * WHY:  Mini-batch training: accumulate gradients across N samples, apply once
+ * HOW:  Takes list of (features, target) tuples, calls nimcp_brain_learn_vector_batch
+ */
+static PyObject* Brain_learn_vector_batch(BrainObject* self, PyObject* args) {
+    PyObject* batch_list;
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "O", &batch_list)) return NULL;
+    if (!PyList_Check(batch_list)) {
+        PyErr_SetString(PyExc_TypeError, "learn_vector_batch expects a list of (features, target) tuples");
+        return NULL;
+    }
+
+    Py_ssize_t num_examples = PyList_Size(batch_list);
+    if (num_examples <= 0) {
+        return PyFloat_FromDouble(-1.0);
+    }
+
+    /* Extract all feature/target arrays */
+    const float** features_array = nimcp_calloc(num_examples, sizeof(float*));
+    const float** targets_array = nimcp_calloc(num_examples, sizeof(float*));
+    if (!features_array || !targets_array) {
+        nimcp_free(features_array);
+        nimcp_free(targets_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate batch arrays");
+        return NULL;
+    }
+
+    Py_ssize_t num_features = 0, target_size = 0;
+
+    for (Py_ssize_t i = 0; i < num_examples; i++) {
+        PyObject* item = PyList_GetItem(batch_list, i);
+        if (!PyTuple_Check(item) || PyTuple_Size(item) < 2) {
+            for (Py_ssize_t j = 0; j < i; j++) {
+                nimcp_free((void*)features_array[j]);
+                nimcp_free((void*)targets_array[j]);
+            }
+            nimcp_free(features_array);
+            nimcp_free(targets_array);
+            PyErr_SetString(PyExc_TypeError, "Each item must be a (features, target) tuple");
+            return NULL;
+        }
+
+        Py_ssize_t nf, nt;
+        features_array[i] = py_list_to_float_array(PyTuple_GetItem(item, 0), &nf);
+        targets_array[i] = py_list_to_float_array(PyTuple_GetItem(item, 1), &nt);
+
+        if (!features_array[i] || !targets_array[i]) {
+            for (Py_ssize_t j = 0; j <= i; j++) {
+                nimcp_free((void*)features_array[j]);
+                nimcp_free((void*)targets_array[j]);
+            }
+            nimcp_free(features_array);
+            nimcp_free(targets_array);
+            PyErr_SetString(PyExc_ValueError, "Failed to convert features/target to float arrays");
+            return NULL;
+        }
+
+        if (i == 0) { num_features = nf; target_size = nt; }
+    }
+
+    float loss;
+    Py_BEGIN_ALLOW_THREADS
+    loss = nimcp_brain_learn_vector_batch(
+        self->brain, features_array, targets_array,
+        (uint32_t)num_features, (uint32_t)target_size,
+        (uint32_t)num_examples);
+    Py_END_ALLOW_THREADS
+
+    for (Py_ssize_t i = 0; i < num_examples; i++) {
+        nimcp_free((void*)features_array[i]);
+        nimcp_free((void*)targets_array[i]);
+    }
+    nimcp_free(features_array);
+    nimcp_free(targets_array);
+
+    return PyFloat_FromDouble((double)loss);
+}
+
+
+/**
  * WHAT: Unified experience — perceive input, predict output, and learn
  * WHY:  Merges inference + training for developmental online learning
  * HOW:  Forward pass → prediction error → attention-gated plasticity → reward
@@ -5236,6 +5322,10 @@ static PyMethodDef Brain_methods[] = {
      "Hardwire innate circuits: innate_hardwire(stage=0, face=True, voice=True, ...)\n"
      "  Stages: 0=newborn, 1=infant, 2=crawler, 3=toddler, 4=child.\n"
      "  Pre-configures biologically-inspired biases for perception and reflexes."},
+    {"learn_vector_batch", (PyCFunction)Brain_learn_vector_batch, METH_VARARGS,
+     "Batch vector learning with GPU gradient accumulation:\n"
+     "  learn_vector_batch([(features, target), ...]) -> float (avg loss)\n"
+     "  Accumulates gradients across all samples, applies averaged update once."},
     {"learn_batch", (PyCFunction)Brain_learn_batch, METH_VARARGS,
      "Learn from batch: learn_batch([(features, label, confidence), ...]) -> [loss, ...]"},
     {"predict", (PyCFunction)Brain_predict, METH_VARARGS,

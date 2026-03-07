@@ -98,6 +98,12 @@ typedef struct nimcp_gpu_weight_cache_s {
     uint32_t** connected_dst;              /**< Per-transition: local indices of connected dst neurons */
     uint32_t*  num_connected_dst;          /**< Per-transition: count of connected dst neurons */
     bool       connected_dst_valid;        /**< True once connected_dst lists are built */
+
+    // Gradient accumulation buffers (for mini-batch training)
+    float**    d_weight_grad_accum;        /**< Per-transition GPU weight gradient accum [nnz each] */
+    float**    d_bias_grad_accum;          /**< Per-transition GPU bias gradient accum [layer_size each] */
+    uint32_t   grad_accum_count;           /**< Number of samples accumulated since last flush */
+    bool       grad_accum_initialized;     /**< True once accum buffers are allocated */
 } nimcp_gpu_weight_cache_t;
 
 //=============================================================================
@@ -277,6 +283,51 @@ NIMCP_EXPORT bool nimcp_gpu_backward_pass(
     const float* output,
     uint32_t target_size,
     float learning_rate,
+    float min_weight, float max_weight,
+    float* out_grad_norm
+);
+
+//=============================================================================
+// GPU Gradient Accumulation (Mini-Batch Training)
+//=============================================================================
+
+/**
+ * @brief Accumulate gradients from one sample (no weight update)
+ *
+ * Lazily allocates GPU gradient buffers on first call. Runs GPU backward pass
+ * but writes gradients to accumulation buffers instead of updating weights.
+ *
+ * @param cache Weight cache
+ * @param target Target vector (host memory)
+ * @param output Network output (host memory)
+ * @param target_size Target vector size
+ * @param learning_rate Learning rate
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_backward_accumulate(
+    nimcp_gpu_weight_cache_t* cache,
+    const float* target,
+    const float* output,
+    uint32_t target_size,
+    float learning_rate
+);
+
+/**
+ * @brief Apply accumulated gradients to weights, then download to CPU
+ *
+ * Divides accumulated gradients by sample count, applies to weights,
+ * downloads updated weights to CPU synapse structs, resets accumulators.
+ *
+ * @param cache Weight cache
+ * @param net Neural network (for weight writeback)
+ * @param min_weight Minimum weight clamp
+ * @param max_weight Maximum weight clamp
+ * @param out_grad_norm Output gradient norm
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_gradient_flush_and_sync(
+    nimcp_gpu_weight_cache_t* cache,
+    neural_network_t net,
     float min_weight, float max_weight,
     float* out_grad_norm
 );

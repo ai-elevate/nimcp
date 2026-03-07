@@ -291,6 +291,18 @@ void nimcp_gpu_weight_cache_destroy(nimcp_gpu_weight_cache_t* cache)
     }
     nimcp_free(cache->num_connected_dst);
 
+    // Free gradient accumulation buffers
+    if (cache->grad_accum_initialized) {
+        for (uint32_t l = 0; l < num_transitions; l++) {
+            if (cache->d_weight_grad_accum && cache->d_weight_grad_accum[l])
+                nimcp_gpu_free(cache->ctx, cache->d_weight_grad_accum[l]);
+            if (cache->d_bias_grad_accum && cache->d_bias_grad_accum[l])
+                nimcp_gpu_free(cache->ctx, cache->d_bias_grad_accum[l]);
+        }
+    }
+    nimcp_free(cache->d_weight_grad_accum);
+    nimcp_free(cache->d_bias_grad_accum);
+
     // Free CPU arrays
     nimcp_free(cache->layer_sizes);
     nimcp_free(cache->layer_offsets);
@@ -928,6 +940,25 @@ bool nimcp_gpu_forward_pass_batch(
 // GPU Backward Pass (uses GPU sparse backprop kernels)
 //=============================================================================
 
+/**
+ * Build activation type int array from cache's layer_activations enum.
+ * Caller must free returned array.
+ */
+static int* build_act_types(nimcp_gpu_weight_cache_t* cache) {
+    int* act_types = nimcp_calloc(cache->num_layers, sizeof(int));
+    if (!act_types) return NULL;
+    for (uint32_t l = 0; l < cache->num_layers; l++) {
+        switch (cache->layer_activations[l]) {
+            case ACTIVATION_RELU:       act_types[l] = 0; break;
+            case ACTIVATION_LEAKY_RELU: act_types[l] = 1; break;
+            case ACTIVATION_TANH:       act_types[l] = 2; break;
+            case ACTIVATION_SIGMOID:    act_types[l] = 3; break;
+            default:                    act_types[l] = 1; break;
+        }
+    }
+    return act_types;
+}
+
 bool nimcp_gpu_backward_pass(
     nimcp_gpu_weight_cache_t* cache,
     neural_network_t net,
@@ -940,25 +971,13 @@ bool nimcp_gpu_backward_pass(
 {
     if (!cache || !net || !target || !output || !out_grad_norm) return false;
 
-    // Build activation type array for the kernel
-    uint32_t num_layers = cache->num_layers;
-    int* act_types = nimcp_calloc(num_layers, sizeof(int));
+    int* act_types = build_act_types(cache);
     if (!act_types) return false;
-    for (uint32_t l = 0; l < num_layers; l++) {
-        // Map activation_type_t enum to kernel int codes
-        switch (cache->layer_activations[l]) {
-            case ACTIVATION_RELU:       act_types[l] = 0; break;
-            case ACTIVATION_LEAKY_RELU: act_types[l] = 1; break;
-            case ACTIVATION_TANH:       act_types[l] = 2; break;
-            case ACTIVATION_SIGMOID:    act_types[l] = 3; break;
-            default:                    act_types[l] = 1; break;  // leaky_relu default
-        }
-    }
 
     bool ok = nimcp_gpu_sparse_backward_pass(
         cache->ctx, cache->sparse_ctx,
         cache->sparse_weights, cache->biases, cache->activations,
-        act_types, num_layers, cache->layer_sizes,
+        act_types, cache->num_layers, cache->layer_sizes,
         target, output, target_size,
         learning_rate, min_weight, max_weight,
         out_grad_norm);
@@ -966,9 +985,107 @@ bool nimcp_gpu_backward_pass(
     nimcp_free(act_types);
 
     if (ok) {
-        // Download updated weights back to CPU synapse structs
         nimcp_gpu_weight_cache_download(cache, net);
         cache->weights_dirty_on_cpu = true;
+    }
+
+    return ok;
+}
+
+//=============================================================================
+// Gradient Accumulation Bridge
+//=============================================================================
+
+/**
+ * Lazily initialize gradient accumulation buffers on GPU.
+ * Allocates per-transition weight and bias gradient buffers, zeroed.
+ */
+static bool ensure_grad_accum_buffers(nimcp_gpu_weight_cache_t* cache) {
+    if (cache->grad_accum_initialized) return true;
+
+    uint32_t num_transitions = cache->num_layers - 1;
+    cache->d_weight_grad_accum = nimcp_calloc(num_transitions, sizeof(float*));
+    cache->d_bias_grad_accum = nimcp_calloc(num_transitions, sizeof(float*));
+    if (!cache->d_weight_grad_accum || !cache->d_bias_grad_accum) {
+        LOG_ERROR("Failed to allocate grad accum pointer arrays");
+        return false;
+    }
+
+    for (uint32_t t = 0; t < num_transitions; t++) {
+        nimcp_sparse_tensor_t* W = cache->sparse_weights[t];
+        if (!W || W->format != SPARSE_FORMAT_CSR || W->data.csr.nnz == 0) continue;
+
+        // Weight gradient buffer: same nnz as sparse weight matrix
+        size_t w_bytes = W->data.csr.nnz * sizeof(float);
+        cache->d_weight_grad_accum[t] = (float*)nimcp_gpu_malloc(cache->ctx, w_bytes);
+        if (cache->d_weight_grad_accum[t]) {
+            nimcp_gpu_memset(cache->ctx, cache->d_weight_grad_accum[t], 0, w_bytes);
+        }
+
+        // Bias gradient buffer: layer_sizes[t+1]
+        uint32_t bias_size = cache->layer_sizes[t + 1];
+        size_t b_bytes = bias_size * sizeof(float);
+        cache->d_bias_grad_accum[t] = (float*)nimcp_gpu_malloc(cache->ctx, b_bytes);
+        if (cache->d_bias_grad_accum[t]) {
+            nimcp_gpu_memset(cache->ctx, cache->d_bias_grad_accum[t], 0, b_bytes);
+        }
+    }
+
+    cache->grad_accum_count = 0;
+    cache->grad_accum_initialized = true;
+    LOG_INFO("Gradient accumulation buffers initialized (%u transitions)", num_transitions);
+    return true;
+}
+
+bool nimcp_gpu_backward_accumulate(
+    nimcp_gpu_weight_cache_t* cache,
+    const float* target,
+    const float* output,
+    uint32_t target_size,
+    float learning_rate)
+{
+    if (!cache || !target || !output) return false;
+
+    if (!ensure_grad_accum_buffers(cache)) return false;
+
+    int* act_types = build_act_types(cache);
+    if (!act_types) return false;
+
+    bool ok = nimcp_gpu_sparse_backward_accumulate(
+        cache->ctx, cache->sparse_ctx,
+        cache->sparse_weights, cache->biases, cache->activations,
+        cache->d_weight_grad_accum, cache->d_bias_grad_accum,
+        act_types, cache->num_layers, cache->layer_sizes,
+        target, output, target_size, learning_rate);
+
+    nimcp_free(act_types);
+
+    if (ok) {
+        cache->grad_accum_count++;
+    }
+    return ok;
+}
+
+bool nimcp_gpu_gradient_flush_and_sync(
+    nimcp_gpu_weight_cache_t* cache,
+    neural_network_t net,
+    float min_weight, float max_weight,
+    float* out_grad_norm)
+{
+    if (!cache || !net || cache->grad_accum_count == 0) return false;
+    if (!cache->grad_accum_initialized) return false;
+
+    bool ok = nimcp_gpu_gradient_flush(
+        cache->ctx, cache->sparse_weights, cache->biases,
+        cache->d_weight_grad_accum, cache->d_bias_grad_accum,
+        cache->num_layers, cache->layer_sizes,
+        cache->grad_accum_count, min_weight, max_weight,
+        out_grad_norm);
+
+    if (ok) {
+        nimcp_gpu_weight_cache_download(cache, net);
+        cache->weights_dirty_on_cpu = true;
+        cache->grad_accum_count = 0;
     }
 
     return ok;

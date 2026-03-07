@@ -627,6 +627,287 @@ __global__ void kernel_sparse_delta_propagate(
 }
 
 //=============================================================================
+// Gradient Accumulation Kernels (for mini-batch training)
+//=============================================================================
+
+/**
+ * Accumulate weight gradients into a separate buffer (no weight update).
+ * grad_accum[idx] += lr * delta[row] * activation[col]
+ */
+__global__ void kernel_sparse_csr_grad_accumulate(
+    const int* __restrict__ csr_row_ptrs,
+    const int* __restrict__ csr_col_indices,
+    const float* __restrict__ delta,
+    const float* __restrict__ activation,
+    float* __restrict__ grad_accum,
+    int nnz, int rows, float lr)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= nnz) return;
+
+    int lo = 0, hi = rows - 1, row = 0;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (csr_row_ptrs[mid + 1] <= idx) { lo = mid + 1; }
+        else if (csr_row_ptrs[mid] > idx) { hi = mid - 1; }
+        else { row = mid; break; }
+    }
+    if (lo > hi) row = lo;
+
+    int col = csr_col_indices[idx];
+    float dj = delta[row];
+    if (dj > 1.0f) dj = 1.0f;
+    if (dj < -1.0f) dj = -1.0f;
+
+    float act = activation[col];
+    float grad = lr * dj * act;
+    float max_delta = fmaxf(0.1f, lr * 2.0f);
+    if (grad > max_delta) grad = max_delta;
+    if (grad < -max_delta) grad = -max_delta;
+
+    atomicAdd(&grad_accum[idx], grad);
+}
+
+/**
+ * Accumulate bias gradients (no update).
+ * bias_grad_accum[idx] += lr * delta[idx]
+ */
+__global__ void kernel_bias_grad_accumulate(
+    const float* __restrict__ delta,
+    float* __restrict__ bias_grad_accum,
+    int size, float lr)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+    atomicAdd(&bias_grad_accum[idx], lr * delta[idx]);
+}
+
+/**
+ * Apply accumulated weight gradients: W[idx] += grad_accum[idx] / batch_size, then clamp.
+ * Resets grad_accum to zero after applying.
+ */
+__global__ void kernel_sparse_apply_accumulated_grads(
+    float* __restrict__ csr_values,
+    float* __restrict__ grad_accum,
+    float* __restrict__ grad_norm_partial,
+    int nnz, float inv_batch_size,
+    float min_w, float max_w)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= nnz) return;
+
+    float avg_grad = grad_accum[idx] * inv_batch_size;
+    atomicAdd(grad_norm_partial, avg_grad * avg_grad);
+
+    float new_w = csr_values[idx] + avg_grad;
+    if (new_w < min_w) new_w = min_w;
+    if (new_w > max_w) new_w = max_w;
+    csr_values[idx] = new_w;
+    grad_accum[idx] = 0.0f;
+}
+
+/**
+ * Apply accumulated bias gradients: bias[idx] += bias_accum[idx] / batch_size, clamp, reset.
+ */
+__global__ void kernel_bias_apply_accumulated_grads(
+    float* __restrict__ bias,
+    float* __restrict__ bias_grad_accum,
+    float* __restrict__ grad_norm_partial,
+    int size, float inv_batch_size)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+
+    float avg_grad = bias_grad_accum[idx] * inv_batch_size;
+    atomicAdd(grad_norm_partial, avg_grad * avg_grad);
+    float new_b = bias[idx] + avg_grad;
+    if (new_b > 10.0f) new_b = 10.0f;
+    if (new_b < -10.0f) new_b = -10.0f;
+    bias[idx] = new_b;
+    bias_grad_accum[idx] = 0.0f;
+}
+
+//=============================================================================
+// GPU Sparse Backward Pass — Accumulate Mode (no weight update)
+//=============================================================================
+
+bool nimcp_gpu_sparse_backward_accumulate(
+    nimcp_gpu_context_t* gpu_ctx,
+    nimcp_sparse_ctx_t* sparse_ctx,
+    nimcp_sparse_tensor_t** sparse_weights,
+    nimcp_gpu_tensor_t** biases,
+    nimcp_gpu_tensor_t** activations,
+    float** d_weight_grad_accum,
+    float** d_bias_grad_accum,
+    int* layer_act_types,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    const float* target_host,
+    const float* output_host,
+    uint32_t output_size,
+    float learning_rate)
+{
+    if (!gpu_ctx || !sparse_weights || !activations || !d_weight_grad_accum
+        || !target_host || !output_host || num_layers < 2) {
+        return false;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_pool_stream(gpu_ctx);
+
+    uint32_t out_layer_size = layer_sizes[num_layers - 1];
+    uint32_t bp_size = out_layer_size < output_size ? out_layer_size : output_size;
+
+    float* d_target;
+    float* d_output;
+    if (cudaMalloc(&d_target, bp_size * sizeof(float)) != cudaSuccess) return false;
+    if (cudaMalloc(&d_output, bp_size * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_target); return false;
+    }
+    cudaMemcpy(d_target, target_host, bp_size * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_output, output_host, bp_size * sizeof(float), cudaMemcpyHostToDevice);
+
+    uint32_t max_layer = 0;
+    for (uint32_t l = 0; l < num_layers; l++) {
+        if (layer_sizes[l] > max_layer) max_layer = layer_sizes[l];
+    }
+
+    float* d_delta_cur;
+    float* d_delta_prev;
+    if (cudaMalloc(&d_delta_cur, max_layer * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_target); cudaFree(d_output); return false;
+    }
+    if (cudaMalloc(&d_delta_prev, max_layer * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_delta_cur); cudaFree(d_target); cudaFree(d_output); return false;
+    }
+    cudaMemset(d_delta_cur, 0, max_layer * sizeof(float));
+    cudaMemset(d_delta_prev, 0, max_layer * sizeof(float));
+
+    kernel_compute_deltas_mse<<<GRID_SIZE(bp_size), BLOCK_SIZE, 0, stream>>>(
+        d_delta_cur, d_target, d_output, bp_size);
+
+    cudaFree(d_target);
+    cudaFree(d_output);
+
+    float output_lr_boost = 10.0f;
+
+    for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
+        uint32_t cur_size = layer_sizes[layer];
+        uint32_t prev_size = layer_sizes[layer - 1];
+        bool is_output = (layer == (int32_t)num_layers - 1);
+
+        float layer_lr;
+        if (is_output) {
+            layer_lr = learning_rate * output_lr_boost;
+        } else {
+            layer_lr = learning_rate / powf(fmaxf((float)prev_size, 1.0f), 0.25f);
+        }
+
+        nimcp_sparse_tensor_t* W = sparse_weights[layer - 1];
+        if (!W || W->format != SPARSE_FORMAT_CSR) {
+            cudaMemset(d_delta_cur, 0, max_layer * sizeof(float));
+            continue;
+        }
+
+        int nnz = W->data.csr.nnz;
+        if (nnz == 0) continue;
+
+        // Accumulate bias gradients (instead of updating)
+        if (biases[layer - 1] && d_bias_grad_accum[layer - 1]) {
+            kernel_bias_grad_accumulate<<<GRID_SIZE(cur_size), BLOCK_SIZE, 0, stream>>>(
+                d_delta_cur, d_bias_grad_accum[layer - 1], cur_size, layer_lr);
+        }
+
+        // Accumulate weight gradients (instead of updating)
+        kernel_sparse_csr_grad_accumulate<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
+            W->data.csr.row_ptrs, W->data.csr.col_indices,
+            d_delta_cur,
+            (const float*)activations[layer - 1]->data,
+            d_weight_grad_accum[layer - 1],
+            nnz, W->data.csr.rows, layer_lr);
+
+        // Propagate deltas backward (same as non-accumulate path)
+        if (layer > 1) {
+            cudaMemset(d_delta_prev, 0, prev_size * sizeof(float));
+
+            kernel_sparse_delta_propagate<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
+                W->data.csr.values, W->data.csr.row_ptrs, W->data.csr.col_indices,
+                d_delta_cur, d_delta_prev, nnz, W->data.csr.rows);
+
+            int act_type = layer_act_types[layer - 1];
+            kernel_activation_derivative<<<GRID_SIZE(prev_size), BLOCK_SIZE, 0, stream>>>(
+                d_delta_prev, (const float*)activations[layer - 1]->data,
+                prev_size, act_type);
+
+            float* tmp = d_delta_cur;
+            d_delta_cur = d_delta_prev;
+            d_delta_prev = tmp;
+        }
+    }
+
+    cudaStreamSynchronize(stream);
+    cudaFree(d_delta_cur);
+    cudaFree(d_delta_prev);
+    return true;
+}
+
+//=============================================================================
+// GPU Gradient Flush — Apply accumulated gradients / batch_size
+//=============================================================================
+
+bool nimcp_gpu_gradient_flush(
+    nimcp_gpu_context_t* gpu_ctx,
+    nimcp_sparse_tensor_t** sparse_weights,
+    nimcp_gpu_tensor_t** biases,
+    float** d_weight_grad_accum,
+    float** d_bias_grad_accum,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    uint32_t batch_size,
+    float min_weight, float max_weight,
+    float* out_grad_norm)
+{
+    if (!gpu_ctx || !sparse_weights || num_layers < 2 || batch_size == 0) return false;
+
+    cudaStream_t stream = nimcp_gpu_get_pool_stream(gpu_ctx);
+    float inv_bs = 1.0f / (float)batch_size;
+
+    float* d_grad_norm;
+    float zero = 0.0f;
+    if (cudaMalloc(&d_grad_norm, sizeof(float)) != cudaSuccess) return false;
+    cudaMemcpy(d_grad_norm, &zero, sizeof(float), cudaMemcpyHostToDevice);
+
+    for (uint32_t layer = 1; layer < num_layers; layer++) {
+        nimcp_sparse_tensor_t* W = sparse_weights[layer - 1];
+        if (!W || W->format != SPARSE_FORMAT_CSR) continue;
+        int nnz = W->data.csr.nnz;
+        if (nnz == 0) continue;
+
+        if (d_weight_grad_accum[layer - 1]) {
+            kernel_sparse_apply_accumulated_grads<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
+                W->data.csr.values, d_weight_grad_accum[layer - 1],
+                d_grad_norm, nnz, inv_bs, min_weight, max_weight);
+        }
+
+        uint32_t cur_size = layer_sizes[layer];
+        if (biases[layer - 1] && d_bias_grad_accum[layer - 1]) {
+            kernel_bias_apply_accumulated_grads<<<GRID_SIZE(cur_size), BLOCK_SIZE, 0, stream>>>(
+                (float*)biases[layer - 1]->data, d_bias_grad_accum[layer - 1],
+                d_grad_norm, cur_size, inv_bs);
+        }
+    }
+
+    cudaStreamSynchronize(stream);
+    float grad_norm_sq;
+    cudaMemcpy(&grad_norm_sq, d_grad_norm, sizeof(float), cudaMemcpyDeviceToHost);
+    if (out_grad_norm) {
+        *out_grad_norm = sqrtf(grad_norm_sq);
+        if (!isfinite(*out_grad_norm)) *out_grad_norm = 0.0f;
+    }
+    cudaFree(d_grad_norm);
+    return true;
+}
+
+//=============================================================================
 // GPU Sparse Backward Pass — Orchestrator
 //=============================================================================
 
@@ -849,6 +1130,36 @@ bool nimcp_gpu_sparse_backward_pass(
     (void)activations; (void)layer_act_types; (void)num_layers; (void)layer_sizes;
     (void)target_host; (void)output_host; (void)output_size;
     (void)learning_rate; (void)min_weight; (void)max_weight; (void)out_grad_norm;
+    return false;
+}
+
+bool nimcp_gpu_sparse_backward_accumulate(
+    nimcp_gpu_context_t* gpu_ctx, nimcp_sparse_ctx_t* sparse_ctx,
+    nimcp_sparse_tensor_t** sparse_weights, nimcp_gpu_tensor_t** biases,
+    nimcp_gpu_tensor_t** activations, float** d_weight_grad_accum,
+    float** d_bias_grad_accum, int* layer_act_types,
+    uint32_t num_layers, const uint32_t* layer_sizes,
+    const float* target_host, const float* output_host,
+    uint32_t output_size, float learning_rate)
+{
+    (void)gpu_ctx; (void)sparse_ctx; (void)sparse_weights; (void)biases;
+    (void)activations; (void)d_weight_grad_accum; (void)d_bias_grad_accum;
+    (void)layer_act_types; (void)num_layers; (void)layer_sizes;
+    (void)target_host; (void)output_host; (void)output_size; (void)learning_rate;
+    return false;
+}
+
+bool nimcp_gpu_gradient_flush(
+    nimcp_gpu_context_t* gpu_ctx, nimcp_sparse_tensor_t** sparse_weights,
+    nimcp_gpu_tensor_t** biases, float** d_weight_grad_accum,
+    float** d_bias_grad_accum, uint32_t num_layers,
+    const uint32_t* layer_sizes, uint32_t batch_size,
+    float min_weight, float max_weight, float* out_grad_norm)
+{
+    (void)gpu_ctx; (void)sparse_weights; (void)biases;
+    (void)d_weight_grad_accum; (void)d_bias_grad_accum;
+    (void)num_layers; (void)layer_sizes; (void)batch_size;
+    (void)min_weight; (void)max_weight; (void)out_grad_norm;
     return false;
 }
 

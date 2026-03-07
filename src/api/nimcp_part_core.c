@@ -155,6 +155,45 @@ nimcp_status_t nimcp_brain_learn_vector(
 }
 
 
+float nimcp_brain_learn_vector_batch(
+    nimcp_brain_t brain,
+    const float** features_array,
+    const float** targets_array,
+    uint32_t num_features,
+    uint32_t target_size,
+    uint32_t num_examples)
+{
+    if (!brain || !brain->internal_brain || !features_array || !targets_array) return -1.0f;
+    if (num_examples == 0 || num_features == 0 || target_size == 0) return -1.0f;
+
+    // Build training_example_t array
+    training_example_t* examples = nimcp_calloc(num_examples, sizeof(training_example_t));
+    if (!examples) return -1.0f;
+
+    for (uint32_t i = 0; i < num_examples; i++) {
+        examples[i].input = (float*)features_array[i];
+        examples[i].input_size = num_features;
+        examples[i].target = (float*)targets_array[i];
+        examples[i].target_size = target_size;
+        examples[i].confidence = 1.0f;
+        examples[i].label[0] = '\0';
+    }
+
+    float loss = adaptive_network_learn_batch(
+        brain->internal_brain->network, examples, num_examples,
+        LEARN_MODE_DISTILLATION, brain->internal_brain->config.learning_rate);
+
+    nimcp_free(examples);
+
+    if (loss >= 0.0f) {
+        brain->last_loss = loss;
+        brain->last_gradient_norm = adaptive_network_get_last_grad_norm(
+            brain->internal_brain->network);
+    }
+
+    return loss;
+}
+
 float nimcp_brain_get_last_loss(nimcp_brain_t brain)
 {
     if (!brain) return -1.0F;

@@ -406,6 +406,30 @@ nimcp_status_t nimcp_brain_learn_batch(
 );
 
 /**
+ * @brief Batch vector learning with GPU gradient accumulation
+ *
+ * Processes multiple (features, target) pairs in a single mini-batch.
+ * On GPU: accumulates gradients across all samples, applies averaged update once.
+ * On CPU: falls back to per-sample learning.
+ *
+ * @param brain Brain handle
+ * @param features_array Array of feature pointers [num_examples]
+ * @param targets_array Array of target pointers [num_examples]
+ * @param num_features Feature vector size (uniform for all examples)
+ * @param target_size Target vector size (uniform for all examples)
+ * @param num_examples Number of examples in the batch
+ * @return Average loss across batch, or -1.0f on error
+ */
+float nimcp_brain_learn_vector_batch(
+    nimcp_brain_t brain,
+    const float** features_array,
+    const float** targets_array,
+    uint32_t num_features,
+    uint32_t target_size,
+    uint32_t num_examples
+);
+
+/**
  * @brief Get the loss value from the most recent learn_example call
  *
  * @param brain Brain handle

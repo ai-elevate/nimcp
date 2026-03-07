@@ -76,6 +76,7 @@
 #include "utils/thread/nimcp_thread_rand.h"
 #include "utils/thread/nimcp_thread_pool.h"
 #include <stdatomic.h>
+#include <pthread.h>
 #include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet)
@@ -749,9 +750,13 @@ neural_network_t neural_network_create(const network_config_t* config)
         hpool_cfg.thread_safe = true;
         network->synapse_handle_pool = sparse_synapse_pool_create(&hpool_cfg);
 
-        // Metadata pool: same size as handle pool (1:1 handle-to-metadata)
+        // Metadata pool: start small (5% of handle pool), grows on demand via block allocator.
+        // Most synapses never need full metadata — only those using STDP/BCM/eligibility.
+        // Pre-allocating 1:1 wastes ~36GB for 1.5M-neuron networks.
         synapse_metadata_pool_config_t mpool_cfg = synapse_metadata_pool_default_config();
-        mpool_cfg.pool_size = pool_size;
+        uint32_t meta_initial = pool_size / 20;
+        if (meta_initial < 100000) meta_initial = 100000;
+        mpool_cfg.pool_size = meta_initial;
         mpool_cfg.enable_statistics = true;
         mpool_cfg.thread_safe = true;
         network->synapse_metadata_pool = synapse_metadata_pool_create(&mpool_cfg);
@@ -1926,6 +1931,60 @@ static float compute_stdp_update(float dt, const stdp_params_t* params)
     }
 }
 
+//=============================================================================
+// Parallel biological learning worker
+//=============================================================================
+typedef struct {
+    neural_network_t network;
+    uint32_t start;
+    uint32_t end;
+    uint64_t current_time;
+    float reward;
+    float learning_rate;
+    uint32_t modified;
+} bio_learn_worker_t;
+
+static void* _bio_learn_trace_worker(void* arg) {
+    bio_learn_worker_t* w = (bio_learn_worker_t*)arg;
+    for (uint32_t n = w->start; n < w->end; n++) {
+        float activity = fabsf(w->network->neurons[n].state);
+        neuron_t* neuron = &w->network->neurons[n];
+        for (uint32_t s = 0; s < NEURON_OUT_COUNT(neuron); s++) {
+            synapse_t* trace_syn = NEURON_OUT_META(w->network, neuron, s);
+            if (trace_syn) trace_syn->trace = activity;
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief Parallel trace-setting for active neuron subset
+ *
+ * @param network   The neural network
+ * @param active_ids Array of active neuron indices
+ * @param num_active Number of active neurons
+ */
+typedef struct {
+    neural_network_t network;
+    uint32_t* active_ids;
+    uint32_t start;
+    uint32_t end;
+} bio_learn_active_trace_worker_t;
+
+static void* _bio_learn_active_trace_worker(void* arg) {
+    bio_learn_active_trace_worker_t* w = (bio_learn_active_trace_worker_t*)arg;
+    for (uint32_t i = w->start; i < w->end; i++) {
+        uint32_t n = w->active_ids[i];
+        float activity = fabsf(w->network->neurons[n].state);
+        neuron_t* neuron = &w->network->neurons[n];
+        for (uint32_t s = 0; s < NEURON_OUT_COUNT(neuron); s++) {
+            synapse_t* trace_syn = NEURON_OUT_META(w->network, neuron, s);
+            if (trace_syn) trace_syn->trace = activity;
+        }
+    }
+    return NULL;
+}
+
 /**
  * @brief Apply reward-modulated learning to all synapses (Phase 11)
  *
@@ -1948,15 +2007,35 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
 
     uint32_t total_modified = 0;
 
-    // PRE-PASS: Set outgoing synapse traces from current neuron states
+    // PRE-PASS: Set outgoing synapse traces from current neuron states (parallel)
     // WHY: The forward pass sets neuron->state but never updates outgoing synapse traces.
     //      Eligibility learning needs syn->trace > 0.1 to trigger weight updates.
-    for (uint32_t n = 0; n < network->num_neurons; n++) {
-        float activity = fabsf(network->neurons[n].state);
-        neuron_t* pre_neuron = &network->neurons[n];
-        for (uint32_t s = 0; s < NEURON_OUT_COUNT(pre_neuron); s++) {
-            synapse_t* trace_syn = NEURON_OUT_META(network, pre_neuron, s);
-            if (trace_syn) trace_syn->trace = activity;
+    {
+        const uint32_t NUM_BIO_THREADS = 4;
+        uint32_t total_n = network->num_neurons;
+        if (total_n > 50000) {
+            pthread_t threads[NUM_BIO_THREADS];
+            bio_learn_worker_t workers[NUM_BIO_THREADS];
+            uint32_t chunk = total_n / NUM_BIO_THREADS;
+            for (uint32_t t = 0; t < NUM_BIO_THREADS; t++) {
+                workers[t].network = network;
+                workers[t].start = t * chunk;
+                workers[t].end = (t == NUM_BIO_THREADS - 1) ? total_n : (t + 1) * chunk;
+                pthread_create(&threads[t], NULL, _bio_learn_trace_worker, &workers[t]);
+            }
+            for (uint32_t t = 0; t < NUM_BIO_THREADS; t++) {
+                pthread_join(threads[t], NULL);
+            }
+        } else {
+            // Small network — sequential
+            for (uint32_t n = 0; n < total_n; n++) {
+                float activity = fabsf(network->neurons[n].state);
+                neuron_t* pre_neuron = &network->neurons[n];
+                for (uint32_t s = 0; s < NEURON_OUT_COUNT(pre_neuron); s++) {
+                    synapse_t* trace_syn = NEURON_OUT_META(network, pre_neuron, s);
+                    if (trace_syn) trace_syn->trace = activity;
+                }
+            }
         }
     }
 
@@ -2208,14 +2287,34 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
 
     uint32_t total_modified = 0;
 
-    /* Phase 2: Set outgoing synapse traces for active neurons only */
-    for (uint32_t i = 0; i < num_active; i++) {
-        uint32_t n = active_ids[i];
-        float activity = fabsf(network->neurons[n].state);
-        neuron_t* neuron = &network->neurons[n];
-        for (uint32_t s = 0; s < NEURON_OUT_COUNT(neuron); s++) {
-            synapse_t* trace_syn = NEURON_OUT_META(network, neuron, s);
-            if (trace_syn) trace_syn->trace = activity;
+    /* Phase 2: Set outgoing synapse traces for active neurons only (parallel) */
+    {
+        const uint32_t NUM_BIO_THREADS = 4;
+        if (num_active > 10000) {
+            pthread_t threads[NUM_BIO_THREADS];
+            bio_learn_active_trace_worker_t workers[NUM_BIO_THREADS];
+            uint32_t chunk = num_active / NUM_BIO_THREADS;
+            for (uint32_t t = 0; t < NUM_BIO_THREADS; t++) {
+                workers[t].network = network;
+                workers[t].active_ids = active_ids;
+                workers[t].start = t * chunk;
+                workers[t].end = (t == NUM_BIO_THREADS - 1) ? num_active : (t + 1) * chunk;
+                pthread_create(&threads[t], NULL, _bio_learn_active_trace_worker, &workers[t]);
+            }
+            for (uint32_t t = 0; t < NUM_BIO_THREADS; t++) {
+                pthread_join(threads[t], NULL);
+            }
+        } else {
+            // Small active set — sequential
+            for (uint32_t i = 0; i < num_active; i++) {
+                uint32_t n = active_ids[i];
+                float activity = fabsf(network->neurons[n].state);
+                neuron_t* neuron = &network->neurons[n];
+                for (uint32_t s = 0; s < NEURON_OUT_COUNT(neuron); s++) {
+                    synapse_t* trace_syn = NEURON_OUT_META(network, neuron, s);
+                    if (trace_syn) trace_syn->trace = activity;
+                }
+            }
         }
     }
 
