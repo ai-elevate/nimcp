@@ -751,7 +751,23 @@ void dendrite_step(dendrite_t* dendrite, float dt_ms, uint64_t timestamp) {
 
     nimcp_mutex_lock(&dendrite->lock);
 
-    // Update all segments
+    // Dendritic cable equations change slowly — full computation every 10 steps
+    // Interpolate between full computations using cached gradient
+    dendrite->update_counter++;
+    if (dendrite->update_counter % 10 != 0 && dendrite->update_counter > 10) {
+        // Interpolate: use cached gradient from last full computation
+        dendrite->mean_voltage += dendrite->cached_mean_dv * (dt_ms / 1000.0F);
+        // Clamp interpolated voltage
+        if (dendrite->mean_voltage < -0.080F) dendrite->mean_voltage = -0.080F;
+        if (dendrite->mean_voltage > 0.040F) dendrite->mean_voltage = 0.040F;
+        dendrite->activity.mean_voltage = dendrite->mean_voltage;
+        nimcp_mutex_unlock(&dendrite->lock);
+        return;
+    }
+
+    float old_mean_voltage = dendrite->mean_voltage;
+
+    // Update all segments (full compartmental model computation)
     for (uint32_t i = 0; i < dendrite->num_segments; i++) {
         update_segment_voltage(&dendrite->segments[i], dt_ms);
         update_segment_calcium(&dendrite->segments[i], dt_ms);
@@ -765,6 +781,12 @@ void dendrite_step(dendrite_t* dendrite, float dt_ms, uint64_t timestamp) {
             voltage_sum += dendrite->segments[i].voltage;
         }
         dendrite->mean_voltage = voltage_sum / (float)dendrite->num_segments;
+
+        // Cache voltage gradient for interpolation in skip-frames
+        float dt_s = dt_ms / 1000.0F;
+        if (dt_s > 1e-10F) {
+            dendrite->cached_mean_dv = (dendrite->mean_voltage - old_mean_voltage) / dt_s;
+        }
 
         // Update calcium level (mean across segments)
         float calcium_sum = 0.0F;
@@ -783,6 +805,7 @@ void dendrite_step(dendrite_t* dendrite, float dt_ms, uint64_t timestamp) {
         dendrite->calcium_level = 0.0F;
         dendrite->activity.mean_voltage = 0.0F;
         dendrite->activity.mean_calcium = 0.0F;
+        dendrite->cached_mean_dv = 0.0F;
     }
 
     nimcp_mutex_unlock(&dendrite->lock);

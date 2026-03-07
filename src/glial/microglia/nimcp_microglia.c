@@ -1354,6 +1354,7 @@ nimcp_result_t microglia_network_add(microglia_network_t* network, microglia_t* 
     network->microglia[network->num_microglia] = mg;
     network->num_microglia++;
     network->spatial_index_valid = false;  /* Need to rebuild KD-tree */
+    network->synapse_changes_since_rebuild++;  /* Track changes for lazy rebuild */
 
     nimcp_mutex_unlock(&network->lock);
     return NIMCP_SUCCESS;
@@ -1397,6 +1398,16 @@ void microglia_network_rebuild_spatial_index(microglia_network_t* network)
     }
 
     network->spatial_index_valid = true;
+    network->synapse_changes_since_rebuild = 0;  /* Reset change counter after rebuild */
+
+    /* Update total synapse count for lazy rebuild threshold */
+    uint32_t total_synapses = 0;
+    for (uint32_t i = 0; i < network->num_microglia; i++) {
+        if (network->microglia[i]) {
+            total_synapses += network->microglia[i]->num_monitored_synapses;
+        }
+    }
+    network->total_monitored_synapse_count = total_synapses;
 
     nimcp_mutex_unlock(&network->lock);
 }
@@ -1476,7 +1487,21 @@ void microglia_network_step(microglia_network_t* network, uint64_t current_time)
     // Diffuse cytokines between nearby microglia
     microglia_network_diffuse_cytokines(network, dt_s);
 
-    nimcp_mutex_unlock(&network->lock);
+    // Lazy KD-tree rebuild: only rebuild when synapse changes exceed 10% threshold
+    // This avoids expensive O(N log N) rebuilds on every minor change
+    if (!network->spatial_index_valid) {
+        uint32_t threshold = network->total_monitored_synapse_count / 10;
+        if (threshold < 10) threshold = 10;  // Minimum threshold
+        if (network->synapse_changes_since_rebuild >= threshold) {
+            nimcp_mutex_unlock(&network->lock);
+            microglia_network_rebuild_spatial_index(network);
+        } else {
+            nimcp_mutex_unlock(&network->lock);
+        }
+    } else {
+        nimcp_mutex_unlock(&network->lock);
+    }
+    return;
 }
 
 microglia_t* microglia_network_find_by_synapse(microglia_network_t* network,

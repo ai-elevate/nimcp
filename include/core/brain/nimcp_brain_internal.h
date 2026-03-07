@@ -305,6 +305,7 @@ struct brain_struct {
     // Simulation Time Tracking (for proper glial/calcium dynamics)
     uint64_t current_time_us;                    // Current simulation time in microseconds
     uint64_t last_glial_update_us;               // Last glial integration update time
+    uint32_t glial_update_counter;               // Step counter for glial update amortization
 
     // === PHASE 10: ADVANCED COGNITIVE SYSTEMS ===
 

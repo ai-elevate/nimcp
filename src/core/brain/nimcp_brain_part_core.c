@@ -2250,21 +2250,21 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
     // IMPLEMENTATION: Trigger glial integration step for this decision cycle
     // Note: glial_integration_step() will synchronize network_time internally
+    // Glial dynamics are biologically slow — amortize updates over 50 training steps
     if (brain->glial && brain->config.enable_glial) {
-        // Step 1: Update glial cell states based on network activity
-        // This updates astrocyte calcium levels, oligodendrocyte myelination,
-        // and microglia synaptic pruning decisions
-        glial_integration_step(brain->glial, brain->current_time_us);
+        brain->glial_update_counter++;
+        if (brain->glial_update_counter % 50 == 0) {
+            // Step 1: Update glial cell states based on network activity
+            // This updates astrocyte calcium levels, oligodendrocyte myelination,
+            // and microglia synaptic pruning decisions
+            glial_integration_step(brain->glial, brain->current_time_us);
 
-        // Step 2: Glial modulation is automatically applied during forward pass
-        // (already integrated in adaptive_network_forward() via glial callbacks)
-        // - Astrocytes: Modulate synaptic weights based on calcium levels
-        // - Oligodendrocytes: Adjust conduction delays via myelination factors
-        // - Microglia: Prune weak synapses to optimize network connectivity
-
-        // Optional: Get modulation stats for monitoring
-        // float astrocyte_modulation = glial_integration_get_avg_synaptic_modulation(brain->glial);
-        // float myelination_speedup = glial_integration_get_avg_myelination_factor(brain->glial);
+            // Step 2: Glial modulation is automatically applied during forward pass
+            // (already integrated in adaptive_network_forward() via glial callbacks)
+            // - Astrocytes: Modulate synaptic weights based on calcium levels
+            // - Oligodendrocytes: Adjust conduction delays via myelination factors
+            // - Microglia: Prune weak synapses to optimize network connectivity
+        }
     }
 
     // ========================================================================

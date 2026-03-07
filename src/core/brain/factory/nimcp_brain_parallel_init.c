@@ -381,6 +381,7 @@ static bool init_inline_fields(brain_t brain) {
     // Simulation time
     brain->current_time_us = 0;
     brain->last_glial_update_us = 0;
+    brain->glial_update_counter = 0;
 
     /* 40-watt brain: Only allocate spike analysis for SNN networks */
     if (brain->snn_network) {

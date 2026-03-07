@@ -702,6 +702,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         sparse_synapse_storage_t saved_outgoing = new_neuron->outgoing;
         sparse_synapse_storage_t saved_incoming = new_neuron->incoming;
         void* saved_type_params = new_neuron->type_params;
+        neuron_cold_data_t* saved_cold = new_neuron->cold;
         uint32_t* saved_dendrite_ids = new_neuron->dendrite_ids;
         uint32_t saved_num_dendrites = new_neuron->num_dendrites;
         spike_record_t* saved_spike_history = new_neuron->spike_history;
@@ -719,6 +720,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         // Clear heap pointers that belong to old network
         // (type_params/dendrites are rarely used; new neurons start without them)
         new_neuron->type_params = saved_type_params;
+        new_neuron->cold = saved_cold;
         new_neuron->dendrite_ids = saved_dendrite_ids;
         new_neuron->num_dendrites = saved_num_dendrites;
 

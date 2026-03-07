@@ -725,6 +725,7 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Simulation time tracking
     brain->current_time_us = 0;
     brain->last_glial_update_us = 0;
+    brain->glial_update_counter = 0;
 
     // Phase 10.2: Working memory (heavy - item buffers, decay dynamics)
     if (!brain->config.lazy_working_memory_init) {

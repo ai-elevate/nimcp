@@ -97,6 +97,34 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet)
 /* Single authoritative definition of neural_network_struct and activation types */
 #include "core/neuralnet/nimcp_neuralnet_internal.h"
 
+//=============================================================================
+// Neuron Cold Data Factory Functions
+//=============================================================================
+
+neuron_cold_data_t* neuron_cold_data_create(void) {
+    neuron_cold_data_t* cold = (neuron_cold_data_t*)nimcp_calloc(1, sizeof(neuron_cold_data_t));
+    return cold;
+}
+
+void neuron_cold_data_destroy(neuron_cold_data_t* cold) {
+    if (!cold) return;
+    nimcp_free(cold);
+}
+
+/**
+ * @brief Sync neuron's hot-path fields to cold data mirror
+ *
+ * WHAT: Copy oja_params, creation_time, model_type from neuron to cold struct
+ * WHY:  Cold data is the authoritative copy for cache-optimized access paths
+ * WHEN: Called after any modification to the mirrored fields
+ */
+static inline void neuron_sync_to_cold(neuron_t* neuron) {
+    if (!neuron || !neuron->cold) return;
+    neuron->cold->oja_params = neuron->oja_params;
+    neuron->cold->creation_time = neuron->creation_time;
+    neuron->cold->model_type = neuron->model_type;
+}
+
 /* Fast exp approximation using IEEE 754 bit manipulation.
  * ~3x faster than expf() with <0.1% error for |x| < 10.
  * Based on Schraudolph (1999) "A Fast, Compact Approximation of the Exponential Function" */
@@ -312,9 +340,15 @@ static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id, neuron_t
     neuron->state = neuron->rest_potential;
     neuron->bias = (float) nimcp_tl_rand() / (float) RAND_MAX * 0.1F - 0.05F;
     neuron->external_current = 0.0F;  // No external input by default
+    neuron->ema_activity = 0.0f;       // Initialize EMA activity tracking
     neuron->creation_time = creation_time;
     neuron->last_update = creation_time;
     neuron->last_spike = 0;
+
+    // Sync cold data mirror
+    if (neuron->cold) {
+        neuron->cold->creation_time = creation_time;
+    }
 }
 
 /**
@@ -345,6 +379,11 @@ static void init_neuron_learning_params(neuron_t* neuron, const network_config_t
     neuron->stdp_params.negative_factor = 0.8F;
 
     neuron->plasticity_rate = config->learning_rate;
+
+    // Sync Oja params to cold data mirror
+    if (neuron->cold) {
+        neuron->cold->oja_params = neuron->oja_params;
+    }
 }
 
 /**
@@ -383,6 +422,7 @@ static void init_neuron_activity_tracking(neuron_t* neuron, uint32_t spike_capac
     neuron->spike_history_index = 0;
     neuron->spike_history_count = 0;
     neuron->avg_activity = 0.0F;
+    neuron->ema_activity = 0.0f;
     neuron->spike_history = (spike_record_t*)nimcp_calloc(spike_capacity, sizeof(spike_record_t));
 
     // Activity history: heap-allocated dynamic buffer
@@ -410,6 +450,7 @@ static void init_neuron_activity_tracking_bulk(neuron_t* neuron, uint32_t spike_
     neuron->spike_history_index = 0;
     neuron->spike_history_count = 0;
     neuron->avg_activity = 0.0F;
+    neuron->ema_activity = 0.0f;
     neuron->spike_history = spike_buf;  // Points into bulk array
 
     neuron->activity_history_capacity = activity_capacity;
@@ -628,6 +669,18 @@ neural_network_t neural_network_create(const network_config_t* config)
 
     network->capacity = capacity;
 
+    // Bulk-allocate cold data for all neurons (single allocation for cache efficiency)
+    {
+        neuron_cold_data_t* cold_bulk = (neuron_cold_data_t*)nimcp_calloc(capacity, sizeof(neuron_cold_data_t));
+        if (cold_bulk) {
+            for (uint32_t ci = 0; ci < capacity; ci++) {
+                network->neurons[ci].cold = &cold_bulk[ci];
+            }
+        } else {
+            LOG_WARN("Cold data bulk allocation failed for %u neurons, cold data disabled", capacity);
+        }
+    }
+
     /**
      * WHAT: Deep copy layer_sizes array if present (NIMCP 2.5 layered networks)
      * WHY: Config may be stack-allocated, need our own persistent copy
@@ -715,6 +768,9 @@ neural_network_t neural_network_create(const network_config_t* config)
         }
 
         init_neuron_model(neuron, config);  // NIMCP 2.6: Initialize neuron model plugin
+
+        // Sync all cold-data fields after full initialization
+        neuron_sync_to_cold(neuron);
     }
 
     network->num_neurons = actual_neurons;
@@ -1154,6 +1210,14 @@ void neural_network_destroy(neural_network_t network)
     nimcp_free(network->active_neuron_ids);
     network->active_neuron_ids = NULL;
 
+    // Free cold data bulk array (allocated as single block in neural_network_create)
+    if (network->neurons && network->capacity > 0 && network->neurons[0].cold) {
+        nimcp_free(network->neurons[0].cold);  // Free bulk cold data array
+        for (uint32_t ci = 0; ci < network->capacity; ci++) {
+            network->neurons[ci].cold = NULL;
+        }
+    }
+
     if (network->neurons) {
         nimcp_free(network->neurons);
     }
@@ -1312,6 +1376,16 @@ static float sum_embedded_synapses_fast(neuron_t* neuron, neural_network_t netwo
         uint32_t src_id = in_h->target_neuron_id;
         if (src_id >= network->num_neurons) continue;
 
+        /* Prefetch next synapse's presynaptic neuron state for cache warmup */
+#ifdef __GNUC__
+        if (i + 1 < count) {
+            uint32_t next_src = neuron->incoming.embedded[i + 1].target_neuron_id;
+            if (next_src < network->num_neurons) {
+                __builtin_prefetch(&network->neurons[next_src].state, 0, 1);
+            }
+        }
+#endif
+
         neuron_t* src = &network->neurons[src_id];
         float pre_activity = (src->state > src->threshold) ? src->state : 0.0f;
 
@@ -1343,9 +1417,20 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
     // COMPLEXITY: O(S) where S = num incoming synapses (was O(N×S))
     // SPEEDUP: 10-100x for large networks (N > 1000)
 
-    for (uint32_t i = 0; i < NEURON_IN_COUNT(neuron); i++) {
+    uint32_t in_count = NEURON_IN_COUNT(neuron);
+    for (uint32_t i = 0; i < in_count; i++) {
         synapse_handle_t* in_h = NEURON_IN_HANDLE(neuron, i);
         if (!in_h) continue;
+
+        // Prefetch next synapse's presynaptic neuron state for cache warmup
+#ifdef __GNUC__
+        if (i + 1 < in_count) {
+            synapse_handle_t* next_h = NEURON_IN_HANDLE(neuron, i + 1);
+            if (next_h && next_h->target_neuron_id < network->num_neurons) {
+                __builtin_prefetch(&network->neurons[next_h->target_neuron_id].state, 0, 1);
+            }
+        }
+#endif
 
         // In incoming handle, target_neuron_id stores the SOURCE neuron ID
         uint32_t src_id = in_h->target_neuron_id;
@@ -1578,6 +1663,9 @@ static void update_activity_history(neuron_t* neuron, float new_state, uint64_t 
     // Incremental EMA: O(1) instead of O(w) full-window average
     float decay = 1.0f / (float)cap;
     neuron->avg_activity = neuron->avg_activity * (1.0f - decay) + new_state * decay;
+
+    // Activity EMA with fixed alpha=0.05 for neuron-level optimization tracking
+    neuron->ema_activity = 0.95f * neuron->ema_activity + 0.05f * new_state;
 }
 
 /**
@@ -3378,6 +3466,7 @@ void neural_network_reset(neural_network_t network)
         neuron->adaptation = 0.0F;
         neuron->calcium_concentration = 0.0F;
         neuron->avg_activity = 0.0F;
+        neuron->ema_activity = 0.0f;
 
         // Reset spike history (dynamic ring buffer)
         neuron->spike_history_index = 0;
@@ -3571,17 +3660,27 @@ uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t a
     uint32_t new_id = network->num_neurons;
     neuron_t* neuron = &network->neurons[new_id];
 
-    // Initialize neuron with default values
+    // Initialize neuron with default values (preserve cold pointer from bulk allocation)
+    neuron_cold_data_t* saved_cold = neuron->cold;
     memset(neuron, 0, sizeof(neuron_t));
+    neuron->cold = saved_cold;
+    if (!neuron->cold) {
+        // Fallback: individually allocate cold data if not bulk-allocated
+        neuron->cold = neuron_cold_data_create();
+    }
     neuron->id = new_id;
     neuron->activation_type = activation;
     neuron->type = NEURON_EXCITATORY;  // Default to excitatory
     neuron->rest_potential = 0.0F;   // Normalized resting potential
     neuron->threshold = 0.5F;        // Normalized spike threshold
+    neuron->ema_activity = 0.0f;
     neuron->creation_time = network->network_time;
 
     // NIMCP 2.6: Initialize neuron model (uses network config)
     init_neuron_model(neuron, &network->config);
+
+    // Sync cold data after initialization
+    neuron_sync_to_cold(neuron);
 
     // Allocate spike history ring buffer
     uint32_t spike_cap = resolve_spike_history_capacity(&network->config);

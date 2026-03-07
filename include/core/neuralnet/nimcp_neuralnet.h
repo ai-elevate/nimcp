@@ -158,6 +158,52 @@ typedef struct {
 } oja_params_t;
 
 /**
+ * @brief Union of neuron type parameters for inline storage
+ *
+ * WHAT: Replaces void* type_params with inline union (no heap allocation)
+ * WHY:  Eliminates pointer indirection and malloc/free for type params
+ * HOW:  Union of all known model parameter types + raw fallback
+ */
+typedef union {
+    lif_params_t lif;
+    uint8_t raw[64]; /**< Reserve space for any model params */
+} neuron_type_params_union_t;
+
+/**
+ * @brief Cold (rarely-accessed) neuron data
+ *
+ * WHAT: Struct for neuron fields that are NOT on the hot path
+ * WHY:  Cache line optimization - keep hot fields (state, bias, threshold,
+ *       activation_type, synapses) packed in neuron_struct, push cold
+ *       fields (oja_params, creation_time, model_type, type_params) here.
+ * HOW:  Allocated once per neuron alongside the neuron array.
+ *       Access via neuron->cold->field.
+ *
+ * NOTE: For backward compatibility, the original fields remain in neuron_struct.
+ *       New code should prefer neuron->cold->field for cache-friendly access.
+ *       The cold struct fields are authoritative; the neuron_struct copies
+ *       will be deprecated in a future release.
+ */
+typedef struct {
+    oja_params_t oja_params;              /**< Oja learning parameters */
+    uint64_t creation_time;               /**< Neuron creation timestamp */
+    neuron_model_type_t model_type;       /**< Type of model being used */
+    neuron_type_params_union_t type_params; /**< Type-specific parameters (inline, no heap) */
+} neuron_cold_data_t;
+
+/**
+ * @brief Create cold data struct for a neuron
+ * @return Heap-allocated cold data initialized to zero, or NULL on failure
+ */
+neuron_cold_data_t* neuron_cold_data_create(void);
+
+/**
+ * @brief Destroy cold data struct
+ * @param cold Pointer to cold data (NULL-safe)
+ */
+void neuron_cold_data_destroy(neuron_cold_data_t* cold);
+
+/**
  * @brief STDP parameters
  */
 typedef struct {
@@ -298,6 +344,7 @@ typedef struct neuron_struct {
     float* activity_history;             /**< Dynamic activity history buffer (heap-allocated) */
     uint32_t activity_history_capacity;  /**< Activity history buffer capacity */
     float avg_activity;     /**< Average activity level */
+    float ema_activity;     /**< Exponential moving average of activity (alpha=0.05) */
     uint64_t last_spike;    /**< Last spike timestamp */
     uint64_t last_update;   /**< Last state update timestamp */
     uint64_t creation_time; /**< Neuron creation timestamp */
@@ -309,6 +356,10 @@ typedef struct neuron_struct {
     // Phase 8.7: Type-specific parameters for specialized neurons
     // Forward declaration from nimcp_neuron_types.h
     void* type_params;  /**< Type-specific parameters (neuron_type_params_t*) */
+
+    // Hot/cold split: rarely-accessed fields mirrored in cold data struct
+    // New code should prefer neuron->cold->field for cache-friendly access paths
+    neuron_cold_data_t* cold;  /**< Cold data: oja_params, creation_time, model_type, type_params */
 
     // Axon integration - Signal propagation with realistic conduction delays
     uint32_t axon_id;  /**< Axon ID for this neuron's output (0 = no axon, direct connection) */

@@ -349,6 +349,8 @@ typedef struct {
     kdtree_t* microglia_tree;            /**< KD-tree for microglia positions */
     kdtree_t* synapse_tree;              /**< KD-tree for synapse positions */
     bool spatial_index_valid;            /**< True if KD-trees are up to date */
+    uint32_t synapse_changes_since_rebuild; /**< Synapse add/remove count since last KD-tree rebuild */
+    uint32_t total_monitored_synapse_count; /**< Total synapses across all microglia (for 10% threshold) */
 
     //-------------------------------------------------------------------------
     // Global Cytokine Field

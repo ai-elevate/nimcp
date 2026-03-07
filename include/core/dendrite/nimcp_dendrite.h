@@ -616,6 +616,10 @@ struct dendrite_struct {
     dendrite_spine_pool_t* spine_pool; // Pool for spine allocation
     bool use_spine_pool;           // Enable pool allocation
 
+    //--- Skip-Frame Optimization ---
+    uint32_t update_counter;       // Step counter for skip-frame logic
+    float cached_mean_dv;          // Cached voltage gradient from last full computation
+
     //--- Copy-on-Write Support ---
     uint32_t cow_ref_count;        // CoW reference counter
     bool cow_modified;             // Modified since last CoW copy

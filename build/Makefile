@@ -31206,6 +31206,58 @@ unit_hot_path_optimizations/fast:
 .PHONY : unit_hot_path_optimizations/fast
 
 #=============================================================================
+# Target rules for targets named unit_resource_optimizations
+
+# Build rule for target.
+unit_resource_optimizations: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_resource_optimizations
+.PHONY : unit_resource_optimizations
+
+# fast build rule for target.
+unit_resource_optimizations/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/optimization/CMakeFiles/unit_resource_optimizations.dir/build.make test/unit/optimization/CMakeFiles/unit_resource_optimizations.dir/build
+.PHONY : unit_resource_optimizations/fast
+
+#=============================================================================
+# Target rules for targets named unit_biological_connectivity
+
+# Build rule for target.
+unit_biological_connectivity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_biological_connectivity
+.PHONY : unit_biological_connectivity
+
+# fast build rule for target.
+unit_biological_connectivity/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/optimization/CMakeFiles/unit_biological_connectivity.dir/build.make test/unit/optimization/CMakeFiles/unit_biological_connectivity.dir/build
+.PHONY : unit_biological_connectivity/fast
+
+#=============================================================================
+# Target rules for targets named unit_neuron_substrate
+
+# Build rule for target.
+unit_neuron_substrate: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_neuron_substrate
+.PHONY : unit_neuron_substrate
+
+# fast build rule for target.
+unit_neuron_substrate/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/optimization/CMakeFiles/unit_neuron_substrate.dir/build.make test/unit/optimization/CMakeFiles/unit_neuron_substrate.dir/build
+.PHONY : unit_neuron_substrate/fast
+
+#=============================================================================
+# Target rules for targets named unit_synapse_glial
+
+# Build rule for target.
+unit_synapse_glial: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_synapse_glial
+.PHONY : unit_synapse_glial
+
+# fast build rule for target.
+unit_synapse_glial/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/optimization/CMakeFiles/unit_synapse_glial.dir/build.make test/unit/optimization/CMakeFiles/unit_synapse_glial.dir/build
+.PHONY : unit_synapse_glial/fast
+
+#=============================================================================
 # Target rules for targets named integration_optimization
 
 # Build rule for target.
@@ -31230,6 +31282,45 @@ integration_hotpath: cmake_check_build_system
 integration_hotpath/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/optimization/CMakeFiles/integration_hotpath.dir/build.make test/integration/optimization/CMakeFiles/integration_hotpath.dir/build
 .PHONY : integration_hotpath/fast
+
+#=============================================================================
+# Target rules for targets named integration_resource
+
+# Build rule for target.
+integration_resource: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_resource
+.PHONY : integration_resource
+
+# fast build rule for target.
+integration_resource/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/optimization/CMakeFiles/integration_resource.dir/build.make test/integration/optimization/CMakeFiles/integration_resource.dir/build
+.PHONY : integration_resource/fast
+
+#=============================================================================
+# Target rules for targets named integration_biological
+
+# Build rule for target.
+integration_biological: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_biological
+.PHONY : integration_biological
+
+# fast build rule for target.
+integration_biological/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/optimization/CMakeFiles/integration_biological.dir/build.make test/integration/optimization/CMakeFiles/integration_biological.dir/build
+.PHONY : integration_biological/fast
+
+#=============================================================================
+# Target rules for targets named integration_substrate
+
+# Build rule for target.
+integration_substrate: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_substrate
+.PHONY : integration_substrate
+
+# fast build rule for target.
+integration_substrate/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/optimization/CMakeFiles/integration_substrate.dir/build.make test/integration/optimization/CMakeFiles/integration_substrate.dir/build
+.PHONY : integration_substrate/fast
 
 #=============================================================================
 # Target rules for targets named regression_optimization
@@ -31258,6 +31349,45 @@ regression_hotpath/fast:
 .PHONY : regression_hotpath/fast
 
 #=============================================================================
+# Target rules for targets named regression_resource
+
+# Build rule for target.
+regression_resource: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_resource
+.PHONY : regression_resource
+
+# fast build rule for target.
+regression_resource/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/optimization/CMakeFiles/regression_resource.dir/build.make test/regression/optimization/CMakeFiles/regression_resource.dir/build
+.PHONY : regression_resource/fast
+
+#=============================================================================
+# Target rules for targets named regression_biological
+
+# Build rule for target.
+regression_biological: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_biological
+.PHONY : regression_biological
+
+# fast build rule for target.
+regression_biological/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/optimization/CMakeFiles/regression_biological.dir/build.make test/regression/optimization/CMakeFiles/regression_biological.dir/build
+.PHONY : regression_biological/fast
+
+#=============================================================================
+# Target rules for targets named regression_substrate
+
+# Build rule for target.
+regression_substrate: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_substrate
+.PHONY : regression_substrate
+
+# fast build rule for target.
+regression_substrate/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/optimization/CMakeFiles/regression_substrate.dir/build.make test/regression/optimization/CMakeFiles/regression_substrate.dir/build
+.PHONY : regression_substrate/fast
+
+#=============================================================================
 # Target rules for targets named e2e_optimization
 
 # Build rule for target.
@@ -31282,6 +31412,45 @@ e2e_hotpath: cmake_check_build_system
 e2e_hotpath/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/optimization/CMakeFiles/e2e_hotpath.dir/build.make test/e2e/optimization/CMakeFiles/e2e_hotpath.dir/build
 .PHONY : e2e_hotpath/fast
+
+#=============================================================================
+# Target rules for targets named e2e_resource
+
+# Build rule for target.
+e2e_resource: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_resource
+.PHONY : e2e_resource
+
+# fast build rule for target.
+e2e_resource/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/optimization/CMakeFiles/e2e_resource.dir/build.make test/e2e/optimization/CMakeFiles/e2e_resource.dir/build
+.PHONY : e2e_resource/fast
+
+#=============================================================================
+# Target rules for targets named e2e_biological
+
+# Build rule for target.
+e2e_biological: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_biological
+.PHONY : e2e_biological
+
+# fast build rule for target.
+e2e_biological/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/optimization/CMakeFiles/e2e_biological.dir/build.make test/e2e/optimization/CMakeFiles/e2e_biological.dir/build
+.PHONY : e2e_biological/fast
+
+#=============================================================================
+# Target rules for targets named e2e_substrate
+
+# Build rule for target.
+e2e_substrate: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_substrate
+.PHONY : e2e_substrate
+
+# fast build rule for target.
+e2e_substrate/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/optimization/CMakeFiles/e2e_substrate.dir/build.make test/e2e/optimization/CMakeFiles/e2e_substrate.dir/build
+.PHONY : e2e_substrate/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_wernicke_adapter
@@ -41948,6 +42117,7 @@ help:
 	@echo "... distributed_cow_demo"
 	@echo "... e2e_attack_simulation"
 	@echo "... e2e_attention_exception"
+	@echo "... e2e_biological"
 	@echo "... e2e_brain_cycle_coordinator"
 	@echo "... e2e_brain_factory"
 	@echo "... e2e_cognitive_community_cache"
@@ -42065,6 +42235,7 @@ help:
 	@echo "... e2e_parietal_financial_investment"
 	@echo "... e2e_plasticity_eligibility_utils_quantum"
 	@echo "... e2e_plasticity_module_exception"
+	@echo "... e2e_resource"
 	@echo "... e2e_security_pipeline"
 	@echo "... e2e_security_recovery"
 	@echo "... e2e_security_stack"
@@ -42081,6 +42252,7 @@ help:
 	@echo "... e2e_statistics_test_streaming_statistics_e2e"
 	@echo "... e2e_statistics_test_survival_bayesian_e2e"
 	@echo "... e2e_statistics_test_timeseries_e2e"
+	@echo "... e2e_substrate"
 	@echo "... e2e_test_amygdala_pipeline"
 	@echo "... e2e_test_asymmetric_swarm"
 	@echo "... e2e_test_athena_training_pipeline"
@@ -42311,6 +42483,7 @@ help:
 	@echo "... integration_async_test_wiring_diagram_validation"
 	@echo "... integration_attention_exception"
 	@echo "... integration_bio_async_cross_bridge"
+	@echo "... integration_biological"
 	@echo "... integration_biology_neurovascular_test_neurovascular_integration"
 	@echo "... integration_brain_bio_async_test"
 	@echo "... integration_brain_coordinator_test"
@@ -42761,6 +42934,7 @@ help:
 	@echo "... integration_reasoning_test_reasoning_brain"
 	@echo "... integration_reasoning_test_symbolic_logic"
 	@echo "... integration_reasoning_test_visuospatial"
+	@echo "... integration_resource"
 	@echo "... integration_rng_module"
 	@echo "... integration_security_sleep_bridges"
 	@echo "... integration_security_test_anomaly_detector"
@@ -42807,6 +42981,7 @@ help:
 	@echo "... integration_statistics_test_streaming_statistics_integration"
 	@echo "... integration_statistics_test_survival_bayesian_integration"
 	@echo "... integration_statistics_test_timeseries_integration"
+	@echo "... integration_substrate"
 	@echo "... integration_swarm_immune_bridges"
 	@echo "... integration_swarm_sleep_bridges"
 	@echo "... integration_tensor_operations"
@@ -42916,6 +43091,7 @@ help:
 	@echo "... regression_async_test_wiring_diagram_validation"
 	@echo "... regression_attention_exception"
 	@echo "... regression_bio_async_self_repair"
+	@echo "... regression_biological"
 	@echo "... regression_biology_neurovascular_test_neurovascular_regression"
 	@echo "... regression_brain_factory"
 	@echo "... regression_brain_regions_kg_wiring"
@@ -43309,6 +43485,7 @@ help:
 	@echo "... regression_race_condition"
 	@echo "... regression_rcog_bridge"
 	@echo "... regression_reasoning_generation_test"
+	@echo "... regression_resource"
 	@echo "... regression_security_bridges"
 	@echo "... regression_security_collective"
 	@echo "... regression_security_continual_learning"
@@ -43359,6 +43536,7 @@ help:
 	@echo "... regression_statistics_test_streaming_statistics_regression"
 	@echo "... regression_statistics_test_survival_bayesian_regression"
 	@echo "... regression_statistics_test_timeseries_regression"
+	@echo "... regression_substrate"
 	@echo "... regression_substrate_gpu"
 	@echo "... regression_substrate_immune_bridge"
 	@echo "... regression_subthalamic_test"
@@ -43771,6 +43949,7 @@ help:
 	@echo "... unit_async_wiring_diagram"
 	@echo "... unit_async_wiring_diagram_kg_sync"
 	@echo "... unit_async_wiring_diagram_validation"
+	@echo "... unit_biological_connectivity"
 	@echo "... unit_biology_epigenetics_test_epigenetics"
 	@echo "... unit_biology_exception_handling"
 	@echo "... unit_biology_neurogenesis_test_neurogenesis"
@@ -44654,6 +44833,7 @@ help:
 	@echo "... unit_networking_nlp_test_nlp_session"
 	@echo "... unit_networking_p2p_test_p2pnode"
 	@echo "... unit_networking_replication_test_replication"
+	@echo "... unit_neuron_substrate"
 	@echo "... unit_nlp_test_brain_multimodal_features"
 	@echo "... unit_nlp_test_brain_multimodal_initialization"
 	@echo "... unit_nlp_test_brain_multimodal_processing"
@@ -44818,6 +44998,7 @@ help:
 	@echo "... unit_regions_test_endocannabinoid"
 	@echo "... unit_regions_test_glymphatic"
 	@echo "... unit_regions_test_neuropeptide"
+	@echo "... unit_resource_optimizations"
 	@echo "... unit_security_bbb_access_control"
 	@echo "... unit_security_bbb_code_signing"
 	@echo "... unit_security_bbb_helpers"
@@ -44901,6 +45082,7 @@ help:
 	@echo "... unit_swarm_immune_bridges"
 	@echo "... unit_swarm_sleep_bridges"
 	@echo "... unit_synapse_fast_path"
+	@echo "... unit_synapse_glial"
 	@echo "... unit_ternary_exception_handling"
 	@echo "... unit_test_brain_full_simulation"
 	@echo "... unit_test_comprehensive_integration"

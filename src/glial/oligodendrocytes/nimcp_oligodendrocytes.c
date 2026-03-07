@@ -1816,33 +1816,42 @@ void oligodendrocyte_network_update_centrality(oligodendrocyte_network_t* networ
 void oligodendrocyte_network_step(oligodendrocyte_network_t* network, float dt) {
     if (!network || dt <= 0.0F) return;
 
+    // Skip-frame: myelination remodeling is biologically slow (hours-days)
+    // Update every 100th step instead of every step
+    static _Thread_local uint32_t oligo_step_counter = 0;
+    oligo_step_counter++;
+    if (oligo_step_counter % 100 != 0) return;
+
     nimcp_mutex_lock(&network->lock);
+
+    // Use accumulated dt (100 steps × dt) for accurate dynamics
+    float accumulated_dt = dt * 100.0F;
 
     for (uint32_t i = 0; i < network->num_oligodendrocytes; i++) {
         oligodendrocyte_t* oligo = network->oligodendrocytes[i];
         if (!oligo) continue;
 
         // 1. Update state dynamics (RK4)
-        oligodendrocyte_update_state_dynamics(oligo, dt);
+        oligodendrocyte_update_state_dynamics(oligo, accumulated_dt);
 
         // 2. Update growth factors
-        oligodendrocyte_update_growth_factors(oligo, dt);
+        oligodendrocyte_update_growth_factors(oligo, accumulated_dt);
 
         // 3. Remodel myelination
-        oligodendrocyte_remodel_myelination(oligo, dt);
+        oligodendrocyte_remodel_myelination(oligo, accumulated_dt);
 
         // 4. Optimize G-ratios
-        oligodendrocyte_optimize_g_ratios(oligo, dt);
+        oligodendrocyte_optimize_g_ratios(oligo, accumulated_dt);
 
         // 5. Update lactate shuttle
-        oligodendrocyte_update_lactate_shuttle(oligo, dt);
+        oligodendrocyte_update_lactate_shuttle(oligo, accumulated_dt);
 
         // 6. Update ATP
-        oligodendrocyte_update_atp(oligo, dt);
+        oligodendrocyte_update_atp(oligo, accumulated_dt);
     }
 
     // 7. Diffuse growth factors between nearby oligodendrocytes
-    oligodendrocyte_network_diffuse_growth_factors(network, dt);
+    oligodendrocyte_network_diffuse_growth_factors(network, accumulated_dt);
 
     nimcp_mutex_unlock(&network->lock);
 }
