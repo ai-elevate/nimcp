@@ -1090,8 +1090,31 @@ int lnn_network_backward(lnn_network_t* network, const nimcp_tensor_t* loss_grad
         return -1;
     }
 
-    // Stub implementation - gradient computation via adjoint method
-    // Full implementation would use lnn_gradient_compute_gradients()
-    NIMCP_LOGGING_DEBUG("lnn_network_backward: stub implementation");
-    return 0;
+    /* Gradient computation via adjoint method if grad_ctx is available,
+     * otherwise fall back to BPTT. */
+    if (network->grad_ctx) {
+        /* Use adjoint method (preferred for LTC networks) */
+        int rc = lnn_gradient_compute_adjoint(network->grad_ctx, network, loss_grad);
+        if (rc != 0) {
+            NIMCP_LOGGING_WARN("lnn_network_backward: adjoint failed (rc=%d), trying BPTT", rc);
+            rc = lnn_gradient_compute_bptt(network->grad_ctx, network, loss_grad);
+        }
+        return rc;
+    }
+
+    /* No gradient context available - create a temporary one */
+    NIMCP_LOGGING_DEBUG("lnn_network_backward: no grad_ctx, creating temporary");
+    lnn_gradient_ctx_t* tmp_ctx = lnn_gradient_ctx_create(network, 100, false, 0);
+    if (!tmp_ctx) {
+        NIMCP_LOGGING_WARN("lnn_network_backward: failed to create gradient context");
+        return -1;
+    }
+
+    int rc = lnn_gradient_compute_adjoint(tmp_ctx, network, loss_grad);
+    if (rc != 0) {
+        rc = lnn_gradient_compute_bptt(tmp_ctx, network, loss_grad);
+    }
+
+    lnn_gradient_ctx_destroy(tmp_ctx);
+    return rc;
 }

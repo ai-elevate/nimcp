@@ -1238,9 +1238,8 @@ int lnn_training_connect_optimizer(lnn_network_t* network, void* optimizer) {
         return -1;
     }
 
-    // Stub implementation - optimizer connection
-    // Full implementation would register optimizer for update callbacks
-    NIMCP_LOGGING_DEBUG("lnn_training_connect_optimizer: stub implementation");
-    (void)optimizer;  // Suppress unused warning
+    /* Store optimizer reference for gradient-based parameter updates */
+    network->optimizer = optimizer;
+    NIMCP_LOGGING_INFO("LNN network connected to optimizer");
     return 0;
 }

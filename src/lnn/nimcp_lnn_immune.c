@@ -777,8 +777,8 @@ int lnn_immune_connect(lnn_network_t* network, void* immune_bridge)
         return -1;
     }
 
-    // Stub implementation - immune connection
-    // Full implementation would register for immune modulation callbacks
-    (void)immune_bridge;  // Suppress unused warning
+    /* Store immune bridge reference for modulation callbacks */
+    network->immune_bridge = immune_bridge;
+    NIMCP_LOGGING_INFO("LNN network connected to immune bridge");
     return 0;
 }

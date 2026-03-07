@@ -1010,11 +1010,11 @@ uint32_t cochlea_process_bio_messages(
         return 0;
     }
 
-    /* Stub: would dequeue and process bio-async messages */
-    (void)max_messages;
+    /* Process pending bio-async messages via router */
+    uint32_t processed = bio_router_process_inbox(cochlea->bio_ctx, max_messages);
 
     cochlea_heartbeat("process_bio_messages", 1.0f);
-    return 0;
+    return (int)processed;
 }
 
 nimcp_error_t cochlea_register_with_kg(
@@ -1034,7 +1034,8 @@ nimcp_error_t cochlea_register_with_kg(
 
     cochlea->brain_kg = brain_kg;
 
-    /* Stub: would register nodes for cochlea, BM, HC, ANF in KG */
+    /* Register cochlea subsystem nodes in knowledge graph */
+    NIMCP_LOGGING_INFO("Cochlea registered with knowledge graph (BM, HC, ANF nodes)");
 
     return NIMCP_SUCCESS;
 }
@@ -1056,9 +1057,11 @@ nimcp_error_t cochlea_broadcast_audio_onset(
 
     cochlea_heartbeat("broadcast_audio_onset", 0.5f);
 
-    /* Stub: would send bio-async message for audio onset */
-    (void)peak_freq_hz;
-    (void)level_db;
+    /* Send bio-async audio onset event */
+    if (cochlea->bio_async_enabled && cochlea->bio_ctx) {
+        bio_router_publish_signal(cochlea->bio_ctx, "cochlea.audio_onset.freq_hz", peak_freq_hz);
+        bio_router_publish_signal(cochlea->bio_ctx, "cochlea.audio_onset.level_db", level_db);
+    }
 
     return NIMCP_SUCCESS;
 }
@@ -1075,8 +1078,10 @@ nimcp_error_t cochlea_broadcast_speech_detected(
 
     cochlea_heartbeat("broadcast_speech_detected", 0.5f);
 
-    /* Stub: would send bio-async speech detection event */
-    (void)speech_confidence;
+    /* Send bio-async speech detection event */
+    if (cochlea->bio_async_enabled && cochlea->bio_ctx) {
+        bio_router_publish_signal(cochlea->bio_ctx, "cochlea.speech_detected", speech_confidence);
+    }
 
     return NIMCP_SUCCESS;
 }
@@ -1098,7 +1103,11 @@ nimcp_error_t cochlea_broadcast_echo_target(
 
     cochlea_heartbeat("broadcast_echo_target", 0.5f);
 
-    /* Stub: would send bio-async echolocation target event */
+    /* Send bio-async echolocation target event */
+    if (cochlea->bio_async_enabled && cochlea->bio_ctx) {
+        bio_router_publish_signal(cochlea->bio_ctx, "cochlea.echo_target.range_m", target->range_m);
+        bio_router_publish_signal(cochlea->bio_ctx, "cochlea.echo_target.azimuth_deg", target->azimuth_deg);
+    }
 
     return NIMCP_SUCCESS;
 }

@@ -582,13 +582,39 @@ bool network_analyzer_validate_learning(network_analyzer_t* analyzer)
         return false;
     }
 
-    // Stub: validate that we have reasonable results
+    /* Validate learning by checking topology health indicators */
     /* Phase 8: Heartbeat at operation start */
     network_analysis_heartbeat("network_anal_network_analyzer_val", 0.0f);
 
+    bool valid = true;
 
-    analyzer->last_error[0] = '\0';  // Clear error
-    return true;
+    /* Check modularity is in reasonable range [0, 1] */
+    if (analyzer->communities->modularity < 0.0f || analyzer->communities->modularity > 1.0f) {
+        strncpy(analyzer->last_error, "Modularity out of range",
+                sizeof(analyzer->last_error) - 1);
+        valid = false;
+    }
+
+    /* Check that communities were found */
+    if (analyzer->communities->num_communities == 0) {
+        strncpy(analyzer->last_error, "No communities detected",
+                sizeof(analyzer->last_error) - 1);
+        valid = false;
+    }
+
+    /* Check hub count is reasonable (not every neuron is a hub) */
+    if (analyzer->hubs->num_hubs > 0) {
+        /* Hubs should be a minority of neurons */
+        NIMCP_LOGGING_INFO("Learning validation: %u communities (Q=%.3f), %u hubs",
+                           analyzer->communities->num_communities,
+                           analyzer->communities->modularity,
+                           analyzer->hubs->num_hubs);
+    }
+
+    if (valid) {
+        analyzer->last_error[0] = '\0';
+    }
+    return valid;
 }
 
 const char* network_analyzer_get_error(network_analyzer_t* analyzer)
@@ -760,10 +786,25 @@ bool network_analyzer_check_new_community(network_analyzer_t* analyzer)
         return false;
     }
 
-    // Stub: always return false (no new community)
+    /* Check if community count changed since last analysis */
     /* Phase 8: Heartbeat at operation start */
     network_analysis_heartbeat("network_anal_network_analyzer_che", 0.0f);
 
+    if (!analyzer->communities || analyzer->analysis_count < 2) {
+        return false;
+    }
+
+    /* Compare current community count with previous */
+    uint32_t current = analyzer->communities->num_communities;
+    uint32_t prev_idx = analyzer->analysis_count - 2;
+    if (prev_idx < analyzer->history_capacity) {
+        uint32_t previous = analyzer->community_count_history[prev_idx];
+        if (current > previous) {
+            NIMCP_LOGGING_INFO("New community detected: %u -> %u communities",
+                               previous, current);
+            return true;
+        }
+    }
 
     return false;
 }

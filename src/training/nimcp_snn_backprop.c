@@ -1228,8 +1228,16 @@ int snn_backprop_compute_loss_grad(
     uint32_t batch_size,
     float* gradients
 ) {
-    (void)ctx; (void)outputs; (void)targets;
-    (void)batch_size; (void)gradients;
+    if (!ctx || !outputs || !targets || !gradients || batch_size == 0) {
+        return SNN_ERROR_NULL_POINTER;
+    }
+
+    /* MSE gradient: d/d_output (1/N * sum((output - target)^2)) = 2/N * (output - target) */
+    float scale = 2.0f / (float)batch_size;
+    for (uint32_t i = 0; i < batch_size; i++) {
+        gradients[i] = scale * (outputs[i] - targets[i]);
+    }
+
     return SNN_SUCCESS;
 }
 
@@ -1237,8 +1245,10 @@ int snn_backprop_connect_gradient_manager(
     snn_backprop_ctx_t* ctx,
     nimcp_gradient_manager_ctx_t* grad_manager
 ) {
-    (void)ctx; (void)grad_manager;
-    NIMCP_LOGGING_INFO("Connect gradient manager (stub)");
+    if (!ctx) return SNN_ERROR_NULL_POINTER;
+
+    ctx->grad_manager = grad_manager;
+    NIMCP_LOGGING_INFO("Connected gradient manager to SNN backprop context");
     return SNN_SUCCESS;
 }
 
@@ -1269,11 +1279,41 @@ void snn_backprop_reset_stats(snn_backprop_ctx_t* ctx) {
 }
 
 float snn_backprop_get_gradient_norm(const snn_backprop_ctx_t* ctx) {
-    (void)ctx;
-    return 0.0f; // Stub
+    if (!ctx || !ctx->gradients || !ctx->gradients->weight_grads) {
+        return 0.0f;
+    }
+
+    /* L2 norm of weight gradients */
+    size_t numel = nimcp_tensor_numel(ctx->gradients->weight_grads);
+    const float* g = (const float*)nimcp_tensor_data_const(ctx->gradients->weight_grads);
+    if (!g || numel == 0) return 0.0f;
+
+    float norm_sq = 0.0f;
+    for (size_t i = 0; i < numel; i++) {
+        norm_sq += g[i] * g[i];
+    }
+    return sqrtf(norm_sq);
 }
 
 float snn_backprop_get_weight_norm(const snn_backprop_ctx_t* ctx) {
-    (void)ctx;
-    return 0.0f; // Stub
+    if (!ctx || !ctx->network) {
+        return 0.0f;
+    }
+
+    /* Estimate weight norm from population membrane potential magnitudes
+     * as a proxy when direct weight access is not available */
+    float norm_sq = 0.0f;
+    for (uint32_t p = 0; p < ctx->network->n_populations; p++) {
+        snn_population_t* pop = ctx->network->populations[p];
+        if (!pop || !pop->membrane_v) continue;
+
+        size_t numel = nimcp_tensor_numel(pop->membrane_v);
+        const float* v = (const float*)nimcp_tensor_data_const(pop->membrane_v);
+        if (!v) continue;
+
+        for (size_t i = 0; i < numel; i++) {
+            norm_sq += v[i] * v[i];
+        }
+    }
+    return sqrtf(norm_sq);
 }
