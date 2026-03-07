@@ -12,6 +12,7 @@
 
 #include "cognitive/creative/external/nimcp_diffusion_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>

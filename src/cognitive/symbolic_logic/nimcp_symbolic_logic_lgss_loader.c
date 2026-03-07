@@ -1167,19 +1167,19 @@ int symbolic_logic_lgss_load_file(
         result->error_code = LGSS_ERROR_NULL_ARG;
         snprintf(result->error_message, sizeof(result->error_message), "NULL filepath");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_file: filepath is NULL");
-        return NULL;
+        return -1;
     }
     if (!kb) {
         result->error_code = LGSS_ERROR_NULL_ARG;
         snprintf(result->error_message, sizeof(result->error_message), "NULL kb");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_file: kb is NULL");
-        return NULL;
+        return -1;
     }
     if (kb->is_locked) {
         result->error_code = LGSS_ERROR_KB_LOCKED;
         snprintf(result->error_message, sizeof(result->error_message), "Safety KB is locked");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "symbolic_logic_lgss_load_file: validation failed");
-        return NULL;
+        return -1;
     }
 
     // Open file
@@ -1189,7 +1189,7 @@ int symbolic_logic_lgss_load_file(
         snprintf(result->error_message, sizeof(result->error_message),
                  "Cannot open file: %s", filepath);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_file: f is NULL");
-        return NULL;
+        return -1;
     }
 
     // Get file size
@@ -1202,7 +1202,7 @@ int symbolic_logic_lgss_load_file(
         result->error_code = LGSS_ERROR_FILE_READ;
         snprintf(result->error_message, sizeof(result->error_message), "Cannot determine file size");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_load_file: validation failed");
-        return NULL;
+        return -1;
     }
 
     if ((size_t)file_size > LGSS_MAX_FILE_SIZE) {
@@ -1211,7 +1211,7 @@ int symbolic_logic_lgss_load_file(
         snprintf(result->error_message, sizeof(result->error_message),
                  "File too large: %ld bytes (max %d)", file_size, LGSS_MAX_FILE_SIZE);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_load_file: validation failed");
-        return NULL;
+        return -1;
     }
 
     // Read file
@@ -1221,7 +1221,7 @@ int symbolic_logic_lgss_load_file(
         result->error_code = LGSS_ERROR_MEMORY;
         snprintf(result->error_message, sizeof(result->error_message), "Memory allocation failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_lgss_load_file: json_buffer is NULL");
-        return NULL;
+        return -1;
     }
 
     size_t bytes_read = fread(json_buffer, 1, (size_t)file_size, f);
@@ -1233,7 +1233,7 @@ int symbolic_logic_lgss_load_file(
         result->error_code = LGSS_ERROR_FILE_READ;
         snprintf(result->error_message, sizeof(result->error_message), "File read error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_load_file: validation failed");
-        return NULL;
+        return -1;
     }
     json_buffer[file_size] = '\0';
 
@@ -1263,19 +1263,19 @@ int symbolic_logic_lgss_load_string(
         result->error_code = LGSS_ERROR_NULL_ARG;
         snprintf(result->error_message, sizeof(result->error_message), "NULL json_string");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_string: json_string is NULL");
-        return NULL;
+        return -1;
     }
     if (!kb) {
         result->error_code = LGSS_ERROR_NULL_ARG;
         snprintf(result->error_message, sizeof(result->error_message), "NULL kb");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_string: kb is NULL");
-        return NULL;
+        return -1;
     }
     if (kb->is_locked) {
         result->error_code = LGSS_ERROR_KB_LOCKED;
         snprintf(result->error_message, sizeof(result->error_message), "Safety KB is locked");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "symbolic_logic_lgss_load_string: validation failed");
-        return NULL;
+        return -1;
     }
 
     if (json_length == 0) json_length = strlen(json_string);
@@ -1286,7 +1286,7 @@ int symbolic_logic_lgss_load_string(
     if (validate_err != LGSS_OK) {
         result->error_code = validate_err;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_load_string: validation failed");
-        return NULL;
+        return -1;
     }
 
     // Parse JSON
@@ -1296,7 +1296,7 @@ int symbolic_logic_lgss_load_string(
         result->error_code = LGSS_ERROR_INVALID_JSON;
         snprintf(result->error_message, sizeof(result->error_message), "JSON parse error: %s", parse_error);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_string: root is NULL");
-        return NULL;
+        return -1;
     }
 
     // Extract metadata
@@ -1415,7 +1415,7 @@ int symbolic_logic_lgss_export(
 {
     if (!kb || !output_buffer || buffer_size == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_export: required parameter is NULL (kb, output_buffer)");
-        return NULL;
+        return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -1431,7 +1431,7 @@ int symbolic_logic_lgss_export(
                        LGSS_SCHEMA_VERSION);
     if (written < 0 || (size_t)written >= remaining) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
-        return NULL;
+        return -1;
     }
     pos += written;
     remaining -= (size_t)written;
@@ -1450,7 +1450,7 @@ int symbolic_logic_lgss_export(
             written = snprintf(pos, remaining, ",\n");
             if (written < 0 || (size_t)written >= remaining) {
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
-                return NULL;
+                return -1;
             }
             pos += written;
             remaining -= (size_t)written;
@@ -1476,7 +1476,7 @@ int symbolic_logic_lgss_export(
                            rule->enabled ? "true" : "false");
         if (written < 0 || (size_t)written >= remaining) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
-            return NULL;
+            return -1;
         }
         pos += written;
         remaining -= (size_t)written;
@@ -1495,7 +1495,7 @@ int symbolic_logic_lgss_export(
                 written = snprintf(pos, remaining, ",");
                 if (written < 0 || (size_t)written >= remaining) {
                     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
-                    return NULL;
+                    return -1;
                 }
                 pos += written;
                 remaining -= (size_t)written;
@@ -1513,7 +1513,7 @@ int symbolic_logic_lgss_export(
                                cond->is_negated ? ",\n          \"negated\": true" : "");
             if (written < 0 || (size_t)written >= remaining) {
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
-                return NULL;
+                return -1;
             }
             pos += written;
             remaining -= (size_t)written;
@@ -1523,7 +1523,7 @@ int symbolic_logic_lgss_export(
         written = snprintf(pos, remaining, "\n      ]\n    }");
         if (written < 0 || (size_t)written >= remaining) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
-            return NULL;
+            return -1;
         }
         pos += written;
         remaining -= (size_t)written;
@@ -1533,7 +1533,7 @@ int symbolic_logic_lgss_export(
     written = snprintf(pos, remaining, "\n  ]\n}\n");
     if (written < 0 || (size_t)written >= remaining) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
-        return NULL;
+        return -1;
     }
     pos += written;
 
@@ -1556,7 +1556,7 @@ int symbolic_logic_lgss_loader_training_begin(void* instance) {
     if (!instance) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
                               "symbolic_logic_lgss_loader_training_begin: NULL argument");
-        return NULL;
+        return -1;
     }
     symbolic_logic_lgss_loader_heartbeat_instance(NULL, "symbolic_logic_lgss_loader_training_begin", 0.0f);
     return 0;
@@ -1566,7 +1566,7 @@ int symbolic_logic_lgss_loader_training_end(void* instance) {
     if (!instance) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
                               "symbolic_logic_lgss_loader_training_end: NULL argument");
-        return NULL;
+        return -1;
     }
     symbolic_logic_lgss_loader_heartbeat_instance(NULL, "symbolic_logic_lgss_loader_training_end", 1.0f);
     return 0;
@@ -1576,7 +1576,7 @@ int symbolic_logic_lgss_loader_training_step(void* instance, float progress) {
     if (!instance) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
                               "symbolic_logic_lgss_loader_training_step: NULL argument");
-        return NULL;
+        return -1;
     }
     symbolic_logic_lgss_loader_heartbeat_instance(NULL, "symbolic_logic_lgss_loader_training_step", progress);
     return 0;

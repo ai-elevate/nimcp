@@ -917,7 +917,7 @@ kg_search_results_t* kg_search_execute(const kg_search_index_t* idx,
             if (passes) {
                 temp_results[temp_count].node_id = idx->modules[i].node_id;
                 temp_results[temp_count].level = KG_RESULT_MODULE;
-                temp_results[temp_count].metadata = &meta->base;
+                temp_results[temp_count].metadata = (kg_metadata_t*)&meta->base;
                 temp_results[temp_count].relevance_score =
                     query->condition_count > 0 ?
                     total_relevance / query->condition_count : 1.0f;

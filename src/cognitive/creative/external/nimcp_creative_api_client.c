@@ -12,6 +12,8 @@
 
 #include "cognitive/creative/external/nimcp_creative_api_client.h"
 #include "utils/memory/nimcp_memory.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"

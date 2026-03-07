@@ -260,11 +260,13 @@ extern "C" {
 #define NIMCP_BUFFER_CHECK(actual, required) ((actual) >= (required))
 
 /** @brief Safe copy with null termination */
+#ifndef NIMCP_SAFE_STRCPY
 #define NIMCP_SAFE_STRCPY(dst, src, size) \
     do { \
         strncpy((dst), (src), (size) - 1); \
         (dst)[(size) - 1] = '\0'; \
     } while(0)
+#endif
 
 #ifdef __cplusplus
 }

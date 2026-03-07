@@ -510,7 +510,7 @@ schema_system_t schema_system_create(
         system->cooc_dim = 128;  // Fixed size for simplicity
         size_t cooc_size = system->cooc_dim * system->cooc_dim;
         system->slot_cooccurrence = (float*)nimcp_calloc(cooc_size, sizeof(float));
-        if (!system->slot_cooccurrence) return -1;
+        if (!system->slot_cooccurrence) return NULL;
         // OK if this fails, just disables cooccurrence
     }
 

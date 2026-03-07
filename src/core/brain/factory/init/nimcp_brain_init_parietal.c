@@ -163,7 +163,7 @@ static void connect_parietal_to_sleep(parietal_lobe_t* parietal, brain_t brain) 
     /* For now, we use the brain's sleep_system directly */
     sleep_system_t sleep = brain->sleep_system;
     if (sleep) {
-        int result = parietal_attach_sleep(parietal, sleep);
+        int result = parietal_attach_sleep(parietal, &sleep);
         if (result == 0) {
             fprintf(stderr, "[PARIETAL] Connected to sleep system (fatigue modulation)\n");
         }

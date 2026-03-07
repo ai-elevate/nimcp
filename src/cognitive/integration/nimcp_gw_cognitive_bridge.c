@@ -90,6 +90,8 @@ static inline void gw_cognitive_bridge_heartbeat_instance(
 
 #define LOG_MODULE "GW_COGNITIVE_BRIDGE"
 
+/* Forward declaration - defined later in this file */
+int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge);
 
 /* ============================================================================
  * Internal Structures

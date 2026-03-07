@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/geometry/nimcp_differential_geometry.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hippo, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -63,6 +64,30 @@ static float euclidean_distance(const float* a, const float* b, uint32_t dim) {
         sum += diff * diff;
     }
     return sqrtf(sum);
+}
+
+/**
+ * @brief Riemannian distance between two points using a spatial metric
+ *
+ * When a Riemannian metric is provided, computes the proper geodesic distance
+ * which accounts for non-Euclidean environment geometry (e.g., curved surfaces,
+ * variable-scale regions). Falls back to Euclidean if metric is NULL.
+ */
+static float riemannian_spatial_distance(const float* a, const float* b,
+                                          uint32_t dim,
+                                          const riemannian_metric_t* metric) {
+    if (!metric || dim > DIFFGEO_MAX_DIM) {
+        return euclidean_distance(a, b, dim);
+    }
+
+    /* Compute displacement vector */
+    float diff[DIFFGEO_MAX_DIM];
+    for (uint32_t i = 0; i < dim; i++) {
+        diff[i] = b[i] - a[i];
+    }
+
+    /* ||diff||_g = sqrt(g_ij * diff^i * diff^j) */
+    return riemannian_norm(metric, diff);
 }
 
 static float gaussian_activation(float distance, float sigma) {
@@ -410,11 +435,14 @@ int hippo_update(nimcp_hippocampus_t* hippo, float dt) {
     hippo_update_theta(hippo, dt);
     hippo_update_gamma(hippo, dt);
 
-    /* Update place cells based on current position */
+    /* Update place cells based on current position
+     * Uses Riemannian metric if available for non-Euclidean environments */
     hippo->active_place_cells = 0;
+    const riemannian_metric_t* metric = (const riemannian_metric_t*)hippo->spatial_metric;
     for (uint32_t i = 0; i < hippo->num_place_cells; i++) {
-        float dist = euclidean_distance(hippo->current_position,
-                                        hippo->place_cells[i].place_field_center, 3);
+        float dist = riemannian_spatial_distance(hippo->current_position,
+                                                  hippo->place_cells[i].place_field_center, 3,
+                                                  metric);
         float rate = hippo->place_cells[i].peak_firing_rate *
                      gaussian_activation(dist, hippo->place_cells[i].place_field_radius);
         hippo->place_cells[i].current_rate = rate;
@@ -987,11 +1015,13 @@ int hippo_update_position(nimcp_hippocampus_t* hippo, const float* position, uin
         hippo->current_position[i] = position[i];
     }
 
-    /* Update place cell activations */
+    /* Update place cell activations using Riemannian metric if available */
     hippo->active_place_cells = 0;
+    const riemannian_metric_t* metric = (const riemannian_metric_t*)hippo->spatial_metric;
     for (uint32_t i = 0; i < hippo->num_place_cells; i++) {
-        float dist = euclidean_distance(hippo->current_position,
-                                        hippo->place_cells[i].place_field_center, 3);
+        float dist = riemannian_spatial_distance(hippo->current_position,
+                                                  hippo->place_cells[i].place_field_center, 3,
+                                                  metric);
         float rate = hippo->place_cells[i].peak_firing_rate *
                      gaussian_activation(dist, hippo->place_cells[i].place_field_radius);
         hippo->place_cells[i].current_rate = rate;

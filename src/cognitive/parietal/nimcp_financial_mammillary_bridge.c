@@ -30,6 +30,25 @@
 static nimcp_health_agent_t* g_fin_mammillary_health_agent = NULL;
 
 
+/* Forward declarations for immune/BBB validation stubs */
+struct brain_immune_system;
+typedef struct brain_immune_system brain_immune_system_t;
+extern int brain_immune_validate_operation(brain_immune_system_t* immune,
+                                            const char* operation,
+                                            uint32_t severity);
+extern int brain_immune_present_antigen(brain_immune_system_t* immune,
+                                         int source,
+                                         const uint8_t* epitope,
+                                         size_t epitope_len,
+                                         uint32_t severity,
+                                         uint32_t source_node,
+                                         uint32_t* antigen_id);
+
+struct bbb_system_struct;
+typedef struct bbb_system_struct* bbb_system_t;
+extern int bbb_validate_data(bbb_system_t bbb, const void* data,
+                              size_t size, const char* context);
+
 /* Stub declarations for subsystem integration globals */
 static void* g_fin_mammillary_bridge_immune = NULL;
 static void* g_fin_mammillary_bridge_bbb = NULL;

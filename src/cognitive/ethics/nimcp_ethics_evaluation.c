@@ -268,7 +268,7 @@ empathy_network_t empathy_network_create(const empathy_config_t* config)
 
     network->num_agents = max_agents;
     network->states = nimcp_calloc(max_agents, sizeof(empathy_state_t));
-    if (!network->states) return -1;
+    if (!network->states) return NULL;
     network->num_emotions = 10;
     network->emotional_states = nimcp_calloc(max_agents * network->num_emotions, sizeof(float));
 

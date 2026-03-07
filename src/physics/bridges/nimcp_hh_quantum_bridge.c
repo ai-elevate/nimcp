@@ -322,7 +322,7 @@ int hh_qmc_optimize_parameters(
 
     // Initial state from current neuron parameters
     float* initial_state = nimcp_calloc(dim, sizeof(float));
-    NIMCP_API_CHECK_ALLOC(initial_state, "Failed to allocate HH optimization initial state");
+    if (!initial_state) { LOG_ERROR("Failed to allocate HH optimization initial state"); return -1; }
 
     initial_state[0] = neuron->channels[NIMCP_ION_CHANNEL_NA].g_max;
     initial_state[1] = neuron->channels[NIMCP_ION_CHANNEL_K].g_max;
@@ -559,7 +559,7 @@ int hh_qmc_spike_train_entropy(
     // Collect spike times
     nimcp_hh_neuron_reset(neuron);
     float* spike_times = nimcp_calloc(stimulus_len, sizeof(float));
-    NIMCP_API_CHECK_ALLOC(spike_times, "Failed to allocate spike times array for entropy analysis");
+    if (!spike_times) { LOG_ERROR("Failed to allocate spike times array for entropy analysis"); return -1; }
 
     uint32_t num_spikes = 0;
     float time = 0.0f;
@@ -673,7 +673,7 @@ int hh_qmc_mutual_information(
     // Collect response distributions for each stimulus
     float total_response_entropy = 0.0f;
     float* response_counts = nimcp_calloc(num_stimuli, sizeof(float));
-    NIMCP_API_CHECK_ALLOC(response_counts, "Failed to allocate response counts for mutual information");
+    if (!response_counts) { LOG_ERROR("Failed to allocate response counts for mutual information"); return -1; }
 
     for (uint32_t s = 0; s < num_stimuli; s++) {
         uint32_t total_spikes = 0;
@@ -879,7 +879,7 @@ int hh_qmc_population_coherence(
 
     // Compute voltage distribution entropy
     float* v_probs = nimcp_calloc(100, sizeof(float));
-    NIMCP_API_CHECK_ALLOC(v_probs, "Failed to allocate voltage probability array");
+    if (!v_probs) { LOG_ERROR("Failed to allocate voltage probability array"); return -1; }
 
     float v_min = -100.0f, v_max = 50.0f;
     float bin_width = (v_max - v_min) / 100.0f;

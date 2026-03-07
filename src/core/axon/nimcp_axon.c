@@ -31,6 +31,9 @@
 #include <stdio.h>
 #include <pthread.h>
 
+/* Forward declaration - defined in nimcp_brain_strategy.c */
+extern void set_error(const char* format, ...);
+
 #define LOG_MODULE "axon"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/math/nimcp_math_helpers.h"

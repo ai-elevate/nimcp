@@ -37,6 +37,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/geometry/nimcp_hyperbolic.h"
+#include "utils/geometry/nimcp_lorentz.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
@@ -220,7 +221,32 @@ float knowledge_hyperbolic_distance(const knowledge_item_t *item1,
         return -1.0F;
     }
 
-    // Compute hyperbolic distance
+    // For points near the Poincaré boundary (norm > 0.9), use the Lorentz model
+    // which is more numerically stable for large hyperbolic distances
+    uint32_t dim = item1->hyperbolic_embedding->dim;
+    float norm1_sq = 0.0f, norm2_sq = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        norm1_sq += item1->hyperbolic_embedding->coords[i] * item1->hyperbolic_embedding->coords[i];
+        norm2_sq += item2->hyperbolic_embedding->coords[i] * item2->hyperbolic_embedding->coords[i];
+    }
+
+    if (norm1_sq > 0.81f || norm2_sq > 0.81f) {
+        // Convert to Lorentz model for stable distance computation
+        lorentz_point_t* lp1 = lorentz_from_poincare(
+            item1->hyperbolic_embedding->coords, dim, 1.0f);
+        lorentz_point_t* lp2 = lorentz_from_poincare(
+            item2->hyperbolic_embedding->coords, dim, 1.0f);
+        if (lp1 && lp2) {
+            float dist = lorentz_distance(lp1, lp2);
+            lorentz_point_destroy(lp1);
+            lorentz_point_destroy(lp2);
+            return dist;
+        }
+        lorentz_point_destroy(lp1);
+        lorentz_point_destroy(lp2);
+    }
+
+    // Standard Poincaré distance for interior points
     return poincare_distance(item1->hyperbolic_embedding, item2->hyperbolic_embedding);
 }
 

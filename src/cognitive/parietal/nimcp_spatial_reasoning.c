@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
 #include "utils/math/nimcp_math_helpers.h"
+#include "utils/geometry/nimcp_lie_group.h"
 
 BRIDGE_BOILERPLATE(spatial_reasoning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -453,15 +454,43 @@ vec3_t quaternion_rotate_vector(quaternion_t q, vec3_t v) {
 }
 
 float quaternion_angle_between(quaternion_t a, quaternion_t b) {
-    /* Compute dot product */
     /* Phase 8: Heartbeat at operation start */
     spatial_reasoning_heartbeat("spatial_reas_quaternion_angle_bet", 0.0f);
 
+    /* Convert quaternions to SO(3) rotation matrices and use geodesic distance
+     * d(R1,R2) = ||log(R1^T R2)|| which is the true rotation angle */
+    float axis_a[3], axis_b[3];
+    a = quaternion_normalize(a);
+    b = quaternion_normalize(b);
 
-    float dot = a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z;
-    dot = nimcp_clamp01(fabsf(dot));  /* Handle numerical issues */
+    /* Extract axis-angle from quaternion a */
+    float half_a = acosf(nimcp_clamp01(fabsf(a.w)));
+    float sin_half_a = sinf(half_a);
+    if (sin_half_a > 1e-6f) {
+        axis_a[0] = a.x / sin_half_a;
+        axis_a[1] = a.y / sin_half_a;
+        axis_a[2] = a.z / sin_half_a;
+    } else {
+        axis_a[0] = 0.0f; axis_a[1] = 0.0f; axis_a[2] = 1.0f;
+    }
 
-    return 2.0f * acosf(dot) * RAD_TO_DEG;
+    /* Extract axis-angle from quaternion b */
+    float half_b = acosf(nimcp_clamp01(fabsf(b.w)));
+    float sin_half_b = sinf(half_b);
+    if (sin_half_b > 1e-6f) {
+        axis_b[0] = b.x / sin_half_b;
+        axis_b[1] = b.y / sin_half_b;
+        axis_b[2] = b.z / sin_half_b;
+    } else {
+        axis_b[0] = 0.0f; axis_b[1] = 0.0f; axis_b[2] = 1.0f;
+    }
+
+    so3_rotation_t R1 = so3_from_axis_angle(axis_a, 2.0f * half_a);
+    so3_rotation_t R2 = so3_from_axis_angle(axis_b, 2.0f * half_b);
+
+    /* SO(3) geodesic distance = true rotation angle in radians */
+    float dist_rad = so3_distance(&R1, &R2);
+    return dist_rad * RAD_TO_DEG;
 }
 
 /* ============================================================================
@@ -501,17 +530,32 @@ rotation_result_t spatial_rotate_and_compare(
     float angle = quaternion_angle_between(object_a->orientation, object_b->orientation);
     result.rotation_angle = angle;
 
-    /* Compute rotation axis (approximate) */
+    /* Compute rotation axis via SO(3) logarithmic map (exact, not approximate) */
     quaternion_t q_a = quaternion_normalize(object_a->orientation);
     quaternion_t q_b = quaternion_normalize(object_b->orientation);
-    quaternion_t q_a_inv = {q_a.w, -q_a.x, -q_a.y, -q_a.z};
-    quaternion_t q_diff = quaternion_multiply(q_b, q_a_inv);
 
-    float axis_len = sqrtf(q_diff.x * q_diff.x + q_diff.y * q_diff.y + q_diff.z * q_diff.z);
+    /* Build SO(3) matrices from quaternions */
+    float ha = acosf(nimcp_clamp01(fabsf(q_a.w)));
+    float sha = sinf(ha);
+    float ax_a[3] = {0,0,1}, ax_b[3] = {0,0,1};
+    if (sha > 1e-6f) { ax_a[0]=q_a.x/sha; ax_a[1]=q_a.y/sha; ax_a[2]=q_a.z/sha; }
+    float hb = acosf(nimcp_clamp01(fabsf(q_b.w)));
+    float shb = sinf(hb);
+    if (shb > 1e-6f) { ax_b[0]=q_b.x/shb; ax_b[1]=q_b.y/shb; ax_b[2]=q_b.z/shb; }
+
+    so3_rotation_t R_a = so3_from_axis_angle(ax_a, 2.0f*ha);
+    so3_rotation_t R_b = so3_from_axis_angle(ax_b, 2.0f*hb);
+
+    /* log(R_a^T * R_b) gives exact rotation axis and angle */
+    so3_rotation_t R_a_inv = so3_transpose(&R_a);
+    so3_rotation_t R_diff = so3_multiply(&R_a_inv, &R_b);
+    so3_algebra_t log_diff = so3_log(&R_diff);
+
+    float axis_len = sqrtf(log_diff.v[0]*log_diff.v[0] + log_diff.v[1]*log_diff.v[1] + log_diff.v[2]*log_diff.v[2]);
     if (axis_len > 1e-6f) {
-        result.rotation_axis = vec3_create(q_diff.x / (fabsf(axis_len) > 1e-7f ? axis_len : 1e-7f),
-                                           q_diff.y / (fabsf(axis_len) > 1e-7f ? axis_len : 1e-7f),
-                                           q_diff.z / (fabsf(axis_len) > 1e-7f ? axis_len : 1e-7f));
+        result.rotation_axis = vec3_create(log_diff.v[0] / axis_len,
+                                           log_diff.v[1] / axis_len,
+                                           log_diff.v[2] / axis_len);
     } else {
         result.rotation_axis = vec3_create(0, 1, 0);
     }

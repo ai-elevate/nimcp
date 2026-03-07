@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include <stdio.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 

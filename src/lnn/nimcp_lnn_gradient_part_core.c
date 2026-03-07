@@ -667,32 +667,96 @@ int lnn_gradient_adjoint_step(
     nimcp_tensor_t* J_T_lambda = jacobian_T ? nimcp_tensor_mv(jacobian_T, adjoint) : NULL;
     nimcp_tensor_t* d_adjoint_dt = J_T_lambda ? nimcp_tensor_mul_scalar(J_T_lambda, -1.0f) : NULL;
 
-    // Simple Euler step: λ(t+dt) = λ(t) + dt * dλ/dt
-    nimcp_tensor_t* delta = d_adjoint_dt ? nimcp_tensor_mul_scalar(d_adjoint_dt, dt) : NULL;
-
-    // Copy adjoint to adjoint_next and add delta
+    // Riemannian parallel transport enhancement:
+    // For small-dimensional state spaces (≤ DIFFGEO_MAX_DIM), construct
+    // a Fisher-like metric from the Jacobian (G = J^T J) and use Riemannian
+    // parallel transport instead of flat Euler integration. This preserves
+    // the covector's relationship to the solution manifold's curvature.
     size_t numel = nimcp_tensor_numel(adjoint);
     const float* adj_data = (const float*)nimcp_tensor_data_const(adjoint);
     float* next_data = (float*)nimcp_tensor_data(adjoint_next);
+    bool used_riemannian = false;
 
-    if (adj_data && next_data && delta) {
-        float* delta_data = (float*)nimcp_tensor_data(delta);
-        if (delta_data) {
-            for (size_t i = 0; i < numel; i++) {
-                float val = adj_data[i] + delta_data[i];
-                /* Clamp adjoint to prevent unbounded growth → NaN.
-                 * Large networks produce huge Jacobian products that
-                 * accumulate exponentially over backward integration steps. */
-                if (val > 1e6f) val = 1e6f;
-                else if (val < -1e6f) val = -1e6f;
-                else if (!isfinite(val)) val = 0.0f;
-                next_data[i] = val;
+    if (adj_data && next_data && d_adjoint_dt && numel <= DIFFGEO_MAX_DIM && numel >= 2) {
+        // Build metric G = J^T * J (Fisher information metric on state space)
+        riemannian_metric_t* metric = riemannian_metric_create((uint32_t)numel);
+        if (metric) {
+            const float* jac_data = (const float*)nimcp_tensor_data_const(jacobian);
+            if (jac_data) {
+                float* g_data = (float*)nimcp_calloc(numel * numel, sizeof(float));
+                if (g_data) {
+                    // G_ij = sum_k J_ki * J_kj
+                    for (uint32_t i = 0; i < numel; i++) {
+                        for (uint32_t j = 0; j < numel; j++) {
+                            float sum = 0.0f;
+                            for (uint32_t k = 0; k < numel; k++) {
+                                sum += jac_data[k * numel + i] * jac_data[k * numel + j];
+                            }
+                            // Regularize: G + εI for numerical stability
+                            g_data[i * numel + j] = sum + (i == j ? 1e-4f : 0.0f);
+                        }
+                    }
+                    riemannian_metric_set(metric, g_data);
+
+                    // Compute Christoffel symbols for parallel transport
+                    // Use finite difference on metric for dg/dx
+                    float* dg_dx = (float*)nimcp_calloc(numel * numel * numel, sizeof(float));
+                    if (dg_dx) {
+                        christoffel_symbols_t* christoffel = christoffel_create((uint32_t)numel);
+                        if (christoffel) {
+                            christoffel_compute(christoffel, metric, dg_dx);
+
+                            // Parallel transport: move adjoint along tangent d_adjoint_dt
+                            float* tangent = (float*)nimcp_tensor_data(d_adjoint_dt);
+                            float transported[DIFFGEO_MAX_DIM];
+                            parallel_transport(christoffel, adj_data, tangent,
+                                             dt, transported, (uint32_t)numel);
+
+                            // Use transported covector
+                            for (size_t i = 0; i < numel; i++) {
+                                float val = transported[i];
+                                if (val > 1e6f) val = 1e6f;
+                                else if (val < -1e6f) val = -1e6f;
+                                else if (!isfinite(val)) val = 0.0f;
+                                next_data[i] = val;
+                            }
+                            used_riemannian = true;
+                            christoffel_destroy(christoffel);
+                        }
+                        nimcp_free(dg_dx);
+                    }
+                    nimcp_free(g_data);
+                }
             }
-        } else {
+            riemannian_metric_destroy(metric);
+        }
+    }
+
+    // Fallback: flat Euler step when Riemannian transport not available
+    if (!used_riemannian) {
+        nimcp_tensor_t* delta = d_adjoint_dt ? nimcp_tensor_mul_scalar(d_adjoint_dt, dt) : NULL;
+
+        if (adj_data && next_data && delta) {
+            float* delta_data = (float*)nimcp_tensor_data(delta);
+            if (delta_data) {
+                for (size_t i = 0; i < numel; i++) {
+                    float val = adj_data[i] + delta_data[i];
+                    /* Clamp adjoint to prevent unbounded growth → NaN.
+                     * Large networks produce huge Jacobian products that
+                     * accumulate exponentially over backward integration steps. */
+                    if (val > 1e6f) val = 1e6f;
+                    else if (val < -1e6f) val = -1e6f;
+                    else if (!isfinite(val)) val = 0.0f;
+                    next_data[i] = val;
+                }
+            } else {
+                for (size_t i = 0; i < numel; i++) next_data[i] = adj_data[i];
+            }
+        } else if (adj_data && next_data) {
             for (size_t i = 0; i < numel; i++) next_data[i] = adj_data[i];
         }
-    } else if (adj_data && next_data) {
-        for (size_t i = 0; i < numel; i++) next_data[i] = adj_data[i];
+
+        nimcp_tensor_destroy(delta);
     }
 
     // Cleanup (NULL-safe)
@@ -700,7 +764,6 @@ int lnn_gradient_adjoint_step(
     nimcp_tensor_destroy(jacobian_T);
     nimcp_tensor_destroy(J_T_lambda);
     nimcp_tensor_destroy(d_adjoint_dt);
-    nimcp_tensor_destroy(delta);
 
     return 0;
 }

@@ -282,7 +282,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
     size_t matrix_elements = initial_matrix * initial_matrix;
     mem->relationship_matrix = (float*)nimcp_calloc(matrix_elements, sizeof(float));
     mem->relationship_types = (relationship_type_t*)nimcp_calloc(matrix_elements, sizeof(relationship_type_t));
-    if (!mem->relationship_types) return -1;
+    if (!mem->relationship_types) return NULL;
     mem->matrix_person_ids = (uint64_t*)nimcp_calloc(initial_matrix, sizeof(uint64_t));
 
     if (!mem->relationship_matrix || !mem->relationship_types || !mem->matrix_person_ids) {

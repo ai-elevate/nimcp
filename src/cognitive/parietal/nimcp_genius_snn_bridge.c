@@ -39,8 +39,9 @@ BRIDGE_BOILERPLATE_MESH_ONLY(genius_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /** @brief Send heartbeat from genius_snn_bridge module (instance-level) */
 static inline void genius_snn_bridge_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+    void* _inst_agent_ptr, const char* operation, float progress)
 {
+    nimcp_health_agent_t* instance_agent = (nimcp_health_agent_t*)_inst_agent_ptr;
     if (g_genius_snn_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_genius_snn_bridge_health_agent, operation, progress);
     }

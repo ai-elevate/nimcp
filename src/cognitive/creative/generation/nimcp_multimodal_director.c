@@ -12,6 +12,7 @@
 
 #include "cognitive/creative/generation/nimcp_multimodal_director.h"
 #include "utils/memory/nimcp_memory.h"
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>

@@ -90,8 +90,9 @@ void collective_fep_bridge_mesh_unregister(void) {
 
 /** @brief Send heartbeat from collective_fep_bridge module (instance-level) */
 static inline void collective_fep_bridge_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+    void* _inst_agent_ptr, const char* operation, float progress)
 {
+    nimcp_health_agent_t* instance_agent = (nimcp_health_agent_t*)_inst_agent_ptr;
     if (g_collective_fep_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_collective_fep_bridge_health_agent, operation, progress);
     }

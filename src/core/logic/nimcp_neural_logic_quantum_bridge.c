@@ -38,6 +38,7 @@ void neural_logic_quantum_default_config_opaque(void* config_out) {
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neural_logic_quantum_bridge)
 
+#undef LOG_MODULE
 #define LOG_MODULE "NEURAL_LOGIC_QUANTUM_BRIDGE"
 
 //=============================================================================

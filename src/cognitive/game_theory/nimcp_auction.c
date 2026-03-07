@@ -108,7 +108,7 @@ nimcp_auction_t nimcp_auction_create(const nimcp_auction_config_t* config) {
 
 
     nimcp_auction_t auction = nimcp_calloc(1, sizeof(struct nimcp_auction_struct));
-    if (!auction) return -1;
+    if (!auction) return NULL;
     NIMCP_API_CHECK_ALLOC(auction, "Failed to allocate auction");
 
     if (config) {

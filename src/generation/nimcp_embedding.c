@@ -16,6 +16,7 @@
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/geometry/nimcp_lie_group.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -573,4 +574,82 @@ read_error:
     LOG_ERROR("embedding_load: read error in '%s'", path);
     fclose(f);
     return NULL;
+}
+
+/*=============================================================================
+ * Public API — Geodesic Interpolation
+ *===========================================================================*/
+
+int embedding_geodesic_interpolate(const float* vec_a, const float* vec_b,
+                                    float t, float* result, uint32_t dim)
+{
+    if (!vec_a || !vec_b || !result || dim == 0) return -1;
+
+    /* Clamp t to [0,1] */
+    if (t <= 0.0f) { memcpy(result, vec_a, dim * sizeof(float)); return 0; }
+    if (t >= 1.0f) { memcpy(result, vec_b, dim * sizeof(float)); return 0; }
+
+    /* SLERP on the unit hypersphere: geodesic interpolation respects the
+     * spherical geometry of normalized embedding vectors.
+     *
+     * slerp(a, b, t) = sin((1-t)*omega)/sin(omega) * a + sin(t*omega)/sin(omega) * b
+     * where omega = acos(a . b / (||a|| ||b||))
+     */
+    float dot = 0.0f, norm_a = 0.0f, norm_b = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        dot += vec_a[i] * vec_b[i];
+        norm_a += vec_a[i] * vec_a[i];
+        norm_b += vec_b[i] * vec_b[i];
+    }
+    norm_a = sqrtf(norm_a);
+    norm_b = sqrtf(norm_b);
+
+    if (norm_a < 1e-10f || norm_b < 1e-10f) {
+        /* Degenerate: linear interpolation */
+        for (uint32_t i = 0; i < dim; i++) {
+            result[i] = (1.0f - t) * vec_a[i] + t * vec_b[i];
+        }
+        return 0;
+    }
+
+    float cos_omega = dot / (norm_a * norm_b);
+    /* Clamp to avoid NaN from acos */
+    if (cos_omega > 1.0f) cos_omega = 1.0f;
+    if (cos_omega < -1.0f) cos_omega = -1.0f;
+
+    float omega = acosf(cos_omega);
+
+    if (omega < 1e-6f) {
+        /* Vectors nearly parallel: linear interpolation */
+        for (uint32_t i = 0; i < dim; i++) {
+            result[i] = (1.0f - t) * vec_a[i] + t * vec_b[i];
+        }
+        return 0;
+    }
+
+    float sin_omega = sinf(omega);
+    float coeff_a = sinf((1.0f - t) * omega) / sin_omega;
+    float coeff_b = sinf(t * omega) / sin_omega;
+
+    /* Interpolate preserving norms: scale to interpolated magnitude */
+    float target_norm = (1.0f - t) * norm_a + t * norm_b;
+    for (uint32_t i = 0; i < dim; i++) {
+        /* SLERP on normalized vectors, then scale to interpolated norm */
+        result[i] = coeff_a * (vec_a[i] / norm_a) + coeff_b * (vec_b[i] / norm_b);
+    }
+
+    /* Renormalize and scale to target norm */
+    float result_norm = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        result_norm += result[i] * result[i];
+    }
+    result_norm = sqrtf(result_norm);
+    if (result_norm > 1e-10f) {
+        float scale = target_norm / result_norm;
+        for (uint32_t i = 0; i < dim; i++) {
+            result[i] *= scale;
+        }
+    }
+
+    return 0;
 }

@@ -815,6 +815,7 @@ typedef struct {
     /* Current position for navigation */
     float current_position[3];
     float current_heading;
+    void* spatial_metric;  /**< Optional riemannian_metric_t* for non-Euclidean environments */
 
     /* Pattern buffers */
     float* dg_activation_pattern;

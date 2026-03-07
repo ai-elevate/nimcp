@@ -64,6 +64,8 @@ static void api_set_error(const char* fmt, ...);
 #include "utils/platform/nimcp_platform_once.h"                    // Thread-safe init
 #include "utils/thread/nimcp_atomic.h"                             // Atomic operations
 #include "utils/exception/nimcp_exception_macros.h"
+#include "core/brain/inference/nimcp_brain_inference.h"  // brain_freeze, brain_is_frozen
+#include "core/brain/factory/nimcp_brain_factory.h"      // nimcp_brain_factory_init_brain_config
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>

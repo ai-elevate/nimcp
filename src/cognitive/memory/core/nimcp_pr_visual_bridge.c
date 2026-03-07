@@ -1182,7 +1182,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_process_frame(
         return set_error(bridge, PR_VISUAL_ERROR_NO_VISUAL_CORTEX);
     }
 
-    uint64_t start_time = (nimcp_platform_time_monotonic_us() * 1000);
+    uint64_t start_time = (nimcp_time_monotonic_us() * 1000);
 
     pr_visual_bridge_error_t err = lock_bridge(bridge);
     if (err != PR_VISUAL_OK) {
@@ -1220,7 +1220,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_process_frame(
     bridge->stats.frames_processed++;
 
     /* Update timing statistics */
-    uint64_t elapsed = (nimcp_platform_time_monotonic_us() * 1000) - start_time;
+    uint64_t elapsed = (nimcp_time_monotonic_us() * 1000) - start_time;
     bridge->stats.total_processing_time_ns += elapsed;
     if (elapsed > bridge->stats.max_processing_time_ns) {
         bridge->stats.max_processing_time_ns = elapsed;

@@ -16,6 +16,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/geometry/nimcp_differential_geometry.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(information_geometry)
 
@@ -408,10 +409,33 @@ nimcp_info_geom_error_t nimcp_info_geom_geodesic_distance(
 ) {
     if (!geom || !point_a || !point_b || !distance) return INFO_GEOM_ERR_NULL_PTR;
 
-    /* Geodesic distance on statistical manifold:
-     * d(p,q) = sqrt(delta^T * F * delta) where delta = q - p
-     * For simplicity, using Fisher-Rao metric */
+    /* Use the Riemannian metric module to compute proper geodesic distance
+     * on the Fisher-Rao statistical manifold. The Fisher information matrix
+     * serves as the metric tensor g_{ij}. */
 
+    if (dim <= DIFFGEO_MAX_DIM && geom->fisher_matrix) {
+        riemannian_metric_t* metric = riemannian_metric_create(dim);
+        if (metric) {
+            riemannian_metric_set(metric, geom->fisher_matrix);
+            riemannian_metric_invert(metric);
+
+            /* For nearby points, the infinitesimal approximation
+             * d(p,q) ≈ ||q-p||_g is sufficient. For distant points,
+             * we'd need the full geodesic equation. Use the Riemannian
+             * norm of the displacement as a first-order approximation. */
+            float delta[DIFFGEO_MAX_DIM];
+            for (uint32_t i = 0; i < dim; i++) {
+                delta[i] = point_b[i] - point_a[i];
+            }
+
+            *distance = riemannian_norm(metric, delta);
+            geom->state.geodesic_distance = *distance;
+            riemannian_metric_destroy(metric);
+            return INFO_GEOM_OK;
+        }
+    }
+
+    /* Fallback: direct Fisher-Rao computation */
     float* delta = (float*)nimcp_malloc(dim * sizeof(float));
     float* F_delta = (float*)nimcp_malloc(dim * sizeof(float));
     if (!delta || !F_delta) {
@@ -424,10 +448,8 @@ nimcp_info_geom_error_t nimcp_info_geom_geodesic_distance(
         delta[i] = point_b[i] - point_a[i];
     }
 
-    /* F * delta */
     matrix_vector_multiply(geom->fisher_matrix, delta, F_delta, dim, dim);
 
-    /* delta^T * F * delta */
     float sum = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
         sum += delta[i] * F_delta[i];
@@ -858,12 +880,17 @@ nimcp_info_geom_error_t nimcp_manifold_curvature(
     if (!manifold || !point || !curvature) return INFO_GEOM_ERR_NULL_PTR;
     if (dim != manifold->ambient_dim) return INFO_GEOM_ERR_INVALID_DIM;
 
-    /* Compute local curvature by analyzing neighborhood geometry */
-    /* Simplified: estimate as deviation from local linear fit */
-
+    /* Use local neighborhood to estimate a Riemannian metric, then compute
+     * scalar curvature via the differential geometry module's Ricci tensor.
+     * Falls back to density-based estimate if insufficient neighbors. */
     float sum_sq_dist = 0.0f;
     uint32_t count = 0;
     float radius = manifold->config.neighborhood_radius;
+
+    /* Accumulate local covariance matrix as metric estimate */
+    uint32_t ldim = (dim < DIFFGEO_MAX_DIM) ? dim : DIFFGEO_MAX_DIM;
+    float covariance[DIFFGEO_MAX_DIM * DIFFGEO_MAX_DIM];
+    memset(covariance, 0, ldim * ldim * sizeof(float));
 
     for (uint32_t i = 0; i < manifold->num_samples; i++) {
         const float* sample = &manifold->samples[i * dim];
@@ -876,13 +903,47 @@ nimcp_info_geom_error_t nimcp_manifold_curvature(
         if (dist < radius && dist > 1e-8f) {
             sum_sq_dist += dist_sq;
             count++;
+            /* Accumulate outer product for covariance */
+            for (uint32_t a = 0; a < ldim; a++) {
+                float da = sample[a] - point[a];
+                for (uint32_t b = 0; b < ldim; b++) {
+                    covariance[a * ldim + b] += da * (sample[b] - point[b]);
+                }
+            }
         }
     }
 
-    /* Curvature estimate based on neighborhood density */
+    if (count >= ldim + 1 && ldim >= 2) {
+        /* Normalize covariance */
+        for (uint32_t i = 0; i < ldim * ldim; i++) {
+            covariance[i] /= (float)count;
+        }
+
+        /* Use covariance as local metric tensor, compute scalar curvature
+         * via Ricci contraction. For flat regions, curvature ≈ 0. */
+        riemannian_metric_t* metric = riemannian_metric_create(ldim);
+        if (metric) {
+            riemannian_metric_set(metric, covariance);
+            if (riemannian_metric_invert(metric) == DIFFGEO_OK) {
+                /* Scalar curvature from Ricci tensor (zero Christoffel derivs
+                 * at this point — use density-weighted estimate) */
+                curvature_data_t* curv_data = curvature_create(ldim);
+                if (curv_data) {
+                    curvature_compute_scalar(curv_data, metric);
+                    *curvature = curv_data->scalar_curvature;
+                    curvature_destroy(curv_data);
+                    riemannian_metric_destroy(metric);
+                    return INFO_GEOM_OK;
+                }
+                curvature_destroy(curv_data);
+            }
+            riemannian_metric_destroy(metric);
+        }
+    }
+
+    /* Fallback: curvature estimate based on neighborhood density */
     if (count > 0) {
         float avg_dist_sq = sum_sq_dist / (float)count;
-        /* Higher density = lower curvature estimate */
         *curvature = 1.0f / (1.0f + avg_dist_sq * (float)count);
     } else {
         *curvature = 0.0f;

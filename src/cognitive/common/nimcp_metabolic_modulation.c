@@ -212,7 +212,7 @@ metabolic_effects_tensor_t* metabolic_effects_tensor_create(uint32_t batch_size)
     metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_te", 0.0f);
 
 
-    NIMCP_API_CHECK(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
+    NIMCP_API_CHECK_RET_NULL(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
         "metabolic_effects_tensor_create: batch_size must be > 0");
 
     metabolic_effects_tensor_t* effects = nimcp_calloc(1, sizeof(metabolic_effects_tensor_t));
@@ -258,7 +258,7 @@ metabolic_input_tensor_t* metabolic_input_tensor_create(uint32_t batch_size) {
     metabolic_modulation_heartbeat("metabolic_mo_metabolic_input_tens", 0.0f);
 
 
-    NIMCP_API_CHECK(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
+    NIMCP_API_CHECK_RET_NULL(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
         "metabolic_input_tensor_create: batch_size must be > 0");
 
     metabolic_input_tensor_t* input = nimcp_calloc(1, sizeof(metabolic_input_tensor_t));
@@ -308,7 +308,7 @@ metabolic_multipliers_tensor_t* metabolic_multipliers_tensor_create(uint32_t bat
     metabolic_modulation_heartbeat("metabolic_mo_metabolic_multiplier", 0.0f);
 
 
-    NIMCP_API_CHECK(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
+    NIMCP_API_CHECK_RET_NULL(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
         "metabolic_multipliers_tensor_create: batch_size must be > 0");
 
     metabolic_multipliers_tensor_t* mult = nimcp_calloc(1, sizeof(metabolic_multipliers_tensor_t));

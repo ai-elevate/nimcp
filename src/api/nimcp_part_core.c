@@ -2503,7 +2503,7 @@ nimcp_status_t nimcp_brain_generate_text(
         for (uint32_t i = 0; i < copy_dim; i++) {
             visual_features[i] = semantic_input[i] * 0.5f; /* attenuated cross-modal */
         }
-        visual_cortex_process(ib->visual_cortex, visual_features,
+        visual_cortex_process(ib->visual_cortex, (const uint8_t*)visual_features,
                               16, 16, 1, NULL);
     }
 

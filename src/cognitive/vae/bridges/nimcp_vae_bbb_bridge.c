@@ -20,6 +20,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 /* TODO: Fix immune path #include "immune/nimcp_immune.h" */
 
+#include <stdio.h>
 #include <math.h>
 #include <string.h>
 #include <time.h>

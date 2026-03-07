@@ -1479,8 +1479,7 @@ int self_repair_notify_health_agent_failure(
             strncpy(msg.error_message, error_message, sizeof(msg.error_message) - 1);
         }
 
-        bio_router_send(coordinator->bio_ctx, BIO_MODULE_HEALTH_SELF_REPAIR_BRIDGE,
-                       &msg, sizeof(msg));
+        bio_router_send(coordinator->bio_ctx, &msg, sizeof(msg), 0);
     }
 
     nimcp_mutex_unlock(coordinator->mutex);

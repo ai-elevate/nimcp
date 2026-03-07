@@ -47,7 +47,9 @@ extern "C" {
 //=============================================================================
 
 /** Maximum number of layers in the system */
+#ifndef NIMCP_MAX_LAYERS
 #define NIMCP_MAX_LAYERS                16
+#endif
 
 /** Maximum modules per layer */
 #define NIMCP_MAX_MODULES_PER_LAYER     32

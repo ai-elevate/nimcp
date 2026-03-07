@@ -272,6 +272,23 @@ int embedding_save(const embedding_layer_t* emb, const char* path);
  */
 embedding_layer_t* embedding_load(const char* path);
 
+/**
+ * WHAT: Geodesic interpolation between two embedding vectors
+ * WHY:  Linear interpolation in high-dim space doesn't follow the data manifold.
+ *       Geodesic interpolation respects the spherical geometry of normalized
+ *       embeddings (SLERP on the unit hypersphere).
+ * HOW:  Spherical linear interpolation (SLERP) between normalized vectors
+ *
+ * @param vec_a   First vector [embed_dim]
+ * @param vec_b   Second vector [embed_dim]
+ * @param t       Interpolation parameter [0,1]
+ * @param result  Output interpolated vector [embed_dim]
+ * @param dim     Embedding dimension
+ * @return 0 on success, -1 on error
+ */
+int embedding_geodesic_interpolate(const float* vec_a, const float* vec_b,
+                                    float t, float* result, uint32_t dim);
+
 #ifdef __cplusplus
 }
 #endif

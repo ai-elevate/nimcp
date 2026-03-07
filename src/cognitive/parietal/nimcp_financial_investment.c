@@ -37,6 +37,20 @@ static nimcp_health_agent_t* g_financial_investment_health_agent = NULL;
 
 BRIDGE_DEFINE_MESH_REGISTRATION(financial_investment, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
+/* Forward declarations for immune/BBB validation stubs */
+extern int brain_immune_validate_operation(brain_immune_system_t* immune,
+                                            const char* operation,
+                                            uint32_t severity);
+extern int brain_immune_present_antigen(brain_immune_system_t* immune,
+                                         int source,
+                                         const uint8_t* epitope,
+                                         size_t epitope_len,
+                                         uint32_t severity,
+                                         uint32_t source_node,
+                                         uint32_t* antigen_id);
+extern int bbb_validate_data(bbb_system_t bbb, const void* data,
+                              size_t size, const char* context);
+
 /* Stub declarations for subsystem integration globals */
 static void* g_fin_investment_immune = NULL;
 static void* g_fin_investment_bbb = NULL;

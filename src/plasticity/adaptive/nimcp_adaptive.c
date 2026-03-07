@@ -42,6 +42,7 @@
 #include <sched.h>  // C-ADP-11: sched_yield() for pool cleanup drain
 #endif
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuralnet_learning.h"
 #include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types

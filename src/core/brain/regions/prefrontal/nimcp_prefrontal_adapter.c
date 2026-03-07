@@ -22,6 +22,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_wiring_helpers.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"

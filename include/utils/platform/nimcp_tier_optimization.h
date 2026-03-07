@@ -423,8 +423,11 @@ extern "C" {
 #endif
 
 /**
- * @brief Path buffer size
+ * @brief Path buffer size (tier-specific override)
  */
+#ifdef NIMCP_PATH_BUFFER_SIZE
+#undef NIMCP_PATH_BUFFER_SIZE
+#endif
 #if NIMCP_BUILD_TIER == PLATFORM_TIER_MINIMAL_VALUE
     #define NIMCP_PATH_BUFFER_SIZE 128
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_CONSTRAINED_VALUE

@@ -282,7 +282,7 @@ extern void set_error(const char* format, ...);
  *
  * SAFETY: Brain regions module is not shared (unlike network), so no COW needed
  */
-struct brain_module_struct* brain_get_brain_regions(brain_t brain)
+brain_module_t* brain_get_brain_regions(brain_t brain)
 {
     if (!brain) {
         set_error("NULL brain passed to brain_get_brain_regions");
@@ -434,6 +434,13 @@ static bool load_working_memory_state(brain_t brain, FILE* file);
 static bool load_metadata(brain_t brain, const char* filepath);
 static bool ensure_snapshot_dir(const char* snapshot_dir);
 static const char* get_snapshot_dir(brain_t brain);
+
+// Forward declarations for functions defined in later _part_*.c files
+// (needed because _part_lifecycle.c calls clear_cache from _part_core.c,
+//  and _part_helpers.c calls init_brain_stats from _part_stats.c)
+void clear_cache(brain_t brain);
+void init_brain_stats(brain_stats_t* stats, const char* task_name, brain_size_t size,
+                      uint32_t num_inputs, float learning_rate);
 
 //=============================================================================
 // SRP Split: Function implementations organized by responsibility

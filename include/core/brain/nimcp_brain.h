@@ -3561,7 +3561,7 @@ neuromodulator_system_t brain_get_neuromodulator_system(brain_t brain);
  * @param brain Brain handle
  * @return Brain module handle (do not free!), or NULL if not initialized
  */
-struct brain_module_struct* brain_get_brain_regions(brain_t brain);
+brain_module_t* brain_get_brain_regions(brain_t brain);
 
 //=============================================================================
 // Phase 8: Unified Multi-Modal Processing API

@@ -119,9 +119,10 @@ void BRIDGE_BP_CONCAT(MODULE, _mesh_unregister)(void)                          \
 #define BRIDGE_DEFINE_HEARTBEAT_INSTANCE(MODULE)                               \
 static nimcp_health_agent_t* BRIDGE_BP_CONCAT(g_, BRIDGE_BP_CONCAT(MODULE, _instance_health_agent)) = NULL; \
 static inline void BRIDGE_BP_CONCAT(MODULE, _heartbeat_instance)(              \
-    nimcp_health_agent_t* instance_agent,                                       \
+    void* instance_agent_ptr,                                                   \
     const char* operation, float progress)                                      \
 {                                                                              \
+    nimcp_health_agent_t* instance_agent = (nimcp_health_agent_t*)instance_agent_ptr; \
     if (BRIDGE_BP_CONCAT(g_, BRIDGE_BP_CONCAT(MODULE, _health_agent))) {       \
         nimcp_health_agent_heartbeat_ex(                                        \
             BRIDGE_BP_CONCAT(g_, BRIDGE_BP_CONCAT(MODULE, _health_agent)),      \

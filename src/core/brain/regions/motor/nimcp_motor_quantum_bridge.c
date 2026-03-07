@@ -10,6 +10,7 @@
 #include "core/brain/regions/motor/nimcp_motor_quantum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 

@@ -13,6 +13,10 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+
+/* Forward declaration - defined in nimcp_brain_strategy.c */
+extern void set_error(const char* format, ...);
+
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(structural_plasticity)

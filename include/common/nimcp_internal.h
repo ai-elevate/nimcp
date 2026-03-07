@@ -94,8 +94,10 @@ extern "C" {
  * @param ptr The pointer to check
  * @param ret_val The value to return if pointer is NULL
  */
+#ifndef NIMCP_CHECK_NULL
 #define NIMCP_CHECK_NULL(ptr, ret_val) \
     NIMCP_VALIDATE_PARAM((ptr) != NULL, (ret_val))
+#endif
 
 /**
  * @brief Validate a numerical value is within a range
@@ -274,7 +276,9 @@ extern "C" {
 #define NIMCP_MAX_NEURONS 4000000
 
 /** Maximum number of layers (safety limit) */
+#ifndef NIMCP_MAX_LAYERS
 #define NIMCP_MAX_LAYERS 1000
+#endif
 
 /** Maximum string length for names/descriptions */
 #define NIMCP_MAX_STRING_LENGTH 1024

@@ -115,6 +115,8 @@ struct security_cognitive_bridge_struct {
  * HELPER MACROS
  * ============================================================================ */
 
+#undef BRIDGE_LOCK
+#undef BRIDGE_UNLOCK
 #define BRIDGE_LOCK(b) nimcp_mutex_lock((b)->base.mutex)
 #define BRIDGE_UNLOCK(b) nimcp_mutex_unlock((b)->base.mutex)
 

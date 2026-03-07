@@ -21,6 +21,9 @@
 #include <pthread.h>
 #include "utils/logging/nimcp_logging.h"
 
+/* Forward declaration - defined in nimcp_brain_strategy.c */
+extern void set_error(const char* format, ...);
+
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"

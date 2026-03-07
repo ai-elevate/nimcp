@@ -30,6 +30,9 @@
 #include <math.h>
 #include <pthread.h>
 
+/* Forward declaration - defined in nimcp_brain_strategy.c */
+extern void set_error(const char* format, ...);
+
 #define LOG_MODULE "brain_regions"
 
 #include <stddef.h>  /* for NULL */

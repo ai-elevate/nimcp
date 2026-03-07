@@ -423,7 +423,7 @@ int ephaptic_qmc_field_walk(
     // Build adjacency matrix from positions
     uint32_t n = system->neuron_count;
     uint8_t* adjacency = nimcp_calloc(n * n, sizeof(uint8_t));
-    NIMCP_API_CHECK_ALLOC(adjacency, "Failed to allocate adjacency matrix for quantum walk");
+    if (!adjacency) { LOG_ERROR("Failed to allocate adjacency matrix for quantum walk"); return -1; }
 
     // Connect neurons within field decay distance
     float max_dist = 3.0f / system->config.field_decay_constant;  // 3 decay lengths
@@ -539,7 +539,7 @@ int ephaptic_qmc_collective_entropy(
 
     // Extract phases for entropy estimation
     float* phases = nimcp_calloc(system->neuron_count, sizeof(float));
-    NIMCP_API_CHECK_ALLOC(phases, "Failed to allocate phases array for entropy estimation");
+    if (!phases) { LOG_ERROR("Failed to allocate phases array for entropy estimation"); return -1; }
 
     for (uint32_t i = 0; i < system->neuron_count; i++) {
         phases[i] = system->neurons[i].phase;

@@ -189,7 +189,7 @@ mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* conf
 
     LOG_DEBUG("Creating mirror hierarchy system");
     mirror_hierarchy_t hierarchy = (mirror_hierarchy_t)nimcp_calloc(1, sizeof(struct mirror_hierarchy_system));
-    if (!hierarchy) return -1;
+    if (!hierarchy) return NULL;
     NIMCP_API_CHECK_ALLOC(hierarchy, "Failed to allocate mirror hierarchy system");
 
     // Copy configuration

@@ -1003,23 +1003,23 @@ NIMCP_EXPORT bool nimcp_log_is_tty(void);
  */
 #define nimcp_log_debug(module_id, fmt, ...) \
     nimcp_log_write(NULL, LOG_LEVEL_DEBUG, NULL, __FILE__, __LINE__, \
-                    "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
+                    "[0x%04X] " fmt, (unsigned int)(uintptr_t)(module_id), ##__VA_ARGS__)
 
 #define nimcp_log_info(module_id, fmt, ...) \
     nimcp_log_write(NULL, LOG_LEVEL_INFO, NULL, __FILE__, __LINE__, \
-                    "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
+                    "[0x%04X] " fmt, (unsigned int)(uintptr_t)(module_id), ##__VA_ARGS__)
 
 #define nimcp_log_warning(module_id, fmt, ...) \
     nimcp_log_write(NULL, LOG_LEVEL_WARN, NULL, __FILE__, __LINE__, \
-                    "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
+                    "[0x%04X] " fmt, (unsigned int)(uintptr_t)(module_id), ##__VA_ARGS__)
 
 #define nimcp_log_warn(module_id, fmt, ...) \
     nimcp_log_write(NULL, LOG_LEVEL_WARN, NULL, __FILE__, __LINE__, \
-                    "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
+                    "[0x%04X] " fmt, (unsigned int)(uintptr_t)(module_id), ##__VA_ARGS__)
 
 #define nimcp_log_error(module_id, fmt, ...) \
     nimcp_log_write(NULL, LOG_LEVEL_ERROR, NULL, __FILE__, __LINE__, \
-                    "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
+                    "[0x%04X] " fmt, (unsigned int)(uintptr_t)(module_id), ##__VA_ARGS__)
 
 /**
  * @brief Get a named logger (alias for nimcp_log_get_global for compatibility)

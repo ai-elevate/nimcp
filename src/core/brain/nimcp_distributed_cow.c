@@ -28,6 +28,9 @@ BRIDGE_BOILERPLATE_MESH_ONLY(distributed_cow, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #include <string.h>
 #include <time.h>
 #include <zlib.h>  // For compression
+
+/* Forward declaration - defined in nimcp_brain_strategy.c */
+extern void set_error(const char* format, ...);
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "networking/protocol/nimcp_protocol.h"

@@ -22,6 +22,13 @@
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 // core/directives/nimcp_core_directives.h is included via nimcp_brain_internal.h
+// NOTE: cognitive/ethics/nimcp_core_directives.h shares the same include guard
+// as core/directives/nimcp_core_directives.h, so we forward-declare the
+// functions we need from the ethics version:
+int core_directives_connect_immune(core_directives_system_t* directives,
+                                    brain_immune_system_t* immune);
+int core_directives_connect_fep(core_directives_system_t* directives,
+                                 fep_orchestrator_t* fep_orch);
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 

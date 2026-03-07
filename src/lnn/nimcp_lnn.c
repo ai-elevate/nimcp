@@ -23,6 +23,9 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lnn)
 
+/* Forward declaration - defined in nimcp_lnn_gradient_part_core.c */
+int lnn_network_backward(lnn_network_t* network, const nimcp_tensor_t* loss_grad);
+
 /* Thread-safe initialization using pthread_once */
 static pthread_once_t g_lnn_init_once = PTHREAD_ONCE_INIT;
 static pthread_once_t g_lnn_version_once = PTHREAD_ONCE_INIT;

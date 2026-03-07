@@ -21,6 +21,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "glial/myelin_sheath/nimcp_myelin_math.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <stdio.h>

@@ -22,6 +22,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/geometry/nimcp_lie_group.h"
 
 #define LOG_MODULE "embodied_simulation"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -229,7 +230,38 @@ static void calculate_step_effort(
                    step->target_position.y * step->target_position.y +
                    step->target_position.z * step->target_position.z);
     }
-    effort->metabolic_cost = base_metabolic * (1.0 + dist);
+    /* Add SO(3) geodesic cost for rotation actions */
+    double orient_dist = 0.0;
+    if (effector && step->primitive == NIMCP_ACTION_PRIM_ROTATE) {
+        /* Convert current and target quaternions to SO(3) rotation matrices,
+         * then compute geodesic distance on the rotation manifold */
+        nimcp_sim_quaternion_t q = effector->orientation;
+        nimcp_sim_quaternion_t qt = step->target_orientation;
+        double q_norm = sqrt(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+        double qt_norm = sqrt(qt.w*qt.w + qt.x*qt.x + qt.y*qt.y + qt.z*qt.z);
+        if (q_norm > 1e-9 && qt_norm > 1e-9) {
+            /* Quaternion to axis-angle */
+            float axis_a[3] = {0,0,1}, axis_b[3] = {0,0,1};
+            float angle_a = (float)(2.0 * acos(fmin(fabs(q.w / q_norm), 1.0)));
+            float angle_b = (float)(2.0 * acos(fmin(fabs(qt.w / qt_norm), 1.0)));
+            if (angle_a > 1e-6f) {
+                float s = (float)sin(angle_a * 0.5);
+                axis_a[0] = (float)(q.x / (q_norm * s));
+                axis_a[1] = (float)(q.y / (q_norm * s));
+                axis_a[2] = (float)(q.z / (q_norm * s));
+            }
+            if (angle_b > 1e-6f) {
+                float s = (float)sin(angle_b * 0.5);
+                axis_b[0] = (float)(qt.x / (qt_norm * s));
+                axis_b[1] = (float)(qt.y / (qt_norm * s));
+                axis_b[2] = (float)(qt.z / (qt_norm * s));
+            }
+            so3_rotation_t R_a = so3_from_axis_angle(axis_a, angle_a);
+            so3_rotation_t R_b = so3_from_axis_angle(axis_b, angle_b);
+            orient_dist = (double)so3_distance(&R_a, &R_b);
+        }
+    }
+    effort->metabolic_cost = base_metabolic * (1.0 + dist + 0.5 * orient_dist);
 
     /* Time cost */
     effort->time_cost = step->duration;
@@ -357,6 +389,41 @@ static bool execute_step(
             eff->velocity[1] = 0.0;
             eff->velocity[2] = 0.0;
             break;
+        }
+
+        /* SO(3) orientation interpolation via geodesic SLERP */
+        if (step->primitive == NIMCP_ACTION_PRIM_ROTATE && step->duration > 1e-9) {
+            float t_frac = (float)((step_time + dt) / step->duration);
+            if (t_frac > 1.0f) t_frac = 1.0f;
+            /* Convert start/target quaternions to SO(3) */
+            nimcp_sim_quaternion_t q0 = eff->orientation;
+            nimcp_sim_quaternion_t q1 = step->target_orientation;
+            float axis0[3] = {0,0,1}, axis1[3] = {0,0,1};
+            double n0 = sqrt(q0.w*q0.w+q0.x*q0.x+q0.y*q0.y+q0.z*q0.z);
+            double n1 = sqrt(q1.w*q1.w+q1.x*q1.x+q1.y*q1.y+q1.z*q1.z);
+            float a0 = n0>1e-9 ? (float)(2.0*acos(fmin(fabs(q0.w/n0),1.0))) : 0.0f;
+            float a1 = n1>1e-9 ? (float)(2.0*acos(fmin(fabs(q1.w/n1),1.0))) : 0.0f;
+            if (a0 > 1e-6f && n0 > 1e-9) {
+                float s = (float)sin(a0*0.5);
+                axis0[0]=(float)(q0.x/(n0*s)); axis0[1]=(float)(q0.y/(n0*s)); axis0[2]=(float)(q0.z/(n0*s));
+            }
+            if (a1 > 1e-6f && n1 > 1e-9) {
+                float s = (float)sin(a1*0.5);
+                axis1[0]=(float)(q1.x/(n1*s)); axis1[1]=(float)(q1.y/(n1*s)); axis1[2]=(float)(q1.z/(n1*s));
+            }
+            so3_rotation_t R0 = so3_from_axis_angle(axis0, a0);
+            so3_rotation_t R1 = so3_from_axis_angle(axis1, a1);
+            so3_rotation_t R_interp = so3_slerp(&R0, &R1, t_frac);
+            /* Extract interpolated quaternion from R_interp via so3_log */
+            so3_algebra_t log_alg = so3_log(&R_interp);
+            float angle = sqrtf(log_alg.v[0]*log_alg.v[0]+log_alg.v[1]*log_alg.v[1]+log_alg.v[2]*log_alg.v[2]);
+            if (angle > 1e-6f) {
+                float ha = angle * 0.5f;
+                eff->orientation.w = cos(ha);
+                eff->orientation.x = (log_alg.v[0]/angle) * sin(ha);
+                eff->orientation.y = (log_alg.v[1]/angle) * sin(ha);
+                eff->orientation.z = (log_alg.v[2]/angle) * sin(ha);
+            }
         }
 
         /* Simulate dynamics */

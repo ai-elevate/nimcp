@@ -35372,6 +35372,30 @@ __/language/bridges/nimcp_language_training_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_training_bridge.c.s
 .PHONY : __/language/bridges/nimcp_language_training_bridge.c.s
 
+__/language/nimcp_creative_language_bridge.o: __/language/nimcp_creative_language_bridge.c.o
+.PHONY : __/language/nimcp_creative_language_bridge.o
+
+# target to build an object file
+__/language/nimcp_creative_language_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_creative_language_bridge.c.o
+.PHONY : __/language/nimcp_creative_language_bridge.c.o
+
+__/language/nimcp_creative_language_bridge.i: __/language/nimcp_creative_language_bridge.c.i
+.PHONY : __/language/nimcp_creative_language_bridge.i
+
+# target to preprocess a source file
+__/language/nimcp_creative_language_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_creative_language_bridge.c.i
+.PHONY : __/language/nimcp_creative_language_bridge.c.i
+
+__/language/nimcp_creative_language_bridge.s: __/language/nimcp_creative_language_bridge.c.s
+.PHONY : __/language/nimcp_creative_language_bridge.s
+
+# target to generate assembly for a file
+__/language/nimcp_creative_language_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_creative_language_bridge.c.s
+.PHONY : __/language/nimcp_creative_language_bridge.c.s
+
 __/language/nimcp_grounded_language.o: __/language/nimcp_grounded_language.c.o
 .PHONY : __/language/nimcp_grounded_language.o
 
@@ -49724,6 +49748,30 @@ __/utils/gabor/nimcp_gabor.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/gabor/nimcp_gabor.c.s
 .PHONY : __/utils/gabor/nimcp_gabor.c.s
 
+__/utils/geometry/nimcp_differential_geometry.o: __/utils/geometry/nimcp_differential_geometry.c.o
+.PHONY : __/utils/geometry/nimcp_differential_geometry.o
+
+# target to build an object file
+__/utils/geometry/nimcp_differential_geometry.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_differential_geometry.c.o
+.PHONY : __/utils/geometry/nimcp_differential_geometry.c.o
+
+__/utils/geometry/nimcp_differential_geometry.i: __/utils/geometry/nimcp_differential_geometry.c.i
+.PHONY : __/utils/geometry/nimcp_differential_geometry.i
+
+# target to preprocess a source file
+__/utils/geometry/nimcp_differential_geometry.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_differential_geometry.c.i
+.PHONY : __/utils/geometry/nimcp_differential_geometry.c.i
+
+__/utils/geometry/nimcp_differential_geometry.s: __/utils/geometry/nimcp_differential_geometry.c.s
+.PHONY : __/utils/geometry/nimcp_differential_geometry.s
+
+# target to generate assembly for a file
+__/utils/geometry/nimcp_differential_geometry.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_differential_geometry.c.s
+.PHONY : __/utils/geometry/nimcp_differential_geometry.c.s
+
 __/utils/geometry/nimcp_hyperbolic.o: __/utils/geometry/nimcp_hyperbolic.c.o
 .PHONY : __/utils/geometry/nimcp_hyperbolic.o
 
@@ -49747,6 +49795,54 @@ __/utils/geometry/nimcp_hyperbolic.s: __/utils/geometry/nimcp_hyperbolic.c.s
 __/utils/geometry/nimcp_hyperbolic.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_hyperbolic.c.s
 .PHONY : __/utils/geometry/nimcp_hyperbolic.c.s
+
+__/utils/geometry/nimcp_lie_group.o: __/utils/geometry/nimcp_lie_group.c.o
+.PHONY : __/utils/geometry/nimcp_lie_group.o
+
+# target to build an object file
+__/utils/geometry/nimcp_lie_group.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_lie_group.c.o
+.PHONY : __/utils/geometry/nimcp_lie_group.c.o
+
+__/utils/geometry/nimcp_lie_group.i: __/utils/geometry/nimcp_lie_group.c.i
+.PHONY : __/utils/geometry/nimcp_lie_group.i
+
+# target to preprocess a source file
+__/utils/geometry/nimcp_lie_group.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_lie_group.c.i
+.PHONY : __/utils/geometry/nimcp_lie_group.c.i
+
+__/utils/geometry/nimcp_lie_group.s: __/utils/geometry/nimcp_lie_group.c.s
+.PHONY : __/utils/geometry/nimcp_lie_group.s
+
+# target to generate assembly for a file
+__/utils/geometry/nimcp_lie_group.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_lie_group.c.s
+.PHONY : __/utils/geometry/nimcp_lie_group.c.s
+
+__/utils/geometry/nimcp_lorentz.o: __/utils/geometry/nimcp_lorentz.c.o
+.PHONY : __/utils/geometry/nimcp_lorentz.o
+
+# target to build an object file
+__/utils/geometry/nimcp_lorentz.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_lorentz.c.o
+.PHONY : __/utils/geometry/nimcp_lorentz.c.o
+
+__/utils/geometry/nimcp_lorentz.i: __/utils/geometry/nimcp_lorentz.c.i
+.PHONY : __/utils/geometry/nimcp_lorentz.i
+
+# target to preprocess a source file
+__/utils/geometry/nimcp_lorentz.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_lorentz.c.i
+.PHONY : __/utils/geometry/nimcp_lorentz.c.i
+
+__/utils/geometry/nimcp_lorentz.s: __/utils/geometry/nimcp_lorentz.c.s
+.PHONY : __/utils/geometry/nimcp_lorentz.s
+
+# target to generate assembly for a file
+__/utils/geometry/nimcp_lorentz.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_lorentz.c.s
+.PHONY : __/utils/geometry/nimcp_lorentz.c.s
 
 __/utils/gpu/nimcp_gpu_health.o: __/utils/gpu/nimcp_gpu_health.c.o
 .PHONY : __/utils/gpu/nimcp_gpu_health.o
@@ -56248,6 +56344,9 @@ help:
 	@echo "... __/language/bridges/nimcp_language_training_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_training_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_training_bridge.s"
+	@echo "... __/language/nimcp_creative_language_bridge.o"
+	@echo "... __/language/nimcp_creative_language_bridge.i"
+	@echo "... __/language/nimcp_creative_language_bridge.s"
 	@echo "... __/language/nimcp_grounded_language.o"
 	@echo "... __/language/nimcp_grounded_language.i"
 	@echo "... __/language/nimcp_grounded_language.s"
@@ -58042,9 +58141,18 @@ help:
 	@echo "... __/utils/gabor/nimcp_gabor.o"
 	@echo "... __/utils/gabor/nimcp_gabor.i"
 	@echo "... __/utils/gabor/nimcp_gabor.s"
+	@echo "... __/utils/geometry/nimcp_differential_geometry.o"
+	@echo "... __/utils/geometry/nimcp_differential_geometry.i"
+	@echo "... __/utils/geometry/nimcp_differential_geometry.s"
 	@echo "... __/utils/geometry/nimcp_hyperbolic.o"
 	@echo "... __/utils/geometry/nimcp_hyperbolic.i"
 	@echo "... __/utils/geometry/nimcp_hyperbolic.s"
+	@echo "... __/utils/geometry/nimcp_lie_group.o"
+	@echo "... __/utils/geometry/nimcp_lie_group.i"
+	@echo "... __/utils/geometry/nimcp_lie_group.s"
+	@echo "... __/utils/geometry/nimcp_lorentz.o"
+	@echo "... __/utils/geometry/nimcp_lorentz.i"
+	@echo "... __/utils/geometry/nimcp_lorentz.s"
 	@echo "... __/utils/gpu/nimcp_gpu_health.o"
 	@echo "... __/utils/gpu/nimcp_gpu_health.i"
 	@echo "... __/utils/gpu/nimcp_gpu_health.s"

@@ -1218,7 +1218,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
     }
 
     nimcp_spatial_game_t ctx = nimcp_calloc(1, sizeof(struct nimcp_spatial_game_struct));
-    if (!ctx) return -1;
+    if (!ctx) return NULL;
     NIMCP_API_CHECK_ALLOC(ctx, "Failed to allocate spatial game context");
 
     ctx->config = *config;
@@ -1241,15 +1241,15 @@ nimcp_spatial_game_t nimcp_spatial_create(
 
     // Allocate node arrays
     ctx->node_strategy = nimcp_calloc(ctx->num_nodes, sizeof(uint32_t));
-    if (!ctx->node_strategy) return -1;
+    if (!ctx->node_strategy) return NULL;
     ctx->node_strategy_next = nimcp_calloc(ctx->num_nodes, sizeof(uint32_t));
-    if (!ctx->node_strategy_next) return -1;
+    if (!ctx->node_strategy_next) return NULL;
     ctx->node_fitness = nimcp_calloc(ctx->num_nodes, sizeof(float));
-    if (!ctx->node_fitness) return -1;
+    if (!ctx->node_fitness) return NULL;
     ctx->frequencies = nimcp_calloc(config->num_strategies, sizeof(float));
-    if (!ctx->frequencies) return -1;
+    if (!ctx->frequencies) return NULL;
     ctx->fitness_per_strategy = nimcp_calloc(config->num_strategies, sizeof(float));
-    if (!ctx->fitness_per_strategy) return -1;
+    if (!ctx->fitness_per_strategy) return NULL;
 
     if (!ctx->node_strategy || !ctx->node_strategy_next || !ctx->node_fitness ||
         !ctx->frequencies || !ctx->fitness_per_strategy) {

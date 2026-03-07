@@ -42,6 +42,9 @@
 #include <stdlib.h>
 #include <math.h>
 
+/* Forward declaration - defined in nimcp_brain_strategy.c */
+extern void set_error(const char* format, ...);
+
 /* ============================================================================
  * HEALTH AGENT INTEGRATION
  * ============================================================================ */

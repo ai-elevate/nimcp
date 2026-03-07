@@ -57,7 +57,7 @@ static void connect_fuzzy_to_health(fuzzy_bridge_t* fuzzy, brain_t brain) {
 
 static void connect_fuzzy_to_kg(fuzzy_bridge_t* fuzzy, brain_t brain) {
     if (!brain->kg_reader) return;
-    fuzzy_bridge_set_kg_wiring(fuzzy, brain->kg_reader);
+    fuzzy_bridge_set_kg_wiring(fuzzy, (kg_wiring_t*)brain->kg_reader);
     fprintf(stderr, "[FUZZY] Connected to KG reader\n");
 }
 

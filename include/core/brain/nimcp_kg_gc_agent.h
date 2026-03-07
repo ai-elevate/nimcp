@@ -214,6 +214,9 @@ typedef struct {
  * Callback Types
  * ============================================================================ */
 
+/* Forward declaration for callback signatures */
+struct kg_gc_agent;
+
 /**
  * @brief GC completion callback
  *

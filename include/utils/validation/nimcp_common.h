@@ -676,12 +676,24 @@ typedef struct {
  * Time Conversion Constants
  * ============================================================================ */
 
+#ifndef NIMCP_MS_PER_SEC
 #define NIMCP_MS_PER_SEC        1000U
+#endif
+#ifndef NIMCP_US_PER_MS
 #define NIMCP_US_PER_MS         1000U
+#endif
+#ifndef NIMCP_NS_PER_US
 #define NIMCP_NS_PER_US         1000U
+#endif
+#ifndef NIMCP_NS_PER_MS
 #define NIMCP_NS_PER_MS         1000000U
+#endif
+#ifndef NIMCP_NS_PER_SEC
 #define NIMCP_NS_PER_SEC        1000000000ULL
+#endif
+#ifndef NIMCP_US_PER_SEC
 #define NIMCP_US_PER_SEC        1000000U
+#endif
 
 /* Common timeout values (milliseconds) */
 #define NIMCP_TIMEOUT_SHORT_MS      100U

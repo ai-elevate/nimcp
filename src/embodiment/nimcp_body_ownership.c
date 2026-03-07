@@ -16,7 +16,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/geometry/nimcp_lie_group.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -700,8 +702,28 @@ nimcp_body_error_t nimcp_body_process_visual(
         return NIMCP_BODY_OK;
     }
 
-    /* Calculate visual-proprioceptive distance */
-    double vp_distance = position_distance(&part->position, &feedback->seen_position);
+    /* Calculate visual-proprioceptive distance (position + orientation) */
+    double vp_pos_distance = position_distance(&part->position, &feedback->seen_position);
+
+    /* Use SO(3) geodesic distance for orientation mismatch */
+    double vp_orient_distance = 0.0;
+    {
+        nimcp_body_quaternion_t qa = part->orientation;
+        nimcp_body_quaternion_t qb = feedback->seen_orientation;
+        float ha = (float)acos(fmin(1.0, fabs(qa.w)));
+        float sha = sinf(ha);
+        float ax_a[3] = {0,0,1}, ax_b[3] = {0,0,1};
+        if (sha > 1e-6f) { ax_a[0]=(float)(qa.x/sha); ax_a[1]=(float)(qa.y/sha); ax_a[2]=(float)(qa.z/sha); }
+        float hb = (float)acos(fmin(1.0, fabs(qb.w)));
+        float shb = sinf(hb);
+        if (shb > 1e-6f) { ax_b[0]=(float)(qb.x/shb); ax_b[1]=(float)(qb.y/shb); ax_b[2]=(float)(qb.z/shb); }
+        so3_rotation_t R_a = so3_from_axis_angle(ax_a, 2.0f*ha);
+        so3_rotation_t R_b = so3_from_axis_angle(ax_b, 2.0f*hb);
+        vp_orient_distance = (double)so3_distance(&R_a, &R_b);
+    }
+
+    /* Combined distance: position + scaled orientation (radians → comparable units) */
+    double vp_distance = vp_pos_distance + 0.1 * vp_orient_distance;
 
     /* Weighted integration */
     double visual_weight = ctx->config.visual_weight * feedback->confidence;

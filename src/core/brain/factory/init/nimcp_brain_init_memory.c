@@ -467,7 +467,7 @@ void nimcp_brain_factory_destroy_consolidation_subsystem(brain_t brain) {
     if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_consolidation_subsystem: brain is NULL"); return; }
 
     if (brain->consolidation) {
-        brain_stop_background_consolidation(brain);
+        brain_stop_background_consolidation(brain->consolidation);
         brain->consolidation = NULL;
     }
 

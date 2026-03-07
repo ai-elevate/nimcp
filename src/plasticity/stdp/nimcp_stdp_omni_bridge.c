@@ -130,7 +130,8 @@ stdp_omni_bridge_t stdp_omni_bridge_create(const stdp_omni_bridge_config_t* conf
         bridge->config = stdp_omni_bridge_default_config();
     }
 
-    if (nimcp_platform_mutex_init(&bridge->base.mutex, false) != 0) {
+    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_omni_bridge_create: failed to init mutex");
         nimcp_free(bridge);
         return NULL;
@@ -155,7 +156,7 @@ void stdp_omni_bridge_destroy(stdp_omni_bridge_t bridge) {
     if (!bridge) return;
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "stdp_omni");
     if (bridge->mutex_initialized) {
-        nimcp_platform_mutex_destroy(&bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }
@@ -185,7 +186,7 @@ int stdp_omni_notify_weight_change(stdp_omni_bridge_t bridge,
         return -1;
     }
 
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float wm_delta = 0.0f;
     if (bridge->config.enable_wm_updates &&
@@ -205,7 +206,7 @@ int stdp_omni_notify_weight_change(stdp_omni_bridge_t bridge,
         effect->timestamp_ms = get_timestamp_ms();
     }
 
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -265,7 +266,7 @@ int stdp_omni_apply_forward_pe(stdp_omni_bridge_t bridge,
         return 0;
     }
 
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float mod = compute_pe_modulation(bridge, prediction_error);
     mod *= bridge->config.forward_weight;
@@ -275,7 +276,7 @@ int stdp_omni_apply_forward_pe(stdp_omni_bridge_t bridge,
     bridge->stats.forward_pe_events++;
     bridge->stats.backward_calls++;
 
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -297,7 +298,7 @@ int stdp_omni_apply_backward_pe(stdp_omni_bridge_t bridge,
         return 0;
     }
 
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float mod = compute_pe_modulation(bridge, prediction_error);
     mod *= bridge->config.backward_weight;
@@ -307,7 +308,7 @@ int stdp_omni_apply_backward_pe(stdp_omni_bridge_t bridge,
     bridge->stats.backward_pe_events++;
     bridge->stats.backward_calls++;
 
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -329,7 +330,7 @@ int stdp_omni_apply_lateral_pe(stdp_omni_bridge_t bridge,
         return 0;
     }
 
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float mod = compute_pe_modulation(bridge, prediction_error);
     mod *= bridge->config.lateral_weight;
@@ -339,7 +340,7 @@ int stdp_omni_apply_lateral_pe(stdp_omni_bridge_t bridge,
     bridge->stats.lateral_pe_events++;
     bridge->stats.backward_calls++;
 
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -367,9 +368,9 @@ int stdp_omni_apply_precision(stdp_omni_bridge_t bridge,
                         precision);
     *modulated_lr = base_lr * factor;
 
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.current_precision = precision;
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -388,7 +389,7 @@ int stdp_omni_compute_modulation(stdp_omni_bridge_t bridge,
         return -1;
     }
 
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute individual modulations */
     float fwd_mod = bridge->config.enable_forward_pe ?
@@ -433,7 +434,7 @@ int stdp_omni_compute_modulation(stdp_omni_bridge_t bridge,
     bridge->stats.avg_lr_modulation = 0.9f * bridge->stats.avg_lr_modulation +
                                       0.1f * final_mod;
 
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -452,9 +453,9 @@ int stdp_omni_bridge_get_state(stdp_omni_bridge_t bridge,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_get_state: state is NULL");
         return -1;
     }
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -468,9 +469,9 @@ int stdp_omni_bridge_get_stats(stdp_omni_bridge_t bridge,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_get_stats: stats is NULL");
         return -1;
     }
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -479,9 +480,9 @@ int stdp_omni_bridge_reset_stats(stdp_omni_bridge_t bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_reset_stats: bridge is NULL");
         return -1;
     }
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -492,7 +493,7 @@ int stdp_omni_bridge_update(stdp_omni_bridge_t bridge, float dt_ms) {
     }
     (void)dt_ms;
 
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute coherence based on PE stability */
     float pe_variance = fabsf(bridge->state.current_forward_pe) +
@@ -505,7 +506,7 @@ int stdp_omni_bridge_update(stdp_omni_bridge_t bridge, float dt_ms) {
     float prec_factor = bridge->state.current_precision;
     bridge->state.bridge_coherence = 0.6f * pe_factor + 0.4f * prec_factor;
 
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);
@@ -514,9 +515,9 @@ int stdp_omni_bridge_update(stdp_omni_bridge_t bridge, float dt_ms) {
 
 float stdp_omni_bridge_get_coherence(stdp_omni_bridge_t bridge) {
     if (!bridge) return -1.0f;
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float coherence = bridge->state.bridge_coherence;
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return coherence;
 }
 
@@ -526,7 +527,7 @@ void stdp_omni_bridge_print_summary(stdp_omni_bridge_t bridge) {
         return;
     }
 
-    nimcp_platform_mutex_lock(&bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     printf("=== STDP-Omni Bridge Summary ===\n");
     printf("State:\n");
@@ -542,5 +543,5 @@ void stdp_omni_bridge_print_summary(stdp_omni_bridge_t bridge) {
     printf("  WM updates: %lu\n", (unsigned long)bridge->stats.wm_updates);
     printf("  Avg LR modulation: %.3f\n", bridge->stats.avg_lr_modulation);
 
-    nimcp_platform_mutex_unlock(&bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
