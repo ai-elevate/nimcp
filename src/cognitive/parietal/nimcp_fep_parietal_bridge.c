@@ -13,6 +13,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -59,6 +60,34 @@ struct fep_parietal_bridge {
 
     /* Health agent (instance-level) - Phase 8 */
     nimcp_health_agent_t* health_agent;
+
+    /* Phase 5: Domain-specific prediction error tracking */
+    float precision_weights[7];       /* Per-domain precision (inverse variance) */
+    float prediction_errors[7];       /* Running PE per domain */
+    float learning_rate_mods[7];      /* PE-modulated learning rates */
+    uint64_t domain_update_counts[7]; /* Update counter per domain */
+
+    /* Phase 5+: Hierarchical generative model state */
+    float* level_means[FEP_PARIETAL_MAX_LEVELS];
+    float* level_precisions[FEP_PARIETAL_MAX_LEVELS];
+    uint32_t level_dims[FEP_PARIETAL_MAX_LEVELS];
+    uint32_t num_levels;
+
+    /* Linear transition model: predictions from level n+1 → level n */
+    float* transition_weights[FEP_PARIETAL_MAX_LEVELS - 1]; /* dim[n] * dim[n+1] */
+
+    /* Attention precision modulation */
+    float* attention_precision;
+    uint32_t attention_dim;
+
+    /* PE history ring buffer for adaptive precision */
+    float pe_history[64];
+    uint32_t pe_history_idx;
+    uint32_t pe_history_count;
+
+    /* Training state */
+    uint64_t training_samples;
+    float training_loss_ema;
 };
 
 /* Security integration */
@@ -137,6 +166,41 @@ fep_parietal_bridge_t* fep_parietal_bridge_create(const fep_parietal_config_t* c
 
     bridge->config = config ? *config : fep_parietal_default_config();
     bridge->enabled = bridge->config.enabled;
+
+    /* Phase 5: Initialize domain precision */
+    for (int d = 0; d < 7; d++) {
+        bridge->precision_weights[d] = bridge->config.initial_precision;
+        bridge->learning_rate_mods[d] = 1.0f;
+    }
+
+    /* Phase 5+: Initialize hierarchical generative model */
+    bridge->num_levels = bridge->config.num_levels;
+    if (bridge->num_levels > FEP_PARIETAL_MAX_LEVELS)
+        bridge->num_levels = FEP_PARIETAL_MAX_LEVELS;
+    for (uint32_t l = 0; l < bridge->num_levels; l++) {
+        uint32_t dim = bridge->config.level_dims[l];
+        if (dim == 0) dim = 32;
+        if (dim > FEP_PARIETAL_MAX_BELIEF_DIM) dim = FEP_PARIETAL_MAX_BELIEF_DIM;
+        bridge->level_dims[l] = dim;
+        bridge->level_means[l] = nimcp_calloc(dim, sizeof(float));
+        bridge->level_precisions[l] = nimcp_calloc(dim, sizeof(float));
+        if (bridge->level_precisions[l]) {
+            for (uint32_t i = 0; i < dim; i++)
+                bridge->level_precisions[l][i] = bridge->config.initial_precision;
+        }
+    }
+    /* Initialize transition weights with small random-ish values (identity-like) */
+    for (uint32_t l = 0; l + 1 < bridge->num_levels; l++) {
+        uint32_t dim_lo = bridge->level_dims[l];
+        uint32_t dim_hi = bridge->level_dims[l + 1];
+        bridge->transition_weights[l] = nimcp_calloc(dim_lo * dim_hi, sizeof(float));
+        if (bridge->transition_weights[l]) {
+            uint32_t min_d = dim_lo < dim_hi ? dim_lo : dim_hi;
+            for (uint32_t i = 0; i < min_d; i++)
+                bridge->transition_weights[l][i * dim_hi + i] = 1.0f; /* identity diagonal */
+        }
+    }
+
     NIMCP_LOGGING_INFO("Created %s bridge", "fep_parietal");
     return bridge;
 }
@@ -147,6 +211,15 @@ void fep_parietal_bridge_destroy(fep_parietal_bridge_t* bridge) {
 
 
     if (bridge) {
+        /* Free hierarchical model state */
+        for (uint32_t l = 0; l < FEP_PARIETAL_MAX_LEVELS; l++) {
+            nimcp_free(bridge->level_means[l]);
+            nimcp_free(bridge->level_precisions[l]);
+        }
+        for (uint32_t l = 0; l + 1 < FEP_PARIETAL_MAX_LEVELS; l++) {
+            nimcp_free(bridge->transition_weights[l]);
+        }
+        nimcp_free(bridge->attention_precision);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         bridge = NULL;
@@ -193,11 +266,70 @@ int fep_parietal_update_beliefs(
 
     BRIDGE_BBB_VALIDATE(bridge, observations, sizeof(*observations));
 
-    (void)bridge; (void)observations; (void)num_observations; (void)domain;
-    if (beliefs) {
-        memset(beliefs, 0, sizeof(*beliefs));
-        beliefs->confidence = 0.5f;
+    if (!bridge || !observations || !beliefs) return -1;
+
+    /* Phase 5: Precision-weighted belief update */
+    int d = (int)domain;
+    if (d >= 0 && d < 7) {
+        bridge->domain_update_counts[d]++;
     }
+
+    if (!beliefs->mean) {
+        beliefs->mean = nimcp_calloc(num_observations, sizeof(float));
+        beliefs->precision = nimcp_calloc(num_observations, sizeof(float));
+        beliefs->dim = num_observations;
+        if (!beliefs->mean || !beliefs->precision) return -1;
+        for (uint32_t i = 0; i < num_observations; i++) {
+            beliefs->precision[i] = bridge->config.initial_precision;
+        }
+    }
+
+    float lr = bridge->config.belief_learning_rate;
+    if (d >= 0 && d < 7) lr *= bridge->learning_rate_mods[d];
+
+    /* Inflammation/fatigue modulation */
+    float mod = 1.0f - bridge->inflammation_level * bridge->config.inflammation_sensitivity * 0.3f
+                     - bridge->fatigue_level * bridge->config.fatigue_sensitivity * 0.2f;
+    lr *= fmaxf(0.3f, mod);
+
+    float pe_sum = 0.0f;
+    uint32_t dim = beliefs->dim < num_observations ? beliefs->dim : num_observations;
+    for (uint32_t i = 0; i < dim; i++) {
+        float pe = observations[i] - beliefs->mean[i];
+        beliefs->mean[i] += lr * beliefs->precision[i] * pe;
+        pe_sum += pe * pe;
+
+        if (bridge->config.adaptive_precision) {
+            float pe_sq = pe * pe;
+            beliefs->precision[i] = beliefs->precision[i] * 0.99f +
+                                    (1.0f / (pe_sq + 0.01f)) * 0.01f;
+            beliefs->precision[i] = fmaxf(bridge->config.min_precision,
+                                   fminf(bridge->config.max_precision, beliefs->precision[i]));
+        }
+    }
+
+    beliefs->domain = domain;
+    beliefs->confidence = 1.0f / (1.0f + sqrtf(pe_sum / (float)(dim > 0 ? dim : 1)));
+    beliefs->surprise = sqrtf(pe_sum / (float)(dim > 0 ? dim : 1));
+
+    if (d >= 0 && d < 7) {
+        bridge->prediction_errors[d] = bridge->prediction_errors[d] * 0.9f +
+                                       beliefs->surprise * 0.1f;
+        bridge->precision_weights[d] = 1.0f / (bridge->prediction_errors[d] + 0.01f);
+        bridge->learning_rate_mods[d] = fminf(3.0f, 1.0f + bridge->prediction_errors[d] * 0.5f);
+    }
+
+    /* Also update internal level-0 beliefs from observations */
+    if (bridge->num_levels > 0 && bridge->level_means[0]) {
+        uint32_t l0_dim = bridge->level_dims[0];
+        uint32_t upd = l0_dim < num_observations ? l0_dim : num_observations;
+        for (uint32_t i = 0; i < upd; i++) {
+            float pe = observations[i] - bridge->level_means[0][i];
+            bridge->level_means[0][i] += lr * pe;
+        }
+    }
+
+    bridge->stats.belief_updates++;
     return 0;
 }
 
@@ -211,10 +343,52 @@ int fep_parietal_predict(
 
     BRIDGE_BBB_VALIDATE(bridge, beliefs, sizeof(*beliefs));
 
-    (void)bridge; (void)beliefs;
-    if (prediction) {
-        memset(prediction, 0, sizeof(*prediction));
+    if (!bridge || !beliefs || !prediction) return -1;
+    memset(prediction, 0, sizeof(*prediction));
+
+    uint32_t dim = beliefs->dim;
+    if (dim == 0) return 0;
+
+    prediction->predicted = nimcp_calloc(dim, sizeof(float));
+    if (!prediction->predicted) return -1;
+    prediction->dim = dim;
+
+    /* Generate predictions: use transition weights from level 1→0 as the
+       generative model, or fall back to identity (predict = beliefs.mean) */
+    if (bridge->num_levels >= 2 && bridge->transition_weights[0] &&
+        bridge->level_dims[0] > 0) {
+        uint32_t dim_lo = bridge->level_dims[0];
+        uint32_t dim_hi = bridge->level_dims[1];
+        uint32_t out_dim = dim < dim_lo ? dim : dim_lo;
+        uint32_t in_dim = beliefs->dim < dim_hi ? beliefs->dim : dim_hi;
+
+        for (uint32_t i = 0; i < out_dim; i++) {
+            float sum = 0.0f;
+            for (uint32_t j = 0; j < in_dim; j++) {
+                sum += bridge->transition_weights[0][i * dim_hi + j] * beliefs->mean[j];
+            }
+            prediction->predicted[i] = sum;
+        }
+    } else {
+        /* Identity: predicted = beliefs.mean */
+        uint32_t copy_dim = dim < beliefs->dim ? dim : beliefs->dim;
+        for (uint32_t i = 0; i < copy_dim; i++)
+            prediction->predicted[i] = beliefs->mean[i];
     }
+
+    /* Compute error magnitude from belief precision (expected PE) */
+    float expected_pe = 0.0f;
+    if (beliefs->precision) {
+        for (uint32_t i = 0; i < dim; i++) {
+            float p = beliefs->precision[i];
+            if (p > 1e-6f) expected_pe += 1.0f / p;
+        }
+        expected_pe = sqrtf(expected_pe / (float)dim);
+    }
+    prediction->error_magnitude = expected_pe;
+    prediction->free_energy = 0.5f * expected_pe * expected_pe * (float)dim;
+
+    bridge->stats.predictions_made++;
     return 0;
 }
 
@@ -230,10 +404,24 @@ int fep_parietal_prediction_error(
 
     BRIDGE_BBB_VALIDATE(bridge, predicted, sizeof(*predicted));
 
-    (void)bridge; (void)predicted; (void)actual; (void)dim;
-    if (error) {
-        memset(error, 0, sizeof(*error));
+    if (!bridge || !predicted || !actual || !error) return -1;
+
+    memset(error, 0, sizeof(*error));
+    error->dim = dim;
+
+    /* Phase 5: Real precision-weighted prediction error */
+    float sum_sq = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        float e = actual[i] - predicted[i];
+        sum_sq += e * e;
     }
+    error->error_magnitude = sqrtf(sum_sq / (float)(dim > 0 ? dim : 1));
+    error->free_energy = 0.5f * sum_sq;
+
+    bridge->stats.predictions_made++;
+    bridge->stats.avg_prediction_error =
+        bridge->stats.avg_prediction_error * 0.95f + error->error_magnitude * 0.05f;
+
     return 0;
 }
 
@@ -248,8 +436,35 @@ float fep_parietal_compute_free_energy(
 
     BRIDGE_BBB_VALIDATE(bridge, observations, sizeof(*observations));
 
-    (void)bridge; (void)beliefs; (void)observations; (void)num_observations;
-    return 0.0f;
+    if (!bridge || !beliefs || !observations) return 0.0f;
+
+    /* Phase 5: F = Inaccuracy + Complexity */
+    float inaccuracy = 0.0f;
+    if (beliefs->mean && beliefs->dim > 0) {
+        uint32_t dim = beliefs->dim < num_observations ? beliefs->dim : num_observations;
+        for (uint32_t i = 0; i < dim; i++) {
+            float e = observations[i] - beliefs->mean[i];
+            float prec = (beliefs->precision && i < beliefs->dim) ? beliefs->precision[i] : 1.0f;
+            inaccuracy += prec * e * e;
+        }
+        inaccuracy *= 0.5f;
+    }
+
+    float complexity = 0.0f;
+    if (beliefs->precision && beliefs->dim > 0) {
+        for (uint32_t i = 0; i < beliefs->dim; i++) {
+            float p = beliefs->precision[i];
+            if (p > 1e-6f) {
+                complexity += logf(p) - p + 1.0f;
+            }
+        }
+        complexity = fabsf(complexity) * 0.5f;
+    }
+
+    float fe = inaccuracy + complexity;
+    bridge->stats.avg_free_energy = bridge->stats.avg_free_energy * 0.95f + fe * 0.05f;
+
+    return fe;
 }
 
 /* ============================================================================
@@ -267,8 +482,72 @@ int fep_parietal_evaluate_policies(
 
     BRIDGE_BBB_VALIDATE(bridge, num_policies, sizeof(*num_policies));
 
-    (void)bridge; (void)problem; (void)policies;
-    if (num_policies) *num_policies = 0;
+    if (!bridge || !problem || !policies || !num_policies) return -1;
+
+    /* Evaluate each strategy type as a policy */
+    const fep_problem_strategy_t strategies[] = {
+        FEP_STRATEGY_ALGEBRAIC, FEP_STRATEGY_GEOMETRIC, FEP_STRATEGY_NUMERICAL,
+        FEP_STRATEGY_ANALOGICAL, FEP_STRATEGY_EXHAUSTIVE, FEP_STRATEGY_HEURISTIC,
+        FEP_STRATEGY_INTUITIVE
+    };
+    const char* strategy_names[] = {
+        "algebraic", "geometric", "numerical", "analogical",
+        "exhaustive", "heuristic", "intuitive"
+    };
+    /* Complexity costs per strategy (higher = more expensive) */
+    const float complexity_costs[] = { 0.4f, 0.5f, 0.3f, 0.6f, 0.8f, 0.2f, 0.1f };
+
+    uint32_t n = 7;
+    if (n > FEP_PARIETAL_MAX_POLICIES) n = FEP_PARIETAL_MAX_POLICIES;
+    *num_policies = n;
+
+    float dist = problem->distance_to_goal;
+    int domain = (int)problem->domain;
+    float total_exp = 0.0f;
+
+    for (uint32_t p = 0; p < n; p++) {
+        policies[p].strategy = strategies[p];
+        policies[p].complexity_cost = complexity_costs[p];
+        strncpy(policies[p].description, strategy_names[p], sizeof(policies[p].description) - 1);
+
+        /* Pragmatic value: domain affinity + distance reduction potential */
+        float pragmatic = 0.5f;
+        if ((domain == FEP_MATH_DOMAIN_ALGEBRAIC && p == 0) ||
+            (domain == FEP_MATH_DOMAIN_SPATIAL && p == 1) ||
+            (domain == FEP_MATH_DOMAIN_NUMERICAL && p == 2) ||
+            (domain == FEP_MATH_DOMAIN_PHYSICAL && (p == 1 || p == 2))) {
+            pragmatic = 0.9f; /* Domain-matched strategy */
+        }
+        if (dist > 0.0f) pragmatic *= fminf(1.0f, dist);
+        policies[p].pragmatic_value = pragmatic;
+
+        /* Epistemic value: uncertainty reduction potential */
+        float epistemic = 0.3f;
+        if (domain >= 0 && domain < 7) {
+            float pe = bridge->prediction_errors[domain];
+            epistemic = fminf(1.0f, pe * 0.5f + 0.2f); /* Higher PE → more to learn */
+        }
+        policies[p].epistemic_value = epistemic;
+
+        /* Expected free energy: G(π) = pragmatic + exploration_weight * epistemic - complexity */
+        float efe = pragmatic + bridge->config.exploration_weight * epistemic
+                   - complexity_costs[p];
+        policies[p].expected_free_energy = efe;
+
+        /* Softmax probability (compute exp, sum later) */
+        float scaled = efe / fmaxf(0.01f, bridge->config.action_temperature);
+        scaled = fminf(20.0f, fmaxf(-20.0f, scaled)); /* clamp for numerical stability */
+        policies[p].probability = expf(scaled);
+        total_exp += policies[p].probability;
+    }
+
+    /* Normalize probabilities */
+    if (total_exp > 1e-10f) {
+        for (uint32_t p = 0; p < n; p++)
+            policies[p].probability /= total_exp;
+    }
+
+    bridge->stats.policies_evaluated += n;
     return 0;
 }
 
@@ -282,11 +561,68 @@ int fep_parietal_active_inference(
 
     BRIDGE_BBB_VALIDATE(bridge, problem, sizeof(*problem));
 
-    (void)bridge; (void)problem;
-    if (result) {
-        memset(result, 0, sizeof(*result));
+    if (!bridge || !problem || !result) return -1;
+    memset(result, 0, sizeof(*result));
+
+    if (!bridge->config.enable_active_inference) {
         result->selected_strategy = FEP_STRATEGY_INTUITIVE;
+        return 0;
     }
+
+    /* Evaluate all policies */
+    fep_math_policy_t policies[FEP_PARIETAL_MAX_POLICIES];
+    uint32_t n = 0;
+    int rc = fep_parietal_evaluate_policies(bridge, problem, policies, &n);
+    if (rc != 0 || n == 0) {
+        result->selected_strategy = FEP_STRATEGY_INTUITIVE;
+        return 0;
+    }
+
+    /* Select best policy by highest probability (softmax of EFE) */
+    uint32_t best = 0;
+    float best_prob = policies[0].probability;
+    for (uint32_t p = 1; p < n; p++) {
+        if (policies[p].probability > best_prob) {
+            best_prob = policies[p].probability;
+            best = p;
+        }
+    }
+
+    result->selected_strategy = policies[best].strategy;
+    result->expected_improvement = policies[best].pragmatic_value;
+    result->exploration_bonus = policies[best].epistemic_value;
+
+    /* Generate action vector: direction toward goal modulated by strategy */
+    if (problem->state_vector && problem->goal_state &&
+        problem->state_dim > 0 && problem->goal_dim > 0) {
+        uint32_t act_dim = problem->state_dim < problem->goal_dim ?
+                           problem->state_dim : problem->goal_dim;
+        result->action = nimcp_calloc(act_dim, sizeof(float));
+        if (result->action) {
+            result->action_dim = act_dim;
+            float step_scale = 0.1f; /* Base step size */
+            /* Adjust step by strategy */
+            if (result->selected_strategy == FEP_STRATEGY_EXHAUSTIVE) step_scale = 0.05f;
+            if (result->selected_strategy == FEP_STRATEGY_INTUITIVE) step_scale = 0.3f;
+            if (result->selected_strategy == FEP_STRATEGY_HEURISTIC) step_scale = 0.2f;
+
+            for (uint32_t i = 0; i < act_dim; i++) {
+                result->action[i] = step_scale * (problem->goal_state[i] - problem->state_vector[i]);
+            }
+        }
+    }
+
+    /* Copy evaluated policies */
+    result->evaluated_policies = nimcp_calloc(n, sizeof(fep_math_policy_t));
+    if (result->evaluated_policies) {
+        memcpy(result->evaluated_policies, policies, n * sizeof(fep_math_policy_t));
+        result->num_policies = n;
+    }
+
+    bridge->stats.active_inferences++;
+    if ((int)result->selected_strategy < 7)
+        bridge->stats.strategy_selections[(int)result->selected_strategy]++;
+
     return 0;
 }
 
@@ -302,7 +638,53 @@ int fep_parietal_update_from_action(
 
     BRIDGE_BBB_VALIDATE(bridge, action, sizeof(*action));
 
-    (void)bridge; (void)action; (void)action_dim; (void)outcome; (void)outcome_dim;
+    if (!bridge || !action || !outcome) return -1;
+
+    /* Update level-0 beliefs from the observed outcome */
+    if (bridge->num_levels > 0 && bridge->level_means[0]) {
+        uint32_t dim = bridge->level_dims[0];
+        uint32_t upd_dim = dim < outcome_dim ? dim : outcome_dim;
+        float lr = bridge->config.belief_learning_rate;
+
+        for (uint32_t i = 0; i < upd_dim; i++) {
+            float pe = outcome[i] - bridge->level_means[0][i];
+            float prec = bridge->level_precisions[0] ?
+                         bridge->level_precisions[0][i] : 1.0f;
+            bridge->level_means[0][i] += lr * prec * pe;
+        }
+    }
+
+    /* Update transition weights using action→outcome prediction error */
+    if (bridge->num_levels >= 2 && bridge->transition_weights[0]) {
+        uint32_t dim_lo = bridge->level_dims[0];
+        uint32_t dim_hi = bridge->level_dims[1];
+        uint32_t out_d = dim_lo < outcome_dim ? dim_lo : outcome_dim;
+        uint32_t in_d = dim_hi < action_dim ? dim_hi : action_dim;
+        float model_lr = bridge->config.precision_learning_rate * 0.1f;
+
+        for (uint32_t i = 0; i < out_d; i++) {
+            float pred = 0.0f;
+            for (uint32_t j = 0; j < in_d; j++)
+                pred += bridge->transition_weights[0][i * dim_hi + j] * action[j];
+            float pe = outcome[i] - pred;
+            /* SGD update on transition weights */
+            for (uint32_t j = 0; j < in_d; j++)
+                bridge->transition_weights[0][i * dim_hi + j] += model_lr * pe * action[j];
+        }
+    }
+
+    /* Record PE in history for adaptive precision */
+    float pe_mag = 0.0f;
+    uint32_t pe_dim = action_dim < outcome_dim ? action_dim : outcome_dim;
+    for (uint32_t i = 0; i < pe_dim; i++) {
+        float e = outcome[i] - action[i];
+        pe_mag += e * e;
+    }
+    pe_mag = sqrtf(pe_mag / (float)(pe_dim > 0 ? pe_dim : 1));
+    bridge->pe_history[bridge->pe_history_idx % 64] = pe_mag;
+    bridge->pe_history_idx++;
+    if (bridge->pe_history_count < 64) bridge->pe_history_count++;
+
     return 0;
 }
 
@@ -320,7 +702,27 @@ int fep_parietal_set_attention_precision(
 
     BRIDGE_BBB_VALIDATE(bridge, attention_weights, sizeof(*attention_weights));
 
-    (void)bridge; (void)attention_weights; (void)dim;
+    if (!bridge || !attention_weights || dim == 0) return -1;
+
+    /* Store attention weights for precision modulation */
+    nimcp_free(bridge->attention_precision);
+    bridge->attention_precision = nimcp_calloc(dim, sizeof(float));
+    if (!bridge->attention_precision) return -1;
+    memcpy(bridge->attention_precision, attention_weights, dim * sizeof(float));
+    bridge->attention_dim = dim;
+
+    /* Modulate level-0 precision by attention */
+    if (bridge->num_levels > 0 && bridge->level_precisions[0]) {
+        uint32_t mod_dim = bridge->level_dims[0] < dim ? bridge->level_dims[0] : dim;
+        for (uint32_t i = 0; i < mod_dim; i++) {
+            /* Attention amplifies precision: attended features get higher precision */
+            float att = fmaxf(0.0f, fminf(1.0f, attention_weights[i]));
+            bridge->level_precisions[0][i] *= (0.5f + att); /* range: 0.5x to 1.5x */
+            bridge->level_precisions[0][i] = fmaxf(bridge->config.min_precision,
+                fminf(bridge->config.max_precision, bridge->level_precisions[0][i]));
+        }
+    }
+
     return 0;
 }
 
@@ -328,8 +730,59 @@ int fep_parietal_adapt_precision(fep_parietal_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_adapt_p", 0.0f);
 
+    if (!bridge) return -1;
 
-    (void)bridge;
+    /* Compute mean and variance of recent prediction errors */
+    if (bridge->pe_history_count == 0) return 0;
+
+    float pe_mean = 0.0f;
+    for (uint32_t i = 0; i < bridge->pe_history_count; i++)
+        pe_mean += bridge->pe_history[i];
+    pe_mean /= (float)bridge->pe_history_count;
+
+    float pe_var = 0.0f;
+    for (uint32_t i = 0; i < bridge->pe_history_count; i++) {
+        float d = bridge->pe_history[i] - pe_mean;
+        pe_var += d * d;
+    }
+    pe_var /= (float)bridge->pe_history_count;
+
+    /* Adapt per-domain precision based on PE statistics */
+    for (int d = 0; d < 7; d++) {
+        if (bridge->domain_update_counts[d] == 0) continue;
+        /* High PE variance → low precision (uncertain), low variance → high precision */
+        float domain_pe = bridge->prediction_errors[d];
+        float new_prec = 1.0f / (domain_pe * domain_pe + pe_var + 0.01f);
+        /* EMA update */
+        bridge->precision_weights[d] = bridge->precision_weights[d] * 0.9f + new_prec * 0.1f;
+        bridge->precision_weights[d] = fmaxf(bridge->config.min_precision,
+            fminf(bridge->config.max_precision, bridge->precision_weights[d]));
+    }
+
+    /* Adapt hierarchical level precisions */
+    float lr = bridge->config.precision_learning_rate;
+    for (uint32_t l = 0; l < bridge->num_levels; l++) {
+        if (!bridge->level_precisions[l]) continue;
+        for (uint32_t i = 0; i < bridge->level_dims[l]; i++) {
+            /* Shrink precision toward inverse PE mean */
+            float target = 1.0f / (pe_mean + 0.01f);
+            bridge->level_precisions[l][i] += lr * (target - bridge->level_precisions[l][i]);
+            bridge->level_precisions[l][i] = fmaxf(bridge->config.min_precision,
+                fminf(bridge->config.max_precision, bridge->level_precisions[l][i]));
+        }
+    }
+
+    /* Update avg_precision stat */
+    float avg = 0.0f;
+    int cnt = 0;
+    for (int d = 0; d < 7; d++) {
+        if (bridge->domain_update_counts[d] > 0) {
+            avg += bridge->precision_weights[d];
+            cnt++;
+        }
+    }
+    if (cnt > 0) bridge->stats.avg_precision = avg / (float)cnt;
+
     return 0;
 }
 
@@ -344,9 +797,21 @@ int fep_parietal_get_precision(
 
     BRIDGE_BBB_VALIDATE(bridge, dim, sizeof(*dim));
 
-    (void)bridge; (void)level;
-    if (precision) *precision = NULL;
-    if (dim) *dim = 0;
+    if (!bridge || !precision || !dim) return -1;
+
+    if (level >= bridge->num_levels || !bridge->level_precisions[level]) {
+        *precision = NULL;
+        *dim = 0;
+        return -1;
+    }
+
+    /* Return a copy of the precision array for the requested level */
+    uint32_t d = bridge->level_dims[level];
+    float* copy = nimcp_calloc(d, sizeof(float));
+    if (!copy) { *precision = NULL; *dim = 0; return -1; }
+    memcpy(copy, bridge->level_precisions[level], d * sizeof(float));
+    *precision = copy;
+    *dim = d;
     return 0;
 }
 
@@ -363,10 +828,63 @@ int fep_parietal_get_generative_model(
 
     BRIDGE_BBB_VALIDATE(bridge, model, sizeof(*model));
 
-    (void)bridge;
-    if (model) {
-        memset(model, 0, sizeof(*model));
+    if (!bridge || !model) return -1;
+    memset(model, 0, sizeof(*model));
+
+    /* Export hierarchical beliefs into model structure */
+    /* Level 0: sensory */
+    if (bridge->num_levels > 0 && bridge->level_means[0]) {
+        model->sensory_beliefs.dim = bridge->level_dims[0];
+        model->sensory_beliefs.mean = nimcp_calloc(bridge->level_dims[0], sizeof(float));
+        model->sensory_beliefs.precision = nimcp_calloc(bridge->level_dims[0], sizeof(float));
+        if (model->sensory_beliefs.mean)
+            memcpy(model->sensory_beliefs.mean, bridge->level_means[0],
+                   bridge->level_dims[0] * sizeof(float));
+        if (model->sensory_beliefs.precision)
+            memcpy(model->sensory_beliefs.precision, bridge->level_precisions[0],
+                   bridge->level_dims[0] * sizeof(float));
     }
+    /* Level 1: features */
+    if (bridge->num_levels > 1 && bridge->level_means[1]) {
+        model->feature_beliefs.dim = bridge->level_dims[1];
+        model->feature_beliefs.mean = nimcp_calloc(bridge->level_dims[1], sizeof(float));
+        model->feature_beliefs.precision = nimcp_calloc(bridge->level_dims[1], sizeof(float));
+        if (model->feature_beliefs.mean)
+            memcpy(model->feature_beliefs.mean, bridge->level_means[1],
+                   bridge->level_dims[1] * sizeof(float));
+        if (model->feature_beliefs.precision)
+            memcpy(model->feature_beliefs.precision, bridge->level_precisions[1],
+                   bridge->level_dims[1] * sizeof(float));
+    }
+    /* Level 2: structural */
+    if (bridge->num_levels > 2 && bridge->level_means[2]) {
+        model->structural_beliefs.dim = bridge->level_dims[2];
+        model->structural_beliefs.mean = nimcp_calloc(bridge->level_dims[2], sizeof(float));
+        model->structural_beliefs.precision = nimcp_calloc(bridge->level_dims[2], sizeof(float));
+        if (model->structural_beliefs.mean)
+            memcpy(model->structural_beliefs.mean, bridge->level_means[2],
+                   bridge->level_dims[2] * sizeof(float));
+        if (model->structural_beliefs.precision)
+            memcpy(model->structural_beliefs.precision, bridge->level_precisions[2],
+                   bridge->level_dims[2] * sizeof(float));
+    }
+    /* Level 3: abstract */
+    if (bridge->num_levels > 3 && bridge->level_means[3]) {
+        model->abstract_beliefs.dim = bridge->level_dims[3];
+        model->abstract_beliefs.mean = nimcp_calloc(bridge->level_dims[3], sizeof(float));
+        model->abstract_beliefs.precision = nimcp_calloc(bridge->level_dims[3], sizeof(float));
+        if (model->abstract_beliefs.mean)
+            memcpy(model->abstract_beliefs.mean, bridge->level_means[3],
+                   bridge->level_dims[3] * sizeof(float));
+        if (model->abstract_beliefs.precision)
+            memcpy(model->abstract_beliefs.precision, bridge->level_precisions[3],
+                   bridge->level_dims[3] * sizeof(float));
+    }
+
+    model->total_free_energy = bridge->stats.avg_free_energy;
+    model->inaccuracy = bridge->stats.avg_prediction_error;
+    model->complexity = model->total_free_energy - model->inaccuracy;
+
     return 0;
 }
 
@@ -379,9 +897,39 @@ float fep_parietal_train_model(
     /* Phase 8: Heartbeat at operation start */
     fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_train_m", 0.0f);
 
+    if (!bridge || !observations || !targets || num_samples == 0) return 0.0f;
+    if (bridge->num_levels < 2 || !bridge->transition_weights[0]) return 0.0f;
 
-    (void)bridge; (void)observations; (void)targets; (void)num_samples;
-    return 0.0f;
+    uint32_t dim_lo = bridge->level_dims[0];
+    uint32_t dim_hi = bridge->level_dims[1];
+    float lr = bridge->config.belief_learning_rate * 0.1f;
+    float total_loss = 0.0f;
+
+    for (uint32_t s = 0; s < num_samples; s++) {
+        if (!observations[s] || !targets[s]) continue;
+
+        /* Forward pass: predicted = W * observation */
+        float sample_loss = 0.0f;
+        for (uint32_t i = 0; i < dim_lo; i++) {
+            float pred = 0.0f;
+            for (uint32_t j = 0; j < dim_hi; j++)
+                pred += bridge->transition_weights[0][i * dim_hi + j] * observations[s][j];
+
+            float pe = targets[s][i] - pred;
+            sample_loss += pe * pe;
+
+            /* SGD weight update */
+            for (uint32_t j = 0; j < dim_hi; j++)
+                bridge->transition_weights[0][i * dim_hi + j] += lr * pe * observations[s][j];
+        }
+        total_loss += sample_loss / (float)(dim_lo > 0 ? dim_lo : 1);
+    }
+
+    float avg_loss = total_loss / (float)num_samples;
+    bridge->training_samples += num_samples;
+    bridge->training_loss_ema = bridge->training_loss_ema * 0.9f + avg_loss * 0.1f;
+
+    return avg_loss;
 }
 
 /* ============================================================================
@@ -399,12 +947,28 @@ int fep_parietal_numerical_inference(
 
     BRIDGE_BBB_VALIDATE(bridge, quantities, sizeof(*quantities));
 
-    (void)bridge; (void)quantities; (void)num_quantities;
-    if (estimated) {
-        memset(estimated, 0, sizeof(*estimated));
-        estimated->domain = FEP_MATH_DOMAIN_NUMERICAL;
-        estimated->confidence = 0.5f;
+    if (!bridge || !quantities || !estimated) return -1;
+
+    /* Route through belief update with NUMERICAL domain */
+    int rc = fep_parietal_update_beliefs(bridge, quantities, num_quantities,
+                                          FEP_MATH_DOMAIN_NUMERICAL, estimated);
+    if (rc != 0) return rc;
+
+    /* Number sense: Weber-Fechner scaling — precision decreases with magnitude */
+    if (estimated->precision && estimated->mean) {
+        for (uint32_t i = 0; i < estimated->dim; i++) {
+            float mag = fabsf(estimated->mean[i]);
+            if (mag > 1.0f) {
+                /* Weber fraction: precision ∝ 1/magnitude (logarithmic number line) */
+                float weber_mod = 1.0f / logf(mag + 1.0f);
+                estimated->precision[i] *= weber_mod;
+                estimated->precision[i] = fmaxf(bridge->config.min_precision,
+                    estimated->precision[i]);
+            }
+        }
     }
+
+    estimated->domain = FEP_MATH_DOMAIN_NUMERICAL;
     return 0;
 }
 
@@ -419,12 +983,31 @@ int fep_parietal_spatial_inference(
 
     BRIDGE_BBB_VALIDATE(bridge, positions, sizeof(*positions));
 
-    (void)bridge; (void)positions; (void)num_positions;
-    if (transformed) {
-        memset(transformed, 0, sizeof(*transformed));
-        transformed->domain = FEP_MATH_DOMAIN_SPATIAL;
-        transformed->confidence = 0.5f;
+    if (!bridge || !positions || !transformed) return -1;
+
+    /* Route through belief update with SPATIAL domain */
+    int rc = fep_parietal_update_beliefs(bridge, positions, num_positions,
+                                          FEP_MATH_DOMAIN_SPATIAL, transformed);
+    if (rc != 0) return rc;
+
+    /* Spatial: pairwise distance relationships inform precision.
+       Nearby points have correlated uncertainty (spatial smoothing). */
+    if (transformed->mean && transformed->precision && num_positions >= 2) {
+        for (uint32_t i = 0; i < transformed->dim && i + 1 < transformed->dim; i += 2) {
+            /* Treat consecutive pairs as (x,y) coordinates */
+            float dx = transformed->mean[i];
+            float dy = transformed->mean[i + 1];
+            float dist = sqrtf(dx * dx + dy * dy);
+            /* Spatial precision inversely related to distance from origin */
+            float spatial_prec = 1.0f / (0.1f + dist * 0.01f);
+            transformed->precision[i] = fmaxf(bridge->config.min_precision,
+                fminf(bridge->config.max_precision,
+                       transformed->precision[i] * 0.7f + spatial_prec * 0.3f));
+            transformed->precision[i + 1] = transformed->precision[i];
+        }
     }
+
+    transformed->domain = FEP_MATH_DOMAIN_SPATIAL;
     return 0;
 }
 
@@ -440,12 +1023,39 @@ int fep_parietal_physics_inference(
 
     BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
-    (void)bridge; (void)state; (void)state_dim; (void)dt;
-    if (predicted) {
-        memset(predicted, 0, sizeof(*predicted));
-        predicted->domain = FEP_MATH_DOMAIN_PHYSICAL;
-        predicted->confidence = 0.5f;
+    if (!bridge || !state || !predicted) return -1;
+
+    /* First update beliefs with current state */
+    int rc = fep_parietal_update_beliefs(bridge, state, state_dim,
+                                          FEP_MATH_DOMAIN_PHYSICAL, predicted);
+    if (rc != 0) return rc;
+
+    /* Physics: simple dynamics model.
+       Treat state as [pos0, vel0, pos1, vel1, ...] pairs.
+       Predict: pos += vel * dt (Euler integration) */
+    if (predicted->mean && state_dim >= 2 && dt > 0.0f) {
+        for (uint32_t i = 0; i + 1 < predicted->dim; i += 2) {
+            float pos = predicted->mean[i];
+            float vel = predicted->mean[i + 1];
+            predicted->mean[i] = pos + vel * dt;
+            /* Velocity unchanged (no forces in basic model) */
+            /* Precision decreases with prediction horizon (uncertainty grows) */
+            if (predicted->precision) {
+                float horizon_decay = 1.0f / (1.0f + dt * 0.5f);
+                predicted->precision[i] *= horizon_decay;
+                predicted->precision[i + 1] *= horizon_decay;
+                predicted->precision[i] = fmaxf(bridge->config.min_precision, predicted->precision[i]);
+                predicted->precision[i + 1] = fmaxf(bridge->config.min_precision, predicted->precision[i + 1]);
+            }
+        }
+        /* Recompute confidence from updated precision */
+        float prec_sum = 0.0f;
+        for (uint32_t i = 0; i < predicted->dim; i++)
+            prec_sum += predicted->precision ? predicted->precision[i] : 1.0f;
+        predicted->confidence = fminf(1.0f, prec_sum / ((float)predicted->dim + 1.0f));
     }
+
+    predicted->domain = FEP_MATH_DOMAIN_PHYSICAL;
     return 0;
 }
 
@@ -461,12 +1071,28 @@ int fep_parietal_engineering_inference(
 
     BRIDGE_BBB_VALIDATE(bridge, input, sizeof(*input));
 
-    (void)bridge; (void)input; (void)input_dim;
-    if (result) {
-        memset(result, 0, sizeof(*result));
-        result->domain = domain;
-        result->confidence = 0.5f;
+    if (!bridge || !input || !result) return -1;
+
+    /* Route through belief update with the specified engineering domain */
+    int rc = fep_parietal_update_beliefs(bridge, input, input_dim, domain, result);
+    if (rc != 0) return rc;
+
+    /* Engineering domains get a domain-specific precision boost when enabled */
+    if (result->precision) {
+        float domain_boost = 1.0f;
+        int d = (int)domain;
+        if (d >= 0 && d < 7 && bridge->domain_update_counts[d] > 10) {
+            /* Experience-based precision: more experience → higher precision */
+            domain_boost = fminf(2.0f, 1.0f + logf((float)bridge->domain_update_counts[d]) * 0.1f);
+        }
+        for (uint32_t i = 0; i < result->dim; i++) {
+            result->precision[i] *= domain_boost;
+            result->precision[i] = fmaxf(bridge->config.min_precision,
+                fminf(bridge->config.max_precision, result->precision[i]));
+        }
     }
+
+    result->domain = domain;
     return 0;
 }
 
@@ -484,8 +1110,17 @@ float fep_parietal_compute_surprise(
 
     BRIDGE_BBB_VALIDATE(bridge, observation, sizeof(*observation));
 
-    (void)bridge; (void)observation; (void)dim;
-    return 0.0f;
+    if (!bridge || !observation || dim == 0) return 0.0f;
+
+    /* Phase 5: Surprise = magnitude of observation */
+    float sum_sq = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        sum_sq += observation[i] * observation[i];
+    }
+    float surprise = sqrtf(sum_sq / (float)dim);
+    bridge->stats.total_surprise += surprise;
+
+    return surprise;
 }
 
 float fep_parietal_epistemic_value(
@@ -498,8 +1133,37 @@ float fep_parietal_epistemic_value(
 
     BRIDGE_BBB_VALIDATE(bridge, query, sizeof(*query));
 
-    (void)bridge; (void)query; (void)query_dim;
-    return 0.0f;
+    if (!bridge || !query || query_dim == 0) return 0.0f;
+
+    /* Epistemic value = expected information gain from observing query.
+       Approximate as: how much current beliefs disagree with query
+       weighted by precision (uncertain regions = higher epistemic value). */
+    float info_gain = 0.0f;
+
+    if (bridge->num_levels > 0 && bridge->level_means[0] && bridge->level_precisions[0]) {
+        uint32_t dim = bridge->level_dims[0] < query_dim ? bridge->level_dims[0] : query_dim;
+        for (uint32_t i = 0; i < dim; i++) {
+            float pe = query[i] - bridge->level_means[0][i];
+            float prec = bridge->level_precisions[0][i];
+            /* Low precision + high PE = high epistemic value (lots to learn) */
+            if (prec > 1e-6f) {
+                info_gain += (pe * pe) / prec;
+            } else {
+                info_gain += pe * pe * 100.0f; /* Very uncertain → very informative */
+            }
+        }
+        info_gain /= (float)(dim > 0 ? dim : 1);
+        /* Transform to bounded [0, 1] range */
+        info_gain = 1.0f - expf(-info_gain * 0.5f);
+    } else {
+        /* No model yet: everything is informative */
+        float mag = 0.0f;
+        for (uint32_t i = 0; i < query_dim; i++)
+            mag += query[i] * query[i];
+        info_gain = fminf(1.0f, sqrtf(mag / (float)query_dim));
+    }
+
+    return info_gain;
 }
 
 /* ============================================================================

@@ -42,6 +42,14 @@ BRIDGE_BOILERPLATE(symbolic_logic, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 #define BIO_MODULE_COGNITIVE_LOGIC 0x0343
 
+/* Phase 5: Predicate hash index for O(1) fact lookup */
+#define PRED_INDEX_BUCKETS 256
+#define PRED_INDEX_BUCKET_CAP 64
+
+typedef struct {
+    uint32_t fact_indices[PRED_INDEX_BUCKET_CAP]; /* Indices into kb[] */
+    uint32_t count;
+} pred_index_bucket_t;
 
 //=============================================================================
 // Internal Structures
@@ -73,7 +81,50 @@ struct symbolic_logic {
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    /* Phase 5: Predicate hash index */
+    pred_index_bucket_t pred_index[PRED_INDEX_BUCKETS];
+    bool pred_index_built;
 };
+
+/* Phase 5: FNV-1a hash for predicate names */
+static uint32_t hash_predicate(const char* name) {
+    uint32_t h = 2166136261u;
+    for (const char* p = name; *p; p++) {
+        h ^= (uint8_t)*p;
+        h *= 16777619u;
+    }
+    return h % PRED_INDEX_BUCKETS;
+}
+
+static void predicate_index_add(symbolic_logic_t* logic, uint32_t fact_idx) {
+    if (!logic || fact_idx >= logic->num_facts) return;
+    kb_entry_t* entry = logic->kb[fact_idx];
+    if (!entry || !entry->clause || entry->clause->num_literals == 0) return;
+
+    const char* pred = entry->clause->literals[0]->name;
+    uint32_t bucket = hash_predicate(pred);
+    pred_index_bucket_t* b = &logic->pred_index[bucket];
+    if (b->count < PRED_INDEX_BUCKET_CAP) {
+        b->fact_indices[b->count++] = fact_idx;
+    }
+}
+
+static void predicate_index_rebuild(symbolic_logic_t* logic) {
+    if (!logic) return;
+    memset(logic->pred_index, 0, sizeof(logic->pred_index));
+    for (uint32_t i = 0; i < logic->num_facts; i++) {
+        predicate_index_add(logic, i);
+    }
+    logic->pred_index_built = true;
+}
+
+static const pred_index_bucket_t* predicate_index_lookup(
+    const symbolic_logic_t* logic, const char* predicate) {
+    if (!logic || !predicate || !logic->pred_index_built) return NULL;
+    uint32_t bucket = hash_predicate(predicate);
+    return &logic->pred_index[bucket];
+}
 
 //=============================================================================
 // Helper Functions - Term Management
@@ -434,24 +485,46 @@ bool symbolic_logic_backward_chain(
     *proof_trace = NULL;
     *num_steps = 0;
 
-    for (uint32_t i = 0; i < logic->num_facts; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && logic->num_facts > 256) {
-            symbolic_logic_heartbeat("symbolic_log_loop",
-                             (float)(i + 1) / (float)logic->num_facts);
+    /* Phase 5: Use predicate index for O(1) lookup */
+    if (logic->pred_index_built && goal->num_literals > 0 && goal->literals[0]) {
+        const pred_index_bucket_t* bucket = predicate_index_lookup(logic, goal->literals[0]->name);
+        if (bucket) {
+            for (uint32_t bi = 0; bi < bucket->count; bi++) {
+                uint32_t f = bucket->fact_indices[bi];
+                if (f < logic->num_facts) {
+                    kb_entry_t* entry = logic->kb[f];
+                    if (!entry || !entry->clause) continue;
+                    if (entry->clause->num_literals == goal->num_literals &&
+                        entry->clause->num_literals > 0) {
+                        if (strcmp(entry->clause->literals[0]->name,
+                                  goal->literals[0]->name) == 0) {
+                            LOG_DEBUG("Goal proven by indexed fact match");
+                            return true;
+                        }
+                    }
+                }
+            }
         }
+    } else {
+        for (uint32_t i = 0; i < logic->num_facts; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && logic->num_facts > 256) {
+                symbolic_logic_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)logic->num_facts);
+            }
 
-        kb_entry_t* entry = logic->kb[i];
-        if (!entry || !entry->clause) continue;
+            kb_entry_t* entry = logic->kb[i];
+            if (!entry || !entry->clause) continue;
 
-        // Check if clause matches goal
-        if (entry->clause->num_literals == goal->num_literals &&
-            entry->clause->num_literals > 0) {
-            // Simple match by predicate name
-            if (strcmp(entry->clause->literals[0]->name,
-                      goal->literals[0]->name) == 0) {
-                LOG_DEBUG("Goal proven by fact match");
-                return true;
+            // Check if clause matches goal
+            if (entry->clause->num_literals == goal->num_literals &&
+                entry->clause->num_literals > 0) {
+                // Simple match by predicate name
+                if (strcmp(entry->clause->literals[0]->name,
+                          goal->literals[0]->name) == 0) {
+                    LOG_DEBUG("Goal proven by fact match");
+                    return true;
+                }
             }
         }
     }
@@ -477,8 +550,106 @@ bool symbolic_logic_resolve(
 
     *derived_empty = false;
 
-    // Simple stub - resolution is complex, return false for now
-    return false;
+    /* Robinson's Resolution Algorithm:
+       Add negated_goal to the clause set, then repeatedly try to resolve
+       pairs of clauses. If we derive the empty clause, the goal is proven. */
+
+    /* Collect clauses: KB facts + negated_goal */
+    uint32_t max_clauses = logic->num_facts + 128; /* room for resolvents */
+    uint32_t num_clauses = 0;
+
+    /* Use arrays of (literals, num_literals, negated) triples stored inline */
+    /* For efficiency, store pointers to existing clause data + generated resolvents */
+    typedef struct { atomic_formula_t** lits; uint32_t n; bool owned; } res_clause_t;
+    res_clause_t* clauses = nimcp_calloc(max_clauses, sizeof(res_clause_t));
+    if (!clauses) return false;
+
+    /* Add KB facts */
+    for (uint32_t i = 0; i < logic->num_facts && num_clauses < max_clauses; i++) {
+        if (logic->kb[i] && logic->kb[i]->clause &&
+            logic->kb[i]->clause->num_literals > 0) {
+            clauses[num_clauses].lits = logic->kb[i]->clause->literals;
+            clauses[num_clauses].n = logic->kb[i]->clause->num_literals;
+            clauses[num_clauses].owned = false;
+            num_clauses++;
+        }
+    }
+
+    /* Add negated goal */
+    if (negated_goal->num_literals > 0) {
+        clauses[num_clauses].lits = negated_goal->literals;
+        clauses[num_clauses].n = negated_goal->num_literals;
+        clauses[num_clauses].owned = false;
+        num_clauses++;
+    }
+
+    /* Resolution loop: try all pairs, up to iteration limit */
+    uint32_t max_iterations = 200;
+    bool found_empty = false;
+
+    for (uint32_t iter = 0; iter < max_iterations && !found_empty; iter++) {
+        bool progress = false;
+        uint32_t start_count = num_clauses;
+
+        for (uint32_t i = 0; i < start_count && !found_empty; i++) {
+            for (uint32_t j = i + 1; j < start_count && !found_empty; j++) {
+                /* Try to find complementary literals between clause i and j */
+                for (uint32_t li = 0; li < clauses[i].n; li++) {
+                    for (uint32_t lj = 0; lj < clauses[j].n; lj++) {
+                        atomic_formula_t* a = clauses[i].lits[li];
+                        atomic_formula_t* b = clauses[j].lits[lj];
+                        if (!a || !b) continue;
+
+                        /* Check complementary: same name, opposite negation */
+                        if (strcmp(a->name, b->name) == 0 &&
+                            a->negated != b->negated &&
+                            a->arity == b->arity) {
+
+                            /* Build resolvent: all literals from both clauses
+                               except the complementary pair */
+                            uint32_t res_n = (clauses[i].n - 1) + (clauses[j].n - 1);
+
+                            if (res_n == 0) {
+                                /* Empty clause derived — proof found! */
+                                found_empty = true;
+                                break;
+                            }
+
+                            /* Only add if room */
+                            if (num_clauses < max_clauses) {
+                                atomic_formula_t** res_lits = nimcp_calloc(res_n, sizeof(atomic_formula_t*));
+                                if (!res_lits) continue;
+                                uint32_t ri = 0;
+                                for (uint32_t k = 0; k < clauses[i].n; k++)
+                                    if (k != li) res_lits[ri++] = clauses[i].lits[k];
+                                for (uint32_t k = 0; k < clauses[j].n; k++)
+                                    if (k != lj) res_lits[ri++] = clauses[j].lits[k];
+
+                                clauses[num_clauses].lits = res_lits;
+                                clauses[num_clauses].n = ri;
+                                clauses[num_clauses].owned = true;
+                                num_clauses++;
+                                progress = true;
+                            }
+                        }
+                    }
+                    if (found_empty) break;
+                }
+            }
+        }
+        if (!progress) break; /* No new resolvents possible */
+    }
+
+    *derived_empty = found_empty;
+
+    /* Clean up owned resolvents */
+    for (uint32_t i = 0; i < num_clauses; i++) {
+        if (clauses[i].owned) nimcp_free(clauses[i].lits);
+    }
+    nimcp_free(clauses);
+
+    logic->stats.inferences_performed++;
+    return found_empty;
 }
 
 bool symbolic_logic_evaluate(
@@ -543,19 +714,37 @@ bool symbolic_logic_evaluate(
     }
 
     // Classical evaluation: check if formula matches any fact in KB
-    for (uint32_t i = 0; i < logic->num_facts; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && logic->num_facts > 256) {
-            symbolic_logic_heartbeat("symbolic_log_loop",
-                             (float)(i + 1) / (float)logic->num_facts);
+    /* Phase 5: Use predicate index for O(1) lookup */
+    if (logic->pred_index_built) {
+        const pred_index_bucket_t* bucket = predicate_index_lookup(logic, formula->atom->name);
+        if (bucket) {
+            for (uint32_t bi = 0; bi < bucket->count; bi++) {
+                uint32_t f = bucket->fact_indices[bi];
+                if (f < logic->num_facts) {
+                    kb_entry_t* entry = logic->kb[f];
+                    if (!entry || !entry->clause || entry->clause->num_literals == 0) continue;
+                    if (strcmp(entry->clause->literals[0]->name, formula->atom->name) == 0) {
+                        *result = !formula->atom->negated;
+                        return true;
+                    }
+                }
+            }
         }
+    } else {
+        for (uint32_t i = 0; i < logic->num_facts; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && logic->num_facts > 256) {
+                symbolic_logic_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)logic->num_facts);
+            }
 
-        kb_entry_t* entry = logic->kb[i];
-        if (!entry || !entry->clause || entry->clause->num_literals == 0) continue;
+            kb_entry_t* entry = logic->kb[i];
+            if (!entry || !entry->clause || entry->clause->num_literals == 0) continue;
 
-        if (strcmp(entry->clause->literals[0]->name, formula->atom->name) == 0) {
-            *result = !formula->atom->negated;
-            return true;
+            if (strcmp(entry->clause->literals[0]->name, formula->atom->name) == 0) {
+                *result = !formula->atom->negated;
+                return true;
+            }
         }
     }
 
@@ -780,6 +969,10 @@ symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
         }
     }
 
+    /* Phase 5: Initialize predicate index */
+    logic->pred_index_built = false;
+    memset(logic->pred_index, 0, sizeof(logic->pred_index));
+
     LOG_INFO("Symbolic logic engine created");
     return logic;
 }
@@ -924,6 +1117,9 @@ bool symbolic_logic_add_fact(symbolic_logic_t* logic, logic_clause_t* clause, fl
 
     logic->kb[logic->num_facts++] = entry;
     logic->stats.facts_stored++;
+
+    /* Phase 5: Update predicate index with new fact */
+    predicate_index_add(logic, logic->num_facts - 1);
 
     return true;
 }
@@ -1233,6 +1429,11 @@ bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iteratio
         return false;
     }
 
+    /* Phase 5: Ensure predicate index is built before forward chaining */
+    if (!logic->pred_index_built) {
+        predicate_index_rebuild(logic);
+    }
+
     while (iteration < max_iterations) {
         bool new_fact_derived = false;
 
@@ -1257,17 +1458,30 @@ bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iteratio
 
                 bool found = false;
 
-                for (uint32_t f = 0; f < logic->num_facts; f++) {
-                    /* Phase 8: Loop progress heartbeat */
-                    if ((f & 0xFF) == 0 && logic->num_facts > 256) {
-                        symbolic_logic_heartbeat("symbolic_log_loop",
-                                         (float)(f + 1) / (float)logic->num_facts);
+                /* Phase 5: Use predicate index for O(1) lookup */
+                if (logic->pred_index_built && rule->premises[p]->literals[0]) {
+                    const pred_index_bucket_t* bucket = predicate_index_lookup(
+                        logic, rule->premises[p]->literals[0]->name);
+                    if (bucket) {
+                        for (uint32_t bi = 0; bi < bucket->count; bi++) {
+                            uint32_t f = bucket->fact_indices[bi];
+                            if (f < logic->num_facts && logic->kb[f] && logic->kb[f]->clause) {
+                                if (atoms_equal(rule->premises[p]->literals[0],
+                                               logic->kb[f]->clause->literals[0])) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
                     }
-
-                    if (atoms_equal(rule->premises[p]->literals[0],
-                                   logic->kb[f]->clause->literals[0])) {
-                        found = true;
-                        break;
+                } else {
+                    for (uint32_t f = 0; f < logic->num_facts; f++) {
+                        if (!logic->kb[f] || !logic->kb[f]->clause) continue;
+                        if (atoms_equal(rule->premises[p]->literals[0],
+                                       logic->kb[f]->clause->literals[0])) {
+                            found = true;
+                            break;
+                        }
                     }
                 }
 

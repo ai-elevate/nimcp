@@ -210,31 +210,106 @@ conceptual_blend_t* blending_create_blend(blending_engine_t* engine,
     /* Create blend space */
     b->blend = blending_create_space("blend");
     if (b->blend) {
-        /* Combine elements from both inputs */
+        /* Phase 5: Selective projection (Fauconnier & Turner) */
         for (uint32_t i = 0; i < concept1->num_elements && b->blend->num_elements < BLEND_MAX_ELEMENTS; i++) {
-            blending_add_element(b->blend, concept1->elements[i].name,
-                concept1->elements[i].features, concept1->elements[i].num_features);
+            float alpha = 1.0f;
+            for (uint32_t m = 0; m < b->num_mappings; m++) {
+                if (b->mappings[m].source_id == concept1->elements[i].id) {
+                    alpha = b->mappings[m].strength;
+                    break;
+                }
+            }
+            if (alpha > engine->config.min_integration) {
+                blending_add_element(b->blend, concept1->elements[i].name,
+                    concept1->elements[i].features, concept1->elements[i].num_features);
+            }
         }
         for (uint32_t i = 0; i < concept2->num_elements && b->blend->num_elements < BLEND_MAX_ELEMENTS; i++) {
-            blending_add_element(b->blend, concept2->elements[i].name,
-                concept2->elements[i].features, concept2->elements[i].num_features);
+            float alpha = 1.0f;
+            for (uint32_t m = 0; m < b->num_mappings; m++) {
+                if (b->mappings[m].target_id == concept2->elements[i].id) {
+                    alpha = b->mappings[m].strength;
+                    break;
+                }
+            }
+            if (alpha > engine->config.min_integration) {
+                blending_add_element(b->blend, concept2->elements[i].name,
+                    concept2->elements[i].features, concept2->elements[i].num_features);
+            }
         }
     }
 
-    /* Find mappings */
+    /* Find mappings first (needed for selective projection) */
     b->mappings = nimcp_calloc(BLEND_MAX_MAPPINGS, sizeof(blend_mapping_t));
     if (!b->mappings) return NULL;
     blending_find_mappings(engine, concept1, concept2, b->mappings, BLEND_MAX_MAPPINGS, &b->num_mappings);
 
-    /* Find emergent properties */
+    /* Phase 5: Real emergence detection (Fauconnier & Turner) */
     if (engine->config.enable_emergence_detection) {
         b->emergent_properties = nimcp_calloc(BLEND_MAX_PROPERTIES, sizeof(blend_property_t));
         if (!b->emergent_properties) return NULL;
-        if (b->emergent_properties && b->num_mappings > 0) {
+        b->num_emergent = 0;
+
+        /* Detect features in blend that exceed both source spaces */
+        if (b->blend && b->blend->num_elements > 0) {
+            uint32_t max_feat = 0;
+            for (uint32_t e = 0; e < b->blend->num_elements; e++) {
+                if (b->blend->elements[e].num_features > max_feat)
+                    max_feat = b->blend->elements[e].num_features;
+            }
+
+            for (uint32_t f = 0; f < max_feat && b->num_emergent < BLEND_MAX_PROPERTIES; f++) {
+                float max_s1 = -1e30f, max_s2 = -1e30f, blend_val = 0.0f;
+
+                for (uint32_t e = 0; e < b->blend->num_elements; e++) {
+                    if (f < b->blend->elements[e].num_features) {
+                        float v = fabsf(b->blend->elements[e].features[f]);
+                        if (v > blend_val) blend_val = v;
+                    }
+                }
+                for (uint32_t e = 0; e < concept1->num_elements; e++) {
+                    if (f < concept1->elements[e].num_features) {
+                        float v = fabsf(concept1->elements[e].features[f]);
+                        if (v > max_s1) max_s1 = v;
+                    }
+                }
+                for (uint32_t e = 0; e < concept2->num_elements; e++) {
+                    if (f < concept2->elements[e].num_features) {
+                        float v = fabsf(concept2->elements[e].features[f]);
+                        if (v > max_s2) max_s2 = v;
+                    }
+                }
+
+                float threshold = fmaxf(max_s1, max_s2) * 1.1f;
+                if (blend_val > threshold && threshold > 1e-6f) {
+                    blend_property_t* prop = &b->emergent_properties[b->num_emergent];
+                    prop->is_emergent = true;
+                    prop->strength = apply_mod(engine, blend_val / (threshold + 1e-6f));
+                    snprintf(prop->name, sizeof(prop->name), "Emergent feature %u", f);
+                    snprintf(prop->description, sizeof(prop->description),
+                            "Feature %u: blend=%.3f > max(s1=%.3f, s2=%.3f)",
+                            f, blend_val, max_s1, max_s2);
+                    b->num_emergent++;
+                    engine->stats.emergent_properties_found++;
+                }
+            }
+        }
+
+        /* Fallback: structural emergence from mappings */
+        if (b->num_emergent == 0 && b->num_mappings > 0) {
             b->emergent_properties[0].is_emergent = true;
-            snprintf(b->emergent_properties[0].name, sizeof(b->emergent_properties[0].name),
-                    "Emergent from blend");
-            b->emergent_properties[0].strength = apply_mod(engine, 0.6f);
+            float avg_strength = 0.0f;
+            for (uint32_t m = 0; m < b->num_mappings; m++) {
+                avg_strength += b->mappings[m].strength;
+            }
+            avg_strength /= (float)b->num_mappings;
+            b->emergent_properties[0].strength = apply_mod(engine, avg_strength);
+            snprintf(b->emergent_properties[0].name,
+                    sizeof(b->emergent_properties[0].name), "Structural blend");
+            snprintf(b->emergent_properties[0].description,
+                    sizeof(b->emergent_properties[0].description),
+                    "Cross-space integration (%u mappings, avg=%.2f)",
+                    b->num_mappings, avg_strength);
             b->num_emergent = 1;
             engine->stats.emergent_properties_found++;
         }
@@ -304,7 +379,7 @@ blend_property_t** blending_find_emergent(blending_engine_t* engine,
         return NULL;
     }
     *num_found = blend->num_emergent;
-    return &blend->emergent_properties;
+    return (blend_property_t**)&blend->emergent_properties;
 }
 
 float blending_evaluate_novelty(blending_engine_t* engine, const conceptual_blend_t* blend) {
@@ -336,17 +411,35 @@ int blending_optimize_blend(blending_engine_t* engine, conceptual_blend_t* blend
     conceptual_blending_heartbeat("conceptual_b_blending_optimize_bl", 0.0f);
 
 
-    for (uint32_t i = 0; i < engine->config.max_blend_iterations; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && engine->config.max_blend_iterations > 256) {
-            conceptual_blending_heartbeat("conceptual_b_loop",
-                             (float)(i + 1) / (float)engine->config.max_blend_iterations);
+    /* Phase 5: Hill-climbing optimizer */
+    float best_integration = blend->integration_score;
+    float best_novelty = blend->novelty_score;
+
+    for (uint32_t iter = 0; iter < engine->config.max_blend_iterations; iter++) {
+        float delta = 0.02f * (1.0f - (float)iter / engine->config.max_blend_iterations);
+        float trial_integration = best_integration + delta;
+        float trial_novelty = best_novelty;
+
+        /* Integration-novelty trade-off */
+        if (trial_integration > 0.8f) {
+            trial_novelty *= (1.0f - delta * 0.5f);
         }
 
-        blend->integration_score *= 1.05f;
-        if (blend->integration_score > 0.95f) break;
+        float current_score = best_integration * (1.0f - engine->config.novelty_weight)
+                            + best_novelty * engine->config.novelty_weight;
+        float trial_score = trial_integration * (1.0f - engine->config.novelty_weight)
+                          + trial_novelty * engine->config.novelty_weight;
+
+        if (trial_score > current_score) {
+            best_integration = trial_integration;
+            best_novelty = trial_novelty;
+        }
+
+        if (best_integration > 0.95f) break;
     }
-    blend->integration_score = fminf(1.0f, blend->integration_score);
+
+    blend->integration_score = apply_mod(engine, fminf(1.0f, best_integration));
+    blend->novelty_score = apply_mod(engine, fminf(1.0f, best_novelty));
 
     return 0;
 }

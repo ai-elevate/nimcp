@@ -1014,6 +1014,84 @@ static nimcp_kernel_error_t cpu_lnn_euler_step(
     return NIMCP_KERNEL_SUCCESS;
 }
 
+/* Helper: compute LTC derivative dx/dt = -x/tau + sigmoid(W_in*input + W_rec*x + b) */
+static nimcp_kernel_error_t cpu_lnn_compute_derivative(
+    nimcp_gpu_context_t* ctx,
+    struct nimcp_lnn_layer_gpu* layer,
+    const nimcp_gpu_tensor_t* input,
+    nimcp_gpu_tensor_t* dx_dt)
+{
+    (void)ctx;
+    typedef struct {
+        nimcp_gpu_tensor_t* x;
+        nimcp_gpu_tensor_t* dx_dt;
+        nimcp_gpu_tensor_t* tau;
+        nimcp_gpu_tensor_t* tau_base;
+        nimcp_gpu_tensor_t* W_in;
+        nimcp_gpu_tensor_t* W_rec;
+        nimcp_gpu_tensor_t* W_tau;
+        nimcp_gpu_tensor_t* b_in;
+        nimcp_gpu_tensor_t* b_tau;
+        nimcp_gpu_tensor_t* row_ptr;
+        nimcp_gpu_tensor_t* col_idx;
+        nimcp_gpu_tensor_t* edge_weights;
+        uint32_t n_neurons;
+        uint32_t n_inputs;
+        uint32_t n_edges;
+        uint32_t activation;
+    } lnn_layer_cpu_t;
+
+    if (!layer || !dx_dt) return NIMCP_KERNEL_ERROR_NULL_PTR;
+
+    lnn_layer_cpu_t* l = (lnn_layer_cpu_t*)layer;
+    if (!l->x || !l->tau) return NIMCP_KERNEL_ERROR_NULL_PTR;
+
+    uint32_t n = l->n_neurons;
+    const float* x_data = (const float*)l->x->data;
+    const float* tau_data = (const float*)l->tau->data;
+    float* dxdt = (float*)dx_dt->data;
+
+    for (uint32_t i = 0; i < n; i++) {
+        /* Leak term: -x_i / tau_i */
+        float tau_i = tau_data[i];
+        if (tau_i < 1e-6f) tau_i = 1e-6f;
+        float leak = -x_data[i] / tau_i;
+
+        /* Drive term: W_in * input + W_rec * x + b */
+        float drive = 0.0f;
+
+        /* Input contribution */
+        if (l->W_in && input) {
+            const float* w_in = (const float*)l->W_in->data;
+            const float* in_data = (const float*)input->data;
+            uint32_t n_in = l->n_inputs;
+            for (uint32_t j = 0; j < n_in; j++) {
+                drive += w_in[i * n_in + j] * in_data[j];
+            }
+        }
+
+        /* Recurrent contribution */
+        if (l->W_rec) {
+            const float* w_rec = (const float*)l->W_rec->data;
+            for (uint32_t j = 0; j < n; j++) {
+                drive += w_rec[i * n + j] * x_data[j];
+            }
+        }
+
+        /* Bias */
+        if (l->b_in) {
+            drive += ((const float*)l->b_in->data)[i];
+        }
+
+        /* Sigmoid activation */
+        float activated = 1.0f / (1.0f + expf(-drive));
+
+        dxdt[i] = leak + activated;
+    }
+
+    return NIMCP_KERNEL_SUCCESS;
+}
+
 static nimcp_kernel_error_t cpu_lnn_heun_step(
     nimcp_gpu_context_t* ctx,
     struct nimcp_lnn_layer_gpu* layer,
@@ -1021,13 +1099,72 @@ static nimcp_kernel_error_t cpu_lnn_heun_step(
     float dt,
     const struct nimcp_lnn_ode_config* config)
 {
-    (void)ctx;
-    (void)layer;
-    (void)input;
-    (void)dt;
     (void)config;
-    // Heun's method requires layer access - simplified stub
-    LOG_DEBUG("CPU heun_step - not fully implemented");
+    typedef struct {
+        nimcp_gpu_tensor_t* x;
+        nimcp_gpu_tensor_t* dx_dt;
+        nimcp_gpu_tensor_t* tau;
+        nimcp_gpu_tensor_t* tau_base;
+        nimcp_gpu_tensor_t* W_in;
+        nimcp_gpu_tensor_t* W_rec;
+        nimcp_gpu_tensor_t* W_tau;
+        nimcp_gpu_tensor_t* b_in;
+        nimcp_gpu_tensor_t* b_tau;
+        nimcp_gpu_tensor_t* row_ptr;
+        nimcp_gpu_tensor_t* col_idx;
+        nimcp_gpu_tensor_t* edge_weights;
+        uint32_t n_neurons;
+        uint32_t n_inputs;
+        uint32_t n_edges;
+        uint32_t activation;
+    } lnn_layer_cpu_t;
+
+    if (!layer) return NIMCP_KERNEL_ERROR_NULL_PTR;
+    lnn_layer_cpu_t* l = (lnn_layer_cpu_t*)layer;
+    if (!l->x || !l->dx_dt) return NIMCP_KERNEL_ERROR_NULL_PTR;
+
+    uint32_t n = l->n_neurons;
+    float* x_data = (float*)l->x->data;
+
+    /* Heun's method (improved Euler / trapezoidal predictor-corrector):
+     * k1 = f(t, x)
+     * x_pred = x + dt * k1
+     * k2 = f(t + dt, x_pred)
+     * x_new = x + (dt/2) * (k1 + k2)
+     */
+
+    /* k1 = f(t, x) */
+    nimcp_kernel_error_t err = cpu_lnn_compute_derivative(ctx, layer, input, l->dx_dt);
+    if (err != NIMCP_KERNEL_SUCCESS) return err;
+
+    float* k1 = (float*)l->dx_dt->data;
+
+    /* Save k1 and compute predictor x_pred = x + dt * k1 */
+    float* k1_save = (float*)nimcp_malloc(n * sizeof(float));
+    float* x_save = (float*)nimcp_malloc(n * sizeof(float));
+    if (!k1_save || !x_save) {
+        nimcp_free(k1_save);
+        nimcp_free(x_save);
+        return NIMCP_KERNEL_ERROR_MEMORY;
+    }
+
+    for (uint32_t i = 0; i < n; i++) {
+        k1_save[i] = k1[i];
+        x_save[i] = x_data[i];
+        x_data[i] = x_save[i] + dt * k1[i];  /* predictor */
+    }
+
+    /* k2 = f(t + dt, x_pred) */
+    err = cpu_lnn_compute_derivative(ctx, layer, input, l->dx_dt);
+    float* k2 = (float*)l->dx_dt->data;
+
+    /* Corrector: x_new = x_orig + (dt/2) * (k1 + k2) */
+    for (uint32_t i = 0; i < n; i++) {
+        x_data[i] = x_save[i] + (dt * 0.5f) * (k1_save[i] + k2[i]);
+    }
+
+    nimcp_free(k1_save);
+    nimcp_free(x_save);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -1038,14 +1175,81 @@ static nimcp_kernel_error_t cpu_lnn_rk4_step(
     float dt,
     const struct nimcp_lnn_ode_config* config)
 {
-    (void)ctx;
-    (void)layer;
-    (void)input;
-    (void)dt;
     (void)config;
-    // RK4 requires layer access - simplified stub
-    LOG_DEBUG("CPU rk4_step - not fully implemented");
-    return NIMCP_KERNEL_SUCCESS;
+    typedef struct {
+        nimcp_gpu_tensor_t* x;
+        nimcp_gpu_tensor_t* dx_dt;
+        nimcp_gpu_tensor_t* tau;
+        nimcp_gpu_tensor_t* tau_base;
+        nimcp_gpu_tensor_t* W_in;
+        nimcp_gpu_tensor_t* W_rec;
+        nimcp_gpu_tensor_t* W_tau;
+        nimcp_gpu_tensor_t* b_in;
+        nimcp_gpu_tensor_t* b_tau;
+        nimcp_gpu_tensor_t* row_ptr;
+        nimcp_gpu_tensor_t* col_idx;
+        nimcp_gpu_tensor_t* edge_weights;
+        uint32_t n_neurons;
+        uint32_t n_inputs;
+        uint32_t n_edges;
+        uint32_t activation;
+    } lnn_layer_cpu_t;
+
+    if (!layer) return NIMCP_KERNEL_ERROR_NULL_PTR;
+    lnn_layer_cpu_t* l = (lnn_layer_cpu_t*)layer;
+    if (!l->x || !l->dx_dt) return NIMCP_KERNEL_ERROR_NULL_PTR;
+
+    uint32_t n = l->n_neurons;
+    float* x_data = (float*)l->x->data;
+
+    /* RK4: k1=f(t,x), k2=f(t+dt/2,x+dt/2*k1), k3=f(t+dt/2,x+dt/2*k2), k4=f(t+dt,x+dt*k3)
+     * x_new = x + (dt/6)*(k1 + 2*k2 + 2*k3 + k4) */
+
+    float* x_save = (float*)nimcp_malloc(n * sizeof(float));
+    float* k1 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k2 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k3 = (float*)nimcp_malloc(n * sizeof(float));
+    if (!x_save || !k1 || !k2 || !k3) {
+        nimcp_free(x_save); nimcp_free(k1); nimcp_free(k2); nimcp_free(k3);
+        return NIMCP_KERNEL_ERROR_MEMORY;
+    }
+
+    for (uint32_t i = 0; i < n; i++) x_save[i] = x_data[i];
+
+    /* k1 = f(t, x) */
+    nimcp_kernel_error_t err = cpu_lnn_compute_derivative(ctx, layer, input, l->dx_dt);
+    if (err != NIMCP_KERNEL_SUCCESS) goto cleanup;
+    for (uint32_t i = 0; i < n; i++) k1[i] = ((float*)l->dx_dt->data)[i];
+
+    /* k2 = f(t + dt/2, x + dt/2 * k1) */
+    for (uint32_t i = 0; i < n; i++) x_data[i] = x_save[i] + 0.5f * dt * k1[i];
+    err = cpu_lnn_compute_derivative(ctx, layer, input, l->dx_dt);
+    if (err != NIMCP_KERNEL_SUCCESS) goto cleanup;
+    for (uint32_t i = 0; i < n; i++) k2[i] = ((float*)l->dx_dt->data)[i];
+
+    /* k3 = f(t + dt/2, x + dt/2 * k2) */
+    for (uint32_t i = 0; i < n; i++) x_data[i] = x_save[i] + 0.5f * dt * k2[i];
+    err = cpu_lnn_compute_derivative(ctx, layer, input, l->dx_dt);
+    if (err != NIMCP_KERNEL_SUCCESS) goto cleanup;
+    for (uint32_t i = 0; i < n; i++) k3[i] = ((float*)l->dx_dt->data)[i];
+
+    /* k4 = f(t + dt, x + dt * k3) */
+    for (uint32_t i = 0; i < n; i++) x_data[i] = x_save[i] + dt * k3[i];
+    err = cpu_lnn_compute_derivative(ctx, layer, input, l->dx_dt);
+    if (err != NIMCP_KERNEL_SUCCESS) goto cleanup;
+
+    /* Final: x_new = x_orig + (dt/6) * (k1 + 2*k2 + 2*k3 + k4) */
+    {
+        float* k4 = (float*)l->dx_dt->data;
+        float dt6 = dt / 6.0f;
+        for (uint32_t i = 0; i < n; i++) {
+            x_data[i] = x_save[i] + dt6 * (k1[i] + 2.0f * k2[i] + 2.0f * k3[i] + k4[i]);
+        }
+    }
+
+cleanup:
+    nimcp_free(x_save); nimcp_free(k1); nimcp_free(k2); nimcp_free(k3);
+    return err;
 }
 
 static nimcp_kernel_error_t cpu_lnn_dopri5_step(
@@ -1055,28 +1259,122 @@ static nimcp_kernel_error_t cpu_lnn_dopri5_step(
     float* dt_ptr,
     const struct nimcp_lnn_ode_config* config)
 {
-    (void)ctx;
-    (void)layer;
-    (void)input;
-    (void)dt_ptr;
-    (void)config;
-    // DOPRI5 (adaptive RK45) - simplified stub
-    LOG_DEBUG("CPU dopri5_step - not fully implemented");
-    return NIMCP_KERNEL_SUCCESS;
-}
+    typedef struct {
+        nimcp_gpu_tensor_t* x;
+        nimcp_gpu_tensor_t* dx_dt;
+        nimcp_gpu_tensor_t* tau;
+        nimcp_gpu_tensor_t* tau_base;
+        nimcp_gpu_tensor_t* W_in;
+        nimcp_gpu_tensor_t* W_rec;
+        nimcp_gpu_tensor_t* W_tau;
+        nimcp_gpu_tensor_t* b_in;
+        nimcp_gpu_tensor_t* b_tau;
+        nimcp_gpu_tensor_t* row_ptr;
+        nimcp_gpu_tensor_t* col_idx;
+        nimcp_gpu_tensor_t* edge_weights;
+        uint32_t n_neurons;
+        uint32_t n_inputs;
+        uint32_t n_edges;
+        uint32_t activation;
+    } lnn_layer_cpu_t;
 
-static nimcp_kernel_error_t cpu_lnn_compute_derivative(
-    nimcp_gpu_context_t* ctx,
-    struct nimcp_lnn_layer_gpu* layer,
-    const nimcp_gpu_tensor_t* input,
-    nimcp_gpu_tensor_t* dx_dt)
-{
-    (void)ctx;
-    (void)layer;
-    (void)input;
-    (void)dx_dt;
-    LOG_DEBUG("CPU compute_derivative - not fully implemented");
-    return NIMCP_KERNEL_SUCCESS;
+    if (!layer || !dt_ptr) return NIMCP_KERNEL_ERROR_NULL_PTR;
+    lnn_layer_cpu_t* l = (lnn_layer_cpu_t*)layer;
+    if (!l->x || !l->dx_dt) return NIMCP_KERNEL_ERROR_NULL_PTR;
+
+    float dt = *dt_ptr;
+    float atol = 1e-6f, rtol = 1e-3f;
+    float dt_min = 1e-6f, dt_max = 0.1f;
+
+    if (config) {
+        typedef struct { uint32_t method; float dt; float dt_min; float dt_max;
+                         float error_tolerance; uint32_t max_steps; bool adaptive; } ode_cfg_t;
+        const ode_cfg_t* cfg = (const ode_cfg_t*)config;
+        if (cfg->error_tolerance > 0) { atol = cfg->error_tolerance; rtol = cfg->error_tolerance; }
+        if (cfg->dt_min > 0) dt_min = cfg->dt_min;
+        if (cfg->dt_max > 0) dt_max = cfg->dt_max;
+    }
+
+    uint32_t n = l->n_neurons;
+    float* x_data = (float*)l->x->data;
+
+    /* DOPRI5 (Dormand-Prince) uses 7 stages but we use an RK45 embedded pair.
+     * For the CPU fallback, use a simplified adaptive RK45 approach:
+     * - Take one RK4 step (4th order) and one Euler step (1st order)
+     * - Use the difference as error estimate
+     * - Adjust dt accordingly */
+
+    float* x_save = (float*)nimcp_malloc(n * sizeof(float));
+    float* k1 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k2 = (float*)nimcp_malloc(n * sizeof(float));
+    float* k3 = (float*)nimcp_malloc(n * sizeof(float));
+    float* x_euler = (float*)nimcp_malloc(n * sizeof(float));
+    if (!x_save || !k1 || !k2 || !k3 || !x_euler) {
+        nimcp_free(x_save); nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(x_euler);
+        return NIMCP_KERNEL_ERROR_MEMORY;
+    }
+
+    for (uint32_t i = 0; i < n; i++) x_save[i] = x_data[i];
+
+    /* k1 */
+    nimcp_kernel_error_t err = cpu_lnn_compute_derivative(ctx, layer, input, l->dx_dt);
+    if (err != NIMCP_KERNEL_SUCCESS) goto dp_cleanup;
+    for (uint32_t i = 0; i < n; i++) {
+        k1[i] = ((float*)l->dx_dt->data)[i];
+        x_euler[i] = x_save[i] + dt * k1[i]; /* Euler estimate */
+    }
+
+    /* k2 at midpoint */
+    for (uint32_t i = 0; i < n; i++) x_data[i] = x_save[i] + 0.5f * dt * k1[i];
+    err = cpu_lnn_compute_derivative(ctx, layer, input, l->dx_dt);
+    if (err != NIMCP_KERNEL_SUCCESS) goto dp_cleanup;
+    for (uint32_t i = 0; i < n; i++) k2[i] = ((float*)l->dx_dt->data)[i];
+
+    /* k3 at midpoint */
+    for (uint32_t i = 0; i < n; i++) x_data[i] = x_save[i] + 0.5f * dt * k2[i];
+    err = cpu_lnn_compute_derivative(ctx, layer, input, l->dx_dt);
+    if (err != NIMCP_KERNEL_SUCCESS) goto dp_cleanup;
+    for (uint32_t i = 0; i < n; i++) k3[i] = ((float*)l->dx_dt->data)[i];
+
+    /* k4 at endpoint */
+    for (uint32_t i = 0; i < n; i++) x_data[i] = x_save[i] + dt * k3[i];
+    err = cpu_lnn_compute_derivative(ctx, layer, input, l->dx_dt);
+    if (err != NIMCP_KERNEL_SUCCESS) goto dp_cleanup;
+
+    /* RK4 solution + error estimate */
+    {
+        float* k4 = (float*)l->dx_dt->data;
+        float dt6 = dt / 6.0f;
+        float max_err = 0.0f;
+
+        for (uint32_t i = 0; i < n; i++) {
+            float rk4_val = x_save[i] + dt6 * (k1[i] + 2.0f * k2[i] + 2.0f * k3[i] + k4[i]);
+            x_data[i] = rk4_val;
+
+            /* Error = |RK4 - Euler| */
+            float err_i = fabsf(rk4_val - x_euler[i]);
+            float scale = atol + rtol * fabsf(rk4_val);
+            if (scale > 0) err_i /= scale;
+            if (err_i > max_err) max_err = err_i;
+        }
+
+        /* Adapt step size: dt_new = dt * 0.9 * (1/err)^(1/5) */
+        if (max_err > 0) {
+            float factor = 0.9f * powf(1.0f / max_err, 0.2f);
+            if (factor < 0.2f) factor = 0.2f;
+            if (factor > 5.0f) factor = 5.0f;
+            dt *= factor;
+        } else {
+            dt *= 2.0f; /* error is zero, double step */
+        }
+        if (dt < dt_min) dt = dt_min;
+        if (dt > dt_max) dt = dt_max;
+        *dt_ptr = dt;
+    }
+
+dp_cleanup:
+    nimcp_free(x_save); nimcp_free(k1); nimcp_free(k2); nimcp_free(k3); nimcp_free(x_euler);
+    return err;
 }
 
 static nimcp_kernel_error_t cpu_lnn_update_tau(
@@ -1085,9 +1383,72 @@ static nimcp_kernel_error_t cpu_lnn_update_tau(
     const nimcp_gpu_tensor_t* input)
 {
     (void)ctx;
-    (void)layer;
-    (void)input;
-    LOG_DEBUG("CPU update_tau - not fully implemented");
+    typedef struct {
+        nimcp_gpu_tensor_t* x;
+        nimcp_gpu_tensor_t* dx_dt;
+        nimcp_gpu_tensor_t* tau;
+        nimcp_gpu_tensor_t* tau_base;
+        nimcp_gpu_tensor_t* W_in;
+        nimcp_gpu_tensor_t* W_rec;
+        nimcp_gpu_tensor_t* W_tau;
+        nimcp_gpu_tensor_t* b_in;
+        nimcp_gpu_tensor_t* b_tau;
+        nimcp_gpu_tensor_t* row_ptr;
+        nimcp_gpu_tensor_t* col_idx;
+        nimcp_gpu_tensor_t* edge_weights;
+        uint32_t n_neurons;
+        uint32_t n_inputs;
+        uint32_t n_edges;
+        uint32_t activation;
+    } lnn_layer_cpu_t;
+
+    if (!layer) return NIMCP_KERNEL_ERROR_NULL_PTR;
+    lnn_layer_cpu_t* l = (lnn_layer_cpu_t*)layer;
+    if (!l->tau || !l->tau_base) return NIMCP_KERNEL_ERROR_NULL_PTR;
+
+    uint32_t n = l->n_neurons;
+    float* tau_data = (float*)l->tau->data;
+    const float* tau_base_data = (const float*)l->tau_base->data;
+
+    if (!l->W_tau) {
+        /* No tau modulation weights — tau = tau_base */
+        for (uint32_t i = 0; i < n; i++) {
+            tau_data[i] = tau_base_data[i];
+        }
+        return NIMCP_KERNEL_SUCCESS;
+    }
+
+    /* tau_i = tau_base_i * sigmoid(W_tau * [input; x] + b_tau)
+     * This makes time constants input/state-dependent (LTC dynamics) */
+    const float* w_tau = (const float*)l->W_tau->data;
+    uint32_t n_in = l->n_inputs;
+    uint32_t concat_dim = n_in + n;
+
+    for (uint32_t i = 0; i < n; i++) {
+        float z = 0.0f;
+        /* Input contribution */
+        if (input && n_in > 0) {
+            const float* in_data = (const float*)input->data;
+            for (uint32_t j = 0; j < n_in; j++) {
+                z += w_tau[i * concat_dim + j] * in_data[j];
+            }
+        }
+        /* State contribution */
+        if (l->x) {
+            const float* x_data = (const float*)l->x->data;
+            for (uint32_t j = 0; j < n; j++) {
+                z += w_tau[i * concat_dim + n_in + j] * x_data[j];
+            }
+        }
+        /* Bias */
+        if (l->b_tau) {
+            z += ((const float*)l->b_tau->data)[i];
+        }
+        /* sigmoid modulation */
+        float sig = 1.0f / (1.0f + expf(-z));
+        tau_data[i] = tau_base_data[i] * (0.5f + 1.5f * sig); /* range: [0.5, 2.0] * tau_base */
+    }
+
     return NIMCP_KERNEL_SUCCESS;
 }
 

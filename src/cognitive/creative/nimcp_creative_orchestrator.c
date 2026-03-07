@@ -16,6 +16,9 @@
 
 #include "cognitive/creative/nimcp_creative_orchestrator.h"
 #include "cognitive/creative/nimcp_creative.h"
+#include "cognitive/creative/appreciation/nimcp_aesthetic_evaluation.h"
+#include "cognitive/creative/bridges/nimcp_creative_bridge.h"
+#include "cognitive/creative/generation/nimcp_text_generation.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -70,8 +73,19 @@ void creative_orchestrator_destroy(creative_orchestrator_t* orch) {
 
     orch->state = CREATIVE_STATE_SHUTDOWN;
 
-    /* Note: Subsystem destruction would be implemented when subsystems exist */
-    /* For now, just free the orchestrator struct */
+    /* Destroy subsystems */
+    if (orch->text_gen) {
+        text_generator_destroy(orch->text_gen);
+        orch->text_gen = NULL;
+    }
+    if (orch->creative_bridge) {
+        creative_bridge_destroy(orch->creative_bridge);
+        orch->creative_bridge = NULL;
+    }
+    if (orch->aesthetic_eval) {
+        aesthetic_evaluator_destroy(orch->aesthetic_eval);
+        orch->aesthetic_eval = NULL;
+    }
 
     /* P3-COG-03: Log before free to avoid use-after-free */
     LOG_INFO(LOG_MODULE, "Creative orchestrator destroyed");
@@ -87,12 +101,52 @@ int creative_orchestrator_init_subsystems(creative_orchestrator_t* orch) {
 
     creative_orchestrator_heartbeat("init_subsystems", 0.0f);
 
-    /* Subsystem initialization would happen here */
-    /* Currently a stub for future implementation */
+    orch->state = CREATIVE_STATE_INITIALIZING;
+    int failures = 0;
+
+    /* Initialize aesthetic evaluator (appreciation subsystem) */
+    if (!orch->aesthetic_eval) {
+        orch->aesthetic_eval = aesthetic_evaluator_create(NULL);
+        if (!orch->aesthetic_eval) {
+            LOG_WARN(LOG_MODULE, "Failed to create aesthetic evaluator");
+            failures++;
+        }
+    }
+
+    /* Initialize creative bridge (validation subsystem) */
+    if (!orch->creative_bridge) {
+        orch->creative_bridge = creative_bridge_create(NULL);
+        if (!orch->creative_bridge) {
+            LOG_WARN(LOG_MODULE, "Failed to create creative bridge");
+            failures++;
+        }
+    }
+
+    /* Initialize text generator */
+    if (!orch->text_gen) {
+        text_generator_config_t tg_cfg;
+        text_generator_config_defaults(&tg_cfg);
+        orch->text_gen = text_generator_create(&tg_cfg);
+        if (!orch->text_gen) {
+            LOG_WARN(LOG_MODULE, "Failed to create text generator");
+            failures++;
+        }
+    }
+
+    /* Wire evaluator into text generator if both exist */
+    if (orch->text_gen && orch->aesthetic_eval) {
+        text_generator_set_evaluator(orch->text_gen, orch->aesthetic_eval);
+    }
+    if (orch->text_gen && orch->creative_bridge) {
+        text_generator_set_bridge(orch->text_gen, orch->creative_bridge);
+    }
+
+    orch->state = CREATIVE_STATE_READY;
+    LOG_INFO(LOG_MODULE, "Creative subsystems initialized (%d failures)", failures);
 
     creative_orchestrator_heartbeat("init_subsystems", 1.0f);
 
-    return 0;
+    return (failures > 0) ? -1 : 0;
 }
 
 void creative_orchestrator_shutdown(creative_orchestrator_t* orch) {

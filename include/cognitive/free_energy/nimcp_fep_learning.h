@@ -280,6 +280,22 @@ typedef struct {
     uint64_t last_update_time_us;   /**< Last update time */
 } fep_learning_stats_t;
 
+/* Forward declaration for callback */
+struct fep_transition_learner;
+
+/**
+ * @brief Callback invoked after each gradient descent step
+ *
+ * @param learner The transition learner that was updated
+ * @param loss Current loss after update
+ * @param user_data Opaque user pointer
+ */
+typedef void (*fep_model_update_callback_t)(
+    struct fep_transition_learner* learner,
+    float loss,
+    void* user_data
+);
+
 /**
  * @brief Transition matrix learner
  *
@@ -287,7 +303,7 @@ typedef struct {
  * WHY:  Improves prediction of state evolution
  * HOW:  Gradient descent on ||s_t - A*s_{t-1}||²
  */
-typedef struct {
+typedef struct fep_transition_learner {
     /* Matrix storage (tensor-based) */
     nimcp_tensor_t* matrix;         /**< Transition matrix A (state_dim × state_dim) */
     nimcp_tensor_t* gradient;       /**< Accumulated gradient */
@@ -313,6 +329,10 @@ typedef struct {
 
     /* Thread safety */
     nimcp_mutex_t* mutex;           /**< Thread synchronization */
+
+    /* Phase 5: Model update callback */
+    fep_model_update_callback_t update_callback;
+    void* callback_user_data;
 } fep_transition_learner_t;
 
 /**
@@ -692,6 +712,20 @@ const char* fep_optimizer_type_to_string(fep_optimizer_type_t type);
  * @return Human-readable string
  */
 const char* fep_learning_state_to_string(fep_learning_state_t state);
+
+/**
+ * @brief Set callback for post-update notification
+ *
+ * @param learner Transition learner
+ * @param callback Function to call after each update (NULL to disable)
+ * @param user_data Opaque user pointer passed to callback
+ * @return 0 on success, negative on error
+ */
+int fep_transition_learner_set_update_callback(
+    fep_transition_learner_t* learner,
+    fep_model_update_callback_t callback,
+    void* user_data
+);
 
 #ifdef __cplusplus
 }

@@ -576,14 +576,33 @@ uint32_t jepa_imagination_request_predicted_imagination(
     bridge->pending_context = nimcp_tensor_clone(context);
     bridge->prediction_request_pending = true;
 
-    /* In full implementation, would:
-     * 1. Get latent predictions from JEPA
-     * 2. Pass predictions to imagination as constraints
-     * 3. Start imagination scenario with goal
-     */
+    /* Start imagination scenario using prediction-constrained goal */
+    uint32_t scenario_id = 0;
+    if (bridge->imagination) {
+        imagination_scenario_t* scenario = imagination_begin_scenario(
+            bridge->imagination,
+            goal->mode,
+            goal);
+        if (scenario) {
+            scenario_id = scenario->id;
 
-    /* For now, return a placeholder scenario ID */
-    uint32_t scenario_id = 1;  /* Would get from imagination_begin_scenario() */
+            /* Inject JEPA context into scenario latent state as constraint */
+            if (scenario->latent_state && context) {
+                const float* ctx_data = nimcp_tensor_data_const(context);
+                float* lat_data = nimcp_tensor_data(scenario->latent_state);
+                uint32_t ctx_size = (uint32_t)nimcp_tensor_size(context);
+                uint32_t lat_size = (uint32_t)nimcp_tensor_size(scenario->latent_state);
+                uint32_t blend_size = (ctx_size < lat_size) ? ctx_size : lat_size;
+
+                /* Blend: 70% imagination noise + 30% JEPA prediction */
+                for (uint32_t i = 0; i < blend_size; i++) {
+                    lat_data[i] = 0.7f * lat_data[i] + 0.3f * ctx_data[i];
+                }
+            }
+
+            bridge->stats.predictions_used++;
+        }
+    }
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -605,13 +624,42 @@ uint32_t jepa_imagination_request_counterfactual(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    /* In full implementation, would:
-     * 1. Get JEPA prediction for actual action
-     * 2. Start imagination with alternative action
-     * 3. Track divergence from predicted outcome
-     */
+    /* Start counterfactual imagination scenario:
+     * Create scenario with context, inject action as latent perturbation */
+    uint32_t scenario_id = 0;
+    if (bridge->imagination) {
+        imagination_goal_t cf_goal;
+        memset(&cf_goal, 0, sizeof(cf_goal));
+        cf_goal.mode = IMAGINATION_MODE_COUNTERFACTUAL;
+        cf_goal.priority = 0.6f;
 
-    uint32_t scenario_id = 2;  /* Placeholder */
+        imagination_scenario_t* scenario = imagination_begin_scenario(
+            bridge->imagination,
+            IMAGINATION_MODE_COUNTERFACTUAL,
+            &cf_goal);
+        if (scenario) {
+            scenario_id = scenario->id;
+
+            /* Blend context + action into latent state */
+            if (scenario->latent_state) {
+                const float* ctx_data = nimcp_tensor_data_const(context);
+                const float* act_data = nimcp_tensor_data_const(action);
+                float* lat_data = nimcp_tensor_data(scenario->latent_state);
+                uint32_t lat_size = (uint32_t)nimcp_tensor_size(scenario->latent_state);
+                uint32_t ctx_size = (uint32_t)nimcp_tensor_size(context);
+                uint32_t act_size = (uint32_t)nimcp_tensor_size(action);
+
+                /* Context provides baseline, action provides perturbation */
+                for (uint32_t i = 0; i < lat_size; i++) {
+                    float ctx_val = (i < ctx_size) ? ctx_data[i] : 0.0f;
+                    float act_val = (i < act_size) ? act_data[i] : 0.0f;
+                    lat_data[i] = ctx_val + 0.5f * act_val;
+                }
+            }
+        }
+    }
+
+    if (scenario_id == 0) scenario_id = bridge->num_active_counterfactuals + 1;
 
     if (bridge->num_active_counterfactuals < JEPA_IMAG_MAX_COUNTERFACTUALS) {
         bridge->active_counterfactuals[bridge->num_active_counterfactuals++] = scenario_id;
@@ -646,9 +694,33 @@ int jepa_imagination_query_world_model(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    /* In full implementation, would call JEPA predictor to get outcome */
-    /* For now, return NULL outcome */
-    *outcome = NULL;
+    /* Create outcome tensor by combining context and action.
+     * This is a simplified world model prediction: outcome = context + action_effect */
+    uint32_t ctx_size = (uint32_t)nimcp_tensor_size(context);
+    uint32_t act_size = (uint32_t)nimcp_tensor_size(action);
+    uint32_t out_size = (ctx_size > act_size) ? ctx_size : act_size;
+
+    uint32_t out_dims[] = {out_size};
+    nimcp_tensor_t* predicted = nimcp_tensor_create(out_dims, 1, NIMCP_DTYPE_F32);
+    if (!predicted) {
+        nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_imagination_query_world_model: allocation failed");
+        return -1;
+    }
+
+    const float* ctx_data = nimcp_tensor_data_const(context);
+    const float* act_data = nimcp_tensor_data_const(action);
+    float* out_data = nimcp_tensor_data(predicted);
+
+    /* Simple linear prediction: outcome = context + 0.1 * action */
+    for (uint32_t i = 0; i < out_size; i++) {
+        float ctx_val = (i < ctx_size) ? ctx_data[i] : 0.0f;
+        float act_val = (i < act_size) ? act_data[i] : 0.0f;
+        out_data[i] = ctx_val + 0.1f * act_val;
+    }
+
+    *outcome = predicted;
+    bridge->stats.predictions_generated++;
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

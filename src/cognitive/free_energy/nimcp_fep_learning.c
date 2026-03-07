@@ -244,6 +244,22 @@ void fep_transition_learner_destroy(fep_transition_learner_t* learner) {
     NIMCP_LOGGING_INFO("Transition learner destroyed");
 }
 
+int fep_transition_learner_set_update_callback(
+    fep_transition_learner_t* learner,
+    fep_model_update_callback_t callback,
+    void* user_data
+) {
+    if (!learner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_transition_learner_set_update_callback: learner is NULL");
+        return -1;
+    }
+    nimcp_platform_mutex_lock(learner->mutex);
+    learner->update_callback = callback;
+    learner->callback_user_data = user_data;
+    nimcp_platform_mutex_unlock(learner->mutex);
+    return 0;
+}
+
 fep_likelihood_learner_t* fep_likelihood_learner_create(
     const fep_learning_config_t* config,
     uint32_t observation_dim,
@@ -498,6 +514,11 @@ int fep_learn_transition(
         learner->stats.convergence_count = 0;
     }
 
+    /* Phase 5: Invoke update callback */
+    if (learner->update_callback) {
+        learner->update_callback(learner, loss, learner->callback_user_data);
+    }
+
     nimcp_platform_mutex_unlock(learner->mutex);
     return 0;
 }
@@ -633,7 +654,13 @@ int fep_learn_transition_batch(
     /* Update statistics */
     learner->stats.total_updates++;
     learner->stats.batch_updates++;
-    record_loss(&learner->stats, total_loss / (float)n_transitions);
+    float avg_loss = total_loss / (float)n_transitions;
+    record_loss(&learner->stats, avg_loss);
+
+    /* Phase 5: Invoke update callback */
+    if (learner->update_callback) {
+        learner->update_callback(learner, avg_loss, learner->callback_user_data);
+    }
 
     nimcp_platform_mutex_unlock(learner->mutex);
     return 0;

@@ -3243,20 +3243,68 @@ nimcp_tensor_t* nimcp_tensor_layer_norm(const nimcp_tensor_t* t,
                                          const nimcp_tensor_t* beta,
                                          double eps)
 {
-    (void)gamma;
-    (void)beta;
-    (void)eps;
     if (!t) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
-
         return NULL;
-
     }
-    // Stub: return a copy for now
-    // Full layer norm implementation TBD
-    LOG_WARN("nimcp_tensor_layer_norm is a stub implementation");
-    return nimcp_tensor_clone(t);
+
+    if (t->dtype != NIMCP_DTYPE_F32) {
+        LOG_WARN("nimcp_tensor_layer_norm: only F32 supported, cloning input");
+        return nimcp_tensor_clone(t);
+    }
+
+    size_t numel = t->shape.numel;
+    if (numel == 0) {
+        return nimcp_tensor_clone(t);
+    }
+
+    /* Normalize over the last dimension */
+    uint32_t norm_dim = t->shape.dims[t->shape.rank - 1];
+    size_t num_vectors = numel / norm_dim;
+
+    /* Create output tensor with same shape */
+    nimcp_tensor_t* out = nimcp_tensor_clone(t);
+    if (!out) return NULL;
+
+    float* out_data = (float*)out->data;
+    const float* in_data = (const float*)t->data;
+
+    /* Optional gamma/beta data pointers */
+    const float* gamma_data = (gamma && gamma->dtype == NIMCP_DTYPE_F32) ?
+                              (const float*)gamma->data : NULL;
+    const float* beta_data = (beta && beta->dtype == NIMCP_DTYPE_F32) ?
+                             (const float*)beta->data : NULL;
+
+    float epsilon = (eps > 0.0) ? (float)eps : 1e-5f;
+
+    for (size_t v = 0; v < num_vectors; v++) {
+        size_t offset = v * norm_dim;
+
+        /* Compute mean */
+        float sum = 0.0f;
+        for (uint32_t i = 0; i < norm_dim; i++) {
+            sum += in_data[offset + i];
+        }
+        float mean = sum / (float)norm_dim;
+
+        /* Compute variance */
+        float var_sum = 0.0f;
+        for (uint32_t i = 0; i < norm_dim; i++) {
+            float diff = in_data[offset + i] - mean;
+            var_sum += diff * diff;
+        }
+        float inv_std = 1.0f / sqrtf(var_sum / (float)norm_dim + epsilon);
+
+        /* Normalize and apply affine transform */
+        for (uint32_t i = 0; i < norm_dim; i++) {
+            float normalized = (in_data[offset + i] - mean) * inv_std;
+            if (gamma_data) normalized *= gamma_data[i];
+            if (beta_data) normalized += beta_data[i];
+            out_data[offset + i] = normalized;
+        }
+    }
+
+    return out;
 }
 
 nimcp_tensor_t* nimcp_tensor_log_softmax(const nimcp_tensor_t* input, int dim)
@@ -3295,12 +3343,45 @@ int nimcp_autodiff_backward(nimcp_autodiff_ctx_t* ctx,
                             uint32_t num_inputs,
                             nimcp_tensor_t** gradients)
 {
-    (void)ctx;
-    (void)output;
-    (void)inputs;
-    (void)num_inputs;
-    (void)gradients;
-    // Stub: autodiff backward not yet implemented
-    LOG_WARN("nimcp_autodiff_backward is a stub implementation");
-    return NIMCP_TENSOR_ERR_GRAD;
+    if (!ctx || !output || !inputs || !gradients) return NIMCP_TENSOR_ERR_NULL;
+    if (num_inputs == 0) return NIMCP_TENSOR_ERR_SHAPE;
+
+    /* Initialize output gradient to 1.0 (scalar loss assumed) */
+    if (!output->grad) {
+        output->grad = nimcp_tensor_ones(output->shape.dims, output->shape.rank, output->dtype);
+        if (!output->grad) return NIMCP_TENSOR_ERR_ALLOC;
+    }
+
+    /* Walk tape in reverse order (backpropagation) */
+    nimcp_autodiff_node_t* node = ctx->tape_tail;
+    while (node) {
+        if (node->backward_fn && node->output && node->output->grad) {
+            node->backward_fn(node, node->output->grad);
+        }
+        /* Move backwards — since we only have a forward 'next' pointer,
+         * we need to find the predecessor by walking from head.
+         * This is O(n^2) but correct for the tape-based approach. */
+        if (node == ctx->tape_head) break;
+        nimcp_autodiff_node_t* prev = NULL;
+        nimcp_autodiff_node_t* curr = ctx->tape_head;
+        while (curr && curr->next != node) {
+            curr = curr->next;
+        }
+        prev = curr;
+        node = prev;
+    }
+
+    /* Copy accumulated gradients from input tensors to output gradient array */
+    for (uint32_t i = 0; i < num_inputs; i++) {
+        if (inputs[i] && inputs[i]->grad) {
+            gradients[i] = inputs[i]->grad;
+        } else {
+            /* No gradient accumulated — return zeros */
+            gradients[i] = nimcp_tensor_zeros(inputs[i]->shape.dims,
+                                              inputs[i]->shape.rank,
+                                              inputs[i]->dtype);
+        }
+    }
+
+    return NIMCP_TENSOR_OK;
 }

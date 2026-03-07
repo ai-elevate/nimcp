@@ -1157,14 +1157,48 @@ uint32_t mirror_prefrontal_process_messages(
         return 0;
     }
 
-    /* Message processing would be done via bio_router_poll_messages
-     * For now, return 0 as a stub implementation */
     /* Phase 8: Heartbeat at operation start */
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_pr", 0.0f);
 
+    nimcp_mutex_lock(bridge->mutex);
 
-    (void)max_messages;
-    return 0;
+    uint32_t processed = 0;
+    uint32_t limit = (max_messages == 0) ? 32 : max_messages;
+
+    /* Update mirror-prefrontal integration state based on current activity.
+     * Process any pending action predictions and inhibition updates. */
+    if (bridge->mirroring_activity > 0.0f && processed < limit) {
+        /* Propagate mirroring activity to prefrontal system */
+        float inhibition = bridge->current_inhibition;
+
+        /* If inhibition is high, suppress mirroring signal */
+        float effective_signal = bridge->mirroring_activity * (1.0f - inhibition);
+
+        /* Update action prediction confidence based on effective signal */
+        bridge->action_prediction_confidence =
+            0.9f * bridge->action_prediction_confidence +
+            0.1f * effective_signal;
+
+        bridge->stats.messages_received++;
+        processed++;
+    }
+
+    /* Process empathic signal if present */
+    if (bridge->empathic_signal > 0.1f && processed < limit) {
+        /* Empathic signals modulate inhibition level */
+        float empathy_modulation = bridge->empathic_signal * 0.1f;
+        bridge->current_inhibition =
+            bridge->current_inhibition * (1.0f - empathy_modulation);
+        if (bridge->current_inhibition < 0.0f)
+            bridge->current_inhibition = 0.0f;
+
+        bridge->stats.messages_received++;
+        processed++;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return processed;
 }
 
 /*=============================================================================

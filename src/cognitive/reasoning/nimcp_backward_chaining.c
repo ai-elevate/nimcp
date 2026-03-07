@@ -289,32 +289,67 @@ bool brain_backward_chain_step(
         return false;
     }
 
-    // Implementation would find matching rules and return premises
-    // For now, return false (not implemented in base symbolic_logic API)
     /* Phase 8: Heartbeat at operation start */
     backward_chaining_heartbeat("backward_cha_brain_backward_chain", 0.0f);
-
-
-    set_error("Backward chain step not implemented");
-    NIMCP_LOGGING_WARN("brain_backward_chain_step: not implemented");
 
     *premises = NULL;
     *num_premises = 0;
 
-    // Publish step event
-    // if (brain->event_bus) { // Event bus always exists now
-    //     event_data_t event = {
-    //         .event_type = EVENT_BACKWARD_CHAIN_STEP,
-    //         .timestamp = 0,
-    //         .priority = EVENT_PRIORITY_LOW,
-    //         .data_size = strlen(subgoal_str) + 1,
-    //         .data = (void*)subgoal_str
-    //     };
-    //     event_bus_publish(brain->event_bus, &event); // Event API changed
-    // }
+    /* Get logic engine and attempt backward chaining on the subgoal */
+    symbolic_logic_t* engine = brain_get_symbolic_logic(brain);
+    if (!engine) {
+        set_error("Failed to get logic engine");
+        return false;
+    }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_backward_chain_step: operation failed");
-    return false;
+    /* Parse the subgoal string into a formula, then into a clause */
+    logical_formula_t* formula = symbolic_logic_parse(subgoal_str);
+    if (!formula) {
+        set_error("Failed to parse subgoal");
+        NIMCP_LOGGING_WARN("brain_backward_chain_step: failed to parse '%s'", subgoal_str);
+        return false;
+    }
+
+    /* Use backward_chain to find a proof trace — the first step's premises
+       are what we need */
+    inference_rule_t** proof_trace = NULL;
+    int num_steps = 0;
+
+    /* Convert formula to clause for backward_chain */
+    logic_clause_t goal_clause = {0};
+    if (formula->atom) {
+        goal_clause.literals = &formula->atom;
+        goal_clause.num_literals = 1;
+        goal_clause.confidence = 1.0f;
+    }
+
+    bool proven = symbolic_logic_backward_chain(engine, &goal_clause,
+                                                  &proof_trace, &num_steps);
+
+    if (proven && proof_trace && num_steps > 0 && proof_trace[0]) {
+        /* Extract premises from the first rule in the proof trace */
+        inference_rule_t* first_rule = proof_trace[0];
+        if (first_rule->num_premises > 0 && first_rule->premises) {
+            *num_premises = first_rule->num_premises;
+            *premises = nimcp_calloc(first_rule->num_premises, sizeof(logic_clause_t*));
+            if (*premises) {
+                for (uint32_t i = 0; i < first_rule->num_premises; i++) {
+                    (*premises)[i] = first_rule->premises[i]; /* Borrow pointers */
+                }
+            }
+        }
+    }
+
+    /* Clean up */
+    nimcp_free(proof_trace); /* Rule pointers are owned by engine */
+    logic_formula_destroy(formula);
+
+    if (!proven) {
+        set_error("Subgoal could not be decomposed");
+        NIMCP_LOGGING_DEBUG("brain_backward_chain_step: no proof for '%s'", subgoal_str);
+    }
+
+    return proven;
 }
 
 void backward_chain_free_result(backward_chain_result_t* result)

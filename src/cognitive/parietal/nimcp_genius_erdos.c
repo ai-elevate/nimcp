@@ -37,8 +37,6 @@ nimcp_error_t genius_erdos_analyze_impl(
     genius_erdos_heartbeat("genius_erdos_analyze_impl", 0.0f);
 
 
-    (void)genius;  /* Suppress unused warning for now */
-
     if (!problem || !result) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -49,12 +47,69 @@ nimcp_error_t genius_erdos_analyze_impl(
     memset(result, 0, sizeof(genius_result_t));
     result->mode_used = GENIUS_MODE_ERDOS;
 
-    /* Basic Erdős analysis - placeholder implementation */
-    result->elegance_score = 0.9f;
-    result->novelty_score = 0.85f;
-    result->generalization_score = 0.7f;
+    /* Erdős-style analysis: probabilistic method, combinatorial arguments,
+       graph theory intuition. Erdős valued elegance above all ("The Book").
+       His approach: find the simplest possible proof, use probabilistic
+       existence arguments, collaborate across domains. */
 
-    (void)start;  /* Timing tracked elsewhere */
+    float elegance = 0.6f;   /* Erdős seeks "Book proofs" — maximum elegance */
+    float novelty = 0.6f;    /* Probabilistic method was revolutionary */
+    float generalization = 0.5f;
+    float rigor = 0.6f;
+
+    /* Domain-specific analysis */
+    if (problem->domain == GENIUS_DOMAIN_COMBINATORICS ||
+        problem->domain == GENIUS_DOMAIN_GRAPH_THEORY) {
+        /* Erdős's primary domains */
+        elegance += 0.25f;
+        novelty += 0.2f;
+        rigor += 0.15f;
+    } else if (problem->domain == GENIUS_DOMAIN_NUMBER_THEORY ||
+               problem->domain == GENIUS_DOMAIN_PROBABILITY) {
+        /* Strong secondary domains */
+        elegance += 0.15f;
+        novelty += 0.15f;
+    }
+
+    /* Erdős excelled at finding unexpected connections */
+    if (problem->num_secondary > 0) {
+        /* Cross-domain problems are Erdős's forte */
+        novelty += 0.15f * fminf(3.0f, (float)problem->num_secondary);
+        elegance += 0.1f;
+        generalization += 0.15f;
+    }
+
+    /* The harder the problem, the more Erdős shines
+       (he loved hard open problems) */
+    if (problem->difficulty > 0.8f) {
+        novelty += 0.2f;
+        elegance += 0.1f;  /* Hard problems need elegant solutions */
+    } else if (problem->difficulty > 0.5f) {
+        novelty += 0.1f;
+    }
+
+    /* Probabilistic method applicability */
+    if (problem->constraints) {
+        /* Existence proofs via probability */
+        novelty += 0.1f;
+        elegance += 0.1f;
+    }
+
+    if (problem->target) {
+        result->solved = true;
+        rigor += 0.1f;
+    }
+
+    if (genius) {
+        elegance += 0.05f; /* Erdős naturally seeks elegance */
+    }
+
+    result->elegance_score = fminf(1.0f, elegance);
+    result->novelty_score = fminf(1.0f, novelty);
+    result->generalization_score = fminf(1.0f, generalization);
+    result->rigor_score = fminf(1.0f, rigor);
+
+    result->thinking_time_us = nimcp_time_monotonic_us() - start;
 
     return NIMCP_SUCCESS;
 }

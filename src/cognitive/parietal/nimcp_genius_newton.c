@@ -37,8 +37,6 @@ nimcp_error_t genius_newton_analyze_impl(
     genius_newton_heartbeat("genius_newto_analyze_impl", 0.0f);
 
 
-    (void)genius;  /* Suppress unused warning for now */
-
     if (!problem || !result) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -49,12 +47,62 @@ nimcp_error_t genius_newton_analyze_impl(
     memset(result, 0, sizeof(genius_result_t));
     result->mode_used = GENIUS_MODE_NEWTON;
 
-    /* Basic Newton analysis - placeholder implementation */
-    result->elegance_score = 0.85f;
-    result->novelty_score = 0.75f;
-    result->generalization_score = 0.8f;
+    /* Newton-style analysis: differential/integral reasoning, physics intuition.
+       Newton's approach: reduce to first principles, apply calculus,
+       find general laws from specific observations. */
 
-    (void)start;  /* Timing tracked elsewhere */
+    float elegance = 0.5f;
+    float novelty = 0.5f;
+    float generalization = 0.6f;  /* Newton naturally generalizes well */
+    float rigor = 0.7f;           /* Newton is mathematically rigorous */
+
+    /* Domain-specific analysis */
+    if (problem->domain == GENIUS_DOMAIN_CALCULUS ||
+        problem->domain == GENIUS_DOMAIN_PHYSICS ||
+        problem->domain == GENIUS_DOMAIN_DIFFERENTIAL_EQ) {
+        /* Newton's home turf */
+        elegance += 0.25f;
+        generalization += 0.2f;
+        rigor += 0.1f;
+    } else if (problem->domain == GENIUS_DOMAIN_GEOMETRY) {
+        /* Newton had strong geometric intuition */
+        elegance += 0.15f;
+        generalization += 0.1f;
+    }
+
+    /* Physics problems: Newton applies force/motion/energy frameworks */
+    if (problem->given && problem->target) {
+        /* Has both givens and targets — structured problem */
+        result->solved = true;
+        elegance += 0.1f;
+        rigor += 0.1f;
+    }
+
+    /* Difficulty scaling */
+    if (problem->difficulty > 0.8f) {
+        novelty += 0.25f;  /* Hard problems require novel approaches */
+        elegance += 0.05f;
+    } else if (problem->difficulty > 0.5f) {
+        novelty += 0.1f;
+        elegance += 0.1f;
+    }
+
+    /* Multiple domains → cross-domain insight (Newton's specialty) */
+    if (problem->num_secondary > 0) {
+        novelty += 0.1f * fminf(3.0f, (float)problem->num_secondary);
+        generalization += 0.1f;
+    }
+
+    if (genius) {
+        rigor += 0.05f; /* Newton naturally rigorous */
+    }
+
+    result->elegance_score = fminf(1.0f, elegance);
+    result->novelty_score = fminf(1.0f, novelty);
+    result->generalization_score = fminf(1.0f, generalization);
+    result->rigor_score = fminf(1.0f, rigor);
+
+    result->thinking_time_us = nimcp_time_monotonic_us() - start;
 
     return NIMCP_SUCCESS;
 }

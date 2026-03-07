@@ -596,11 +596,25 @@ int bg_hrl_update_intra_option(bg_hrl_system_t* system,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_hrl_interrupt_option: system is NULL");
         return -1;
     }
-    (void)state;
-    (void)action;
-    (void)reward;
+    nimcp_mutex_lock(system->mutex);
 
-    /* Stub: no-op for now */
+    bg_option_t* opt = &system->options[option_id];
+    if (opt->state == BG_OPTION_STATE_EXECUTING) {
+        /* Intra-option learning: update policy Q-values for the taken action.
+         * Uses simple TD(0) update: Q(s,a) += alpha * (r - Q(s,a)) */
+        float alpha = system->config.option_learning_rate;
+        opt->avg_reward = (1.0f - alpha) * opt->avg_reward + alpha * reward;
+
+        /* Update policy weights if available */
+        if (opt->policy_weights && action < opt->policy_action_dim && state) {
+            for (uint32_t s = 0; s < opt->policy_state_dim; s++) {
+                float td_error = reward - opt->policy_weights[s][action];
+                opt->policy_weights[s][action] += alpha * td_error * state[s];
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(system->mutex);
     return 0;
 }
 

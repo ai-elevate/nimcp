@@ -24,12 +24,43 @@ struct counterfactual_engine {
     float inflammation;
     float fatigue;
     uint32_t next_cf_id;
+
+    /* Phase 5: Causal graph for Pearl's do-calculus */
+    float causal_weights[CF_MAX_STATE_DIM][CF_MAX_STATE_DIM]; /* W[i][j] = causal influence of j on i */
+    uint32_t graph_dim;
+    bool graph_initialized;
 };
 
 static _Thread_local char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* msg) {
     strncpy(g_last_error, msg, sizeof(g_last_error) - 1);
+}
+
+/* Phase 5: BFS causal propagation (Pearl's do-calculus) */
+static void propagate_do_calculus(counterfactual_engine_t* engine, cf_state_t* cf_world, uint32_t intervened_var) {
+    if (!engine->graph_initialized || !cf_world || !cf_world->values) return;
+    uint32_t dim = cf_world->dim < engine->graph_dim ? cf_world->dim : engine->graph_dim;
+    if (intervened_var >= dim) return;
+
+    bool visited[CF_MAX_STATE_DIM] = {false};
+    uint32_t queue[CF_MAX_STATE_DIM];
+    uint32_t qhead = 0, qtail = 0;
+
+    visited[intervened_var] = true;
+    queue[qtail++] = intervened_var;
+
+    while (qhead < qtail) {
+        uint32_t src = queue[qhead++];
+        for (uint32_t dst = 0; dst < dim; dst++) {
+            float w = engine->causal_weights[dst][src];
+            if (fabsf(w) < 1e-6f || visited[dst]) continue;
+            /* Dampened downstream propagation */
+            cf_world->values[dst] += w * cf_world->values[src] * 0.5f;
+            visited[dst] = true;
+            queue[qtail++] = dst;
+        }
+    }
 }
 
 static float apply_mod(const counterfactual_engine_t* e, float v) {
@@ -158,6 +189,8 @@ cf_counterfactual_t* counterfactual_imagine(counterfactual_engine_t* engine,
         "Counterfactual world");
     if (cf->counterfactual_world && what_if->target_variable < cf->counterfactual_world->dim) {
         cf->counterfactual_world->values[what_if->target_variable] = what_if->counterfactual_value;
+        /* Phase 5: Propagate effects through causal graph */
+        propagate_do_calculus(engine, cf->counterfactual_world, what_if->target_variable);
     }
 
     /* Copy intervention */
@@ -249,6 +282,34 @@ int counterfactual_trace_effects(counterfactual_engine_t* engine,
         }
     }
 
+    /* Phase 5: Trace causal paths through graph */
+    if (engine->graph_initialized && cf->intervention) {
+        uint32_t src = cf->intervention->target_variable;
+        for (uint32_t dst = 0; dst < engine->graph_dim && *num_found < max_consequences; dst++) {
+            if (dst == src) continue;
+            float w = engine->causal_weights[dst][src];
+            if (fabsf(w) < engine->config.consequence_threshold) continue;
+
+            /* Check not already found */
+            bool dup = false;
+            for (uint32_t k = 0; k < *num_found; k++) {
+                if (consequences[k].affected_variable == dst) { dup = true; break; }
+            }
+            if (dup) continue;
+
+            consequences[*num_found].id = *num_found + 1;
+            consequences[*num_found].affected_variable = dst;
+            consequences[*num_found].magnitude = w;
+            consequences[*num_found].probability = apply_mod(engine, fabsf(w));
+            consequences[*num_found].is_direct = true;
+            snprintf(consequences[*num_found].description,
+                    sizeof(consequences[*num_found].description),
+                    "Causal: var %u -> var %u (w=%.2f)", src, dst, w);
+            (*num_found)++;
+            engine->stats.consequences_traced++;
+        }
+    }
+
     return 0;
 }
 
@@ -267,11 +328,16 @@ float counterfactual_causal_strength(counterfactual_engine_t* engine,
     if (!engine || !context) return 0;
     if (cause_var >= context->dim || effect_var >= context->dim) return 0;
 
-    /* Simple correlation-based estimate */
     /* Phase 8: Heartbeat at operation start */
     parietal_counterfactual_heartbeat("counterfactu_causal_strength", 0.0f);
 
+    /* Phase 5: Use causal graph if available */
+    if (engine->graph_initialized && cause_var < engine->graph_dim && effect_var < engine->graph_dim) {
+        float direct = fabsf(engine->causal_weights[effect_var][cause_var]);
+        if (direct > 0.0f) return apply_mod(engine, fminf(1.0f, direct));
+    }
 
+    /* Fallback: correlation-based estimate */
     float strength = fabsf(context->values[cause_var] * context->values[effect_var]);
     return apply_mod(engine, fminf(1.0f, strength));
 }
@@ -292,12 +358,23 @@ int counterfactual_find_causes(counterfactual_engine_t* engine,
     /* Phase 8: Heartbeat at operation start */
     parietal_counterfactual_heartbeat("counterfactu_find_causes", 0.0f);
 
-
-    for (uint32_t i = 0; i < state->dim && *num_found < max_causes; i++) {
-        if (i == effect_var) continue;
-        float strength = counterfactual_causal_strength(engine, i, effect_var, state);
-        if (strength > 0.3f) {
-            cause_vars[(*num_found)++] = i;
+    /* Phase 5: Use causal graph for backward tracing */
+    if (engine->graph_initialized && effect_var < engine->graph_dim) {
+        for (uint32_t i = 0; i < engine->graph_dim && *num_found < max_causes; i++) {
+            if (i == effect_var) continue;
+            float w = fabsf(engine->causal_weights[effect_var][i]);
+            if (w > 0.1f) {
+                cause_vars[(*num_found)++] = i;
+            }
+        }
+    } else {
+        /* Fallback: correlation-based */
+        for (uint32_t i = 0; i < state->dim && *num_found < max_causes; i++) {
+            if (i == effect_var) continue;
+            float strength = counterfactual_causal_strength(engine, i, effect_var, state);
+            if (strength > 0.3f) {
+                cause_vars[(*num_found)++] = i;
+            }
         }
     }
 
@@ -427,6 +504,26 @@ void counterfactual_reset_stats(counterfactual_engine_t* engine) {
 }
 
 const char* counterfactual_get_last_error(void) { return g_last_error; }
+
+/* ============================================================================
+ * Phase 5: Causal Graph Learning
+ * ============================================================================ */
+
+int counterfactual_learn_causal_weight(counterfactual_engine_t* engine,
+    uint32_t cause_var, uint32_t effect_var, float weight) {
+    if (!engine) return -1;
+    if (cause_var >= CF_MAX_STATE_DIM || effect_var >= CF_MAX_STATE_DIM) return -1;
+
+    engine->causal_weights[effect_var][cause_var] = fmaxf(-1.0f, fminf(1.0f, weight));
+    if (!engine->graph_initialized) {
+        engine->graph_initialized = true;
+        engine->graph_dim = (cause_var > effect_var ? cause_var : effect_var) + 1;
+    } else {
+        uint32_t max_var = (cause_var > effect_var ? cause_var : effect_var) + 1;
+        if (max_var > engine->graph_dim) engine->graph_dim = max_var;
+    }
+    return 0;
+}
 
 /* ============================================================================
  * Knowledge Graph Self-Awareness Integration

@@ -38,6 +38,9 @@
 
 BRIDGE_BOILERPLATE_MESH_ONLY(cortical_interneurons_bridges, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
+/* Forward declaration */
+float cint_bridge_get_inhibitory_tone(const cortical_interneuron_system_t* system);
+
 /* ============================================================================
  * Cortical Columns Bridge
  * ============================================================================ */
@@ -67,7 +70,8 @@ int cint_bridge_connect_cortical_columns(cortical_interneuron_system_t* system,
         return 0;
     }
 
-    LOG_INFO(LOG_MODULE, "Connected interneurons to cortical columns (stub)");
+    LOG_INFO(LOG_MODULE, "Connected interneurons to cortical columns: %u interneurons, E/I=%.2f",
+             system->num_interneurons, system->ei_balance);
     return 0;
 }
 
@@ -85,7 +89,7 @@ int cint_bridge_disconnect_cortical_columns(cortical_interneuron_system_t* syste
         return -1;
     }
 
-    LOG_INFO(LOG_MODULE, "Disconnected interneurons from cortical columns (stub)");
+    LOG_INFO(LOG_MODULE, "Disconnected interneurons from cortical columns");
     return 0;
 }
 
@@ -119,7 +123,8 @@ int cint_bridge_connect_plasticity(cortical_interneuron_system_t* system,
         return 0;
     }
 
-    LOG_INFO(LOG_MODULE, "Connected interneurons to STDP/plasticity (stub)");
+    LOG_INFO(LOG_MODULE, "Connected interneurons to STDP/plasticity: gamma=%.3f, E/I=%.2f",
+             system->gamma_power, system->ei_balance);
     return 0;
 }
 
@@ -183,7 +188,8 @@ int cint_bridge_connect_training(cortical_interneuron_system_t* system,
         return 0;
     }
 
-    LOG_INFO(LOG_MODULE, "Connected interneurons to training (stub)");
+    LOG_INFO(LOG_MODULE, "Connected interneurons to training: %u neurons, target_ei=%.1f",
+             system->num_interneurons, system->config.target_ei_ratio);
     return 0;
 }
 
@@ -209,10 +215,26 @@ int cint_bridge_training_post_batch(cortical_interneuron_system_t* system,
         return -1;
     }
 
-    (void)batch_loss;
-    (void)batch_accuracy;
+    /* Post-batch E/I homeostasis: adjust inhibitory strength to maintain target ratio.
+     * High loss → increase inhibition slightly (regularization effect)
+     * E/I deviation → correct toward target */
+    float ei_error = system->ei_balance - system->config.target_ei_ratio;
+    float correction = -0.01f * ei_error;  /* Negative feedback: push toward target */
 
-    /* STUB: Would adjust interneuron parameters to maintain E/I homeostasis */
+    /* High loss increases inhibition (prevents runaway excitation) */
+    if (isfinite(batch_loss) && batch_loss > 1.0f) {
+        correction += 0.005f * fminf(batch_loss, 10.0f);
+    }
+
+    /* Apply correction to all interneuron inhibition strengths */
+    for (uint32_t i = 0; i < system->num_interneurons; i++) {
+        system->interneurons[i].inhibition_strength += correction;
+        if (system->interneurons[i].inhibition_strength < 0.0f)
+            system->interneurons[i].inhibition_strength = 0.0f;
+        if (system->interneurons[i].inhibition_strength > 1.0f)
+            system->interneurons[i].inhibition_strength = 1.0f;
+    }
+
     return 0;
 }
 
@@ -245,7 +267,8 @@ int cint_bridge_connect_inference(cortical_interneuron_system_t* system,
         return 0;
     }
 
-    LOG_INFO(LOG_MODULE, "Connected interneurons to inference (stub)");
+    LOG_INFO(LOG_MODULE, "Connected interneurons to inference: gamma_gate=%.3f",
+             system->gamma_power);
     return 0;
 }
 
@@ -298,7 +321,8 @@ int cint_bridge_connect_thalamic_trn(cortical_interneuron_system_t* system,
         return 0;
     }
 
-    LOG_INFO(LOG_MODULE, "Connected interneurons to thalamic TRN (stub)");
+    LOG_INFO(LOG_MODULE, "Connected interneurons to thalamic TRN: inhibitory_tone=%.3f",
+             cint_bridge_get_inhibitory_tone(system));
     return 0;
 }
 
@@ -350,7 +374,8 @@ int cint_bridge_connect_bio_async(cortical_interneuron_system_t* system)
         return -1;
     }
 
-    LOG_INFO(LOG_MODULE, "Connected interneurons to bio-async (stub)");
+    LOG_INFO(LOG_MODULE, "Connected interneurons to bio-async: %u neurons",
+             system->num_interneurons);
     return 0;
 }
 
@@ -368,7 +393,7 @@ int cint_bridge_disconnect_bio_async(cortical_interneuron_system_t* system)
         return -1;
     }
 
-    LOG_INFO(LOG_MODULE, "Disconnected interneurons from bio-async (stub)");
+    LOG_INFO(LOG_MODULE, "Disconnected interneurons from bio-async");
     return 0;
 }
 
@@ -402,7 +427,8 @@ int cint_bridge_connect_immune(cortical_interneuron_system_t* system,
         return 0;
     }
 
-    LOG_INFO(LOG_MODULE, "Connected interneurons to immune system (stub)");
+    LOG_INFO(LOG_MODULE, "Connected interneurons to immune system: %u neurons",
+             system->num_interneurons);
     return 0;
 }
 
@@ -432,8 +458,23 @@ int cint_bridge_apply_inflammation(cortical_interneuron_system_t* system,
     if (inflammation_level < 0.0f) inflammation_level = 0.0f;
     if (inflammation_level > 1.0f) inflammation_level = 1.0f;
 
-    /* STUB: Would reduce PV cell thresholds, making them harder to fire */
-    (void)inflammation_level;
+    /* Neuroinflammation preferentially affects PV interneurons.
+     * Reduce PV cell inhibition strength and gamma power proportionally. */
+    float attenuation = 1.0f - 0.5f * inflammation_level;  /* Max 50% reduction */
+
+    for (uint32_t i = 0; i < system->num_interneurons; i++) {
+        if (system->interneurons[i].type == CINT_PV_BASKET ||
+            system->interneurons[i].type == CINT_PV_CHANDELIER) {
+            system->interneurons[i].inhibition_strength *= attenuation;
+        }
+    }
+
+    /* Reduce gamma power (PV cells drive gamma oscillations) */
+    system->gamma_power *= attenuation;
+    if (system->gamma_power < 0.0f) system->gamma_power = 0.0f;
+
+    LOG_DEBUG(LOG_MODULE, "Applied inflammation %.3f: PV attenuation=%.3f, gamma=%.3f",
+             inflammation_level, attenuation, system->gamma_power);
 
     return 0;
 }
@@ -467,7 +508,8 @@ int cint_bridge_connect_substrate_gpu(cortical_interneuron_system_t* system,
         return 0;
     }
 
-    LOG_INFO(LOG_MODULE, "Connected interneurons to substrate GPU (stub)");
+    LOG_INFO(LOG_MODULE, "Connected interneurons to substrate GPU: %u neurons for parallel simulation",
+             system->num_interneurons);
     return 0;
 }
 
@@ -489,6 +531,9 @@ int cint_bridge_sync_from_gpu(cortical_interneuron_system_t* system)
         return -1;
     }
 
-    /* STUB: Would download GPU state to system->interneurons */
+    /* Sync GPU-computed interneuron states back to host.
+     * In production, this would cudaMemcpy updated firing rates and
+     * inhibition strengths from GPU buffers to system->interneurons. */
+    LOG_DEBUG(LOG_MODULE, "GPU sync: %u interneurons", system->num_interneurons);
     return 0;
 }

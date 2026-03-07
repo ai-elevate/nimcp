@@ -16,6 +16,7 @@
 #include "cognitive/creative/bridges/nimcp_creative_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
@@ -399,12 +400,88 @@ static float evaluate_originality_internal(const creative_bridge_t* bridge,
                                            art_modality_t modality)
 {
     (void)bridge;
-    (void)content;
-    (void)modality;
+    if (!content) return 0.5f;
 
-    /* Placeholder: would compare against database of known works */
-    /* Higher score = more original */
-    return 0.85f;
+    /* Originality estimation based on statistical uniqueness of content.
+       Without a reference database, we use information-theoretic measures:
+       higher entropy / unusual distributions → more original. */
+
+    if ((int)modality <= 4) {
+        /* Text modalities: compute character-level entropy + bigram surprise */
+        const char* text = (const char*)content;
+        uint32_t char_freq[256] = {0};
+        uint32_t bigram_freq[256] = {0}; /* Simplified: hash bigrams to 256 buckets */
+        uint32_t total = 0;
+        uint32_t bigrams = 0;
+        unsigned char prev = 0;
+
+        for (const char* p = text; *p; p++) {
+            unsigned char c = (unsigned char)*p;
+            char_freq[c]++;
+            total++;
+            if (prev) {
+                uint32_t bg = ((uint32_t)prev * 31 + c) & 0xFF;
+                bigram_freq[bg]++;
+                bigrams++;
+            }
+            prev = c;
+        }
+        if (total == 0) return 0.5f;
+
+        /* Character entropy */
+        float entropy = 0.0f;
+        for (int i = 0; i < 256; i++) {
+            if (char_freq[i] > 0) {
+                float p = (float)char_freq[i] / (float)total;
+                entropy -= p * logf(p);
+            }
+        }
+        float max_entropy = logf(fminf(256.0f, (float)total));
+        float norm_entropy = max_entropy > 0 ? entropy / max_entropy : 0.5f;
+
+        /* Bigram uniformity (more uniform = more original/unexpected) */
+        float bg_entropy = 0.0f;
+        if (bigrams > 0) {
+            for (int i = 0; i < 256; i++) {
+                if (bigram_freq[i] > 0) {
+                    float p = (float)bigram_freq[i] / (float)bigrams;
+                    bg_entropy -= p * logf(p);
+                }
+            }
+            bg_entropy /= logf(256.0f);
+        }
+
+        /* Combine: higher entropy → more original */
+        return fmaxf(0.0f, fminf(1.0f, norm_entropy * 0.6f + bg_entropy * 0.4f));
+
+    } else if ((int)modality >= 10 && (int)modality <= 14) {
+        /* Music modalities: analyze note pattern originality */
+        const music_track_t* track = (const music_track_t*)content;
+        if (track->num_notes == 0) return 0.5f;
+
+        /* Interval pattern entropy */
+        uint32_t interval_freq[25] = {0}; /* Intervals 0-24 semitones */
+        for (uint32_t i = 1; i < track->num_notes; i++) {
+            int interval = abs((int)track->notes[i].pitch - (int)track->notes[i - 1].pitch);
+            if (interval > 24) interval = 24;
+            interval_freq[interval]++;
+        }
+
+        float int_entropy = 0.0f;
+        uint32_t int_total = track->num_notes > 1 ? track->num_notes - 1 : 1;
+        for (int i = 0; i < 25; i++) {
+            if (interval_freq[i] > 0) {
+                float p = (float)interval_freq[i] / (float)int_total;
+                int_entropy -= p * logf(p);
+            }
+        }
+        int_entropy /= logf(25.0f);
+
+        return fmaxf(0.0f, fminf(1.0f, int_entropy));
+    }
+
+    /* Default for visual and other modalities */
+    return 0.6f;
 }
 
 /**

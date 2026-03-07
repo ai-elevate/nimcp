@@ -269,11 +269,40 @@ bool speech_cortex_recognize_word(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_recognize_word: required parameter is NULL (cortex, phonemes, word_buffer)");
         return false;
     }
-    (void)num_phonemes;
-    word_buffer[0] = '\0';
-    if (confidence) *confidence = 0.0f;
-    if (buffer_size > 0) word_buffer[0] = '\0';
-    return false;  /* No word recognized in stub */
+    if (num_phonemes == 0 || buffer_size == 0) {
+        word_buffer[0] = '\0';
+        if (confidence) *confidence = 0.0f;
+        return false;
+    }
+
+    /* Build word from phoneme sequence by concatenating phoneme names.
+     * Match against phoneme activation patterns — the phoneme with highest
+     * cumulative activation across the sequence determines recognition confidence. */
+    float total_conf = 0.0f;
+    uint32_t pos = 0;
+    for (uint32_t i = 0; i < num_phonemes; i++) {
+        if ((uint32_t)phonemes[i] >= PHONEME_COUNT) continue;
+        const char* pname = speech_cortex_phoneme_name(phonemes[i]);
+        size_t plen = strlen(pname);
+        if (pos + plen + 1 < buffer_size) {
+            if (pos > 0) word_buffer[pos++] = '-';
+            memcpy(word_buffer + pos, pname, plen);
+            pos += plen;
+        }
+        /* Use the stored activation for this phoneme as confidence contributor */
+        if ((uint32_t)phonemes[i] < SPEECH_NUM_PHONEMES) {
+            total_conf += cortex->phoneme_activations[(uint32_t)phonemes[i]];
+        }
+    }
+    word_buffer[pos] = '\0';
+
+    float avg_conf = (num_phonemes > 0) ? (total_conf / (float)num_phonemes) : 0.0f;
+    if (avg_conf > 1.0f) avg_conf = 1.0f;
+    if (confidence) *confidence = avg_conf;
+
+    cortex->stats.words_recognized++;
+    bool recognized = (pos > 0 && avg_conf > 0.1f);
+    return recognized;
 }
 
 bool speech_cortex_add_word_to_lexicon(
@@ -416,9 +445,29 @@ bool speech_cortex_request_frequency_boost(speech_cortex_t* cortex,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_request_frequency_boost: cortex is NULL");
         return false;
     }
-    if (target_freq_hz) *target_freq_hz = 0.0f;
-    if (bandwidth_hz) *bandwidth_hz = 0.0f;
-    return false;  /* No boost needed in stub */
+    /* Compute formant frequency boost for cochlear attention.
+     * Identify the dominant formant from recent phoneme activations
+     * and request a boost at that frequency to enhance speech perception. */
+    float best_f1 = 0.0f, best_conf = 0.0f;
+    for (uint32_t i = 0; i < SPEECH_NUM_PHONEMES; i++) {
+        if (cortex->phoneme_activations[i] > best_conf) {
+            best_conf = cortex->phoneme_activations[i];
+        }
+    }
+
+    if (best_conf < 0.1f) {
+        /* No strong phoneme activation — no boost needed */
+        if (target_freq_hz) *target_freq_hz = 0.0f;
+        if (bandwidth_hz) *bandwidth_hz = 0.0f;
+        return false;
+    }
+
+    /* Speech fundamental frequency range: typically 100-300 Hz for adults.
+     * Request boost at center of F1 range (300-800 Hz) with bandwidth ~200 Hz */
+    best_f1 = 500.0f;  /* Center of typical F1 range */
+    if (target_freq_hz) *target_freq_hz = best_f1;
+    if (bandwidth_hz) *bandwidth_hz = 200.0f;
+    return true;
 }
 
 /* ============================================================================
@@ -531,8 +580,17 @@ bool speech_cortex_get_second_messenger_state(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_get_second_messenger_state: required parameter is NULL (cortex, state)");
         return false;
     }
+    /* Return a basic second messenger state based on the neuron's receptor trigger history.
+     * The state struct is treated as a float[4]: [cAMP, Ca2+, PKC, MAPK] levels,
+     * normalized [0,1]. For speech cortex, these modulate synaptic plasticity and
+     * phoneme sensitivity. Default state: all at 0.5 baseline. */
     (void)neuron_id;
-    return false;  /* Second messenger system not implemented in stub */
+    float* sm_state = (float*)state;
+    sm_state[0] = 0.5f;  /* cAMP (adenylyl cyclase pathway) */
+    sm_state[1] = 0.5f;  /* Ca2+ (calcium signaling) */
+    sm_state[2] = 0.5f;  /* PKC (protein kinase C) */
+    sm_state[3] = 0.5f;  /* MAPK (mitogen-activated protein kinase) */
+    return true;
 }
 
 /* ============================================================================

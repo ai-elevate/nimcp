@@ -12,6 +12,8 @@
  */
 
 #include "cognitive/imagination/nimcp_imagination_engine.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
+#include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "cognitive/imagination/nimcp_imagination_workspace.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
@@ -2889,14 +2891,42 @@ uint32_t imagination_process_bio_messages(
 
     if (!engine || !engine->bio_context) return 0;
 
-    /* Bio-async message processing would go here */
-    /* For now, return 0 messages processed */
-
     /* Phase 8: Heartbeat at operation start */
     imagination_engine_heartbeat("imagination__imagination_process_", 0.0f);
 
+    uint32_t processed = 0;
+    uint32_t limit = (max_messages == 0) ? 64 : max_messages;
 
-    return 0;
+    nimcp_mutex_lock(engine->mutex);
+
+    /* Process pending scenarios from active list */
+    if (engine->active_scenarios) {
+        size_t count = nimcp_darray_size(engine->active_scenarios);
+        for (size_t i = 0; i < count && processed < limit; i++) {
+            imagination_scenario_t** slot =
+                (imagination_scenario_t**)nimcp_darray_at(engine->active_scenarios, i);
+            if (!slot || !*slot) continue;
+
+            imagination_scenario_t* scenario = *slot;
+
+            /* Update scenario coherence if latent state exists */
+            if (scenario->latent_state && scenario->latent_previous) {
+                float coherence = compute_coherence(
+                    scenario->latent_state, scenario->latent_previous);
+                scenario->coherence = coherence;
+            }
+            processed++;
+        }
+    }
+
+    /* Update stats */
+    engine->stats.scenarios_completed += processed;
+
+    nimcp_mutex_unlock(engine->mutex);
+
+    imagination_engine_heartbeat("imagination__imagination_process_", 1.0f);
+
+    return processed;
 }
 
 int imagination_broadcast_to_workspace(
@@ -2913,14 +2943,34 @@ int imagination_broadcast_to_workspace(
         return -1;
     }
 
-    /* Global workspace broadcast would go here */
-    /* For now, return success */
-
     /* Phase 8: Heartbeat at operation start */
     imagination_engine_heartbeat("imagination__imagination_broadcas", 0.0f);
 
+    /* Extract latent state as float array for workspace competition */
+    if (!scenario->latent_state) return -1;
 
-    return 0;
+    const float* content = nimcp_tensor_data_const(scenario->latent_state);
+    uint32_t content_dim = (uint32_t)nimcp_tensor_size(scenario->latent_state);
+    if (!content || content_dim == 0) return -1;
+
+    /* Compete for global workspace access with imagination content */
+    float effective_salience = salience * scenario->coherence;
+    if (effective_salience < 0.01f) effective_salience = salience;
+
+    bool won = global_workspace_compete(
+        engine->global_workspace,
+        MODULE_CUSTOM_START + 1,  /* Imagination module ID */
+        content,
+        content_dim,
+        effective_salience);
+
+    if (won) {
+        engine->stats.scenarios_completed++;
+    }
+
+    imagination_engine_heartbeat("imagination__imagination_broadcas", 1.0f);
+
+    return won ? 0 : 1;  /* 0 = broadcast succeeded, 1 = lost competition */
 }
 
 /*============================================================================
@@ -2933,12 +2983,38 @@ int imagination_update_immune_modulation(imagination_engine_t* engine) {
         return -1;
     }
 
-    /* Immune modulation update would go here */
-    /* Reads inflammation level from immune system and adjusts capacity */
-
     /* Phase 8: Heartbeat at operation start */
     imagination_engine_heartbeat("imagination__imagination_update_i", 0.0f);
 
+    if (!engine->immune) return 0;  /* No immune system connected */
+
+    /* Query immune modulation factor */
+    float modulation = imagination_get_immune_modulation(engine);
+
+    /* Apply modulation to imagination capacity:
+     * High inflammation (modulation < 1.0) reduces imagination capacity
+     * to conserve resources for immune response */
+    nimcp_mutex_lock(engine->mutex);
+
+    if (modulation < 1.0f) {
+        /* Scale down active scenario quality under immune stress */
+        float scale = IMMUNE_MODULATION_SCALE + (1.0f - IMMUNE_MODULATION_SCALE) * modulation;
+        if (engine->active_scenarios) {
+            size_t count = nimcp_darray_size(engine->active_scenarios);
+            for (size_t i = 0; i < count; i++) {
+                imagination_scenario_t** slot =
+                    (imagination_scenario_t**)nimcp_darray_at(engine->active_scenarios, i);
+                if (slot && *slot) {
+                    /* Reduce coherence under immune pressure */
+                    (*slot)->coherence *= scale;
+                }
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(engine->mutex);
+
+    imagination_engine_heartbeat("imagination__imagination_update_i", 1.0f);
 
     return 0;
 }
@@ -2947,14 +3023,26 @@ float imagination_get_immune_modulation(const imagination_engine_t* engine) {
     if (!engine) return 1.0f;
     if (!engine->immune) return 1.0f;
 
-    /* Would query immune system for inflammation level */
-    /* Return modulation factor (1.0 = healthy, lower = impaired) */
-
     /* Phase 8: Heartbeat at operation start */
     imagination_engine_heartbeat("imagination__imagination_get_immu", 0.0f);
 
+    /* Query immune system inflammation level */
+    brain_immune_stats_t stats;
+    int rc = brain_immune_get_stats(engine->immune, &stats);
+    if (rc != 0) {
+        /* Can't query — assume healthy */
+        return 1.0f;
+    }
 
-    return 1.0f;
+    /* Use continuous inflammation level [0.0-1.0] */
+    float inflammation = stats.inflammation_level_continuous;
+    if (inflammation < 0.0f) inflammation = 0.0f;
+    if (inflammation > 1.0f) inflammation = 1.0f;
+
+    /* Modulation: 1.0 (no inflammation) → 0.3 (max inflammation) */
+    float modulation = 1.0f - inflammation * (1.0f - 0.3f);
+
+    return modulation;
 }
 
 /*============================================================================

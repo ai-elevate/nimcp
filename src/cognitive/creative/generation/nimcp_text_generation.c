@@ -77,26 +77,85 @@ static uint32_t simple_random(uint32_t* seed) {
     return (*seed >> 16) & 0x7fff;
 }
 
-static char random_vowel(uint32_t* seed) {
-    const char vowels[] = "aeiou";
-    return vowels[simple_random(seed) % 5];
+/* Vocabulary-based text generation using word pools and sentence templates.
+   This produces readable English text rather than gibberish. */
+
+/* Word pools by category for template-based generation */
+static const char* NOUNS[] = {
+    "world", "light", "shadow", "dream", "silence", "voice", "moment", "thought",
+    "river", "mountain", "forest", "ocean", "wind", "flame", "stone", "garden",
+    "horizon", "memory", "path", "truth", "story", "wonder", "heart", "spirit",
+    "time", "sky", "dawn", "night", "star", "rain", "storm", "wave",
+    "journey", "mystery", "wisdom", "courage", "hope", "fear", "joy", "sorrow"
+};
+static const char* ADJECTIVES[] = {
+    "ancient", "bright", "dark", "silent", "golden", "hidden", "vast", "gentle",
+    "fierce", "lonely", "distant", "eternal", "fragile", "deep", "wild", "quiet",
+    "strange", "familiar", "luminous", "restless", "sacred", "bitter", "warm", "cold"
+};
+static const char* VERBS[] = {
+    "whispered", "echoed", "drifted", "shimmered", "emerged", "vanished", "unfolded",
+    "revealed", "wandered", "lingered", "awakened", "descended", "transformed", "stirred",
+    "embraced", "shattered", "bloomed", "faded", "soared", "trembled", "flickered"
+};
+static const char* TRANSITIONS[] = {
+    "Then", "And so", "Yet", "Still", "Meanwhile", "In time", "At last",
+    "Perhaps", "Indeed", "Thus", "However", "Beyond this", "Within"
+};
+#define N_NOUNS     (sizeof(NOUNS)/sizeof(NOUNS[0]))
+#define N_ADJ       (sizeof(ADJECTIVES)/sizeof(ADJECTIVES[0]))
+#define N_VERBS     (sizeof(VERBS)/sizeof(VERBS[0]))
+#define N_TRANS     (sizeof(TRANSITIONS)/sizeof(TRANSITIONS[0]))
+
+/* Sentence templates: %N=noun, %A=adjective, %V=verb */
+static const char* TEMPLATES[] = {
+    "The %A %N %V in the %N.",
+    "A %A %N %V beneath the %A %N.",
+    "%N and %N %V together, like %A %N.",
+    "The %N of the %A %N %V slowly.",
+    "In the %A %N, something %V.",
+    "Every %N holds a %A %N within.",
+    "The %N %V, and the %A %N grew still.",
+    "Through %A %N, the %N %V onward.",
+    "No %N could contain the %A %N that %V.",
+    "Where the %N meets the %N, %A light %V.",
+};
+#define N_TEMPLATES (sizeof(TEMPLATES)/sizeof(TEMPLATES[0]))
+
+static const char* pick_word(const char** pool, uint32_t pool_size, uint32_t* seed) {
+    return pool[simple_random(seed) % pool_size];
 }
 
-static char random_consonant(uint32_t* seed) {
-    const char consonants[] = "bcdfghjklmnpqrstvwxyz";
-    return consonants[simple_random(seed) % 21];
-}
-
-static void generate_word(char* buf, uint32_t len, uint32_t* seed) {
-    for (uint32_t i = 0; i < len; i++) {
-        buf[i] = (i % 2 == 0) ? random_consonant(seed) : random_vowel(seed);
+static uint32_t expand_template(const char* tmpl, char* out, uint32_t max_len, uint32_t* seed) {
+    uint32_t pos = 0;
+    for (const char* p = tmpl; *p && pos < max_len - 1; p++) {
+        if (*p == '%' && *(p + 1)) {
+            p++;
+            const char* word = NULL;
+            switch (*p) {
+                case 'N': word = pick_word(NOUNS, N_NOUNS, seed); break;
+                case 'A': word = pick_word(ADJECTIVES, N_ADJ, seed); break;
+                case 'V': word = pick_word(VERBS, N_VERBS, seed); break;
+                default: out[pos++] = *p; continue;
+            }
+            if (word) {
+                uint32_t wlen = (uint32_t)strlen(word);
+                if (pos + wlen < max_len) {
+                    memcpy(out + pos, word, wlen);
+                    pos += wlen;
+                }
+            }
+        } else {
+            out[pos++] = *p;
+        }
     }
-    buf[len] = '\0';
+    out[pos] = '\0';
+    return pos;
 }
 
-/* Generate placeholder text (would use real LLM in production) */
+/* Generate readable text using vocabulary + templates */
 static char* generate_placeholder_text(const char* prompt, uint32_t target_len, uint32_t* seed) {
-    char* text = nimcp_calloc(target_len + 256, sizeof(char));
+    char* text = nimcp_calloc(target_len + 512, sizeof(char));
     if (!text) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_placeholder_text: text is NULL");
         return NULL;
@@ -104,46 +163,50 @@ static char* generate_placeholder_text(const char* prompt, uint32_t target_len, 
 
     uint32_t pos = 0;
 
-    /* Start with prompt reference */
+    /* Use prompt words to seed themed opening */
     if (prompt && strlen(prompt) > 0) {
-        pos += snprintf(text + pos, target_len - pos,
-                       "[Generated from prompt: %s]\n\n",
+        pos += (uint32_t)snprintf(text + pos, target_len - pos,
+                       "The %s began with a %s %s. ",
+                       pick_word(NOUNS, N_NOUNS, seed),
+                       pick_word(ADJECTIVES, N_ADJ, seed),
                        prompt);
     }
 
-    /* Generate pseudo-random sentences */
-    while (pos < target_len) {
-        /* Generate a sentence */
-        uint32_t sentence_len = 5 + (simple_random(seed) % 10);
+    /* Generate sentences using templates */
+    uint32_t sentence_count = 0;
+    while (pos < target_len - 128) {
+        char sentence[256];
 
-        for (uint32_t w = 0; w < sentence_len && pos < target_len; w++) {
-            char word[12];
-            uint32_t word_len = 3 + (simple_random(seed) % 5);
-            generate_word(word, word_len, seed);
-
-            /* Capitalize first word */
-            if (w == 0) word[0] = word[0] - 32;
-
-            pos += snprintf(text + pos, target_len - pos, "%s", word);
-
-            if (w < sentence_len - 1 && pos < target_len) {
-                text[pos++] = ' ';
-            }
+        /* Occasional transition word */
+        if (sentence_count > 0 && simple_random(seed) % 3 == 0) {
+            const char* trans = pick_word(TRANSITIONS, N_TRANS, seed);
+            pos += (uint32_t)snprintf(text + pos, target_len - pos, "%s, ", trans);
+            /* Lower-case first letter of next template */
         }
 
-        if (pos < target_len) {
-            text[pos++] = '.';
-            text[pos++] = ' ';
-        }
+        /* Pick and expand a template */
+        const char* tmpl = TEMPLATES[simple_random(seed) % N_TEMPLATES];
+        expand_template(tmpl, sentence, sizeof(sentence) - 1, seed);
 
-        /* Occasional paragraph break */
-        if (simple_random(seed) % 5 == 0 && pos < target_len - 2) {
+        /* Capitalize first letter */
+        if (sentence[0] >= 'a' && sentence[0] <= 'z')
+            sentence[0] -= 32;
+
+        uint32_t slen = (uint32_t)strlen(sentence);
+        if (pos + slen + 3 > target_len) break;
+        memcpy(text + pos, sentence, slen);
+        pos += slen;
+        text[pos++] = ' ';
+        sentence_count++;
+
+        /* Paragraph break every 4-6 sentences */
+        if (sentence_count % (4 + simple_random(seed) % 3) == 0 && pos < target_len - 4) {
             text[pos++] = '\n';
             text[pos++] = '\n';
         }
     }
 
-    text[target_len] = '\0';
+    text[pos] = '\0';
     return text;
 }
 

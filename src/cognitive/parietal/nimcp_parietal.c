@@ -28,6 +28,41 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
 #include "utils/math/nimcp_math_helpers.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/tensor/nimcp_tensor.h"
+
+/* Local definition of imagination_scenario (forward-declared in nimcp_parietal.h).
+   Cannot include nimcp_imagination_engine.h due to thalamic_router_t type conflict.
+   Must match the struct layout in nimcp_imagination_engine.h:315. */
+#ifndef IMAGINATION_SCENARIO_DEFINED
+#define IMAGINATION_SCENARIO_DEFINED
+struct imagination_scenario {
+    uint64_t id;
+    int mode;
+    int quality;
+    nimcp_tensor_t* latent_state;
+    nimcp_tensor_t* latent_previous;
+    nimcp_tensor_t* visual_buffer;
+    nimcp_tensor_t* audio_buffer;
+    nimcp_tensor_t* semantic_buffer;
+    float vividness;
+    float controllability;
+    float coherence;
+    float reality_distance;
+    float novelty;
+    uint64_t start_time_ms;
+    uint64_t duration_ms;
+    uint64_t last_step_ms;
+    void* trajectory;
+    size_t trajectory_length;
+    void* active_goal;
+    float goal_progress;
+    void* elements;
+    bool is_active;
+    bool is_paused;
+    int error_code;
+};
+#endif
 
 BRIDGE_BOILERPLATE(parietal, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -2358,7 +2393,7 @@ const char* parietal_get_last_error(void) {
  * IMAGINATION INTEGRATION
  * ============================================================================ */
 
-imagination_scenario_t* parietal_mental_rotate(
+imagination_scenario_t* parietal_imagine_rotation(
     parietal_lobe_t* parietal,
     nimcp_tensor_t* object,
     float angle_x,
@@ -2370,18 +2405,62 @@ imagination_scenario_t* parietal_mental_rotate(
         return NULL;
     }
 
-    /* TODO: Integrate with imagination engine for visualization */
-    /* This is a stub for the new imagination-integrated API */
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_mental_rotate", 0.0f);
 
+    /* Allocate imagination scenario for the rotated result */
+    imagination_scenario_t* scenario = nimcp_calloc(1, sizeof(imagination_scenario_t));
+    if (!scenario) {
+        return NULL;
+    }
 
-    (void)angle_x;
-    (void)angle_y;
-    (void)angle_z;
+    /* Clone the object tensor for manipulation */
+    nimcp_tensor_t* rotated = nimcp_tensor_clone(object);
+    if (!rotated) {
+        nimcp_free(scenario);
+        return NULL;
+    }
 
-    /* Stub: imagination integration not yet implemented */
-    return NULL;
+    /* Apply 3D rotation matrix (Rz * Ry * Rx) to triplets of elements.
+       For tensors with numel >= 3, treat consecutive triplets as (x,y,z). */
+    size_t n = nimcp_tensor_numel(rotated);
+    float cx = cosf(angle_x), sx = sinf(angle_x);
+    float cy = cosf(angle_y), sy = sinf(angle_y);
+    float cz = cosf(angle_z), sz = sinf(angle_z);
+
+    for (size_t i = 0; i + 2 < n; i += 3) {
+        float x = (float)nimcp_tensor_get_flat(rotated, i);
+        float y = (float)nimcp_tensor_get_flat(rotated, i + 1);
+        float z = (float)nimcp_tensor_get_flat(rotated, i + 2);
+
+        /* Rx */
+        float y1 = cx * y - sx * z;
+        float z1 = sx * y + cx * z;
+        /* Ry */
+        float x2 = cy * x + sy * z1;
+        float z2 = -sy * x + cy * z1;
+        /* Rz */
+        float x3 = cz * x2 - sz * y1;
+        float y3 = sz * x2 + cz * y1;
+
+        nimcp_tensor_set_flat(rotated, i,     (double)x3);
+        nimcp_tensor_set_flat(rotated, i + 1, (double)y3);
+        nimcp_tensor_set_flat(rotated, i + 2, (double)z2);
+    }
+
+    /* Populate scenario (mode=SPATIAL=7, quality=NORMAL=1) */
+    scenario->mode = 7;
+    scenario->quality = 1;
+    scenario->latent_state = rotated;
+    scenario->vividness = 0.8f;
+    scenario->controllability = 0.9f;
+    scenario->coherence = 0.95f;
+    scenario->reality_distance = 0.1f;
+    scenario->novelty = 0.3f;
+    scenario->start_time_ms = nimcp_time_monotonic_ms();
+    scenario->is_active = true;
+
+    return scenario;
 }
 
 imagination_scenario_t* parietal_spatial_transform(
@@ -2394,15 +2473,48 @@ imagination_scenario_t* parietal_spatial_transform(
         return NULL;
     }
 
-    /* TODO: Integrate with imagination engine for spatial transformation */
-    /* This is a stub for the new imagination-integrated API */
-
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_spatial_transform", 0.0f);
 
+    /* Allocate imagination scenario for the transformed result */
+    imagination_scenario_t* scenario = nimcp_calloc(1, sizeof(imagination_scenario_t));
+    if (!scenario) {
+        return NULL;
+    }
 
-    /* Stub: imagination integration not yet implemented */
-    return NULL;
+    /* Clone scene for manipulation */
+    nimcp_tensor_t* transformed = nimcp_tensor_clone(scene);
+    if (!transformed) {
+        nimcp_free(scenario);
+        return NULL;
+    }
+
+    /* Apply transform as element-wise scaling/addition.
+       If transform has same numel as scene, multiply element-wise.
+       Otherwise, apply first numel(transform) elements as scale factors. */
+    size_t scene_n = nimcp_tensor_numel(transformed);
+    size_t xform_n = nimcp_tensor_numel(transform);
+    size_t apply_n = (xform_n < scene_n) ? xform_n : scene_n;
+
+    for (size_t i = 0; i < apply_n; i++) {
+        float s = (float)nimcp_tensor_get_flat(transformed, i);
+        float t = (float)nimcp_tensor_get_flat(transform, i);
+        nimcp_tensor_set_flat(transformed, i, (double)(s * t));
+    }
+
+    /* Populate scenario (mode=SPATIAL=7, quality=NORMAL=1) */
+    scenario->mode = 7;
+    scenario->quality = 1;
+    scenario->latent_state = transformed;
+    scenario->vividness = 0.75f;
+    scenario->controllability = 0.85f;
+    scenario->coherence = 0.9f;
+    scenario->reality_distance = 0.15f;
+    scenario->novelty = 0.2f;
+    scenario->start_time_ms = nimcp_time_monotonic_ms();
+    scenario->is_active = true;
+
+    return scenario;
 }
 
 /* ============================================================================

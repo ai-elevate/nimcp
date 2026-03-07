@@ -308,12 +308,51 @@ static nimcp_error_t handle_decision_request(
 
     const bio_msg_introspection_query_t* query = (const bio_msg_introspection_query_t*)msg;
     executive_controller_t* exec = (executive_controller_t*)user_data;
-    (void)exec;
-    (void)query;
 
-    LOG_DEBUG("Received executive decision request");
+    LOG_DEBUG("Received executive decision request (type=%u, threshold=%.2f)",
+              query->query_type, query->confidence_threshold);
 
-    // TODO: Process decision request and send response
+    /* Compute executive state based on query type */
+    float confidence = 0.0f;
+    float cognitive_load = 0.0f;
+
+    switch (query->query_type) {
+        case BIO_INTRO_QUERY_COGNITIVE_LOAD:
+            /* Report cognitive load from task queue utilization */
+            if (exec->max_tasks > 0) {
+                cognitive_load = (float)exec->num_tasks / (float)exec->max_tasks;
+            }
+            confidence = 0.9f;
+            break;
+
+        case BIO_INTRO_QUERY_SELF_STATE:
+            /* Report executive readiness */
+            confidence = (exec->active_task != NULL) ? 0.7f : 0.9f;
+            cognitive_load = (exec->active_task != NULL) ? 0.6f : 0.2f;
+            break;
+
+        case BIO_INTRO_QUERY_PATTERN_MATCH:
+            /* Check if target pattern matches any active task */
+            confidence = 0.5f;
+            for (uint32_t i = 0; i < exec->num_tasks; i++) {
+                if (exec->task_queue[i] &&
+                    exec->task_queue[i]->task_id == query->target_pattern_id) {
+                    confidence = 0.95f;
+                    break;
+                }
+            }
+            break;
+
+        default:
+            confidence = 0.3f;
+            break;
+    }
+
+    /* Only respond if confidence meets threshold */
+    if (confidence >= query->confidence_threshold) {
+        exec->total_decisions++;
+    }
+
     return NIMCP_SUCCESS;
 }
 

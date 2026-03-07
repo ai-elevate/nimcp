@@ -311,21 +311,62 @@ nimcp_error_t cochlea_process(
     }
     cochlea_heartbeat("process_anf", 0.7f);
 
-    /* Compute derived features (stub: zero output) */
-    if (output->channel_energy) {
-        memset(output->channel_energy, 0, nc * sizeof(float));
-    }
-    if (output->channel_db) {
-        memset(output->channel_db, 0, nc * sizeof(float));
+    /* Compute derived features from ANF firing rates */
+    float total_energy = 0.0f;
+    float peak_energy = 0.0f;
+    float peak_freq = 0.0f;
+    float weighted_freq_sum = 0.0f;
+    bool has_onset = false;
+
+    if (output->anf_output && output->anf_output->firing_rate) {
+        for (uint32_t ch = 0; ch < nc; ch++) {
+            float rate = output->anf_output->firing_rate[ch];
+            /* Energy ~ rate^2 (power proportional to rate squared) */
+            float energy = rate * rate;
+            if (output->channel_energy) {
+                output->channel_energy[ch] = energy;
+            }
+            if (output->channel_db) {
+                /* Convert to dB SPL: 20*log10(rate/ref), ref=1.0 */
+                output->channel_db[ch] = (rate > 1e-10f) ?
+                    20.0f * log10f(rate) : -100.0f;
+            }
+            total_energy += energy;
+
+            /* Track peak frequency channel.
+             * Estimate CF from channel index using Greenwood function:
+             * CF = 165.4 * (10^(2.1 * position) - 0.88)
+             * where position = ch / (nc - 1) mapped to [0, 1] */
+            float pos = (nc > 1) ? (float)ch / (float)(nc - 1) : 0.0f;
+            float est_cf = 165.4f * (powf(10.0f, 2.1f * pos) - 0.88f);
+            if (energy > peak_energy) {
+                peak_energy = energy;
+                peak_freq = est_cf;
+            }
+            weighted_freq_sum += energy * est_cf;
+
+            /* Onset detection: rate significantly above spontaneous */
+            if (rate > 100.0f) has_onset = true;
+        }
+    } else {
+        if (output->channel_energy)
+            memset(output->channel_energy, 0, nc * sizeof(float));
+        if (output->channel_db) {
+            for (uint32_t ch = 0; ch < nc; ch++)
+                output->channel_db[ch] = -100.0f;
+        }
     }
 
-    output->total_energy         = 0.0f;
-    output->peak_frequency_hz    = 0.0f;
-    output->overall_level_db     = -100.0f;
-    output->num_channels         = nc;
-    output->num_samples          = num_samples;
-    output->sound_onset_detected = false;
-    output->speech_detected      = false;
+    output->total_energy = total_energy;
+    output->peak_frequency_hz = peak_freq;
+    output->overall_level_db = (total_energy > 1e-10f) ?
+        10.0f * log10f(total_energy) : -100.0f;
+    output->num_channels = nc;
+    output->num_samples = num_samples;
+    output->sound_onset_detected = has_onset;
+    /* Speech detection heuristic: energy concentrated in 300-3000 Hz range */
+    output->speech_detected = (peak_freq >= 300.0f && peak_freq <= 3000.0f
+                               && total_energy > 0.01f);
 
     /* Update statistics */
     __atomic_add_fetch(&cochlea->stats.samples_processed, num_samples, __ATOMIC_RELAXED);
