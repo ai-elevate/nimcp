@@ -426,7 +426,8 @@ float nimcp_brain_learn_vector_batch(
     const float** targets_array,
     uint32_t num_features,
     uint32_t target_size,
-    uint32_t num_examples
+    uint32_t num_examples,
+    float learning_rate
 );
 
 /**
@@ -1087,6 +1088,94 @@ nimcp_status_t nimcp_brain_enable_callbacks(
  * @return NIMCP_OK on success, error code otherwise
  */
 nimcp_status_t nimcp_brain_disable_callbacks(nimcp_brain_t brain);
+
+/**
+ * @brief Enable or disable FP16 mixed precision training
+ *
+ * When enabled, GPU backward pass and gradient accumulation use
+ * automatic mixed precision (AMP) with FP16 compute and FP32 storage.
+ * Includes dynamic loss scaling to prevent gradient underflow.
+ *
+ * Requires GPU acceleration to be active. The GPU weight cache must
+ * be initialized (typically after the first learn step).
+ *
+ * @param brain Brain handle
+ * @param enable true to enable, false to disable
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_enable_mixed_precision(nimcp_brain_t brain, bool enable);
+
+/**
+ * @brief Enable or disable gradient checkpointing for memory-efficient training
+ *
+ * When enabled, the GPU forward pass only retains activations at every Nth
+ * layer (checkpoint boundaries). During backward pass, intermediate activations
+ * are recomputed from the nearest checkpoint. This trades ~1 extra forward pass
+ * per segment for O(sqrt(L)) activation memory instead of O(L).
+ *
+ * Requires GPU acceleration to be active. The GPU weight cache must
+ * be initialized (typically after the first learn step).
+ *
+ * @param brain Brain handle
+ * @param enable true to enable, false to disable
+ * @param checkpoint_interval Layers between checkpoints (0 = default every 2 layers)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_enable_gradient_checkpointing(
+    nimcp_brain_t brain, bool enable, uint32_t checkpoint_interval);
+
+/**
+ * @brief Enable or disable hemispheric architecture (callosum + lateralization)
+ *
+ * When enabled, the brain's neurons are logically split into left and right
+ * hemispheres connected by a corpus callosum with 5 biological channels
+ * (motor, sensory, cognitive, emotional, inhibitory). Cognitive domains are
+ * routed to the dominant hemisphere via lateralization weights.
+ *
+ * Lightweight integration: no sub-brains are created (avoids 3x memory).
+ * Instead, the existing network's neurons are logically partitioned.
+ *
+ * @param brain Brain handle
+ * @param enable true to enable, false to disable
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_enable_hemispheric(nimcp_brain_t brain, bool enable);
+
+/**
+ * @brief Get lateralization dominance for a cognitive domain
+ *
+ * @param brain Brain handle
+ * @param domain Cognitive domain index (0-11, see cognitive_domain_t)
+ * @return Dominance value 0.0-1.0 (0=right dominant, 1=left dominant), -1 on error
+ */
+float nimcp_brain_get_lateralization(nimcp_brain_t brain, uint32_t domain);
+
+/**
+ * @brief Shift lateralization for a cognitive domain (plasticity)
+ *
+ * @param brain Brain handle
+ * @param domain Cognitive domain index
+ * @param shift Shift amount (+ve = more left, -ve = more right)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_shift_lateralization(
+    nimcp_brain_t brain, uint32_t domain, float shift);
+
+/**
+ * @brief Get corpus callosum transfer count
+ *
+ * @param brain Brain handle
+ * @return Total inter-hemispheric messages transferred, 0 if disabled
+ */
+uint64_t nimcp_brain_get_callosum_transfers(nimcp_brain_t brain);
+
+/**
+ * @brief Get current hemispheric balance
+ *
+ * @param brain Brain handle
+ * @return Balance value [-1.0=left dominant, +1.0=right dominant], 0 if disabled
+ */
+float nimcp_brain_get_hemispheric_balance(nimcp_brain_t brain);
 
 /**
  * @brief Register a callback for a specific event type

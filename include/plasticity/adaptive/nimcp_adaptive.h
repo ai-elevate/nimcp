@@ -576,6 +576,13 @@ void adaptive_network_set_gpu_context(adaptive_network_t network, struct nimcp_g
 void adaptive_network_set_gpu_weight_cache(adaptive_network_t network, struct nimcp_gpu_weight_cache_s* cache);
 
 /**
+ * @brief Get GPU weight cache from adaptive network
+ * @param network Adaptive network
+ * @return GPU weight cache or NULL if not initialized
+ */
+struct nimcp_gpu_weight_cache_s* adaptive_network_get_gpu_weight_cache(adaptive_network_t network);
+
+/**
  * @brief Set GPU enabled flag on adaptive network
  * @param network Adaptive network
  * @param enabled Whether GPU is enabled

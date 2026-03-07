@@ -966,6 +966,13 @@ void brain_destroy(brain_t brain)
     // Inferior Colliculus (auditory midbrain processing)
     nimcp_brain_ic_destroy(brain);
 
+    // Corpus Callosum (inter-hemispheric bridge — destroy before generic white matter)
+    if (brain->callosum) {
+        callosum_destroy(brain->callosum);
+        brain->callosum = NULL;
+        brain->hemispheric_enabled = false;
+    }
+
     // White Matter Tracts (long-range connectivity — foundational, destroyed last of the 7)
     nimcp_brain_factory_destroy_white_matter_subsystem(brain);
 

@@ -27,12 +27,12 @@ def _get_embed_model():
     import torch
     from sentence_transformers import SentenceTransformer
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    _embed_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+    _embed_model = SentenceTransformer('all-mpnet-base-v2', device=device)
     return _embed_model
 
 
 def encode_text(text: str):
-    """Encode text to 384-dim embedding using sentence-transformers."""
+    """Encode text to 768-dim embedding using sentence-transformers (all-mpnet-base-v2)."""
     import numpy as np
     model = _get_embed_model()
     emb = model.encode(text, convert_to_numpy=True)

@@ -27,6 +27,7 @@
 #include "gpu/sparse/nimcp_sparse_gpu.h"
 #include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "gpu/training/nimcp_training_gpu.h"
+#include "gpu/tensor/nimcp_amp_autocast.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -144,6 +145,36 @@ static bool ensure_coo_capacity(nimcp_gpu_weight_cache_t* cache, size_t nnz, siz
     return true;
 }
 
+/**
+ * @brief Clone a GPU tensor by downloading to host and re-uploading
+ *
+ * Used by gradient checkpointing to save activation snapshots.
+ *
+ * @param ctx GPU context
+ * @param src Source tensor to clone
+ * @return New tensor with same data, or NULL on failure
+ */
+static nimcp_gpu_tensor_t* clone_gpu_tensor(nimcp_gpu_context_t* ctx,
+                                             const nimcp_gpu_tensor_t* src)
+{
+    if (!ctx || !src || !src->numel) return NULL;
+
+    // Allocate host buffer, download, re-upload
+    size_t bytes = src->numel * sizeof(float);
+    float* host_buf = nimcp_malloc(bytes);
+    if (!host_buf) return NULL;
+
+    if (!nimcp_gpu_tensor_to_host(src, host_buf)) {
+        nimcp_free(host_buf);
+        return NULL;
+    }
+
+    nimcp_gpu_tensor_t* dst = nimcp_gpu_tensor_from_host(
+        ctx, host_buf, src->dims, src->ndim, src->precision);
+    nimcp_free(host_buf);
+    return dst;
+}
+
 //=============================================================================
 // Lifecycle
 //=============================================================================
@@ -238,6 +269,17 @@ nimcp_gpu_weight_cache_t* nimcp_gpu_weight_cache_create(
     cache->host_activation_buf = nimcp_calloc(cache->host_activation_buf_size, sizeof(float));
     if (!cache->host_bias_buf || !cache->host_activation_buf) goto fail;
 
+    // Mixed precision: starts disabled (autocast_ctx = NULL from calloc)
+    cache->autocast_ctx = NULL;
+    cache->mixed_precision_enabled = false;
+
+    // Gradient checkpointing: starts disabled (all fields NULL/false from calloc)
+    cache->gradient_checkpointing = false;
+    cache->checkpoint_interval = 0;
+    cache->checkpoint_activations = NULL;
+    cache->is_checkpoint_layer = NULL;
+    cache->num_checkpoint_layers = 0;
+
     NIMCP_LOG_INFO("GPU weight cache created: %u layers, %u transitions",
                    num_layers, num_transitions);
     return cache;
@@ -302,6 +344,23 @@ void nimcp_gpu_weight_cache_destroy(nimcp_gpu_weight_cache_t* cache)
     }
     nimcp_free(cache->d_weight_grad_accum);
     nimcp_free(cache->d_bias_grad_accum);
+
+    // Free autocast context (mixed precision)
+    if (cache->autocast_ctx) {
+        nimcp_autocast_destroy(cache->autocast_ctx);
+        cache->autocast_ctx = NULL;
+    }
+
+    // Free gradient checkpointing resources
+    if (cache->checkpoint_activations) {
+        for (uint32_t l = 0; l < cache->num_layers; l++) {
+            if (cache->checkpoint_activations[l]) {
+                nimcp_gpu_tensor_destroy(cache->checkpoint_activations[l]);
+            }
+        }
+        nimcp_free(cache->checkpoint_activations);
+    }
+    nimcp_free(cache->is_checkpoint_layer);
 
     // Free CPU arrays
     nimcp_free(cache->layer_sizes);
@@ -440,7 +499,7 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
             }
         }
 
-        // --- Upload sparse weights via COO → CSR ---
+        // --- Upload sparse weights via COO -> CSR ---
         // Destroy previous sparse tensor for this layer
         if (cache->sparse_weights[l]) {
             nimcp_sparse_tensor_destroy(cache->sparse_weights[l]);
@@ -582,6 +641,152 @@ void nimcp_gpu_weight_cache_sync_activations(nimcp_gpu_weight_cache_t* cache, ne
 }
 
 //=============================================================================
+// Internal: Forward pass for a single layer transition
+//=============================================================================
+
+/**
+ * @brief Compute one layer transition: a[l+1] = activation(W[l] @ a[l] + b[l])
+ *
+ * Factored out of nimcp_gpu_forward_pass so gradient checkpointing can
+ * reuse it for recomputation during backward pass.
+ *
+ * @param cache Weight cache (must have valid sparse_weights, biases, activations)
+ * @param l Layer transition index (0-based: computes layer l+1 from layer l)
+ * @param num_transitions Total number of transitions
+ * @return true on success
+ */
+static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint32_t num_transitions)
+{
+    // y = W[l] @ a[l]  (SpMV: sparse matrix-vector multiply)
+    if (cache->sparse_weights[l]) {
+        nimcp_gpu_tensor_t* mv_result = nimcp_sparse_mv(
+            cache->sparse_ctx,
+            cache->sparse_weights[l],       // A = W[l] sparse CSR
+            cache->activations[l],          // x = a[l] (cols)
+            1.0f, 0.0f,
+            cache->activations[l + 1]);     // y = a[l+1] (rows)
+
+        if (!mv_result) {
+            NIMCP_LOG_ERROR("GPU SpMV failed for layer %u", l);
+            return false;
+        }
+        // If SpMV returned a new tensor, swap it in
+        if (mv_result != cache->activations[l + 1]) {
+            nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
+            cache->activations[l + 1] = mv_result;
+        }
+    } else {
+        // sparse_weights[l] is NULL (nnz=0): zero the activation tensor
+        uint32_t ls = cache->layer_sizes[l + 1];
+        memset(cache->host_activation_buf, 0, ls * sizeof(float));
+        size_t a_dims[1] = { ls };
+        nimcp_gpu_tensor_t* zero_tensor = nimcp_gpu_tensor_from_host(
+            cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
+        if (!zero_tensor) return false;
+        nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
+        cache->activations[l + 1] = zero_tensor;
+    }
+
+    // Add bias: a[l+1] = a[l+1] + b[l]
+    if (!nimcp_gpu_add(cache->ctx,
+                       cache->activations[l + 1],
+                       cache->biases[l],
+                       cache->activations[l + 1])) {
+        NIMCP_LOG_ERROR("GPU bias add failed for layer %u", l);
+        return false;
+    }
+
+    // Apply activation function based on per-layer type
+    activation_type_t act = cache->layer_activations[l + 1];
+    bool act_ok = false;
+    switch (act) {
+        case ACTIVATION_SIGMOID:
+            act_ok = nimcp_gpu_sigmoid(cache->ctx,
+                cache->activations[l + 1], cache->activations[l + 1]);
+            break;
+        case ACTIVATION_TANH:
+            act_ok = nimcp_gpu_tanh(cache->ctx,
+                cache->activations[l + 1], cache->activations[l + 1]);
+            break;
+        case ACTIVATION_RELU:
+            act_ok = nimcp_gpu_relu(cache->ctx,
+                cache->activations[l + 1], cache->activations[l + 1]);
+            break;
+        case ACTIVATION_LEAKY_RELU:
+            act_ok = nimcp_gpu_leaky_relu(cache->ctx,
+                cache->activations[l + 1], cache->activations[l + 1], 0.01f);
+            break;
+        case ACTIVATION_ADAPTIVE:
+            act_ok = nimcp_gpu_tanh(cache->ctx,
+                cache->activations[l + 1], cache->activations[l + 1]);
+            break;
+        default:
+            act_ok = nimcp_gpu_tanh(cache->ctx,
+                cache->activations[l + 1], cache->activations[l + 1]);
+            break;
+    }
+
+    if (!act_ok) {
+        NIMCP_LOG_ERROR("GPU activation failed for layer %u", l);
+        return false;
+    }
+
+    // Clamp unbounded activations
+    if (act == ACTIVATION_RELU || act == ACTIVATION_LEAKY_RELU) {
+        uint32_t layer_size = cache->layer_sizes[l + 1];
+        if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
+                                      cache->host_activation_buf)) {
+            return false;
+        }
+        for (uint32_t ci = 0; ci < layer_size; ci++) {
+            if (cache->host_activation_buf[ci] > 100.0f)
+                cache->host_activation_buf[ci] = 100.0f;
+            else if (cache->host_activation_buf[ci] < -100.0f)
+                cache->host_activation_buf[ci] = -100.0f;
+        }
+        size_t a_dims[1] = { layer_size };
+        nimcp_gpu_tensor_t* clamped = nimcp_gpu_tensor_from_host(
+            cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
+        if (!clamped) return false;
+        nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
+        cache->activations[l + 1] = clamped;
+    }
+
+    // LAYER NORMALIZATION for hidden layers
+    if (l + 1 < num_transitions) {
+        uint32_t layer_size = cache->layer_sizes[l + 1];
+        if (layer_size > 1) {
+            if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
+                                          cache->host_activation_buf)) {
+                return false;
+            }
+            double sum = 0.0;
+            for (uint32_t ci = 0; ci < layer_size; ci++) {
+                sum += (double)cache->host_activation_buf[ci];
+            }
+            float mean = (float)(sum / layer_size);
+            double var_sum = 0.0;
+            for (uint32_t ci = 0; ci < layer_size; ci++) {
+                float diff = cache->host_activation_buf[ci] - mean;
+                var_sum += (double)(diff * diff);
+            }
+            float inv_std = 1.0f / sqrtf((float)(var_sum / layer_size) + 1e-5f);
+            for (uint32_t ci = 0; ci < layer_size; ci++) {
+                cache->host_activation_buf[ci] = (cache->host_activation_buf[ci] - mean) * inv_std;
+            }
+            size_t a_dims[1] = { layer_size };
+            nimcp_gpu_tensor_t* normed = nimcp_gpu_tensor_from_host(
+                cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
+            if (!normed) return false;
+            nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
+            cache->activations[l + 1] = normed;
+        }
+    }
+
+    return true;
+}
+
+//=============================================================================
 // GPU Forward Pass
 //=============================================================================
 
@@ -597,7 +802,7 @@ bool nimcp_gpu_forward_pass(
     if (output_size != cache->layer_sizes[cache->num_layers - 1]) return false;
 
     // Fast path: if ALL sparse weight matrices are NULL (no connections yet),
-    // the output is just bias-through-activation ≈ zeros. Skip GPU entirely to
+    // the output is just bias-through-activation ~ zeros. Skip GPU entirely to
     // avoid CUDA misaligned-address errors on very large layers (2M+ neurons).
     bool any_weights = false;
     for (uint32_t l = 0; l < cache->num_layers - 1; l++) {
@@ -620,150 +825,36 @@ bool nimcp_gpu_forward_pass(
 
     // Step 2: Forward pass through each layer transition
     uint32_t num_transitions = cache->num_layers - 1;
+
+    // If gradient checkpointing is enabled, save checkpoint activations
+    // and free non-checkpoint intermediate activations after use
+    bool use_checkpointing = cache->gradient_checkpointing &&
+                             cache->is_checkpoint_layer &&
+                             cache->checkpoint_activations;
+
+    if (use_checkpointing) {
+        // Save layer 0 (input) — always a checkpoint
+        if (cache->checkpoint_activations[0]) {
+            nimcp_gpu_tensor_destroy(cache->checkpoint_activations[0]);
+        }
+        cache->checkpoint_activations[0] = clone_gpu_tensor(cache->ctx, cache->activations[0]);
+    }
+
     for (uint32_t l = 0; l < num_transitions; l++) {
-        // y = W[l] @ a[l]  (SpMV: sparse matrix-vector multiply)
-        if (cache->sparse_weights[l]) {
-            nimcp_gpu_tensor_t* mv_result = nimcp_sparse_mv(
-                cache->sparse_ctx,
-                cache->sparse_weights[l],       // A = W[l] sparse CSR
-                cache->activations[l],          // x = a[l] (cols)
-                1.0f, 0.0f,
-                cache->activations[l + 1]);     // y = a[l+1] (rows)
-
-            if (!mv_result) {
-                NIMCP_LOG_ERROR("GPU SpMV failed for layer %u", l);
-                return false;
-            }
-            // If SpMV returned a new tensor, swap it in
-            if (mv_result != cache->activations[l + 1]) {
-                nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
-                cache->activations[l + 1] = mv_result;
-            }
-        } else {
-            // sparse_weights[l] is NULL (nnz=0): zero the activation tensor
-            // so bias add starts from 0 rather than uninitialized GPU memory
-            uint32_t ls = cache->layer_sizes[l + 1];
-            memset(cache->host_activation_buf, 0, ls * sizeof(float));
-            size_t a_dims[1] = { ls };
-            nimcp_gpu_tensor_t* zero_tensor = nimcp_gpu_tensor_from_host(
-                cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
-            if (!zero_tensor) return false;
-            nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
-            cache->activations[l + 1] = zero_tensor;
-
-            NIMCP_LOG_WARN("GPU forward: sparse_weights[%u] is NULL (no connections L%u->L%u), bias-only",
-                          l, l, l+1);
-        }
-
-        // Add bias: a[l+1] = a[l+1] + b[l]
-        if (!nimcp_gpu_add(cache->ctx,
-                           cache->activations[l + 1],
-                           cache->biases[l],
-                           cache->activations[l + 1])) {
-            NIMCP_LOG_ERROR("GPU bias add failed for layer %u", l);
+        if (!forward_one_layer(cache, l, num_transitions)) {
             return false;
         }
 
-        // Apply activation function based on per-layer type
-        activation_type_t act = cache->layer_activations[l + 1];
-
-        // We need a temporary tensor for in-place activation
-        // Use activations[l+1] as both input and output (most GPU ops support this)
-        bool act_ok = false;
-        switch (act) {
-            case ACTIVATION_SIGMOID:
-                act_ok = nimcp_gpu_sigmoid(cache->ctx,
-                    cache->activations[l + 1], cache->activations[l + 1]);
-                break;
-            case ACTIVATION_TANH:
-                act_ok = nimcp_gpu_tanh(cache->ctx,
-                    cache->activations[l + 1], cache->activations[l + 1]);
-                break;
-            case ACTIVATION_RELU:
-                act_ok = nimcp_gpu_relu(cache->ctx,
-                    cache->activations[l + 1], cache->activations[l + 1]);
-                break;
-            case ACTIVATION_LEAKY_RELU:
-                act_ok = nimcp_gpu_leaky_relu(cache->ctx,
-                    cache->activations[l + 1], cache->activations[l + 1], 0.01f);
-                break;
-            case ACTIVATION_ADAPTIVE:
-                // Adaptive activation: tanh((x - threshold) / 10) for x > threshold, else 0
-                // Fall back to tanh for GPU (threshold handling is CPU-specific)
-                act_ok = nimcp_gpu_tanh(cache->ctx,
-                    cache->activations[l + 1], cache->activations[l + 1]);
-                break;
-            default:
-                act_ok = nimcp_gpu_tanh(cache->ctx,
-                    cache->activations[l + 1], cache->activations[l + 1]);
-                break;
-        }
-
-        if (!act_ok) {
-            NIMCP_LOG_ERROR("GPU activation failed for layer %u", l);
-            return false;
-        }
-
-        // Clamp unbounded activations to prevent float overflow
-        // ReLU/Leaky ReLU need wider range to preserve discrimination
-        // Sigmoid/tanh already self-bound — skip clamping for them
-        if (act == ACTIVATION_RELU || act == ACTIVATION_LEAKY_RELU) {
-            // Wide clamp for unbounded activations
-            uint32_t layer_size = cache->layer_sizes[l + 1];
-            if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
-                                          cache->host_activation_buf)) {
-                return false;
-            }
-            for (uint32_t ci = 0; ci < layer_size; ci++) {
-                if (cache->host_activation_buf[ci] > 100.0f)
-                    cache->host_activation_buf[ci] = 100.0f;
-                else if (cache->host_activation_buf[ci] < -100.0f)
-                    cache->host_activation_buf[ci] = -100.0f;
-            }
-            size_t a_dims[1] = { layer_size };
-            nimcp_gpu_tensor_t* clamped = nimcp_gpu_tensor_from_host(
-                cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
-            if (!clamped) return false;
-            nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
-            cache->activations[l + 1] = clamped;
-        }
-        // sigmoid [0,1], tanh [-1,1] — already bounded, no clamp needed
-
-        // LAYER NORMALIZATION for hidden layers:
-        // Normalize activations to zero-mean, unit-variance to prevent
-        // vanishing/exploding activations through deep networks.
-        // Skip output layer — we want raw output values there.
-        if (l + 1 < num_transitions) {  // not the output layer
-            uint32_t layer_size = cache->layer_sizes[l + 1];
-            if (layer_size > 1) {
-                if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
-                                              cache->host_activation_buf)) {
-                    return false;
+        // Gradient checkpointing: save activation at checkpoint boundaries
+        if (use_checkpointing) {
+            uint32_t out_layer = l + 1;
+            if (cache->is_checkpoint_layer[out_layer]) {
+                // Save a copy of this activation for backward recomputation
+                if (cache->checkpoint_activations[out_layer]) {
+                    nimcp_gpu_tensor_destroy(cache->checkpoint_activations[out_layer]);
                 }
-                // Compute mean
-                double sum = 0.0;
-                for (uint32_t ci = 0; ci < layer_size; ci++) {
-                    sum += (double)cache->host_activation_buf[ci];
-                }
-                float mean = (float)(sum / layer_size);
-                // Compute variance
-                double var_sum = 0.0;
-                for (uint32_t ci = 0; ci < layer_size; ci++) {
-                    float diff = cache->host_activation_buf[ci] - mean;
-                    var_sum += (double)(diff * diff);
-                }
-                float inv_std = 1.0f / sqrtf((float)(var_sum / layer_size) + 1e-5f);
-                // Normalize
-                for (uint32_t ci = 0; ci < layer_size; ci++) {
-                    cache->host_activation_buf[ci] = (cache->host_activation_buf[ci] - mean) * inv_std;
-                }
-                // Re-upload normalized activations
-                size_t a_dims[1] = { layer_size };
-                nimcp_gpu_tensor_t* normed = nimcp_gpu_tensor_from_host(
-                    cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
-                if (!normed) return false;
-                nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
-                cache->activations[l + 1] = normed;
+                cache->checkpoint_activations[out_layer] =
+                    clone_gpu_tensor(cache->ctx, cache->activations[out_layer]);
             }
         }
     }
@@ -858,7 +949,7 @@ bool nimcp_gpu_forward_pass_batch(
         uint32_t out_size = cache->layer_sizes[l + 1];
 
         // Phase 3 optimization: True SpMM per layer instead of per-sample SpMV
-        // Kernel launches: O(batch × layers) → O(layers)
+        // Kernel launches: O(batch x layers) -> O(layers)
         nimcp_gpu_tensor_t* next_act = NULL;
         if (cache->sparse_weights[l]) {
             next_act = nimcp_sparse_linear_forward(
@@ -878,7 +969,7 @@ bool nimcp_gpu_forward_pass_batch(
             }
         }
 
-        // Activation: download → host-side apply → re-upload
+        // Activation: download -> host-side apply -> re-upload
         // (kept for functional parity; future: GPU activation kernel)
         activation_type_t atype = cache->layer_activations[l + 1];
         size_t total_elems = (size_t)batch_size * out_size;
@@ -959,6 +1050,56 @@ static int* build_act_types(nimcp_gpu_weight_cache_t* cache) {
     return act_types;
 }
 
+/**
+ * @brief Recompute activations for a segment between two checkpoints
+ *
+ * Used during backward pass when gradient checkpointing is enabled.
+ * Restores the activation at checkpoint_start from the saved copy,
+ * then re-runs the forward pass for layers [checkpoint_start..target_layer]
+ * to reconstruct intermediate activations needed for gradient computation.
+ *
+ * @param cache Weight cache with checkpoint_activations populated
+ * @param checkpoint_start Layer index of the nearest preceding checkpoint
+ * @param target_layer Layer index whose activation we need
+ * @return true on success
+ */
+static bool recompute_activations_from_checkpoint(
+    nimcp_gpu_weight_cache_t* cache,
+    uint32_t checkpoint_start,
+    uint32_t target_layer)
+{
+    if (!cache || !cache->checkpoint_activations) return false;
+    if (checkpoint_start >= cache->num_layers) return false;
+    if (target_layer >= cache->num_layers) return false;
+    if (target_layer <= checkpoint_start) return true; // nothing to recompute
+
+    uint32_t num_transitions = cache->num_layers - 1;
+
+    // Restore activation at checkpoint_start from saved copy
+    nimcp_gpu_tensor_t* saved = cache->checkpoint_activations[checkpoint_start];
+    if (!saved) {
+        NIMCP_LOG_ERROR("Gradient checkpointing: no saved activation at checkpoint layer %u",
+                        checkpoint_start);
+        return false;
+    }
+
+    // Clone saved activation into cache->activations[checkpoint_start]
+    nimcp_gpu_tensor_t* restored = clone_gpu_tensor(cache->ctx, saved);
+    if (!restored) return false;
+    nimcp_gpu_tensor_destroy(cache->activations[checkpoint_start]);
+    cache->activations[checkpoint_start] = restored;
+
+    // Re-run forward pass from checkpoint_start to target_layer
+    for (uint32_t l = checkpoint_start; l < target_layer && l < num_transitions; l++) {
+        if (!forward_one_layer(cache, l, num_transitions)) {
+            NIMCP_LOG_ERROR("Gradient checkpointing: recomputation failed at layer %u", l);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool nimcp_gpu_backward_pass(
     nimcp_gpu_weight_cache_t* cache,
     neural_network_t net,
@@ -970,6 +1111,40 @@ bool nimcp_gpu_backward_pass(
     float* out_grad_norm)
 {
     if (!cache || !net || !target || !output || !out_grad_norm) return false;
+
+    // If gradient checkpointing is active, recompute all activations before
+    // the backward pass so the kernel has correct activation data.
+    // Strategy: walk backward through checkpoint segments, recomputing each.
+    bool use_checkpointing = cache->gradient_checkpointing &&
+                             cache->is_checkpoint_layer &&
+                             cache->checkpoint_activations;
+
+    if (use_checkpointing && cache->num_layers > 2) {
+        uint32_t num_transitions = cache->num_layers - 1;
+
+        // Find the last checkpoint before the output layer and recompute
+        // from each checkpoint segment. We walk backward so that by the
+        // time the CUDA backward kernels run, all activations[] are valid.
+        // The backward kernel processes layers right-to-left; it reads
+        // activations[layer-1] for each layer. We need all of them populated.
+        //
+        // Simple approach: for each segment [ckpt_start .. next_ckpt-1],
+        // recompute forward from ckpt_start.
+        uint32_t seg_start = 0;
+        for (uint32_t l = 1; l < cache->num_layers; l++) {
+            if (cache->is_checkpoint_layer[l] || l == cache->num_layers - 1) {
+                // Recompute segment [seg_start .. l]
+                if (l > seg_start + 1) {
+                    if (!recompute_activations_from_checkpoint(cache, seg_start, l)) {
+                        NIMCP_LOG_ERROR("Gradient checkpointing: segment recomputation failed "
+                                        "[%u..%u]", seg_start, l);
+                        return false;
+                    }
+                }
+                seg_start = l;
+            }
+        }
+    }
 
     int* act_types = build_act_types(cache);
     if (!act_types) return false;
@@ -1048,17 +1223,62 @@ bool nimcp_gpu_backward_accumulate(
 
     if (!ensure_grad_accum_buffers(cache)) return false;
 
+    // Enter autocast region if mixed precision is enabled
+    bool autocast_active = cache->mixed_precision_enabled && cache->autocast_ctx;
+    if (autocast_active) {
+        nimcp_autocast_begin(cache->autocast_ctx);
+    }
+
+    // If gradient checkpointing is active, recompute all activations before
+    // accumulating gradients (same logic as nimcp_gpu_backward_pass)
+    bool use_checkpointing = cache->gradient_checkpointing &&
+                             cache->is_checkpoint_layer &&
+                             cache->checkpoint_activations;
+
+    if (use_checkpointing && cache->num_layers > 2) {
+        uint32_t num_transitions = cache->num_layers - 1;
+        uint32_t seg_start = 0;
+        for (uint32_t l = 1; l < cache->num_layers; l++) {
+            if (cache->is_checkpoint_layer[l] || l == cache->num_layers - 1) {
+                if (l > seg_start + 1) {
+                    if (!recompute_activations_from_checkpoint(cache, seg_start, l)) {
+                        NIMCP_LOG_ERROR("Gradient checkpointing: segment recomputation failed "
+                                        "[%u..%u] in accumulate", seg_start, l);
+                        if (autocast_active) nimcp_autocast_end(cache->autocast_ctx);
+                        return false;
+                    }
+                }
+                seg_start = l;
+            }
+        }
+    }
+
     int* act_types = build_act_types(cache);
-    if (!act_types) return false;
+    if (!act_types) {
+        if (autocast_active) nimcp_autocast_end(cache->autocast_ctx);
+        return false;
+    }
+
+    // Scale learning rate by loss scale for FP16 gradient stability
+    float effective_lr = learning_rate;
+    if (autocast_active) {
+        float scale = nimcp_autocast_scale_loss(cache->autocast_ctx, 1.0f);
+        effective_lr = learning_rate * scale;
+    }
 
     bool ok = nimcp_gpu_sparse_backward_accumulate(
         cache->ctx, cache->sparse_ctx,
         cache->sparse_weights, cache->biases, cache->activations,
         cache->d_weight_grad_accum, cache->d_bias_grad_accum,
         act_types, cache->num_layers, cache->layer_sizes,
-        target, output, target_size, learning_rate);
+        target, output, target_size, effective_lr);
 
     nimcp_free(act_types);
+
+    // Exit autocast region
+    if (autocast_active) {
+        nimcp_autocast_end(cache->autocast_ctx);
+    }
 
     if (ok) {
         cache->grad_accum_count++;
@@ -1075,12 +1295,35 @@ bool nimcp_gpu_gradient_flush_and_sync(
     if (!cache || !net || cache->grad_accum_count == 0) return false;
     if (!cache->grad_accum_initialized) return false;
 
+    // Enter autocast region if mixed precision is enabled
+    bool autocast_active = cache->mixed_precision_enabled && cache->autocast_ctx;
+    if (autocast_active) {
+        nimcp_autocast_begin(cache->autocast_ctx);
+    }
+
     bool ok = nimcp_gpu_gradient_flush(
         cache->ctx, cache->sparse_weights, cache->biases,
         cache->d_weight_grad_accum, cache->d_bias_grad_accum,
         cache->num_layers, cache->layer_sizes,
         cache->grad_accum_count, min_weight, max_weight,
         out_grad_norm);
+
+    // If mixed precision, unscale gradient norm and update loss scale
+    if (autocast_active && ok && out_grad_norm) {
+        // Gradient norm was computed with scaled gradients; report true norm
+        float scale = nimcp_autocast_scale_loss(cache->autocast_ctx, 1.0f);
+        if (scale > 0.0f) {
+            *out_grad_norm /= scale;
+        }
+        // Update dynamic loss scale based on gradient health
+        bool grads_valid = isfinite(*out_grad_norm) && *out_grad_norm < 1e6f;
+        nimcp_autocast_update_scale(cache->autocast_ctx, grads_valid);
+    }
+
+    // Exit autocast region
+    if (autocast_active) {
+        nimcp_autocast_end(cache->autocast_ctx);
+    }
 
     if (ok) {
         nimcp_gpu_weight_cache_download(cache, net);
@@ -1089,4 +1332,133 @@ bool nimcp_gpu_gradient_flush_and_sync(
     }
 
     return ok;
+}
+
+//=============================================================================
+// Mixed Precision (AMP) Support
+//=============================================================================
+
+bool nimcp_gpu_weight_cache_enable_mixed_precision(
+    nimcp_gpu_weight_cache_t* cache,
+    bool enable)
+{
+    if (!cache) return false;
+
+    if (enable && !cache->autocast_ctx) {
+        // Create autocast context with FP16 mode and loss scaling enabled
+        nimcp_autocast_config_t config;
+        nimcp_autocast_default_config(&config, AUTOCAST_FP16);
+        config.enable_scaler = true;
+        config.init_scale = 65536.0f;  // 2^16 initial loss scale
+
+        cache->autocast_ctx = nimcp_autocast_create_with_config(cache->ctx, &config);
+        if (!cache->autocast_ctx) {
+            NIMCP_LOG_ERROR("Failed to create autocast context for mixed precision");
+            return false;
+        }
+        cache->mixed_precision_enabled = true;
+        NIMCP_LOG_INFO("Mixed precision (FP16) training enabled on GPU weight cache");
+    } else if (enable && cache->autocast_ctx) {
+        // Already created, just enable
+        cache->mixed_precision_enabled = true;
+        NIMCP_LOG_INFO("Mixed precision (FP16) training re-enabled");
+    } else if (!enable) {
+        // Disable but keep context for re-enabling
+        cache->mixed_precision_enabled = false;
+        NIMCP_LOG_INFO("Mixed precision training disabled");
+    }
+
+    return true;
+}
+
+bool nimcp_gpu_weight_cache_is_mixed_precision(
+    const nimcp_gpu_weight_cache_t* cache)
+{
+    if (!cache) return false;
+    return cache->mixed_precision_enabled && cache->autocast_ctx != NULL;
+}
+
+//=============================================================================
+// Gradient Checkpointing Control
+//=============================================================================
+
+bool nimcp_gpu_weight_cache_set_gradient_checkpointing(
+    nimcp_gpu_weight_cache_t* cache,
+    bool enable,
+    uint32_t checkpoint_interval)
+{
+    if (!cache) return false;
+
+    if (enable) {
+        // Default interval: every 2 layers
+        uint32_t interval = (checkpoint_interval > 0) ? checkpoint_interval : 2;
+
+        // Clamp interval to at most num_layers - 1 (otherwise no checkpoints)
+        if (interval >= cache->num_layers) {
+            interval = cache->num_layers - 1;
+        }
+
+        cache->checkpoint_interval = interval;
+
+        // Allocate/reallocate checkpoint arrays if needed
+        if (!cache->checkpoint_activations) {
+            cache->checkpoint_activations = nimcp_calloc(cache->num_layers,
+                                                          sizeof(nimcp_gpu_tensor_t*));
+            if (!cache->checkpoint_activations) {
+                NIMCP_LOG_ERROR("Failed to allocate checkpoint activation array");
+                return false;
+            }
+        }
+
+        if (!cache->is_checkpoint_layer) {
+            cache->is_checkpoint_layer = nimcp_calloc(cache->num_layers, sizeof(bool));
+            if (!cache->is_checkpoint_layer) {
+                NIMCP_LOG_ERROR("Failed to allocate checkpoint layer flags");
+                return false;
+            }
+        }
+
+        // Mark checkpoint boundary layers:
+        // - Layer 0 (input) is always a checkpoint
+        // - Every interval-th layer is a checkpoint
+        // - Last layer (output) is always a checkpoint
+        uint32_t count = 0;
+        for (uint32_t l = 0; l < cache->num_layers; l++) {
+            bool is_ckpt = (l == 0) ||
+                           (l == cache->num_layers - 1) ||
+                           (l % interval == 0);
+            cache->is_checkpoint_layer[l] = is_ckpt;
+            if (is_ckpt) count++;
+        }
+        cache->num_checkpoint_layers = count;
+        cache->gradient_checkpointing = true;
+
+        NIMCP_LOG_INFO("Gradient checkpointing enabled: interval=%u, %u/%u layers checkpointed, "
+                       "~%.0f%% memory saved",
+                       interval, count, cache->num_layers,
+                       (1.0 - (double)count / cache->num_layers) * 100.0);
+    } else {
+        // Disable: free checkpoint activations but keep arrays allocated
+        // for potential re-enable
+        if (cache->checkpoint_activations) {
+            for (uint32_t l = 0; l < cache->num_layers; l++) {
+                if (cache->checkpoint_activations[l]) {
+                    nimcp_gpu_tensor_destroy(cache->checkpoint_activations[l]);
+                    cache->checkpoint_activations[l] = NULL;
+                }
+            }
+        }
+        cache->gradient_checkpointing = false;
+        cache->num_checkpoint_layers = 0;
+        NIMCP_LOG_INFO("Gradient checkpointing disabled");
+    }
+
+    return true;
+}
+
+bool nimcp_gpu_weight_cache_is_gradient_checkpointing(
+    const nimcp_gpu_weight_cache_t* cache)
+{
+    if (!cache) return false;
+    return cache->gradient_checkpointing;
 }

@@ -168,12 +168,14 @@ float nimcp_brain_learn_vector_batch(
     const float** targets_array,
     uint32_t num_features,
     uint32_t target_size,
-    uint32_t num_examples)
+    uint32_t num_examples,
+    float learning_rate)
 {
     if (!brain || !brain->internal_brain || !features_array || !targets_array) return -1.0f;
     if (num_examples == 0 || num_features == 0 || target_size == 0) return -1.0f;
 
     brain_t ib = brain->internal_brain;
+    float lr = (learning_rate > 0.0f) ? learning_rate : ib->config.learning_rate;
 
     // Build training_example_t array
     training_example_t* examples = nimcp_calloc(num_examples, sizeof(training_example_t));
@@ -191,7 +193,7 @@ float nimcp_brain_learn_vector_batch(
     // GPU gradient accumulation handles the batch internally
     float loss = adaptive_network_learn_batch(
         ib->network, examples, num_examples,
-        LEARN_MODE_DISTILLATION, ib->config.learning_rate);
+        LEARN_MODE_DISTILLATION, lr);
 
     nimcp_free(examples);
 
@@ -2592,4 +2594,201 @@ nimcp_status_t nimcp_brain_get_avatar_state(
 
     set_error("No error");
     return NIMCP_OK;
+}
+
+
+//=============================================================================
+// Mixed Precision (AMP) Training
+//=============================================================================
+
+nimcp_status_t nimcp_brain_enable_mixed_precision(nimcp_brain_t brain, bool enable)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    brain_t ib = brain->internal_brain;
+
+    // Mixed precision requires GPU
+    if (!ib->gpu_enabled || !ib->gpu_ctx) {
+        set_error("Mixed precision requires GPU acceleration (no GPU context)");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Access the adaptive network's weight cache
+    if (!ib->network) {
+        set_error("Brain has no neural network");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Use extern declarations to access the adaptive network's GPU weight cache
+    extern struct nimcp_gpu_weight_cache_s* adaptive_network_get_gpu_weight_cache(
+        adaptive_network_t network);
+    extern bool nimcp_gpu_weight_cache_enable_mixed_precision(
+        struct nimcp_gpu_weight_cache_s* cache, bool enable);
+
+    struct nimcp_gpu_weight_cache_s* weight_cache =
+        adaptive_network_get_gpu_weight_cache(ib->network);
+    if (!weight_cache) {
+        set_error("GPU weight cache not initialized (run at least one learn step first)");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    if (!nimcp_gpu_weight_cache_enable_mixed_precision(weight_cache, enable)) {
+        set_error("Failed to %s mixed precision on GPU weight cache",
+                  enable ? "enable" : "disable");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    LOG_INFO("Mixed precision %s for brain", enable ? "enabled" : "disabled");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_enable_gradient_checkpointing(
+    nimcp_brain_t brain, bool enable, uint32_t checkpoint_interval)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    brain_t ib = brain->internal_brain;
+
+    // Gradient checkpointing requires GPU
+    if (!ib->gpu_enabled || !ib->gpu_ctx) {
+        set_error("Gradient checkpointing requires GPU acceleration (no GPU context)");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Access the adaptive network's weight cache
+    if (!ib->network) {
+        set_error("Brain has no neural network");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Use extern declarations to access the adaptive network's GPU weight cache
+    extern struct nimcp_gpu_weight_cache_s* adaptive_network_get_gpu_weight_cache(
+        adaptive_network_t network);
+    extern bool nimcp_gpu_weight_cache_set_gradient_checkpointing(
+        struct nimcp_gpu_weight_cache_s* cache, bool enable, uint32_t checkpoint_interval);
+
+    struct nimcp_gpu_weight_cache_s* weight_cache =
+        adaptive_network_get_gpu_weight_cache(ib->network);
+    if (!weight_cache) {
+        set_error("GPU weight cache not initialized (run at least one learn step first)");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    if (!nimcp_gpu_weight_cache_set_gradient_checkpointing(weight_cache, enable, checkpoint_interval)) {
+        set_error("Failed to %s gradient checkpointing on GPU weight cache",
+                  enable ? "enable" : "disable");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    LOG_INFO("Gradient checkpointing %s for brain (interval=%u)",
+             enable ? "enabled" : "disabled", checkpoint_interval);
+    return NIMCP_OK;
+}
+
+
+// ============================================================================
+// Hemispheric Architecture (Callosum + Lateralization)
+// ============================================================================
+
+nimcp_status_t nimcp_brain_enable_hemispheric(nimcp_brain_t brain, bool enable)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    brain_t ib = brain->internal_brain;
+
+    if (enable && !ib->hemispheric_enabled) {
+        // Create corpus callosum if not yet created
+        if (!ib->callosum) {
+            callosum_config_t cc_cfg = callosum_default_config();
+            cc_cfg.bandwidth_mode = CALLOSUM_BW_REALISTIC;
+            cc_cfg.queue_capacity = 256;
+            cc_cfg.drop_on_overflow = true;
+            cc_cfg.initial_connection_strength = 1.0f;
+            cc_cfg.enable_bio_async = false;  // Use lightweight mode
+
+            ib->callosum = callosum_create(&cc_cfg);
+            if (!ib->callosum) {
+                set_error("Failed to create corpus callosum");
+                return NIMCP_ERROR;
+            }
+        }
+
+        // Initialize lateralization with default right-handed profile
+        ib->lateralization = lateralization_default_profile();
+        ib->dominant_hemisphere = HEMISPHERE_LEFT;  // Right-handed default
+        ib->hemispheric_balance = 0.0f;
+        ib->last_callosum_process_us = 0;
+        ib->hemispheric_enabled = true;
+
+        LOG_INFO("Hemispheric architecture enabled (5-channel callosum, lateralization active)");
+    } else if (!enable && ib->hemispheric_enabled) {
+        ib->hemispheric_enabled = false;
+        // Keep callosum allocated for potential re-enable
+        LOG_INFO("Hemispheric architecture disabled");
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+float nimcp_brain_get_lateralization(nimcp_brain_t brain, uint32_t domain)
+{
+    if (!brain || !brain->internal_brain) return -1.0f;
+    if (!brain->internal_brain->hemispheric_enabled) return -1.0f;
+    if (domain >= COGNITIVE_DOMAIN_COUNT) return -1.0f;
+
+    return lateralization_get_dominance(
+        &brain->internal_brain->lateralization,
+        (cognitive_domain_t)domain);
+}
+
+
+nimcp_status_t nimcp_brain_shift_lateralization(
+    nimcp_brain_t brain, uint32_t domain, float shift)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    if (!brain->internal_brain->hemispheric_enabled) {
+        set_error("Hemispheric architecture not enabled");
+        return NIMCP_ERROR_INVALID;
+    }
+    if (domain >= COGNITIVE_DOMAIN_COUNT) {
+        set_error("Invalid cognitive domain index %u (max %d)", domain, COGNITIVE_DOMAIN_COUNT - 1);
+        return NIMCP_ERROR_INVALID;
+    }
+
+    lateralization_shift_dominance(
+        &brain->internal_brain->lateralization,
+        (cognitive_domain_t)domain, shift);
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+uint64_t nimcp_brain_get_callosum_transfers(nimcp_brain_t brain)
+{
+    if (!brain || !brain->internal_brain) return 0;
+    if (!brain->internal_brain->hemispheric_enabled || !brain->internal_brain->callosum) return 0;
+
+    callosum_stats_t stats;
+    if (callosum_get_stats(brain->internal_brain->callosum, &stats) != 0) return 0;
+
+    return stats.total_messages_left_to_right + stats.total_messages_right_to_left;
+}
+
+
+float nimcp_brain_get_hemispheric_balance(nimcp_brain_t brain)
+{
+    if (!brain || !brain->internal_brain) return 0.0f;
+    if (!brain->internal_brain->hemispheric_enabled) return 0.0f;
+    return brain->internal_brain->hemispheric_balance;
 }

@@ -589,15 +589,18 @@ static PyObject* Brain_learn_vector(BrainObject* self, PyObject* args, PyObject*
  * WHY:  Mini-batch training: accumulate gradients across N samples, apply once
  * HOW:  Takes list of (features, target) tuples, calls nimcp_brain_learn_vector_batch
  */
-static PyObject* Brain_learn_vector_batch(BrainObject* self, PyObject* args) {
+static PyObject* Brain_learn_vector_batch(BrainObject* self, PyObject* args, PyObject* kwargs) {
     PyObject* batch_list;
+    float learning_rate = -1.0f;  /* -1 = use default */
+    static char* kwlist[] = {"batch", "learning_rate", NULL};
 
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
 
-    if (!PyArg_ParseTuple(args, "O", &batch_list)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|f", kwlist,
+                                      &batch_list, &learning_rate)) return NULL;
     if (!PyList_Check(batch_list)) {
         PyErr_SetString(PyExc_TypeError, "learn_vector_batch expects a list of (features, target) tuples");
         return NULL;
@@ -656,7 +659,7 @@ static PyObject* Brain_learn_vector_batch(BrainObject* self, PyObject* args) {
     loss = nimcp_brain_learn_vector_batch(
         self->brain, features_array, targets_array,
         (uint32_t)num_features, (uint32_t)target_size,
-        (uint32_t)num_examples);
+        (uint32_t)num_examples, learning_rate);
     Py_END_ALLOW_THREADS
 
     for (Py_ssize_t i = 0; i < num_examples; i++) {
@@ -2425,6 +2428,150 @@ static PyObject* Brain_tokenize(BrainObject* self, PyObject* args) {
 
     return list;
 }
+
+/**
+ * WHAT: Enable or disable FP16 mixed precision training
+ * WHY:  2-3x speedup on modern GPUs with minimal accuracy loss
+ * HOW:  Calls nimcp_brain_enable_mixed_precision() which sets up AMP autocast
+ */
+static PyObject* Brain_enable_mixed_precision(BrainObject* self, PyObject* args) {
+    int enabled = 1;  // default: enable
+    if (!PyArg_ParseTuple(args, "|p", &enabled))
+        return NULL;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_enable_mixed_precision(self->brain, (bool)enabled);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "Failed to %s mixed precision: %s",
+                     enabled ? "enable" : "disable",
+                     nimcp_get_error());
+        return NULL;
+    }
+
+    Py_RETURN_TRUE;
+}
+
+/**
+ * WHAT: Enable or disable gradient checkpointing for memory-efficient training
+ * WHY:  Reduces peak activation memory from O(L) to O(sqrt(L)) by recomputing
+ *       intermediate activations during backward pass instead of storing all
+ * HOW:  Calls nimcp_brain_enable_gradient_checkpointing() on the weight cache
+ */
+static PyObject* Brain_enable_gradient_checkpointing(BrainObject* self, PyObject* args) {
+    int enabled = 1;  // default: enable
+    unsigned int interval = 0;  // default: auto (every 2 layers)
+    if (!PyArg_ParseTuple(args, "|pI", &enabled, &interval))
+        return NULL;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_enable_gradient_checkpointing(
+        self->brain, (bool)enabled, (uint32_t)interval);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "Failed to %s gradient checkpointing: %s",
+                     enabled ? "enable" : "disable",
+                     nimcp_get_error());
+        return NULL;
+    }
+
+    Py_RETURN_TRUE;
+}
+
+// ============================================================================
+// Hemispheric Architecture Python Bindings
+// ============================================================================
+
+static PyObject* Brain_enable_hemispheric(BrainObject* self, PyObject* args) {
+    int enabled = 1;
+    if (!PyArg_ParseTuple(args, "|p", &enabled))
+        return NULL;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_enable_hemispheric(self->brain, (bool)enabled);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "Failed to %s hemispheric architecture: %s",
+                     enabled ? "enable" : "disable",
+                     nimcp_get_error());
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+
+static PyObject* Brain_get_lateralization(BrainObject* self, PyObject* args) {
+    unsigned int domain = 0;
+    if (!PyArg_ParseTuple(args, "I", &domain))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float val = nimcp_brain_get_lateralization(self->brain, domain);
+    return PyFloat_FromDouble((double)val);
+}
+
+
+static PyObject* Brain_shift_lateralization(BrainObject* self, PyObject* args) {
+    unsigned int domain = 0;
+    float shift = 0.0f;
+    if (!PyArg_ParseTuple(args, "If", &domain, &shift))
+        return NULL;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    nimcp_status_t status = nimcp_brain_shift_lateralization(self->brain, domain, shift);
+    if (status != NIMCP_OK) {
+        PyErr_Format(PyExc_RuntimeError, "Lateralization shift failed: %s",
+                     nimcp_get_error());
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+
+static PyObject* Brain_get_callosum_transfers(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    uint64_t count = nimcp_brain_get_callosum_transfers(self->brain);
+    return PyLong_FromUnsignedLongLong(count);
+}
+
+
+static PyObject* Brain_get_hemispheric_balance(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float balance = nimcp_brain_get_hemispheric_balance(self->brain);
+    return PyFloat_FromDouble((double)balance);
+}
+
 
 /**
  * WHAT: Generate text from a semantic vector using the language generator
@@ -5322,9 +5469,9 @@ static PyMethodDef Brain_methods[] = {
      "Hardwire innate circuits: innate_hardwire(stage=0, face=True, voice=True, ...)\n"
      "  Stages: 0=newborn, 1=infant, 2=crawler, 3=toddler, 4=child.\n"
      "  Pre-configures biologically-inspired biases for perception and reflexes."},
-    {"learn_vector_batch", (PyCFunction)Brain_learn_vector_batch, METH_VARARGS,
+    {"learn_vector_batch", (PyCFunction)Brain_learn_vector_batch, METH_VARARGS | METH_KEYWORDS,
      "Batch vector learning with GPU gradient accumulation:\n"
-     "  learn_vector_batch([(features, target), ...]) -> float (avg loss)\n"
+     "  learn_vector_batch([(features, target), ...], learning_rate=None) -> float (avg loss)\n"
      "  Accumulates gradients across all samples, applies averaged update once."},
     {"learn_batch", (PyCFunction)Brain_learn_batch, METH_VARARGS,
      "Learn from batch: learn_batch([(features, label, confidence), ...]) -> [loss, ...]"},
@@ -5621,6 +5768,26 @@ static PyMethodDef Brain_methods[] = {
      "Tokenize text to token IDs: tokenize(text) -> list of int"},
     {"generate_text", (PyCFunction)Brain_generate_text, METH_VARARGS,
      "Generate text from semantic vector: generate_text(semantic_vector) -> dict with text, confidence, fluency"},
+
+    // Mixed precision training
+    {"enable_mixed_precision", (PyCFunction)Brain_enable_mixed_precision, METH_VARARGS,
+     "Enable/disable FP16 mixed precision training: enable_mixed_precision(enabled=True) -> True on success"},
+
+    // Gradient checkpointing
+    {"enable_gradient_checkpointing", (PyCFunction)Brain_enable_gradient_checkpointing, METH_VARARGS,
+     "Enable/disable gradient checkpointing: enable_gradient_checkpointing(enabled=True, interval=0) -> True on success"},
+
+    // Hemispheric Architecture
+    {"enable_hemispheric", (PyCFunction)Brain_enable_hemispheric, METH_VARARGS,
+     "Enable/disable hemispheric architecture (callosum + lateralization): enable_hemispheric(enabled=True) -> True"},
+    {"get_lateralization", (PyCFunction)Brain_get_lateralization, METH_VARARGS,
+     "Get lateralization dominance for cognitive domain (0-11): get_lateralization(domain) -> float (0=right, 1=left)"},
+    {"shift_lateralization", (PyCFunction)Brain_shift_lateralization, METH_VARARGS,
+     "Shift lateralization: shift_lateralization(domain, shift) -> True (+shift=left, -shift=right)"},
+    {"get_callosum_transfers", (PyCFunction)Brain_get_callosum_transfers, METH_NOARGS,
+     "Get total inter-hemispheric callosum transfers: get_callosum_transfers() -> int"},
+    {"get_hemispheric_balance", (PyCFunction)Brain_get_hemispheric_balance, METH_NOARGS,
+     "Get hemispheric balance [-1=left, +1=right]: get_hemispheric_balance() -> float"},
 
     {NULL}
 };

@@ -111,7 +111,7 @@ BRAIN_INPUT_DIM = 1024
 BRAIN_OUTPUT_DIM = 4096
 TAG_DIM = 16           # [0:16]   modality flags + brain state
 PRIMARY_DIM = 512      # [16:528] primary modality features
-TEXT_DIM = 384         # [528:912] text semantic embedding
+TEXT_DIM = 384         # [528:912] text semantic embedding (768-dim model truncated to fit)
 CONTEXT_DIM = 112      # [912:1024] biological context (arousal, sleep, dopamine, etc.)
 
 CHECKPOINT_DIR = "checkpoints/athena"
@@ -133,6 +133,429 @@ MAX_LEARNING_RATE = 0.005    # Ceiling — prevents divergence
 LR_SCALE_STRUGGLING = 1.5    # Scale up when mastery < THRESHOLD_LOW
 LR_SCALE_MASTERED = 0.5      # Scale down when mastery > THRESHOLD_HIGH
 LR_EVAL_INTERVAL = 100       # Steps between LR recalculations
+
+# Cosine annealing LR scheduler constants
+LR_WARMUP_STEPS = 500        # Linear warmup from MIN to BASE
+LR_COSINE_T_MAX = 20000      # Full cosine cycle length
+
+
+class CosineAnnealingLR:
+    """Cosine annealing learning rate with linear warmup.
+
+    Warmup: linearly ramp from lr_min to lr_max over warmup_steps.
+    Then: cosine decay from lr_max to lr_min over t_max steps.
+    """
+
+    def __init__(self, lr_max=BASE_LEARNING_RATE, lr_min=MIN_LEARNING_RATE,
+                 warmup_steps=LR_WARMUP_STEPS, t_max=LR_COSINE_T_MAX):
+        self.lr_max = lr_max
+        self.lr_min = lr_min
+        self.warmup_steps = warmup_steps
+        self.t_max = t_max
+        self.step_count = 0
+
+    def step(self):
+        self.step_count += 1
+
+    def get_lr(self):
+        import math
+        if self.step_count < self.warmup_steps:
+            # Linear warmup
+            return self.lr_min + (self.lr_max - self.lr_min) * (self.step_count / max(1, self.warmup_steps))
+        # Cosine decay
+        progress = (self.step_count - self.warmup_steps) / max(1, self.t_max - self.warmup_steps)
+        progress = min(progress, 1.0)
+        return self.lr_min + 0.5 * (self.lr_max - self.lr_min) * (1.0 + math.cos(math.pi * progress))
+
+
+class AdaptiveBatchSize:
+    """Adaptive batch size based on loss stability.
+
+    Starts with min_batch, increases when loss is stable, decreases on spikes.
+    """
+
+    def __init__(self, min_batch=4, max_batch=32, initial=8):
+        self.min_batch = min_batch
+        self.max_batch = max_batch
+        self.current = initial
+        self.recent_losses = []
+        self.adjust_interval = 200
+        self.step_count = 0
+
+    def record_loss(self, loss):
+        if loss is not None and loss >= 0:
+            self.recent_losses.append(loss)
+            if len(self.recent_losses) > 100:
+                self.recent_losses = self.recent_losses[-100:]
+
+    def step(self):
+        self.step_count += 1
+        if self.step_count % self.adjust_interval == 0 and len(self.recent_losses) >= 50:
+            first_half = np.mean(self.recent_losses[:50])
+            second_half = np.mean(self.recent_losses[50:])
+            variance = np.var(self.recent_losses[-50:])
+            if variance < 0.001 and second_half <= first_half:
+                # Stable — increase batch size for throughput
+                self.current = min(self.current * 2, self.max_batch)
+            elif variance > 0.01 or second_half > first_half * 1.5:
+                # Unstable — decrease batch size for finer updates
+                self.current = max(self.current // 2, self.min_batch)
+
+    @property
+    def size(self):
+        return self.current
+
+
+class ParallelDataLoader:
+    """Parallel dataset loading with prefetch queue.
+
+    Uses a thread pool to generate and encode stimuli in parallel,
+    keeping a buffer of ready-to-use batches ahead of training.
+    """
+
+    def __init__(self, source, composer, num_workers=2, prefetch_batches=4, batch_size=64):
+        from threading import Thread
+        from queue import Queue
+        self.source = source
+        self.composer = composer
+        self.batch_size = batch_size
+        self.queue = Queue(maxsize=prefetch_batches)
+        self._stop = False
+        self._workers = []
+        for _ in range(num_workers):
+            t = Thread(target=self._worker, daemon=True)
+            t.start()
+            self._workers.append(t)
+
+    def _worker(self):
+        while not self._stop:
+            descs = []
+            for _ in range(self.batch_size):
+                if random.random() < 0.5:
+                    descs.append(self.source.get_sensory())
+                else:
+                    desc, _ = generate_sensory_exposure()
+                    descs.append(desc)
+            targets = batch_make_semantic_targets(descs)
+            features_list = [self.composer.compose(text=d, modality="text") for d in descs]
+            batch = list(zip(descs, features_list, targets))
+            try:
+                self.queue.put(batch, timeout=10)
+            except Exception:
+                if self._stop:
+                    break
+
+    def get_batch(self):
+        return self.queue.get(timeout=60)
+
+    def stop(self):
+        self._stop = True
+
+
+# ============================================================================
+# Hard Example Mining: curriculum-aware data sampling
+# ============================================================================
+
+class HardExampleMiner:
+    """Track per-example loss and replay high-loss examples more frequently.
+
+    Maintains a priority buffer of hard examples. During sampling,
+    mixes fresh data with replayed hard examples (ratio controlled by
+    replay_fraction). Hard examples decay in priority over time to
+    avoid getting stuck.
+    """
+
+    def __init__(self, max_buffer=500, replay_fraction=0.25, decay=0.95):
+        self.buffer = []  # list of (priority, description, features, target)
+        self.max_buffer = max_buffer
+        self.replay_fraction = replay_fraction
+        self.decay = decay
+        import heapq
+        self._heapq = heapq
+
+    def record(self, loss, description, features, target):
+        """Record a training example with its loss."""
+        if loss is None or loss < 0:
+            return
+        # Use negative loss for min-heap (we want highest loss on top)
+        entry = (loss, description, features, target)
+        if len(self.buffer) < self.max_buffer:
+            self.buffer.append(entry)
+        elif loss > self.buffer[0][0]:
+            # Replace the lowest-loss entry
+            self.buffer[0] = entry
+            # Maintain partial sort — just keep the list
+            self.buffer.sort(key=lambda x: x[0])
+
+    def get_hard_examples(self, n):
+        """Get n hard examples for replay, or fewer if buffer is small."""
+        if not self.buffer:
+            return []
+        # Sort by loss descending, take top n
+        sorted_buf = sorted(self.buffer, key=lambda x: -x[0])
+        examples = sorted_buf[:n]
+        # Decay priorities
+        self.buffer = [(loss * self.decay, desc, feat, tgt)
+                       for loss, desc, feat, tgt in self.buffer]
+        return [(desc, feat, tgt) for _, desc, feat, tgt in examples]
+
+    def should_replay(self):
+        """Return True if we should replay hard examples this step."""
+        return len(self.buffer) >= 20 and random.random() < self.replay_fraction
+
+
+# ============================================================================
+# Embedding Adapter: lightweight projection to domain-adapted space
+# ============================================================================
+
+class EmbeddingAdapter:
+    """Lightweight linear projection trained on (embedding, brain_output) pairs.
+
+    Instead of fine-tuning the full sentence-transformer, this trains a small
+    projection matrix W that maps frozen embeddings to domain-adapted space:
+        adapted = embedding @ W + bias
+
+    Trains online using collected (input_embedding, output_embedding) pairs
+    from the brain's responses. Refits periodically using least-squares.
+    """
+
+    def __init__(self, input_dim=768, output_dim=768, refit_interval=1000):
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.refit_interval = refit_interval
+        self.W = np.eye(min(input_dim, output_dim), dtype=np.float32)
+        if input_dim != output_dim:
+            self.W = np.random.randn(input_dim, output_dim).astype(np.float32) * 0.01
+        self.bias = np.zeros(output_dim, dtype=np.float32)
+        self.pairs = []  # (input_emb, target_emb) tuples
+        self.max_pairs = 5000
+        self.step_count = 0
+        self.fitted = False
+
+    def record_pair(self, input_emb, brain_output_emb):
+        """Record a (frozen_embedding, brain_response_embedding) pair."""
+        inp = np.asarray(input_emb, dtype=np.float32).ravel()[:self.input_dim]
+        out = np.asarray(brain_output_emb, dtype=np.float32).ravel()[:self.output_dim]
+        if len(inp) < self.input_dim or len(out) < self.output_dim:
+            return
+        self.pairs.append((inp, out))
+        if len(self.pairs) > self.max_pairs:
+            self.pairs = self.pairs[-self.max_pairs:]
+        self.step_count += 1
+
+    def maybe_refit(self):
+        """Refit the projection if enough new data has accumulated."""
+        if self.step_count < self.refit_interval or len(self.pairs) < 100:
+            return
+        self.step_count = 0
+        # Least-squares fit: min ||X @ W + b - Y||^2
+        X = np.array([p[0] for p in self.pairs], dtype=np.float32)
+        Y = np.array([p[1] for p in self.pairs], dtype=np.float32)
+        # Center
+        X_mean = X.mean(axis=0)
+        Y_mean = Y.mean(axis=0)
+        X_c = X - X_mean
+        Y_c = Y - Y_mean
+        # Solve via pseudo-inverse (truncated SVD for stability)
+        try:
+            U, S, Vt = np.linalg.svd(X_c, full_matrices=False)
+            # Truncate small singular values
+            threshold = max(S) * 1e-5
+            S_inv = np.where(S > threshold, 1.0 / S, 0.0)
+            self.W = (Vt.T * S_inv) @ U.T @ Y_c
+            self.bias = Y_mean - X_mean @ self.W
+            self.fitted = True
+        except np.linalg.LinAlgError:
+            pass  # Keep current projection
+
+    def adapt(self, embedding):
+        """Apply the learned projection to a frozen embedding."""
+        if not self.fitted:
+            return embedding
+        emb = np.asarray(embedding, dtype=np.float32).ravel()[:self.input_dim]
+        adapted = emb @ self.W + self.bias
+        return adapted
+
+
+# ============================================================================
+# Knowledge Distillation: extract structured knowledge from Claude
+# ============================================================================
+
+class ClaudeDistiller:
+    """Extract structured concept relationships from Claude's lessons.
+
+    When Claude generates a lesson, also ask for key concepts and their
+    relationships. Use these to create additional training targets that
+    encode the relational structure, not just the surface text embedding.
+    """
+
+    def __init__(self, teacher):
+        self.teacher = teacher
+        self._concept_cache = {}
+
+    def distill_concepts(self, lesson_text):
+        """Ask Claude to extract key concepts and relationships from a lesson.
+
+        Returns list of (concept, relation, concept) triples and their embeddings.
+        """
+        if not self.teacher:
+            return []
+
+        # Check cache
+        key = lesson_text[:100]
+        if key in self._concept_cache:
+            return self._concept_cache[key]
+
+        prompt = (
+            f"From this lesson, extract 2-4 key concepts and their relationships.\n"
+            f"Lesson: \"{lesson_text}\"\n\n"
+            f"Format each as: CONCEPT1 -> RELATION -> CONCEPT2\n"
+            f"Example: photosynthesis -> requires -> sunlight\n"
+            f"Only output the concept triples, one per line."
+        )
+
+        try:
+            response = self.teacher._call_claude(prompt, max_tokens=128)
+            triples = []
+            for line in response.strip().split("\n"):
+                parts = [p.strip() for p in line.split("->")]
+                if len(parts) == 3:
+                    # Create a composite embedding from the triple
+                    composite = f"{parts[0]} {parts[1]} {parts[2]}"
+                    emb = encode_text(composite)
+                    triples.append((parts[0], parts[1], parts[2], emb))
+
+            if len(self._concept_cache) > 500:
+                # Evict oldest
+                oldest = next(iter(self._concept_cache))
+                del self._concept_cache[oldest]
+            self._concept_cache[key] = triples
+            return triples
+        except Exception:
+            return []
+
+    def make_distillation_targets(self, lesson_text, target_dim=BRAIN_OUTPUT_DIM):
+        """Create additional training targets from distilled concepts.
+
+        Returns list of (input_features_text, target_vector) tuples
+        for supplementary training on relational structure.
+        """
+        triples = self.distill_concepts(lesson_text)
+        targets = []
+        for concept1, relation, concept2, emb in triples:
+            # Create target by tiling the composite embedding
+            target = np.zeros(target_dim, dtype=np.float32)
+            for i in range(0, target_dim, len(emb)):
+                n = min(len(emb), target_dim - i)
+                target[i:i + n] = emb[:n]
+            # Input text is the first concept (student should learn the connection)
+            targets.append((concept1, target.tolist()))
+        return targets
+
+
+# ============================================================================
+# Multi-Resolution Temporal: fast + slow LNN processing
+# ============================================================================
+
+class MultiResolutionTemporal:
+    """Process LNN at multiple timescales for richer temporal representation.
+
+    Fast channel: updates every step (sensory-level, short-term patterns).
+    Slow channel: updates every N steps with averaged input (conceptual, long-term).
+
+    The fast channel captures immediate patterns; the slow channel captures
+    trends and persistent state. Both contribute to the biological context.
+    """
+
+    def __init__(self, brain, slow_interval=5):
+        self.brain = brain
+        self.slow_interval = slow_interval
+        self.step_count = 0
+        self.slow_accumulator = None
+        self.slow_count = 0
+
+    def step(self, features):
+        """Process one temporal step at both resolutions."""
+        self.step_count += 1
+        fast_input = features[:128]
+
+        # Fast channel — every step
+        try:
+            self.brain.lnn_forward_step(fast_input)
+        except Exception:
+            pass
+
+        # Accumulate for slow channel
+        arr = np.array(fast_input[:128], dtype=np.float32)
+        if self.slow_accumulator is None:
+            self.slow_accumulator = np.zeros_like(arr)
+        self.slow_accumulator += arr
+        self.slow_count += 1
+
+        # Slow channel — every N steps with averaged input
+        if self.slow_count >= self.slow_interval:
+            avg_input = (self.slow_accumulator / self.slow_count).tolist()
+            # Scale down to represent "smoothed" temporal signal
+            scaled = [x * 0.5 for x in avg_input]
+            try:
+                self.brain.lnn_forward_step(scaled)
+            except Exception:
+                pass
+            self.slow_accumulator = np.zeros_like(arr)
+            self.slow_count = 0
+
+    def get_temporal_context(self):
+        """Get combined fast+slow LNN state for biological context."""
+        try:
+            state = self.brain.lnn_get_state()
+            return state
+        except Exception:
+            return None
+
+
+# ============================================================================
+# Early Stopping: evaluation-driven training termination
+# ============================================================================
+
+class EarlyStopping:
+    """Stop training when validation metrics plateau.
+
+    Tracks a running best metric (e.g., differentiation score from eval probes).
+    If no improvement for `patience` evaluations, signals to stop.
+    """
+
+    def __init__(self, patience=5, min_delta=0.01, mode="min"):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.mode = mode  # "min" for loss, "max" for accuracy
+        self.best = float("inf") if mode == "min" else float("-inf")
+        self.counter = 0
+        self.should_stop = False
+
+    def check(self, metric):
+        """Check if training should stop. Returns True if patience exhausted."""
+        if self.mode == "min":
+            improved = metric < self.best - self.min_delta
+        else:
+            improved = metric > self.best + self.min_delta
+
+        if improved:
+            self.best = metric
+            self.counter = 0
+        else:
+            self.counter += 1
+
+        if self.counter >= self.patience:
+            self.should_stop = True
+
+        return self.should_stop
+
+    def reset(self):
+        """Reset for next stage."""
+        self.best = float("inf") if self.mode == "min" else float("-inf")
+        self.counter = 0
+        self.should_stop = False
+
 
 # ============================================================================
 # Adaptive Curriculum: Mastery tracking + difficulty adjustment
@@ -1579,10 +2002,15 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         print(f"  [Warmup] {len(warmup_texts)} diverse stimuli x3 — done")
 
     losses = []
-    prefetcher = StimulusPrefetcher(source, composer, batch_size=64)
+    prefetcher = ParallelDataLoader(source, composer, num_workers=2, prefetch_batches=4, batch_size=64)
     batch = []
     batch_idx = 0
-    MINI_BATCH_SIZE = 8  # Gradient accumulation mini-batch size
+    lr_scheduler = CosineAnnealingLR(lr_max=BASE_LEARNING_RATE, lr_min=MIN_LEARNING_RATE,
+                                      warmup_steps=LR_WARMUP_STEPS, t_max=num_stimuli)
+    adaptive_batch = AdaptiveBatchSize(min_batch=4, max_batch=32, initial=8)
+    hard_miner = HardExampleMiner(max_buffer=500, replay_fraction=0.2)
+    temporal = MultiResolutionTemporal(brain, slow_interval=5)
+    early_stop = EarlyStopping(patience=8, min_delta=0.005, mode="min")
     mini_batch_buf = []
     for i in range(start_from, num_stimuli):
         # Check biological clock
@@ -1605,22 +2033,44 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             print(f"  Parent: {narration}")
         result = brain.decide_full(features)
 
-        # Accumulate into mini-batch
+        # Accumulate into mini-batch (adaptive size)
         mini_batch_buf.append((features, target, description))
 
-        if len(mini_batch_buf) >= MINI_BATCH_SIZE or i == num_stimuli - 1:
-            # Flush mini-batch with GPU gradient accumulation
+        # Inject hard example replays periodically
+        if hard_miner.should_replay() and len(mini_batch_buf) < adaptive_batch.size:
+            replays = hard_miner.get_hard_examples(2)
+            for rdesc, rfeat, rtgt in replays:
+                mini_batch_buf.append((rfeat, rtgt, rdesc))
+
+        if len(mini_batch_buf) >= adaptive_batch.size or i == num_stimuli - 1:
+            # Flush mini-batch with GPU gradient accumulation + scheduled LR
+            current_lr = lr_scheduler.get_lr()
             try:
                 batch_pairs = [(f, t) for f, t, _ in mini_batch_buf]
-                avg_loss = brain.learn_vector_batch(batch_pairs)
+                avg_loss = brain.learn_vector_batch(batch_pairs,
+                                                     learning_rate=current_lr)
                 if avg_loss is not None and avg_loss >= 0:
-                    for _ in mini_batch_buf:
+                    for f, t, desc in mini_batch_buf:
                         losses.append(avg_loss)
-            except (AttributeError, Exception):
-                # Fallback: per-sample learning if batch API unavailable
-                for f, t, desc in mini_batch_buf:
-                    loss = brain.learn_vector(f, t, label=desc[:50], confidence=0.5)
-                    losses.append(loss)
+                        hard_miner.record(avg_loss, desc, f, t)
+                    adaptive_batch.record_loss(avg_loss)
+            except (AttributeError, TypeError):
+                try:
+                    batch_pairs = [(f, t) for f, t, _ in mini_batch_buf]
+                    avg_loss = brain.learn_vector_batch(batch_pairs)
+                    if avg_loss is not None and avg_loss >= 0:
+                        for f, t, desc in mini_batch_buf:
+                            losses.append(avg_loss)
+                            hard_miner.record(avg_loss, desc, f, t)
+                        adaptive_batch.record_loss(avg_loss)
+                except Exception:
+                    for f, t, desc in mini_batch_buf:
+                        loss = brain.learn_vector(f, t, label=desc[:50],
+                                                   confidence=0.5,
+                                                   learning_rate=current_lr)
+                        losses.append(loss)
+                        hard_miner.record(loss, desc, f, t)
+                        adaptive_batch.record_loss(loss)
 
             if parent.decoder:
                 for f, t, desc in mini_batch_buf:
@@ -1629,6 +2079,8 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                         target_emb = encode_text(desc)
                         parent.decoder.record_pair(out_vec, target_emb, desc)
             mini_batch_buf = []
+            lr_scheduler.step()
+            adaptive_batch.step()
 
         try:
             brain.bg_update_reward(0.5, 0.3)
@@ -1636,17 +2088,15 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             pass
         parent.interaction_count += 1
 
-        # Periodic LNN forward step for temporal context
-        try:
-            brain.lnn_forward_step(features[:128])
-        except Exception:
-            pass
+        # Multi-resolution temporal processing (fast + slow LNN)
+        temporal.step(features)
 
         # Progress report
         if (i + 1) % 500 == 0:
             avg_loss = np.mean(losses[-500:]) if losses else 0
             print(f"\n  [Stage 0] {i+1}/{num_stimuli} — "
-                  f"avg_loss={avg_loss:.4f}")
+                  f"avg_loss={avg_loss:.4f} lr={lr_scheduler.get_lr():.6f} "
+                  f"batch={adaptive_batch.size} hard_buf={len(hard_miner.buffer)}")
             _print_bio_stats(brain)
             losses_to_report = losses[-500:]
             if len(losses_to_report) > 100:
@@ -1658,6 +2108,12 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             if decoder:
                 decoder.force_refit()
             evaluate_performance(brain, composer, decoder, stage=0, step=i+1)
+
+            # Early stopping check on average loss
+            if early_stop.check(avg_loss):
+                print(f"    Early stopping: loss plateaued at {avg_loss:.4f} "
+                      f"for {early_stop.patience} evals")
+                break
 
         # Inspire every 2000 stimuli
         if (i + 1) % 2000 == 0:
@@ -1885,6 +2341,15 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
     all_domains = list(source.ADVANCED_TOPICS.keys())
     total = num_interactions - start_from
 
+    # Global LR envelope — cosine annealing modulates per-domain adaptive LR
+    lr_scheduler = CosineAnnealingLR(lr_max=1.0, lr_min=0.3,
+                                      warmup_steps=200, t_max=num_interactions)
+    hard_miner = HardExampleMiner(max_buffer=500, replay_fraction=0.2)
+    embed_adapter = EmbeddingAdapter(input_dim=768, output_dim=768, refit_interval=1000)
+    distiller = ClaudeDistiller(teacher=parent.teacher)
+    temporal = MultiResolutionTemporal(brain, slow_interval=5)
+    early_stop = EarlyStopping(patience=6, min_delta=0.003, mode="min")
+
     for i in range(start_from, num_interactions):
         action = clock.tick(brain)
         if action == "sleep":
@@ -1917,7 +2382,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             except Exception:
                 pass
 
-        elif r < 0.40:
+        elif r < 0.38:
             # Advanced domain teaching — adaptive difficulty
             domain = mastery.select_domain(active_domains)
             topic_text, domain_name = source.get_advanced(domain)
@@ -1927,23 +2392,42 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             target = make_semantic_target(topic_text)
             result = brain.decide_full(features)
             confidence = mastery.get_confidence_for_domain(domain_name, progress)
-            adaptive_lr = mastery.get_adaptive_lr(domain_name)
+            adaptive_lr = mastery.get_adaptive_lr(domain_name) * lr_scheduler.get_lr()
             loss = brain.learn_vector(features, target,
                                        label=domain_name[:50], confidence=confidence,
                                        learning_rate=adaptive_lr)
+            lr_scheduler.step()
             mastery.record(domain_name, loss, confidence)
+            hard_miner.record(loss, topic_text, features, target)
 
             if decoder:
                 output_vec = result.get("output_vector")
                 if output_vec is not None:
                     target_emb = encode_text(topic_text)
                     decoder.record_pair(output_vec, target_emb, topic_text)
+                    embed_adapter.record_pair(target_emb,
+                                               extract_embedding_from_output(np.array(output_vec)))
 
             if loss is not None:
                 print(f"    loss={loss:.4f} conf={confidence:.2f}")
 
-        elif r < 0.52:
-            # Claude-generated curriculum lesson (if available)
+        elif r < 0.44:
+            # Hard example replay — re-train on highest-loss examples
+            if hard_miner.should_replay():
+                replays = hard_miner.get_hard_examples(3)
+                for rdesc, rfeat, rtgt in replays:
+                    loss = brain.learn_vector(rfeat, rtgt, label="replay",
+                                               confidence=0.7,
+                                               learning_rate=lr_scheduler.get_lr())
+                    if loss is not None and (i + 1) % 200 == 0:
+                        print(f"  [Replay] {rdesc[:60]}: loss={loss:.4f}")
+            else:
+                # Not enough hard examples yet — regular fact review
+                fact, expected = source.get_fact()
+                parent.ask_and_encourage(brain, composer, expected, fact)
+
+        elif r < 0.54:
+            # Claude-generated curriculum lesson with knowledge distillation
             if parent.teacher:
                 curriculum = parent.teacher.get_curriculum(
                     min(3 + int(progress * 2), 5))  # stages 3-5 progressively
@@ -1957,8 +2441,17 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                         features = composer.compose(text=lesson_text, modality="text",
                                                      text_embedding=lesson_emb.tolist())
                         target = make_semantic_target(lesson_text)
-                        brain.learn_vector(features, target,
+                        loss = brain.learn_vector(features, target,
                                             label=spec.domain[:50], confidence=0.7)
+                        hard_miner.record(loss, lesson_text, features, target)
+
+                        # Knowledge distillation — train on concept triples
+                        distill_targets = distiller.make_distillation_targets(lesson_text)
+                        for concept_text, concept_target in distill_targets[:2]:
+                            cfeat = composer.compose(text=concept_text, modality="text")
+                            brain.learn_vector(cfeat, concept_target,
+                                                label=f"distill:{concept_text[:40]}",
+                                                confidence=0.6)
                     except Exception as e:
                         logger.debug("Claude lesson failed: %s", e)
             else:
@@ -2015,10 +2508,10 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                 target = make_semantic_target(topic_text)
                 brain.learn_vector(features, target, label=domain[:50], confidence=0.4)
 
-        # LNN step
+        # Multi-resolution temporal processing (fast + slow LNN)
         try:
             features = composer.compose(text="temporal context update")
-            brain.lnn_forward_step(features[:128])
+            temporal.step(features)
         except Exception:
             pass
 
@@ -2028,14 +2521,21 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             for d in active_domains:
                 mastery.adapt_difficulty(d)
 
+        # Refit embedding adapter periodically
+        if (i + 1) % 1000 == 0:
+            embed_adapter.maybe_refit()
+            if embed_adapter.fitted:
+                print(f"    [EmbedAdapter] Refitted on {len(embed_adapter.pairs)} pairs")
+
         if (i + 1) % 200 == 0:
             print(f"\n  [Stage 3] {i+1}/{num_interactions} — "
-                  f"domains: {', '.join(active_domains)}")
+                  f"domains: {', '.join(active_domains)} "
+                  f"hard_buf={len(hard_miner.buffer)}")
             # Show adaptive LR per domain
             lr_info = ", ".join(
                 f"{d}={mastery.get_adaptive_lr(d):.5f}" for d in active_domains[:5]
             )
-            print(f"  Adaptive LR: {lr_info}")
+            print(f"  Adaptive LR: {lr_info} (envelope={lr_scheduler.get_lr():.3f})")
             print(f"  Mastery:\n{mastery.summary()}")
             _print_bio_stats(brain)
 
@@ -2043,6 +2543,15 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             if decoder:
                 decoder.force_refit()
             evaluate_performance(brain, composer, decoder, stage=3, step=i+1)
+
+            # Early stopping on mastery plateau
+            overall_mastery = np.mean([mastery.get_mastery(d) for d in active_domains]) \
+                if active_domains else 0.0
+            # Invert mastery (higher = better) → early_stop expects "min" mode on loss-like metric
+            if early_stop.check(1.0 - overall_mastery):
+                print(f"    Early stopping: mastery plateaued at {overall_mastery:.3f} "
+                      f"for {early_stop.patience} evals — advancing to next stage")
+                break
 
         # Deep consolidation + synapse pruning every 2000
         if (i + 1) % 2000 == 0:
@@ -2368,7 +2877,7 @@ def main():
                         num_outputs=args.num_outputs,
                         neuron_count=args.neuron_count,
                         checkpoint=checkpoint_path,
-                        init_mode='fast')
+                        init_mode='full')
 
     # --- CRITICAL: Disable fast training → ALL bio subsystems active ---
     brain.set_fast_training(False)
@@ -2379,6 +2888,20 @@ def main():
     # Athena needs raw output vectors for embedding-based developmental learning.
     brain.set_task_type("regression")
     print("  Task type: REGRESSION (raw output, no softmax)")
+
+    # --- Enable mixed precision (FP16) for ~2x GPU throughput ---
+    try:
+        brain.enable_mixed_precision(True)
+        print("  Mixed precision: ON (FP16 compute, FP32 accumulation)")
+    except Exception as e:
+        print(f"  Mixed precision: FAILED ({e})")
+
+    # --- Enable gradient checkpointing for memory-efficient training ---
+    try:
+        brain.enable_gradient_checkpointing(True, 2)
+        print("  Gradient checkpointing: ON (every 2 layers)")
+    except Exception as e:
+        print(f"  Gradient checkpointing: FAILED ({e})")
 
     # --- Enable biological plasticity ---
     try:

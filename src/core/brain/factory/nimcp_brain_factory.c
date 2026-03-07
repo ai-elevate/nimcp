@@ -1078,6 +1078,37 @@ brain_t brain_create_custom(const brain_config_t* config)
     if (!init_glymphatic_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
+    // HEMISPHERIC ARCHITECTURE (CALLOSUM + LATERALIZATION)
+    // ========================================================================
+    // Initialize corpus callosum and lateralization for inter-hemispheric
+    // communication. Lightweight: no sub-brains, just callosum channels and
+    // domain routing weights. Neurons are logically partitioned.
+    // BIOLOGICAL: Corpus callosum (~200M axons), lateralized processing
+    // DEPENDS ON: White matter tracts (callosum IS a white matter tract)
+    {
+        callosum_config_t cc_cfg = callosum_default_config();
+        cc_cfg.bandwidth_mode = CALLOSUM_BW_REALISTIC;
+        cc_cfg.queue_capacity = 256;
+        cc_cfg.drop_on_overflow = true;
+        cc_cfg.initial_connection_strength = 1.0f;
+        cc_cfg.enable_bio_async = false;
+
+        brain->callosum = callosum_create(&cc_cfg);
+        if (!brain->callosum) {
+            LOG_WARN(LOG_MODULE, "Corpus callosum creation failed — hemispheric features disabled");
+        }
+
+        brain->lateralization = lateralization_default_profile();
+        brain->dominant_hemisphere = HEMISPHERE_LEFT;
+        brain->hemispheric_balance = 0.0f;
+        brain->hemispheric_enabled = (brain->callosum != NULL);
+        brain->last_callosum_process_us = 0;
+
+        if (brain->hemispheric_enabled) {
+            LOG_INFO(LOG_MODULE, "Hemispheric architecture initialized (5-channel callosum)");
+        }
+    }
+
     // ========================================================================
     // FUZZY LOGIC (CROSS-CUTTING UTILITY)
     // ========================================================================

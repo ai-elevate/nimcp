@@ -4023,6 +4023,12 @@ void adaptive_network_set_gpu_weight_cache(adaptive_network_t network, struct ni
     network->gpu_weight_cache = cache;
 }
 
+struct nimcp_gpu_weight_cache_s* adaptive_network_get_gpu_weight_cache(adaptive_network_t network)
+{
+    if (!network) return NULL;
+    return network->gpu_weight_cache;
+}
+
 void adaptive_network_set_gpu_enabled(adaptive_network_t network, bool enabled)
 {
     if (!network) return;

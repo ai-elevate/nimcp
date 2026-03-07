@@ -1256,6 +1256,75 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     uint32_t active_neurons = perform_forward_pass(brain, features, num_features, decision);
 
     // ========================================================================
+    // STAGE 1.5: Hemispheric Processing — Callosum Transfer + Lateralization
+    // ========================================================================
+    // WHAT: Route output through inter-hemispheric channels, modulate by dominance
+    // WHY:  Biological brains lateralize processing; callosum coordinates hemispheres
+    // HOW:  Send output through cognitive callosum channel, update hemisphere balance
+    //
+    // BIOLOGICAL BASIS:
+    // - Corpus callosum transfers ~200 msg/s between hemispheres
+    // - Language left-lateralized (95%), spatial right-lateralized (80%)
+    // - Lateralization shifts with experience (neuroplasticity)
+    //
+    if (brain->hemispheric_enabled && brain->callosum && decision->output_vector) {
+        // Determine cognitive domain from input features (heuristic: variance profile)
+        // High-variance = spatial/perceptual (right), low-variance = language/logic (left)
+        float feature_variance = 0.0f;
+        float feature_mean = 0.0f;
+        uint32_t n_sample = (num_features > 64) ? 64 : num_features;
+        for (uint32_t i = 0; i < n_sample; i++) {
+            feature_mean += features[i];
+        }
+        feature_mean /= (float)n_sample;
+        for (uint32_t i = 0; i < n_sample; i++) {
+            float d = features[i] - feature_mean;
+            feature_variance += d * d;
+        }
+        feature_variance /= (float)n_sample;
+
+        // Map variance to cognitive domain (simplified heuristic)
+        cognitive_domain_t domain = COGNITIVE_DOMAIN_LANGUAGE;
+        if (feature_variance > 0.5f) {
+            domain = COGNITIVE_DOMAIN_SPATIAL;
+        } else if (feature_variance > 0.2f) {
+            domain = COGNITIVE_DOMAIN_ATTENTION_GLOBAL;
+        }
+
+        // Get lateralization dominance for this domain
+        float dominance = lateralization_get_dominance(
+            &brain->lateralization, domain);
+        hemisphere_id_t dominant = lateralization_get_dominant_hemisphere(
+            &brain->lateralization, domain);
+
+        // Send output through callosum cognitive channel
+        // The source hemisphere is the dominant one for this domain
+        uint32_t send_size = decision->output_size * sizeof(float);
+        if (send_size > 4096) send_size = 4096;  // Callosum message size limit
+        callosum_send(brain->callosum, dominant,
+                      CALLOSUM_CHANNEL_COGNITIVE,
+                      CALLOSUM_PRIORITY_NORMAL,
+                      0,  // message_type: inference output
+                      decision->output_vector,
+                      send_size);
+
+        // Process any queued callosum messages (deliver after latency)
+        callosum_process_queues(brain->callosum);
+
+        // Update hemispheric balance: positive = right dominant, negative = left
+        float balance_delta = (dominant == HEMISPHERE_LEFT) ? -0.01f : 0.01f;
+        brain->hemispheric_balance = brain->hemispheric_balance * 0.99f + balance_delta;
+
+        // Modulate output by lateralization strength
+        // Stronger lateralization = more confident (specialized processing)
+        float lat_strength = fabsf(dominance - 0.5f) * 2.0f;  // 0.0-1.0
+        float lat_boost = 1.0f + lat_strength * 0.1f;  // Up to 10% confidence boost
+        for (uint32_t i = 0; i < decision->output_size; i++) {
+            decision->output_vector[i] *= lat_boost;
+        }
+    }
+
+    // ========================================================================
     // STAGE 2: Predictive Processing - Compute Prediction Error
     // ========================================================================
     // WHAT: Compute mismatch between prediction and actual output

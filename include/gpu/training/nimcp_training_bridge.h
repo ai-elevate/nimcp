@@ -39,6 +39,7 @@
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/sparse/nimcp_sparse_gpu.h"
+#include "gpu/tensor/nimcp_amp_autocast.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 
 #ifdef __cplusplus
@@ -104,6 +105,22 @@ typedef struct nimcp_gpu_weight_cache_s {
     float**    d_bias_grad_accum;          /**< Per-transition GPU bias gradient accum [layer_size each] */
     uint32_t   grad_accum_count;           /**< Number of samples accumulated since last flush */
     bool       grad_accum_initialized;     /**< True once accum buffers are allocated */
+
+    // Mixed precision (AMP) support
+    nimcp_autocast_ctx_t* autocast_ctx;    /**< Autocast context for FP16 mixed precision (NULL if disabled) */
+    bool       mixed_precision_enabled;    /**< True if mixed precision training is active */
+
+    // Gradient checkpointing (trade compute for memory)
+    // WHY: Reduces peak activation memory from O(L) to O(sqrt(L)) by only storing
+    //       activations at checkpoint layers, recomputing intermediates during backward.
+    // HOW: During forward pass, only keep activations at every checkpoint_interval-th
+    //       layer. During backward, recompute intermediate activations from the nearest
+    //       checkpoint before computing gradients for that segment.
+    bool       gradient_checkpointing;     /**< Enable gradient checkpointing */
+    uint32_t   checkpoint_interval;        /**< Save activations every N layers (default: 2) */
+    nimcp_gpu_tensor_t** checkpoint_activations; /**< Saved activations at checkpoint layers only */
+    bool*      is_checkpoint_layer;        /**< Per-layer: true if this layer is a checkpoint boundary */
+    uint32_t   num_checkpoint_layers;      /**< Number of checkpoint boundary layers */
 } nimcp_gpu_weight_cache_t;
 
 //=============================================================================
@@ -238,10 +255,10 @@ NIMCP_EXPORT float nimcp_gpu_compute_loss(
  * (sparse matrix-matrix multiply) instead of per-sample SpMV.
  *
  * @param cache Weight cache (weights must be uploaded)
- * @param inputs Input data row-major [batch_size × input_size] (host memory)
+ * @param inputs Input data row-major [batch_size x input_size] (host memory)
  * @param batch_size Number of samples in batch
  * @param input_size Input vector size (must match layer_sizes[0])
- * @param outputs Output buffer row-major [batch_size × output_size] (host memory)
+ * @param outputs Output buffer row-major [batch_size x output_size] (host memory)
  * @param output_size Output vector size (must match layer_sizes[last])
  * @return true on success
  */
@@ -330,6 +347,76 @@ NIMCP_EXPORT bool nimcp_gpu_gradient_flush_and_sync(
     neural_network_t net,
     float min_weight, float max_weight,
     float* out_grad_norm
+);
+
+//=============================================================================
+// Mixed Precision (AMP) Support
+//=============================================================================
+
+/**
+ * @brief Enable or disable FP16 mixed precision on the GPU weight cache
+ *
+ * Creates an autocast context for FP16 compute with FP32 storage.
+ * When enabled, backward accumulation and gradient flush operations
+ * are wrapped in autocast begin/end regions for automatic precision
+ * selection.
+ *
+ * @param cache Weight cache
+ * @param enable true to enable, false to disable
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_weight_cache_enable_mixed_precision(
+    nimcp_gpu_weight_cache_t* cache,
+    bool enable
+);
+
+/**
+ * @brief Check if mixed precision is enabled on the weight cache
+ *
+ * @param cache Weight cache
+ * @return true if mixed precision is active
+ */
+NIMCP_EXPORT bool nimcp_gpu_weight_cache_is_mixed_precision(
+    const nimcp_gpu_weight_cache_t* cache
+);
+
+//=============================================================================
+// Gradient Checkpointing Control
+//=============================================================================
+
+/**
+ * @brief Enable or disable gradient checkpointing on a weight cache
+ *
+ * When enabled, the forward pass only retains activations at every
+ * checkpoint_interval-th layer. During backward pass, intermediate
+ * activations are recomputed from the nearest checkpoint boundary.
+ * This trades ~1 extra forward pass per segment for O(sqrt(L)) memory
+ * instead of O(L).
+ *
+ * MEMORY SAVINGS:
+ *   Without checkpointing: stores activations for ALL L layers
+ *   With checkpointing (interval=2): stores ~L/2 activations, recomputes rest
+ *   With checkpointing (interval=sqrt(L)): stores ~sqrt(L) activations
+ *
+ * @param cache Weight cache
+ * @param enable true to enable, false to disable
+ * @param checkpoint_interval Layers between checkpoints (0 = auto = every 2 layers)
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_weight_cache_set_gradient_checkpointing(
+    nimcp_gpu_weight_cache_t* cache,
+    bool enable,
+    uint32_t checkpoint_interval
+);
+
+/**
+ * @brief Check if gradient checkpointing is enabled on the weight cache
+ *
+ * @param cache Weight cache
+ * @return true if gradient checkpointing is active
+ */
+NIMCP_EXPORT bool nimcp_gpu_weight_cache_is_gradient_checkpointing(
+    const nimcp_gpu_weight_cache_t* cache
 );
 
 #ifdef __cplusplus

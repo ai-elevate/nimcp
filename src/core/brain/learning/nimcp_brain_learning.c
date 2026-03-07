@@ -704,6 +704,46 @@ sequential_training:
         sleep_accumulate_pressure(brain->sleep_system, 1);
     }
 
+    /* Hemispheric callosum transfer: send error signal across hemispheres.
+     * BIOLOGICAL: Learning in one hemisphere signals the other via callosum
+     * to coordinate bilateral representation. Low loss → strong signal
+     * (successful learning consolidates across hemispheres). */
+    if (brain->hemispheric_enabled && brain->callosum && loss >= 0.0f) {
+        /* Determine source hemisphere from feature profile */
+        float fvar = 0.0f, fmean = 0.0f;
+        uint32_t ns = (num_features > 32) ? 32 : num_features;
+        for (uint32_t i = 0; i < ns; i++) fmean += features[i];
+        fmean /= (float)ns;
+        for (uint32_t i = 0; i < ns; i++) {
+            float d = features[i] - fmean;
+            fvar += d * d;
+        }
+        fvar /= (float)ns;
+
+        hemisphere_id_t src = (fvar > 0.3f) ? HEMISPHERE_RIGHT : HEMISPHERE_LEFT;
+
+        /* Send learning signal: loss value as 4-byte payload via sensory channel */
+        callosum_send(brain->callosum, src,
+                      CALLOSUM_CHANNEL_SENSORY,
+                      (loss < 0.1f) ? CALLOSUM_PRIORITY_HIGH : CALLOSUM_PRIORITY_NORMAL,
+                      1,  /* message_type=1: learning signal */
+                      &loss, sizeof(float));
+
+        /* Lateralization plasticity: shift dominance toward the hemisphere
+         * that just learned successfully (low loss → stronger shift) */
+        if (loss < 0.5f) {
+            float shift = (1.0f - loss) * 0.001f;
+            cognitive_domain_t domain = (fvar > 0.3f) ?
+                COGNITIVE_DOMAIN_SPATIAL : COGNITIVE_DOMAIN_LANGUAGE;
+            /* Positive shift = more left, negative = more right */
+            float signed_shift = (src == HEMISPHERE_LEFT) ? shift : -shift;
+            lateralization_shift_dominance(
+                &brain->lateralization, domain, signed_shift);
+        }
+
+        callosum_process_queues(brain->callosum);
+    }
+
     clear_cache(brain);
     return loss;
 }

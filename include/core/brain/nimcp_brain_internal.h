@@ -59,6 +59,10 @@
 
 // Additional cognitive modules not in aggregates
 #include "cognitive/parietal/nimcp_parietal.h"
+
+// Hemispheric Architecture (Callosum + Lateralization)
+#include "core/brain/hemispheric/nimcp_corpus_callosum.h"
+#include "core/brain/hemispheric/nimcp_lateralization.h"
 #include "cognitive/parietal/nimcp_intuition_integrations.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
@@ -1900,6 +1904,22 @@ struct brain_struct {
     uint32_t last_experience_output_size;           // Size of cached output
     uint64_t experience_count;                      // Monotonic experience counter
     uint64_t synaptogenesis_count;                  // Total new synapses formed via experience
+
+    // =========================================================================
+    // HEMISPHERIC ARCHITECTURE (Callosum + Lateralization)
+    // =========================================================================
+    // Lightweight integration: corpus callosum channels + lateralization routing
+    // without creating full sub-brains (avoids 3x memory cost).
+    // Callosum provides inter-hemispheric signal transfer with bandwidth/latency.
+    // Lateralization routes cognitive domains to dominant hemisphere.
+    // Neurons are logically split: first half = left, second half = right.
+    //
+    corpus_callosum_t* callosum;                     // Inter-hemispheric bridge (5 channels)
+    lateralization_profile_t lateralization;          // Domain-to-hemisphere routing weights
+    hemisphere_id_t dominant_hemisphere;              // Current overall dominant hemisphere
+    bool hemispheric_enabled;                        // Master enable flag
+    float hemispheric_balance;                       // Left-right activity balance [-1=left, +1=right]
+    uint64_t last_callosum_process_us;               // Last callosum queue processing timestamp
 
     // === PRE-ALLOCATED SCRATCH BUFFERS FOR learn() HOT PATH ===
     //
