@@ -83,3 +83,19 @@ gtest_discover_tests(unit_synapse_fast_path
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     PROPERTIES LABELS "unit;optimization;synapse_fast" TIMEOUT 120
 )
+
+# Hot Path Optimizations (Phase 2)
+add_executable(unit_hot_path_optimizations
+    test_hot_path_optimizations.cpp
+)
+target_link_libraries(unit_hot_path_optimizations
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_hot_path_optimizations
+    PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_hot_path_optimizations PRIVATE cxx_std_17)
+gtest_discover_tests(unit_hot_path_optimizations
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES LABELS "unit;optimization;hot_path" TIMEOUT 120
+)

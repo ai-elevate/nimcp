@@ -215,27 +215,34 @@ bool brain_decide_parallel_pre_forward(
         args[i].ctx = ctx;
     }
 
+    /* OPTIMIZATION: Only submit non-stub tasks to thread pool.
+     * Stub stages (engram_recall, sleep, curiosity, predictive) just set a value
+     * to 0.0f with TODO comments — submitting them wastes thread pool bandwidth.
+     * Mark them done immediately instead. Wellbeing is the only real implementation. */
     bool all_submitted = true;
+
+    // Wellbeing: Real implementation — submit to pool
     if (nimcp_pool_submit(pool, stage_wellbeing_task,     &args[0]) != NIMCP_SUCCESS) {
         ctx->wellbeing_done = true;  // Mark done so caller doesn't hang
         all_submitted = false;
     }
-    if (nimcp_pool_submit(pool, stage_engram_recall_task, &args[1]) != NIMCP_SUCCESS) {
-        ctx->engram_done = true;
-        all_submitted = false;
+
+    // Engram recall: TODO stub — skip pool submission
+    ctx->engram_strength = 0.0f;
+    ctx->engram_done = true;
+
+    // Sleep: TODO stub — skip pool submission
+    ctx->sleep_pressure = 0.0f;
+    ctx->sleep_done = true;
+
+    // Curiosity: TODO stub (reads cached value) — skip pool submission
+    if (brain->curiosity) {
+        ctx->curiosity_score = brain->last_curiosity_drive;
     }
-    if (nimcp_pool_submit(pool, stage_sleep_task,         &args[2]) != NIMCP_SUCCESS) {
-        ctx->sleep_done = true;
-        all_submitted = false;
-    }
-    if (nimcp_pool_submit(pool, stage_curiosity_task,     &args[3]) != NIMCP_SUCCESS) {
-        ctx->curiosity_done = true;
-        all_submitted = false;
-    }
-    if (nimcp_pool_submit(pool, stage_predictive_task,    &args[4]) != NIMCP_SUCCESS) {
-        ctx->prediction_done = true;
-        all_submitted = false;
-    }
+    ctx->curiosity_done = true;
+
+    // Predictive: TODO stub — skip pool submission
+    ctx->prediction_done = true;
 
     if (!all_submitted) {
         LOG_MODULE_WARN(LOG_MODULE, "Some pre-forward tasks failed to submit to thread pool");
@@ -263,22 +270,19 @@ bool brain_decide_submit_post_forward(
         args[i].ctx = ctx;
     }
 
-    if (nimcp_pool_submit(pool, stage_engram_consol_task,    &args[0]) != NIMCP_SUCCESS)
-        ctx->engram_consol_done = true;
-    if (nimcp_pool_submit(pool, stage_systems_consol_task,   &args[1]) != NIMCP_SUCCESS)
-        ctx->systems_consol_done = true;
-    if (nimcp_pool_submit(pool, stage_wm_transfer_task,      &args[2]) != NIMCP_SUCCESS)
-        ctx->wm_transfer_done = true;
-    if (nimcp_pool_submit(pool, stage_semantic_task,          &args[3]) != NIMCP_SUCCESS)
-        ctx->semantic_done = true;
-    if (nimcp_pool_submit(pool, stage_glial_task,             &args[4]) != NIMCP_SUCCESS)
-        ctx->glial_done = true;
-    if (nimcp_pool_submit(pool, stage_tom_task,               &args[5]) != NIMCP_SUCCESS)
-        ctx->tom_done = true;
-    if (nimcp_pool_submit(pool, stage_shannon_task,           &args[6]) != NIMCP_SUCCESS)
-        ctx->shannon_done = true;
-    if (nimcp_pool_submit(pool, stage_quantum_shannon_task,   &args[7]) != NIMCP_SUCCESS)
-        ctx->quantum_shannon_done = true;
+    /* OPTIMIZATION: All 8 post-forward stages are currently TODO stubs that just
+     * set done=true. Skip pool submission entirely and mark all done immediately.
+     * When any stage gets a real implementation, move it back to pool submission. */
+    ctx->engram_consol_done = true;
+    ctx->systems_consol_done = true;
+    ctx->wm_transfer_done = true;
+    ctx->semantic_done = true;
+    ctx->glial_done = true;
+    ctx->tom_done = true;
+    ctx->shannon_done = true;
+    ctx->quantum_shannon_done = true;
+
+    (void)args;  /* Suppress unused warning — args allocated for future non-stub stages */
 
     // Non-blocking — caller runs sequential stages on main thread, then calls pool_wait.
     // Store args pointer in ctx so caller can free after pool_wait completes.

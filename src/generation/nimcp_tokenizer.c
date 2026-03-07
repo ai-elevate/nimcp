@@ -25,6 +25,16 @@
  * Internal Structure Definition
  *===========================================================================*/
 
+/* Frequency cache: small direct-mapped cache for hot token lookups */
+#define TOKEN_FREQ_CACHE_SIZE 256
+#define TOKEN_FREQ_CACHE_TOKEN_LEN 32
+
+typedef struct {
+    char token[TOKEN_FREQ_CACHE_TOKEN_LEN];
+    uint32_t id;
+    bool valid;
+} token_freq_cache_entry_t;
+
 struct tokenizer {
     char**   id_to_token;       /**< Array: id -> heap-allocated token string */
     hash_table_t* token_to_id;  /**< String -> uint32_t ID lookup */
@@ -42,7 +52,65 @@ struct tokenizer {
     char**   merge_rules;       /**< Array of "tokenA tokenB" strings */
     uint32_t num_merges;
     uint32_t merge_capacity;
+
+    /* Frequency cache for fast token-to-id lookups */
+    token_freq_cache_entry_t freq_cache[TOKEN_FREQ_CACHE_SIZE];
 };
+
+/**
+ * WHAT: Compute a simple hash index into the frequency cache
+ * WHY:  Fast O(1) cache lookup using first few characters of the token
+ * HOW:  FNV-1a-like hash of first few chars, masked to cache size
+ */
+static inline uint32_t freq_cache_index(const char* token)
+{
+    uint32_t h = 2166136261u;
+    for (int i = 0; token[i] && i < 8; i++) {
+        h ^= (uint32_t)(unsigned char)token[i];
+        h *= 16777619u;
+    }
+    return h & (TOKEN_FREQ_CACHE_SIZE - 1);
+}
+
+/**
+ * WHAT: Look up a token in the frequency cache
+ * WHY:  Avoid hash table lookup for frequently accessed tokens
+ * HOW:  Direct-mapped cache indexed by simple hash of token string
+ *
+ * @return Token ID if cache hit, TOKENIZER_INVALID_ID on miss
+ */
+static inline uint32_t freq_cache_lookup(const token_freq_cache_entry_t* cache, const char* token)
+{
+    uint32_t idx = freq_cache_index(token);
+    const token_freq_cache_entry_t* entry = &cache[idx];
+    if (entry->valid && strncmp(entry->token, token, TOKEN_FREQ_CACHE_TOKEN_LEN - 1) == 0) {
+        return entry->id;
+    }
+    return TOKENIZER_INVALID_ID;
+}
+
+/**
+ * WHAT: Store a token-to-id mapping in the frequency cache
+ */
+static inline void freq_cache_store(token_freq_cache_entry_t* cache, const char* token, uint32_t id)
+{
+    if (strlen(token) >= TOKEN_FREQ_CACHE_TOKEN_LEN) return; /* Too long to cache */
+    uint32_t idx = freq_cache_index(token);
+    token_freq_cache_entry_t* entry = &cache[idx];
+    strncpy(entry->token, token, TOKEN_FREQ_CACHE_TOKEN_LEN - 1);
+    entry->token[TOKEN_FREQ_CACHE_TOKEN_LEN - 1] = '\0';
+    entry->id = id;
+    entry->valid = true;
+}
+
+/**
+ * WHAT: Invalidate the entire frequency cache
+ * WHY:  Must be called when vocabulary changes (add/remove tokens, reset)
+ */
+static inline void freq_cache_invalidate(token_freq_cache_entry_t* cache)
+{
+    memset(cache, 0, TOKEN_FREQ_CACHE_SIZE * sizeof(token_freq_cache_entry_t));
+}
 
 /*=============================================================================
  * Internal Helpers — String Utilities
@@ -157,6 +225,10 @@ static int internal_add_token(tokenizer_t* tok, const char* token)
     }
 
     tok->vocab_size++;
+
+    /* Invalidate frequency cache since vocabulary changed */
+    freq_cache_invalidate(tok->freq_cache);
+
     return (int)id;
 }
 
@@ -583,6 +655,9 @@ tokenizer_t* tokenizer_create(const tokenizer_config_t* config)
     tok->bos_id = (uint32_t)bos_id;
     tok->eos_id = (uint32_t)eos_id;
 
+    /* Initialize frequency cache (already zeroed by nimcp_calloc, explicit for clarity) */
+    freq_cache_invalidate(tok->freq_cache);
+
     LOG_INFO("tokenizer_create: created with capacity=%u, special tokens at IDs %u/%u/%u/%u",
              tok->vocab_capacity, tok->pad_id, tok->unk_id, tok->bos_id, tok->eos_id);
 
@@ -949,10 +1024,21 @@ int tokenizer_encode(const tokenizer_t* tok, const char* text,
     for (uint32_t w = 0; w < num_words && *num_tokens < max_tokens; w++) {
         const char* word = words[w];
 
+        /* Try frequency cache first (avoids hash table lookup for hot tokens) */
+        uint32_t cached_id = freq_cache_lookup(tok->freq_cache, word);
+        if (cached_id != TOKENIZER_INVALID_ID) {
+            token_ids[*num_tokens] = cached_id;
+            (*num_tokens)++;
+            continue;
+        }
+
         /* Try direct vocabulary lookup */
         void* val = hash_table_lookup_string(tok->token_to_id, word);
         if (val) {
-            token_ids[*num_tokens] = *(uint32_t*)val;
+            uint32_t word_id = *(uint32_t*)val;
+            /* Store in frequency cache for next time */
+            freq_cache_store(((tokenizer_t*)tok)->freq_cache, word, word_id);
+            token_ids[*num_tokens] = word_id;
             (*num_tokens)++;
             continue;
         }
@@ -1084,10 +1170,19 @@ uint32_t tokenizer_token_to_id(const tokenizer_t* tok, const char* token)
 {
     if (!tok || !token) return TOKENIZER_INVALID_ID;
 
+    /* Check frequency cache first */
+    uint32_t cached = freq_cache_lookup(tok->freq_cache, token);
+    if (cached != TOKENIZER_INVALID_ID) return cached;
+
     void* val = hash_table_lookup_string(tok->token_to_id, token);
     if (!val) return TOKENIZER_INVALID_ID;
 
-    return *(uint32_t*)val;
+    uint32_t id = *(uint32_t*)val;
+
+    /* Store in frequency cache for next time (cast away const for cache update) */
+    freq_cache_store(((tokenizer_t*)tok)->freq_cache, token, id);
+
+    return id;
 }
 
 const char* tokenizer_id_to_token(const tokenizer_t* tok, uint32_t id)

@@ -1043,25 +1043,42 @@ uint32_t perform_forward_pass(brain_t brain, const float* features, uint32_t num
         ctx->output_size = decision->output_size;
         ctx->use_readonly = brain->can_use_readonly;
 
-        /* Allocate per-network output buffers */
-        ctx->adaptive_output = nimcp_calloc(decision->output_size, sizeof(float));
-        if (!ctx->adaptive_output) {
-            nimcp_free(ctx);
-            goto sequential_fallback;
+        /* OPTIMIZATION: Reuse pre-allocated inference buffers when possible.
+         * Eliminates 3 calloc+free round-trips per forward pass. Buffers are
+         * lazily allocated on first use and grow if output_size changes. */
+        if (brain->inference_buf_size < decision->output_size || !brain->inference_buf_adaptive) {
+            /* (Re-)allocate pre-allocated buffers to match current output size */
+            nimcp_free(brain->inference_buf_adaptive);
+            nimcp_free(brain->inference_buf_cnn);
+            nimcp_free(brain->inference_buf_snn);
+            brain->inference_buf_adaptive = nimcp_calloc(decision->output_size, sizeof(float));
+            brain->inference_buf_cnn = nimcp_calloc(decision->output_size, sizeof(float));
+            brain->inference_buf_snn = nimcp_calloc(decision->output_size, sizeof(float));
+            brain->inference_buf_size = decision->output_size;
+            if (!brain->inference_buf_adaptive) {
+                nimcp_free(ctx);
+                goto sequential_fallback;
+            }
+        } else {
+            /* Zero pre-allocated buffers for clean reuse */
+            memset(brain->inference_buf_adaptive, 0, decision->output_size * sizeof(float));
+            if (brain->inference_buf_cnn)
+                memset(brain->inference_buf_cnn, 0, decision->output_size * sizeof(float));
+            if (brain->inference_buf_snn)
+                memset(brain->inference_buf_snn, 0, decision->output_size * sizeof(float));
         }
+
+        ctx->adaptive_output = brain->inference_buf_adaptive;
         if (has_cnn) {
-            ctx->cnn_output = nimcp_calloc(decision->output_size, sizeof(float));
+            ctx->cnn_output = brain->inference_buf_cnn;
             if (!ctx->cnn_output) {
-                nimcp_free(ctx->adaptive_output);
                 nimcp_free(ctx);
                 goto sequential_fallback;
             }
         }
         if (has_snn) {
-            ctx->snn_output = nimcp_calloc(decision->output_size, sizeof(float));
+            ctx->snn_output = brain->inference_buf_snn;
             if (!ctx->snn_output) {
-                if (ctx->cnn_output) nimcp_free(ctx->cnn_output);
-                nimcp_free(ctx->adaptive_output);
                 nimcp_free(ctx);
                 goto sequential_fallback;
             }
@@ -1083,10 +1100,8 @@ uint32_t perform_forward_pass(brain_t brain, const float* features, uint32_t num
         fuse_forward_outputs(ctx, decision->output_vector, decision->output_size,
                              &active_neurons, decision);
 
-        /* Cleanup */
-        if (ctx->snn_output) nimcp_free(ctx->snn_output);
-        if (ctx->cnn_output) nimcp_free(ctx->cnn_output);
-        nimcp_free(ctx->adaptive_output);
+        /* Cleanup — only free the context struct, not the output buffers
+         * (they are pre-allocated in brain->inference_buf_* and reused). */
         nimcp_free(ctx);
 
         goto lnn_gating;

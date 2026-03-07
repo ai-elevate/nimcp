@@ -610,8 +610,13 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     nimcp_brain_learning_adapt_learning_rate(brain, loss);
     __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
 
-    /* Biological plasticity integration (skip in fast training or batch mode) */
-    if (!brain->config.fast_training_mode && !brain->config.defer_bio_plasticity) {
+    /* Biological plasticity integration (skip in fast training or batch mode).
+     * OPTIMIZATION: Gate expensive plasticity updates to run every 10 steps.
+     * Biological plasticity operates on slower timescales than gradient updates,
+     * so running every 10th step is biologically more realistic AND faster. */
+    brain->plasticity_step_counter++;
+    if (!brain->config.fast_training_mode && !brain->config.defer_bio_plasticity
+        && (brain->plasticity_step_counter % 10 == 0)) {
         /* TPB: Loss → RPE → neuromodulator update */
         if (brain->plasticity_bridge && brain->enable_plasticity_bridge) {
             float rpe = 0.0f;
@@ -688,15 +693,13 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         if (brain->bptt_buffer[h].input && brain->bptt_buffer[h].target) {
             memcpy(brain->bptt_buffer[h].input, features, num_features * sizeof(float));
             memcpy(brain->bptt_buffer[h].target, target, target_size * sizeof(float));
-            /* Capture current output via a quick forward pass */
-            brain_decision_t* bptt_dec = allocate_decision(brain->config.num_outputs);
-            if (bptt_dec) {
-                perform_forward_pass(brain, features, num_features, bptt_dec);
-                if (bptt_dec->output_vector && brain->bptt_buffer[h].output) {
-                    memcpy(brain->bptt_buffer[h].output, bptt_dec->output_vector,
-                           target_size * sizeof(float));
-                }
-                brain_free_decision(bptt_dec);
+            /* Capture current output via lightweight adaptive forward (no full decision pipeline).
+             * OPTIMIZATION: Replaced allocate_decision + perform_forward_pass + brain_free_decision
+             * with a single adaptive_network_forward call directly into the BPTT buffer. */
+            if (brain->bptt_buffer[h].output) {
+                adaptive_network_forward(brain->network, features, num_features,
+                                         brain->bptt_buffer[h].output, target_size,
+                                         nimcp_time_get_us());
             }
             brain->bptt_buffer[h].loss = loss;
         }

@@ -31193,6 +31193,19 @@ unit_synapse_fast_path/fast:
 .PHONY : unit_synapse_fast_path/fast
 
 #=============================================================================
+# Target rules for targets named unit_hot_path_optimizations
+
+# Build rule for target.
+unit_hot_path_optimizations: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_hot_path_optimizations
+.PHONY : unit_hot_path_optimizations
+
+# fast build rule for target.
+unit_hot_path_optimizations/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/optimization/CMakeFiles/unit_hot_path_optimizations.dir/build.make test/unit/optimization/CMakeFiles/unit_hot_path_optimizations.dir/build
+.PHONY : unit_hot_path_optimizations/fast
+
+#=============================================================================
 # Target rules for targets named integration_optimization
 
 # Build rule for target.
@@ -31204,6 +31217,19 @@ integration_optimization: cmake_check_build_system
 integration_optimization/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/optimization/CMakeFiles/integration_optimization.dir/build.make test/integration/optimization/CMakeFiles/integration_optimization.dir/build
 .PHONY : integration_optimization/fast
+
+#=============================================================================
+# Target rules for targets named integration_hotpath
+
+# Build rule for target.
+integration_hotpath: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_hotpath
+.PHONY : integration_hotpath
+
+# fast build rule for target.
+integration_hotpath/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/optimization/CMakeFiles/integration_hotpath.dir/build.make test/integration/optimization/CMakeFiles/integration_hotpath.dir/build
+.PHONY : integration_hotpath/fast
 
 #=============================================================================
 # Target rules for targets named regression_optimization
@@ -31219,6 +31245,19 @@ regression_optimization/fast:
 .PHONY : regression_optimization/fast
 
 #=============================================================================
+# Target rules for targets named regression_hotpath
+
+# Build rule for target.
+regression_hotpath: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_hotpath
+.PHONY : regression_hotpath
+
+# fast build rule for target.
+regression_hotpath/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/optimization/CMakeFiles/regression_hotpath.dir/build.make test/regression/optimization/CMakeFiles/regression_hotpath.dir/build
+.PHONY : regression_hotpath/fast
+
+#=============================================================================
 # Target rules for targets named e2e_optimization
 
 # Build rule for target.
@@ -31230,6 +31269,19 @@ e2e_optimization: cmake_check_build_system
 e2e_optimization/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/optimization/CMakeFiles/e2e_optimization.dir/build.make test/e2e/optimization/CMakeFiles/e2e_optimization.dir/build
 .PHONY : e2e_optimization/fast
+
+#=============================================================================
+# Target rules for targets named e2e_hotpath
+
+# Build rule for target.
+e2e_hotpath: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_hotpath
+.PHONY : e2e_hotpath
+
+# fast build rule for target.
+e2e_hotpath/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/optimization/CMakeFiles/e2e_hotpath.dir/build.make test/e2e/optimization/CMakeFiles/e2e_hotpath.dir/build
+.PHONY : e2e_hotpath/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_wernicke_adapter
@@ -42001,6 +42053,7 @@ help:
 	@echo "... e2e_gpu_test_e2e_swarm_simulation_gpu"
 	@echo "... e2e_gpu_test_e2e_visual_processing_gpu"
 	@echo "... e2e_grounded_language"
+	@echo "... e2e_hotpath"
 	@echo "... e2e_mesh_security"
 	@echo "... e2e_middleware_test_circular_buffer_e2e"
 	@echo "... e2e_neuro_symbolic_test_collaborative_proof_e2e"
@@ -42566,6 +42619,7 @@ help:
 	@echo "... integration_heartbeat_B26_emotion_cluster_bridges"
 	@echo "... integration_hemispheric_brain"
 	@echo "... integration_hemispheric_memory_opt"
+	@echo "... integration_hotpath"
 	@echo "... integration_hypergraph_knowledge"
 	@echo "... integration_ic_audio"
 	@echo "... integration_imagination_fep"
@@ -43105,6 +43159,7 @@ help:
 	@echo "... regression_heartbeat_B26_emotion_cluster_bridges"
 	@echo "... regression_hemispheric_brain_regression"
 	@echo "... regression_hemispheric_memory_opt"
+	@echo "... regression_hotpath"
 	@echo "... regression_hypo_reasoning_bridge_test"
 	@echo "... regression_imagination_fep"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
@@ -44426,6 +44481,7 @@ help:
 	@echo "... unit_heartbeat_B25_memory_core_bridges"
 	@echo "... unit_heartbeat_B25nb_memory_core_nonbridge"
 	@echo "... unit_heartbeat_B26_emotion_cluster_bridges"
+	@echo "... unit_hot_path_optimizations"
 	@echo "... unit_information_test_quantum_shannon"
 	@echo "... unit_information_test_shannon"
 	@echo "... unit_integration_adapters_chemistry_test_calcium_adapter"

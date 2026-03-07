@@ -108,14 +108,16 @@ bool nimcp_gpu_loss_mse(
     NIMCP_CUDA_RECOVER(cudaMemset(d_loss_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     // Compute forward loss
+    cudaStream_t mse_stream = nimcp_gpu_get_pool_stream(ctx);
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
-    kernel_mse_loss_forward<<<grid, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
+    kernel_mse_loss_forward<<<grid, BLOCK_SIZE, 0, mse_stream>>>(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, n);
 
-    // Copy result back
+    // Async readback — allows overlap with other GPU work on different streams
     float loss_sum;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost, mse_stream), GPU_ERROR_CUDA_RUNTIME);
+    cudaStreamSynchronize(mse_stream);
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -193,13 +195,15 @@ bool nimcp_gpu_loss_mae(
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_loss_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
     NIMCP_CUDA_RECOVER(cudaMemset(d_loss_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
+    cudaStream_t mae_stream = nimcp_gpu_get_pool_stream(ctx);
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
-    kernel_mae_loss_forward<<<grid, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
+    kernel_mae_loss_forward<<<grid, BLOCK_SIZE, 0, mae_stream>>>(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, n);
 
     float loss_sum;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost, mae_stream), GPU_ERROR_CUDA_RUNTIME);
+    cudaStreamSynchronize(mae_stream);
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -341,12 +345,14 @@ bool nimcp_gpu_loss_cross_entropy(
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_loss_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
     NIMCP_CUDA_RECOVER(cudaMemset(d_loss_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
-    kernel_cross_entropy_forward<<<batch_size, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
+    cudaStream_t ce_stream = nimcp_gpu_get_pool_stream(ctx);
+    kernel_cross_entropy_forward<<<batch_size, BLOCK_SIZE, 0, ce_stream>>>(
         (const float*)logits->data, (const float*)target->data,
         d_loss_sum, batch_size, num_classes);
 
     float loss_sum;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost, ce_stream), GPU_ERROR_CUDA_RUNTIME);
+    cudaStreamSynchronize(ce_stream);
 
     if (reduction == 1) {  // mean
         *loss = loss_sum / (float)batch_size;
@@ -431,11 +437,13 @@ bool nimcp_gpu_loss_bce(
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
-    kernel_bce_loss_forward<<<grid, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
+    cudaStream_t bce_stream = nimcp_gpu_get_pool_stream(ctx);
+    kernel_bce_loss_forward<<<grid, BLOCK_SIZE, 0, bce_stream>>>(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, n);
 
     float loss_sum;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost, bce_stream), GPU_ERROR_CUDA_RUNTIME);
+    cudaStreamSynchronize(bce_stream);
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -507,12 +515,14 @@ bool nimcp_gpu_loss_focal(
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
-    kernel_focal_loss_forward<<<grid, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
+    cudaStream_t focal_stream = nimcp_gpu_get_pool_stream(ctx);
+    kernel_focal_loss_forward<<<grid, BLOCK_SIZE, 0, focal_stream>>>(
         (const float*)pred->data, (const float*)target->data,
         d_loss_sum, alpha, gamma, n);
 
     float loss_sum;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost, focal_stream), GPU_ERROR_CUDA_RUNTIME);
+    cudaStreamSynchronize(focal_stream);
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -597,11 +607,13 @@ bool nimcp_gpu_loss_huber(
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
-    kernel_huber_loss_forward<<<grid, BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
+    cudaStream_t huber_stream = nimcp_gpu_get_pool_stream(ctx);
+    kernel_huber_loss_forward<<<grid, BLOCK_SIZE, 0, huber_stream>>>(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, delta, n);
 
     float loss_sum;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost, huber_stream), GPU_ERROR_CUDA_RUNTIME);
+    cudaStreamSynchronize(huber_stream);
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);

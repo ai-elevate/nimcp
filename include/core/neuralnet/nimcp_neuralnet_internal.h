@@ -105,6 +105,9 @@ struct neural_network_struct {
     uint32_t num_active_neurons;      /**< Count of active neurons last step */
     uint32_t active_neuron_capacity;  /**< Allocated capacity for active set */
     bool active_set_valid;            /**< Whether active set is current */
+
+    /* Cached neuromodulation level (computed once per compute_step, used per-synapse) */
+    float cached_neuromod_level;
 };
 
 #endif /* NIMCP_NEURALNET_INTERNAL_H */

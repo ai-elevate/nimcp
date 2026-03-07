@@ -5226,6 +5226,7 @@
 /home/bbrelin/nimcp/build/test/unit/optimization/CMakeFiles/unit_fast_math.dir
 /home/bbrelin/nimcp/build/test/unit/optimization/CMakeFiles/unit_lazy_init.dir
 /home/bbrelin/nimcp/build/test/unit/optimization/CMakeFiles/unit_synapse_fast_path.dir
+/home/bbrelin/nimcp/build/test/unit/optimization/CMakeFiles/unit_hot_path_optimizations.dir
 /home/bbrelin/nimcp/build/test/unit/optimization/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/optimization/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/optimization/CMakeFiles/rebuild_cache.dir
@@ -5234,6 +5235,7 @@
 /home/bbrelin/nimcp/build/test/unit/optimization/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/optimization/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/optimization/CMakeFiles/integration_optimization.dir
+/home/bbrelin/nimcp/build/test/integration/optimization/CMakeFiles/integration_hotpath.dir
 /home/bbrelin/nimcp/build/test/integration/optimization/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/optimization/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/optimization/CMakeFiles/rebuild_cache.dir
@@ -5242,6 +5244,7 @@
 /home/bbrelin/nimcp/build/test/integration/optimization/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/optimization/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/optimization/CMakeFiles/regression_optimization.dir
+/home/bbrelin/nimcp/build/test/regression/optimization/CMakeFiles/regression_hotpath.dir
 /home/bbrelin/nimcp/build/test/regression/optimization/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/optimization/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/optimization/CMakeFiles/rebuild_cache.dir
@@ -5250,6 +5253,7 @@
 /home/bbrelin/nimcp/build/test/regression/optimization/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/regression/optimization/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/e2e/optimization/CMakeFiles/e2e_optimization.dir
+/home/bbrelin/nimcp/build/test/e2e/optimization/CMakeFiles/e2e_hotpath.dir
 /home/bbrelin/nimcp/build/test/e2e/optimization/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/optimization/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/optimization/CMakeFiles/rebuild_cache.dir

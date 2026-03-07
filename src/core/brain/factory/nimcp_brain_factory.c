@@ -1145,6 +1145,15 @@ brain_t brain_create_custom(const brain_config_t* config)
             LOG_INFO(LOG_MODULE, "BPTT enabled (window=%u, discount=%.1f) + recurrent forward (max_iter=%u)",
                      brain->bptt_window_size, brain->bptt_discount, brain->recurrent_max_iterations);
         }
+
+        // Plasticity interval gating counter (run bio-plasticity every 10 steps)
+        brain->plasticity_step_counter = 0;
+
+        // Pre-allocated inference output buffers (lazy-allocated on first forward pass)
+        brain->inference_buf_adaptive = NULL;
+        brain->inference_buf_cnn = NULL;
+        brain->inference_buf_snn = NULL;
+        brain->inference_buf_size = 0;
     }
 
     // ========================================================================

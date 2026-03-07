@@ -1309,6 +1309,41 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
+    // OPTIMIZATION: Classification-only fast path — skip non-essential stages
+    // ========================================================================
+    // WHAT: For pure classification tasks, skip expensive cognitive stages
+    // WHY:  Classification only needs forward pass + argmax + confidence
+    //       Glial maintenance, ToM, Shannon analysis, quantum coherence,
+    //       emotional processing, and sleep pressure are unnecessary overhead
+    // HOW:  Jump directly to output labeling and stats after forward pass
+    bool classify_fast_path = (brain->strategy &&
+                               brain->strategy->task_type == BRAIN_TASK_CLASSIFICATION &&
+                               !brain->config.enable_natural_explanations);
+    if (classify_fast_path) {
+        // Apply task-specific output transformation (e.g., softmax)
+        if (brain->strategy && brain->strategy->transform_output) {
+            brain->strategy->transform_output(decision->output_vector, decision->output_size);
+        }
+
+        // Determine output label and confidence (argmax + label lookup)
+        determine_output_label(brain, decision);
+
+        // Update statistics
+        update_inference_stats(brain, decision);
+
+        // Cache decision
+        if (nimcp_platform_mutex_lock(&brain->cache_mutex) == 0) {
+            cache_decision(brain, features, num_features, decision);
+            nimcp_platform_mutex_unlock(&brain->cache_mutex);
+        }
+
+        nimcp_free(prediction);  // Free predictive processing buffer if allocated
+        nimcp_free(local_features);
+        brain_clear_error();
+        return decision;
+    }
+
+    // ========================================================================
     // STAGE 1.5: Hemispheric Processing — Callosum Transfer + Lateralization
     // ========================================================================
     // WHAT: Route output through inter-hemispheric channels, modulate by dominance

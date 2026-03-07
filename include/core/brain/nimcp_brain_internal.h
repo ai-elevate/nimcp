@@ -1992,6 +1992,24 @@ struct brain_struct {
         uint32_t target_cap;        // Capacity of target/prediction buffers
         uint32_t features_cap;      // Capacity of attended_features/cue_neurons
     } learn_scratch;
+
+    // === OPTIMIZATION: PLASTICITY INTERVAL GATING ===
+    //
+    // Biological plasticity updates (TPB, EDP, structural, coordinator) are
+    // expensive and don't need to run every single training step. Gate them
+    // to run every N steps for a significant speedup with minimal accuracy impact.
+    //
+    uint32_t plasticity_step_counter;            // Counter for interval gating (run every 10 steps)
+
+    // === OPTIMIZATION: PRE-ALLOCATED INFERENCE OUTPUT BUFFERS ===
+    //
+    // Eliminates 3 nimcp_calloc + nimcp_free round-trips per forward pass
+    // by reusing pre-allocated buffers for adaptive/cnn/snn outputs.
+    //
+    float* inference_buf_adaptive;               // Pre-allocated adaptive output [num_outputs]
+    float* inference_buf_cnn;                    // Pre-allocated CNN output [num_outputs]
+    float* inference_buf_snn;                    // Pre-allocated SNN output [num_outputs]
+    uint32_t inference_buf_size;                 // Current buffer capacity (num_outputs)
 };
 
 //=============================================================================

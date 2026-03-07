@@ -89,15 +89,36 @@ bool nimcp_gpu_backward_linear(
 
     // grad_bias = sum(grad_output, axis=0)
     if (grad_bias) {
-        // Sum across batch dimension
-        // Use cublas gemv with ones vector
-        float* ones;
-        NIMCP_CUDA_RECOVER(cudaMalloc(&ones, batch * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+        // Sum across batch dimension using cublas gemv with ones vector.
+        // Cache the ones vector in a static variable to avoid repeated alloc/fill.
+        static float* s_d_ones = NULL;
+        static uint32_t s_d_ones_size = 0;
 
-        // Fill with ones
-        float one = 1.0f;
-        for (int i = 0; i < batch; i++) {
-            NIMCP_CUDA_RECOVER(cudaMemcpy(ones + i, &one, sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+        if ((uint32_t)batch > s_d_ones_size) {
+            if (s_d_ones) cudaFree(s_d_ones);
+            uint32_t new_size = (uint32_t)batch;
+            // Round up to power of 2 for fewer reallocations
+            if (new_size < 256) new_size = 256;
+            else {
+                new_size--;
+                new_size |= new_size >> 1;
+                new_size |= new_size >> 2;
+                new_size |= new_size >> 4;
+                new_size |= new_size >> 8;
+                new_size |= new_size >> 16;
+                new_size++;
+            }
+            NIMCP_CUDA_RECOVER(cudaMalloc(&s_d_ones, new_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+            s_d_ones_size = new_size;
+
+            // Fill with ones: host-side fill + single bulk cudaMemcpy
+            // (replaces the old per-element cudaMemcpy loop)
+            float* h_ones = (float*)malloc(new_size * sizeof(float));
+            if (h_ones) {
+                for (uint32_t i = 0; i < new_size; i++) h_ones[i] = 1.0f;
+                cudaMemcpy(s_d_ones, h_ones, new_size * sizeof(float), cudaMemcpyHostToDevice);
+                free(h_ones);
+            }
         }
 
         NIMCP_CUBLAS_RECOVER(cublasSgemv(handle,
@@ -105,28 +126,40 @@ bool nimcp_gpu_backward_linear(
             batch, out_features,
             &alpha,
             (const float*)grad_output->data, batch,
-            ones, 1,
+            s_d_ones, 1,
             &beta,
             (float*)grad_bias->data, 1), GPU_ERROR_LIBRARY);
-
-        cudaFree(ones);
     }
 
     return true;
 }
 
 //=============================================================================
-// Activation Backward Kernels
+// Fused Activation Backward Kernel
 //=============================================================================
 
-__global__ void kernel_backward_relu(
-    const float* x, const float* grad_output, float* grad_input, size_t n)
+// Activation type constants for the fused kernel
+#define ACTIVATION_RELU    0
+#define ACTIVATION_SIGMOID 1
+#define ACTIVATION_TANH    2
+
+__global__ void kernel_backward_activation_fused(
+    const float* output, const float* grad_output, float* grad_input,
+    uint32_t n, int activation_type)
 {
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) {
-        grad_input[idx] = (x[idx] > 0.0f) ? grad_output[idx] : 0.0f;
+    uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    float g;
+    switch (activation_type) {
+        case ACTIVATION_RELU:    g = (output[i] > 0.0f) ? 1.0f : 0.0f; break;
+        case ACTIVATION_SIGMOID: g = output[i] * (1.0f - output[i]); break;
+        case ACTIVATION_TANH:    g = 1.0f - output[i] * output[i]; break;
+        default:                 g = 1.0f; break;
     }
+    grad_input[i] = grad_output[i] * g;
 }
+
+// Legacy individual kernels kept for reference but callers now use fused kernel
 
 bool nimcp_gpu_backward_relu(
     nimcp_gpu_context_t* ctx,
@@ -136,26 +169,15 @@ bool nimcp_gpu_backward_relu(
 {
     if (!ctx || !x || !grad_output || !grad_input) return false;
 
-    // Initialize GPU recovery if not already initialized
     if (!nimcp_gpu_recovery_is_initialized()) {
         nimcp_gpu_recovery_init(NULL);
     }
 
-    kernel_backward_relu<<<GRID_SIZE(x->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
+    kernel_backward_activation_fused<<<GRID_SIZE(x->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)x->data, (const float*)grad_output->data,
-        (float*)grad_input->data, x->numel);
+        (float*)grad_input->data, (uint32_t)x->numel, ACTIVATION_RELU);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
-}
-
-__global__ void kernel_backward_sigmoid(
-    const float* output, const float* grad_output, float* grad_input, size_t n)
-{
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) {
-        float s = output[idx];  // sigmoid output
-        grad_input[idx] = grad_output[idx] * s * (1.0f - s);
-    }
 }
 
 bool nimcp_gpu_backward_sigmoid(
@@ -166,26 +188,15 @@ bool nimcp_gpu_backward_sigmoid(
 {
     if (!ctx || !output || !grad_output || !grad_input) return false;
 
-    // Initialize GPU recovery if not already initialized
     if (!nimcp_gpu_recovery_is_initialized()) {
         nimcp_gpu_recovery_init(NULL);
     }
 
-    kernel_backward_sigmoid<<<GRID_SIZE(output->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
+    kernel_backward_activation_fused<<<GRID_SIZE(output->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)output->data, (const float*)grad_output->data,
-        (float*)grad_input->data, output->numel);
+        (float*)grad_input->data, (uint32_t)output->numel, ACTIVATION_SIGMOID);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
-}
-
-__global__ void kernel_backward_tanh(
-    const float* output, const float* grad_output, float* grad_input, size_t n)
-{
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) {
-        float t = output[idx];  // tanh output
-        grad_input[idx] = grad_output[idx] * (1.0f - t * t);
-    }
 }
 
 bool nimcp_gpu_backward_tanh(
@@ -196,14 +207,13 @@ bool nimcp_gpu_backward_tanh(
 {
     if (!ctx || !output || !grad_output || !grad_input) return false;
 
-    // Initialize GPU recovery if not already initialized
     if (!nimcp_gpu_recovery_is_initialized()) {
         nimcp_gpu_recovery_init(NULL);
     }
 
-    kernel_backward_tanh<<<GRID_SIZE(output->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
+    kernel_backward_activation_fused<<<GRID_SIZE(output->numel), BLOCK_SIZE, 0, nimcp_gpu_get_pool_stream(ctx)>>>(
         (const float*)output->data, (const float*)grad_output->data,
-        (float*)grad_input->data, output->numel);
+        (float*)grad_input->data, (uint32_t)output->numel, ACTIVATION_TANH);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }

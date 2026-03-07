@@ -986,6 +986,15 @@ void brain_destroy(brain_t brain)
         brain->bptt_enabled = false;
     }
 
+    // Pre-allocated inference output buffers cleanup
+    nimcp_free(brain->inference_buf_adaptive);
+    nimcp_free(brain->inference_buf_cnn);
+    nimcp_free(brain->inference_buf_snn);
+    brain->inference_buf_adaptive = NULL;
+    brain->inference_buf_cnn = NULL;
+    brain->inference_buf_snn = NULL;
+    brain->inference_buf_size = 0;
+
     // Corpus Callosum (inter-hemispheric bridge — destroy before generic white matter)
     if (brain->callosum) {
         callosum_destroy(brain->callosum);

@@ -1361,6 +1361,18 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
         float pre_activity =
             (src_neuron->state > src_neuron->threshold) ? src_neuron->state : 0.0F;
 
+        // Early-exit: skip metadata lookup for simple synapses (95% case)
+        if (in_h->metadata_index == SPARSE_SYNAPSE_NO_METADATA) {
+            total_input += pre_activity * in_h->weight * in_h->strength;
+            // Still notify glial system if needed
+            if (network->glial_integration && pre_activity * in_h->weight * in_h->strength > 0.0F) {
+                glial_integration_on_synapse_fired(
+                    (glial_integration_t*)network->glial_integration,
+                    src_id, neuron->id, in_h->weight, network->network_time);
+            }
+            continue;
+        }
+
         // Get metadata for advanced features (STP, compute functions, embeddings)
         synapse_t* incoming_meta = NEURON_IN_META(network, neuron, i);
 
@@ -1386,8 +1398,8 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
             // Custom computation - synapse decides how to compute transmission
             // This enables attention, semantic similarity, gating, etc.
 
-            // NIMCP 2.7: Wire up neuromodulator levels if system is attached
-            float neuromod_level = neural_network_get_neuromodulation(network);
+            // NIMCP 2.7: Use cached neuromodulator level (computed once per compute_step)
+            float neuromod_level = network->cached_neuromod_level;
 
             synapse_compute_context_t context = {
                 .global_state = network->global_state,  // Attention output, etc.
@@ -1559,16 +1571,13 @@ static void update_activity_history(neuron_t* neuron, float new_state, uint64_t 
 
     uint32_t cap = neuron->activity_history_capacity;
 
-    // Record current activity
+    // Record current activity in ring buffer
     uint32_t history_idx = timestamp % cap;
     neuron->activity_history[history_idx] = new_state;
 
-    // Compute running average - single pass O(w)
-    float sum_activity = 0.0F;
-    for (uint32_t i = 0; i < cap; i++) {
-        sum_activity += neuron->activity_history[i];
-    }
-    neuron->avg_activity = sum_activity / cap;
+    // Incremental EMA: O(1) instead of O(w) full-window average
+    float decay = 1.0f / (float)cap;
+    neuron->avg_activity = neuron->avg_activity * (1.0f - decay) + new_state * decay;
 }
 
 /**
@@ -2638,15 +2647,8 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
         return false;
     }
 
-    // Compute current average activity
-    float current_activity = 0.0F;
-    uint32_t act_cap = neuron->activity_history_capacity;
-    if (neuron->activity_history && act_cap > 0) {
-        for (uint32_t i = 0; i < act_cap; i++) {
-            current_activity += neuron->activity_history[i];
-        }
-        current_activity /= act_cap;
-    }
+    // Reuse cached EMA from update_activity_history() — O(1) instead of O(w)
+    float current_activity = neuron->avg_activity;
 
     // Compute activity error
     float activity_error = neuron->homeostatic.target_activity - current_activity;
@@ -2974,6 +2976,9 @@ uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestam
     if (network->bio_async_enabled && network->bio_ctx) {
         bio_router_process_inbox(network->bio_ctx, 5);
     }
+
+    // Cache neuromodulation level once per step (used per-synapse in sum_synaptic_inputs)
+    network->cached_neuromod_level = neural_network_get_neuromodulation(network);
 
     uint32_t active_neurons = 0;
     uint32_t active_count = 0;
@@ -4021,22 +4026,20 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
             // (the same insight as BatchNorm/LayerNorm in transformers & ResNets).
             // Skip the output layer — we want raw output values there.
             if (layer < network->config.num_layers - 1 && layer_size > 1) {
-                // Compute mean
-                double sum = 0.0;
+                // Welford's online algorithm: single-pass mean+variance (2 passes → 1+normalize)
                 uint32_t count = 0;
+                float mean = 0.0f, M2 = 0.0f;
                 for (uint32_t i = 0; i < layer_size && neuron_offset + i < network->num_neurons; i++) {
-                    sum += (double)network->neurons[neuron_offset + i].state;
+                    float x = network->neurons[neuron_offset + i].state;
                     count++;
+                    float delta = x - mean;
+                    mean += delta / (float)count;
+                    float delta2 = x - mean;
+                    M2 += delta * delta2;
                 }
-                if (count > 0) {
-                    float mean = (float)(sum / count);
-                    // Compute variance
-                    double var_sum = 0.0;
-                    for (uint32_t i = 0; i < count; i++) {
-                        float diff = network->neurons[neuron_offset + i].state - mean;
-                        var_sum += (double)(diff * diff);
-                    }
-                    float inv_std = 1.0F / sqrtf((float)(var_sum / count) + 1e-5F);
+                if (count > 1) {
+                    float variance = M2 / (float)count;
+                    float inv_std = 1.0F / sqrtf(variance + 1e-5F);
                     // Normalize: (x - mean) / std
                     for (uint32_t i = 0; i < count; i++) {
                         network->neurons[neuron_offset + i].state =
