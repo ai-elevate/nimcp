@@ -112,12 +112,24 @@ typedef struct sparse_synapse_pool_struct {
  * @return Size class index (0-7), or -1 if too large
  */
 static inline int find_size_class(uint32_t capacity) {
-    for (int i = 0; i < SIZE_CLASS_COUNT; i++) {
-        if (capacity <= SIZE_CLASS_CAPACITIES[i]) {
-            return i;
-        }
-    }
-    return -1;  // Capacity exceeds maximum size class
+    if (capacity == 0) return 0;
+    if (capacity > SIZE_CLASS_CAPACITIES[SIZE_CLASS_COUNT - 1]) return -1;
+    /* Power-of-2 size classes: use bit scan to find class in O(1)
+     * SIZE_CLASS_CAPACITIES = {16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192}
+     * which are 2^4 through 2^13 (10 classes). */
+    uint32_t rounded = capacity - 1;
+    rounded |= rounded >> 1;
+    rounded |= rounded >> 2;
+    rounded |= rounded >> 4;
+    rounded |= rounded >> 8;
+    rounded |= rounded >> 16;
+    rounded++;
+    /* Map power-of-2 to class index: 2^4=16 -> class 0, 2^5=32 -> class 1, etc. */
+    int bits = 31 - __builtin_clz(rounded);
+    int class_idx = bits - 4;  /* 2^4=16 is class 0 */
+    if (class_idx < 0) class_idx = 0;
+    if (class_idx >= SIZE_CLASS_COUNT) return -1;
+    return class_idx;
 }
 
 /**

@@ -2123,6 +2123,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_orchestrator.c     # Language layer coordinator
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_config.c           # Default configuration
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_bio_async.c        # Bio-async messaging
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language.c        # Grounded language system
 
     # Language Layer Bridges (Phase L8: Integration bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_perception_bridge.c   # Perception integration
@@ -2226,7 +2227,8 @@ set(NIMCP_CORE_SOURCES
     # GPU tensor extended stubs (reductions, norms, comparisons, FFT, CPU-GPU interop)
     $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_tensor_ext.c>
     # GPU FP16/mixed precision stubs (FP16 ops, loss scaling, AMP context, autocast)
-    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c>
+    # Always compiled: .cu version uses C99 designated initializers incompatible with NVCC
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c
     # GPU gradient/activation checkpoint stubs (checkpoint ctx, sequential, transformer)
     $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_checkpoint.c>
     # GPU CNN stubs (conv2d, pooling, batch norm - CPU fallback with im2col)

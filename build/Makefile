@@ -3022,45 +3022,6 @@ unit_optimization_quantum_annealing_test_quantum_ternary/fast:
 .PHONY : unit_optimization_quantum_annealing_test_quantum_ternary/fast
 
 #=============================================================================
-# Target rules for targets named unit_optimization_test_cross_modal
-
-# Build rule for target.
-unit_optimization_test_cross_modal: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_optimization_test_cross_modal
-.PHONY : unit_optimization_test_cross_modal
-
-# fast build rule for target.
-unit_optimization_test_cross_modal/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_optimization_test_cross_modal.dir/build.make test/CMakeFiles/unit_optimization_test_cross_modal.dir/build
-.PHONY : unit_optimization_test_cross_modal/fast
-
-#=============================================================================
-# Target rules for targets named unit_optimization_test_dynamic_adaptation
-
-# Build rule for target.
-unit_optimization_test_dynamic_adaptation: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_optimization_test_dynamic_adaptation
-.PHONY : unit_optimization_test_dynamic_adaptation
-
-# fast build rule for target.
-unit_optimization_test_dynamic_adaptation/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_optimization_test_dynamic_adaptation.dir/build.make test/CMakeFiles/unit_optimization_test_dynamic_adaptation.dir/build
-.PHONY : unit_optimization_test_dynamic_adaptation/fast
-
-#=============================================================================
-# Target rules for targets named unit_optimization_test_multi_objective
-
-# Build rule for target.
-unit_optimization_test_multi_objective: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_optimization_test_multi_objective
-.PHONY : unit_optimization_test_multi_objective
-
-# fast build rule for target.
-unit_optimization_test_multi_objective/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_optimization_test_multi_objective.dir/build.make test/CMakeFiles/unit_optimization_test_multi_objective.dir/build
-.PHONY : unit_optimization_test_multi_objective/fast
-
-#=============================================================================
 # Target rules for targets named unit_perception_immune_test_audio_immune_integration
 
 # Build rule for target.
@@ -4855,45 +4816,6 @@ integration_optimization_quantum_annealing_test_quantum_annealing_integration/fa
 .PHONY : integration_optimization_quantum_annealing_test_quantum_annealing_integration/fast
 
 #=============================================================================
-# Target rules for targets named integration_optimization_test_cross_modal_integration
-
-# Build rule for target.
-integration_optimization_test_cross_modal_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_optimization_test_cross_modal_integration
-.PHONY : integration_optimization_test_cross_modal_integration
-
-# fast build rule for target.
-integration_optimization_test_cross_modal_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_optimization_test_cross_modal_integration.dir/build.make test/CMakeFiles/integration_optimization_test_cross_modal_integration.dir/build
-.PHONY : integration_optimization_test_cross_modal_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_optimization_test_dynamic_adaptation_integration
-
-# Build rule for target.
-integration_optimization_test_dynamic_adaptation_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_optimization_test_dynamic_adaptation_integration
-.PHONY : integration_optimization_test_dynamic_adaptation_integration
-
-# fast build rule for target.
-integration_optimization_test_dynamic_adaptation_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_optimization_test_dynamic_adaptation_integration.dir/build.make test/CMakeFiles/integration_optimization_test_dynamic_adaptation_integration.dir/build
-.PHONY : integration_optimization_test_dynamic_adaptation_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_optimization_test_multi_objective_integration
-
-# Build rule for target.
-integration_optimization_test_multi_objective_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_optimization_test_multi_objective_integration
-.PHONY : integration_optimization_test_multi_objective_integration
-
-# fast build rule for target.
-integration_optimization_test_multi_objective_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_optimization_test_multi_objective_integration.dir/build.make test/CMakeFiles/integration_optimization_test_multi_objective_integration.dir/build
-.PHONY : integration_optimization_test_multi_objective_integration/fast
-
-#=============================================================================
 # Target rules for targets named integration_parietal_test_parietal_fep_integration
 
 # Build rule for target.
@@ -5750,58 +5672,6 @@ regression_optimization_quantum_annealing_test_quantum_annealing_backward_compat
 regression_optimization_quantum_annealing_test_quantum_annealing_backward_compat/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_optimization_quantum_annealing_test_quantum_annealing_backward_compat.dir/build.make test/CMakeFiles/regression_optimization_quantum_annealing_test_quantum_annealing_backward_compat.dir/build
 .PHONY : regression_optimization_quantum_annealing_test_quantum_annealing_backward_compat/fast
-
-#=============================================================================
-# Target rules for targets named regression_optimization_test_cross_modal_backward_compat
-
-# Build rule for target.
-regression_optimization_test_cross_modal_backward_compat: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_optimization_test_cross_modal_backward_compat
-.PHONY : regression_optimization_test_cross_modal_backward_compat
-
-# fast build rule for target.
-regression_optimization_test_cross_modal_backward_compat/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_optimization_test_cross_modal_backward_compat.dir/build.make test/CMakeFiles/regression_optimization_test_cross_modal_backward_compat.dir/build
-.PHONY : regression_optimization_test_cross_modal_backward_compat/fast
-
-#=============================================================================
-# Target rules for targets named regression_optimization_test_dynamic_adaptation_backward_compat
-
-# Build rule for target.
-regression_optimization_test_dynamic_adaptation_backward_compat: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_optimization_test_dynamic_adaptation_backward_compat
-.PHONY : regression_optimization_test_dynamic_adaptation_backward_compat
-
-# fast build rule for target.
-regression_optimization_test_dynamic_adaptation_backward_compat/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_optimization_test_dynamic_adaptation_backward_compat.dir/build.make test/CMakeFiles/regression_optimization_test_dynamic_adaptation_backward_compat.dir/build
-.PHONY : regression_optimization_test_dynamic_adaptation_backward_compat/fast
-
-#=============================================================================
-# Target rules for targets named regression_optimization_test_multi_objective_backward_compat
-
-# Build rule for target.
-regression_optimization_test_multi_objective_backward_compat: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_optimization_test_multi_objective_backward_compat
-.PHONY : regression_optimization_test_multi_objective_backward_compat
-
-# fast build rule for target.
-regression_optimization_test_multi_objective_backward_compat/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_optimization_test_multi_objective_backward_compat.dir/build.make test/CMakeFiles/regression_optimization_test_multi_objective_backward_compat.dir/build
-.PHONY : regression_optimization_test_multi_objective_backward_compat/fast
-
-#=============================================================================
-# Target rules for targets named regression_optimization_test_optimization_walkthrough_fixes
-
-# Build rule for target.
-regression_optimization_test_optimization_walkthrough_fixes: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_optimization_test_optimization_walkthrough_fixes
-.PHONY : regression_optimization_test_optimization_walkthrough_fixes
-
-# fast build rule for target.
-regression_optimization_test_optimization_walkthrough_fixes/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_optimization_test_optimization_walkthrough_fixes.dir/build.make test/CMakeFiles/regression_optimization_test_optimization_walkthrough_fixes.dir/build
-.PHONY : regression_optimization_test_optimization_walkthrough_fixes/fast
 
 #=============================================================================
 # Target rules for targets named regression_plasticity_adaptive_test_adaptive_backward_compat
@@ -11301,6 +11171,19 @@ e2e_test_memory_scalability: cmake_check_build_system
 e2e_test_memory_scalability/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/utils/CMakeFiles/e2e_test_memory_scalability.dir/build.make test/e2e/utils/CMakeFiles/e2e_test_memory_scalability.dir/build
 .PHONY : e2e_test_memory_scalability/fast
+
+#=============================================================================
+# Target rules for targets named e2e_grounded_language
+
+# Build rule for target.
+e2e_grounded_language: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_grounded_language
+.PHONY : e2e_grounded_language
+
+# fast build rule for target.
+e2e_grounded_language/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/language/CMakeFiles/e2e_grounded_language.dir/build.make test/e2e/language/CMakeFiles/e2e_grounded_language.dir/build
+.PHONY : e2e_grounded_language/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -31193,6 +31076,19 @@ unit_language_bridges/fast:
 .PHONY : unit_language_bridges/fast
 
 #=============================================================================
+# Target rules for targets named unit_grounded_language
+
+# Build rule for target.
+unit_grounded_language: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language
+.PHONY : unit_grounded_language
+
+# fast build rule for target.
+unit_grounded_language/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language.dir/build
+.PHONY : unit_grounded_language/fast
+
+#=============================================================================
 # Target rules for targets named integration_language
 
 # Build rule for target.
@@ -31204,6 +31100,136 @@ integration_language: cmake_check_build_system
 integration_language/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/language/CMakeFiles/integration_language.dir/build.make test/integration/language/CMakeFiles/integration_language.dir/build
 .PHONY : integration_language/fast
+
+#=============================================================================
+# Target rules for targets named integration_grounded_language_brain
+
+# Build rule for target.
+integration_grounded_language_brain: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_grounded_language_brain
+.PHONY : integration_grounded_language_brain
+
+# fast build rule for target.
+integration_grounded_language_brain/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/language/CMakeFiles/integration_grounded_language_brain.dir/build.make test/integration/language/CMakeFiles/integration_grounded_language_brain.dir/build
+.PHONY : integration_grounded_language_brain/fast
+
+#=============================================================================
+# Target rules for targets named regression_grounded_language
+
+# Build rule for target.
+regression_grounded_language: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_grounded_language
+.PHONY : regression_grounded_language
+
+# fast build rule for target.
+regression_grounded_language/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/language/CMakeFiles/regression_grounded_language.dir/build.make test/regression/language/CMakeFiles/regression_grounded_language.dir/build
+.PHONY : regression_grounded_language/fast
+
+#=============================================================================
+# Target rules for targets named unit_active_neuron_tracking
+
+# Build rule for target.
+unit_active_neuron_tracking: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_active_neuron_tracking
+.PHONY : unit_active_neuron_tracking
+
+# fast build rule for target.
+unit_active_neuron_tracking/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/optimization/CMakeFiles/unit_active_neuron_tracking.dir/build.make test/unit/optimization/CMakeFiles/unit_active_neuron_tracking.dir/build
+.PHONY : unit_active_neuron_tracking/fast
+
+#=============================================================================
+# Target rules for targets named unit_learning_workspace
+
+# Build rule for target.
+unit_learning_workspace: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_learning_workspace
+.PHONY : unit_learning_workspace
+
+# fast build rule for target.
+unit_learning_workspace/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/optimization/CMakeFiles/unit_learning_workspace.dir/build.make test/unit/optimization/CMakeFiles/unit_learning_workspace.dir/build
+.PHONY : unit_learning_workspace/fast
+
+#=============================================================================
+# Target rules for targets named unit_fast_math
+
+# Build rule for target.
+unit_fast_math: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_fast_math
+.PHONY : unit_fast_math
+
+# fast build rule for target.
+unit_fast_math/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/optimization/CMakeFiles/unit_fast_math.dir/build.make test/unit/optimization/CMakeFiles/unit_fast_math.dir/build
+.PHONY : unit_fast_math/fast
+
+#=============================================================================
+# Target rules for targets named unit_lazy_init
+
+# Build rule for target.
+unit_lazy_init: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_lazy_init
+.PHONY : unit_lazy_init
+
+# fast build rule for target.
+unit_lazy_init/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/optimization/CMakeFiles/unit_lazy_init.dir/build.make test/unit/optimization/CMakeFiles/unit_lazy_init.dir/build
+.PHONY : unit_lazy_init/fast
+
+#=============================================================================
+# Target rules for targets named unit_synapse_fast_path
+
+# Build rule for target.
+unit_synapse_fast_path: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_synapse_fast_path
+.PHONY : unit_synapse_fast_path
+
+# fast build rule for target.
+unit_synapse_fast_path/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/optimization/CMakeFiles/unit_synapse_fast_path.dir/build.make test/unit/optimization/CMakeFiles/unit_synapse_fast_path.dir/build
+.PHONY : unit_synapse_fast_path/fast
+
+#=============================================================================
+# Target rules for targets named integration_optimization
+
+# Build rule for target.
+integration_optimization: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_optimization
+.PHONY : integration_optimization
+
+# fast build rule for target.
+integration_optimization/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/optimization/CMakeFiles/integration_optimization.dir/build.make test/integration/optimization/CMakeFiles/integration_optimization.dir/build
+.PHONY : integration_optimization/fast
+
+#=============================================================================
+# Target rules for targets named regression_optimization
+
+# Build rule for target.
+regression_optimization: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_optimization
+.PHONY : regression_optimization
+
+# fast build rule for target.
+regression_optimization/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/optimization/CMakeFiles/regression_optimization.dir/build.make test/regression/optimization/CMakeFiles/regression_optimization.dir/build
+.PHONY : regression_optimization/fast
+
+#=============================================================================
+# Target rules for targets named e2e_optimization
+
+# Build rule for target.
+e2e_optimization: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_optimization
+.PHONY : e2e_optimization
+
+# fast build rule for target.
+e2e_optimization/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/optimization/CMakeFiles/e2e_optimization.dir/build.make test/e2e/optimization/CMakeFiles/e2e_optimization.dir/build
+.PHONY : e2e_optimization/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_wernicke_adapter
@@ -41974,12 +42000,14 @@ help:
 	@echo "... e2e_gpu_test_e2e_stress_test_gpu"
 	@echo "... e2e_gpu_test_e2e_swarm_simulation_gpu"
 	@echo "... e2e_gpu_test_e2e_visual_processing_gpu"
+	@echo "... e2e_grounded_language"
 	@echo "... e2e_mesh_security"
 	@echo "... e2e_middleware_test_circular_buffer_e2e"
 	@echo "... e2e_neuro_symbolic_test_collaborative_proof_e2e"
 	@echo "... e2e_neuro_symbolic_test_full_orchestrator_workflow_e2e"
 	@echo "... e2e_neuro_symbolic_test_gauss_sum_formula_e2e"
 	@echo "... e2e_neuro_symbolic_test_quantum_planning_e2e"
+	@echo "... e2e_optimization"
 	@echo "... e2e_parietal_exception"
 	@echo "... e2e_parietal_financial_investment"
 	@echo "... e2e_plasticity_eligibility_utils_quantum"
@@ -42509,6 +42537,7 @@ help:
 	@echo "... integration_gpu_test_mixed_precision"
 	@echo "... integration_gpu_test_substrate_gpu_integration"
 	@echo "... integration_gpu_test_visual_processing_gpu"
+	@echo "... integration_grounded_language_brain"
 	@echo "... integration_heartbeat_B01_memory_core"
 	@echo "... integration_heartbeat_B02_memory"
 	@echo "... integration_heartbeat_B03_immune"
@@ -42600,10 +42629,8 @@ help:
 	@echo "... integration_neuron_types_bio_async_test"
 	@echo "... integration_neuropeptide_hypothalamus"
 	@echo "... integration_nlp_test_nlp_multimodal"
+	@echo "... integration_optimization"
 	@echo "... integration_optimization_quantum_annealing_test_quantum_annealing_integration"
-	@echo "... integration_optimization_test_cross_modal_integration"
-	@echo "... integration_optimization_test_dynamic_adaptation_integration"
-	@echo "... integration_optimization_test_multi_objective_integration"
 	@echo "... integration_parallel_init"
 	@echo "... integration_parietal_exception"
 	@echo "... integration_parietal_fep"
@@ -43048,6 +43075,7 @@ help:
 	@echo "... regression_gpu_test_multigpu_regression"
 	@echo "... regression_gpu_test_substrate_gpu_regression"
 	@echo "... regression_gpu_test_visual_processing_regression"
+	@echo "... regression_grounded_language"
 	@echo "... regression_health_stability"
 	@echo "... regression_heartbeat_B01_memory_core"
 	@echo "... regression_heartbeat_B02_memory"
@@ -43148,11 +43176,8 @@ help:
 	@echo "... regression_neural_substrate"
 	@echo "... regression_neuro_symbolic"
 	@echo "... regression_oligodendrocyte_performance"
+	@echo "... regression_optimization"
 	@echo "... regression_optimization_quantum_annealing_test_quantum_annealing_backward_compat"
-	@echo "... regression_optimization_test_cross_modal_backward_compat"
-	@echo "... regression_optimization_test_dynamic_adaptation_backward_compat"
-	@echo "... regression_optimization_test_multi_objective_backward_compat"
-	@echo "... regression_optimization_test_optimization_walkthrough_fixes"
 	@echo "... regression_parietal_exception"
 	@echo "... regression_parietal_fep"
 	@echo "... regression_parietal_fep_orchestrator_bridge"
@@ -43655,6 +43680,7 @@ help:
 	@echo "... test_unification_engine"
 	@echo "... test_visual_processing_e2e"
 	@echo "... test_working_memory_reasoning"
+	@echo "... unit_active_neuron_tracking"
 	@echo "... unit_api_test_api_brain_cow"
 	@echo "... unit_api_test_api_brain_lifecycle"
 	@echo "... unit_api_test_api_brain_operations"
@@ -44246,6 +44272,7 @@ help:
 	@echo "... unit_exception_test_security_macros"
 	@echo "... unit_exception_test_swarm_macros"
 	@echo "... unit_exception_test_swarm_memory_macros"
+	@echo "... unit_fast_math"
 	@echo "... unit_fep_consciousness"
 	@echo "... unit_fep_context"
 	@echo "... unit_fep_curiosity"
@@ -44369,6 +44396,7 @@ help:
 	@echo "... unit_gpu_test_training_kernels"
 	@echo "... unit_gpu_training_test_gradient_kernels"
 	@echo "... unit_gpu_training_test_optimizer_kernels"
+	@echo "... unit_grounded_language"
 	@echo "... unit_habenula_test_adapter"
 	@echo "... unit_habenula_test_core"
 	@echo "... unit_health_agent_heartbeat"
@@ -44460,12 +44488,14 @@ help:
 	@echo "... unit_io_test_persistence_short_read"
 	@echo "... unit_language_bridges"
 	@echo "... unit_language_orchestrator"
+	@echo "... unit_lazy_init"
 	@echo "... unit_lc_test_adapter"
 	@echo "... unit_lc_test_arousal_modulation"
 	@echo "... unit_lc_test_core"
 	@echo "... unit_lc_test_math"
 	@echo "... unit_lc_test_ne_release"
 	@echo "... unit_lc_test_novelty_detection"
+	@echo "... unit_learning_workspace"
 	@echo "... unit_lib_cognitive_test_hierarchical"
 	@echo "... unit_linguistics_plasticity_bridge"
 	@echo "... unit_linguistics_snn_bridge"
@@ -44576,9 +44606,6 @@ help:
 	@echo "... unit_ofc_test"
 	@echo "... unit_optimization_quantum_annealing_test_quantum_annealing"
 	@echo "... unit_optimization_quantum_annealing_test_quantum_ternary"
-	@echo "... unit_optimization_test_cross_modal"
-	@echo "... unit_optimization_test_dynamic_adaptation"
-	@echo "... unit_optimization_test_multi_objective"
 	@echo "... unit_parietal_analogical_reasoning"
 	@echo "... unit_parietal_biology"
 	@echo "... unit_parietal_chemistry"
@@ -44817,6 +44844,7 @@ help:
 	@echo "... unit_swarm_exception_handling"
 	@echo "... unit_swarm_immune_bridges"
 	@echo "... unit_swarm_sleep_bridges"
+	@echo "... unit_synapse_fast_path"
 	@echo "... unit_ternary_exception_handling"
 	@echo "... unit_test_brain_full_simulation"
 	@echo "... unit_test_comprehensive_integration"

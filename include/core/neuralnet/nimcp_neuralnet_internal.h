@@ -95,6 +95,16 @@ struct neural_network_struct {
     spike_record_t* spike_history_bulk;   /**< Single contiguous spike history allocation */
     float* activity_history_bulk;         /**< Single contiguous activity history allocation */
     uint32_t bulk_neuron_count;           /**< Neurons using bulk arrays (0 = individual allocs) */
+
+    /* Phase: Active Neuron Set Tracking (40-watt brain optimization)
+     * Only 1-5% of neurons fire at any time. Track active set to skip dormant neurons.
+     * active_neuron_ids: pool of neuron IDs that fired or received input last step
+     * num_active_neurons: count of active neurons from last compute_step
+     * active_set_valid: whether the active set is up to date */
+    uint32_t* active_neuron_ids;      /**< Pool of active neuron IDs */
+    uint32_t num_active_neurons;      /**< Count of active neurons last step */
+    uint32_t active_neuron_capacity;  /**< Allocated capacity for active set */
+    bool active_set_valid;            /**< Whether active set is current */
 };
 
 #endif /* NIMCP_NEURALNET_INTERNAL_H */

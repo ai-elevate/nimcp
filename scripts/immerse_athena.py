@@ -110,8 +110,8 @@ logger = logging.getLogger("immerse_athena")
 BRAIN_INPUT_DIM = 1024
 BRAIN_OUTPUT_DIM = 4096
 TAG_DIM = 16           # [0:16]   modality flags + brain state
-PRIMARY_DIM = 512      # [16:528] primary modality features
-TEXT_DIM = 384         # [528:912] text semantic embedding (768-dim model truncated to fit)
+PRIMARY_DIM = 640      # [16:656] primary modality features
+TEXT_DIM = 256         # [656:912] text semantic embedding (1024-dim model truncated to fit)
 CONTEXT_DIM = 112      # [912:1024] biological context (arousal, sleep, dopamine, etc.)
 
 CHECKPOINT_DIR = "checkpoints/athena"
@@ -319,7 +319,7 @@ class EmbeddingAdapter:
     from the brain's responses. Refits periodically using least-squares.
     """
 
-    def __init__(self, input_dim=768, output_dim=768, refit_interval=1000):
+    def __init__(self, input_dim=1024, output_dim=1024, refit_interval=1000):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.refit_interval = refit_interval
@@ -722,7 +722,7 @@ class SensoryComposer:
                 text_embedding=None):
         """Build a 1024-dim input vector with brain state context.
 
-        Layout: [tag:16 | primary:512 | text:384 | context:112]
+        Layout: [tag:16 | primary:640 | text:256 | context:112]
         """
         vec = np.zeros(BRAIN_INPUT_DIM, dtype=np.float32)
 
@@ -753,24 +753,24 @@ class SensoryComposer:
         except Exception:
             vec[11] = 1.0
 
-        # --- Primary features [16:528] ---
+        # --- Primary features [16:656] ---
         if primary_features is not None:
             pf = np.array(primary_features, dtype=np.float32)
             n = min(len(pf), PRIMARY_DIM)
             vec[TAG_DIM:TAG_DIM + n] = pf[:n]
         elif text is not None:
-            emb = encode_text(text)  # 384-dim
-            # Pad to 512 with zeros
+            emb = encode_text(text)  # 1024-dim
+            # Pad to 640 with zeros
             n = min(len(emb), PRIMARY_DIM)
             vec[TAG_DIM:TAG_DIM + n] = emb[:n]
 
-        # --- Text semantic embedding [528:912] ---
+        # --- Text semantic embedding [656:912] ---
         if text_embedding is not None:
             te = np.array(text_embedding, dtype=np.float32)
             n = min(len(te), TEXT_DIM)
             vec[TAG_DIM + PRIMARY_DIM:TAG_DIM + PRIMARY_DIM + n] = te[:n]
         elif text is not None:
-            emb = encode_text(text)  # 384-dim
+            emb = encode_text(text)  # 1024-dim
             vec[TAG_DIM + PRIMARY_DIM:TAG_DIM + PRIMARY_DIM + len(emb)] = emb
 
         # --- Biological context [912:1024] ---
@@ -809,7 +809,7 @@ class SensoryComposer:
 
 def make_semantic_target(text, target_dim=BRAIN_OUTPUT_DIM):
     """Create a target vector by tiling the semantic embedding to target_dim."""
-    emb = encode_text(text)  # 384-dim
+    emb = encode_text(text)  # 1024-dim
     target = np.zeros(target_dim, dtype=np.float32)
     # Tile embedding across target
     for i in range(0, target_dim, len(emb)):
@@ -2345,7 +2345,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
     lr_scheduler = CosineAnnealingLR(lr_max=1.0, lr_min=0.3,
                                       warmup_steps=200, t_max=num_interactions)
     hard_miner = HardExampleMiner(max_buffer=500, replay_fraction=0.2)
-    embed_adapter = EmbeddingAdapter(input_dim=768, output_dim=768, refit_interval=1000)
+    embed_adapter = EmbeddingAdapter(input_dim=1024, output_dim=1024, refit_interval=1000)
     distiller = ClaudeDistiller(teacher=parent.teacher)
     temporal = MultiResolutionTemporal(brain, slow_interval=5)
     early_stop = EarlyStopping(patience=6, min_delta=0.003, mode="min")

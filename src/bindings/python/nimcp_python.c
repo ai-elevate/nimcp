@@ -250,6 +250,7 @@ typedef struct {
     PyObject_HEAD
     nimcp_brain_t brain;
     consolidation_community_cache_t* community_cache;  /* Cached community topology */
+    PyObject* cloud_brain_ref;  /* Strong ref to cloud brain (prevents GC while connected) */
 } BrainObject;
 
 /**
@@ -258,6 +259,8 @@ typedef struct {
  * HOW:  Call nimcp_brain_destroy, free Python object memory
  */
 static void Brain_dealloc(BrainObject* self) {
+    Py_XDECREF(self->cloud_brain_ref);
+    self->cloud_brain_ref = NULL;
     if (self->community_cache) {
         consolidation_community_cache_destroy(self->community_cache);
         self->community_cache = NULL;
@@ -278,6 +281,7 @@ static PyObject* Brain_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
     if (self != NULL) {
         self->brain = NULL;
         self->community_cache = NULL;
+        self->cloud_brain_ref = NULL;
     }
     return (PyObject*)self;
 }
@@ -2574,6 +2578,191 @@ static PyObject* Brain_get_hemispheric_balance(BrainObject* self, PyObject* Py_U
 
 
 /**
+ * Configure recurrent forward pass parameters.
+ * enable_recurrent(enabled, max_iterations=3, confidence_threshold=0.7, blend_alpha=0.3)
+ */
+static PyObject* Brain_enable_recurrent(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    int enabled = 1;
+    unsigned int max_iter = 3;
+    float threshold = 0.7f;
+    float alpha = 0.3f;
+    static char* kwlist[] = {"enabled", "max_iterations", "confidence_threshold", "blend_alpha", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|pIff", kwlist,
+                                      &enabled, &max_iter, &threshold, &alpha))
+        return NULL;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    brain_t brain = self->brain->internal_brain;
+    brain->recurrent_enabled = (bool)enabled;
+    brain->recurrent_max_iterations = max_iter;
+    brain->recurrent_confidence_threshold = threshold;
+    brain->recurrent_blend_alpha = alpha;
+    Py_RETURN_TRUE;
+}
+
+
+/**
+ * Configure BPTT (backpropagation through time) parameters.
+ * enable_bptt(enabled, window_size=8, discount=0.9)
+ */
+static PyObject* Brain_enable_bptt(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    int enabled = 1;
+    unsigned int window = 8;
+    float discount = 0.9f;
+    static char* kwlist[] = {"enabled", "window_size", "discount", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|pIf", kwlist,
+                                      &enabled, &window, &discount))
+        return NULL;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    brain_t brain = self->brain->internal_brain;
+    brain->bptt_enabled = (bool)enabled;
+
+    /* Resize buffer if window changed */
+    if (window != brain->bptt_window_size || !brain->bptt_buffer) {
+        /* Free old buffer */
+        if (brain->bptt_buffer) {
+            for (uint32_t i = 0; i < brain->bptt_window_size; i++) {
+                nimcp_free(brain->bptt_buffer[i].input);
+                nimcp_free(brain->bptt_buffer[i].output);
+                nimcp_free(brain->bptt_buffer[i].target);
+            }
+            nimcp_free(brain->bptt_buffer);
+        }
+        brain->bptt_window_size = window;
+        brain->bptt_buffer = nimcp_calloc(window, sizeof(*brain->bptt_buffer));
+        brain->bptt_head = 0;
+        brain->bptt_count = 0;
+        brain->bptt_input_dim = 0;
+        brain->bptt_output_dim = 0;
+    }
+    brain->bptt_discount = discount;
+    Py_RETURN_TRUE;
+}
+
+
+/**
+ * Get recurrent iteration count from last brain_decide() call.
+ */
+static PyObject* Brain_get_recurrent_iterations(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    return PyLong_FromUnsignedLong(self->brain->internal_brain->recurrent_iteration_count);
+}
+
+
+/**
+ * Connect a cloud backend brain for hybrid edge-cloud inference.
+ * connect_cloud(cloud_brain, confidence_threshold=0.5, enable_distillation=True)
+ */
+static PyObject* Brain_connect_cloud(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    PyObject* cloud_brain_obj = NULL;
+    float threshold = 0.5f;
+    int distill = 1;
+    static char* kwlist[] = {"cloud_brain", "confidence_threshold", "enable_distillation", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|fp", kwlist,
+                                      &cloud_brain_obj, &threshold, &distill))
+        return NULL;
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Local brain not initialized");
+        return NULL;
+    }
+
+    /* Verify cloud_brain_obj is a BrainObject */
+    if (!PyObject_TypeCheck(cloud_brain_obj, Py_TYPE(self))) {
+        PyErr_SetString(PyExc_TypeError, "cloud_brain must be a Brain instance");
+        return NULL;
+    }
+
+    BrainObject* cloud = (BrainObject*)cloud_brain_obj;
+    if (!cloud->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Cloud brain not initialized");
+        return NULL;
+    }
+
+    nimcp_status_t status = nimcp_brain_connect_cloud(
+        self->brain, cloud->brain, threshold, (bool)distill);
+
+    if (status != NIMCP_OK) {
+        PyErr_Format(PyExc_RuntimeError, "connect_cloud failed: %s", nimcp_get_error());
+        return NULL;
+    }
+
+    /* Keep a strong reference to the cloud brain to prevent GC */
+    Py_XDECREF(self->cloud_brain_ref);
+    Py_INCREF(cloud_brain_obj);
+    self->cloud_brain_ref = cloud_brain_obj;
+
+    Py_RETURN_TRUE;
+}
+
+
+/**
+ * Disconnect cloud backend, return to standalone mode.
+ */
+static PyObject* Brain_disconnect_cloud(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    nimcp_brain_disconnect_cloud(self->brain);
+
+    Py_XDECREF(self->cloud_brain_ref);
+    self->cloud_brain_ref = NULL;
+
+    Py_RETURN_TRUE;
+}
+
+
+/**
+ * Get cloud inference statistics.
+ * Returns dict with total_queries, local_handled, cloud_escalated, distillation_steps.
+ */
+static PyObject* Brain_get_cloud_stats(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    uint64_t total = 0, local = 0, cloud = 0, distill = 0;
+    nimcp_brain_get_cloud_stats(self->brain, &total, &local, &cloud, &distill);
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+    PyDict_SetItemString(dict, "total_queries", PyLong_FromUnsignedLongLong(total));
+    PyDict_SetItemString(dict, "local_handled", PyLong_FromUnsignedLongLong(local));
+    PyDict_SetItemString(dict, "cloud_escalated", PyLong_FromUnsignedLongLong(cloud));
+    PyDict_SetItemString(dict, "distillation_steps", PyLong_FromUnsignedLongLong(distill));
+    float local_pct = total > 0 ? (float)local / (float)total * 100.0f : 0.0f;
+    PyDict_SetItemString(dict, "local_handled_pct", PyFloat_FromDouble(local_pct));
+    return dict;
+}
+
+
+/**
+ * Process buffered distillation examples (batch learning from cloud).
+ * distill_cloud_batch(max_examples=0) -> int (number processed)
+ */
+static PyObject* Brain_distill_cloud_batch(BrainObject* self, PyObject* args) {
+    unsigned int max_ex = 0;
+    if (!PyArg_ParseTuple(args, "|I", &max_ex))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    uint32_t processed = nimcp_brain_distill_cloud_batch(self->brain, max_ex);
+    return PyLong_FromUnsignedLong(processed);
+}
+
+
+/**
  * WHAT: Generate text from a semantic vector using the language generator
  * WHY:  Converts brain's internal representations to natural language
  * HOW:  Uses language_orchestrator_generate_output with LANGUAGE_OUTPUT_TEXT
@@ -2635,6 +2824,408 @@ static PyObject* Brain_generate_text(BrainObject* self, PyObject* args) {
     return result;
 }
 
+
+/**
+ * WHAT: Train the language generator on a text pair
+ * WHY:  Enable supervised language learning from Python
+ * HOW:  Call nimcp_brain_train_language with input/target text
+ */
+static PyObject* Brain_train_language(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* input_text = NULL;
+    const char* target_text = NULL;
+    float learning_rate = 0.001f;
+
+    static char* kwlist[] = {"input_text", "target_text", "learning_rate", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|f", kwlist,
+                                      &input_text, &target_text, &learning_rate))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    float loss = 0.0f;
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_train_language(
+        self->brain, input_text, target_text, learning_rate, &loss);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyObject* result = PyDict_New();
+        if (!result) return NULL;
+        PyObject* err = PyUnicode_FromString(nimcp_get_error());
+        PyDict_SetItemString(result, "error", err);
+        Py_DECREF(err);
+        PyObject* loss_val = PyFloat_FromDouble(-1.0);
+        PyDict_SetItemString(result, "loss", loss_val);
+        Py_DECREF(loss_val);
+        return result;
+    }
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+
+    PyObject* tmp;
+    tmp = PyFloat_FromDouble(loss);
+    PyDict_SetItemString(result, "loss", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(1);
+    PyDict_SetItemString(result, "success", tmp); Py_DECREF(tmp);
+
+    return result;
+}
+
+
+/**
+ * WHAT: Generate text using the LNN decoder with prompt or semantic input
+ * WHY:  Full autoregressive generation from Python
+ * HOW:  Call nimcp_brain_generate_text with prompt or vector
+ */
+static PyObject* Brain_generate_text_advanced(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* prompt = NULL;
+    PyObject* semantic_list = NULL;
+
+    static char* kwlist[] = {"prompt", "semantic_input", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|sO", kwlist,
+                                      &prompt, &semantic_list))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    float* semantic = NULL;
+    Py_ssize_t num_features = 0;
+    if (semantic_list && semantic_list != Py_None) {
+        semantic = py_list_to_float_array(semantic_list, &num_features);
+        if (!semantic) return NULL;
+    }
+
+    if (!prompt && !semantic) {
+        PyErr_SetString(PyExc_ValueError, "Either prompt or semantic_input required");
+        return NULL;
+    }
+
+    enum { GEN_MAX_TEXT = 8192 };
+    char text[GEN_MAX_TEXT];
+    memset(text, 0, sizeof(text));
+    float confidence = 0.0f;
+    float perplexity = 0.0f;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_generate_text(
+        self->brain, prompt, semantic, (uint32_t)num_features,
+        text, GEN_MAX_TEXT, &confidence, &perplexity);
+    Py_END_ALLOW_THREADS
+
+    if (semantic) nimcp_free(semantic);
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+
+    PyObject* tmp;
+    tmp = PyUnicode_FromString(text);
+    PyDict_SetItemString(result, "text", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(confidence);
+    PyDict_SetItemString(result, "confidence", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(perplexity);
+    PyDict_SetItemString(result, "perplexity", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(status == NIMCP_OK);
+    PyDict_SetItemString(result, "success", tmp); Py_DECREF(tmp);
+
+    if (status != NIMCP_OK) {
+        tmp = PyUnicode_FromString(nimcp_get_error());
+        PyDict_SetItemString(result, "error", tmp); Py_DECREF(tmp);
+    }
+
+    return result;
+}
+
+
+// =========================================================================
+// Grounded Language Python Bindings
+// =========================================================================
+
+/**
+ * WHAT: Ground a word in sensory experience
+ * WHY:  Human-like word learning through cross-modal binding
+ */
+static PyObject* Brain_ground_word(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* word = NULL;
+    PyObject* features_list = NULL;
+    uint32_t modality = 5; /* GL_MODALITY_LINGUISTIC */
+    float attention = 0.8f;
+
+    static char* kwlist[] = {"word", "features", "modality", "attention", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|If", kwlist,
+                                      &word, &features_list, &modality, &attention))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    Py_ssize_t num_features = 0;
+    float* features = py_list_to_float_array(features_list, &num_features);
+    if (!features) return NULL;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_ground_word(self->brain, word, features,
+                                     (uint32_t)num_features, modality, attention);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(features);
+    return PyBool_FromLong(status == NIMCP_OK);
+}
+
+/**
+ * WHAT: Learn language from text (distributional + syntactic)
+ * WHY:  Learn word co-occurrence and sentence patterns from exposure
+ */
+static PyObject* Brain_learn_language(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* text = NULL;
+
+    static char* kwlist[] = {"text", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &text))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    float loss = 0.0f;
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_learn_language(self->brain, text, &loss);
+    Py_END_ALLOW_THREADS
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+    PyObject* tmp;
+    tmp = PyFloat_FromDouble(loss);
+    PyDict_SetItemString(result, "loss", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(status == NIMCP_OK);
+    PyDict_SetItemString(result, "success", tmp); Py_DECREF(tmp);
+    return result;
+}
+
+/**
+ * WHAT: Learn from input-target pairs (teacher-guided)
+ * WHY:  Social learning — teacher provides correct responses
+ */
+static PyObject* Brain_learn_language_pair(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* input_text = NULL;
+    const char* target_text = NULL;
+    float learning_rate = 0.0f;
+
+    static char* kwlist[] = {"input_text", "target_text", "learning_rate", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|f", kwlist,
+                                      &input_text, &target_text, &learning_rate))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    float loss = 0.0f;
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_learn_language_pair(self->brain, input_text, target_text,
+                                             learning_rate, &loss);
+    Py_END_ALLOW_THREADS
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+    PyObject* tmp;
+    tmp = PyFloat_FromDouble(loss);
+    PyDict_SetItemString(result, "loss", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(status == NIMCP_OK);
+    PyDict_SetItemString(result, "success", tmp); Py_DECREF(tmp);
+    return result;
+}
+
+/**
+ * WHAT: Comprehend text into semantic representation
+ * WHY:  Understanding = activating grounded concepts
+ */
+static PyObject* Brain_comprehend(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* text = NULL;
+
+    static char* kwlist[] = {"text", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &text))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    float semantic[128];
+    memset(semantic, 0, sizeof(semantic));
+    float confidence = 0.0f;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_comprehend(self->brain, text, semantic, 128, &confidence);
+    Py_END_ALLOW_THREADS
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+
+    /* Build semantic vector as list */
+    PyObject* vec_list = PyList_New(128);
+    for (int i = 0; i < 128; i++) {
+        PyList_SET_ITEM(vec_list, i, PyFloat_FromDouble(semantic[i]));
+    }
+    PyDict_SetItemString(result, "semantic_vector", vec_list); Py_DECREF(vec_list);
+
+    PyObject* tmp;
+    tmp = PyFloat_FromDouble(confidence);
+    PyDict_SetItemString(result, "confidence", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(status == NIMCP_OK);
+    PyDict_SetItemString(result, "success", tmp); Py_DECREF(tmp);
+    return result;
+}
+
+/**
+ * WHAT: Produce text from semantic intent
+ * WHY:  Expression = finding words for concepts
+ */
+static PyObject* Brain_produce_text(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    PyObject* intent_list = NULL;
+
+    static char* kwlist[] = {"intent", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwlist, &intent_list))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    Py_ssize_t intent_dim = 0;
+    float* intent = py_list_to_float_array(intent_list, &intent_dim);
+    if (!intent) return NULL;
+
+    char text[4096];
+    memset(text, 0, sizeof(text));
+    float confidence = 0.0f;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_produce_text(self->brain, intent, (uint32_t)intent_dim,
+                                      text, sizeof(text), &confidence);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(intent);
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+    PyObject* tmp;
+    tmp = PyUnicode_FromString(text);
+    PyDict_SetItemString(result, "text", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(confidence);
+    PyDict_SetItemString(result, "confidence", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(status == NIMCP_OK);
+    PyDict_SetItemString(result, "success", tmp); Py_DECREF(tmp);
+    return result;
+}
+
+/**
+ * WHAT: Full conversation turn using grounded language
+ * WHY:  Comprehend input + produce response in one call
+ */
+static PyObject* Brain_grounded_respond(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* input_text = NULL;
+
+    static char* kwlist[] = {"text", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &input_text))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    char response[4096];
+    memset(response, 0, sizeof(response));
+    float confidence = 0.0f;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_grounded_respond(self->brain, input_text,
+                                          response, sizeof(response), &confidence);
+    Py_END_ALLOW_THREADS
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+    PyObject* tmp;
+    tmp = PyUnicode_FromString(response);
+    PyDict_SetItemString(result, "response", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(confidence);
+    PyDict_SetItemString(result, "confidence", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(status == NIMCP_OK);
+    PyDict_SetItemString(result, "success", tmp); Py_DECREF(tmp);
+    return result;
+}
+
+/**
+ * WHAT: Creative text generation by blending two concept vectors
+ * WHY:  Creativity = novel combinations of concepts
+ */
+static PyObject* Brain_creative_blend(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    PyObject* vec_a_list = NULL;
+    PyObject* vec_b_list = NULL;
+    float blend_ratio = 0.5f;
+
+    static char* kwlist[] = {"vector_a", "vector_b", "blend_ratio", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO|f", kwlist,
+                                      &vec_a_list, &vec_b_list, &blend_ratio))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    Py_ssize_t dim_a = 0, dim_b = 0;
+    float* vec_a = py_list_to_float_array(vec_a_list, &dim_a);
+    if (!vec_a) return NULL;
+    float* vec_b = py_list_to_float_array(vec_b_list, &dim_b);
+    if (!vec_b) { nimcp_free(vec_a); return NULL; }
+
+    uint32_t dim = (dim_a < dim_b) ? (uint32_t)dim_a : (uint32_t)dim_b;
+
+    char text[4096];
+    memset(text, 0, sizeof(text));
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_creative_blend(self->brain, vec_a, vec_b, dim,
+                                         blend_ratio, text, sizeof(text));
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(vec_a);
+    nimcp_free(vec_b);
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+    PyObject* tmp;
+    tmp = PyUnicode_FromString(text);
+    PyDict_SetItemString(result, "text", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(status == NIMCP_OK);
+    PyDict_SetItemString(result, "success", tmp); Py_DECREF(tmp);
+    return result;
+}
 
 /**
  * WHAT: Get avatar visual state (FACS AUs, visemes, gaze, emotion, voice)
@@ -5768,6 +6359,26 @@ static PyMethodDef Brain_methods[] = {
      "Tokenize text to token IDs: tokenize(text) -> list of int"},
     {"generate_text", (PyCFunction)Brain_generate_text, METH_VARARGS,
      "Generate text from semantic vector: generate_text(semantic_vector) -> dict with text, confidence, fluency"},
+    {"train_language", (PyCFunction)Brain_train_language, METH_VARARGS | METH_KEYWORDS,
+     "Train language generator: train_language(input_text, target_text, learning_rate=0.001) -> dict with loss"},
+    {"generate", (PyCFunction)Brain_generate_text_advanced, METH_VARARGS | METH_KEYWORDS,
+     "Generate text: generate(prompt='hello', semantic_input=None) -> dict with text, confidence, perplexity"},
+
+    // Grounded Language (human-like word-concept binding)
+    {"ground_word", (PyCFunction)Brain_ground_word, METH_VARARGS | METH_KEYWORDS,
+     "Ground a word in sensory experience: ground_word(word, features, modality=5, attention=0.8) -> bool"},
+    {"learn_language", (PyCFunction)Brain_learn_language, METH_VARARGS | METH_KEYWORDS,
+     "Learn language from text exposure: learn_language(text) -> dict with loss, success"},
+    {"learn_language_pair", (PyCFunction)Brain_learn_language_pair, METH_VARARGS | METH_KEYWORDS,
+     "Learn from input-target pair: learn_language_pair(input_text, target_text, learning_rate=0) -> dict"},
+    {"comprehend", (PyCFunction)Brain_comprehend, METH_VARARGS | METH_KEYWORDS,
+     "Comprehend text into semantic vector: comprehend(text) -> dict with semantic_vector, confidence"},
+    {"produce_text", (PyCFunction)Brain_produce_text, METH_VARARGS | METH_KEYWORDS,
+     "Produce text from semantic intent: produce_text(intent) -> dict with text, confidence"},
+    {"grounded_respond", (PyCFunction)Brain_grounded_respond, METH_VARARGS | METH_KEYWORDS,
+     "Respond using grounded language: grounded_respond(text) -> dict with response, confidence"},
+    {"creative_blend", (PyCFunction)Brain_creative_blend, METH_VARARGS | METH_KEYWORDS,
+     "Blend two concepts creatively: creative_blend(vector_a, vector_b, blend_ratio=0.5) -> dict with text"},
 
     // Mixed precision training
     {"enable_mixed_precision", (PyCFunction)Brain_enable_mixed_precision, METH_VARARGS,
@@ -5788,6 +6399,24 @@ static PyMethodDef Brain_methods[] = {
      "Get total inter-hemispheric callosum transfers: get_callosum_transfers() -> int"},
     {"get_hemispheric_balance", (PyCFunction)Brain_get_hemispheric_balance, METH_NOARGS,
      "Get hemispheric balance [-1=left, +1=right]: get_hemispheric_balance() -> float"},
+
+    // Recurrent forward pass + BPTT
+    {"enable_recurrent", (PyCFunction)Brain_enable_recurrent, METH_VARARGS | METH_KEYWORDS,
+     "Configure recurrent forward pass: enable_recurrent(enabled=True, max_iterations=3, confidence_threshold=0.7, blend_alpha=0.3) -> True"},
+    {"enable_bptt", (PyCFunction)Brain_enable_bptt, METH_VARARGS | METH_KEYWORDS,
+     "Configure BPTT: enable_bptt(enabled=True, window_size=8, discount=0.9) -> True"},
+    {"get_recurrent_iterations", (PyCFunction)Brain_get_recurrent_iterations, METH_NOARGS,
+     "Get recurrent iteration count from last decide(): get_recurrent_iterations() -> int"},
+
+    // Cloud inference (edge-cloud hybrid)
+    {"connect_cloud", (PyCFunction)Brain_connect_cloud, METH_VARARGS | METH_KEYWORDS,
+     "Connect cloud backend: connect_cloud(cloud_brain, confidence_threshold=0.5, enable_distillation=True) -> True"},
+    {"disconnect_cloud", (PyCFunction)Brain_disconnect_cloud, METH_NOARGS,
+     "Disconnect cloud backend: disconnect_cloud() -> True"},
+    {"get_cloud_stats", (PyCFunction)Brain_get_cloud_stats, METH_NOARGS,
+     "Get cloud inference stats: get_cloud_stats() -> dict"},
+    {"distill_cloud_batch", (PyCFunction)Brain_distill_cloud_batch, METH_VARARGS,
+     "Process buffered distillation: distill_cloud_batch(max_examples=0) -> int"},
 
     {NULL}
 };

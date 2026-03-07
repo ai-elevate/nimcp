@@ -45,6 +45,10 @@ static void api_set_error(const char* fmt, ...);
 #include "core/brain/nimcp_brain_internal.h"     // For accessing brain->bbb_system
 #include "language/nimcp_language_orchestrator.h" // For nimcp_brain_speak
 #include "language/nimcp_language_types.h"        // LANGUAGE_OUTPUT_TEXT
+#include "generation/nimcp_language_generator.h"  // LNN-based text generation
+#include "generation/nimcp_tokenizer.h"           // Tokenizer encode/decode
+#include "generation/nimcp_embedding.h"           // Token embeddings
+#include "language/nimcp_grounded_language.h"     // Grounded language system
 #include "cognitive/nimcp_emotional_system.h"     // For avatar emotional state
 #include "middleware/training/nimcp_brain_training_integration.h"  // Training coordinator
 #include "middleware/training/nimcp_loss_functions.h"              // Loss functions
@@ -56,6 +60,7 @@ static void api_set_error(const char* fmt, ...);
 #include "core/neuralnet/nimcp_neuralnet_learning.h"              // neural_network_apply_reward_learning_active
 #include "core/brain/learning/nimcp_brain_learning.h"              // brain_learn_vector, brain_learn_example
 #include "cognitive/rubric/nimcp_rubric.h"                         // Cognitive output rubric
+#include "middleware/cloud/nimcp_cloud_inference.h"                 // Edge-cloud hybrid inference
 #include "utils/platform/nimcp_platform_once.h"                    // Thread-safe init
 #include "utils/thread/nimcp_atomic.h"                             // Atomic operations
 #include "utils/exception/nimcp_exception_macros.h"

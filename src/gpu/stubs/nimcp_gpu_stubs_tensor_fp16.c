@@ -281,11 +281,11 @@ nimcp_amp_context_t* nimcp_amp_create(
     ctx->autocasting = false;
 
     /* On CPU, all ops use FP32 */
-    ctx->matmul_dtype = NIMCP_MP_DTYPE_FP32;
-    ctx->conv_dtype = NIMCP_MP_DTYPE_FP32;
-    ctx->norm_dtype = NIMCP_MP_DTYPE_FP32;
-    ctx->softmax_dtype = NIMCP_MP_DTYPE_FP32;
-    ctx->loss_dtype = NIMCP_MP_DTYPE_FP32;
+    ctx->matmul_dtype = MP_DTYPE_FP32;
+    ctx->conv_dtype = MP_DTYPE_FP32;
+    ctx->norm_dtype = MP_DTYPE_FP32;
+    ctx->softmax_dtype = MP_DTYPE_FP32;
+    ctx->loss_dtype = MP_DTYPE_FP32;
 
     ctx->tensor_cores_available = false;
     ctx->bf16_supported = false;
@@ -328,9 +328,9 @@ bool nimcp_amp_is_autocasting(const nimcp_amp_context_t* ctx) {
 
 nimcp_mp_dtype_t nimcp_amp_get_dtype(const nimcp_amp_context_t* ctx, nimcp_mp_op_category_t category) {
     (void)category;
-    if (!ctx) return NIMCP_MP_DTYPE_FP32;
+    if (!ctx) return MP_DTYPE_FP32;
     /* On CPU, everything stays FP32 */
-    return NIMCP_MP_DTYPE_FP32;
+    return MP_DTYPE_FP32;
 }
 
 nimcp_gpu_tensor_t* nimcp_amp_cast_tensor(
@@ -764,7 +764,7 @@ bool nimcp_bf16_supported(nimcp_gpu_context_t* ctx) {
 
 nimcp_mp_dtype_t nimcp_get_recommended_dtype(nimcp_gpu_context_t* ctx) {
     (void)ctx;
-    return NIMCP_MP_DTYPE_FP32;  /* CPU always uses FP32 */
+    return MP_DTYPE_FP32;  /* CPU always uses FP32 */
 }
 
 void nimcp_amp_get_stats(const nimcp_amp_context_t* ctx, uint64_t* fp16_ops, uint64_t* fp32_ops, uint64_t* tc_ops) {
@@ -781,20 +781,20 @@ void nimcp_amp_get_stats(const nimcp_amp_context_t* ctx, uint64_t* fp16_ops, uin
 
 const char* nimcp_mp_dtype_name(nimcp_mp_dtype_t dtype) {
     switch (dtype) {
-        case NIMCP_MP_DTYPE_FP32: return "float32";
-        case NIMCP_MP_DTYPE_FP16: return "float16";
-        case NIMCP_MP_DTYPE_BF16: return "bfloat16";
-        case NIMCP_MP_DTYPE_TF32: return "tf32";
+        case MP_DTYPE_FP32: return "float32";
+        case MP_DTYPE_FP16: return "float16";
+        case MP_DTYPE_BF16: return "bfloat16";
+        case MP_DTYPE_TF32: return "tf32";
         default: return "unknown";
     }
 }
 
 size_t nimcp_mp_dtype_size(nimcp_mp_dtype_t dtype) {
     switch (dtype) {
-        case NIMCP_MP_DTYPE_FP32: return 4;
-        case NIMCP_MP_DTYPE_FP16: return 2;
-        case NIMCP_MP_DTYPE_BF16: return 2;
-        case NIMCP_MP_DTYPE_TF32: return 4;
+        case MP_DTYPE_FP32: return 4;
+        case MP_DTYPE_FP16: return 2;
+        case MP_DTYPE_BF16: return 2;
+        case MP_DTYPE_TF32: return 4;
         default: return 4;
     }
 }
@@ -819,7 +819,7 @@ nimcp_autocast_ctx_t* nimcp_autocast_create(
 
     /* On CPU all ops use FP32 */
     for (int i = 0; i < AUTOCAST_OP_COUNT; i++) {
-        ctx->op_dtypes[i] = NIMCP_MP_DTYPE_FP32;
+        ctx->op_dtypes[i] = MP_DTYPE_FP32;
         ctx->op_force_fp32[i] = false;
     }
 
@@ -934,7 +934,7 @@ nimcp_autocast_mode_t nimcp_autocast_get_mode(const nimcp_autocast_ctx_t* ctx) {
 }
 
 nimcp_mp_dtype_t nimcp_autocast_get_op_dtype(const nimcp_autocast_ctx_t* ctx, nimcp_autocast_op_t op) {
-    if (!ctx || (int)op >= AUTOCAST_OP_COUNT) return NIMCP_MP_DTYPE_FP32;
+    if (!ctx || (int)op >= AUTOCAST_OP_COUNT) return MP_DTYPE_FP32;
     return ctx->op_dtypes[op];
 }
 

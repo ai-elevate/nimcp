@@ -125,10 +125,10 @@ extern "C" {
  * TUNING NOTES:
  * - Smaller (32): Lower per-neuron memory, more overflow allocations
  * - Larger (256): Higher per-neuron memory, fewer overflow allocations
- * - 128: Good balance for 1.5M neuron networks (~3KB/neuron inline)
+ * - 256: Good balance for 1.5M neuron networks (~6KB/neuron inline)
  * - Original (64): Conservative for smaller networks
  */
-#define SPARSE_SYNAPSE_EMBEDDED_CAPACITY 128
+#define SPARSE_SYNAPSE_EMBEDDED_CAPACITY 256
 
 /**
  * @brief Default pool capacity
@@ -137,7 +137,7 @@ extern "C" {
  * WHY:  10% of neurons exceed embedded capacity (power-law tail)
  * HOW:  10,000 neurons × 10% × 36 overflow synapses ≈ 36,000 handles
  */
-#define SPARSE_SYNAPSE_DEFAULT_POOL_SIZE 50000
+#define SPARSE_SYNAPSE_DEFAULT_POOL_SIZE 100000
 
 /**
  * @brief Maximum allowed pool size
@@ -233,23 +233,23 @@ typedef struct {
  * @brief Sparse synapse storage (embedded + overflow)
  *
  * WHAT: Hybrid storage combining inline array with dynamic overflow
- * WHY:  Optimize for common case (≤128 synapses) while supporting outliers
- * HOW:  Inline array for first 128, heap allocation only when needed
+ * WHY:  Optimize for common case (≤256 synapses) while supporting outliers
+ * HOW:  Inline array for first 256, heap allocation only when needed
  *
  * MEMORY LAYOUT:
  * ┌────────────────────────────────────────────────────────┐
- * │ embedded[128]: 128 × 24 bytes = 3,072 bytes (inline)    │
+ * │ embedded[256]: 256 × 24 bytes = 6,144 bytes (inline)    │
  * ├────────────────────────────────────────────────────────┤
  * │ embedded_count: 4 bytes                                │
  * │ overflow: 8 bytes (pointer)                            │
  * │ overflow_count: 4 bytes                                │
  * │ overflow_capacity: 4 bytes                             │
  * └────────────────────────────────────────────────────────┘
- * Total: 1,556 bytes per neuron (vs 53 KB in dense allocation)
+ * Total: 6,164 bytes per neuron (vs 53 KB in dense allocation)
  *
  * GROWTH STRATEGY:
- * - embedded_count ≤ 128: Store in embedded array (no allocation)
- * - embedded_count > 128: Allocate overflow from pool
+ * - embedded_count ≤ 256: Store in embedded array (no allocation)
+ * - embedded_count > 256: Allocate overflow from pool
  * - Overflow grows in chunks (2x capacity) to amortize allocations
  */
 typedef struct {

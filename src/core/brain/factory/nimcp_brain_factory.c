@@ -32,6 +32,7 @@
 #include "async/nimcp_bio_messages.h"
 
 #include "core/brain/factory/nimcp_brain_factory.h"
+#include "core/brain/factory/init/nimcp_brain_init_language.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/nimcp_brain_bio_async.h"
@@ -790,6 +791,9 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Phase CC-1: Cortical columns architecture (Tier 0.65)
     if (!init_cortical_columns_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
+    // Language Layer: Orchestrator + LNN generator + tokenizer + embeddings
+    nimcp_brain_factory_init_language_subsystem(brain);  // Non-fatal if prerequisites missing
+
     // Phase 9.2: Epistemic filtering
     if (!init_epistemic_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
@@ -1110,6 +1114,40 @@ brain_t brain_create_custom(const brain_config_t* config)
     }
 
     // ========================================================================
+    // EDGE-CLOUD HYBRID INFERENCE (standalone by default — user wires backend)
+    // ========================================================================
+    brain->cloud_bridge = NULL;
+    brain->cloud_inference_enabled = false;
+
+    // ========================================================================
+    // RECURRENT FORWARD PASS + BPTT (Iterative Refinement & Temporal Learning)
+    // ========================================================================
+    {
+        // Recurrent forward pass: re-process uncertain outputs
+        brain->recurrent_enabled = true;
+        brain->recurrent_max_iterations = 3;
+        brain->recurrent_confidence_threshold = 0.7f;
+        brain->recurrent_blend_alpha = 0.3f;
+        brain->recurrent_iteration_count = 0;
+
+        // BPTT: temporal gradient accumulation over recent examples
+        brain->bptt_enabled = true;
+        brain->bptt_window_size = 8;
+        brain->bptt_discount = 0.9f;
+        brain->bptt_buffer = nimcp_calloc(brain->bptt_window_size,
+                                          sizeof(*brain->bptt_buffer));
+        brain->bptt_head = 0;
+        brain->bptt_count = 0;
+        brain->bptt_input_dim = 0;   // Lazy-allocated on first learn_vector call
+        brain->bptt_output_dim = 0;
+
+        if (brain->bptt_buffer) {
+            LOG_INFO(LOG_MODULE, "BPTT enabled (window=%u, discount=%.1f) + recurrent forward (max_iter=%u)",
+                     brain->bptt_window_size, brain->bptt_discount, brain->recurrent_max_iterations);
+        }
+    }
+
+    // ========================================================================
     // FUZZY LOGIC (CROSS-CUTTING UTILITY)
     // ========================================================================
 
@@ -1310,6 +1348,23 @@ brain_t brain_create_custom(const brain_config_t* config)
     // ========================================================================
 post_init:
     (void)parallel_init_done;  // Suppress unused warning when goto skips sequential
+
+    // Language Layer: Orchestrator + LNN generator + tokenizer + embeddings
+    // Must be in post_init so it runs for both parallel and sequential paths
+    if (!brain->lang_generator) {
+        nimcp_brain_factory_init_language_subsystem(brain);  // Non-fatal if prerequisites missing
+    }
+
+    /* Initialize learning workspace with reasonable defaults */
+    if (!brain->learning_workspace.temp_float) {
+        uint32_t ws_size = brain->config.num_inputs > brain->config.num_outputs ?
+                           brain->config.num_inputs : brain->config.num_outputs;
+        if (ws_size < 1024) ws_size = 1024;
+        brain->learning_workspace.temp_float = nimcp_calloc(ws_size, sizeof(float));
+        brain->learning_workspace.temp_float_capacity = ws_size;
+        brain->learning_workspace.temp_uint = nimcp_calloc(ws_size, sizeof(uint32_t));
+        brain->learning_workspace.temp_uint_capacity = ws_size;
+    }
 
     // ========================================================================
     // WORLD MODEL WIRING (Connect to Active Inference & Imagination)

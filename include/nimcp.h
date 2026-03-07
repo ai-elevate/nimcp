@@ -610,6 +610,209 @@ nimcp_status_t nimcp_brain_speak(
 );
 
 /**
+ * @brief Train the language generator on a text sequence
+ *
+ * Performs one training step using teacher-forced cross-entropy loss
+ * on the LNN decoder. Trains the tokenizer vocabulary, embedding layer,
+ * and output projection weights.
+ *
+ * @param brain Brain handle
+ * @param input_text Input text for training
+ * @param target_text Target text (next-token prediction target)
+ * @param learning_rate Learning rate (0 = use default 0.001)
+ * @param out_loss Pointer to store training loss (optional)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_train_language(
+    nimcp_brain_t brain,
+    const char* input_text,
+    const char* target_text,
+    float learning_rate,
+    float* out_loss
+);
+
+/**
+ * @brief Generate text from cognitive state using LNN decoder
+ *
+ * Uses the autoregressive LNN decoder with softmax sampling
+ * to generate text token-by-token from a semantic input vector.
+ * Falls back to language orchestrator if generator not initialized.
+ *
+ * @param brain Brain handle
+ * @param prompt Text prompt for continuation (NULL for free generation)
+ * @param semantic_input Semantic vector for cognitive-state generation (NULL if using prompt)
+ * @param semantic_dim Dimension of semantic_input
+ * @param out_text Output text buffer
+ * @param text_max_len Maximum length of out_text buffer
+ * @param out_confidence Pointer to store confidence [0,1] (optional)
+ * @param out_perplexity Pointer to store perplexity (optional)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_generate_text(
+    nimcp_brain_t brain,
+    const char* prompt,
+    const float* semantic_input,
+    uint32_t semantic_dim,
+    char* out_text,
+    uint32_t text_max_len,
+    float* out_confidence,
+    float* out_perplexity
+);
+
+// =========================================================================
+// GROUNDED LANGUAGE API (human-like word-concept binding)
+// =========================================================================
+
+/**
+ * @brief Teach the brain a word through grounded experience
+ *
+ * Associates a word form with a sensory feature vector through Hebbian binding.
+ * This models how humans learn words — by experiencing the referent.
+ *
+ * @param brain        Brain handle
+ * @param word         Word form to learn
+ * @param features     Sensory feature vector (e.g., visual features, semantic embedding)
+ * @param feature_dim  Dimension of feature vector
+ * @param modality     Sensory modality (0=visual, 1=auditory, 2=motor, 3=emotional, 4=spatial, 5=linguistic)
+ * @param attention    Attentional weight [0,1] — higher = stronger binding
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_ground_word(
+    nimcp_brain_t brain,
+    const char* word,
+    const float* features,
+    uint32_t feature_dim,
+    uint32_t modality,
+    float attention
+);
+
+/**
+ * @brief Learn language from text (distributional + syntactic patterns)
+ *
+ * Processes text to learn word co-occurrence patterns, infer word classes,
+ * and extract syntactic templates — like how children learn from exposure.
+ *
+ * @param brain  Brain handle
+ * @param text   Text to learn from
+ * @param out_loss  Output: learning loss (lower = better alignment), can be NULL
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_learn_language(
+    nimcp_brain_t brain,
+    const char* text,
+    float* out_loss
+);
+
+/**
+ * @brief Learn from input-target text pairs (teacher-guided)
+ *
+ * Strengthens associations between input concepts and target words.
+ * Like a parent pointing and naming, or correcting speech.
+ *
+ * @param brain        Brain handle
+ * @param input_text   Stimulus/input text
+ * @param target_text  Expected/correct response
+ * @param learning_rate Hebbian learning rate (0 = default)
+ * @param out_loss     Output: learning loss
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_learn_language_pair(
+    nimcp_brain_t brain,
+    const char* input_text,
+    const char* target_text,
+    float learning_rate,
+    float* out_loss
+);
+
+/**
+ * @brief Comprehend text using grounded semantics
+ *
+ * Activates grounded concept bindings for each word, integrates meaning,
+ * and returns the semantic representation.
+ *
+ * @param brain         Brain handle
+ * @param text          Text to comprehend
+ * @param out_semantic  Output: semantic vector (caller allocates, at least 128 floats)
+ * @param semantic_dim  Dimension of output semantic vector
+ * @param out_confidence Output: comprehension confidence [0,1]
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_comprehend(
+    nimcp_brain_t brain,
+    const char* text,
+    float* out_semantic,
+    uint32_t semantic_dim,
+    float* out_confidence
+);
+
+/**
+ * @brief Produce text from semantic intent (grounded production)
+ *
+ * Generates text by finding words that map to concepts closest to the
+ * semantic intent vector, then arranging them using learned syntactic patterns.
+ *
+ * @param brain         Brain handle
+ * @param intent        Semantic intent vector (what to express)
+ * @param intent_dim    Dimension of intent vector
+ * @param out_text      Output: generated text buffer
+ * @param text_max_len  Maximum output text length
+ * @param out_confidence Output: production confidence [0,1]
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_produce_text(
+    nimcp_brain_t brain,
+    const float* intent,
+    uint32_t intent_dim,
+    char* out_text,
+    uint32_t text_max_len,
+    float* out_confidence
+);
+
+/**
+ * @brief Respond to text input using grounded comprehension + production
+ *
+ * Full conversation turn: comprehend input, then produce grounded response.
+ *
+ * @param brain         Brain handle
+ * @param input_text    Input text to respond to
+ * @param out_response  Output: response text buffer
+ * @param response_max  Maximum response buffer length
+ * @param out_confidence Output: response confidence [0,1]
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_grounded_respond(
+    nimcp_brain_t brain,
+    const char* input_text,
+    char* out_response,
+    uint32_t response_max,
+    float* out_confidence
+);
+
+/**
+ * @brief Generate creative text by blending two concepts
+ *
+ * Conceptual blending — combine two semantic vectors to create novel expression.
+ *
+ * @param brain       Brain handle
+ * @param vector_a    First concept vector
+ * @param vector_b    Second concept vector
+ * @param vec_dim     Dimension of vectors
+ * @param blend_ratio Interpolation [0=all A, 1=all B, 0.5=even]
+ * @param out_text    Output text buffer
+ * @param text_max    Maximum output length
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_creative_blend(
+    nimcp_brain_t brain,
+    const float* vector_a,
+    const float* vector_b,
+    uint32_t vec_dim,
+    float blend_ratio,
+    char* out_text,
+    uint32_t text_max
+);
+
+/**
  * @brief Connect two brains through collective cognition
  *
  * Links brain_b into brain_a's collective cognition system so they
@@ -1178,6 +1381,89 @@ uint64_t nimcp_brain_get_callosum_transfers(nimcp_brain_t brain);
 float nimcp_brain_get_hemispheric_balance(nimcp_brain_t brain);
 
 /**
+ * @brief Connect a cloud backend for hybrid edge-cloud inference
+ *
+ * When connected, the local brain will escalate uncertain decisions to the
+ * cloud backend. Cloud responses are optionally distilled back to improve
+ * the local brain over time.
+ *
+ * @param brain Local brain (edge device)
+ * @param cloud_brain Backend brain (cloud/server) — uses in-process bridge
+ * @param confidence_threshold Escalate if local confidence below this (0.0-1.0)
+ * @param enable_distillation Train local brain from cloud answers
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_connect_cloud(nimcp_brain_t brain,
+                                          nimcp_brain_t cloud_brain,
+                                          float confidence_threshold,
+                                          bool enable_distillation);
+
+/**
+ * @brief Disconnect cloud backend (return to standalone mode)
+ * @param brain Brain handle
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_disconnect_cloud(nimcp_brain_t brain);
+
+/**
+ * @brief Get cloud inference statistics
+ * @param brain Brain handle
+ * @param total_queries Output: total queries
+ * @param local_handled Output: queries handled locally
+ * @param cloud_escalated Output: queries sent to cloud
+ * @param distillation_steps Output: times local learned from cloud
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_get_cloud_stats(nimcp_brain_t brain,
+                                            uint64_t* total_queries,
+                                            uint64_t* local_handled,
+                                            uint64_t* cloud_escalated,
+                                            uint64_t* distillation_steps);
+
+/**
+ * @brief Process buffered distillation examples (batch learning from cloud)
+ * @param brain Brain handle
+ * @param max_examples Max examples to process (0 = all)
+ * @return Number of examples processed
+ */
+uint32_t nimcp_brain_distill_cloud_batch(nimcp_brain_t brain, uint32_t max_examples);
+
+/**
+ * @brief Enable/disable recurrent forward pass (iterative refinement)
+ *
+ * @param brain Brain handle
+ * @param enable Enable flag
+ * @param max_iterations Maximum refinement iterations (1-10)
+ * @param confidence_threshold Stop when confidence exceeds this (0.0-1.0)
+ * @param blend_alpha Output-to-input blend ratio (0.0-1.0)
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_enable_recurrent(nimcp_brain_t brain, bool enable,
+                                             uint32_t max_iterations,
+                                             float confidence_threshold,
+                                             float blend_alpha);
+
+/**
+ * @brief Enable/disable BPTT (backpropagation through time)
+ *
+ * @param brain Brain handle
+ * @param enable Enable flag
+ * @param window_size Temporal buffer size (1-32)
+ * @param discount Gradient discount per step back (0.0-1.0)
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_enable_bptt(nimcp_brain_t brain, bool enable,
+                                        uint32_t window_size, float discount);
+
+/**
+ * @brief Get recurrent iteration count from last brain_decide() call
+ *
+ * @param brain Brain handle
+ * @return Number of iterations used in last decision
+ */
+uint32_t nimcp_brain_get_recurrent_iterations(nimcp_brain_t brain);
+
+/**
  * @brief Register a callback for a specific event type
  *
  * @param brain Brain handle
@@ -1276,6 +1562,12 @@ uint32_t nimcp_brain_get_neuron_count(nimcp_brain_t brain);
  * @return true on success, false on error
  */
 bool nimcp_brain_get_utilization_metrics(nimcp_brain_t brain, float* utilization, float* saturation);
+
+/** Get active neuron count from last compute step (40-watt brain sparsity) */
+uint32_t nimcp_brain_get_active_neuron_count(nimcp_brain_t brain);
+
+/** Get sparsity ratio (fraction of neurons active) */
+float nimcp_brain_get_sparsity_ratio(nimcp_brain_t brain);
 
 //=============================================================================
 // Brain Snapshots - Named, timestamped backups for versioning & A/B testing

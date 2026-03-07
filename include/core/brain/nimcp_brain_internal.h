@@ -1176,6 +1176,23 @@ struct brain_struct {
     uint64_t last_language_update_us;                                 // Last language update timestamp
     tokenizer_t* tokenizer;                                           // Persistent tokenizer (lazy-init, reused across calls)
 
+    // Language Generator (LNN-based autoregressive decoder)
+    struct language_generator* lang_generator;                         // LNN decoder for text generation
+    struct embedding_layer* lang_embedding;                            // Token embedding layer for generation
+
+    // Learning workspace (40-watt brain: reuse buffers instead of malloc/free per call)
+    struct {
+        float* temp_float;              // Reusable float buffer
+        uint32_t temp_float_capacity;   // Current capacity
+        uint32_t* temp_uint;            // Reusable uint32 buffer
+        uint32_t temp_uint_capacity;    // Current capacity
+        float* delta_buf;              // Persistent backprop delta buffer
+        uint32_t delta_buf_capacity;    // Current capacity
+    } learning_workspace;
+
+    // Grounded Language System (human-like word-concept binding)
+    struct grounded_language* grounded_lang;                           // Grounded lexicon + production
+
     // =========================================================================
     // BRAINSTEM INTEGRATION (Midbrain, Pons, Medulla, Reticular Formation)
     // =========================================================================
@@ -1920,6 +1937,47 @@ struct brain_struct {
     bool hemispheric_enabled;                        // Master enable flag
     float hemispheric_balance;                       // Left-right activity balance [-1=left, +1=right]
     uint64_t last_callosum_process_us;               // Last callosum queue processing timestamp
+
+    // === EDGE-CLOUD HYBRID INFERENCE ===
+    //
+    // Confidence-gated routing between local (edge) and cloud (backend) brains.
+    // System 1/2 analogy: fast local inference for easy cases, cloud escalation
+    // for hard cases, with distillation to make the local brain smarter over time.
+    //
+    struct cloud_inference_bridge* cloud_bridge;     // Edge-cloud inference bridge (NULL if standalone)
+    bool cloud_inference_enabled;                    // Master enable flag
+
+    // === RECURRENT FORWARD PASS (Iterative Refinement) ===
+    //
+    // Multiple forward passes with output-to-input feedback for harder problems.
+    // Biological: Recurrent thalamocortical loops refine percepts over 50-150ms.
+    // Low-confidence outputs trigger re-processing with output blended into input.
+    //
+    bool recurrent_enabled;                          // Master enable flag
+    uint32_t recurrent_max_iterations;               // Max refinement iterations (default: 3)
+    float recurrent_confidence_threshold;            // Stop iterating if confidence exceeds this (default: 0.7)
+    float recurrent_blend_alpha;                     // Output-to-input blend ratio (default: 0.3)
+    uint32_t recurrent_iteration_count;              // Last decision's iteration count (diagnostic)
+
+    // === BPTT (Backpropagation Through Time) ===
+    //
+    // Circular buffer of recent (input, output, target) tuples for temporal
+    // gradient accumulation. Enables learning from sequential dependencies.
+    // Biological: Hippocampal replay + eligibility traces over recent experience.
+    //
+    bool bptt_enabled;                               // Master enable flag
+    uint32_t bptt_window_size;                       // Temporal window (default: 8)
+    float bptt_discount;                             // Gradient discount per step back (default: 0.9)
+    struct {
+        float* input;                                // Input features [num_inputs]
+        float* output;                               // Network output [num_outputs]
+        float* target;                               // Target vector [num_outputs]
+        float loss;                                  // Loss at this timestep
+    } *bptt_buffer;                                  // Circular buffer [bptt_window_size]
+    uint32_t bptt_head;                              // Next write position
+    uint32_t bptt_count;                             // Number of valid entries (0..window_size)
+    uint32_t bptt_input_dim;                         // Cached input dimension for buffer sizing
+    uint32_t bptt_output_dim;                        // Cached output dimension for buffer sizing
 
     // === PRE-ALLOCATED SCRATCH BUFFERS FOR learn() HOT PATH ===
     //

@@ -1235,6 +1235,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // Attention-guided feature processing (positional encoding + multi-head attention)
+    // Treat input as a sequence of chunks for cross-element attention.
+    // Chunk size = 64 (matches typical head dimension), sequence_length = num_features/64.
+    // This enables the attention mechanism to attend across different parts of the input
+    // rather than treating the entire input as a single token (sequence_length=1).
     if (brain->positional_encoder) {
         nimcp_pos_apply_encoding(brain->positional_encoder, local_features,
                                 1, local_features, true);
@@ -1242,9 +1246,19 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (brain->multihead_attention) {
         float* attended = nimcp_malloc(num_features * sizeof(float));
         if (attended) {
+            // Use chunked sequence: each 64-dim slice is a "token"
+            // For 1024-dim input: 16 tokens × 64 dims = cross-attention over 16 positions
+            uint32_t chunk_dim = 64;
+            uint32_t seq_len = num_features / chunk_dim;
+            if (seq_len < 2) seq_len = 1;  // Fall back to single token for small inputs
+            if (seq_len * chunk_dim > num_features) seq_len = 1;  // Safety
+
             if (multihead_attention_forward(brain->multihead_attention,
-                                           features, 1, NULL, attended)) {
-                for (uint32_t i = 0; i < num_features; i++) {
+                                           features, seq_len, NULL, attended)) {
+                // Blend attended features with original (residual connection)
+                uint32_t blend_len = seq_len * chunk_dim;
+                if (blend_len > num_features) blend_len = num_features;
+                for (uint32_t i = 0; i < blend_len; i++) {
                     local_features[i] = 0.6f * local_features[i] + 0.4f * attended[i];
                 }
             }
@@ -1252,8 +1266,47 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
-    // Perform forward pass
+    // ========================================================================
+    // RECURRENT FORWARD PASS: Iterative refinement for uncertain decisions
+    // ========================================================================
+    // WHAT: Run multiple forward passes, feeding output back into input
+    // WHY:  Biological: thalamocortical loops refine percepts over 50-150ms
+    //       Hard problems benefit from iterative processing (like "thinking longer")
+    // HOW:  After initial forward pass, check confidence. If below threshold,
+    //       blend output into input and re-run. Cap at max_iterations.
+    //
     uint32_t active_neurons = perform_forward_pass(brain, features, num_features, decision);
+
+    if (brain->recurrent_enabled && brain->recurrent_max_iterations > 1) {
+        float alpha = brain->recurrent_blend_alpha;
+        uint32_t out_sz = decision->output_size;
+        uint32_t iter;
+
+        for (iter = 1; iter < brain->recurrent_max_iterations; iter++) {
+            // Check stopping criterion: confident enough?
+            float max_act = 0.0f;
+            for (uint32_t i = 0; i < out_sz; i++) {
+                float v = fabsf(decision->output_vector[i]);
+                if (v > max_act) max_act = v;
+            }
+            if (max_act >= brain->recurrent_confidence_threshold) {
+                break;  // Confident — stop iterating
+            }
+
+            // Blend output back into input: input' = (1-α)·input + α·output_projected
+            // Project output to input space by tiling/truncating
+            for (uint32_t i = 0; i < num_features; i++) {
+                float feedback = decision->output_vector[i % out_sz];
+                local_features[i] = (1.0f - alpha) * local_features[i] + alpha * feedback;
+            }
+
+            // Re-run forward pass with refined input
+            active_neurons = perform_forward_pass(brain, local_features, num_features, decision);
+        }
+        brain->recurrent_iteration_count = iter;
+    } else {
+        brain->recurrent_iteration_count = 1;
+    }
 
     // ========================================================================
     // STAGE 1.5: Hemispheric Processing — Callosum Transfer + Lateralization
@@ -1377,6 +1430,24 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
     // Determine output label and confidence
     determine_output_label(brain, decision);
+
+    // ========================================================================
+    // STAGE 3.9: Edge-Cloud Hybrid Inference (Confidence-Gated Routing)
+    // ========================================================================
+    // WHAT: If local confidence is too low, escalate to cloud backend
+    // WHY:  Small brains handle easy cases locally; hard cases go to cloud
+    // HOW:  cloud_inference_route() checks threshold, calls backend, distills
+    //
+    // BIOLOGICAL ANALOGY:
+    // Kahneman System 1 (fast/local) vs System 2 (slow/cloud).
+    // Repeated System 2 answers become System 1 habits via distillation.
+    //
+    if (brain->cloud_inference_enabled && brain->cloud_bridge) {
+        cloud_inference_route(
+            (cloud_inference_bridge_t*)brain->cloud_bridge,
+            brain, decision, features, num_features);
+        // decision may have been upgraded in-place with cloud result
+    }
 
     // ========================================================================
     // STAGE 4: Apply Sleep-Induced Cognitive Degradation

@@ -26,6 +26,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_lifecycle.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "middleware/cloud/nimcp_cloud_inference.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
@@ -965,6 +966,25 @@ void brain_destroy(brain_t brain)
 
     // Inferior Colliculus (auditory midbrain processing)
     nimcp_brain_ic_destroy(brain);
+
+    // Cloud inference bridge cleanup
+    if (brain->cloud_bridge) {
+        cloud_inference_destroy((cloud_inference_bridge_t*)brain->cloud_bridge);
+        brain->cloud_bridge = NULL;
+        brain->cloud_inference_enabled = false;
+    }
+
+    // BPTT temporal buffer cleanup
+    if (brain->bptt_buffer) {
+        for (uint32_t i = 0; i < brain->bptt_window_size; i++) {
+            nimcp_free(brain->bptt_buffer[i].input);
+            nimcp_free(brain->bptt_buffer[i].output);
+            nimcp_free(brain->bptt_buffer[i].target);
+        }
+        nimcp_free(brain->bptt_buffer);
+        brain->bptt_buffer = NULL;
+        brain->bptt_enabled = false;
+    }
 
     // Corpus Callosum (inter-hemispheric bridge — destroy before generic white matter)
     if (brain->callosum) {

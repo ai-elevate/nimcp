@@ -32,6 +32,10 @@
 #include <float.h>
 #include <time.h>
 
+#ifdef __AVX2__
+#include <immintrin.h>
+#endif
+
 /*=============================================================================
  * Extern Tokenizer / Embedding Functions
  *
@@ -179,6 +183,32 @@ static void xavier_init(float* weights, uint32_t fan_in, uint32_t fan_out, unsig
  */
 static void matvec(const float* W, const float* x,
                    float* out, uint32_t rows, uint32_t cols) {
+#ifdef __AVX2__
+    for (uint32_t r = 0; r < rows; r++) {
+        const float* row = W + (size_t)r * cols;
+        __m256 acc = _mm256_setzero_ps();
+        uint32_t c = 0;
+        for (; c + 8 <= cols; c += 8) {
+            __m256 w = _mm256_loadu_ps(row + c);
+            __m256 v = _mm256_loadu_ps(x + c);
+            acc = _mm256_fmadd_ps(w, v, acc);
+        }
+        /* Horizontal sum */
+        __m128 hi = _mm256_extractf128_ps(acc, 1);
+        __m128 lo = _mm256_castps256_ps128(acc);
+        __m128 sum4 = _mm_add_ps(lo, hi);
+        __m128 shuf = _mm_movehdup_ps(sum4);
+        __m128 sum2 = _mm_add_ss(sum4, shuf);
+        shuf = _mm_movehl_ps(shuf, sum2);
+        __m128 sum1 = _mm_add_ss(sum2, shuf);
+        float result = _mm_cvtss_f32(sum1);
+        /* Scalar tail */
+        for (; c < cols; c++) {
+            result += row[c] * x[c];
+        }
+        out[r] = result;
+    }
+#else
     for (uint32_t r = 0; r < rows; r++) {
         float acc = 0.0f;
         const float* row = W + (size_t)r * cols;
@@ -187,6 +217,7 @@ static void matvec(const float* W, const float* x,
         }
         out[r] = acc;
     }
+#endif
 }
 
 /**
@@ -194,9 +225,21 @@ static void matvec(const float* W, const float* x,
  * WHY:  Output projection has an additive bias term
  */
 static void add_bias(float* out, const float* bias, uint32_t size) {
+#ifdef __AVX2__
+    uint32_t i = 0;
+    for (; i + 8 <= size; i += 8) {
+        __m256 o = _mm256_loadu_ps(out + i);
+        __m256 b = _mm256_loadu_ps(bias + i);
+        _mm256_storeu_ps(out + i, _mm256_add_ps(o, b));
+    }
+    for (; i < size; i++) {
+        out[i] += bias[i];
+    }
+#else
     for (uint32_t i = 0; i < size; i++) {
         out[i] += bias[i];
     }
+#endif
 }
 
 /**

@@ -27,6 +27,10 @@
 /* Language Layer includes */
 #include "language/nimcp_language_orchestrator.h"
 #include "language/nimcp_language_config.h"
+#include "generation/nimcp_language_generator.h"
+#include "generation/nimcp_tokenizer.h"
+#include "generation/nimcp_embedding.h"
+#include "language/nimcp_grounded_language.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
@@ -164,12 +168,7 @@ static bool check_prerequisites(brain_t brain) {
         return false;
     }
 
-    /* Language layer requires at least speech processing capability */
-    if (!brain->config.enable_speech_cortex &&
-        !brain->config.enable_multimodal_integration) {
-        LOG_DEBUG(LOG_MODULE, "Language layer not needed - no speech/multimodal config");
-        return false;
-    }
+    /* Language layer can work standalone - speech/multimodal enhances it but isn't required */
 
     return true;
 }
@@ -401,6 +400,138 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
     /* Start the orchestrator */
     if (language_orchestrator_start(brain->language_layer) != 0) {
         LOG_WARN(LOG_MODULE, "Orchestrator start failed (non-fatal)");
+    }
+
+    /* --- Initialize LNN-based language generator --- */
+    {
+        /* Create tokenizer if not already present */
+        if (!brain->tokenizer) {
+            tokenizer_config_t tok_cfg = tokenizer_default_config();
+            brain->tokenizer = tokenizer_create(&tok_cfg);
+            if (!brain->tokenizer) {
+                LOG_WARN(LOG_MODULE, "Tokenizer creation failed (non-fatal)");
+            }
+        }
+
+        if (brain->tokenizer) {
+            uint32_t vocab_size = tokenizer_get_vocab_size(brain->tokenizer);
+            if (vocab_size < 16) {
+                /* Build a basic vocabulary from common English words */
+                const char* basic_vocab[] = {
+                    "the", "a", "an", "is", "are", "was", "were", "be", "been",
+                    "have", "has", "had", "do", "does", "did", "will", "would",
+                    "can", "could", "shall", "should", "may", "might", "must",
+                    "i", "you", "he", "she", "it", "we", "they", "me", "him",
+                    "her", "us", "them", "my", "your", "his", "its", "our",
+                    "their", "this", "that", "these", "those", "what", "which",
+                    "who", "whom", "where", "when", "why", "how", "not", "no",
+                    "yes", "and", "or", "but", "if", "then", "else", "so",
+                    "in", "on", "at", "to", "for", "of", "with", "by", "from",
+                    "up", "out", "off", "over", "under", "again", "further",
+                    "all", "each", "every", "both", "few", "more", "most",
+                    "other", "some", "such", "only", "own", "same", "than",
+                    "too", "very", "just", "about", "also", "back", "after",
+                    "before", "between", "here", "there", "now", "then",
+                    "think", "know", "see", "say", "tell", "make", "go",
+                    "come", "take", "get", "give", "find", "look", "want",
+                    "need", "feel", "try", "leave", "call", "keep", "let",
+                    "begin", "seem", "help", "show", "hear", "play", "run",
+                    "move", "live", "believe", "bring", "happen", "write",
+                    "provide", "sit", "stand", "lose", "pay", "meet", "set",
+                    "learn", "change", "lead", "understand", "watch", "follow",
+                    "stop", "create", "speak", "read", "allow", "add", "spend",
+                    "grow", "open", "walk", "win", "offer", "remember",
+                    "love", "consider", "appear", "buy", "wait", "serve",
+                    "die", "send", "expect", "build", "stay", "fall", "cut",
+                    "reach", "kill", "remain", "suggest", "raise", "pass",
+                    "good", "new", "first", "last", "long", "great", "little",
+                    "right", "old", "big", "high", "small", "large", "next",
+                    "early", "young", "important", "public", "bad", "real",
+                    "best", "better", "sure", "free", "true", "whole", "clear",
+                    ".", ",", "!", "?", ":", ";", "'", "\"", "-",
+                    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                    "world", "life", "time", "day", "way", "man", "woman",
+                    "child", "people", "thing", "place", "work", "part",
+                    "case", "point", "home", "water", "room", "mother",
+                    "area", "money", "story", "fact", "month", "lot",
+                    "right", "study", "book", "eye", "job", "word", "side",
+                    "kind", "head", "house", "service", "friend", "father",
+                    "power", "hour", "game", "line", "end", "member", "law",
+                    "car", "city", "community", "name", "system", "program",
+                    "question", "during", "plan", "group", "number", "state",
+                    "hand", "school", "night", "light", "problem", "family",
+                    "brain", "neural", "network", "language", "model", "data",
+                    "input", "output", "process", "signal", "pattern", "memory"
+                };
+                uint32_t n_words = sizeof(basic_vocab) / sizeof(basic_vocab[0]);
+                for (uint32_t i = 0; i < n_words; i++) {
+                    tokenizer_add_token(brain->tokenizer, basic_vocab[i]);
+                }
+                vocab_size = tokenizer_get_vocab_size(brain->tokenizer);
+                LOG_INFO(LOG_MODULE, "Built basic vocabulary: %u tokens", vocab_size);
+            }
+
+            /* Create embedding layer */
+            uint32_t embed_dim = 128;  /* Lightweight for on-device generation */
+            embedding_config_t emb_cfg = embedding_default_config(vocab_size, embed_dim);
+            brain->lang_embedding = embedding_create(&emb_cfg);
+            if (!brain->lang_embedding) {
+                LOG_WARN(LOG_MODULE, "Embedding layer creation failed (non-fatal)");
+            }
+
+            /* Create language generator */
+            if (brain->lang_embedding) {
+                generator_config_t gen_cfg = generator_default_config();
+                gen_cfg.hidden_dim = 128;
+                gen_cfg.num_lnn_neurons = 64;
+                gen_cfg.max_sequence_length = 256;
+                gen_cfg.strategy = GENERATION_TOP_P;
+                gen_cfg.temperature = 0.8f;
+                gen_cfg.top_p = 0.9f;
+
+                brain->lang_generator = language_generator_create(
+                    &gen_cfg,
+                    brain->tokenizer,
+                    brain->lang_embedding,
+                    vocab_size,
+                    embed_dim
+                );
+
+                if (brain->lang_generator) {
+                    LOG_INFO(LOG_MODULE, "Language generator created: vocab=%u, embed=%u, hidden=128",
+                             vocab_size, embed_dim);
+                } else {
+                    LOG_WARN(LOG_MODULE, "Language generator creation failed (non-fatal)");
+                }
+            }
+        }
+    }
+
+    /* ===================================================================
+     * Grounded Language System (human-like word-concept binding)
+     * ===================================================================
+     * Creates the grounded lexicon that maps words to semantic concepts
+     * through cross-modal Hebbian binding rather than token statistics.
+     */
+    brain->grounded_lang = grounded_language_create(
+        128, /* semantic_dim — matches brain embedding dim */
+        brain->semantic_memory
+    );
+
+    if (brain->grounded_lang) {
+        /* Wire cross-modal connections */
+        if (brain->visual_cortex)
+            grounded_language_connect_visual(brain->grounded_lang, brain->visual_cortex);
+        if (brain->audio_cortex)
+            grounded_language_connect_auditory(brain->grounded_lang, brain->audio_cortex);
+        if (brain->speech_cortex)
+            grounded_language_connect_speech(brain->grounded_lang, brain->speech_cortex);
+        if (brain->cortical_column_pool)
+            grounded_language_connect_columns(brain->grounded_lang, brain->cortical_column_pool);
+
+        LOG_INFO(LOG_MODULE, "Grounded language system created (dim=128)");
+    } else {
+        LOG_WARN(LOG_MODULE, "Grounded language system creation failed (non-fatal)");
     }
 
     LOG_INFO(LOG_MODULE, "Language layer initialized successfully");

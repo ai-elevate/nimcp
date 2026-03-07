@@ -31,3 +31,25 @@ target_link_libraries(unit_language_bridges
 target_compile_features(unit_language_bridges PRIVATE cxx_std_17)
 gtest_discover_tests(unit_language_bridges
     PROPERTIES LABELS "unit;language;bridges")
+
+# ============================================================================
+# Grounded Language Unit Tests
+# ============================================================================
+add_executable(unit_grounded_language
+    test_grounded_language.cpp
+)
+target_link_libraries(unit_grounded_language
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded"
+        TIMEOUT 120
+)

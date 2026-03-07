@@ -461,6 +461,15 @@ bool neural_network_add_connection_typed(neural_network_t network, uint32_t from
                                           float weight, synapse_type_t type);
 uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestamp);
 
+/** Get active neuron count from last compute step */
+uint32_t neural_network_get_active_count(neural_network_t network);
+
+/** Get active neuron IDs array (read-only). Returns NULL if not available. */
+const uint32_t* neural_network_get_active_ids(neural_network_t network);
+
+/** Get active neuron ratio (active/total) */
+float neural_network_get_sparsity_ratio(neural_network_t network);
+
 // Timing functions
 void neural_network_set_time(neural_network_t network, uint64_t timestamp);
 

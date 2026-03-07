@@ -752,7 +752,7 @@ static float quantum_weight_energy(const float* weights, uint32_t dim, void* use
  *
  * Phase 1.5: Initializes CoW fields - newly allocated decisions own their data
  */
-static brain_decision_t* allocate_decision(uint32_t output_size)
+brain_decision_t* allocate_decision(uint32_t output_size)
 {
     brain_decision_t* decision = nimcp_calloc(1, sizeof(brain_decision_t));
     if (!decision) {
@@ -1024,8 +1024,8 @@ static void fuse_forward_outputs(const forward_task_ctx_t* ctx,
  * @param decision Decision to populate
  * @return Number of active neurons
  */
-static uint32_t perform_forward_pass(brain_t brain, const float* features, uint32_t num_features,
-                                     brain_decision_t* decision)
+uint32_t perform_forward_pass(brain_t brain, const float* features, uint32_t num_features,
+                              brain_decision_t* decision)
 {
     uint64_t start_time = nimcp_time_monotonic_us();
     uint32_t active_neurons = 0;

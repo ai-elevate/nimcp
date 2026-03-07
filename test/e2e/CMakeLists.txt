@@ -3251,6 +3251,13 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_parallel_init_lifecycle_e2e.c)
             RESOURCE_LOCK "brain_heavy")
 endif()
 
+# ============================================================================
+# Grounded Language E2E Tests (subdirectory)
+# ============================================================================
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/language")
+    add_subdirectory(language)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

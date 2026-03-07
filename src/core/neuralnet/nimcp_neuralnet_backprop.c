@@ -250,6 +250,13 @@ void backprop_destroy(backprop_ctx_t* ctx) {
         nimcp_free(ctx->activations);
     }
 
+    if (ctx->layer_deltas) {
+        for (uint32_t l = 0; l < ctx->layer_deltas_count; l++) {
+            nimcp_free(ctx->layer_deltas[l]);
+        }
+        nimcp_free(ctx->layer_deltas);
+    }
+
     if (ctx->weight_gradients) {
         nimcp_free(ctx->weight_gradients);
     }
@@ -389,31 +396,34 @@ bool backprop_backward(backprop_ctx_t* ctx,
     neural_network_t network = ctx->network;
     uint32_t num_layers = ctx->num_layers;
 
-    /* Allocate per-layer delta buffers */
-    if (num_layers > SIZE_MAX / sizeof(float*)) {
-        LOG_ERROR("Layer count overflow: %u layers", num_layers);
-        return false;
-    }
-    float** layer_deltas = nimcp_malloc(num_layers * sizeof(float*));
-    if (!layer_deltas) {
-        LOG_ERROR("Failed to allocate layer delta array");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_backward: layer_deltas is NULL");
-        return false;
-    }
-
-    for (uint32_t l = 0; l < num_layers; l++) {
-        uint32_t layer_size = ctx->activations[l].size;
-        layer_deltas[l] = nimcp_malloc(layer_size * sizeof(float));
-        if (!layer_deltas[l]) {
-            for (uint32_t k = 0; k < l; k++) {
-                nimcp_free(layer_deltas[k]);
+    /* Reuse or allocate per-layer delta buffers (persist across calls) */
+    if (!ctx->layer_deltas || ctx->layer_deltas_count != num_layers) {
+        /* Free old if resizing */
+        if (ctx->layer_deltas) {
+            for (uint32_t l = 0; l < ctx->layer_deltas_count; l++) {
+                nimcp_free(ctx->layer_deltas[l]);
             }
-            nimcp_free(layer_deltas);
-            LOG_ERROR("Failed to allocate delta buffer for layer %u", l);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_backward: layer_deltas[l] is NULL");
+            nimcp_free(ctx->layer_deltas);
+        }
+        ctx->layer_deltas = nimcp_malloc(num_layers * sizeof(float*));
+        if (!ctx->layer_deltas) {
+            LOG_ERROR("Failed to allocate layer delta array");
             return false;
         }
-        memset(layer_deltas[l], 0, layer_size * sizeof(float));
+        ctx->layer_deltas_count = num_layers;
+        for (uint32_t l = 0; l < num_layers; l++) {
+            uint32_t layer_size = ctx->activations[l].size;
+            ctx->layer_deltas[l] = nimcp_malloc(layer_size * sizeof(float));
+            if (!ctx->layer_deltas[l]) {
+                LOG_ERROR("Failed to allocate delta buffer for layer %u", l);
+                return false;
+            }
+        }
+    }
+    float** layer_deltas = ctx->layer_deltas;
+    /* Clear deltas for this pass */
+    for (uint32_t l = 0; l < num_layers; l++) {
+        memset(layer_deltas[l], 0, ctx->activations[l].size * sizeof(float));
     }
 
     /* Clear gradient buffers (guard NULL: buffers are NULL when total_* is 0) */
@@ -567,11 +577,7 @@ bool backprop_backward(backprop_ctx_t* ctx,
         }
     }
 
-    /* Cleanup */
-    for (uint32_t l = 0; l < num_layers; l++) {
-        nimcp_free(layer_deltas[l]);
-    }
-    nimcp_free(layer_deltas);
+    /* layer_deltas persist in ctx for reuse across calls */
 
     ctx->gradients_valid = true;
 

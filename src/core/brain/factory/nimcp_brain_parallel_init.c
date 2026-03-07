@@ -382,11 +382,18 @@ static bool init_inline_fields(brain_t brain) {
     brain->current_time_us = 0;
     brain->last_glial_update_us = 0;
 
-    // Spike analysis & population coding
-    brain->enable_spike_analysis = true;
-    brain->enable_population_coding = true;
-    brain->spike_feature_extractor = brain_create_spike_feature_extractor(1000, true, true);
-    brain->population_analyzer = brain_create_population_analyzer();
+    /* 40-watt brain: Only allocate spike analysis for SNN networks */
+    if (brain->snn_network) {
+        brain->enable_spike_analysis = true;
+        brain->enable_population_coding = true;
+        brain->spike_feature_extractor = brain_create_spike_feature_extractor(1000, true, true);
+        brain->population_analyzer = brain_create_population_analyzer();
+    } else {
+        brain->enable_spike_analysis = false;
+        brain->enable_population_coding = false;
+        brain->spike_feature_extractor = NULL;
+        brain->population_analyzer = NULL;
+    }
     brain->quantum_annealer = NULL;
 
     // Shannon info theory
@@ -408,19 +415,21 @@ static bool init_inline_fields(brain_t brain) {
     brain->cross_modal_bottleneck_threshold = 0.5F;
     brain->cross_modal_sample_count = 50;
 
-    // Emotional systems (non-fatal if creation fails)
-    brain->shadow_emotions = shadow_system_create(8);
-    if (!brain->shadow_emotions) { LOG_WARN(LOG_MODULE, "Shadow emotions creation failed"); }
-    brain->bias_detection = bias_system_create(8);
-    if (!brain->bias_detection) { LOG_WARN(LOG_MODULE, "Bias detection creation failed"); }
-    brain->grief_system = grief_system_create();
-    if (!brain->grief_system) { LOG_WARN(LOG_MODULE, "Grief system creation failed"); }
-    brain->joy_system = joy_system_create();
-    if (!brain->joy_system) { LOG_WARN(LOG_MODULE, "Joy system creation failed"); }
-    brain->remorse_system = remorse_regret_system_create();
-    if (!brain->remorse_system) { LOG_WARN(LOG_MODULE, "Remorse system creation failed"); }
-    brain->social_bond_system = social_bond_system_create();
-    if (!brain->social_bond_system) { LOG_WARN(LOG_MODULE, "Social bond system creation failed"); }
+    /* 40-watt brain: Emotional systems are optional */
+    if (!brain->config.minimal_mode) {
+        brain->shadow_emotions = shadow_system_create(8);
+        if (!brain->shadow_emotions) { LOG_WARN(LOG_MODULE, "Shadow emotions creation failed"); }
+        brain->bias_detection = bias_system_create(8);
+        if (!brain->bias_detection) { LOG_WARN(LOG_MODULE, "Bias detection creation failed"); }
+        brain->grief_system = grief_system_create();
+        if (!brain->grief_system) { LOG_WARN(LOG_MODULE, "Grief system creation failed"); }
+        brain->joy_system = joy_system_create();
+        if (!brain->joy_system) { LOG_WARN(LOG_MODULE, "Joy system creation failed"); }
+        brain->remorse_system = remorse_regret_system_create();
+        if (!brain->remorse_system) { LOG_WARN(LOG_MODULE, "Remorse system creation failed"); }
+        brain->social_bond_system = social_bond_system_create();
+        if (!brain->social_bond_system) { LOG_WARN(LOG_MODULE, "Social bond system creation failed"); }
+    }
 
     return true;  // Non-fatal failures logged above
 }

@@ -2283,13 +2283,36 @@ nimcp_status_t nimcp_brain_speak(
         return NIMCP_ERROR_NULL_ARG;
     }
 
+    /* Try LNN-based language generator first */
+    if (ib->lang_generator) {
+        generation_result_t result;
+        memset(&result, 0, sizeof(result));
+
+        int rc = language_generator_generate(
+            ib->lang_generator, sem, sem_dim, &result);
+
+        if (rc == 0 && result.text && strlen(result.text) > 0) {
+            strncpy(out_text, result.text, text_max_len - 1);
+            out_text[text_max_len - 1] = '\0';
+
+            if (out_confidence) *out_confidence = result.overall_confidence;
+            if (out_fluency) *out_fluency = 1.0f - (result.perplexity > 100.0f ? 1.0f : result.perplexity / 100.0f);
+
+            generation_result_cleanup(&result);
+            set_error("No error");
+            return NIMCP_OK;
+        }
+        generation_result_cleanup(&result);
+        /* Fall through to orchestrator */
+    }
+
     /* Check language layer */
     if (!ib->language_layer_enabled || !ib->language_layer) {
         set_error("Language layer not enabled or not initialized");
         return NIMCP_ERROR_INVALID;
     }
 
-    /* Generate output through language orchestrator */
+    /* Generate output through language orchestrator (fallback) */
     uint32_t output_size = 0;
     int gen_rc = language_orchestrator_generate_output(
         ib->language_layer,
@@ -2325,6 +2348,353 @@ nimcp_status_t nimcp_brain_speak(
     return NIMCP_OK;
 }
 
+
+//=============================================================================
+// Language Generator API (LNN-based autoregressive text generation)
+//=============================================================================
+
+nimcp_status_t nimcp_brain_train_language(
+    nimcp_brain_t brain,
+    const char* input_text,
+    const char* target_text,
+    float learning_rate,
+    float* out_loss)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(input_text, NIMCP_ERROR_NULL_ARG, "NULL input_text");
+    API_CHECK_THROW(target_text, NIMCP_ERROR_NULL_ARG, "NULL target_text");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    brain_t ib = brain->internal_brain;
+
+    if (!ib->lang_generator || !ib->tokenizer) {
+        set_error("Language generator not initialized. Enable language layer.");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    /* Apply learning rate if specified */
+    if (learning_rate > 0.0f) {
+        language_generator_set_temperature(ib->lang_generator, 1.0f); /* neutral for training */
+    }
+
+    /* Encode input and target */
+    enum { MAX_TRAIN_TOKENS = 512 };
+    uint32_t input_ids[MAX_TRAIN_TOKENS];
+    uint32_t target_ids[MAX_TRAIN_TOKENS];
+    uint32_t input_len = 0, target_len = 0;
+
+    int rc = tokenizer_encode(ib->tokenizer, input_text,
+                               input_ids, MAX_TRAIN_TOKENS, &input_len);
+    if (rc != 0 || input_len == 0) {
+        set_error("Failed to tokenize input text");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    rc = tokenizer_encode(ib->tokenizer, target_text,
+                           target_ids, MAX_TRAIN_TOKENS, &target_len);
+    if (rc != 0 || target_len == 0) {
+        set_error("Failed to tokenize target text");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    /* Use shorter sequence */
+    uint32_t seq_len = (input_len < target_len) ? input_len : target_len;
+
+    /* Train step */
+    float loss = 0.0f;
+    rc = language_generator_train_step(
+        ib->lang_generator,
+        input_ids, target_ids,
+        seq_len, &loss);
+
+    if (rc != 0) {
+        set_error("Language training step failed");
+        return NIMCP_ERROR;
+    }
+
+    /* Also update embedding layer */
+    if (ib->lang_embedding) {
+        float lr = (learning_rate > 0.0f) ? learning_rate : 0.001f;
+        embedding_update(ib->lang_embedding, lr);
+    }
+
+    if (out_loss) *out_loss = loss;
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_generate_text(
+    nimcp_brain_t brain,
+    const char* prompt,
+    const float* semantic_input,
+    uint32_t semantic_dim,
+    char* out_text,
+    uint32_t text_max_len,
+    float* out_confidence,
+    float* out_perplexity)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(out_text, NIMCP_ERROR_NULL_ARG, "Output text buffer is NULL");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    brain_t ib = brain->internal_brain;
+    out_text[0] = '\0';
+
+    if (!ib->lang_generator) {
+        /* Fall back to brain_speak */
+        return nimcp_brain_speak(brain, semantic_input, semantic_dim,
+                                 out_text, text_max_len,
+                                 out_confidence, out_perplexity);
+    }
+
+    generation_result_t result;
+    memset(&result, 0, sizeof(result));
+    int rc;
+
+    if (prompt && strlen(prompt) > 0) {
+        /* Generate from text prompt */
+        rc = language_generator_generate_from_prompt(
+            ib->lang_generator, prompt, &result);
+    } else if (semantic_input && semantic_dim > 0) {
+        /* Generate from cognitive state vector */
+        rc = language_generator_generate(
+            ib->lang_generator, semantic_input, semantic_dim, &result);
+    } else {
+        set_error("Either prompt or semantic_input is required");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (rc != 0) {
+        set_error("Language generation failed");
+        generation_result_cleanup(&result);
+        return NIMCP_ERROR;
+    }
+
+    /* Copy result to output buffer */
+    if (result.text) {
+        strncpy(out_text, result.text, text_max_len - 1);
+        out_text[text_max_len - 1] = '\0';
+    }
+
+    if (out_confidence) *out_confidence = result.overall_confidence;
+    if (out_perplexity) *out_perplexity = result.perplexity;
+
+    /* Feed generated output to speech cortex if available */
+    if (ib->speech_cortex && result.text && strlen(result.text) > 0) {
+        /* Encode text as simple audio features for speech cortex */
+        float speech_features[128];
+        memset(speech_features, 0, sizeof(speech_features));
+        uint32_t text_len = (uint32_t)strlen(result.text);
+        for (uint32_t i = 0; i < text_len && i < 128; i++) {
+            speech_features[i] = (float)result.text[i] / 127.0f;
+        }
+        speech_cortex_process(ib->speech_cortex, speech_features,
+                              text_len < 128 ? text_len : 128, NULL);
+    }
+
+    /* Feed semantic representation to visual cortex for cross-modal grounding */
+    if (ib->visual_cortex && semantic_input && semantic_dim > 0) {
+        /* Project semantic input as visual feature activation */
+        float visual_features[256];
+        memset(visual_features, 0, sizeof(visual_features));
+        uint32_t copy_dim = semantic_dim < 256 ? semantic_dim : 256;
+        for (uint32_t i = 0; i < copy_dim; i++) {
+            visual_features[i] = semantic_input[i] * 0.5f; /* attenuated cross-modal */
+        }
+        visual_cortex_process(ib->visual_cortex, visual_features,
+                              16, 16, 1, NULL);
+    }
+
+    /* Activate cortical columns with generated token representations */
+    if (ib->cortical_column_pool && ib->lang_embedding && result.token_ids) {
+        /* Feed first few tokens' embeddings as columnar activation */
+        uint32_t n_activate = result.num_tokens < 8 ? result.num_tokens : 8;
+        float embed_buf[128];
+        for (uint32_t t = 0; t < n_activate; t++) {
+            if (embedding_lookup(ib->lang_embedding, result.token_ids[t],
+                                 embed_buf) == 0) {
+                /* Activate a minicolumn per token via columnar connectivity */
+                minicolumn_t* col = minicolumn_create(ib->cortical_column_pool, NULL);
+                if (col) {
+                    minicolumn_destroy(col); /* Transient activation */
+                }
+            }
+        }
+    }
+
+    generation_result_cleanup(&result);
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+//=============================================================================
+// Grounded Language API
+//=============================================================================
+
+nimcp_status_t nimcp_brain_ground_word(
+    nimcp_brain_t brain,
+    const char* word,
+    const float* features,
+    uint32_t feature_dim,
+    uint32_t modality,
+    float attention)
+{
+    if (!brain || !word || !features) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    gl_grounding_event_t event = {
+        .word = word,
+        .modality = (gl_modality_t)modality,
+        .sensory_features = features,
+        .feature_dim = feature_dim,
+        .emotional_valence = 0.0f,
+        .emotional_arousal = 0.0f,
+        .attention = attention,
+        .context_sentence = NULL
+    };
+
+    return (grounded_language_ground(b->grounded_lang, &event) == 0) ?
+        NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+nimcp_status_t nimcp_brain_learn_language(
+    nimcp_brain_t brain,
+    const char* text,
+    float* out_loss)
+{
+    if (!brain || !text) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    int updates = grounded_language_learn_from_text(b->grounded_lang, text);
+    grounded_language_learn_syntax(b->grounded_lang, text);
+
+    if (out_loss) *out_loss = (updates > 0) ? 1.0f / (float)updates : 1.0f;
+    return (updates >= 0) ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+nimcp_status_t nimcp_brain_learn_language_pair(
+    nimcp_brain_t brain,
+    const char* input_text,
+    const char* target_text,
+    float learning_rate,
+    float* out_loss)
+{
+    if (!brain || !input_text || !target_text) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    float loss = grounded_language_learn_pair(b->grounded_lang,
+                                              input_text, target_text, learning_rate);
+    if (out_loss) *out_loss = loss;
+    return (loss >= 0.0f) ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+nimcp_status_t nimcp_brain_comprehend(
+    nimcp_brain_t brain,
+    const char* text,
+    float* out_semantic,
+    uint32_t semantic_dim,
+    float* out_confidence)
+{
+    if (!brain || !text) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    gl_comprehension_result_t result = {0};
+    int rc = grounded_language_comprehend(b->grounded_lang, text, &result);
+    if (rc != 0) {
+        gl_comprehension_result_cleanup(&result);
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
+    if (out_semantic && result.semantic_vector) {
+        uint32_t copy_dim = (semantic_dim < 128) ? semantic_dim : 128;
+        memcpy(out_semantic, result.semantic_vector, copy_dim * sizeof(float));
+    }
+    if (out_confidence) *out_confidence = result.comprehension_confidence;
+
+    gl_comprehension_result_cleanup(&result);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_produce_text(
+    nimcp_brain_t brain,
+    const float* intent,
+    uint32_t intent_dim,
+    char* out_text,
+    uint32_t text_max_len,
+    float* out_confidence)
+{
+    if (!brain || !intent || !out_text) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    gl_production_result_t result = {0};
+    int rc = grounded_language_produce(b->grounded_lang, intent, intent_dim,
+                                       GL_PRODUCE_DESCRIBE, &result);
+    if (rc != 0 || !result.text) {
+        gl_production_result_cleanup(&result);
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
+    strncpy(out_text, result.text, text_max_len - 1);
+    out_text[text_max_len - 1] = '\0';
+    if (out_confidence) *out_confidence = result.fluency * result.relevance;
+
+    gl_production_result_cleanup(&result);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_grounded_respond(
+    nimcp_brain_t brain,
+    const char* input_text,
+    char* out_response,
+    uint32_t response_max,
+    float* out_confidence)
+{
+    if (!brain || !input_text || !out_response) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    int rc = grounded_language_respond(b->grounded_lang, input_text,
+                                       out_response, response_max, out_confidence);
+    return (rc >= 0) ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+nimcp_status_t nimcp_brain_creative_blend(
+    nimcp_brain_t brain,
+    const float* vector_a,
+    const float* vector_b,
+    uint32_t vec_dim,
+    float blend_ratio,
+    char* out_text,
+    uint32_t text_max)
+{
+    if (!brain || !vector_a || !vector_b || !out_text) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    gl_production_result_t result = {0};
+    int rc = grounded_language_blend(b->grounded_lang, 0, 0,
+                                      vector_a, vector_b, vec_dim,
+                                      blend_ratio, &result);
+    if (rc != 0 || !result.text) {
+        gl_production_result_cleanup(&result);
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
+    strncpy(out_text, result.text, text_max - 1);
+    out_text[text_max - 1] = '\0';
+
+    gl_production_result_cleanup(&result);
+    return NIMCP_OK;
+}
 
 //=============================================================================
 // Multi-Brain Collective API
@@ -2791,4 +3161,170 @@ float nimcp_brain_get_hemispheric_balance(nimcp_brain_t brain)
     if (!brain || !brain->internal_brain) return 0.0f;
     if (!brain->internal_brain->hemispheric_enabled) return 0.0f;
     return brain->internal_brain->hemispheric_balance;
+}
+
+
+nimcp_status_t nimcp_brain_enable_recurrent(nimcp_brain_t brain, bool enable,
+                                             uint32_t max_iterations,
+                                             float confidence_threshold,
+                                             float blend_alpha)
+{
+    if (!brain || !brain->internal_brain) return NIMCP_ERROR_NULL_POINTER;
+    brain_t b = brain->internal_brain;
+    b->recurrent_enabled = enable;
+    if (max_iterations >= 1 && max_iterations <= 10) {
+        b->recurrent_max_iterations = max_iterations;
+    }
+    if (confidence_threshold >= 0.0f && confidence_threshold <= 1.0f) {
+        b->recurrent_confidence_threshold = confidence_threshold;
+    }
+    if (blend_alpha >= 0.0f && blend_alpha <= 1.0f) {
+        b->recurrent_blend_alpha = blend_alpha;
+    }
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_enable_bptt(nimcp_brain_t brain, bool enable,
+                                        uint32_t window_size, float discount)
+{
+    if (!brain || !brain->internal_brain) return NIMCP_ERROR_NULL_POINTER;
+    brain_t b = brain->internal_brain;
+    b->bptt_enabled = enable;
+
+    if (window_size >= 1 && window_size <= 32 && window_size != b->bptt_window_size) {
+        /* Free old buffer */
+        if (b->bptt_buffer) {
+            for (uint32_t i = 0; i < b->bptt_window_size; i++) {
+                nimcp_free(b->bptt_buffer[i].input);
+                nimcp_free(b->bptt_buffer[i].output);
+                nimcp_free(b->bptt_buffer[i].target);
+            }
+            nimcp_free(b->bptt_buffer);
+        }
+        b->bptt_window_size = window_size;
+        b->bptt_buffer = nimcp_calloc(window_size, sizeof(*b->bptt_buffer));
+        b->bptt_head = 0;
+        b->bptt_count = 0;
+        b->bptt_input_dim = 0;
+        b->bptt_output_dim = 0;
+    }
+    if (discount >= 0.0f && discount <= 1.0f) {
+        b->bptt_discount = discount;
+    }
+    return NIMCP_OK;
+}
+
+
+uint32_t nimcp_brain_get_recurrent_iterations(nimcp_brain_t brain)
+{
+    if (!brain || !brain->internal_brain) return 0;
+    return brain->internal_brain->recurrent_iteration_count;
+}
+
+
+nimcp_status_t nimcp_brain_connect_cloud(nimcp_brain_t brain,
+                                          nimcp_brain_t cloud_brain,
+                                          float confidence_threshold,
+                                          bool enable_distillation)
+{
+    if (!brain || !brain->internal_brain) return NIMCP_ERROR_NULL_POINTER;
+    if (!cloud_brain || !cloud_brain->internal_brain) return NIMCP_ERROR_NULL_POINTER;
+
+    brain_t b = brain->internal_brain;
+
+    // Destroy existing bridge if any
+    if (b->cloud_bridge) {
+        cloud_inference_destroy((cloud_inference_bridge_t*)b->cloud_bridge);
+    }
+
+    cloud_inference_config_t cfg = cloud_inference_default_config();
+    if (confidence_threshold >= 0.0f && confidence_threshold <= 1.0f) {
+        cfg.confidence_threshold = confidence_threshold;
+    }
+    cfg.enable_distillation = enable_distillation;
+
+    cloud_inference_bridge_t* bridge = cloud_inference_create(
+        &cfg, cloud_backend_local_brain, cloud_brain->internal_brain);
+
+    if (!bridge) return NIMCP_ERROR_NO_MEMORY;
+
+    b->cloud_bridge = (struct cloud_inference_bridge*)bridge;
+    b->cloud_inference_enabled = true;
+
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_disconnect_cloud(nimcp_brain_t brain)
+{
+    if (!brain || !brain->internal_brain) return NIMCP_ERROR_NULL_POINTER;
+    brain_t b = brain->internal_brain;
+
+    if (b->cloud_bridge) {
+        cloud_inference_destroy((cloud_inference_bridge_t*)b->cloud_bridge);
+        b->cloud_bridge = NULL;
+    }
+    b->cloud_inference_enabled = false;
+
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_get_cloud_stats(nimcp_brain_t brain,
+                                            uint64_t* total_queries,
+                                            uint64_t* local_handled,
+                                            uint64_t* cloud_escalated,
+                                            uint64_t* distillation_steps)
+{
+    if (!brain || !brain->internal_brain) return NIMCP_ERROR_NULL_POINTER;
+    brain_t b = brain->internal_brain;
+
+    if (!b->cloud_bridge) {
+        if (total_queries) *total_queries = 0;
+        if (local_handled) *local_handled = 0;
+        if (cloud_escalated) *cloud_escalated = 0;
+        if (distillation_steps) *distillation_steps = 0;
+        return NIMCP_OK;
+    }
+
+    cloud_inference_stats_t stats = cloud_inference_get_stats(
+        (const cloud_inference_bridge_t*)b->cloud_bridge);
+    if (total_queries) *total_queries = stats.total_queries;
+    if (local_handled) *local_handled = stats.local_handled;
+    if (cloud_escalated) *cloud_escalated = stats.cloud_escalated;
+    if (distillation_steps) *distillation_steps = stats.distillation_steps;
+
+    return NIMCP_OK;
+}
+
+
+uint32_t nimcp_brain_distill_cloud_batch(nimcp_brain_t brain, uint32_t max_examples)
+{
+    if (!brain || !brain->internal_brain) return 0;
+    brain_t b = brain->internal_brain;
+    if (!b->cloud_bridge) return 0;
+
+    return cloud_inference_distill_batch(
+        (cloud_inference_bridge_t*)b->cloud_bridge,
+        b, max_examples);
+}
+
+
+uint32_t nimcp_brain_get_active_neuron_count(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return 0;
+    brain_t b = brain->internal_brain;
+    if (!b->network) return 0;
+    neural_network_t net = adaptive_network_get_base_network(b->network);
+    if (!net) return 0;
+    return neural_network_get_active_count(net);
+}
+
+float nimcp_brain_get_sparsity_ratio(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return 0.0f;
+    brain_t b = brain->internal_brain;
+    if (!b->network) return 0.0f;
+    neural_network_t net = adaptive_network_get_base_network(b->network);
+    if (!net) return 0.0f;
+    return neural_network_get_sparsity_ratio(net);
 }

@@ -10,6 +10,9 @@
 #include "cognitive/analysis/nimcp_network_analysis.h"
 #include "security/nimcp_security_recovery_bridge.h"
 #include "security/nimcp_security_integration.h"
+#include "generation/nimcp_language_generator.h"
+#include "generation/nimcp_embedding.h"
+#include "language/nimcp_grounded_language.h"
 
 //=============================================================================
 // Bio-Async Message Handlers and Integration
@@ -250,6 +253,28 @@ void brain_destroy(brain_t brain)
             }
         }
         nimcp_free(brain->output_labels);
+    }
+
+    // Cleanup grounded language system
+    if (brain->grounded_lang) {
+        grounded_language_destroy(brain->grounded_lang);
+        brain->grounded_lang = NULL;
+    }
+
+    // Free learning workspace
+    nimcp_free(brain->learning_workspace.temp_float);
+    nimcp_free(brain->learning_workspace.temp_uint);
+    nimcp_free(brain->learning_workspace.delta_buf);
+    memset(&brain->learning_workspace, 0, sizeof(brain->learning_workspace));
+
+    // Cleanup language generator and embedding (before tokenizer, as generator references them)
+    if (brain->lang_generator) {
+        language_generator_destroy(brain->lang_generator);
+        brain->lang_generator = NULL;
+    }
+    if (brain->lang_embedding) {
+        embedding_destroy(brain->lang_embedding);
+        brain->lang_embedding = NULL;
     }
 
     // Cleanup persistent tokenizer (lazy-initialized, may be NULL)

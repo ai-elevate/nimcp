@@ -94,6 +94,9 @@ add_library(nimcp_middleware STATIC
 
     # Abductive Training Diagnosis (Layer 3: Root Cause Analysis)
     training/nimcp_training_diagnosis.c
+
+    # Cloud Inference Bridge (Edge-Cloud Hybrid)
+    cloud/nimcp_cloud_inference.c
 )
 
 target_include_directories(nimcp_middleware PUBLIC

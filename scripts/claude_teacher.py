@@ -27,12 +27,12 @@ def _get_embed_model():
     import torch
     from sentence_transformers import SentenceTransformer
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    _embed_model = SentenceTransformer('all-mpnet-base-v2', device=device)
+    _embed_model = SentenceTransformer('BAAI/bge-large-en-v1.5', device=device)
     return _embed_model
 
 
 def encode_text(text: str):
-    """Encode text to 768-dim embedding using sentence-transformers (all-mpnet-base-v2)."""
+    """Encode text to 1024-dim embedding using sentence-transformers (BAAI/bge-large-en-v1.5)."""
     import numpy as np
     model = _get_embed_model()
     emb = model.encode(text, convert_to_numpy=True)
@@ -40,7 +40,7 @@ def encode_text(text: str):
 
 
 def batch_encode_texts(texts):
-    """Batch-encode multiple texts — ~10x faster than encoding one-at-a-time."""
+    """Batch-encode multiple texts to 1024-dim embeddings — ~10x faster than encoding one-at-a-time."""
     import numpy as np
     model = _get_embed_model()
     embs = model.encode(texts, convert_to_numpy=True, batch_size=64)

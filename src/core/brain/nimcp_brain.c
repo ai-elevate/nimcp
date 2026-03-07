@@ -129,6 +129,9 @@ void rubric_evaluator_destroy(struct rubric_evaluator* eval);
 #include "core/brain/accessors/nimcp_brain_accessors.h" // Extracted accessor functions module
 #include "core/brain/analysis/nimcp_brain_topology.h"  // Extracted topology/graph analysis module
 
+// Edge-Cloud Hybrid Inference
+#include "middleware/cloud/nimcp_cloud_inference.h"
+
 // === COGNITIVE MODULE ENGINES (Decision Pipeline Integration) ===
 #include "cognitive/recursive/nimcp_rcog_engine.h"       // Recursive Cognition Engine
 #include "cognitive/inner_dialogue/nimcp_inner_dialogue.h" // Inner Dialogue Engine
@@ -417,8 +420,8 @@ static uint32_t get_or_create_label_index(brain_t brain, const char* label);
 static void label_to_output(brain_t brain, const char* label, float* output, float confidence);
 static void adapt_learning_rate_from_loss(brain_t brain, float current_loss);
 static float quantum_weight_energy(const float* weights, uint32_t dim, void* user_data);
-static brain_decision_t* allocate_decision(uint32_t output_size);
-static uint32_t perform_forward_pass(brain_t brain, const float* features, uint32_t num_features, brain_decision_t* decision);
+brain_decision_t* allocate_decision(uint32_t output_size);
+uint32_t perform_forward_pass(brain_t brain, const float* features, uint32_t num_features, brain_decision_t* decision);
 static void determine_output_label(brain_t brain, brain_decision_t* decision);
 static void populate_interpretability(brain_t brain, const float* features, uint32_t num_features, uint32_t active_neurons, brain_decision_t* decision);
 static void update_inference_stats(brain_t brain, brain_decision_t* decision);

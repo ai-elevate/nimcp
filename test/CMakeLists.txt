@@ -1716,6 +1716,31 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/language")
     add_subdirectory(integration/language)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/language")
+    message(STATUS "Adding language regression tests...")
+    add_subdirectory(regression/language)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/optimization")
+    message(STATUS "Adding 40-watt brain optimization unit tests...")
+    add_subdirectory(unit/optimization)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/optimization")
+    message(STATUS "Adding 40-watt brain optimization integration tests...")
+    add_subdirectory(integration/optimization)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/optimization")
+    message(STATUS "Adding 40-watt brain optimization regression tests...")
+    add_subdirectory(regression/optimization)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/optimization")
+    message(STATUS "Adding 40-watt brain optimization e2e tests...")
+    add_subdirectory(e2e/optimization)
+endif()
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/wernicke")
     message(STATUS "Adding Wernicke unit tests...")
     add_subdirectory(unit/core/wernicke)

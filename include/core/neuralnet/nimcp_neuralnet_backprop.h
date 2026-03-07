@@ -59,6 +59,8 @@ typedef struct backprop_ctx {
     size_t total_weights;            /**< Total number of weights */
     size_t total_neurons;            /**< Total number of neurons (exc. input) */
     bool gradients_valid;            /**< Whether gradients have been computed */
+    float** layer_deltas;            /**< Persistent per-layer delta buffers */
+    uint32_t layer_deltas_count;     /**< Number of layer delta buffers */
 } backprop_ctx_t;
 
 //=============================================================================

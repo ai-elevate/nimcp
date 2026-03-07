@@ -33260,6 +33260,30 @@ __/gpu/statistics/nimcp_timeseries_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/statistics/nimcp_timeseries_kernels.cu.s
 .PHONY : __/gpu/statistics/nimcp_timeseries_kernels.cu.s
 
+__/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.o: __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.o
+.PHONY : __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.o
+
+# target to build an object file
+__/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.o
+.PHONY : __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.o
+
+__/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.i: __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.i
+.PHONY : __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.i
+
+# target to preprocess a source file
+__/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.i
+.PHONY : __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.i
+
+__/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.s: __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.s
+.PHONY : __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.s
+
+# target to generate assembly for a file
+__/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.s
+.PHONY : __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c.s
+
 __/gpu/substrate/nimcp_substrate_cpu.o: __/gpu/substrate/nimcp_substrate_cpu.c.o
 .PHONY : __/gpu/substrate/nimcp_substrate_cpu.o
 
@@ -35347,6 +35371,30 @@ __/language/bridges/nimcp_language_training_bridge.s: __/language/bridges/nimcp_
 __/language/bridges/nimcp_language_training_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_training_bridge.c.s
 .PHONY : __/language/bridges/nimcp_language_training_bridge.c.s
+
+__/language/nimcp_grounded_language.o: __/language/nimcp_grounded_language.c.o
+.PHONY : __/language/nimcp_grounded_language.o
+
+# target to build an object file
+__/language/nimcp_grounded_language.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_grounded_language.c.o
+.PHONY : __/language/nimcp_grounded_language.c.o
+
+__/language/nimcp_grounded_language.i: __/language/nimcp_grounded_language.c.i
+.PHONY : __/language/nimcp_grounded_language.i
+
+# target to preprocess a source file
+__/language/nimcp_grounded_language.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_grounded_language.c.i
+.PHONY : __/language/nimcp_grounded_language.c.i
+
+__/language/nimcp_grounded_language.s: __/language/nimcp_grounded_language.c.s
+.PHONY : __/language/nimcp_grounded_language.s
+
+# target to generate assembly for a file
+__/language/nimcp_grounded_language.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_grounded_language.c.s
+.PHONY : __/language/nimcp_grounded_language.c.s
 
 __/language/nimcp_language_bio_async.o: __/language/nimcp_language_bio_async.c.o
 .PHONY : __/language/nimcp_language_bio_async.o
@@ -55936,6 +55984,9 @@ help:
 	@echo "... __/gpu/statistics/nimcp_timeseries_kernels.o"
 	@echo "... __/gpu/statistics/nimcp_timeseries_kernels.i"
 	@echo "... __/gpu/statistics/nimcp_timeseries_kernels.s"
+	@echo "... __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.o"
+	@echo "... __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.i"
+	@echo "... __/gpu/stubs/nimcp_gpu_stubs_tensor_fp16.s"
 	@echo "... __/gpu/substrate/nimcp_substrate_cpu.o"
 	@echo "... __/gpu/substrate/nimcp_substrate_cpu.i"
 	@echo "... __/gpu/substrate/nimcp_substrate_cpu.s"
@@ -56197,6 +56248,9 @@ help:
 	@echo "... __/language/bridges/nimcp_language_training_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_training_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_training_bridge.s"
+	@echo "... __/language/nimcp_grounded_language.o"
+	@echo "... __/language/nimcp_grounded_language.i"
+	@echo "... __/language/nimcp_grounded_language.s"
 	@echo "... __/language/nimcp_language_bio_async.o"
 	@echo "... __/language/nimcp_language_bio_async.i"
 	@echo "... __/language/nimcp_language_bio_async.s"

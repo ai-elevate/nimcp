@@ -656,6 +656,83 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         }
     }
 
+    /* BPTT: Record current example in temporal buffer and replay history.
+     * Biological: Hippocampal replay — recent experiences are replayed during
+     * consolidation with temporally discounted gradients. This enables the
+     * network to learn sequential dependencies across recent training steps.
+     * Truncated BPTT: accumulate gradients over the last bptt_window_size steps
+     * with exponential discount (γ^t) to avoid exploding gradients. */
+    if (brain->bptt_enabled && brain->bptt_buffer && brain->bptt_window_size > 0) {
+        uint32_t w = brain->bptt_window_size;
+        uint32_t in_dim = brain->bptt_input_dim;
+        uint32_t out_dim = brain->bptt_output_dim;
+
+        /* Lazy resize if dimensions changed (first call or reconfiguration) */
+        if (in_dim != num_features || out_dim != target_size) {
+            for (uint32_t i = 0; i < w; i++) {
+                nimcp_free(brain->bptt_buffer[i].input);
+                nimcp_free(brain->bptt_buffer[i].output);
+                nimcp_free(brain->bptt_buffer[i].target);
+                brain->bptt_buffer[i].input = nimcp_calloc(num_features, sizeof(float));
+                brain->bptt_buffer[i].output = nimcp_calloc(target_size, sizeof(float));
+                brain->bptt_buffer[i].target = nimcp_calloc(target_size, sizeof(float));
+            }
+            brain->bptt_input_dim = num_features;
+            brain->bptt_output_dim = target_size;
+            brain->bptt_count = 0;
+            brain->bptt_head = 0;
+        }
+
+        /* Store current example at head position */
+        uint32_t h = brain->bptt_head;
+        if (brain->bptt_buffer[h].input && brain->bptt_buffer[h].target) {
+            memcpy(brain->bptt_buffer[h].input, features, num_features * sizeof(float));
+            memcpy(brain->bptt_buffer[h].target, target, target_size * sizeof(float));
+            /* Capture current output via a quick forward pass */
+            brain_decision_t* bptt_dec = allocate_decision(brain->config.num_outputs);
+            if (bptt_dec) {
+                perform_forward_pass(brain, features, num_features, bptt_dec);
+                if (bptt_dec->output_vector && brain->bptt_buffer[h].output) {
+                    memcpy(brain->bptt_buffer[h].output, bptt_dec->output_vector,
+                           target_size * sizeof(float));
+                }
+                brain_free_decision(bptt_dec);
+            }
+            brain->bptt_buffer[h].loss = loss;
+        }
+        brain->bptt_head = (h + 1) % w;
+        if (brain->bptt_count < w) brain->bptt_count++;
+
+        /* Replay: walk backward through temporal buffer with discounted LR.
+         * Skip the most recent entry (already learned above). */
+        if (brain->bptt_count > 1) {
+            float discount = brain->bptt_discount;
+            float gamma = discount;
+            float bptt_lr = brain->config.learning_rate;
+
+            for (uint32_t step = 1; step < brain->bptt_count; step++) {
+                uint32_t idx = (brain->bptt_head + w - 1 - step) % w;
+                if (!brain->bptt_buffer[idx].input || !brain->bptt_buffer[idx].target) {
+                    continue;
+                }
+
+                training_example_t replay = {
+                    .input = brain->bptt_buffer[idx].input,
+                    .input_size = num_features,
+                    .target = brain->bptt_buffer[idx].target,
+                    .target_size = target_size,
+                    .confidence = confidence * gamma
+                };
+                replay.label[0] = '\0';
+
+                adaptive_network_learn(brain->network, &replay,
+                                       LEARN_MODE_DISTILLATION,
+                                       bptt_lr * gamma);
+                gamma *= discount;  /* Exponential decay */
+            }
+        }
+    }
+
     /* Step 2: Secondary networks learn IN PARALLEL (after adaptive completes) */
     bool has_cnn = (label && label[0]);  /* ensure_cnn_trainer() lazily creates trainer */
     bool has_snn = (brain->snn_network && brain->snn_training_ctx && !brain->config.fast_training_mode);

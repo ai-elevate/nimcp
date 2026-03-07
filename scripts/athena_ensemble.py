@@ -12,7 +12,7 @@ this creates specialized brains that each focus on a domain:
   Social     (300K) — ethics, emotion, theory of mind
   Executive  (200K) — routing, attention, planning, orchestration
 
-Brains communicate through a shared 768-dim embedding bus.
+Brains communicate through a shared 1024-dim embedding bus.
 The Executive brain learns to route inputs to the right specialist(s).
 Each brain trains independently with its own curriculum.
 
@@ -56,7 +56,7 @@ from neural_decoder import NeuralDecoder
 
 BRAIN_INPUT_DIM = 1024
 BRAIN_OUTPUT_DIM = 4096
-EMBEDDING_DIM = 768  # Shared embedding bus dimension
+EMBEDDING_DIM = 1024  # Shared embedding bus dimension
 CHECKPOINT_DIR = "checkpoints/athena_ensemble"
 
 # Specialist brain configurations
@@ -527,7 +527,7 @@ class EnsembleComposer:
                 primary_features=None):
         """Build a 1024-dim input vector with cross-brain + callosum context.
 
-        Layout: [tag:16 | primary:512 | text:384 | context:112]
+        Layout: [tag:16 | primary:640 | text:256 | context:112]
         Context breakdown: [bus:56 | callosum:48 | hemisphere_meta:8]
         """
         vec = np.zeros(BRAIN_INPUT_DIM, dtype=np.float32)
@@ -554,10 +554,10 @@ class EnsembleComposer:
             vec[14] = 0.5
             vec[15] = 0.5
 
-        # --- Primary features [16:528] ---
+        # --- Primary features [16:656] ---
         TAG_DIM = 16
-        PRIMARY_DIM = 512
-        TEXT_DIM = 384
+        PRIMARY_DIM = 640
+        TEXT_DIM = 256
         if primary_features is not None:
             pf = np.array(primary_features, dtype=np.float32)
             n = min(len(pf), PRIMARY_DIM)
@@ -567,7 +567,7 @@ class EnsembleComposer:
             n = min(len(emb), PRIMARY_DIM)
             vec[TAG_DIM:TAG_DIM + n] = emb[:n]
 
-        # --- Text semantic embedding [528:912] ---
+        # --- Text semantic embedding [656:912] ---
         if text is not None:
             emb = encode_text(text)
             n = min(len(emb), TEXT_DIM)
