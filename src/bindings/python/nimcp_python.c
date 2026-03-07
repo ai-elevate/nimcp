@@ -4761,7 +4761,7 @@ static PyObject* Brain_lnn_get_state(BrainObject* self, PyObject* Py_UNUSED(args
     for (uint32_t i = 0; i < n; i++) {
         PyList_SetItem(out, i, PyFloat_FromDouble(data[i]));
     }
-    /* Note: state tensor owned by network, do not destroy */
+    nimcp_tensor_destroy(state);
     return out;
 }
 

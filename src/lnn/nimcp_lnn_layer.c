@@ -596,6 +596,7 @@ int lnn_layer_forward(
 int lnn_layer_get_state(const lnn_layer_t* layer, nimcp_tensor_t** state)
 {
     if (!layer || !state) return LNN_ERROR_NULL_POINTER;
+    if (!layer->x) return LNN_ERROR_NULL_POINTER;
 
     *state = nimcp_tensor_clone(layer->x);
     if (!*state) return LNN_ERROR_OUT_OF_MEMORY;

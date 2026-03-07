@@ -744,6 +744,10 @@ nimcp_tensor_t* nimcp_tensor_clone(const nimcp_tensor_t* t)
 
     }
 
+    if (!t->data || !clone->data) {
+        nimcp_tensor_destroy(clone);
+        return NULL;
+    }
     memcpy(clone->data, t->data, t->shape.nbytes);
     clone->requires_grad = t->requires_grad;
 
