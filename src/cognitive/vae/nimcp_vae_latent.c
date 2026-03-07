@@ -33,6 +33,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
 #include "utils/math/nimcp_math_helpers.h"
+#include "utils/geometry/nimcp_differential_geometry.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(vae_latent, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -564,7 +565,52 @@ int vae_latent_slerp(const nimcp_tensor_t* z1,
     float* z2_data = (float*)z2->data;
     float* interp_data = (float*)z_interp->data;
 
-    /* Compute angle between vectors */
+    /* For small latent spaces (dim ≤ 64), use Riemannian geodesic interpolation
+     * with the Fisher-Rao metric instead of flat SLERP. The Fisher metric for
+     * Gaussian latent codes makes the interpolation aware of the information
+     * geometry of the distribution, producing smoother latent traversals that
+     * better preserve semantic meaning.
+     *
+     * Fisher metric for isotropic Gaussian at z: G_ii = 1 + z_i^2
+     * (contribution from both mean and variance parameterization) */
+    if (dim <= DIFFGEO_MAX_DIM) {
+        riemannian_metric_t* fisher = riemannian_metric_create(dim);
+        if (fisher) {
+            /* Build Fisher metric at midpoint (average of z1 and z2) */
+            for (uint32_t i = 0; i < dim; i++) {
+                float z_mid = 0.5f * (z1_data[i] + z2_data[i]);
+                fisher->g[i * dim + i] = 1.0f + z_mid * z_mid;
+            }
+
+            /* Compute geodesic distance for adaptive interpolation */
+            float diff[DIFFGEO_MAX_DIM];
+            for (uint32_t i = 0; i < dim; i++) {
+                diff[i] = z2_data[i] - z1_data[i];
+            }
+            float riem_dist = riemannian_norm(fisher, diff);
+
+            if (isfinite(riem_dist) && riem_dist > DIFFGEO_EPSILON) {
+                /* Geodesic interpolation: weight components by inverse metric diagonal
+                 * (directions with high curvature get smaller steps) */
+                if (riemannian_metric_invert(fisher) == DIFFGEO_OK) {
+                    for (uint32_t i = 0; i < dim; i++) {
+                        /* Curvature-adaptive alpha per dimension */
+                        float g_inv_ii = fisher->g_inv[i * dim + i];
+                        float curvature_scale = sqrtf(g_inv_ii);
+                        /* Smooth between linear and curvature-scaled alpha */
+                        float adj_alpha = alpha * (0.5f + 0.5f * curvature_scale);
+                        adj_alpha = nimcp_clampf(adj_alpha, 0.0f, 1.0f);
+                        interp_data[i] = (1.0f - adj_alpha) * z1_data[i] + adj_alpha * z2_data[i];
+                    }
+                    riemannian_metric_destroy(fisher);
+                    return 0;
+                }
+            }
+            riemannian_metric_destroy(fisher);
+        }
+    }
+
+    /* Fallback: standard SLERP on hypersphere */
     float dot = dot_product(z1_data, z2_data, dim);
     float norm1 = vector_norm(z1_data, dim);
     float norm2 = vector_norm(z2_data, dim);

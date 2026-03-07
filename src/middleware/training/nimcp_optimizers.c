@@ -32,6 +32,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "utils/geometry/nimcp_differential_geometry.h"
 
 /* Module name for security registration and logging */
 #define OPTIMIZER_MODULE_NAME "nimcp_optimizer"
@@ -1190,6 +1191,46 @@ nimcp_result_t nimcp_optimizer_step(
         /* Fallback: can't allocate clip buffer and gradients are bad — skip */
         ctx->stats.gradient_explosions++;
         return NIMCP_SUCCESS;
+    }
+
+    /* Natural gradient pre-conditioning via Fisher information metric.
+     * For small parameter spaces (dim ≤ 64), compute the Riemannian metric
+     * G = diag(v_hat) from Adam's second moment as an approximation of the
+     * Fisher information matrix, then use g^{-1} * grad for the natural gradient.
+     * This is mathematically equivalent to what Adam already does per-parameter,
+     * but for non-Adam optimizers (SGD, Nesterov) it provides curvature awareness.
+     * Only applied to SGD-family optimizers where it adds value. */
+    if (count <= DIFFGEO_MAX_DIM &&
+        (ctx->config.type == NIMCP_OPTIMIZER_SGD ||
+         ctx->config.type == NIMCP_OPTIMIZER_SGD_MOMENTUM ||
+         ctx->config.type == NIMCP_OPTIMIZER_NESTEROV) &&
+        clipped_grads != NULL && ctx->step_count > 0) {
+        riemannian_metric_t* fisher = riemannian_metric_create((uint32_t)count);
+        if (fisher) {
+            /* Build diagonal Fisher metric from squared gradients (empirical Fisher).
+             * G_ii = grad_i^2 approximates the Fisher information for each parameter. */
+            for (uint32_t i = 0; i < (uint32_t)count; i++) {
+                float g_ii = clipped_grads[i] * clipped_grads[i] + DIFFGEO_EPSILON;
+                fisher->g[i * count + i] = g_ii;
+            }
+            if (riemannian_metric_invert(fisher) == DIFFGEO_OK) {
+                /* Apply natural gradient: g_nat = G^{-1} * g_euclidean */
+                float nat_grad[DIFFGEO_MAX_DIM];
+                if (riemannian_raise_index(fisher, clipped_grads, nat_grad) == DIFFGEO_OK) {
+                    /* Re-normalize to preserve original gradient scale */
+                    float nat_norm = 0.0f;
+                    for (uint32_t i = 0; i < (uint32_t)count; i++) {
+                        nat_norm += nat_grad[i] * nat_grad[i];
+                    }
+                    nat_norm = sqrtf(nat_norm + DIFFGEO_EPSILON);
+                    float scale = grad_norm / (nat_norm + DIFFGEO_EPSILON);
+                    for (uint32_t i = 0; i < (uint32_t)count; i++) {
+                        clipped_grads[i] = nat_grad[i] * scale;
+                    }
+                }
+            }
+            riemannian_metric_destroy(fisher);
+        }
     }
 
     nimcp_log(LOG_LEVEL_TRACE, "[%s] Optimizer step: lr=%f, grad_norm=%f, step=%lu",

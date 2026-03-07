@@ -33,6 +33,7 @@
 #include "security/nimcp_security.h"
 #include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/geometry/nimcp_differential_geometry.h"
 
 //=============================================================================
 // Monte Carlo Integration - GPU acceleration with CPU fallback
@@ -580,12 +581,32 @@ static void compute_attention_scores(const float* query,
         return;
     }
 
-    /* WHAT: Compute scaled dot-product for each key
-     * WHY:  score(q, k) = (q · k) / sqrt(d_k)
-     * NOTE: Single loop, no nesting
-     */
+    /* For small key dimensions (≤ 64), use Riemannian inner product with a
+     * data-dependent metric instead of flat dot product. The metric is built
+     * from the query vector: G_ii = 1 + |q_i| (adaptive weighting).
+     * This makes attention curvature-aware: dimensions where the query has
+     * strong activation get higher metric weight, producing more selective
+     * attention scores that focus on informative feature dimensions. */
     const float scale = 1.0F / sqrtf((float)key_dim);
 
+    if (key_dim <= DIFFGEO_MAX_DIM) {
+        riemannian_metric_t* attn_metric = riemannian_metric_create(key_dim);
+        if (attn_metric) {
+            /* Build diagonal metric from query magnitude */
+            for (uint32_t d = 0; d < key_dim; d++) {
+                attn_metric->g[d * key_dim + d] = 1.0f + fabsf(query[d]);
+            }
+
+            for (uint32_t i = 0; i < seq_len; i++) {
+                const float* key = keys + (i * key_dim);
+                scores[i] = riemannian_inner_product(attn_metric, query, key) * scale;
+            }
+            riemannian_metric_destroy(attn_metric);
+            return;
+        }
+    }
+
+    /* Fallback: standard scaled dot-product attention */
     for (uint32_t i = 0; i < seq_len; i++) {
         const float* key = keys + (i * key_dim);
         scores[i] = nimcp_vector_dot_product(query, key, key_dim) * scale;

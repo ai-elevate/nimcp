@@ -8,9 +8,11 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "utils/math/nimcp_math_helpers.h"
+#include "utils/geometry/nimcp_lie_group.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(motor_substrate_bridge)
 
@@ -154,12 +156,39 @@ int motor_substrate_bridge_update(motor_substrate_bridge_t* bridge) {
             metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
-    /* Combined overall capacity from all effect dimensions */
-    bridge->effects.overall_capacity =
-        (bridge->effects.motor_precision +
-         bridge->effects.motor_speed +
-         bridge->effects.motor_endurance +
-         bridge->effects.coordination) / 4.0f;
+    /* Combined overall capacity using SO(3) geodesic distance to measure
+     * how far the current motor state deviates from the identity (full capacity).
+     * The 4 motor dimensions are mapped to an axis-angle representation in SO(3),
+     * where the geodesic distance from identity captures the total degradation
+     * more accurately than a simple average (respects rotational geometry). */
+    {
+        float axis[3] = {
+            bridge->effects.motor_precision - bridge->effects.motor_speed,
+            bridge->effects.motor_endurance - bridge->effects.coordination,
+            (bridge->effects.motor_precision + bridge->effects.motor_speed) * 0.5f -
+            (bridge->effects.motor_endurance + bridge->effects.coordination) * 0.5f
+        };
+        float axis_norm = sqrtf(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
+        float mean_capacity = (bridge->effects.motor_precision +
+                               bridge->effects.motor_speed +
+                               bridge->effects.motor_endurance +
+                               bridge->effects.coordination) / 4.0f;
+
+        if (axis_norm > 1e-6f) {
+            /* Use geodesic distance from identity as anisotropy penalty */
+            float unit_axis[3] = { axis[0]/axis_norm, axis[1]/axis_norm, axis[2]/axis_norm };
+            float angle = axis_norm * 0.5f;  /* Scale deviation to small angle */
+            so3_rotation_t R = so3_from_axis_angle(unit_axis, angle);
+            so3_rotation_t I = so3_identity();
+            float geo_dist = so3_distance(&I, &R);
+            /* Penalize capacity by geodesic distance (anisotropy in motor state) */
+            bridge->effects.overall_capacity = nimcp_clampf(
+                mean_capacity - 0.1f * geo_dist, min_cap, 1.0f);
+        } else {
+            /* Isotropic motor state — use simple average */
+            bridge->effects.overall_capacity = mean_capacity;
+        }
+    }
 
     bridge->update_count++;
 

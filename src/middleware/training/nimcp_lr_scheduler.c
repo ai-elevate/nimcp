@@ -32,6 +32,7 @@
 #define LOG_MODULE "lr_scheduler"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/geometry/nimcp_differential_geometry.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lr_scheduler)
 
@@ -287,15 +288,31 @@ static float compute_cyclic_lr(nimcp_lr_scheduler_ctx_t* ctx, uint64_t step) {
             break;
     }
 
+    /* Geodesic interpolation for cyclic LR transitions.
+     * Instead of linear interpolation between base_lr and max_lr, use
+     * geodesic interpolation on the positive real line with the Fisher
+     * information metric ds² = (1/lr²) dlr², where geodesics are
+     * exponential curves: lr(t) = base^(1-t) * max^t.
+     * This naturally respects the scale-invariant geometry of learning
+     * rates (a 10x change matters equally at lr=0.001 and lr=0.01). */
     float lr;
     if (cycle_pos < step_up) {
-        /* Increasing phase */
+        /* Increasing phase: geodesic from base_lr to max_lr */
         float x = (float)cycle_pos / (float)step_up;
-        lr = base_lr + (max_lr - base_lr) * x;
+        /* Geodesic on positive reals: lr = base^(1-x) * max^x = exp((1-x)*ln(base) + x*ln(max)) */
+        if (base_lr > DIFFGEO_EPSILON && max_lr > DIFFGEO_EPSILON) {
+            lr = expf((1.0f - x) * logf(base_lr) + x * logf(max_lr));
+        } else {
+            lr = base_lr + (max_lr - base_lr) * x;  /* Fallback to linear */
+        }
     } else {
-        /* Decreasing phase */
+        /* Decreasing phase: geodesic from max_lr to base_lr */
         float x = (float)(cycle_pos - step_up) / (float)step_down;
-        lr = max_lr - (max_lr - base_lr) * x;
+        if (base_lr > DIFFGEO_EPSILON && max_lr > DIFFGEO_EPSILON) {
+            lr = expf((1.0f - x) * logf(max_lr) + x * logf(base_lr));
+        } else {
+            lr = max_lr - (max_lr - base_lr) * x;
+        }
     }
 
     ctx->state.cyclic.cycle = cycle;

@@ -30,6 +30,7 @@
 #include <math.h>
 #include <float.h>
 #include <time.h>
+#include "utils/geometry/nimcp_differential_geometry.h"
 
 #define REG_MODULE_NAME "Regularization"
 #define LOG_MODULE "regularization"
@@ -553,6 +554,33 @@ float nimcp_gradient_clip_by_norm(
 ) {
     if (!gradients || num_gradients == 0 || max_norm <= 0.0F) {
         return 1.0F;
+    }
+
+    /* For small parameter spaces, use Riemannian norm with empirical Fisher metric.
+     * This clips based on the geometry of the loss landscape rather than flat
+     * Euclidean distance, preventing over-clipping in flat directions and
+     * under-clipping in high-curvature directions. */
+    if (num_gradients <= DIFFGEO_MAX_DIM) {
+        riemannian_metric_t* fisher = riemannian_metric_create((uint32_t)num_gradients);
+        if (fisher) {
+            /* Diagonal Fisher approximation: G_ii = g_i^2 + epsilon */
+            for (uint32_t i = 0; i < (uint32_t)num_gradients; i++) {
+                fisher->g[i * num_gradients + i] = gradients[i] * gradients[i] + DIFFGEO_EPSILON;
+            }
+            float riem_norm = riemannian_norm(fisher, gradients);
+            riemannian_metric_destroy(fisher);
+
+            if (isfinite(riem_norm) && riem_norm > max_norm) {
+                float scale = max_norm / riem_norm;
+                for (size_t i = 0; i < num_gradients; i++) {
+                    gradients[i] *= scale;
+                }
+                return scale;
+            } else if (isfinite(riem_norm)) {
+                return 1.0F;
+            }
+            /* Fall through to Euclidean clipping if Riemannian norm failed */
+        }
     }
 
     float norm = nimcp_gradient_norm(gradients, num_gradients);

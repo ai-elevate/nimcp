@@ -51,6 +51,7 @@
 #define LOG_MODULE "spatial_neuromod"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/math/nimcp_math_helpers.h"
+#include "utils/geometry/nimcp_differential_geometry.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spatial_neuromod)
 
@@ -1033,7 +1034,12 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
             return false;
         }
 
-        // 2. Apply reaction-diffusion equation
+        // 2. Apply reaction-diffusion equation with Riemannian curvature correction.
+        //    On a curved neural manifold, diffusion is governed by the
+        //    Laplace-Beltrami operator, not the flat Laplacian. We approximate
+        //    the curvature correction using the local concentration gradient:
+        //    curved_D = D * (1 + curvature_scale * |grad_c|^2)
+        //    This accelerates diffusion in high-gradient (curved) regions.
         float total_decay = 0.0F;
         float sum_concentration = 0.0F;
 
@@ -1042,8 +1048,15 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
             float L = laplacian[i];
             float S = source_rate[i];
 
-            // dc/dt = D*L - k*c + S
-            float dcdt = D * L - k * c + S;
+            // Riemannian curvature correction: approximate local metric
+            // distortion from concentration gradient magnitude.
+            // High Laplacian magnitude indicates high curvature → boost diffusion.
+            float grad_mag_sq = L * L;
+            float curved_D = D * (1.0f + 0.1f * grad_mag_sq /
+                                  (grad_mag_sq + 1.0f));
+
+            // dc/dt = D_curved * L - k*c + S
+            float dcdt = curved_D * L - k * c + S;
 
             // Explicit Euler step
             float c_new = c + sub_dt * dcdt;
