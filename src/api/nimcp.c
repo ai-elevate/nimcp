@@ -53,6 +53,7 @@ static void api_set_error(const char* fmt, ...);
 #include "middleware/training/nimcp_training_callbacks.h"          // Training callbacks
 #include "training/nimcp_training_dispatch.h"                      // SNN/LNN/CNN/Adaptive dispatch
 #include "plasticity/adaptive/nimcp_adaptive.h"                    // Adaptive network
+#include "core/neuralnet/nimcp_neuralnet_learning.h"              // neural_network_apply_reward_learning_active
 #include "core/brain/learning/nimcp_brain_learning.h"              // brain_learn_vector, brain_learn_example
 #include "cognitive/rubric/nimcp_rubric.h"                         // Cognitive output rubric
 #include "utils/platform/nimcp_platform_once.h"                    // Thread-safe init

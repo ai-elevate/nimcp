@@ -24,8 +24,10 @@ def _get_embed_model():
     global _embed_model
     if _embed_model is not None:
         return _embed_model
+    import torch
     from sentence_transformers import SentenceTransformer
-    _embed_model = SentenceTransformer('all-MiniLM-L6-v2')
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    _embed_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
     return _embed_model
 
 

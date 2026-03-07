@@ -610,8 +610,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     nimcp_brain_learning_adapt_learning_rate(brain, loss);
     __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
 
-    /* Biological plasticity integration (when not in fast training mode) */
-    if (!brain->config.fast_training_mode) {
+    /* Biological plasticity integration (skip in fast training or batch mode) */
+    if (!brain->config.fast_training_mode && !brain->config.defer_bio_plasticity) {
         /* TPB: Loss → RPE → neuromodulator update */
         if (brain->plasticity_bridge && brain->enable_plasticity_bridge) {
             float rpe = 0.0f;

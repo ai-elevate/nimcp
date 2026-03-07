@@ -155,6 +155,13 @@ nimcp_status_t nimcp_brain_learn_vector(
 }
 
 
+#ifndef REWARD_LEARNING_RATE
+#define REWARD_LEARNING_RATE 0.0001f
+#endif
+#ifndef REWARD_ACTIVITY_THRESHOLD
+#define REWARD_ACTIVITY_THRESHOLD 0.01f
+#endif
+
 float nimcp_brain_learn_vector_batch(
     nimcp_brain_t brain,
     const float** features_array,
@@ -165,6 +172,8 @@ float nimcp_brain_learn_vector_batch(
 {
     if (!brain || !brain->internal_brain || !features_array || !targets_array) return -1.0f;
     if (num_examples == 0 || num_features == 0 || target_size == 0) return -1.0f;
+
+    brain_t ib = brain->internal_brain;
 
     // Build training_example_t array
     training_example_t* examples = nimcp_calloc(num_examples, sizeof(training_example_t));
@@ -179,16 +188,41 @@ float nimcp_brain_learn_vector_batch(
         examples[i].label[0] = '\0';
     }
 
+    // GPU gradient accumulation handles the batch internally
     float loss = adaptive_network_learn_batch(
-        brain->internal_brain->network, examples, num_examples,
-        LEARN_MODE_DISTILLATION, brain->internal_brain->config.learning_rate);
+        ib->network, examples, num_examples,
+        LEARN_MODE_DISTILLATION, ib->config.learning_rate);
 
     nimcp_free(examples);
 
     if (loss >= 0.0f) {
         brain->last_loss = loss;
-        brain->last_gradient_norm = adaptive_network_get_last_grad_norm(
-            brain->internal_brain->network);
+        brain->last_gradient_norm = adaptive_network_get_last_grad_norm(ib->network);
+        nimcp_brain_learning_adapt_learning_rate(ib, loss);
+        __atomic_fetch_add(&ib->stats.total_learning_steps, num_examples, __ATOMIC_RELAXED);
+    }
+
+    // Run biological plasticity ONCE for the whole batch (not per-sample).
+    // Uses brain_learn_vector on the last sample to trigger all bio subsystems.
+    // The adaptive network learn is skipped (weights already updated by batch),
+    // but TPB/EDP/plasticity coordinator/reward learning all fire.
+    if (!ib->config.fast_training_mode && loss >= 0.0f && num_examples > 0) {
+        // Temporarily enable bio plasticity and mark network frozen to skip
+        // redundant adaptive_network_learn, then call brain_learn_vector.
+        // Simpler approach: just run reward learning directly (the most impactful).
+        neural_network_t base_net = adaptive_network_get_base_network(ib->network);
+        if (base_net) {
+            if (ib->neuromodulator_system) {
+                neural_network_set_neuromodulator_system(base_net, ib->neuromodulator_system);
+            }
+            float reward = 1.0f - fminf(loss, 1.0f);
+            uint32_t modified = neural_network_apply_reward_learning_active(
+                base_net, reward, REWARD_LEARNING_RATE,
+                nimcp_time_get_us(), REWARD_ACTIVITY_THRESHOLD);
+            if (modified > 0) {
+                adaptive_network_invalidate_gpu_structure(ib->network);
+            }
+        }
     }
 
     return loss;

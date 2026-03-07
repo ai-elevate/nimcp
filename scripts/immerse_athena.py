@@ -2261,8 +2261,10 @@ def evaluate_performance(brain, composer, decoder, stage, step):
     print(f"  {'─' * 56}\n")
 
 
-def _save_checkpoint(brain, decoder, stage, step):
-    """Save brain checkpoint and decoder state."""
+_checkpoint_thread = None
+
+def _save_checkpoint_sync(brain, decoder, stage, step):
+    """Synchronous checkpoint save (runs in background thread)."""
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
     ckpt = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
     try:
@@ -2279,7 +2281,6 @@ def _save_checkpoint(brain, decoder, stage, step):
         except Exception:
             pass
 
-    # Save state
     state = {"stage": stage, "step": step,
              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")}
     try:
@@ -2287,6 +2288,19 @@ def _save_checkpoint(brain, decoder, stage, step):
             json.dump(state, f, indent=2)
     except Exception:
         pass
+
+
+def _save_checkpoint(brain, decoder, stage, step):
+    """Non-blocking checkpoint save — runs in background thread."""
+    global _checkpoint_thread
+    from threading import Thread
+    # Wait for previous checkpoint to finish (if still running)
+    if _checkpoint_thread is not None and _checkpoint_thread.is_alive():
+        _checkpoint_thread.join(timeout=30)
+    _checkpoint_thread = Thread(target=_save_checkpoint_sync,
+                                args=(brain, decoder, stage, step),
+                                daemon=True)
+    _checkpoint_thread.start()
 
 
 def _load_state():
