@@ -321,6 +321,9 @@ bool brain_backward_chain_step(
         goal_clause.literals = &formula->atom;
         goal_clause.num_literals = 1;
         goal_clause.confidence = 1.0f;
+    } else {
+        /* No atom to prove — cannot backward chain */
+        return false;
     }
 
     bool proven = symbolic_logic_backward_chain(engine, &goal_clause,

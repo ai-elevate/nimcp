@@ -577,6 +577,9 @@ int brain_ti_post_batch_update(brain_t brain, float accuracy,
                 for (uint32_t i = 0; i < bg->num_habits; i++) {
                     if (bg->habits[i].trigger_context == context) {
                         uint32_t habit_id = bg->habits[i].habit_id;
+                        /* W4-2 fix: Always unlock before goto to prevent deadlock.
+                         * The old code had the unlock here but goto bg_done
+                         * at line 612 would skip the unlock at line 616. */
                         if (bg->mutex) {
                             nimcp_mutex_unlock(bg->mutex);
                         }

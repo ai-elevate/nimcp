@@ -2469,6 +2469,10 @@ float curiosity_estimate_info_gain_mc(
                 float* h_uniform = nimcp_calloc(num_simulations, sizeof(float));
                 if (!h_uniform) return -1;
                 float* h_normal = nimcp_calloc(num_simulations, sizeof(float));
+                if (!h_normal) {
+                    nimcp_free(h_uniform);
+                    return -1;
+                }
 
                 if (h_uniform && h_normal) {
                     cudaMemcpy(h_uniform, uniform_samples->data, num_simulations * sizeof(float), cudaMemcpyDeviceToHost);

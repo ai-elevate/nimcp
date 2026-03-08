@@ -1528,7 +1528,9 @@ void axon_spike_pool_free(axon_spike_pool_t* pool, axon_spike_event_t* event)
 
     // Mark as free
     pool->allocation_bitmap[word_idx] &= ~mask;
-    pool->allocated_count--;
+    if (pool->allocated_count > 0) {
+        pool->allocated_count--;
+    }
 
     // Optimize next search position
     if (slot < pool->next_search_pos) {

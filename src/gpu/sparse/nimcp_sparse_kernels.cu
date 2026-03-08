@@ -656,7 +656,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
     NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_row_indices, nnz * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
     NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_col_indices, nnz * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
     NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_nnz_counter, sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
-    cudaMemset(d_nnz_counter, 0, sizeof(int));
+    NIMCP_CUDA_RECOVER_NULL(cudaMemset(d_nnz_counter, 0, sizeof(int)), GPU_ERROR_CUDA_RUNTIME);
 
     // Extract COO data
     kernel_dense_to_coo<<<GRID_SIZE(total), BLOCK_SIZE>>>(
@@ -673,7 +673,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
 
     // Create index array for sorting
     int* d_indices;
-    cudaMalloc(&d_indices, nnz * sizeof(int));
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_indices, nnz * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
     thrust::device_ptr<int> idx_ptr(d_indices);
     thrust::sequence(thrust::device, idx_ptr, idx_ptr + nnz);
 
@@ -985,7 +985,7 @@ nimcp_gpu_tensor_t* nimcp_sparse_to_dense(
     if (!dense) return NULL;
 
     // Zero initialize
-    cudaMemset(dense->data, 0, rows * cols * sizeof(float));
+    NIMCP_CUDA_RECOVER_NULL(cudaMemset(dense->data, 0, rows * cols * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     if (sparse->format == SPARSE_FORMAT_CSR) {
         kernel_csr_to_dense<<<rows, BLOCK_SIZE>>>(
@@ -1049,9 +1049,15 @@ nimcp_sparse_tensor_t* nimcp_sparse_tensor_clone(
         int rows = tensor->data.csr.rows;
         int cols = tensor->data.csr.cols;
 
-        cudaMalloc(&clone->data.csr.values, nnz * sizeof(float));
-        cudaMalloc(&clone->data.csr.col_indices, nnz * sizeof(int));
-        cudaMalloc(&clone->data.csr.row_ptrs, (rows + 1) * sizeof(int));
+        if (cudaMalloc(&clone->data.csr.values, nnz * sizeof(float)) != cudaSuccess ||
+            cudaMalloc(&clone->data.csr.col_indices, nnz * sizeof(int)) != cudaSuccess ||
+            cudaMalloc(&clone->data.csr.row_ptrs, (rows + 1) * sizeof(int)) != cudaSuccess) {
+            cudaFree(clone->data.csr.values);
+            cudaFree(clone->data.csr.col_indices);
+            cudaFree(clone->data.csr.row_ptrs);
+            nimcp_free(clone);
+            return NULL;
+        }
 
         cudaMemcpy(clone->data.csr.values, tensor->data.csr.values, nnz * sizeof(float), cudaMemcpyDeviceToDevice);
         cudaMemcpy(clone->data.csr.col_indices, tensor->data.csr.col_indices, nnz * sizeof(int), cudaMemcpyDeviceToDevice);
@@ -1075,9 +1081,15 @@ nimcp_sparse_tensor_t* nimcp_sparse_tensor_clone(
         int rows = tensor->data.coo.rows;
         int cols = tensor->data.coo.cols;
 
-        cudaMalloc(&clone->data.coo.values, nnz * sizeof(float));
-        cudaMalloc(&clone->data.coo.row_indices, nnz * sizeof(int));
-        cudaMalloc(&clone->data.coo.col_indices, nnz * sizeof(int));
+        if (cudaMalloc(&clone->data.coo.values, nnz * sizeof(float)) != cudaSuccess ||
+            cudaMalloc(&clone->data.coo.row_indices, nnz * sizeof(int)) != cudaSuccess ||
+            cudaMalloc(&clone->data.coo.col_indices, nnz * sizeof(int)) != cudaSuccess) {
+            cudaFree(clone->data.coo.values);
+            cudaFree(clone->data.coo.row_indices);
+            cudaFree(clone->data.coo.col_indices);
+            nimcp_free(clone);
+            return NULL;
+        }
 
         cudaMemcpy(clone->data.coo.values, tensor->data.coo.values, nnz * sizeof(float), cudaMemcpyDeviceToDevice);
         cudaMemcpy(clone->data.coo.row_indices, tensor->data.coo.row_indices, nnz * sizeof(int), cudaMemcpyDeviceToDevice);
@@ -1556,6 +1568,12 @@ bool nimcp_sparse_attention(
         return false;
     }
 
+    // W4-19: Clamp grid dimensions to CUDA limits
+    if (seq_len > 65535 || heads > 65535 || batch > 65535) {
+        LOG_ERROR("Sparse attention grid dimensions exceed CUDA limits: seq_len=%d, heads=%d, batch=%d",
+                  seq_len, heads, batch);
+        return false;
+    }
     dim3 grid(seq_len, heads, batch);
     dim3 block(min(head_dim, 256));
     size_t shared_mem = head_dim * sizeof(float) * 2;
@@ -1842,9 +1860,14 @@ nimcp_sparse_tensor_t* nimcp_sparse_random(
     int* d_row_indices;
     int* d_col_indices;
 
-    cudaMalloc(&d_values, nnz * sizeof(float));
-    cudaMalloc(&d_row_indices, nnz * sizeof(int));
-    cudaMalloc(&d_col_indices, nnz * sizeof(int));
+    if (cudaMalloc(&d_values, nnz * sizeof(float)) != cudaSuccess ||
+        cudaMalloc(&d_row_indices, nnz * sizeof(int)) != cudaSuccess ||
+        cudaMalloc(&d_col_indices, nnz * sizeof(int)) != cudaSuccess) {
+        cudaFree(d_values);
+        cudaFree(d_row_indices);
+        cudaFree(d_col_indices);
+        return NULL;
+    }
 
     // Generate random sparse pattern
     unsigned long long seed = (unsigned long long)time(NULL);
@@ -1945,8 +1968,11 @@ float nimcp_sparse_compute_density(
     int n = dense->numel;
 
     int* d_count;
-    cudaMalloc(&d_count, sizeof(int));
-    cudaMemset(d_count, 0, sizeof(int));
+    if (cudaMalloc(&d_count, sizeof(int)) != cudaSuccess) return 0.0f;
+    if (cudaMemset(d_count, 0, sizeof(int)) != cudaSuccess) {
+        cudaFree(d_count);
+        return 0.0f;
+    }
 
     kernel_count_nonzeros<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)dense->data, d_count, threshold, n);

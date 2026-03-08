@@ -574,6 +574,11 @@ NIMCP_EXPORT bool bbb_connect_immune(bbb_system_t system, brain_immune_system_t*
      * This prevents use-after-free when immune system is being detached.
      * Uses condition variable instead of spin-wait for proper synchronization. */
     if (immune_system == NULL && system->immune_system != NULL) {
+        /* W4-11 fix: Set immune_system to NULL FIRST to prevent new operations
+         * from starting (they check immune_system before incrementing
+         * pending_immune_ops). Then wait for in-flight operations to drain. */
+        system->immune_system = NULL;
+
         /* Wait for pending immune operations to complete using condition variable */
         const uint32_t TIMEOUT_MS = NIMCP_MEDIUM_TIMEOUT_MS;  /* 1 second timeout */
         int total_wait_ms = 0;
@@ -597,9 +602,9 @@ NIMCP_EXPORT bool bbb_connect_immune(bbb_system_t system, brain_immune_system_t*
             LOG_WARN("bbb_connect_immune: Timeout waiting for %d pending immune operations after %dms",
                      atomic_load(&system->pending_immune_ops), total_wait_ms);
         }
+    } else {
+        system->immune_system = immune_system;
     }
-
-    system->immune_system = immune_system;
     nimcp_mutex_unlock(&system->mutex);
 
     return true;

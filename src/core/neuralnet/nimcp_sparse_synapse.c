@@ -866,6 +866,9 @@ synapse_handle_t* sparse_synapse_get(
     if (index < storage->embedded_count) {
         return &storage->embedded[index];
     } else {
+        if (!storage->overflow) {
+            return NULL;
+        }
         uint32_t overflow_index = index - storage->embedded_count;
         return &storage->overflow[overflow_index];
     }

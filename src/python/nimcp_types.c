@@ -346,19 +346,47 @@ static PyObject* Brain_decide_full(BrainObject* self, PyObject* args)
     // Build output vector list
     uint32_t vec_len = (output_size < 1024) ? output_size : 1024;
     PyObject* vec_list = PyList_New(vec_len);
+    if (!vec_list) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_decide_full: PyList_New failed");
+        return NULL;
+    }
     for (uint32_t i = 0; i < vec_len; i++) {
         PyList_SetItem(vec_list, i, PyFloat_FromDouble(output_vector[i]));
     }
 
-    // Build result dict
+    // Build result dict — PyDict_SetItemString does NOT steal refs, so we must DECREF temps
     PyObject* result = PyDict_New();
-    PyDict_SetItemString(result, "label", PyUnicode_FromString(label));
-    PyDict_SetItemString(result, "confidence", PyFloat_FromDouble(confidence));
-    PyDict_SetItemString(result, "explanation", PyUnicode_FromString(explanation));
+    if (!result) {
+        Py_DECREF(vec_list);
+        return NULL;
+    }
+    PyObject* tmp;
+
+    tmp = PyUnicode_FromString(label);
+    PyDict_SetItemString(result, "label", tmp);
+    Py_DECREF(tmp);
+
+    tmp = PyFloat_FromDouble(confidence);
+    PyDict_SetItemString(result, "confidence", tmp);
+    Py_DECREF(tmp);
+
+    tmp = PyUnicode_FromString(explanation);
+    PyDict_SetItemString(result, "explanation", tmp);
+    Py_DECREF(tmp);
+
     PyDict_SetItemString(result, "output_vector", vec_list);
-    PyDict_SetItemString(result, "num_active_neurons", PyLong_FromUnsignedLong(num_active_neurons));
-    PyDict_SetItemString(result, "sparsity", PyFloat_FromDouble(sparsity));
-    PyDict_SetItemString(result, "inference_time_us", PyLong_FromUnsignedLongLong(inference_time_us));
+
+    tmp = PyLong_FromUnsignedLong(num_active_neurons);
+    PyDict_SetItemString(result, "num_active_neurons", tmp);
+    Py_DECREF(tmp);
+
+    tmp = PyFloat_FromDouble(sparsity);
+    PyDict_SetItemString(result, "sparsity", tmp);
+    Py_DECREF(tmp);
+
+    tmp = PyLong_FromUnsignedLongLong(inference_time_us);
+    PyDict_SetItemString(result, "inference_time_us", tmp);
+    Py_DECREF(tmp);
 
     Py_DECREF(vec_list);
     return result;
@@ -374,7 +402,10 @@ static PyObject* Brain_clone_cow(BrainObject* self, PyObject* Py_UNUSED(ignored)
     }
 
     // Call unified API to create COW clone
-    nimcp_brain_t clone_brain = nimcp_brain_clone_cow(self->brain);
+    nimcp_brain_t clone_brain;
+    Py_BEGIN_ALLOW_THREADS
+    clone_brain = nimcp_brain_clone_cow(self->brain);
+    Py_END_ALLOW_THREADS
 
     if (!clone_brain) {
         PyErr_SetString(NIMCPError, "Failed to create COW clone");
@@ -587,7 +618,10 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored))
 {
     nimcp_brain_probe_t probe;
 
-    nimcp_status_t status = nimcp_brain_probe(self->brain, &probe);
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_probe(self->brain, &probe);
+    Py_END_ALLOW_THREADS
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to probe brain");
@@ -1292,12 +1326,31 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
             return NULL;
         }
 
-        PyDict_SetItemString(dict, "name", PyUnicode_FromString(infos[i].name));
-        PyDict_SetItemString(dict, "description", PyUnicode_FromString(infos[i].description));
-        PyDict_SetItemString(dict, "timestamp", PyLong_FromUnsignedLongLong(infos[i].timestamp));
-        PyDict_SetItemString(dict, "file_size", PyLong_FromUnsignedLong(infos[i].file_size));
-        PyDict_SetItemString(dict, "is_compressed", PyBool_FromLong(infos[i].is_compressed));
-        PyDict_SetItemString(dict, "is_encrypted", PyBool_FromLong(infos[i].is_encrypted));
+        PyObject* tmp;
+
+        tmp = PyUnicode_FromString(infos[i].name);
+        PyDict_SetItemString(dict, "name", tmp);
+        Py_DECREF(tmp);
+
+        tmp = PyUnicode_FromString(infos[i].description);
+        PyDict_SetItemString(dict, "description", tmp);
+        Py_DECREF(tmp);
+
+        tmp = PyLong_FromUnsignedLongLong(infos[i].timestamp);
+        PyDict_SetItemString(dict, "timestamp", tmp);
+        Py_DECREF(tmp);
+
+        tmp = PyLong_FromUnsignedLong(infos[i].file_size);
+        PyDict_SetItemString(dict, "file_size", tmp);
+        Py_DECREF(tmp);
+
+        tmp = PyBool_FromLong(infos[i].is_compressed);
+        PyDict_SetItemString(dict, "is_compressed", tmp);
+        Py_DECREF(tmp);
+
+        tmp = PyBool_FromLong(infos[i].is_encrypted);
+        PyDict_SetItemString(dict, "is_encrypted", tmp);
+        Py_DECREF(tmp);
 
         PyList_SET_ITEM(result_list, i, dict);  /* Steals reference */
     }
@@ -1424,7 +1477,9 @@ static PyObject* Brain_working_memory_get(BrainObject* self, PyObject* args)
         PyList_SET_ITEM(result_list, i, PyFloat_FromDouble((double)data[i]));
     }
 
-    return Py_BuildValue("(ON)", result_list, PyLong_FromUnsignedLong(size_out));
+    PyObject* tmp = PyLong_FromUnsignedLong(size_out);
+    PyObject* ret = Py_BuildValue("(ON)", result_list, tmp);
+    return ret;
 }
 
 /**
@@ -1851,8 +1906,15 @@ static PyObject* Brain_process(BrainObject* self, PyObject* args)
 
     }
 
-    PyDict_SetItemString(result, "label", PyUnicode_FromString(label));
-    PyDict_SetItemString(result, "confidence", PyFloat_FromDouble((double)confidence));
+    PyObject* tmp;
+
+    tmp = PyUnicode_FromString(label);
+    PyDict_SetItemString(result, "label", tmp);
+    Py_DECREF(tmp);
+
+    tmp = PyFloat_FromDouble((double)confidence);
+    PyDict_SetItemString(result, "confidence", tmp);
+    Py_DECREF(tmp);
 
     return result;
 }

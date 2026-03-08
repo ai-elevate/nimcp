@@ -1664,11 +1664,29 @@ bool consolidation_cache_communities(consolidation_community_cache_t* cache, bra
         cache->hub_neuron_ids = (uint32_t*)nimcp_calloc(hubs->num_hubs, sizeof(uint32_t));
         if (!cache->hub_neuron_ids) return false;
         cache->hub_centralities = (float*)nimcp_calloc(hubs->num_hubs, sizeof(float));
-        if (!cache->hub_centralities) return false;
+        if (!cache->hub_centralities) {
+            nimcp_free(cache->hub_neuron_ids);
+            cache->hub_neuron_ids = NULL;
+            return false;
+        }
         cache->hub_community_ids = (uint32_t*)nimcp_calloc(hubs->num_hubs, sizeof(uint32_t));
-        if (!cache->hub_community_ids) return false;
+        if (!cache->hub_community_ids) {
+            nimcp_free(cache->hub_neuron_ids);
+            cache->hub_neuron_ids = NULL;
+            nimcp_free(cache->hub_centralities);
+            cache->hub_centralities = NULL;
+            return false;
+        }
         cache->hub_is_connector = (bool*)nimcp_calloc(hubs->num_hubs, sizeof(bool));
-        if (!cache->hub_is_connector) return false;
+        if (!cache->hub_is_connector) {
+            nimcp_free(cache->hub_neuron_ids);
+            cache->hub_neuron_ids = NULL;
+            nimcp_free(cache->hub_centralities);
+            cache->hub_centralities = NULL;
+            nimcp_free(cache->hub_community_ids);
+            cache->hub_community_ids = NULL;
+            return false;
+        }
 
         if (cache->hub_neuron_ids && cache->hub_centralities &&
             cache->hub_community_ids && cache->hub_is_connector) {

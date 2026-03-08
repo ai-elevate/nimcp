@@ -333,28 +333,38 @@ void brain_destroy(brain_t brain)
     // Phase 8: Cleanup multi-modal subsystems
     if (brain->visual_cortex) {
         visual_cortex_destroy(brain->visual_cortex);
+        brain->visual_cortex = NULL;
     }
     if (brain->audio_cortex) {
         audio_cortex_destroy(brain->audio_cortex);
+        brain->audio_cortex = NULL;
     }
     if (brain->speech_cortex) {
         speech_cortex_destroy(brain->speech_cortex);
+        brain->speech_cortex = NULL;
     }
     if (brain->multimodal) {
         multimodal_integration_destroy(brain->multimodal);
+        brain->multimodal = NULL;
     }
     if (brain->nlp_network) {
         nlp_network_destroy(brain->nlp_network);
+        brain->nlp_network = NULL;
     }
     nimcp_free(brain->visual_feature_buffer);
+    brain->visual_feature_buffer = NULL;
     nimcp_free(brain->audio_feature_buffer);
+    brain->audio_feature_buffer = NULL;
     nimcp_free(brain->speech_feature_buffer);
+    brain->speech_feature_buffer = NULL;
     nimcp_free(brain->integrated_feature_buffer);
+    brain->integrated_feature_buffer = NULL;
 
 
     // Phase 8.6: Cleanup pink noise neuromodulation
     if (brain->pink_noise) {
         neuromod_pink_destroy(brain->pink_noise);
+        brain->pink_noise = NULL;
     }
 
 

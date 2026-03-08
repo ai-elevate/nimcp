@@ -49,6 +49,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(bbb_input_gate, MESH_ADAPTER_CATEGORY_SECURITY)
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <limits.h>
 #include <sys/types.h>  /* For ssize_t */
 
 //=============================================================================
@@ -306,6 +307,10 @@ static bool detect_dangerous_format_specifier(const char* str)
 
         /* Parse the number */
         while (*p && isdigit((unsigned char)*p)) {
+            /* W4-13: Check for overflow BEFORE multiplication */
+            if (value > INT_MAX / 10) {
+                return true;  /* Would overflow */
+            }
             value = value * 10 + (*p - '0');
             if (value > DANGEROUS_WIDTH_THRESHOLD) {
                 return true;  /* Dangerous width/precision */
@@ -432,7 +437,8 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
     bool is_printable = true;
     size_t str_len = 0;
 
-    /* Find string length within size bounds */
+    /* Find string length within size bounds.
+     * W4-12: Cap str_len so memcpy never reads past the data buffer. */
     for (size_t i = 0; i < size; i++) {
         if (str[i] == '\0') {
             str_len = i;
@@ -444,6 +450,8 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
         }
         str_len = i + 1;
     }
+    /* Ensure str_len doesn't exceed the input buffer size */
+    if (str_len > size) str_len = size;
 
     if (is_printable && str_len > 0) {
         /* Create null-terminated copy for string validation */

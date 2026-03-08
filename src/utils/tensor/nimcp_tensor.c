@@ -410,7 +410,9 @@ nimcp_tensor_t* nimcp_tensor_zeros(
 
     }
 
-    memset(t->data, 0, t->shape.nbytes);
+    if (t->data && t->shape.nbytes > 0) {
+        memset(t->data, 0, t->shape.nbytes);
+    }
     return t;
 }
 

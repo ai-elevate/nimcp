@@ -808,6 +808,10 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
     }
 
     /* Update statistics */
+    if (controller->num_neurons == 0) {
+        nimcp_mutex_unlock(&controller->mutex);
+        return;
+    }
     controller->stats.mean_firing_rate = sum_rate / controller->num_neurons;
     controller->stats.rate_variance = (sum_rate_sq / controller->num_neurons) -
                                       (controller->stats.mean_firing_rate * controller->stats.mean_firing_rate);

@@ -794,6 +794,7 @@ neural_network_t neural_network_create(const network_config_t* config)
     //      For 1M neurons, 2M individual callocs takes 30+ minutes.
     //      Bulk allocation reduces this to 2 callocs (~instant).
     bool use_bulk = (actual_neurons > 5000);
+    network->bulk_neuron_count = 0;  // W4-5: ensure initialized before conditional set
     if (use_bulk) {
         network->spike_history_bulk = (spike_record_t*)nimcp_calloc(
             (size_t)actual_neurons * spike_cap, sizeof(spike_record_t));
@@ -923,6 +924,11 @@ neural_network_t neural_network_create(const network_config_t* config)
         for (uint32_t layer = 0; layer < config->num_layers - 1; layer++) {
             uint32_t curr_layer_size = config->layer_sizes[layer];
             uint32_t next_layer_size = config->layer_sizes[layer + 1];
+            // Guard against uint32_t overflow
+            if (curr_layer_size > UINT32_MAX - offset) {
+                LOG_WARN("Layer offset overflow at layer %u, stopping wiring", layer);
+                break;
+            }
             uint32_t next_layer_offset = offset + curr_layer_size;
 
             // Connect each neuron in current layer to each neuron in next layer.
@@ -1062,7 +1068,7 @@ neural_network_t neural_network_create(const network_config_t* config)
                 // can receive input signal directly, preventing vanishing
                 // activations regardless of depth.
 
-                if (num_transitions > 1) {
+                if (num_transitions > 1 && layer_starts) {
                     uint32_t SKIP_FAN_IN = 4;  // light residual, not overwhelming
                     uint32_t skip_total = 0;
 
@@ -2558,12 +2564,11 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
             // Remap active IDs to contiguous ranges by partitioning the active_ids array.
             // Worker processes active_ids[start..end) and maps each to actual neuron IDs.
             uint32_t chunk = num_active / NUM_BIO_THREADS;
+            if (chunk == 0) chunk = 1;  // W4-17: ensure minimum chunk size
+            uint32_t threads_created = 0;  // W4-6: track actual thread count
             for (uint32_t t = 0; t < NUM_BIO_THREADS; t++) {
                 uint32_t a_start = t * chunk;
                 uint32_t a_end = (t == NUM_BIO_THREADS - 1) ? num_active : (t + 1) * chunk;
-                // Reuse _bio_learn_main_worker by setting start/end to the actual neuron IDs
-                // BUT that won't work since the IDs aren't contiguous.
-                // Instead, inline a simple loop here per thread.
                 workers[t].network = network;
                 workers[t].start = a_start;
                 workers[t].end = a_end;
@@ -2572,23 +2577,7 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
                 workers[t].learning_rate = learning_rate;
                 workers[t].modified = 0;
             }
-            // Use a lambda-like approach: each worker processes active_ids[start..end)
-            // We can't reuse _bio_learn_main_worker directly since it iterates contiguous IDs.
-            // For simplicity, just parallelize with 4 sequential chunks of active_ids.
-            // Thread function processes active_ids[w->start .. w->end) using neuron IDs.
 
-            // Since we need an index-based worker, define a small wrapper that uses active_ids.
-            // But we can't pass active_ids through bio_learn_worker_t without extending it.
-            // Pragmatic solution: just run 4 chunks sequentially but each as a block.
-            // The overhead is minimal since active neurons are already a small fraction.
-            // For true parallelism, we'd need a new struct. Let's just use the contiguous worker:
-
-            // Partition active neurons into contiguous groups by sorting isn't needed.
-            // Just process each quarter of the active_ids array in a worker.
-            // Use _bio_learn_main_worker with neuron ID ranges that cover the active neurons.
-
-            // Actually simplest: just process all active neurons using _bio_learn_main_worker
-            // on their ID ranges. Find min/max neuron ID per partition.
             for (uint32_t t = 0; t < NUM_BIO_THREADS; t++) {
                 uint32_t a_start = t * chunk;
                 uint32_t a_end = (t == NUM_BIO_THREADS - 1) ? num_active : (t + 1) * chunk;
@@ -2596,12 +2585,12 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
                 workers[t].start = active_ids[a_start];
                 workers[t].end = (a_end > 0 && a_end <= num_active) ? active_ids[a_end - 1] + 1 : workers[t].start + 1;
                 pthread_create(&threads[t], NULL, _bio_learn_main_worker, &workers[t]);
+                threads_created++;
             }
-            for (uint32_t t = 0; t < NUM_BIO_THREADS; t++) {
-                if (workers[t].start < workers[t].end) {
-                    pthread_join(threads[t], NULL);
-                    total_modified += workers[t].modified;
-                }
+            // W4-6: Only join threads that were actually created
+            for (uint32_t t = 0; t < threads_created; t++) {
+                pthread_join(threads[t], NULL);
+                total_modified += workers[t].modified;
             }
         } else {
             // Small active set — sequential
@@ -4130,6 +4119,11 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
         uint32_t neuron_offset = input_size;
         for (uint32_t layer = 1; layer < network->config.num_layers; layer++) {
             uint32_t layer_size = network->config.layer_sizes[layer];
+            if (neuron_offset > network->num_neurons) {
+                LOG_WARN("Forward pass: neuron_offset %u exceeds num_neurons %u at layer %u",
+                         neuron_offset, network->num_neurons, layer);
+                break;
+            }
 
             // Compute each neuron in this layer
             for (uint32_t i = 0; i < layer_size && neuron_offset + i < network->num_neurons; i++) {

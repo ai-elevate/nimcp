@@ -196,7 +196,7 @@ static void compute_prediction_error(pred_level_t* level) {
         error_sum += error * error;
     }
 
-    float rms_error = sqrtf(error_sum / level->dim);
+    float rms_error = (level->dim > 0) ? sqrtf(error_sum / level->dim) : 0.0f;
     if (isfinite(rms_error)) {
         level->avg_error = (level->avg_error * 0.99f) + (rms_error * 0.01f);
     }
@@ -992,7 +992,7 @@ int pred_hier_update_precision(predictive_hierarchy_t* hier) {
 
             avg_prec += level->precision[j];
         }
-        level->avg_precision = avg_prec / level->dim;
+        level->avg_precision = (level->dim > 0) ? (avg_prec / level->dim) : 0.0f;
 
         if (hier->stats.avg_level_precision) {
             hier->stats.avg_level_precision[i] = level->avg_precision;

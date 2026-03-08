@@ -4451,7 +4451,7 @@ void adaptive_network_learning_quality(adaptive_network_t network,
     {
         uint32_t total = atomic_load_explicit(&network->recent_prediction_total,
                                               memory_order_relaxed);
-        if (total > 0) {
+        if (total > 1) {  // W4-22: require >1 to avoid degenerate entropy
             double entropy = 0.0;
             double inv_total = 1.0 / (double)total;
             for (uint32_t i = 0; i < 2048; i++) {

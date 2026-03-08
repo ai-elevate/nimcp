@@ -700,8 +700,12 @@ class MasteryTracker:
         import json
         if not os.path.exists(filepath):
             return
-        with open(filepath) as f:
-            data = json.load(f)
+        try:
+            with open(filepath) as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"[WARN] Failed to load mastery state from {filepath}: {e}")
+            return
         for domain, entry in data.items():
             self.domains[domain] = {
                 "attempts": [],

@@ -1207,6 +1207,8 @@ nimcp_error_t mesh_topology_detect_clusters(
 ) {
     if (!ctx || !num_clusters) return NIMCP_ERROR_INVALID_PARAM;
 
+    nimcp_mutex_lock(ctx->mutex);
+
     /* Simple connected components algorithm */
     /* Assigns cluster_id to each node */
 
@@ -1226,7 +1228,10 @@ nimcp_error_t mesh_topology_detect_clusters(
 
         /* BFS to find connected component */
         size_t* queue = (size_t*)nimcp_malloc(ctx->node_count * sizeof(size_t));
-        if (!queue) return NIMCP_ERROR_NO_MEMORY;
+        if (!queue) {
+            nimcp_mutex_unlock(ctx->mutex);
+            return NIMCP_ERROR_NO_MEMORY;
+        }
 
         size_t front = 0, back = 0;
         queue[back++] = i;
@@ -1258,6 +1263,7 @@ nimcp_error_t mesh_topology_detect_clusters(
     ctx->clusters_computed = true;
     *num_clusters = cluster_count;
 
+    nimcp_mutex_unlock(ctx->mutex);
     return NIMCP_SUCCESS;
 }
 

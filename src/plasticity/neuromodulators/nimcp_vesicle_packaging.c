@@ -235,7 +235,8 @@ float vesicle_pool_release(
     }
 
     // Update depletion factor
-    pool->depletion_factor = (float)pool->readily_releasable_pool / (float)pool->rrp_capacity;
+    pool->depletion_factor = (pool->rrp_capacity > 0) ?
+        (float)pool->readily_releasable_pool / (float)pool->rrp_capacity : 0.0f;
 
     // === 5. Update Statistics ===
     pool->total_releases++;
@@ -287,7 +288,8 @@ void vesicle_pool_refill(vesicle_pool_state_t* pool, float dt) {
     pool->refill_accumulator += pool->refill_rate * dt;
 
     // === 2. Always Update Depletion Factor Based on Current RRP ===
-    pool->depletion_factor = (float)pool->readily_releasable_pool / (float)pool->rrp_capacity;
+    pool->depletion_factor = (pool->rrp_capacity > 0) ?
+        (float)pool->readily_releasable_pool / (float)pool->rrp_capacity : 0.0f;
 
     // === 3. Extract Integer Vesicles to Transfer ===
     uint32_t vesicles_to_transfer = (uint32_t)pool->refill_accumulator;
@@ -483,7 +485,8 @@ void vesicle_pool_apply_amphetamine(vesicle_pool_state_t* pool, float depletion)
         pool->is_depleted = true;
         pool->total_depleted_events++;
     }
-    pool->depletion_factor = (float)pool->readily_releasable_pool / (float)pool->rrp_capacity;
+    pool->depletion_factor = (pool->rrp_capacity > 0) ?
+        (float)pool->readily_releasable_pool / (float)pool->rrp_capacity : 0.0f;
 }
 
 void vesicle_pool_apply_4ap(vesicle_pool_state_t* pool, float potentiation) {

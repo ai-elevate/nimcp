@@ -135,9 +135,6 @@ static bool ensure_coo_capacity(nimcp_gpu_weight_cache_t* cache, size_t nnz, siz
         int* new_cols = nimcp_realloc(cache->host_coo_col_idx, new_cap * sizeof(int));
         if (!new_cols) return false;
         cache->host_coo_col_idx = new_cols;
-        cache->host_coo_values  = new_vals;
-        cache->host_coo_row_idx = new_rows;
-        cache->host_coo_col_idx = new_cols;
         cache->host_coo_capacity = new_cap;
     }
 
@@ -1002,7 +999,13 @@ bool nimcp_gpu_forward_pass_batch(
         // (kept for functional parity; future: GPU activation kernel)
         activation_type_t atype = cache->layer_activations[l + 1];
         size_t total_elems = (size_t)batch_size * out_size;
-        nimcp_gpu_tensor_to_host(next_act, clamp_buf);
+        if (!nimcp_gpu_tensor_to_host(next_act, clamp_buf)) {
+            LOG_ERROR("Failed to download activation for layer %u", l);
+            nimcp_gpu_tensor_destroy(next_act);
+            nimcp_gpu_tensor_destroy(act);
+            nimcp_free(clamp_buf);
+            return false;
+        }
 
         // Apply activation on host
         switch (atype) {
@@ -1050,7 +1053,12 @@ bool nimcp_gpu_forward_pass_batch(
     }
 
     // Download final output
-    nimcp_gpu_tensor_to_host(act, outputs);
+    if (!nimcp_gpu_tensor_to_host(act, outputs)) {
+        LOG_ERROR("Failed to download final output from GPU");
+        nimcp_gpu_tensor_destroy(act);
+        nimcp_free(clamp_buf);
+        return false;
+    }
     nimcp_gpu_tensor_destroy(act);
     nimcp_free(clamp_buf);
     return true;

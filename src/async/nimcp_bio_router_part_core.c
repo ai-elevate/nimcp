@@ -126,14 +126,14 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
     bio_module_context_t ctx = nimcp_calloc(1, sizeof(struct bio_module_context_struct));
     if (!ctx) {
         LOG_ERROR("Failed to allocate module context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bio_router_register_module: failed to allocate context");
-        /* BUG-16 fix: Undo registration AND clean up inbox/handler_mutex to
-         * prevent resource leaks when context allocation fails. */
+        /* W4-14 fix: Cleanup BEFORE THROW since THROW may longjmp and skip
+         * the cleanup code that follows it. */
         nimcp_platform_mutex_lock(&g_router->modules_mutex);
         bio_msg_queue_destroy(&entry->inbox);
         nimcp_platform_mutex_destroy(&entry->handler_mutex);
         entry->magic = 0;
         nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bio_router_register_module: failed to allocate context");
         return NULL;
     }
 
@@ -153,10 +153,16 @@ void bio_router_unregister_module(bio_module_context_t ctx) {
     bio_module_entry_t* entry = ctx->entry;
     if (!entry || entry->magic != BIO_MODULE_MAGIC) return;
 
+    nimcp_platform_mutex_lock(&g_router->modules_mutex);
+
+    // Re-validate under lock to prevent TOCTOU race
+    if (entry->magic != BIO_MODULE_MAGIC) {
+        nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+        return;
+    }
+
     LOG_INFO("Unregistering module: id=%u, name=%s",
              entry->module_id, entry->module_name);
-
-    nimcp_platform_mutex_lock(&g_router->modules_mutex);
 
     // Destroy inbox
     bio_msg_queue_destroy(&entry->inbox);

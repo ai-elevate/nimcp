@@ -678,6 +678,8 @@ __global__ void kernel_softmax_1d(const float* x, float* out, size_t batch_size,
         __syncthreads();
     }
     float sum_val = shared_sum[0];
+    // W5-2: Guard against degenerate input (all -inf) producing sum_val=0
+    if (sum_val < 1e-12f) sum_val = 1e-12f;
 
     // Step 3: Normalize
     for (size_t i = threadIdx.x; i < dim_size; i += blockDim.x) {
@@ -691,11 +693,15 @@ bool nimcp_gpu_softmax(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, ni
     if (x->ndim < 1) return false;
 
     size_t dim_size = x->dims[x->ndim - 1];
+    if (dim_size == 0) {
+        LOG_ERROR("softmax dim_size is 0 — cannot normalize over empty dimension");
+        return false;
+    }
     size_t batch_size = x->numel / dim_size;
 
     /* P3: batch_size used as CUDA grid dimension — clamp to 2^31-1 max. */
-    if (batch_size > (size_t)INT32_MAX) {
-        LOG_ERROR("softmax batch_size %zu exceeds CUDA grid dim limit", batch_size);
+    if (batch_size == 0 || batch_size > (size_t)INT32_MAX) {
+        LOG_ERROR("softmax batch_size %zu invalid or exceeds CUDA grid dim limit", batch_size);
         return false;
     }
     kernel_softmax_1d<<<(unsigned int)batch_size, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, batch_size, dim_size);
@@ -743,7 +749,10 @@ __global__ void kernel_log_softmax_1d(const float* x, float* out, size_t batch_s
         }
         __syncthreads();
     }
-    float log_sum = logf(shared_sum[0]);
+    // W5-3: Guard against logf(0) when all exp() underflow to 0
+    float safe_sum = shared_sum[0];
+    if (safe_sum < 1e-12f) safe_sum = 1e-12f;
+    float log_sum = logf(safe_sum);
 
     // Step 3: Compute log_softmax = x - max - log(sum)
     for (size_t i = threadIdx.x; i < dim_size; i += blockDim.x) {
@@ -757,6 +766,10 @@ bool nimcp_gpu_log_softmax(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x
     if (x->ndim < 1) return false;
 
     size_t dim_size = x->dims[x->ndim - 1];
+    if (dim_size == 0) {
+        LOG_ERROR("log_softmax dim_size is 0 — cannot normalize over empty dimension");
+        return false;
+    }
     size_t batch_size = x->numel / dim_size;
 
     /* Clamp batch_size to CUDA grid dim limit (2^31-1). */

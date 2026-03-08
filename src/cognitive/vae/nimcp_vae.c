@@ -461,11 +461,11 @@ int vae_reset(vae_system_t* vae)
     nimcp_mutex_lock(vae->mutex);
 
     /* Reset encoder and decoder */
-    vae_encoder_reset(vae->encoder);
-    vae_decoder_reset(vae->decoder);
+    if (vae->encoder) vae_encoder_reset(vae->encoder);
+    if (vae->decoder) vae_decoder_reset(vae->decoder);
 
     /* Reset loss context */
-    vae_loss_ctx_reset(vae->loss_ctx);
+    if (vae->loss_ctx) vae_loss_ctx_reset(vae->loss_ctx);
 
     /* Reset latent state */
     vae_latent_state_reset(&vae->current_latent);
@@ -1071,6 +1071,10 @@ int vae_set_beta(vae_system_t* vae, float beta)
     }
 
     nimcp_mutex_lock(vae->mutex);
+    if (!vae->loss_ctx) {
+        nimcp_mutex_unlock(vae->mutex);
+        return -1;
+    }
     vae->loss_ctx->config.beta = beta;
     vae->loss_ctx->current_kl_weight = beta;
     vae->stats.current_beta = beta;
