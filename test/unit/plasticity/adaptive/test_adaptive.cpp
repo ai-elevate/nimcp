@@ -533,7 +533,7 @@ TEST(AdaptiveLearning, Distillation)
 
     // Simple teacher function
     auto teacher = [](const float* input, uint32_t input_size, void* context) -> float* {
-        float* output = (float*) malloc(3 * sizeof(float));
+        float* output = (float*) nimcp_malloc(3 * sizeof(float));
         output[0] = input[0] + input[1];
         output[1] = input[2] * 2.0f;
         output[2] = input[3] - input[4];

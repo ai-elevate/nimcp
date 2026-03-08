@@ -2442,8 +2442,22 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         /* C5.2: Predictive hierarchy — temporal prediction from features */
         if (brain->pred_hierarchy && brain->pred_hierarchy_enabled) {
             float pred_loss = 0.0f;
-            pred_hier_learn_step((predictive_hierarchy_t*)brain->pred_hierarchy,
-                                 features, &pred_loss);
+            /* W8-ASAN: Predictive hierarchy may have larger dim than num_features.
+             * Zero-pad a temporary buffer to prevent heap-buffer-overflow. */
+            uint32_t ph_dim = pred_hier_level_dim(
+                (predictive_hierarchy_t*)brain->pred_hierarchy, 0);
+            if (ph_dim > 0 && ph_dim > num_features) {
+                float* ph_input = nimcp_calloc(ph_dim, sizeof(float));
+                if (ph_input) {
+                    memcpy(ph_input, features, num_features * sizeof(float));
+                    pred_hier_learn_step((predictive_hierarchy_t*)brain->pred_hierarchy,
+                                         ph_input, &pred_loss);
+                    nimcp_free(ph_input);
+                }
+            } else {
+                pred_hier_learn_step((predictive_hierarchy_t*)brain->pred_hierarchy,
+                                     features, &pred_loss);
+            }
             /* Modulate output confidence based on prediction error */
             if (pred_loss < 0.5f && decision->confidence < 1.0f) {
                 decision->confidence += (1.0f - decision->confidence) * 0.1f * (1.0f - pred_loss);
