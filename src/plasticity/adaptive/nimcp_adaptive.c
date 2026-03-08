@@ -2026,9 +2026,17 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     if (network->gpu_enabled && network->gpu_weight_cache &&
         (mode == LEARN_MODE_SUPERVISED || mode == LEARN_MODE_DISTILLATION || mode == LEARN_MODE_HYBRID)) {
         // 1. Sync weights to GPU if CPU biological learning modified them
-        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
-            nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
-                                         network->base_network);
+        // Use atomic CAS to avoid TOCTOU race: concurrent threads could both
+        // see dirty=true and redundantly upload, or one could clear while
+        // another skips the upload it needed.
+        {
+            bool expected_dirty = true;
+            if (__atomic_compare_exchange_n(&network->gpu_weight_cache->weights_dirty_on_cpu,
+                                            &expected_dirty, false, false,
+                                            __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+                nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
+                                             network->base_network);
+            }
         }
 
         // 2. Spike-encode input with fixed threshold (preserves magnitude discrimination)
@@ -2045,6 +2053,12 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         //       the network's output_size exceeds example->target_size
         uint32_t out_buf_size = example->target_size > network->config.base_config.output_size
             ? example->target_size : network->config.base_config.output_size;
+        // Guard against size_t overflow: uint32_t * sizeof(float) can't overflow
+        // size_t on 64-bit, but on 32-bit (SIZE_MAX = UINT32_MAX) it could.
+        if (out_buf_size > SIZE_MAX / sizeof(float)) {
+            free_hot_buffer(spike_input);
+            return -1.0F;
+        }
         float* output = (float*)alloc_hot_buffer(out_buf_size * sizeof(float));
         if (!output) { free_hot_buffer(spike_input); return -1.0F; }
 
@@ -2150,7 +2164,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         }
 
         // 6. Mark weights dirty (learning modified synapse weights on CPU)
-        network->gpu_weight_cache->weights_dirty_on_cpu = true;
+        __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);
 
         // 7. For HYBRID mode: apply biological plasticity after GPU backprop
         //    Uses active-neuron-only sampling for large networks (O(active) not O(N))

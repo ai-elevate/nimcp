@@ -47,6 +47,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <math.h>  /* isfinite() for LR validation */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -434,7 +435,7 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
      * caller passed a positive learning_rate (0.0 = use brain default). */
     float saved_lr = 0.0F;
     bool lr_overridden = false;
-    if (learning_rate > 0.0F && brain_ref->internal_brain) {
+    if (learning_rate > 0.0F && isfinite(learning_rate) && learning_rate <= 100.0F && brain_ref->internal_brain) {
         saved_lr = brain_ref->internal_brain->config.learning_rate;
         brain_ref->internal_brain->config.learning_rate = learning_rate;
         lr_overridden = true;
@@ -542,7 +543,7 @@ static PyObject* Brain_learn_vector(BrainObject* self, PyObject* args, PyObject*
     /* Per-call learning rate override (same pattern as Brain_learn) */
     float saved_lr = 0.0F;
     bool lr_overridden = false;
-    if (learning_rate > 0.0F && brain_ref->internal_brain) {
+    if (learning_rate > 0.0F && isfinite(learning_rate) && learning_rate <= 100.0F && brain_ref->internal_brain) {
         saved_lr = brain_ref->internal_brain->config.learning_rate;
         brain_ref->internal_brain->config.learning_rate = learning_rate;
         lr_overridden = true;
@@ -613,6 +614,10 @@ static PyObject* Brain_learn_vector_batch(BrainObject* self, PyObject* args, PyO
     Py_ssize_t num_examples = PyList_Size(batch_list);
     if (num_examples <= 0) {
         return PyFloat_FromDouble(-1.0);
+    }
+    if (num_examples > (Py_ssize_t)UINT32_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "Batch size exceeds uint32_t capacity");
+        return NULL;
     }
 
     /* Extract all feature/target arrays */

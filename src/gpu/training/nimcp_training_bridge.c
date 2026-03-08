@@ -55,7 +55,15 @@ static uint32_t* compute_layer_offsets(const uint32_t* layer_sizes, uint32_t num
 
     offsets[0] = 0;
     for (uint32_t l = 1; l < num_layers; l++) {
-        offsets[l] = offsets[l - 1] + layer_sizes[l - 1];
+        uint32_t new_offset = offsets[l - 1] + layer_sizes[l - 1];
+        if (new_offset < offsets[l - 1]) {
+            /* uint32_t overflow in layer offset computation */
+            NIMCP_LOG_ERROR("Layer offset overflow at layer %u: %u + %u wraps",
+                            l, offsets[l - 1], layer_sizes[l - 1]);
+            nimcp_free(offsets);
+            return NULL;
+        }
+        offsets[l] = new_offset;
     }
     return offsets;
 }
@@ -114,16 +122,19 @@ static bool ensure_coo_capacity(nimcp_gpu_weight_cache_t* cache, size_t nnz, siz
         size_t new_cap = cache->host_coo_capacity ? cache->host_coo_capacity : 1024;
         while (new_cap < nnz) new_cap *= 2;
 
+        /* Realloc each COO array independently. On failure, realloc preserves
+         * the original pointer, so we always update on success. */
         float* new_vals = nimcp_realloc(cache->host_coo_values, new_cap * sizeof(float));
-        int* new_rows   = nimcp_realloc(cache->host_coo_row_idx, new_cap * sizeof(int));
-        int* new_cols   = nimcp_realloc(cache->host_coo_col_idx, new_cap * sizeof(int));
-        if (!new_vals || !new_rows || !new_cols) {
-            // Partial realloc — keep old pointers (realloc preserves old on failure)
-            if (new_vals) cache->host_coo_values  = new_vals;
-            if (new_rows) cache->host_coo_row_idx = new_rows;
-            if (new_cols) cache->host_coo_col_idx = new_cols;
-            return false;
-        }
+        if (!new_vals) return false;
+        cache->host_coo_values = new_vals;
+
+        int* new_rows = nimcp_realloc(cache->host_coo_row_idx, new_cap * sizeof(int));
+        if (!new_rows) return false;
+        cache->host_coo_row_idx = new_rows;
+
+        int* new_cols = nimcp_realloc(cache->host_coo_col_idx, new_cap * sizeof(int));
+        if (!new_cols) return false;
+        cache->host_coo_col_idx = new_cols;
         cache->host_coo_values  = new_vals;
         cache->host_coo_row_idx = new_rows;
         cache->host_coo_col_idx = new_cols;
@@ -383,6 +394,18 @@ void nimcp_gpu_weight_cache_destroy(nimcp_gpu_weight_cache_t* cache)
 bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_network_t net)
 {
     if (!cache || !net) return false;
+
+    // Validate layer sizes against actual network on first upload
+    uint32_t total_neurons = neural_network_get_num_neurons(net);
+    uint32_t config_total = 0;
+    for (uint32_t l = 0; l < cache->num_layers; l++) {
+        config_total += cache->layer_sizes[l];
+    }
+    if (config_total != total_neurons) {
+        NIMCP_LOG_WARN("GPU cache layer_sizes sum (%u) != network neurons (%u) — "
+                       "possible architecture mismatch",
+                       config_total, total_neurons);
+    }
 
     uint32_t num_transitions = cache->num_layers - 1;
 
@@ -692,7 +715,13 @@ static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint3
                        cache->activations[l + 1],
                        cache->biases[l],
                        cache->activations[l + 1])) {
-        NIMCP_LOG_ERROR("GPU bias add failed for layer %u", l);
+        NIMCP_LOG_ERROR("GPU bias add failed for layer %u: "
+                        "activations[%u].numel=%zu, biases[%u].numel=%zu, "
+                        "expected layer_size=%u",
+                        l,
+                        l + 1, cache->activations[l + 1] ? cache->activations[l + 1]->numel : 0,
+                        l, cache->biases[l] ? cache->biases[l]->numel : 0,
+                        cache->layer_sizes[l + 1]);
         return false;
     }
 

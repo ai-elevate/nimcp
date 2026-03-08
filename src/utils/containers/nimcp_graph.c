@@ -126,29 +126,27 @@ NimcpGraph* nimcp_graph_create(void)
 
     // Initialize mutex for thread safety (Monitor Pattern)
     if (nimcp_mutex_init(&graph->lock, NULL) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_graph_create: failed to initialize mutex");
         nimcp_free(graph);
-        LOG_ERROR("nimcp_graph_create failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_graph_create: failed to initialize mutex");
         return NULL;
     }
 
     // Allocate vertex array (zero-initialized for clean state)
     graph->vertices = (NimcpVertex*) nimcp_calloc(NIMCP_MAX_VERTICES, sizeof(NimcpVertex));
     if (!graph->vertices) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_graph_create: failed to allocate vertices array");
         nimcp_mutex_destroy(&graph->lock);
         nimcp_free(graph);
-        LOG_ERROR("nimcp_graph_create failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_graph_create: failed to allocate vertices array");
         return NULL;
     }
 
     // Allocate component tracking array
     graph->components = (uint32_t*) nimcp_malloc(NIMCP_MAX_VERTICES * sizeof(uint32_t));
     if (!graph->components) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_graph_create: failed to allocate components array");
         nimcp_free(graph->vertices);
         nimcp_mutex_destroy(&graph->lock);
         nimcp_free(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_graph_create: failed to allocate components array");
         LOG_ERROR("nimcp_graph_create failed: returning error");
         return NULL;
     }
@@ -230,6 +228,10 @@ uint32_t nimcp_graph_add_vertex(NimcpGraph* graph, uint64_t peer_id, float x, fl
         }
     }
 
+    if (graph->vertex_count >= NIMCP_MAX_VERTICES) {
+        nimcp_mutex_unlock(&graph->lock);
+        return NIMCP_INVALID_VERTEX;
+    }
     uint32_t idx = graph->vertex_count++;
     NimcpVertex* vertex = &graph->vertices[idx];
 
@@ -554,9 +556,10 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
         path = (NimcpPath*) nimcp_malloc(sizeof(NimcpPath));
         if (path) {
             // Count path length by traversing previous array
+            // Iteration limit prevents infinite loop if previous[] is corrupted
             uint32_t length = 0;
             uint32_t curr = to;
-            while (curr != NIMCP_INVALID_VERTEX) {
+            while (curr != NIMCP_INVALID_VERTEX && length < graph->vertex_count) {
                 length++;
                 curr = previous[curr];
             }

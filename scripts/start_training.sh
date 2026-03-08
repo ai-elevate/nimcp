@@ -20,7 +20,7 @@ echo "Starting Athena training with Claude teacher..."
 echo "  Mode: $MODE"
 echo "  Log:  /home/bbrelin/nimcp/immerse_athena.log"
 
-nohup python3 scripts/immerse_athena.py $MODE > immerse_athena.log 2>&1 &
+nohup python3 -u scripts/immerse_athena.py $MODE > immerse_athena.log 2>&1 &
 TRAIN_PID=$!
 echo "  PID:  $TRAIN_PID"
 

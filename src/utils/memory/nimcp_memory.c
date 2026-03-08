@@ -564,7 +564,13 @@ static void init_if_needed(void)
             g_memory_state.tracking_enabled = true;  // Enable by default for guard_size tracking
             g_memory_state.block_buckets = (memory_block_t**)calloc(
                 MEMORY_TRACKING_BUCKETS, sizeof(memory_block_t*));
-            g_memory_state.bucket_count = MEMORY_TRACKING_BUCKETS;
+            if (!g_memory_state.block_buckets) {
+                /* Tracking disabled but allocator still functional */
+                g_memory_state.tracking_enabled = false;
+                g_memory_state.bucket_count = 0;
+            } else {
+                g_memory_state.bucket_count = MEMORY_TRACKING_BUCKETS;
+            }
             g_memory_state.block_count = 0;
             g_memory_state.patterns = NULL;
             g_memory_state.initialized = true;

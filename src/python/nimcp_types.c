@@ -65,22 +65,23 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds)
 
     // Fall back to original argument parsing
     const char* name;
-    int size, task;
-    unsigned int num_inputs, num_outputs;
+    int size = -1, task = NIMCP_TASK_CLASSIFICATION;
+    unsigned int num_inputs = 10, num_outputs = 10;
+    unsigned int neuron_count = 0;
+    const char* checkpoint = NULL;
+    const char* init_mode = NULL;
 
-    static char* kwlist[] = {"name", "size", "task", "inputs", "outputs", NULL};
+    static char* kwlist[] = {"name", "size", "task", "inputs", "outputs",
+                             "num_inputs", "num_outputs", "neuron_count",
+                             "checkpoint", "init_mode", NULL};
 
-    // Parse constructor arguments
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "siiII", kwlist,
-                                     &name, &size, &task, &num_inputs, &num_outputs)) {
+    // Parse constructor arguments — all optional except name
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiIIIIIzz", kwlist,
+                                     &name, &size, &task,
+                                     &num_inputs, &num_outputs,
+                                     &num_inputs, &num_outputs,
+                                     &neuron_count, &checkpoint, &init_mode)) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_init: operation failed");
-        return -1;
-    }
-
-    // Validate size parameter
-    if (size < NIMCP_BRAIN_TINY || size > NIMCP_BRAIN_LARGE) {
-        PyErr_SetString(PyExc_ValueError, "size must be 0-3 (TINY=0, SMALL=1, MEDIUM=2, LARGE=3)");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_init: validation failed");
         return -1;
     }
 
@@ -91,10 +92,29 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
-    // Create the brain using the unified API
-    self->brain = nimcp_brain_create(name, (nimcp_brain_size_t)size,
-                                     (nimcp_brain_task_t)task,
-                                     num_inputs, num_outputs);
+    // Choose creation path based on arguments
+    if (neuron_count > 0) {
+        // Explicit neuron count — use init_mode to pick create function
+        if (init_mode && strcmp(init_mode, "full") == 0) {
+            self->brain = nimcp_brain_create_full(name, (nimcp_brain_task_t)task,
+                                                  num_inputs, num_outputs, neuron_count);
+        } else if (init_mode && strcmp(init_mode, "fast") == 0) {
+            self->brain = nimcp_brain_create_fast(name, (nimcp_brain_task_t)task,
+                                                  num_inputs, num_outputs, neuron_count);
+        } else {
+            self->brain = nimcp_brain_create_with_neurons(name, (nimcp_brain_task_t)task,
+                                                          num_inputs, num_outputs, neuron_count);
+        }
+    } else if (size >= NIMCP_BRAIN_TINY && size <= NIMCP_BRAIN_LARGE) {
+        // Size preset
+        self->brain = nimcp_brain_create(name, (nimcp_brain_size_t)size,
+                                         (nimcp_brain_task_t)task,
+                                         num_inputs, num_outputs);
+    } else {
+        PyErr_SetString(PyExc_ValueError,
+            "Must provide either size (0-3) or neuron_count");
+        return -1;
+    }
 
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create brain");

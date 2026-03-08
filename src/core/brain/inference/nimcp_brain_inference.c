@@ -495,9 +495,11 @@ void brain_free_decision(brain_decision_t* decision)
         }
     }
 
-    // Free cognitive transcript if present
+    // Free cognitive transcript if present — must use transcript_free()
+    // to release nested entry allocations, not nimcp_free() which only
+    // frees the top-level struct.
     if (decision->transcript) {
-        nimcp_free(decision->transcript);
+        transcript_free(decision->transcript);
         decision->transcript = NULL;
     }
 

@@ -866,6 +866,7 @@ brain_decision_t* copy_decision_deep(const brain_decision_t* source)
     copy->active_neuron_ids = NULL;
     copy->_cow_refcount = NULL;      // Deep copy owns its data
     copy->_cow_is_shallow = false;
+    copy->transcript = NULL;         // Don't share transcript pointer — prevents double-free
 
     // Deep copy output_vector
     if (source->output_vector && source->output_size > 0) {

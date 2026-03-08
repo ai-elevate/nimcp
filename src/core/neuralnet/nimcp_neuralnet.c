@@ -581,6 +581,28 @@ static bool validate_network_config(const network_config_t* config)
         return false;
     }
 
+    // Guard: Validate layer_sizes consistency
+    if (config->num_layers > 1 && config->layer_sizes) {
+        uint32_t layer_sum = 0;
+        for (uint32_t l = 0; l < config->num_layers; l++) {
+            if (config->layer_sizes[l] == 0) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                    "validate_network_config: layer_sizes[%u] is zero", l);
+                return false;
+            }
+            layer_sum += config->layer_sizes[l];
+        }
+        // First layer must match input_size, last must match output_size
+        if (config->layer_sizes[0] != config->input_size) {
+            NIMCP_LOG_WARN("validate_network_config: layer_sizes[0]=%u != input_size=%u",
+                           config->layer_sizes[0], config->input_size);
+        }
+        if (config->layer_sizes[config->num_layers - 1] != config->output_size) {
+            NIMCP_LOG_WARN("validate_network_config: layer_sizes[last]=%u != output_size=%u",
+                           config->layer_sizes[config->num_layers - 1], config->output_size);
+        }
+    }
+
     return true;
 }
 

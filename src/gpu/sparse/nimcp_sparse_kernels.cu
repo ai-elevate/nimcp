@@ -607,7 +607,13 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
 
     int rows = dense->dims[0];
     int cols = dense->dims[1];
-    int total = rows * cols;
+    /* Use size_t to prevent int overflow for large dense matrices */
+    size_t total_sz = (size_t)rows * (size_t)cols;
+    if (total_sz > (size_t)INT32_MAX) {
+        LOG_ERROR("dense_to_sparse: rows*cols=%zu exceeds INT32_MAX", total_sz);
+        return NULL;
+    }
+    int total = (int)total_sz;
 
     // Count non-zeros
     int* d_nnz_count;
@@ -674,6 +680,20 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
     // Sort by row, then by column
     thrust::sort_by_key(thrust::device, row_ptr, row_ptr + nnz,
         thrust::make_zip_iterator(thrust::make_tuple(col_ptr, val_ptr)));
+
+    /* Check for CUDA errors after thrust operations */
+    {
+        cudaError_t thrust_err = cudaGetLastError();
+        if (thrust_err != cudaSuccess) {
+            LOG_ERROR("thrust sort_by_key failed: %s", cudaGetErrorString(thrust_err));
+            cudaFree(d_values);
+            cudaFree(d_row_indices);
+            cudaFree(d_col_indices);
+            cudaFree(d_indices);
+            nimcp_free(sparse);
+            return NULL;
+        }
+    }
 
     cudaFree(d_indices);
 
@@ -772,6 +792,28 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
         return NULL;
     }
 
+    if (rows <= 0 || cols <= 0 || nnz < 0) {
+        LOG_ERROR("sparse_from_coo: invalid dimensions rows=%d cols=%d nnz=%d", rows, cols, nnz);
+        return NULL;
+    }
+
+    if (nnz == 0) {
+        // Empty matrix — valid but nothing to convert
+        return NULL;
+    }
+
+    // Validate COO indices are within matrix bounds (host-side check)
+    for (int k = 0; k < nnz; k++) {
+        if (row_idx[k] < 0 || row_idx[k] >= rows) {
+            LOG_ERROR("sparse_from_coo: row_idx[%d]=%d out of bounds [0,%d)", k, row_idx[k], rows);
+            return NULL;
+        }
+        if (col_idx[k] < 0 || col_idx[k] >= cols) {
+            LOG_ERROR("sparse_from_coo: col_idx[%d]=%d out of bounds [0,%d)", k, col_idx[k], cols);
+            return NULL;
+        }
+    }
+
     nimcp_sparse_tensor_t* sparse = (nimcp_sparse_tensor_t*)nimcp_calloc(1, sizeof(nimcp_sparse_tensor_t));
     if (!sparse) return NULL;
 
@@ -801,10 +843,16 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
         sparse->data.coo.cols = cols;
         sparse->data.coo.nnz = nnz;
 
-        cusparseCreateCoo(&sparse->cusparse_desc,
+        cusparseStatus_t coo_st = cusparseCreateCoo(&sparse->cusparse_desc,
             rows, cols, nnz,
             d_row_indices, d_col_indices, d_values,
             CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
+        if (coo_st != CUSPARSE_STATUS_SUCCESS) {
+            LOG_ERROR("cusparseCreateCoo failed: %d", coo_st);
+            cudaFree(d_values); cudaFree(d_row_indices); cudaFree(d_col_indices);
+            nimcp_free(sparse);
+            return NULL;
+        }
     }
     else if (target_format == SPARSE_FORMAT_CSR) {
         // Convert to CSR
@@ -818,9 +866,16 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
         thrust::sort_by_key(thrust::device, row_ptr, row_ptr + nnz,
             thrust::make_zip_iterator(thrust::make_tuple(col_ptr, val_ptr)));
 
-        cusparseXcoo2csr(ctx->cusparse_handle,
+        cusparseStatus_t coo2csr_st = cusparseXcoo2csr(ctx->cusparse_handle,
             d_row_indices, nnz, rows,
             d_row_ptrs, CUSPARSE_INDEX_BASE_ZERO);
+        if (coo2csr_st != CUSPARSE_STATUS_SUCCESS) {
+            LOG_ERROR("cusparseXcoo2csr failed: %d (rows=%d, nnz=%d)", coo2csr_st, rows, nnz);
+            cudaFree(d_values); cudaFree(d_row_indices);
+            cudaFree(d_col_indices); cudaFree(d_row_ptrs);
+            nimcp_free(sparse);
+            return NULL;
+        }
 
         cudaFree(d_row_indices);
 
@@ -830,13 +885,19 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
         sparse->data.csr.rows = rows;
         sparse->data.csr.cols = cols;
         sparse->data.csr.nnz = nnz;
-        sparse->data.csr.sparsity = 1.0f - (float)nnz / (rows * cols);
+        sparse->data.csr.sparsity = 1.0f - (float)nnz / ((float)rows * cols);
 
-        cusparseCreateCsr(&sparse->cusparse_desc,
+        cusparseStatus_t csr_st = cusparseCreateCsr(&sparse->cusparse_desc,
             rows, cols, nnz,
             d_row_ptrs, d_col_indices, d_values,
             CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
             CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
+        if (csr_st != CUSPARSE_STATUS_SUCCESS) {
+            LOG_ERROR("cusparseCreateCsr failed: %d", csr_st);
+            cudaFree(d_values); cudaFree(d_col_indices); cudaFree(d_row_ptrs);
+            nimcp_free(sparse);
+            return NULL;
+        }
     }
     else {
         LOG_ERROR("Format %d not yet supported in from_coo", target_format);
@@ -1218,6 +1279,9 @@ nimcp_gpu_tensor_t* nimcp_sparse_mv(
         if (!y) return NULL;
         created_y = true;
         beta = 0.0f;
+    } else if (y->numel != (size_t)A_rows) {
+        LOG_ERROR("sparse_mv output size mismatch: y.numel=%zu but A_rows=%d", y->numel, A_rows);
+        return NULL;
     }
 
     // Create dense vector descriptors

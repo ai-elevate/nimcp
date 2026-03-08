@@ -120,6 +120,7 @@ typedef struct nimcp_gpu_context_s {
     nimcp_cufft_handle_t cufft_plan_2d;  /**< cuFFT plan for 2D transforms */
     bool cublas_initialized;             /**< cuBLAS handle valid */
     bool cufft_initialized;              /**< cuFFT plans valid */
+    volatile int cufft_creating;         /**< Per-context spinlock for cuFFT plan creation */
 
     // Memory tracking
     size_t total_memory;                /**< Total GPU memory (bytes) */

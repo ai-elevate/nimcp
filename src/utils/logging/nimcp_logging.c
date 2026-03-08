@@ -60,6 +60,22 @@
 #endif
 
 //=============================================================================
+// Early stdout/stderr unbuffering (runs before main)
+//=============================================================================
+
+/**
+ * WHAT: Force line-buffered stdout/stderr at library load time
+ * WHY:  Under nohup / pipe / file redirection, C library switches to full
+ *       buffering. fprintf(stderr, ...) output in brain init won't appear
+ *       until the 4KB buffer fills. This constructor runs before main().
+ */
+__attribute__((constructor))
+static void _nimcp_unbuffer_stdio(void) {
+    setvbuf(stdout, NULL, _IOLBF, 0);
+    setvbuf(stderr, NULL, _IOLBF, 0);
+}
+
+//=============================================================================
 // Forward Declarations for Security and Memory Integration
 //=============================================================================
 

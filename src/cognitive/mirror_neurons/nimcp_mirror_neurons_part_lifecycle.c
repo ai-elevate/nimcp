@@ -94,12 +94,13 @@ static uint32_t find_or_create_action(mirror_neurons_t mirror, const action_t* a
         mirror->actions[min_idx].action_id = action->action_id;
         strncpy(mirror->actions[min_idx].action_name, action->action_name,
                 sizeof(mirror->actions[min_idx].action_name) - 1);
-        mirror->actions[min_idx].capacity = 10;
         mirror->actions[min_idx].neuron_indices =
             (uint32_t*)nimcp_calloc(10, sizeof(uint32_t));
         if (!mirror->actions[min_idx].neuron_indices) {
+            mirror->actions[min_idx].capacity = 0;
             return UINT32_MAX;
         }
+        mirror->actions[min_idx].capacity = 10;
         return min_idx;
     }
 

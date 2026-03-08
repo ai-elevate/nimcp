@@ -134,11 +134,13 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
     }
 
     // Copy dimensions and compute strides (row-major)
-    tensor->numel = 1;
+    // Use safe_numel (overflow-checked) instead of recomputing
+    tensor->numel = safe_numel;
+    size_t stride_accum = 1;
     for (int i = ndim - 1; i >= 0; i--) {
         tensor->dims[i] = dims[i];
-        tensor->strides[i] = tensor->numel;
-        tensor->numel *= dims[i];
+        tensor->strides[i] = stride_accum;
+        stride_accum *= dims[i];
     }
 
     // Allocate device memory with recovery support
@@ -213,8 +215,10 @@ bool nimcp_gpu_tensor_to_host(const nimcp_gpu_tensor_t* tensor, void* host_data)
     }
 
     size_t data_size = tensor->numel * tensor->elem_size;
-    if (cudaMemcpy(host_data, tensor->data, data_size, cudaMemcpyDeviceToHost) != cudaSuccess) {
-        LOG_ERROR("Failed to copy tensor data to host");
+    cudaError_t err = cudaMemcpy(host_data, tensor->data, data_size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) {
+        LOG_ERROR("Failed to copy tensor data to host: %s", cudaGetErrorString(err));
+        NIMCP_CUDA_RECOVER(err, GPU_ERROR_CUDA_RUNTIME);
         return false;
     }
     return true;
@@ -689,9 +693,12 @@ bool nimcp_gpu_softmax(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, ni
     size_t dim_size = x->dims[x->ndim - 1];
     size_t batch_size = x->numel / dim_size;
 
-    /* P3: batch_size used as grid dimension. Theoretical limit is 2^31-1, which is
-     * always satisfied in practice since batch_size derives from tensor element count. */
-    kernel_softmax_1d<<<batch_size, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, batch_size, dim_size);
+    /* P3: batch_size used as CUDA grid dimension — clamp to 2^31-1 max. */
+    if (batch_size > (size_t)INT32_MAX) {
+        LOG_ERROR("softmax batch_size %zu exceeds CUDA grid dim limit", batch_size);
+        return false;
+    }
+    kernel_softmax_1d<<<(unsigned int)batch_size, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, batch_size, dim_size);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
@@ -752,7 +759,12 @@ bool nimcp_gpu_log_softmax(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x
     size_t dim_size = x->dims[x->ndim - 1];
     size_t batch_size = x->numel / dim_size;
 
-    kernel_log_softmax_1d<<<batch_size, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, batch_size, dim_size);
+    /* Clamp batch_size to CUDA grid dim limit (2^31-1). */
+    if (batch_size > (size_t)INT32_MAX) {
+        LOG_ERROR("log_softmax batch_size %zu exceeds CUDA grid dim limit", batch_size);
+        return false;
+    }
+    kernel_log_softmax_1d<<<(unsigned int)batch_size, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, batch_size, dim_size);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
