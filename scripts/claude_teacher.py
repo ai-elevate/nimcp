@@ -154,7 +154,7 @@ class ClaudeTeacher:
     def __init__(self, *,
                  model: str = "sonnet",
                  cache_size: int = 200,
-                 timeout: int = 60,
+                 timeout: int = 180,
                  max_tokens: int = 1024,
                  # Legacy kwargs accepted but ignored (for load_state compat)
                  routine_model: str = "",
@@ -189,7 +189,6 @@ class ClaudeTeacher:
         cmd = [
             "claude", "-p", full_prompt,
             "--model", self.model,
-            "--max-tokens", str(mt),
             "--output-format", "text",
         ]
 

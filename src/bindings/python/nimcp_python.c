@@ -3054,6 +3054,173 @@ static PyObject* Brain_learn_language_pair(BrainObject* self, PyObject* args, Py
 }
 
 /**
+ * WHAT: Train all cognitive modules from text in one call
+ * WHY:  Unified training ensures grounded language, knowledge, and LNN generator
+ *       all learn together, not just neural network weights
+ * HOW:  Calls nimcp_brain_train_cognitive which trains grounded language (distributional
+ *       + syntactic), knowledge system, and language generator
+ */
+static PyObject* Brain_train_cognitive(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* text = NULL;
+    int domain = 10; /* KNOWLEDGE_DOMAIN_GENERAL */
+    const char* target_text = NULL;
+    float learning_rate = 0.001f;
+
+    static char* kwlist[] = {"text", "domain", "target_text", "learning_rate", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|isf", kwlist,
+                                      &text, &domain, &target_text, &learning_rate))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    float loss = 0.0f;
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_train_cognitive(
+        self->brain, text, domain, target_text, learning_rate, &loss);
+    Py_END_ALLOW_THREADS
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+    PyObject* tmp;
+    tmp = PyFloat_FromDouble(loss);
+    PyDict_SetItemString(result, "loss", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(status == NIMCP_OK);
+    PyDict_SetItemString(result, "success", tmp); Py_DECREF(tmp);
+    return result;
+}
+
+/**
+ * WHAT: Learn knowledge from text in a domain
+ * WHY:  Build multi-domain knowledge graph
+ */
+static PyObject* Brain_learn_knowledge(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* text = NULL;
+    int domain = 10; /* KNOWLEDGE_DOMAIN_GENERAL */
+
+    static char* kwlist[] = {"text", "domain", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|i", kwlist, &text, &domain))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_learn_knowledge(self->brain, text, domain);
+    Py_END_ALLOW_THREADS
+
+    return PyBool_FromLong(status == NIMCP_OK);
+}
+
+/**
+ * @brief Get per-module cognitive training statistics
+ */
+static PyObject* Brain_get_cognitive_stats(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    uint32_t steps[13];
+    float losses[13];
+    uint32_t count = 0;
+    memset(steps, 0, sizeof(steps));
+    memset(losses, 0, sizeof(losses));
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_get_cognitive_stats(self->brain, steps, losses, &count);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        Py_RETURN_NONE;
+    }
+
+    static const char* module_names[] = {
+        "grounded_language", "knowledge", "vae", "fep_parietal",
+        "physics_nn", "pred_hierarchy", "jepa", "creative",
+        "self_heal", "intuition", "fep_orchestrator"
+    };
+
+    PyObject* result = PyDict_New();
+    for (uint32_t i = 0; i < count && i < 11; i++) {
+        PyObject* entry = PyDict_New();
+        PyObject* tmp;
+        tmp = PyLong_FromUnsignedLong(steps[i]);
+        PyDict_SetItemString(entry, "steps", tmp); Py_DECREF(tmp);
+        tmp = PyFloat_FromDouble(losses[i]);
+        PyDict_SetItemString(entry, "last_loss", tmp); Py_DECREF(tmp);
+
+        PyDict_SetItemString(result, module_names[i], entry);
+        Py_DECREF(entry);
+    }
+
+    return result;
+}
+
+/**
+ * WHAT: Get cognitive transcript from last brain_decide() call
+ * WHY:  Exposes rich internal cognition for response composition
+ * HOW:  Reads cached transcript from brain, returns list of dicts
+ */
+static PyObject* Brain_get_transcript(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    enum { MAX_TRANSCRIPT_ENTRIES = 32 };
+    char summaries[MAX_TRANSCRIPT_ENTRIES][256];
+    float saliences[MAX_TRANSCRIPT_ENTRIES];
+    float confidences[MAX_TRANSCRIPT_ENTRIES];
+    const char* modules[MAX_TRANSCRIPT_ENTRIES];
+
+    memset(summaries, 0, sizeof(summaries));
+    memset(saliences, 0, sizeof(saliences));
+    memset(confidences, 0, sizeof(confidences));
+    memset(modules, 0, sizeof(modules));
+
+    uint32_t count;
+    Py_BEGIN_ALLOW_THREADS
+    count = nimcp_brain_get_last_transcript(
+        self->brain,
+        summaries, saliences, confidences, modules,
+        MAX_TRANSCRIPT_ENTRIES);
+    Py_END_ALLOW_THREADS
+
+    PyObject* result = PyList_New(count);
+    if (!result) return NULL;
+
+    for (uint32_t i = 0; i < count; i++) {
+        PyObject* entry = PyDict_New();
+        if (!entry) { Py_DECREF(result); return NULL; }
+
+        PyObject* tmp;
+        tmp = PyUnicode_FromString(modules[i] ? modules[i] : "unknown");
+        PyDict_SetItemString(entry, "module", tmp); Py_DECREF(tmp);
+
+        tmp = PyUnicode_FromString(summaries[i]);
+        PyDict_SetItemString(entry, "summary", tmp); Py_DECREF(tmp);
+
+        tmp = PyFloat_FromDouble(saliences[i]);
+        PyDict_SetItemString(entry, "salience", tmp); Py_DECREF(tmp);
+
+        tmp = PyFloat_FromDouble(confidences[i]);
+        PyDict_SetItemString(entry, "confidence", tmp); Py_DECREF(tmp);
+
+        PyList_SET_ITEM(result, i, entry);
+    }
+
+    return result;
+}
+
+/**
  * WHAT: Comprehend text into semantic representation
  * WHY:  Understanding = activating grounded concepts
  */
@@ -6371,6 +6538,14 @@ static PyMethodDef Brain_methods[] = {
      "Learn language from text exposure: learn_language(text) -> dict with loss, success"},
     {"learn_language_pair", (PyCFunction)Brain_learn_language_pair, METH_VARARGS | METH_KEYWORDS,
      "Learn from input-target pair: learn_language_pair(input_text, target_text, learning_rate=0) -> dict"},
+    {"train_cognitive", (PyCFunction)Brain_train_cognitive, METH_VARARGS | METH_KEYWORDS,
+     "Train all cognitive modules: train_cognitive(text, domain=10, target_text=None, learning_rate=0.001) -> dict"},
+    {"learn_knowledge", (PyCFunction)Brain_learn_knowledge, METH_VARARGS | METH_KEYWORDS,
+     "Learn knowledge in domain: learn_knowledge(text, domain=10) -> bool"},
+    {"get_cognitive_stats", (PyCFunction)Brain_get_cognitive_stats, METH_NOARGS,
+     "Get per-module cognitive training stats: get_cognitive_stats() -> dict {module: {steps, last_loss}}"},
+    {"get_transcript", (PyCFunction)Brain_get_transcript, METH_NOARGS,
+     "Get cognitive transcript from last decide_full: get_transcript() -> list of {module, summary, salience, confidence}"},
     {"comprehend", (PyCFunction)Brain_comprehend, METH_VARARGS | METH_KEYWORDS,
      "Comprehend text into semantic vector: comprehend(text) -> dict with semantic_vector, confidence"},
     {"produce_text", (PyCFunction)Brain_produce_text, METH_VARARGS | METH_KEYWORDS,
@@ -6868,6 +7043,31 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
         return NULL;
     }
 
+    // ABI layout check: detect stale .so with wrong struct layout
+    {
+        /* Compute the same hash the library computes, but using THIS .so's
+         * compile-time sizeof values. If the .so in site-packages was compiled
+         * against a different neuron_t layout, this will differ from what
+         * libnimcp.so returns at runtime. */
+        uint32_t compiled_h = 0x4E494D43u;
+        compiled_h ^= (uint32_t)sizeof(neuron_t) * 2654435761u;
+        compiled_h ^= (uint32_t)sizeof(sparse_synapse_storage_t) * 2246822519u;
+        compiled_h ^= (uint32_t)SPARSE_SYNAPSE_EMBEDDED_CAPACITY * 3266489917u;
+        int compiled_hash = (int)(compiled_h & 0x7FFFFFFFu);
+        int runtime_hash = nimcp_abi_layout_hash();
+        if (compiled_hash != runtime_hash) {
+            char msg[256];
+            snprintf(msg, sizeof(msg),
+                "NIMCP ABI mismatch: Python .so was compiled with struct layout hash %d "
+                "but libnimcp.so has hash %d. Rebuild and reinstall: "
+                "make nimcp_python -j4 && cp build/lib/python/nimcp.so "
+                "~/.local/lib/python3.12/site-packages/nimcp.cpython-312-x86_64-linux-gnu.so",
+                compiled_hash, runtime_hash);
+            PyErr_SetString(PyExc_ImportError, msg);
+            return NULL;
+        }
+    }
+
     // Prepare types
     if (PyType_Ready(&BrainType) < 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: BrainType ready failed");
@@ -6946,6 +7146,9 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     // Add status constants
     PyModule_AddIntConstant(m, "OK", NIMCP_OK);
     PyModule_AddIntConstant(m, "ERROR", NIMCP_ERROR);
+
+    // Add ABI hash for manual validation
+    PyModule_AddIntConstant(m, "ABI_LAYOUT_HASH", nimcp_abi_layout_hash());
 
     // Initialize signal filter module
     if (init_signal_filter_module(m) < 0) {

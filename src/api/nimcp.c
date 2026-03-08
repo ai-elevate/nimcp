@@ -27,6 +27,7 @@ static void api_set_error(const char* fmt, ...);
 #include "nimcp.h"
 #include "api/nimcp_api_internal.h"  /* Canonical handle struct definitions */
 #include "core/brain/nimcp_brain.h"
+#include "core/brain/nimcp_cognitive_transcript.h"
 #include "core/brain/strategy/nimcp_brain_strategy.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/neuralnet/nimcp_neuron_synapse_access.h"

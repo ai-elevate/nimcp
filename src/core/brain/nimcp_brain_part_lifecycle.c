@@ -294,6 +294,12 @@ void brain_destroy(brain_t brain)
         brain->last_decision = NULL;
     }
 
+    // Free cached cognitive transcript
+    if (brain->last_transcript) {
+        transcript_free(brain->last_transcript);
+        brain->last_transcript = NULL;
+    }
+
     // Phase 3: Cleanup distributed cognition coordinator
     if (brain->distributed) {
         distrib_cognition_destroy(brain->distributed);

@@ -59,6 +59,8 @@ struct rcog_batch_handle {
     size_t completed_count;          /**< Number of completed tasks */
     bool all_done;                   /**< True when all tasks complete */
     uint64_t created_ms;             /**< Creation timestamp */
+    nimcp_mutex_t* mutex;            /**< Synchronization mutex */
+    nimcp_cond_t* cond;              /**< Completion condition variable */
 };
 
  * MCTS STRATEGY SELECTION

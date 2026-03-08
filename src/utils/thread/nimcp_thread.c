@@ -1568,7 +1568,7 @@ nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex)
  */
 nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex, uint32_t timeout_ms)
 {
-    NIMCP_CHECK_THROW(cond && mutex, NIMCP_ERROR_INVALID_PARAM, "cond or mutex is NULL");
+    if (!cond || !mutex) return NIMCP_ERROR_INVALID_PARAM;
 
     // Use platform abstraction for timed wait
     int result = nimcp_platform_cond_timedwait(cond, mutex, timeout_ms);

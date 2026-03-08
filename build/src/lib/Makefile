@@ -18452,6 +18452,30 @@ __/core/brain/factory/init/nimcp_brain_init_cognitive_meta_controller.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_cognitive_meta_controller.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_cognitive_meta_controller.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_cognitive_training.o: __/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cognitive_training.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_cognitive_training.i: __/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cognitive_training.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_cognitive_training.s: __/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cognitive_training.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cognitive_training.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_collective_cognition.o: __/core/brain/factory/init/nimcp_brain_init_collective_cognition.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_collective_cognition.o
 
@@ -20683,6 +20707,30 @@ __/core/brain/nimcp_brain_state.s: __/core/brain/nimcp_brain_state.c.s
 __/core/brain/nimcp_brain_state.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_state.c.s
 .PHONY : __/core/brain/nimcp_brain_state.c.s
+
+__/core/brain/nimcp_cognitive_transcript.o: __/core/brain/nimcp_cognitive_transcript.c.o
+.PHONY : __/core/brain/nimcp_cognitive_transcript.o
+
+# target to build an object file
+__/core/brain/nimcp_cognitive_transcript.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_cognitive_transcript.c.o
+.PHONY : __/core/brain/nimcp_cognitive_transcript.c.o
+
+__/core/brain/nimcp_cognitive_transcript.i: __/core/brain/nimcp_cognitive_transcript.c.i
+.PHONY : __/core/brain/nimcp_cognitive_transcript.i
+
+# target to preprocess a source file
+__/core/brain/nimcp_cognitive_transcript.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_cognitive_transcript.c.i
+.PHONY : __/core/brain/nimcp_cognitive_transcript.c.i
+
+__/core/brain/nimcp_cognitive_transcript.s: __/core/brain/nimcp_cognitive_transcript.c.s
+.PHONY : __/core/brain/nimcp_cognitive_transcript.s
+
+# target to generate assembly for a file
+__/core/brain/nimcp_cognitive_transcript.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_cognitive_transcript.c.s
+.PHONY : __/core/brain/nimcp_cognitive_transcript.c.s
 
 __/core/brain/nimcp_distributed_cow.o: __/core/brain/nimcp_distributed_cow.c.o
 .PHONY : __/core/brain/nimcp_distributed_cow.o
@@ -54229,6 +54277,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_cognitive_meta_controller.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_cognitive_meta_controller.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_cognitive_meta_controller.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_cognitive_training.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_cognitive_training.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_cognitive_training.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_collective_cognition.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_collective_cognition.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_collective_cognition.s"
@@ -54508,6 +54559,9 @@ help:
 	@echo "... __/core/brain/nimcp_brain_state.o"
 	@echo "... __/core/brain/nimcp_brain_state.i"
 	@echo "... __/core/brain/nimcp_brain_state.s"
+	@echo "... __/core/brain/nimcp_cognitive_transcript.o"
+	@echo "... __/core/brain/nimcp_cognitive_transcript.i"
+	@echo "... __/core/brain/nimcp_cognitive_transcript.s"
 	@echo "... __/core/brain/nimcp_distributed_cow.o"
 	@echo "... __/core/brain/nimcp_distributed_cow.i"
 	@echo "... __/core/brain/nimcp_distributed_cow.s"

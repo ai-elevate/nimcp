@@ -1808,6 +1808,47 @@ struct brain_struct {
     float last_vae_free_energy;                      // Most recent free energy (negative ELBO)
 
     // =========================================================================
+    // COGNITIVE SUBSYSTEM TRAINING HOOKS
+    // =========================================================================
+    // Pointers to subsystem training engines that train during brain_learn_vector().
+    // These ensure ALL cognitive modules learn alongside the primary network.
+    //
+    struct jepa_predictor* jepa_predictor;            // JEPA latent predictor (imagination foundation)
+    bool jepa_predictor_enabled;                      // JEPA predictor training enabled
+    struct predictive_hierarchy* pred_hierarchy;    // Predictive coding hierarchy
+    bool pred_hierarchy_enabled;                      // Predictive hierarchy training enabled
+    void* self_heal_engine;                           // self_heal_engine_t* (immune training)
+    bool self_heal_enabled;                           // Self-heal training enabled
+    uint32_t cognitive_train_interval;                // How often to train subsystems (default: every 5 steps)
+    uint32_t cognitive_train_counter;                 // Internal counter for interval gating
+
+    // Per-module cognitive training statistics
+    struct {
+        uint32_t grounded_lang_steps;
+        float    grounded_lang_last_loss;
+        uint32_t knowledge_steps;
+        uint32_t vae_steps;
+        float    vae_last_loss;
+        uint32_t fep_parietal_steps;
+        uint32_t physics_nn_steps;
+        uint32_t pred_hierarchy_steps;
+        float    pred_hierarchy_last_loss;
+        uint32_t jepa_steps;
+        float    jepa_last_loss;
+        uint32_t creative_steps;
+        uint32_t self_heal_steps;
+        uint32_t intuition_steps;
+        uint32_t fep_orchestrator_steps;
+    } cognitive_stats;
+
+    // =========================================================================
+    // COGNITIVE TRANSCRIPT (Communication Layer Phase 1)
+    // =========================================================================
+    // Cached transcript from the most recent brain_decide() call.
+    // Owned by the brain; replaced on each decide call.
+    struct cognitive_transcript* last_transcript;
+
+    // =========================================================================
     // WHITE MATTER TRACTS (Long-Range Myelinated Connectivity)
     // =========================================================================
     // Models 8 major white matter tracts with conduction velocity, myelination,

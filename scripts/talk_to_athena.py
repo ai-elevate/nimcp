@@ -28,11 +28,48 @@ from claude_teacher import encode_text
 
 logger = logging.getLogger("talk_to_athena")
 
+
+class ConversationMemory:
+    """Track recent conversation turns for context."""
+
+    def __init__(self, max_turns=10):
+        self.turns = []
+        self.max_turns = max_turns
+
+    def add(self, user_text, athena_response, confidence=0.0):
+        self.turns.append({
+            'user': user_text,
+            'athena': athena_response,
+            'confidence': confidence,
+            'time': time.time()
+        })
+        if len(self.turns) > self.max_turns:
+            self.turns = self.turns[-self.max_turns:]
+
+    def get_context_string(self, last_n=3):
+        """Build context from recent turns for input enrichment."""
+        if not self.turns:
+            return ""
+        recent = self.turns[-last_n:]
+        parts = []
+        for t in recent:
+            parts.append(f"User: {t['user']}")
+            if t['athena']:
+                parts.append(f"Athena: {t['athena']}")
+        return " | ".join(parts)
+
+    def get_context_embedding(self, last_n=3):
+        """Get embedding of recent conversation context."""
+        ctx = self.get_context_string(last_n)
+        if not ctx:
+            return None
+        return encode_text(ctx)
+
 # ---------------------------------------------------------------------------
 # Constants (must match teach_athena.py)
 # ---------------------------------------------------------------------------
 
-EMBED_DIM = 384
+EMBED_DIM = 1024
 BRAIN_INPUTS = 1024
 
 
@@ -47,7 +84,7 @@ def _denormalize_embedding(e: np.ndarray) -> np.ndarray:
 
 
 def tile_to_brain_input(embedding: np.ndarray) -> list:
-    """Tile a 384-dim embedding to 1024-dim brain input."""
+    """Tile/truncate embedding to 1024-dim brain input."""
     e = np.asarray(embedding, dtype=np.float32).ravel()
     e = _normalize_embedding(e)
     reps = math.ceil(BRAIN_INPUTS / len(e))
@@ -59,7 +96,7 @@ def extract_embedding_from_output(output_vector: np.ndarray,
                                    embed_dim: int = EMBED_DIM) -> np.ndarray:
     """Extract embedding from brain output by averaging tiled copies.
 
-    The brain was trained with targets that tile 384-dim embeddings to 2048.
+    The brain was trained with 1024-dim embeddings tiled to fill 2048-dim output.
     To decode, we average the tiled copies to reduce noise, then denormalize.
     """
     v = np.asarray(output_vector, dtype=np.float32).ravel()
@@ -102,13 +139,15 @@ def main():
     )
 
     # -----------------------------------------------------------------------
-    # Load brain
+    # Load brain with progress feedback
     # -----------------------------------------------------------------------
-    print("Loading Athena from checkpoint...")
-    t0 = time.time()
-
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+    print("[1/3] Importing NIMCP library...", end=" ", flush=True)
+    t0 = time.time()
     import nimcp
+    print(f"done ({time.time() - t0:.1f}s)")
+    print(f"      NIMCP v{nimcp.version()} | ABI hash: {nimcp.ABI_LAYOUT_HASH}")
 
     if not os.path.exists(args.checkpoint):
         print(f"ERROR: Checkpoint not found: {args.checkpoint}")
@@ -122,26 +161,32 @@ def main():
                     print(f"  {path}  ({size_mb:.0f} MB)")
         sys.exit(1)
 
+    cp_size_mb = os.path.getsize(args.checkpoint) / (1024 * 1024)
+    print(f"[2/3] Loading brain from checkpoint ({cp_size_mb:.0f} MB)...",
+          end=" ", flush=True)
+    t0 = time.time()
     brain = nimcp.Brain("athena", checkpoint=args.checkpoint)
     load_time = time.time() - t0
-    print(f"Brain loaded in {load_time:.1f}s")
+    print(f"done ({load_time:.1f}s)")
 
     # -----------------------------------------------------------------------
     # Load decoder (vocabulary bank for nearest-neighbor lookup)
     # -----------------------------------------------------------------------
+    print("[3/3] Loading decoder...", end=" ", flush=True)
     decoder = None
     vocab = None
 
     if os.path.isdir(args.decoder_dir):
-        print("Loading decoder...")
         try:
             decoder = NeuralDecoder.load(args.decoder_dir)
             vocab = decoder.vocabulary
-            print(f"Decoder loaded: vocab={len(vocab)} entries, "
-                  f"projector_fitted={decoder.projector.is_fitted}")
+            print(f"done ({len(vocab)} vocab entries, "
+                  f"projector={'fitted' if decoder.projector.is_fitted else 'not fitted'})")
         except Exception as e:
-            print(f"Warning: Could not load decoder: {e}")
+            print(f"failed ({e})")
             decoder = None
+    else:
+        print("skipped (no decoder directory)")
 
     if vocab is None or len(vocab) == 0:
         print("WARNING: No vocabulary loaded. Responses will show raw similarity scores.")
@@ -150,12 +195,20 @@ def main():
     # -----------------------------------------------------------------------
     # Conversation loop
     # -----------------------------------------------------------------------
+    # Check grounded language availability
+    has_grounded = hasattr(brain, 'grounded_respond')
+    has_generate = hasattr(brain, 'generate_text')
+
     print()
     print("=" * 60)
     print("  ATHENA CONVERSATION")
     print("  Type your message and press Enter.")
-    print("  Commands: /quit /status /raw /similar <text> /teach <text> /probe")
+    print("  Commands: /quit /status /raw /similar <text> /teach <text> /probe /transcript")
     print("=" * 60)
+    print(f"  Inference pipeline:")
+    print(f"    System 1 (fast): grounded_respond {'[available]' if has_grounded else '[unavailable]'}")
+    print(f"    System 2 (full): decide_full + "
+          f"{'generate_text' if has_generate else 'vocab lookup'}")
     if vocab and len(vocab) > 0:
         print(f"  Vocabulary: {len(vocab)} entries")
     if decoder and decoder.projector.is_fitted:
@@ -166,6 +219,7 @@ def main():
 
     show_raw = False
     turn = 0
+    memory = ConversationMemory(max_turns=10)
 
     while True:
         try:
@@ -210,6 +264,24 @@ def main():
                 print(f"[Probe error: {e}]")
             continue
 
+        if user_input.lower() == "/transcript":
+            try:
+                transcript = brain.get_transcript()
+                if transcript:
+                    print(f"[Cognitive transcript ({len(transcript)} entries):]")
+                    for entry in transcript:
+                        mod = entry.get('module', '?')
+                        sal = entry.get('salience', 0.0)
+                        conf = entry.get('confidence', 0.0)
+                        summary = entry.get('summary', '')
+                        print(f"  {mod:20s}  sal={sal:.3f}  "
+                              f"conf={conf:.3f}  {summary}")
+                else:
+                    print("[No transcript available — run a query first]")
+            except Exception as e:
+                print(f"[Transcript error: {e}]")
+            continue
+
         if user_input.lower().startswith("/teach "):
             # Teach Athena: /teach <text> — learn this text as input AND target
             text = user_input[7:].strip()
@@ -228,13 +300,45 @@ def main():
                     print(f"[Teach error: {e}]")
             continue
 
-        # Encode input
+        # ------- System 1: Try grounded language (fast path) -------
+        grounded_ok = False
+        t0 = time.time()
+        try:
+            grounded = brain.grounded_respond(user_input)
+            grounded_time = time.time() - t0
+            grounded_text = grounded.get("response", "")
+            grounded_conf = grounded.get("confidence", 0.0)
+
+            if grounded_text and grounded_conf >= 0.3:
+                grounded_ok = True
+                print(f"Athena: {grounded_text}")
+                print(f"        [grounded | conf={grounded_conf:.4f} | "
+                      f"{grounded_time*1000:.0f}ms]")
+                if args.verbose:
+                    print(f"        [System 1 fast path — grounded language]")
+        except Exception:
+            pass  # Grounded language not initialized — fall through
+
+        if grounded_ok:
+            memory.add(user_input, grounded_text, grounded_conf)
+            print()
+            turn += 1
+            continue
+
+        # ------- System 2: Full cognitive pipeline (slow path) -------
+        athena_response = ""
+
         t0 = time.time()
         input_embedding = encode_text(user_input)
+        # Blend with conversation context for continuity
+        ctx_emb = memory.get_context_embedding(last_n=3)
+        if ctx_emb is not None:
+            # 80% current input, 20% context
+            input_embedding = 0.8 * input_embedding + 0.2 * ctx_emb
+            input_embedding = input_embedding / max(np.linalg.norm(input_embedding), 1e-8)
         features = tile_to_brain_input(input_embedding)
         encode_time = time.time() - t0
 
-        # Run brain inference
         t0 = time.time()
         try:
             result = brain.decide_full(features)
@@ -243,13 +347,13 @@ def main():
             continue
         infer_time = time.time() - t0
 
-        # Extract output
         output_vector = result.get("output_vector", [])
         label = result.get("label", "")
         confidence = result.get("confidence", 0.0)
 
         if args.verbose or show_raw:
-            print(f"[encode={encode_time*1000:.0f}ms, infer={infer_time*1000:.0f}ms, "
+            print(f"[System 2 | encode={encode_time*1000:.0f}ms, "
+                  f"infer={infer_time*1000:.0f}ms, "
                   f"label='{label}', conf={confidence:.4f}]")
 
         if show_raw and output_vector:
@@ -257,35 +361,75 @@ def main():
             print(f"[output: len={len(ov)}, min={ov.min():.4f}, max={ov.max():.4f}, "
                   f"mean={ov.mean():.4f}, std={ov.std():.4f}]")
 
-        # Decode brain output to text
-        if output_vector and vocab and len(vocab) > 0:
-            brain_emb = extract_embedding_from_output(np.array(output_vector))
+        # Try generate_text from brain output (grounded production)
+        generated_ok = False
+        if output_vector:
+            try:
+                gen_result = brain.generate_text(list(output_vector))
+                gen_text = gen_result.get("text", "")
+                gen_conf = gen_result.get("confidence", 0.0)
+                if gen_text and len(gen_text.strip()) > 2:
+                    generated_ok = True
+                    athena_response = gen_text
+                    print(f"Athena: {gen_text}")
+                    print(f"        [generated | conf={gen_conf:.4f} | "
+                          f"fluency={gen_result.get('fluency', 0.0):.4f}]")
+            except Exception:
+                pass  # Generator not initialized — fall through to vocab decode
 
-            results = vocab.decode(brain_emb, top_k=args.top_k)
+        # Fall back to vocabulary nearest-neighbor decode
+        if not generated_ok:
+            if output_vector and vocab and len(vocab) > 0:
+                brain_emb = extract_embedding_from_output(np.array(output_vector))
+                results = vocab.decode(brain_emb, top_k=args.top_k)
 
-            # Show best match as "Athena's response"
-            best_text, best_sim = results[0]
-            print(f"Athena: {best_text}")
-            print(f"        [similarity: {best_sim:.4f}]")
+                best_text, best_sim = results[0]
+                athena_response = best_text
+                print(f"Athena: {best_text}")
+                print(f"        [vocab lookup | similarity={best_sim:.4f}]")
 
-            # Show alternatives
-            if args.top_k > 1 and len(results) > 1:
-                print("        alternatives:")
-                for text, sim in results[1:]:
-                    print(f"          {sim:.4f}  {text[:80]}")
+                if args.top_k > 1 and len(results) > 1:
+                    print("        alternatives:")
+                    for text, sim in results[1:]:
+                        print(f"          {sim:.4f}  {text[:80]}")
 
-            # Also compute direct cosine similarity with input
-            cos_sim = np.dot(brain_emb, input_embedding) / (
-                max(np.linalg.norm(brain_emb), 1e-8) *
-                max(np.linalg.norm(input_embedding), 1e-8))
-            if args.verbose:
-                print(f"        [input↔output cosine: {cos_sim:.4f}]")
+                cos_sim = np.dot(brain_emb, input_embedding) / (
+                    max(np.linalg.norm(brain_emb), 1e-8) *
+                    max(np.linalg.norm(input_embedding), 1e-8))
+                if args.verbose:
+                    print(f"        [input<>output cosine: {cos_sim:.4f}]")
 
-        elif label:
-            print(f"Athena: [{label}] (confidence: {confidence:.4f})")
-        else:
-            print("Athena: [no decodable output]")
+            elif label:
+                athena_response = label
+                print(f"Athena: [{label}] (confidence: {confidence:.4f})")
+            else:
+                print("Athena: [no decodable output]")
 
+        # Show cognitive transcript (what the brain was thinking)
+        try:
+            transcript = brain.get_transcript()
+            if transcript and (args.verbose or show_raw):
+                print("        [cognitive transcript:]")
+                for entry in transcript:
+                    mod = entry.get('module', '?')
+                    sal = entry.get('salience', 0.0)
+                    conf = entry.get('confidence', 0.0)
+                    summary = entry.get('summary', '')
+                    if sal > 0.1:  # Only show non-trivial entries
+                        print(f"          {mod:20s}  sal={sal:.2f}  "
+                              f"conf={conf:.2f}  {summary[:60]}")
+            elif transcript and len(transcript) > 0:
+                # Brief transcript: just show top 3 by salience
+                top = sorted(transcript,
+                             key=lambda e: e.get('salience', 0), reverse=True)[:3]
+                hints = [f"{e['module']}({e['salience']:.1f})" for e in top
+                         if e.get('salience', 0) > 0.1]
+                if hints:
+                    print(f"        [thinking: {', '.join(hints)}]")
+        except Exception:
+            pass  # Transcript not available in this build
+
+        memory.add(user_input, athena_response, confidence)
         print()
         turn += 1
 

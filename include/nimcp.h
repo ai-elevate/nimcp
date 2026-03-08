@@ -76,6 +76,18 @@ const char* nimcp_version(void);
  */
 int nimcp_version_int(void);
 
+/**
+ * @brief Get ABI layout hash for struct compatibility checking
+ *
+ * Returns a hash derived from sizeof(neuron_t), sizeof(sparse_synapse_storage_t),
+ * and SPARSE_SYNAPSE_EMBEDDED_CAPACITY. If a Python .so was compiled against a
+ * different struct layout, this hash will differ and import will fail with a
+ * clear error message instead of a silent SIGSEGV.
+ *
+ * @return ABI layout hash (uint32_t encoded as int)
+ */
+int nimcp_abi_layout_hash(void);
+
 //=============================================================================
 // Opaque Handle Types (consistent naming: nimcp_*_t)
 //=============================================================================
@@ -903,6 +915,85 @@ typedef struct {
 nimcp_status_t nimcp_brain_get_avatar_state(
     nimcp_brain_t brain,
     nimcp_avatar_state_t* state
+);
+
+// =========================================================================
+// UNIFIED COGNITIVE TRAINING API
+// =========================================================================
+
+/**
+ * @brief Train all cognitive modules from text in one call
+ *
+ * Trains grounded language (distributional + syntactic), knowledge system,
+ * language generator (LNN decoder), and grounded language pairs — all from
+ * a single text input. This ensures all modules learn together, not just
+ * the neural network weights.
+ *
+ * @param brain        Brain handle
+ * @param text         Text to learn from
+ * @param domain       Knowledge domain (0=language..10=general, -1 to skip knowledge)
+ * @param target_text  Optional target/response text for pair learning (NULL to skip)
+ * @param learning_rate Learning rate (0 = default 0.001)
+ * @param out_loss     Output: aggregate loss across modules (optional)
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_train_cognitive(
+    nimcp_brain_t brain,
+    const char* text,
+    int domain,
+    const char* target_text,
+    float learning_rate,
+    float* out_loss
+);
+
+/**
+ * @brief Get per-module cognitive training statistics
+ */
+nimcp_status_t nimcp_brain_get_cognitive_stats(
+    nimcp_brain_t brain,
+    uint32_t* out_stats,     /* array of step counts, 13 modules */
+    float* out_losses,       /* array of last losses, 13 modules */
+    uint32_t* out_count      /* number of modules written */
+);
+
+/**
+ * @brief Get the cognitive transcript from the last brain_decide() call
+ *
+ * Retrieves transcript entries cached on the brain from the most recent
+ * decision cycle. Each entry contains a module name, summary text,
+ * salience score, and confidence.
+ *
+ * @param brain Brain handle
+ * @param out_entries Output array of summary strings (256 chars each)
+ * @param out_saliences Output array of salience values
+ * @param out_confidences Output array of confidence values
+ * @param out_modules Output array of module name strings
+ * @param max_entries Maximum entries to return
+ * @return Number of entries written
+ */
+uint32_t nimcp_brain_get_last_transcript(
+    nimcp_brain_t brain,
+    char (*out_entries)[256],
+    float* out_saliences,
+    float* out_confidences,
+    const char** out_modules,
+    uint32_t max_entries
+);
+
+/**
+ * @brief Learn knowledge from text in a specific domain
+ *
+ * Feeds text to the knowledge system for multi-domain learning.
+ *
+ * @param brain   Brain handle
+ * @param text    Text to learn from
+ * @param domain  Knowledge domain (0-10, see knowledge_domain_t)
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_learn_knowledge(
+    nimcp_brain_t brain,
+    const char* text,
+    int domain
 );
 
 /**

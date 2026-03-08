@@ -89,12 +89,231 @@
 
 #include "core/brain_regions/nimcp_brain_regions.h"
 
+// Cognitive subsystem training includes
+#include "cognitive/knowledge/nimcp_knowledge.h"
+#include "language/nimcp_grounded_language.h"
+#include "cognitive/free_energy/nimcp_free_energy.h"
+#include "cognitive/nimcp_predictive.h"
+#include "cognitive/parietal/nimcp_parietal.h"
+#include "cognitive/predictive/nimcp_predictive_hierarchy.h"
+#include "cognitive/jepa/nimcp_jepa_predictor.h"
+#include "cognitive/jepa/nimcp_jepa_latent.h"
+
 BRIDGE_BOILERPLATE_MESH_ONLY(brain_learning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 // Import needed from brain internal structure
 // Note: These functions access brain internal state, defined in nimcp_brain.c
 extern void set_error(const char* format, ...);
+
+// Forward declarations for subsystem training (avoid pulling in heavy headers)
+
+// Creative training bridge (forward declaration to avoid heavy creative header chain)
+struct creative_training_bridge;
+typedef struct creative_training_bridge creative_training_bridge_t;
+extern int creative_training_submit_feedback(creative_training_bridge_t* bridge,
+                                              const void* content,
+                                              int modality,
+                                              uint8_t rating,
+                                              const char* feedback);
+
+// Self-heal engine training
+#include "cognitive/immune/nimcp_self_heal.h"
+
+// Intuition system training is declared in nimcp_intuition_integrations.h
+// (included via nimcp_brain_internal.h)
+
+
+/**
+ * @brief Train ALL cognitive subsystems from the current learning step
+ *
+ * WHAT: Dispatches training signals to every initialized cognitive module
+ * WHY:  brain_learn_vector() only trains the adaptive network + SNN/CNN/LNN.
+ *       The 11+ cognitive subsystems (creative, JEPA, VAE, FEP, parietal,
+ *       predictive hierarchy, knowledge, grounded language, etc.) were never
+ *       trained, leaving 95% of cognitive infrastructure at random weights.
+ * HOW:  Derive appropriate inputs for each subsystem from available data:
+ *       - features → observation/state/input for predictive modules
+ *       - target → next state/derivative/expected output
+ *       - label → text for knowledge and grounded language
+ *       - loss → reward signal for reinforcement/self-heal
+ *
+ * GATING: Runs every cognitive_train_interval steps (default 5) to amortize
+ *         cost. Subsystems that are NULL are silently skipped.
+ *
+ * @param brain Internal brain handle
+ * @param features Input features from current training example
+ * @param num_features Feature count
+ * @param target Target output vector
+ * @param target_size Target size
+ * @param label Text label (can be NULL)
+ * @param loss Current training loss from adaptive network
+ */
+static void brain_train_cognitive_subsystems(
+    brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    const float* target,
+    uint32_t target_size,
+    const char* label,
+    float loss)
+{
+    if (!brain) return;
+
+    /* Interval gating: expensive subsystem training runs every N steps */
+    uint32_t interval = brain->cognitive_train_interval;
+    if (interval == 0) interval = 5;  /* default: every 5 steps */
+    brain->cognitive_train_counter++;
+    if ((brain->cognitive_train_counter % interval) != 0) return;
+
+    /* === 1. GROUNDED LANGUAGE — distributional + syntactic learning === */
+    if (brain->grounded_lang && label && label[0]) {
+        grounded_language_learn_from_text(brain->grounded_lang, label);
+        grounded_language_learn_syntax(brain->grounded_lang, label);
+        brain->cognitive_stats.grounded_lang_steps++;
+    }
+
+    /* === 2. KNOWLEDGE SYSTEM — concept learning from text === */
+    if (brain->knowledge && label && label[0]) {
+        knowledge_learn_from_text(brain->knowledge, label,
+                                  KNOWLEDGE_DOMAIN_GENERAL);
+        brain->cognitive_stats.knowledge_steps++;
+    }
+
+    /* === 3. VAE — learn compressed latent representations === */
+    if (brain->vae_training_bridge && brain->vae_enabled) {
+        vae_training_bridge_t* vae = (vae_training_bridge_t*)brain->vae_training_bridge;
+        vae_training_step_result_t vae_result = {0};
+        /* Train VAE to reconstruct features from compressed latent */
+        vae_training_step(vae, features, num_features,
+                          features, num_features, &vae_result);
+        brain->last_vae_free_energy = vae_result.loss.total_loss;
+        brain->cognitive_stats.vae_steps++;
+        brain->cognitive_stats.vae_last_loss = vae_result.loss.total_loss;
+    }
+
+    /* === 4. FEP-PARIETAL — hierarchical generative model training === */
+    if (brain->parietal) {
+        fep_parietal_bridge_t* fep_bridge = parietal_get_fep_bridge(brain->parietal);
+        if (fep_bridge) {
+            /* Train transition model: features (current state) → target (next state) */
+            const float* obs_ptr = features;
+            const float* tgt_ptr = target;
+            fep_parietal_train_model(fep_bridge, &obs_ptr, &tgt_ptr, 1);
+            brain->cognitive_stats.fep_parietal_steps++;
+        }
+    }
+
+    /* === 5. PARIETAL PHYSICS NN — physics-informed dynamics learning === */
+    if (brain->parietal && num_features >= 4 && target_size >= 4) {
+        /* Treat features as state and target as derivative/next-state.
+         * Use min(32, dim) to keep physics NN training fast. */
+        uint32_t phys_dim = (num_features < 32) ? num_features : 32;
+        const float* state_ptr = features;
+        const float* deriv_ptr = target;
+        /* Single-sample training through parietal wrapper */
+        parietal_train_physics_nn(brain->parietal,
+                                  &state_ptr, &deriv_ptr, 1, 1);
+        brain->cognitive_stats.physics_nn_steps++;
+    }
+
+    /* === 6. PREDICTIVE HIERARCHY — hierarchical temporal prediction === */
+    if (brain->pred_hierarchy && brain->pred_hierarchy_enabled) {
+        float pred_loss = 0.0f;
+        pred_hier_learn_step((predictive_hierarchy_t*)brain->pred_hierarchy,
+                              features, &pred_loss);
+        brain->cognitive_stats.pred_hierarchy_steps++;
+        brain->cognitive_stats.pred_hierarchy_last_loss = pred_loss;
+    }
+
+    /* === 7. JEPA PREDICTOR — latent space prediction for imagination === */
+    if (brain->jepa_predictor && brain->jepa_predictor_enabled) {
+        /* Create latent representations from features and target.
+         * JEPA learns to predict target latent from context latent. */
+        uint32_t latent_dim = (num_features < 256) ? num_features : 256;
+        jepa_latent_t* context = jepa_latent_create_dim(latent_dim);
+        jepa_latent_t* target_latent = jepa_latent_create_dim(latent_dim);
+
+        if (context && target_latent) {
+            /* Set embeddings from features and target data */
+            jepa_latent_set_embedding(context, features,
+                (num_features < latent_dim) ? num_features : latent_dim);
+            jepa_latent_set_embedding(target_latent, target,
+                (target_size < latent_dim) ? target_size : latent_dim);
+
+            float jepa_loss = 0.0f;
+            jepa_predictor_train_step(
+                (jepa_predictor_t*)brain->jepa_predictor,
+                context, target_latent, &jepa_loss);
+            brain->cognitive_stats.jepa_steps++;
+            brain->cognitive_stats.jepa_last_loss = jepa_loss;
+        }
+        if (context) jepa_latent_destroy(context);
+        if (target_latent) jepa_latent_destroy(target_latent);
+    }
+
+    /* === 8. CREATIVE TRAINING — style learning from feedback === */
+    if (brain->creative_training_bridge && brain->creative_enabled) {
+        /* Submit the current training result as feedback:
+         * Low loss = high rating, high loss = low rating.
+         * This teaches the creative system what "good" output looks like. */
+        uint8_t rating = (loss < 0.1f) ? 5 :
+                         (loss < 0.3f) ? 4 :
+                         (loss < 0.5f) ? 3 :
+                         (loss < 0.7f) ? 2 : 1;
+        creative_training_submit_feedback(
+            brain->creative_training_bridge,
+            target, /* content = target vector (what we're trying to produce) */
+            0, /* ART_MODALITY_TEXT */
+            rating,
+            label);
+        brain->cognitive_stats.creative_steps++;
+    }
+
+    /* === 9. SELF-HEAL ENGINE — learn from training success/failure === */
+    if (brain->self_heal_engine && brain->self_heal_enabled) {
+        crash_features_t cf = {0};
+        uint32_t cf_dim = (num_features < SELF_HEAL_FEATURE_DIM) ?
+                           num_features : SELF_HEAL_FEATURE_DIM;
+        cf.n_features = cf_dim;
+        memcpy(cf.features, features, cf_dim * sizeof(float));
+        /* Success score = inverse of loss */
+        float success = 1.0f - fminf(loss, 1.0f);
+        self_heal_train_online(
+            (self_heal_engine_t*)brain->self_heal_engine,
+            &cf, FIX_PATTERN_UNKNOWN, success);
+        brain->cognitive_stats.self_heal_steps++;
+    }
+
+    /* === 10. INTUITION SYSTEM — learn from training outcomes === */
+    if (brain->intuition_system && brain->intuition_system_enabled) {
+        /* Intuition learns from the gap between expected and actual outcomes.
+         * We use the training loss as the actual outcome signal. */
+        intuition_experience_t exp = {
+            .id = brain->cognitive_train_counter,
+            .hunch = NULL,
+            .predicted_outcome = 0.0f,  /* Expected: zero loss */
+            .actual_outcome = loss,     /* Actual: current loss */
+            .timestamp = (float)nimcp_time_get_us(),
+            .was_successful = (loss < 0.3f)
+        };
+        const intuition_experience_t* exp_ptr = &exp;
+        intuition_train_from_experience(brain->intuition_system,
+                                         &exp_ptr, 1);
+        brain->cognitive_stats.intuition_steps++;
+    }
+
+    /* === 11. FEP ORCHESTRATOR — update free energy metrics === */
+    if (brain->fep_orchestrator && brain->fep_orchestrator_enabled) {
+        /* Update FEP scheduling metrics from training outcome:
+         * loss → free energy, loss → prediction error.
+         * The orchestrator uses these to modulate update intervals. */
+        brain->fep_orchestrator->fep_metrics.free_energy = loss;
+        brain->fep_orchestrator->fep_metrics.prediction_error = loss;
+        brain->fep_orchestrator->fep_metrics.surprise = -logf(fmaxf(1.0f - loss, 1e-7f));
+        brain->cognitive_stats.fep_orchestrator_steps++;
+    }
+}
 extern void brain_clear_error(void);
 extern bool ensure_writable_network(brain_t brain);
 extern void clear_cache(brain_t brain);
@@ -823,6 +1042,13 @@ sequential_training:
 
         callosum_process_queues(brain->callosum);
     }
+
+    /* === COGNITIVE SUBSYSTEM DISPATCH ===
+     * Train ALL cognitive modules (grounded language, knowledge, VAE, FEP-parietal,
+     * physics NN, predictive hierarchy, JEPA, creative, self-heal, intuition, FEP).
+     * Gated to run every N steps (default: 5) to amortize cost. */
+    brain_train_cognitive_subsystems(brain, features, num_features,
+                                      target, target_size, label, loss);
 
     clear_cache(brain);
     return loss;

@@ -366,8 +366,21 @@ int rcog_orchestrator_dispatch(
 
     add_trace_entry(orch, decomp->metadata.decomp_id, "dispatch", 0.0f);
 
-    /* Create placeholder handle */
+    /* Create placeholder handle — must have valid mutex/cond because
+     * rcog_delegation_pool_await_batch() and free_batch_handle() expect them.
+     * Mark all_done=true since this placeholder doesn't dispatch real work. */
     *handle = nimcp_calloc(1, sizeof(rcog_batch_handle_t));
+    if (*handle) {
+        mutex_attr_t mattr;
+        memset(&mattr, 0, sizeof(mattr));
+        mattr.type = MUTEX_TYPE_NORMAL;
+        (*handle)->mutex = nimcp_mutex_create(&mattr);
+        (*handle)->cond = nimcp_calloc(1, sizeof(nimcp_cond_t));
+        if ((*handle)->cond) {
+            nimcp_cond_init((*handle)->cond);
+        }
+        (*handle)->all_done = true;  /* No real subtasks dispatched */
+    }
 
     nimcp_mutex_unlock(orch->mutex);
 

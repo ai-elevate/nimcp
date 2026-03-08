@@ -2887,6 +2887,9 @@ typedef struct brain_decision {
     // Phase 1.5: Copy-on-Write support for efficient decision caching
     uint32_t* _cow_refcount;     /**< Shared reference count (NULL = owned, else shared) */
     bool _cow_is_shallow;        /**< True if this is a shallow copy (shares pointers) */
+
+    // Communication layer: Cognitive transcript capturing all stage outputs
+    struct cognitive_transcript* transcript; /**< Full cognitive transcript (NULL if not requested) */
 } brain_decision_t;
 
 /**

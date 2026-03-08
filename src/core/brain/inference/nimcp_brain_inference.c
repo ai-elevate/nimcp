@@ -495,6 +495,12 @@ void brain_free_decision(brain_decision_t* decision)
         }
     }
 
+    // Free cognitive transcript if present
+    if (decision->transcript) {
+        nimcp_free(decision->transcript);
+        decision->transcript = NULL;
+    }
+
     // Always free the decision structure itself (each copy has its own)
     nimcp_free(decision);
 }

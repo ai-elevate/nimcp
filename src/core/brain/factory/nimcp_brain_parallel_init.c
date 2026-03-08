@@ -190,6 +190,9 @@ extern bool nimcp_brain_factory_init_reasoning_engine_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_imagination_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_collective_cognition_subsystem(brain_t brain);
 
+// Wave 28: Cognitive training subsystems (JEPA, predictive hierarchy, self-heal)
+extern bool nimcp_brain_factory_init_cognitive_training_subsystem(brain_t brain);
+
 // Emotional + spike analysis + Shannon headers pulled in via nimcp_brain_internal.h
 // Additional headers for inline init functions
 #include "information/nimcp_shannon.h"
@@ -225,6 +228,9 @@ static bool execute_wave(nimcp_thread_pool_t* pool, parallel_init_ctx_t* ctx,
     if (atomic_load(&ctx->error_flag)) return false;
     if (count == 0) return true;
 
+    fprintf(stderr, "\r  [INIT] Wave %2d/27 (%zu tasks)...    ", wave_id, count);
+    fflush(stderr);
+
     for (size_t i = 0; i < count; i++) {
         nimcp_pool_submit(pool, parallel_init_task, &tasks[i]);
     }
@@ -245,6 +251,10 @@ static bool execute_wave(nimcp_thread_pool_t* pool, parallel_init_ctx_t* ctx,
  */
 static bool run_serial(parallel_init_ctx_t* ctx, bool (*fn)(brain_t), const char* name) {
     if (atomic_load(&ctx->error_flag)) return false;
+
+    fprintf(stderr, "\r  [INIT] %s...                        ", name);
+    fflush(stderr);
+
     if (!fn(ctx->brain)) {
         bool expected = false;
         if (atomic_compare_exchange_strong(&ctx->error_flag, &expected, true)) {
@@ -581,6 +591,7 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
         tasks[n++] = TASK(nimcp_brain_factory_init_stdp_quantum_bridge_subsystem, "stdp_quantum_bridge");
         if (!execute_wave(pool, &ctx, tasks, n, 25)) goto cleanup;
 
+        fprintf(stderr, "\r  [INIT] FAST complete (6 waves)                \n");
         LOG_INFO(LOG_MODULE, "FAST parallel init complete (6 waves, skipped ~20 non-essential)");
         goto cleanup;
     }
@@ -830,7 +841,14 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     tasks[n++] = TASK(nimcp_brain_factory_init_collective_cognition_subsystem, "collective_cognition");
     if (!execute_wave(pool, &ctx, tasks, n, 27)) goto cleanup;
 
-    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (28 waves)");
+    // ========================================================================
+    // WAVE 28: Cognitive training subsystems (JEPA, predictive hierarchy, self-heal)
+    // ========================================================================
+    ok = run_serial(&ctx, nimcp_brain_factory_init_cognitive_training_subsystem, "cognitive_training");
+    if (!ok) goto cleanup;
+
+    fprintf(stderr, "\r  [INIT] Complete (29 waves)                    \n");
+    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (29 waves)");
 
 cleanup:
     nimcp_pool_destroy(pool);

@@ -189,7 +189,7 @@ nimcp_result_t nimcp_mutex_free(nimcp_mutex_t* mutex)
  */
 nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex)
 {
-    NIMCP_CHECK_THROW(mutex, NIMCP_ERROR_INVALID_PARAM, "mutex is NULL");
+    if (!mutex) return NIMCP_ERROR_INVALID_PARAM;
 
     int result = nimcp_platform_mutex_lock(mutex);
     if (result != 0) {
@@ -247,7 +247,7 @@ nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex)
  */
 nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex)
 {
-    NIMCP_CHECK_THROW(mutex, NIMCP_ERROR_INVALID_PARAM, "mutex is NULL");
+    if (!mutex) return NIMCP_ERROR_INVALID_PARAM;
 
     int result = nimcp_platform_mutex_unlock(mutex);
     if (result != 0) {

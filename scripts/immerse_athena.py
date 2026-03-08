@@ -770,8 +770,9 @@ class SensoryComposer:
             n = min(len(te), TEXT_DIM)
             vec[TAG_DIM + PRIMARY_DIM:TAG_DIM + PRIMARY_DIM + n] = te[:n]
         elif text is not None:
-            emb = encode_text(text)  # 1024-dim
-            vec[TAG_DIM + PRIMARY_DIM:TAG_DIM + PRIMARY_DIM + len(emb)] = emb
+            emb = encode_text(text)  # 1024-dim — truncate to TEXT_DIM
+            n = min(len(emb), TEXT_DIM)
+            vec[TAG_DIM + PRIMARY_DIM:TAG_DIM + PRIMARY_DIM + n] = emb[:n]
 
         # --- Biological context [912:1024] ---
         ctx_start = TAG_DIM + PRIMARY_DIM + TEXT_DIM
@@ -1505,6 +1506,20 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         t0 = time.time()
 
         try:
+            # Quick connectivity test — if Claude CLI takes >20s for a trivial prompt,
+            # skip the expensive pre-generation and use fallbacks immediately.
+            import subprocess as _sp
+            try:
+                _test = _sp.run(
+                    ["claude", "-p", "Say OK", "--output-format", "text"],
+                    capture_output=True, text=True, timeout=20,
+                    env={k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+                )
+                if not _test.stdout.strip():
+                    raise RuntimeError("Claude CLI returned empty output")
+            except Exception as e:
+                raise RuntimeError(f"Claude CLI connectivity test failed: {e}")
+
             # Single Claude call with generous token budget
             raw = self.teacher._call_claude(prompt, max_tokens=4096)
 
@@ -1623,6 +1638,44 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             logger.debug("Parent speech failed: %s", e)
             return None
 
+    def _train_cognitive(self, brain, text, domain=10, target_text=None):
+        """Train ALL cognitive modules on a text sample.
+
+        Calls brain.train_cognitive() which trains:
+          1. Grounded language (distributional + syntactic learning)
+          2. Knowledge system (domain-specific concept learning)
+          3. Language generator (LNN decoder, output projection, embeddings)
+          4. Grounded language pairs (if target_text provided)
+
+        Also calls brain.train_language() for direct LNN training, and
+        brain.learn_language() for grounded lexicon distributional learning.
+
+        This ensures the ENTIRE cognitive pipeline learns together, not just
+        the neural network weights from learn_vector().
+        """
+        if not text or len(text) < 3:
+            return
+        try:
+            # Unified cognitive training (grounded lang + knowledge + LNN)
+            result = brain.train_cognitive(
+                text, domain=domain,
+                target_text=target_text or text)
+            loss = result.get("loss", -1)
+            if self.interaction_count % 200 == 0 and loss >= 0:
+                print(f"    [Cognitive] loss={loss:.4f}")
+        except Exception:
+            pass
+        try:
+            # Direct LNN decoder training (autoregressive)
+            brain.train_language(text, target_text or text)
+        except Exception:
+            pass
+        try:
+            # Grounded lexicon distributional learning
+            brain.learn_language(text)
+        except Exception:
+            pass
+
     def observe_response(self, result):
         """Observe what Athena's brain produced — without judging it.
 
@@ -1661,6 +1714,9 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         # Dense target trains adaptive network; label trains CNN classifier
         loss = brain.learn_vector(features, target, label=description[:50], confidence=0.5)
 
+        # Train ALL cognitive modules on this text
+        self._train_cognitive(brain, description, domain=10)  # GENERAL
+
         # Record pair for decoder vocabulary (nearest-neighbor for display only)
         if self.decoder:
             output_vec = result.get("output_vector")
@@ -1698,6 +1754,9 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         # Dense target trains adaptive network; label trains CNN classifier
         loss = brain.learn_vector(features, target, label=name[:50], confidence=0.65)
 
+        # Train ALL cognitive modules on this text
+        self._train_cognitive(brain, name + ". " + description, domain=0)  # LANGUAGE
+
         # Record pair for decoder vocabulary (display only, not evaluation)
         if self.decoder:
             output_vec = result.get("output_vector")
@@ -1734,6 +1793,9 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
 
         # Dense target trains adaptive network; label trains CNN classifier
         loss = brain.learn_vector(features, target, label=concept[:50], confidence=0.6)
+
+        # Train ALL cognitive modules on this text
+        self._train_cognitive(brain, concept + ". " + description, domain=10)  # GENERAL
 
         # Encourage based on engagement and loss trend
         encouragement = self._pop_content("_encouragements")
@@ -1802,6 +1864,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         target = make_semantic_target(lesson_text)
         # Dense target trains adaptive; label trains CNN classifier
         brain.learn_vector(features, target, label=topic[:50], confidence=0.7)
+        self._train_cognitive(brain, lesson_text, domain=3)  # ETHICS
         self.moral_lessons.append(topic)
 
     # --- Imagination ---
@@ -1830,6 +1893,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             target = make_semantic_target(inspiration)
             # Dense target + label for CNN classifier
             brain.learn_vector(features, target, label="inspiration", confidence=0.5)
+            self._train_cognitive(brain, inspiration, domain=2)  # ART
             try:
                 brain.bg_update_reward(0.7, 0.3)
             except Exception:
@@ -1863,6 +1927,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         target = make_semantic_target(target_phrase)
         loss = brain.learn_vector(features, target, label=target_phrase[:50],
                                    confidence=0.6)
+        self._train_cognitive(brain, target_phrase, domain=0)  # LANGUAGE
 
         # Now ask the brain to speak — see what it produces
         try:
@@ -2772,9 +2837,63 @@ def evaluate_performance(brain, composer, decoder, stage, step):
 
 _checkpoint_thread = None
 
+def _cleanup_old_checkpoints(keep_current=True):
+    """Remove old checkpoint files to free disk space.
+
+    Keeps only athena_immersive.bin (the rolling checkpoint).
+    Removes all other .bin files and their .meta/.mirror_neurons/.executive sidecars.
+    """
+    if not os.path.isdir(CHECKPOINT_DIR):
+        return
+    keep_prefix = "athena_immersive"
+    removed_bytes = 0
+    removed_count = 0
+    for fname in sorted(os.listdir(CHECKPOINT_DIR)):
+        fpath = os.path.join(CHECKPOINT_DIR, fname)
+        if not os.path.isfile(fpath):
+            continue
+        # Keep the current rolling checkpoint and its sidecars
+        if keep_current and fname.startswith(keep_prefix):
+            continue
+        # Remove old .bin files and their sidecars (.meta, .mirror_neurons, .executive)
+        if fname.endswith((".bin", ".bin.meta", ".bin.mirror_neurons", ".bin.executive")):
+            try:
+                sz = os.path.getsize(fpath)
+                os.remove(fpath)
+                removed_bytes += sz
+                removed_count += 1
+            except OSError:
+                pass
+    if removed_count > 0:
+        print(f"  Cleaned up {removed_count} old checkpoint files "
+              f"({removed_bytes / (1024**3):.1f} GB freed)")
+
+
+def _check_disk_space(min_gb=5.0):
+    """Check available disk space. Warn if below threshold."""
+    try:
+        st = os.statvfs(CHECKPOINT_DIR if os.path.isdir(CHECKPOINT_DIR) else ".")
+        avail_gb = (st.f_bavail * st.f_frsize) / (1024**3)
+        if avail_gb < min_gb:
+            print(f"  WARNING: Only {avail_gb:.1f} GB disk space remaining!")
+            return False
+        return True
+    except OSError:
+        return True
+
+
 def _save_checkpoint_sync(brain, decoder, stage, step):
     """Synchronous checkpoint save (runs in background thread)."""
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+
+    # Check disk space before saving
+    if not _check_disk_space(min_gb=5.0):
+        logger.warning("Low disk space — attempting cleanup before save")
+        _cleanup_old_checkpoints(keep_current=True)
+        if not _check_disk_space(min_gb=2.0):
+            logger.error("Still insufficient disk space — skipping checkpoint save")
+            return
+
     ckpt = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
     try:
         brain.save(ckpt)
@@ -2866,10 +2985,16 @@ def main():
     print("  Every biological subsystem active. No shortcuts.")
     print("=" * 60)
 
+    # Clean up old checkpoints on fresh start to free disk space
+    if args.fresh:
+        _cleanup_old_checkpoints(keep_current=False)
+    else:
+        _cleanup_old_checkpoints(keep_current=True)
+
     if checkpoint_path and os.path.exists(checkpoint_path):
         print(f"  Loading from checkpoint: {checkpoint_path}")
     else:
-        print("  Creating fresh brain (FAST init — GPU, training, plasticity, security)")
+        print("  Creating fresh brain (FULL init — all biological subsystems)")
         checkpoint_path = None
 
     brain = nimcp.Brain("athena",
@@ -2943,13 +3068,17 @@ def main():
     # --- Neural decoder (for observing Athena's responses, not scoring them) ---
     decoder = None
     try:
-        if os.path.exists(DECODER_DIR):
+        if os.path.exists(DECODER_DIR) and not args.fresh:
             decoder = NeuralDecoder.load(DECODER_DIR)
+            # Verify embed_dim matches current model (1024-dim BAAI/bge-large-en-v1.5)
+            if decoder.embed_dim != 1024:
+                print(f"  Decoder embed_dim mismatch ({decoder.embed_dim} != 1024), recreating")
+                decoder = NeuralDecoder(output_dim=args.num_outputs, embed_dim=1024)
         else:
-            decoder = NeuralDecoder(output_dim=args.num_outputs)
+            decoder = NeuralDecoder(output_dim=args.num_outputs, embed_dim=1024)
         print("  Neural decoder: ON")
     except Exception:
-        decoder = NeuralDecoder(output_dim=args.num_outputs)
+        decoder = NeuralDecoder(output_dim=args.num_outputs, embed_dim=1024)
 
     parent = Parent(teacher=teacher, enabled=not args.no_claude, decoder=decoder)
     composer = SensoryComposer(brain)

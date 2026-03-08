@@ -707,10 +707,17 @@ int lnn_gradient_adjoint_step(
                             christoffel_compute(christoffel, metric, dg_dx);
 
                             // Parallel transport: move adjoint along tangent d_adjoint_dt
+                            // Build a 2-point curve: current pos → pos + dt*tangent
                             float* tangent = (float*)nimcp_tensor_data(d_adjoint_dt);
                             float transported[DIFFGEO_MAX_DIM];
-                            parallel_transport(christoffel, adj_data, tangent,
-                                             dt, transported, (uint32_t)numel);
+                            float curve_pts[DIFFGEO_MAX_DIM * 2];
+                            for (uint32_t ci = 0; ci < (uint32_t)numel; ci++) {
+                                curve_pts[ci] = adj_data[ci];
+                                curve_pts[numel + ci] = adj_data[ci] + dt * tangent[ci];
+                            }
+                            parallel_transport_along_curve(christoffel, curve_pts,
+                                             2, (uint32_t)numel,
+                                             adj_data, transported);
 
                             // Use transported covector
                             for (size_t i = 0; i < numel; i++) {

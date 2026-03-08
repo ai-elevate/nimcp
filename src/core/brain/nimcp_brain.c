@@ -119,6 +119,13 @@ void rubric_evaluator_destroy(struct rubric_evaluator* eval);
 #include "cognitive/nimcp_explanations.h"      // Phase 10.7: Natural Explanations (interpretability)
 #include "cognitive/nimcp_meta_learning.h"     // Phase 10.8: Meta-Learning (MAML, few-shot learning)
 #include "cognitive/nimcp_predictive.h"        // Phase 10.9: Predictive Processing (free energy minimization)
+#include "cognitive/predictive/nimcp_predictive_hierarchy.h"  // Predictive hierarchy (C5/C6 inference)
+#include "cognitive/jepa/nimcp_jepa_latent.h"                 // JEPA latent representations (C5/C6 inference)
+#include "cognitive/jepa/nimcp_jepa_predictor.h"              // JEPA predictor training (C6 inference)
+#include "language/nimcp_grounded_language.h"                 // Grounded language (C6 inference training)
+#include "cognitive/immune/nimcp_self_heal.h"                 // Self-heal engine (C6 inference training)
+#include "cognitive/free_energy/nimcp_free_energy.h"          // FEP orchestrator (C6 inference training)
+#include "cognitive/vae/bridges/nimcp_vae_training_bridge.h"  // VAE training bridge (C6 inference training)
 #include "cognitive/nimcp_mirror_neurons.h"    // Phase 10.11: Mirror Neurons (social cognition, imitation)
 #include "cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace Architecture (GWT)
 #include "cognitive/nimcp_autobiographical_memory.h"  // Phase 12: Autobiographical Memory (episodic self-memory)
@@ -128,6 +135,9 @@ void rubric_evaluator_destroy(struct rubric_evaluator* eval);
 #include "core/brain/biological/nimcp_brain_biological.h" // Biological subsystems (glial, neuromodulators, multimodal)
 #include "core/brain/accessors/nimcp_brain_accessors.h" // Extracted accessor functions module
 #include "core/brain/analysis/nimcp_brain_topology.h"  // Extracted topology/graph analysis module
+
+// Cognitive Transcript (captures all stage outputs for response composition)
+#include "core/brain/nimcp_cognitive_transcript.h"
 
 // Edge-Cloud Hybrid Inference
 #include "middleware/cloud/nimcp_cloud_inference.h"
@@ -193,6 +203,8 @@ struct snn_routing_bridge_s;
 int snn_routing_bridge_update(struct snn_routing_bridge_s* bridge, float dt);
 #include "lnn/nimcp_lnn.h"
 #include "utils/tensor/nimcp_tensor.h"
+#include "core/brain/nimcp_brain_parallel_stages.h"
+#include "utils/thread/nimcp_thread_pool.h"
 
 //=============================================================================
 // Bio-Async Module Registration

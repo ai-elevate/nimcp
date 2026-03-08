@@ -17,6 +17,19 @@ int nimcp_version_int(void) {
 }
 
 
+int nimcp_abi_layout_hash(void) {
+    /* Hash critical struct sizes to detect stale Python .so builds.
+     * Any change to neuron_t, sparse_synapse_storage_t, or EMBEDDED_CAPACITY
+     * will change this hash and cause Python import to fail early with a
+     * clear error instead of a silent SIGSEGV from wrong field offsets. */
+    uint32_t h = 0x4E494D43u; /* "NIMC" */
+    h ^= (uint32_t)sizeof(neuron_t) * 2654435761u;
+    h ^= (uint32_t)sizeof(sparse_synapse_storage_t) * 2246822519u;
+    h ^= (uint32_t)SPARSE_SYNAPSE_EMBEDDED_CAPACITY * 3266489917u;
+    return (int)(h & 0x7FFFFFFFu); /* Keep positive for Python int */
+}
+
+
 nimcp_status_t nimcp_brain_learn_example(
     nimcp_brain_t brain,
     const float* features,
@@ -2695,6 +2708,210 @@ nimcp_status_t nimcp_brain_creative_blend(
     gl_production_result_cleanup(&result);
     return NIMCP_OK;
 }
+
+//=============================================================================
+// Unified Cognitive Training API
+//=============================================================================
+
+nimcp_status_t nimcp_brain_train_cognitive(
+    nimcp_brain_t brain,
+    const char* text,
+    int domain,
+    const char* target_text,
+    float learning_rate,
+    float* out_loss)
+{
+    if (!brain || !text) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    float total_loss = 0.0f;
+    int modules_trained = 0;
+
+    /* 1. Grounded language — distributional + syntactic learning */
+    if (b->grounded_lang) {
+        int updates = grounded_language_learn_from_text(b->grounded_lang, text);
+        grounded_language_learn_syntax(b->grounded_lang, text);
+        if (updates > 0) {
+            total_loss += 1.0f / (float)updates;
+            modules_trained++;
+        }
+
+        /* If target text provided, learn the pair relationship */
+        if (target_text) {
+            float pair_loss = grounded_language_learn_pair(
+                b->grounded_lang, text, target_text,
+                (learning_rate > 0.0f) ? learning_rate : 0.0f);
+            if (pair_loss >= 0.0f) {
+                total_loss += pair_loss;
+                modules_trained++;
+            }
+        }
+    }
+
+    /* 2. Knowledge system — domain-specific learning */
+    if (b->knowledge && domain >= 0 && domain <= 10) {
+        uint32_t concepts = knowledge_learn_from_text(
+            b->knowledge, text, (knowledge_domain_t)domain);
+        if (concepts > 0) {
+            total_loss += 1.0f / (float)concepts;
+            modules_trained++;
+        }
+    }
+
+    /* 3. Language generator (LNN decoder) — autoregressive training */
+    if (b->lang_generator && b->tokenizer && target_text) {
+        enum { MAX_TOKENS = 512 };
+        uint32_t input_ids[MAX_TOKENS], target_ids[MAX_TOKENS];
+        uint32_t input_len = 0, target_len = 0;
+
+        int rc1 = tokenizer_encode(b->tokenizer, text,
+                                    input_ids, MAX_TOKENS, &input_len);
+        int rc2 = tokenizer_encode(b->tokenizer, target_text,
+                                    target_ids, MAX_TOKENS, &target_len);
+
+        if (rc1 == 0 && rc2 == 0 && input_len > 0 && target_len > 0) {
+            uint32_t seq_len = (input_len < target_len) ? input_len : target_len;
+            float lang_loss = 0.0f;
+            int rc = language_generator_train_step(
+                b->lang_generator, input_ids, target_ids, seq_len, &lang_loss);
+            if (rc == 0) {
+                total_loss += lang_loss;
+                modules_trained++;
+            }
+        }
+
+        /* Also update embedding layer */
+        if (b->lang_embedding) {
+            float lr = (learning_rate > 0.0f) ? learning_rate : 0.001f;
+            embedding_update(b->lang_embedding, lr);
+        }
+    }
+
+    if (out_loss) {
+        *out_loss = (modules_trained > 0) ? total_loss / (float)modules_trained : 1.0f;
+    }
+
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_cognitive_stats(
+    nimcp_brain_t handle,
+    uint32_t* out_stats,
+    float* out_losses,
+    uint32_t* out_count)
+{
+    if (!handle || !out_stats || !out_losses || !out_count) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    brain_t brain = handle->internal_brain;
+    if (!brain) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    /* 11 cognitive modules tracked */
+    out_stats[0]  = brain->cognitive_stats.grounded_lang_steps;
+    out_losses[0] = brain->cognitive_stats.grounded_lang_last_loss;
+    out_stats[1]  = brain->cognitive_stats.knowledge_steps;
+    out_losses[1] = 0.0f;
+    out_stats[2]  = brain->cognitive_stats.vae_steps;
+    out_losses[2] = brain->cognitive_stats.vae_last_loss;
+    out_stats[3]  = brain->cognitive_stats.fep_parietal_steps;
+    out_losses[3] = 0.0f;
+    out_stats[4]  = brain->cognitive_stats.physics_nn_steps;
+    out_losses[4] = 0.0f;
+    out_stats[5]  = brain->cognitive_stats.pred_hierarchy_steps;
+    out_losses[5] = brain->cognitive_stats.pred_hierarchy_last_loss;
+    out_stats[6]  = brain->cognitive_stats.jepa_steps;
+    out_losses[6] = brain->cognitive_stats.jepa_last_loss;
+    out_stats[7]  = brain->cognitive_stats.creative_steps;
+    out_losses[7] = 0.0f;
+    out_stats[8]  = brain->cognitive_stats.self_heal_steps;
+    out_losses[8] = 0.0f;
+    out_stats[9]  = brain->cognitive_stats.intuition_steps;
+    out_losses[9] = 0.0f;
+    out_stats[10] = brain->cognitive_stats.fep_orchestrator_steps;
+    out_losses[10] = 0.0f;
+    *out_count = 11;
+    return NIMCP_OK;
+}
+
+
+uint32_t nimcp_brain_get_transcript(
+    const brain_decision_t* decision,
+    char (*out_entries)[256],
+    float* out_saliences,
+    float* out_confidences,
+    const char** out_modules,
+    uint32_t max_entries)
+{
+    if (!decision || !decision->transcript) return 0;
+    const cognitive_transcript_t* t = (const cognitive_transcript_t*)decision->transcript;
+    uint32_t count = (t->num_entries < max_entries) ? t->num_entries : max_entries;
+
+    for (uint32_t i = 0; i < count; i++) {
+        const transcript_entry_t* e = &t->entries[i];
+        if (out_entries) {
+            strncpy(out_entries[i], e->summary, 255);
+            out_entries[i][255] = '\0';
+        }
+        if (out_saliences) out_saliences[i] = e->salience;
+        if (out_confidences) out_confidences[i] = e->confidence;
+        if (out_modules) out_modules[i] = transcript_module_name(e->module);
+    }
+    return count;
+}
+
+uint32_t nimcp_brain_get_last_transcript(
+    nimcp_brain_t handle,
+    char (*out_entries)[256],
+    float* out_saliences,
+    float* out_confidences,
+    const char** out_modules,
+    uint32_t max_entries)
+{
+    if (!handle || !handle->internal_brain) return 0;
+    brain_t brain = handle->internal_brain;
+    if (!brain->last_transcript) return 0;
+
+    const cognitive_transcript_t* t = (const cognitive_transcript_t*)brain->last_transcript;
+    uint32_t count = (t->num_entries < max_entries) ? t->num_entries : max_entries;
+
+    for (uint32_t i = 0; i < count; i++) {
+        const transcript_entry_t* e = &t->entries[i];
+        if (out_entries) {
+            strncpy(out_entries[i], e->summary, 255);
+            out_entries[i][255] = '\0';
+        }
+        if (out_saliences) out_saliences[i] = e->salience;
+        if (out_confidences) out_confidences[i] = e->confidence;
+        if (out_modules) out_modules[i] = transcript_module_name(e->module);
+    }
+    return count;
+}
+
+
+nimcp_status_t nimcp_brain_learn_knowledge(
+    nimcp_brain_t brain,
+    const char* text,
+    int domain)
+{
+    if (!brain || !text) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    if (!b->knowledge) {
+        set_error("Knowledge system not initialized");
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    if (domain < 0 || domain > 10) {
+        domain = 10; /* KNOWLEDGE_DOMAIN_GENERAL */
+    }
+
+    uint32_t concepts = knowledge_learn_from_text(
+        b->knowledge, text, (knowledge_domain_t)domain);
+    return (concepts > 0) ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+}
+
 
 //=============================================================================
 // Multi-Brain Collective API

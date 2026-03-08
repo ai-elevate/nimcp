@@ -98,6 +98,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu.c              # GPU context auto-initialization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu_inference.c   # GPU inference weight cache init
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_substrate_gpu.c   # GPU substrate subsystem initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cognitive_training.c  # Cognitive training subsystems (JEPA, pred hierarchy, self-heal)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_cognitive_transcript.c  # Cognitive transcript for response composition
 
     # White Matter Tracts - Long-range myelinated connectivity (8 major tracts)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/white_matter/nimcp_white_matter_tracts.c              # White matter core implementation
