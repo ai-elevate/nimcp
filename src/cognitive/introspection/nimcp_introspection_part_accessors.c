@@ -720,7 +720,8 @@ pattern_info_t* brain_get_pattern_info(introspection_context_t context, const ch
 
     info->pattern_name = nimcp_strdup(entry->name);
     info->current_activity = entry->current_activity;
-    info->average_activity = entry->activity_sum / entry->activation_count;
+    info->average_activity = (entry->activation_count > 0) ?
+        entry->activity_sum / entry->activation_count : 0.0f;
     info->pattern_strength = entry->pattern_strength;
     info->activation_count = entry->activation_count;
     info->first_learned = entry->first_learned;

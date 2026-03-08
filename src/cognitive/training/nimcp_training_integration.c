@@ -1145,10 +1145,12 @@ int brain_ti_compute_decision_cycle(
                 .source_name = "causal_model",
                 .type = causal_result.is_beneficial ? TRAINING_EVIDENCE_LR_MODULATION :
                         TRAINING_EVIDENCE_CONTINUE,
-                .lr_factor = diagnosis.recommended_lr_factor,
+                .lr_factor = causal_result.is_beneficial ?
+                    (1.0f + causal_result.predicted_effect * 0.5f) :
+                    (1.0f - causal_result.predicted_effect * 0.5f),
                 .batch_factor = 1.0f,
                 .grad_clip_factor = 1.0f,
-                .urgency = 0.3f,
+                .urgency = causal_result.causal_strength * 0.5f,
                 .confidence = causal_result.confidence,
             };
             training_convergent_submit_evidence(session, &causal_ev);

@@ -892,11 +892,6 @@ int brain_immune_activate_b_cell(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_activate_b_cell: system is NULL");
         return -1;
     }
-    if (system->b_cell_count >= system->b_cell_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_activate_b_cell: capacity exceeded");
-        return -1;
-    }
-
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_activate_b_cell", 0.0f);
 
@@ -908,6 +903,13 @@ int brain_immune_activate_b_cell(
     }
 
     nimcp_mutex_lock(system->mutex);
+
+    /* W7: Capacity check under lock to prevent TOCTOU race */
+    if (system->b_cell_count >= system->b_cell_capacity) {
+        nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_activate_b_cell: capacity exceeded");
+        return -1;
+    }
 
     /* Create new B cell */
     brain_b_cell_t* b_cell = &system->b_cells[system->b_cell_count];
@@ -1010,11 +1012,6 @@ int brain_immune_activate_helper_t(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_activate_helper_t: system is NULL");
         return -1;
     }
-    if (system->t_cell_count >= system->t_cell_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_activate_helper_t: capacity exceeded");
-        return -1;
-    }
-
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_activate_helper_t", 0.0f);
 
@@ -1026,6 +1023,13 @@ int brain_immune_activate_helper_t(
     }
 
     nimcp_mutex_lock(system->mutex);
+
+    /* W7: Capacity check under lock to prevent TOCTOU race */
+    if (system->t_cell_count >= system->t_cell_capacity) {
+        nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_activate_helper_t: capacity exceeded");
+        return -1;
+    }
 
     brain_t_cell_t* t_cell = &system->t_cells[system->t_cell_count];
     memset(t_cell, 0, sizeof(*t_cell));
@@ -1070,11 +1074,6 @@ int brain_immune_activate_killer_t(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_activate_killer_t: system is NULL");
         return -1;
     }
-    if (system->t_cell_count >= system->t_cell_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_activate_killer_t: capacity exceeded");
-        return -1;
-    }
-
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_activate_killer_t", 0.0f);
 
@@ -1086,6 +1085,13 @@ int brain_immune_activate_killer_t(
     }
 
     nimcp_mutex_lock(system->mutex);
+
+    /* W7: Capacity check under lock to prevent TOCTOU race */
+    if (system->t_cell_count >= system->t_cell_capacity) {
+        nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_activate_killer_t: capacity exceeded");
+        return -1;
+    }
 
     brain_t_cell_t* t_cell = &system->t_cells[system->t_cell_count];
     memset(t_cell, 0, sizeof(*t_cell));
@@ -1413,10 +1419,6 @@ int brain_immune_release_cytokine(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_release_cytokine: system->cytokines is NULL");
         return -1;
     }
-    if (system->cytokine_count >= system->cytokine_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_release_cytokine: capacity exceeded");
-        return -1;
-    }
     /* Validate concentration is in expected range [0.0, 1.0] */
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_release_cytokine", 0.0f);
@@ -1426,6 +1428,13 @@ int brain_immune_release_cytokine(
     if (concentration > 1.0f) concentration = 1.0f;
 
     nimcp_mutex_lock(system->mutex);
+
+    /* W7: Capacity check under lock to prevent TOCTOU race */
+    if (system->cytokine_count >= system->cytokine_capacity) {
+        nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_release_cytokine: capacity exceeded");
+        return -1;
+    }
 
     brain_cytokine_t* cytokine = &system->cytokines[system->cytokine_count];
     memset(cytokine, 0, sizeof(*cytokine));

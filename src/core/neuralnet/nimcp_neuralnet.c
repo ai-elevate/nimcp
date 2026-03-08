@@ -4216,6 +4216,10 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
         }
 
         // Extract outputs from output layer
+        if (neuron_offset < output_size) {
+            for (uint32_t i = 0; i < output_size; i++) outputs[i] = 0.0F;
+            return true;
+        }
         uint32_t output_layer_start = neuron_offset - output_size;
 
         for (uint32_t i = 0; i < output_size; i++) {

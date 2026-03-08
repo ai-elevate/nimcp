@@ -716,7 +716,8 @@ int synapse_plasticity_update(
     if (bridge->config.enable_homeostatic && bridge->homeostatic) {
         /* Would compute homeostatic correction based on firing rate */
         float target_rate = 5.0f; /* Hz */
-        float actual_rate = (float)bridge->stats.post_spike_count / (dt_ms / 1000.0f);
+        float actual_rate = (dt_ms > 0.0f) ?
+            (float)bridge->stats.post_spike_count / (dt_ms / 1000.0f) : 0.0f;
         float correction = 0.001f * (target_rate - actual_rate);
         bridge->contributions[PLASTICITY_HOMEOSTATIC].weight_delta += correction;
     }

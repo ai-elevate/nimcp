@@ -95,7 +95,7 @@ bool nimcp_gpu_backward_linear(
         static uint32_t s_d_ones_size = 0;
 
         if ((uint32_t)batch > s_d_ones_size) {
-            if (s_d_ones) cudaFree(s_d_ones);
+            if (s_d_ones) { cudaFree(s_d_ones); s_d_ones = NULL; s_d_ones_size = 0; }
             uint32_t new_size = (uint32_t)batch;
             // Round up to power of 2 for fewer reallocations
             if (new_size < 256) new_size = 256;
@@ -118,6 +118,11 @@ bool nimcp_gpu_backward_linear(
                 for (uint32_t i = 0; i < new_size; i++) h_ones[i] = 1.0f;
                 cudaMemcpy(s_d_ones, h_ones, new_size * sizeof(float), cudaMemcpyHostToDevice);
                 free(h_ones);
+            } else {
+                /* malloc failed — fill via kernel fallback */
+                cudaMemset(s_d_ones, 0, new_size * sizeof(float));
+                /* Note: ones vector will be zeros — cublasSgemv will produce zero bias grads.
+                 * This is safer than using uninitialized device memory. */
             }
         }
 
@@ -773,8 +778,10 @@ bool nimcp_gpu_sparse_backward_accumulate(
     if (cudaMalloc(&d_output, bp_size * sizeof(float)) != cudaSuccess) {
         cudaFree(d_target); return false;
     }
-    cudaMemcpy(d_target, target_host, bp_size * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_output, output_host, bp_size * sizeof(float), cudaMemcpyHostToDevice);
+    if (cudaMemcpy(d_target, target_host, bp_size * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess ||
+        cudaMemcpy(d_output, output_host, bp_size * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+        cudaFree(d_target); cudaFree(d_output); return false;
+    }
 
     uint32_t max_layer = 0;
     for (uint32_t l = 0; l < num_layers; l++) {
@@ -960,8 +967,10 @@ bool nimcp_gpu_sparse_backward_pass(
     if (cudaMalloc(&d_output, bp_size * sizeof(float)) != cudaSuccess) {
         cudaFree(d_target); cudaFree(d_grad_norm); return false;
     }
-    cudaMemcpy(d_target, target_host, bp_size * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_output, output_host, bp_size * sizeof(float), cudaMemcpyHostToDevice);
+    if (cudaMemcpy(d_target, target_host, bp_size * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess ||
+        cudaMemcpy(d_output, output_host, bp_size * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+        cudaFree(d_target); cudaFree(d_output); cudaFree(d_grad_norm); return false;
+    }
 
     uint32_t max_layer = 0;
     for (uint32_t l = 0; l < num_layers; l++) {

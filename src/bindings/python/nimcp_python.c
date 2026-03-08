@@ -2740,12 +2740,18 @@ static PyObject* Brain_get_cloud_stats(BrainObject* self, PyObject* Py_UNUSED(ar
 
     PyObject* dict = PyDict_New();
     if (!dict) return NULL;
-    PyDict_SetItemString(dict, "total_queries", PyLong_FromUnsignedLongLong(total));
-    PyDict_SetItemString(dict, "local_handled", PyLong_FromUnsignedLongLong(local));
-    PyDict_SetItemString(dict, "cloud_escalated", PyLong_FromUnsignedLongLong(cloud));
-    PyDict_SetItemString(dict, "distillation_steps", PyLong_FromUnsignedLongLong(distill));
+    PyObject* tmp;
+    tmp = PyLong_FromUnsignedLongLong(total);
+    PyDict_SetItemString(dict, "total_queries", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLongLong(local);
+    PyDict_SetItemString(dict, "local_handled", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLongLong(cloud);
+    PyDict_SetItemString(dict, "cloud_escalated", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLongLong(distill);
+    PyDict_SetItemString(dict, "distillation_steps", tmp); Py_DECREF(tmp);
     float local_pct = total > 0 ? (float)local / (float)total * 100.0f : 0.0f;
-    PyDict_SetItemString(dict, "local_handled_pct", PyFloat_FromDouble(local_pct));
+    tmp = PyFloat_FromDouble(local_pct);
+    PyDict_SetItemString(dict, "local_handled_pct", tmp); Py_DECREF(tmp);
     return dict;
 }
 
@@ -2810,7 +2816,9 @@ static PyObject* Brain_generate_text(BrainObject* self, PyObject* args) {
         PyObject* zero = PyFloat_FromDouble(0.0);
         PyDict_SetItemString(result, "confidence", zero);
         PyDict_SetItemString(result, "fluency", zero);
-        PyDict_SetItemString(result, "error", PyUnicode_FromString(nimcp_get_error()));
+        PyObject* err_str = PyUnicode_FromString(nimcp_get_error());
+        PyDict_SetItemString(result, "error", err_str);
+        Py_DECREF(err_str);
         Py_DECREF(zero);
         return result;
     }
@@ -5463,26 +5471,38 @@ static PyObject* Brain_get_plasticity_stats(BrainObject* self, PyObject* Py_UNUS
 
     /* TPB stats */
     if (brain->plasticity_bridge && brain->enable_plasticity_bridge) {
+        PyObject* tmp;
         float da = 0, ach = 0, ht5 = 0, ne = 0;
         tpb_get_neuromod_levels(brain->plasticity_bridge, &da, &ach, &ht5, &ne);
-        PyDict_SetItemString(d, "dopamine", PyFloat_FromDouble(da));
-        PyDict_SetItemString(d, "acetylcholine", PyFloat_FromDouble(ach));
-        PyDict_SetItemString(d, "serotonin", PyFloat_FromDouble(ht5));
-        PyDict_SetItemString(d, "norepinephrine", PyFloat_FromDouble(ne));
+        tmp = PyFloat_FromDouble(da);
+        PyDict_SetItemString(d, "dopamine", tmp); Py_DECREF(tmp);
+        tmp = PyFloat_FromDouble(ach);
+        PyDict_SetItemString(d, "acetylcholine", tmp); Py_DECREF(tmp);
+        tmp = PyFloat_FromDouble(ht5);
+        PyDict_SetItemString(d, "serotonin", tmp); Py_DECREF(tmp);
+        tmp = PyFloat_FromDouble(ne);
+        PyDict_SetItemString(d, "norepinephrine", tmp); Py_DECREF(tmp);
 
         tpb_rpe_state_t rpe_state;
         if (tpb_get_rpe_state(brain->plasticity_bridge, &rpe_state) == NIMCP_OK) {
-            PyDict_SetItemString(d, "rpe", PyFloat_FromDouble(rpe_state.last_rpe));
-            PyDict_SetItemString(d, "rpe_ema", PyFloat_FromDouble(rpe_state.smoothed_rpe));
-            PyDict_SetItemString(d, "baseline_loss", PyFloat_FromDouble(rpe_state.baseline_loss));
+            tmp = PyFloat_FromDouble(rpe_state.last_rpe);
+            PyDict_SetItemString(d, "rpe", tmp); Py_DECREF(tmp);
+            tmp = PyFloat_FromDouble(rpe_state.smoothed_rpe);
+            PyDict_SetItemString(d, "rpe_ema", tmp); Py_DECREF(tmp);
+            tmp = PyFloat_FromDouble(rpe_state.baseline_loss);
+            PyDict_SetItemString(d, "baseline_loss", tmp); Py_DECREF(tmp);
         }
 
         tpb_stats_t tpb_stats;
         if (tpb_get_stats(brain->plasticity_bridge, &tpb_stats) == NIMCP_OK) {
-            PyDict_SetItemString(d, "tpb_rpe_computations", PyLong_FromUnsignedLongLong(tpb_stats.rpe_computations));
-            PyDict_SetItemString(d, "tpb_plasticity_updates", PyLong_FromUnsignedLongLong(tpb_stats.total_plasticity_updates));
-            PyDict_SetItemString(d, "tpb_stdp_updates", PyLong_FromUnsignedLongLong(tpb_stats.stdp_updates));
-            PyDict_SetItemString(d, "tpb_bcm_updates", PyLong_FromUnsignedLongLong(tpb_stats.bcm_updates));
+            tmp = PyLong_FromUnsignedLongLong(tpb_stats.rpe_computations);
+            PyDict_SetItemString(d, "tpb_rpe_computations", tmp); Py_DECREF(tmp);
+            tmp = PyLong_FromUnsignedLongLong(tpb_stats.total_plasticity_updates);
+            PyDict_SetItemString(d, "tpb_plasticity_updates", tmp); Py_DECREF(tmp);
+            tmp = PyLong_FromUnsignedLongLong(tpb_stats.stdp_updates);
+            PyDict_SetItemString(d, "tpb_stdp_updates", tmp); Py_DECREF(tmp);
+            tmp = PyLong_FromUnsignedLongLong(tpb_stats.bcm_updates);
+            PyDict_SetItemString(d, "tpb_bcm_updates", tmp); Py_DECREF(tmp);
         }
     }
 
@@ -5492,11 +5512,17 @@ static PyObject* Brain_get_plasticity_stats(BrainObject* self, PyObject* Py_UNUS
         PyDict_SetItemString(d, "edp_active", Py_True);
         edp_stats_t edp_stats;
         if (edp_get_stats(brain->event_driven_plasticity, &edp_stats) == NIMCP_OK) {
-            PyDict_SetItemString(d, "edp_plasticity_updates", PyLong_FromUnsignedLongLong(edp_stats.total_plasticity_updates));
-            PyDict_SetItemString(d, "edp_ltp_events", PyLong_FromUnsignedLongLong(edp_stats.ltp_events));
-            PyDict_SetItemString(d, "edp_ltd_events", PyLong_FromUnsignedLongLong(edp_stats.ltd_events));
-            PyDict_SetItemString(d, "edp_avg_prediction_error", PyFloat_FromDouble(edp_stats.avg_prediction_error));
-            PyDict_SetItemString(d, "edp_avg_reward", PyFloat_FromDouble(edp_stats.avg_reward_signal));
+            PyObject* etmp;
+            etmp = PyLong_FromUnsignedLongLong(edp_stats.total_plasticity_updates);
+            PyDict_SetItemString(d, "edp_plasticity_updates", etmp); Py_DECREF(etmp);
+            etmp = PyLong_FromUnsignedLongLong(edp_stats.ltp_events);
+            PyDict_SetItemString(d, "edp_ltp_events", etmp); Py_DECREF(etmp);
+            etmp = PyLong_FromUnsignedLongLong(edp_stats.ltd_events);
+            PyDict_SetItemString(d, "edp_ltd_events", etmp); Py_DECREF(etmp);
+            etmp = PyFloat_FromDouble(edp_stats.avg_prediction_error);
+            PyDict_SetItemString(d, "edp_avg_prediction_error", etmp); Py_DECREF(etmp);
+            etmp = PyFloat_FromDouble(edp_stats.avg_reward_signal);
+            PyDict_SetItemString(d, "edp_avg_reward", etmp); Py_DECREF(etmp);
         }
     }
 
@@ -5505,11 +5531,15 @@ static PyObject* Brain_get_plasticity_stats(BrainObject* self, PyObject* Py_UNUS
         plasticity_coordinator_state_t state = plasticity_coordinator_get_state(brain->plasticity_coordinator);
         const char* state_names[] = {"ACQUISITION", "CONSOLIDATION", "MAINTENANCE", "STABILIZING"};
         const char* state_name = (state >= 0 && state < 4) ? state_names[state] : "UNKNOWN";
-        PyDict_SetItemString(d, "plasticity_state", PyUnicode_FromString(state_name));
-        PyDict_SetItemString(d, "energy_rate", PyFloat_FromDouble(
-            plasticity_coordinator_get_energy_rate(brain->plasticity_coordinator)));
-        PyDict_SetItemString(d, "low_energy", PyBool_FromLong(
-            plasticity_coordinator_is_low_energy(brain->plasticity_coordinator)));
+        PyObject* ptmp;
+        ptmp = PyUnicode_FromString(state_name);
+        PyDict_SetItemString(d, "plasticity_state", ptmp); Py_DECREF(ptmp);
+        ptmp = PyFloat_FromDouble(
+            plasticity_coordinator_get_energy_rate(brain->plasticity_coordinator));
+        PyDict_SetItemString(d, "energy_rate", ptmp); Py_DECREF(ptmp);
+        ptmp = PyBool_FromLong(
+            plasticity_coordinator_is_low_energy(brain->plasticity_coordinator));
+        PyDict_SetItemString(d, "low_energy", ptmp); Py_DECREF(ptmp);
     }
 
     return d;
@@ -5713,14 +5743,23 @@ static PyObject* Brain_lnn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args
 
     PyObject* d = PyDict_New();
     if (!d) return NULL;
-    PyDict_SetItemString(d, "forward_steps", PyLong_FromUnsignedLongLong(stats.forward_steps));
-    PyDict_SetItemString(d, "backward_steps", PyLong_FromUnsignedLongLong(stats.backward_steps));
-    PyDict_SetItemString(d, "total_ode_evals", PyLong_FromUnsignedLongLong(stats.ode_evaluations));
-    PyDict_SetItemString(d, "avg_tau", PyFloat_FromDouble(stats.avg_tau_network));
-    PyDict_SetItemString(d, "state_norm", PyFloat_FromDouble(stats.state_norm));
-    PyDict_SetItemString(d, "gradient_norm", PyFloat_FromDouble(stats.gradient_norm));
-    PyDict_SetItemString(d, "nan_count", PyLong_FromUnsignedLong(stats.nan_count));
-    PyDict_SetItemString(d, "inf_count", PyLong_FromUnsignedLong(stats.inf_count));
+    PyObject* tmp;
+    tmp = PyLong_FromUnsignedLongLong(stats.forward_steps);
+    PyDict_SetItemString(d, "forward_steps", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLongLong(stats.backward_steps);
+    PyDict_SetItemString(d, "backward_steps", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLongLong(stats.ode_evaluations);
+    PyDict_SetItemString(d, "total_ode_evals", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(stats.avg_tau_network);
+    PyDict_SetItemString(d, "avg_tau", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(stats.state_norm);
+    PyDict_SetItemString(d, "state_norm", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(stats.gradient_norm);
+    PyDict_SetItemString(d, "gradient_norm", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLong(stats.nan_count);
+    PyDict_SetItemString(d, "nan_count", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLong(stats.inf_count);
+    PyDict_SetItemString(d, "inf_count", tmp); Py_DECREF(tmp);
     return d;
 }
 
@@ -5741,17 +5780,29 @@ static PyObject* Brain_snn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args
 
     PyObject* d = PyDict_New();
     if (!d) return NULL;
-    PyDict_SetItemString(d, "total_steps", PyLong_FromUnsignedLongLong(stats.total_steps));
-    PyDict_SetItemString(d, "total_spikes", PyLong_FromUnsignedLongLong(stats.total_spikes));
-    PyDict_SetItemString(d, "mean_firing_rate", PyFloat_FromDouble(stats.mean_firing_rate));
-    PyDict_SetItemString(d, "max_firing_rate", PyFloat_FromDouble(stats.max_firing_rate));
-    PyDict_SetItemString(d, "sparsity", PyFloat_FromDouble(stats.sparsity));
-    PyDict_SetItemString(d, "synchrony", PyFloat_FromDouble(stats.synchrony));
-    PyDict_SetItemString(d, "spikes_per_sample", PyFloat_FromDouble(stats.spikes_per_sample));
-    PyDict_SetItemString(d, "silent_neurons", PyLong_FromUnsignedLong(stats.silent_neurons));
-    PyDict_SetItemString(d, "hyperactive_neurons", PyLong_FromUnsignedLong(stats.hyperactive_neurons));
-    PyDict_SetItemString(d, "health", PyLong_FromLong((long)stats.health));
-    PyDict_SetItemString(d, "memory_usage_bytes", PyLong_FromSize_t(stats.memory_usage_bytes));
+    PyObject* tmp;
+    tmp = PyLong_FromUnsignedLongLong(stats.total_steps);
+    PyDict_SetItemString(d, "total_steps", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLongLong(stats.total_spikes);
+    PyDict_SetItemString(d, "total_spikes", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(stats.mean_firing_rate);
+    PyDict_SetItemString(d, "mean_firing_rate", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(stats.max_firing_rate);
+    PyDict_SetItemString(d, "max_firing_rate", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(stats.sparsity);
+    PyDict_SetItemString(d, "sparsity", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(stats.synchrony);
+    PyDict_SetItemString(d, "synchrony", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(stats.spikes_per_sample);
+    PyDict_SetItemString(d, "spikes_per_sample", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLong(stats.silent_neurons);
+    PyDict_SetItemString(d, "silent_neurons", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLong(stats.hyperactive_neurons);
+    PyDict_SetItemString(d, "hyperactive_neurons", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromLong((long)stats.health);
+    PyDict_SetItemString(d, "health", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromSize_t(stats.memory_usage_bytes);
+    PyDict_SetItemString(d, "memory_usage_bytes", tmp); Py_DECREF(tmp);
     return d;
 }
 
@@ -5767,10 +5818,15 @@ static PyObject* Brain_cnn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args
 
     PyObject* d = PyDict_New();
     if (!d) return NULL;
-    PyDict_SetItemString(d, "num_layers", PyLong_FromUnsignedLong(cnn_get_layer_count(brain->cnn_trainer)));
-    PyDict_SetItemString(d, "num_parameters", PyLong_FromSize_t(cnn_count_parameters(brain->cnn_trainer)));
-    PyDict_SetItemString(d, "num_labels", PyLong_FromUnsignedLong(brain->num_output_labels));
-    PyDict_SetItemString(d, "active", PyBool_FromLong(1));
+    PyObject* tmp;
+    tmp = PyLong_FromUnsignedLong(cnn_get_layer_count(brain->cnn_trainer));
+    PyDict_SetItemString(d, "num_layers", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromSize_t(cnn_count_parameters(brain->cnn_trainer));
+    PyDict_SetItemString(d, "num_parameters", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLong(brain->num_output_labels);
+    PyDict_SetItemString(d, "num_labels", tmp); Py_DECREF(tmp);
+    tmp = PyBool_FromLong(1);
+    PyDict_SetItemString(d, "active", tmp); Py_DECREF(tmp);
     return d;
 }
 
@@ -6008,11 +6064,17 @@ static PyObject* Brain_substrate_get_metabolic(BrainObject* self, PyObject* Py_U
     PyObject* d = PyDict_New();
     if (!d) return NULL;
     /* Default values when substrate not explicitly tracked at brain level */
-    PyDict_SetItemString(d, "atp", PyFloat_FromDouble(1.0));
-    PyDict_SetItemString(d, "oxygen", PyFloat_FromDouble(0.95));
-    PyDict_SetItemString(d, "glucose", PyFloat_FromDouble(0.9));
-    PyDict_SetItemString(d, "metabolic_rate", PyFloat_FromDouble(0.5));
-    PyDict_SetItemString(d, "capacity", PyFloat_FromDouble(1.0));
+    PyObject* tmp;
+    tmp = PyFloat_FromDouble(1.0);
+    PyDict_SetItemString(d, "atp", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(0.95);
+    PyDict_SetItemString(d, "oxygen", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(0.9);
+    PyDict_SetItemString(d, "glucose", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(0.5);
+    PyDict_SetItemString(d, "metabolic_rate", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(1.0);
+    PyDict_SetItemString(d, "capacity", tmp); Py_DECREF(tmp);
     return d;
 }
 

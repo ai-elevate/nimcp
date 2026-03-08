@@ -1435,7 +1435,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                          (i < num_features ? prediction[i] : 0.0F);
             prediction_error += error * error;
         }
-        prediction_error = sqrtf(prediction_error / decision->output_size);
+        prediction_error = (decision->output_size > 0) ?
+            sqrtf(prediction_error / decision->output_size) : 0.0f;
 
         // Update predictive model with actual outcome
         if (brain->config.enable_predictive_processing) {

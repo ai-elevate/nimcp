@@ -1220,6 +1220,10 @@ static bool ensure_grad_accum_buffers(nimcp_gpu_weight_cache_t* cache) {
     cache->d_bias_grad_accum = nimcp_calloc(num_transitions, sizeof(float*));
     if (!cache->d_weight_grad_accum || !cache->d_bias_grad_accum) {
         LOG_ERROR("Failed to allocate grad accum pointer arrays");
+        nimcp_free(cache->d_weight_grad_accum);
+        cache->d_weight_grad_accum = NULL;
+        nimcp_free(cache->d_bias_grad_accum);
+        cache->d_bias_grad_accum = NULL;
         return false;
     }
 

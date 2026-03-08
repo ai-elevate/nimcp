@@ -908,8 +908,11 @@ nimcp_result_t tpb_route_weight_update(tpb_context_t* ctx, uint32_t neuron_id,
                 break;
         }
 
-        /* Apply learning rate modulation */
-        weight_delta *= modulated_lr / (base_lr + TPB_EPSILON);
+        /* Apply learning rate modulation only for rules that use base_lr internally
+         * (STDP/BCM). Rules already using modulated_lr skip this to avoid double modulation. */
+        if (region->primary_rule == TPB_RULE_STDP || region->primary_rule == TPB_RULE_BCM) {
+            weight_delta *= modulated_lr / (base_lr + TPB_EPSILON);
+        }
 
         /* Update stats */
         nimcp_mutex_lock(&ctx->stats_mutex);
