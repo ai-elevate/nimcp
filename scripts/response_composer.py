@@ -1,4 +1,4 @@
-"""Response Composer — Phase 2 of the Communication Layer.
+"""Response Composer — Phase 2+3 of the Communication Layer.
 
 Transforms cognitive transcript entries into multi-sentence natural language
 responses. Instead of decoding the brain's output vector (which may be
@@ -6,13 +6,22 @@ undertrained), the composer synthesizes from the cognitive modules that fired
 during brain_decide() — reasoning chains, emotional state, prediction errors,
 ethical concerns, curiosity, knowledge retrieval, etc.
 
+Phase 3 adds conversation context awareness: follow-up phrasing, topic
+continuity, returning-topic references, greeting/farewell handling,
+confidence trajectory commentary, and conversation phase adaptation.
+
 This means even an infant brain can produce meaningful responses, because the
 cognitive modules operate on their own logic independent of output vector quality.
 
 Usage:
     from response_composer import ResponseComposer
+    from conversation_context import ConversationContext
     composer = ResponseComposer()
-    response = composer.compose(transcript, decision_result, user_input)
+    ctx_engine = ConversationContext()
+    signals = ctx_engine.process_turn(user_input, transcript, decision)
+    response = composer.compose(transcript, decision, user_input,
+                                vocab_response, context=signals)
+    ctx_engine.record_response(response)
 """
 
 import re
@@ -153,7 +162,8 @@ class ResponseComposer:
         self.min_salience = min_salience
 
     def compose(self, transcript: list, decision: dict,
-                user_input: str = "", vocab_response: str = "") -> Optional[str]:
+                user_input: str = "", vocab_response: str = "",
+                context=None) -> Optional[str]:
         """Compose a response from transcript entries.
 
         Args:
@@ -161,10 +171,18 @@ class ResponseComposer:
             decision: Dict from Brain.decide_full() (label, confidence, etc.)
             user_input: The user's original input text
             vocab_response: Best vocabulary nearest-neighbor match (if any)
+            context: ContextSignals from ConversationContext (Phase 3)
 
         Returns:
             Composed response string, or None if nothing meaningful to say
         """
+        # Phase 3: Handle greetings and farewells directly
+        if context:
+            if context.is_greeting:
+                return self._greeting_response(context)
+            if context.is_farewell:
+                return self._farewell_response(context)
+
         if not transcript:
             return None
 
@@ -203,9 +221,18 @@ class ResponseComposer:
         confidence = decision.get("confidence", 0.0)
         opener = self._get_opener(confidence)
 
+        # Phase 3: Override opener with context-aware phrasing
+        if context:
+            opener = self._context_opener(opener, context, confidence)
+
         # Assemble response
         response = self._assemble(fragments, opener, confidence,
                                   decision, vocab_response, user_input)
+
+        # Phase 3: Append trajectory commentary if notable
+        if context:
+            response = self._add_trajectory_note(response, context)
+
         return response
 
     def _generate_fragment(self, entry: dict) -> Optional[str]:
@@ -324,6 +351,68 @@ class ResponseComposer:
         # Join with periods and proper punctuation
         result = self._join_sentences(parts)
         return result
+
+    # ------------------------------------------------------------------
+    # Phase 3: Context-aware generation
+    # ------------------------------------------------------------------
+
+    def _greeting_response(self, context) -> str:
+        """Generate a greeting response."""
+        if context.turn_index == 0:
+            return "Hello. I'm ready to think with you."
+        return "Hello again. What shall we explore?"
+
+    def _farewell_response(self, context) -> str:
+        """Generate a farewell response."""
+        if context.turn_index > 5:
+            return "Goodbye. This was a good conversation."
+        return "Goodbye."
+
+    def _context_opener(self, default_opener: str, context,
+                        confidence: float) -> str:
+        """Choose an opener based on conversation context."""
+        # Returning to a prior topic (highest priority)
+        if context.is_returning_topic:
+            return "Going back to that — "
+
+        # Topic shift
+        if context.is_topic_shift and context.turn_index > 0:
+            return "On this new topic — "
+
+        # Follow-up: acknowledge continuity
+        if context.is_followup:
+            if context.topic_depth >= 3:
+                return "Going deeper — "
+            return "Yes, and "
+
+        # Question: frame as answering
+        if context.is_question and confidence > 0.3:
+            return ""  # Let the content speak directly
+
+        # Deepening phase: show engagement
+        if context.conversation_phase == "deepening":
+            if confidence > 0.5:
+                return "Building on this — "
+            return default_opener
+
+        return default_opener
+
+    def _add_trajectory_note(self, response: str, context) -> Optional[str]:
+        """Optionally add a note about confidence/emotional trajectory."""
+        if not response:
+            return response
+
+        # Only add trajectory notes after enough turns for a real trend
+        if context.turn_index < 3:
+            return response
+
+        # Confidence improving notably
+        if context.confidence_trend > 0.4:
+            response += " I'm getting more confident about these topics."
+        elif context.confidence_trend < -0.4:
+            response += " I'm finding this increasingly challenging."
+
+        return response
 
     def _join_sentences(self, parts: list) -> str:
         """Join sentence fragments into a natural paragraph."""

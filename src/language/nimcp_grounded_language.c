@@ -212,6 +212,204 @@ static const gl_lexicon_entry_t* lexicon_find(const grounded_language_t* gl, con
     return NULL;
 }
 
+/*=============================================================================
+ * Fuzzy Matching (Two-stage fallback for typos/misspellings)
+ *===========================================================================*/
+
+/** Minimum similarity threshold to accept a fuzzy match */
+#define GL_FUZZY_THRESHOLD  0.65f
+
+/** Minimum word length to attempt fuzzy matching (skip "a", "I", etc.) */
+#define GL_FUZZY_MIN_LEN    3
+
+/**
+ * Phonological similarity — distinctive feature comparison.
+ *
+ * Maps each letter to a simplified articulatory feature vector (place, manner,
+ * voicing) and compares via feature overlap. Catches sound-alike typos:
+ *   "waht" ↔ "what"  (same phonemes, transposed)
+ *   "mathmatics" ↔ "mathematics"  (vowel deletion)
+ *   "kalkulus" ↔ "calculus"  (phonetic spelling)
+ *
+ * Returns similarity in [0, 1].
+ */
+static float phonological_similarity(const char* a, const char* b) {
+    /* Simplified phoneme feature vectors for English letters:
+     * [place(0-7), manner(0-7), voicing(0/1), vowel_height(0-3), is_vowel]
+     * These approximate distinctive features from phonological theory. */
+    static const uint8_t FEATURES[26][5] = {
+        /* a */ {0, 0, 1, 3, 1}, /* b */ {1, 0, 1, 0, 0}, /* c */ {4, 0, 0, 0, 0},
+        /* d */ {2, 0, 1, 0, 0}, /* e */ {0, 0, 1, 2, 1}, /* f */ {3, 1, 0, 0, 0},
+        /* g */ {4, 0, 1, 0, 0}, /* h */ {7, 1, 0, 0, 0}, /* i */ {0, 0, 1, 1, 1},
+        /* j */ {5, 2, 1, 0, 0}, /* k */ {4, 0, 0, 0, 0}, /* l */ {2, 3, 1, 0, 0},
+        /* m */ {1, 4, 1, 0, 0}, /* n */ {2, 4, 1, 0, 0}, /* o */ {0, 0, 1, 2, 1},
+        /* p */ {1, 0, 0, 0, 0}, /* q */ {4, 0, 0, 0, 0}, /* r */ {5, 3, 1, 0, 0},
+        /* s */ {2, 1, 0, 0, 0}, /* t */ {2, 0, 0, 0, 0}, /* u */ {0, 0, 1, 1, 1},
+        /* v */ {3, 1, 1, 0, 0}, /* w */ {1, 5, 1, 0, 0}, /* x */ {2, 1, 0, 0, 0},
+        /* y */ {5, 5, 1, 0, 0}, /* z */ {2, 1, 1, 0, 0},
+    };
+
+    size_t len_a = strlen(a);
+    size_t len_b = strlen(b);
+    if (len_a == 0 || len_b == 0) return 0.0f;
+
+    /* Length ratio penalty — very different lengths are unlikely matches */
+    float len_ratio = (float)(len_a < len_b ? len_a : len_b) /
+                      (float)(len_a > len_b ? len_a : len_b);
+    if (len_ratio < 0.5f) return 0.0f;
+
+    /* Compare feature overlap using a sliding alignment.
+     * For each letter in 'a', find the most similar letter in a window of 'b'. */
+    float total_sim = 0.0f;
+    uint32_t comparisons = 0;
+
+    for (size_t i = 0; i < len_a; i++) {
+        char ca = (char)tolower((unsigned char)a[i]);
+        if (ca < 'a' || ca > 'z') continue;
+        uint32_t fa = ca - 'a';
+
+        float best_match = 0.0f;
+        /* Search in a window around the proportional position in b */
+        size_t center = (i * len_b) / len_a;
+        size_t win_start = (center >= 2) ? center - 2 : 0;
+        size_t win_end = (center + 3 < len_b) ? center + 3 : len_b;
+
+        for (size_t j = win_start; j < win_end; j++) {
+            char cb = (char)tolower((unsigned char)b[j]);
+            if (cb < 'a' || cb > 'z') continue;
+            uint32_t fb = cb - 'a';
+
+            /* Count matching features */
+            uint32_t matches = 0;
+            for (int f = 0; f < 5; f++) {
+                if (FEATURES[fa][f] == FEATURES[fb][f]) matches++;
+            }
+            float sim = (float)matches / 5.0f;
+            if (sim > best_match) best_match = sim;
+        }
+
+        total_sim += best_match;
+        comparisons++;
+    }
+
+    if (comparisons == 0) return 0.0f;
+    return (total_sim / (float)comparisons) * len_ratio;
+}
+
+/**
+ * Fuzzy character-set similarity using membership degree vectors.
+ *
+ * Models each word as a fuzzy set over the alphabet: each letter's membership
+ * is its normalized frequency in the word. Then computes Jaccard-style
+ * similarity: sum(min) / sum(max). Catches keyboard/visual typos:
+ *   "calcuus" ↔ "calculus"  (missing letter)
+ *   "teh" ↔ "the"  (transposition)
+ *   "recieve" ↔ "receive"  (swapped letters)
+ *
+ * Returns similarity in [0, 1].
+ */
+static float fuzzy_charset_similarity(const char* a, const char* b) {
+    float freq_a[26] = {0};
+    float freq_b[26] = {0};
+    uint32_t count_a = 0, count_b = 0;
+
+    for (const char* p = a; *p; p++) {
+        char c = (char)tolower((unsigned char)*p);
+        if (c >= 'a' && c <= 'z') {
+            freq_a[c - 'a'] += 1.0f;
+            count_a++;
+        }
+    }
+    for (const char* p = b; *p; p++) {
+        char c = (char)tolower((unsigned char)*p);
+        if (c >= 'a' && c <= 'z') {
+            freq_b[c - 'a'] += 1.0f;
+            count_b++;
+        }
+    }
+
+    if (count_a == 0 || count_b == 0) return 0.0f;
+
+    /* Normalize to membership degrees [0, 1] */
+    for (int i = 0; i < 26; i++) {
+        freq_a[i] /= (float)count_a;
+        freq_b[i] /= (float)count_b;
+    }
+
+    /* Fuzzy Jaccard: sum(min(A,B)) / sum(max(A,B)) */
+    float sum_min = 0.0f, sum_max = 0.0f;
+    for (int i = 0; i < 26; i++) {
+        sum_min += (freq_a[i] < freq_b[i]) ? freq_a[i] : freq_b[i];
+        sum_max += (freq_a[i] > freq_b[i]) ? freq_a[i] : freq_b[i];
+    }
+
+    if (sum_max < 1e-8f) return 0.0f;
+    float base_sim = sum_min / sum_max;
+
+    /* Length penalty — character bag similarity is high for anagrams,
+     * so penalize large length differences */
+    float len_ratio = (float)(count_a < count_b ? count_a : count_b) /
+                      (float)(count_a > count_b ? count_a : count_b);
+
+    return base_sim * (0.5f + 0.5f * len_ratio);
+}
+
+/**
+ * Find best fuzzy match in lexicon when exact lookup fails.
+ *
+ * Two-stage scoring:
+ *   Stage 1: Phonological similarity (catches sound-alike typos)
+ *   Stage 2: Fuzzy character-set similarity (catches visual/keyboard typos)
+ * Takes the max of both scores. Accepts if above GL_FUZZY_THRESHOLD.
+ *
+ * Scans vocab_list linearly — O(vocab_count) but only called on unknown words,
+ * and typical vocab is < 16K entries with short string comparisons.
+ */
+static const gl_lexicon_entry_t* lexicon_find_fuzzy(const grounded_language_t* gl,
+                                                      const char* word) {
+    char lower[GL_MAX_WORD_LEN];
+    lowercase_word(word, lower, GL_MAX_WORD_LEN);
+
+    size_t len = strlen(lower);
+    if (len < GL_FUZZY_MIN_LEN) return NULL;
+
+    const gl_lexicon_entry_t* best_entry = NULL;
+    float best_score = GL_FUZZY_THRESHOLD;
+
+    for (uint32_t i = 0; i < gl->vocab_count; i++) {
+        const gl_lexicon_entry_t* candidate = gl->vocab_list[i];
+        if (!candidate) continue;
+
+        /* Quick length filter — skip if lengths differ by more than 40% */
+        size_t clen = strlen(candidate->form);
+        if (clen < GL_FUZZY_MIN_LEN) continue;
+        float len_ratio = (float)(len < clen ? len : clen) /
+                          (float)(len > clen ? len : clen);
+        if (len_ratio < 0.6f) continue;
+
+        /* Stage 1: Phonological similarity */
+        float phon_score = phonological_similarity(lower, candidate->form);
+
+        /* Stage 2: Fuzzy character-set similarity */
+        float fuzzy_score = fuzzy_charset_similarity(lower, candidate->form);
+
+        /* Take the better of the two approaches */
+        float score = (phon_score > fuzzy_score) ? phon_score : fuzzy_score;
+
+        if (score > best_score) {
+            best_score = score;
+            best_entry = candidate;
+        }
+    }
+
+    if (best_entry) {
+        LOG_DEBUG(LOG_MODULE, "Fuzzy match: '%s' -> '%s' (score=%.3f)",
+                  lower, best_entry->form, best_score);
+    }
+
+    return best_entry;
+}
+
 /** Add or strengthen a binding between a word and a concept */
 static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
                         uint64_t concept_id, float strength, gl_modality_t modality) {
@@ -828,8 +1026,12 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     for (uint32_t w = 0; w < word_count; w++) {
         const gl_lexicon_entry_t* entry = lexicon_find(gl, words[w]);
         if (!entry) {
-            /* Unknown word - note novelty but continue */
-            continue;
+            /* Exact match failed — try fuzzy matching (phonological + character-set) */
+            entry = lexicon_find_fuzzy(gl, words[w]);
+            if (!entry) {
+                /* Truly unknown word - note novelty but continue */
+                continue;
+            }
         }
 
         known_words++;

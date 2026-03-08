@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from neural_decoder import NeuralDecoder, VocabularyBank
 from claude_teacher import encode_text
 from response_composer import ResponseComposer
+from conversation_context import ConversationContext
 
 logger = logging.getLogger("talk_to_athena")
 
@@ -204,7 +205,7 @@ def main():
     print("=" * 60)
     print("  ATHENA CONVERSATION")
     print("  Type your message and press Enter.")
-    print("  Commands: /quit /status /raw /similar <text> /teach <text> /probe /transcript")
+    print("  Commands: /quit /status /raw /similar <text> /teach <text> /probe /transcript /context")
     print("=" * 60)
     print(f"  Inference pipeline:")
     print(f"    System 1 (fast): grounded_respond {'[available]' if has_grounded else '[unavailable]'}")
@@ -222,6 +223,7 @@ def main():
     turn = 0
     memory = ConversationMemory(max_turns=10)
     composer = ResponseComposer(max_sentences=3, min_salience=0.15)
+    ctx_engine = ConversationContext(max_turns=50)
 
     while True:
         try:
@@ -284,6 +286,15 @@ def main():
                 print(f"[Transcript error: {e}]")
             continue
 
+        if user_input.lower() == "/context":
+            summary = ctx_engine.get_summary()
+            print(f"[Conversation context:]")
+            print(f"  Turns: {summary['turns']}")
+            print(f"  Active topic: {', '.join(summary['active_topic']) if summary['active_topic'] else '(none)'}")
+            print(f"  Topic threads: {summary['threads']}")
+            print(f"  Confidence trend: {summary['confidence_trend']:+.2f}")
+            continue
+
         if user_input.lower().startswith("/teach "):
             # Teach Athena: /teach <text> — learn this text as input AND target
             text = user_input[7:].strip()
@@ -302,6 +313,12 @@ def main():
                     print(f"[Teach error: {e}]")
             continue
 
+        # ------- Process conversation context (Phase 3) -------
+        # We process context early so both System 1 and System 2 can use it.
+        # For System 1, we pass an empty transcript/decision — the context
+        # engine still detects greetings, follow-ups, topic shifts from text.
+        ctx_signals = ctx_engine.process_turn(user_input, [], {})
+
         # ------- System 1: Try grounded language (fast path) -------
         grounded_ok = False
         t0 = time.time()
@@ -317,11 +334,14 @@ def main():
                 print(f"        [grounded | conf={grounded_conf:.4f} | "
                       f"{grounded_time*1000:.0f}ms]")
                 if args.verbose:
-                    print(f"        [System 1 fast path — grounded language]")
+                    phase = ctx_signals.conversation_phase
+                    print(f"        [System 1 fast path — grounded language | "
+                          f"phase={phase}]")
         except Exception:
             pass  # Grounded language not initialized — fall through
 
         if grounded_ok:
+            ctx_engine.record_response(grounded_text)
             memory.add(user_input, grounded_text, grounded_conf)
             print()
             turn += 1
@@ -391,6 +411,28 @@ def main():
         except Exception:
             pass
 
+        # ---- Re-process context with transcript + decision (Phase 3) ----
+        # The initial process_turn used empty transcript. Now update with
+        # real cognitive data for accurate trajectory tracking.
+        if transcript or result:
+            # Update the last turn's data in-place
+            if ctx_engine.turns:
+                last_turn = ctx_engine.turns[-1]
+                last_turn["confidence"] = confidence
+                if transcript:
+                    best_entry = max(transcript,
+                                     key=lambda e: e.get("salience", 0))
+                    last_turn["top_salience"] = best_entry.get("salience", 0.0)
+                    last_turn["dominant_module"] = best_entry.get("module", "")
+                # Re-compute trajectory with real confidence
+                ctx_engine._confidences[-1] = confidence
+                valence = ctx_engine._extract_valence(transcript)
+                ctx_engine._valences[-1] = valence
+                ctx_signals.confidence_trend = ctx_engine._compute_trend(
+                    ctx_engine._confidences)
+                ctx_signals.emotional_trend = ctx_engine._compute_trend(
+                    ctx_engine._valences)
+
         # ---- Compose response from transcript + decoded signals ----
         # The composer synthesizes from cognitive module outputs,
         # falling back to vocab/generated text when available.
@@ -398,7 +440,8 @@ def main():
         composed = composer.compose(
             transcript, result,
             user_input=user_input,
-            vocab_response=best_base if confidence > 0.1 else "")
+            vocab_response=best_base if confidence > 0.1 else "",
+            context=ctx_signals)
 
         if composed:
             athena_response = composed
@@ -411,8 +454,18 @@ def main():
                 if entry.get('salience', 0) > 0.15:
                     sources.append(entry['module'])
             src_str = ", ".join(sources) if sources else "cognitive"
+            # Phase 3: Show context state in attribution
+            phase = ctx_signals.conversation_phase
+            ctx_tag = ""
+            if ctx_signals.is_followup:
+                ctx_tag = " followup"
+            elif ctx_signals.is_topic_shift:
+                ctx_tag = " topic-shift"
+            elif ctx_signals.is_returning_topic:
+                ctx_tag = " returning"
             print(f"        [composed from: {src_str} | "
                   f"conf={confidence:.4f} | "
+                  f"phase={phase}{ctx_tag} | "
                   f"{(encode_time + infer_time)*1000:.0f}ms]")
         elif gen_text:
             athena_response = gen_text
@@ -449,6 +502,7 @@ def main():
                         print(f"          {mod:20s}  sal={sal:.2f}  "
                               f"conf={conf:.2f}  {summary[:60]}")
 
+        ctx_engine.record_response(athena_response)
         memory.add(user_input, athena_response, confidence)
         print()
         turn += 1
