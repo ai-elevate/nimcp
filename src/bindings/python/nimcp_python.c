@@ -3881,6 +3881,28 @@ static PyObject* Brain_medulla_boost_arousal(BrainObject* self, PyObject* args) 
 }
 
 /**
+ * WHAT: Reduce medulla arousal by a delta
+ * WHY:  Training may need to reduce arousal when brain is over-stimulated
+ * HOW:  Calls brain_ti_reduce_arousal with positive delta float
+ */
+static PyObject* Brain_medulla_reduce_arousal(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    float delta;
+    if (!PyArg_ParseTuple(args, "f", &delta)) return NULL;
+
+    int rc = brain_ti_reduce_arousal(self->brain->internal_brain, delta);
+    if (rc != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "medulla_reduce_arousal failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/**
  * WHAT: Get circadian efficiency factor from medulla
  * WHY:  Allows training to scale learning rate by time-of-day efficiency
  * HOW:  Calls brain_ti_get_circadian_efficiency, returns float [0.0, 1.0]
@@ -6445,6 +6467,8 @@ static PyMethodDef Brain_methods[] = {
      "Get circadian phase: medulla_get_circadian_phase() -> int"},
     {"medulla_boost_arousal", (PyCFunction)Brain_medulla_boost_arousal, METH_VARARGS,
      "Boost arousal: medulla_boost_arousal(delta) -> None"},
+    {"medulla_reduce_arousal", (PyCFunction)Brain_medulla_reduce_arousal, METH_VARARGS,
+     "Reduce arousal: medulla_reduce_arousal(delta) -> None"},
     {"medulla_get_circadian_efficiency", (PyCFunction)Brain_medulla_get_circadian_efficiency, METH_NOARGS,
      "Get circadian efficiency: medulla_get_circadian_efficiency() -> float"},
 

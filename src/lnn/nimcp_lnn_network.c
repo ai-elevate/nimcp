@@ -532,13 +532,10 @@ int lnn_network_forward_batch(
  * WHY:  State checkpointing, introspection
  * HOW:  Gather x from each layer, concatenate
  */
-int lnn_network_get_state(const lnn_network_t* network, nimcp_tensor_t** state) {
-    // Guard: Validate inputs
-    if (!network || !state) {
-        NIMCP_LOGGING_ERROR("lnn_network_get_state: NULL argument");
-        return LNN_ERROR_NULL_POINTER;
-    }
-
+/**
+ * Internal unlocked helper — caller MUST hold network->mutex.
+ */
+static int lnn_network_get_state_unlocked(const lnn_network_t* network, nimcp_tensor_t** state) {
     // Calculate total state size
     uint32_t total_size = 0;
     for (uint32_t i = 0; i < network->n_layers; i++) {
@@ -578,6 +575,30 @@ int lnn_network_get_state(const lnn_network_t* network, nimcp_tensor_t** state) 
     return LNN_SUCCESS;
 }
 
+int lnn_network_get_state(const lnn_network_t* network, nimcp_tensor_t** state) {
+    // Guard: Validate inputs
+    if (!network || !state) {
+        NIMCP_LOGGING_ERROR("lnn_network_get_state: NULL argument");
+        return LNN_ERROR_NULL_POINTER;
+    }
+
+    /* Lock mutex to prevent race with forward_step which destroys/replaces
+     * layer->x tensors.  Without this lock, a concurrent forward_step can
+     * free layer->x while we are cloning it, leading to use-after-free
+     * (manifests as "nimcp_tensor_create: t->shape.numel is zero"). */
+    if (network->mutex) {
+        nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)network->mutex);
+    }
+
+    int result = lnn_network_get_state_unlocked(network, state);
+
+    if (network->mutex) {
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
+    }
+
+    return result;
+}
+
 /**
  * @brief Set network state (all layers)
  *
@@ -592,6 +613,11 @@ int lnn_network_set_state(lnn_network_t* network, const nimcp_tensor_t* state) {
         return LNN_ERROR_NULL_POINTER;
     }
 
+    /* Lock mutex — set_state writes to layer->x which forward_step also modifies. */
+    if (network->mutex) {
+        nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)network->mutex);
+    }
+
     // Split state and set each layer
     uint32_t offset = 0;
     for (uint32_t i = 0; i < network->n_layers; i++) {
@@ -602,6 +628,9 @@ int lnn_network_set_state(lnn_network_t* network, const nimcp_tensor_t* state) {
         nimcp_tensor_t* layer_state = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
         if (!layer_state) {
             NIMCP_LOGGING_ERROR("lnn_network_set_state: Failed to allocate layer state");
+            if (network->mutex) {
+                nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
+            }
             return LNN_ERROR_OUT_OF_MEMORY;
         }
 
@@ -617,10 +646,17 @@ int lnn_network_set_state(lnn_network_t* network, const nimcp_tensor_t* state) {
 
         if (result != LNN_SUCCESS) {
             NIMCP_LOGGING_ERROR("lnn_network_set_state: Failed to set layer %u state", i);
+            if (network->mutex) {
+                nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
+            }
             return result;
         }
 
         offset += layer_size;
+    }
+
+    if (network->mutex) {
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
     }
 
     return LNN_SUCCESS;
@@ -640,6 +676,12 @@ int lnn_network_get_tau(const lnn_network_t* network, nimcp_tensor_t** tau) {
         return LNN_ERROR_NULL_POINTER;
     }
 
+    /* Lock mutex — tau tensors are replaced during lnn_layer_compute_tau
+     * which runs inside forward_step under the same mutex. */
+    if (network->mutex) {
+        nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)network->mutex);
+    }
+
     // Calculate total size
     uint32_t total_size = 0;
     for (uint32_t i = 0; i < network->n_layers; i++) {
@@ -651,6 +693,9 @@ int lnn_network_get_tau(const lnn_network_t* network, nimcp_tensor_t** tau) {
     *tau = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
     if (!*tau) {
         NIMCP_LOGGING_ERROR("lnn_network_get_tau: Failed to allocate tau tensor");
+        if (network->mutex) {
+            nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
+        }
         return LNN_ERROR_OUT_OF_MEMORY;
     }
 
@@ -663,6 +708,9 @@ int lnn_network_get_tau(const lnn_network_t* network, nimcp_tensor_t** tau) {
             NIMCP_LOGGING_ERROR("lnn_network_get_tau: Failed to get layer %u tau", i);
             nimcp_tensor_destroy(*tau);
             *tau = NULL;
+            if (network->mutex) {
+                nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
+            }
             return result;
         }
 
@@ -674,6 +722,10 @@ int lnn_network_get_tau(const lnn_network_t* network, nimcp_tensor_t** tau) {
 
         offset += network->layers[i]->n_neurons;
         nimcp_tensor_destroy(layer_tau);
+    }
+
+    if (network->mutex) {
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
     }
 
     return LNN_SUCCESS;
@@ -793,9 +845,10 @@ int lnn_network_record_state(lnn_network_t* network) {
         return LNN_SUCCESS;  // No history buffer, skip silently
     }
 
-    // Get current state
+    // Get current state — use unlocked helper since caller (forward_step)
+    // already holds network->mutex.
     nimcp_tensor_t* state = NULL;
-    int result = lnn_network_get_state(network, &state);
+    int result = lnn_network_get_state_unlocked(network, &state);
     if (result != LNN_SUCCESS) {
         NIMCP_LOGGING_ERROR("lnn_network_record_state: Failed to get state");
         return result;

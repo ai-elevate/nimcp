@@ -38,18 +38,32 @@ import json
 import signal
 import numpy as np
 
+# Force unbuffered stdout so prints appear in log files immediately
+sys.stdout.reconfigure(line_buffering=True)
+
 # Add scripts directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Suppress noisy progress bars and verbose logging
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TQDM_DISABLE"] = "1"
+# Disable COW SIGSEGV handler — conflicts with PyTorch/CUDA lazy memory mapping
+os.environ["NIMCP_NO_COW_SIGNAL"] = "1"
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 
+# Import nimcp FIRST — it initializes the CUDA context for brain training.
 import nimcp
+
+# Hide GPU from PyTorch to prevent dual-CUDA-context crashes.
+# BUT: nimcp's gpu_detect uses pthread_once + cuInit which reads
+# CUDA_VISIBLE_DEVICES at call time (during Brain()), not import time.
+# So we hide it only for the PyTorch import, then restore it before
+# Brain() is created.
+_saved_cuda_vis = os.environ.get("CUDA_VISIBLE_DEVICES")
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from claude_teacher import ClaudeTeacher, encode_text, batch_encode_texts
 from talk_to_athena import extract_embedding_from_output
 from neural_decoder import NeuralDecoder
@@ -118,6 +132,7 @@ CHECKPOINT_DIR = "checkpoints/athena"
 DECODER_DIR = "checkpoints/athena/decoder"
 STATE_FILE = "checkpoints/athena/immersive_state.json"
 MASTERY_FILE = "checkpoints/athena/mastery_state.json"
+CONTENT_CACHE = "checkpoints/athena/claude_content_cache.json"
 
 # Adaptive curriculum constants
 MASTERY_WINDOW = 20          # Rolling window for accuracy tracking
@@ -1387,7 +1402,7 @@ class BiologicalClock:
             if arousal < 0.3:
                 brain.medulla_boost_arousal(0.15)
             elif arousal > 0.85:
-                brain.medulla_boost_arousal(-0.1)
+                brain.medulla_reduce_arousal(0.1)
         except Exception:
             pass
 
@@ -1460,15 +1475,37 @@ class Parent:
         self._conversation_replies = []  # stage 3 conversational responses
 
     def pre_generate_content(self, stage, num_stimuli):
-        """Pre-generate ALL parent narrations for a stage in one Claude call.
+        """Load pre-generated narrations for a stage.
 
-        Makes a single large Claude call that returns JSON with all the
-        narrations, moral stories, speech prompts, and inspirations needed
-        for the entire stage. Zero blocking during training.
+        Tries to load from the content cache file (generated before brain init
+        when memory is available). Falls back to Claude CLI call, then to
+        built-in narrations.
         """
         if not self.enabled:
             print("  [Parent] Claude disabled — using silent parenting")
             return
+
+        # Try loading from cache first (generated before brain ate all RAM)
+        try:
+            if os.path.exists(CONTENT_CACHE):
+                with open(CONTENT_CACHE) as f:
+                    cache = json.load(f)
+                stage_key = str(stage)
+                if stage_key in cache:
+                    data = cache[stage_key]
+                    self._narrations = data.get("narrations", [])
+                    self._encouragements = data.get("encouragements", [])
+                    self._moral_stories = data.get("moral_stories", [])
+                    self._speech_prompts = data.get("speech_prompts", [])
+                    self._inspirations = data.get("inspirations", [])
+                    self._dream_prompts = data.get("dreams", [])
+                    self._conversation_replies = data.get("conversations", [])
+                    print(f"  [Parent] Loaded {len(self._narrations)} narrations from cache "
+                          f"({len(self._encouragements)} encouragements, "
+                          f"{len(self._moral_stories)} moral stories)")
+                    return
+        except Exception as e:
+            print(f"  [Parent] Cache load failed: {e}")
 
         # Calculate how many of each type we need
         n_narrations = min(num_stimuli, 200)  # one per stimulus, cap at 200
@@ -1511,17 +1548,28 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             import subprocess as _sp
             try:
                 _test = _sp.run(
-                    ["claude", "-p", "Say OK", "--output-format", "text"],
+                    ["claude", "-p", "Say OK", "--output-format", "text",
+                     "--mcp-config", "/home/bbrelin/.claude/empty-mcp.json",
+                     "--strict-mcp-config",
+                     "--no-session-persistence", "--system-prompt", "",
+                     "--setting-sources", "", "--tools", ""],
                     capture_output=True, text=True, timeout=20,
-                    env={k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+                    env={k: v for k, v in os.environ.items()
+                         if k not in ("CLAUDECODE", "CUDA_VISIBLE_DEVICES")}
                 )
                 if not _test.stdout.strip():
                     raise RuntimeError("Claude CLI returned empty output")
             except Exception as e:
                 raise RuntimeError(f"Claude CLI connectivity test failed: {e}")
 
-            # Single Claude call with generous token budget
-            raw = self.teacher._call_claude(prompt, max_tokens=4096)
+            # Single Claude call with generous token budget.
+            # Pre-gen is a one-time cost per stage — allow 5 min for large JSON.
+            old_timeout = self.teacher.timeout
+            self.teacher.timeout = 300
+            try:
+                raw = self.teacher._call_claude(prompt, max_tokens=4096)
+            finally:
+                self.teacher.timeout = old_timeout
 
             # Parse JSON — strip markdown fences if present
             raw = raw.strip()
@@ -1614,11 +1662,30 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         ] * 8
 
     def _pop_content(self, pool_name):
-        """Pick a random item from a content pool (non-destructive)."""
+        """Pick an item from a content pool without repetition.
+
+        Uses a shuffled shadow deck; refills when exhausted so no item
+        repeats until every item in the pool has been used once.
+        """
         pool = getattr(self, pool_name)
         if not pool:
             return None
-        return random.choice(pool)
+
+        deck_name = pool_name + "_deck"
+        deck = getattr(self, deck_name, None)
+        if not deck:
+            deck = list(pool)
+            random.shuffle(deck)
+            setattr(self, deck_name, deck)
+
+        item = deck.pop()
+
+        if not deck:
+            deck = list(pool)
+            random.shuffle(deck)
+            setattr(self, deck_name, deck)
+
+        return item
 
     def _say(self, prompt, max_tokens=128):
         """Get a pre-generated parent narration (zero latency).
@@ -2180,6 +2247,12 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                       f"for {early_stop.patience} evals")
                 break
 
+        # Chat eval every 2000 stimuli + on-demand via trigger file
+        if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
+            if os.path.exists("/tmp/athena_chat_now"):
+                os.remove("/tmp/athena_chat_now")
+            chat_eval(brain, composer, decoder, stage=0, step=i+1)
+
         # Inspire every 2000 stimuli
         if (i + 1) % 2000 == 0:
             parent.inspire(brain, composer, stage=0)
@@ -2254,6 +2327,12 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         # Speech training every 500
         if (i + 1) % 500 == 0:
             parent.teach_speech(brain, composer, stage=1)
+
+        # Chat eval every 2000 + on-demand
+        if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
+            if os.path.exists("/tmp/athena_chat_now"):
+                os.remove("/tmp/athena_chat_now")
+            chat_eval(brain, composer, decoder, stage=1, step=i+1)
 
         # Inspire every 5000
         if (i + 1) % 5000 == 0:
@@ -2340,6 +2419,12 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         # Speech training every 300
         if (i + 1) % 300 == 0:
             parent.teach_speech(brain, composer, stage=2)
+
+        # Chat eval every 2000 + on-demand
+        if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
+            if os.path.exists("/tmp/athena_chat_now"):
+                os.remove("/tmp/athena_chat_now")
+            chat_eval(brain, composer, decoder, stage=2, step=i+1)
 
         # Inspire every 3000
         if (i + 1) % 3000 == 0:
@@ -2631,6 +2716,12 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             _save_checkpoint(brain, decoder, stage=3, step=i+1)
             mastery.save(MASTERY_FILE)
 
+        # Chat eval every 2000 + on-demand
+        if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
+            if os.path.exists("/tmp/athena_chat_now"):
+                os.remove("/tmp/athena_chat_now")
+            chat_eval(brain, composer, decoder, stage=3, step=i+1)
+
         # Forward chain KB
         if (i + 1) % 1000 == 0:
             try:
@@ -2708,6 +2799,179 @@ def _print_bio_stats(brain):
 # ============================================================================
 
 # Fixed test stimuli — never trained on directly, used to observe responses
+# ---------------------------------------------------------------------------
+# Chat evaluation — periodic conversational tests during training
+# ---------------------------------------------------------------------------
+
+_CHAT_PROMPTS_FILE = "checkpoints/athena/chat_eval_prompts.json"
+_CHAT_PROMPTS_CACHE = None  # loaded lazily
+_CHAT_EVAL_SAMPLE_SIZE = 20  # prompts per eval (sampled from full 500)
+
+_CHAT_LOG_FILE = "checkpoints/athena/chat_eval_log.jsonl"
+_chat_eval_count = 0
+
+
+def _load_chat_prompts():
+    """Load chat eval prompts from JSON file."""
+    global _CHAT_PROMPTS_CACHE
+    if _CHAT_PROMPTS_CACHE is not None:
+        return _CHAT_PROMPTS_CACHE
+    try:
+        with open(_CHAT_PROMPTS_FILE) as f:
+            _CHAT_PROMPTS_CACHE = json.load(f)  # list of [category, prompt_text]
+    except Exception:
+        # Fallback minimal set
+        _CHAT_PROMPTS_CACHE = [
+            ["greetings", "Hello! How are you today?"],
+            ["colors", "What color is the sky?"],
+            ["animals", "Tell me about dogs."],
+            ["nature", "Tell me about the sun."],
+            ["feelings", "What makes you happy?"],
+            ["identity", "What is your name?"],
+            ["learning", "What have you learned today?"],
+            ["abstract", "Do you dream?"],
+            ["morals", "Why should we be kind to others?"],
+            ["science", "Why does it rain?"],
+        ]
+    return _CHAT_PROMPTS_CACHE
+
+
+def chat_eval(brain, composer, decoder, stage, step):
+    """Run conversational chat prompts through Athena and log responses.
+
+    Samples _CHAT_EVAL_SAMPLE_SIZE prompts from the full 500-prompt pool,
+    stratified across categories for coverage. Measures coherence, decode
+    similarity, output norms, and cross-prompt differentiation.
+    """
+    global _chat_eval_count
+    _chat_eval_count += 1
+
+    all_prompts = _load_chat_prompts()
+
+    # Stratified sample: pick evenly across categories
+    import random
+    by_cat = {}
+    for cat, text in all_prompts:
+        by_cat.setdefault(cat, []).append(text)
+    sample = []
+    cats = sorted(by_cat.keys())
+    per_cat = max(1, _CHAT_EVAL_SAMPLE_SIZE // len(cats))
+    for cat in cats:
+        pool = by_cat[cat]
+        n = min(per_cat, len(pool))
+        sample.extend([(cat, t) for t in random.sample(pool, n)])
+    # Top up if needed
+    while len(sample) < _CHAT_EVAL_SAMPLE_SIZE and len(sample) < len(all_prompts):
+        extra = random.choice(all_prompts)
+        if extra not in sample:
+            sample.append(tuple(extra))
+    sample = sample[:_CHAT_EVAL_SAMPLE_SIZE]
+
+    print(f"\n  {'═' * 56}")
+    print(f"  CHAT WITH ATHENA — Stage {stage}, Step {step} (eval #{_chat_eval_count})")
+    print(f"  {len(sample)} prompts from {len(cats)} categories (pool: {len(all_prompts)})")
+    print(f"  {'═' * 56}")
+
+    results = []
+    all_embeddings = []
+
+    for label, prompt_text in sample:
+        features = composer.compose(text=prompt_text, modality="text")
+        result = brain.decide_full(features)
+        output_vec = result.get("output_vector")
+
+        if output_vec is None:
+            print(f"    You: {prompt_text}")
+            print(f"    Athena: [no output]")
+            results.append({"label": label, "prompt": prompt_text,
+                           "response": "", "similarity": 0.0, "norm": 0.0})
+            continue
+
+        output_arr = np.array(output_vec, dtype=np.float32)
+        vec_norm = float(np.linalg.norm(output_arr))
+        output_emb = extract_embedding_from_output(output_arr)
+        all_embeddings.append(output_emb)
+
+        # Decode response
+        decoded = ""
+        similarity = 0.0
+        top3_str = ""
+        if decoder and len(decoder.vocabulary) > 0:
+            matches = decoder.vocabulary.decode(output_emb, top_k=3)
+            if matches and matches[0][0]:
+                decoded = matches[0][0]
+                similarity = matches[0][1]
+                top3_str = " | ".join(f"{t[:40]}({s:.2f})" for t, s in matches[:3] if t)
+
+        # Compute input-output coherence
+        input_emb = encode_text(prompt_text)
+        coherence = float(np.dot(output_emb, input_emb) /
+                         (np.linalg.norm(output_emb) * np.linalg.norm(input_emb) + 1e-8))
+
+        print(f"    You:    {prompt_text}")
+        if decoded:
+            print(f"    Athena: {decoded[:80]}")
+            if top3_str:
+                print(f"            [{top3_str}]")
+        else:
+            print(f"    Athena: [raw output, |v|={vec_norm:.2f}]")
+        print(f"            coherence={coherence:.3f}  sim={similarity:.3f}  |v|={vec_norm:.2f}")
+        print()
+
+        results.append({
+            "label": label, "prompt": prompt_text,
+            "response": decoded[:200], "similarity": similarity,
+            "coherence": coherence, "norm": vec_norm,
+        })
+
+    # Summary stats
+    if all_embeddings:
+        embs = np.array(all_embeddings, dtype=np.float32)
+        norms = np.linalg.norm(embs, axis=1, keepdims=True)
+        norms = np.maximum(norms, 1e-8)
+        sim_matrix = (embs @ embs.T) / (norms @ norms.T)
+        upper = [sim_matrix[i, j] for i in range(len(embs))
+                 for j in range(i + 1, len(embs))]
+        mean_cross = np.mean(upper) if upper else 0
+        coherences = [r["coherence"] for r in results if "coherence" in r]
+        mean_coherence = np.mean(coherences) if coherences else 0
+        mean_sim = np.mean([r["similarity"] for r in results])
+        mean_norm = np.mean([r["norm"] for r in results])
+
+        print(f"  Summary:")
+        print(f"    Mean coherence:       {mean_coherence:.3f}  (input↔output alignment)")
+        print(f"    Mean decode sim:      {mean_sim:.3f}  (vocab match quality)")
+        print(f"    Mean output norm:     {mean_norm:.2f}  (signal strength)")
+        print(f"    Mean cross-sim:       {mean_cross:.3f}  (differentiation, lower=better)")
+        if mean_cross > 0.95:
+            print(f"    Status: All responses nearly identical — not differentiating yet")
+        elif mean_cross > 0.8:
+            print(f"    Status: Some differentiation emerging")
+        elif mean_cross > 0.5:
+            print(f"    Status: Good differentiation between prompts")
+        else:
+            print(f"    Status: Strong differentiation — responses are distinct")
+    print(f"  {'═' * 56}\n")
+
+    # Append to JSONL log for tracking over time
+    try:
+        os.makedirs(os.path.dirname(_CHAT_LOG_FILE), exist_ok=True)
+        entry = {
+            "eval": _chat_eval_count,
+            "stage": stage, "step": step,
+            "timestamp": time.time(),
+            "mean_coherence": float(mean_coherence) if all_embeddings else 0,
+            "mean_similarity": float(mean_sim) if results else 0,
+            "mean_norm": float(mean_norm) if results else 0,
+            "mean_cross_sim": float(mean_cross) if all_embeddings else 0,
+            "responses": results,
+        }
+        with open(_CHAT_LOG_FILE, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception as e:
+        print(f"  [Chat log write failed: {e}]")
+
+
 _EVAL_PROBES = [
     ("dog", "A friendly dog with soft fur"),
     ("cat", "A cat that purrs when happy"),
@@ -2943,8 +3207,96 @@ def _load_state():
 
 
 # ============================================================================
+def _pre_generate_all_stages(args, force_fresh=False):
+    """Check for Claude content cache. Generate if missing via generate_content.py."""
+    if os.path.exists(CONTENT_CACHE):
+        try:
+            with open(CONTENT_CACHE) as f:
+                cache = json.load(f)
+            if all(str(s) in cache for s in range(4)):
+                total = sum(len(v) for d in cache.values() for v in d.values() if isinstance(v, list))
+                print(f"  [Claude] Content cache loaded — {total} items across 4 stages")
+                return
+        except Exception:
+            pass
+
+    # Try to generate inline (only works if enough free RAM for claude CLI)
+    print("  [Claude] No content cache found. Run 'python3 scripts/generate_content.py' first.")
+    print("  [Claude] Attempting inline generation...")
+    try:
+        import subprocess as _sp
+        result = _sp.run(
+            [sys.executable, "scripts/generate_content.py", "--force"],
+            timeout=600, cwd="/home/bbrelin/nimcp",
+            env={k: v for k, v in os.environ.items()
+                 if k not in ("CLAUDECODE", "CUDA_VISIBLE_DEVICES")}
+        )
+        if result.returncode == 0 and os.path.exists(CONTENT_CACHE):
+            print("  [Claude] Content generated successfully")
+            return
+    except Exception as e:
+        print(f"  [Claude] Inline generation failed: {e}")
+    print("  [Claude] Will use fallback narrations (run generate_content.py separately)")
+
+
 # Main
 # ============================================================================
+
+def _kill_stale_processes():
+    """Kill old immerse_athena / training processes and GPU zombies before starting."""
+    import subprocess
+    my_pid = os.getpid()
+    killed = []
+
+    # Kill old immerse_athena.py instances
+    try:
+        result = subprocess.run(
+            ["pgrep", "-f", "immerse_athena.py"],
+            capture_output=True, text=True, timeout=5)
+        for line in result.stdout.strip().splitlines():
+            pid = int(line.strip())
+            if pid != my_pid and pid != os.getppid():
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                    killed.append(("immerse_athena", pid))
+                except ProcessLookupError:
+                    pass
+    except Exception:
+        pass
+
+    # Kill zombie Python processes holding GPU memory
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5)
+        for line in result.stdout.strip().splitlines():
+            pid = int(line.strip())
+            if pid == my_pid:
+                continue
+            # Check if it's a zombie or orphaned multiprocessing child
+            try:
+                status_path = f"/proc/{pid}/status"
+                with open(status_path) as f:
+                    status_text = f.read()
+                is_zombie = "State:\tZ" in status_text
+                is_orphan_spawn = False
+                cmdline_path = f"/proc/{pid}/cmdline"
+                with open(cmdline_path) as f:
+                    cmdline = f.read()
+                is_orphan_spawn = "multiprocessing" in cmdline and "spawn" in cmdline
+                if is_zombie or is_orphan_spawn:
+                    os.kill(pid, signal.SIGKILL)
+                    killed.append(("gpu-zombie", pid))
+            except (FileNotFoundError, ProcessLookupError):
+                pass
+    except Exception:
+        pass
+
+    if killed:
+        time.sleep(1)  # let resources release
+        for label, pid in killed:
+            print(f"  [Cleanup] Killed stale {label} process (PID {pid})")
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -2971,6 +3323,8 @@ def main():
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(name)s] %(message)s")
 
+    _kill_stale_processes()
+
     # --- Load or create brain ---
     checkpoint_path = args.checkpoint
     if args.resume and not checkpoint_path:
@@ -2996,6 +3350,18 @@ def main():
     else:
         print("  Creating fresh brain (FULL init — all biological subsystems)")
         checkpoint_path = None
+
+    # --- Pre-generate Claude content BEFORE brain init (brain uses 52GB+) ---
+    if not args.no_claude:
+        _pre_generate_all_stages(args, force_fresh=args.fresh)
+
+    # Restore CUDA visibility so nimcp's gpu_detect sees the real GPU.
+    # PyTorch is already imported with CUDA disabled; restoring the env
+    # var won't make PyTorch re-acquire GPU context.
+    if _saved_cuda_vis is not None:
+        os.environ["CUDA_VISIBLE_DEVICES"] = _saved_cuda_vis
+    elif "CUDA_VISIBLE_DEVICES" in os.environ:
+        del os.environ["CUDA_VISIBLE_DEVICES"]
 
     brain = nimcp.Brain("athena",
                         num_inputs=args.num_inputs,

@@ -72,11 +72,35 @@ static uint32_t find_or_create_action(mirror_neurons_t mirror, const action_t* a
         }
     }
 
-    // Check capacity
+    // Check capacity — recycle least-used action if full
     if (mirror->num_actions >= mirror->config.max_actions) {
-        MIRROR_LOG_ERROR("Mirror neurons: max actions limit reached (%u)",
-                       mirror->config.max_actions);
-        return UINT32_MAX;
+        /* Find the action with the lowest usage (observations + executions) */
+        uint32_t min_idx = 0;
+        uint64_t min_usage = UINT64_MAX;
+        for (uint32_t i = 0; i < mirror->num_actions; i++) {
+            uint64_t usage = mirror->actions[i].total_observations +
+                             mirror->actions[i].total_executions;
+            if (usage < min_usage) {
+                min_usage = usage;
+                min_idx = i;
+            }
+        }
+        /* Free the old action's neuron indices and reuse its slot */
+        if (mirror->actions[min_idx].neuron_indices) {
+            nimcp_free(mirror->actions[min_idx].neuron_indices);
+        }
+        memset(&mirror->actions[min_idx], 0, sizeof(action_mapping_t));
+        /* Fill this slot with the new action below */
+        mirror->actions[min_idx].action_id = action->action_id;
+        strncpy(mirror->actions[min_idx].action_name, action->action_name,
+                sizeof(mirror->actions[min_idx].action_name) - 1);
+        mirror->actions[min_idx].capacity = 10;
+        mirror->actions[min_idx].neuron_indices =
+            (uint32_t*)nimcp_calloc(10, sizeof(uint32_t));
+        if (!mirror->actions[min_idx].neuron_indices) {
+            return UINT32_MAX;
+        }
+        return min_idx;
     }
 
     // Grow actions buffer if needed (load path may allocate fewer than max_actions)

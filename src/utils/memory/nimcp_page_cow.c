@@ -433,6 +433,14 @@ NIMCP_EXPORT bool page_cow_init(void) {
     // clobbering old_handler and corrupting signal handler chain.
     if (__atomic_load_n(&g_page_cow.initialized, __ATOMIC_ACQUIRE)) return true;
 
+    // Skip SIGSEGV handler installation when running under PyTorch/CUDA.
+    // CUDA uses mprotect-based lazy GPU memory mapping that relies on SIGSEGV.
+    // Our COW handler intercepts those faults and breaks CUDA's mechanism,
+    // causing SIGSEGV crashes during PyTorch model loading.
+    // Set NIMCP_NO_COW_SIGNAL=1 to disable the handler but keep COW data structures.
+    const char* no_cow = getenv("NIMCP_NO_COW_SIGNAL");
+    bool skip_signal = (no_cow && no_cow[0] == '1');
+
     // Use spinlock to serialize initialization attempts
     spinlock_acquire(&g_page_cow.lock);
 
@@ -448,17 +456,19 @@ NIMCP_EXPORT bool page_cow_init(void) {
     g_page_cow.region_count = 0;
     g_page_cow.view_count = 0;
 
-    // Install SIGSEGV handler
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_sigaction = sigsegv_handler;
-    sa.sa_flags = SA_SIGINFO;
-    sigemptyset(&sa.sa_mask);
+    if (!skip_signal) {
+        // Install SIGSEGV handler
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_sigaction = sigsegv_handler;
+        sa.sa_flags = SA_SIGINFO;
+        sigemptyset(&sa.sa_mask);
 
-    if (sigaction(SIGSEGV, &sa, &g_page_cow.old_handler) < 0) {
-        spinlock_release(&g_page_cow.lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_init: sigaction failed");
-        return false;
+        if (sigaction(SIGSEGV, &sa, &g_page_cow.old_handler) < 0) {
+            spinlock_release(&g_page_cow.lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_init: sigaction failed");
+            return false;
+        }
     }
 
     __atomic_store_n(&g_page_cow.initialized, true, __ATOMIC_RELEASE);

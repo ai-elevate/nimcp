@@ -339,11 +339,16 @@ bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_w
     nimcp_mutex_lock(&graph->lock);
 
     // Guard clauses: validate parameters
-    if (from >= graph->vertex_count || to >= graph->vertex_count || from == to ||
-        graph->edge_count >= NIMCP_MAX_EDGES) {
+    if (from >= graph->vertex_count || to >= graph->vertex_count || from == to) {
         nimcp_mutex_unlock(&graph->lock);
         LOG_ERROR("nimcp_graph_add_edge failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_graph_add_edge: operation failed");
+        return false;
+    }
+    // Capacity limit — return silently to avoid exception spam during
+    // topology analysis of large brains
+    if (graph->edge_count >= NIMCP_MAX_EDGES) {
+        nimcp_mutex_unlock(&graph->lock);
         return false;
     }
 

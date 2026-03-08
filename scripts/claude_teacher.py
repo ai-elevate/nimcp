@@ -24,10 +24,11 @@ def _get_embed_model():
     global _embed_model
     if _embed_model is not None:
         return _embed_model
-    import torch
     from sentence_transformers import SentenceTransformer
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    _embed_model = SentenceTransformer('BAAI/bge-large-en-v1.5', device=device)
+    # Force CPU for embeddings — GPU VRAM is reserved for nimcp brain training.
+    # Text encoding is not the bottleneck; keeping GPU free prevents cudaMalloc
+    # crashes during sparse weight upload (Thrust sort needs temp VRAM).
+    _embed_model = SentenceTransformer('BAAI/bge-large-en-v1.5', device='cpu')
     return _embed_model
 
 
@@ -175,9 +176,11 @@ class ClaudeTeacher:
 
     def _call_claude(self, prompt: str, system: str = "",
                      max_tokens: int | None = None) -> str:
-        """Call Claude via CLI: `claude -p "prompt" --model model`.
+        """Call Claude via CLI with minimal startup overhead.
 
         Uses the Max subscription — no API costs.
+        Optimized flags: no MCP servers, no tools, no session persistence,
+        no project settings (CLAUDE.md), minimal system prompt.
         """
         mt = max_tokens or self.max_tokens
 
@@ -190,7 +193,19 @@ class ClaudeTeacher:
             "claude", "-p", full_prompt,
             "--model", self.model,
             "--output-format", "text",
+            "--mcp-config", "/home/bbrelin/.claude/empty-mcp.json",
+            "--strict-mcp-config",      # ignore all other MCP configs
+            "--no-session-persistence", # don't save sessions to disk
+            "--system-prompt", "",      # override system prompt (skip CLAUDE.md)
+            "--setting-sources", "",    # skip loading project/user settings entirely
+            "--tools", "",              # disable all tools (pure text generation)
         ]
+
+        # Clean env for claude subprocess:
+        # - Remove CLAUDECODE to prevent nesting detection
+        # - Remove CUDA_VISIBLE_DEVICES (we hide GPU from PyTorch, but claude doesn't need it)
+        env = {k: v for k, v in os.environ.items()
+               if k not in ("CLAUDECODE", "CUDA_VISIBLE_DEVICES")}
 
         try:
             result = subprocess.run(
@@ -198,6 +213,7 @@ class ClaudeTeacher:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
+                env=env,
             )
             if result.returncode != 0:
                 stderr = result.stderr.strip()

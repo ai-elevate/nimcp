@@ -214,6 +214,19 @@ int brain_ti_get_circadian_phase(brain_t brain);
 int brain_ti_boost_arousal(brain_t brain, float delta);
 
 /**
+ * @brief Reduce medulla arousal level
+ *
+ * WHAT: Decrease arousal when brain is over-stimulated
+ * WHY:  High arousal during easy examples wastes resources
+ * HOW:  Delegates to medulla_reduce_arousal with positive delta
+ *
+ * @param brain Brain instance (NULL safe)
+ * @param delta Arousal decrease amount (positive, typically 0.05-0.2)
+ * @return 0 on success, -1 on error or unavailable
+ */
+int brain_ti_reduce_arousal(brain_t brain, float delta);
+
+/**
  * @brief Get circadian efficiency multiplier for consolidation
  *
  * WHAT: Compute efficiency factor from current circadian phase

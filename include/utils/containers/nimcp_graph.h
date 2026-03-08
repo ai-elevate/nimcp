@@ -29,9 +29,9 @@
 /**
  * Maximum number of edges (connections) supported in the graph
  * This provides an upper bound on memory usage
- * Increased proportionally to support higher vertex count
+ * Increased to 2M to support large brains (1.5M neurons with sparse connectivity)
  */
-#define NIMCP_MAX_EDGES 65536
+#define NIMCP_MAX_EDGES 2097152
 
 /**
  * Special value indicating an invalid vertex index

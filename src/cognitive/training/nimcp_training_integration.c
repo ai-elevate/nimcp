@@ -226,9 +226,28 @@ int brain_ti_get_circadian_phase(brain_t brain) {
 int brain_ti_boost_arousal(brain_t brain, float delta) {
     if (!brain) { return -1; }
     if (!brain->medulla_enabled || !brain->medulla) { return -1; }
-    int rc = medulla_boost_arousal(brain->medulla, delta);
+    /* Route negative delta to reduce_arousal (defensive — callers should
+     * use reduce_arousal directly, but this prevents error spam) */
+    int rc;
+    if (delta < 0.0f) {
+        rc = medulla_reduce_arousal(brain->medulla, -delta);
+    } else {
+        rc = medulla_boost_arousal(brain->medulla, delta);
+    }
     if (rc != 0) {
         NIMCP_LOGGING_WARN("training_integration: boost_arousal failed "
+                           "(delta=%.3f, rc=%d)", delta, rc);
+        return -1;
+    }
+    return 0;
+}
+
+int brain_ti_reduce_arousal(brain_t brain, float delta) {
+    if (!brain) { return -1; }
+    if (!brain->medulla_enabled || !brain->medulla) { return -1; }
+    int rc = medulla_reduce_arousal(brain->medulla, delta);
+    if (rc != 0) {
+        NIMCP_LOGGING_WARN("training_integration: reduce_arousal failed "
                            "(delta=%.3f, rc=%d)", delta, rc);
         return -1;
     }

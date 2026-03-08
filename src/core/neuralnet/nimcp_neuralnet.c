@@ -605,6 +605,47 @@ static bool validate_network_config(const network_config_t* config)
  * @return Network handle or NULL on failure
  */
 
+// --- Parallel backbone wiring worker ---
+typedef struct {
+    neural_network_t network;
+    uint32_t src_start;
+    uint32_t src_size;
+    uint32_t dst_start;
+    uint32_t dst_size;
+    uint32_t fan_in;
+    uint32_t dst_wired;
+    float scale;
+    uint32_t transition_conns;  // output
+} backbone_wire_task_t;
+
+static void* _backbone_wire_worker(void* arg) {
+    backbone_wire_task_t* task = (backbone_wire_task_t*)arg;
+    uint32_t dst_step = (task->dst_wired < task->dst_size) ? (task->dst_size / task->dst_wired) : 1;
+    uint32_t conns = 0;
+
+    for (uint32_t d = 0; d < task->dst_wired; d++) {
+        uint32_t dst_id = task->dst_start + (d * dst_step) % task->dst_size;
+        if (dst_id >= task->dst_start + task->dst_size) dst_id = task->dst_start + (dst_id % task->dst_size);
+        if (dst_id >= task->network->num_neurons) break;
+
+        uint32_t base_offset = (nimcp_tl_rand() % task->src_size);
+        uint32_t stride = task->src_size / task->fan_in;
+        if (stride == 0) stride = 1;
+
+        for (uint32_t f = 0; f < task->fan_in; f++) {
+            uint32_t src_offset = (base_offset + f * stride) % task->src_size;
+            uint32_t src_id = task->src_start + src_offset;
+            if (src_id >= task->network->num_neurons) continue;
+
+            float weight = (((float)nimcp_tl_rand() / RAND_MAX) * 2.0F - 1.0F) * task->scale;
+            neural_network_add_connection(task->network, src_id, dst_id, weight);
+            conns++;
+        }
+    }
+    task->transition_conns = conns;
+    return NULL;
+}
+
 neural_network_t neural_network_create(const network_config_t* config)
 {
     // Guard clause: Validate configuration
@@ -824,11 +865,25 @@ neural_network_t neural_network_create(const network_config_t* config)
         hpool_cfg.thread_safe = true;
         network->synapse_handle_pool = sparse_synapse_pool_create(&hpool_cfg);
 
-        // Metadata pool: start small (5% of handle pool), grows on demand via block allocator.
-        // Most synapses never need full metadata — only those using STDP/BCM/eligibility.
-        // Pre-allocating 1:1 wastes ~36GB for 1.5M-neuron networks.
+        // Metadata pool: pre-allocate based on expected backbone connections to avoid
+        // repeated growth events during wiring. For layered networks, estimate total
+        // connections as num_transitions × min(dst_size × fan_in, 20M cap).
         synapse_metadata_pool_config_t mpool_cfg = synapse_metadata_pool_default_config();
         uint32_t meta_initial = pool_size / 20;
+        if (config->num_layers > 1 && config->layer_sizes) {
+            uint64_t estimated_conns = 0;
+            uint32_t MIN_FAN_IN_EST = 64;
+            for (uint32_t l = 0; l < config->num_layers - 1; l++) {
+                uint64_t planned = (uint64_t)config->layer_sizes[l + 1] * MIN_FAN_IN_EST;
+                if (planned > 20000000) planned = 20000000;
+                estimated_conns += planned;
+            }
+            // Both outgoing + incoming handles per connection, plus skip connections (~10%)
+            uint64_t total_handles = estimated_conns * 2 + estimated_conns / 5;
+            if (total_handles > (uint64_t)meta_initial) {
+                meta_initial = (uint32_t)(total_handles < UINT32_MAX ? total_handles : UINT32_MAX);
+            }
+        }
         if (meta_initial < 100000) meta_initial = 100000;
         mpool_cfg.pool_size = meta_initial;
         mpool_cfg.enable_statistics = true;
@@ -902,76 +957,75 @@ neural_network_t neural_network_create(const network_config_t* config)
                 }
 
                 // Wire each layer transition: layer[l] → layer[l+1]
-                for (uint32_t t = 0; t < num_transitions; t++) {
-                    uint32_t src_size = config->layer_sizes[t];
-                    uint32_t dst_size = config->layer_sizes[t + 1];
-                    uint32_t src_start = layer_starts[t];
-                    uint32_t dst_start = layer_starts[t + 1];
+                // Parallel wiring: each transition has disjoint src/dst neuron ranges,
+                // so threads can wire simultaneously. Pool allocators are thread-safe.
+                backbone_wire_task_t* tasks = nimcp_calloc(num_transitions, sizeof(backbone_wire_task_t));
+                if (!tasks) {
+                    LOG_ERROR(LOG_MODULE, "Failed to allocate backbone wire tasks");
+                } else {
+                    // Prepare tasks
+                    for (uint32_t t = 0; t < num_transitions; t++) {
+                        tasks[t].network = network;
+                        tasks[t].src_start = layer_starts[t];
+                        tasks[t].src_size = config->layer_sizes[t];
+                        tasks[t].dst_start = layer_starts[t + 1];
+                        tasks[t].dst_size = config->layer_sizes[t + 1];
 
-                    // SCALABLE BACKBONE WIRING (v2):
-                    // Guarantee minimum fan-in per destination neuron so signal
-                    // can propagate through arbitrarily large/deep networks.
-                    //
-                    // Strategy: every dst neuron gets MIN_FAN_IN random connections
-                    // from the source layer. This scales linearly with dst_size
-                    // (not quadratically), keeping init time manageable while
-                    // ensuring no neuron is left unconnected.
-                    //
-                    // For a 1.5M neuron network with 7 layers:
-                    //   540K dst neurons × 16 fan-in = 8.6M connections per transition
-                    //   vs old: 200K total = 0.37 connections per dst neuron (dead)
+                        uint32_t MIN_FAN_IN = 64;
+                        uint32_t MAX_FAN_IN = 256;
+                        uint32_t fan_in = MIN_FAN_IN;
+                        if (fan_in > tasks[t].src_size) fan_in = tasks[t].src_size;
+                        if (fan_in > MAX_FAN_IN) fan_in = MAX_FAN_IN;
+                        tasks[t].fan_in = fan_in;
 
-                    uint32_t MIN_FAN_IN = 64;   // each dst neuron gets at least this many inputs
-                    uint32_t MAX_FAN_IN = 256;  // cap — matches embedded synapse capacity
-
-                    // Scale fan-in: use MIN_FAN_IN, but don't exceed src_size
-                    uint32_t fan_in = MIN_FAN_IN;
-                    if (fan_in > src_size) fan_in = src_size;
-                    if (fan_in > MAX_FAN_IN) fan_in = MAX_FAN_IN;
-
-                    // For very large layers, cap total connections to avoid
-                    // multi-minute init: 20M connections per transition max
-                    uint32_t max_total = 20000000;
-                    uint32_t dst_wired = dst_size;
-                    uint64_t total_planned = (uint64_t)dst_wired * (uint64_t)fan_in;
-                    if (total_planned > max_total) {
-                        // Subsample destination neurons but keep fan_in intact
-                        dst_wired = max_total / fan_in;
-                        if (dst_wired < 1024) dst_wired = 1024;
+                        uint32_t max_total = 20000000;
+                        uint32_t dst_wired = tasks[t].dst_size;
+                        uint64_t total_planned = (uint64_t)dst_wired * (uint64_t)fan_in;
+                        if (total_planned > max_total) {
+                            dst_wired = max_total / fan_in;
+                            if (dst_wired < 1024) dst_wired = 1024;
+                        }
+                        tasks[t].dst_wired = dst_wired;
+                        tasks[t].scale = sqrtf(2.0F / (float)fan_in);
+                        tasks[t].transition_conns = 0;
                     }
 
-                    // Xavier/He initialization scale
-                    float scale = sqrtf(2.0F / (float)fan_in);
+                    // Launch threads (up to 4, or num_transitions if fewer)
+                    uint32_t max_threads = 4;
+                    if (max_threads > num_transitions) max_threads = num_transitions;
+                    pthread_t* threads = nimcp_calloc(max_threads, sizeof(pthread_t));
 
-                    // Wire: each destination neuron gets fan_in random source neurons
-                    uint32_t dst_step = (dst_wired < dst_size) ? (dst_size / dst_wired) : 1;
-                    uint32_t transition_conns = 0;
+                    if (threads && max_threads > 1) {
+                        // Parallel: launch in batches of max_threads
+                        for (uint32_t batch_start = 0; batch_start < num_transitions; batch_start += max_threads) {
+                            uint32_t batch_end = batch_start + max_threads;
+                            if (batch_end > num_transitions) batch_end = num_transitions;
+                            uint32_t batch_count = batch_end - batch_start;
 
-                    for (uint32_t d = 0; d < dst_wired; d++) {
-                        uint32_t dst_id = dst_start + (d * dst_step) % dst_size;
-                        if (dst_id >= dst_start + dst_size) dst_id = dst_start + (dst_id % dst_size);
-                        if (dst_id >= network->num_neurons) break;
-
-                        // Select fan_in random source neurons (strided for diversity)
-                        uint32_t base_offset = (nimcp_tl_rand() % src_size);
-                        uint32_t stride = src_size / fan_in;
-                        if (stride == 0) stride = 1;
-
-                        for (uint32_t f = 0; f < fan_in; f++) {
-                            uint32_t src_offset = (base_offset + f * stride) % src_size;
-                            uint32_t src_id = src_start + src_offset;
-                            if (src_id >= network->num_neurons) continue;
-
-                            float weight = (((float)nimcp_tl_rand() / RAND_MAX) * 2.0F - 1.0F) * scale;
-                            neural_network_add_connection(network, src_id, dst_id, weight);
-                            transition_conns++;
+                            for (uint32_t t = 0; t < batch_count; t++) {
+                                pthread_create(&threads[t], NULL, _backbone_wire_worker, &tasks[batch_start + t]);
+                            }
+                            for (uint32_t t = 0; t < batch_count; t++) {
+                                pthread_join(threads[t], NULL);
+                            }
+                        }
+                    } else {
+                        // Fallback: serial
+                        for (uint32_t t = 0; t < num_transitions; t++) {
+                            _backbone_wire_worker(&tasks[t]);
                         }
                     }
 
-                    total_conns += transition_conns;
-                    total_backbone += dst_wired;
-                    LOG_INFO(LOG_MODULE, "Backbone L%u->L%u: %u dst × %u fan-in = %u connections",
-                             t, t + 1, dst_wired, fan_in, transition_conns);
+                    // Collect results
+                    for (uint32_t t = 0; t < num_transitions; t++) {
+                        total_conns += tasks[t].transition_conns;
+                        total_backbone += tasks[t].dst_wired;
+                        LOG_INFO(LOG_MODULE, "Backbone L%u->L%u: %u dst × %u fan-in = %u connections",
+                                 t, t + 1, tasks[t].dst_wired, tasks[t].fan_in, tasks[t].transition_conns);
+                    }
+
+                    nimcp_free(threads);
+                    nimcp_free(tasks);
                 }
 
                 // RESIDUAL / SKIP CONNECTIONS:
@@ -3258,14 +3312,9 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     out_h->peer_index = in_idx;
     in_h->peer_index = out_idx;
 
-    // Update weight norm to reflect new synapse
-    float sum_weights = 0.0F;
-    for (uint32_t i = 0; i < NEURON_OUT_COUNT(from_neuron); i++) {
-        synapse_handle_t* wh = NEURON_OUT_HANDLE(from_neuron, i);
-        if (!wh) continue;
-        sum_weights += fabsf(wh->weight);
-    }
-    from_neuron->weight_norm = sum_weights;
+    // Update weight norm incrementally — O(1) instead of O(D) full recalc.
+    // Full recalc is done once after bulk wiring via normalize_synaptic_weights().
+    from_neuron->weight_norm += fabsf(clamped_weight);
 
     return true;
 }
