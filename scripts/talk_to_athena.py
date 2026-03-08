@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from neural_decoder import NeuralDecoder, VocabularyBank
 from claude_teacher import encode_text
+from response_composer import ResponseComposer
 
 logger = logging.getLogger("talk_to_athena")
 
@@ -220,6 +221,7 @@ def main():
     show_raw = False
     turn = 0
     memory = ConversationMemory(max_turns=10)
+    composer = ResponseComposer(max_sentences=3, min_salience=0.15)
 
     while True:
         try:
@@ -361,73 +363,91 @@ def main():
             print(f"[output: len={len(ov)}, min={ov.min():.4f}, max={ov.max():.4f}, "
                   f"mean={ov.mean():.4f}, std={ov.std():.4f}]")
 
+        # ---- Gather raw decode candidates (used by composer + verbose) ----
+        vocab_response = ""
+        gen_text = ""
+
         # Try generate_text from brain output (grounded production)
-        generated_ok = False
         if output_vector:
             try:
                 gen_result = brain.generate_text(list(output_vector))
-                gen_text = gen_result.get("text", "")
-                gen_conf = gen_result.get("confidence", 0.0)
-                if gen_text and len(gen_text.strip()) > 2:
-                    generated_ok = True
-                    athena_response = gen_text
-                    print(f"Athena: {gen_text}")
-                    print(f"        [generated | conf={gen_conf:.4f} | "
-                          f"fluency={gen_result.get('fluency', 0.0):.4f}]")
+                gt = gen_result.get("text", "")
+                if gt and len(gt.strip()) > 2:
+                    gen_text = gt
             except Exception:
-                pass  # Generator not initialized — fall through to vocab decode
+                pass
 
-        # Fall back to vocabulary nearest-neighbor decode
-        if not generated_ok:
-            if output_vector and vocab and len(vocab) > 0:
-                brain_emb = extract_embedding_from_output(np.array(output_vector))
-                results = vocab.decode(brain_emb, top_k=args.top_k)
+        # Try vocabulary nearest-neighbor decode
+        if output_vector and vocab and len(vocab) > 0:
+            brain_emb = extract_embedding_from_output(np.array(output_vector))
+            results = vocab.decode(brain_emb, top_k=args.top_k)
+            best_text, best_sim = results[0]
+            vocab_response = best_text
 
-                best_text, best_sim = results[0]
-                athena_response = best_text
-                print(f"Athena: {best_text}")
-                print(f"        [vocab lookup | similarity={best_sim:.4f}]")
+        # ---- Get cognitive transcript ----
+        transcript = []
+        try:
+            transcript = brain.get_transcript() or []
+        except Exception:
+            pass
 
+        # ---- Compose response from transcript + decoded signals ----
+        # The composer synthesizes from cognitive module outputs,
+        # falling back to vocab/generated text when available.
+        best_base = gen_text or vocab_response
+        composed = composer.compose(
+            transcript, result,
+            user_input=user_input,
+            vocab_response=best_base if confidence > 0.1 else "")
+
+        if composed:
+            athena_response = composed
+            print(f"Athena: {composed}")
+            # Show source attribution
+            sources = []
+            for entry in sorted(transcript,
+                                key=lambda e: e.get('salience', 0),
+                                reverse=True)[:3]:
+                if entry.get('salience', 0) > 0.15:
+                    sources.append(entry['module'])
+            src_str = ", ".join(sources) if sources else "cognitive"
+            print(f"        [composed from: {src_str} | "
+                  f"conf={confidence:.4f} | "
+                  f"{(encode_time + infer_time)*1000:.0f}ms]")
+        elif gen_text:
+            athena_response = gen_text
+            print(f"Athena: {gen_text}")
+            gen_conf = gen_result.get("confidence", 0.0) if 'gen_result' in dir() else 0.0
+            print(f"        [generated | conf={confidence:.4f}]")
+        elif vocab_response:
+            athena_response = vocab_response
+            print(f"Athena: {vocab_response}")
+            print(f"        [vocab lookup | similarity={best_sim:.4f}]")
+        elif label:
+            athena_response = label
+            print(f"Athena: [{label}] (confidence: {confidence:.4f})")
+        else:
+            athena_response = ""
+            print("Athena: [no decodable output]")
+
+        # Show verbose details
+        if args.verbose or show_raw:
+            if vocab_response:
+                print(f"        [vocab: '{vocab_response[:60]}' sim={best_sim:.4f}]")
                 if args.top_k > 1 and len(results) > 1:
                     print("        alternatives:")
                     for text, sim in results[1:]:
                         print(f"          {sim:.4f}  {text[:80]}")
-
-                cos_sim = np.dot(brain_emb, input_embedding) / (
-                    max(np.linalg.norm(brain_emb), 1e-8) *
-                    max(np.linalg.norm(input_embedding), 1e-8))
-                if args.verbose:
-                    print(f"        [input<>output cosine: {cos_sim:.4f}]")
-
-            elif label:
-                athena_response = label
-                print(f"Athena: [{label}] (confidence: {confidence:.4f})")
-            else:
-                print("Athena: [no decodable output]")
-
-        # Show cognitive transcript (what the brain was thinking)
-        try:
-            transcript = brain.get_transcript()
-            if transcript and (args.verbose or show_raw):
+            if transcript:
                 print("        [cognitive transcript:]")
                 for entry in transcript:
                     mod = entry.get('module', '?')
                     sal = entry.get('salience', 0.0)
                     conf = entry.get('confidence', 0.0)
                     summary = entry.get('summary', '')
-                    if sal > 0.1:  # Only show non-trivial entries
+                    if sal > 0.1:
                         print(f"          {mod:20s}  sal={sal:.2f}  "
                               f"conf={conf:.2f}  {summary[:60]}")
-            elif transcript and len(transcript) > 0:
-                # Brief transcript: just show top 3 by salience
-                top = sorted(transcript,
-                             key=lambda e: e.get('salience', 0), reverse=True)[:3]
-                hints = [f"{e['module']}({e['salience']:.1f})" for e in top
-                         if e.get('salience', 0) > 0.1]
-                if hints:
-                    print(f"        [thinking: {', '.join(hints)}]")
-        except Exception:
-            pass  # Transcript not available in this build
 
         memory.add(user_input, athena_response, confidence)
         print()

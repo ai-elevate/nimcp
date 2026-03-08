@@ -347,6 +347,95 @@ static void seed_function_words(grounded_language_t* gl) {
     }
 }
 
+/** Seed conceptual vocabulary — real words Athena needs to communicate */
+static void seed_conceptual_words(grounded_language_t* gl) {
+    /* Cognitive/conversational nouns */
+    static const char* nouns[] = {
+        "thought", "idea", "question", "answer", "meaning", "pattern",
+        "knowledge", "understanding", "experience", "memory", "feeling",
+        "reason", "logic", "concept", "problem", "solution", "hypothesis",
+        "evidence", "truth", "belief", "consciousness", "awareness",
+        "learning", "thinking", "mind", "brain", "intelligence",
+        "language", "word", "sentence", "conversation", "response",
+        "science", "mathematics", "physics", "biology", "chemistry",
+        "philosophy", "ethics", "morality", "justice", "beauty",
+        "nature", "universe", "energy", "matter", "space", "time",
+        "life", "death", "growth", "change", "process", "system",
+        "structure", "function", "purpose", "goal", "action",
+        "observation", "prediction", "surprise", "curiosity",
+        "emotion", "confidence", "uncertainty", "doubt", "wonder",
+        "connection", "relationship", "similarity", "difference",
+        NULL
+    };
+    for (int i = 0; nouns[i]; i++) {
+        gl_lexicon_entry_t* entry = lexicon_find_or_create(gl, nouns[i]);
+        if (entry) {
+            entry->learned_class = GL_CLASS_NOUN;
+            entry->class_confidence = 0.7f;
+            entry->frequency = 20;
+        }
+    }
+
+    /* Cognitive/conversational verbs */
+    static const char* verbs[] = {
+        "think", "know", "understand", "learn", "remember", "believe",
+        "feel", "sense", "perceive", "observe", "notice", "recognize",
+        "mean", "explain", "describe", "say", "tell", "ask", "answer",
+        "consider", "wonder", "imagine", "predict", "expect", "surprise",
+        "analyze", "reason", "compare", "connect", "relate", "combine",
+        "create", "discover", "find", "search", "explore", "investigate",
+        "help", "try", "want", "need", "like", "enjoy", "prefer",
+        "agree", "disagree", "doubt", "trust", "hope", "fear",
+        "change", "grow", "develop", "evolve", "improve", "adapt",
+        "exist", "become", "seem", "appear", "happen", "occur",
+        NULL
+    };
+    for (int i = 0; verbs[i]; i++) {
+        gl_lexicon_entry_t* entry = lexicon_find_or_create(gl, verbs[i]);
+        if (entry) {
+            entry->learned_class = GL_CLASS_VERB;
+            entry->class_confidence = 0.7f;
+            entry->frequency = 20;
+        }
+    }
+
+    /* Cognitive/conversational adjectives */
+    static const char* adjectives[] = {
+        "interesting", "important", "complex", "simple", "clear",
+        "uncertain", "confident", "curious", "surprising", "familiar",
+        "new", "different", "similar", "related", "relevant",
+        "true", "false", "possible", "likely", "unlikely",
+        "good", "bad", "right", "wrong", "useful", "helpful",
+        "beautiful", "abstract", "concrete", "fundamental",
+        "logical", "emotional", "rational", "intuitive", "creative",
+        NULL
+    };
+    for (int i = 0; adjectives[i]; i++) {
+        gl_lexicon_entry_t* entry = lexicon_find_or_create(gl, adjectives[i]);
+        if (entry) {
+            entry->learned_class = GL_CLASS_ADJECTIVE;
+            entry->class_confidence = 0.7f;
+            entry->frequency = 15;
+        }
+    }
+
+    /* Adverbs */
+    static const char* adverbs[] = {
+        "deeply", "carefully", "clearly", "slowly", "quickly",
+        "perhaps", "probably", "certainly", "truly", "really",
+        "together", "already", "still", "yet", "always", "never",
+        NULL
+    };
+    for (int i = 0; adverbs[i]; i++) {
+        gl_lexicon_entry_t* entry = lexicon_find_or_create(gl, adverbs[i]);
+        if (entry) {
+            entry->learned_class = GL_CLASS_ADVERB;
+            entry->class_confidence = 0.7f;
+            entry->frequency = 10;
+        }
+    }
+}
+
 /** Create built-in syntactic templates */
 static void seed_templates(grounded_language_t* gl) {
     /* SVO: "The dog chases the cat" */
@@ -396,6 +485,38 @@ static void seed_templates(grounded_language_t* gl) {
     t->slot_count = 3;
     t->frequency = 5.0f;
     t->confidence = 0.7f;
+
+    /* SVOO: "I think learning is important" */
+    t = &gl->templates[gl->template_count++];
+    t->type = GL_PATTERN_SVOO;
+    t->slots[0] = GL_CLASS_PRONOUN;
+    t->slots[1] = GL_CLASS_VERB;
+    t->slots[2] = GL_CLASS_NOUN;
+    t->slots[3] = GL_CLASS_ADJECTIVE;
+    t->slot_count = 4;
+    t->frequency = 7.0f;
+    t->confidence = 0.75f;
+
+    /* Comparative: "The idea is more complex than the pattern" */
+    t = &gl->templates[gl->template_count++];
+    t->type = GL_PATTERN_COMPARATIVE;
+    t->slots[0] = GL_CLASS_NOUN;
+    t->slots[1] = GL_CLASS_ADJECTIVE;
+    t->slots[2] = GL_CLASS_NOUN;
+    t->slot_count = 3;
+    t->frequency = 4.0f;
+    t->confidence = 0.7f;
+
+    /* Conditional: "If the evidence is clear then the answer is true" */
+    t = &gl->templates[gl->template_count++];
+    t->type = GL_PATTERN_CONDITIONAL;
+    t->slots[0] = GL_CLASS_NOUN;
+    t->slots[1] = GL_CLASS_ADJECTIVE;
+    t->slots[2] = GL_CLASS_NOUN;
+    t->slots[3] = GL_CLASS_ADJECTIVE;
+    t->slot_count = 4;
+    t->frequency = 3.0f;
+    t->confidence = 0.65f;
 }
 
 /*=============================================================================
@@ -637,9 +758,10 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
 
     /* Seed with function words and basic templates */
     seed_function_words(gl);
+    seed_conceptual_words(gl);
     seed_templates(gl);
 
-    LOG_INFO(LOG_MODULE, "Grounded language system created (dim=%u, vocab=%u function words)",
+    LOG_INFO(LOG_MODULE, "Grounded language system created (dim=%u, vocab=%u words)",
              gl->semantic_dim, gl->vocab_count);
 
     return gl;

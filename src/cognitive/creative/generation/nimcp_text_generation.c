@@ -80,27 +80,51 @@ static uint32_t simple_random(uint32_t* seed) {
 /* Vocabulary-based text generation using word pools and sentence templates.
    This produces readable English text rather than gibberish. */
 
-/* Word pools by category for template-based generation */
+/* Word pools by category for template-based generation.
+   Two pools per class: atmospheric (literary) + cognitive (conversational).
+   The generator alternates pools based on context. */
+
 static const char* NOUNS[] = {
+    /* Atmospheric */
     "world", "light", "shadow", "dream", "silence", "voice", "moment", "thought",
     "river", "mountain", "forest", "ocean", "wind", "flame", "stone", "garden",
     "horizon", "memory", "path", "truth", "story", "wonder", "heart", "spirit",
     "time", "sky", "dawn", "night", "star", "rain", "storm", "wave",
-    "journey", "mystery", "wisdom", "courage", "hope", "fear", "joy", "sorrow"
+    "journey", "mystery", "wisdom", "courage", "hope", "fear", "joy", "sorrow",
+    /* Cognitive/conversational */
+    "idea", "question", "answer", "meaning", "pattern", "knowledge",
+    "understanding", "experience", "feeling", "reason", "concept", "problem",
+    "solution", "evidence", "belief", "awareness", "learning", "mind",
+    "language", "conversation", "response", "science", "mathematics",
+    "philosophy", "nature", "universe", "energy", "life", "change",
+    "process", "system", "structure", "purpose", "observation",
+    "prediction", "curiosity", "connection", "relationship", "difference"
 };
 static const char* ADJECTIVES[] = {
+    /* Atmospheric */
     "ancient", "bright", "dark", "silent", "golden", "hidden", "vast", "gentle",
     "fierce", "lonely", "distant", "eternal", "fragile", "deep", "wild", "quiet",
-    "strange", "familiar", "luminous", "restless", "sacred", "bitter", "warm", "cold"
+    "strange", "familiar", "luminous", "restless", "sacred", "bitter", "warm", "cold",
+    /* Cognitive/conversational */
+    "interesting", "important", "complex", "simple", "clear", "uncertain",
+    "curious", "surprising", "new", "different", "similar", "relevant",
+    "possible", "likely", "useful", "beautiful", "abstract", "fundamental",
+    "logical", "creative", "true", "meaningful"
 };
 static const char* VERBS[] = {
+    /* Atmospheric */
     "whispered", "echoed", "drifted", "shimmered", "emerged", "vanished", "unfolded",
     "revealed", "wandered", "lingered", "awakened", "descended", "transformed", "stirred",
-    "embraced", "shattered", "bloomed", "faded", "soared", "trembled", "flickered"
+    "embraced", "shattered", "bloomed", "faded", "soared", "trembled", "flickered",
+    /* Cognitive/conversational */
+    "suggests", "reveals", "connects", "relates", "means", "shows",
+    "implies", "requires", "involves", "changes", "develops", "grows",
+    "appears", "seems", "exists", "becomes", "matters", "helps"
 };
 static const char* TRANSITIONS[] = {
     "Then", "And so", "Yet", "Still", "Meanwhile", "In time", "At last",
-    "Perhaps", "Indeed", "Thus", "However", "Beyond this", "Within"
+    "Perhaps", "Indeed", "Thus", "However", "Beyond this", "Within",
+    "I think", "I notice", "I wonder", "It seems", "This suggests"
 };
 #define N_NOUNS     (sizeof(NOUNS)/sizeof(NOUNS[0]))
 #define N_ADJ       (sizeof(ADJECTIVES)/sizeof(ADJECTIVES[0]))
@@ -109,6 +133,7 @@ static const char* TRANSITIONS[] = {
 
 /* Sentence templates: %N=noun, %A=adjective, %V=verb */
 static const char* TEMPLATES[] = {
+    /* Atmospheric */
     "The %A %N %V in the %N.",
     "A %A %N %V beneath the %A %N.",
     "%N and %N %V together, like %A %N.",
@@ -119,6 +144,15 @@ static const char* TEMPLATES[] = {
     "Through %A %N, the %N %V onward.",
     "No %N could contain the %A %N that %V.",
     "Where the %N meets the %N, %A light %V.",
+    /* Cognitive/conversational */
+    "I think the %N %V something %A.",
+    "The %N seems %A to me.",
+    "I notice a %A %N in this %N.",
+    "This %N %V a %A %N.",
+    "I find the %N %A and %A.",
+    "The %A %N %V, which is %A.",
+    "I see a %N that %V the %N.",
+    "Perhaps the %N is more %A than it %V.",
 };
 #define N_TEMPLATES (sizeof(TEMPLATES)/sizeof(TEMPLATES[0]))
 
