@@ -1237,6 +1237,7 @@
 /home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/e2e_grounded_language.dir
+/home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/e2e_snn_language_bridge.dir
 /home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/rebuild_cache.dir
@@ -3438,6 +3439,14 @@
 /home/bbrelin/nimcp/build/test/unit/core/brain/kg/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/kg/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/kg/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/bridges/CMakeFiles/unit_core_brain_bridges_hyperledger.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/bridges/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/bridges/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/bridges/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/bridges/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/bridges/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/bridges/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/bridges/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/utils/math/CMakeFiles/unit_utils_math_test_complex_math.dir
 /home/bbrelin/nimcp/build/test/unit/utils/math/CMakeFiles/unit_utils_math_test_math_helpers.dir
 /home/bbrelin/nimcp/build/test/unit/utils/math/CMakeFiles/test.dir
@@ -6529,6 +6538,7 @@
 /home/bbrelin/nimcp/build/test/unit/snn/bridges/CMakeFiles/test_snn_training_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/snn/bridges/CMakeFiles/test_snn_training_integration_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/snn/bridges/CMakeFiles/test_snn_medulla_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/snn/bridges/CMakeFiles/test_snn_language_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/snn/bridges/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/snn/bridges/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/snn/bridges/CMakeFiles/rebuild_cache.dir
@@ -6548,6 +6558,7 @@
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/integration_snn_test_integration.dir
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/integration_snn_test_bridge_integration.dir
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/integration_snn_plasticity.dir
+/home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/integration_snn_language_bridge.dir
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/rebuild_cache.dir
@@ -6566,6 +6577,7 @@
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_test_regression.dir
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_test_bridge_regression.dir
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_test_numerical_regression.dir
+/home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_language_bridge.dir
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/rebuild_cache.dir

@@ -11186,6 +11186,19 @@ e2e_grounded_language/fast:
 .PHONY : e2e_grounded_language/fast
 
 #=============================================================================
+# Target rules for targets named e2e_snn_language_bridge
+
+# Build rule for target.
+e2e_snn_language_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_snn_language_bridge
+.PHONY : e2e_snn_language_bridge
+
+# fast build rule for target.
+e2e_snn_language_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/language/CMakeFiles/e2e_snn_language_bridge.dir/build.make test/e2e/language/CMakeFiles/e2e_snn_language_bridge.dir/build
+.PHONY : e2e_snn_language_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -22780,6 +22793,19 @@ test_kg_temporal: cmake_check_build_system
 test_kg_temporal/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/kg/CMakeFiles/test_kg_temporal.dir/build.make test/unit/core/brain/kg/CMakeFiles/test_kg_temporal.dir/build
 .PHONY : test_kg_temporal/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_bridges_hyperledger
+
+# Build rule for target.
+unit_core_brain_bridges_hyperledger: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_bridges_hyperledger
+.PHONY : unit_core_brain_bridges_hyperledger
+
+# fast build rule for target.
+unit_core_brain_bridges_hyperledger/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/bridges/CMakeFiles/unit_core_brain_bridges_hyperledger.dir/build.make test/unit/core/brain/bridges/CMakeFiles/unit_core_brain_bridges_hyperledger.dir/build
+.PHONY : unit_core_brain_bridges_hyperledger/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_math_test_complex_math
@@ -38486,6 +38512,19 @@ test_snn_medulla_bridge/fast:
 .PHONY : test_snn_medulla_bridge/fast
 
 #=============================================================================
+# Target rules for targets named test_snn_language_bridge
+
+# Build rule for target.
+test_snn_language_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_language_bridge
+.PHONY : test_snn_language_bridge
+
+# fast build rule for target.
+test_snn_language_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/bridges/CMakeFiles/test_snn_language_bridge.dir/build.make test/unit/snn/bridges/CMakeFiles/test_snn_language_bridge.dir/build
+.PHONY : test_snn_language_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_snn_exception_handling
 
 # Build rule for target.
@@ -38551,6 +38590,19 @@ integration_snn_plasticity/fast:
 .PHONY : integration_snn_plasticity/fast
 
 #=============================================================================
+# Target rules for targets named integration_snn_language_bridge
+
+# Build rule for target.
+integration_snn_language_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_language_bridge
+.PHONY : integration_snn_language_bridge
+
+# fast build rule for target.
+integration_snn_language_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/snn/CMakeFiles/integration_snn_language_bridge.dir/build.make test/integration/snn/CMakeFiles/integration_snn_language_bridge.dir/build
+.PHONY : integration_snn_language_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_snn_bridge_exception
 
 # Build rule for target.
@@ -38601,6 +38653,19 @@ regression_snn_test_numerical_regression: cmake_check_build_system
 regression_snn_test_numerical_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_numerical_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_numerical_regression.dir/build
 .PHONY : regression_snn_test_numerical_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_language_bridge
+
+# Build rule for target.
+regression_snn_language_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_language_bridge
+.PHONY : regression_snn_language_bridge
+
+# fast build rule for target.
+regression_snn_language_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_language_bridge.dir/build.make test/regression/snn/CMakeFiles/regression_snn_language_bridge.dir/build
+.PHONY : regression_snn_language_bridge/fast
 
 #=============================================================================
 # Target rules for targets named regression_snn_bridge_exception
@@ -42243,6 +42308,7 @@ help:
 	@echo "... e2e_security_test_bbb_immune_pipeline"
 	@echo "... e2e_security_test_bbb_quarantine"
 	@echo "... e2e_snn_bridge_exception"
+	@echo "... e2e_snn_language_bridge"
 	@echo "... e2e_statistics_test_information_theory_e2e"
 	@echo "... e2e_statistics_test_ml_statistics_e2e"
 	@echo "... e2e_statistics_test_multivariate_e2e"
@@ -42967,6 +43033,7 @@ help:
 	@echo "... integration_self_repair"
 	@echo "... integration_self_repair_bio_async"
 	@echo "... integration_snn_bridge_exception"
+	@echo "... integration_snn_language_bridge"
 	@echo "... integration_snn_plasticity"
 	@echo "... integration_snn_test_bridge_integration"
 	@echo "... integration_snn_test_integration"
@@ -43522,6 +43589,7 @@ help:
 	@echo "... regression_security_test_validation_performance"
 	@echo "... regression_security_utils_walkthrough_fixes"
 	@echo "... regression_snn_bridge_exception"
+	@echo "... regression_snn_language_bridge"
 	@echo "... regression_snn_test_bridge_regression"
 	@echo "... regression_snn_test_numerical_regression"
 	@echo "... regression_snn_test_regression"
@@ -43827,6 +43895,7 @@ help:
 	@echo "... test_snn_homeostatic_bridge"
 	@echo "... test_snn_introspection_bridge"
 	@echo "... test_snn_joy_bridge"
+	@echo "... test_snn_language_bridge"
 	@echo "... test_snn_love_bridge"
 	@echo "... test_snn_medulla_bridge"
 	@echo "... test_snn_memory_bridge"
@@ -44251,6 +44320,7 @@ help:
 	@echo "... unit_constants_test"
 	@echo "... unit_core_axon_test_axon"
 	@echo "... unit_core_axon_test_axon_enhanced"
+	@echo "... unit_core_brain_bridges_hyperledger"
 	@echo "... unit_core_brain_factory_init_basal_ganglia"
 	@echo "... unit_core_brain_factory_init_bg_bbb_kg"
 	@echo "... unit_core_brain_factory_init_coordinators"

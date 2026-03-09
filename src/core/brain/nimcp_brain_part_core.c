@@ -1111,6 +1111,12 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                         "input_variance_%.3f", input_variance);
                 curiosity_learn_experience(brain->curiosity, experience_desc,
                                           features, num_features);
+
+                /* Feed curiosity drive into SNN language bridge for lexical exploration */
+                if (brain->snn_lang_bridge) {
+                    snn_language_bridge_curiosity_modulate(brain->snn_lang_bridge,
+                                                           novelty_score, curiosity_drive);
+                }
             }
         }
     }
@@ -1571,6 +1577,19 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         systems_consolidation_update(brain->systems_consolidation, TIME_DELTA_SECONDS, is_sleeping);
     }
 
+    // STAGE 3.9b: SNN LANGUAGE BRIDGE SLEEP CONSOLIDATION
+    if (brain->snn_lang_bridge) {
+        bool is_sleeping = (sleep_state == SLEEP_STATE_DEEP_NREM ||
+                           sleep_state == SLEEP_STATE_LIGHT_NREM ||
+                           sleep_state == SLEEP_STATE_REM);
+        if (is_sleeping) {
+            float consolidation_strength = (sleep_state == SLEEP_STATE_DEEP_NREM) ? 0.8f :
+                                            (sleep_state == SLEEP_STATE_REM) ? 0.5f : 0.3f;
+            snn_language_bridge_sleep_consolidate(brain->snn_lang_bridge,
+                                                   consolidation_strength);
+        }
+    }
+
     // STAGE 3.10: WORKING MEMORY TRANSFER
     if (brain->wm_transfer_system && brain->working_memory) {
         wm_transfer_evaluate(brain->wm_transfer_system, 0.1F);
@@ -1702,6 +1721,12 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
                 imagination_end_scenario(brain->imagination, scenario);
             }
+        }
+
+        /* Apply pending STDP updates to SNN language bridge */
+        if (brain->snn_lang_bridge) {
+            snn_language_bridge_apply_stdp(brain->snn_lang_bridge,
+                                            (float)(nimcp_time_get_ms() % 1000000));
         }
     }
 
@@ -2815,11 +2840,29 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                     brain->cognitive_stats.jepa_last_loss);
             }
 
-            /* Grounded language */
+            /* Grounded language + SNN spike-driven bridge */
             if (brain->grounded_lang) {
-                e = transcript_add(t, TRANSCRIPT_MODULE_GROUNDED_LANG,
-                    0.5f, 0.5f,
-                    "Grounded language active");
+                float gl_confidence = 0.5f;
+                if (brain->snn_lang_bridge) {
+                    snn_lang_stats_t snn_stats;
+                    if (snn_language_bridge_get_stats(brain->snn_lang_bridge,
+                                                      &snn_stats) == 0) {
+                        float blend = snn_language_bridge_get_blend(brain->snn_lang_bridge);
+                        gl_confidence = 0.5f + blend * 0.3f; /* Boost with spike pathway */
+                        char snn_summary[128];
+                        snprintf(snn_summary, sizeof(snn_summary),
+                                 "Grounded lang + SNN bridge (blend=%.2f, bindings=%u)",
+                                 blend, snn_stats.active_bindings);
+                        e = transcript_add(t, TRANSCRIPT_MODULE_GROUNDED_LANG,
+                            0.5f, gl_confidence, snn_summary);
+                    } else {
+                        e = transcript_add(t, TRANSCRIPT_MODULE_GROUNDED_LANG,
+                            0.5f, 0.5f, "Grounded language active");
+                    }
+                } else {
+                    e = transcript_add(t, TRANSCRIPT_MODULE_GROUNDED_LANG,
+                        0.5f, 0.5f, "Grounded language active");
+                }
             }
 
             /* Knowledge system */
@@ -2860,6 +2903,21 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         if (post_ctx._internal_args) {
             nimcp_free(post_ctx._internal_args);
             post_ctx._internal_args = NULL;
+        }
+    }
+
+    // ========================================================================
+    // HYPERLEDGER: Consensus-Gated Inference (multi-brain BFT voting)
+    // ========================================================================
+    if (brain->hyperledger_bridge && brain->hyperledger_enabled &&
+        brain->collective_cognition && brain->collective_cognition_enabled) {
+        consensus_gate_result_t gate_result = CONSENSUS_GATE_SKIP;
+        hyperledger_consensus_gate(brain->hyperledger_bridge,
+                                   decision->output_vector, decision->output_size,
+                                   decision->confidence, &gate_result);
+        if (gate_result == CONSENSUS_GATE_REJECT) {
+            /* Consensus rejected this decision — lower confidence to signal uncertainty */
+            decision->confidence *= 0.5f;
         }
     }
 

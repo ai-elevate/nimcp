@@ -186,6 +186,12 @@ typedef struct snn_speech_bridge_s {
     /* Thread safety */
     void* mutex;                        /**< Mutex for thread safety */
 
+    /* Language bridge integration (Phase 8.6) */
+    struct snn_language_bridge* lang_bridge;  /**< Connected language bridge */
+    phoneme_t  phoneme_accum[64];       /**< Phoneme accumulation buffer */
+    uint32_t   phoneme_accum_count;     /**< Number of accumulated phonemes */
+    float      last_phoneme_time_ms;    /**< Time of last phoneme for gap detection */
+
 } snn_speech_bridge_t;
 
 //=============================================================================
@@ -538,6 +544,45 @@ bool snn_speech_bridge_is_active(const snn_speech_bridge_t* bridge);
  * @param bridge Bridge to reset
  */
 void snn_speech_bridge_reset_stats(snn_speech_bridge_t* bridge);
+
+//=============================================================================
+// Language Bridge Integration (Phase 8.6)
+//=============================================================================
+
+struct snn_language_bridge;
+
+/**
+ * @brief Connect speech bridge to SNN language bridge for word-level binding
+ *
+ * When connected, decoded phoneme sequences are accumulated and on word
+ * boundary detection, the corresponding word population is fired on the
+ * language bridge (enabling STDP word-concept binding from auditory input).
+ */
+int snn_speech_bridge_set_language_bridge(
+    snn_speech_bridge_t* bridge,
+    struct snn_language_bridge* lang_bridge);
+
+/**
+ * @brief Feed decoded phonemes through word accumulator
+ *
+ * Accumulates phonemes until a word boundary is detected (silence gap or
+ * known word match), then fires the word population on the connected
+ * language bridge.
+ *
+ * @param bridge Speech bridge
+ * @param phoneme Decoded phoneme
+ * @param time_ms Current time in milliseconds
+ * @return 0 on success, word_pop index if word was fired, -1 on error
+ */
+int snn_speech_bridge_accumulate_phoneme(
+    snn_speech_bridge_t* bridge,
+    phoneme_t phoneme,
+    float time_ms);
+
+/**
+ * @brief Flush phoneme accumulator (force word boundary)
+ */
+int snn_speech_bridge_flush_accumulator(snn_speech_bridge_t* bridge, float time_ms);
 
 //=============================================================================
 // Bio-Async Module ID

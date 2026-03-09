@@ -28,6 +28,8 @@
 #include "core/brain/nimcp_brain_multimodal.h"  // Extracted multimodal processing
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h"
+#include "core/brain/bridges/nimcp_hyperledger_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/signal/nimcp_signal_handler.h"
 

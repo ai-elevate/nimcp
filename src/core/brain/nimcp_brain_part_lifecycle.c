@@ -13,6 +13,7 @@
 #include "generation/nimcp_language_generator.h"
 #include "generation/nimcp_embedding.h"
 #include "language/nimcp_grounded_language.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h"
 
 //=============================================================================
 // Bio-Async Message Handlers and Integration
@@ -255,7 +256,18 @@ void brain_destroy(brain_t brain)
         nimcp_free(brain->output_labels);
     }
 
+    // Cleanup hyperledger bridge (before SNN language bridge)
+    if (brain->hyperledger_bridge) {
+        hyperledger_bridge_destroy(brain->hyperledger_bridge);
+        brain->hyperledger_bridge = NULL;
+        brain->hyperledger_enabled = false;
+    }
+
     // Cleanup grounded language system
+    if (brain->snn_lang_bridge) {
+        snn_language_bridge_destroy(brain->snn_lang_bridge);
+        brain->snn_lang_bridge = NULL;
+    }
     if (brain->grounded_lang) {
         grounded_language_destroy(brain->grounded_lang);
         brain->grounded_lang = NULL;

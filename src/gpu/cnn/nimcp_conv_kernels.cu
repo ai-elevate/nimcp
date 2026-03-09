@@ -558,18 +558,23 @@ bool nimcp_gpu_conv2d_backward(
     size_t weight_size = C_out * C_in * kH * kW * sizeof(float);
     size_t bias_size = C_out * sizeof(float);
 
+    /* W9: Check gradient copy results */
+    bool copy_ok = true;
     if (grad_input) {
-        cudaMemcpy(grad_input->data, bwd_ctx->d_input_grad, input_size, cudaMemcpyDeviceToDevice);
+        if (cudaMemcpy(grad_input->data, bwd_ctx->d_input_grad, input_size, cudaMemcpyDeviceToDevice) != cudaSuccess)
+            copy_ok = false;
     }
     if (grad_weight) {
-        cudaMemcpy(grad_weight->data, bwd_ctx->d_weight_grad, weight_size, cudaMemcpyDeviceToDevice);
+        if (cudaMemcpy(grad_weight->data, bwd_ctx->d_weight_grad, weight_size, cudaMemcpyDeviceToDevice) != cudaSuccess)
+            copy_ok = false;
     }
     if (grad_bias) {
-        cudaMemcpy(grad_bias->data, bwd_ctx->d_bias_grad, bias_size, cudaMemcpyDeviceToDevice);
+        if (cudaMemcpy(grad_bias->data, bwd_ctx->d_bias_grad, bias_size, cudaMemcpyDeviceToDevice) != cudaSuccess)
+            copy_ok = false;
     }
 
     nimcp_conv2d_backward_destroy(bwd_ctx);
-    return true;
+    return copy_ok;
 }
 
 //=============================================================================
@@ -885,6 +890,9 @@ bool nimcp_gpu_adaptive_avgpool2d(
     nimcp_gpu_tensor_t* output,
     uint32_t output_h, uint32_t output_w)
 {
+    /* W9: Guard against division by zero */
+    if (output_h == 0 || output_w == 0) return false;
+
     // Compute adaptive pooling params
     nimcp_pool_params_t params;
     params.stride_h = input->dims[2] / output_h;

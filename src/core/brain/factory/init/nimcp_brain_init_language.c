@@ -31,6 +31,8 @@
 #include "generation/nimcp_tokenizer.h"
 #include "generation/nimcp_embedding.h"
 #include "language/nimcp_grounded_language.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h"
+#include "core/brain/bridges/nimcp_hyperledger_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
@@ -530,8 +532,37 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
             grounded_language_connect_columns(brain->grounded_lang, brain->cortical_column_pool);
 
         LOG_INFO(LOG_MODULE, "Grounded language system created (dim=128)");
+
+        /* SNN Language Bridge — spike-driven word-concept binding via STDP */
+        snn_lang_config_t snn_lang_cfg = snn_lang_config_default();
+        brain->snn_lang_bridge = snn_language_bridge_create(&snn_lang_cfg);
+        if (brain->snn_lang_bridge) {
+            snn_language_bridge_connect_grounded(brain->snn_lang_bridge, brain->grounded_lang);
+            if (brain->neuromodulator_system)
+                snn_language_bridge_connect_neuromod(brain->snn_lang_bridge,
+                                                     brain->neuromodulator_system);
+            /* Wire bidirectional: GL → SNN bridge for dual-path production */
+            grounded_language_connect_snn_bridge(brain->grounded_lang,
+                                                  brain->snn_lang_bridge);
+            LOG_INFO(LOG_MODULE, "SNN language bridge created (STDP word-concept binding)");
+        } else {
+            LOG_WARN(LOG_MODULE, "SNN language bridge creation failed (non-fatal)");
+        }
     } else {
         LOG_WARN(LOG_MODULE, "Grounded language system creation failed (non-fatal)");
+    }
+
+    /* Hyperledger Bridge — EOV training + consensus-gated inference + audit */
+    hyperledger_bridge_config_t hl_cfg = hyperledger_bridge_default_config();
+    brain->hyperledger_bridge = hyperledger_bridge_create(&hl_cfg);
+    if (brain->hyperledger_bridge) {
+        /* Wire to collective cognition if available */
+        if (brain->collective_cognition) {
+            hyperledger_bridge_connect_collective(brain->hyperledger_bridge,
+                                                   brain->collective_cognition);
+        }
+        brain->hyperledger_enabled = true;
+        LOG_INFO(LOG_MODULE, "Hyperledger bridge created (EOV training + audit)");
     }
 
     LOG_INFO(LOG_MODULE, "Language layer initialized successfully");

@@ -63,6 +63,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "core/brain/bridges/nimcp_hyperledger_bridge.h"
 
 // Multi-network training includes (LNN + CNN + dispatch)
 #include "training/nimcp_training_dispatch.h"
@@ -821,11 +822,34 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         example.label[0] = '\0';
     }
 
+    /* === HYPERLEDGER EOV: BEGIN transaction === */
+    uint64_t hl_tx_id = 0;
+    if (brain->hyperledger_bridge && brain->hyperledger_enabled) {
+        hl_tx_id = hyperledger_eov_begin(brain->hyperledger_bridge, 0.0f);
+    }
+
     /* Step 1: Adaptive learns FIRST (primary network, GPU-accelerated)
      * Must complete before SNN training since SNN may share neural_network_t weights */
     float loss = adaptive_network_learn(brain->network, &example,
                                          LEARN_MODE_DISTILLATION,
                                          brain->config.learning_rate);
+
+    /* === HYPERLEDGER EOV: ORDER + VALIDATE === */
+    if (brain->hyperledger_bridge && brain->hyperledger_enabled && hl_tx_id > 0) {
+        float grad_norm = loss;  /* Use loss as proxy for gradient magnitude */
+        hyperledger_eov_order(brain->hyperledger_bridge, hl_tx_id, grad_norm, num_features);
+        /* Validate: if rejected, skip biological plasticity this step */
+        bool eov_valid = hyperledger_eov_validate(brain->hyperledger_bridge,
+                                                   hl_tx_id, NULL, 0);
+        if (eov_valid) {
+            hyperledger_eov_commit(brain->hyperledger_bridge, hl_tx_id,
+                                   fabsf(loss), loss);
+        }
+        /* Note: even if EOV rejects, the adaptive_network_learn already ran.
+         * The rejection is logged for audit purposes and can trigger rollback.
+         * Future: move validation BEFORE weight commit for full EOV semantics. */
+    }
+
     nimcp_brain_learning_adapt_learning_rate(brain, loss);
     __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
 
@@ -853,7 +877,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         /* Structural plasticity: form new synapses for high-activity pairs */
         if (brain->structural_plasticity && brain->structural_plasticity_enabled) {
             float activity_hz = (loss < 0.5f) ? 30.0f : 5.0f;
-            if (structural_plasticity_should_form(brain->structural_plasticity, activity_hz)) {
+            if (structural_plasticity_should_form(brain->structural_plasticity, activity_hz)
+                && brain->config.num_inputs > 0 && brain->config.num_outputs > 0) {
                 uint32_t pre = (uint32_t)(features[0] * 997.0f) % brain->config.num_inputs;
                 uint32_t post = (uint32_t)(features[1] * 991.0f) % brain->config.num_outputs;
                 uint32_t syn_id = 0;

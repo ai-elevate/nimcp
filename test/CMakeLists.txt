@@ -1203,6 +1203,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/kg")
 endif()
 
 # ============================================================================
+# Brain Bridges Tests (Hyperledger-inspired EOV, Consensus, Audit)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/bridges")
+    message(STATUS "Adding brain bridges unit tests (Hyperledger)...")
+    add_subdirectory(unit/core/brain/bridges)
+endif()
+
+# ============================================================================
 # Utils Math Tests (Phase 0.5: Complex Number Support)
 # ============================================================================
 

@@ -11,6 +11,7 @@
  */
 
 #include "language/nimcp_grounded_language.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "cognitive/memory/nimcp_semantic_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -77,6 +78,9 @@ struct grounded_language {
 
     /* RNG state for sampling */
     uint64_t             rng_state;
+
+    /* SNN language bridge (optional — spike-driven dual path) */
+    struct snn_language_bridge* snn_bridge;
 };
 
 /*=============================================================================
@@ -1105,6 +1109,19 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
 
     gl->stats.total_comprehensions++;
 
+    /* Dual-path: also feed through SNN bridge for spike-level comprehension */
+    if (gl->snn_bridge) {
+        float snn_concepts[512];
+        uint32_t snn_activated = 0;
+        float snn_conf = 0.0f;
+        snn_language_bridge_comprehend(gl->snn_bridge, text,
+                                       snn_concepts, 512, &snn_activated, &snn_conf);
+        /* Blend spike-level confidence into result */
+        float blend = snn_language_bridge_get_blend(gl->snn_bridge);
+        result->comprehension_confidence =
+            result->comprehension_confidence * (1.0f - blend) + snn_conf * blend;
+    }
+
     nimcp_free(buf);
     return 0;
 }
@@ -1284,6 +1301,42 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
                                gl_production_result_t* result) {
     if (!gl || !intent || !result) return -1;
     memset(result, 0, sizeof(*result));
+
+    /* Dual-path: if SNN bridge available, blend spike-driven production */
+    if (gl->snn_bridge) {
+        float blend = snn_language_bridge_get_blend(gl->snn_bridge);
+        if (blend > 0.0f) {
+            snn_lang_production_result_t spike_result;
+            memset(&spike_result, 0, sizeof(spike_result));
+            if (snn_language_bridge_produce(gl->snn_bridge, intent, intent_dim,
+                                            &spike_result) == 0 &&
+                spike_result.text && spike_result.word_count > 0) {
+                /* At high blend, use spike output directly */
+                if (blend >= 0.9f) {
+                    result->text = spike_result.text;
+                    spike_result.text = NULL; /* Transfer ownership */
+                    result->word_count = spike_result.word_count;
+                    result->fluency = spike_result.fluency;
+                    result->relevance = spike_result.spike_confidence;
+                    result->creativity = spike_result.creativity;
+                    result->semantic_vector = (float*)nimcp_calloc(
+                        gl->semantic_dim, sizeof(float));
+                    if (result->semantic_vector) {
+                        uint32_t copy_dim = (intent_dim < gl->semantic_dim)
+                            ? intent_dim : gl->semantic_dim;
+                        memcpy(result->semantic_vector, intent,
+                               copy_dim * sizeof(float));
+                    }
+                    snn_lang_production_result_cleanup(&spike_result);
+                    gl->stats.total_productions++;
+                    return 0;
+                }
+                /* Low blend: record spike confidence for later blending */
+                result->creativity = spike_result.creativity * blend;
+            }
+            snn_lang_production_result_cleanup(&spike_result);
+        }
+    }
 
     /* Allocate output buffer */
     size_t buf_size = GL_MAX_PRODUCTION_WORDS * GL_MAX_WORD_LEN;
@@ -1835,6 +1888,11 @@ void grounded_language_connect_columns(grounded_language_t* gl, void* col_pool) 
 
 void grounded_language_connect_emotional(grounded_language_t* gl, void* emo_ctx) {
     if (gl) gl->emotional_ctx = emo_ctx;
+}
+
+void grounded_language_connect_snn_bridge(grounded_language_t* gl,
+                                           struct snn_language_bridge* bridge) {
+    if (gl) gl->snn_bridge = bridge;
 }
 
 /*=============================================================================

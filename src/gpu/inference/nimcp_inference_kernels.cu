@@ -706,17 +706,20 @@ bool nimcp_gpu_infer_calibrate(
 
     if (!ctx || !tensor || !params) return false;
 
-    // Allocate device memory for min/max
+    /* W9: Check all CUDA allocations and memcpy for quantization */
     float* d_min;
     float* d_max;
-    cudaMalloc(&d_min, sizeof(float));
-    cudaMalloc(&d_max, sizeof(float));
+    if (cudaMalloc(&d_min, sizeof(float)) != cudaSuccess) return false;
+    if (cudaMalloc(&d_max, sizeof(float)) != cudaSuccess) {
+        cudaFree(d_min); return false;
+    }
 
-    // Initialize to extreme values
     float h_min = INFINITY;
     float h_max = -INFINITY;
-    cudaMemcpy(d_min, &h_min, sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_max, &h_max, sizeof(float), cudaMemcpyHostToDevice);
+    if (cudaMemcpy(d_min, &h_min, sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess ||
+        cudaMemcpy(d_max, &h_max, sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+        cudaFree(d_min); cudaFree(d_max); return false;
+    }
 
     // Find min/max
     size_t n = tensor->numel;
@@ -731,9 +734,11 @@ bool nimcp_gpu_infer_calibrate(
     // Synchronize stream before copying results
     cudaStreamSynchronize(ctx->compute_stream);
 
-    // Copy results back
-    cudaMemcpy(&h_min, d_min, sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&h_max, d_max, sizeof(float), cudaMemcpyDeviceToHost);
+    /* W9: Check readback + guard against scale=0 */
+    if (cudaMemcpy(&h_min, d_min, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess ||
+        cudaMemcpy(&h_max, d_max, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
+        cudaFree(d_min); cudaFree(d_max); return false;
+    }
 
     cudaFree(d_min);
     cudaFree(d_max);
@@ -746,7 +751,8 @@ bool nimcp_gpu_infer_calibrate(
         params->min_val = -absmax;
         params->max_val = absmax;
     } else {
-        params->scale = (h_max - h_min) / 255.0f;
+        float range = h_max - h_min;
+        params->scale = (range > 1e-7f) ? range / 255.0f : 1e-7f;
         params->zero_point = (int32_t)roundf(-h_min / params->scale) - 128;
         params->min_val = h_min;
         params->max_val = h_max;
@@ -933,7 +939,11 @@ nimcp_infer_session_t* nimcp_infer_session_create(
         workspace_size = 64 * 1024 * 1024;  // 64 MB default
     }
     session->workspace_size = workspace_size;
-    cudaMalloc(&session->workspace, workspace_size);
+    /* W9: Check workspace allocation */
+    if (cudaMalloc(&session->workspace, workspace_size) != cudaSuccess) {
+        nimcp_free(session);
+        return NULL;
+    }
 
     return session;
 }
@@ -1110,7 +1120,8 @@ bool nimcp_gpu_infer_warmup(nimcp_gpu_context_t* ctx, nimcp_infer_precision_t pr
     // Launch a dummy kernel to warm up the GPU
     size_t n = 1024;
     float* d_data;
-    cudaMalloc(&d_data, n * sizeof(float));
+    /* W9: Check warmup allocation */
+    if (cudaMalloc(&d_data, n * sizeof(float)) != cudaSuccess) return false;
     cudaMemset(d_data, 0, n * sizeof(float));
 
     int threads = 256;

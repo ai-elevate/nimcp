@@ -117,6 +117,36 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_plasticity_integration.cpp)
 endif()
 
 # ============================================================================
+# SNN Language Bridge Integration Tests
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_language_bridge_integration.cpp)
+    add_executable(integration_snn_language_bridge
+        test_snn_language_bridge_integration.cpp
+    )
+
+    target_link_libraries(integration_snn_language_bridge
+        PRIVATE ${SNN_INTEGRATION_TEST_LIBS}
+    )
+
+    target_include_directories(integration_snn_language_bridge
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src
+    )
+
+    target_compile_features(integration_snn_language_bridge PRIVATE cxx_std_17)
+
+    gtest_discover_tests(integration_snn_language_bridge
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;snn;language;bridge"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added SNN language bridge integration test: test_snn_language_bridge_integration")
+endif()
+
+# ============================================================================
 # Include Subdirectories
 # ============================================================================
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception)

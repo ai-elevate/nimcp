@@ -624,6 +624,12 @@ void grounded_language_connect_emotional(
     grounded_language_t* gl,
     void* emo_ctx);
 
+/** Connect SNN language bridge for spike-driven dual-path production/comprehension */
+struct snn_language_bridge;
+void grounded_language_connect_snn_bridge(
+    grounded_language_t* gl,
+    struct snn_language_bridge* bridge);
+
 /*=============================================================================
  * Query / Introspection
  *===========================================================================*/

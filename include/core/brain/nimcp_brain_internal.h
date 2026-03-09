@@ -1193,6 +1193,11 @@ struct brain_struct {
 
     // Grounded Language System (human-like word-concept binding)
     struct grounded_language* grounded_lang;                           // Grounded lexicon + production
+    struct snn_language_bridge* snn_lang_bridge;                      // SNN spike-driven word-concept binding
+
+    // Hyperledger-Inspired Training/Inference Integration
+    struct hyperledger_bridge* hyperledger_bridge;                     // EOV training + consensus + audit
+    bool hyperledger_enabled;                                          // Hyperledger bridge active
 
     // =========================================================================
     // BRAINSTEM INTEGRATION (Midbrain, Pons, Medulla, Reticular Formation)

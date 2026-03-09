@@ -113,6 +113,36 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_numerical_regression.cpp)
 endif()
 
 # ============================================================================
+# SNN Language Bridge Regression Tests
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_language_bridge_regression.cpp)
+    add_executable(regression_snn_language_bridge
+        test_snn_language_bridge_regression.cpp
+    )
+
+    target_link_libraries(regression_snn_language_bridge
+        PRIVATE ${SNN_REGRESSION_TEST_LIBS}
+    )
+
+    target_include_directories(regression_snn_language_bridge
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src
+    )
+
+    target_compile_features(regression_snn_language_bridge PRIVATE cxx_std_17)
+
+    gtest_discover_tests(regression_snn_language_bridge
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;snn;language;bridge"
+            TIMEOUT 120
+    )
+
+    message(STATUS "  Added SNN language bridge regression test: test_snn_language_bridge_regression")
+endif()
+
+# ============================================================================
 # Include Subdirectories
 # ============================================================================
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception)

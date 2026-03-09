@@ -742,9 +742,9 @@ int lnn_neuron_get_gradients(const lnn_neuron_t* neuron,
         memcpy(grad_w_rec, neuron->grad_w_rec, neuron->n_recurrent * sizeof(float));
     }
 
-    /* Copy tau weight gradients */
+    /* Copy tau weight gradients (W9: +1 for bias term to match allocation) */
     if (grad_w_tau) {
-        uint32_t n_tau = neuron->n_inputs + neuron->n_recurrent;
+        uint32_t n_tau = 1 + neuron->n_inputs + neuron->n_recurrent;
         memcpy(grad_w_tau, neuron->grad_w_tau, n_tau * sizeof(float));
     }
 

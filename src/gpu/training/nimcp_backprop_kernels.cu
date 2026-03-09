@@ -891,7 +891,10 @@ bool nimcp_gpu_gradient_flush(
     float* d_grad_norm;
     float zero = 0.0f;
     if (cudaMalloc(&d_grad_norm, sizeof(float)) != cudaSuccess) return false;
-    cudaMemcpy(d_grad_norm, &zero, sizeof(float), cudaMemcpyHostToDevice);
+    /* W9: Check cudaMemcpy for grad_norm init */
+    if (cudaMemcpy(d_grad_norm, &zero, sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+        cudaFree(d_grad_norm); return false;
+    }
 
     for (uint32_t layer = 1; layer < num_layers; layer++) {
         nimcp_sparse_tensor_t* W = sparse_weights[layer - 1];
@@ -914,8 +917,11 @@ bool nimcp_gpu_gradient_flush(
     }
 
     cudaStreamSynchronize(stream);
-    float grad_norm_sq;
-    cudaMemcpy(&grad_norm_sq, d_grad_norm, sizeof(float), cudaMemcpyDeviceToHost);
+    float grad_norm_sq = 0.0f;
+    /* W9: Check cudaMemcpy readback — use 0.0 on failure */
+    if (cudaMemcpy(&grad_norm_sq, d_grad_norm, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
+        grad_norm_sq = 0.0f;
+    }
     if (out_grad_norm) {
         *out_grad_norm = sqrtf(grad_norm_sq);
         if (!isfinite(*out_grad_norm)) *out_grad_norm = 0.0f;
@@ -954,7 +960,10 @@ bool nimcp_gpu_sparse_backward_pass(
     float* d_grad_norm;
     float zero = 0.0f;
     if (cudaMalloc(&d_grad_norm, sizeof(float)) != cudaSuccess) return false;
-    cudaMemcpy(d_grad_norm, &zero, sizeof(float), cudaMemcpyHostToDevice);
+    /* W9: Check cudaMemcpy for grad_norm init */
+    if (cudaMemcpy(d_grad_norm, &zero, sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+        cudaFree(d_grad_norm); return false;
+    }
 
     uint32_t out_layer_size = layer_sizes[num_layers - 1];
     uint32_t bp_size = out_layer_size < output_size ? out_layer_size : output_size;
@@ -1050,8 +1059,11 @@ bool nimcp_gpu_sparse_backward_pass(
     }
 
     cudaStreamSynchronize(stream);
-    float grad_norm_sq;
-    cudaMemcpy(&grad_norm_sq, d_grad_norm, sizeof(float), cudaMemcpyDeviceToHost);
+    float grad_norm_sq = 0.0f;
+    /* W9: Check cudaMemcpy readback — use 0.0 on failure */
+    if (cudaMemcpy(&grad_norm_sq, d_grad_norm, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
+        grad_norm_sq = 0.0f;
+    }
     *out_grad_norm = sqrtf(grad_norm_sq);
     if (!isfinite(*out_grad_norm)) *out_grad_norm = 0.0f;
 

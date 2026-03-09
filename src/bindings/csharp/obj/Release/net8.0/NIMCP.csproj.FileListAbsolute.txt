@@ -13,3 +13,6 @@
 /home/bbrelin/nimcp/build/test/bindings/csharp/NIMCP.deps.json
 /home/bbrelin/nimcp/build/test/bindings/csharp/NIMCP.dll
 /home/bbrelin/nimcp/build/test/bindings/csharp/NIMCP.pdb
+/home/bbrelin/nimcp/build-asan/src/bindings/csharp/NIMCP.deps.json
+/home/bbrelin/nimcp/build-asan/src/bindings/csharp/NIMCP.dll
+/home/bbrelin/nimcp/build-asan/src/bindings/csharp/NIMCP.pdb

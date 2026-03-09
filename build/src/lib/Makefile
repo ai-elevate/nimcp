@@ -18140,6 +18140,30 @@ __/core/brain/biological/nimcp_brain_biological.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/biological/nimcp_brain_biological.c.s
 .PHONY : __/core/brain/biological/nimcp_brain_biological.c.s
 
+__/core/brain/bridges/nimcp_hyperledger_bridge.o: __/core/brain/bridges/nimcp_hyperledger_bridge.c.o
+.PHONY : __/core/brain/bridges/nimcp_hyperledger_bridge.o
+
+# target to build an object file
+__/core/brain/bridges/nimcp_hyperledger_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/bridges/nimcp_hyperledger_bridge.c.o
+.PHONY : __/core/brain/bridges/nimcp_hyperledger_bridge.c.o
+
+__/core/brain/bridges/nimcp_hyperledger_bridge.i: __/core/brain/bridges/nimcp_hyperledger_bridge.c.i
+.PHONY : __/core/brain/bridges/nimcp_hyperledger_bridge.i
+
+# target to preprocess a source file
+__/core/brain/bridges/nimcp_hyperledger_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/bridges/nimcp_hyperledger_bridge.c.i
+.PHONY : __/core/brain/bridges/nimcp_hyperledger_bridge.c.i
+
+__/core/brain/bridges/nimcp_hyperledger_bridge.s: __/core/brain/bridges/nimcp_hyperledger_bridge.c.s
+.PHONY : __/core/brain/bridges/nimcp_hyperledger_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/bridges/nimcp_hyperledger_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/bridges/nimcp_hyperledger_bridge.c.s
+.PHONY : __/core/brain/bridges/nimcp_hyperledger_bridge.c.s
+
 __/core/brain/bridges/nimcp_surface_geometry_bridge.o: __/core/brain/bridges/nimcp_surface_geometry_bridge.c.o
 .PHONY : __/core/brain/bridges/nimcp_surface_geometry_bridge.o
 
@@ -45668,6 +45692,30 @@ __/security/training/nimcp_security_training_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/training/nimcp_security_training_fep_bridge.c.s
 .PHONY : __/security/training/nimcp_security_training_fep_bridge.c.s
 
+__/snn/bridges/nimcp_snn_language_bridge.o: __/snn/bridges/nimcp_snn_language_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_language_bridge.o
+
+# target to build an object file
+__/snn/bridges/nimcp_snn_language_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_language_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_language_bridge.c.o
+
+__/snn/bridges/nimcp_snn_language_bridge.i: __/snn/bridges/nimcp_snn_language_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_language_bridge.i
+
+# target to preprocess a source file
+__/snn/bridges/nimcp_snn_language_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_language_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_language_bridge.c.i
+
+__/snn/bridges/nimcp_snn_language_bridge.s: __/snn/bridges/nimcp_snn_language_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_language_bridge.s
+
+# target to generate assembly for a file
+__/snn/bridges/nimcp_snn_language_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_language_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_language_bridge.c.s
+
 __/snn/bridges/nimcp_snn_routing_bridge.o: __/snn/bridges/nimcp_snn_routing_bridge.c.o
 .PHONY : __/snn/bridges/nimcp_snn_routing_bridge.o
 
@@ -54238,6 +54286,9 @@ help:
 	@echo "... __/core/brain/biological/nimcp_brain_biological.o"
 	@echo "... __/core/brain/biological/nimcp_brain_biological.i"
 	@echo "... __/core/brain/biological/nimcp_brain_biological.s"
+	@echo "... __/core/brain/bridges/nimcp_hyperledger_bridge.o"
+	@echo "... __/core/brain/bridges/nimcp_hyperledger_bridge.i"
+	@echo "... __/core/brain/bridges/nimcp_hyperledger_bridge.s"
 	@echo "... __/core/brain/bridges/nimcp_surface_geometry_bridge.o"
 	@echo "... __/core/brain/bridges/nimcp_surface_geometry_bridge.i"
 	@echo "... __/core/brain/bridges/nimcp_surface_geometry_bridge.s"
@@ -57679,6 +57730,9 @@ help:
 	@echo "... __/security/training/nimcp_security_training_fep_bridge.o"
 	@echo "... __/security/training/nimcp_security_training_fep_bridge.i"
 	@echo "... __/security/training/nimcp_security_training_fep_bridge.s"
+	@echo "... __/snn/bridges/nimcp_snn_language_bridge.o"
+	@echo "... __/snn/bridges/nimcp_snn_language_bridge.i"
+	@echo "... __/snn/bridges/nimcp_snn_language_bridge.s"
 	@echo "... __/snn/bridges/nimcp_snn_routing_bridge.o"
 	@echo "... __/snn/bridges/nimcp_snn_routing_bridge.i"
 	@echo "... __/snn/bridges/nimcp_snn_routing_bridge.s"

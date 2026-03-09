@@ -1125,3 +1125,115 @@ void snn_speech_bridge_reset_stats(snn_speech_bridge_t* bridge) {
     memset(&bridge->decode_stats, 0, sizeof(snn_speech_decode_stats_t));
     bridge->phoneme_count = 0;
 }
+
+//=============================================================================
+// Language Bridge Integration (Phase 8.6)
+//=============================================================================
+
+#include "snn/bridges/nimcp_snn_language_bridge.h"
+
+/** Phoneme to approximate character mapping for word reconstruction */
+static const char* phoneme_to_char(phoneme_t p) {
+    switch (p) {
+        /* Vowels */
+        case PHONEME_AA: return "a";  case PHONEME_AE: return "a";
+        case PHONEME_AH: return "u";  case PHONEME_AO: return "o";
+        case PHONEME_EH: return "e";  case PHONEME_ER: return "er";
+        case PHONEME_EY: return "ay"; case PHONEME_IH: return "i";
+        case PHONEME_IY: return "ee"; case PHONEME_OW: return "o";
+        case PHONEME_UH: return "u";  case PHONEME_UW: return "oo";
+        /* Consonants: stops */
+        case PHONEME_P: return "p"; case PHONEME_B: return "b";
+        case PHONEME_T: return "t"; case PHONEME_D: return "d";
+        case PHONEME_K: return "k"; case PHONEME_G: return "g";
+        /* Consonants: fricatives */
+        case PHONEME_F: return "f"; case PHONEME_V: return "v";
+        case PHONEME_TH: return "th"; case PHONEME_DH: return "th";
+        case PHONEME_S: return "s"; case PHONEME_Z: return "z";
+        case PHONEME_SH: return "sh"; case PHONEME_ZH: return "zh";
+        case PHONEME_H: return "h";
+        /* Consonants: nasals + approximants */
+        case PHONEME_M: return "m"; case PHONEME_N: return "n";
+        case PHONEME_NG: return "ng";
+        case PHONEME_L: return "l"; case PHONEME_R: return "r";
+        case PHONEME_W: return "w"; case PHONEME_Y: return "y";
+        /* Affricates */
+        case PHONEME_CH: return "ch"; case PHONEME_JH: return "j";
+        default: return "";
+    }
+}
+
+int snn_speech_bridge_set_language_bridge(
+    snn_speech_bridge_t* bridge,
+    struct snn_language_bridge* lang_bridge)
+{
+    if (!bridge) return -1;
+    bridge->lang_bridge = lang_bridge;
+    bridge->phoneme_accum_count = 0;
+    bridge->last_phoneme_time_ms = 0.0f;
+    return 0;
+}
+
+/** Try to match accumulated phonemes to a registered word on the language bridge */
+static int try_fire_word(snn_speech_bridge_t* bridge, float time_ms) {
+    if (!bridge->lang_bridge || bridge->phoneme_accum_count == 0) return -1;
+
+    /* Reconstruct approximate word from phoneme sequence */
+    char word_buf[128] = {0};
+    size_t pos = 0;
+    for (uint32_t i = 0; i < bridge->phoneme_accum_count && pos < 120; i++) {
+        const char* ch = phoneme_to_char(bridge->phoneme_accum[i]);
+        size_t len = strlen(ch);
+        memcpy(word_buf + pos, ch, len);
+        pos += len;
+    }
+    word_buf[pos] = '\0';
+
+    /* Fire word spike on language bridge — the bridge will look up the word pop */
+    /* We use a simple hash to find the word population index */
+    /* The language bridge's comprehend function handles word→pop lookup internally */
+    float concepts[1] = {0};
+    uint32_t activated = 0;
+    float conf = 0;
+    if (pos > 0) {
+        snn_language_bridge_comprehend(bridge->lang_bridge, word_buf,
+                                       concepts, 1, &activated, &conf);
+    }
+
+    bridge->phoneme_accum_count = 0;
+    return (activated > 0) ? 0 : -1;
+}
+
+int snn_speech_bridge_accumulate_phoneme(
+    snn_speech_bridge_t* bridge,
+    phoneme_t phoneme,
+    float time_ms)
+{
+    if (!bridge) return -1;
+
+    /* Silence or unknown = word boundary */
+    if (phoneme == PHONEME_SILENCE || phoneme == PHONEME_UNKNOWN) {
+        int result = try_fire_word(bridge, time_ms);
+        bridge->last_phoneme_time_ms = time_ms;
+        return result;
+    }
+
+    /* Time gap > 200ms = word boundary */
+    if (bridge->phoneme_accum_count > 0 &&
+        (time_ms - bridge->last_phoneme_time_ms) > 200.0f) {
+        try_fire_word(bridge, time_ms);
+    }
+
+    /* Accumulate phoneme */
+    if (bridge->phoneme_accum_count < 64) {
+        bridge->phoneme_accum[bridge->phoneme_accum_count++] = phoneme;
+    }
+    bridge->last_phoneme_time_ms = time_ms;
+
+    return 0;
+}
+
+int snn_speech_bridge_flush_accumulator(snn_speech_bridge_t* bridge, float time_ms) {
+    if (!bridge) return -1;
+    return try_fire_word(bridge, time_ms);
+}

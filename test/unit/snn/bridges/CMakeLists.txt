@@ -247,3 +247,15 @@ set_tests_properties(
     TIMEOUT 60
     LABELS "snn;bridges;medulla;brainstem"
 )
+
+#=============================================================================
+# Language Bridge (SNN ↔ Language spike-driven word-concept binding)
+#=============================================================================
+add_snn_bridge_test(language)
+
+set_tests_properties(
+    test_snn_language_bridge
+    PROPERTIES
+    TIMEOUT 60
+    LABELS "snn;bridges;language"
+)
