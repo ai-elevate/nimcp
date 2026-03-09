@@ -1085,3 +1085,112 @@ snn_language_bridge_t* snn_language_bridge_load(const char* path)
     fclose(f);
     return bridge;
 }
+
+//=============================================================================
+// Phase 8.5: Top-Down Binding -> Perception Attention Feedback
+//=============================================================================
+
+/**
+ * WHAT: Generate attention weights from active concept bindings
+ * WHY:  Language understanding guides sensory attention (top-down)
+ * HOW:  Iterate all bindings; sum weights per concept population;
+ *        normalize to [0, 1] attention weights
+ */
+int snn_language_bridge_generate_attention_feedback(
+    snn_language_bridge_t* bridge,
+    float* attention_weights,
+    uint32_t num_weights)
+{
+    if (!bridge || !attention_weights || num_weights == 0) return -1;
+
+    /* Zero output */
+    memset(attention_weights, 0, num_weights * sizeof(float));
+
+    /* Accumulate binding weights per concept population */
+    float max_weight = 0.0f;
+    for (uint32_t b = 0; b < BINDING_HASH_BUCKETS; b++) {
+        binding_node_t* node = bridge->binding_buckets[b];
+        while (node) {
+            uint32_t cp = node->binding.concept_pop;
+            if (cp < num_weights) {
+                /* Weight contribution scaled by concept activation */
+                float activation = 0.0f;
+                if (cp < bridge->num_concept_pops) {
+                    activation = bridge->concept_pops[cp].activation;
+                }
+                float contrib = node->binding.weight * activation;
+                attention_weights[cp] += contrib;
+                if (attention_weights[cp] > max_weight) {
+                    max_weight = attention_weights[cp];
+                }
+            }
+            node = node->next;
+        }
+    }
+
+    /* Normalize to [0, 1] */
+    if (max_weight > 1e-6f) {
+        float inv_max = 1.0f / max_weight;
+        for (uint32_t i = 0; i < num_weights; i++) {
+            attention_weights[i] *= inv_max;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * WHAT: Generate predicted sensory pattern from active concepts
+ * WHY:  Predictive coding — reduce prediction error at sensory level
+ * HOW:  For each active concept, sum binding weights to word populations;
+ *        output predicted sensory pattern as weighted concept-to-sensory map
+ */
+int snn_language_bridge_predict_sensory(
+    snn_language_bridge_t* bridge,
+    const float* concept_activations,
+    uint32_t num_concepts,
+    float* predicted_sensory,
+    uint32_t sensory_dim)
+{
+    if (!bridge || !concept_activations || !predicted_sensory) return -1;
+    if (num_concepts == 0 || sensory_dim == 0) return -1;
+
+    memset(predicted_sensory, 0, sensory_dim * sizeof(float));
+
+    /* For each active concept, lookup bound word populations and
+     * generate expected sensory pattern from binding weights */
+    float total_activation = 0.0f;
+    for (uint32_t c = 0; c < num_concepts && c < bridge->num_concept_pops; c++) {
+        float act = concept_activations[c];
+        if (act < 0.01f) continue;  /* Skip inactive concepts */
+
+        total_activation += act;
+
+        /* Iterate bindings for this concept */
+        for (uint32_t b = 0; b < BINDING_HASH_BUCKETS; b++) {
+            binding_node_t* node = bridge->binding_buckets[b];
+            while (node) {
+                if (node->binding.concept_pop == c) {
+                    uint32_t wp = node->binding.word_pop;
+                    /* Map word population to sensory dimension via modular index */
+                    uint32_t sensory_idx = wp % sensory_dim;
+                    predicted_sensory[sensory_idx] +=
+                        act * node->binding.weight;
+                }
+                node = node->next;
+            }
+        }
+    }
+
+    /* Normalize by total activation */
+    if (total_activation > 1e-6f) {
+        float inv = 1.0f / total_activation;
+        for (uint32_t i = 0; i < sensory_dim; i++) {
+            predicted_sensory[i] *= inv;
+            /* Clamp to [0, 1] */
+            if (predicted_sensory[i] > 1.0f) predicted_sensory[i] = 1.0f;
+        }
+    }
+
+    return 0;
+}

@@ -336,6 +336,36 @@ int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* pa
 /** Load binding weights and configuration */
 snn_language_bridge_t* snn_language_bridge_load(const char* path);
 
+//=============================================================================
+// Phase 8.5: Top-Down Binding -> Perception Attention Feedback
+//=============================================================================
+
+/**
+ * @brief Generate top-down attention signal from concept bindings
+ * WHAT: Convert active concept bindings into perception attention weights
+ * WHY:  Enable language understanding to guide visual/auditory attention
+ * HOW:  Strong bindings -> high attention for associated sensory populations
+ */
+int snn_language_bridge_generate_attention_feedback(
+    snn_language_bridge_t* bridge,
+    float* attention_weights,
+    uint32_t num_weights
+);
+
+/**
+ * @brief Apply top-down prediction to sensory input
+ * WHAT: Use concept predictions to modulate expected sensory patterns
+ * WHY:  Predictive coding - reduce prediction error at sensory level
+ * HOW:  Active concepts generate expected spike patterns, compared to actual
+ */
+int snn_language_bridge_predict_sensory(
+    snn_language_bridge_t* bridge,
+    const float* concept_activations,
+    uint32_t num_concepts,
+    float* predicted_sensory,
+    uint32_t sensory_dim
+);
+
 #ifdef __cplusplus
 }
 #endif

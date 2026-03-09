@@ -1194,6 +1194,11 @@ struct brain_struct {
     // Grounded Language System (human-like word-concept binding)
     struct grounded_language* grounded_lang;                           // Grounded lexicon + production
     struct snn_language_bridge* snn_lang_bridge;                      // SNN spike-driven word-concept binding
+    struct snn_speech_bridge* snn_speech_bridge;                      // SNN spike-driven speech production/comprehension
+    struct snn_audio_bridge* snn_audio_bridge;                        // SNN spike-driven auditory processing
+    struct snn_visual_bridge* snn_visual_bridge;                      // SNN spike-driven visual processing
+    struct snn_somatosensory_bridge* snn_somatosensory_bridge;        // SNN spike-driven somatosensory processing
+    struct cross_modal_align* cross_modal_aligner;                    // Cross-modal temporal alignment
 
     // Hyperledger-Inspired Training/Inference Integration
     struct hyperledger_bridge* hyperledger_bridge;                     // EOV training + consensus + audit

@@ -32,6 +32,9 @@
 #include "generation/nimcp_embedding.h"
 #include "language/nimcp_grounded_language.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
+#include "snn/bridges/nimcp_snn_speech_bridge.h"
+#include "snn/bridges/nimcp_snn_audio_bridge.h"
+#include "snn/bridges/nimcp_snn_cross_modal_align.h"
 #include "core/brain/bridges/nimcp_hyperledger_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -547,6 +550,46 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
             LOG_INFO(LOG_MODULE, "SNN language bridge created (STDP word-concept binding)");
         } else {
             LOG_WARN(LOG_MODULE, "SNN language bridge creation failed (non-fatal)");
+        }
+
+        /* Create SNN speech bridge and wire to language bridge */
+        if (brain->speech_cortex && brain->snn_lang_bridge) {
+            snn_speech_config_t speech_cfg;
+            snn_speech_config_default(&speech_cfg);
+            brain->snn_speech_bridge = (struct snn_speech_bridge*)
+                snn_speech_bridge_create(&speech_cfg, NULL, brain->speech_cortex);
+            if (brain->snn_speech_bridge) {
+                snn_speech_bridge_set_language_bridge(
+                    (snn_speech_bridge_t*)brain->snn_speech_bridge,
+                    brain->snn_lang_bridge);
+                LOG_INFO(LOG_MODULE, "SNN speech bridge created and wired to language bridge");
+            }
+        }
+
+        /* Create SNN audio bridge for spike-based auditory processing */
+        if (brain->audio_cortex) {
+            snn_audio_config_t audio_cfg;
+            snn_audio_config_default(&audio_cfg);
+            brain->snn_audio_bridge = (struct snn_audio_bridge*)
+                snn_audio_bridge_create(&audio_cfg, NULL, brain->audio_cortex);
+            if (brain->snn_audio_bridge) {
+                LOG_INFO(LOG_MODULE, "SNN audio bridge created for auditory spike processing");
+            }
+        }
+
+        /* Create cross-modal temporal alignment (latency compensation) */
+        cross_modal_align_config_t cma_cfg;
+        cross_modal_align_config_default(&cma_cfg);
+        brain->cross_modal_aligner = (struct cross_modal_align*)
+            cross_modal_align_create(&cma_cfg);
+        if (brain->cross_modal_aligner) {
+            cross_modal_align_t* cma = (cross_modal_align_t*)brain->cross_modal_aligner;
+            /* register_modality(aligner, name, inherent_latency, processing_latency, stdp_tau) */
+            cross_modal_align_register_modality(cma, "visual", 60.0f, 15.0f, 30.0f);
+            cross_modal_align_register_modality(cma, "auditory", 20.0f, 10.0f, 20.0f);
+            cross_modal_align_register_modality(cma, "somatosensory", 40.0f, 12.0f, 25.0f);
+            cross_modal_align_register_modality(cma, "speech", 50.0f, 15.0f, 50.0f);
+            LOG_INFO(LOG_MODULE, "Cross-modal aligner created (4 modalities registered)");
         }
     } else {
         LOG_WARN(LOG_MODULE, "Grounded language system creation failed (non-fatal)");

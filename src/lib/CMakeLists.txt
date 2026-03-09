@@ -1489,6 +1489,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_ternary.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/bridges/nimcp_snn_routing_bridge.c  # SNN routing bridge for cross-region spike routing
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/bridges/nimcp_snn_language_bridge.c  # SNN language bridge for spike-driven word-concept binding
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/bridges/nimcp_snn_visual_bridge.c  # SNN visual bridge for spike-driven visual processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/bridges/nimcp_snn_speech_bridge.c  # SNN speech bridge for spike-driven speech processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/bridges/nimcp_snn_audio_bridge.c  # SNN audio bridge for spike-driven auditory processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/bridges/nimcp_snn_somatosensory_bridge.c  # SNN somatosensory bridge for body-state spike encoding
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/bridges/nimcp_snn_cross_modal_align.c  # Cross-modal temporal alignment for multi-sensory spike sync
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_thalamic_bridge.c  # Personality-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_thalamic_bridge.c  # Self-awareness-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_thalamic_bridge.c  # Predictive-thalamic integration

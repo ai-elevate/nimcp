@@ -45692,6 +45692,54 @@ __/security/training/nimcp_security_training_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/training/nimcp_security_training_fep_bridge.c.s
 .PHONY : __/security/training/nimcp_security_training_fep_bridge.c.s
 
+__/snn/bridges/nimcp_snn_audio_bridge.o: __/snn/bridges/nimcp_snn_audio_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_audio_bridge.o
+
+# target to build an object file
+__/snn/bridges/nimcp_snn_audio_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_audio_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_audio_bridge.c.o
+
+__/snn/bridges/nimcp_snn_audio_bridge.i: __/snn/bridges/nimcp_snn_audio_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_audio_bridge.i
+
+# target to preprocess a source file
+__/snn/bridges/nimcp_snn_audio_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_audio_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_audio_bridge.c.i
+
+__/snn/bridges/nimcp_snn_audio_bridge.s: __/snn/bridges/nimcp_snn_audio_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_audio_bridge.s
+
+# target to generate assembly for a file
+__/snn/bridges/nimcp_snn_audio_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_audio_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_audio_bridge.c.s
+
+__/snn/bridges/nimcp_snn_cross_modal_align.o: __/snn/bridges/nimcp_snn_cross_modal_align.c.o
+.PHONY : __/snn/bridges/nimcp_snn_cross_modal_align.o
+
+# target to build an object file
+__/snn/bridges/nimcp_snn_cross_modal_align.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_cross_modal_align.c.o
+.PHONY : __/snn/bridges/nimcp_snn_cross_modal_align.c.o
+
+__/snn/bridges/nimcp_snn_cross_modal_align.i: __/snn/bridges/nimcp_snn_cross_modal_align.c.i
+.PHONY : __/snn/bridges/nimcp_snn_cross_modal_align.i
+
+# target to preprocess a source file
+__/snn/bridges/nimcp_snn_cross_modal_align.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_cross_modal_align.c.i
+.PHONY : __/snn/bridges/nimcp_snn_cross_modal_align.c.i
+
+__/snn/bridges/nimcp_snn_cross_modal_align.s: __/snn/bridges/nimcp_snn_cross_modal_align.c.s
+.PHONY : __/snn/bridges/nimcp_snn_cross_modal_align.s
+
+# target to generate assembly for a file
+__/snn/bridges/nimcp_snn_cross_modal_align.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_cross_modal_align.c.s
+.PHONY : __/snn/bridges/nimcp_snn_cross_modal_align.c.s
+
 __/snn/bridges/nimcp_snn_language_bridge.o: __/snn/bridges/nimcp_snn_language_bridge.c.o
 .PHONY : __/snn/bridges/nimcp_snn_language_bridge.o
 
@@ -45739,6 +45787,78 @@ __/snn/bridges/nimcp_snn_routing_bridge.s: __/snn/bridges/nimcp_snn_routing_brid
 __/snn/bridges/nimcp_snn_routing_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_routing_bridge.c.s
 .PHONY : __/snn/bridges/nimcp_snn_routing_bridge.c.s
+
+__/snn/bridges/nimcp_snn_somatosensory_bridge.o: __/snn/bridges/nimcp_snn_somatosensory_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_somatosensory_bridge.o
+
+# target to build an object file
+__/snn/bridges/nimcp_snn_somatosensory_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_somatosensory_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_somatosensory_bridge.c.o
+
+__/snn/bridges/nimcp_snn_somatosensory_bridge.i: __/snn/bridges/nimcp_snn_somatosensory_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_somatosensory_bridge.i
+
+# target to preprocess a source file
+__/snn/bridges/nimcp_snn_somatosensory_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_somatosensory_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_somatosensory_bridge.c.i
+
+__/snn/bridges/nimcp_snn_somatosensory_bridge.s: __/snn/bridges/nimcp_snn_somatosensory_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_somatosensory_bridge.s
+
+# target to generate assembly for a file
+__/snn/bridges/nimcp_snn_somatosensory_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_somatosensory_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_somatosensory_bridge.c.s
+
+__/snn/bridges/nimcp_snn_speech_bridge.o: __/snn/bridges/nimcp_snn_speech_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_speech_bridge.o
+
+# target to build an object file
+__/snn/bridges/nimcp_snn_speech_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_speech_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_speech_bridge.c.o
+
+__/snn/bridges/nimcp_snn_speech_bridge.i: __/snn/bridges/nimcp_snn_speech_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_speech_bridge.i
+
+# target to preprocess a source file
+__/snn/bridges/nimcp_snn_speech_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_speech_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_speech_bridge.c.i
+
+__/snn/bridges/nimcp_snn_speech_bridge.s: __/snn/bridges/nimcp_snn_speech_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_speech_bridge.s
+
+# target to generate assembly for a file
+__/snn/bridges/nimcp_snn_speech_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_speech_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_speech_bridge.c.s
+
+__/snn/bridges/nimcp_snn_visual_bridge.o: __/snn/bridges/nimcp_snn_visual_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_visual_bridge.o
+
+# target to build an object file
+__/snn/bridges/nimcp_snn_visual_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_visual_bridge.c.o
+.PHONY : __/snn/bridges/nimcp_snn_visual_bridge.c.o
+
+__/snn/bridges/nimcp_snn_visual_bridge.i: __/snn/bridges/nimcp_snn_visual_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_visual_bridge.i
+
+# target to preprocess a source file
+__/snn/bridges/nimcp_snn_visual_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_visual_bridge.c.i
+.PHONY : __/snn/bridges/nimcp_snn_visual_bridge.c.i
+
+__/snn/bridges/nimcp_snn_visual_bridge.s: __/snn/bridges/nimcp_snn_visual_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_visual_bridge.s
+
+# target to generate assembly for a file
+__/snn/bridges/nimcp_snn_visual_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/bridges/nimcp_snn_visual_bridge.c.s
+.PHONY : __/snn/bridges/nimcp_snn_visual_bridge.c.s
 
 __/snn/nimcp_snn_bio_async.o: __/snn/nimcp_snn_bio_async.c.o
 .PHONY : __/snn/nimcp_snn_bio_async.o
@@ -57730,12 +57850,27 @@ help:
 	@echo "... __/security/training/nimcp_security_training_fep_bridge.o"
 	@echo "... __/security/training/nimcp_security_training_fep_bridge.i"
 	@echo "... __/security/training/nimcp_security_training_fep_bridge.s"
+	@echo "... __/snn/bridges/nimcp_snn_audio_bridge.o"
+	@echo "... __/snn/bridges/nimcp_snn_audio_bridge.i"
+	@echo "... __/snn/bridges/nimcp_snn_audio_bridge.s"
+	@echo "... __/snn/bridges/nimcp_snn_cross_modal_align.o"
+	@echo "... __/snn/bridges/nimcp_snn_cross_modal_align.i"
+	@echo "... __/snn/bridges/nimcp_snn_cross_modal_align.s"
 	@echo "... __/snn/bridges/nimcp_snn_language_bridge.o"
 	@echo "... __/snn/bridges/nimcp_snn_language_bridge.i"
 	@echo "... __/snn/bridges/nimcp_snn_language_bridge.s"
 	@echo "... __/snn/bridges/nimcp_snn_routing_bridge.o"
 	@echo "... __/snn/bridges/nimcp_snn_routing_bridge.i"
 	@echo "... __/snn/bridges/nimcp_snn_routing_bridge.s"
+	@echo "... __/snn/bridges/nimcp_snn_somatosensory_bridge.o"
+	@echo "... __/snn/bridges/nimcp_snn_somatosensory_bridge.i"
+	@echo "... __/snn/bridges/nimcp_snn_somatosensory_bridge.s"
+	@echo "... __/snn/bridges/nimcp_snn_speech_bridge.o"
+	@echo "... __/snn/bridges/nimcp_snn_speech_bridge.i"
+	@echo "... __/snn/bridges/nimcp_snn_speech_bridge.s"
+	@echo "... __/snn/bridges/nimcp_snn_visual_bridge.o"
+	@echo "... __/snn/bridges/nimcp_snn_visual_bridge.i"
+	@echo "... __/snn/bridges/nimcp_snn_visual_bridge.s"
 	@echo "... __/snn/nimcp_snn_bio_async.o"
 	@echo "... __/snn/nimcp_snn_bio_async.i"
 	@echo "... __/snn/nimcp_snn_bio_async.s"

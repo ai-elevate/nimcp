@@ -591,6 +591,38 @@ int snn_speech_bridge_flush_accumulator(snn_speech_bridge_t* bridge, float time_
 /** Bio-async module ID for speech-SNN bridge (0x0612) */
 #define BIO_MODULE_SNN_SPEECH 0x0612
 
+//=============================================================================
+// Phase 8.6b: Word -> Phoneme Production (Reverse Path)
+//=============================================================================
+
+/**
+ * @brief Produce phoneme sequence from word concept activation
+ * WHAT: Convert word-level concept into articulatory phoneme sequence
+ * WHY:  Speech production requires word->phoneme decomposition
+ * HOW:  Lookup word's phoneme sequence, encode each with temporal ordering
+ */
+int snn_speech_bridge_produce_word(
+    snn_speech_bridge_t* bridge,
+    uint32_t word_pop_index,
+    phoneme_t* phoneme_out,
+    uint32_t* num_phonemes_out,
+    uint32_t max_phonemes
+);
+
+/**
+ * @brief Encode word production as spike train sequence
+ * WHAT: Generate temporally-ordered spike trains for word articulation
+ * WHY:  Motor cortex needs spike sequences for speech muscles
+ * HOW:  Phoneme population activation in serial order with inter-phoneme gaps
+ */
+int snn_speech_bridge_encode_word_production(
+    snn_speech_bridge_t* bridge,
+    uint32_t word_pop_index,
+    float start_time_ms,
+    snn_spike_train_t** spike_trains_out,
+    uint32_t* num_trains_out
+);
+
 #ifdef __cplusplus
 }
 #endif

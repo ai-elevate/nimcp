@@ -14,6 +14,11 @@
 #include "generation/nimcp_embedding.h"
 #include "language/nimcp_grounded_language.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
+#include "snn/bridges/nimcp_snn_speech_bridge.h"
+#include "snn/bridges/nimcp_snn_audio_bridge.h"
+#include "snn/bridges/nimcp_snn_visual_bridge.h"
+#include "snn/bridges/nimcp_snn_somatosensory_bridge.h"
+#include "snn/bridges/nimcp_snn_cross_modal_align.h"
 
 //=============================================================================
 // Bio-Async Message Handlers and Integration
@@ -254,6 +259,28 @@ void brain_destroy(brain_t brain)
             }
         }
         nimcp_free(brain->output_labels);
+    }
+
+    // Cleanup Phase 8 SNN bridges (before hyperledger and language bridge)
+    if (brain->cross_modal_aligner) {
+        cross_modal_align_destroy((cross_modal_align_t*)brain->cross_modal_aligner);
+        brain->cross_modal_aligner = NULL;
+    }
+    if (brain->snn_somatosensory_bridge) {
+        snn_somatosensory_bridge_destroy((snn_somatosensory_bridge_t*)brain->snn_somatosensory_bridge);
+        brain->snn_somatosensory_bridge = NULL;
+    }
+    if (brain->snn_audio_bridge) {
+        snn_audio_bridge_destroy((snn_audio_bridge_t*)brain->snn_audio_bridge);
+        brain->snn_audio_bridge = NULL;
+    }
+    if (brain->snn_visual_bridge) {
+        snn_visual_bridge_destroy((snn_visual_bridge_t*)brain->snn_visual_bridge);
+        brain->snn_visual_bridge = NULL;
+    }
+    if (brain->snn_speech_bridge) {
+        snn_speech_bridge_destroy((snn_speech_bridge_t*)brain->snn_speech_bridge);
+        brain->snn_speech_bridge = NULL;
     }
 
     // Cleanup hyperledger bridge (before SNN language bridge)
