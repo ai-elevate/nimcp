@@ -33,26 +33,31 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_speech_bridge)
 //=============================================================================
 
 /* Standard English phoneme formant centers (F1, F2 in Hz) */
-static const float PHONEME_FORMANTS[44][2] = {
-    {270, 2290},  /* /i/ */
-    {390, 1990},  /* /ɪ/ */
-    {530, 1840},  /* /e/ */
-    {660, 1720},  /* /ɛ/ */
-    {730, 1090},  /* /æ/ */
-    {570, 840},   /* /ɑ/ */
-    {440, 1020},  /* /ɔ/ */
-    {370, 950},   /* /o/ */
-    {440, 1020},  /* /ʊ/ */
-    {300, 870},   /* /u/ */
-    {640, 1190},  /* /ʌ/ */
-    {490, 1350},  /* /ə/ */
-    /* Consonants use simplified representations */
+static const float PHONEME_FORMANTS[PHONEME_COUNT][2] = {
+    /* Vowels (12) */
+    {270, 2290},  /* IY /i/ */
+    {390, 1990},  /* IH /ɪ/ */
+    {530, 1840},  /* EY /e/ */
+    {660, 1720},  /* EH /ɛ/ */
+    {730, 1090},  /* AE /æ/ */
+    {570, 840},   /* AA /ɑ/ */
+    {440, 1020},  /* AO /ɔ/ */
+    {370, 950},   /* OW /o/ */
+    {440, 1020},  /* UH /ʊ/ */
+    {300, 870},   /* UW /u/ */
+    {640, 1190},  /* AH /ʌ/ */
+    {490, 1350},  /* ER /ə/ */
+    /* Stops (6): P,B,T,D,K,G */
     {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    /* Fricatives (9): F,V,TH,DH,S,Z,SH,ZH,H */
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    /* Nasals (3): M,N,NG */
+    {0, 0}, {0, 0}, {0, 0},
+    /* Approximants (4): L,R,W,Y */
+    {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    /* Affricates (2): CH,JH */
+    {0, 0}, {0, 0},
+    /* Special (2): SILENCE,UNKNOWN */
     {0, 0}, {0, 0}
 };
 
@@ -84,7 +89,7 @@ void snn_speech_config_default(snn_speech_config_t* config) {
     config->use_winner_take_all = true;      /* WTA for phoneme selection */
 
     /* Phoneme processing */
-    config->num_phonemes = 44;               /* English IPA subset */
+    config->num_phonemes = PHONEME_COUNT;     /* English IPA subset */
     config->num_formants = 4;                /* F1, F2, F3, F4 */
     config->encode_formants = true;
     config->encode_prosody = true;
@@ -1272,7 +1277,7 @@ static const word_phoneme_entry_t WORD_PHONEME_TABLE[] = {
     {"see",    {PHONEME_S, PHONEME_IY}, 2},
     {"say",    {PHONEME_S, PHONEME_EY}, 2},
     {"good",   {PHONEME_G, PHONEME_UH, PHONEME_D}, 3},
-    {"time",   {PHONEME_T, PHONEME_AA, PHONEME_M}, 3},
+    {"time",   {PHONEME_T, PHONEME_AA, PHONEME_IY, PHONEME_M}, 4},
     {"make",   {PHONEME_M, PHONEME_EY, PHONEME_K}, 3},
     {"go",     {PHONEME_G, PHONEME_OW}, 2},
     {"come",   {PHONEME_K, PHONEME_AH, PHONEME_M}, 3},
@@ -1334,19 +1339,11 @@ int snn_speech_bridge_produce_word(
 
     *num_phonemes_out = 0;
 
-    /* Try to get word string from language bridge */
+    /* Get word string directly from language bridge by population index */
     const char* word = NULL;
     if (bridge->lang_bridge) {
-        /* Use decode to get word form for the population index */
-        snn_lang_word_result_t result;
-        memset(&result, 0, sizeof(result));
-        float act = 1.0f;
-        uint32_t num_results = 0;
-        snn_language_bridge_decode_spikes(bridge->lang_bridge,
-            &act, 1, &result, 1, &num_results);
-        if (num_results > 0 && result.word_form) {
-            word = result.word_form;
-        }
+        word = snn_language_bridge_get_word_form(bridge->lang_bridge,
+                                                  word_pop_index);
     }
 
     /* Table lookup first */
@@ -1408,19 +1405,27 @@ int snn_speech_bridge_encode_word_production(
                                              phonemes, &num_phonemes, 32);
     if (rc != 0 || num_phonemes == 0) return -1;
 
+    /* Allocate array to collect per-phoneme spike trains */
+    snn_spike_train_t** per_phoneme_trains = (snn_spike_train_t**)nimcp_calloc(
+        num_phonemes, sizeof(snn_spike_train_t*));
+    if (!per_phoneme_trains) return -1;
+
     /* Encode each phoneme with sequential timing */
     float interval = bridge->config.inter_phoneme_interval_ms;
     if (interval < 1.0f) interval = 30.0f;  /* Default 30ms gap */
 
-    for (uint32_t i = 0; i < num_phonemes; i++) {
-        float time_ms = start_time_ms + (float)i * interval;
+    uint32_t num_neurons_per = bridge->config.num_phonemes *
+                               bridge->config.neurons_per_phoneme;
+    uint32_t successful = 0;
 
-        /* Use the existing encode_phoneme function */
+    for (uint32_t i = 0; i < num_phonemes; i++) {
+        float saved_time = bridge->last_update_time_ms;
+        bridge->last_update_time_ms = start_time_ms + (float)i * interval;
+
         phoneme_features_t features;
         memset(&features, 0, sizeof(features));
-        /* Set basic formant features from the static table */
         uint32_t idx = (uint32_t)phonemes[i];
-        if (idx < 44) {
+        if (idx < PHONEME_COUNT) {
             features.formant_f1 = PHONEME_FORMANTS[idx][0];
             features.formant_f2 = PHONEME_FORMANTS[idx][1];
         }
@@ -1428,13 +1433,40 @@ int snn_speech_bridge_encode_word_production(
         snn_spike_train_t* trains = NULL;
         int enc_rc = snn_speech_bridge_encode_phoneme(bridge, phonemes[i],
                                                        &features, &trains);
-        (void)enc_rc;
-        (void)trains;
-        (void)time_ms;
+        bridge->last_update_time_ms = saved_time;
+
+        if (enc_rc == 0 && trains) {
+            per_phoneme_trains[successful] = trains;
+            successful++;
+        }
     }
 
-    /* Report total trains produced */
-    *num_trains_out = num_phonemes;
+    if (successful == 0) {
+        nimcp_free(per_phoneme_trains);
+        return -1;
+    }
+
+    /* Merge all per-phoneme spike trains into a single output array */
+    uint32_t total_trains = successful * num_neurons_per;
+    snn_spike_train_t* merged = (snn_spike_train_t*)nimcp_calloc(
+        total_trains, sizeof(snn_spike_train_t));
+    if (!merged) {
+        for (uint32_t i = 0; i < successful; i++) {
+            nimcp_free(per_phoneme_trains[i]);
+        }
+        nimcp_free(per_phoneme_trains);
+        return -1;
+    }
+
+    for (uint32_t i = 0; i < successful; i++) {
+        memcpy(&merged[i * num_neurons_per], per_phoneme_trains[i],
+               num_neurons_per * sizeof(snn_spike_train_t));
+        nimcp_free(per_phoneme_trains[i]);
+    }
+    nimcp_free(per_phoneme_trains);
+
+    *spike_trains_out = merged;
+    *num_trains_out = total_trains;
 
     return 0;
 }

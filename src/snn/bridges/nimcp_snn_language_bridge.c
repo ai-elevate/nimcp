@@ -965,6 +965,16 @@ float snn_language_bridge_get_blend(const snn_language_bridge_t* bridge)
     return bridge->config.spike_blend;
 }
 
+const char* snn_language_bridge_get_word_form(
+    const snn_language_bridge_t* bridge,
+    uint32_t word_pop_index)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return NULL;
+    if (word_pop_index >= bridge->num_word_pops) return NULL;
+    if (!bridge->word_pops[word_pop_index].registered) return NULL;
+    return bridge->word_pops[word_pop_index].word_form;
+}
+
 void snn_language_bridge_set_blend(snn_language_bridge_t* bridge, float blend)
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return;
@@ -1157,28 +1167,27 @@ int snn_language_bridge_predict_sensory(
 
     memset(predicted_sensory, 0, sensory_dim * sizeof(float));
 
-    /* For each active concept, lookup bound word populations and
-     * generate expected sensory pattern from binding weights */
+    /* Single pass over all binding buckets — check concept activation per node.
+     * O(num_bindings) instead of O(num_concepts * BINDING_HASH_BUCKETS). */
     float total_activation = 0.0f;
-    for (uint32_t c = 0; c < num_concepts && c < bridge->num_concept_pops; c++) {
-        float act = concept_activations[c];
-        if (act < 0.01f) continue;  /* Skip inactive concepts */
+    uint32_t max_concept = num_concepts < bridge->num_concept_pops
+                         ? num_concepts : bridge->num_concept_pops;
 
-        total_activation += act;
-
-        /* Iterate bindings for this concept */
-        for (uint32_t b = 0; b < BINDING_HASH_BUCKETS; b++) {
-            binding_node_t* node = bridge->binding_buckets[b];
-            while (node) {
-                if (node->binding.concept_pop == c) {
+    for (uint32_t b = 0; b < BINDING_HASH_BUCKETS; b++) {
+        binding_node_t* node = bridge->binding_buckets[b];
+        while (node) {
+            uint32_t cp = node->binding.concept_pop;
+            if (cp < max_concept) {
+                float act = concept_activations[cp];
+                if (act >= 0.01f) {
+                    total_activation += act;
                     uint32_t wp = node->binding.word_pop;
-                    /* Map word population to sensory dimension via modular index */
                     uint32_t sensory_idx = wp % sensory_dim;
                     predicted_sensory[sensory_idx] +=
                         act * node->binding.weight;
                 }
-                node = node->next;
             }
+            node = node->next;
         }
     }
 

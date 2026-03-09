@@ -323,6 +323,11 @@ int snn_language_bridge_reset_stats(snn_language_bridge_t* bridge);
 /** Get current spike blend factor */
 float snn_language_bridge_get_blend(const snn_language_bridge_t* bridge);
 
+/** Get word form string for a given word population index (NULL if invalid/unregistered) */
+const char* snn_language_bridge_get_word_form(
+    const snn_language_bridge_t* bridge,
+    uint32_t word_pop_index);
+
 /** Set spike blend factor [0=all vector, 1=all spike] */
 void snn_language_bridge_set_blend(snn_language_bridge_t* bridge, float blend);
 

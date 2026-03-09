@@ -35,6 +35,8 @@
 #include "snn/bridges/nimcp_snn_speech_bridge.h"
 #include "snn/bridges/nimcp_snn_audio_bridge.h"
 #include "snn/bridges/nimcp_snn_cross_modal_align.h"
+#include "snn/bridges/nimcp_snn_visual_bridge.h"
+#include "snn/bridges/nimcp_snn_somatosensory_bridge.h"
 #include "core/brain/bridges/nimcp_hyperledger_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -574,6 +576,28 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
                 snn_audio_bridge_create(&audio_cfg, NULL, brain->audio_cortex);
             if (brain->snn_audio_bridge) {
                 LOG_INFO(LOG_MODULE, "SNN audio bridge created for auditory spike processing");
+            }
+        }
+
+        /* Create SNN visual bridge for spike-based visual processing */
+        if (brain->visual_cortex) {
+            snn_visual_config_t vis_cfg;
+            snn_visual_config_default(&vis_cfg);
+            brain->snn_visual_bridge = (struct snn_visual_bridge*)
+                snn_visual_bridge_create(&vis_cfg, NULL, brain->visual_cortex);
+            if (brain->snn_visual_bridge) {
+                LOG_INFO(LOG_MODULE, "SNN visual bridge created for visual spike processing");
+            }
+        }
+
+        /* Create SNN somatosensory bridge for touch/proprioception spike encoding */
+        if (brain->somatosensory) {
+            snn_somatosensory_config_t soma_cfg;
+            snn_somatosensory_config_default(&soma_cfg);
+            brain->snn_somatosensory_bridge = (struct snn_somatosensory_bridge*)
+                snn_somatosensory_bridge_create(&soma_cfg, NULL);
+            if (brain->snn_somatosensory_bridge) {
+                LOG_INFO(LOG_MODULE, "SNN somatosensory bridge created for touch/proprioception spike encoding");
             }
         }
 

@@ -297,7 +297,7 @@ bool hyperledger_eov_validate(hyperledger_bridge_t* bridge,
                                const float* gradients,
                                uint32_t num_gradients)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return true;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return false;
     if (!bridge->config.enable_eov_pipeline) return true;
 
     eov_transaction_t* tx = &bridge->current_tx;

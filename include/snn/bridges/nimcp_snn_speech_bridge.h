@@ -70,7 +70,7 @@ typedef struct snn_speech_config_s {
     bool use_winner_take_all;           /**< Use WTA for phoneme selection */
 
     /* Phoneme processing */
-    uint32_t num_phonemes;              /**< Phoneme vocabulary size (44) */
+    uint32_t num_phonemes;              /**< Phoneme vocabulary size (PHONEME_COUNT) */
     uint32_t num_formants;              /**< Number of formants (4) */
     bool encode_formants;               /**< Encode formant features */
     bool encode_prosody;                /**< Encode pitch/stress */
@@ -207,7 +207,7 @@ typedef struct snn_speech_bridge_s {
  *
  * DEFAULTS:
  * - Population coding with 10 neurons per phoneme
- * - 44 phonemes (English IPA subset)
+ * - PHONEME_COUNT phonemes (English IPA subset: 38)
  * - 4 formants (F1-F4)
  * - Sequence encoding with position
  * - 9-item phonological buffer (7±2)
