@@ -15,6 +15,9 @@
 #include "cognitive/memory/nimcp_semantic_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -24,6 +27,8 @@
 #include <time.h>
 
 #define LOG_MODULE "GROUNDED_LANG"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(grounded_language)
 
 /*=============================================================================
  * Internal Structures
@@ -922,7 +927,11 @@ static const char* get_determiner(grounded_language_t* gl) {
 
 grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* semantic_memory) {
     grounded_language_t* gl = (grounded_language_t*)nimcp_calloc(1, sizeof(grounded_language_t));
-    if (!gl) return NULL;
+    if (!gl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_create: failed to allocate grounded_language_t");
+        return NULL;
+    }
 
     gl->semantic_dim = (semantic_dim > 0) ? semantic_dim : GL_SEMANTIC_DIM;
     gl->semantic_memory = (semantic_memory_system_t*)semantic_memory;
@@ -932,6 +941,8 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     gl->lexicon = (gl_lexicon_entry_t**)nimcp_calloc(gl->lexicon_size, sizeof(gl_lexicon_entry_t*));
     gl->vocab_list = (gl_lexicon_entry_t**)nimcp_calloc(GL_MAX_VOCAB, sizeof(gl_lexicon_entry_t*));
     if (!gl->lexicon || !gl->vocab_list) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_create: failed to allocate lexicon tables");
         grounded_language_destroy(gl);
         return NULL;
     }
@@ -940,6 +951,8 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     gl->template_capacity = GL_MAX_TEMPLATES;
     gl->templates = (gl_template_t*)nimcp_calloc(gl->template_capacity, sizeof(gl_template_t));
     if (!gl->templates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_create: failed to allocate templates");
         grounded_language_destroy(gl);
         return NULL;
     }
@@ -947,6 +960,8 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     /* Context */
     gl->context.context_vector = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
     if (!gl->context.context_vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_create: failed to allocate context vector");
         grounded_language_destroy(gl);
         return NULL;
     }
@@ -962,6 +977,9 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     seed_function_words(gl);
     seed_conceptual_words(gl);
     seed_templates(gl);
+
+    /* Register with BBB */
+    bbb_register_module("grounded_language", BBB_MODULE_TYPE_COGNITIVE);
 
     LOG_INFO(LOG_MODULE, "Grounded language system created (dim=%u, vocab=%u words)",
              gl->semantic_dim, gl->vocab_count);
@@ -991,7 +1009,12 @@ void grounded_language_destroy(grounded_language_t* gl) {
 }
 
 void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semantic_memory) {
-    if (gl) gl->semantic_memory = (semantic_memory_system_t*)semantic_memory;
+    if (!gl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_set_semantic_memory: NULL gl");
+        return;
+    }
+    gl->semantic_memory = (semantic_memory_system_t*)semantic_memory;
 }
 
 /*=============================================================================
@@ -1000,13 +1023,22 @@ void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semant
 
 int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                                   gl_comprehension_result_t* result) {
-    if (!gl || !text || !result) return -1;
+    if (!gl || !text || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_comprehend: NULL parameter (gl=%p, text=%p, result=%p)",
+            (void*)gl, (void*)text, (void*)result);
+        return -1;
+    }
     memset(result, 0, sizeof(*result));
 
     /* Tokenize */
     size_t text_len = strlen(text);
     char* buf = (char*)nimcp_malloc(text_len + 1);
-    if (!buf) return -1;
+    if (!buf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_comprehend: failed to allocate text buffer (%zu bytes)", text_len + 1);
+        return -1;
+    }
     memcpy(buf, text, text_len + 1);
 
     char* words[GL_MAX_PRODUCTION_WORDS];
@@ -1017,6 +1049,8 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     result->activation_levels = (float*)nimcp_calloc(GL_MAX_ACTIVE_CONCEPTS, sizeof(float));
     result->semantic_vector = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
     if (!result->activated_concepts || !result->activation_levels || !result->semantic_vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_comprehend: failed to allocate result arrays");
         nimcp_free(buf);
         gl_comprehension_result_cleanup(result);
         return -1;
@@ -1139,7 +1173,11 @@ void gl_comprehension_result_cleanup(gl_comprehension_result_t* result) {
  *===========================================================================*/
 
 int grounded_language_ground(grounded_language_t* gl, const gl_grounding_event_t* event) {
-    if (!gl || !event || !event->word || !event->sensory_features) return -1;
+    if (!gl || !event || !event->word || !event->sensory_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_ground: NULL parameter");
+        return -1;
+    }
 
     /* Find or create lexicon entry */
     gl_lexicon_entry_t* entry = lexicon_find_or_create(gl, event->word);
@@ -1177,11 +1215,20 @@ int grounded_language_ground(grounded_language_t* gl, const gl_grounding_event_t
 }
 
 int grounded_language_learn_from_text(grounded_language_t* gl, const char* text) {
-    if (!gl || !text) return -1;
+    if (!gl || !text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_learn_from_text: NULL parameter (gl=%p, text=%p)",
+            (void*)gl, (void*)text);
+        return -1;
+    }
 
     size_t text_len = strlen(text);
     char* buf = (char*)nimcp_malloc(text_len + 1);
-    if (!buf) return -1;
+    if (!buf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_learn_from_text: failed to allocate buffer");
+        return -1;
+    }
     memcpy(buf, text, text_len + 1);
 
     char* words[GL_MAX_PRODUCTION_WORDS];
@@ -1270,7 +1317,11 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
 uint64_t grounded_language_fast_map(grounded_language_t* gl, const char* word,
                                      const float* concept_features, uint32_t feature_dim,
                                      uint32_t category) {
-    if (!gl || !word || !concept_features) return 0;
+    if (!gl || !word || !concept_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_fast_map: NULL parameter");
+        return 0;
+    }
 
     gl_lexicon_entry_t* entry = lexicon_find_or_create(gl, word);
     if (!entry) return 0;
@@ -1299,7 +1350,12 @@ uint64_t grounded_language_fast_map(grounded_language_t* gl, const char* word,
 int grounded_language_produce(grounded_language_t* gl, const float* intent,
                                uint32_t intent_dim, gl_production_mode_t mode,
                                gl_production_result_t* result) {
-    if (!gl || !intent || !result) return -1;
+    if (!gl || !intent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_produce: NULL parameter (gl=%p, intent=%p, result=%p)",
+            (void*)gl, (void*)intent, (void*)result);
+        return -1;
+    }
     memset(result, 0, sizeof(*result));
 
     /* Dual-path: if SNN bridge available, blend spike-driven production */
@@ -1341,10 +1397,16 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     /* Allocate output buffer */
     size_t buf_size = GL_MAX_PRODUCTION_WORDS * GL_MAX_WORD_LEN;
     char* buf = (char*)nimcp_calloc(buf_size, 1);
-    if (!buf) return -1;
+    if (!buf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_produce: failed to allocate output buffer");
+        return -1;
+    }
 
     result->semantic_vector = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
     if (!result->semantic_vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_produce: failed to allocate semantic vector");
         nimcp_free(buf);
         return -1;
     }
@@ -1475,7 +1537,11 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
 
 int grounded_language_describe_concept(grounded_language_t* gl, uint64_t concept_id,
                                         gl_production_result_t* result) {
-    if (!gl || !result) return -1;
+    if (!gl || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_describe_concept: NULL parameter");
+        return -1;
+    }
 
     const float* features = get_concept_features(gl, concept_id);
     if (!features) {
@@ -1502,7 +1568,11 @@ int grounded_language_blend(grounded_language_t* gl,
                              const float* vector_a, const float* vector_b,
                              uint32_t vec_dim, float blend_ratio,
                              gl_production_result_t* result) {
-    if (!gl || !result) return -1;
+    if (!gl || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_blend: NULL parameter");
+        return -1;
+    }
 
     uint32_t dim = gl->semantic_dim;
 
@@ -1517,7 +1587,11 @@ int grounded_language_blend(grounded_language_t* gl,
 
     /* Blend vectors */
     float* blended = (float*)nimcp_calloc(dim, sizeof(float));
-    if (!blended) return -1;
+    if (!blended) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_blend: failed to allocate blend vector");
+        return -1;
+    }
 
     if (fa && fb) {
         uint32_t use_dim = (vec_dim > 0 && vec_dim < dim) ? vec_dim : dim;
@@ -1541,17 +1615,27 @@ int grounded_language_blend(grounded_language_t* gl,
 int grounded_language_narrate(grounded_language_t* gl, uint64_t seed_concept,
                                uint32_t num_sentences, float creativity,
                                gl_production_result_t* result) {
-    if (!gl || !result || num_sentences == 0) return -1;
+    if (!gl || !result || num_sentences == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_narrate: NULL parameter or zero sentences");
+        return -1;
+    }
     memset(result, 0, sizeof(*result));
 
     if (num_sentences > 10) num_sentences = 10; /* Cap for sanity */
 
     size_t buf_size = num_sentences * 256;
     char* buf = (char*)nimcp_calloc(buf_size, 1);
-    if (!buf) return -1;
+    if (!buf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_narrate: failed to allocate narrative buffer");
+        return -1;
+    }
 
     result->semantic_vector = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
     if (!result->semantic_vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_narrate: failed to allocate semantic vector");
         nimcp_free(buf);
         return -1;
     }
@@ -1641,7 +1725,11 @@ void gl_production_result_cleanup(gl_production_result_t* result) {
 
 int grounded_language_respond(grounded_language_t* gl, const char* input_text,
                                char* response, uint32_t response_max, float* confidence) {
-    if (!gl || !input_text || !response || response_max == 0) return -1;
+    if (!gl || !input_text || !response || response_max == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_respond: NULL parameter or zero response_max");
+        return -1;
+    }
 
     /* Step 1: Comprehend input */
     gl_comprehension_result_t comp = {0};
@@ -1692,7 +1780,11 @@ int grounded_language_respond(grounded_language_t* gl, const char* input_text,
 
 float grounded_language_learn_pair(grounded_language_t* gl, const char* input_text,
                                     const char* target_text, float learning_rate) {
-    if (!gl || !input_text || !target_text) return -1.0f;
+    if (!gl || !input_text || !target_text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_learn_pair: NULL parameter");
+        return -1.0f;
+    }
 
     float lr = (learning_rate > 0.0f) ? learning_rate : gl->hebbian_lr;
     float saved_lr = gl->hebbian_lr;
@@ -1780,11 +1872,19 @@ float grounded_language_learn_pair(grounded_language_t* gl, const char* input_te
 }
 
 int grounded_language_learn_syntax(grounded_language_t* gl, const char* text) {
-    if (!gl || !text) return -1;
+    if (!gl || !text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_learn_syntax: NULL parameter");
+        return -1;
+    }
 
     size_t tlen = strlen(text);
     char* buf = (char*)nimcp_malloc(tlen + 1);
-    if (!buf) return -1;
+    if (!buf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_learn_syntax: failed to allocate buffer");
+        return -1;
+    }
     memcpy(buf, text, tlen + 1);
 
     char* words[GL_MAX_PRODUCTION_WORDS];
@@ -1871,28 +1971,58 @@ int grounded_language_learn_syntax(grounded_language_t* gl, const char* text) {
  *===========================================================================*/
 
 void grounded_language_connect_visual(grounded_language_t* gl, void* vis_ctx) {
-    if (gl) gl->visual_ctx = vis_ctx;
+    if (!gl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_connect_visual: NULL gl");
+        return;
+    }
+    gl->visual_ctx = vis_ctx;
 }
 
 void grounded_language_connect_auditory(grounded_language_t* gl, void* aud_ctx) {
-    if (gl) gl->auditory_ctx = aud_ctx;
+    if (!gl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_connect_auditory: NULL gl");
+        return;
+    }
+    gl->auditory_ctx = aud_ctx;
 }
 
 void grounded_language_connect_speech(grounded_language_t* gl, void* speech_ctx) {
-    if (gl) gl->speech_ctx = speech_ctx;
+    if (!gl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_connect_speech: NULL gl");
+        return;
+    }
+    gl->speech_ctx = speech_ctx;
 }
 
 void grounded_language_connect_columns(grounded_language_t* gl, void* col_pool) {
-    if (gl) gl->column_pool = col_pool;
+    if (!gl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_connect_columns: NULL gl");
+        return;
+    }
+    gl->column_pool = col_pool;
 }
 
 void grounded_language_connect_emotional(grounded_language_t* gl, void* emo_ctx) {
-    if (gl) gl->emotional_ctx = emo_ctx;
+    if (!gl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_connect_emotional: NULL gl");
+        return;
+    }
+    gl->emotional_ctx = emo_ctx;
 }
 
 void grounded_language_connect_snn_bridge(grounded_language_t* gl,
                                            struct snn_language_bridge* bridge) {
-    if (gl) gl->snn_bridge = bridge;
+    if (!gl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_connect_snn_bridge: NULL gl");
+        return;
+    }
+    gl->snn_bridge = bridge;
 }
 
 /*=============================================================================
@@ -1901,7 +2031,11 @@ void grounded_language_connect_snn_bridge(grounded_language_t* gl,
 
 const gl_lexicon_entry_t* grounded_language_lookup(const grounded_language_t* gl,
                                                      const char* word) {
-    if (!gl || !word) return NULL;
+    if (!gl || !word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_lookup: NULL parameter");
+        return NULL;
+    }
     return lexicon_find(gl, word);
 }
 
@@ -1952,7 +2086,11 @@ void grounded_language_get_stats(const grounded_language_t* gl, gl_stats_t* stat
  *===========================================================================*/
 
 int grounded_language_save(const grounded_language_t* gl, const char* path) {
-    if (!gl || !path) return -1;
+    if (!gl || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_save: NULL parameter");
+        return -1;
+    }
 
     FILE* f = fopen(path, "wb");
     if (!f) return -1;
@@ -2001,7 +2139,11 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
 }
 
 grounded_language_t* grounded_language_load(const char* path, void* semantic_memory) {
-    if (!path) return NULL;
+    if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_load: NULL path");
+        return NULL;
+    }
 
     FILE* f = fopen(path, "rb");
     if (!f) return NULL;

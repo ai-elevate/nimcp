@@ -46,13 +46,13 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(serialization)
 
 bool nimcp_compression_available(void)
 {
-    LOG_DEBUG("Entering nimcp_compression_available");
+    LOG_TRACE("Entering nimcp_compression_available");
     return ZLIB_AVAILABLE != 0;
 }
 
 bool nimcp_aes_available(void)
 {
-    LOG_DEBUG("Entering nimcp_aes_available");
+    LOG_TRACE("Entering nimcp_aes_available");
     // AES not yet implemented - using XOR fallback
     return false;  /* Not available - normal query result */
 }
@@ -208,7 +208,7 @@ static uint8_t* decompress_fallback(const uint8_t* data, size_t size, size_t* ou
 
 uint8_t* nimcp_compress(const uint8_t* data, size_t size, size_t* out_size)
 {
-    LOG_DEBUG("Entering nimcp_compress");
+    LOG_TRACE("Entering nimcp_compress");
     if (!data) {
         LOG_ERROR("nimcp_compress: NULL data");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL data in nimcp_compress");
@@ -236,7 +236,7 @@ uint8_t* nimcp_compress(const uint8_t* data, size_t size, size_t* out_size)
 
 uint8_t* nimcp_decompress(const uint8_t* data, size_t size, size_t* out_size)
 {
-    LOG_DEBUG("Entering nimcp_decompress");
+    LOG_TRACE("Entering nimcp_decompress");
     if (!data) {
         LOG_ERROR("nimcp_decompress: NULL data");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL data in nimcp_decompress");
@@ -476,7 +476,7 @@ bool nimcp_write_processed(FILE* file, const uint8_t* data, size_t size,
 
 void nimcp_serialize_ctx_init(nimcp_serialize_ctx_t* ctx)
 {
-    LOG_DEBUG("Entering nimcp_serialize_ctx_init");
+    LOG_TRACE("Entering nimcp_serialize_ctx_init");
     if (!ctx) return;
     memset(ctx, 0, sizeof(nimcp_serialize_ctx_t));
 }
@@ -494,7 +494,7 @@ void nimcp_serialize_ctx_set_key(nimcp_serialize_ctx_t* ctx,
 
 void nimcp_serialize_ctx_set_flags(nimcp_serialize_ctx_t* ctx, uint32_t flags)
 {
-    LOG_DEBUG("Entering nimcp_serialize_ctx_set_flags");
+    LOG_TRACE("Entering nimcp_serialize_ctx_set_flags");
     if (!ctx) return;
     ctx->flags = flags;
 }

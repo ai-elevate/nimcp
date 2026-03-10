@@ -110,16 +110,14 @@ static int mkdir_p(const char* path) {
         if (*p == '/') {
             *p = '\0';
             if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mkdir_p: validation failed");
-                return -1;
+                return -1;  // Permission denied or other error — caller has fallback
             }
             *p = '/';
         }
     }
 
     if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mkdir_p: validation failed");
-        return -1;
+        return -1;  // Permission denied or other error — caller has fallback
     }
     return 0;
 }

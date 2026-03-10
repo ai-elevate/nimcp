@@ -62,7 +62,13 @@ static const struct {
     {"Kafka", "Absurdist visionary", "20th Century",
      "Bureaucratic nightmares, alienation, transformation, paranoia"},
     {"Marquez", "Magical realist", "20th Century",
-     "Magical realism, Macondo, multi-generational, mythic time"}
+     "Magical realism, Macondo, multi-generational, mythic time"},
+    {"Dostoevsky", "Psychological novelist", "19th Century",
+     "Psychological depth, moral complexity, existential crisis, confession"},
+    {"Woolf", "Modernist pioneer", "20th Century",
+     "Interior monologue, impressionistic prose, gender, time's passage"},
+    {"Faulkner", "Southern gothic master", "20th Century",
+     "Temporal shifts, stream of consciousness, Yoknapatawpha, decay"}
 };
 
 static const struct {
@@ -82,7 +88,19 @@ static const struct {
     {"Miles Davis", "Jazz innovator", "Modern Jazz",
      "Modal jazz, cool jazz, improvisation, Kind of Blue"},
     {"Hans Zimmer", "Electronic-orchestral pioneer", "Contemporary",
-     "Electronic-orchestral hybrid, pulsing rhythms, epic scale"}
+     "Electronic-orchestral hybrid, pulsing rhythms, epic scale"},
+    {"Stravinsky", "Modernist revolutionary", "20th Century",
+     "Rhythmic complexity, dissonance, ballet, primitivism"},
+    {"Ennio Morricone", "Film score legend", "Contemporary",
+     "Western themes, eclectic instrumentation, memorable melodies"},
+    {"Ryuichi Sakamoto", "Electronic-classical pioneer", "Contemporary",
+     "Minimalist, ambient textures, electronic-classical fusion"},
+    {"Philip Glass", "Minimalist master", "Contemporary",
+     "Repetitive structures, arpeggios, hypnotic patterns, opera"},
+    {"Copland", "American voice", "20th Century",
+     "American pastoral, folk melodies, open harmonies, ballet"},
+    {"Ravel", "Orchestral colorist", "Early 20th Century",
+     "Orchestral precision, jazz influence, impressionist color"}
 };
 
 static const struct {
@@ -102,7 +120,19 @@ static const struct {
     {"Warhol", "Pop art pioneer", "Pop Art",
      "Celebrity culture, mass production, screen printing"},
     {"Rembrandt", "Baroque master", "Baroque",
-     "Chiaroscuro, psychological portraits, Dutch Golden Age"}
+     "Chiaroscuro, psychological portraits, Dutch Golden Age"},
+    {"Klimt", "Art Nouveau visionary", "Art Nouveau",
+     "Gold leaf, decorative patterns, sensuality, Byzantine influence"},
+    {"Escher", "Mathematical artist", "Modern",
+     "Impossible geometry, tessellations, infinity, optical illusion"},
+    {"Hokusai", "Ukiyo-e master", "Edo Period",
+     "Great Wave, woodblock prints, nature, dynamic composition"},
+    {"Basquiat", "Neo-expressionist", "Contemporary",
+     "Raw energy, street art, symbolism, African diaspora"},
+    {"Caravaggio", "Baroque dramatist", "Baroque",
+     "Tenebrism, dramatic lighting, realism, biblical scenes"},
+    {"Kandinsky", "Abstract pioneer", "Early Modern",
+     "Pure abstraction, color theory, musical analogy, spiritual art"}
 };
 
 static const struct {
@@ -122,7 +152,19 @@ static const struct {
     {"Tarkovsky", "Poetic cinema", "Art Film",
      "Long takes, spiritual themes, poetic imagery"},
     {"Miyazaki", "Animation master", "Contemporary",
-     "Hand-drawn animation, flight, environmentalism"}
+     "Hand-drawn animation, flight, environmentalism"},
+    {"Hitchcock", "Master of suspense", "Classic Hollywood",
+     "Suspense, psychological thriller, voyeurism, blonde heroines"},
+    {"Welles", "Cinema innovator", "Classic Hollywood",
+     "Deep focus, innovative angles, Citizen Kane, ambitious scope"},
+    {"Kurosawa", "Samurai epic master", "Japanese Cinema",
+     "Epic scale, weather symbolism, humanist themes, samurai"},
+    {"Fincher", "Dark perfectionist", "Contemporary",
+     "Dark palette, meticulous detail, thriller, psychological tension"},
+    {"Villeneuve", "Visual storyteller", "Contemporary",
+     "Atmospheric slow-burn, visual grandeur, sci-fi, adaptation"},
+    {"Coppola", "Epic auteur", "New Hollywood",
+     "Family saga, operatic scope, shadows, American mythology"}
 };
 
 //=============================================================================

@@ -23,6 +23,7 @@
 #include "core/brain/nimcp_brain_multimodal.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_lazy_init.h"
 #include "core/brain/nimcp_brain_bio_async.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -513,6 +514,7 @@ static bool apply_cognitive_processing(
     }
 
     // Ethics: Validate output (check for NaN/inf/extreme values)
+    BRAIN_ENSURE_ETHICS(brain);
     if (brain->ethics) {
         output->ethical_approved = true;
         for (uint32_t i = 0; i < network_output_size; i++) {
@@ -608,6 +610,7 @@ static bool apply_cognitive_processing(
     }
 
     // Global Workspace: Output broadcast state if workspace is broadcasting
+    BRAIN_ENSURE_GLOBAL_WORKSPACE(brain);
     if (brain->global_workspace) {
         if (global_workspace_has_broadcast(brain->global_workspace)) {
             output->has_workspace_broadcast = true;
@@ -618,6 +621,7 @@ static bool apply_cognitive_processing(
     }
 
     // Executive Function / Working Memory: Output WM state if items present
+    BRAIN_ENSURE_WORKING_MEMORY(brain);
     if (brain->working_memory) {
         output->working_memory_items = working_memory_get_count(brain->working_memory);
         output->working_memory_utilization = working_memory_get_utilization(brain->working_memory);
@@ -731,6 +735,7 @@ static bool format_output(
     brain_multimodal_output_t* output)
 {
     // Consolidation: Strengthen important memories
+    BRAIN_ENSURE_CONSOLIDATION(brain);
     if (brain->consolidation && (output->novelty_score > 0.7F || output->salience_score > 0.7F)) {
         float emotional_valence = 0.0F;
         consolidation_strengthen(brain, output->novelty_score, output->salience_score, emotional_valence);
@@ -904,6 +909,7 @@ bool brain_process_multimodal(
     output->nlp_comprehension_score = 0.0F;
 
     // Working Memory Temporal Decay
+    BRAIN_ENSURE_WORKING_MEMORY(brain);
     if (brain->working_memory) {
         working_memory_decay(brain->working_memory, input->timestamp_ms);
     }
@@ -1101,6 +1107,7 @@ bool brain_process_multimodal(
     // =========================================================================
     // Store network output in working memory with emotional tagging
     // =========================================================================
+    BRAIN_ENSURE_WORKING_MEMORY(brain);
     if (brain->working_memory && output->salience_score > 0.1F) {
         emotional_tag_t emotion = emotional_tag_from_cognitive_state(
             output->confidence,

@@ -548,6 +548,30 @@ __/async/nimcp_wiring_diagram.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/async/nimcp_wiring_diagram.c.s
 .PHONY : __/async/nimcp_wiring_diagram.c.s
 
+__/audio/synthesis/nimcp_formant_synth.o: __/audio/synthesis/nimcp_formant_synth.c.o
+.PHONY : __/audio/synthesis/nimcp_formant_synth.o
+
+# target to build an object file
+__/audio/synthesis/nimcp_formant_synth.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/audio/synthesis/nimcp_formant_synth.c.o
+.PHONY : __/audio/synthesis/nimcp_formant_synth.c.o
+
+__/audio/synthesis/nimcp_formant_synth.i: __/audio/synthesis/nimcp_formant_synth.c.i
+.PHONY : __/audio/synthesis/nimcp_formant_synth.i
+
+# target to preprocess a source file
+__/audio/synthesis/nimcp_formant_synth.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/audio/synthesis/nimcp_formant_synth.c.i
+.PHONY : __/audio/synthesis/nimcp_formant_synth.c.i
+
+__/audio/synthesis/nimcp_formant_synth.s: __/audio/synthesis/nimcp_formant_synth.c.s
+.PHONY : __/audio/synthesis/nimcp_formant_synth.s
+
+# target to generate assembly for a file
+__/audio/synthesis/nimcp_formant_synth.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/audio/synthesis/nimcp_formant_synth.c.s
+.PHONY : __/audio/synthesis/nimcp_formant_synth.c.s
+
 __/biology/epigenetics/nimcp_epigenetics.o: __/biology/epigenetics/nimcp_epigenetics.c.o
 .PHONY : __/biology/epigenetics/nimcp_epigenetics.o
 
@@ -31820,6 +31844,30 @@ __/gpu/dragonfly/nimcp_dragonfly_vision_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/dragonfly/nimcp_dragonfly_vision_kernels.cu.s
 .PHONY : __/gpu/dragonfly/nimcp_dragonfly_vision_kernels.cu.s
 
+__/gpu/embedding/nimcp_embedding_relevance_kernels.o: __/gpu/embedding/nimcp_embedding_relevance_kernels.cu.o
+.PHONY : __/gpu/embedding/nimcp_embedding_relevance_kernels.o
+
+# target to build an object file
+__/gpu/embedding/nimcp_embedding_relevance_kernels.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/embedding/nimcp_embedding_relevance_kernels.cu.o
+.PHONY : __/gpu/embedding/nimcp_embedding_relevance_kernels.cu.o
+
+__/gpu/embedding/nimcp_embedding_relevance_kernels.i: __/gpu/embedding/nimcp_embedding_relevance_kernels.cu.i
+.PHONY : __/gpu/embedding/nimcp_embedding_relevance_kernels.i
+
+# target to preprocess a source file
+__/gpu/embedding/nimcp_embedding_relevance_kernels.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/embedding/nimcp_embedding_relevance_kernels.cu.i
+.PHONY : __/gpu/embedding/nimcp_embedding_relevance_kernels.cu.i
+
+__/gpu/embedding/nimcp_embedding_relevance_kernels.s: __/gpu/embedding/nimcp_embedding_relevance_kernels.cu.s
+.PHONY : __/gpu/embedding/nimcp_embedding_relevance_kernels.s
+
+# target to generate assembly for a file
+__/gpu/embedding/nimcp_embedding_relevance_kernels.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/embedding/nimcp_embedding_relevance_kernels.cu.s
+.PHONY : __/gpu/embedding/nimcp_embedding_relevance_kernels.cu.s
+
 __/gpu/emotion/nimcp_emotion_kernels.o: __/gpu/emotion/nimcp_emotion_kernels.cu.o
 .PHONY : __/gpu/emotion/nimcp_emotion_kernels.o
 
@@ -52207,6 +52255,9 @@ help:
 	@echo "... __/async/nimcp_wiring_diagram.o"
 	@echo "... __/async/nimcp_wiring_diagram.i"
 	@echo "... __/async/nimcp_wiring_diagram.s"
+	@echo "... __/audio/synthesis/nimcp_formant_synth.o"
+	@echo "... __/audio/synthesis/nimcp_formant_synth.i"
+	@echo "... __/audio/synthesis/nimcp_formant_synth.s"
 	@echo "... __/biology/epigenetics/nimcp_epigenetics.o"
 	@echo "... __/biology/epigenetics/nimcp_epigenetics.i"
 	@echo "... __/biology/epigenetics/nimcp_epigenetics.s"
@@ -56116,6 +56167,9 @@ help:
 	@echo "... __/gpu/dragonfly/nimcp_dragonfly_vision_kernels.o"
 	@echo "... __/gpu/dragonfly/nimcp_dragonfly_vision_kernels.i"
 	@echo "... __/gpu/dragonfly/nimcp_dragonfly_vision_kernels.s"
+	@echo "... __/gpu/embedding/nimcp_embedding_relevance_kernels.o"
+	@echo "... __/gpu/embedding/nimcp_embedding_relevance_kernels.i"
+	@echo "... __/gpu/embedding/nimcp_embedding_relevance_kernels.s"
 	@echo "... __/gpu/emotion/nimcp_emotion_kernels.o"
 	@echo "... __/gpu/emotion/nimcp_emotion_kernels.i"
 	@echo "... __/gpu/emotion/nimcp_emotion_kernels.s"

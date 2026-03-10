@@ -6,11 +6,16 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
 
 #define LOG_MODULE "HYPERLEDGER"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hyperledger_bridge)
 
 //=============================================================================
 // Simple hash for audit chain (FNV-1a based, not cryptographic)
@@ -122,10 +127,18 @@ hyperledger_bridge_config_t hyperledger_bridge_default_config(void)
 hyperledger_bridge_t* hyperledger_bridge_create(
     const hyperledger_bridge_config_t* config)
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_bridge_create: NULL config");
+        return NULL;
+    }
 
     hyperledger_bridge_t* bridge = nimcp_calloc(1, sizeof(hyperledger_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "hyperledger_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     bridge->magic = HYPERLEDGER_BRIDGE_MAGIC;
     bridge->config = *config;
@@ -138,10 +151,17 @@ hyperledger_bridge_t* hyperledger_bridge_create(
         bridge->audit_ring = nimcp_calloc(HYPERLEDGER_AUDIT_RING_SIZE,
                                            sizeof(hyperledger_audit_entry_t));
         if (!bridge->audit_ring) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "hyperledger_bridge_create: failed to allocate audit ring buffer");
             nimcp_free(bridge);
             return NULL;
         }
     }
+
+    /* Register with BBB and log creation */
+    bbb_register_module("hyperledger_bridge", BBB_MODULE_TYPE_COGNITIVE);
+    bbb_audit_log(BBB_AUDIT_INFO, "hyperledger_bridge", "created",
+                  "EOV training + consensus audit");
 
     LOG_INFO(LOG_MODULE, "Hyperledger bridge created (EOV=%s, consensus=%s, audit=%s)",
              config->enable_eov_pipeline ? "on" : "off",
@@ -171,7 +191,11 @@ int hyperledger_bridge_connect_security(
     hyperledger_bridge_t* bridge,
     struct security_distributed_training_bridge* sec_bridge)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_bridge_connect_security: NULL or invalid bridge");
+        return -1;
+    }
     bridge->sec_bridge = sec_bridge;
     return 0;
 }
@@ -180,7 +204,11 @@ int hyperledger_bridge_connect_gradient_manager(
     hyperledger_bridge_t* bridge,
     struct nimcp_gradient_manager_ctx* grad_mgr)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_bridge_connect_gradient_manager: NULL or invalid bridge");
+        return -1;
+    }
     bridge->grad_mgr = grad_mgr;
     return 0;
 }
@@ -189,7 +217,11 @@ int hyperledger_bridge_connect_consensus(
     hyperledger_bridge_t* bridge,
     struct swarm_consensus_context* consensus)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_bridge_connect_consensus: NULL or invalid bridge");
+        return -1;
+    }
     bridge->consensus = consensus;
     if (consensus) {
         bridge->config.enable_consensus_gate = true;
@@ -201,7 +233,11 @@ int hyperledger_bridge_connect_collective(
     hyperledger_bridge_t* bridge,
     struct collective_cognition* collective)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_bridge_connect_collective: NULL or invalid bridge");
+        return -1;
+    }
     bridge->collective = collective;
     return 0;
 }
@@ -243,7 +279,11 @@ static uint64_t audit_log_internal(hyperledger_bridge_t* bridge,
 
 uint64_t hyperledger_eov_begin(hyperledger_bridge_t* bridge, float loss)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return 0;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_eov_begin: NULL or invalid bridge");
+        return 0;
+    }
     if (!bridge->config.enable_eov_pipeline) return bridge->next_tx_id++;
 
     eov_transaction_t* tx = &bridge->current_tx;
@@ -263,7 +303,11 @@ int hyperledger_eov_order(hyperledger_bridge_t* bridge,
                            float gradient_norm,
                            uint32_t num_gradients)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_eov_order: NULL or invalid bridge");
+        return -1;
+    }
     if (!bridge->config.enable_eov_pipeline) return 0;
 
     eov_transaction_t* tx = &bridge->current_tx;
@@ -297,7 +341,11 @@ bool hyperledger_eov_validate(hyperledger_bridge_t* bridge,
                                const float* gradients,
                                uint32_t num_gradients)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_eov_validate: NULL or invalid bridge");
+        return false;
+    }
     if (!bridge->config.enable_eov_pipeline) return true;
 
     eov_transaction_t* tx = &bridge->current_tx;
@@ -389,7 +437,11 @@ int hyperledger_eov_commit(hyperledger_bridge_t* bridge,
                             float weight_delta_norm,
                             float loss_after)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_eov_commit: NULL or invalid bridge");
+        return -1;
+    }
     if (!bridge->config.enable_eov_pipeline) return 0;
 
     eov_transaction_t* tx = &bridge->current_tx;
@@ -437,7 +489,11 @@ int hyperledger_eov_commit(hyperledger_bridge_t* bridge,
 int hyperledger_eov_get_state(const hyperledger_bridge_t* bridge,
                                eov_transaction_t* state)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !state) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_eov_get_state: NULL bridge or state");
+        return -1;
+    }
     *state = bridge->current_tx;
     return 0;
 }
@@ -452,7 +508,11 @@ int hyperledger_consensus_gate(hyperledger_bridge_t* bridge,
                                 float local_confidence,
                                 consensus_gate_result_t* result)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !result) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_consensus_gate: NULL bridge or result");
+        return -1;
+    }
 
     /* If consensus not enabled or no collective, pass through */
     if (!bridge->config.enable_consensus_gate || !bridge->collective) {
@@ -514,7 +574,11 @@ int hyperledger_consensus_vote(hyperledger_bridge_t* bridge,
                                 float agreement,
                                 float confidence)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_consensus_vote: NULL or invalid bridge");
+        return -1;
+    }
     if (!bridge->consensus) return -1;
 
     /* In a full multi-brain deployment, this would call
@@ -534,7 +598,11 @@ int hyperledger_consensus_vote(hyperledger_bridge_t* bridge,
 uint64_t hyperledger_audit_log(hyperledger_bridge_t* bridge,
                                 hyperledger_audit_entry_t* entry)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !entry) return 0;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_audit_log: NULL bridge or entry");
+        return 0;
+    }
     if (!bridge->config.enable_audit_log) return 0;
     return audit_log_internal(bridge, entry);
 }
@@ -543,6 +611,8 @@ bool hyperledger_audit_verify_chain(const hyperledger_bridge_t* bridge,
                                      uint64_t* num_verified)
 {
     if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !num_verified) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_audit_verify_chain: NULL bridge or num_verified");
         if (num_verified) *num_verified = 0;
         return false;
     }
@@ -594,7 +664,11 @@ int hyperledger_audit_get_entry(const hyperledger_bridge_t* bridge,
                                  uint64_t sequence_id,
                                  hyperledger_audit_entry_t* entry)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !entry) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_audit_get_entry: NULL bridge or entry");
+        return -1;
+    }
     if (!bridge->audit_ring || sequence_id == 0) return -1;
 
     /* Check if entry is still in ring buffer */
@@ -615,13 +689,21 @@ int hyperledger_audit_get_entry(const hyperledger_bridge_t* bridge,
 
 uint64_t hyperledger_audit_count(const hyperledger_bridge_t* bridge)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return 0;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_audit_count: NULL or invalid bridge");
+        return 0;
+    }
     return bridge->audit_count;
 }
 
 uint32_t hyperledger_snapshot_create(hyperledger_bridge_t* bridge)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return 0;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_snapshot_create: NULL or invalid bridge");
+        return 0;
+    }
     if (!bridge->config.enable_snapshots) return 0;
     if (bridge->snapshot_count >= bridge->config.max_snapshots) return 0;
 
@@ -641,7 +723,11 @@ uint32_t hyperledger_snapshot_create(hyperledger_bridge_t* bridge)
 int hyperledger_snapshot_rollback(hyperledger_bridge_t* bridge,
                                    uint32_t snapshot_idx)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_snapshot_rollback: NULL or invalid bridge");
+        return -1;
+    }
     if (snapshot_idx == 0 || snapshot_idx > bridge->snapshot_count) return -1;
 
     /* Audit log */
@@ -667,13 +753,21 @@ int hyperledger_snapshot_rollback(hyperledger_bridge_t* bridge,
 int hyperledger_bridge_get_stats(const hyperledger_bridge_t* bridge,
                                   hyperledger_bridge_stats_t* stats)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !stats) return -1;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_bridge_get_stats: NULL bridge or stats");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 void hyperledger_bridge_reset_stats(hyperledger_bridge_t* bridge)
 {
-    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) return;
+    if (!bridge || bridge->magic != HYPERLEDGER_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hyperledger_bridge_reset_stats: NULL or invalid bridge");
+        return;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 }

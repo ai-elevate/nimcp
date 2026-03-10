@@ -38,6 +38,8 @@
 #include "snn/bridges/nimcp_snn_visual_bridge.h"
 #include "snn/bridges/nimcp_snn_somatosensory_bridge.h"
 #include "core/brain/bridges/nimcp_hyperledger_bridge.h"
+#include "audio/synthesis/nimcp_formant_synth.h"
+#include "lnn/nimcp_lnn_network.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
@@ -568,6 +570,41 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
             }
         }
 
+        /* =============================================================
+         * Formant Voice Synthesizer + LNN Prosody Network
+         * =============================================================
+         * Creates Athena's voice: Klatt-style formant synthesis driven
+         * by an LNN network that predicts F0 contour, stress, and rate
+         * from emotional state + linguistic context.
+         *
+         * LNN architecture (NCP wiring):
+         *   Input (6): arousal, valence, word_pos, utterance_progress,
+         *              phoneme_class, stress_mark
+         *   Inter (16): interneurons for temporal dynamics
+         *   Command (8): prosody decision layer
+         *   Output (4): F0_scale, duration_scale, intensity_scale, breathiness
+         */
+        if (brain->snn_speech_bridge) {
+            /* Create formant synthesizer with default config */
+            brain->formant_synth = (struct formant_synth*)
+                formant_synth_create(NULL);
+            if (brain->formant_synth) {
+                LOG_INFO(LOG_MODULE, "Formant voice synthesizer created");
+
+                /* Create LNN prosody network: 6 inputs → 16 inter → 8 cmd → 4 outputs */
+                brain->lnn_prosody = (struct lnn_network_s*)
+                    lnn_network_create_ncp(6, 16, 8, 4);
+                if (brain->lnn_prosody) {
+                    lnn_network_init_weights((lnn_network_t*)brain->lnn_prosody, 42);
+                    LOG_INFO(LOG_MODULE, "LNN prosody network created (6→16→8→4 NCP)");
+                } else {
+                    LOG_WARN(LOG_MODULE, "LNN prosody creation failed (non-fatal, using static prosody)");
+                }
+            } else {
+                LOG_WARN(LOG_MODULE, "Formant synth creation failed (non-fatal)");
+            }
+        }
+
         /* Create SNN audio bridge for spike-based auditory processing */
         if (brain->audio_cortex) {
             snn_audio_config_t audio_cfg;
@@ -911,6 +948,16 @@ void nimcp_brain_factory_destroy_language_subsystem(brain_t brain) {
     brain->language_training_bridge = NULL;
     brain->language_cognitive_bridge = NULL;
     brain->language_perception_bridge = NULL;
+
+    /* Destroy formant synth and LNN prosody */
+    if (brain->lnn_prosody) {
+        lnn_network_destroy((lnn_network_t*)brain->lnn_prosody);
+        brain->lnn_prosody = NULL;
+    }
+    if (brain->formant_synth) {
+        formant_synth_destroy((formant_synth_t*)brain->formant_synth);
+        brain->formant_synth = NULL;
+    }
 
     /* Destroy orchestrator */
     if (brain->language_layer) {

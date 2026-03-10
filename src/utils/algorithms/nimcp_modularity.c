@@ -215,7 +215,7 @@ bool nimcp_validate_partition(const uint32_t* assignments, uint32_t num_vertices
 
 uint32_t nimcp_count_communities(const uint32_t* assignments, uint32_t num_vertices)
 {
-    LOG_DEBUG("Entering nimcp_count_communities");
+    LOG_TRACE("Entering nimcp_count_communities");
     if (!assignments) return 0;
 
     return count_unique_communities(assignments, num_vertices);

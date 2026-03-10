@@ -650,7 +650,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
             // Fall back to malloc if pool unavailable
             if (!success) {
             
-                LOG_DEBUG("Memory allocation requested");
+                LOG_TRACE("Memory allocation requested");
                 handle->impl.direct.data = malloc(request->size);
                 if (handle->impl.direct.data) {
                 
@@ -1084,7 +1084,7 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
             const void* current_data = cow_read(handle->impl.object.cow_handle);
             if (current_data) {
             
-                LOG_DEBUG("Memory allocation requested");
+                LOG_TRACE("Memory allocation requested");
                 snap->data_copy = malloc(handle->size);
                 if (snap->data_copy) {
                 

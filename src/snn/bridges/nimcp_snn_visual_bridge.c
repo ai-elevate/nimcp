@@ -22,6 +22,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
@@ -190,6 +191,7 @@ snn_visual_bridge_t* snn_visual_bridge_create(
     /* Mark as connected */
     bridge->connected = true;
 
+    bbb_register_module("snn_visual_bridge", BBB_MODULE_TYPE_COGNITIVE);
     NIMCP_LOGGING_INFO("Created SNN-visual bridge (%ux%u, %u neurons)",
                        width, height, num_neurons);
     return bridge;

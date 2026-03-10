@@ -523,9 +523,12 @@ brain_t brain_create_custom(const brain_config_t* config)
     uint32_t num_neurons = (config->neuron_count > 0)
         ? config->neuron_count
         : nimcp_brain_factory_get_neuron_count(config->size);
+    LOG_MODULE_DEBUG(LOG_MODULE, "Creating network (%u neurons, %u in, %u out)",
+                     num_neurons, config->num_inputs, config->num_outputs);
     brain->network = nimcp_brain_factory_create_brain_network(
         config->num_inputs, config->num_outputs, num_neurons,
         config->sparsity_target, config->neuron_integration);
+    LOG_MODULE_DEBUG(LOG_MODULE, "Network created");
     if (!brain->network) {
         set_error("Failed to create adaptive network");
         strategy_destroy(brain->strategy);
@@ -726,6 +729,9 @@ brain_t brain_create_custom(const brain_config_t* config)
     brain->current_time_us = 0;
     brain->last_glial_update_us = 0;
     brain->glial_update_counter = 0;
+
+    // Default input modality: text only (sensory bridges dormant until enabled)
+    brain->active_modalities = BRAIN_MODALITY_TEXT;
 
     // Phase 10.2: Working memory (heavy - item buffers, decay dynamics)
     if (!brain->config.lazy_working_memory_init) {
@@ -1358,15 +1364,19 @@ brain_t brain_create_custom(const brain_config_t* config)
     // ========================================================================
 post_init:
     (void)parallel_init_done;  // Suppress unused warning when goto skips sequential
+    LOG_MODULE_DEBUG(LOG_MODULE, "Entering post_init");
 
     // Language Layer: Orchestrator + LNN generator + tokenizer + embeddings
     // Must be in post_init so it runs for both parallel and sequential paths
     if (!brain->lang_generator) {
+        LOG_MODULE_DEBUG(LOG_MODULE, "Initializing language subsystem...");
         nimcp_brain_factory_init_language_subsystem(brain);  // Non-fatal if prerequisites missing
+        LOG_MODULE_DEBUG(LOG_MODULE, "Language subsystem done");
     }
 
     /* Initialize learning workspace with reasonable defaults */
     if (!brain->learning_workspace.temp_float) {
+        LOG_MODULE_DEBUG(LOG_MODULE, "Initializing learning workspace...");
         uint32_t ws_size = brain->config.num_inputs > brain->config.num_outputs ?
                            brain->config.num_inputs : brain->config.num_outputs;
         if (ws_size < 1024) ws_size = 1024;
@@ -1374,22 +1384,21 @@ post_init:
         brain->learning_workspace.temp_float_capacity = ws_size;
         brain->learning_workspace.temp_uint = nimcp_calloc(ws_size, sizeof(uint32_t));
         brain->learning_workspace.temp_uint_capacity = ws_size;
+        LOG_MODULE_DEBUG(LOG_MODULE, "Learning workspace done");
     }
 
     // ========================================================================
     // WORLD MODEL WIRING (Connect to Active Inference & Imagination)
     // ========================================================================
-    // Wire the world model to dependent systems after all subsystems are initialized:
-    // - Active Inference: Uses world model for policy evaluation via mental simulation
-    // - Imagination Engine: Uses world model dynamics for scene generation
-    // Dependencies: World model, active inference, imagination must all be initialized
     if (brain->world_model_enabled) {
+        LOG_MODULE_DEBUG(LOG_MODULE, "Wiring world model...");
         if (!wire_world_model_active_inference(brain)) {
             LOG_WARN(LOG_MODULE, "Failed to wire world model to active inference");
         }
         if (!wire_world_model_imagination(brain)) {
             LOG_WARN(LOG_MODULE, "Failed to wire world model to imagination engine");
         }
+        LOG_MODULE_DEBUG(LOG_MODULE, "World model wiring done");
     }
 
     // Save initial snapshot if configured
@@ -1397,6 +1406,7 @@ post_init:
         brain_save_snapshot(brain, "initial", "Snapshot at brain creation");
     }
 
+    LOG_MODULE_DEBUG(LOG_MODULE, "Post-init final steps...");
     // Phase 11: Quantum annealer (if enabled)
     if (brain->config.enable_quantum_annealing) {
         quantum_annealing_config_t qa_config = {

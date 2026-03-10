@@ -111,7 +111,7 @@ static void dfs_component(const NimcpGraph* graph, uint32_t vertex, uint32_t com
  */
 NimcpGraph* nimcp_graph_create(void)
 {
-    LOG_DEBUG("Entering nimcp_graph_create");
+    LOG_TRACE("Entering nimcp_graph_create");
     NimcpGraph* graph = (NimcpGraph*) nimcp_malloc(sizeof(NimcpGraph));
     if (!graph) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_graph_create: failed to allocate graph");
@@ -175,7 +175,7 @@ NimcpGraph* nimcp_graph_create(void)
  */
 void nimcp_graph_destroy(NimcpGraph* graph)
 {
-    LOG_DEBUG("Entering nimcp_graph_destroy");
+    LOG_TRACE("Entering nimcp_graph_destroy");
     if (!graph)
         return;
 
@@ -257,7 +257,7 @@ uint32_t nimcp_graph_add_vertex(NimcpGraph* graph, uint64_t peer_id, float x, fl
  */
 bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx)
 {
-    LOG_DEBUG("Entering nimcp_graph_remove_vertex");
+    LOG_TRACE("Entering nimcp_graph_remove_vertex");
     if (!graph) {
         LOG_ERROR("nimcp_graph_remove_vertex failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_remove_vertex: graph is NULL");
@@ -331,7 +331,7 @@ bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx)
  */
 bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_weight_t weight)
 {
-    LOG_DEBUG("Entering nimcp_graph_add_edge");
+    LOG_TRACE("Entering nimcp_graph_add_edge");
     if (!graph) {
         LOG_ERROR("nimcp_graph_add_edge failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_add_edge: graph is NULL");
@@ -391,7 +391,7 @@ bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_w
  */
 bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
 {
-    LOG_DEBUG("Entering nimcp_graph_remove_edge");
+    LOG_TRACE("Entering nimcp_graph_remove_edge");
     if (!graph) {
         LOG_ERROR("nimcp_graph_remove_edge failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_remove_edge: graph is NULL");
@@ -437,7 +437,7 @@ bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
  */
 NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uint32_t to)
 {
-    LOG_DEBUG("Entering nimcp_graph_shortest_path");
+    LOG_TRACE("Entering nimcp_graph_shortest_path");
     if (!graph) {
         LOG_ERROR("nimcp_graph_shortest_path failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_shortest_path: graph is NULL");
@@ -638,7 +638,7 @@ bool nimcp_graph_update_coordinates(NimcpGraph* graph, uint32_t vertex_idx, floa
  */
 uint32_t nimcp_graph_find_vertex(const NimcpGraph* graph, uint64_t peer_id)
 {
-    LOG_DEBUG("Entering nimcp_graph_find_vertex");
+    LOG_TRACE("Entering nimcp_graph_find_vertex");
     if (!graph)
         return NIMCP_INVALID_VERTEX;
 
@@ -664,7 +664,7 @@ uint32_t nimcp_graph_find_vertex(const NimcpGraph* graph, uint64_t peer_id)
  */
 uint32_t nimcp_graph_update_components(NimcpGraph* graph)
 {
-    LOG_DEBUG("Entering nimcp_graph_update_components");
+    LOG_TRACE("Entering nimcp_graph_update_components");
     if (!graph)
         return 0;
 

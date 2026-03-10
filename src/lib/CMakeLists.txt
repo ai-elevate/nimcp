@@ -2068,6 +2068,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/oscillations/nimcp_brain_complex_oscillations.c  # Phase C2.2: Complex phasor oscillation tracking
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_oscillations_immune_bridge.c  # Oscillations-immune integration
 
+    # Audio Synthesis (Athena's voice)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../audio/synthesis/nimcp_formant_synth.c
+
     # Perception
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_visual_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_audio_cortex.c
@@ -2230,6 +2233,8 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse_compute/nimcp_synapse_compute_gpu.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neural_logic_kernels.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/sparse/nimcp_sparse_kernels.cu>
+    # Embedding relevance GPU kernels (batch dot-product for CPU-staged embeddings)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/embedding/nimcp_embedding_relevance_kernels.cu>
     # Kernel backend CUDA registration (wires CUDA kernels to unified backend interface)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/backend/nimcp_kernel_backend_cuda.cu>
 
@@ -2239,6 +2244,8 @@ set(NIMCP_CORE_SOURCES
     $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs.c>
     # GPU tensor extended stubs (reductions, norms, comparisons, FFT, CPU-GPU interop)
     $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_tensor_ext.c>
+    # GPU embedding relevance stubs (CPU fallback for batch dot-product)
+    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_embedding.c>
     # GPU FP16/mixed precision stubs (FP16 ops, loss scaling, AMP context, autocast)
     # Always compiled: .cu version uses C99 designated initializers incompatible with NVCC
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c

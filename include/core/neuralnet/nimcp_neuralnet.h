@@ -4,6 +4,7 @@
 #define NIMCP_NEURALNET_H
 
 #include "common/nimcp_export.h"
+#include "constants/nimcp_dimension_constants.h"
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "core/neuron_types/nimcp_neuron_types.h"  // Phase 8.7: Specialized neuron types
 #include "core/neuralnet/nimcp_sparse_synapse.h"   // NIMCP 2.11: Sparse synapse storage
@@ -276,9 +277,9 @@ typedef struct synapse_t {
     synapse_type_t type;           /**< Synapse type (AMPA, NMDA, GABA-A, etc) */
     synapse_type_state_t type_state; /**< Type-specific state (conductance, modulation, etc) */
 
-    // ENHANCEMENT 1: Semantic Embeddings (NIMCP 2.9)
-    float *semantic_embedding;     /**< Semantic vector [embedding_dim] */
-    uint16_t embedding_dim;        /**< Embedding dimension (0 = no embedding, typically 128-512) */
+    // ENHANCEMENT 1: Semantic Embeddings (NIMCP 2.9, CPU-staged in 2.6.4)
+    uint32_t embedding_pool_index; /**< Index into network's CPU embedding pool (NIMCP_EMBEDDING_POOL_NONE = none) */
+    uint16_t embedding_dim;        /**< Embedding dimension (0 = no embedding, typically 2048) */
     float semantic_relevance;      /**< Cached relevance score (0-1) for current context */
 
     // ENHANCEMENT 2: Ternary Weight Support (NIMCP 2.10)
@@ -291,10 +292,10 @@ typedef struct synapse_t {
 
     // PERFORMANCE NOTE: Function pointers add 24 bytes per synapse (on 64-bit)
     // Type system adds ~40 bytes per synapse (type enum + union state)
-    // Semantic embeddings add ~512 bytes per synapse (128D * 4 bytes)
+    // Semantic embeddings: 10 bytes inline (pool_index + dim + relevance), vectors in CPU pool
+    //   CPU pool: 2048D * 4 bytes = 8 KB per embedding, staged to GPU on demand
     // Ternary weights add ~4 bytes per synapse (trit + bool + scale)
-    // For 100K synapses: 2.4 MB (functions) + 4.0 MB (types) + 51.2 MB (embeddings) = 57.6 MB overhead
-    // Total synapse size: ~600 bytes/synapse with embeddings. Cost justified for intelligent routing.
+    // Total synapse_t: ~100 bytes inline (embeddings stored in network-level CPU pool)
 } synapse_t;
 
 // Phase 11: Eligibility traces for temporal credit assignment

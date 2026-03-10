@@ -592,7 +592,7 @@ static size_t is_valid_utf8_char(const char* str, size_t len);
  */
 bool nimcp_validate_integer_field(const void* field_data, size_t size)
 {
-    LOG_DEBUG("Entering nimcp_validate_integer_field");
+    LOG_TRACE("Entering nimcp_validate_integer_field");
     // STEP 1: NULL check (prevent segfault)
     if (!field_data) {
         LOG_ERROR("nimcp_validate_integer_field failed: returning error");
@@ -721,7 +721,7 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size)
  */
 bool nimcp_validate_float_field(const void* field_data, size_t size)
 {
-    LOG_DEBUG("Entering nimcp_validate_float_field");
+    LOG_TRACE("Entering nimcp_validate_float_field");
     // STEP 1: NULL check
     if (!field_data) {
         LOG_ERROR("nimcp_validate_float_field failed: returning error");
@@ -881,7 +881,7 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
  */
 bool nimcp_validate_string_field(const void* field_data, size_t size)
 {
-    LOG_DEBUG("Entering nimcp_validate_string_field");
+    LOG_TRACE("Entering nimcp_validate_string_field");
     // STEP 1: NULL/size check
     if (!field_data || size == 0) {
         LOG_ERROR("nimcp_validate_string_field failed: returning error");
@@ -1044,7 +1044,7 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
  */
 bool nimcp_validate_array_field(const void* field_data, size_t size)
 {
-    LOG_DEBUG("Entering nimcp_validate_array_field");
+    LOG_TRACE("Entering nimcp_validate_array_field");
     // STEP 1: NULL/size check
     // WHY: Prevent invalid access to header
     if (!field_data || size < sizeof(NimcpArrayHeader)) {
@@ -1257,7 +1257,7 @@ bool nimcp_validate_array_field(const void* field_data, size_t size)
  */
 bool nimcp_validate_state_fields(const void* state_data, size_t size)
 {
-    LOG_DEBUG("Entering nimcp_validate_state_fields");
+    LOG_TRACE("Entering nimcp_validate_state_fields");
     // STEP 1: NULL/size check
     if (!state_data || size < sizeof(NimcpStateHeader)) {
         LOG_ERROR("Invalid state data pointer or size");
@@ -1582,7 +1582,7 @@ static size_t is_valid_utf8_char(const char* str, size_t len)
  */
 bool nimcp_validate_pointer(const void* ptr, const char* name)
 {
-    LOG_DEBUG("Entering nimcp_validate_pointer");
+    LOG_TRACE("Entering nimcp_validate_pointer");
     if (!ptr) {
         if (name) {
             LOG_ERROR("NULL pointer: %s", name);

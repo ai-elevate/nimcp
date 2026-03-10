@@ -84,6 +84,18 @@ nimcp_logger_t nimcp_log_create(const nimcp_log_config_t* config) {
 
     // Store configuration
     logger->level = cfg.level;
+
+    // Environment variable override: NIMCP_LOG_LEVEL=debug|trace|info|warn|error
+    const char* env_level = getenv("NIMCP_LOG_LEVEL");
+    if (env_level) {
+        if (strcasecmp(env_level, "trace") == 0)      logger->level = LOG_LEVEL_TRACE;
+        else if (strcasecmp(env_level, "debug") == 0)  logger->level = LOG_LEVEL_DEBUG;
+        else if (strcasecmp(env_level, "info") == 0)   logger->level = LOG_LEVEL_INFO;
+        else if (strcasecmp(env_level, "warn") == 0)   logger->level = LOG_LEVEL_WARN;
+        else if (strcasecmp(env_level, "error") == 0)  logger->level = LOG_LEVEL_ERROR;
+        else if (strcasecmp(env_level, "off") == 0)    logger->level = LOG_LEVEL_OFF;
+    }
+
     logger->destinations = cfg.destinations;
     logger->format = cfg.format;
     logger->async_mode = cfg.async_mode;

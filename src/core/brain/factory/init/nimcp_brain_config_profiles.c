@@ -257,11 +257,12 @@ static void apply_standard_profile(brain_config_t* config)
     // (num_astrocytes, num_oligodendrocytes, num_microglia will be set
     //  based on neuron count when brain is created)
 
-    // Disable lazy init for standard features
-    config->lazy_init_mode = false;
-    config->lazy_working_memory_init = false;
-    config->lazy_global_workspace_init = false;
-    config->lazy_consolidation_init = false;
+    // Keep lazy init enabled by default to reduce peak memory.
+    // Subsystems are initialized on first access via BRAIN_ENSURE_* macros.
+    config->lazy_init_mode = true;
+    config->lazy_working_memory_init = true;
+    config->lazy_global_workspace_init = true;
+    config->lazy_consolidation_init = true;
 }
 
 /**

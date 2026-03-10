@@ -20,10 +20,14 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <math.h>
 #include <string.h>
 
 #define LOG_MODULE "snn_somatosensory_bridge"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_somatosensory_bridge)
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -128,7 +132,13 @@ snn_somatosensory_bridge_t* snn_somatosensory_bridge_create(
     }
 
     snn_somatosensory_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_MEMORY,
+            "snn_somatosensory_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
+
+    bbb_register_module("snn_somatosensory_bridge", BBB_MODULE_TYPE_COGNITIVE);
 
     bridge->config = *config;
     bridge->snn = snn;
@@ -146,6 +156,8 @@ snn_somatosensory_bridge_t* snn_somatosensory_bridge_create(
     if (!bridge->receptor_buffer || !bridge->proprioception_buffer ||
         !bridge->body_map_buffer || !bridge->magnification_table ||
         !bridge->tuning_preferred_angles) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_MEMORY,
+            "snn_somatosensory_bridge_create: failed to allocate working buffers");
         snn_somatosensory_bridge_destroy(bridge);
         return NULL;
     }
@@ -198,7 +210,11 @@ void snn_somatosensory_bridge_destroy(snn_somatosensory_bridge_t* bridge)
 
 int snn_somatosensory_bridge_connect_bio_async(snn_somatosensory_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_somatosensory_bridge_connect_bio_async: null bridge");
+        return -1;
+    }
 
     bio_module_info_t info = {
         .module_id     = BIO_MODULE_SNN_SOMATOSENSORY,
@@ -215,7 +231,11 @@ int snn_somatosensory_bridge_connect_bio_async(snn_somatosensory_bridge_t* bridg
 
 int snn_somatosensory_bridge_disconnect_bio_async(snn_somatosensory_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_somatosensory_bridge_disconnect_bio_async: null bridge");
+        return -1;
+    }
     bridge->bio_async_enabled = false;
     return 0;
 }
@@ -242,7 +262,11 @@ int snn_somatosensory_bridge_encode_touch(
     float velocity,
     float texture)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_somatosensory_bridge_encode_touch: null bridge");
+        return -1;
+    }
     if (body_segment >= bridge->config.body_segments) return -1;
 
     uint32_t nps = bridge->config.neurons_per_segment;
@@ -289,7 +313,11 @@ int snn_somatosensory_bridge_encode_proprioception(
     float velocity,
     float muscle_tension)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_somatosensory_bridge_encode_proprioception: null bridge");
+        return -1;
+    }
     if (segment >= bridge->config.body_segments) return -1;
 
     uint32_t nps = bridge->config.neurons_per_segment;
@@ -334,7 +362,11 @@ int snn_somatosensory_bridge_encode_pain(
     float intensity,
     snn_soma_pain_type_t type)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_somatosensory_bridge_encode_pain: null bridge");
+        return -1;
+    }
     if (segment >= bridge->config.body_segments) return -1;
 
     uint32_t nps = bridge->config.neurons_per_segment;
@@ -396,7 +428,12 @@ int snn_somatosensory_bridge_decode_body_state(
     float* position_out,
     float* velocity_out)
 {
-    if (!bridge || !spike_rates || !position_out) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_somatosensory_bridge_decode_body_state: null bridge");
+        return -1;
+    }
+    if (!spike_rates || !position_out) return -1;
 
     uint32_t nps = bridge->config.neurons_per_segment;
     uint32_t segs = bridge->config.body_segments;
@@ -444,7 +481,12 @@ int snn_somatosensory_bridge_get_stats(
     const snn_somatosensory_bridge_t* bridge,
     snn_somatosensory_encode_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_somatosensory_bridge_get_stats: null bridge");
+        return -1;
+    }
+    if (!stats) return -1;
 
     *stats = bridge->stats;
 

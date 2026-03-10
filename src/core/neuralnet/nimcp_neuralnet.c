@@ -912,6 +912,43 @@ neural_network_t neural_network_create(const network_config_t* config)
         mpool_cfg.enable_statistics = true;
         mpool_cfg.thread_safe = true;
         network->synapse_metadata_pool = synapse_metadata_pool_create(&mpool_cfg);
+
+        LOG_MODULE_DEBUG(LOG_MODULE, "Synapse pools created (handles=%u, metadata=%u)", pool_size, meta_initial);
+
+        // Bulk BCM/eligibility pools: single allocation replaces 1M+ individual callocs.
+        // Each connection gets one BCM and one eligibility entry (outgoing only).
+        // estimated_conns already accounts for backbone connections.
+        uint64_t est = will_skip_dense ? backbone_connections : dense_connections;
+        if (est == 0) est = (uint64_t)actual_neurons * 20;  // fallback estimate
+        uint32_t pool_cap = (uint32_t)(est < UINT32_MAX ? est : UINT32_MAX);
+        // Add 25% headroom for runtime synaptogenesis
+        pool_cap = pool_cap + pool_cap / 4;
+
+        if (config->enable_bcm) {
+            network->bcm_pool = (bcm_synapse_t*)nimcp_calloc(pool_cap, sizeof(bcm_synapse_t));
+            if (network->bcm_pool) {
+                network->bcm_pool_capacity = pool_cap;
+                network->bcm_pool_used = 0;
+            }
+        }
+        if (config->enable_eligibility) {
+            network->eligibility_pool = (eligibility_trace_t*)nimcp_calloc(pool_cap, sizeof(eligibility_trace_t));
+            if (network->eligibility_pool) {
+                network->eligibility_pool_capacity = pool_cap;
+                network->eligibility_pool_used = 0;
+            }
+        }
+    }
+
+    // CPU-staged embedding pool: 5% of estimated connections get embeddings.
+    // Full 2048-dim vectors live in CPU pinned memory; only relevance cache on GPU.
+    {
+        uint64_t est_conn = will_skip_dense ? backbone_connections : dense_connections;
+        if (est_conn == 0) est_conn = (uint64_t)actual_neurons * 20;
+        uint32_t emb_cap = (uint32_t)((est_conn / 20) < UINT32_MAX ? (est_conn / 20) : UINT32_MAX);
+        if (emb_cap < 1024) emb_cap = 1024;  // Minimum pool
+        if (emb_cap > 2000000) emb_cap = 2000000;  // Cap at 2M (~16 GB for 2048D)
+        embedding_pool_create(network, emb_cap, NIMCP_DEFAULT_EMBEDDING_DIM);
     }
 
     // For layered networks (NIMCP 2.5), create connections between layers
@@ -920,6 +957,8 @@ neural_network_t neural_network_create(const network_config_t* config)
     // will form connections organically during learning
     bool skip_dense = config->skip_layer_wiring || (dense_connections > 10000000);
     if (config->num_layers > 1 && config->layer_sizes && !skip_dense) {
+        LOG_MODULE_DEBUG(LOG_MODULE, "Dense layer wiring (%u layers, %llu connections)",
+                         config->num_layers, (unsigned long long)dense_connections);
         uint32_t offset = 0;
         for (uint32_t layer = 0; layer < config->num_layers - 1; layer++) {
             uint32_t curr_layer_size = config->layer_sizes[layer];
@@ -948,6 +987,8 @@ neural_network_t neural_network_create(const network_config_t* config)
             offset = next_layer_offset;
         }
     } else if (config->num_layers > 1 && config->layer_sizes && skip_dense) {
+        LOG_MODULE_DEBUG(LOG_MODULE, "Sparse backbone wiring (%u layers, est %llu connections)",
+                         config->num_layers, (unsigned long long)backbone_connections);
         // SPARSE BACKBONE WIRING for large networks
         // Dense wiring is O(N*M) which is infeasible (e.g. 256 * 1.5M = 384M connections).
         // Instead, select a small "backbone" of hidden neurons and wire them to
@@ -1119,6 +1160,11 @@ neural_network_t neural_network_create(const network_config_t* config)
         }
     }
 
+    // Initialize semantic embeddings for all wired synapses
+    if (network->embedding_pool && network->embedding_pool_capacity > 0) {
+        embedding_pool_init_all_synapses(network);
+    }
+
     // Activation types — always set for layered networks (even when wiring is skipped)
     if (config->num_layers > 1 && config->layer_sizes) {
         // TRAINING FIX: Set activation types for gradient-based training
@@ -1169,6 +1215,8 @@ neural_network_t neural_network_create(const network_config_t* config)
         }
     }
 
+    LOG_MODULE_DEBUG(LOG_MODULE, "neural_network_create complete: %u neurons, %u layers",
+                     network->num_neurons, network->config.num_layers);
     return network;
 }
 
@@ -1212,7 +1260,13 @@ void neural_network_destroy(neural_network_t network)
         }
     }
 
+    LOG_MODULE_DEBUG(LOG_MODULE, "Destroying neuron models (%u neurons, per_heap=%d)",
+                     network->num_neurons, has_per_neuron_heap);
     if (has_per_neuron_heap && network->neurons) {
+        // Determine if BCM/eligibility were bulk-allocated (pool exists)
+        bool bcm_bulk = (network->bcm_pool != NULL);
+        bool elig_bulk = (network->eligibility_pool != NULL);
+
         for (uint32_t i = 0; i < network->num_neurons; i++) {
             if (network->neurons[i].model) {
                 neuron_model_destroy(network->neurons[i].model);
@@ -1220,28 +1274,40 @@ void neural_network_destroy(neural_network_t network)
             }
 
             neuron_t* neuron = &network->neurons[i];
-            for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
-                synapse_t* syn = NEURON_OUT_META(network, neuron, j);
-                if (!syn) continue;
-                if (syn->bcm) {
-                    nimcp_free(syn->bcm);
-                    syn->bcm = NULL;
+            if (!bcm_bulk || !elig_bulk) {
+                // Only iterate synapses if some BCM/eligibility were heap-allocated
+                for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
+                    synapse_t* syn = NEURON_OUT_META(network, neuron, j);
+                    if (!syn) continue;
+                    if (!bcm_bulk && syn->bcm) {
+                        nimcp_free(syn->bcm);
+                        syn->bcm = NULL;
+                    }
+                    if (!elig_bulk && syn->eligibility) {
+                        nimcp_free(syn->eligibility);
+                        syn->eligibility = NULL;
+                    }
                 }
-                if (syn->eligibility) {
-                    nimcp_free(syn->eligibility);
-                    syn->eligibility = NULL;
-                }
-            }
-            for (uint32_t j = 0; j < NEURON_IN_COUNT(neuron); j++) {
-                synapse_t* in_syn = NEURON_IN_META(network, neuron, j);
-                if (!in_syn) continue;
-                in_syn->bcm = NULL;
-                in_syn->eligibility = NULL;
             }
         }
     }
 
+    // Free bulk BCM/eligibility pools (single free replaces 674K+ individual frees)
+    if (network->bcm_pool) {
+        nimcp_free(network->bcm_pool);
+        network->bcm_pool = NULL;
+    }
+    if (network->eligibility_pool) {
+        nimcp_free(network->eligibility_pool);
+        network->eligibility_pool = NULL;
+    }
+
+    // Free CPU-staged embedding pool
+    embedding_pool_destroy(network);
+
+    LOG_MODULE_DEBUG(LOG_MODULE, "Neuron model+BCM+embedding cleanup done");
     // Free spike/activity history: bulk arrays first, then individual stragglers
+    LOG_MODULE_DEBUG(LOG_MODULE, "Freeing spike/activity history...");
     if (network->neurons) {
         uint32_t bulk_count = network->bulk_neuron_count;
 
@@ -1274,7 +1340,9 @@ void neural_network_destroy(neural_network_t network)
         }
     }
 
+    LOG_MODULE_DEBUG(LOG_MODULE, "Spike/activity history freed");
     // Sparse synapse storage cleanup: skip for networks with no connections
+    LOG_MODULE_DEBUG(LOG_MODULE, "Cleaning up sparse synapse storage...");
     if (has_per_neuron_heap && network->neurons && network->synapse_handle_pool) {
         for (uint32_t i = 0; i < network->num_neurons; i++) {
             neuron_t* neuron = &network->neurons[i];
@@ -1289,6 +1357,7 @@ void neural_network_destroy(neural_network_t network)
         sparse_synapse_pool_destroy(network->synapse_handle_pool);
     }
 
+    LOG_MODULE_DEBUG(LOG_MODULE, "Sparse synapse cleanup done");
     nimcp_free(network->active_neuron_ids);
     network->active_neuron_ids = NULL;
 
@@ -1594,7 +1663,7 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
         // WHAT: Modulate transmission by semantic relevance
         // WHY: Route information through semantically relevant synapses (70% faster)
         // HOW: Use cached semantic_relevance if embeddings enabled
-        if (incoming_meta && incoming_meta->semantic_embedding && incoming_meta->embedding_dim > 0) {
+        if (incoming_meta && incoming_meta->embedding_pool_index != NIMCP_EMBEDDING_POOL_NONE && incoming_meta->embedding_dim > 0) {
             // Use cached relevance (computed during context update)
             // Relevance in [0,1]: 0=irrelevant, 1=highly relevant
             float semantic_modulation = 0.5F + 0.5F * incoming_meta->semantic_relevance;
@@ -3237,9 +3306,14 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
         stp_init(&syn->stp, &stp_params, network->network_time);
         syn->enable_stp = true;
 
-        // Phase 11: Initialize BCM
+        // Phase 11: Initialize BCM — from bulk pool if available, else heap
         if (network->config.enable_bcm) {
-            syn->bcm = (bcm_synapse_t*)nimcp_calloc(1, sizeof(bcm_synapse_t));
+            if (network->bcm_pool && network->bcm_pool_used < network->bcm_pool_capacity) {
+                syn->bcm = &network->bcm_pool[network->bcm_pool_used++];
+                memset(syn->bcm, 0, sizeof(bcm_synapse_t));
+            } else {
+                syn->bcm = (bcm_synapse_t*)nimcp_calloc(1, sizeof(bcm_synapse_t));
+            }
             if (syn->bcm) {
                 *syn->bcm = bcm_synapse_init(syn->weight, 0.5F);
                 syn->enable_bcm = true;
@@ -3251,9 +3325,14 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
             syn->enable_bcm = false;
         }
 
-        // Phase 11: Initialize Eligibility Traces
+        // Phase 11: Initialize Eligibility Traces — from bulk pool if available, else heap
         if (network->config.enable_eligibility) {
-            syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
+            if (network->eligibility_pool && network->eligibility_pool_used < network->eligibility_pool_capacity) {
+                syn->eligibility = &network->eligibility_pool[network->eligibility_pool_used++];
+                memset(syn->eligibility, 0, sizeof(eligibility_trace_t));
+            } else {
+                syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
+            }
             if (syn->eligibility) {
                 eligibility_trace_init(syn->eligibility, network->network_time);
                 syn->enable_eligibility = true;

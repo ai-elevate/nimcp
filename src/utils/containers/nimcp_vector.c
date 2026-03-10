@@ -29,7 +29,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(vector)
 
 float nimcp_vector_dot_product(const float* a, const float* b, uint32_t size)
 {
-    LOG_DEBUG("Entering nimcp_vector_dot_product");
+    LOG_TRACE("Entering nimcp_vector_dot_product");
     NIMCP_API_CHECK_NULL(a, 0.0F, "NULL vector a in nimcp_vector_dot_product");
     NIMCP_API_CHECK_NULL(b, 0.0F, "NULL vector b in nimcp_vector_dot_product");
     NIMCP_API_CHECK(size > 0, 0.0F, "Zero size in nimcp_vector_dot_product");
@@ -44,7 +44,7 @@ float nimcp_vector_dot_product(const float* a, const float* b, uint32_t size)
 
 float nimcp_vector_norm_l2(const float* vec, uint32_t size)
 {
-    LOG_DEBUG("Entering nimcp_vector_norm_l2");
+    LOG_TRACE("Entering nimcp_vector_norm_l2");
     NIMCP_API_CHECK_NULL(vec, 0.0F, "NULL vector in nimcp_vector_norm_l2");
     NIMCP_API_CHECK(size > 0, 0.0F, "Zero size in nimcp_vector_norm_l2");
 
@@ -58,7 +58,7 @@ float nimcp_vector_norm_l2(const float* vec, uint32_t size)
 
 float nimcp_vector_norm_l1(const float* vec, uint32_t size)
 {
-    LOG_DEBUG("Entering nimcp_vector_norm_l1");
+    LOG_TRACE("Entering nimcp_vector_norm_l1");
     NIMCP_API_CHECK_NULL(vec, 0.0F, "NULL vector in nimcp_vector_norm_l1");
     NIMCP_API_CHECK(size > 0, 0.0F, "Zero size in nimcp_vector_norm_l1");
 
@@ -72,7 +72,7 @@ float nimcp_vector_norm_l1(const float* vec, uint32_t size)
 
 void nimcp_vector_copy(const float* src, float* dst, uint32_t size)
 {
-    LOG_DEBUG("Entering nimcp_vector_copy");
+    LOG_TRACE("Entering nimcp_vector_copy");
     if (!src) {
         LOG_ERROR("NULL source vector in nimcp_vector_copy");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL source vector in nimcp_vector_copy");
@@ -96,7 +96,7 @@ void nimcp_vector_copy(const float* src, float* dst, uint32_t size)
 
 float nimcp_vector_cosine_similarity(const float* a, const float* b, uint32_t size)
 {
-    LOG_DEBUG("Entering nimcp_vector_cosine_similarity");
+    LOG_TRACE("Entering nimcp_vector_cosine_similarity");
     NIMCP_API_CHECK_NULL(a, 0.0F, "NULL vector a in nimcp_vector_cosine_similarity");
     NIMCP_API_CHECK_NULL(b, 0.0F, "NULL vector b in nimcp_vector_cosine_similarity");
     NIMCP_API_CHECK(size > 0, 0.0F, "Zero size in nimcp_vector_cosine_similarity");
@@ -142,7 +142,7 @@ float nimcp_vector_cosine_similarity(const float* a, const float* b, uint32_t si
 
 float nimcp_vector_cosine_distance(const float* a, const float* b, uint32_t size)
 {
-    LOG_DEBUG("Entering nimcp_vector_cosine_distance");
+    LOG_TRACE("Entering nimcp_vector_cosine_distance");
     /**
      * WHAT: Cosine distance = 1 - cosine similarity
      * WHY: Convert similarity metric to distance metric
@@ -158,7 +158,7 @@ float nimcp_vector_cosine_distance(const float* a, const float* b, uint32_t size
 
 float nimcp_vector_euclidean_distance(const float* a, const float* b, uint32_t size)
 {
-    LOG_DEBUG("Entering nimcp_vector_euclidean_distance");
+    LOG_TRACE("Entering nimcp_vector_euclidean_distance");
     NIMCP_API_CHECK_NULL(a, 0.0F, "NULL vector a in nimcp_vector_euclidean_distance");
     NIMCP_API_CHECK_NULL(b, 0.0F, "NULL vector b in nimcp_vector_euclidean_distance");
     NIMCP_API_CHECK(size > 0, 0.0F, "Zero size in nimcp_vector_euclidean_distance");
@@ -178,7 +178,7 @@ float nimcp_vector_euclidean_distance(const float* a, const float* b, uint32_t s
 
 float nimcp_vector_normalize_l2(float* vec, uint32_t size, float target_norm)
 {
-    LOG_DEBUG("Entering nimcp_vector_normalize_l2");
+    LOG_TRACE("Entering nimcp_vector_normalize_l2");
     NIMCP_API_CHECK_NULL(vec, 0.0F, "NULL vector in nimcp_vector_normalize_l2");
     NIMCP_API_CHECK(size > 0, 0.0F, "Zero size in nimcp_vector_normalize_l2");
 
@@ -212,7 +212,7 @@ float nimcp_vector_normalize_l2(float* vec, uint32_t size, float target_norm)
 
 float nimcp_vector_normalize_l1(float* vec, uint32_t size, float target_norm)
 {
-    LOG_DEBUG("Entering nimcp_vector_normalize_l1");
+    LOG_TRACE("Entering nimcp_vector_normalize_l1");
     NIMCP_API_CHECK_NULL(vec, 0.0F, "NULL vector in nimcp_vector_normalize_l1");
     NIMCP_API_CHECK(size > 0, 0.0F, "Zero size in nimcp_vector_normalize_l1");
 

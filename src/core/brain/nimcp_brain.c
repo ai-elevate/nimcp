@@ -29,9 +29,15 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
+#include "snn/bridges/nimcp_snn_visual_bridge.h"
+#include "snn/bridges/nimcp_snn_audio_bridge.h"
+#include "snn/bridges/nimcp_snn_speech_bridge.h"
+#include "snn/bridges/nimcp_snn_somatosensory_bridge.h"
+#include "snn/bridges/nimcp_snn_cross_modal_align.h"
 #include "core/brain/bridges/nimcp_hyperledger_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/signal/nimcp_signal_handler.h"
+#include "core/brain/nimcp_brain_lazy_init.h"
 
 #define LOG_MODULE "BRAIN"
 #include <math.h>
@@ -47,6 +53,7 @@
 #include <cjson/cJSON.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/cache/nimcp_cache.h"
 #include "utils/time/nimcp_time.h"
@@ -204,6 +211,8 @@ extern void imagination_engine_destroy(imagination_engine_t* engine);
 struct snn_routing_bridge_s;
 int snn_routing_bridge_update(struct snn_routing_bridge_s* bridge, float dt);
 #include "lnn/nimcp_lnn.h"
+#include "lnn/nimcp_lnn_network.h"
+#include "audio/synthesis/nimcp_formant_synth.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "core/brain/nimcp_brain_parallel_stages.h"
 #include "utils/thread/nimcp_thread_pool.h"

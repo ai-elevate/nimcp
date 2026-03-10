@@ -526,7 +526,7 @@ sparse_synapse_pool_t sparse_synapse_pool_create(
                         i, block_size, scaled_blocks);
             // Continue without this pool - will use nimcp_malloc fallback
         } else {
-            LOG_DEBUG("Size-class pool %d created: capacity=%u handles, blocks=%u",
+            LOG_TRACE("Size-class pool %d created: capacity=%u handles, blocks=%u",
                       i, SIZE_CLASS_CAPACITIES[i], scaled_blocks);
         }
 
@@ -736,7 +736,7 @@ int sparse_synapse_add(
             atomic_fetch_add(&pool->embedded_synapses, 1);
         }
 
-        LOG_DEBUG("Added synapse to embedded: target=%u, weight=%f, count=%u",
+        LOG_TRACE("Added synapse to embedded: target=%u, weight=%f, count=%u",
                   target_neuron_id, weight, storage->embedded_count);
         return 0;
     }
@@ -786,7 +786,7 @@ int sparse_synapse_add(
         }
     }
 
-    LOG_DEBUG("Added synapse to overflow: target=%u, weight=%f, overflow_count=%u",
+    LOG_TRACE("Added synapse to overflow: target=%u, weight=%f, overflow_count=%u",
               target_neuron_id, weight, storage->overflow_count);
     return 0;
 }
@@ -1549,7 +1549,7 @@ uint32_t synapse_metadata_pool_allocate(synapse_metadata_pool_t pool) {
     uint32_t off = index & SYNAPSE_METADATA_BLOCK_MASK;
     memset(&pool->blocks[blk][off], 0, sizeof(synapse_t));
 
-    LOG_DEBUG("Allocated metadata slot %u (%u remaining)", index, pool->free_count);
+    LOG_TRACE("Allocated metadata slot %u (%u remaining)", index, pool->free_count);
     return index;
 }
 
@@ -1691,6 +1691,9 @@ int sparse_synapse_add_with_metadata(
         syn->trace = 0.0F;
         syn->last_change = 0.0F;
         syn->last_active = 0;
+        syn->embedding_pool_index = NIMCP_EMBEDDING_POOL_NONE;
+        syn->embedding_dim = 0;
+        syn->semantic_relevance = 0.5f;
 
         // Initialize type-specific state based on synapse type
         switch (syn->type) {
@@ -1724,7 +1727,7 @@ int sparse_synapse_add_with_metadata(
         }
     }
 
-    LOG_DEBUG("Added synapse with metadata: target=%u, weight=%f, type=%d, metadata_index=%u",
+    LOG_TRACE("Added synapse with metadata: target=%u, weight=%f, type=%d, metadata_index=%u",
               target_neuron_id, weight, synapse_type, metadata_index);
 
     return 0;

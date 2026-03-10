@@ -147,7 +147,7 @@ static void bubble_down(nimcp_min_heap_t* heap, uint32_t i)
 
 nimcp_min_heap_t* nimcp_min_heap_create(uint32_t capacity)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_create");
+    LOG_TRACE("Entering nimcp_min_heap_create");
     if (capacity == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_min_heap_create: capacity is 0");
         LOG_ERROR("nimcp_min_heap_create failed: returning error");
@@ -193,7 +193,7 @@ nimcp_min_heap_t* nimcp_min_heap_create(uint32_t capacity)
 
 void nimcp_min_heap_destroy(nimcp_min_heap_t* heap)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_destroy");
+    LOG_TRACE("Entering nimcp_min_heap_destroy");
     if (!heap) {
         return;
     }
@@ -211,7 +211,7 @@ void nimcp_min_heap_destroy(nimcp_min_heap_t* heap)
 
 bool nimcp_min_heap_insert(nimcp_min_heap_t* heap, const nimcp_heap_element_t* element)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_insert");
+    LOG_TRACE("Entering nimcp_min_heap_insert");
     if (!heap || !element) {
         LOG_ERROR("nimcp_min_heap_insert failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_min_heap_insert: required parameter is NULL (heap, element)");
@@ -244,7 +244,7 @@ bool nimcp_min_heap_insert(nimcp_min_heap_t* heap, const nimcp_heap_element_t* e
 
 bool nimcp_min_heap_extract_min(nimcp_min_heap_t* heap, nimcp_heap_element_t* element)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_extract_min");
+    LOG_TRACE("Entering nimcp_min_heap_extract_min");
     if (!heap || !element || heap->size == 0) {
         LOG_ERROR("nimcp_min_heap_extract_min failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_min_heap_extract_min: required parameter is NULL (heap, element)");
@@ -270,7 +270,7 @@ bool nimcp_min_heap_extract_min(nimcp_min_heap_t* heap, nimcp_heap_element_t* el
 
 bool nimcp_min_heap_peek_min(const nimcp_min_heap_t* heap, nimcp_heap_element_t* element)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_peek_min");
+    LOG_TRACE("Entering nimcp_min_heap_peek_min");
     if (!heap || !element || heap->size == 0) {
         LOG_ERROR("nimcp_min_heap_peek_min failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_min_heap_peek_min: required parameter is NULL (heap, element)");
@@ -283,7 +283,7 @@ bool nimcp_min_heap_peek_min(const nimcp_min_heap_t* heap, nimcp_heap_element_t*
 
 bool nimcp_min_heap_decrease_key(nimcp_min_heap_t* heap, uint32_t vertex_id, float new_priority)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_decrease_key");
+    LOG_TRACE("Entering nimcp_min_heap_decrease_key");
     if (!heap) {
         LOG_ERROR("nimcp_min_heap_decrease_key failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_min_heap_decrease_key: heap is NULL");
@@ -321,31 +321,31 @@ bool nimcp_min_heap_decrease_key(nimcp_min_heap_t* heap, uint32_t vertex_id, flo
 
 bool nimcp_min_heap_is_empty(const nimcp_min_heap_t* heap)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_is_empty");
+    LOG_TRACE("Entering nimcp_min_heap_is_empty");
     return !heap || heap->size == 0;
 }
 
 bool nimcp_min_heap_is_full(const nimcp_min_heap_t* heap)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_is_full");
+    LOG_TRACE("Entering nimcp_min_heap_is_full");
     return heap && heap->size >= heap->capacity;
 }
 
 uint32_t nimcp_min_heap_size(const nimcp_min_heap_t* heap)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_size");
+    LOG_TRACE("Entering nimcp_min_heap_size");
     return heap ? heap->size : 0;
 }
 
 uint32_t nimcp_min_heap_capacity(const nimcp_min_heap_t* heap)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_capacity");
+    LOG_TRACE("Entering nimcp_min_heap_capacity");
     return heap ? heap->capacity : 0;
 }
 
 void nimcp_min_heap_clear(nimcp_min_heap_t* heap)
 {
-    LOG_DEBUG("Entering nimcp_min_heap_clear");
+    LOG_TRACE("Entering nimcp_min_heap_clear");
     if (!heap) {
         return;
     }

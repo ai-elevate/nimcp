@@ -1366,26 +1366,33 @@ void adaptive_network_destroy(adaptive_network_t network)
     // Guard clause: Validate input
     if (!network)
         return;
+    LOG_MODULE_DEBUG(LOG_MODULE, "adaptive_network_destroy: start");
 
     // Phase Inferentia: Clean up Neuron inference cache
     if (network->neuron_cache) {
         nimcp_neuron_cache_destroy(network->neuron_cache);
         network->neuron_cache = NULL;
     }
+    LOG_MODULE_DEBUG(LOG_MODULE, "Neuron cache destroyed");
 
     // Phase GPU: Clean up GPU resources before base network
     if (network->gpu_weight_cache) {
+        LOG_MODULE_DEBUG(LOG_MODULE, "Destroying GPU weight cache...");
         nimcp_gpu_weight_cache_destroy(network->gpu_weight_cache);
         network->gpu_weight_cache = NULL;
     }
     if (network->gpu_ctx) {
+        LOG_MODULE_DEBUG(LOG_MODULE, "Destroying GPU context...");
         nimcp_gpu_context_destroy(network->gpu_ctx);
         network->gpu_ctx = NULL;
     }
+    LOG_MODULE_DEBUG(LOG_MODULE, "GPU resources destroyed");
 
     // Destroy base network
     if (network->base_network) {
+        LOG_MODULE_DEBUG(LOG_MODULE, "Destroying base network...");
         neural_network_destroy(network->base_network);
+        LOG_MODULE_DEBUG(LOG_MODULE, "Base network destroyed");
     }
 
     // Handle COW cleanup (Phase COW)
@@ -1399,10 +1406,12 @@ void adaptive_network_destroy(adaptive_network_t network)
     }
 
     // Free neuron states and their spike trains
+    LOG_MODULE_DEBUG(LOG_MODULE, "Freeing neuron states (%u)...", network->num_neurons);
     if (network->neuron_states) {
         free_neuron_spike_trains(network->neuron_states, network->num_neurons);
         nimcp_free(network->neuron_states);
     }
+    LOG_MODULE_DEBUG(LOG_MODULE, "Neuron states freed");
 
     // Free input statistics buffer
     nimcp_free(network->input_statistics);

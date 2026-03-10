@@ -209,7 +209,7 @@ uint32_t recompiler_cleanup_temp(recompiler_t recompiler) {
 
 recompiler_config_t recompiler_default_config(void)
 {
-    LOG_DEBUG("Entering recompiler_default_config");
+    LOG_TRACE("Entering recompiler_default_config");
 
     recompiler_config_t config = {0};
 
@@ -239,7 +239,7 @@ recompiler_config_t recompiler_default_config(void)
 
 recompiler_t recompiler_create(const recompiler_config_t* config)
 {
-    LOG_DEBUG("Entering recompiler_create");
+    LOG_TRACE("Entering recompiler_create");
 
     /**
      * WHAT: Allocate recompiler structure
@@ -298,7 +298,7 @@ recompiler_t recompiler_create(const recompiler_config_t* config)
 
 void recompiler_destroy(recompiler_t recompiler)
 {
-    LOG_DEBUG("Entering recompiler_destroy");
+    LOG_TRACE("Entering recompiler_destroy");
 
     if (!validate_recompiler(recompiler)) {
         return;
@@ -337,7 +337,7 @@ bool recompiler_compile(
     const recompile_request_t* request,
     recompile_result_t* result)
 {
-    LOG_DEBUG("Entering recompiler_compile");
+    LOG_TRACE("Entering recompiler_compile");
 
     /**
      * WHAT: Validate inputs
@@ -499,7 +499,7 @@ bool recompiler_compile_patch(
     const char* fn_name,
     recompile_result_t* result)
 {
-    LOG_DEBUG("Entering recompiler_compile_patch");
+    LOG_TRACE("Entering recompiler_compile_patch");
 
     if (!validate_recompiler(recompiler)) {
         if (result) {
@@ -594,7 +594,7 @@ bool recompiler_compile_incremental(
     recompile_result_t* result,
     bool* was_compiled)
 {
-    LOG_DEBUG("Entering recompiler_compile_incremental");
+    LOG_TRACE("Entering recompiler_compile_incremental");
 
     if (!validate_recompiler(recompiler) || !request || !result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_compile_incremental: required parameter is NULL (validate_recompiler, request, result)");
@@ -648,7 +648,7 @@ bool recompiler_compile_incremental(
 
 bool recompiler_verify_symbol(const char* so_path, const char* symbol_name)
 {
-    LOG_DEBUG("Entering recompiler_verify_symbol: %s in %s", symbol_name, so_path);
+    LOG_TRACE("Entering recompiler_verify_symbol: %s in %s", symbol_name, so_path);
 
     if (!so_path || !symbol_name) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_verify_symbol: required parameter is NULL (so_path, symbol_name)");
@@ -663,7 +663,7 @@ bool recompiler_get_symbol_info(
     const char* symbol_name,
     symbol_info_t* info)
 {
-    LOG_DEBUG("Entering recompiler_get_symbol_info");
+    LOG_TRACE("Entering recompiler_get_symbol_info");
 
     if (!so_path || !symbol_name || !info) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_get_symbol_info: required parameter is NULL (so_path, symbol_name, info)");
@@ -718,7 +718,7 @@ bool recompiler_get_symbol_info(
 
 bool recompiler_test_load(const char* so_path)
 {
-    LOG_DEBUG("Entering recompiler_test_load: %s", so_path);
+    LOG_TRACE("Entering recompiler_test_load: %s", so_path);
 
     if (!so_path) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_test_load: so_path is NULL");
@@ -771,7 +771,7 @@ int recompiler_sandbox_test(
     void* user_data,
     uint32_t timeout_ms)
 {
-    LOG_DEBUG("Entering recompiler_sandbox_test");
+    LOG_TRACE("Entering recompiler_sandbox_test");
 
     if (!so_path || !test_fn) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_sandbox_test: required parameter is NULL (so_path, test_fn)");
@@ -980,7 +980,7 @@ static ssize_t read_pipe_timeout(int fd, char* buffer, size_t size, uint32_t tim
 
 sandbox_limits_t sandbox_default_limits(void)
 {
-    LOG_DEBUG("Entering sandbox_default_limits");
+    LOG_TRACE("Entering sandbox_default_limits");
 
     sandbox_limits_t limits = {0};
 
@@ -1056,7 +1056,7 @@ int sandbox_test_enhanced(
     uint32_t timeout_ms,
     sandbox_test_result_t* result)
 {
-    LOG_DEBUG("Entering sandbox_test_enhanced");
+    LOG_TRACE("Entering sandbox_test_enhanced");
 
     /**
      * WHAT: Validate inputs

@@ -2902,6 +2902,66 @@ typedef struct brain_decision {
  */
 brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t num_features);
 
+//=============================================================================
+// Input Modality Gating
+//=============================================================================
+
+/** Modality bitmask flags — controls which SNN sensory bridges process input */
+#define BRAIN_MODALITY_TEXT           0x01u  /**< Text/semantic embedding (default) */
+#define BRAIN_MODALITY_VISUAL         0x02u  /**< Visual frame data */
+#define BRAIN_MODALITY_AUDIO          0x04u  /**< Audio spectral/MFCC data */
+#define BRAIN_MODALITY_SOMATOSENSORY  0x08u  /**< Touch/proprioception data */
+#define BRAIN_MODALITY_SPEECH         0x10u  /**< Phoneme/speech data */
+#define BRAIN_MODALITY_ALL            0x1Fu  /**< All modalities active */
+
+/**
+ * @brief Set which sensory modalities are active for input processing
+ *
+ * WHAT: Control which SNN sensory bridges fire during brain_decide()
+ * WHY:  Text embeddings should not be fed to visual/audio/somatosensory encoders
+ * HOW:  Bitmask gating — bridges only encode when their modality bit is set
+ *
+ * @param brain Brain handle
+ * @param modality_flags Bitmask of BRAIN_MODALITY_* flags
+ */
+void brain_set_active_modalities(brain_t brain, uint32_t modality_flags);
+
+/**
+ * @brief Get current active modality bitmask
+ *
+ * @param brain Brain handle
+ * @return Current modality flags
+ */
+uint32_t brain_get_active_modalities(brain_t brain);
+
+/**
+ * @brief Stage raw sensory data for the next brain_decide() call
+ *
+ * WHAT: Submit modality-specific data that SNN bridges will consume
+ * WHY:  Text embeddings should not be fed to visual/audio encoders;
+ *       each modality needs its native data format
+ * HOW:  Data is copied internally and consumed (freed) after next brain_decide().
+ *       Automatically sets the modality bit in active_modalities.
+ *
+ * @param brain Brain handle
+ * @param modality One of BRAIN_MODALITY_VISUAL, _AUDIO, _SPEECH, _SOMATOSENSORY
+ * @param data Raw data (uint8_t* for visual, float* for others)
+ * @param size Element count (pixels for visual, floats for others)
+ * @param width Frame width (visual only, 0 for others)
+ * @param height Frame height (visual only, 0 for others)
+ * @param channels 1=gray/mono, 3=RGB, 2=stereo (0 for speech/somatosensory)
+ * @return 0 on success, -1 on error
+ */
+NIMCP_EXPORT int brain_submit_sensory(brain_t brain, uint32_t modality,
+                                       const void* data, uint32_t size,
+                                       uint32_t width, uint32_t height,
+                                       uint32_t channels);
+
+/**
+ * @brief Clear all staged sensory data without processing
+ */
+NIMCP_EXPORT void brain_clear_sensory(brain_t brain);
+
 /**
  * @brief Free decision result
  *

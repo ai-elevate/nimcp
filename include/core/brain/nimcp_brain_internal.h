@@ -307,6 +307,29 @@ struct brain_struct {
     uint64_t last_glial_update_us;               // Last glial integration update time
     uint32_t glial_update_counter;               // Step counter for glial update amortization
 
+    // Active Input Modalities — bitmask controlling which SNN bridges process input
+    // Default: BRAIN_MODALITY_TEXT. Set via brain_set_active_modalities().
+    uint32_t active_modalities;
+
+    // Staged sensory data — submitted via brain_submit_sensory() before brain_decide().
+    // Each pointer is NULL when no data staged. Consumed (freed + NULLed) after use.
+    struct {
+        uint8_t* visual_frame;       // Pixel data (owned copy)
+        uint32_t visual_width;
+        uint32_t visual_height;
+        uint32_t visual_channels;    // 1=gray, 3=RGB
+
+        float*   audio_data;         // Spectral/MFCC data (owned copy)
+        uint32_t audio_size;         // Number of float elements
+        uint8_t  audio_channels;     // 1=mono, 2=stereo
+
+        float*   speech_data;        // Phoneme feature data (owned copy)
+        uint32_t speech_size;
+
+        float*   somato_data;        // Per-segment body state (owned copy)
+        uint32_t somato_segments;
+    } staged_sensory;
+
     // === PHASE 10: ADVANCED COGNITIVE SYSTEMS ===
 
     // Phase 10.1: Working Memory (Miller's 7±2)
@@ -1195,6 +1218,8 @@ struct brain_struct {
     struct grounded_language* grounded_lang;                           // Grounded lexicon + production
     struct snn_language_bridge* snn_lang_bridge;                      // SNN spike-driven word-concept binding
     struct snn_speech_bridge* snn_speech_bridge;                      // SNN spike-driven speech production/comprehension
+    struct formant_synth* formant_synth;                              // Formant voice synthesizer (Athena's voice)
+    struct lnn_network_s* lnn_prosody;                                // LNN for prosody/F0 contour prediction
     struct snn_audio_bridge* snn_audio_bridge;                        // SNN spike-driven auditory processing
     struct snn_visual_bridge* snn_visual_bridge;                      // SNN spike-driven visual processing
     struct snn_somatosensory_bridge* snn_somatosensory_bridge;        // SNN spike-driven somatosensory processing

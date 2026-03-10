@@ -19,6 +19,7 @@
 #include "core/neuralnet/nimcp_neuralnet.h"       /* neuron_t, network_config_t, neural_network_t */
 #include "core/neuralnet/nimcp_sparse_synapse.h"   /* sparse_synapse_pool_t, synapse_metadata_pool_t */
 #include "async/nimcp_bio_async.h"                 /* bio_module_context_t */
+#include "gpu/embedding/nimcp_embedding_relevance_gpu.h"  /* nimcp_embedding_gpu_state_t */
 
 /**
  * @brief Function pointer type for activation strategies
@@ -108,6 +109,85 @@ struct neural_network_struct {
 
     /* Cached neuromodulation level (computed once per compute_step, used per-synapse) */
     float cached_neuromod_level;
+
+    /* Bulk BCM and eligibility pools — eliminates per-connection heap allocations.
+     * For 10K neurons × 64 fan-in = 674K connections × 2 allocs each = 1.35M mallocs
+     * replaced by 2 bulk allocations. Synapse bcm/eligibility pointers index into these. */
+    bcm_synapse_t* bcm_pool;                /**< Bulk BCM array (NULL = per-synapse alloc) */
+    uint32_t bcm_pool_capacity;             /**< Allocated pool capacity */
+    uint32_t bcm_pool_used;                 /**< Next available slot */
+    eligibility_trace_t* eligibility_pool;  /**< Bulk eligibility array (NULL = per-synapse alloc) */
+    uint32_t eligibility_pool_capacity;     /**< Allocated pool capacity */
+    uint32_t eligibility_pool_used;         /**< Next available slot */
+
+    /* CPU-staged embedding pool — full embedding vectors live in CPU RAM (pinned),
+     * only transferred to GPU in batches for relevance recomputation.
+     * Forward pass reads only the cached semantic_relevance float (always in CPU). */
+    float* embedding_pool;                  /**< Pinned CPU buffer: capacity × dim floats */
+    uint32_t embedding_pool_capacity;       /**< Max embeddings in pool */
+    uint32_t embedding_pool_used;           /**< Next bump-allocator slot */
+    uint32_t* embedding_free_list;          /**< Stack of freed slot indices */
+    uint32_t embedding_free_count;          /**< Free list depth */
+    uint16_t embedding_dim;                 /**< Embedding dimension (2048) */
+    bool embedding_pool_pinned;             /**< True if pool uses cudaHostAlloc */
+
+    /* GPU-side buffers for batch relevance recomputation */
+    nimcp_embedding_gpu_state_t embedding_gpu_state;
+    bool embedding_gpu_initialized;         /**< True if GPU state is ready */
 };
+
+//=============================================================================
+// CPU-Staged Embedding Pool Functions (nimcp_synapse_embeddings.c)
+//=============================================================================
+
+/** Create embedding pool with pinned CPU memory (or regular fallback) */
+bool embedding_pool_create(neural_network_t net, uint32_t capacity, uint16_t dim);
+
+/** Destroy embedding pool and free all memory */
+void embedding_pool_destroy(neural_network_t net);
+
+/** Allocate a slot from pool, returns NIMCP_EMBEDDING_POOL_NONE on exhaustion */
+uint32_t embedding_pool_allocate(neural_network_t net);
+
+/** Free a slot back to pool for reuse */
+void embedding_pool_free_slot(neural_network_t net, uint32_t index);
+
+/** Get pointer to embedding vector at index (do not cache — pointer invalidated on pool growth) */
+float* embedding_pool_get(neural_network_t net, uint32_t index);
+
+/** Initialize a synapse embedding from the network pool */
+bool synapse_init_embedding_pooled(neural_network_t net, synapse_t *synapse);
+
+/** Bulk-initialize embeddings for all incoming synapses that lack one */
+uint32_t embedding_pool_init_all_synapses(neural_network_t net);
+
+/** Destroy a synapse embedding and return slot to pool */
+void synapse_destroy_embedding_pooled(neural_network_t net, synapse_t *synapse);
+
+/** Compute similarity between two synapses using pooled embeddings */
+float synapse_semantic_similarity_pooled(neural_network_t net,
+                                          const synapse_t *syn1,
+                                          const synapse_t *syn2);
+
+/** Update embedding via gradient descent toward target */
+bool synapse_update_embedding_pooled(neural_network_t net, synapse_t *synapse,
+                                      const float *target_embedding, float learning_rate);
+
+/** Compute relevance of a synapse to a context embedding */
+float synapse_compute_relevance_pooled(neural_network_t net, synapse_t *synapse,
+                                        const float *context_embedding, uint16_t context_dim);
+
+/** Batch-recompute relevance for ALL synapses in network (CPU fallback) */
+uint32_t embedding_pool_recompute_relevance_cpu(neural_network_t net,
+                                                 const float *context_embedding,
+                                                 uint16_t context_dim);
+
+/** Batch-recompute relevance for all active embeddings (GPU with CPU fallback).
+ *  Lazily initializes GPU state on first call if gpu_ctx is provided. */
+uint32_t embedding_pool_recompute_relevance(
+    neural_network_t net,
+    nimcp_gpu_context_t* gpu_ctx,
+    const float* context_embedding,
+    uint16_t context_dim);
 
 #endif /* NIMCP_NEURALNET_INTERNAL_H */

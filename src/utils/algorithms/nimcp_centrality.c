@@ -134,7 +134,7 @@ static bool bfs_shortest_paths(const NimcpGraph* graph, uint32_t source, uint32_
 
 NimcpCentralityScores* nimcp_degree_centrality(const NimcpGraph* graph)
 {
-    LOG_DEBUG("Entering nimcp_degree_centrality");
+    LOG_TRACE("Entering nimcp_degree_centrality");
     LOG_DEBUG("Computing degree centrality for graph with %u vertices",
               graph ? graph->vertex_count : 0);
 
@@ -181,7 +181,7 @@ NimcpCentralityScores* nimcp_degree_centrality(const NimcpGraph* graph)
 
 NimcpCentralityScores* nimcp_betweenness_centrality(const NimcpGraph* graph)
 {
-    LOG_DEBUG("Entering nimcp_betweenness_centrality");
+    LOG_TRACE("Entering nimcp_betweenness_centrality");
     if (!graph) {
         LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_betweenness_centrality: graph is NULL");
@@ -255,7 +255,7 @@ NimcpCentralityScores* nimcp_betweenness_centrality(const NimcpGraph* graph)
 
 NimcpCentralityScores* nimcp_closeness_centrality(const NimcpGraph* graph)
 {
-    LOG_DEBUG("Entering nimcp_closeness_centrality");
+    LOG_TRACE("Entering nimcp_closeness_centrality");
     if (!graph) {
         LOG_ERROR("nimcp_closeness_centrality failed: returning error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_closeness_centrality: graph is NULL");
@@ -443,7 +443,7 @@ uint32_t nimcp_detect_hubs(const NimcpCentralityScores* scores, double threshold
 
 void nimcp_centrality_scores_destroy(NimcpCentralityScores* scores)
 {
-    LOG_DEBUG("Entering nimcp_centrality_scores_destroy");
+    LOG_TRACE("Entering nimcp_centrality_scores_destroy");
     if (!scores) {
         return;
     }
@@ -454,7 +454,7 @@ void nimcp_centrality_scores_destroy(NimcpCentralityScores* scores)
 
 double nimcp_get_centrality_score(const NimcpCentralityScores* scores, uint32_t vertex_idx)
 {
-    LOG_DEBUG("Entering nimcp_get_centrality_score");
+    LOG_TRACE("Entering nimcp_get_centrality_score");
     if (!scores || !scores->scores || vertex_idx >= scores->num_scores) {
         LOG_ERROR("nimcp_get_centrality_score failed: returning error");
         return -1.0;

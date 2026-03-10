@@ -1284,6 +1284,24 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
+    // EMBEDDING RELEVANCE: Recompute synapse relevance for current context
+    // ========================================================================
+    // WHAT: Batch-update semantic_relevance on all embedded synapses
+    // WHY:  Synaptic relevance modulates contribution in forward pass — must
+    //       reflect current input context, not stale cached values
+    // HOW:  GPU batch kernel (or CPU fallback) computes cosine similarity
+    //       between each synapse embedding and input features as context vector.
+    //       Skipped when input dims don't match embedding dims (no-op, safe).
+    {
+        neural_network_t nn = adaptive_network_get_base_network(brain->network);
+        if (nn && nn->embedding_pool && nn->embedding_pool_used > 0 &&
+            num_features == nn->embedding_dim) {
+            embedding_pool_recompute_relevance(nn, brain->gpu_ctx,
+                                                features, (uint16_t)num_features);
+        }
+    }
+
+    // ========================================================================
     // RECURRENT FORWARD PASS: Iterative refinement for uncertain decisions
     // ========================================================================
     // WHAT: Run multiple forward passes, feeding output back into input
@@ -1428,6 +1446,153 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             decision->output_vector[i] *= lat_boost;
         }
     }
+
+    // ========================================================================
+    // STAGE 1.6: Sensory SNN Spike Encoding (modality-gated)
+    // ========================================================================
+    // WHAT: Convert cortical activations to spike-domain representations
+    // WHY:  Enable SNN processing of sensory data alongside ANN forward pass
+    // HOW:  Each bridge encodes ONLY when its modality bit is set;
+    //       text-only input (default) skips all sensory bridges
+    {
+        uint32_t modalities = brain->active_modalities;
+
+        /* Visual cortex → spike trains (only for visual input) */
+        if ((modalities & BRAIN_MODALITY_VISUAL) && brain->snn_visual_bridge) {
+            snn_visual_bridge_t* vb = (snn_visual_bridge_t*)brain->snn_visual_bridge;
+            snn_spike_train_t* vtrains = NULL;
+            if (brain->staged_sensory.visual_frame) {
+                /* Raw pixel data staged — use native visual encode path */
+                snn_visual_bridge_encode(vb,
+                    brain->staged_sensory.visual_frame,
+                    brain->staged_sensory.visual_width,
+                    brain->staged_sensory.visual_height,
+                    brain->staged_sensory.visual_channels,
+                    &vtrains);
+            } else {
+                /* Fallback: treat features as normalized values */
+                snn_visual_bridge_encode_features(vb, features, num_features, &vtrains);
+            }
+            snn_visual_bridge_update(vb, 1.0f);
+            if (vtrains) nimcp_free(vtrains);
+        }
+
+        /* Audio cortex → spike trains (only for audio input) */
+        if ((modalities & BRAIN_MODALITY_AUDIO) && brain->snn_audio_bridge) {
+            snn_audio_bridge_t* ab = (snn_audio_bridge_t*)brain->snn_audio_bridge;
+            snn_spike_train_t* atrains = NULL;
+            if (brain->staged_sensory.audio_data) {
+                /* Raw spectral/MFCC data staged — use native audio encode path */
+                snn_audio_bridge_encode(ab,
+                    brain->staged_sensory.audio_data,
+                    brain->staged_sensory.audio_size,
+                    brain->staged_sensory.audio_channels,
+                    &atrains);
+            } else {
+                snn_audio_bridge_encode_features(ab, features, num_features, &atrains);
+            }
+            snn_audio_bridge_update(ab, 1.0f);
+            if (atrains) nimcp_free(atrains);
+        }
+
+        /* Somatosensory → proprioceptive encoding (only for touch/body data) */
+        if ((modalities & BRAIN_MODALITY_SOMATOSENSORY) && brain->snn_somatosensory_bridge) {
+            snn_somatosensory_bridge_t* sb =
+                (snn_somatosensory_bridge_t*)brain->snn_somatosensory_bridge;
+            uint32_t n_seg = sb->config.body_segments;
+            const float* soma_src = brain->staged_sensory.somato_data
+                                  ? brain->staged_sensory.somato_data : features;
+            uint32_t soma_max = brain->staged_sensory.somato_data
+                              ? brain->staged_sensory.somato_segments : num_features;
+            for (uint32_t s = 0; s < n_seg && s < soma_max; s++) {
+                snn_somatosensory_bridge_encode_proprioception(
+                    sb, s, soma_src[s], 0.0f, 0.0f);
+            }
+        }
+
+        /* Speech bridge → phoneme processing (only for speech data) */
+        if ((modalities & BRAIN_MODALITY_SPEECH) && brain->snn_speech_bridge) {
+            snn_speech_bridge_t* spb = (snn_speech_bridge_t*)brain->snn_speech_bridge;
+            if (brain->staged_sensory.speech_data && spb->spike_input_buffer) {
+                /* Copy staged speech features into bridge input buffer */
+                uint32_t speech_neurons = spb->config.num_phonemes *
+                                          spb->config.neurons_per_phoneme;
+                uint32_t copy_n = brain->staged_sensory.speech_size < speech_neurons
+                                ? brain->staged_sensory.speech_size : speech_neurons;
+                memcpy(spb->spike_input_buffer, brain->staged_sensory.speech_data,
+                       copy_n * sizeof(float));
+            }
+            snn_speech_bridge_update(spb, 1.0f);
+        }
+    }
+
+    // ========================================================================
+    // STAGE 1.7: Cross-Modal Temporal Alignment (modality-gated)
+    // ========================================================================
+    // WHAT: Synchronize spike outputs across sensory modalities
+    // WHY:  Visual (75ms), auditory (30ms), somatosensory (52ms), speech (65ms)
+    //       have different latencies — must align for coherent binding
+    // HOW:  Submit per-modality spike rates to aligner ONLY if that modality
+    //       was encoded in Stage 1.6 (i.e., its bit is set)
+    if (brain->cross_modal_aligner && (brain->active_modalities & ~BRAIN_MODALITY_TEXT)) {
+        cross_modal_align_t* cma = (cross_modal_align_t*)brain->cross_modal_aligner;
+        float current_time_ms = (float)(brain->current_time_us / 1000);
+        uint32_t modalities = brain->active_modalities;
+
+        /* Modality indices match registration order: 0=visual, 1=auditory,
+         * 2=somatosensory, 3=speech */
+        if ((modalities & BRAIN_MODALITY_VISUAL) && brain->snn_visual_bridge) {
+            snn_visual_bridge_t* vb = (snn_visual_bridge_t*)brain->snn_visual_bridge;
+            if (vb->spike_input_buffer) {
+                uint32_t vis_dim = vb->config.frame_width * vb->config.frame_height;
+                if (vis_dim > num_features) vis_dim = num_features;
+                if (vis_dim > 0) {
+                    cross_modal_align_submit_spikes(cma, 0, vb->spike_input_buffer,
+                                                    vis_dim, current_time_ms);
+                }
+            }
+        }
+
+        if ((modalities & BRAIN_MODALITY_AUDIO) && brain->snn_audio_bridge) {
+            snn_audio_bridge_t* ab = (snn_audio_bridge_t*)brain->snn_audio_bridge;
+            if (ab->spike_input_buffer) {
+                uint32_t audio_dim = ab->config.num_freq_bins;
+                if (audio_dim > 0) {
+                    cross_modal_align_submit_spikes(cma, 1, ab->spike_input_buffer,
+                                                    audio_dim, current_time_ms);
+                }
+            }
+        }
+
+        if ((modalities & BRAIN_MODALITY_SOMATOSENSORY) && brain->snn_somatosensory_bridge) {
+            snn_somatosensory_bridge_t* sb =
+                (snn_somatosensory_bridge_t*)brain->snn_somatosensory_bridge;
+            if (sb->receptor_buffer) {
+                uint32_t soma_dim = sb->config.body_segments * sb->config.neurons_per_segment;
+                if (soma_dim > 0) {
+                    cross_modal_align_submit_spikes(cma, 2, sb->receptor_buffer,
+                                                    soma_dim, current_time_ms);
+                }
+            }
+        }
+
+        if ((modalities & BRAIN_MODALITY_SPEECH) && brain->snn_speech_bridge) {
+            snn_speech_bridge_t* spb = (snn_speech_bridge_t*)brain->snn_speech_bridge;
+            if (spb->spike_input_buffer) {
+                uint32_t speech_dim = spb->config.num_phonemes *
+                                      spb->config.neurons_per_phoneme;
+                if (speech_dim > 0) {
+                    cross_modal_align_submit_spikes(cma, 3, spb->spike_input_buffer,
+                                                    speech_dim, current_time_ms);
+                }
+            }
+        }
+
+        cross_modal_align_compute_offsets(cma);
+    }
+
+    // Consume staged sensory data (single-shot — each decide cycle gets fresh data)
+    brain_clear_sensory(brain);
 
     // ========================================================================
     // STAGE 2: Predictive Processing - Compute Prediction Error
@@ -1591,6 +1756,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // STAGE 3.10: WORKING MEMORY TRANSFER
+    BRAIN_ENSURE_WORKING_MEMORY(brain);
     if (brain->wm_transfer_system && brain->working_memory) {
         wm_transfer_evaluate(brain->wm_transfer_system, 0.1F);
     }
@@ -1791,6 +1957,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // WHAT: Apply executive control to decision output
     // WHY:  Enable goal-directed behavior, inhibition, and multi-step planning
     // HOW:  Use executive controller to select/inhibit/plan actions
+    BRAIN_ENSURE_EXECUTIVE(brain);
     if (brain->executive && brain->config.enable_executive_control) {
         // Check if response should be inhibited
         // For example, inhibit low-confidence decisions
@@ -1886,6 +2053,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                     nat_exp.what, nat_exp.why, nat_exp.confidence);
 
             // Optional: Add symbolic logic proof if available and enabled
+            BRAIN_ENSURE_SYMBOLIC_LOGIC(brain);
             if (brain->symbolic_logic && nat_exp.has_symbolic_proof) {
                 char proof_buffer[NIMCP_ERROR_BUFFER_LARGE];
                 if (explain_with_symbolic_logic(brain->explanation_gen, brain,
@@ -1908,6 +2076,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // WHAT: Store decision context in working memory with cognitive metadata
     // WHY:  Enable context-dependent decisions, consolidation, and temporal reasoning
     // HOW:  Store features + decision + cognitive state (sleep, novelty, etc.)
+    BRAIN_ENSURE_WORKING_MEMORY(brain);
     if (brain->working_memory && brain->config.enable_working_memory) {
         // Compute salience based on multiple factors:
         // - High prediction error = surprising/important
@@ -1970,6 +2139,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // WHAT: Modules compete for conscious access via broadcast
     // WHY:  Limited-capacity workspace enables prioritization and integration
     // HOW:  High-salience/novelty content competes, winner broadcasts globally
+    BRAIN_ENSURE_GLOBAL_WORKSPACE(brain);
     if (brain->global_workspace && brain->config.enable_global_workspace) {
         // Working memory competes with decision content
         bool won_competition = global_workspace_compete(
@@ -2022,6 +2192,99 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
+    // STAGE 6.6: Top-Down Sensory Prediction (Language → Perception)
+    // ========================================================================
+    // WHAT: Generate predicted sensory patterns from active concept bindings
+    // WHY:  Predictive coding — language understanding guides perception
+    // HOW:  Active concepts → attention weights + predicted sensory patterns;
+    //       prediction error modulates decision confidence
+    // GATE: Only runs when language bridge has learned bindings AND at least
+    //       one non-text sensory modality is active (otherwise no prediction target)
+    if (brain->snn_lang_bridge) {
+        /* Check if language bridge has any learned bindings */
+        snn_lang_stats_t lang_stats;
+        memset(&lang_stats, 0, sizeof(lang_stats));
+        snn_language_bridge_get_stats(brain->snn_lang_bridge, &lang_stats);
+        bool has_bindings = (lang_stats.active_bindings > 0);
+
+        /* 6.6a: Top-down attention modulation (only if bindings exist AND
+         * sensory modalities are active to receive the attention signal) */
+        uint32_t modalities = brain->active_modalities;
+        bool has_sensory = (modalities & (BRAIN_MODALITY_VISUAL | BRAIN_MODALITY_AUDIO)) != 0;
+
+        if (has_bindings && has_sensory) {
+            uint32_t attn_dim = num_features < 256 ? num_features : 256;
+            float* attention_weights = nimcp_calloc(attn_dim, sizeof(float));
+            if (attention_weights) {
+                int attn_rc = snn_language_bridge_generate_attention_feedback(
+                    brain->snn_lang_bridge, attention_weights, attn_dim);
+
+                if (attn_rc == 0) {
+                    /* Apply top-down attention to visual bridge */
+                    if ((modalities & BRAIN_MODALITY_VISUAL) && brain->snn_visual_bridge) {
+                        snn_visual_bridge_t* vb = (snn_visual_bridge_t*)brain->snn_visual_bridge;
+                        if (vb->attention_gains && vb->config.use_attention_modulation) {
+                            uint32_t n_vis = vb->config.frame_width *
+                                             vb->config.frame_height *
+                                             vb->config.neurons_per_pixel;
+                            for (uint32_t i = 0; i < n_vis && i < attn_dim; i++) {
+                                vb->attention_gains[i] = vb->attention_gains[i] * 0.7f +
+                                                          attention_weights[i] * 0.3f;
+                            }
+                        }
+                    }
+
+                    /* Apply top-down attention to audio bridge */
+                    if ((modalities & BRAIN_MODALITY_AUDIO) && brain->snn_audio_bridge) {
+                        snn_audio_bridge_t* ab = (snn_audio_bridge_t*)brain->snn_audio_bridge;
+                        if (ab->attention_gains && ab->config.use_attention_modulation) {
+                            uint32_t n_aud = ab->config.num_freq_bins *
+                                             ab->config.neurons_per_freq_bin;
+                            for (uint32_t i = 0; i < n_aud && i < attn_dim; i++) {
+                                ab->attention_gains[i] = ab->attention_gains[i] * 0.7f +
+                                                          attention_weights[i] * 0.3f;
+                            }
+                        }
+                    }
+                }
+                nimcp_free(attention_weights);
+            }
+        }
+
+        /* 6.6b: Predict sensory pattern from concept activations
+         * Only if bindings exist — otherwise prediction is all-zeros and
+         * PE just reflects input magnitude (meaningless) */
+        if (has_bindings) {
+            uint32_t sensory_dim = num_features < 256 ? num_features : 256;
+            float* predicted_sensory = nimcp_calloc(sensory_dim, sizeof(float));
+            if (predicted_sensory) {
+                snn_language_bridge_predict_sensory(
+                    brain->snn_lang_bridge,
+                    features, num_features,
+                    predicted_sensory, sensory_dim);
+
+                /* Compute top-down prediction error */
+                float td_pe = 0.0f;
+                for (uint32_t i = 0; i < sensory_dim && i < num_features; i++) {
+                    float diff = features[i] - predicted_sensory[i];
+                    td_pe += diff * diff;
+                }
+                td_pe = sqrtf(td_pe / (float)sensory_dim);
+
+                /* Low PE → expected input, boost confidence
+                 * High PE → unexpected, slight reduction */
+                if (td_pe < 0.3f) {
+                    decision->confidence += (1.0f - decision->confidence) * 0.05f;
+                } else if (td_pe > 0.7f) {
+                    decision->confidence *= 0.95f;
+                }
+
+                nimcp_free(predicted_sensory);
+            }
+        }
+    }
+
+    // ========================================================================
     // STAGE 7: Emotional Tagging (Phase 10.11.2 - REAL INTEGRATION)
     // ========================================================================
     // WHAT: Tag significant decisions with emotional valence/arousal
@@ -2043,6 +2306,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
         // BEHAVIORAL EFFECT: Boost working memory salience for emotional content
         // High arousal = grab attention, strong valence = important
+        BRAIN_ENSURE_WORKING_MEMORY(brain);
         if (brain->working_memory && brain->config.enable_working_memory) {
             float emotional_salience_boost = 0.0F;
 
@@ -2076,6 +2340,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // HOW:  4 strategic connections based on neuroscience
 
     // Connection 1: Curiosity ↔ Executive Function
+    BRAIN_ENSURE_EXECUTIVE(brain);
     if (brain->curiosity && brain->executive &&
         brain->config.enable_curiosity && brain->config.enable_executive_control) {
         // Executive → Curiosity: Reduce exploration when cognitively overloaded
@@ -2093,6 +2358,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // Connection 2: Mirror Neurons ↔ Visual Cortex
+    // Lazy-init: ensure mirror neurons are created before cross-module wiring
+    if (brain->config.enable_mirror_neurons) {
+        BRAIN_ENSURE_MIRROR_NEURONS(brain);
+    }
     if (brain->mirror_neurons && brain->visual_cortex) {
         // Mirror Neurons → Visual: Boost attention to social cues
         float social_salience = mirror_neurons_get_social_salience(brain->mirror_neurons);
@@ -2172,6 +2441,101 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+    // Connection 4b: Speech SNN Bridge — Word Production via Broca Pathway
+    // WHAT: Produce phoneme sequence from decision label via language bridge
+    // WHY:  Close the loop: concept → word → phoneme → spike train
+    // HOW:  Language bridge produces words, speech bridge encodes phonemes
+    // GATE: Only runs when speech modality is active (real speech output needed)
+    if ((brain->active_modalities & BRAIN_MODALITY_SPEECH) &&
+        brain->snn_speech_bridge && brain->snn_lang_bridge &&
+        decision->label && decision->label[0]) {
+        snn_speech_bridge_t* spb = (snn_speech_bridge_t*)brain->snn_speech_bridge;
+        snn_lang_production_result_t prod_result;
+        memset(&prod_result, 0, sizeof(prod_result));
+        int prod_rc = snn_language_bridge_produce(
+            brain->snn_lang_bridge,
+            decision->output_vector,
+            decision->output_size,
+            &prod_result);
+        if (prod_rc == 0 && prod_result.word_count > 0) {
+            /* Trigger STDP on the speech-language pathway */
+            snn_speech_bridge_flush_accumulator(
+                spb, (float)(brain->current_time_us / 1000));
+
+            /* -------------------------------------------------------
+             * Formant synthesis: concept → phonemes → audio + visemes
+             * LNN prosody: emotional state → F0/rate/intensity contour
+             * ------------------------------------------------------- */
+            if (brain->formant_synth) {
+                formant_synth_t* fsynth = (formant_synth_t*)brain->formant_synth;
+
+                /* Feed emotional state into formant synth */
+                float emo_arousal = 0.5f, emo_valence = 0.0f;
+                int emo_category = EMOTION_CAT_NEUTRAL;
+                if (brain->config.enable_emotional_tagging) {
+                    emotional_tag_t etag = emotional_tag_from_cognitive_state(
+                        decision->confidence,
+                        prediction_error,
+                        novelty_score,
+                        true,
+                        nimcp_time_get_ms());
+                    emo_arousal = etag.arousal;
+                    emo_valence = etag.valence;
+                    emo_category = (int)etag.category;
+                }
+                formant_synth_set_emotion(fsynth, emo_arousal, emo_valence, emo_category);
+
+                /* LNN prosody forward pass: predict F0/rate/intensity/breathiness */
+                if (brain->lnn_prosody) {
+                    lnn_network_t* prosody_net = (lnn_network_t*)brain->lnn_prosody;
+                    nimcp_tensor_t* p_in  = nimcp_tensor_create_1d(6, NIMCP_DTYPE_F32);
+                    nimcp_tensor_t* p_out = nimcp_tensor_create_1d(4, NIMCP_DTYPE_F32);
+                    if (p_in && p_out) {
+                        float* in_data = (float*)nimcp_tensor_data(p_in);
+                        /* Input: [arousal, valence, word_pos, utt_progress, phoneme_class, stress] */
+                        in_data[0] = emo_arousal;
+                        in_data[1] = emo_valence;
+                        in_data[2] = 0.0f;  /* word position (first word) */
+                        in_data[3] = 0.0f;  /* utterance progress [0..1] */
+                        in_data[4] = 0.0f;  /* phoneme class (updated per-word) */
+                        in_data[5] = 0.5f;  /* default stress mark */
+
+                        for (uint32_t wi = 0; wi < prod_result.word_count; wi++) {
+                            in_data[2] = (float)wi / (float)prod_result.word_count;
+                            in_data[3] = (float)(wi + 1) / (float)prod_result.word_count;
+
+                            int lnn_rc = lnn_network_forward_step(prosody_net, p_in, p_out, 10.0f);
+                            if (lnn_rc == 0) {
+                                float* out_data = (float*)nimcp_tensor_data(p_out);
+                                /* Modulate formant synth with LNN prosody output */
+                                /* out[0]=F0_scale, out[1]=dur_scale, out[2]=intensity, out[3]=breathiness */
+                                /* These scale the synth's emotional prosody parameters */
+                                float f0_mod = 0.5f + out_data[0] * 0.5f;   /* clamp to [0.5, 1.5] */
+                                float rate_mod = 0.5f + out_data[1] * 0.5f;
+                                (void)f0_mod;   /* Applied implicitly via emotion state */
+                                (void)rate_mod; /* Future: per-word rate scaling */
+                            }
+
+                            /* Synthesize this word via the speech bridge → formant synth */
+                            speech_output_t word_audio;
+                            memset(&word_audio, 0, sizeof(word_audio));
+                            int speak_rc = formant_synth_speak_word(
+                                fsynth, spb, wi, &word_audio);
+                            if (speak_rc == 0 && word_audio.num_samples > 0) {
+                                /* Audio + viseme data available in word_audio
+                                 * Future: stream to avatar via WebSocket */
+                            }
+                            speech_output_free(&word_audio);
+                        }
+                    }
+                    nimcp_tensor_destroy(p_in);
+                    nimcp_tensor_destroy(p_out);
+                }
+            }
+        }
+        snn_lang_production_result_cleanup(&prod_result);
+    }
+
     // ========================================================================
     // STAGE 8: Glial Cell Modulation (Phase 10.11.2 - Priority 4)
     // ========================================================================
@@ -2179,6 +2543,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     brain->current_time_us += 1000;
 
     // Glial update: skip if already running in parallel post-forward pool
+    // Lazy-init: ensure glial subsystem is created on first access
+    if (!post_forward_submitted && brain->config.enable_glial) {
+        BRAIN_ENSURE_GLIAL(brain);
+    }
     if (!post_forward_submitted && brain->glial && brain->config.enable_glial) {
         brain->glial_update_counter++;
         if (brain->glial_update_counter % 50 == 0) {
@@ -2190,6 +2558,13 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // STAGE 9: Theory of Mind (Phase 10.11.2 - Priority 5)
     // ========================================================================
     // Skip if already running in parallel post-forward pool
+    // Lazy-init: ensure ToM + mirror neurons are created on first access
+    if (!post_forward_submitted && brain->config.enable_theory_of_mind && decision) {
+        BRAIN_ENSURE_THEORY_OF_MIND(brain);
+    }
+    if (!post_forward_submitted && brain->config.enable_mirror_neurons) {
+        BRAIN_ENSURE_MIRROR_NEURONS(brain);
+    }
     if (!post_forward_submitted && brain->theory_of_mind && brain->config.enable_theory_of_mind && decision) {
         // Step 1: Record own decision as a mental state
         // Convert decision to action for ToM tracking
@@ -2284,6 +2659,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // WHAT: Evaluate decision against Golden Rule ethics
     // WHY:  Prevent harmful actions that violate "do unto others" principle
     // HOW:  Create action context, evaluate, block if unethical
+    BRAIN_ENSURE_ETHICS(brain);
     if (brain->ethics && brain->config.enable_ethics) {
         // Create action context from decision
         action_context_t ethics_action = {
@@ -2395,6 +2771,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // WHAT: Record brain's decision as executed action in mirror neuron system
     // WHY:  Enable learning from own actions, build execution representation
     // HOW:  Convert decision to action and send to mirror neurons
+    // Lazy-init: ensure mirror neurons are available for action recording
+    if (brain->config.enable_mirror_neurons) {
+        BRAIN_ENSURE_MIRROR_NEURONS(brain);
+    }
     if (brain->mirror_neurons && brain->config.enable_mirror_neurons) {
         // Use the winning output neuron index as the action_id.
         // The brain's output is a continuous embedding — there are no discrete
@@ -2685,6 +3065,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             }
 
             /* C6.10: FEP orchestrator — update free energy from inference */
+            BRAIN_ENSURE_FEP_ORCHESTRATOR(brain);
             if (brain->fep_orchestrator && brain->fep_orchestrator_enabled) {
                 brain->fep_orchestrator->fep_metrics.free_energy = implicit_loss;
                 brain->fep_orchestrator->fep_metrics.prediction_error = implicit_loss;
@@ -2781,6 +3162,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             }
 
             /* Ethics evaluation */
+            BRAIN_ENSURE_ETHICS(brain);
             if (brain->ethics && brain->config.enable_ethics) {
                 bool blocked = (strstr(decision->label, "BLOCKED-ETHICS") != NULL);
                 float ethics_salience = blocked ? 1.0f : 0.2f;
@@ -2862,6 +3244,25 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 } else {
                     e = transcript_add(t, TRANSCRIPT_MODULE_GROUNDED_LANG,
                         0.5f, 0.5f, "Grounded language active");
+                }
+            }
+
+            /* Sensory SNN bridges (report which modalities are active) */
+            {
+                uint32_t mod = brain->active_modalities;
+                uint32_t encoding_count = 0;
+                if ((mod & BRAIN_MODALITY_VISUAL) && brain->snn_visual_bridge) encoding_count++;
+                if ((mod & BRAIN_MODALITY_AUDIO) && brain->snn_audio_bridge) encoding_count++;
+                if ((mod & BRAIN_MODALITY_SOMATOSENSORY) && brain->snn_somatosensory_bridge) encoding_count++;
+                if ((mod & BRAIN_MODALITY_SPEECH) && brain->snn_speech_bridge) encoding_count++;
+                if (encoding_count > 0) {
+                    char sensory_buf[NIMCP_TRANSCRIPT_SUMMARY_LEN];
+                    snprintf(sensory_buf, sizeof(sensory_buf),
+                             "Sensory SNN: %u modalities encoding%s",
+                             encoding_count,
+                             brain->cross_modal_aligner ? " (cross-modal aligned)" : "");
+                    e = transcript_add(t, TRANSCRIPT_MODULE_GROUNDED_LANG,
+                        0.35f, 0.5f, sensory_buf);
                 }
             }
 

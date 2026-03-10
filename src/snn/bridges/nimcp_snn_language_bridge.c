@@ -13,6 +13,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -20,6 +22,8 @@
 #include <float.h>
 
 #define LOG_MODULE "SNN_LANG_BRIDGE"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_language_bridge)
 
 //=============================================================================
 // Internal: Sparse binding hash map
@@ -121,7 +125,11 @@ static binding_node_t* binding_insert(snn_language_bridge_t* bridge,
     }
 
     binding_node_t* node = nimcp_calloc(1, sizeof(binding_node_t));
-    if (!node) return NULL;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "binding_insert: failed to allocate binding_node");
+        return NULL;
+    }
 
     node->binding.concept_pop = concept_pop;
     node->binding.word_pop = word_pop;
@@ -172,10 +180,18 @@ snn_lang_config_t snn_lang_config_default(void)
 
 snn_language_bridge_t* snn_language_bridge_create(const snn_lang_config_t* config)
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_create: config is NULL");
+        return NULL;
+    }
 
     snn_language_bridge_t* bridge = nimcp_calloc(1, sizeof(snn_language_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "snn_language_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     bridge->magic = SNN_LANG_MAGIC;
     bridge->config = *config;
@@ -185,6 +201,8 @@ snn_language_bridge_t* snn_language_bridge_create(const snn_lang_config_t* confi
     bridge->concept_pops = nimcp_calloc(bridge->concept_pops_capacity,
                                         sizeof(concept_pop_info_t));
     if (!bridge->concept_pops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "snn_language_bridge_create: failed to allocate concept_pops");
         nimcp_free(bridge);
         return NULL;
     }
@@ -194,10 +212,14 @@ snn_language_bridge_t* snn_language_bridge_create(const snn_lang_config_t* confi
     bridge->word_pops = nimcp_calloc(bridge->word_pops_capacity,
                                      sizeof(word_pop_info_t));
     if (!bridge->word_pops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "snn_language_bridge_create: failed to allocate word_pops");
         nimcp_free(bridge->concept_pops);
         nimcp_free(bridge);
         return NULL;
     }
+
+    bbb_register_module("snn_language_bridge", BBB_MODULE_TYPE_COGNITIVE);
 
     LOG_INFO(LOG_MODULE, "SNN language bridge created (concepts=%u, words=%u, blend=%.2f)",
              config->max_concept_pops, config->max_word_pops, config->spike_blend);
@@ -251,7 +273,11 @@ int snn_language_bridge_reset(snn_language_bridge_t* bridge)
 int snn_language_bridge_connect_grounded(snn_language_bridge_t* bridge,
                                           struct grounded_language* gl)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_connect_grounded: bridge is NULL or invalid");
+        return -1;
+    }
     bridge->grounded_lang = gl;
     return 0;
 }
@@ -259,7 +285,11 @@ int snn_language_bridge_connect_grounded(snn_language_bridge_t* bridge,
 int snn_language_bridge_connect_imagination(snn_language_bridge_t* bridge,
                                              struct imagination_snn_bridge* imagination)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_connect_imagination: bridge is NULL or invalid");
+        return -1;
+    }
     bridge->imagination = imagination;
     return 0;
 }
@@ -267,7 +297,11 @@ int snn_language_bridge_connect_imagination(snn_language_bridge_t* bridge,
 int snn_language_bridge_connect_curiosity(snn_language_bridge_t* bridge,
                                            struct curiosity_snn_bridge* curiosity)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_connect_curiosity: bridge is NULL or invalid");
+        return -1;
+    }
     bridge->curiosity = curiosity;
     return 0;
 }
@@ -275,7 +309,11 @@ int snn_language_bridge_connect_curiosity(snn_language_bridge_t* bridge,
 int snn_language_bridge_connect_neuromod(snn_language_bridge_t* bridge,
                                           struct neuromodulator_system_struct* neuromod)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_connect_neuromod: bridge is NULL or invalid");
+        return -1;
+    }
     bridge->neuromod = neuromod;
     return 0;
 }
@@ -326,6 +364,8 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC || !concept_rates ||
         !results || !num_results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_decode_spikes: bridge, concept_rates, results, or num_results is NULL");
         return -1;
     }
 
@@ -336,7 +376,11 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
     // word_activation[w] = sum_c(concept_rates[c] * binding_weight[c,w])
     uint32_t n_words = bridge->num_word_pops;
     float* word_acts = nimcp_calloc(n_words, sizeof(float));
-    if (!word_acts) return -1;
+    if (!word_acts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "snn_language_bridge_decode_spikes: failed to allocate word_acts");
+        return -1;
+    }
 
     // Iterate all bindings (sparse traversal)
     for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
@@ -396,7 +440,11 @@ int snn_language_bridge_encode_word(snn_language_bridge_t* bridge,
                                      float* concept_activations,
                                      uint32_t num_concept_pops)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !concept_activations) return -1;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !concept_activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_encode_word: bridge or concept_activations is NULL");
+        return -1;
+    }
     if (word_pop >= bridge->num_word_pops) return -1;
 
     bridge->stats.total_encode_calls++;
@@ -585,6 +633,8 @@ int snn_language_bridge_produce_word(snn_language_bridge_t* bridge,
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC ||
         !concept_activations || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_produce_word: bridge, concept_activations, or result is NULL");
         return -1;
     }
 
@@ -605,6 +655,8 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC ||
         !semantic_intent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_produce: bridge, semantic_intent, or result is NULL");
         return -1;
     }
 
@@ -615,7 +667,11 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
     // Use first num_concept_pops dimensions of intent (or zero-pad)
     uint32_t n_concepts = bridge->num_concept_pops;
     float* concept_acts = nimcp_calloc(n_concepts, sizeof(float));
-    if (!concept_acts) return -1;
+    if (!concept_acts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "snn_language_bridge_produce: failed to allocate concept_acts");
+        return -1;
+    }
 
     uint32_t copy_dim = (intent_dim < n_concepts) ? intent_dim : n_concepts;
     for (uint32_t i = 0; i < copy_dim; i++) {
@@ -632,6 +688,8 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
     // Track used words for refractory
     uint32_t* used_words = nimcp_calloc(max_words, sizeof(uint32_t));
     if (!used_words) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "snn_language_bridge_produce: failed to allocate used_words");
         nimcp_free(concept_acts);
         return -1;
     }
@@ -734,6 +792,8 @@ int snn_language_bridge_comprehend(snn_language_bridge_t* bridge,
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC ||
         !text || !concept_activations || !num_activated) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_comprehend: bridge, text, concept_activations, or num_activated is NULL");
         return -1;
     }
 
@@ -815,6 +875,8 @@ int snn_language_bridge_creative_produce(snn_language_bridge_t* bridge,
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC ||
         !imagination_activations || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_creative_produce: bridge, imagination_activations, or result is NULL");
         return -1;
     }
 
@@ -825,7 +887,11 @@ int snn_language_bridge_creative_produce(snn_language_bridge_t* bridge,
     // Scale them by creativity_level to modulate word selection
     uint32_t n_concepts = bridge->num_concept_pops;
     float* concept_acts = nimcp_calloc(n_concepts, sizeof(float));
-    if (!concept_acts) return -1;
+    if (!concept_acts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "snn_language_bridge_creative_produce: failed to allocate concept_acts");
+        return -1;
+    }
 
     // Distribute imagination activations across concept populations
     // with creativity-scaled noise for exploration
@@ -930,7 +996,11 @@ int snn_language_bridge_sleep_consolidate(snn_language_bridge_t* bridge,
 int snn_language_bridge_get_stats(const snn_language_bridge_t* bridge,
                                    snn_lang_stats_t* stats)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !stats) return -1;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_get_stats: bridge or stats is NULL");
+        return -1;
+    }
 
     *stats = bridge->stats;
     stats->active_bindings = bridge->num_bindings;
@@ -987,7 +1057,11 @@ void snn_language_bridge_set_blend(snn_language_bridge_t* bridge, float blend)
 
 int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* path)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !path) return -1;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_save: bridge or path is NULL");
+        return -1;
+    }
 
     FILE* f = fopen(path, "wb");
     if (!f) return -1;
@@ -1022,7 +1096,11 @@ int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* pa
 
 snn_language_bridge_t* snn_language_bridge_load(const char* path)
 {
-    if (!path) return NULL;
+    if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_load: path is NULL");
+        return NULL;
+    }
 
     FILE* f = fopen(path, "rb");
     if (!f) return NULL;
@@ -1111,7 +1189,11 @@ int snn_language_bridge_generate_attention_feedback(
     float* attention_weights,
     uint32_t num_weights)
 {
-    if (!bridge || !attention_weights || num_weights == 0) return -1;
+    if (!bridge || !attention_weights || num_weights == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_generate_attention_feedback: bridge or attention_weights is NULL");
+        return -1;
+    }
 
     /* Zero output */
     memset(attention_weights, 0, num_weights * sizeof(float));

@@ -455,6 +455,100 @@ static action_t features_to_action(const float* features, uint32_t num_features,
  *
  * @param decision Decision to free
  */
+
+void brain_set_active_modalities(brain_t brain, uint32_t modality_flags)
+{
+    if (!brain) return;
+    brain->active_modalities = modality_flags;
+}
+
+uint32_t brain_get_active_modalities(brain_t brain)
+{
+    if (!brain) return BRAIN_MODALITY_TEXT;
+    return brain->active_modalities;
+}
+
+void brain_clear_sensory(brain_t brain)
+{
+    if (!brain) return;
+    if (brain->staged_sensory.visual_frame) {
+        nimcp_free(brain->staged_sensory.visual_frame);
+        brain->staged_sensory.visual_frame = NULL;
+    }
+    if (brain->staged_sensory.audio_data) {
+        nimcp_free(brain->staged_sensory.audio_data);
+        brain->staged_sensory.audio_data = NULL;
+    }
+    if (brain->staged_sensory.speech_data) {
+        nimcp_free(brain->staged_sensory.speech_data);
+        brain->staged_sensory.speech_data = NULL;
+    }
+    if (brain->staged_sensory.somato_data) {
+        nimcp_free(brain->staged_sensory.somato_data);
+        brain->staged_sensory.somato_data = NULL;
+    }
+}
+
+int brain_submit_sensory(brain_t brain, uint32_t modality,
+                          const void* data, uint32_t size,
+                          uint32_t width, uint32_t height,
+                          uint32_t channels)
+{
+    if (!brain || !data || size == 0) return -1;
+
+    switch (modality) {
+    case BRAIN_MODALITY_VISUAL: {
+        if (brain->staged_sensory.visual_frame)
+            nimcp_free(brain->staged_sensory.visual_frame);
+        uint32_t bytes = size * sizeof(uint8_t);
+        brain->staged_sensory.visual_frame = nimcp_malloc(bytes);
+        if (!brain->staged_sensory.visual_frame) return -1;
+        memcpy(brain->staged_sensory.visual_frame, data, bytes);
+        brain->staged_sensory.visual_width = width;
+        brain->staged_sensory.visual_height = height;
+        brain->staged_sensory.visual_channels = channels ? channels : 3;
+        break;
+    }
+    case BRAIN_MODALITY_AUDIO: {
+        if (brain->staged_sensory.audio_data)
+            nimcp_free(brain->staged_sensory.audio_data);
+        uint32_t bytes = size * sizeof(float);
+        brain->staged_sensory.audio_data = nimcp_malloc(bytes);
+        if (!brain->staged_sensory.audio_data) return -1;
+        memcpy(brain->staged_sensory.audio_data, data, bytes);
+        brain->staged_sensory.audio_size = size;
+        brain->staged_sensory.audio_channels = channels ? (uint8_t)channels : 1;
+        break;
+    }
+    case BRAIN_MODALITY_SPEECH: {
+        if (brain->staged_sensory.speech_data)
+            nimcp_free(brain->staged_sensory.speech_data);
+        uint32_t bytes = size * sizeof(float);
+        brain->staged_sensory.speech_data = nimcp_malloc(bytes);
+        if (!brain->staged_sensory.speech_data) return -1;
+        memcpy(brain->staged_sensory.speech_data, data, bytes);
+        brain->staged_sensory.speech_size = size;
+        break;
+    }
+    case BRAIN_MODALITY_SOMATOSENSORY: {
+        if (brain->staged_sensory.somato_data)
+            nimcp_free(brain->staged_sensory.somato_data);
+        uint32_t bytes = size * sizeof(float);
+        brain->staged_sensory.somato_data = nimcp_malloc(bytes);
+        if (!brain->staged_sensory.somato_data) return -1;
+        memcpy(brain->staged_sensory.somato_data, data, bytes);
+        brain->staged_sensory.somato_segments = size;
+        break;
+    }
+    default:
+        return -1;
+    }
+
+    /* Auto-enable the modality */
+    brain->active_modalities |= modality;
+    return 0;
+}
+
 void brain_free_decision(brain_decision_t* decision)
 {
     if (!decision)

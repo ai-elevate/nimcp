@@ -20,10 +20,14 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include <math.h>
 
 #define LOG_MODULE "cross_modal_align"
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cross_modal_align)
 
 //=============================================================================
 // Default Configuration
@@ -56,7 +60,13 @@ cross_modal_align_t* cross_modal_align_create(
     }
 
     cross_modal_align_t* aligner = nimcp_calloc(1, sizeof(*aligner));
-    if (!aligner) return NULL;
+    if (!aligner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_MEMORY,
+            "cross_modal_align_create: failed to allocate aligner");
+        return NULL;
+    }
+
+    bbb_register_module("cross_modal_align", BBB_MODULE_TYPE_COGNITIVE);
 
     aligner->config = *config;
     aligner->num_registered = 0;
@@ -105,7 +115,12 @@ int cross_modal_align_register_modality(
     float processing_latency_ms,
     float stdp_tau_ms)
 {
-    if (!aligner || !name) return -1;
+    if (!aligner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "cross_modal_align_register_modality: null aligner");
+        return -1;
+    }
+    if (!name) return -1;
     if (aligner->num_registered >= CROSS_MODAL_MAX_MODALITIES) return -1;
 
     uint32_t idx = aligner->num_registered;
@@ -142,7 +157,12 @@ int cross_modal_align_submit_spikes(
     uint32_t spike_dim,
     float timestamp_ms)
 {
-    if (!aligner || !rates) return -1;
+    if (!aligner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "cross_modal_align_submit_spikes: null aligner");
+        return -1;
+    }
+    if (!rates) return -1;
     if (modality_idx >= aligner->num_registered) return -1;
     if (spike_dim == 0) return -1;
 
@@ -154,7 +174,11 @@ int cross_modal_align_submit_spikes(
 
     /* Copy spike rates */
     float* rates_copy = nimcp_calloc(spike_dim, sizeof(float));
-    if (!rates_copy) return -1;
+    if (!rates_copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_MEMORY,
+            "cross_modal_align_submit_spikes: failed to allocate rates copy");
+        return -1;
+    }
     memcpy(rates_copy, rates, spike_dim * sizeof(float));
 
     ring->events[slot].rates = rates_copy;
@@ -176,7 +200,11 @@ int cross_modal_align_submit_spikes(
 
 int cross_modal_align_compute_offsets(cross_modal_align_t* aligner)
 {
-    if (!aligner) return -1;
+    if (!aligner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "cross_modal_align_compute_offsets: null aligner");
+        return -1;
+    }
     if (aligner->num_registered == 0) return -1;
 
     /* Find the slowest modality (max total latency) */
@@ -249,7 +277,12 @@ int cross_modal_align_get_aligned_spikes(
     uint32_t* output_dims,
     uint32_t num_modalities)
 {
-    if (!aligner || !output_rates || !output_dims) return -1;
+    if (!aligner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "cross_modal_align_get_aligned_spikes: null aligner");
+        return -1;
+    }
+    if (!output_rates || !output_dims) return -1;
 
     /* Ensure offsets are computed */
     if (!aligner->offsets_valid) {
@@ -297,7 +330,12 @@ int cross_modal_align_get_stats(
     const cross_modal_align_t* aligner,
     cross_modal_align_stats_t* stats)
 {
-    if (!aligner || !stats) return -1;
+    if (!aligner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "cross_modal_align_get_stats: null aligner");
+        return -1;
+    }
+    if (!stats) return -1;
     *stats = aligner->stats;
     return 0;
 }

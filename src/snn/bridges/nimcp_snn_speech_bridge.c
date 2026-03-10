@@ -22,6 +22,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <math.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -241,6 +242,7 @@ snn_speech_bridge_t* snn_speech_bridge_create(
     /* Mark as connected */
     bridge->connected = true;
 
+    bbb_register_module("snn_speech_bridge", BBB_MODULE_TYPE_COGNITIVE);
     NIMCP_LOGGING_INFO("Created SNN-speech bridge (%u phonemes, %u neurons)",
                        config->num_phonemes, num_neurons);
     return bridge;

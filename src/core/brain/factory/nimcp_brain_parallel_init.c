@@ -228,8 +228,7 @@ static bool execute_wave(nimcp_thread_pool_t* pool, parallel_init_ctx_t* ctx,
     if (atomic_load(&ctx->error_flag)) return false;
     if (count == 0) return true;
 
-    fprintf(stderr, "\r  [INIT] Wave %2d/27 (%zu tasks)...    ", wave_id, count);
-    fflush(stderr);
+    LOG_MODULE_DEBUG(LOG_MODULE, "Wave %d/27 (%zu tasks)...", wave_id, count);
 
     for (size_t i = 0; i < count; i++) {
         nimcp_pool_submit(pool, parallel_init_task, &tasks[i]);
@@ -252,8 +251,7 @@ static bool execute_wave(nimcp_thread_pool_t* pool, parallel_init_ctx_t* ctx,
 static bool run_serial(parallel_init_ctx_t* ctx, bool (*fn)(brain_t), const char* name) {
     if (atomic_load(&ctx->error_flag)) return false;
 
-    fprintf(stderr, "\r  [INIT] %s...                        ", name);
-    fflush(stderr);
+    LOG_MODULE_DEBUG(LOG_MODULE, "Init: %s...", name);
 
     if (!fn(ctx->brain)) {
         bool expected = false;
@@ -270,21 +268,22 @@ static bool run_serial(parallel_init_ctx_t* ctx, bool (*fn)(brain_t), const char
 //=============================================================================
 
 static bool init_glial_if_needed(brain_t brain) {
-    if (brain->config.lazy_glial_init) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_glial_init) return true;
     return nimcp_brain_factory_init_glial_subsystem(brain);
 }
 
 static bool init_axon_if_needed(brain_t brain) {
-    if (brain->config.lazy_axon_init) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_axon_init) return true;
     return nimcp_brain_factory_init_axon_subsystem(brain);
 }
 
 static bool init_dendrite_if_needed(brain_t brain) {
-    if (brain->config.lazy_dendrite_init) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_dendrite_init) return true;
     return nimcp_brain_factory_init_dendrite_subsystem(brain);
 }
 
 static bool init_multimodal_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
     if (brain->config.lazy_visual_init && brain->config.lazy_audio_init &&
         brain->config.lazy_speech_init) return true;
     // Original code: skip if ALL three lazy flags are set (inverted logic)
@@ -299,7 +298,7 @@ static bool init_multimodal_if_needed(brain_t brain) {
 
 static bool init_neuromod_chain(brain_t brain) {
     // Neuromod → spatial_neuromod → nuclei (serial chain within wave)
-    if (!brain->config.lazy_neuromod_init) {
+    if (!(brain->config.lazy_init_mode || brain->config.lazy_neuromod_init)) {
         if (!nimcp_brain_factory_init_neuromodulator_system(brain)) return false;
         if (!nimcp_brain_factory_init_spatial_neuromod_system(brain)) return false;
     }
@@ -307,29 +306,45 @@ static bool init_neuromod_chain(brain_t brain) {
     return true;
 }
 
+static bool init_symbolic_logic_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_symbolic_logic_subsystem(brain);
+}
+
 static bool init_working_memory_if_needed(brain_t brain) {
-    if (brain->config.lazy_working_memory_init) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_working_memory_init) return true;
     return nimcp_brain_factory_init_working_memory_subsystem(brain);
 }
 
+static bool init_cortical_columns_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode || brain->config.lazy_cortical_init) return true;
+    return nimcp_brain_factory_init_cortical_columns_subsystem(brain);
+}
+
+static bool init_attention_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_attention_subsystem(brain);
+}
+
 static bool init_consolidation_if_needed(brain_t brain) {
-    if (brain->config.lazy_consolidation_init) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_consolidation_init) return true;
     return nimcp_brain_factory_init_consolidation_subsystem(brain);
 }
 
 static bool init_pr_memory_if_needed(brain_t brain) {
-    if (!brain->config.enable_pr_memory || brain->config.lazy_pr_memory_init) return true;
+    if (!brain->config.enable_pr_memory || brain->config.lazy_init_mode ||
+        brain->config.lazy_pr_memory_init) return true;
     return nimcp_brain_factory_init_pr_memory_subsystem(brain);
 }
 
 static bool init_lnn_if_needed(brain_t brain) {
-    if (brain->config.fast_training_mode) return true;
+    if (brain->config.lazy_init_mode || brain->config.fast_training_mode) return true;
     return nimcp_brain_factory_init_lnn_subsystem(brain);
 }
 
 static bool init_world_model_if_needed(brain_t brain) {
-    if ((brain->config.enable_world_model || !brain->config.fast_training_mode) &&
-        !brain->config.lazy_world_model_init) {
+    if (brain->config.lazy_init_mode || brain->config.lazy_world_model_init) return true;
+    if (brain->config.enable_world_model || !brain->config.fast_training_mode) {
         brain->config.enable_world_model = true;
         return nimcp_brain_factory_init_world_model_subsystem(brain);
     }
@@ -337,37 +352,93 @@ static bool init_world_model_if_needed(brain_t brain) {
 }
 
 static bool init_executive_if_needed(brain_t brain) {
-    if (brain->config.lazy_executive_init) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_executive_init) return true;
     return nimcp_brain_factory_init_executive_subsystem(brain);
 }
 
 static bool init_tom_if_needed(brain_t brain) {
-    if (brain->config.lazy_theory_of_mind_init) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_theory_of_mind_init) return true;
     return nimcp_brain_factory_init_theory_of_mind_subsystem(brain);
 }
 
 static bool init_meta_learning_if_needed(brain_t brain) {
-    if (brain->config.lazy_meta_learning_init) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_meta_learning_init) return true;
     return nimcp_brain_factory_init_meta_learning_subsystem(brain);
 }
 
 static bool init_mirror_if_needed(brain_t brain) {
-    if (brain->config.lazy_mirror_neurons_init) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_mirror_neurons_init) return true;
     return nimcp_brain_factory_init_mirror_neurons(brain);
+}
+
+static bool init_curiosity_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_curiosity_subsystem(brain);
+}
+
+static bool init_salience_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_salience_subsystem(brain);
 }
 
 static bool init_ethics_triad(brain_t brain) {
     // Ethics → empathy → empathetic response (serial chain)
-    if (brain->config.lazy_ethics_init || brain->config.minimal_mode) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_ethics_init ||
+        brain->config.minimal_mode) return true;
     if (!nimcp_brain_factory_init_ethics_engine_subsystem(brain)) return false;
     if (!nimcp_brain_factory_init_empathy_network_subsystem(brain)) return false;
     if (!nimcp_brain_factory_init_empathetic_response_subsystem(brain)) return false;
     return true;
 }
 
+static bool init_introspection_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_introspection_subsystem(brain);
+}
+
 static bool init_global_workspace_if_needed(brain_t brain) {
-    if (brain->config.lazy_global_workspace_init) return true;
+    if (brain->config.lazy_init_mode || brain->config.lazy_global_workspace_init) return true;
     return nimcp_brain_factory_init_global_workspace_subsystem(brain);
+}
+
+static bool init_self_model_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_self_model_subsystem(brain);
+}
+
+static bool init_fep_orchestrator_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_fep_orchestrator_subsystem(brain);
+}
+
+static bool init_somatosensory_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_somatosensory_subsystem(brain);
+}
+
+static bool init_olfactory_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_olfactory_subsystem(brain);
+}
+
+static bool init_gustatory_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_gustatory_subsystem(brain);
+}
+
+static bool init_creative_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode || brain->config.lazy_creative_init) return true;
+    return nimcp_brain_factory_init_creative_subsystem(brain);
+}
+
+static bool init_parietal_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_parietal_subsystem(brain);
+}
+
+static bool init_intuition_if_needed(brain_t brain) {
+    if (brain->config.lazy_init_mode) return true;
+    return nimcp_brain_factory_init_intuition_subsystem(brain);
 }
 
 static bool init_core_directives_if_needed(brain_t brain) {
@@ -392,6 +463,9 @@ static bool init_inline_fields(brain_t brain) {
     brain->current_time_us = 0;
     brain->last_glial_update_us = 0;
     brain->glial_update_counter = 0;
+
+    // Default input modality: text only
+    brain->active_modalities = BRAIN_MODALITY_TEXT;
 
     /* 40-watt brain: Only allocate spike analysis for SNN networks */
     if (brain->snn_network) {
@@ -591,7 +665,7 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
         tasks[n++] = TASK(nimcp_brain_factory_init_stdp_quantum_bridge_subsystem, "stdp_quantum_bridge");
         if (!execute_wave(pool, &ctx, tasks, n, 25)) goto cleanup;
 
-        fprintf(stderr, "\r  [INIT] FAST complete (6 waves)                \n");
+        LOG_MODULE_DEBUG(LOG_MODULE, "FAST init complete (6 waves)");
         LOG_INFO(LOG_MODULE, "FAST parallel init complete (6 waves, skipped ~20 non-essential)");
         goto cleanup;
     }
@@ -618,7 +692,7 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     // ========================================================================
     n = 0;
     tasks[n++] = TASK(nimcp_brain_factory_init_substrate_gpu_subsystem, "substrate_gpu");
-    tasks[n++] = TASK(nimcp_brain_factory_init_symbolic_logic_subsystem, "symbolic_logic");
+    tasks[n++] = TASK(init_symbolic_logic_if_needed, "symbolic_logic");
     tasks[n++] = TASK(nimcp_brain_factory_init_symbolic_reasoning_subsystem, "symbolic_reasoning");
     tasks[n++] = TASK(init_working_memory_if_needed, "working_memory");
     if (!execute_wave(pool, &ctx, tasks, n, 3)) goto cleanup;
@@ -633,9 +707,9 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     // WAVE 5: attention, brain_regions, cortical_columns, epistemic
     // ========================================================================
     n = 0;
-    tasks[n++] = TASK(nimcp_brain_factory_init_attention_subsystem, "attention");
+    tasks[n++] = TASK(init_attention_if_needed, "attention");
     tasks[n++] = TASK(nimcp_brain_factory_init_brain_regions_subsystem, "brain_regions");
-    tasks[n++] = TASK(nimcp_brain_factory_init_cortical_columns_subsystem, "cortical_columns");
+    tasks[n++] = TASK(init_cortical_columns_if_needed, "cortical_columns");
     tasks[n++] = TASK(nimcp_brain_factory_init_epistemic_subsystem, "epistemic");
     if (!execute_wave(pool, &ctx, tasks, n, 5)) goto cleanup;
 
@@ -666,13 +740,13 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     tasks[n++] = TASK(nimcp_brain_factory_init_mental_health_subsystem, "mental_health");
     tasks[n++] = TASK(nimcp_brain_factory_init_predictive_subsystem, "predictive");
     tasks[n++] = TASK(init_mirror_if_needed, "mirror_neurons");
-    tasks[n++] = TASK(nimcp_brain_factory_init_curiosity_subsystem, "curiosity");
+    tasks[n++] = TASK(init_curiosity_if_needed, "curiosity");
     if (!execute_wave(pool, &ctx, tasks, n, 8)) goto cleanup;
 
     // Salience in a separate mini-wave (exceeded MAX_WAVE_TASKS=8 with 5 tasks is fine,
     // but let's keep it in same wave — bump to second submit batch)
     n = 0;
-    tasks[n++] = TASK(nimcp_brain_factory_init_salience_subsystem, "salience");
+    tasks[n++] = TASK(init_salience_if_needed, "salience");
     if (!execute_wave(pool, &ctx, tasks, n, 8)) goto cleanup;
 
     // ========================================================================
@@ -680,7 +754,7 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     // ========================================================================
     n = 0;
     tasks[n++] = TASK(init_ethics_triad, "ethics_triad");
-    tasks[n++] = TASK(nimcp_brain_factory_init_introspection_subsystem, "introspection");
+    tasks[n++] = TASK(init_introspection_if_needed, "introspection");
     tasks[n++] = TASK(nimcp_brain_factory_init_connectivity_health_subsystem, "connectivity_health");
     tasks[n++] = TASK(nimcp_brain_factory_init_middleware_controller_subsystem, "middleware");
     if (!execute_wave(pool, &ctx, tasks, n, 9)) goto cleanup;
@@ -690,7 +764,7 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     // ========================================================================
     n = 0;
     tasks[n++] = TASK(nimcp_brain_factory_init_autobiographical_memory_subsystem, "autobio_memory");
-    tasks[n++] = TASK(nimcp_brain_factory_init_self_model_subsystem, "self_model");
+    tasks[n++] = TASK(init_self_model_if_needed, "self_model");
     tasks[n++] = TASK(init_global_workspace_if_needed, "global_workspace");
     if (!execute_wave(pool, &ctx, tasks, n, 10)) goto cleanup;
 
@@ -722,7 +796,7 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     // WAVE 14: fep_orchestrator, medulla
     // ========================================================================
     n = 0;
-    tasks[n++] = TASK(nimcp_brain_factory_init_fep_orchestrator_subsystem, "fep_orchestrator");
+    tasks[n++] = TASK(init_fep_orchestrator_if_needed, "fep_orchestrator");
     tasks[n++] = TASK(nimcp_brain_factory_init_medulla_subsystem, "medulla");
     if (!execute_wave(pool, &ctx, tasks, n, 14)) goto cleanup;
 
@@ -733,9 +807,9 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     if (!ok) goto cleanup;
 
     n = 0;
-    tasks[n++] = TASK(nimcp_brain_factory_init_somatosensory_subsystem, "somatosensory");
-    tasks[n++] = TASK(nimcp_brain_factory_init_olfactory_subsystem, "olfactory");
-    tasks[n++] = TASK(nimcp_brain_factory_init_gustatory_subsystem, "gustatory");
+    tasks[n++] = TASK(init_somatosensory_if_needed, "somatosensory");
+    tasks[n++] = TASK(init_olfactory_if_needed, "olfactory");
+    tasks[n++] = TASK(init_gustatory_if_needed, "gustatory");
     if (!execute_wave(pool, &ctx, tasks, n, 15)) goto cleanup;
 
     // ========================================================================
@@ -768,9 +842,9 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     // ========================================================================
     n = 0;
     tasks[n++] = TASK(nimcp_brain_factory_init_fuzzy_subsystem, "fuzzy");
-    tasks[n++] = TASK(nimcp_brain_factory_init_creative_subsystem, "creative");
-    tasks[n++] = TASK(nimcp_brain_factory_init_parietal_subsystem, "parietal");
-    tasks[n++] = TASK(nimcp_brain_factory_init_intuition_subsystem, "intuition");
+    tasks[n++] = TASK(init_creative_if_needed, "creative");
+    tasks[n++] = TASK(init_parietal_if_needed, "parietal");
+    tasks[n++] = TASK(init_intuition_if_needed, "intuition");
     if (!execute_wave(pool, &ctx, tasks, n, 19)) goto cleanup;
 
     // ========================================================================
@@ -847,7 +921,7 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     ok = run_serial(&ctx, nimcp_brain_factory_init_cognitive_training_subsystem, "cognitive_training");
     if (!ok) goto cleanup;
 
-    fprintf(stderr, "\r  [INIT] Complete (29 waves)                    \n");
+    LOG_MODULE_DEBUG(LOG_MODULE, "Full init complete (29 waves)");
     LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (29 waves)");
 
 cleanup:

@@ -308,13 +308,14 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
     unsigned int neuron_count = 0;
     const char* checkpoint = NULL;
     const char* init_mode = NULL;  // "full", "fast", or "minimal"
+    const char* log_level = NULL;  // "trace", "debug", "info", "warn", "error", "off"
 
     static char* kwlist[] = {"name", "size", "task", "num_inputs", "num_outputs",
-                             "neuron_count", "checkpoint", "init_mode", NULL};
+                             "neuron_count", "checkpoint", "init_mode", "log_level", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiIIIzz", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiIIIzzz", kwlist,
                                      &name, &size, &task, &num_inputs, &num_outputs,
-                                     &neuron_count, &checkpoint, &init_mode)) {
+                                     &neuron_count, &checkpoint, &init_mode, &log_level)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_init: Invalid arguments");
         return -1;
     }
@@ -337,6 +338,25 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
         } else {
             fprintf(stderr, "[Brain] Checkpoint '%s' not found, creating fresh brain\n",
                     checkpoint);
+        }
+    }
+
+    // Set log level if requested (before brain creation so init logs are visible)
+    if (log_level) {
+        log_level_t level = LOG_LEVEL_INFO;
+        if (strcasecmp(log_level, "trace") == 0)      level = LOG_LEVEL_TRACE;
+        else if (strcasecmp(log_level, "debug") == 0)  level = LOG_LEVEL_DEBUG;
+        else if (strcasecmp(log_level, "info") == 0)   level = LOG_LEVEL_INFO;
+        else if (strcasecmp(log_level, "warn") == 0)   level = LOG_LEVEL_WARN;
+        else if (strcasecmp(log_level, "error") == 0)  level = LOG_LEVEL_ERROR;
+        else if (strcasecmp(log_level, "off") == 0)    level = LOG_LEVEL_OFF;
+        // Ensure global logger exists before setting level
+        if (!nimcp_log_is_initialized(NULL)) {
+            nimcp_log_config_t log_cfg = nimcp_log_default_config();
+            log_cfg.level = level;
+            nimcp_log_init(&log_cfg);
+        } else {
+            nimcp_log_set_level(NULL, level);
         }
     }
 
@@ -7099,10 +7119,46 @@ static PyObject* nimcp_shutdown_lib(PyObject* self, PyObject* args) {
 // Note: SIMD operations not yet exposed in public nimcp.h API
 // Will be added in future version
 
+/**
+ * WHAT: Set global log level at runtime
+ * WHY:  Enable debug/trace output without restart
+ * HOW:  nimcp.set_log_level("debug")
+ */
+static PyObject* py_nimcp_set_log_level(PyObject* self, PyObject* args) {
+    (void)self;
+    const char* level_str;
+    if (!PyArg_ParseTuple(args, "s", &level_str)) {
+        return NULL;
+    }
+    log_level_t level = LOG_LEVEL_INFO;
+    if (strcasecmp(level_str, "trace") == 0)      level = LOG_LEVEL_TRACE;
+    else if (strcasecmp(level_str, "debug") == 0)  level = LOG_LEVEL_DEBUG;
+    else if (strcasecmp(level_str, "info") == 0)   level = LOG_LEVEL_INFO;
+    else if (strcasecmp(level_str, "warn") == 0)   level = LOG_LEVEL_WARN;
+    else if (strcasecmp(level_str, "error") == 0)  level = LOG_LEVEL_ERROR;
+    else if (strcasecmp(level_str, "off") == 0)    level = LOG_LEVEL_OFF;
+    else {
+        PyErr_Format(PyExc_ValueError,
+                     "Invalid log level '%s'. Use: trace, debug, info, warn, error, off", level_str);
+        return NULL;
+    }
+    // Ensure global logger exists before setting level
+    if (!nimcp_log_is_initialized(NULL)) {
+        nimcp_log_config_t log_cfg = nimcp_log_default_config();
+        log_cfg.level = level;
+        nimcp_log_init(&log_cfg);
+    } else {
+        nimcp_log_set_level(NULL, level);
+    }
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     {"version", nimcp_get_version, METH_NOARGS, "Get NIMCP version string"},
     {"init", nimcp_initialize, METH_NOARGS, "Initialize NIMCP library"},
     {"shutdown", nimcp_shutdown_lib, METH_NOARGS, "Shutdown NIMCP library"},
+    {"set_log_level", py_nimcp_set_log_level, METH_VARARGS,
+     "Set log level: 'trace', 'debug', 'info', 'warn', 'error', 'off'"},
     {NULL}
 };
 

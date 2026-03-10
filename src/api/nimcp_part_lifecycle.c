@@ -17,6 +17,10 @@
  * @return NIMCP_OK on success, NIMCP_ERROR on failure
  */
 static nimcp_status_t nimcp_init_internal(void) {
+    // Initialize logging first so all subsequent LOG_* calls work
+    // nimcp_log_init guards against double-init internally
+    nimcp_log_init(NULL);
+
     LOG_INFO("Initializing NIMCP library version %s", NIMCP_VERSION_STRING);
 
     // Initialize memory tracking (unified memory management)
@@ -413,10 +417,13 @@ nimcp_brain_t nimcp_brain_create_full(
      *       Default is 256, causing dimension mismatch THROW every step. */
     config.workspace_capacity_dim = num_inputs;
 
-    /* All lazy inits OFF — everything initializes at creation */
-    config.lazy_init_mode = false;
-    config.lazy_consolidation_init = false;
-    config.lazy_global_workspace_init = false;
+    /* Enable lazy init to defer cognitive subsystems until first access.
+     * "Full" means all features *enabled*, not all eagerly allocated.
+     * Without lazy init, 2M neurons + all subsystems = ~57 GB peak → OOM.
+     * With lazy init, peak is ~29 GB (neural core only at creation). */
+    config.lazy_init_mode = true;
+    config.lazy_consolidation_init = true;
+    config.lazy_global_workspace_init = true;
 
     /* Create the brain with full subsystem initialization */
     handle->internal_brain = brain_create_custom(&config);

@@ -8,8 +8,13 @@
 
 #include "core/brain/nimcp_cognitive_transcript.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include <math.h>
+
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cognitive_transcript)
 
 /* Module name lookup table — must match transcript_module_t enum order */
 static const char* const MODULE_NAMES[] = {
@@ -47,6 +52,14 @@ static const char* const MODULE_NAMES[] = {
 cognitive_transcript_t* transcript_create(void)
 {
     cognitive_transcript_t* t = nimcp_calloc(1, sizeof(cognitive_transcript_t));
+    if (!t) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_MEMORY,
+            "transcript_create: failed to allocate cognitive_transcript_t");
+        return NULL;
+    }
+
+    bbb_register_module("cognitive_transcript", BBB_MODULE_TYPE_COGNITIVE);
+
     return t;
 }
 
@@ -63,7 +76,12 @@ transcript_entry_t* transcript_add(cognitive_transcript_t* t,
                                    float confidence,
                                    const char* summary)
 {
-    if (!t || t->num_entries >= NIMCP_TRANSCRIPT_MAX_ENTRIES) {
+    if (!t) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "transcript_add: null transcript");
+        return NULL;
+    }
+    if (t->num_entries >= NIMCP_TRANSCRIPT_MAX_ENTRIES) {
         return NULL;
     }
 
@@ -90,7 +108,12 @@ void transcript_entry_add_value(transcript_entry_t* entry,
                                 const char* label,
                                 float value)
 {
-    if (!entry || entry->num_values >= NIMCP_TRANSCRIPT_MAX_VALUES) {
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "transcript_entry_add_value: null entry");
+        return;
+    }
+    if (entry->num_values >= NIMCP_TRANSCRIPT_MAX_VALUES) {
         return;
     }
     entry->value_labels[entry->num_values] = label;
@@ -100,7 +123,12 @@ void transcript_entry_add_value(transcript_entry_t* entry,
 
 void transcript_finalize(cognitive_transcript_t* t)
 {
-    if (!t || t->num_entries == 0) {
+    if (!t) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "transcript_finalize: null transcript");
+        return;
+    }
+    if (t->num_entries == 0) {
         return;
     }
 
@@ -199,7 +227,11 @@ const char* transcript_module_name(transcript_module_t module)
 const transcript_entry_t* transcript_find(const cognitive_transcript_t* t,
                                           transcript_module_t module)
 {
-    if (!t) return NULL;
+    if (!t) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "transcript_find: null transcript");
+        return NULL;
+    }
     for (uint32_t i = 0; i < t->num_entries; i++) {
         if (t->entries[i].module == module) {
             return &t->entries[i];
@@ -212,7 +244,12 @@ uint32_t transcript_get_by_salience(const cognitive_transcript_t* t,
                                     uint32_t* indices,
                                     uint32_t max_indices)
 {
-    if (!t || !indices || t->num_entries == 0) {
+    if (!t) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "transcript_get_by_salience: null transcript");
+        return 0;
+    }
+    if (!indices || t->num_entries == 0) {
         return 0;
     }
 

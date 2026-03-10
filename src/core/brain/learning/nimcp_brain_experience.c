@@ -13,6 +13,7 @@
 #include "core/brain/learning/nimcp_brain_experience.h"
 #include "core/brain/learning/nimcp_brain_learning.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_lazy_init.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "plasticity/nimcp_plasticity_coordinator.h"
@@ -206,6 +207,7 @@ static void apply_reward_learning(
     /* Direct reward learning on active neurons */
     neural_network_t base_net = adaptive_network_get_base_network(brain->network);
     if (base_net) {
+        BRAIN_ENSURE_NEUROMOD(brain);
         if (brain->neuromodulator_system) {
             neural_network_set_neuromodulator_system(base_net, brain->neuromodulator_system);
         }

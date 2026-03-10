@@ -194,12 +194,14 @@ void brain_destroy(brain_t brain)
 {
     if (!brain)
         return;
+    LOG_MODULE_DEBUG("BRAIN", "brain_destroy: start");
 
     // Unregister brain from signal handler (handler stays installed for safety)
     signal_handler_unregister_brain();
 
     // Destroy inference thread pool (before subsystems that tasks might reference)
     if (brain->inference_pool) {
+        LOG_MODULE_DEBUG("BRAIN", "Destroying inference pool...");
         nimcp_pool_destroy(brain->inference_pool);
         brain->inference_pool = NULL;
     }
@@ -210,6 +212,7 @@ void brain_destroy(brain_t brain)
         // Non-fatal if snapshot fails
     }
 
+    LOG_MODULE_DEBUG("BRAIN", "Destroying network...");
     // Phase 3: Handle network destruction with atomic reference counting
     //
     // CONCURRENCY MODEL: Lock-free reference counting using C11 atomics
@@ -246,6 +249,7 @@ void brain_destroy(brain_t brain)
         // else: Neither owns nor has refcount - strange but safe (network leaked)
     }
 
+    LOG_MODULE_DEBUG("BRAIN", "Network destroyed");
     // Strategies are shared (read-only), don't destroy
     // Only destroy if this is not a COW clone OR if we own it
     if (brain->strategy && !brain->is_cow_clone) {
@@ -283,6 +287,7 @@ void brain_destroy(brain_t brain)
         brain->snn_speech_bridge = NULL;
     }
 
+    LOG_MODULE_DEBUG("BRAIN", "Destroy phase 1 (network+SNN bridges) done");
     // Cleanup hyperledger bridge (before SNN language bridge)
     if (brain->hyperledger_bridge) {
         hyperledger_bridge_destroy(brain->hyperledger_bridge);
@@ -400,6 +405,7 @@ void brain_destroy(brain_t brain)
     brain->integrated_feature_buffer = NULL;
 
 
+    LOG_MODULE_DEBUG("BRAIN", "Destroy phase 2 (language+workspace) done");
     // Phase 8.6: Cleanup pink noise neuromodulation
     if (brain->pink_noise) {
         neuromod_pink_destroy(brain->pink_noise);
@@ -586,6 +592,7 @@ void brain_destroy(brain_t brain)
     }
 
 
+    LOG_MODULE_DEBUG("BRAIN", "Destroy phase 3 (neural+cognitive) done");
     // Phase M1: Cleanup engram system
     if (brain->engram_system) {
         engram_system_destroy(brain->engram_system);
@@ -785,6 +792,7 @@ void brain_destroy(brain_t brain)
     }
 
 
+    LOG_MODULE_DEBUG("BRAIN", "Destroy phase 4 (higher cognitive) done");
     // Community Detection: Cleanup
     if (brain->functional_modules) {
         topology_community_structure_free(brain->functional_modules);
@@ -880,6 +888,7 @@ void brain_destroy(brain_t brain)
     }
 
 
+    LOG_MODULE_DEBUG("BRAIN", "Destroy phase 5 (security+training) done");
     clear_cache(brain);
 
     // Destroy cache mutex

@@ -408,7 +408,7 @@ NimcpCommunityPartition* nimcp_louvain_detect(const NimcpGraph* graph, double re
 
 void nimcp_community_partition_destroy(NimcpCommunityPartition* partition)
 {
-    LOG_DEBUG("Entering nimcp_community_partition_destroy");
+    LOG_TRACE("Entering nimcp_community_partition_destroy");
     if (!partition) {
         return;
     }
@@ -419,7 +419,7 @@ void nimcp_community_partition_destroy(NimcpCommunityPartition* partition)
 
 uint32_t nimcp_get_community_id(const NimcpCommunityPartition* partition, uint32_t vertex_idx)
 {
-    LOG_DEBUG("Entering nimcp_get_community_id");
+    LOG_TRACE("Entering nimcp_get_community_id");
     if (!partition || !partition->assignments) {
         return UINT32_MAX;
     }

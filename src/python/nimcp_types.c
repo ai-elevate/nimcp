@@ -278,6 +278,128 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
     return Py_BuildValue("(sf)", label, confidence);
 }
 
+// Brain.set_active_modalities(flags) -> None
+static PyObject* Brain_set_active_modalities(BrainObject* self, PyObject* args)
+{
+    unsigned int flags;
+    if (!PyArg_ParseTuple(args, "I", &flags)) return NULL;
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        return NULL;
+    }
+    brain_set_active_modalities(self->brain, (uint32_t)flags);
+    Py_RETURN_NONE;
+}
+
+// Brain.get_active_modalities() -> int
+static PyObject* Brain_get_active_modalities(BrainObject* self, PyObject* Py_UNUSED(args))
+{
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        return NULL;
+    }
+    uint32_t flags = brain_get_active_modalities(self->brain);
+    return PyLong_FromUnsignedLong(flags);
+}
+
+// Brain.submit_sensory(modality, data, width=0, height=0, channels=0) -> None
+static PyObject* Brain_submit_sensory(BrainObject* self, PyObject* args, PyObject* kwargs)
+{
+    static char* kwlist[] = {"modality", "data", "width", "height", "channels", NULL};
+    const char* modality_str;
+    PyObject* data_obj;
+    unsigned int width = 0, height = 0, channels = 0;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|III", kwlist,
+                                      &modality_str, &data_obj, &width, &height, &channels))
+        return NULL;
+
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        return NULL;
+    }
+
+    // Map string to modality flag
+    uint32_t modality_flag;
+    if (strcmp(modality_str, "visual") == 0) {
+        modality_flag = 0x02u;  // BRAIN_MODALITY_VISUAL
+        if (width == 0 || height == 0 || channels == 0) {
+            PyErr_SetString(PyExc_ValueError,
+                "Visual modality requires width, height, channels kwargs");
+            return NULL;
+        }
+    } else if (strcmp(modality_str, "audio") == 0) {
+        modality_flag = 0x04u;  // BRAIN_MODALITY_AUDIO
+    } else if (strcmp(modality_str, "somatosensory") == 0) {
+        modality_flag = 0x08u;  // BRAIN_MODALITY_SOMATOSENSORY
+    } else if (strcmp(modality_str, "speech") == 0) {
+        modality_flag = 0x10u;  // BRAIN_MODALITY_SPEECH
+    } else {
+        PyErr_Format(PyExc_ValueError,
+            "Unknown modality '%s'. Use: visual, audio, somatosensory, speech",
+            modality_str);
+        return NULL;
+    }
+
+    // Convert Python list/bytes to C array
+    Py_buffer buf;
+    uint8_t* raw_data = NULL;
+    uint32_t data_size = 0;
+
+    if (PyObject_CheckBuffer(data_obj)) {
+        // Bytes / bytearray / numpy array with buffer protocol
+        if (PyObject_GetBuffer(data_obj, &buf, PyBUF_SIMPLE) < 0)
+            return NULL;
+        raw_data = (uint8_t*)buf.buf;
+        data_size = (uint32_t)buf.len;
+    } else if (PyList_Check(data_obj)) {
+        // List of floats → convert to float array
+        Py_ssize_t n = PyList_Size(data_obj);
+        if (n <= 0) {
+            PyErr_SetString(PyExc_ValueError, "Data list is empty");
+            return NULL;
+        }
+        float* float_buf = (float*)malloc(n * sizeof(float));
+        if (!float_buf) {
+            PyErr_NoMemory();
+            return NULL;
+        }
+        for (Py_ssize_t i = 0; i < n; i++) {
+            PyObject* item = PyList_GET_ITEM(data_obj, i);
+            float_buf[i] = (float)PyFloat_AsDouble(item);
+            if (PyErr_Occurred()) {
+                free(float_buf);
+                return NULL;
+            }
+        }
+        raw_data = (uint8_t*)float_buf;
+        data_size = (uint32_t)(n * sizeof(float));
+        // Call submit, then free
+        int rc = brain_submit_sensory(self->brain, modality_flag,
+                                       raw_data, data_size, width, height, channels);
+        free(float_buf);
+        if (rc != 0) {
+            PyErr_SetString(NIMCPError, "brain_submit_sensory failed");
+            return NULL;
+        }
+        Py_RETURN_NONE;
+    } else {
+        PyErr_SetString(PyExc_TypeError,
+            "data must be bytes, bytearray, or list of floats");
+        return NULL;
+    }
+
+    // Buffer protocol path
+    int rc = brain_submit_sensory(self->brain, modality_flag,
+                                   raw_data, data_size, width, height, channels);
+    PyBuffer_Release(&buf);
+    if (rc != 0) {
+        PyErr_SetString(NIMCPError, "brain_submit_sensory failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 // Brain.decide_full(features) -> dict with full cognitive decision data
 static PyObject* Brain_decide_full(BrainObject* self, PyObject* args)
 {
@@ -2810,6 +2932,37 @@ static PyMethodDef Brain_methods[] = {
      "Returns:\n"
      "    dict: {label, confidence, explanation, output_vector,\n"
      "           num_active_neurons, sparsity, inference_time_us}"},
+
+    {"set_active_modalities", (PyCFunction)Brain_set_active_modalities, METH_VARARGS,
+     "Set which sensory modalities are active for SNN encoding\n\n"
+     "Controls which SNN sensory bridges fire during decide().\n"
+     "Text-only input (default=1) skips visual/audio/somatosensory bridges.\n\n"
+     "Modality flags (bitmask):\n"
+     "    TEXT=0x01, VISUAL=0x02, AUDIO=0x04, SOMATOSENSORY=0x08, SPEECH=0x10\n\n"
+     "Args:\n"
+     "    flags (int): Bitmask of active modalities\n"
+     "Example:\n"
+     "    brain.set_active_modalities(0x01)  # text only (default)\n"
+     "    brain.set_active_modalities(0x1F)  # all modalities"},
+
+    {"get_active_modalities", (PyCFunction)Brain_get_active_modalities, METH_NOARGS,
+     "Get current active modality bitmask\n\n"
+     "Returns:\n"
+     "    int: Bitmask of active modalities"},
+
+    {"submit_sensory", (PyCFunction)Brain_submit_sensory, METH_VARARGS | METH_KEYWORDS,
+     "Stage raw sensory data for the next decide() call\n\n"
+     "Data is consumed (freed) after the next decide() cycle.\n"
+     "Automatically enables the modality bit.\n\n"
+     "Args:\n"
+     "    modality (str): 'visual', 'audio', 'somatosensory', or 'speech'\n"
+     "    data: bytes, bytearray, or list of floats\n"
+     "    width (int): Frame width (visual only)\n"
+     "    height (int): Frame height (visual only)\n"
+     "    channels (int): Color channels (visual only)\n\n"
+     "Example:\n"
+     "    brain.submit_sensory('audio', audio_samples)  # list of floats\n"
+     "    brain.submit_sensory('visual', pixels, width=64, height=64, channels=3)"},
 
     {NULL, NULL, 0, NULL}
 };

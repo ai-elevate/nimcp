@@ -216,7 +216,7 @@ static void nimcp_yield_thread(void);
  */
 static nimcp_result_t nimcp_msg_clone(const nimcp_message_t* src, nimcp_message_t** dst)
 {
-    LOG_DEBUG("Entering nimcp_msg_clone");
+    LOG_TRACE("Entering nimcp_msg_clone");
     if (!src || !dst)
         return NIMCP_INVALID_PARAM;
 
@@ -262,7 +262,7 @@ static nimcp_result_t nimcp_msg_clone(const nimcp_message_t* src, nimcp_message_
  */
 static void nimcp_msg_destroy(nimcp_message_t* msg)
 {
-    LOG_DEBUG("Entering nimcp_msg_destroy");
+    LOG_TRACE("Entering nimcp_msg_destroy");
     if (msg) {
         // Free payload first
         if (msg->data) {
@@ -887,7 +887,7 @@ nimcp_result_t nimcp_queue_manager_create(const nimcp_queue_manager_config_t* co
  */
 nimcp_result_t nimcp_queue_manager_destroy(nimcp_queue_manager_handle_t manager)
 {
-    LOG_DEBUG("Entering nimcp_queue_manager_destroy");
+    LOG_TRACE("Entering nimcp_queue_manager_destroy");
     if (!manager)
         return NIMCP_INVALID_PARAM;
 
@@ -1164,7 +1164,7 @@ nimcp_result_t nimcp_queue_manager_get_stats(nimcp_queue_manager_handle_t manage
  */
 nimcp_result_t nimcp_queue_manager_clear(nimcp_queue_manager_handle_t manager, uint32_t channel_id)
 {
-    LOG_DEBUG("Entering nimcp_queue_manager_clear");
+    LOG_TRACE("Entering nimcp_queue_manager_clear");
     if (!is_valid_channel(manager, channel_id)) {
         return NIMCP_INVALID_PARAM;
     }
@@ -1354,7 +1354,7 @@ size_t nimcp_queue_manager_get_size(nimcp_queue_manager_handle_t manager, uint32
  */
 static uint64_t nimcp_get_timestamp_ms(void)
 {
-    LOG_DEBUG("Entering nimcp_get_timestamp_ms");
+    LOG_TRACE("Entering nimcp_get_timestamp_ms");
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t) (ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
@@ -1383,7 +1383,7 @@ static uint64_t nimcp_get_timestamp_ms(void)
  */
 static void nimcp_yield_thread(void)
 {
-    LOG_DEBUG("Entering nimcp_yield_thread");
+    LOG_TRACE("Entering nimcp_yield_thread");
     struct timespec ts = {0, 100000};  // 100 microseconds
     nanosleep(&ts, NULL);
 }

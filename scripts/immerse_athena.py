@@ -67,6 +67,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from claude_teacher import ClaudeTeacher, encode_text, batch_encode_texts
 from talk_to_athena import extract_embedding_from_output
 from neural_decoder import NeuralDecoder
+from multimodal_data import MultimodalDataLoader
 
 
 def generate_sensory_exposure():
@@ -114,6 +115,199 @@ def generate_sensory_exposure():
     text = random.choice(experiences)
     embedding = encode_text(text)
     return text, embedding
+
+
+# ============================================================================
+# Synthetic Sensory Data Generators (for multimodal SNN bridge training)
+# ============================================================================
+
+def generate_visual_frame(description, width=32, height=32, channels=3):
+    """Generate a simple synthetic visual frame from a text description.
+
+    Creates a deterministic color/pattern image seeded by the description hash.
+    Not photorealistic — just enough to give the visual SNN bridge meaningful
+    spatial patterns to encode (edges, gradients, color regions).
+    """
+    seed = hash(description) & 0xFFFFFFFF
+    rng = np.random.RandomState(seed)
+
+    frame = np.zeros((height, width, channels), dtype=np.uint8)
+
+    # Base color from description keywords
+    color_map = {
+        "red": [200, 40, 40], "blue": [40, 40, 200], "green": [40, 180, 40],
+        "yellow": [200, 200, 40], "white": [220, 220, 220], "black": [20, 20, 20],
+        "orange": [220, 140, 30], "purple": [140, 40, 180], "brown": [120, 80, 40],
+        "pink": [220, 120, 160], "gray": [128, 128, 128], "grey": [128, 128, 128],
+    }
+    base_color = [80, 100, 120]  # neutral default
+    desc_lower = description.lower()
+    for word, color in color_map.items():
+        if word in desc_lower:
+            base_color = color
+            break
+
+    # Fill background gradient
+    for y in range(height):
+        t = y / max(height - 1, 1)
+        for c in range(channels):
+            frame[y, :, c] = int(base_color[c] * (1.0 - 0.3 * t))
+
+    # Add a simple shape based on description
+    cx, cy = width // 2, height // 2
+    if any(w in desc_lower for w in ["ball", "circle", "sun", "moon", "bubble"]):
+        # Circle
+        r = min(width, height) // 4
+        for y in range(height):
+            for x in range(width):
+                if (x - cx) ** 2 + (y - cy) ** 2 < r * r:
+                    for c in range(channels):
+                        frame[y, x, c] = min(255, base_color[c] + 60)
+    elif any(w in desc_lower for w in ["block", "square", "box", "book", "window"]):
+        # Rectangle
+        s = min(width, height) // 4
+        frame[cy - s:cy + s, cx - s:cx + s] = np.array(base_color, dtype=np.uint8) + 40
+    else:
+        # Random texture
+        noise = rng.randint(0, 40, (height, width, channels), dtype=np.uint8)
+        frame = np.clip(frame.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+
+    return frame.tobytes(), width, height, channels
+
+
+def generate_audio_samples(description, num_samples=512, sample_rate=16000):
+    """Generate synthetic audio waveform from a text description.
+
+    Creates simple tones, noise patterns, or silence based on keywords.
+    Returns float array in [-1, 1] range for SNN audio bridge encoding.
+    """
+    seed = hash(description) & 0xFFFFFFFF
+    rng = np.random.RandomState(seed)
+    t = np.linspace(0, num_samples / sample_rate, num_samples, dtype=np.float32)
+
+    desc_lower = description.lower()
+
+    # Choose waveform type from description
+    if any(w in desc_lower for w in ["singing", "music", "melody", "song", "tone"]):
+        freq = 220.0 + rng.random() * 440.0  # A3 to A4 range
+        signal = 0.5 * np.sin(2 * np.pi * freq * t)
+        # Add harmonics
+        signal += 0.2 * np.sin(2 * np.pi * freq * 2 * t)
+        signal += 0.1 * np.sin(2 * np.pi * freq * 3 * t)
+    elif any(w in desc_lower for w in ["thunder", "crash", "bang", "loud", "bark"]):
+        # Burst noise with decay
+        signal = rng.randn(num_samples).astype(np.float32)
+        decay = np.exp(-t * 8.0)
+        signal *= decay * 0.8
+    elif any(w in desc_lower for w in ["whisper", "quiet", "soft", "gentle", "purr"]):
+        signal = rng.randn(num_samples).astype(np.float32) * 0.05
+    elif any(w in desc_lower for w in ["rain", "water", "wave", "stream", "splash"]):
+        # Pink-ish noise
+        signal = rng.randn(num_samples).astype(np.float32)
+        # Simple low-pass via cumulative average
+        for i in range(1, num_samples):
+            signal[i] = 0.95 * signal[i - 1] + 0.05 * signal[i]
+        signal *= 0.3
+    elif any(w in desc_lower for w in ["wind", "howl", "blow", "breeze"]):
+        freq = 80.0 + rng.random() * 60.0
+        signal = 0.3 * np.sin(2 * np.pi * freq * t)
+        signal += rng.randn(num_samples).astype(np.float32) * 0.15
+    elif any(w in desc_lower for w in ["tick", "click", "tap", "crunch"]):
+        signal = np.zeros(num_samples, dtype=np.float32)
+        # Periodic impulses
+        period = num_samples // 8
+        for k in range(8):
+            idx = k * period
+            if idx < num_samples:
+                signal[idx:min(idx + 10, num_samples)] = 0.7
+    else:
+        # Generic ambient with a fundamental
+        freq = 150.0 + rng.random() * 200.0
+        signal = 0.3 * np.sin(2 * np.pi * freq * t)
+        signal += rng.randn(num_samples).astype(np.float32) * 0.1
+
+    # Normalize to [-1, 1]
+    peak = np.max(np.abs(signal))
+    if peak > 1e-6:
+        signal = signal / peak * 0.9
+
+    return signal.tolist()
+
+
+def generate_somatosensory(description, num_segments=32):
+    """Generate synthetic somatosensory (touch/proprioception) data.
+
+    Returns float array of joint-angle/pressure values in [0, 1].
+    """
+    seed = hash(description) & 0xFFFFFFFF
+    rng = np.random.RandomState(seed)
+    data = np.zeros(num_segments, dtype=np.float32)
+
+    desc_lower = description.lower()
+    if any(w in desc_lower for w in ["warm", "hot", "fire", "sun", "blaz"]):
+        data[:16] = 0.7 + rng.random(16).astype(np.float32) * 0.3  # temperature
+    elif any(w in desc_lower for w in ["cold", "ice", "snow", "freez", "cool"]):
+        data[:16] = 0.1 + rng.random(16).astype(np.float32) * 0.15
+    elif any(w in desc_lower for w in ["rough", "sand", "crunch"]):
+        data[:16] = rng.random(16).astype(np.float32) * 0.8
+        data[16:] = 0.5 + rng.random(num_segments - 16).astype(np.float32) * 0.3  # pressure
+    elif any(w in desc_lower for w in ["smooth", "soft", "fur", "silk"]):
+        data[:16] = 0.3 + rng.random(16).astype(np.float32) * 0.1
+        data[16:] = 0.2 + rng.random(num_segments - 16).astype(np.float32) * 0.1
+    elif any(w in desc_lower for w in ["heavy", "weight", "press"]):
+        data[16:] = 0.6 + rng.random(num_segments - 16).astype(np.float32) * 0.4
+    elif any(w in desc_lower for w in ["hug", "touch", "hand", "finger"]):
+        data[:] = 0.4 + rng.random(num_segments).astype(np.float32) * 0.3
+    else:
+        data[:] = 0.3 + rng.random(num_segments).astype(np.float32) * 0.2
+
+    return data.tolist()
+
+
+def submit_multimodal(brain, description):
+    """Submit synthetic sensory data for a description to the brain.
+
+    Called before brain.decide_full() so the SNN sensory bridges get native
+    modality data instead of interpreting text embeddings as pixels/MFCCs.
+    """
+    desc_lower = description.lower()
+
+    # Visual: anything with spatial/visual keywords
+    visual_keywords = ["ball", "sky", "cloud", "leaf", "water", "flower", "block",
+                       "cat", "rain", "candle", "snow", "bubble", "rainbow", "fire",
+                       "tree", "bird", "river", "bridge", "stair", "color", "light",
+                       "dark", "shadow", "sun", "moon", "star", "bright", "glow"]
+    if any(w in desc_lower for w in visual_keywords):
+        pixels, w, h, ch = generate_visual_frame(description)
+        try:
+            brain.submit_sensory("visual", pixels, width=w, height=h, channels=ch)
+        except Exception:
+            pass
+
+    # Audio: anything with sound keywords
+    audio_keywords = ["singing", "music", "thunder", "crash", "bark", "whisper",
+                      "rain", "wave", "wind", "tick", "tap", "crunch", "howl",
+                      "song", "melody", "loud", "quiet", "sound", "noise",
+                      "clock", "bird", "purr"]
+    if any(w in desc_lower for w in audio_keywords):
+        samples = generate_audio_samples(description)
+        try:
+            brain.submit_sensory("audio", samples)
+        except Exception:
+            pass
+
+    # Somatosensory: anything with touch/temperature keywords
+    somato_keywords = ["warm", "hot", "cold", "cool", "smooth", "rough", "soft",
+                       "hard", "heavy", "light", "wet", "dry", "sand", "fur",
+                       "hug", "touch", "hand", "finger", "ice", "fire", "sun",
+                       "freeze", "silk"]
+    if any(w in desc_lower for w in somato_keywords):
+        segments = generate_somatosensory(description)
+        try:
+            brain.submit_sensory("somatosensory", segments)
+        except Exception:
+            pass
+
 
 logger = logging.getLogger("immerse_athena")
 
@@ -1462,10 +1656,12 @@ class Parent:
     call, then pops from the cache during training — zero blocking.
     """
 
-    def __init__(self, teacher=None, enabled=True, decoder=None):
+    def __init__(self, teacher=None, enabled=True, decoder=None,
+                 multimodal=None):
         self.teacher = teacher
         self.enabled = enabled and teacher is not None
         self.decoder = decoder
+        self.multimodal = multimodal  # MultimodalDataLoader instance
         self.interaction_count = 0
         self.milestones = []
         self.moral_lessons = []
@@ -1709,6 +1905,156 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             logger.debug("Parent speech failed: %s", e)
             return None
 
+    def _show(self, brain, composer, concept=None):
+        """Show Athena a real image through her visual SNN bridge.
+
+        Loads a real photograph from CIFAR-100 and submits it as raw pixel
+        data via brain.submit_sensory("visual", ...). Also returns the
+        composed feature vector and teaching text for paired learning.
+
+        Args:
+            brain: The brain instance.
+            composer: FeatureComposer for building input vectors.
+            concept: Optional concept to match (e.g. "dog", "butterfly").
+
+        Returns:
+            (features, target, label, description) or None if no data.
+        """
+        if not self.multimodal:
+            return None
+
+        sample = self.multimodal.get_visual(concept)
+        if not sample:
+            return None
+
+        raw_bytes, w, h, ch, label, desc = sample
+
+        # Submit real pixels to the visual SNN bridge
+        try:
+            brain.submit_sensory("visual", raw_bytes, width=w, height=h,
+                                 channels=ch)
+        except Exception as e:
+            logger.debug("Visual submit failed: %s", e)
+
+        # Build text features and target for paired learning
+        teaching_text = f"Look at this {label}! {desc}"
+        features = composer.compose(text=teaching_text, modality="visual")
+        target = make_semantic_target(teaching_text)
+
+        return features, target, label, desc
+
+    def _tell(self, brain, composer, concept=None):
+        """Play Athena a real sound through her audio SNN bridge.
+
+        Loads a real environmental audio clip from ESC-50 and submits it
+        via brain.submit_sensory("audio", ...). Also returns the composed
+        feature vector and teaching text for paired learning.
+
+        Args:
+            brain: The brain instance.
+            composer: FeatureComposer for building input vectors.
+            concept: Optional concept to match (e.g. "rain", "dog").
+
+        Returns:
+            (features, target, label, description) or None if no data.
+        """
+        if not self.multimodal:
+            return None
+
+        sample = self.multimodal.get_audio(concept)
+        if not sample:
+            return None
+
+        audio_samples, label, desc = sample
+
+        # Submit real audio to the audio SNN bridge
+        try:
+            brain.submit_sensory("audio", audio_samples)
+        except Exception as e:
+            logger.debug("Audio submit failed: %s", e)
+
+        # Build text features and target for paired learning
+        teaching_text = f"Listen! {desc}"
+        features = composer.compose(text=teaching_text, modality="audio")
+        target = make_semantic_target(teaching_text)
+
+        return features, target, label, desc
+
+    def _show_and_tell(self, brain, composer, concept=None):
+        """Show AND play — cross-modal paired learning.
+
+        Loads a matched image+audio pair (e.g. train image + train sound)
+        and submits both to their respective SNN bridges simultaneously.
+        This creates temporal co-occurrence that STDP can bind into a
+        unified concept representation.
+
+        Returns:
+            (features, target, concept, teaching_text) or None.
+        """
+        if not self.multimodal:
+            return None
+
+        pair = self.multimodal.get_multimodal_pair()
+        if not pair:
+            return None
+
+        visual = pair["visual"]
+        audio_data = pair["audio"]
+        concept_name = pair["concept"]
+        teaching = pair["teaching_text"]
+
+        # Submit visual
+        if visual:
+            raw_bytes, w, h, ch, _, _ = visual
+            try:
+                brain.submit_sensory("visual", raw_bytes, width=w, height=h,
+                                     channels=ch)
+            except Exception:
+                pass
+
+        # Submit audio
+        if audio_data:
+            audio_samples, _, _ = audio_data
+            try:
+                brain.submit_sensory("audio", audio_samples)
+            except Exception:
+                pass
+
+        features = composer.compose(text=teaching, modality="text")
+        target = make_semantic_target(teaching)
+
+        return features, target, concept_name, teaching
+
+    def _tell_speech(self, brain, composer, word=None):
+        """Play Athena a real spoken word through her speech SNN bridge.
+
+        Loads a real spoken word clip from Speech Commands and submits it
+        via brain.submit_sensory("speech", ...).
+
+        Returns:
+            (features, target, word, description) or None.
+        """
+        if not self.multimodal:
+            return None
+
+        sample = self.multimodal.get_speech(word)
+        if not sample:
+            return None
+
+        audio_samples, word_label, desc = sample
+
+        # Submit to speech bridge
+        try:
+            brain.submit_sensory("speech", audio_samples)
+        except Exception as e:
+            logger.debug("Speech submit failed: %s", e)
+
+        teaching_text = f"Can you hear? {desc}"
+        features = composer.compose(text=teaching_text, modality="speech")
+        target = make_semantic_target(word_label)
+
+        return features, target, word_label, desc
+
     def _train_cognitive(self, brain, text, domain=10, target_text=None):
         """Train ALL cognitive modules on a text sample.
 
@@ -1773,44 +2119,106 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
     # --- Stage 0: "Welcome to the world, little one" ---
 
     def first_experience(self, brain, composer, description):
-        """Introduce Athena to her first sensory experience with wonder."""
+        """Introduce Athena to her first sensory experience with wonder.
+
+        Interleaves three modalities:
+          - 40% chance: real image via _show() + synthetic audio fallback
+          - 30% chance: real audio via _tell() + synthetic visual fallback
+          - 30% chance: text-only with synthetic sensory data
+        """
         narration = self._pop_content("_narrations")
         if narration:
             print(f"  Parent: {narration}")
 
+        roll = random.random()
+
+        # Try real multimodal data first
+        if roll < 0.4 and self.multimodal:
+            result_data = self._show(brain, composer, concept=None)
+            if result_data:
+                features, target, label, desc = result_data
+                submit_multimodal(brain, desc)  # add synthetic audio/somato
+                result = brain.decide_full(features)
+                loss = brain.learn_vector(features, target,
+                                          label=label[:50], confidence=0.5)
+                self._train_cognitive(brain, f"{label}: {desc}", domain=10)
+                if self.decoder:
+                    output_vec = result.get("output_vector")
+                    if output_vec is not None:
+                        target_emb = encode_text(f"{label}: {desc}")
+                        self.decoder.record_pair(output_vec, target_emb,
+                                                 f"{label}: {desc}")
+                try:
+                    brain.bg_update_reward(0.5, 0.3)
+                except Exception:
+                    pass
+                self.interaction_count += 1
+                return loss, result
+
+        elif roll < 0.7 and self.multimodal:
+            result_data = self._tell(brain, composer, concept=None)
+            if result_data:
+                features, target, label, desc = result_data
+                submit_multimodal(brain, desc)  # add synthetic visual/somato
+                result = brain.decide_full(features)
+                loss = brain.learn_vector(features, target,
+                                          label=label[:50], confidence=0.5)
+                self._train_cognitive(brain, desc, domain=10)
+                if self.decoder:
+                    output_vec = result.get("output_vector")
+                    if output_vec is not None:
+                        target_emb = encode_text(desc)
+                        self.decoder.record_pair(output_vec, target_emb, desc)
+                try:
+                    brain.bg_update_reward(0.5, 0.3)
+                except Exception:
+                    pass
+                self.interaction_count += 1
+                return loss, result
+
+        # Fallback: text + synthetic sensory (original path)
         features = composer.compose(text=description, modality="text")
         target = make_semantic_target(description)
-
+        submit_multimodal(brain, description)
         result = brain.decide_full(features)
-        # Dense target trains adaptive network; label trains CNN classifier
-        loss = brain.learn_vector(features, target, label=description[:50], confidence=0.5)
-
-        # Train ALL cognitive modules on this text
-        self._train_cognitive(brain, description, domain=10)  # GENERAL
-
-        # Record pair for decoder vocabulary (nearest-neighbor for display only)
+        loss = brain.learn_vector(features, target, label=description[:50],
+                                  confidence=0.5)
+        self._train_cognitive(brain, description, domain=10)
         if self.decoder:
             output_vec = result.get("output_vector")
             if output_vec is not None:
                 target_emb = encode_text(description)
                 self.decoder.record_pair(output_vec, target_emb, description)
-
-        # Gentle positive reward — existence is rewarded
         try:
             brain.bg_update_reward(0.5, 0.3)
         except Exception:
             pass
-
         self.interaction_count += 1
         return loss, result
 
     # --- Stage 1: "That's a ___! Can you see?" ---
 
     def show_and_name(self, brain, composer, name, description):
-        """Associate a percept with meaning, with enthusiasm."""
+        """Associate a percept with meaning, with enthusiasm.
+
+        Tries to load a real image matching `name` from CIFAR-100.
+        Falls back to synthetic sensory data if no match.
+        """
+        # Try real image for this concept
+        if self.multimodal:
+            real = self.multimodal.get_visual(name)
+            if real:
+                raw_bytes, w, h, ch, _, _ = real
+                try:
+                    brain.submit_sensory("visual", raw_bytes, width=w,
+                                         height=h, channels=ch)
+                except Exception:
+                    pass
+
         features = composer.compose(text=description, modality="text")
         target = make_semantic_target(name + " " + description)
 
+        submit_multimodal(brain, description)
         result = brain.decide_full(features)
 
         try:
@@ -1854,11 +2262,48 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         and learns. The loss from learn_vector tells us how far her
         current representation is from the teaching signal — that's a
         measure of her developmental progress, not a prediction score.
+
+        50% chance of cross-modal paired learning when data is available.
         """
+        # Cross-modal paired learning: real image + real audio together
+        if self.multimodal and random.random() < 0.5:
+            pair = self._show_and_tell(brain, composer, concept)
+            if pair:
+                features, target, paired_concept, teaching = pair
+                result = brain.decide_full(features)
+                response_text = self.observe_response(result)
+                loss = brain.learn_vector(features, target,
+                                          label=paired_concept[:50],
+                                          confidence=0.6)
+                self._train_cognitive(brain, teaching, domain=10)
+                encouragement = self._pop_content("_encouragements")
+                if loss is not None and loss < 0.5 and encouragement:
+                    print(f"  Parent: {encouragement}")
+                if self.decoder:
+                    output_vec = result.get("output_vector")
+                    if output_vec is not None:
+                        target_emb = encode_text(teaching)
+                        self.decoder.record_pair(output_vec, target_emb,
+                                                 teaching)
+                self.interaction_count += 1
+                return loss, result
+
         features = composer.compose(text=description, modality="text")
         target = make_semantic_target(concept + " " + description)
 
-        # Let Athena experience the stimulus
+        # Try real image for this concept
+        if self.multimodal:
+            real = self.multimodal.get_visual(concept)
+            if real:
+                raw_bytes, w, h, ch, _, _ = real
+                try:
+                    brain.submit_sensory("visual", raw_bytes, width=w,
+                                         height=h, channels=ch)
+                except Exception:
+                    pass
+
+        # Let Athena experience the stimulus through all relevant senses
+        submit_multimodal(brain, description)
         result = brain.decide_full(features)
         response_text = self.observe_response(result)
 
@@ -1978,7 +2423,38 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         Stage 0-1: Single words (dog, cat, water)
         Stage 2: Two-word phrases (big dog, red ball)
         Stage 3: Short sentences (the dog runs, I see you)
+
+        When multimodal data is available, 50% of the time uses real
+        spoken word recordings from Speech Commands (yes/no/up/down/etc.)
+        so the speech SNN bridge learns from actual human pronunciation.
         """
+        # Try real spoken word clip from Speech Commands
+        if self.multimodal and stage <= 1 and random.random() < 0.5:
+            result_data = self._tell_speech(brain, composer)
+            if result_data:
+                features, target, word, desc = result_data
+                narration = self._pop_content("_speech_prompts")
+                if narration:
+                    print(f"  Parent (speech): {narration}")
+                print(f"  [Real speech: '{word}']")
+                loss = brain.learn_vector(features, target,
+                                          label=word[:50], confidence=0.6)
+                self._train_cognitive(brain, word, domain=0)
+                try:
+                    result = brain.decide_full(features)
+                    output_vec = result.get("output_vector")
+                    if output_vec:
+                        spoken = brain.speak(output_vec)
+                        spoken_text = spoken.get("text", "")
+                        if spoken_text:
+                            print(f"  Athena says: \"{spoken_text}\"")
+                        else:
+                            print(f"  Athena: (silence)")
+                except Exception:
+                    pass
+                self.interaction_count += 1
+                return loss
+
         word_lists = {
             0: ["dog", "cat", "water", "ball", "sun", "tree"],
             1: ["hello", "yes", "no", "good", "come", "go", "see", "the", "is"],
@@ -2091,6 +2567,250 @@ class LanguageProducer:
 
 
 # ============================================================================
+# Sensory Enrichment (one-time multimodal warm-up for existing brains)
+# ============================================================================
+
+ENRICHMENT_FLAG = os.path.join(CHECKPOINT_DIR, ".sensory_enrichment_done")
+
+
+def run_sensory_enrichment(brain, composer, parent, decoder,
+                           num_exposures=2500):
+    """One-time multimodal warm-up for brains trained on text-only data.
+
+    Connects existing text-semantic representations to real sensory data
+    by presenting paired stimuli: a real image/sound alongside the text
+    concept that Athena already knows.
+
+    Structure (2500 exposures):
+      Phase 1 — Visual grounding (1000): CIFAR-100 images + concept names
+      Phase 2 — Audio grounding (750):   ESC-50 clips + sound descriptions
+      Phase 3 — Cross-modal binding (500): paired image+audio for same concept
+      Phase 4 — Speech grounding (250):  spoken word clips + word text
+
+    Each exposure:
+      1. Submit real sensory data via submit_sensory()
+      2. Present text description as features (she already knows these)
+      3. decide_full() → SNN bridges encode real data, cognitive pipeline
+         processes text → STDP binds the temporal co-occurrence
+      4. learn_vector() with moderate confidence (0.55) — not overwriting,
+         just nudging existing representations toward multimodal binding
+    """
+    if not parent.multimodal:
+        print("  [Enrichment] No multimodal data — skipping")
+        return
+
+    # Check if already done
+    if os.path.exists(ENRICHMENT_FLAG):
+        print("  [Enrichment] Already completed — skipping")
+        return
+
+    mm = parent.multimodal
+    visual_labels = mm.get_visual_labels()
+    audio_labels = mm.get_audio_labels()
+    speech_labels = mm.get_speech_labels()
+
+    if not visual_labels and not audio_labels:
+        print("  [Enrichment] No datasets loaded — skipping")
+        return
+
+    print("\n" + "=" * 60)
+    print("  SENSORY ENRICHMENT — Connecting words to real senses")
+    print("=" * 60)
+
+    try:
+        brain.set_plasticity_state("ACQUISITION")
+    except Exception:
+        pass
+
+    losses = []
+    total = 0
+
+    # --- Phase 1: Visual grounding ---
+    n_visual = min(1000, num_exposures * 2 // 5)
+    if visual_labels:
+        print(f"\n  Phase 1: Visual grounding ({n_visual} images)")
+        random.shuffle(visual_labels)
+        for i in range(n_visual):
+            label = visual_labels[i % len(visual_labels)]
+            sample = mm.get_visual(label)
+            if not sample:
+                continue
+
+            raw_bytes, w, h, ch, _, desc = sample
+
+            # Submit real image
+            try:
+                brain.submit_sensory("visual", raw_bytes, width=w,
+                                     height=h, channels=ch)
+            except Exception:
+                continue
+
+            # Present the concept she already knows as text
+            teaching = f"This is a {label}. {desc}"
+            features = composer.compose(text=teaching, modality="visual")
+            target = make_semantic_target(teaching)
+
+            result = brain.decide_full(features)
+            loss = brain.learn_vector(features, target, label=label[:50],
+                                      confidence=0.55)
+            if loss is not None and loss >= 0:
+                losses.append(loss)
+
+            if decoder:
+                output_vec = result.get("output_vector")
+                if output_vec is not None:
+                    target_emb = encode_text(teaching)
+                    decoder.record_pair(output_vec, target_emb, teaching)
+
+            total += 1
+            if (i + 1) % 200 == 0:
+                avg = np.mean(losses[-200:]) if losses else 0
+                print(f"    [{i+1}/{n_visual}] avg_loss={avg:.4f}")
+
+    # --- Phase 2: Audio grounding ---
+    n_audio = min(750, num_exposures * 3 // 10)
+    if audio_labels:
+        print(f"\n  Phase 2: Audio grounding ({n_audio} clips)")
+        random.shuffle(audio_labels)
+        for i in range(n_audio):
+            label = audio_labels[i % len(audio_labels)]
+            sample = mm.get_audio(label)
+            if not sample:
+                continue
+
+            audio_samples, _, desc = sample
+
+            # Submit real audio
+            try:
+                brain.submit_sensory("audio", audio_samples)
+            except Exception:
+                continue
+
+            teaching = f"Listen to this — {desc}"
+            features = composer.compose(text=teaching, modality="audio")
+            target = make_semantic_target(teaching)
+
+            result = brain.decide_full(features)
+            loss = brain.learn_vector(features, target, label=label[:50],
+                                      confidence=0.55)
+            if loss is not None and loss >= 0:
+                losses.append(loss)
+
+            total += 1
+            if (i + 1) % 200 == 0:
+                avg = np.mean(losses[-200:]) if losses else 0
+                print(f"    [{i+1}/{n_audio}] avg_loss={avg:.4f}")
+
+    # --- Phase 3: Cross-modal binding ---
+    n_cross = min(500, num_exposures // 5)
+    print(f"\n  Phase 3: Cross-modal binding ({n_cross} paired stimuli)")
+    for i in range(n_cross):
+        pair = mm.get_multimodal_pair()
+        if not pair:
+            continue
+
+        visual = pair["visual"]
+        audio_data = pair["audio"]
+        concept = pair["concept"]
+        teaching = pair["teaching_text"]
+
+        # Submit both modalities simultaneously — temporal co-occurrence
+        if visual:
+            raw_bytes, w, h, ch, _, _ = visual
+            try:
+                brain.submit_sensory("visual", raw_bytes, width=w,
+                                     height=h, channels=ch)
+            except Exception:
+                pass
+
+        if audio_data:
+            audio_samples, _, _ = audio_data
+            try:
+                brain.submit_sensory("audio", audio_samples)
+            except Exception:
+                pass
+
+        features = composer.compose(text=teaching, modality="text")
+        target = make_semantic_target(teaching)
+
+        result = brain.decide_full(features)
+        loss = brain.learn_vector(features, target, label=concept[:50],
+                                  confidence=0.6)
+        if loss is not None and loss >= 0:
+            losses.append(loss)
+
+        total += 1
+        if (i + 1) % 100 == 0:
+            avg = np.mean(losses[-100:]) if losses else 0
+            print(f"    [{i+1}/{n_cross}] avg_loss={avg:.4f}")
+
+    # --- Phase 4: Speech grounding ---
+    n_speech = min(250, num_exposures // 10)
+    if speech_labels:
+        print(f"\n  Phase 4: Speech grounding ({n_speech} spoken words)")
+        for i in range(n_speech):
+            word = speech_labels[i % len(speech_labels)]
+            sample = mm.get_speech(word)
+            if not sample:
+                continue
+
+            audio_samples, _, desc = sample
+
+            # Submit real spoken word
+            try:
+                brain.submit_sensory("speech", audio_samples)
+            except Exception:
+                continue
+
+            teaching = f"The word '{word}'. {desc}"
+            features = composer.compose(text=teaching, modality="speech")
+            target = make_semantic_target(word)
+
+            result = brain.decide_full(features)
+            loss = brain.learn_vector(features, target, label=word[:50],
+                                      confidence=0.55)
+            if loss is not None and loss >= 0:
+                losses.append(loss)
+
+            total += 1
+            if (i + 1) % 50 == 0:
+                avg = np.mean(losses[-50:]) if losses else 0
+                print(f"    [{i+1}/{n_speech}] avg_loss={avg:.4f}")
+
+    # --- Summary ---
+    avg_loss = np.mean(losses) if losses else 0
+    print(f"\n  Sensory enrichment complete:")
+    print(f"    {total} multimodal exposures")
+    print(f"    Average loss: {avg_loss:.4f}")
+    print(f"    Modalities grounded: "
+          f"{'visual ' if visual_labels else ''}"
+          f"{'audio ' if audio_labels else ''}"
+          f"{'speech ' if speech_labels else ''}")
+
+    # Mark as done so it doesn't repeat
+    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+    try:
+        with open(ENRICHMENT_FLAG, "w") as f:
+            json.dump({
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "exposures": total,
+                "avg_loss": float(avg_loss),
+                "visual_classes": len(visual_labels),
+                "audio_classes": len(audio_labels),
+                "speech_words": len(speech_labels),
+            }, f, indent=2)
+        print("  [Enrichment] Flagged as complete — won't repeat")
+    except Exception:
+        pass
+
+    # Gentle reward for experiencing new senses
+    try:
+        brain.bg_update_reward(0.7, 0.4)
+    except Exception:
+        pass
+
+
+# ============================================================================
 # Stage Runners
 # ============================================================================
 
@@ -2163,10 +2883,11 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         description, features, target = batch[batch_idx]
         batch_idx += 1
 
-        # Forward pass for observation
+        # Forward pass for observation — stage sensory data first
         narration = parent._pop_content("_narrations")
         if narration:
             print(f"  Parent: {narration}")
+        submit_multimodal(brain, description)
         result = brain.decide_full(features)
 
         # Accumulate into mini-batch (adaptive size)
@@ -2522,6 +3243,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             # Conversational question
             question = source.get_question()
             features = composer.compose(text=question, modality="text")
+            submit_multimodal(brain, question)
             result = brain.decide_full(features)
             response_text = parent.observe_response(result)
             print(f"  Q: {question}")
@@ -2544,6 +3266,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
 
             features = composer.compose(text=topic_text, modality="text")
             target = make_semantic_target(topic_text)
+            submit_multimodal(brain, topic_text)
             result = brain.decide_full(features)
             confidence = mastery.get_confidence_for_domain(domain_name, progress)
             adaptive_lr = mastery.get_adaptive_lr(domain_name) * lr_scheduler.get_lr()
@@ -3315,13 +4038,15 @@ def main():
                         help="Disable Claude parent (silent mode)")
     parser.add_argument("--num-inputs", type=int, default=BRAIN_INPUT_DIM)
     parser.add_argument("--num-outputs", type=int, default=BRAIN_OUTPUT_DIM)
-    parser.add_argument("--neuron-count", type=int, default=1500000)
+    parser.add_argument("--neuron-count", type=int, default=2000000)
     parser.add_argument("--stage0-stimuli", type=int, default=20000)
     parser.add_argument("--stage1-stimuli", type=int, default=40000)
     parser.add_argument("--stage2-stimuli", type=int, default=40000)
     parser.add_argument("--stage3-interactions", type=int, default=30000)
     parser.add_argument("--fresh", action="store_true",
                         help="Start fresh (ignore existing checkpoint)")
+    parser.add_argument("--no-multimodal", action="store_true",
+                        help="Disable multimodal dataset download")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO,
@@ -3359,6 +4084,13 @@ def main():
     if not args.no_claude:
         _pre_generate_all_stages(args, force_fresh=args.fresh)
 
+    # --- Download multimodal datasets BEFORE brain init (needs free RAM) ---
+    multimodal_loader = MultimodalDataLoader()
+    if not args.no_multimodal:
+        multimodal_loader.ensure_downloaded()
+    else:
+        print("  [Multimodal] Disabled (--no-multimodal)")
+
     # Restore CUDA visibility so nimcp's gpu_detect sees the real GPU.
     # PyTorch is already imported with CUDA disabled; restoring the env
     # var won't make PyTorch re-acquire GPU context.
@@ -3367,12 +4099,17 @@ def main():
     elif "CUDA_VISIBLE_DEVICES" in os.environ:
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
-    brain = nimcp.Brain("athena",
-                        num_inputs=args.num_inputs,
-                        num_outputs=args.num_outputs,
-                        neuron_count=args.neuron_count,
-                        checkpoint=checkpoint_path,
-                        init_mode='full')
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        # Resume: load full brain state from checkpoint (avoids 52GB+ fresh init)
+        print(f"  Loading brain from checkpoint: {checkpoint_path}")
+        brain = nimcp.Brain.load(checkpoint_path)
+    else:
+        # Fresh start: create brain from scratch (requires ~52GB+ RAM)
+        brain = nimcp.Brain("athena",
+                            num_inputs=args.num_inputs,
+                            num_outputs=args.num_outputs,
+                            neuron_count=args.neuron_count,
+                            init_mode='full')
 
     # --- CRITICAL: Disable fast training → ALL bio subsystems active ---
     brain.set_fast_training(False)
@@ -3450,7 +4187,8 @@ def main():
     except Exception:
         decoder = NeuralDecoder(output_dim=args.num_outputs, embed_dim=1024)
 
-    parent = Parent(teacher=teacher, enabled=not args.no_claude, decoder=decoder)
+    parent = Parent(teacher=teacher, enabled=not args.no_claude, decoder=decoder,
+                    multimodal=multimodal_loader)
     composer = SensoryComposer(brain)
     clock = BiologicalClock(rest_interval=2000)
     source = StimulusSource()
@@ -3482,6 +4220,10 @@ def main():
     # --- Print initial bio stats ---
     print("\n  Initial biological state:")
     _print_bio_stats(brain)
+
+    # --- Sensory enrichment (one-time, for existing text-trained brains) ---
+    if not args.no_multimodal and not args.fresh:
+        run_sensory_enrichment(brain, composer, parent, decoder)
 
     # --- Run developmental stages ---
     print(f"\n  Starting from stage {start_stage}")

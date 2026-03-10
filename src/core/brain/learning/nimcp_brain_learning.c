@@ -29,6 +29,7 @@
  */
 
 #include "core/brain/learning/nimcp_brain_learning.h"
+#include "core/brain/nimcp_brain_lazy_init.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include <math.h>
@@ -305,6 +306,7 @@ static void brain_train_cognitive_subsystems(
     }
 
     /* === 11. FEP ORCHESTRATOR — update free energy metrics === */
+    BRAIN_ENSURE_FEP_ORCHESTRATOR(brain);
     if (brain->fep_orchestrator && brain->fep_orchestrator_enabled) {
         /* Update FEP scheduling metrics from training outcome:
          * loss → free energy, loss → prediction error.
@@ -892,6 +894,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         {
             neural_network_t base_net = adaptive_network_get_base_network(brain->network);
             if (base_net) {
+                BRAIN_ENSURE_NEUROMOD(brain);
                 if (brain->neuromodulator_system) {
                     neural_network_set_neuromodulator_system(base_net, brain->neuromodulator_system);
                 }
@@ -1636,6 +1639,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     // - DA: Reward prediction error (Schultz 1997)
     // - ACh: Encoding mode in hippocampus (Hasselmo 2006)
     // - NE: Arousal and attention (Aston-Jones & Cohen 2005)
+    BRAIN_ENSURE_NEUROMOD(brain);
     if (brain->neuromodulator_system) {
         // Dopamine: based on expected reward (inverse of recent loss)
         float da_level = 0.5f; // baseline
@@ -1733,6 +1737,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     /* Neuromodulator-gated reward learning: strengthen active pathways.
      * DA/ACh/NE levels set from loss trend above.
      * Eligibility traces updated by EDP above. */
+    BRAIN_ENSURE_NEUROMOD(brain);
     if (brain->neuromodulator_system) {
         neural_network_t base_net = adaptive_network_get_base_network(brain->network);
         if (base_net) {

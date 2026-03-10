@@ -14,6 +14,8 @@
 #ifndef NIMCP_DIMENSION_CONSTANTS_H
 #define NIMCP_DIMENSION_CONSTANTS_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -82,17 +84,23 @@ extern "C" {
  * Vector and Embedding Dimensions
  *===========================================================================*/
 
-/** @brief Default embedding dimension */
-#define NIMCP_DEFAULT_EMBEDDING_DIM         256
+/** @brief Default embedding dimension (CPU-staged, not resident in VRAM) */
+#define NIMCP_DEFAULT_EMBEDDING_DIM         2048
 
 /** @brief Small embedding dimension */
-#define NIMCP_SMALL_EMBEDDING_DIM           64
+#define NIMCP_SMALL_EMBEDDING_DIM           128
 
 /** @brief Medium embedding dimension */
-#define NIMCP_MEDIUM_EMBEDDING_DIM          128
+#define NIMCP_MEDIUM_EMBEDDING_DIM          512
 
 /** @brief Large embedding dimension */
-#define NIMCP_LARGE_EMBEDDING_DIM           512
+#define NIMCP_LARGE_EMBEDDING_DIM           2048
+
+/** @brief GPU batch size for embedding relevance recomputation */
+#define NIMCP_EMBEDDING_BATCH_SIZE          4096
+
+/** @brief Sentinel value for "no embedding allocated" */
+#define NIMCP_EMBEDDING_POOL_NONE           UINT32_MAX
 
 /** @brief Ambient dimension for information geometry */
 #define NIMCP_AMBIENT_DIM                   256

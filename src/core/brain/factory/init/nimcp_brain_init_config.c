@@ -382,9 +382,11 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->enable_myelin_sheath = !minimal;
 
     // Lazy Initialization defaults (performance optimization)
-    // Check if lazy_init_mode or init_mode was pre-set by caller
+    // Default: lazy_init_mode=true to reduce peak memory.
+    // Callers can disable by setting config->lazy_init_mode=false AFTER init_brain_config().
     bool fast = (config->init_mode == BRAIN_INIT_FAST);
-    bool lazy = config->lazy_init_mode || minimal || fast;
+    bool lazy = true;  // Default to lazy init for all brains
+    if (minimal || fast) lazy = true;  // Also true for minimal/fast modes
     config->lazy_init_mode = lazy;  // Propagate lazy mode
     if (fast) {
         config->minimal_mode = false;  // FAST is not minimal — subsystems exist, just deferred
