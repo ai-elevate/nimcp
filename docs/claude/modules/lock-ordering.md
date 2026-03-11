@@ -1,7 +1,7 @@
 # Lock Ordering Hierarchy
 
 **Version**: 2.6.3
-**Last Updated**: 2026-02-19
+**Last Updated**: 2026-03-11
 
 ## Overview
 
@@ -82,7 +82,7 @@ CRITICAL_SECTION on Windows. All higher layers build on top of these.
 
 | Mutex | Location | Type | Purpose |
 |-------|----------|------|---------|
-| `bridge->base.mutex` | `include/utils/bridge/nimcp_bridge_base.h` | Thread (nimcp_mutex_t*) | Per-bridge instance lock (580+ bridge files) |
+| `bridge->base.mutex` | `include/utils/bridge/nimcp_bridge_base.h` | Thread (nimcp_mutex_t*) | Per-bridge instance lock (~1065 bridge files) |
 | FEP bridge mutexes | `src/cognitive/free_energy/` | Thread | Free Energy Principle bridge state |
 | Immune bridge mutexes | `src/cognitive/immune/` | Thread/Platform | Immune system bridge state |
 | Oscillation bridge mutexes | `src/core/brain_oscillations/` | Thread | Oscillation integration bridges |
@@ -211,7 +211,9 @@ ctest
 | `include/utils/thread/nimcp_thread.h` | Thread-layer mutex/rwlock/cond API |
 | `include/utils/thread/nimcp_deadlock_detector.h` | Lock ordering enforcement and cycle detection |
 | `include/utils/bridge/nimcp_bridge_base.h` | Bridge base struct with per-instance mutex |
+| `include/utils/bridge/nimcp_bridge_boilerplate.h` | BRIDGE_BOILERPLATE macros (FULL/MESH_ONLY/MINIMAL) |
 | `include/core/brain/nimcp_brain_internal.h` | Brain internal struct with `cache_mutex` |
 | `src/utils/memory/nimcp_cow_manager.c` | COW manager mutex |
 | `src/core/events/nimcp_event_bus.c` | Event bus triple-mutex scheme |
 | `include/utils/fault_tolerance/nimcp_health_agent.h` | Health agent deadlock detection integration |
+| `include/utils/fault_tolerance/nimcp_lockfree_metrics.h` | Lock-free metrics collection |

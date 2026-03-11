@@ -75,6 +75,24 @@ int lnn_gradient_compute_adjoint(
         return LNN_ERROR_OUT_OF_MEMORY;
     }
 
+    // Sanitize initial adjoint: NaN/Inf in loss gradient poisons all downstream
+    // gradients. Zero any non-finite elements before they propagate.
+    {
+        size_t numel = nimcp_tensor_numel(adjoint_current);
+        float* adj_data = (float*)nimcp_tensor_data(adjoint_current);
+        bool had_nan = false;
+        for (size_t i = 0; i < numel; i++) {
+            if (!isfinite(adj_data[i])) {
+                adj_data[i] = 0.0f;
+                had_nan = true;
+            }
+        }
+        if (had_nan) {
+            NIMCP_LOGGING_DEBUG("Sanitized NaN/Inf in loss gradient before adjoint computation");
+            ctx->has_nan = true;
+        }
+    }
+
     // Time parameters
     ctx->t_end = (float)network->history_len * network->config->default_dt;
     ctx->t_start = 0.0f;
@@ -1068,11 +1086,45 @@ int lnn_gradient_recompute_from_checkpoint(
  */
 float lnn_gradient_norm(const lnn_gradient_ctx_t* ctx) {
     // Guard: check NULL
-    if (!ctx || !ctx->grad_params) {
+    if (!ctx) {
         return 0.0f;
     }
 
-    return (float)nimcp_tensor_norm_p(ctx->grad_params, 2.0);
+    // Compute norm from per-layer gradient tensors (the actual accumulated gradients).
+    // ctx->grad_params is never written to by accumulate_parameter_gradients(),
+    // so reading it always returns 0. Instead, compute directly from layer grad tensors.
+    if (ctx->network && ctx->network->layers && ctx->network->n_layers > 0) {
+        double sum_sq = 0.0;
+        for (uint32_t i = 0; i < ctx->network->n_layers; i++) {
+            lnn_layer_t* layer = ctx->network->layers[i];
+            if (!layer) continue;
+            // Sum squares from each per-layer gradient tensor
+            nimcp_tensor_t* grad_tensors[] = {
+                layer->grad_W_in, layer->grad_W_rec, layer->grad_W_tau,
+                layer->grad_b_in, layer->grad_b_tau, layer->grad_tau_base
+            };
+            for (int g = 0; g < 6; g++) {
+                if (!grad_tensors[g]) continue;
+                size_t numel = nimcp_tensor_numel(grad_tensors[g]);
+                const float* data = (const float*)nimcp_tensor_data_const(grad_tensors[g]);
+                for (size_t j = 0; j < numel; j++) {
+                    if (isfinite(data[j])) {
+                        sum_sq += (double)data[j] * (double)data[j];
+                    }
+                }
+            }
+        }
+        if (sum_sq > 0.0) {
+            return (float)sqrt(sum_sq);
+        }
+    }
+
+    // Fallback to grad_params if network not available
+    if (ctx->grad_params) {
+        return (float)nimcp_tensor_norm_p(ctx->grad_params, 2.0);
+    }
+
+    return 0.0f;
 }
 
 
@@ -1100,13 +1152,40 @@ int lnn_gradient_clip(lnn_gradient_ctx_t* ctx, float max_norm) {
      */
     if (isnan(norm) || isinf(norm)) {
         NIMCP_LOGGING_WARN("Gradient norm is invalid (NaN/Inf), zeroing gradients");
-        nimcp_tensor_mul_scalar_(ctx->grad_params, 0.0f);  /* Zero by multiplying by 0 */
+        // Zero per-layer gradient tensors (the actual gradients)
+        if (ctx->network) {
+            lnn_network_zero_gradients(ctx->network);
+        }
+        if (ctx->grad_params) {
+            nimcp_tensor_mul_scalar_(ctx->grad_params, 0.0f);
+        }
         return LNN_ERROR_OPERATION_FAILED;
     }
 
     if (norm > max_norm) {
         float scale = max_norm / norm;
-        nimcp_tensor_mul_scalar_(ctx->grad_params, scale);
+
+        // Scale per-layer gradient tensors (the actual accumulated gradients)
+        if (ctx->network && ctx->network->layers && ctx->network->n_layers > 0) {
+            for (uint32_t i = 0; i < ctx->network->n_layers; i++) {
+                lnn_layer_t* layer = ctx->network->layers[i];
+                if (!layer) continue;
+                nimcp_tensor_t* grad_tensors[] = {
+                    layer->grad_W_in, layer->grad_W_rec, layer->grad_W_tau,
+                    layer->grad_b_in, layer->grad_b_tau, layer->grad_tau_base
+                };
+                for (int g = 0; g < 6; g++) {
+                    if (grad_tensors[g]) {
+                        nimcp_tensor_mul_scalar_(grad_tensors[g], scale);
+                    }
+                }
+            }
+        }
+
+        // Also scale legacy grad_params for consistency
+        if (ctx->grad_params) {
+            nimcp_tensor_mul_scalar_(ctx->grad_params, scale);
+        }
 
         NIMCP_LOGGING_DEBUG("Clipped gradients: norm %f -> %f (scale=%f)", norm, max_norm, scale);
     }

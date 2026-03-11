@@ -102,6 +102,55 @@ for test in test_cases:
 
 ---
 
+## SRP File Splitting Convention
+
+Large source files are split using `#include`-based SRP (Single Responsibility Principle) splits:
+
+```c
+// nimcp_lnn_gradient.c — main file with includes and declarations
+#include "nimcp_lnn_gradient_part_lifecycle.c"  // lifecycle functions
+#include "nimcp_lnn_gradient_part_core.c"       // core computation
+#include "nimcp_lnn_gradient_part_accessors.c"  // getters/setters
+#include "nimcp_lnn_gradient_part_helpers.c"     // helper functions
+```
+
+Part files have a standard header:
+```c
+// nimcp_lnn_gradient_part_lifecycle.c - lifecycle functions
+// Part of nimcp_lnn_gradient.c (SRP #include-based split)
+// DO NOT compile separately - #included from nimcp_lnn_gradient.c
+```
+
+## Guard Clause Pattern
+
+Both braces AND return required. `NIMCP_THROW_TO_IMMUNE` alone does NOT halt execution:
+```c
+if (!ptr) {
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+    return NULL;  // REQUIRED — throw doesn't stop flow
+}
+```
+
+## Health Agent Macros
+
+Per-module health monitoring via atomic health agents:
+```c
+#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(module_name)
+```
+
+## Bridge Boilerplate
+
+Standard bridge initialization with mesh adapter:
+```c
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
+BRIDGE_BOILERPLATE_MESH_ONLY(bridge_name, MESH_ADAPTER_CATEGORY_SYSTEM)
+```
+
+## setjmp/longjmp Rule
+
+Variables modified between `setjmp` and `longjmp` MUST be declared `volatile`.
+
 ## Return Value Conventions
 
 ### Standard NIMCP Functions

@@ -29009,6 +29009,19 @@ test_cortical_dendritic/fast:
 .PHONY : test_cortical_dendritic/fast
 
 #=============================================================================
+# Target rules for targets named test_sparse_coding_integration
+
+# Build rule for target.
+test_sparse_coding_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_sparse_coding_integration
+.PHONY : test_sparse_coding_integration
+
+# fast build rule for target.
+test_sparse_coding_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_sparse_coding_integration.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_sparse_coding_integration.dir/build
+.PHONY : test_sparse_coding_integration/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_cortical_columns_substrate_bridge
 
 # Build rule for target.
@@ -29293,6 +29306,19 @@ test_struct_consistency: cmake_check_build_system
 test_struct_consistency/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/neuralnet/CMakeFiles/test_struct_consistency.dir/build.make test/unit/core/neuralnet/CMakeFiles/test_struct_consistency.dir/build
 .PHONY : test_struct_consistency/fast
+
+#=============================================================================
+# Target rules for targets named test_synapse_hot_cold
+
+# Build rule for target.
+test_synapse_hot_cold: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_synapse_hot_cold
+.PHONY : test_synapse_hot_cold
+
+# fast build rule for target.
+test_synapse_hot_cold/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/neuralnet/CMakeFiles/test_synapse_hot_cold.dir/build.make test/unit/core/neuralnet/CMakeFiles/test_synapse_hot_cold.dir/build
+.PHONY : test_synapse_hot_cold/fast
 
 #=============================================================================
 # Target rules for targets named integration_core_neuralnet_homeostasis_immune
@@ -43918,6 +43944,7 @@ help:
 	@echo "... test_snn_visual_bridge"
 	@echo "... test_snn_wellbeing_bridge"
 	@echo "... test_social_fep_bridge"
+	@echo "... test_sparse_coding_integration"
 	@echo "... test_sparse_synapse"
 	@echo "... test_spatial_processing_e2e"
 	@echo "... test_speech_production_e2e"
@@ -43970,6 +43997,7 @@ help:
 	@echo "... test_symbolic_logic"
 	@echo "... test_symbolic_logic_attachment"
 	@echo "... test_symbolic_logic_real"
+	@echo "... test_synapse_hot_cold"
 	@echo "... test_ternary_accuracy_regression"
 	@echo "... test_ternary_backward_compat_regression"
 	@echo "... test_ternary_conversion_regression"

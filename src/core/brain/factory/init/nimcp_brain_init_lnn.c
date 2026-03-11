@@ -105,6 +105,11 @@ bool nimcp_brain_factory_init_lnn_subsystem(brain_t brain)
     train_config.lnn_train_mode = LNN_TRAIN_ADJOINT;
     train_config.track_statistics = true;
 
+    // Destroy existing context if present (prevent leak from multiple init paths)
+    if (brain->lnn_training_ctx) {
+        lnn_training_destroy(brain->lnn_training_ctx);
+        brain->lnn_training_ctx = NULL;
+    }
     brain->lnn_training_ctx = lnn_training_create(brain->lnn_network, &train_config);
     if (!brain->lnn_training_ctx) {
         LOG_WARN(LOG_MODULE, "Failed to create LNN training context (non-fatal)");

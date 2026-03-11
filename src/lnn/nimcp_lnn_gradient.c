@@ -14,6 +14,7 @@
 #include "lnn/nimcp_lnn_types.h"
 #include "lnn/nimcp_lnn_layer.h"
 #include "lnn/nimcp_lnn_neuron.h"
+#include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_ode.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"

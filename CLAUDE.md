@@ -1,7 +1,8 @@
-# NIMCP Project Memory
+# NIMCP Project Reference
 
 **Version**: 2.6.3
-**Last Updated**: 2025-12-31
+**Last Updated**: 2026-03-11
+**Path**: `/home/bbrelin/nimcp`
 
 > **Documentation is modularized.** See `docs/claude/` for detailed documentation.
 > **Master Index**: See `docs/INDEX.md` for complete documentation navigation.
@@ -22,31 +23,43 @@
 | Error Codes | [06-error-codes.md](docs/claude/06-error-codes.md) |
 | Common Issues | [07-common-issues.md](docs/claude/07-common-issues.md) |
 
+## Architecture At A Glance
+
+- **2M neuron brain** with multi-layer diamond architecture (3/5/7 layers by size)
+- **4 network types**: Main neural net, LNN (liquid/temporal), SNN (spiking), CNN (visual/audio)
+- **60+ cognitive modules**: introspection, ethics, theory of mind, imagination, reasoning, emotions, etc.
+- **33+ brain regions**: prefrontal, occipital, parietal, hippocampus, cerebellum, basal ganglia, etc.
+- **Full biological plasticity**: STDP, BCM, eligibility traces, dendritic, homeostatic, 6 neuromodulators
+- **Multimodal perception**: visual cortex, audio cortex, speech cortex, somatosensory
+- **GPU-accelerated** (CUDA kernels for forward/backward/plasticity), ~15-16.5 GB VRAM for 2M neurons
+- **150+ Python API methods**, immersive developmental training curriculum
+- **2,552 source files**, 2,456 headers, 800+ fields on brain_struct
+
 ## Trigger-Action Rules
 
 ### Routing Table
 | Trigger | Action |
 |---------|--------|
 | Code change in src/ | Run `make nimcp -j4` to verify build |
+| Change to neuron_t or synapse layout | Rebuild + reinstall Python .so |
 | New test file created | Run the specific test to verify it passes |
-| Bug report or error | Use systematic debugging: reproduce → isolate → fix → verify |
+| Bug report or error | Use systematic debugging: reproduce -> isolate -> fix -> verify |
 | Memory/learning worth preserving | Write to MEMORY.md BEFORE responding |
 | Complex multi-file change | Create task list with TaskCreate |
 | Unclear requirements | Use AskUserQuestion, don't assume |
 | Session ending or context getting long | Update journal.md with handoff notes |
 
 ### Enforcement Rules
-1. **Write-Before-Speak**: If something is worth remembering, write it to a file BEFORE saying "I'll remember" or "noted"
-2. **No Empty Promises**: Never say "I'll keep that in mind" without an actual file write in the same response
+1. **Write-Before-Speak**: If something is worth remembering, write it to a file BEFORE saying "I'll remember"
+2. **No Empty Promises**: Never say "I'll keep that in mind" without an actual file write
 3. **Verify Before Commit**: Always run `make nimcp -j4` before any git commit
 4. **Test What You Write**: New test files must be built and run before committing
-5. **Immediate Memory Updates**: Don't defer MEMORY.md updates - do them in the moment
+5. **Immediate Memory Updates**: Don't defer MEMORY.md updates
 
 ### Self-Check Before Every Response
-Ask yourself:
-- Did the user share something that should be persisted? → Write it now
-- Am I about to make a promise to remember? → Write first, then respond
-- Is this a pattern/lesson that will help future sessions? → Update MEMORY.md
+- Did the user share something that should be persisted? -> Write it now
+- Am I about to make a promise to remember? -> Write first, then respond
+- Is this a pattern/lesson that will help future sessions? -> Update MEMORY.md
 
 ## Module Documentation
 
@@ -63,8 +76,11 @@ Ask yourself:
 | Positional Encoding | [modules/positional-encoding.md](docs/claude/modules/positional-encoding.md) |
 | Tensor Integration | [modules/tensor.md](docs/claude/modules/tensor.md) |
 | Metabolic Modulation | [modules/metabolic-modulation.md](docs/claude/modules/metabolic-modulation.md) |
-| Brain Regions Roadmap | [modules/brain-regions-roadmap.md](docs/claude/modules/brain-regions-roadmap.md) |
+| Brain Regions | [modules/brain-regions-roadmap.md](docs/claude/modules/brain-regions-roadmap.md) |
 | Recursive Cognition | [modules/recursive-cognition.md](docs/claude/modules/recursive-cognition.md) |
+| Imagination Engine | [modules/imagination-engine.md](docs/claude/modules/imagination-engine.md) |
+| Genius Profiles | [modules/genius-profiles.md](docs/claude/modules/genius-profiles.md) |
+| Lock Ordering | [modules/lock-ordering.md](docs/claude/modules/lock-ordering.md) |
 
 ---
 
@@ -84,8 +100,18 @@ Ask yourself:
 ## Essential Commands
 
 ```bash
-# Build
+# Build library
 cd /home/bbrelin/nimcp/build && cmake .. && make nimcp -j4
+
+# Build + install Python bindings (MUST do after neuron_t/synapse changes)
+make nimcp_python -j4 && cp build/lib/python/nimcp.so ~/.local/lib/python3.12/site-packages/nimcp.cpython-312-x86_64-linux-gnu.so
+
+# Training
+cd /home/bbrelin/nimcp && python3 scripts/immerse_athena.py
+# With resume: python3 scripts/immerse_athena.py --resume
+
+# Monitor training (persistent cron)
+tail -30 monitoring.log
 
 # Git
 git add -A && git commit --no-verify -m "message" && git push
@@ -96,29 +122,63 @@ git add -A && git commit --no-verify -m "message" && git push
 ### Tensor API
 - `nimcp_tensor_sum()` returns `nimcp_tensor_t*`, not scalar
 - `nimcp_tensor_create(dims, rank, dtype)` requires 3 args (rank, not ndims)
+- `op_div` uses epsilon clamping (1e-7), does NOT log warnings
 
 ### Mutex API (use thread layer, not platform layer)
 - `nimcp_mutex_create(attr)` - allocate and init, returns `nimcp_mutex_t*`
 - `nimcp_mutex_init(mutex, attr)` - init existing struct
-- `mutex_attr_t` supports MUTEX_TYPE_NORMAL/RECURSIVE/ERRORCHECK
-- **Deadlock prevention**: Never call public mutex-locking functions from within locked code - create `*_unlocked()` helpers
+- `nimcp_mutex_free()` = destroy + free (correct for heap-allocated mutexes, NOT a bug)
+- **Deadlock prevention**: Never call public mutex-locking functions from within locked code
 
-### Platform Tiers
-- `PLATFORM_TIER_FULL/MEDIUM/CONSTRAINED/MINIMAL`
+### Neural Architecture
+- **EMBEDDED_CAPACITY**: 320 synapses inline per neuron (not 128 or 256)
+- **Multi-layer diamond**: Small (<5K)=3 layers, Medium (5K-100K)=5 layers, Large (100K+)=7 layers
+- **Brain init modes**: FULL (all 80+ subsystems), FAST (6 of 27 waves, ~14s), MINIMAL (core only)
+- **Hot/cold neuron split**: Frequently-accessed fields in `neuron_t`, cold data in `neuron_cold_data_t`
 
-### Brain Immune System
-- B cells must be in PLASMA state to produce antibodies
-- State progression: NAIVE -> ACTIVATED -> PLASMA
+### LNN Gradient System
+- Per-layer tensors (grad_W_rec, grad_tau_base, grad_b_in) are the REAL gradients
+- ctx->grad_params is legacy/dead - do NOT read from it for norms or clipping
+- Gradient clip to 1.0 norm AFTER adjoint computation, BEFORE get_gradients
+- Per-step clamping [-1e4, 1e4] prevents accumulation explosion
+- tau_safe floor 0.01 prevents 1/tau^2 explosion
 
 ### Return Value Conventions
-- FEP bridges return `0` for success, `-1` for errors (not NIMCP_OK/NIMCP_ERROR_*)
-- Metabolic modulation: `metabolic_compute_effects()` returns `0` for success, `-1` for errors
+- FEP bridges return `0`/`-1` (not NIMCP_OK/NIMCP_ERROR_*)
+- Metabolic modulation: `metabolic_compute_effects()` returns `0`/`-1`
 - Standard NIMCP functions return `nimcp_error_t` codes
 
-### Occipital Lobe Integration (New in 2.6.1)
-- Visual processing requires proper cortical bridge initialization
-- Audiovisual bridge must be configured before cross-modal processing
-- Cognitive bridge connects occipital to higher cognitive functions
+### Type Distinctions
+- `nimcp_brain_t` (public handle) vs `brain_t` (internal pointer) - use `handle->internal_brain`
+- `brain_immune_get_antigen_copy()` preferred over `brain_immune_get_antigen()` (dangling pointer)
+- `copy_decision_deep()` for cache, `brain_free_decision()` for cleanup
+- `nimcp_bio_promise_complete(promise, result)` takes 2 args, NOT 3
+- `neuromodulator_system_t` is already a pointer typedef - don't double-pointer it
 
-### Path Changes (2.6.2)
-- Project path: `/home/bbrelin/nimcp` (NOT `/home/bbrelin/repos/nimcp`)
+### Files That Must NEVER Have Raw NIMCP_THROW_TO_IMMUNE
+1. `src/utils/exception/` - ALL files (infinite recursion)
+2. `src/utils/memory/nimcp_memory.c` - Use `MEMORY_SAFE_THROW()`
+3. `src/utils/memory/nimcp_unified_memory.c` - Use `UMM_SAFE_THROW()`
+4. `src/security/nimcp_constant_time.c` - Gate with `nimcp_exception_system_is_initialized()`
+
+### Memory Implementation - Raw malloc Only
+Files `nimcp_memory.c`, `nimcp_unified_memory.c`, `nimcp_constant_time.c` MUST use raw `malloc/calloc/free/realloc`.
+
+### GPU Rules
+- `.cu` files must use `nimcp_malloc/nimcp_free`, not raw malloc
+- NVCC doesn't support C11 `_Atomic` - use `volatile` + GCC `__atomic_*` builtins
+- GPU stream pool: `nimcp_gpu_get_pool_stream(ctx)` round-robin from 8 streams
+
+### Python .so Installation
+After ANY change to `neuron_t`, `sparse_synapse_storage_t`, or brain struct layout:
+```bash
+make nimcp_python -j4
+cp build/lib/python/nimcp.so ~/.local/lib/python3.12/site-packages/nimcp.cpython-312-x86_64-linux-gnu.so
+```
+Failure to do this causes SIGSEGV from stale field offsets.
+
+### Guard Clause Pattern
+Both braces AND return required. `NIMCP_THROW_TO_IMMUNE` alone doesn't halt execution.
+
+### setjmp/longjmp
+Variables modified between `setjmp` and `longjmp` MUST be `volatile`.

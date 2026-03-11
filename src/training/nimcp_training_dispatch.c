@@ -197,6 +197,13 @@ static int init_lnn_training(brain_t brain, const nimcp_training_config_t* confi
             lnn_cfg.lnn_train_mode = LNN_TRAIN_ADJOINT;
     }
 
+    // Destroy existing LNN training context if present (prevent leak)
+    if (brain->lnn_training_ctx) {
+        NIMCP_LOGGING_DEBUG("Destroying existing LNN training context before re-creation");
+        lnn_training_destroy(brain->lnn_training_ctx);
+        brain->lnn_training_ctx = NULL;
+    }
+
     // Create training context
     lnn_training_ctx_t* ctx = lnn_training_create(brain->lnn_network, &lnn_cfg);
     if (!ctx) {

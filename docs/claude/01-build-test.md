@@ -3,40 +3,53 @@
 ## Build Commands
 
 ```bash
-cd /home/bbrelin/nimcp/build
-cmake ..
-make nimcp -j4                    # Build main library
-make <test_target> -j4            # Build specific test
+# Build main library
+cd /home/bbrelin/nimcp/build && cmake .. && make nimcp -j4
+
+# Build Python bindings
+cd /home/bbrelin/nimcp/build && make nimcp_python -j4
+
+# Install Python .so (CRITICAL after any neuron_t or synapse changes)
+cp /home/bbrelin/nimcp/build/lib/python/nimcp.so ~/.local/lib/python3.12/site-packages/nimcp.cpython-312-x86_64-linux-gnu.so
 ```
+
+**CRITICAL**: After ANY change to `neuron_t`, `sparse_synapse_storage_t`, or `EMBEDDED_CAPACITY`, you MUST rebuild AND reinstall the Python `.so`. The versioned `.so` in site-packages takes priority over the build directory. Stale `.so` causes SIGSEGV from shifted field offsets.
+
+## CUDA Compilation Notes
+
+- `nvlink` warnings about incompatible libs are normal and can be ignored.
+- NVCC does not support C11 `_Atomic`. Use `volatile` + GCC `__atomic_*` builtins in shared headers included by `.cu` files.
+- GPU `.cu` files must use `nimcp_malloc/nimcp_calloc/nimcp_realloc/nimcp_free` (not raw `malloc`). Include `utils/memory/nimcp_memory.h`.
 
 ## Test Execution
 
 ```bash
-# LNN tests (84 total)
-./test/unit/lnn/unit_lnn_test_lnn_config --gtest_brief=1   # 24 tests
-./test/unit/lnn/unit_lnn_test_lnn_neuron --gtest_brief=1   # 34 tests
-./test/unit/lnn/unit_lnn_test_lnn_layer --gtest_brief=1    # 26 tests
+# Run specific test by name
+cd /home/bbrelin/nimcp/build && ctest -R test_name
 
-# Introspection tests (173 total)
-./test/unit/cognitive/introspection/unit_cognitive_introspection_consciousness_metrics --gtest_brief=1  # 31 tests
-./test/unit/cognitive/introspection/unit_cognitive_introspection_temporal_patterns --gtest_brief=1      # 43 tests
-./test/unit/cognitive/introspection/unit_cognitive_introspection_ensemble_uncertainty --gtest_brief=1   # 27 tests
-./test/e2e/e2e_test_introspection_pipeline --gtest_brief=1                                              # 8 tests
+# Run all tests with output on failure
+cd /home/bbrelin/nimcp/build && ctest --output-on-failure
 
-# Tensor library tests (87 total)
-./test/unit/utils/tensor/unit_utils_tensor_test_tensor --gtest_brief=1        # 51 tests
-./test/unit/utils/encoding/unit_utils_encoding_test_positional_encoding --gtest_brief=1  # 18 tests
+# Run a specific test binary directly with gtest
+./test/unit/lnn/unit_lnn_test_lnn_config --gtest_brief=1
+```
 
-# Module-specific tests
-./test/unit/middleware/encoding/unit_middleware_encoding_population_coding --gtest_brief=1   # 64 tests
-./test/unit/middleware/features/unit_middleware_features_feature_extractor --gtest_brief=1   # 63 tests
-./test/unit/middleware/routing/unit_middleware_routing_thalamic_router --gtest_brief=1       # 48 tests
+## Training
+
+```bash
+# Immersive developmental training
+cd /home/bbrelin/nimcp && python3 scripts/immerse_athena.py
+
+# Resume from checkpoint
+python3 scripts/immerse_athena.py --resume
 ```
 
 ## Git Workflow
 
 ```bash
-git add -A
-git commit --no-verify -m "message"
-git push
+git add -A && git commit --no-verify -m "message" && git push
 ```
+
+## Pre-Commit Verification
+
+Always run `make nimcp -j4` before any git commit to verify the build succeeds. New test files must be built and run before committing.

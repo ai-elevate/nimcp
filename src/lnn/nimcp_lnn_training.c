@@ -478,7 +478,13 @@ int lnn_training_step(
             lnn_network_zero_gradients(ctx->network);
             grad_norm = 0.0f;
         } else {
-            /* Get gradient norm for statistics */
+            /* Clip gradients BEFORE extracting them — prevents explosion
+             * from 230+ adjoint steps accumulating unbounded values */
+            float clip_norm = ctx->config.gradient_clip_norm;
+            if (clip_norm <= 0.0f) clip_norm = 1.0f;  /* safe default */
+            lnn_gradient_clip(ctx->gradient_ctx, clip_norm);
+
+            /* Get gradient norm for statistics (post-clip) */
             grad_norm = lnn_gradient_norm(ctx->gradient_ctx);
         }
     }

@@ -178,3 +178,10 @@
 2026-03-10 04:51:33   Process stats: CPU= 474%, MEM=89.6%
 2026-03-10 04:53:33 CRASH: Training process PID 844534 is dead!
 2026-03-10 04:53:33 Process exited with error
+[2026-03-11 15:45:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-11 15:50:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-11 15:55:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-11 16:00:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-11 16:01:51] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-11 16:05:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-11 16:10:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)

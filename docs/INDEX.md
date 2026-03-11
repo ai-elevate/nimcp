@@ -1,9 +1,13 @@
 # NIMCP Documentation Index
 
 **Version**: 2.6.3
-**Last Updated**: 2026-02-19
+**Last Updated**: 2026-03-11
 
-This is the master index for all NIMCP documentation. For developer workflow and coding standards, see [docs/claude/](claude/) which serves as the primary developer reference.
+This is the master index for all NIMCP documentation. There are **823 documentation files** across `docs/`, covering architecture, API, modules, integration, and session histories.
+
+- **Developer Reference**: [docs/claude/](claude/) -- primary developer workflow and coding standards
+- **User API Guide**: [EXTERNAL_API_GUIDE.md](EXTERNAL_API_GUIDE.md) -- for users integrating NIMCP into applications
+- **Architecture Overview**: [ARCHITECTURE.md](ARCHITECTURE.md) -- system architecture and design
 
 ---
 
@@ -13,6 +17,7 @@ This is the master index for all NIMCP documentation. For developer workflow and
 |---------|----------|
 | **Getting Started** | [QUICKSTART.md](QUICKSTART.md) |
 | **External API Guide** | [EXTERNAL_API_GUIDE.md](EXTERNAL_API_GUIDE.md) |
+| **Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | **Training Pipeline** | [TRAINING_PIPELINE.md](TRAINING_PIPELINE.md) |
 | **Build Instructions** | [build/BUILD_INSTRUCTIONS.md](build/BUILD_INSTRUCTIONS.md) |
 | **API Reference** | [api/API_REFERENCE.md](api/API_REFERENCE.md) |
@@ -52,7 +57,13 @@ The `docs/claude/` directory is the **primary developer reference** for working 
 | Positional Encoding | [modules/positional-encoding.md](claude/modules/positional-encoding.md) |
 | Tensor Integration | [modules/tensor.md](claude/modules/tensor.md) |
 | Metabolic Modulation | [modules/metabolic-modulation.md](claude/modules/metabolic-modulation.md) |
+| Brain Regions Roadmap | [modules/brain-regions-roadmap.md](claude/modules/brain-regions-roadmap.md) |
 | Recursive Cognition | [modules/recursive-cognition.md](claude/modules/recursive-cognition.md) |
+| Imagination Engine | [modules/imagination-engine.md](claude/modules/imagination-engine.md) |
+| Mental Health Guardian | [modules/mental-health-guardian.md](claude/modules/mental-health-guardian.md) |
+| Genius Profiles | [modules/genius-profiles.md](claude/modules/genius-profiles.md) |
+| Lock Ordering | [modules/lock-ordering.md](claude/modules/lock-ordering.md) |
+| Wernicke Area Plan | [modules/wernicke-area-plan.md](claude/modules/wernicke-area-plan.md) |
 
 ---
 
@@ -75,20 +86,22 @@ The `docs/claude/` directory is the **primary developer reference** for working 
 
 ---
 
+### Architecture (`docs/architecture/`)
+
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture overview |
+| [ARCHITECTURE_INDEX.md](ARCHITECTURE_INDEX.md) | Architecture documentation index |
+| [GPU_P2P_ARCHITECTURE.md](architecture/GPU_P2P_ARCHITECTURE.md) | GPU peer-to-peer architecture |
+| [REFACTORING_PLAN.md](architecture/REFACTORING_PLAN.md) | Architecture refactoring plans |
+
+---
+
 ### Plans (`docs/plans/`)
 
 | Document | Description |
 |----------|-------------|
 | [TRAINING_ARCHITECTURE_ENHANCEMENTS.md](plans/TRAINING_ARCHITECTURE_ENHANCEMENTS.md) | World model & ToM training enhancements |
-
----
-
-### Architecture (`docs/architecture/`)
-
-| Document | Description |
-|----------|-------------|
-| [GPU_P2P_ARCHITECTURE.md](architecture/GPU_P2P_ARCHITECTURE.md) | GPU peer-to-peer architecture |
-| [REFACTORING_PLAN.md](architecture/REFACTORING_PLAN.md) | Architecture refactoring plans |
 
 ---
 
@@ -186,11 +199,14 @@ Historical documentation including session summaries and completed implementatio
 
 NIMCP implements a biologically-inspired neural network with:
 
-- **Hemispheric processing** - Left/right brain specialization
+- **Multi-layer diamond architecture** - Depth-scaled diamond/pyramid layer topology (3/5/7 layers depending on neuron count)
+- **Hemispheric processing** - Left/right brain specialization with corpus callosum integration
 - **Cortical regions** - Frontal, temporal, parietal, occipital lobes
 - **Subcortical structures** - Limbic system, basal ganglia
 - **Glial cells** - Astrocytes, microglia, oligodendrocytes
 - **Neurotransmitter systems** - Dopamine, serotonin, acetylcholine, etc.
+- **SNN-Language Bridge** - Spike-based word-concept binding (STDP, population coding)
+- **Communication Layer** - Cognitive transcript, response composition, speech
 
 ### Learning Systems
 
@@ -198,12 +214,16 @@ NIMCP implements a biologically-inspired neural network with:
 - **Hebbian learning** - "Neurons that fire together, wire together"
 - **Homeostatic plasticity** - Network stability mechanisms
 - **Meta-plasticity** - Learning to learn
+- **Grounded language** - Word grounding, comprehension, text production
+- **GPU batch relevance** - 2048D CPU-staged embeddings with CUDA cosine similarity
 
 ### Integration Points
 
 - **Bio-Async** - Asynchronous biological processing
 - **Middleware** - Message routing and protocol handling
-- **Cognitive modules** - Higher-level cognitive functions
+- **Cognitive modules** - Higher-level cognitive functions (28 module types)
+- **FEP-Parietal Bridge** - Free Energy Principle with hierarchical belief states
+- **Edge-Cloud Hybrid** - Confidence-gated routing with System 1/2 analogy
 
 ---
 
@@ -211,7 +231,7 @@ NIMCP implements a biologically-inspired neural network with:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 2.6.3 | 2026-02-19 | API evolution infrastructure, thread safety docs |
+| 2.6.3 | 2026-03-11 | GPU batch relevance, SNN-language bridge, communication layer, 40-watt optimizations |
 | 2.6.2 | 2025-12-31 | Documentation cleanup and reorganization |
 | 2.6.1 | 2025-12-30 | Occipital lobe integration |
 | 2.6.0 | 2025-12-24 | Major refactoring and API updates |

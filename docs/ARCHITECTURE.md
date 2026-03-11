@@ -43,15 +43,21 @@ NIMCP (Neuromorphic Infant Machine Cognitive Platform) is a biologically-inspire
 
 | Metric | Value |
 |--------|-------|
-| C source files | ~2,500 |
-| Lines of C code | ~314,000 |
+| C source files | ~2,552 |
+| Header files | ~2,456 |
 | CUDA kernel files | 83 |
 | GPU support files | 32 |
-| Cognitive modules | 30+ |
-| Plasticity mechanisms | 26 |
+| Cognitive modules | 60+ |
+| Brain regions | 33+ |
+| Plasticity mechanisms | 26+ (STDP, BCM, eligibility, dendritic, homeostatic, etc.) |
+| Plasticity header files | 164 (largest subsystem) |
+| SNN cross-modal bridges | 42 |
 | Synapse types | 9 |
 | Neuron type categories | 7 (with 30+ subtypes) |
-| Maximum neurons | 2,000,000 |
+| Default neuron count | 2,000,000 |
+| Brain struct fields | 800+ |
+| Python API methods | 150+ |
+| Neuromodulators | 6 (DA, 5-HT, ACh, NE, GABA, Glu) |
 | Language bindings | 7 (Python, Go, Rust, Java, Node.js, Ruby, C#) |
 
 ### Hardware Target
@@ -567,6 +573,45 @@ LR_effective = base_lr
 6. Adaptive learning rate: 10-sample loss history, trend detection, [0.1x, 10x] bounds
 
 Label management uses O(1) DJB2 hash table lookup.
+
+### 9.6 Liquid Neural Network (LNN) Training
+
+**Architecture**: NCP (Neural Circuit Policy) — 128 sensory -> 64 inter -> 32 command -> 64 motor (288 neurons).
+
+**Gradient computation**: Adjoint method (backward-in-time ODE integration). Memory-efficient: does not store full trajectory.
+
+**Training loop** (`nimcp_lnn_training.c`):
+1. Forward pass (ODE integration)
+2. Loss computation (MSE)
+3. Adjoint backward pass (`lnn_gradient_compute_adjoint()`)
+4. Gradient clipping to norm 1.0 (`lnn_gradient_clip()`) — clips per-layer tensors
+5. Extract gradients (`lnn_network_get_gradients()`)
+6. Adam optimizer step
+7. Zero gradients for next iteration
+
+**Gradient stability measures**:
+- **Per-step clamping**: Each gradient element clamped to [-1e4, 1e4] during accumulation
+- **Tau floor**: `fmaxf(tau, 0.01)` prevents 1/tau^2 explosion in tau gradient
+- **NaN sanitization**: Loss gradient sanitized before adjoint seeding; NaN adjoint skips accumulation
+- **Per-layer clipping**: `lnn_gradient_clip()` operates on actual per-layer grad tensors (grad_W_rec, grad_tau_base, grad_b_in), not legacy `ctx->grad_params`
+
+**Key files**: `src/lnn/nimcp_lnn_gradient.c` (SRP split into 5 part files), `src/lnn/nimcp_lnn_training.c`, `src/lnn/nimcp_lnn_network.c`.
+
+### 9.7 CPU-Staged Semantic Embeddings
+
+**2048D embedding pool**: Network-level pinned CPU memory (`cudaHostAlloc`), indexed via `embedding_pool_index` (uint32_t) in each synapse.
+
+**GPU batch relevance pipeline**: CUDA kernel (`kernel_batch_relevance`) computes cosine similarity with shared-memory context vector. Orchestrator gathers active indices -> GPU batch -> scatter results back to `semantic_relevance` float on each synapse.
+
+**Key files**: `src/core/neuralnet/nimcp_synapse_embeddings.c` (pool + orchestrator), `src/gpu/embedding/nimcp_embedding_relevance_kernels.cu` (CUDA kernel), `src/gpu/stubs/nimcp_gpu_stubs_embedding.c` (CPU fallback).
+
+### 9.8 SNN (Spiking Neural Network) Integration
+
+**42 cross-modal SNN bridges** connect spiking networks to every cognitive subsystem (attention, emotion, language, hippocampus, theory of mind, etc.).
+
+**SNN stats**: total_steps, total_spikes, mean_firing_rate, max_firing_rate, sparsity, synchrony, silent_neurons, hyperactive_neurons.
+
+**SNN-Language bridge**: Sparse binding hash map (8192 buckets), STDP word-concept binding, population coding (8 neurons/pop), Broca cascade (production), Wernicke cascade (comprehension).
 
 ---
 
@@ -1163,20 +1208,30 @@ make check         # all analysis
 | Constant | Value | Purpose |
 |----------|-------|---------|
 | `MAX_NEURONS` | 2,000,000 | Maximum neuron count |
-| `MAX_SYNAPSES_PER_NEURON` | 256 | Per-neuron synapse limit |
+| `SPARSE_SYNAPSE_EMBEDDED_CAPACITY` | 320 | Inline synapses per neuron (~6.1 KB/neuron) |
+| `MIN_FAN_IN` | 128 | Minimum incoming connections per neuron |
+| `MAX_FAN_IN` | 384 | Maximum incoming connections per neuron |
+| `OVERFLOW_POOL` | 200,000 | Overflow synapse pool slots |
+| `CONNECTION_BUDGET` | 50,000,000 | Total connection budget |
 | `SPIKE_HISTORY_DEFAULT_CAPACITY` | 128 | Spike ring buffer |
 | `ACTIVITY_HISTORY_DEFAULT_CAPACITY` | 32 | Activity EMA buffer |
 | `WEIGHT_UPDATE_THRESHOLD` | 1e-6 | Minimum weight change |
 | `ACTIVITY_THRESHOLD` | 1e-5 | Minimum activity |
 | `NORM_THRESHOLD` | 1e-7 | Normalization epsilon |
 | `NORMALIZATION_INTERVAL` | 1000ms | Between normalizations |
-| `GRADIENT_CLIP_VALUE` | 5.0 | Default gradient norm clip |
-| `LOSS_DEFAULT_EPSILON` | 1e-7 | Log/softmax stability |
+| `GRADIENT_CLIP_VALUE` | 5.0 | Default main network gradient clip |
+| `LNN_GRADIENT_CLIP_NORM` | 1.0 | LNN adjoint gradient clip |
+| `LNN_PER_STEP_CLAMP` | 1e4 | LNN per-step gradient clamp |
+| `LNN_TAU_FLOOR` | 0.01 | Minimum tau to prevent 1/tau^2 explosion |
+| `LOSS_DEFAULT_EPSILON` | 1e-7 | Log/softmax/div stability |
 | `NIMCP_DENORMAL_THRESHOLD` | 1e-10 | Denormal flush threshold |
 | `LAYER_WIRING_BUDGET` | 200,000 | Connections per layer transition |
+| `CORPUS_CALLOSUM_BANDWIDTH` | 500 msg/s | Inter-hemisphere message rate |
 | `WORKING_MEMORY_CAPACITY` | 7 (max 20) | Miller's number |
 | `GW_IGNITION_THRESHOLD` | 0.6 | Global workspace ignition |
 | `GW_REFRACTORY_PERIOD` | 50ms | Attentional blink |
+| `KWTA_SPARSITY` | 5% | K-Winner-Take-All active neuron fraction |
+| `GPU_STREAM_POOL_SIZE` | 8 | Round-robin CUDA stream pool |
 
 ---
 

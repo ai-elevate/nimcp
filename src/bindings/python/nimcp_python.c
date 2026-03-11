@@ -5666,6 +5666,11 @@ static PyObject* Brain_lnn_create(BrainObject* self, PyObject* args) {
     cfg.lnn_train_mode = LNN_TRAIN_ADJOINT;
     cfg.track_statistics = true;
 
+    // Destroy existing context if present (prevent leak)
+    if (brain->lnn_training_ctx) {
+        lnn_training_destroy(brain->lnn_training_ctx);
+        brain->lnn_training_ctx = NULL;
+    }
     brain->lnn_training_ctx = lnn_training_create(brain->lnn_network, &cfg);
     Py_RETURN_TRUE;
 }

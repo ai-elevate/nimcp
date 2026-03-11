@@ -1,11 +1,17 @@
-# Liquid Neural Network (LNN) Module (Complete - Dec 2024)
+# Liquid Neural Network (LNN) Module
 
-Liquid Time-Constant (LTC) neural network module with continuous-time dynamics.
+Liquid Time-Constant (LTC) neural network with continuous-time dynamics.
+
+## Architecture
+
+- **NCP wiring**: 128 sensory -> 64 inter -> 32 command -> 64 motor (288 neurons)
+- ODE-based continuous-time dynamics (neuron membrane potential evolution)
+- Adjoint method for gradient computation (memory-efficient backward-in-time)
 
 ## LTC Neuron Dynamics
 ```
-dx/dt = -x/τ(x,I) + f(W_in·I + W_rec·x + b)
-τ(x,I) = τ_base · σ(W_τ·[x;I] + b_τ)
+dx/dt = -x/tau(x,I) + f(W_in*I + W_rec*x + b)
+tau(x,I) = tau_base * sigma(W_tau*[x;I] + b_tau)
 ```
 
 ## Wiring Patterns
@@ -20,6 +26,32 @@ dx/dt = -x/τ(x,I) + f(W_in·I + W_rec·x + b)
 - `LNN_ODE_HEUN` - 2nd order
 - `LNN_ODE_RK4` - 4th order (default)
 - `LNN_ODE_DOPRI5` - Adaptive 5th order
+
+## Gradient Explosion Fixes (4 fixes)
+1. Per-layer tensor clipping (not dead grad_params)
+2. Clip called in training loop
+3. Per-step clamping [-1e4, 1e4]
+4. tau_safe floor 0.01
+
+## Training
+- Adam optimizer, MSE loss, gradient_clip_norm=1.0
+- LNN training context with plasticity/immune/bio-async integration
+- Sleep bridge modulates tau/LR during sleep cycles
+
+## Stats (via `lnn_get_stats()`)
+- forward_steps, backward_steps, ode_evaluations
+- avg_tau, state_norm, gradient_norm
+- nan_count, inf_count
+
+## Python API
+- `brain.lnn_get_stats()` - statistics dict
+- `brain.lnn_forward_step()` - single forward step
+- `brain.lnn_get_state()` - current LNN state
+
+## Key Files
+- 17 header files in `include/lnn/`
+- `nimcp_lnn_gradient.c` (SRP split into 5 part files)
+- `nimcp_lnn_training.c`, `nimcp_lnn_network.c`
 
 ## Bio-async Module ID: 0x0600
 

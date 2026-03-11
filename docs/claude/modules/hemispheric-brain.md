@@ -1,4 +1,4 @@
-# Hemispheric Brain Architecture (Complete - Dec 2024)
+# Hemispheric Brain Architecture
 
 Biologically-inspired two-hemisphere brain with inter-hemispheric communication via corpus callosum.
 
@@ -11,8 +11,12 @@ Biologically-inspired two-hemisphere brain with inter-hemispheric communication 
 | Corpus Callosum | `nimcp_corpus_callosum.h` | Inter-hemispheric communication bridge |
 | Lateralization | `nimcp_lateralization.h` | Hemisphere specialization profiles |
 
-## Cognitive Domains (12 total)
+## Integration
+- Wired into `brain_decide()` and `brain_learn_vector()`
+- Each hemisphere has its own neural network with cross-connections
+- Corpus callosum bandwidth: **500 msg/s** (was 200)
 
+## Cognitive Domains (12 total)
 ```c
 COGNITIVE_DOMAIN_LANGUAGE           // Left dominant (0.95)
 COGNITIVE_DOMAIN_SPATIAL            // Right dominant (0.20)
@@ -21,6 +25,13 @@ COGNITIVE_DOMAIN_EMOTION            // Right dominant (0.30)
 COGNITIVE_DOMAIN_LOGICAL_REASONING  // Left dominant (0.85)
 COGNITIVE_DOMAIN_CREATIVE_THINKING  // Right dominant (0.35)
 ```
+
+## Python API
+- `enable_hemispheric()` - activate two-hemisphere mode
+- `get_lateralization()` - current left/right bias per domain
+- `shift_lateralization()` - adjust bias
+- `get_callosum_transfers()` - cross-hemisphere transfer count
+- `get_hemispheric_balance()` - balance metric
 
 ## Bio-async Module IDs: 0x1300 - 0x130B
 

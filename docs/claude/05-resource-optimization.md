@@ -86,6 +86,41 @@ uint32_t threads = nimcp_tier_thread_count();   // MINIMAL=1, FULL=8
 size_t budget = nimcp_tier_memory_budget_bytes();
 ```
 
+## GPU Memory Budget (FULL Tier)
+
+For a 2M neuron brain on a 20 GB GPU (RTX 4000):
+
+| Component | Memory |
+|-----------|--------|
+| Sparse synapse embedded (320/neuron) | ~9.2 GB |
+| Synapse metadata pool | ~8.9 GB |
+| Cold pool overflow | ~1.8 GB |
+| Neuromod tensors (50 pools) | ~0.5 GB |
+| GPU forward/backward buffers | ~1-2 GB |
+| **Total** | **~15-16.5 GB** |
+
+Headroom: 3-4 GB on 20 GB card.
+
+## Hot-Path Optimizations (Phase 4)
+
+| Optimization | Speedup | Description |
+|-------------|---------|-------------|
+| Hot/cold neuron split | ~30% cache | Frequently-accessed fields in `neuron_t`, cold data in `neuron_cold_data_t` |
+| Sorted incoming synapses | ~20% cache | Sorted by source ID for cache-friendly forward pass |
+| EMA activity tracking | O(1) | Replace full history scan with exponential moving average |
+| `__builtin_prefetch` | ~10% | Prefetch presynaptic neuron states |
+| Astrocyte Euler | 4x | Replace RK4 with Euler for calcium dynamics |
+| Glial amortization | 50x | Process every 50th training step |
+| KD-tree lazy rebuild | Variable | Rebuild spatial index only when stale |
+
+## Brain Init Modes
+
+| Mode | Subsystems | Time (1.5M neurons) |
+|------|-----------|---------------------|
+| FULL | All 80+ | ~10 min |
+| FAST | 6 of 27 waves | ~14s |
+| MINIMAL | Core only | ~5s |
+
 ## Files
 
 - Header: `include/utils/platform/nimcp_tier_optimization.h`

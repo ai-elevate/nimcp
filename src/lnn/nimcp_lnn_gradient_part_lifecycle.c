@@ -131,11 +131,17 @@ void lnn_gradient_reset(lnn_gradient_ctx_t* ctx) {
         return;
     }
 
-    // Zero gradient tensor
+    // Zero gradient tensor (legacy — not used by accumulate_parameter_gradients)
     if (ctx->grad_params) {
         size_t numel = nimcp_tensor_numel(ctx->grad_params);
         float* data = (float*)nimcp_tensor_data(ctx->grad_params);
         memset(data, 0, numel * sizeof(float));
+    }
+
+    // Zero per-layer gradient tensors (the ACTUAL accumulated gradients).
+    // Without this, NaN from a failed adjoint step persists across batches.
+    if (ctx->network) {
+        lnn_network_zero_gradients(ctx->network);
     }
 
     // Reset health flags

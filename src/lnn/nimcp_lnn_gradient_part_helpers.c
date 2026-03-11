@@ -274,6 +274,13 @@ static int accumulate_parameter_gradients(
         return LNN_ERROR_INVALID_STATE;
     }
 
+    // Early-exit if adjoint contains NaN — accumulating NaN gradients is pointless
+    // and poisons per-layer grad tensors permanently until zeroed.
+    if (!check_tensor_health(adjoint)) {
+        NIMCP_LOGGING_DEBUG("Skipping gradient accumulation: adjoint contains NaN/Inf");
+        return 0;  // Not an error — just skip this step
+    }
+
     // For each layer, compute and accumulate parameter gradients
     for (uint32_t layer_idx = 0; layer_idx < network->n_layers; layer_idx++) {
         lnn_layer_t* layer = network->layers[layer_idx];
@@ -305,7 +312,11 @@ static int accumulate_parameter_gradients(
 
                 // Accumulate gradient for each weight W_rec[j,k]
                 for (uint32_t k = 0; k < n; k++) {
-                    grad_W_rec[j * n + k] += adjoint_data[j] * act_deriv * x_data[k] * dt;
+                    float inc = adjoint_data[j] * act_deriv * x_data[k] * dt;
+                    grad_W_rec[j * n + k] += inc;
+                    /* Per-step clamp to prevent unbounded accumulation */
+                    if (grad_W_rec[j * n + k] > 1e4f) grad_W_rec[j * n + k] = 1e4f;
+                    else if (grad_W_rec[j * n + k] < -1e4f) grad_W_rec[j * n + k] = -1e4f;
                 }
             }
         }
@@ -317,12 +328,14 @@ static int accumulate_parameter_gradients(
             float* tau_base_data = (float*)nimcp_tensor_data(layer->tau_base);
 
             for (uint32_t j = 0; j < n; j++) {
-                float tau_j = tau_base_data[j];
-                if (tau_j > 0.0f) {
-                    // ∂(-x/tau)/∂tau = x / tau^2
-                    float df_dtau = x_data[j] / (tau_j * tau_j);
-                    grad_tau_base[j] += adjoint_data[j] * df_dtau * dt;
-                }
+                float tau_j = fmaxf(tau_base_data[j], 0.01f);  /* Floor prevents 1/tau^2 explosion */
+                // ∂(-x/tau)/∂tau = x / tau^2
+                float df_dtau = x_data[j] / (tau_j * tau_j);
+                float inc = adjoint_data[j] * df_dtau * dt;
+                grad_tau_base[j] += inc;
+                /* Per-step clamp */
+                if (grad_tau_base[j] > 1e4f) grad_tau_base[j] = 1e4f;
+                else if (grad_tau_base[j] < -1e4f) grad_tau_base[j] = -1e4f;
             }
         }
 
@@ -338,6 +351,9 @@ static int accumulate_parameter_gradients(
                 // ∂f/∂b_in = activation'(...)
                 // Simplified: assume contribution through recurrent path
                 grad_b_in[j] += adjoint_data[j] * dt;
+                /* Per-step clamp */
+                if (grad_b_in[j] > 1e4f) grad_b_in[j] = 1e4f;
+                else if (grad_b_in[j] < -1e4f) grad_b_in[j] = -1e4f;
             }
         }
     }

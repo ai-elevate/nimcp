@@ -132,6 +132,7 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: /hom
   /home/bbrelin/nimcp/include/core/cortical_columns/nimcp_columnar_connectivity.h \
   /home/bbrelin/nimcp/include/core/cortical_columns/nimcp_cortical_column.h \
   /home/bbrelin/nimcp/include/core/cortical_columns/nimcp_cortical_layers.h \
+  /home/bbrelin/nimcp/include/core/cortical_columns/nimcp_cortical_sparse_coding.h \
   /home/bbrelin/nimcp/include/core/cortical_columns/nimcp_feature_hypercolumns.h \
   /home/bbrelin/nimcp/include/core/cortical_columns/nimcp_orientation_columns.h \
   /home/bbrelin/nimcp/include/core/cortical_columns/nimcp_topographic_maps.h \
@@ -1076,6 +1077,8 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
 
+/usr/include/x86_64-linux-gnu/bits/statx.h:
+
 /home/bbrelin/nimcp/include/training/nimcp_cnn_training.h:
 
 /home/bbrelin/nimcp/include/swarm/nimcp_swarm_immune.h:
@@ -1164,14 +1167,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/python3.12/sliceobject.h:
 
-/home/bbrelin/nimcp/include/training/nimcp_training_dispatch.h:
-
-/home/bbrelin/nimcp/include/snn/nimcp_snn_types.h:
-
-/home/bbrelin/nimcp/include/core/directives/nimcp_combinatorial_harm.h:
-
-/home/bbrelin/nimcp/include/utils/validation/nimcp_common.h:
-
 /home/bbrelin/nimcp/include/lnn/nimcp_lnn.h:
 
 /home/bbrelin/nimcp/include/utils/logging/nimcp_logging.h:
@@ -1191,6 +1186,14 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /home/bbrelin/nimcp/include/gpu/backend/nimcp_kernel_backend.h:
 
 /usr/include/x86_64-linux-gnu/asm/bitsperlong.h:
+
+/home/bbrelin/nimcp/include/snn/nimcp_snn_types.h:
+
+/home/bbrelin/nimcp/include/core/directives/nimcp_combinatorial_harm.h:
+
+/home/bbrelin/nimcp/include/training/nimcp_training_dispatch.h:
+
+/home/bbrelin/nimcp/include/utils/validation/nimcp_common.h:
 
 /home/bbrelin/nimcp/include/plasticity/neuromodulators/nimcp_neuromodulators.h:
 
@@ -1698,6 +1701,8 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /home/bbrelin/nimcp/include/core/brain/hemispheric/nimcp_corpus_callosum.h:
 
+/home/bbrelin/nimcp/include/core/cortical_columns/nimcp_cortical_sparse_coding.h:
+
 /usr/include/python3.12/unicodeobject.h:
 
 /home/bbrelin/nimcp/include/networking/distributed/nimcp_distributed_cognition.h:
@@ -2105,8 +2110,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/python3.12/pystrcmp.h:
 
 /usr/include/unistd.h:
-
-/usr/include/x86_64-linux-gnu/bits/statx.h:
 
 /usr/include/python3.12/pystrtod.h:
 

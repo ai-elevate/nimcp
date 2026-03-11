@@ -12,7 +12,7 @@ braun.brelin@ai-elevate.ai
 
 ## Abstract
 
-We present NIMCP (Neuromorphic Infant Machine Cognitive Platform), a neuromorphic computing platform that implements biological self-regulation mechanisms as first-class architectural components. Rather than applying safety constraints post-hoc to a capable system, NIMCP embeds safety-relevant properties -- including an adaptive immune system for anomaly detection, homeostatic plasticity for self-regulating learning, developmental staging for capability gating, and ethical reasoning in the decision pipeline -- directly into the system's architecture. Built in C with CUDA acceleration, NIMCP comprises approximately 2,500 source files implementing 30+ cognitive modules, 26 plasticity mechanisms, and 9 biologically-typed synapse models across a multi-layer diamond network topology supporting up to 2 million neurons. We describe the system's architecture, the neuroscience literature that motivates each safety-relevant component, and the open questions that remain. We do not claim that architectural approaches solve alignment; we argue they deserve rigorous investigation as complements to post-hoc techniques.
+We present NIMCP (Neuromorphic Infant Machine Cognitive Platform), a neuromorphic computing platform that implements biological self-regulation mechanisms as first-class architectural components. Rather than applying safety constraints post-hoc to a capable system, NIMCP embeds safety-relevant properties -- including an adaptive immune system for anomaly detection, homeostatic plasticity for self-regulating learning, developmental staging for capability gating, and ethical reasoning in the decision pipeline -- directly into the system's architecture. Built in C with CUDA acceleration, NIMCP comprises approximately 2,552 source files and 2,456 headers implementing 60+ cognitive modules, 26+ plasticity mechanisms (with 164 plasticity header files), 42 SNN cross-modal bridges, 6 neuromodulators, and 9 biologically-typed synapse models across a multi-layer diamond network topology supporting up to 2 million neurons with 320 inline synapses per neuron. We describe the system's architecture, the neuroscience literature that motivates each safety-relevant component, and the open questions that remain. We do not claim that architectural approaches solve alignment; we argue they deserve rigorous investigation as complements to post-hoc techniques.
 
 ---
 
@@ -26,13 +26,18 @@ Biological brains evolved self-regulation mechanisms long before they evolved la
 
 NIMCP implements these mechanisms in a neuromorphic computing platform to study whether they provide meaningful safety properties in artificial systems. The platform is implemented in C with CUDA GPU acceleration and includes:
 
-- A spiking neural network core with biologically-typed synapses (AMPA, NMDA, GABA-A/B, dopamine, serotonin, acetylcholine)
-- 30+ cognitive modules inspired by specific neuroscience findings
-- 26 distinct plasticity mechanisms spanning millisecond to day timescales
-- A multi-layer diamond network topology automatically scaled by neuron count
-- An adaptive immune system that detects and suppresses anomalous activation patterns
-- Developmental staging that gates capability acquisition
-- Ethical constraints embedded in the decision pipeline
+- A spiking neural network core with biologically-typed synapses (AMPA, NMDA, GABA-A/B, dopamine, serotonin, acetylcholine) and 42 cross-modal bridges
+- A liquid neural network (LNN) subsystem with NCP architecture for continuous-time temporal context processing via ODE-based dynamics and adjoint gradient computation
+- 60+ cognitive modules inspired by specific neuroscience findings, organized across 33+ specialized brain regions
+- 26+ distinct plasticity mechanisms spanning millisecond to day timescales, with 6 neuromodulators (DA, 5-HT, ACh, NE, GABA, Glu)
+- A multi-layer diamond network topology (3/5/7 layers) automatically scaled by neuron count
+- Hot/cold neuron struct split and sparse synapse storage (320 inline per neuron) for cache-friendly GPU execution
+- CPU-staged 2048D semantic embeddings with GPU batch cosine-similarity relevance pipeline
+- An adaptive immune system (B cell NAIVE->ACTIVATED->PLASMA progression) that detects and suppresses anomalous activation patterns
+- Developmental staging via immersive curriculum (Newborn->Infant->Crawler->Toddler->Child) that gates capability acquisition
+- Ethical constraints embedded in the decision pipeline (LGSS, blood-brain barrier, core directives)
+- Grounded language system with SNN-Language bridge for biologically-plausible word-concept binding
+- 150+ Python API methods for training, inference, and monitoring
 
 This paper describes the architecture, grounds each component in the neuroscience literature, and identifies the open research questions that remain.
 

@@ -1208,30 +1208,25 @@ nimcp.ERROR_MEMORY
 nimcp.ERROR_IO
 ```
 
-### Brain Creation and Inference
+### Brain Creation
 
 ```python
-# Create a brain
+# Standard creation
 brain = nimcp.Brain("classifier",
                     size=nimcp.BRAIN_SMALL,
                     task=nimcp.TASK_CLASSIFICATION,
                     inputs=10, outputs=3)
 
-# Learn from examples
-brain.learn([0.5, 0.3, 0.8, 0.1, 0.9, 0.2, 0.7, 0.4, 0.6, 0.0],
-            "class_a", confidence=1.0)
+# Large brain with FAST init (skips 60+ subsystems, ~14s for 1.5M neurons)
+brain = nimcp.Brain("athena", neuron_count=2000000, init_mode='fast',
+                    task=nimcp.TASK_CLASSIFICATION,
+                    inputs=2048, outputs=24)
 
-# Predict
-label, confidence = brain.decide([0.5, 0.3, 0.8, 0.1, 0.9, 0.2, 0.7, 0.4, 0.6, 0.0])
-print(f"Predicted: {label} ({confidence:.1%})")
-
-# Raw inference (numeric outputs)
-outputs = brain.infer([0.5, 0.3, 0.8, 0.1, 0.9, 0.2, 0.7, 0.4, 0.6, 0.0], 3)
-print(f"Raw outputs: {outputs}")
-
-# Save/load
-brain.save("model.nimcp")
-loaded = nimcp.Brain.load("model.nimcp")
+# Full creation with cognitive subsystems
+brain = nimcp.Brain.create_full("athena",
+                                neuron_count=1500000,
+                                inputs=2048, outputs=24,
+                                init_mode='full')
 
 # Create from config file
 brain = nimcp.Brain.create_from_config("model.yaml")
@@ -1240,30 +1235,60 @@ brain = nimcp.Brain.create_from_config("model.yaml")
 brain = nimcp.Brain.from_pretrained("nimcp_foundation_medium_v1.0")
 ```
 
-### Training Pipeline
+### Learning
 
 ```python
-# Configure training
-config = nimcp.TrainingConfig.default()
-config.loss_type = nimcp.LOSS_CROSS_ENTROPY
-config.optimizer_type = nimcp.OPT_ADAM
-config.learning_rate = 0.001
-brain.configure_training(config)
+# Learn from labeled examples
+brain.learn([0.5, 0.3, 0.8], "class_a", confidence=1.0)
 
-# Single training step
-features = [0.1] * 784
-targets = [0, 0, 0, 1, 0, 0, 0, 0, 0, 0]  # One-hot class 3
-result = brain.train_step(features, targets)
-print(f"Loss: {result.loss:.4f}, LR: {result.learning_rate:.6f}")
+# Learn from feature/target vectors
+brain.learn_vector(features, targets)
+brain.learn_vector(features, targets, learning_rate=0.005)  # Custom LR
 
-# Batch training
-batch_features = [[0.1] * 784 for _ in range(32)]
-batch_targets = [[0] * 10 for _ in range(32)]
-result = brain.train_batch(batch_features, batch_targets)
+# Batch learning
+brain.learn_batch(batch_features, batch_labels, batch_confidences)
+brain.learn_vector_batch(batch_features, batch_targets)
 
-# Training statistics
-steps, loss, lr = brain.get_training_stats()
-new_lr = brain.step_scheduler(validation_accuracy)
+# Experience-based learning (reinforcement-style)
+brain.experience(features, reward=0.8)
+brain.experience_configure(exploration_rate=0.1, discount=0.99)
+brain.experience_correct(features, correct_label)
+brain.experience_attend(features, attention_weights)
+```
+
+### Inference
+
+```python
+# Labeled prediction
+label, confidence = brain.decide(features)
+
+# Full decision with metadata
+result = brain.decide_full(features)
+# result contains label, confidence, processing time, module contributions
+
+# Raw numeric inference
+outputs = brain.predict(features, num_outputs=3)
+
+# Batch prediction
+results = brain.predict_batch(batch_features, num_outputs=3)
+
+# Fast prediction (reduced subsystems for lower latency)
+outputs = brain.predict_fast(features, num_outputs=3)
+
+# Domain-specific prediction
+outputs = brain.predict_in_domain(features, domain="mathematics", num_outputs=3)
+```
+
+### Persistence
+
+```python
+# Save/load
+brain.save("model.nimcp")
+loaded = nimcp.Brain.load("model.nimcp")
+
+# Copy-on-write snapshots (fast, memory-efficient)
+brain.snapshot_cow("baseline")
+brain.restore_cow("baseline")
 ```
 
 ### Dynamic Resizing
@@ -1290,6 +1315,116 @@ brain.snapshot_delete("epoch_10")
 # Copy-on-write cloning
 clone = brain.clone_cow()  # 86% memory savings
 result = clone.decide(features)  # Inference on clone
+```
+
+### Cognitive and Language
+
+```python
+# Language training and production
+brain.train_language(word, semantic_vector)
+brain.learn_language(text, context_vector)
+text = brain.produce_text(semantic_vector)
+meaning = brain.comprehend(text)
+response = brain.grounded_respond(input_text, context_vector)
+
+# Creative blending
+blend = brain.creative_blend(concept_a_vec, concept_b_vec)
+```
+
+### Communication
+
+```python
+# Get cognitive transcript from last decision
+transcript = brain.get_transcript()
+# Returns list of {module, summary, salience, confidence}
+
+# Inner deliberation
+result = brain.deliberate(question, context_vector)
+
+# Speech output
+speech = brain.speak(semantic_vector)
+```
+
+### Hemispheric Processing
+
+```python
+brain.enable_hemispheric(True)
+lateralization = brain.get_lateralization()  # -1.0 (left) to 1.0 (right)
+transfers = brain.get_callosum_transfers()   # Cross-hemisphere transfer count
+```
+
+### Sleep and Consolidation
+
+```python
+pressure = brain.sleep_get_pressure()
+if brain.sleep_is_needed():
+    brain.sleep_run_cycle()  # Consolidate memories, prune weak synapses
+```
+
+### Biological Plasticity
+
+```python
+brain.enable_biological_plasticity(True)
+brain.set_plasticity_state("critical_period")
+brain.edp_process_reward(reward=1.0)
+```
+
+### Liquid Neural Networks (LNN)
+
+```python
+lnn = brain.lnn_create(num_neurons=128, input_dim=32)
+output = brain.lnn_forward_step(lnn, input_data, dt=0.01)
+state = brain.lnn_get_state(lnn)
+stats = brain.lnn_get_stats(lnn)
+```
+
+### Statistics and Monitoring
+
+```python
+# General stats
+stats = brain.get_stats()
+probe_data = brain.probe()
+
+# Per-subsystem stats
+plasticity = brain.get_plasticity_stats()
+snn_stats = brain.snn_get_stats()
+lnn_stats = brain.lnn_get_stats()
+cnn_stats = brain.cnn_get_stats()
+```
+
+### Training Configuration
+
+```python
+# Configure training pipeline
+config = nimcp.TrainingConfig.default()
+config.loss_type = nimcp.LOSS_CROSS_ENTROPY
+config.optimizer_type = nimcp.OPT_ADAM
+config.learning_rate = 0.001
+brain.configure_training(config)
+
+# Configure cognitive subsystems
+brain.configure_cognitive(enable_ethics=True, enable_curiosity=True)
+
+# Single training step
+result = brain.train_step(features, targets)
+print(f"Loss: {result.loss:.4f}, LR: {result.learning_rate:.6f}")
+
+# Batch training
+result = brain.train_batch(batch_features, batch_targets)
+
+# Training statistics
+steps, loss, lr = brain.get_training_stats()
+new_lr = brain.step_scheduler(validation_accuracy)
+```
+
+### Safety
+
+```python
+# Content safety check (LGSS)
+is_safe, flags = brain.lgss_check_content(text)
+
+# Self-assessment
+assessment = brain.self_assess()
 ```
 
 ### Working Memory and Global Workspace
@@ -1528,4 +1663,4 @@ This section documents the thread safety guarantees of the NIMCP public API.
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-03-11*

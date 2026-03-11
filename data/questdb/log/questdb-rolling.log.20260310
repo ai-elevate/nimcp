@@ -1,0 +1,244 @@
+2026-03-10T12:41:15.965947Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/import/readme.txt]
+2026-03-10T12:41:15.969184Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/import/trades.parquet]
+2026-03-10T12:41:15.969236Z A server-main QuestDB 8.2.1. Copyright (C) 2014-2026, all rights reserved.
+2026-03-10T12:41:15.969458Z A server-main linux-x86-64 [AVX2,8, 64 bits, 20 processors]
+2026-03-10T12:41:15.969511Z A server-main fs.file-max checked [limit=1048576]
+2026-03-10T12:41:15.969565Z A server-main vm.max_map_count checked [limit=1048576]
+2026-03-10T12:41:15.977264Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/console-configuration.json]
+2026-03-10T12:41:15.977409Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/favicon.ico]
+2026-03-10T12:41:15.977474Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/favicon.svg]
+2026-03-10T12:41:15.977520Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/icon-copy.svg]
+2026-03-10T12:41:15.977566Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/icon-database.svg]
+2026-03-10T12:41:15.977616Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/icon-file.svg]
+2026-03-10T12:41:15.977668Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/icon-play.svg]
+2026-03-10T12:41:15.977725Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/icon-stop.svg]
+2026-03-10T12:41:15.977791Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/line.svg]
+2026-03-10T12:41:15.977917Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/questdb-logotype.svg]
+2026-03-10T12:41:15.977978Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/upload.svg]
+2026-03-10T12:41:15.978161Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.de.js]
+2026-03-10T12:41:15.978211Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.de.js.LICENSE.txt]
+2026-03-10T12:41:15.978258Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.es.js]
+2026-03-10T12:41:15.978301Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.es.js.LICENSE.txt]
+2026-03-10T12:41:15.978349Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.fr.js]
+2026-03-10T12:41:15.978393Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.fr.js.LICENSE.txt]
+2026-03-10T12:41:15.978436Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.it.js]
+2026-03-10T12:41:15.978481Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.it.js.LICENSE.txt]
+2026-03-10T12:41:15.978526Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.ja.js]
+2026-03-10T12:41:15.978573Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.ja.js.LICENSE.txt]
+2026-03-10T12:41:15.978620Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.js]
+2026-03-10T12:41:15.978662Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.js.LICENSE.txt]
+2026-03-10T12:41:15.978707Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.ko.js]
+2026-03-10T12:41:15.978757Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.ko.js.LICENSE.txt]
+2026-03-10T12:41:15.978806Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.ru.js]
+2026-03-10T12:41:15.978850Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.ru.js.LICENSE.txt]
+2026-03-10T12:41:15.978896Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.zh-cn.js]
+2026-03-10T12:41:15.978939Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.zh-cn.js.LICENSE.txt]
+2026-03-10T12:41:15.978985Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.zh-tw.js]
+2026-03-10T12:41:15.979055Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/common/worker/simpleWorker.nls.zh-tw.js.LICENSE.txt]
+2026-03-10T12:41:15.980864Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/worker/workerMain.js]
+2026-03-10T12:41:15.980953Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/worker/workerMain.js.LICENSE.txt]
+2026-03-10T12:41:15.981413Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/editor/editor.main.css]
+2026-03-10T12:41:15.993450Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/editor/editor.main.js]
+2026-03-10T12:41:15.993606Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/vendor.46236.js.LICENSE.txt]
+2026-03-10T12:41:15.993776Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/573e9313e05d89f4acb5d005476c61bb.woff]
+2026-03-10T12:41:15.993942Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/6437d5f4c14e01aaf4801aef3909151b.woff]
+2026-03-10T12:41:15.994093Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/7dafb1a4bab4938a38b2d68d9c4575a9.woff]
+2026-03-10T12:41:15.994756Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/base/browser/ui/codicons/codicon/codicon.ttf]
+2026-03-10T12:41:15.994967Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/d0b483ce9717b92b4bf815d5d4db597a.woff]
+2026-03-10T12:41:15.995017Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/create-table.svg]
+2026-03-10T12:41:15.995293Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/editor/editor.main.js.LICENSE.txt]
+2026-03-10T12:41:15.995650Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/editor/editor.main.nls.js]
+2026-03-10T12:41:15.995693Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/editor/editor.main.nls.js.LICENSE.txt]
+2026-03-10T12:41:15.995878Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/loader.js]
+2026-03-10T12:41:15.995958Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/assets/vs/loader.js.LICENSE.txt]
+2026-03-10T12:41:15.995997Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/index.html]
+2026-03-10T12:41:15.996171Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/qdb.1a1d8.css]
+2026-03-10T12:41:15.997308Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/qdb.1a1d8.js]
+2026-03-10T12:41:15.997466Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/vendor.46236.css]
+2026-03-10T12:41:16.006818Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/public/vendor.46236.js]
+2026-03-10T12:41:16.007271Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/conf/mime.types]
+2026-03-10T12:41:16.007483Z I server-main extracted [path=/home/bbrelin/nimcp/data/questdb/conf/server.conf]
+2026-03-10T12:41:16.015874Z A server-main Server config: /home/bbrelin/nimcp/data/questdb/conf/server.conf
+2026-03-10T12:41:16.061909Z I i.q.c.t.t.InputFormatConfiguration loading input format config [resource=/text_loader.json]
+2026-03-10T12:41:16.074409Z A server-main Config:
+2026-03-10T12:41:16.074429Z A server-main  - http.enabled : true
+2026-03-10T12:41:16.074444Z A server-main  - tcp.enabled  : true
+2026-03-10T12:41:16.074456Z A server-main  - pg.enabled   : true
+2026-03-10T12:41:16.074462Z A server-main  - attach partition suffix: .attachable
+2026-03-10T12:41:16.074470Z A server-main  - open database [ba65153b-86ca-e03f-556c-8e98153e5167]
+2026-03-10T12:41:16.074580Z A server-main  - db root: [path=/home/bbrelin/nimcp/data/questdb/db, magic=0xef53, fs=ext4] -> SUPPORTED
+2026-03-10T12:41:16.074620Z A server-main  - backup root: NOT SET
+2026-03-10T12:41:16.074637Z A server-main  - .checkpoint root: [path=/home/bbrelin/nimcp/data/questdb/.checkpoint, magic=0x00, fs=/home/bbrelin/nimcp/data/questdb/.checkpoint] -> UNSUPPORTED (SYSTEM COULD BE UNSTABLE)
+2026-03-10T12:41:16.074672Z A server-main  - snapshot root: [path=/home/bbrelin/nimcp/data/questdb/snapshot, magic=0x00, fs=/home/bbrelin/nimcp/data/questdb/snapshot] -> UNSUPPORTED (SYSTEM COULD BE UNSTABLE)
+2026-03-10T12:41:16.074700Z A server-main  - sql copy input root: [path=/home/bbrelin/nimcp/data/questdb/import, magic=0xef53, fs=ext4] -> SUPPORTED
+2026-03-10T12:41:16.074719Z A server-main  - sql copy input worker root: [path=/home/bbrelin/nimcp/data/questdb/tmp, magic=0x00, fs=/home/bbrelin/nimcp/data/questdb/tmp] -> UNSUPPORTED (SYSTEM COULD BE UNSTABLE)
+2026-03-10T12:41:16.075334Z A server-main  - SQL JIT compiler mode: on
+2026-03-10T12:41:16.075373Z A server-main  - configured ram.usage.limit.bytes: 0 (no limit)
+2026-03-10T12:41:16.075382Z A server-main  - configured ram.usage.limit.percent: 90
+2026-03-10T12:41:16.075394Z A server-main  - system RAM: 62.6 GiB
+2026-03-10T12:41:16.075874Z A server-main  - resolved RAM usage limit: 56.3 GiB
+2026-03-10T12:41:16.076647Z A server-main Metrics are disabled, health check endpoint will not consider unhandled errors
+2026-03-10T12:41:16.079604Z I i.q.g.FunctionFactoryCache loading functions [test=false]
+2026-03-10T12:41:16.193323Z I i.q.c.m.EngineMigration upgrading database [version=427]
+2026-03-10T12:41:16.193946Z I i.q.c.m.EngineMigration upgraded tables to 427
+2026-03-10T12:41:16.195890Z I i.q.c.TableNameRegistryStore reloading tables file [path=/home/bbrelin/nimcp/data/questdb/db/tables.d.0, threadId=1]
+2026-03-10T12:41:16.199645Z I i.q.c.TableNameRegistryStore reloading tables file [path=/home/bbrelin/nimcp/data/questdb/db/tables.d.0, threadId=1]
+2026-03-10T12:41:16.254650Z I i.q.g.e.QueryProgress exe [id=0, sql=`CREATE TABLE IF NOT EXISTS "sys.column_versions_purge_log" (ts timestamp, table_name symbol, column_name symbol, table_id int, truncate_version long, columnType int, table_partition_by int, updated_txn long, column_version long, partition_timestamp timestamp, partition_name_txn long,completed timestamp) timestamp(ts) partition by MONTH BYPASS WAL`, principal=admin, cache=false, jit=false]
+2026-03-10T12:41:16.254890Z I i.q.c.CairoEngine locked [table=`sys.column_versions_purge_log`, thread=1]
+2026-03-10T12:41:16.258504Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=sys.column_versions_purge_log, dirName=sys.column_versions_purge_log, tableId=1, isWal=false, isSystem=true}]
+2026-03-10T12:41:16.258733Z I i.q.c.CairoEngine unlocked [table=`TableToken{tableName=sys.column_versions_purge_log, dirName=sys.column_versions_purge_log, tableId=1, isWal=false, isSystem=true}`]
+2026-03-10T12:41:16.258768Z I i.q.g.e.QueryProgress fin [id=0, sql=`CREATE TABLE IF NOT EXISTS "sys.column_versions_purge_log" (ts timestamp, table_name symbol, column_name symbol, table_id int, truncate_version long, columnType int, table_partition_by int, updated_txn long, column_version long, partition_timestamp timestamp, partition_name_txn long,completed timestamp) timestamp(ts) partition by MONTH BYPASS WAL`, principal=admin, cache=false, jit=false, time=-362699090810756]
+2026-03-10T12:41:16.258839Z I i.q.c.p.WriterPool open [table=`sys.column_versions_purge_log`, thread=1]
+2026-03-10T12:41:16.264200Z I i.q.c.TableWriter open 'sys.column_versions_purge_log'
+2026-03-10T12:41:16.279815Z I i.q.g.e.QueryProgress exe [id=1, sql=`SELECT * FROM "sys.column_versions_purge_log" WHERE completed = null`, principal=admin, cache=false, jit=true]
+2026-03-10T12:41:16.280030Z I i.q.g.e.QueryProgress fin [id=1, sql=`SELECT * FROM "sys.column_versions_purge_log" WHERE completed = null`, principal=admin, cache=false, jit=true, time=231778]
+2026-03-10T12:41:16.308984Z I i.q.g.e.QueryProgress exe [id=2, sql=`CREATE TABLE IF NOT EXISTS "sys.text_import_log" (ts timestamp, id string, table_name symbol, file symbol, phase symbol, status symbol, message string,rows_handled long,rows_imported long,errors long) timestamp(ts) partition by DAY BYPASS WAL`, principal=admin, cache=false, jit=false]
+2026-03-10T12:41:16.309115Z I i.q.c.CairoEngine locked [table=`sys.text_import_log`, thread=1]
+2026-03-10T12:41:16.312128Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=sys.text_import_log, dirName=sys.text_import_log, tableId=2, isWal=false, isSystem=true}]
+2026-03-10T12:41:16.312205Z I i.q.c.CairoEngine unlocked [table=`TableToken{tableName=sys.text_import_log, dirName=sys.text_import_log, tableId=2, isWal=false, isSystem=true}`]
+2026-03-10T12:41:16.312222Z I i.q.g.e.QueryProgress fin [id=2, sql=`CREATE TABLE IF NOT EXISTS "sys.text_import_log" (ts timestamp, id string, table_name symbol, file symbol, phase symbol, status symbol, message string,rows_handled long,rows_imported long,errors long) timestamp(ts) partition by DAY BYPASS WAL`, principal=admin, cache=false, jit=false, time=-362699037416421]
+2026-03-10T12:41:16.312269Z I i.q.c.p.WriterPool open [table=`sys.text_import_log`, thread=1]
+2026-03-10T12:41:16.312312Z I i.q.c.TableWriter open 'sys.text_import_log'
+2026-03-10T12:41:16.314139Z I i.q.g.e.QueryProgress exe [id=3, sql=`CREATE TABLE IF NOT EXISTS "telemetry" (created timestamp, event short, origin short) timestamp(created)`, principal=admin, cache=false, jit=false]
+2026-03-10T12:41:16.314255Z I i.q.c.CairoEngine locked [table=`telemetry`, thread=1]
+2026-03-10T12:41:16.315366Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=telemetry, dirName=telemetry, tableId=3, isWal=false, isSystem=true}]
+2026-03-10T12:41:16.315422Z I i.q.c.CairoEngine unlocked [table=`TableToken{tableName=telemetry, dirName=telemetry, tableId=3, isWal=false, isSystem=true}`]
+2026-03-10T12:41:16.315437Z I i.q.g.e.QueryProgress fin [id=3, sql=`CREATE TABLE IF NOT EXISTS "telemetry" (created timestamp, event short, origin short) timestamp(created)`, principal=admin, cache=false, jit=false, time=-362699034208229]
+2026-03-10T12:41:16.315468Z I i.q.c.p.WriterPool open [table=`telemetry`, thread=1]
+2026-03-10T12:41:16.315503Z I i.q.c.TableWriter open 'telemetry'
+2026-03-10T12:41:16.315904Z I i.q.c.TableWriter switched partition [path=/telemetry/default]
+2026-03-10T12:41:16.317162Z I i.q.g.e.QueryProgress exe [id=4, sql=`CREATE TABLE IF NOT EXISTS "sys.telemetry_wal" (created timestamp, event short, tableId int, walId int, seqTxn long, rowCount long,physicalRowCount long,latency float) timestamp(created) partition by MONTH BYPASS WAL`, principal=admin, cache=false, jit=false]
+2026-03-10T12:41:16.317250Z I i.q.c.CairoEngine locked [table=`sys.telemetry_wal`, thread=1]
+2026-03-10T12:41:16.318332Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=sys.telemetry_wal, dirName=sys.telemetry_wal, tableId=4, isWal=false, isSystem=true}]
+2026-03-10T12:41:16.318410Z I i.q.c.CairoEngine unlocked [table=`TableToken{tableName=sys.telemetry_wal, dirName=sys.telemetry_wal, tableId=4, isWal=false, isSystem=true}`]
+2026-03-10T12:41:16.318426Z I i.q.g.e.QueryProgress fin [id=4, sql=`CREATE TABLE IF NOT EXISTS "sys.telemetry_wal" (created timestamp, event short, tableId int, walId int, seqTxn long, rowCount long,physicalRowCount long,latency float) timestamp(created) partition by MONTH BYPASS WAL`, principal=admin, cache=false, jit=false, time=-362699031222056]
+2026-03-10T12:41:16.318452Z I i.q.c.p.WriterPool open [table=`sys.telemetry_wal`, thread=1]
+2026-03-10T12:41:16.318504Z I i.q.c.TableWriter open 'sys.telemetry_wal'
+2026-03-10T12:41:16.319019Z I i.q.g.e.QueryProgress exe [id=5, sql=`CREATE TABLE IF NOT EXISTS telemetry_config (id long256, enabled boolean, version symbol, os symbol, package symbol)`, principal=admin, cache=false, jit=false]
+2026-03-10T12:41:16.319260Z I i.q.c.CairoEngine locked [table=`telemetry_config`, thread=1]
+2026-03-10T12:41:16.321280Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=telemetry_config, dirName=telemetry_config, tableId=5, isWal=false, isSystem=true}]
+2026-03-10T12:41:16.321336Z I i.q.c.CairoEngine unlocked [table=`TableToken{tableName=telemetry_config, dirName=telemetry_config, tableId=5, isWal=false, isSystem=true}`]
+2026-03-10T12:41:16.321354Z I i.q.g.e.QueryProgress fin [id=5, sql=`CREATE TABLE IF NOT EXISTS telemetry_config (id long256, enabled boolean, version symbol, os symbol, package symbol)`, principal=admin, cache=false, jit=false, time=-362699028296452]
+2026-03-10T12:41:16.322002Z E i.q.g.e.QueryProgress err [id=-1, sql=`ALTER TABLE telemetry_config ADD COLUMN version symbol`, principal=admin, cache=false, jit=true, time=594408, msg=column 'version' already exists, errno=0, pos=40]
+2026-03-10T12:41:16.322122Z E i.q.g.e.QueryProgress err [id=-1, sql=`ALTER TABLE telemetry_config ADD COLUMN os symbol`, principal=admin, cache=false, jit=true, time=70137, msg=column 'os' already exists, errno=0, pos=40]
+2026-03-10T12:41:16.322174Z E i.q.g.e.QueryProgress err [id=-1, sql=`ALTER TABLE telemetry_config ADD COLUMN package symbol`, principal=admin, cache=false, jit=true, time=25922, msg=column 'package' already exists, errno=0, pos=40]
+2026-03-10T12:41:16.322191Z I i.q.c.p.WriterPool open [table=`telemetry_config`, thread=1]
+2026-03-10T12:41:16.322218Z I i.q.c.TableWriter open 'telemetry_config'
+2026-03-10T12:41:16.323200Z I i.q.c.TableWriter switched partition [path=/telemetry_config/default]
+2026-03-10T12:41:16.324586Z I i.q.g.e.QueryProgress exe [id=6, sql=`telemetry_config LIMIT -1`, principal=admin, cache=false, jit=false]
+2026-03-10T12:41:16.324721Z I i.q.TelemetryConfigLogger new instance [id=0x064caad5db2759000502cb6350032c, enabled=true]
+2026-03-10T12:41:16.325028Z I i.q.g.e.QueryProgress fin [id=6, sql=`telemetry_config LIMIT -1`, principal=admin, cache=false, jit=false, time=468075]
+2026-03-10T12:41:16.325242Z I i.q.WorkerPoolManager new DEDICATED pool [name=wal-apply, requester=wal-apply, workers=3, priority=5]
+2026-03-10T12:41:16.332082Z I i.q.WorkerPoolManager using SHARED pool [requester=http, workers=20]
+2026-03-10T12:41:16.335910Z A http-server listening on 0.0.0.0:9000 [fd=515396075713 backlog=256]
+2026-03-10T12:41:16.345257Z I i.q.WorkerPoolManager new DEDICATED pool [name=minhttp, requester=min-http, workers=1, priority=8]
+2026-03-10T12:41:16.345776Z I i.q.WorkerPoolManager using SHARED pool [requester=pg-wire, workers=20]
+2026-03-10T12:41:16.347391Z A pg-server listening on 0.0.0.0:8812 [fd=532575944901 backlog=64]
+2026-03-10T12:41:16.347868Z I i.q.WorkerPoolManager using SHARED pool [requester=line-tcp-io, workers=20]
+2026-03-10T12:41:16.347890Z I i.q.WorkerPoolManager using SHARED pool [requester=line-tcp-writer, workers=20]
+2026-03-10T12:41:16.348380Z A tcp-line-server listening on 0.0.0.0:9009 [fd=541165879495 backlog=256]
+2026-03-10T12:41:16.468895Z I i.q.c.MetadataCache metadata hydration started [tables=5]
+2026-03-10T12:41:16.468923Z A server-main server is ready to be started
+2026-03-10T12:41:16.469336Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=sys.column_versions_purge_log, dirName=sys.column_versions_purge_log, tableId=1, isWal=false, isSystem=true}]
+2026-03-10T12:41:16.469518Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=telemetry_config, dirName=telemetry_config, tableId=5, isWal=false, isSystem=true}]
+2026-03-10T12:41:16.469662Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=sys.text_import_log, dirName=sys.text_import_log, tableId=2, isWal=false, isSystem=true}]
+2026-03-10T12:41:16.469767Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=telemetry, dirName=telemetry, tableId=3, isWal=false, isSystem=true}]
+2026-03-10T12:41:16.469930Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=sys.telemetry_wal, dirName=sys.telemetry_wal, tableId=4, isWal=false, isSystem=true}]
+2026-03-10T12:41:16.469982Z I i.q.c.MetadataCache metadata hydration completed [tables=5]
+2026-03-10T12:41:16.470880Z I server-main os scheduled worker started [name=shared_0]
+2026-03-10T12:41:16.470988Z I server-main os scheduled worker started [name=shared_1]
+2026-03-10T12:41:16.471040Z I server-main os scheduled worker started [name=shared_2]
+2026-03-10T12:41:16.471153Z I server-main os scheduled worker started [name=shared_3]
+2026-03-10T12:41:16.471189Z I server-main os scheduled worker started [name=shared_4]
+2026-03-10T12:41:16.471252Z I server-main os scheduled worker started [name=shared_5]
+2026-03-10T12:41:16.471302Z I server-main os scheduled worker started [name=shared_6]
+2026-03-10T12:41:16.471366Z I server-main os scheduled worker started [name=shared_7]
+2026-03-10T12:41:16.471413Z I server-main os scheduled worker started [name=shared_8]
+2026-03-10T12:41:16.471467Z I server-main os scheduled worker started [name=shared_9]
+2026-03-10T12:41:16.471519Z I server-main os scheduled worker started [name=shared_10]
+2026-03-10T12:41:16.471571Z I server-main os scheduled worker started [name=shared_11]
+2026-03-10T12:41:16.471616Z I server-main os scheduled worker started [name=shared_12]
+2026-03-10T12:41:16.471698Z I server-main os scheduled worker started [name=shared_13]
+2026-03-10T12:41:16.471729Z I server-main os scheduled worker started [name=shared_14]
+2026-03-10T12:41:16.471812Z I server-main os scheduled worker started [name=shared_15]
+2026-03-10T12:41:16.471864Z I server-main os scheduled worker started [name=shared_16]
+2026-03-10T12:41:16.471929Z I server-main os scheduled worker started [name=shared_17]
+2026-03-10T12:41:16.471978Z I server-main os scheduled worker started [name=shared_18]
+2026-03-10T12:41:16.472021Z I server-main worker pool started [pool=shared]
+2026-03-10T12:41:16.472052Z I server-main os scheduled worker started [name=shared_19]
+2026-03-10T12:41:16.472047Z I i.q.WorkerPoolManager started shared pool [name=shared, workers=20]
+2026-03-10T12:41:16.472247Z I server-main os scheduled worker started [name=wal-apply_0]
+2026-03-10T12:41:16.472318Z I server-main os scheduled worker started [name=wal-apply_1]
+2026-03-10T12:41:16.472320Z I server-main worker pool started [pool=wal-apply]
+2026-03-10T12:41:16.472337Z I i.q.WorkerPoolManager started dedicated pool [name=wal-apply, workers=3]
+2026-03-10T12:41:16.472361Z I server-main os scheduled worker started [name=wal-apply_2]
+2026-03-10T12:41:16.472455Z I server-main worker pool started [pool=minhttp]
+2026-03-10T12:41:16.472465Z I i.q.WorkerPoolManager started dedicated pool [name=minhttp, workers=1]
+2026-03-10T12:41:16.472521Z I server-main os scheduled worker started [name=minhttp_0]
+2026-03-10T12:41:16.476238Z I server-main 
+     ___                  _   ____  ____
+    / _ \ _   _  ___  ___| |_|  _ \| __ )
+   | | | | | | |/ _ \/ __| __| | | |  _ \
+   | |_| | |_| |  __/\__ \ |_| |_| | |_) |
+    \__\_\\__,_|\___||___/\__|____/|____/
+                        www.questdb.io
+
+    Web Console URL                 ILP Client Connection String
+
+    http://172.20.0.1:9000          http::addr=172.20.0.1:9000;
+    http://172.17.0.1:9000          http::addr=172.17.0.1:9000;
+    http://172.18.0.1:9000          http::addr=172.18.0.1:9000;
+    http://172.19.0.1:9000          http::addr=172.19.0.1:9000;
+    http://172.21.0.1:9000          http::addr=172.21.0.1:9000;
+    http://176.9.99.103:9000        http::addr=176.9.99.103:9000;
+    http://127.0.0.1:9000           http::addr=127.0.0.1:9000;
+
+QuestDB configuration files are in /home/bbrelin/nimcp/data/questdb/conf
+
+
+2026-03-10T12:41:16.492853Z A server-main enjoy
+2026-03-10T12:46:16.506764Z I i.q.c.p.ReaderPool closed 'sys.column_versions_purge_log' [at=0:0, reason=IDLE]
+2026-03-10T12:46:16.509039Z I i.q.c.p.ReaderPool closed 'telemetry_config' [at=0:0, reason=IDLE]
+2026-03-10T12:46:16.509383Z I i.q.c.p.TableMetadataPool closed 'telemetry_config' [at=0:0, reason=IDLE]
+2026-03-10T12:46:35.987026Z I http-server connected [ip=127.0.0.1, fd=30064771278]
+2026-03-10T12:46:35.993271Z I i.q.g.e.QueryProgress exe [id=7, sql=`SELECT 1`, principal=admin, cache=false, jit=false]
+2026-03-10T12:46:35.994379Z I i.q.g.e.QueryProgress fin [id=7, sql=`SELECT 1`, principal=admin, cache=false, jit=false, time=1137168]
+2026-03-10T12:46:35.994420Z I i.q.c.h.p.JsonQueryProcessorState [30064771278] timings [compiler: 2993076, count: 0, execute: 4343140, q=`SELECT 1`]
+2026-03-10T12:46:35.994891Z I http-server disconnected [ip=127.0.0.1, fd=30064771278, src=queue]
+2026-03-10T12:51:30.632567Z I http-server connected [ip=127.0.0.1, fd=30064771279]
+2026-03-10T12:51:30.633043Z I i.q.g.e.QueryProgress exe [id=8, sql=`SELECT 1`, principal=admin, cache=true, jit=false]
+2026-03-10T12:51:30.633223Z I i.q.g.e.QueryProgress fin [id=8, sql=`SELECT 1`, principal=admin, cache=true, jit=false, time=204338]
+2026-03-10T12:51:30.633256Z I i.q.c.h.p.JsonQueryProcessorState [30064771279] timings [compiler: 0, count: 0, execute: 332677, q=`SELECT 1`]
+2026-03-10T12:51:30.633484Z I http-server disconnected [ip=127.0.0.1, fd=30064771279, src=queue]
+2026-03-10T12:52:55.600908Z I http-server connected [ip=127.0.0.1, fd=30064771280]
+2026-03-10T12:52:55.601531Z I i.q.g.e.QueryProgress exe [id=9, sql=`CREATE TABLE IF NOT EXISTS kg_brain_snapshots (snapshot_id SYMBOL, brain_id SYMBOL, name SYMBOL, created_at TIMESTAMP, description STRING, version LONG, format_version INT, blob_path STRING, blob_size LONG, neuron_count LONG, stage INT, step INT, avg_loss DOUBLE) TIMESTAMP(created_at) PARTITION BY DAY`, principal=admin, cache=false, jit=false]
+2026-03-10T12:52:55.602121Z I i.q.c.CairoEngine locked [table=`kg_brain_snapshots~6`, thread=43]
+2026-03-10T12:52:55.609822Z I i.q.c.MetadataCache hydrated metadata [table=TableToken{tableName=kg_brain_snapshots, dirName=kg_brain_snapshots~6, tableId=6, isWal=true, isSystem=false}]
+2026-03-10T12:52:55.609970Z I i.q.c.CairoEngine unlocked [table=`TableToken{tableName=kg_brain_snapshots, dirName=kg_brain_snapshots~6, tableId=6, isWal=true, isSystem=false}`]
+2026-03-10T12:52:55.609996Z I i.q.g.e.QueryProgress fin [id=9, sql=`CREATE TABLE IF NOT EXISTS kg_brain_snapshots (snapshot_id SYMBOL, brain_id SYMBOL, name SYMBOL, created_at TIMESTAMP, description STRING, version LONG, format_version INT, blob_path STRING, blob_size LONG, neuron_count LONG, stage INT, step INT, avg_loss DOUBLE) TIMESTAMP(created_at) PARTITION BY DAY`, principal=admin, cache=false, jit=false, time=-362000438930952]
+2026-03-10T12:52:55.610221Z I http-server disconnected [ip=127.0.0.1, fd=30064771280, src=queue]
+2026-03-10T12:53:10.330463Z I tcp-line-server connected [ip=127.0.0.1, fd=30064771308]
+2026-03-10T12:53:10.335219Z I i.q.c.w.WalWriter open 'kg_brain_snapshots~6'
+2026-03-10T12:53:10.337505Z I i.q.c.w.WalWriter opened WAL segment [path=/kg_brain_snapshots~6/wal1/0]
+2026-03-10T12:53:10.339290Z I tcp-line-server disconnected [ip=127.0.0.1, fd=30064771308, src=queue]
+2026-03-10T12:53:10.339395Z I i.q.c.l.t.TableUpdateDetails closing table writer [tableName=TableToken{tableName=kg_brain_snapshots, dirName=kg_brain_snapshots~6, tableId=6, isWal=true, isSystem=false}]
+2026-03-10T12:53:10.339417Z I i.q.c.l.t.TableUpdateDetails closing table parsers [tableName=TableToken{tableName=kg_brain_snapshots, dirName=kg_brain_snapshots~6, tableId=6, isWal=true, isSystem=false}]
+2026-03-10T12:53:10.339516Z I i.q.c.w.WalWriter committed data block [wal=/kg_brain_snapshots~6/wal1/0, segmentTxn=0, seqTxn=1, rowLo=0, roHi=1, minTs=2026-03-10T12:53:10.329759Z, maxTs=2026-03-10T12:53:10.329759Z]
+2026-03-10T12:53:10.340637Z I i.q.c.p.WriterPool open [table=`kg_brain_snapshots~6`, thread=63]
+2026-03-10T12:53:10.340727Z I i.q.c.TableWriter open 'kg_brain_snapshots'
+2026-03-10T12:53:10.343793Z I i.q.c.TableWriter processing WAL [path=/kg_brain_snapshots~6/wal1/0, roLo=0, roHi=1, seqTxn=1, tsMin=2026-03-10T12:53:10.329759Z, tsMax=2026-03-10T12:53:10.329759Z, commitToTs=294247-01-10T04:00:54.775807Z]
+2026-03-10T12:53:10.344130Z I i.q.c.TableWriter switched partition [path=/kg_brain_snapshots~6/2026-03-10]
+2026-03-10T12:53:10.344133Z I i.q.c.TableWriter switched partition [path=/sys.telemetry_wal/2026-03]
+2026-03-10T12:53:10.346067Z I i.q.c.w.ApplyWal2TableJob job finished [table=kg_brain_snapshots~6, seqTxn=1, transactions=1, rows=1, time=2ms, rate=431rows/s, ampl=1.0]
+2026-03-10T12:53:19.423865Z I http-server connected [ip=127.0.0.1, fd=601295421760]
+2026-03-10T12:53:19.425655Z I i.q.g.e.QueryProgress exe [id=10, sql=`SELECT snapshot_id, brain_id, name, stage, step, blob_size, created_at FROM kg_brain_snapshots`, principal=admin, cache=false, jit=false]
+2026-03-10T12:53:19.425768Z I i.q.c.TableReader open partition [path=/kg_brain_snapshots~6/2026-03-10, rowCount=1, partitionIndex=0, partitionCount=1]
+2026-03-10T12:53:19.427060Z I i.q.g.e.QueryProgress fin [id=10, sql=`SELECT snapshot_id, brain_id, name, stage, step, blob_size, created_at FROM kg_brain_snapshots`, principal=admin, cache=false, jit=false, time=1446356]
+2026-03-10T12:53:19.427091Z I i.q.c.h.p.JsonQueryProcessorState [601295421760] timings [compiler: 1315721, count: 0, execute: 2890551, q=`SELECT snapshot_id, brain_id, name, stage, step, blob_size, created_at FROM kg_brain_snapshots`]
+2026-03-10T12:53:19.427272Z I http-server disconnected [ip=127.0.0.1, fd=601295421760, src=queue]
+2026-03-10T12:56:16.507759Z I i.q.c.p.ReaderPool closed 'kg_brain_snapshots~6' [at=0:0, reason=IDLE]
+2026-03-10T12:56:16.510917Z I i.q.c.w.WalWriter closed 'kg_brain_snapshots'
+2026-03-10T12:56:16.511004Z I i.q.c.p.WalWriterPool closed 'kg_brain_snapshots~6' [at=0:0, reason=IDLE]
+2026-03-10T12:56:31.322274Z I i.q.c.w.WalPurgeJob table=kg_brain_snapshots~6, discovered=[(1,0),(wal1)]
+2026-03-10T13:06:16.565286Z I i.q.c.TableWriter closed 'kg_brain_snapshots'
+2026-03-10T13:06:16.571995Z I i.q.c.p.WriterPool closed [table=`kg_brain_snapshots~6`, reason=IDLE, by=59]

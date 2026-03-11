@@ -1,8 +1,13 @@
-# Training-Immune Integration (Complete - Dec 2024)
+# Training-Immune Integration
 
 Bidirectional integration between brain immune system and training pipeline.
 
+## Types
+- `training_immune_system_t` vs `brain_immune_system_t` -- different types, do not confuse
+- Enable via `train_config.enable_immune_integration = true`
+
 ## Learning Rate Modulation (Fever Model)
+
 | Inflammation | LR Factor |
 |--------------|-----------|
 | NONE | 1.00 |
@@ -12,11 +17,19 @@ Bidirectional integration between brain immune system and training pipeline.
 | STORM | 0.10 |
 
 ## Instability Detection
-- NaN/Inf → Severity 10
-- Loss Explosion → Severity 8
-- Gradient Explosion → Severity 6
-- Gradient Vanishing → Severity 4
-- Loss Plateau → Severity 3
+
+| Condition | Severity |
+|-----------|----------|
+| NaN/Inf | 10 |
+| Loss Explosion | 8 |
+| Gradient Explosion | 6 |
+| Gradient Vanishing | 4 |
+| Loss Plateau | 3 |
+
+## Integration Points
+- Gradient health monitoring: NaN/Inf detection in loss and gradients
+- Immune response to training instability (LR reduction, rollback)
+- Integration with LNN training context
 
 ## Files
 - Header: `include/middleware/immune/nimcp_training_immune.h`
