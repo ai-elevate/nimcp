@@ -943,27 +943,28 @@ static void forward_snn_task(void* arg)
     nimcp_free(snn_input);
     if (rc != 0) return;
 
-    /* Spike coherence confidence: 1 - entropy/max_entropy of softmax distribution */
+    /* Spike coherence confidence: 1 - entropy/max_entropy of softmax distribution.
+     * Only read out_dim elements (what snn_network_forward actually wrote). */
     float max_val = -1e30f;
-    for (uint32_t i = 0; i < ctx->output_size; i++) {
+    for (uint32_t i = 0; i < out_dim; i++) {
         if (isfinite(ctx->snn_output[i]) && ctx->snn_output[i] > max_val)
             max_val = ctx->snn_output[i];
     }
     float sum_exp = 0.0f;
     float entropy = 0.0f;
-    for (uint32_t i = 0; i < ctx->output_size; i++) {
+    for (uint32_t i = 0; i < out_dim; i++) {
         float p = isfinite(ctx->snn_output[i]) ? expf(ctx->snn_output[i] - max_val) : 0.0f;
         sum_exp += p;
     }
     if (sum_exp > 0.0f) {
-        for (uint32_t i = 0; i < ctx->output_size; i++) {
+        for (uint32_t i = 0; i < out_dim; i++) {
             float p = isfinite(ctx->snn_output[i]) ? expf(ctx->snn_output[i] - max_val) / sum_exp : 0.0f;
             if (p > 1e-8f) {
                 entropy -= p * logf(p);
             }
         }
     }
-    float max_entropy = (ctx->output_size > 1) ? logf((float)ctx->output_size) : 1.0f;
+    float max_entropy = (out_dim > 1) ? logf((float)out_dim) : 1.0f;
     ctx->snn_confidence = (max_entropy > 0.0f) ? (1.0f - entropy / max_entropy) : 0.01f;
     if (ctx->snn_confidence > 1.0f) ctx->snn_confidence = 1.0f;
     if (ctx->snn_confidence < 0.01f) ctx->snn_confidence = 0.01f;
@@ -1212,8 +1213,8 @@ sequential_fallback:
             int rc = snn_network_forward(brain->snn_network, snn_input_ptr, snn_input_dim,
                                          snn_output, snn_out_dim, 10.0f);
             if (rc == 0) {
-                /* Blend: 70% adaptive + 30% SNN */
-                for (uint32_t i = 0; i < decision->output_size; i++) {
+                /* Blend: 70% adaptive + 30% SNN (only first snn_out_dim elements) */
+                for (uint32_t i = 0; i < snn_out_dim; i++) {
                     if (isfinite(snn_output[i])) {
                         decision->output_vector[i] = 0.7f * decision->output_vector[i]
                                                    + 0.3f * snn_output[i];

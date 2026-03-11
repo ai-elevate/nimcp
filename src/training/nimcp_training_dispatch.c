@@ -257,8 +257,30 @@ int training_dispatch_snn_step(
     snn_network_t* snn = brain->snn_network;
     snn_training_ctx_t* ctx = brain->snn_training_ctx;
 
-    // Encode inputs to spikes
-    // TODO: Use proper spike encoding based on config
+    /* Set inputs on SNN (average-pool if brain dims > SNN dims) */
+    uint32_t snn_in = snn->config.n_inputs;
+    float* pooled_input = NULL;
+    const float* input_ptr = inputs;
+    uint32_t input_dim = num_inputs;
+
+    if (num_inputs > snn_in) {
+        pooled_input = nimcp_calloc(snn_in, sizeof(float));
+        if (pooled_input) {
+            uint32_t stride = num_inputs / snn_in;
+            for (uint32_t i = 0; i < snn_in; i++) {
+                float sum = 0.0f;
+                uint32_t start = i * stride;
+                uint32_t end = (i + 1 < snn_in) ? (i + 1) * stride : num_inputs;
+                for (uint32_t j = start; j < end; j++) sum += inputs[j];
+                pooled_input[i] = sum / (float)(end - start);
+            }
+            input_ptr = pooled_input;
+            input_dim = snn_in;
+        }
+    }
+
+    snn_network_set_inputs(snn, input_ptr, input_dim);
+    nimcp_free(pooled_input);
 
     // Run SNN simulation for one timestep
     float dt = 1.0F;  // 1ms timestep
