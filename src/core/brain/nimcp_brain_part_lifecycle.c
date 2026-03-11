@@ -220,6 +220,30 @@ void brain_destroy(brain_t brain)
         brain->unified_training = NULL;
     }
 
+    /* Destroy SNN/LNN training contexts and networks created by
+     * brain_enable_multi_network_training() — must happen after UTM
+     * (which holds adapter references) and before general network teardown. */
+    if (brain->snn_training_ctx) {
+        extern void snn_training_destroy(struct snn_training_ctx_s* ctx);
+        snn_training_destroy(brain->snn_training_ctx);
+        brain->snn_training_ctx = NULL;
+    }
+    if (brain->lnn_training_ctx) {
+        extern void lnn_training_destroy(struct lnn_training_ctx_s* ctx);
+        lnn_training_destroy(brain->lnn_training_ctx);
+        brain->lnn_training_ctx = NULL;
+    }
+    if (brain->snn_network && brain->owns_specialized_network) {
+        extern void snn_network_destroy(struct snn_network_s* snn);
+        snn_network_destroy(brain->snn_network);
+        brain->snn_network = NULL;
+    }
+    if (brain->lnn_network && brain->owns_specialized_network) {
+        extern void lnn_network_destroy(struct lnn_network_s* lnn);
+        lnn_network_destroy(brain->lnn_network);
+        brain->lnn_network = NULL;
+    }
+
     LOG_MODULE_DEBUG("BRAIN", "Destroying network...");
     // Phase 3: Handle network destruction with atomic reference counting
     //

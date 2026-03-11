@@ -6317,6 +6317,45 @@ static PyObject* Brain_deliberate(BrainObject* self, PyObject* args) {
     return dict;
 }
 
+/* --- Ablation study methods --- */
+
+static PyObject* Brain_set_training_mode_py(BrainObject* self, PyObject* args) {
+    if (!self->brain) Py_RETURN_NONE;
+    int active;
+    if (!PyArg_ParseTuple(args, "p", &active)) return NULL;
+    nimcp_brain_set_training_mode(self->brain, (bool)active);
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_set_network_ablation_py(BrainObject* self, PyObject* args, PyObject* kwds) {
+    if (!self->brain) Py_RETURN_NONE;
+    static char* kwlist[] = {"train_cnn", "train_snn", "train_lnn", NULL};
+    int cnn = -1, snn = -1, lnn = -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iii", kwlist, &cnn, &snn, &lnn))
+        return NULL;
+    nimcp_brain_set_network_ablation(self->brain, cnn, snn, lnn);
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_network_metrics_py(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) Py_RETURN_NONE;
+    float ema_ann = 0, ema_cnn = 0, ema_snn = 0, ema_lnn = 0;
+    uint64_t ann_steps = 0, cnn_steps = 0, snn_steps = 0, lnn_steps = 0;
+    if (!nimcp_brain_get_network_metrics(self->brain,
+            &ema_ann, &ema_cnn, &ema_snn, &ema_lnn,
+            &ann_steps, &cnn_steps, &snn_steps, &lnn_steps))
+        Py_RETURN_NONE;
+    return Py_BuildValue("{s:f,s:f,s:f,s:f,s:K,s:K,s:K,s:K}",
+        "ann_loss", (double)ema_ann,
+        "cnn_loss", (double)ema_cnn,
+        "snn_loss", (double)ema_snn,
+        "lnn_loss", (double)ema_lnn,
+        "ann_steps", ann_steps,
+        "cnn_steps", cnn_steps,
+        "snn_steps", snn_steps,
+        "lnn_steps", lnn_steps);
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
      "Learn from example: learn(features, label, lr=0.0, confidence=1.0) -> float (loss value)\n"
@@ -6708,6 +6747,15 @@ static PyMethodDef Brain_methods[] = {
      "Get cloud inference stats: get_cloud_stats() -> dict"},
     {"distill_cloud_batch", (PyCFunction)Brain_distill_cloud_batch, METH_VARARGS,
      "Process buffered distillation: distill_cloud_batch(max_examples=0) -> int"},
+
+    // Ablation study support
+    {"set_training_mode", (PyCFunction)Brain_set_training_mode_py, METH_VARARGS,
+     "Enable/disable training-mode fast path: set_training_mode(active) -> None"},
+    {"set_network_ablation", (PyCFunction)Brain_set_network_ablation_py,
+     METH_VARARGS | METH_KEYWORDS,
+     "Enable/disable network types: set_network_ablation(train_cnn=1, train_snn=1, train_lnn=1)"},
+    {"get_network_metrics", (PyCFunction)Brain_get_network_metrics_py, METH_NOARGS,
+     "Get per-network training metrics: get_network_metrics() -> dict"},
 
     {NULL}
 };

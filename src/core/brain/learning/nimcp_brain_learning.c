@@ -74,6 +74,8 @@
 #include "lnn/nimcp_lnn_training.h"
 #include "training/nimcp_cnn_training.h"
 #include "training/nimcp_snn_backprop.h"
+#include "snn/nimcp_snn_config.h"
+#include "snn/nimcp_snn_network.h"
 #include "cognitive/vae/nimcp_vae.h"
 #include "cognitive/vae/bridges/nimcp_vae_training_bridge.h"
 #include "cognitive/attention/nimcp_attention_plasticity_bridge.h"
@@ -1020,6 +1022,28 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 if (has_lnn) nimcp_pool_submit(brain->inference_pool, learn_lnn_task, ctx);
 
                 nimcp_pool_wait(brain->inference_pool);
+
+                /* Collect per-network metrics from parallel results */
+                const float a = 0.01f;
+                if (ctx->cnn_done && ctx->cnn_loss >= 0.0f) {
+                    brain->network_metrics.last_cnn_loss = ctx->cnn_loss;
+                    brain->network_metrics.cnn_steps++;
+                    brain->network_metrics.ema_cnn_loss =
+                        (1.0f - a) * brain->network_metrics.ema_cnn_loss + a * ctx->cnn_loss;
+                }
+                if (ctx->snn_done && ctx->snn_res.loss >= 0.0f) {
+                    brain->network_metrics.last_snn_loss = ctx->snn_res.loss;
+                    brain->network_metrics.snn_steps++;
+                    brain->network_metrics.ema_snn_loss =
+                        (1.0f - a) * brain->network_metrics.ema_snn_loss + a * ctx->snn_res.loss;
+                }
+                if (ctx->lnn_done && ctx->lnn_res.loss >= 0.0f) {
+                    brain->network_metrics.last_lnn_loss = ctx->lnn_res.loss;
+                    brain->network_metrics.lnn_steps++;
+                    brain->network_metrics.ema_lnn_loss =
+                        (1.0f - a) * brain->network_metrics.ema_lnn_loss + a * ctx->lnn_res.loss;
+                }
+
                 nimcp_free(ctx);
             } else {
                 goto sequential_training;
@@ -2721,6 +2745,41 @@ int brain_enable_multi_network_training(brain_t brain)
         } else {
             brain->lnn_training_ctx = lnn_ctx;
         }
+    }
+
+    // ========================================================================
+    // STEP 2.5: Create SNN network (feedforward architecture)
+    // ========================================================================
+    // WHAT: Create a Spiking Neural Network matched to brain dimensions
+    // WHY:  SNN captures temporal spike-timing patterns, event sequences
+    // HOW:  Feedforward (input → hidden → output) with LIF neurons
+    //       Capped to 256 neurons per layer (like LNN) to keep spike
+    //       simulation tractable. Training dispatch creates snn_training_ctx.
+    if (!brain->snn_network && num_inputs >= 8 && num_outputs >= 8) {
+        uint32_t snn_cap = 256;
+        uint32_t snn_in  = (num_inputs  > snn_cap) ? snn_cap : num_inputs;
+        uint32_t snn_out = (num_outputs > snn_cap) ? snn_cap : num_outputs;
+        uint32_t snn_hidden = (snn_in + snn_out) / 2;
+        if (snn_hidden < 8) snn_hidden = 8;
+        if (snn_hidden > snn_cap) snn_hidden = snn_cap;
+
+        NIMCP_LOGGING_INFO("SNN feedforward: brain dims %u→%u, SNN dims %u→%u→%u",
+                           num_inputs, num_outputs, snn_in, snn_hidden, snn_out);
+
+        snn_config_t snn_cfg;
+        snn_config_feedforward(&snn_cfg, snn_in, snn_hidden, snn_out);
+
+        snn_network_t* snn = snn_network_create(&snn_cfg);
+        if (!snn) {
+            NIMCP_LOGGING_WARN("Failed to create SNN network for multi-network training");
+            // Non-fatal: continue without SNN
+        } else {
+            brain->snn_network = snn;
+            brain->owns_specialized_network = true;
+        }
+    } else if (!brain->snn_network) {
+        NIMCP_LOGGING_INFO("SNN skipped: requires num_inputs >= 8 and num_outputs >= 8 "
+                          "(brain has %u inputs, %u outputs)", num_inputs, num_outputs);
     }
 
     // ========================================================================
