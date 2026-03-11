@@ -184,7 +184,7 @@ snn_training_ctx_t* snn_training_create_surrogate(const snn_surrogate_config_t* 
     }
 
     memset(ctx, 0, sizeof(snn_training_ctx_t));
-    ctx->mode = SNN_TRAIN_EPROP;  /* Use eProp for backprop-style */
+    ctx->mode = SNN_TRAIN_SURROGATE;  /* Surrogate gradient backprop */
     ctx->surrogate = config->type;
     ctx->surrogate_beta = config->beta;
 

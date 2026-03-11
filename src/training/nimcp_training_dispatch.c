@@ -290,22 +290,28 @@ int training_dispatch_snn_step(
             break;
 
         case SNN_TRAIN_SURROGATE: {
-            // Surrogate gradients - compute loss gradient
-            float* output_grad = nimcp_malloc(num_targets * sizeof(float));
-            if (output_grad) {
-                // Compute MSE gradient
-                for (uint32_t i = 0; i < num_targets; i++) {
-                    float pred = 0.0F;  // TODO: decode from output spikes
-                    float diff = pred - targets[i];
-                    output_grad[i] = 2.0F * diff / (float)num_targets;
+            // Surrogate gradients - decode output spikes and compute loss gradient
+            uint32_t snn_out = snn->config.n_outputs;
+            uint32_t grad_dim = (num_targets < snn_out) ? num_targets : snn_out;
+            float* predictions = nimcp_calloc(snn_out, sizeof(float));
+            float* output_grad = nimcp_malloc(grad_dim * sizeof(float));
+            if (predictions && output_grad) {
+                // Decode output spikes to firing rates
+                snn_network_get_outputs(snn, predictions, snn_out);
+
+                // Compute MSE gradient against targets
+                for (uint32_t i = 0; i < grad_dim; i++) {
+                    float diff = predictions[i] - targets[i];
+                    output_grad[i] = 2.0F * diff / (float)grad_dim;
                     loss += diff * diff;
                 }
-                loss /= (float)num_targets;
+                loss /= (float)grad_dim;
 
                 // Backprop with surrogate
-                snn_surrogate_backward(ctx, output_grad, NULL, num_targets, NULL);
-                nimcp_free(output_grad);
+                snn_surrogate_backward(ctx, output_grad, NULL, grad_dim, NULL);
             }
+            nimcp_free(predictions);
+            nimcp_free(output_grad);
             break;
         }
 

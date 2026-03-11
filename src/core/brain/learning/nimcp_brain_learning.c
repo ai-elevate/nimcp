@@ -2692,6 +2692,11 @@ int brain_enable_multi_network_training(brain_t brain)
     // Skip LNN for very small networks (< 8 inputs/outputs) to avoid
     // tensor dimension mismatch crashes in the ODE forward pass.
     if (!brain->lnn_network && num_inputs >= 8 && num_outputs >= 8) {
+        /* Ensure LNN library is initialized (needed for forward_step in inference) */
+        if (!lnn_is_initialized()) {
+            lnn_init(1);
+        }
+
         // Create NCP (Neural Circuit Policy) LNN with ALL layers capped to 256.
         // LNN papers use 19-256 neurons; beyond 256 the O(n^2) adjoint Jacobian
         // dominates (1024^2 = 1M ops/step vs 256^2 = 65K). When brain dims exceed

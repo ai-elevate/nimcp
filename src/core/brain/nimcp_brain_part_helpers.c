@@ -915,8 +915,32 @@ static void forward_snn_task(void* arg)
 {
     forward_task_ctx_t* ctx = (forward_task_ctx_t*)arg;
 
-    int rc = snn_network_forward(ctx->brain->snn_network, ctx->features, ctx->num_features,
-                                  ctx->snn_output, ctx->output_size, 10.0f);
+    /* Average-pool features to match SNN input dimension (capped at 256) */
+    uint32_t snn_in = ctx->brain->snn_network->config.n_inputs;
+    uint32_t snn_out = ctx->brain->snn_network->config.n_outputs;
+    float* snn_input = NULL;
+    const float* input_ptr = ctx->features;
+    uint32_t input_dim = ctx->num_features;
+
+    if (ctx->num_features > snn_in) {
+        snn_input = nimcp_calloc(snn_in, sizeof(float));
+        if (!snn_input) return;
+        uint32_t stride = ctx->num_features / snn_in;
+        for (uint32_t i = 0; i < snn_in; i++) {
+            float sum = 0.0f;
+            uint32_t start = i * stride;
+            uint32_t end = (i + 1 < snn_in) ? (i + 1) * stride : ctx->num_features;
+            for (uint32_t j = start; j < end; j++) sum += ctx->features[j];
+            snn_input[i] = sum / (float)(end - start);
+        }
+        input_ptr = snn_input;
+        input_dim = snn_in;
+    }
+
+    uint32_t out_dim = (ctx->output_size < snn_out) ? ctx->output_size : snn_out;
+    int rc = snn_network_forward(ctx->brain->snn_network, input_ptr, input_dim,
+                                  ctx->snn_output, out_dim, 10.0f);
+    nimcp_free(snn_input);
     if (rc != 0) return;
 
     /* Spike coherence confidence: 1 - entropy/max_entropy of softmax distribution */
@@ -1159,10 +1183,34 @@ sequential_fallback:
 
     /* 3. SNN forward — spike-based blending */
     if (brain->snn_network) {
+        uint32_t snn_in = brain->snn_network->config.n_inputs;
+        uint32_t snn_out = brain->snn_network->config.n_outputs;
         float* snn_output = nimcp_calloc(decision->output_size, sizeof(float));
+        float* snn_input = NULL;
+        const float* snn_input_ptr = features;
+        uint32_t snn_input_dim = num_features;
+
+        /* Average-pool features to match SNN input dimension */
+        if (num_features > snn_in) {
+            snn_input = nimcp_calloc(snn_in, sizeof(float));
+            if (snn_input) {
+                uint32_t stride = num_features / snn_in;
+                for (uint32_t i = 0; i < snn_in; i++) {
+                    float sum = 0.0f;
+                    uint32_t start = i * stride;
+                    uint32_t end = (i + 1 < snn_in) ? (i + 1) * stride : num_features;
+                    for (uint32_t j = start; j < end; j++) sum += features[j];
+                    snn_input[i] = sum / (float)(end - start);
+                }
+                snn_input_ptr = snn_input;
+                snn_input_dim = snn_in;
+            }
+        }
+
+        uint32_t snn_out_dim = (decision->output_size < snn_out) ? decision->output_size : snn_out;
         if (snn_output) {
-            int rc = snn_network_forward(brain->snn_network, features, num_features,
-                                         snn_output, decision->output_size, 10.0f);
+            int rc = snn_network_forward(brain->snn_network, snn_input_ptr, snn_input_dim,
+                                         snn_output, snn_out_dim, 10.0f);
             if (rc == 0) {
                 /* Blend: 70% adaptive + 30% SNN */
                 for (uint32_t i = 0; i < decision->output_size; i++) {
@@ -1174,6 +1222,7 @@ sequential_fallback:
             }
             nimcp_free(snn_output);
         }
+        nimcp_free(snn_input);
     }
 
     /* 3.5. SNN routing bridge — update cross-region spike routing */
