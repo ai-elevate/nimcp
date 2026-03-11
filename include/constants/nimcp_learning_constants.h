@@ -95,8 +95,8 @@ extern "C" {
  * Gradient and Convergence Constants
  *===========================================================================*/
 
-/** @brief Default gradient clipping threshold */
-#define NIMCP_GRADIENT_CLIP_DEFAULT           1.0f
+/** @brief Default gradient clipping threshold (100.0 for 2M-neuron adjoint method) */
+#define NIMCP_GRADIENT_CLIP_DEFAULT           100.0f
 
 /** @brief Aggressive gradient clipping threshold */
 #define NIMCP_GRADIENT_CLIP_TIGHT             0.5f

@@ -97,8 +97,8 @@ bool nimcp_brain_factory_init_lnn_subsystem(brain_t brain)
     /* Create training context with plasticity integration enabled */
     lnn_training_config_t train_config;
     lnn_training_config_default(&train_config);
-    train_config.learning_rate = 0.001f;
-    train_config.gradient_clip_norm = 1.0f;
+    train_config.learning_rate = 0.01f;
+    train_config.gradient_clip_norm = 100.0f;
     train_config.enable_plasticity_integration = true;
     train_config.enable_immune_integration = true;
     train_config.enable_bio_async = true;

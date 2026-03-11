@@ -521,7 +521,7 @@ bool init_attention_subsystem(brain_t brain)
         .num_heads = NIMCP_DEFAULT_ATTENTION_HEADS,
         .feature_dim = brain->config.num_inputs,
         .enable_softmax = true,
-        .dropout_rate = 0.1f
+        .dropout_rate = 0.0f
     };
 
     brain->multihead_attention = multihead_attention_create(&attn_config);

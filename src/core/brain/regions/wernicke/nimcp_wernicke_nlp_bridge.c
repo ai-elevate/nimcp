@@ -313,7 +313,7 @@ int wernicke_nlp_default_config(wernicke_nlp_config_t* config) {
     config->default_mode = WERNICKE_NLP_MODE_COMPREHENSION;
     config->max_sequence_length = WERNICKE_NLP_MAX_PHONEMES;
     config->embedding_dim = WERNICKE_NLP_EMBEDDING_DIM;
-    config->attention_dropout = 0.1f;
+    config->attention_dropout = 0.0f;
 
     /* Semantic parameters */
     config->spreading_activation_decay = 0.8f;

@@ -5660,8 +5660,8 @@ static PyObject* Brain_lnn_create(BrainObject* self, PyObject* args) {
 
     lnn_training_config_t cfg;
     lnn_training_config_default(&cfg);
-    cfg.learning_rate = 0.001f;
-    cfg.gradient_clip_norm = 1.0f;
+    cfg.learning_rate = 0.01f;
+    cfg.gradient_clip_norm = 100.0f;
     cfg.enable_plasticity_integration = true;
     cfg.lnn_train_mode = LNN_TRAIN_ADJOINT;
     cfg.track_statistics = true;

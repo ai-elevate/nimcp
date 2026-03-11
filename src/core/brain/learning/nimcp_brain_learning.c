@@ -2667,8 +2667,8 @@ int brain_enable_multi_network_training(brain_t brain)
     if (brain->lnn_network && !brain->lnn_training_ctx) {
         lnn_training_config_t lnn_cfg;
         lnn_training_config_default(&lnn_cfg);
-        lnn_cfg.learning_rate = 0.01f;  // LNN learns slower than backprop
-        lnn_cfg.gradient_clip_norm = 1.0f;
+        lnn_cfg.learning_rate = 0.01f;
+        lnn_cfg.gradient_clip_norm = 100.0f;
 
         lnn_training_ctx_t* lnn_ctx = lnn_training_create(brain->lnn_network, &lnn_cfg);
         if (!lnn_ctx) {
