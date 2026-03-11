@@ -260,11 +260,11 @@ struct lnn_training_ctx_s {
     void (*on_lr_change)(void* user_data, float old_lr, float new_lr);
     void* callback_user_data;
 
-    /* Diversity loss state */
-    float* diversity_buffer;              /**< Ring buffer of recent outputs [buf_size * output_dim] */
-    uint32_t diversity_buffer_pos;        /**< Current write position */
-    uint32_t diversity_buffer_count;      /**< Number of valid entries */
-    uint32_t diversity_output_dim;        /**< Output dimension */
+    /* Anti-collapse (unified) — forward declared in nimcp_unified_training.h */
+    void* anti_collapse_state;            /**< nimcp_anti_collapse_state_t* */
+
+    /* UTM management flag — when true, UTM owns diversity/gradient norm/optimizer */
+    bool managed_by_utm;
 
     /* Statistics */
     lnn_training_stats_t stats;

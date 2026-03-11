@@ -207,6 +207,7 @@ struct brain_struct {
     struct snn_training_ctx_s* snn_training_ctx;   // SNN training (STDP/eProp/surrogate)
     struct lnn_training_ctx_s* lnn_training_ctx;   // LNN training (adjoint ODE)
     // CNN training is integrated into cnn_trainer
+    struct nimcp_unified_training_manager* unified_training;  // UTM: unified training manager (Phase 3)
 
     // Label to output mapping
     char** output_labels;        // Label strings (indexed array for reverse lookup)

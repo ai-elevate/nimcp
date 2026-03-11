@@ -65,6 +65,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "core/brain/bridges/nimcp_hyperledger_bridge.h"
+#include "training/nimcp_unified_training.h"
 
 // Multi-network training includes (LNN + CNN + dispatch)
 #include "training/nimcp_training_dispatch.h"
@@ -72,6 +73,7 @@
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_training.h"
 #include "training/nimcp_cnn_training.h"
+#include "training/nimcp_snn_backprop.h"
 #include "cognitive/vae/nimcp_vae.h"
 #include "cognitive/vae/bridges/nimcp_vae_training_bridge.h"
 #include "cognitive/attention/nimcp_attention_plasticity_bridge.h"
@@ -983,46 +985,60 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         }
     }
 
-    /* Step 2: Secondary networks learn IN PARALLEL (after adaptive completes) */
-    bool has_cnn = (label && label[0]);  /* ensure_cnn_trainer() lazily creates trainer */
-    bool has_snn = (brain->snn_network && brain->snn_training_ctx && !brain->config.fast_training_mode);
-    bool has_lnn = (brain->lnn_network && brain->lnn_training_ctx && !brain->config.fast_training_mode);
-    int secondary_count = (has_cnn ? 1 : 0) + (has_snn ? 1 : 0) + (has_lnn ? 1 : 0);
-
-    if (brain->inference_pool && secondary_count >= 2) {
-        /* Parallel path: submit CNN + SNN + LNN tasks to thread pool */
-        learn_task_ctx_t* ctx = nimcp_calloc(1, sizeof(learn_task_ctx_t));
-        if (ctx) {
-            ctx->brain = brain;
-            ctx->features = features;
-            ctx->num_features = num_features;
-            ctx->target = target;
-            ctx->target_size = target_size;
-            ctx->label = label;
-
-            if (has_cnn) nimcp_pool_submit(brain->inference_pool, learn_cnn_task, ctx);
-            if (has_snn) nimcp_pool_submit(brain->inference_pool, learn_snn_task, ctx);
-            if (has_lnn) nimcp_pool_submit(brain->inference_pool, learn_lnn_task, ctx);
-
-            nimcp_pool_wait(brain->inference_pool);
-            nimcp_free(ctx);
-        } else {
-            goto sequential_training;
+    /* Step 2: Secondary networks — unified or legacy path */
+    if (brain->unified_training && brain->config.use_unified_training) {
+        /* Unified training path: single composite loss across all networks */
+        nimcp_utm_step_result_t utm_result = {0};
+        int utm_rc = nimcp_utm_step(brain->unified_training,
+                                    features, num_features,
+                                    target, target_size,
+                                    &utm_result);
+        if (utm_rc == 0) {
+            /* Blend unified composite loss with adaptive loss */
+            loss = 0.5f * loss + 0.5f * utm_result.composite_loss;
         }
     } else {
+        /* Legacy path: secondary networks learn IN PARALLEL (after adaptive completes) */
+        bool has_cnn = (label && label[0]);  /* ensure_cnn_trainer() lazily creates trainer */
+        bool has_snn = (brain->snn_network && brain->snn_training_ctx && !brain->config.fast_training_mode);
+        bool has_lnn = (brain->lnn_network && brain->lnn_training_ctx && !brain->config.fast_training_mode);
+        int secondary_count = (has_cnn ? 1 : 0) + (has_snn ? 1 : 0) + (has_lnn ? 1 : 0);
+
+        if (brain->inference_pool && secondary_count >= 2) {
+            /* Parallel path: submit CNN + SNN + LNN tasks to thread pool */
+            learn_task_ctx_t* ctx = nimcp_calloc(1, sizeof(learn_task_ctx_t));
+            if (ctx) {
+                ctx->brain = brain;
+                ctx->features = features;
+                ctx->num_features = num_features;
+                ctx->target = target;
+                ctx->target_size = target_size;
+                ctx->label = label;
+
+                if (has_cnn) nimcp_pool_submit(brain->inference_pool, learn_cnn_task, ctx);
+                if (has_snn) nimcp_pool_submit(brain->inference_pool, learn_snn_task, ctx);
+                if (has_lnn) nimcp_pool_submit(brain->inference_pool, learn_lnn_task, ctx);
+
+                nimcp_pool_wait(brain->inference_pool);
+                nimcp_free(ctx);
+            } else {
+                goto sequential_training;
+            }
+        } else {
 sequential_training:
-        /* Sequential fallback (original code path) */
-        if (has_cnn) {
-            float cnn_loss = brain_learn_vector_cnn_step(brain, features, num_features, label);
-            (void)cnn_loss;
-        }
-        if (has_snn) {
-            training_dispatch_result_t snn_res = {0};
-            training_dispatch_snn_step(brain, features, num_features, target, target_size, &snn_res);
-        }
-        if (has_lnn) {
-            training_dispatch_result_t lnn_res = {0};
-            training_dispatch_lnn_step(brain, features, num_features, target, target_size, &lnn_res);
+            /* Sequential fallback (original code path) */
+            if (has_cnn) {
+                float cnn_loss = brain_learn_vector_cnn_step(brain, features, num_features, label);
+                (void)cnn_loss;
+            }
+            if (has_snn) {
+                training_dispatch_result_t snn_res = {0};
+                training_dispatch_snn_step(brain, features, num_features, target, target_size, &snn_res);
+            }
+            if (has_lnn) {
+                training_dispatch_result_t lnn_res = {0};
+                training_dispatch_lnn_step(brain, features, num_features, target, target_size, &lnn_res);
+            }
         }
     }
 
@@ -2828,6 +2844,97 @@ int brain_enable_multi_network_training(brain_t brain)
         brain->cnn_trainer ? "CNN" : "(no CNN)",
         brain->vae_system  ? "VAE" : "(no VAE)",
         brain->attention_training_enabled ? "Attention" : "(no Attention)");
+
+    // ========================================================================
+    // STEP 5: Create Unified Training Manager (if config.use_unified_training)
+    // ========================================================================
+    if (brain->config.use_unified_training && !brain->unified_training) {
+        nimcp_unified_training_config_t utm_cfg;
+        nimcp_utm_default_config(&utm_cfg);
+        utm_cfg.learning_rate = brain->config.learning_rate;
+
+        brain->unified_training = nimcp_utm_create(&utm_cfg);
+        if (brain->unified_training) {
+            /* Register available networks as trainable */
+            const nimcp_trainable_network_ops_t* ops = NULL;
+            void* adapter_ctx = NULL;
+
+            /* Adaptive backbone */
+            if (brain->network) {
+                if (nimcp_trainable_adaptive_create(brain->network, &ops, &adapter_ctx) == 0) {
+                    nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 1.0f);
+                }
+            }
+
+            /* CNN */
+            if (brain->cnn_trainer) {
+                ops = NULL; adapter_ctx = NULL;
+                if (nimcp_trainable_cnn_create(brain->cnn_trainer, &ops, &adapter_ctx) == 0) {
+                    nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
+                    cnn_trainer_set_managed_by_utm(brain->cnn_trainer, true);
+                }
+            }
+
+            /* SNN */
+            if (brain->snn_training_ctx) {
+                ops = NULL; adapter_ctx = NULL;
+                if (nimcp_trainable_snn_create(
+                        (struct snn_backprop_ctx_s*)brain->snn_training_ctx,
+                        &ops, &adapter_ctx) == 0) {
+                    nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
+                    snn_backprop_set_managed_by_utm(
+                        (snn_backprop_ctx_t*)brain->snn_training_ctx, true);
+                }
+            }
+
+            /* LNN */
+            if (brain->lnn_training_ctx) {
+                ops = NULL; adapter_ctx = NULL;
+                if (nimcp_trainable_lnn_create(
+                        (struct lnn_training_ctx_s*)brain->lnn_training_ctx,
+                        &ops, &adapter_ctx) == 0) {
+                    nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
+                    ((lnn_training_ctx_t*)brain->lnn_training_ctx)->managed_by_utm = true;
+                }
+            }
+
+            NIMCP_LOGGING_INFO("Unified training manager created with %u networks",
+                              brain->unified_training->num_networks);
+
+            /* Auto-wire cross-network bridges based on registered network types.
+             * Convention: networks[0]=Adaptive, [1]=CNN, [2]=SNN, [3]=LNN
+             * Bridges: Adaptive→SNN (rate-to-spike), SNN→Adaptive (spike-to-rate),
+             *          LNN→SNN (continuous-to-spike) */
+            nimcp_unified_training_manager_t* utm = brain->unified_training;
+            int adaptive_idx = -1, snn_idx = -1, lnn_idx = -1;
+            for (uint32_t n = 0; n < utm->num_networks; n++) {
+                if (!utm->networks[n].ops) continue;
+                switch (utm->networks[n].ops->type) {
+                    case NIMCP_TRAINABLE_ADAPTIVE: adaptive_idx = (int)n; break;
+                    case NIMCP_TRAINABLE_SNN:      snn_idx = (int)n; break;
+                    case NIMCP_TRAINABLE_LNN:      lnn_idx = (int)n; break;
+                    default: break;
+                }
+            }
+
+            if (adaptive_idx >= 0 && snn_idx >= 0) {
+                nimcp_utm_add_bridge(utm, (uint32_t)adaptive_idx, (uint32_t)snn_idx,
+                                     NIMCP_BRIDGE_RATE_TO_SPIKE);
+                nimcp_utm_add_bridge(utm, (uint32_t)snn_idx, (uint32_t)adaptive_idx,
+                                     NIMCP_BRIDGE_SPIKE_TO_RATE);
+            }
+            if (lnn_idx >= 0 && snn_idx >= 0) {
+                nimcp_utm_add_bridge(utm, (uint32_t)lnn_idx, (uint32_t)snn_idx,
+                                     NIMCP_BRIDGE_CONTINUOUS_TO_SPIKE);
+            }
+
+            if (utm->num_bridges > 0) {
+                utm->config.enable_cross_network_gradients = true;
+                NIMCP_LOGGING_INFO("Auto-wired %u cross-network bridges (gradient flow enabled)",
+                                  utm->num_bridges);
+            }
+        }
+    }
 
     return 0;
 }

@@ -8,6 +8,7 @@
  */
 
 #include "lnn/nimcp_lnn_training.h"
+#include "training/nimcp_unified_training.h"
 #include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "lnn/nimcp_lnn.h"
@@ -213,11 +214,22 @@ lnn_training_ctx_t* lnn_training_create(
     /* Copy config */
     memcpy(&ctx->config, config, sizeof(lnn_training_config_t));
 
-    /* Initialize diversity buffer */
-    ctx->diversity_buffer = NULL;
-    ctx->diversity_buffer_pos = 0;
-    ctx->diversity_buffer_count = 0;
-    ctx->diversity_output_dim = 0;
+    /* Initialize anti-collapse state */
+    {
+        nimcp_anti_collapse_state_t* ac = (nimcp_anti_collapse_state_t*)
+            nimcp_calloc(1, sizeof(nimcp_anti_collapse_state_t));
+        if (ac) {
+            nimcp_anti_collapse_config_t ac_cfg = {
+                .diversity_loss_weight = config->diversity_loss_weight,
+                .diversity_buffer_size = config->diversity_buffer_size,
+                .use_gradient_normalization = config->use_gradient_normalization,
+                .gradient_target_norm = config->gradient_target_norm,
+                .gradient_clip_value = config->gradient_clip_norm,
+            };
+            nimcp_anti_collapse_init(ac, &ac_cfg);
+        }
+        ctx->anti_collapse_state = ac;
+    }
 
     /* Initialize state */
     ctx->step_count = 0;
@@ -414,10 +426,11 @@ void lnn_training_destroy(lnn_training_ctx_t* ctx) {
         nimcp_free(ctx->lr_schedule_params);
     }
 
-    /* Free diversity buffer */
-    if (ctx->diversity_buffer) {
-        nimcp_free(ctx->diversity_buffer);
-        ctx->diversity_buffer = NULL;
+    /* Destroy anti-collapse state */
+    if (ctx->anti_collapse_state) {
+        nimcp_anti_collapse_destroy((nimcp_anti_collapse_state_t*)ctx->anti_collapse_state);
+        nimcp_free(ctx->anti_collapse_state);
+        ctx->anti_collapse_state = NULL;
     }
 
     /* Note: We don't destroy bridges - they're owned externally */
@@ -488,76 +501,18 @@ int lnn_training_step(
         }
     }
 
-    /* 2b. Compute diversity loss to prevent mode collapse */
-    float diversity_loss = 0.0f;
-    if (ctx->config.diversity_loss_weight > 0.0f && ctx->output_buffer) {
+    /* 2b. Compute diversity loss to prevent mode collapse (unified anti-collapse) */
+    /* Diversity loss — skip when managed by UTM (UTM applies centrally) */
+    if (ctx->anti_collapse_state && ctx->output_buffer && !ctx->managed_by_utm) {
         const float* predictions = (const float*)nimcp_tensor_data_const(ctx->output_buffer);
         size_t out_dim = nimcp_tensor_numel(ctx->output_buffer);
+        float* loss_grad = ctx->loss_gradient ?
+            (float*)nimcp_tensor_data(ctx->loss_gradient) : NULL;
 
-        /* Lazy init diversity buffer */
-        if (!ctx->diversity_buffer && ctx->config.diversity_buffer_size > 0) {
-            ctx->diversity_output_dim = (uint32_t)out_dim;
-            ctx->diversity_buffer = (float*)nimcp_calloc(
-                ctx->config.diversity_buffer_size * out_dim, sizeof(float));
-        }
-
-        if (ctx->diversity_buffer && ctx->diversity_buffer_count > 0) {
-            /* Compute average cosine similarity with recent outputs */
-            float pred_norm = 0.0f;
-            for (size_t i = 0; i < out_dim; i++) {
-                pred_norm += predictions[i] * predictions[i];
-            }
-            pred_norm = sqrtf(pred_norm + 1e-8f);
-
-            float total_sim = 0.0f;
-            for (uint32_t b = 0; b < ctx->diversity_buffer_count; b++) {
-                const float* past = ctx->diversity_buffer + b * out_dim;
-                float dot = 0.0f, past_norm = 0.0f;
-                for (size_t i = 0; i < out_dim; i++) {
-                    dot += predictions[i] * past[i];
-                    past_norm += past[i] * past[i];
-                }
-                past_norm = sqrtf(past_norm + 1e-8f);
-                float cosine_sim = dot / (pred_norm * past_norm + 1e-8f);
-                total_sim += cosine_sim;
-            }
-            diversity_loss = total_sim / (float)ctx->diversity_buffer_count;
-
-            /* Add diversity gradient to loss gradient: d(cos_sim)/d(pred) */
-            if (ctx->loss_gradient && ctx->config.diversity_loss_weight > 0.0f) {
-                float* loss_grad = (float*)nimcp_tensor_data(ctx->loss_gradient);
-                float dw = ctx->config.diversity_loss_weight;
-
-                for (uint32_t b = 0; b < ctx->diversity_buffer_count; b++) {
-                    const float* past = ctx->diversity_buffer + b * out_dim;
-                    float dot = 0.0f, past_norm_sq = 0.0f;
-                    for (size_t i = 0; i < out_dim; i++) {
-                        dot += predictions[i] * past[i];
-                        past_norm_sq += past[i] * past[i];
-                    }
-                    float past_norm = sqrtf(past_norm_sq + 1e-8f);
-                    float denom = pred_norm * past_norm + 1e-8f;
-                    float scale = dw / (float)ctx->diversity_buffer_count;
-                    for (size_t i = 0; i < out_dim; i++) {
-                        /* d(cos_sim)/d(pred_i) = past_i/(||pred||*||past||) - cos_sim*pred_i/||pred||^2 */
-                        float grad_i = (past[i] / denom) - (dot / (denom * pred_norm * pred_norm + 1e-8f)) * predictions[i];
-                        loss_grad[i] += scale * grad_i;
-                    }
-                }
-            }
-
-            loss += ctx->config.diversity_loss_weight * diversity_loss;
-        }
-
-        /* Store current output in ring buffer */
-        if (ctx->diversity_buffer) {
-            memcpy(ctx->diversity_buffer + ctx->diversity_buffer_pos * out_dim,
-                   predictions, out_dim * sizeof(float));
-            ctx->diversity_buffer_pos = (ctx->diversity_buffer_pos + 1) % ctx->config.diversity_buffer_size;
-            if (ctx->diversity_buffer_count < ctx->config.diversity_buffer_size) {
-                ctx->diversity_buffer_count++;
-            }
-        }
+        float div_loss = nimcp_anti_collapse_diversity_loss(
+            (nimcp_anti_collapse_state_t*)ctx->anti_collapse_state,
+            predictions, loss_grad, (uint32_t)out_dim);
+        loss += div_loss;
     }
 
     /* 3. Backward pass using adjoint method for LNN */
@@ -572,10 +527,9 @@ int lnn_training_step(
             lnn_gradient_reset(ctx->gradient_ctx);
             lnn_network_zero_gradients(ctx->network);
             grad_norm = 0.0f;
-        } else {
-            /* Normalize or clip gradients */
+        } else if (!ctx->managed_by_utm) {
+            /* Normalize or clip gradients — skip when UTM manages globally */
             if (ctx->config.use_gradient_normalization) {
-                /* Normalize to fixed target norm — preserves direction perfectly */
                 float current_norm = lnn_gradient_norm(ctx->gradient_ctx);
                 if (current_norm > 1e-8f) {
                     float target = ctx->config.gradient_target_norm;
@@ -585,7 +539,6 @@ int lnn_training_step(
                 }
                 grad_norm = ctx->config.gradient_target_norm;
             } else {
-                /* Legacy: clip gradients (cap at max norm) */
                 float clip_norm = ctx->config.gradient_clip_norm;
                 if (clip_norm <= 0.0f) clip_norm = 1.0f;
                 lnn_gradient_clip(ctx->gradient_ctx, clip_norm);
@@ -600,8 +553,8 @@ int lnn_training_step(
     bool should_update = !ctx->accumulate_gradients ||
                          (ctx->current_accumulation >= ctx->accumulation_steps);
 
-    if (should_update) {
-        /* 5. Apply gradients via optimizer */
+    if (should_update && !ctx->managed_by_utm) {
+        /* 5. Apply gradients via optimizer — skip when UTM steps all params */
         if (ctx->optimizer && ctx->network) {
             size_t n_params = lnn_network_param_count(ctx->network);
             if (n_params > 0) {

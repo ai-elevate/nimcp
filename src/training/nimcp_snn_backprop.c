@@ -23,6 +23,7 @@
  */
 
 #include "training/nimcp_snn_backprop.h"
+#include "training/nimcp_unified_training.h"
 #include "constants/nimcp_constants.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
@@ -117,11 +118,11 @@ struct snn_backprop_ctx_s {
     /* Thread safety */
     void* mutex;                     /**< nimcp_mutex_t* */
 
-    /* Diversity loss state */
-    float* diversity_buffer;         /**< Ring buffer of recent outputs */
-    uint32_t diversity_buf_pos;
-    uint32_t diversity_buf_count;
-    uint32_t diversity_buf_size;     /**< Number of slots (default: 16) */
+    /* Anti-collapse (unified) */
+    nimcp_anti_collapse_state_t anti_collapse;
+
+    /* UTM management flag — when true, UTM owns gradient norm + diversity */
+    bool managed_by_utm;
 };
 
 /**
@@ -663,6 +664,18 @@ snn_backprop_ctx_t* snn_backprop_create(
     /* Initialize statistics */
     memset(&ctx->stats, 0, sizeof(snn_backprop_stats_t));
 
+    /* Anti-collapse init */
+    {
+        nimcp_anti_collapse_config_t ac_cfg = {
+            .diversity_loss_weight = config->diversity_loss_weight,
+            .diversity_buffer_size = 16,
+            .use_gradient_normalization = config->use_gradient_normalization,
+            .gradient_target_norm = 1.0f,
+            .gradient_clip_value = config->gradient_clip_norm,
+        };
+        nimcp_anti_collapse_init(&ctx->anti_collapse, &ac_cfg);
+    }
+
     NIMCP_LOGGING_INFO("SNN backprop trainer created: %u neurons, %u synapses, algorithm=%d",
                        total_neurons, total_synapses, (int)config->algorithm);
 
@@ -705,11 +718,8 @@ void snn_backprop_destroy(snn_backprop_ctx_t* ctx) {
         ctx->loss_ctx = NULL;
     }
 
-    /* Free diversity buffer */
-    if (ctx->diversity_buffer) {
-        nimcp_free(ctx->diversity_buffer);
-        ctx->diversity_buffer = NULL;
-    }
+    /* Destroy anti-collapse state */
+    nimcp_anti_collapse_destroy(&ctx->anti_collapse);
 
     /* Destroy mutex */
     if (ctx->mutex) {
@@ -892,29 +902,20 @@ int snn_backprop_step(
         float* g = (float*)nimcp_tensor_data(wg);
 
         if (g && numel > 0) {
-            float grad_norm_sq = 0.0f;
-            for (size_t i = 0; i < numel; i++) {
-                grad_norm_sq += g[i] * g[i];
-            }
-            float grad_norm = sqrtf(grad_norm_sq);
-
-            /* Gradient normalization or clipping */
-            float scale = 1.0f;
-            if (ctx->config.use_gradient_normalization) {
-                /* Normalize to target norm — preserves direction */
-                if (grad_norm > 1e-8f) {
-                    scale = clip / grad_norm;
-                }
-            } else {
-                /* Legacy clipping — only reduce when above threshold */
-                if (grad_norm > clip) {
-                    scale = clip / grad_norm;
-                }
+            /* Gradient normalization / clipping (unified anti-collapse)
+             * Skip when managed by UTM — UTM normalizes globally. */
+            if (!ctx->managed_by_utm) {
+                float* ga[1] = { g };
+                size_t gs[1] = { numel };
+                nimcp_anti_collapse_normalize_gradients(
+                    &ctx->anti_collapse.config, ga, gs, 1);
             }
 
-            /* Apply scaled gradients with weight decay */
-            for (size_t i = 0; i < numel; i++) {
-                g[i] = scale * g[i] + weight_decay * g[i];
+            /* Apply weight decay */
+            if (weight_decay > 0.0f) {
+                for (size_t i = 0; i < numel; i++) {
+                    g[i] += weight_decay * g[i];
+                }
             }
 
             ctx->stats.total_steps++;
@@ -1242,50 +1243,15 @@ float snn_backprop_compute_loss(
     }
     float mse_loss = total / (float)batch_size;
 
-    /* Diversity loss: penalize similar outputs to prevent mode collapse */
+    /* Diversity loss (unified anti-collapse) — loss-only, no gradient here.
+     * Skip when managed by UTM — UTM applies diversity loss centrally. */
     float diversity_loss = 0.0f;
-    if (ctx->config.diversity_loss_weight > 0.0f && batch_size > 0) {
-        /* Lazy init diversity buffer */
-        if (!ctx->diversity_buffer && batch_size > 0) {
-            ctx->diversity_buf_size = 16;
-            ctx->diversity_buffer = (float*)nimcp_calloc(
-                ctx->diversity_buf_size * batch_size, sizeof(float));
-        }
-
-        if (ctx->diversity_buffer && ctx->diversity_buf_count > 0) {
-            /* Average cosine similarity with recent outputs */
-            float out_norm = 0.0f;
-            for (uint32_t i = 0; i < batch_size; i++) {
-                out_norm += outputs[i] * outputs[i];
-            }
-            out_norm = sqrtf(out_norm + 1e-8f);
-
-            float total_sim = 0.0f;
-            for (uint32_t b = 0; b < ctx->diversity_buf_count; b++) {
-                const float* past = ctx->diversity_buffer + b * batch_size;
-                float dot = 0.0f, past_norm = 0.0f;
-                for (uint32_t i = 0; i < batch_size; i++) {
-                    dot += outputs[i] * past[i];
-                    past_norm += past[i] * past[i];
-                }
-                past_norm = sqrtf(past_norm + 1e-8f);
-                total_sim += dot / (out_norm * past_norm + 1e-8f);
-            }
-            diversity_loss = total_sim / (float)ctx->diversity_buf_count;
-        }
-
-        /* Store current output */
-        if (ctx->diversity_buffer) {
-            memcpy(ctx->diversity_buffer + ctx->diversity_buf_pos * batch_size,
-                   outputs, batch_size * sizeof(float));
-            ctx->diversity_buf_pos = (ctx->diversity_buf_pos + 1) % ctx->diversity_buf_size;
-            if (ctx->diversity_buf_count < ctx->diversity_buf_size) {
-                ctx->diversity_buf_count++;
-            }
-        }
+    if (!ctx->managed_by_utm) {
+        diversity_loss = nimcp_anti_collapse_diversity_loss(
+            &ctx->anti_collapse, outputs, NULL, batch_size);
     }
 
-    return mse_loss + ctx->config.diversity_loss_weight * diversity_loss;
+    return mse_loss + diversity_loss;
 }
 
 int snn_backprop_compute_loss_grad(
@@ -1383,4 +1349,8 @@ float snn_backprop_get_weight_norm(const snn_backprop_ctx_t* ctx) {
         }
     }
     return sqrtf(norm_sq);
+}
+
+void snn_backprop_set_managed_by_utm(snn_backprop_ctx_t* ctx, bool managed) {
+    if (ctx) ctx->managed_by_utm = managed;
 }

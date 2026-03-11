@@ -938,6 +938,7 @@ typedef struct {
      */
     bool fast_training_mode;
     bool defer_bio_plasticity;     /**< Skip bio plasticity in learn_vector (for batch mode) */
+    bool use_unified_training;     /**< Route all training through unified training manager */
 
     // === PERSISTENCE & CHECKPOINTING ===
     const char* checkpoint_path;      /**< Path to checkpoint file (NULL = no checkpoint) */

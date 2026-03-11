@@ -212,6 +212,14 @@ void brain_destroy(brain_t brain)
         // Non-fatal if snapshot fails
     }
 
+    /* Destroy unified training manager (before networks it references) */
+    if (brain->unified_training) {
+        /* Forward declaration avoids header include in lifecycle file */
+        extern void nimcp_utm_destroy(struct nimcp_unified_training_manager* mgr);
+        nimcp_utm_destroy(brain->unified_training);
+        brain->unified_training = NULL;
+    }
+
     LOG_MODULE_DEBUG("BRAIN", "Destroying network...");
     // Phase 3: Handle network destruction with atomic reference counting
     //

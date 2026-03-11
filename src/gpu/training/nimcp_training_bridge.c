@@ -24,6 +24,7 @@
  */
 
 #include "gpu/training/nimcp_training_bridge.h"
+#include "training/nimcp_unified_training.h"
 #include "gpu/sparse/nimcp_sparse_gpu.h"
 #include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "gpu/training/nimcp_training_gpu.h"
@@ -907,14 +908,9 @@ bool nimcp_gpu_forward_pass(
     return true;
 }
 
-/* Output diversity ring buffer for anti-collapse */
-#define GPU_DIVERSITY_BUF_SIZE 16
-#define GPU_DIVERSITY_MAX_DIM 8192
-static float s_diversity_buf[GPU_DIVERSITY_BUF_SIZE * GPU_DIVERSITY_MAX_DIM];
-static uint32_t s_diversity_pos = 0;
-static uint32_t s_diversity_count = 0;
-static uint32_t s_diversity_dim = 0;
-static const float DIVERSITY_WEIGHT = 0.1f;
+/* Unified anti-collapse state for GPU compute_loss */
+static nimcp_anti_collapse_state_t s_gpu_anti_collapse;
+static bool s_gpu_anti_collapse_inited = false;
 
 //=============================================================================
 // GPU Loss Computation
@@ -951,43 +947,18 @@ float nimcp_gpu_compute_loss(
 
     if (!ok) return -1.0f;
 
-    /* Add diversity loss to prevent mode collapse */
-    if (size <= GPU_DIVERSITY_MAX_DIM && DIVERSITY_WEIGHT > 0.0f) {
-        if (s_diversity_dim != size) {
-            /* Reset buffer on dimension change */
-            s_diversity_dim = size;
-            s_diversity_pos = 0;
-            s_diversity_count = 0;
+    /* Add diversity loss to prevent mode collapse (unified anti-collapse).
+     * Note: When UTM is active, this function should not be called directly
+     * for training — UTM handles diversity centrally. This remains for
+     * standalone GPU loss evaluation (e.g., monitoring, validation). */
+    {
+        if (!s_gpu_anti_collapse_inited) {
+            nimcp_anti_collapse_init(&s_gpu_anti_collapse, NULL);
+            s_gpu_anti_collapse_inited = true;
         }
-
-        if (s_diversity_count > 0) {
-            float out_norm = 0.0f;
-            for (uint32_t i = 0; i < size; i++) {
-                out_norm += output[i] * output[i];
-            }
-            out_norm = sqrtf(out_norm + 1e-8f);
-
-            float total_sim = 0.0f;
-            for (uint32_t b = 0; b < s_diversity_count; b++) {
-                const float* past = s_diversity_buf + b * size;
-                float dot = 0.0f, past_norm = 0.0f;
-                for (uint32_t i = 0; i < size; i++) {
-                    dot += output[i] * past[i];
-                    past_norm += past[i] * past[i];
-                }
-                past_norm = sqrtf(past_norm + 1e-8f);
-                total_sim += dot / (out_norm * past_norm + 1e-8f);
-            }
-            loss += DIVERSITY_WEIGHT * (total_sim / (float)s_diversity_count);
-        }
-
-        /* Store current output */
-        memcpy(s_diversity_buf + s_diversity_pos * size,
-               output, size * sizeof(float));
-        s_diversity_pos = (s_diversity_pos + 1) % GPU_DIVERSITY_BUF_SIZE;
-        if (s_diversity_count < GPU_DIVERSITY_BUF_SIZE) {
-            s_diversity_count++;
-        }
+        float div_loss = nimcp_anti_collapse_diversity_loss(
+            &s_gpu_anti_collapse, output, NULL, size);
+        loss += div_loss;
     }
 
     return loss;

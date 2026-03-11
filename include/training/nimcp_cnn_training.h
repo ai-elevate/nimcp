@@ -990,6 +990,11 @@ nimcp_error_t cnn_get_layer_weight_grad(const cnn_trainer_t* trainer,
                                          float** out_grad,
                                          size_t* out_size);
 
+/**
+ * @brief Mark trainer as managed by UTM (disables local anti-collapse + optimizer)
+ */
+void cnn_trainer_set_managed_by_utm(cnn_trainer_t* trainer, bool managed);
+
 #ifdef __cplusplus
 }
 #endif

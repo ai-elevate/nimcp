@@ -1017,6 +1017,11 @@ const char* snn_loss_type_name(snn_loss_type_t type);
  */
 int snn_backprop_validate_config(const snn_backprop_config_t* config);
 
+/**
+ * @brief Mark context as managed by UTM (disables local anti-collapse + gradient norm)
+ */
+void snn_backprop_set_managed_by_utm(snn_backprop_ctx_t* ctx, bool managed);
+
 #ifdef __cplusplus
 }
 #endif

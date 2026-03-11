@@ -1,0 +1,527 @@
+/**
+ * @file nimcp_unified_training.h
+ * @brief Unified Training Manager — single training infrastructure for all network types
+ *
+ * WHAT: Vtable-based training interface that LNN, SNN, CNN, and Adaptive networks plug into
+ * WHY:  Eliminates duplicated anti-collapse logic, enables cross-network gradient flow,
+ *       provides single composite loss and shared optimizer across all active networks
+ * HOW:  Each network type implements nimcp_trainable_network_ops_t; the unified manager
+ *       owns gradient management, diversity loss, normalization, and optimizer stepping
+ *
+ * @author NIMCP Development Team
+ * @date 2026-03-11
+ */
+
+#ifndef NIMCP_UNIFIED_TRAINING_H
+#define NIMCP_UNIFIED_TRAINING_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+//=============================================================================
+// Constants
+//=============================================================================
+
+/** Maximum number of trainable networks in the unified manager */
+#define NIMCP_UTM_MAX_NETWORKS      8
+
+/** Maximum number of cross-network bridges */
+#define NIMCP_UTM_MAX_BRIDGES       16
+
+/** Default diversity buffer size */
+#define NIMCP_UTM_DEFAULT_DIVERSITY_BUFFER  16
+
+/** Default gradient target norm */
+#define NIMCP_UTM_DEFAULT_GRADIENT_TARGET   1.0f
+
+/** Default diversity loss weight */
+#define NIMCP_UTM_DEFAULT_DIVERSITY_WEIGHT  0.1f
+
+//=============================================================================
+// Forward Declarations
+//=============================================================================
+
+typedef struct nimcp_unified_training_manager nimcp_unified_training_manager_t;
+typedef struct nimcp_cross_network_bridge nimcp_cross_network_bridge_t;
+
+/* External types (opaque) */
+typedef struct nimcp_optimizer_context nimcp_optimizer_context_t;
+typedef struct nimcp_gradient_manager_ctx nimcp_gradient_manager_ctx_t;
+typedef struct nimcp_loss_context nimcp_loss_context_t;
+
+//=============================================================================
+// Network Type Enum
+//=============================================================================
+
+typedef enum nimcp_trainable_type {
+    NIMCP_TRAINABLE_ADAPTIVE = 0,   /**< Adaptive/ANN backbone */
+    NIMCP_TRAINABLE_CNN,            /**< Convolutional neural network */
+    NIMCP_TRAINABLE_SNN,            /**< Spiking neural network */
+    NIMCP_TRAINABLE_LNN,            /**< Liquid neural network */
+    NIMCP_TRAINABLE_CUSTOM,         /**< User-defined network type */
+    NIMCP_TRAINABLE_TYPE_COUNT
+} nimcp_trainable_type_t;
+
+//=============================================================================
+// Parameter Group (for unified optimizer)
+//=============================================================================
+
+typedef struct nimcp_utm_param_group {
+    float* params;              /**< Parameter array (owned by network) */
+    float* gradients;           /**< Gradient array (owned by network) */
+    size_t count;               /**< Number of parameters */
+    float lr_scale;             /**< LR multiplier relative to base (1.0 = default) */
+    float weight_decay;         /**< Group-specific weight decay (0 = use global) */
+    const char* name;           /**< Human-readable name (e.g. "lnn_tau", "cnn_dense_0") */
+} nimcp_utm_param_group_t;
+
+//=============================================================================
+// Trainable Network Interface (vtable)
+//=============================================================================
+
+/**
+ * @brief Operations that every trainable network must implement
+ *
+ * Each network type (LNN, SNN, CNN, Adaptive) provides an adapter that
+ * implements these operations. The unified manager calls them polymorphically.
+ */
+typedef struct nimcp_trainable_network_ops {
+    /** Human-readable name (e.g. "LNN", "SNN_eProp") */
+    const char* name;
+
+    /** Network type tag */
+    nimcp_trainable_type_t type;
+
+    /**
+     * @brief Forward pass: input → output, caching activations internally
+     * @param ctx       Network-specific context
+     * @param input     Input feature vector
+     * @param input_dim Input dimension
+     * @param output    Output buffer (caller-allocated, size = get_output_dim())
+     * @param output_dim Output dimension
+     * @return 0 on success, negative on error
+     */
+    int (*forward)(void* ctx, const float* input, uint32_t input_dim,
+                   float* output, uint32_t output_dim);
+
+    /**
+     * @brief Backward pass: dL/dOutput → accumulate dL/dParams, optionally produce dL/dInput
+     *
+     * dL/dInput is required for cross-network gradient flow. If the network is
+     * the first in the chain, dl_dinput may be NULL (no upstream to propagate to).
+     *
+     * @param ctx           Network-specific context
+     * @param dl_doutput    Gradient of loss w.r.t. this network's output
+     * @param output_dim    Output dimension
+     * @param dl_dinput     [out] Gradient of loss w.r.t. this network's input (may be NULL)
+     * @param input_dim     Input dimension
+     * @return 0 on success, negative on error
+     */
+    int (*backward)(void* ctx, const float* dl_doutput, uint32_t output_dim,
+                    float* dl_dinput, uint32_t input_dim);
+
+    /**
+     * @brief Export parameter groups for unified optimizer
+     *
+     * The network returns pointers to its internal parameter and gradient arrays,
+     * grouped by learning rate requirements (e.g., tau params at 0.1x, biases at 2.0x).
+     *
+     * @param ctx        Network-specific context
+     * @param groups     [out] Array of param groups (caller frees array, not contents)
+     * @param num_groups [out] Number of groups
+     * @return 0 on success, negative on error
+     */
+    int (*get_param_groups)(void* ctx, nimcp_utm_param_group_t** groups, uint32_t* num_groups);
+
+    /**
+     * @brief Zero all accumulated gradients
+     * @param ctx Network-specific context
+     * @return 0 on success, negative on error
+     */
+    int (*zero_grad)(void* ctx);
+
+    /** @brief Get output dimensionality */
+    uint32_t (*get_output_dim)(void* ctx);
+
+    /** @brief Get input dimensionality */
+    uint32_t (*get_input_dim)(void* ctx);
+
+    /**
+     * @brief Compute network-specific auxiliary loss (e.g., SNN spike regularization)
+     *
+     * This is added to the composite loss. Return 0.0f if no auxiliary loss.
+     *
+     * @param ctx Network-specific context
+     * @return Auxiliary loss value
+     */
+    float (*compute_auxiliary_loss)(void* ctx);
+
+    /**
+     * @brief Destroy the adapter context (not the underlying network)
+     * @param ctx Network-specific adapter context
+     */
+    void (*destroy)(void* ctx);
+
+} nimcp_trainable_network_ops_t;
+
+/**
+ * @brief A registered trainable network (ops vtable + context)
+ */
+typedef struct nimcp_trainable_network {
+    const nimcp_trainable_network_ops_t* ops;
+    void* ctx;                          /**< Adapter-owned context */
+    float loss_weight;                  /**< Weight in composite loss (default 1.0) */
+    bool enabled;                       /**< Can be temporarily disabled */
+} nimcp_trainable_network_t;
+
+//=============================================================================
+// Cross-Network Bridge
+//=============================================================================
+
+typedef enum nimcp_bridge_type {
+    NIMCP_BRIDGE_LINEAR = 0,            /**< Learnable linear projection */
+    NIMCP_BRIDGE_RATE_TO_SPIKE,         /**< ANN → SNN: rate-to-spike encoding */
+    NIMCP_BRIDGE_SPIKE_TO_RATE,         /**< SNN → ANN: spike-to-rate decoding */
+    NIMCP_BRIDGE_CONTINUOUS_TO_SPIKE,   /**< LNN → SNN */
+    NIMCP_BRIDGE_IDENTITY               /**< Same-dimensionality passthrough */
+} nimcp_bridge_type_t;
+
+/**
+ * @brief Differentiable bridge between two networks
+ *
+ * Enables gradient flow across network type boundaries.
+ */
+struct nimcp_cross_network_bridge {
+    uint32_t source_idx;            /**< Index into manager's networks[] */
+    uint32_t target_idx;            /**< Index into manager's networks[] */
+    nimcp_bridge_type_t type;
+
+    /* Learnable transform (for LINEAR bridge) */
+    float* transform_weights;       /**< [target_dim x source_dim] */
+    float* transform_bias;          /**< [target_dim] or NULL */
+    float* weight_grad;             /**< Gradient for transform_weights */
+    float* bias_grad;               /**< Gradient for transform_bias */
+    uint32_t source_dim;
+    uint32_t target_dim;
+
+    /* Cached for backward pass */
+    float* last_source_output;      /**< Cached source output */
+    float* last_target_input;       /**< Cached transformed output */
+
+    bool enabled;
+};
+
+//=============================================================================
+// Anti-Collapse Configuration
+//=============================================================================
+
+typedef struct nimcp_anti_collapse_config {
+    float diversity_loss_weight;        /**< Weight for diversity penalty (default: 0.1) */
+    uint32_t diversity_buffer_size;     /**< Ring buffer size (default: 16) */
+    bool use_gradient_normalization;    /**< Normalize to target norm (default: true) */
+    float gradient_target_norm;         /**< Target norm (default: 1.0) */
+    float gradient_clip_value;          /**< Fallback clip value if normalization off (default: 5.0) */
+} nimcp_anti_collapse_config_t;
+
+//=============================================================================
+// Unified Training Manager Configuration
+//=============================================================================
+
+typedef struct nimcp_unified_training_config {
+    /* Optimizer */
+    uint32_t optimizer_type;            /**< nimcp_optimizer_type_t */
+    float learning_rate;                /**< Base learning rate */
+    float weight_decay;                 /**< Global weight decay */
+
+    /* Anti-collapse */
+    nimcp_anti_collapse_config_t anti_collapse;
+
+    /* Loss */
+    uint32_t loss_type;                 /**< nimcp_loss_type_t */
+
+    /* Composite loss */
+    bool use_composite_loss;            /**< Combine losses across networks (default: true) */
+
+    /* Execution */
+    bool enable_cross_network_gradients;/**< Enable gradient flow through bridges */
+
+} nimcp_unified_training_config_t;
+
+//=============================================================================
+// Anti-Collapse State (shared, not per-network)
+//=============================================================================
+
+typedef struct nimcp_anti_collapse_state {
+    float* diversity_buffer;            /**< [buffer_size × output_dim] */
+    uint32_t buffer_pos;
+    uint32_t buffer_count;
+    uint32_t output_dim;
+    nimcp_anti_collapse_config_t config;
+} nimcp_anti_collapse_state_t;
+
+//=============================================================================
+// Unified Training Manager
+//=============================================================================
+
+struct nimcp_unified_training_manager {
+    /* Registered networks */
+    nimcp_trainable_network_t networks[NIMCP_UTM_MAX_NETWORKS];
+    uint32_t num_networks;
+
+    /* Cross-network bridges */
+    nimcp_cross_network_bridge_t bridges[NIMCP_UTM_MAX_BRIDGES];
+    uint32_t num_bridges;
+
+    /* Shared anti-collapse state */
+    nimcp_anti_collapse_state_t anti_collapse;
+
+    /* Composite loss tracking */
+    float last_composite_loss;
+    float per_network_loss[NIMCP_UTM_MAX_NETWORKS];
+
+    /* Training state */
+    uint64_t step_count;
+    float current_lr;
+
+    /* Configuration */
+    nimcp_unified_training_config_t config;
+};
+
+//=============================================================================
+// Lifecycle API
+//=============================================================================
+
+/**
+ * @brief Create a unified training manager with default config
+ * @param config Configuration (NULL for defaults)
+ * @return New manager, or NULL on failure
+ */
+nimcp_unified_training_manager_t* nimcp_utm_create(
+    const nimcp_unified_training_config_t* config);
+
+/**
+ * @brief Destroy the unified training manager
+ * Destroys adapters and bridges but NOT the underlying networks.
+ */
+void nimcp_utm_destroy(nimcp_unified_training_manager_t* mgr);
+
+/**
+ * @brief Get default configuration
+ */
+void nimcp_utm_default_config(nimcp_unified_training_config_t* config);
+
+//=============================================================================
+// Network Registration
+//=============================================================================
+
+/**
+ * @brief Register a trainable network with the manager
+ * @param mgr        Manager
+ * @param ops        Vtable (must outlive the registration)
+ * @param ctx        Adapter context (manager takes ownership)
+ * @param loss_weight Weight in composite loss (1.0 = equal weight)
+ * @return Network index (>=0) on success, negative on error
+ */
+int nimcp_utm_register_network(nimcp_unified_training_manager_t* mgr,
+                               const nimcp_trainable_network_ops_t* ops,
+                               void* ctx,
+                               float loss_weight);
+
+/**
+ * @brief Enable/disable a registered network
+ */
+int nimcp_utm_set_network_enabled(nimcp_unified_training_manager_t* mgr,
+                                  uint32_t network_idx, bool enabled);
+
+//=============================================================================
+// Bridge API
+//=============================================================================
+
+/**
+ * @brief Add a cross-network bridge
+ * @param mgr         Manager
+ * @param source_idx  Source network index
+ * @param target_idx  Target network index
+ * @param type        Bridge type
+ * @return Bridge index (>=0) on success, negative on error
+ */
+int nimcp_utm_add_bridge(nimcp_unified_training_manager_t* mgr,
+                         uint32_t source_idx, uint32_t target_idx,
+                         nimcp_bridge_type_t type);
+
+//=============================================================================
+// Training Step
+//=============================================================================
+
+/**
+ * @brief Result of a unified training step
+ */
+typedef struct nimcp_utm_step_result {
+    float composite_loss;               /**< Weighted sum of all network losses */
+    float diversity_loss;               /**< Anti-collapse diversity penalty */
+    float per_network_loss[NIMCP_UTM_MAX_NETWORKS]; /**< Per-network losses */
+    float gradient_norm;                /**< Global gradient norm before normalization */
+    float gradient_scale;               /**< Scale factor applied to gradients */
+    uint64_t step;                      /**< Current step count */
+} nimcp_utm_step_result_t;
+
+/**
+ * @brief Execute one unified training step
+ *
+ * 1. Zero all gradients
+ * 2. Forward pass through networks (topology order)
+ * 3. Compute composite loss + diversity loss
+ * 4. Backward pass (reverse order, with bridge gradient flow)
+ * 5. Gradient normalization / clipping
+ * 6. Optimizer step across all parameter groups
+ *
+ * @param mgr        Manager
+ * @param input      Input features
+ * @param input_dim  Input dimension
+ * @param target     Target output
+ * @param target_dim Target dimension
+ * @param result     [out] Step result (may be NULL)
+ * @return 0 on success, negative on error
+ */
+int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
+                   const float* input, uint32_t input_dim,
+                   const float* target, uint32_t target_dim,
+                   nimcp_utm_step_result_t* result);
+
+//=============================================================================
+// Anti-Collapse API (standalone, usable without full manager)
+//=============================================================================
+
+/**
+ * @brief Initialize anti-collapse state
+ */
+int nimcp_anti_collapse_init(nimcp_anti_collapse_state_t* state,
+                             const nimcp_anti_collapse_config_t* config);
+
+/**
+ * @brief Destroy anti-collapse state
+ */
+void nimcp_anti_collapse_destroy(nimcp_anti_collapse_state_t* state);
+
+/**
+ * @brief Compute diversity loss and add gradient contribution
+ *
+ * Updates the ring buffer with the current output, computes average cosine
+ * similarity against recent outputs, and adds diversity gradient to grad_output.
+ *
+ * @param state       Anti-collapse state
+ * @param output      Current network output
+ * @param grad_output [in/out] Loss gradient — diversity gradient is ADDED to this
+ * @param dim         Output dimensionality
+ * @return Diversity loss value (cosine similarity penalty)
+ */
+float nimcp_anti_collapse_diversity_loss(nimcp_anti_collapse_state_t* state,
+                                         const float* output,
+                                         float* grad_output,
+                                         uint32_t dim);
+
+/**
+ * @brief Apply gradient normalization or clipping
+ *
+ * If use_gradient_normalization: normalizes to target_norm (preserves direction)
+ * Else: clips to gradient_clip_value (only scales down)
+ *
+ * @param config      Anti-collapse config
+ * @param gradients   Array of gradient arrays
+ * @param sizes       Array of gradient counts per array
+ * @param num_arrays  Number of gradient arrays
+ * @return Scale factor applied (1.0 if no scaling needed)
+ */
+float nimcp_anti_collapse_normalize_gradients(
+    const nimcp_anti_collapse_config_t* config,
+    float** gradients, const size_t* sizes, uint32_t num_arrays);
+
+//=============================================================================
+// Adapter Creation Helpers
+//=============================================================================
+
+/* Forward declarations of adapter creation functions.
+ * Each returns a vtable + context pair. The caller registers them via
+ * nimcp_utm_register_network(). */
+
+struct cnn_trainer_s;
+struct snn_backprop_ctx_s;
+struct lnn_training_ctx_s;
+struct neural_network_struct;
+
+/**
+ * @brief Create adapter for CNN trainer
+ * @param trainer Existing CNN trainer (not owned, must outlive adapter)
+ * @param[out] ops  Vtable pointer
+ * @param[out] ctx  Adapter context
+ * @return 0 on success
+ */
+int nimcp_trainable_cnn_create(struct cnn_trainer_s* trainer,
+                               const nimcp_trainable_network_ops_t** ops,
+                               void** ctx);
+
+/**
+ * @brief Create adapter for SNN backprop context
+ */
+int nimcp_trainable_snn_create(struct snn_backprop_ctx_s* snn_ctx,
+                               const nimcp_trainable_network_ops_t** ops,
+                               void** ctx);
+
+/**
+ * @brief Create adapter for LNN training context
+ */
+int nimcp_trainable_lnn_create(struct lnn_training_ctx_s* lnn_ctx,
+                               const nimcp_trainable_network_ops_t** ops,
+                               void** ctx);
+
+/**
+ * @brief Create adapter for Adaptive (backbone) network
+ */
+int nimcp_trainable_adaptive_create(struct neural_network_struct* network,
+                                    const nimcp_trainable_network_ops_t** ops,
+                                    void** ctx);
+
+//=============================================================================
+// Cross-Network Bridge Forward/Backward (specialized implementations)
+//=============================================================================
+
+/** @brief Rate-to-spike forward: continuous [0,1] → soft spike probabilities (ANN→SNN) */
+void bridge_rate_to_spike_forward(const nimcp_cross_network_bridge_t* b,
+                                   const float* source_output,
+                                   float* target_input);
+
+/** @brief Rate-to-spike backward: surrogate gradient through sigmoid threshold */
+void bridge_rate_to_spike_backward(const nimcp_cross_network_bridge_t* b,
+                                    const float* dl_dtarget,
+                                    float* dl_dsource);
+
+/** @brief Spike-to-rate forward: spikes → continuous rates via exponential smoothing (SNN→ANN) */
+void bridge_spike_to_rate_forward(const nimcp_cross_network_bridge_t* b,
+                                   const float* source_output,
+                                   float* target_input);
+
+/** @brief Spike-to-rate backward: surrogate gradient through spike boundary */
+void bridge_spike_to_rate_backward(const nimcp_cross_network_bridge_t* b,
+                                    const float* dl_dtarget,
+                                    float* dl_dsource);
+
+/** @brief Continuous-to-spike forward: ODE states → spike probabilities (LNN→SNN) */
+void bridge_continuous_to_spike_forward(const nimcp_cross_network_bridge_t* b,
+                                         const float* source_output,
+                                         float* target_input);
+
+/** @brief Continuous-to-spike backward: chain rule through tanh + sigmoid + surrogate */
+void bridge_continuous_to_spike_backward(const nimcp_cross_network_bridge_t* b,
+                                          const float* dl_dtarget,
+                                          float* dl_dsource);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* NIMCP_UNIFIED_TRAINING_H */

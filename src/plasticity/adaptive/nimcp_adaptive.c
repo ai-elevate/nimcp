@@ -32,6 +32,7 @@
 //=============================================================================
 
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "training/nimcp_unified_training.h"
 #include "plasticity/adaptive/nimcp_backprop_kernel.h"
 #include <math.h>
 #include "utils/math/nimcp_math_helpers.h"
@@ -2116,49 +2117,17 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             if (!isfinite(loss) || loss < 0.0f) loss = 0.0f;
         }
 
-        // 3b. Diversity loss: penalize cosine similarity with recent outputs
-        //     to prevent mode collapse (all outputs converging to same vector).
+        // 3b. Diversity loss (unified anti-collapse)
         {
-            #define ADAPTIVE_DIV_BUF_SIZE 16
-            #define ADAPTIVE_DIV_MAX_DIM 8192
-            static float s_adap_div_buf[ADAPTIVE_DIV_BUF_SIZE * ADAPTIVE_DIV_MAX_DIM];
-            static uint32_t s_adap_div_pos = 0;
-            static uint32_t s_adap_div_count = 0;
-            static uint32_t s_adap_div_dim = 0;
-            static const float ADAP_DIV_WEIGHT = 0.1f;
-
-            uint32_t tsize = example->target_size;
-            if (tsize <= ADAPTIVE_DIV_MAX_DIM && ADAP_DIV_WEIGHT > 0.0f) {
-                if (s_adap_div_dim != tsize) {
-                    s_adap_div_dim = tsize;
-                    s_adap_div_pos = 0;
-                    s_adap_div_count = 0;
-                }
-                if (s_adap_div_count > 0) {
-                    float out_norm = 0.0f;
-                    for (uint32_t i = 0; i < tsize; i++)
-                        out_norm += output[i] * output[i];
-                    out_norm = sqrtf(out_norm + 1e-8f);
-
-                    float total_sim = 0.0f;
-                    for (uint32_t b = 0; b < s_adap_div_count; b++) {
-                        const float* past = s_adap_div_buf + b * tsize;
-                        float dot = 0.0f, pn = 0.0f;
-                        for (uint32_t i = 0; i < tsize; i++) {
-                            dot += output[i] * past[i];
-                            pn += past[i] * past[i];
-                        }
-                        pn = sqrtf(pn + 1e-8f);
-                        total_sim += dot / (out_norm * pn + 1e-8f);
-                    }
-                    loss += ADAP_DIV_WEIGHT * (total_sim / (float)s_adap_div_count);
-                }
-                memcpy(s_adap_div_buf + s_adap_div_pos * tsize,
-                       output, tsize * sizeof(float));
-                s_adap_div_pos = (s_adap_div_pos + 1) % ADAPTIVE_DIV_BUF_SIZE;
-                if (s_adap_div_count < ADAPTIVE_DIV_BUF_SIZE)
-                    s_adap_div_count++;
+            static nimcp_anti_collapse_state_t s_adap_anti_collapse;
+            static bool s_adap_ac_inited = false;
+            if (!s_adap_ac_inited) {
+                nimcp_anti_collapse_init(&s_adap_anti_collapse, NULL);
+                s_adap_ac_inited = true;
             }
+            float div_loss = nimcp_anti_collapse_diversity_loss(
+                &s_adap_anti_collapse, output, NULL, example->target_size);
+            loss += div_loss;
         }
 
         // 3c. Gradient-normalized learning rate: scale LR so effective gradient

@@ -2461,6 +2461,15 @@ set(NIMCP_CORE_SOURCES
     # Training - SNN Backpropagation (surrogate gradients, BPTT, E-prop, RTRL)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_snn_backprop.c
 
+    # Unified Training Manager (UTM: single training infrastructure for all network types)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_unified_training.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_unified_anti_collapse.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cross_network_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/adapters/nimcp_cnn_trainable.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/adapters/nimcp_snn_trainable.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/adapters/nimcp_lnn_trainable.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/adapters/nimcp_adaptive_trainable.c
+
     # Training Dispatcher (Phase TD-1: Unified Training Dispatch)
     # Routes training to SNN/LNN/CNN/Adaptive based on network_type configuration
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_training_dispatch.c
