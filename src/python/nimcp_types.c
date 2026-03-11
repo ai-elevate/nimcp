@@ -2415,6 +2415,43 @@ static PyObject* Brain_broadcast_probe(BrainObject* self, PyObject* Py_UNUSED(ar
     return PyBool_FromLong(status == NIMCP_OK);
 }
 
+static PyObject* Brain_set_training_mode(BrainObject* self, PyObject* args) {
+    if (!self->brain) Py_RETURN_NONE;
+    int active;
+    if (!PyArg_ParseTuple(args, "p", &active)) return NULL;
+    nimcp_brain_set_training_mode(self->brain, (bool)active);
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_set_network_ablation(BrainObject* self, PyObject* args, PyObject* kwds) {
+    if (!self->brain) Py_RETURN_NONE;
+    static char* kwlist[] = {"train_cnn", "train_snn", "train_lnn", NULL};
+    int cnn = -1, snn = -1, lnn = -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iii", kwlist, &cnn, &snn, &lnn))
+        return NULL;
+    nimcp_brain_set_network_ablation(self->brain, cnn, snn, lnn);
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_network_metrics(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) Py_RETURN_NONE;
+    float ema_ann = 0, ema_cnn = 0, ema_snn = 0, ema_lnn = 0;
+    uint64_t ann_steps = 0, cnn_steps = 0, snn_steps = 0, lnn_steps = 0;
+    if (!nimcp_brain_get_network_metrics(self->brain,
+            &ema_ann, &ema_cnn, &ema_snn, &ema_lnn,
+            &ann_steps, &cnn_steps, &snn_steps, &lnn_steps))
+        Py_RETURN_NONE;
+    return Py_BuildValue("{s:f,s:f,s:f,s:f,s:K,s:K,s:K,s:K}",
+        "ann_loss", (double)ema_ann,
+        "cnn_loss", (double)ema_cnn,
+        "snn_loss", (double)ema_snn,
+        "lnn_loss", (double)ema_lnn,
+        "ann_steps", ann_steps,
+        "cnn_steps", cnn_steps,
+        "snn_steps", snn_steps,
+        "lnn_steps", lnn_steps);
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS | METH_KEYWORDS,
      "Learn from a single example\n\n"
@@ -2963,6 +3000,24 @@ static PyMethodDef Brain_methods[] = {
      "Example:\n"
      "    brain.submit_sensory('audio', audio_samples)  # list of floats\n"
      "    brain.submit_sensory('visual', pixels, width=64, height=64, channels=3)"},
+
+    {"get_network_metrics", (PyCFunction)Brain_get_network_metrics, METH_NOARGS,
+     "Get per-network training metrics for ablation analysis\n\n"
+     "Returns:\n"
+     "    dict: {ann_loss, cnn_loss, snn_loss, lnn_loss, ann_steps, cnn_steps, ...}"},
+
+    {"set_training_mode", (PyCFunction)Brain_set_training_mode, METH_VARARGS,
+     "Enable/disable training-mode fast path in brain_decide()\n\n"
+     "Args:\n"
+     "    active (bool): True = skip expensive cognitive modules during decide()"},
+
+    {"set_network_ablation", (PyCFunction)Brain_set_network_ablation,
+     METH_VARARGS | METH_KEYWORDS,
+     "Enable/disable individual network types for ablation studies\n\n"
+     "Args:\n"
+     "    train_cnn (bool): Enable CNN training\n"
+     "    train_snn (bool): Enable SNN training\n"
+     "    train_lnn (bool): Enable LNN training"},
 
     {NULL, NULL, 0, NULL}
 };

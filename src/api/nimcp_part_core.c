@@ -3543,3 +3543,34 @@ float nimcp_brain_get_sparsity_ratio(nimcp_brain_t brain) {
     if (!net) return 0.0f;
     return neural_network_get_sparsity_ratio(net);
 }
+
+void nimcp_brain_set_training_mode(nimcp_brain_t brain, bool active) {
+    if (!brain || !brain->internal_brain) return;
+    brain->internal_brain->config.training_mode_active = active;
+}
+
+void nimcp_brain_set_network_ablation(nimcp_brain_t brain,
+                                       int train_cnn, int train_snn, int train_lnn) {
+    if (!brain || !brain->internal_brain) return;
+    if (train_cnn >= 0) brain->internal_brain->config.train_cnn = (bool)train_cnn;
+    if (train_snn >= 0) brain->internal_brain->config.train_snn = (bool)train_snn;
+    if (train_lnn >= 0) brain->internal_brain->config.train_lnn = (bool)train_lnn;
+}
+
+bool nimcp_brain_get_network_metrics(nimcp_brain_t brain,
+                                      float* ema_ann, float* ema_cnn,
+                                      float* ema_snn, float* ema_lnn,
+                                      uint64_t* ann_steps, uint64_t* cnn_steps,
+                                      uint64_t* snn_steps, uint64_t* lnn_steps) {
+    if (!brain || !brain->internal_brain) return false;
+    brain_t b = brain->internal_brain;
+    if (ema_ann) *ema_ann = b->network_metrics.ema_ann_loss;
+    if (ema_cnn) *ema_cnn = b->network_metrics.ema_cnn_loss;
+    if (ema_snn) *ema_snn = b->network_metrics.ema_snn_loss;
+    if (ema_lnn) *ema_lnn = b->network_metrics.ema_lnn_loss;
+    if (ann_steps) *ann_steps = b->network_metrics.ann_steps;
+    if (cnn_steps) *cnn_steps = b->network_metrics.cnn_steps;
+    if (snn_steps) *snn_steps = b->network_metrics.snn_steps;
+    if (lnn_steps) *lnn_steps = b->network_metrics.lnn_steps;
+    return true;
+}

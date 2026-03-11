@@ -999,9 +999,9 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         }
     } else {
         /* Legacy path: secondary networks learn IN PARALLEL (after adaptive completes) */
-        bool has_cnn = (label && label[0]);  /* ensure_cnn_trainer() lazily creates trainer */
-        bool has_snn = (brain->snn_network && brain->snn_training_ctx && !brain->config.fast_training_mode);
-        bool has_lnn = (brain->lnn_network && brain->lnn_training_ctx && !brain->config.fast_training_mode);
+        bool has_cnn = (label && label[0]) && brain->config.train_cnn;
+        bool has_snn = (brain->snn_network && brain->snn_training_ctx && !brain->config.fast_training_mode && brain->config.train_snn);
+        bool has_lnn = (brain->lnn_network && brain->lnn_training_ctx && !brain->config.fast_training_mode && brain->config.train_lnn);
         int secondary_count = (has_cnn ? 1 : 0) + (has_snn ? 1 : 0) + (has_lnn ? 1 : 0);
 
         if (brain->inference_pool && secondary_count >= 2) {
@@ -1029,17 +1029,46 @@ sequential_training:
             /* Sequential fallback (original code path) */
             if (has_cnn) {
                 float cnn_loss = brain_learn_vector_cnn_step(brain, features, num_features, label);
-                (void)cnn_loss;
+                if (cnn_loss >= 0.0f) {
+                    const float a = 0.01f;
+                    brain->network_metrics.last_cnn_loss = cnn_loss;
+                    brain->network_metrics.cnn_steps++;
+                    brain->network_metrics.ema_cnn_loss =
+                        (1.0f - a) * brain->network_metrics.ema_cnn_loss + a * cnn_loss;
+                }
             }
             if (has_snn) {
                 training_dispatch_result_t snn_res = {0};
                 training_dispatch_snn_step(brain, features, num_features, target, target_size, &snn_res);
+                if (snn_res.loss >= 0.0f) {
+                    const float a = 0.01f;
+                    brain->network_metrics.last_snn_loss = snn_res.loss;
+                    brain->network_metrics.snn_steps++;
+                    brain->network_metrics.ema_snn_loss =
+                        (1.0f - a) * brain->network_metrics.ema_snn_loss + a * snn_res.loss;
+                }
             }
             if (has_lnn) {
                 training_dispatch_result_t lnn_res = {0};
                 training_dispatch_lnn_step(brain, features, num_features, target, target_size, &lnn_res);
+                if (lnn_res.loss >= 0.0f) {
+                    const float a = 0.01f;
+                    brain->network_metrics.last_lnn_loss = lnn_res.loss;
+                    brain->network_metrics.lnn_steps++;
+                    brain->network_metrics.ema_lnn_loss =
+                        (1.0f - a) * brain->network_metrics.ema_lnn_loss + a * lnn_res.loss;
+                }
             }
         }
+    }
+
+    /* --- Per-network metrics tracking (ablation analysis) --- */
+    {
+        const float ema_alpha = 0.01f;
+        brain->network_metrics.last_ann_loss = loss;
+        brain->network_metrics.ann_steps++;
+        brain->network_metrics.ema_ann_loss =
+            (1.0f - ema_alpha) * brain->network_metrics.ema_ann_loss + ema_alpha * loss;
     }
 
     /* Accumulate sleep pressure */

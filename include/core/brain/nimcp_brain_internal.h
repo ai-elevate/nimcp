@@ -209,6 +209,22 @@ struct brain_struct {
     // CNN training is integrated into cnn_trainer
     struct nimcp_unified_training_manager* unified_training;  // UTM: unified training manager (Phase 3)
 
+    // === PER-NETWORK TRAINING METRICS (ablation tracking) ===
+    struct {
+        float last_ann_loss;     /**< Last ANN/Adaptive backbone loss */
+        float last_cnn_loss;     /**< Last CNN loss (0 if disabled) */
+        float last_snn_loss;     /**< Last SNN loss (0 if disabled) */
+        float last_lnn_loss;     /**< Last LNN loss (0 if disabled) */
+        float ema_ann_loss;      /**< EMA of ANN loss (α=0.01) */
+        float ema_cnn_loss;      /**< EMA of CNN loss */
+        float ema_snn_loss;      /**< EMA of SNN loss */
+        float ema_lnn_loss;      /**< EMA of LNN loss */
+        uint64_t ann_steps;      /**< Total ANN training steps */
+        uint64_t cnn_steps;      /**< Total CNN training steps */
+        uint64_t snn_steps;      /**< Total SNN training steps */
+        uint64_t lnn_steps;      /**< Total LNN training steps */
+    } network_metrics;
+
     // Label to output mapping
     char** output_labels;        // Label strings (indexed array for reverse lookup)
     uint32_t num_output_labels;  // Current label count

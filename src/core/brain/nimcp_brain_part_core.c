@@ -1401,6 +1401,31 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
+    // OPTIMIZATION: Training-mode fast path — skip all expensive cognitive modules
+    // ========================================================================
+    // WHAT: During training, skip reasoning, dialogue, imagination, ethics, etc.
+    // WHY:  These modules don't contribute gradients — only add latency during training.
+    //       Training needs: forward pass + label + confidence. Nothing more.
+    // HOW:  Same as classification fast path but triggered by training_mode_active flag.
+    if (brain->config.training_mode_active) {
+        if (brain->strategy && brain->strategy->transform_output) {
+            brain->strategy->transform_output(decision->output_vector, decision->output_size);
+        }
+        determine_output_label(brain, decision);
+        update_inference_stats(brain, decision);
+
+        if (nimcp_platform_mutex_lock(&brain->cache_mutex) == 0) {
+            cache_decision(brain, features, num_features, decision);
+            nimcp_platform_mutex_unlock(&brain->cache_mutex);
+        }
+
+        nimcp_free(prediction);
+        nimcp_free(local_features);
+        brain_clear_error();
+        return decision;
+    }
+
+    // ========================================================================
     // STAGE 1.5: Hemispheric Processing — Callosum Transfer + Lateralization
     // ========================================================================
     // WHAT: Route output through inter-hemispheric channels, modulate by dominance

@@ -467,6 +467,23 @@ bool brain_get_stats(brain_t brain, brain_stats_t* stats)
     return true;
 }
 
+bool brain_get_network_metrics(brain_t brain, brain_network_metrics_t* metrics) {
+    if (!brain || !metrics) return false;
+    metrics->last_ann_loss = brain->network_metrics.last_ann_loss;
+    metrics->last_cnn_loss = brain->network_metrics.last_cnn_loss;
+    metrics->last_snn_loss = brain->network_metrics.last_snn_loss;
+    metrics->last_lnn_loss = brain->network_metrics.last_lnn_loss;
+    metrics->ema_ann_loss  = brain->network_metrics.ema_ann_loss;
+    metrics->ema_cnn_loss  = brain->network_metrics.ema_cnn_loss;
+    metrics->ema_snn_loss  = brain->network_metrics.ema_snn_loss;
+    metrics->ema_lnn_loss  = brain->network_metrics.ema_lnn_loss;
+    metrics->ann_steps     = brain->network_metrics.ann_steps;
+    metrics->cnn_steps     = brain->network_metrics.cnn_steps;
+    metrics->snn_steps     = brain->network_metrics.snn_steps;
+    metrics->lnn_steps     = brain->network_metrics.lnn_steps;
+    return true;
+}
+
 /**
  * @brief Get number of input features for this brain
  */

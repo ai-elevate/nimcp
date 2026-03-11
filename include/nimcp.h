@@ -2725,6 +2725,33 @@ nimcp_status_t nimcp_init(void);
  */
 void nimcp_shutdown(void);
 
+// === TRAINING MODE & ABLATION ===
+
+/**
+ * @brief Enable/disable training-mode fast path in brain_decide()
+ * When active, expensive cognitive modules (reasoning, dialogue, imagination,
+ * ethics, ToM, etc.) are skipped for 2-5x training speedup.
+ */
+void nimcp_brain_set_training_mode(nimcp_brain_t brain, bool active);
+
+/**
+ * @brief Enable/disable individual network types for ablation studies
+ * @param train_cnn -1 = don't change, 0 = disable, 1 = enable
+ * @param train_snn -1 = don't change, 0 = disable, 1 = enable
+ * @param train_lnn -1 = don't change, 0 = disable, 1 = enable
+ */
+void nimcp_brain_set_network_ablation(nimcp_brain_t brain,
+                                       int train_cnn, int train_snn, int train_lnn);
+
+/**
+ * @brief Get per-network training metrics for ablation analysis
+ */
+bool nimcp_brain_get_network_metrics(nimcp_brain_t brain,
+                                      float* ema_ann, float* ema_cnn,
+                                      float* ema_snn, float* ema_lnn,
+                                      uint64_t* ann_steps, uint64_t* cnn_steps,
+                                      uint64_t* snn_steps, uint64_t* lnn_steps);
+
 #ifdef __cplusplus
 }
 #endif

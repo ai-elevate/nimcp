@@ -940,6 +940,14 @@ typedef struct {
     bool defer_bio_plasticity;     /**< Skip bio plasticity in learn_vector (for batch mode) */
     bool use_unified_training;     /**< Route all training through unified training manager */
 
+    // === NETWORK ABLATION FLAGS ===
+    // Each flag controls whether a network type participates in training.
+    // All default to true. Set to false to disable for ablation studies.
+    bool train_cnn;                /**< Enable CNN training (default: true) */
+    bool train_snn;                /**< Enable SNN training (default: true) */
+    bool train_lnn;                /**< Enable LNN training (default: true) */
+    bool training_mode_active;     /**< When true, skip expensive cognitive modules in brain_decide() */
+
     // === PERSISTENCE & CHECKPOINTING ===
     const char* checkpoint_path;      /**< Path to checkpoint file (NULL = no checkpoint) */
     bool auto_load;                   /**< Auto-load from checkpoint on create (default: true) */
@@ -3431,6 +3439,32 @@ struct brain_stats_struct {
  * @return true on success
  */
 bool brain_get_stats(brain_t brain, brain_stats_t* stats);
+
+/**
+ * @brief Per-network training metrics for ablation analysis
+ */
+typedef struct brain_network_metrics {
+    float last_ann_loss;     /**< Last ANN/Adaptive backbone loss */
+    float last_cnn_loss;     /**< Last CNN loss (0 if disabled) */
+    float last_snn_loss;     /**< Last SNN loss (0 if disabled) */
+    float last_lnn_loss;     /**< Last LNN loss (0 if disabled) */
+    float ema_ann_loss;      /**< EMA of ANN loss (α=0.01) */
+    float ema_cnn_loss;      /**< EMA of CNN loss */
+    float ema_snn_loss;      /**< EMA of SNN loss */
+    float ema_lnn_loss;      /**< EMA of LNN loss */
+    uint64_t ann_steps;      /**< Total ANN training steps */
+    uint64_t cnn_steps;      /**< Total CNN training steps */
+    uint64_t snn_steps;      /**< Total SNN training steps */
+    uint64_t lnn_steps;      /**< Total LNN training steps */
+} brain_network_metrics_t;
+
+/**
+ * @brief Get per-network training metrics
+ * @param brain Brain handle
+ * @param metrics Output metrics
+ * @return true on success
+ */
+bool brain_get_network_metrics(brain_t brain, brain_network_metrics_t* metrics);
 
 /**
  * @brief Mark brain as a snapshot with preserved stats

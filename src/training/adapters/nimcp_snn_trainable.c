@@ -23,16 +23,28 @@ typedef struct {
 
 static int snn_adapter_forward(void* ctx, const float* input, uint32_t input_dim,
                                float* output, uint32_t output_dim) {
-    (void)ctx; (void)input; (void)input_dim; (void)output; (void)output_dim;
-    NIMCP_LOGGING_DEBUG("snn_adapter_forward: stub (SNN uses spike-based forward)");
-    return 0;
+    snn_adapter_ctx_t* a = (snn_adapter_ctx_t*)ctx;
+    if (!a || !a->snn_ctx || !input || !output) return -1;
+
+    /* SNN forward: single sample, 1ms duration */
+    int rc = snn_backprop_forward(a->snn_ctx, input, 1, 1.0f, output);
+    return (rc == 0) ? 0 : -1;
 }
 
 static int snn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t output_dim,
                                 float* dl_dinput, uint32_t input_dim) {
-    (void)ctx; (void)dl_doutput; (void)output_dim; (void)dl_dinput; (void)input_dim;
-    NIMCP_LOGGING_DEBUG("snn_adapter_backward: stub (SNN uses surrogate gradient backward)");
-    return 0;
+    snn_adapter_ctx_t* a = (snn_adapter_ctx_t*)ctx;
+    if (!a || !a->snn_ctx || !dl_doutput) return -1;
+
+    /* SNN backward: accumulates gradients into ctx->gradients */
+    int rc = snn_backprop_backward(a->snn_ctx, dl_doutput, 1);
+
+    /* Propagate input gradient for bridge flow */
+    if (dl_dinput && rc == 0) {
+        uint32_t dim = (input_dim < output_dim) ? input_dim : output_dim;
+        memcpy(dl_dinput, dl_doutput, dim * sizeof(float));
+    }
+    return (rc == 0) ? 0 : -1;
 }
 
 static int snn_adapter_get_param_groups(void* ctx,
@@ -40,6 +52,7 @@ static int snn_adapter_get_param_groups(void* ctx,
                                         uint32_t* num_groups) {
     (void)ctx;
     if (!groups || !num_groups) return -1;
+    /* SNN parameters managed internally via surrogate gradient / e-prop */
     *groups = NULL;
     *num_groups = 0;
     return 0;
@@ -63,7 +76,7 @@ static uint32_t snn_adapter_get_input_dim(void* ctx) {
 }
 
 static float snn_adapter_auxiliary_loss(void* ctx) {
-    /* SNN spike regularization could go here in Phase 3 */
+    /* Could add spike regularization loss here */
     (void)ctx;
     return 0.0f;
 }
@@ -98,6 +111,9 @@ int nimcp_trainable_snn_create(struct snn_backprop_ctx_s* snn_ctx,
     if (!a) return -1;
 
     a->snn_ctx = (snn_backprop_ctx_t*)snn_ctx;
+    /* Dims set from brain config at registration time.
+     * SNN doesn't expose dims via public API — these are set by
+     * the caller after nimcp_trainable_snn_create(). */
     a->output_dim = 0;
     a->input_dim = 0;
 

@@ -378,6 +378,12 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->enable_executive_control = !minimal;
     config->enable_epistemic_filter = !minimal;
 
+    // Network ablation flags (all enabled by default)
+    config->train_cnn = true;
+    config->train_snn = true;
+    config->train_lnn = true;
+    config->training_mode_active = false;  // Set to true during training to skip cognitive modules
+
     // Fuzzy logic and Internal KG defaults
     config->enable_fuzzy_logic = !minimal;
     config->enable_internal_kg = !minimal;

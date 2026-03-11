@@ -200,3 +200,8 @@
 [2026-03-11 18:25:01] [WARN] Poor output differentiation! eff_rank=1.0 (threshold: 10)
 [2026-03-11 18:30:01] [WARN] Poor output differentiation! eff_rank=1.0 (threshold: 10)
 [2026-03-11 18:35:01] [WARN] Poor output differentiation! eff_rank=1.0 (threshold: 10)
+[2026-03-11 18:40:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-11 18:45:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-11 18:50:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-11 18:55:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-11 19:00:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)

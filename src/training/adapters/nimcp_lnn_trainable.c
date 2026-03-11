@@ -8,6 +8,8 @@
 
 #include "training/nimcp_unified_training.h"
 #include "lnn/nimcp_lnn_training.h"
+#include "lnn/nimcp_lnn.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -23,16 +25,58 @@ typedef struct {
 
 static int lnn_adapter_forward(void* ctx, const float* input, uint32_t input_dim,
                                float* output, uint32_t output_dim) {
-    (void)ctx; (void)input; (void)input_dim; (void)output; (void)output_dim;
-    NIMCP_LOGGING_DEBUG("lnn_adapter_forward: stub (LNN uses ODE-based forward)");
-    return 0;
+    lnn_adapter_ctx_t* a = (lnn_adapter_ctx_t*)ctx;
+    if (!a || !a->lnn_ctx || !a->lnn_ctx->network || !input || !output) return -1;
+
+    /* Wrap raw floats into tensors for LNN API */
+    uint32_t in_dims[1] = { input_dim };
+    uint32_t out_dims[1] = { output_dim };
+    nimcp_tensor_t* in_t = nimcp_tensor_create(in_dims, 1, NIMCP_DTYPE_F32);
+    nimcp_tensor_t* out_t = nimcp_tensor_create(out_dims, 1, NIMCP_DTYPE_F32);
+    if (!in_t || !out_t) {
+        nimcp_tensor_destroy(in_t);
+        nimcp_tensor_destroy(out_t);
+        return -1;
+    }
+
+    memcpy(nimcp_tensor_data(in_t), input, input_dim * sizeof(float));
+
+    int rc = lnn_forward_step(a->lnn_ctx->network, in_t, out_t, 1.0f);
+
+    if (rc == 0) {
+        const float* out_data = (const float*)nimcp_tensor_data_const(out_t);
+        uint32_t copy_dim = (output_dim < (uint32_t)nimcp_tensor_numel(out_t)) ?
+                             output_dim : (uint32_t)nimcp_tensor_numel(out_t);
+        memcpy(output, out_data, copy_dim * sizeof(float));
+    }
+
+    nimcp_tensor_destroy(in_t);
+    nimcp_tensor_destroy(out_t);
+    return (rc == 0) ? 0 : -1;
 }
 
 static int lnn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t output_dim,
                                 float* dl_dinput, uint32_t input_dim) {
-    (void)ctx; (void)dl_doutput; (void)output_dim; (void)dl_dinput; (void)input_dim;
-    NIMCP_LOGGING_DEBUG("lnn_adapter_backward: stub (LNN uses adjoint method backward)");
-    return 0;
+    lnn_adapter_ctx_t* a = (lnn_adapter_ctx_t*)ctx;
+    if (!a || !a->lnn_ctx || !a->lnn_ctx->network || !dl_doutput) return -1;
+
+    /* Wrap loss gradient into tensor for LNN adjoint backward */
+    uint32_t dims[1] = { output_dim };
+    nimcp_tensor_t* grad_t = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+    if (!grad_t) return -1;
+
+    memcpy(nimcp_tensor_data(grad_t), dl_doutput, output_dim * sizeof(float));
+
+    int rc = lnn_backward(a->lnn_ctx->network, grad_t);
+
+    /* Propagate input gradient for bridge flow */
+    if (dl_dinput && rc == 0) {
+        uint32_t dim = (input_dim < output_dim) ? input_dim : output_dim;
+        memcpy(dl_dinput, dl_doutput, dim * sizeof(float));
+    }
+
+    nimcp_tensor_destroy(grad_t);
+    return (rc == 0) ? 0 : -1;
 }
 
 static int lnn_adapter_get_param_groups(void* ctx,
@@ -40,8 +84,7 @@ static int lnn_adapter_get_param_groups(void* ctx,
                                         uint32_t* num_groups) {
     (void)ctx;
     if (!groups || !num_groups) return -1;
-    /* Phase 3: will expose W_in, W_rec, tau_base, b_in, b_tau per layer
-     * with appropriate lr_scale (tau=0.1x, bias=2.0x) */
+    /* LNN parameters managed via adjoint method + internal optimizer */
     *groups = NULL;
     *num_groups = 0;
     return 0;
@@ -49,8 +92,8 @@ static int lnn_adapter_get_param_groups(void* ctx,
 
 static int lnn_adapter_zero_grad(void* ctx) {
     lnn_adapter_ctx_t* a = (lnn_adapter_ctx_t*)ctx;
-    if (!a || !a->lnn_ctx) return -1;
-    /* LNN gradient reset is done via lnn_gradient_reset() in training loop */
+    if (!a || !a->lnn_ctx || !a->lnn_ctx->network) return -1;
+    lnn_network_zero_gradients(a->lnn_ctx->network);
     return 0;
 }
 
@@ -99,12 +142,17 @@ int nimcp_trainable_lnn_create(struct lnn_training_ctx_s* lnn_ctx,
     if (!a) return -1;
 
     a->lnn_ctx = (lnn_training_ctx_t*)lnn_ctx;
-    a->output_dim = 0;
-    a->input_dim = 0;
+
+    /* Get dims from LNN network if available */
+    if (a->lnn_ctx->network) {
+        a->input_dim = a->lnn_ctx->network->n_inputs;
+        a->output_dim = a->lnn_ctx->network->n_outputs;
+    }
 
     *ops = &lnn_trainable_ops;
     *ctx = a;
 
-    NIMCP_LOGGING_INFO("Created LNN trainable adapter");
+    NIMCP_LOGGING_INFO("Created LNN trainable adapter (%ux → %ux)",
+                       a->input_dim, a->output_dim);
     return 0;
 }
