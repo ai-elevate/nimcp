@@ -565,6 +565,9 @@ NIMCP_ASAN:BOOL=OFF
 //Value Computed by CMake
 NIMCP_BINARY_DIR:STATIC=/home/bbrelin/nimcp/build
 
+//No help, variable specified on the command line.
+NIMCP_BUILD_TIER:UNINITIALIZED=PLATFORM_TIER_FULL
+
 //Enable code coverage reporting with gcov/lcov
 NIMCP_COVERAGE:BOOL=OFF
 

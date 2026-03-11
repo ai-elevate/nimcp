@@ -164,6 +164,12 @@ struct cnn_trainer_s {
     bool input_from_cortex;         /**< True if using cortex as input source */
     float current_perception_confidence;  /**< Perception confidence for LR modulation */
 
+    /* Diversity buffer (anti-collapse) */
+    float* diversity_buffer;            /**< Ring buffer of recent outputs */
+    uint32_t diversity_buffer_pos;
+    uint32_t diversity_buffer_count;
+    uint32_t diversity_output_dim;
+
     /* Statistics */
     uint64_t total_forward_calls;
     uint64_t total_backward_calls;
@@ -237,6 +243,12 @@ nimcp_error_t cnn_trainer_default_config(cnn_trainer_config_t* config) {
     config->learning_rate = NIMCP_LEARNING_RATE_FINE;
     config->weight_decay = 0.0f;
     config->gradient_clip_value = 5.0f;
+
+    /* Anti-collapse defaults */
+    config->diversity_loss_weight = 0.1f;
+    config->diversity_buffer_size = 16;
+    config->use_gradient_normalization = true;
+    config->gradient_target_norm = 1.0f;
 
     /* Data loader */
     config->dataloader.batch_size = NIMCP_DEFAULT_BATCH_SIZE;
@@ -430,6 +442,9 @@ void cnn_trainer_destroy(cnn_trainer_t* trainer) {
     if (trainer->loss_fn) {
         nimcp_loss_destroy(trainer->loss_fn);
     }
+
+    /* Free diversity buffer */
+    nimcp_free(trainer->diversity_buffer);
 
     nimcp_free(trainer);
     NIMCP_LOGGING_INFO("CNN trainer destroyed");
@@ -1607,6 +1622,61 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
         grad_data[i] = 0.0f;
     }
 
+    /* --- Diversity loss: penalize mode collapse --- */
+    if (trainer->config.diversity_loss_weight > 0.0f && common > 0) {
+        uint32_t buf_size = trainer->config.diversity_buffer_size;
+        if (buf_size == 0) buf_size = 16;
+
+        /* Lazy-init diversity buffer */
+        if (!trainer->diversity_buffer || trainer->diversity_output_dim != (uint32_t)common) {
+            nimcp_free(trainer->diversity_buffer);
+            trainer->diversity_buffer = (float*)nimcp_calloc(buf_size * common, sizeof(float));
+            trainer->diversity_buffer_pos = 0;
+            trainer->diversity_buffer_count = 0;
+            trainer->diversity_output_dim = (uint32_t)common;
+        }
+
+        const float* out_data = nimcp_tensor_data_const(forward_result->output);
+
+        /* Compute diversity gradient if buffer has entries */
+        if (trainer->diversity_buffer_count > 0) {
+            float avg_sim = 0.0f;
+            uint32_t count = trainer->diversity_buffer_count;
+
+            for (uint32_t b = 0; b < count; b++) {
+                const float* prev = &trainer->diversity_buffer[b * common];
+                float dot = 0.0f, norm_cur = 0.0f, norm_prev = 0.0f;
+                for (size_t j = 0; j < common; j++) {
+                    dot += out_data[j] * prev[j];
+                    norm_cur += out_data[j] * out_data[j];
+                    norm_prev += prev[j] * prev[j];
+                }
+                float denom = sqrtf(norm_cur) * sqrtf(norm_prev);
+                if (denom > 1e-8f) {
+                    float sim = dot / denom;
+                    avg_sim += sim;
+
+                    /* Gradient of cosine similarity w.r.t. output */
+                    float inv_nc = 1.0f / (sqrtf(norm_cur) + 1e-8f);
+                    float inv_np = 1.0f / (sqrtf(norm_prev) + 1e-8f);
+                    for (size_t j = 0; j < common; j++) {
+                        float d_sim = (prev[j] * inv_nc * inv_np
+                                       - sim * out_data[j] * inv_nc * inv_nc) / (float)count;
+                        grad_data[j] += trainer->config.diversity_loss_weight * d_sim;
+                    }
+                }
+            }
+        }
+
+        /* Store current output in ring buffer */
+        memcpy(&trainer->diversity_buffer[trainer->diversity_buffer_pos * common],
+               out_data, common * sizeof(float));
+        trainer->diversity_buffer_pos = (trainer->diversity_buffer_pos + 1) % buf_size;
+        if (trainer->diversity_buffer_count < buf_size) {
+            trainer->diversity_buffer_count++;
+        }
+    }
+
     /* Backpropagate through layers in reverse order */
     /* For simplicity, we accumulate gradients in layer->weight_grad */
     cnn_layer_t** layer_stack = (cnn_layer_t**)nimcp_malloc(sizeof(cnn_layer_t*) * trainer->num_layers);
@@ -2210,6 +2280,55 @@ nimcp_error_t cnn_trainer_step(cnn_trainer_t* trainer) {
     float original_lr = nimcp_optimizer_get_lr(trainer->optimizer);
     if (lr_scale != 1.0f) {
         nimcp_optimizer_set_lr(trainer->optimizer, original_lr * lr_scale);
+    }
+
+    /* --- Gradient normalization / clipping --- */
+    {
+        /* Compute global gradient norm across all layers */
+        float global_grad_norm_sq = 0.0f;
+        cnn_layer_t* gl = trainer->layers_head;
+        while (gl) {
+            if (gl->weight_grad) {
+                const float* gd = nimcp_tensor_data_const(gl->weight_grad);
+                size_t n = nimcp_tensor_numel(gl->weight_grad);
+                for (size_t j = 0; j < n; j++) global_grad_norm_sq += gd[j] * gd[j];
+            }
+            if (gl->bias_grad) {
+                const float* gd = nimcp_tensor_data_const(gl->bias_grad);
+                size_t n = nimcp_tensor_numel(gl->bias_grad);
+                for (size_t j = 0; j < n; j++) global_grad_norm_sq += gd[j] * gd[j];
+            }
+            gl = gl->next;
+        }
+        float global_grad_norm = sqrtf(global_grad_norm_sq);
+
+        if (global_grad_norm > 1e-8f) {
+            float scale = 1.0f;
+            if (trainer->config.use_gradient_normalization) {
+                /* Always normalize to target norm (preserves direction) */
+                scale = trainer->config.gradient_target_norm / global_grad_norm;
+            } else if (global_grad_norm > trainer->config.gradient_clip_value) {
+                /* Legacy clipping: only scale down when above threshold */
+                scale = trainer->config.gradient_clip_value / global_grad_norm;
+            }
+
+            if (scale != 1.0f) {
+                gl = trainer->layers_head;
+                while (gl) {
+                    if (gl->weight_grad) {
+                        float* gd = nimcp_tensor_data(gl->weight_grad);
+                        size_t n = nimcp_tensor_numel(gl->weight_grad);
+                        for (size_t j = 0; j < n; j++) gd[j] *= scale;
+                    }
+                    if (gl->bias_grad) {
+                        float* gd = nimcp_tensor_data(gl->bias_grad);
+                        size_t n = nimcp_tensor_numel(gl->bias_grad);
+                        for (size_t j = 0; j < n; j++) gd[j] *= scale;
+                    }
+                    gl = gl->next;
+                }
+            }
+        }
     }
 
     /* Update each layer's weights */

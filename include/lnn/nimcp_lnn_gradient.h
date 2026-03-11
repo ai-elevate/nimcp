@@ -103,6 +103,9 @@ struct lnn_gradient_ctx_s {
     bool has_nan;                   /**< NaN detected */
     bool has_inf;                   /**< Inf detected */
 
+    /* Adjoint truncation */
+    uint32_t max_adjoint_steps;     /**< Max backward steps (0 = unlimited) */
+
     /* Thread safety */
     void* mutex;                    /**< Mutex for thread safety */
 };
@@ -413,6 +416,19 @@ float lnn_gradient_norm(const lnn_gradient_ctx_t* ctx);
  * @return 0 on success
  */
 int lnn_gradient_clip(lnn_gradient_ctx_t* ctx, float max_norm);
+
+/**
+ * @brief Scale all gradients by a constant factor
+ *
+ * WHAT: Multiply all parameter gradients by scale factor
+ * WHY:  Used for gradient normalization (rescale to target norm)
+ * HOW:  grad ← grad * scale for all parameters
+ *
+ * @param ctx Gradient context
+ * @param scale Scale factor to apply
+ * @return 0 on success
+ */
+int lnn_gradient_scale(lnn_gradient_ctx_t* ctx, float scale);
 
 /**
  * @brief Check gradient health

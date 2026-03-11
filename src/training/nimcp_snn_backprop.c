@@ -116,6 +116,12 @@ struct snn_backprop_ctx_s {
 
     /* Thread safety */
     void* mutex;                     /**< nimcp_mutex_t* */
+
+    /* Diversity loss state */
+    float* diversity_buffer;         /**< Ring buffer of recent outputs */
+    uint32_t diversity_buf_pos;
+    uint32_t diversity_buf_count;
+    uint32_t diversity_buf_size;     /**< Number of slots (default: 16) */
 };
 
 /**
@@ -229,6 +235,9 @@ snn_backprop_config_t snn_backprop_default_config(snn_train_algorithm_t algorith
 
     config.track_gradient_stats = true;
     config.verbose = false;
+
+    config.diversity_loss_weight = 0.1f;
+    config.use_gradient_normalization = true;
 
     return config;
 }
@@ -696,6 +705,12 @@ void snn_backprop_destroy(snn_backprop_ctx_t* ctx) {
         ctx->loss_ctx = NULL;
     }
 
+    /* Free diversity buffer */
+    if (ctx->diversity_buffer) {
+        nimcp_free(ctx->diversity_buffer);
+        ctx->diversity_buffer = NULL;
+    }
+
     /* Destroy mutex */
     if (ctx->mutex) {
         nimcp_mutex_free(ctx->mutex);
@@ -883,10 +898,18 @@ int snn_backprop_step(
             }
             float grad_norm = sqrtf(grad_norm_sq);
 
-            /* Gradient clipping */
+            /* Gradient normalization or clipping */
             float scale = 1.0f;
-            if (grad_norm > clip) {
-                scale = clip / grad_norm;
+            if (ctx->config.use_gradient_normalization) {
+                /* Normalize to target norm — preserves direction */
+                if (grad_norm > 1e-8f) {
+                    scale = clip / grad_norm;
+                }
+            } else {
+                /* Legacy clipping — only reduce when above threshold */
+                if (grad_norm > clip) {
+                    scale = clip / grad_norm;
+                }
             }
 
             /* Apply scaled gradients with weight decay */
@@ -1217,8 +1240,52 @@ float snn_backprop_compute_loss(
         float diff = outputs[i] - targets[i];
         total += diff * diff;
     }
+    float mse_loss = total / (float)batch_size;
 
-    return total / (float)batch_size;
+    /* Diversity loss: penalize similar outputs to prevent mode collapse */
+    float diversity_loss = 0.0f;
+    if (ctx->config.diversity_loss_weight > 0.0f && batch_size > 0) {
+        /* Lazy init diversity buffer */
+        if (!ctx->diversity_buffer && batch_size > 0) {
+            ctx->diversity_buf_size = 16;
+            ctx->diversity_buffer = (float*)nimcp_calloc(
+                ctx->diversity_buf_size * batch_size, sizeof(float));
+        }
+
+        if (ctx->diversity_buffer && ctx->diversity_buf_count > 0) {
+            /* Average cosine similarity with recent outputs */
+            float out_norm = 0.0f;
+            for (uint32_t i = 0; i < batch_size; i++) {
+                out_norm += outputs[i] * outputs[i];
+            }
+            out_norm = sqrtf(out_norm + 1e-8f);
+
+            float total_sim = 0.0f;
+            for (uint32_t b = 0; b < ctx->diversity_buf_count; b++) {
+                const float* past = ctx->diversity_buffer + b * batch_size;
+                float dot = 0.0f, past_norm = 0.0f;
+                for (uint32_t i = 0; i < batch_size; i++) {
+                    dot += outputs[i] * past[i];
+                    past_norm += past[i] * past[i];
+                }
+                past_norm = sqrtf(past_norm + 1e-8f);
+                total_sim += dot / (out_norm * past_norm + 1e-8f);
+            }
+            diversity_loss = total_sim / (float)ctx->diversity_buf_count;
+        }
+
+        /* Store current output */
+        if (ctx->diversity_buffer) {
+            memcpy(ctx->diversity_buffer + ctx->diversity_buf_pos * batch_size,
+                   outputs, batch_size * sizeof(float));
+            ctx->diversity_buf_pos = (ctx->diversity_buf_pos + 1) % ctx->diversity_buf_size;
+            if (ctx->diversity_buf_count < ctx->diversity_buf_size) {
+                ctx->diversity_buf_count++;
+            }
+        }
+    }
+
+    return mse_loss + ctx->config.diversity_loss_weight * diversity_loss;
 }
 
 int snn_backprop_compute_loss_grad(

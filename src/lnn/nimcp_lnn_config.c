@@ -87,7 +87,7 @@ static void lnn_layer_config_default(lnn_layer_config_t* lc, uint32_t n_neurons)
     lc->sparsity = 0.0f;
     lc->ode_method = LNN_ODE_RK4;
     lc->dt = LNN_DEFAULT_DT_MS;
-    lc->use_layer_norm = false;
+    lc->use_layer_norm = true;
     lc->layer_norm_eps = 1e-5f;
 }
 

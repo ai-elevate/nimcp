@@ -242,6 +242,8 @@ lnn_layer_t* lnn_layer_create(const lnn_layer_config_t* config, uint32_t n_input
     layer->ode_method = config->ode_method;
     layer->dt = config->dt;
     layer->step_count = 0;
+    layer->use_layer_norm = config->use_layer_norm;
+    layer->layer_norm_eps = config->layer_norm_eps;
 
     /* Allocate neuron array (for debugging/individual access) */
     layer->neurons = (lnn_neuron_t*)nimcp_calloc(config->n_neurons, sizeof(lnn_neuron_t));
@@ -581,6 +583,33 @@ int lnn_layer_forward(
     /* 3. Take ODE step */
     ret = lnn_layer_step(layer, dt, LNN_ODE_METHOD_COUNT);  /* Use layer default */
     if (ret != LNN_SUCCESS) return ret;
+
+    /* 3b. Apply layer normalization to prevent activation collapse */
+    if (layer->use_layer_norm && layer->n_neurons > 1) {
+        float* x_data = (float*)nimcp_tensor_data(layer->x);
+        uint32_t n = layer->n_neurons;
+
+        /* Compute mean */
+        float mean = 0.0f;
+        for (uint32_t i = 0; i < n; i++) {
+            mean += x_data[i];
+        }
+        mean /= (float)n;
+
+        /* Compute variance */
+        float var = 0.0f;
+        for (uint32_t i = 0; i < n; i++) {
+            float diff = x_data[i] - mean;
+            var += diff * diff;
+        }
+        var /= (float)n;
+
+        /* Normalize: x = (x - mean) / sqrt(var + eps) */
+        float inv_std = 1.0f / sqrtf(var + layer->layer_norm_eps);
+        for (uint32_t i = 0; i < n; i++) {
+            x_data[i] = (x_data[i] - mean) * inv_std;
+        }
+    }
 
     /* 4. Copy state to output */
     memcpy(nimcp_tensor_data(output), nimcp_tensor_data_const(layer->x),

@@ -78,6 +78,8 @@ lnn_gradient_ctx_t* lnn_gradient_ctx_create(
         nimcp_mutex_init((nimcp_mutex_t*)ctx->mutex, NULL);
     }
 
+    ctx->max_adjoint_steps = 0;  /* Default: unlimited (set by training layer) */
+
     NIMCP_LOGGING_INFO("Created gradient context: max_steps=%u, checkpointing=%s",
                        max_steps, use_checkpointing ? "enabled" : "disabled");
 

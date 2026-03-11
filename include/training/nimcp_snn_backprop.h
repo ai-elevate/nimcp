@@ -340,6 +340,10 @@ typedef struct {
     /* Debugging */
     bool track_gradient_stats;       /**< Track gradient statistics */
     bool verbose;                    /**< Enable verbose logging */
+
+    /* Anti-collapse */
+    float diversity_loss_weight;     /**< Weight for output diversity loss (default: 0.1) */
+    bool use_gradient_normalization; /**< Normalize grads to fixed norm instead of clipping */
 } snn_backprop_config_t;
 
 //=============================================================================

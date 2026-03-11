@@ -2116,6 +2116,69 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             if (!isfinite(loss) || loss < 0.0f) loss = 0.0f;
         }
 
+        // 3b. Diversity loss: penalize cosine similarity with recent outputs
+        //     to prevent mode collapse (all outputs converging to same vector).
+        {
+            #define ADAPTIVE_DIV_BUF_SIZE 16
+            #define ADAPTIVE_DIV_MAX_DIM 8192
+            static float s_adap_div_buf[ADAPTIVE_DIV_BUF_SIZE * ADAPTIVE_DIV_MAX_DIM];
+            static uint32_t s_adap_div_pos = 0;
+            static uint32_t s_adap_div_count = 0;
+            static uint32_t s_adap_div_dim = 0;
+            static const float ADAP_DIV_WEIGHT = 0.1f;
+
+            uint32_t tsize = example->target_size;
+            if (tsize <= ADAPTIVE_DIV_MAX_DIM && ADAP_DIV_WEIGHT > 0.0f) {
+                if (s_adap_div_dim != tsize) {
+                    s_adap_div_dim = tsize;
+                    s_adap_div_pos = 0;
+                    s_adap_div_count = 0;
+                }
+                if (s_adap_div_count > 0) {
+                    float out_norm = 0.0f;
+                    for (uint32_t i = 0; i < tsize; i++)
+                        out_norm += output[i] * output[i];
+                    out_norm = sqrtf(out_norm + 1e-8f);
+
+                    float total_sim = 0.0f;
+                    for (uint32_t b = 0; b < s_adap_div_count; b++) {
+                        const float* past = s_adap_div_buf + b * tsize;
+                        float dot = 0.0f, pn = 0.0f;
+                        for (uint32_t i = 0; i < tsize; i++) {
+                            dot += output[i] * past[i];
+                            pn += past[i] * past[i];
+                        }
+                        pn = sqrtf(pn + 1e-8f);
+                        total_sim += dot / (out_norm * pn + 1e-8f);
+                    }
+                    loss += ADAP_DIV_WEIGHT * (total_sim / (float)s_adap_div_count);
+                }
+                memcpy(s_adap_div_buf + s_adap_div_pos * tsize,
+                       output, tsize * sizeof(float));
+                s_adap_div_pos = (s_adap_div_pos + 1) % ADAPTIVE_DIV_BUF_SIZE;
+                if (s_adap_div_count < ADAPTIVE_DIV_BUF_SIZE)
+                    s_adap_div_count++;
+            }
+        }
+
+        // 3c. Gradient-normalized learning rate: scale LR so effective gradient
+        //     step has consistent magnitude regardless of raw gradient norm.
+        //     Uses EMA grad norm from previous steps as estimate.
+        float effective_lr = learning_rate;
+        {
+            float ema_gn = network->ema_grad_norm;
+            if (ema_gn > 1e-4f && isfinite(ema_gn)) {
+                /* Target: effective gradient step ≈ learning_rate * target_norm */
+                float target_norm = 1.0f;
+                effective_lr = learning_rate * (target_norm / ema_gn);
+                /* Clamp to prevent extreme LR swings */
+                float lr_min = learning_rate * 0.01f;
+                float lr_max = learning_rate * 100.0f;
+                if (effective_lr < lr_min) effective_lr = lr_min;
+                if (effective_lr > lr_max) effective_lr = lr_max;
+            }
+        }
+
         // 4. GPU backward pass — weights updated on GPU, then downloaded to CPU.
         // Falls back to CPU backprop if GPU backward fails.
         {
@@ -2131,7 +2194,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     network->gpu_weight_cache,
                     network->base_network,
                     example->target, output, example->target_size,
-                    learning_rate,
+                    effective_lr,
                     network->config.base_config.min_weight,
                     network->config.base_config.max_weight,
                     &grad_norm);
@@ -2143,14 +2206,14 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                                         network->base_network);
                 if (mode == LEARN_MODE_DISTILLATION) {
                     backprop_sparse_full_regression(network->base_network,
-                        num_layers, layer_sizes, learning_rate,
+                        num_layers, layer_sizes, effective_lr,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
                         1.0f, &grad_norm, &layer_grads);
                 } else {
                     backprop_sparse_full_ex(network->base_network,
-                        num_layers, layer_sizes, learning_rate,
+                        num_layers, layer_sizes, effective_lr,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,

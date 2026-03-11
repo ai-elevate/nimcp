@@ -907,6 +907,15 @@ bool nimcp_gpu_forward_pass(
     return true;
 }
 
+/* Output diversity ring buffer for anti-collapse */
+#define GPU_DIVERSITY_BUF_SIZE 16
+#define GPU_DIVERSITY_MAX_DIM 8192
+static float s_diversity_buf[GPU_DIVERSITY_BUF_SIZE * GPU_DIVERSITY_MAX_DIM];
+static uint32_t s_diversity_pos = 0;
+static uint32_t s_diversity_count = 0;
+static uint32_t s_diversity_dim = 0;
+static const float DIVERSITY_WEIGHT = 0.1f;
+
 //=============================================================================
 // GPU Loss Computation
 //=============================================================================
@@ -940,7 +949,48 @@ float nimcp_gpu_compute_loss(
     nimcp_gpu_tensor_destroy(pred_tensor);
     nimcp_gpu_tensor_destroy(target_tensor);
 
-    return ok ? loss : -1.0f;
+    if (!ok) return -1.0f;
+
+    /* Add diversity loss to prevent mode collapse */
+    if (size <= GPU_DIVERSITY_MAX_DIM && DIVERSITY_WEIGHT > 0.0f) {
+        if (s_diversity_dim != size) {
+            /* Reset buffer on dimension change */
+            s_diversity_dim = size;
+            s_diversity_pos = 0;
+            s_diversity_count = 0;
+        }
+
+        if (s_diversity_count > 0) {
+            float out_norm = 0.0f;
+            for (uint32_t i = 0; i < size; i++) {
+                out_norm += output[i] * output[i];
+            }
+            out_norm = sqrtf(out_norm + 1e-8f);
+
+            float total_sim = 0.0f;
+            for (uint32_t b = 0; b < s_diversity_count; b++) {
+                const float* past = s_diversity_buf + b * size;
+                float dot = 0.0f, past_norm = 0.0f;
+                for (uint32_t i = 0; i < size; i++) {
+                    dot += output[i] * past[i];
+                    past_norm += past[i] * past[i];
+                }
+                past_norm = sqrtf(past_norm + 1e-8f);
+                total_sim += dot / (out_norm * past_norm + 1e-8f);
+            }
+            loss += DIVERSITY_WEIGHT * (total_sim / (float)s_diversity_count);
+        }
+
+        /* Store current output */
+        memcpy(s_diversity_buf + s_diversity_pos * size,
+               output, size * sizeof(float));
+        s_diversity_pos = (s_diversity_pos + 1) % GPU_DIVERSITY_BUF_SIZE;
+        if (s_diversity_count < GPU_DIVERSITY_BUF_SIZE) {
+            s_diversity_count++;
+        }
+    }
+
+    return loss;
 }
 
 //=============================================================================

@@ -394,6 +394,12 @@ typedef struct {
     /* Bio-async integration */
     bool enable_bio_async;          /**< Enable inter-module messaging */
 
+    /* Anti-collapse / gradient health */
+    float diversity_loss_weight;        /**< Output diversity loss weight (default: 0.1) */
+    uint32_t diversity_buffer_size;     /**< Recent outputs to compare (default: 16) */
+    bool use_gradient_normalization;    /**< Normalize gradients to fixed norm instead of clipping */
+    float gradient_target_norm;         /**< Target norm for gradient normalization (default: 1.0) */
+
     /* Debugging */
     bool verbose;                   /**< Print training progress */
     uint32_t log_frequency;         /**< Log every N batches */

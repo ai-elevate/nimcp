@@ -115,6 +115,15 @@ typedef struct {
     bool validate_gradients;                 /**< Check for NaN/Inf in gradients */
     bool track_statistics;                   /**< Track detailed statistics */
 
+    /* === Anti-Collapse Configuration === */
+    float diversity_loss_weight;            /**< Weight for output diversity loss (default: 0.1) */
+    uint32_t diversity_buffer_size;         /**< Number of recent outputs to compare (default: 16) */
+    bool use_gradient_normalization;        /**< Normalize gradients to fixed norm instead of clipping */
+    float gradient_target_norm;             /**< Target norm for gradient normalization (default: 1.0) */
+    uint32_t max_adjoint_steps;             /**< Max backward ODE steps (0 = unlimited, default: 50) */
+    float lr_scale_tau;                     /**< LR multiplier for tau parameters (default: 0.1) */
+    float lr_scale_bias;                    /**< LR multiplier for bias parameters (default: 2.0) */
+
 } lnn_training_config_t;
 
 /*=============================================================================
@@ -250,6 +259,12 @@ struct lnn_training_ctx_s {
     void (*on_epoch_complete)(void* user_data, uint64_t epoch, float avg_loss);
     void (*on_lr_change)(void* user_data, float old_lr, float new_lr);
     void* callback_user_data;
+
+    /* Diversity loss state */
+    float* diversity_buffer;              /**< Ring buffer of recent outputs [buf_size * output_dim] */
+    uint32_t diversity_buffer_pos;        /**< Current write position */
+    uint32_t diversity_buffer_count;      /**< Number of valid entries */
+    uint32_t diversity_output_dim;        /**< Output dimension */
 
     /* Statistics */
     lnn_training_stats_t stats;

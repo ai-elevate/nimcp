@@ -101,8 +101,13 @@ int lnn_gradient_compute_adjoint(
     NIMCP_LOGGING_DEBUG("Starting adjoint computation: T=%f, dt=%f, steps=%u",
                         ctx->t_end, ctx->dt, network->history_len);
 
-    // Backward integration loop
-    for (int step = (int)network->history_len - 1; step >= 0; step--) {
+    /* Truncate backward integration to max_adjoint_steps to prevent gradient noise.
+     * Start from most recent history (highest impact on current output). */
+    int first_step = 0;
+    if (ctx->max_adjoint_steps > 0 && network->history_len > ctx->max_adjoint_steps) {
+        first_step = (int)network->history_len - (int)ctx->max_adjoint_steps;
+    }
+    for (int step = (int)network->history_len - 1; step >= first_step; step--) {
         float t = step * network->config->default_dt;
 
         // Get state at this time step
@@ -1190,6 +1195,56 @@ int lnn_gradient_clip(lnn_gradient_ctx_t* ctx, float max_norm) {
         NIMCP_LOGGING_DEBUG("Clipped gradients: norm %f -> %f (scale=%f)", norm, max_norm, scale);
     }
 
+    return 0;
+}
+
+
+/**
+ * @brief Scale all gradients by a constant factor
+ *
+ * WHAT: Multiply all parameter gradients by scale factor
+ * WHY:  Used for gradient normalization (rescale to target norm)
+ * HOW:  grad <- grad * scale for all parameters
+ */
+int lnn_gradient_scale(lnn_gradient_ctx_t* ctx, float scale) {
+    if (!ctx) {
+        return LNN_ERROR_NULL_POINTER;
+    }
+
+    if (!isfinite(scale)) {
+        NIMCP_LOGGING_WARN("Gradient scale is invalid (NaN/Inf), zeroing gradients");
+        if (ctx->network) {
+            lnn_network_zero_gradients(ctx->network);
+        }
+        if (ctx->grad_params) {
+            nimcp_tensor_mul_scalar_(ctx->grad_params, 0.0f);
+        }
+        return LNN_ERROR_OPERATION_FAILED;
+    }
+
+    /* Scale per-layer gradient tensors (the actual accumulated gradients) */
+    if (ctx->network && ctx->network->layers && ctx->network->n_layers > 0) {
+        for (uint32_t i = 0; i < ctx->network->n_layers; i++) {
+            lnn_layer_t* layer = ctx->network->layers[i];
+            if (!layer) continue;
+            nimcp_tensor_t* grad_tensors[] = {
+                layer->grad_W_in, layer->grad_W_rec, layer->grad_W_tau,
+                layer->grad_b_in, layer->grad_b_tau, layer->grad_tau_base
+            };
+            for (int g = 0; g < 6; g++) {
+                if (grad_tensors[g]) {
+                    nimcp_tensor_mul_scalar_(grad_tensors[g], scale);
+                }
+            }
+        }
+    }
+
+    /* Also scale legacy grad_params for consistency */
+    if (ctx->grad_params) {
+        nimcp_tensor_mul_scalar_(ctx->grad_params, scale);
+    }
+
+    NIMCP_LOGGING_DEBUG("Scaled gradients by factor %f", scale);
     return 0;
 }
 

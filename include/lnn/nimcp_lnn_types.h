@@ -299,6 +299,10 @@ struct lnn_layer_s {
     float avg_tau;               /**< Average time constant */
     float min_tau;               /**< Minimum time constant */
     float max_tau;               /**< Maximum time constant */
+
+    /* Layer normalization */
+    bool use_layer_norm;            /**< Enable layer normalization */
+    float layer_norm_eps;           /**< Layer norm epsilon for numerical stability */
 };
 
 /**

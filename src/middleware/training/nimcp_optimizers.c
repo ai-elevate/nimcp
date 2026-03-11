@@ -1173,12 +1173,19 @@ nimcp_result_t nimcp_optimizer_step(
             }
         }
 
-        /* Step 2: Always clip by norm (max_norm=1.0) to stabilize training.
-         * This is applied unconditionally — even "normal" gradients benefit
-         * from norm clipping on large networks. */
+        /* Step 2: Normalize or clip gradient norm.
+         * Normalization preserves direction perfectly (better for large networks).
+         * Clipping only reduces when above threshold. */
         float clip_norm = (ctx->config.clip_gradients && ctx->config.gradient_clip_norm > 0.0F)
                           ? ctx->config.gradient_clip_norm : 1.0F;
-        nimcp_optimizer_clip_by_norm(clipped_grads, count, clip_norm);
+        float current_norm = nimcp_optimizer_gradient_norm(clipped_grads, count);
+        if (current_norm > 1e-8F) {
+            /* Always normalize to target norm — prevents both vanishing and exploding */
+            float scale = clip_norm / current_norm;
+            for (size_t i = 0; i < count; i++) {
+                clipped_grads[i] *= scale;
+            }
+        }
 
         /* Step 3: Optional per-value clipping if configured */
         if (ctx->config.clip_gradients && ctx->config.gradient_clip_value > 0.0F) {

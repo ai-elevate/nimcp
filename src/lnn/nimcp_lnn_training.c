@@ -162,6 +162,15 @@ int lnn_training_config_default(lnn_training_config_t* config) {
     config->validate_gradients = true;
     config->track_statistics = true;
 
+    /* Anti-collapse defaults */
+    config->diversity_loss_weight = 0.1f;
+    config->diversity_buffer_size = 16;
+    config->use_gradient_normalization = true;
+    config->gradient_target_norm = 1.0f;
+    config->max_adjoint_steps = 50;
+    config->lr_scale_tau = 0.1f;
+    config->lr_scale_bias = 2.0f;
+
     return LNN_SUCCESS;
 }
 
@@ -203,6 +212,12 @@ lnn_training_ctx_t* lnn_training_create(
 
     /* Copy config */
     memcpy(&ctx->config, config, sizeof(lnn_training_config_t));
+
+    /* Initialize diversity buffer */
+    ctx->diversity_buffer = NULL;
+    ctx->diversity_buffer_pos = 0;
+    ctx->diversity_buffer_count = 0;
+    ctx->diversity_output_dim = 0;
 
     /* Initialize state */
     ctx->step_count = 0;
@@ -275,7 +290,9 @@ lnn_training_ctx_t* lnn_training_create(
         config->use_adjoint_checkpointing,
         10  /* checkpoint_interval */
     );
-    if (!ctx->gradient_ctx) {
+    if (ctx->gradient_ctx) {
+        ctx->gradient_ctx->max_adjoint_steps = config->max_adjoint_steps;
+    } else {
         NIMCP_LOGGING_WARN("Failed to create gradient context, training may fail");
         /* Non-fatal: some use cases may not need gradients */
     }
@@ -397,6 +414,12 @@ void lnn_training_destroy(lnn_training_ctx_t* ctx) {
         nimcp_free(ctx->lr_schedule_params);
     }
 
+    /* Free diversity buffer */
+    if (ctx->diversity_buffer) {
+        nimcp_free(ctx->diversity_buffer);
+        ctx->diversity_buffer = NULL;
+    }
+
     /* Note: We don't destroy bridges - they're owned externally */
 
     /* Free context */
@@ -465,6 +488,78 @@ int lnn_training_step(
         }
     }
 
+    /* 2b. Compute diversity loss to prevent mode collapse */
+    float diversity_loss = 0.0f;
+    if (ctx->config.diversity_loss_weight > 0.0f && ctx->output_buffer) {
+        const float* predictions = (const float*)nimcp_tensor_data_const(ctx->output_buffer);
+        size_t out_dim = nimcp_tensor_numel(ctx->output_buffer);
+
+        /* Lazy init diversity buffer */
+        if (!ctx->diversity_buffer && ctx->config.diversity_buffer_size > 0) {
+            ctx->diversity_output_dim = (uint32_t)out_dim;
+            ctx->diversity_buffer = (float*)nimcp_calloc(
+                ctx->config.diversity_buffer_size * out_dim, sizeof(float));
+        }
+
+        if (ctx->diversity_buffer && ctx->diversity_buffer_count > 0) {
+            /* Compute average cosine similarity with recent outputs */
+            float pred_norm = 0.0f;
+            for (size_t i = 0; i < out_dim; i++) {
+                pred_norm += predictions[i] * predictions[i];
+            }
+            pred_norm = sqrtf(pred_norm + 1e-8f);
+
+            float total_sim = 0.0f;
+            for (uint32_t b = 0; b < ctx->diversity_buffer_count; b++) {
+                const float* past = ctx->diversity_buffer + b * out_dim;
+                float dot = 0.0f, past_norm = 0.0f;
+                for (size_t i = 0; i < out_dim; i++) {
+                    dot += predictions[i] * past[i];
+                    past_norm += past[i] * past[i];
+                }
+                past_norm = sqrtf(past_norm + 1e-8f);
+                float cosine_sim = dot / (pred_norm * past_norm + 1e-8f);
+                total_sim += cosine_sim;
+            }
+            diversity_loss = total_sim / (float)ctx->diversity_buffer_count;
+
+            /* Add diversity gradient to loss gradient: d(cos_sim)/d(pred) */
+            if (ctx->loss_gradient && ctx->config.diversity_loss_weight > 0.0f) {
+                float* loss_grad = (float*)nimcp_tensor_data(ctx->loss_gradient);
+                float dw = ctx->config.diversity_loss_weight;
+
+                for (uint32_t b = 0; b < ctx->diversity_buffer_count; b++) {
+                    const float* past = ctx->diversity_buffer + b * out_dim;
+                    float dot = 0.0f, past_norm_sq = 0.0f;
+                    for (size_t i = 0; i < out_dim; i++) {
+                        dot += predictions[i] * past[i];
+                        past_norm_sq += past[i] * past[i];
+                    }
+                    float past_norm = sqrtf(past_norm_sq + 1e-8f);
+                    float denom = pred_norm * past_norm + 1e-8f;
+                    float scale = dw / (float)ctx->diversity_buffer_count;
+                    for (size_t i = 0; i < out_dim; i++) {
+                        /* d(cos_sim)/d(pred_i) = past_i/(||pred||*||past||) - cos_sim*pred_i/||pred||^2 */
+                        float grad_i = (past[i] / denom) - (dot / (denom * pred_norm * pred_norm + 1e-8f)) * predictions[i];
+                        loss_grad[i] += scale * grad_i;
+                    }
+                }
+            }
+
+            loss += ctx->config.diversity_loss_weight * diversity_loss;
+        }
+
+        /* Store current output in ring buffer */
+        if (ctx->diversity_buffer) {
+            memcpy(ctx->diversity_buffer + ctx->diversity_buffer_pos * out_dim,
+                   predictions, out_dim * sizeof(float));
+            ctx->diversity_buffer_pos = (ctx->diversity_buffer_pos + 1) % ctx->config.diversity_buffer_size;
+            if (ctx->diversity_buffer_count < ctx->config.diversity_buffer_size) {
+                ctx->diversity_buffer_count++;
+            }
+        }
+    }
+
     /* 3. Backward pass using adjoint method for LNN */
     if (ctx->gradient_ctx && ctx->loss_gradient) {
         result = lnn_gradient_compute_adjoint(ctx->gradient_ctx, ctx->network, ctx->loss_gradient);
@@ -478,14 +573,24 @@ int lnn_training_step(
             lnn_network_zero_gradients(ctx->network);
             grad_norm = 0.0f;
         } else {
-            /* Clip gradients BEFORE extracting them — prevents explosion
-             * from 230+ adjoint steps accumulating unbounded values */
-            float clip_norm = ctx->config.gradient_clip_norm;
-            if (clip_norm <= 0.0f) clip_norm = 1.0f;  /* safe default */
-            lnn_gradient_clip(ctx->gradient_ctx, clip_norm);
-
-            /* Get gradient norm for statistics (post-clip) */
-            grad_norm = lnn_gradient_norm(ctx->gradient_ctx);
+            /* Normalize or clip gradients */
+            if (ctx->config.use_gradient_normalization) {
+                /* Normalize to fixed target norm — preserves direction perfectly */
+                float current_norm = lnn_gradient_norm(ctx->gradient_ctx);
+                if (current_norm > 1e-8f) {
+                    float target = ctx->config.gradient_target_norm;
+                    if (target <= 0.0f) target = 1.0f;
+                    float scale = target / current_norm;
+                    lnn_gradient_scale(ctx->gradient_ctx, scale);
+                }
+                grad_norm = ctx->config.gradient_target_norm;
+            } else {
+                /* Legacy: clip gradients (cap at max norm) */
+                float clip_norm = ctx->config.gradient_clip_norm;
+                if (clip_norm <= 0.0f) clip_norm = 1.0f;
+                lnn_gradient_clip(ctx->gradient_ctx, clip_norm);
+                grad_norm = lnn_gradient_norm(ctx->gradient_ctx);
+            }
         }
     }
 
@@ -498,7 +603,6 @@ int lnn_training_step(
     if (should_update) {
         /* 5. Apply gradients via optimizer */
         if (ctx->optimizer && ctx->network) {
-            /* Get parameter count and allocate buffers */
             size_t n_params = lnn_network_param_count(ctx->network);
             if (n_params > 0) {
                 float* params = (float*)nimcp_malloc(n_params * sizeof(float));
@@ -508,19 +612,67 @@ int lnn_training_step(
                     size_t actual_params = 0;
                     size_t actual_grads = 0;
 
-                    /* Get current parameters and gradients */
                     if (lnn_network_get_params(ctx->network, params, &actual_params) == 0 &&
                         lnn_network_get_gradients(ctx->network, grads, &actual_grads) == 0 &&
                         actual_params == actual_grads) {
 
-                        /* Apply optimizer step: params -= lr * grads (or Adam/etc) */
-                        nimcp_optimizer_step(ctx->optimizer, params, grads, actual_params);
+                        /* Layer-wise learning rates: apply different LR scales
+                         * for weight, tau, and bias parameter groups */
+                        float lr_scale_tau = ctx->config.lr_scale_tau;
+                        float lr_scale_bias = ctx->config.lr_scale_bias;
 
-                        /* Write updated parameters back to network */
+                        if (lr_scale_tau != 1.0f || lr_scale_bias != 1.0f) {
+                            /* Scale gradients by parameter type before optimizer step.
+                             * Parameter layout per layer: W_in, W_rec, W_tau, b_in, b_tau, tau_base
+                             * We scale tau_base grads by lr_scale_tau and bias grads by lr_scale_bias */
+                            size_t offset = 0;
+                            for (uint32_t li = 0; li < ctx->network->n_layers; li++) {
+                                lnn_layer_t* layer = ctx->network->layers[li];
+                                if (!layer) continue;
+
+                                /* W_in: n * n_inputs (keep scale 1.0) */
+                                size_t w_in_size = layer->W_in ? nimcp_tensor_numel(layer->W_in) : 0;
+                                offset += w_in_size;
+
+                                /* W_rec: n * n (keep scale 1.0) */
+                                size_t w_rec_size = layer->W_rec ? nimcp_tensor_numel(layer->W_rec) : 0;
+                                offset += w_rec_size;
+
+                                /* W_tau: variable (scale by lr_scale_tau) */
+                                size_t w_tau_size = layer->W_tau ? nimcp_tensor_numel(layer->W_tau) : 0;
+                                for (size_t i = offset; i < offset + w_tau_size; i++) {
+                                    grads[i] *= lr_scale_tau;
+                                }
+                                offset += w_tau_size;
+
+                                /* b_in: n (scale by lr_scale_bias) */
+                                size_t b_in_size = layer->b_in ? nimcp_tensor_numel(layer->b_in) : 0;
+                                for (size_t i = offset; i < offset + b_in_size; i++) {
+                                    grads[i] *= lr_scale_bias;
+                                }
+                                offset += b_in_size;
+
+                                /* b_tau: n (scale by lr_scale_tau) */
+                                size_t b_tau_size = layer->b_tau ? nimcp_tensor_numel(layer->b_tau) : 0;
+                                for (size_t i = offset; i < offset + b_tau_size; i++) {
+                                    grads[i] *= lr_scale_tau;
+                                }
+                                offset += b_tau_size;
+
+                                /* tau_base: n (scale by lr_scale_tau) */
+                                size_t tau_size = layer->tau_base ? nimcp_tensor_numel(layer->tau_base) : 0;
+                                for (size_t i = offset; i < offset + tau_size; i++) {
+                                    grads[i] *= lr_scale_tau;
+                                }
+                                offset += tau_size;
+                            }
+                        }
+
+                        /* Apply optimizer step */
+                        nimcp_optimizer_step(ctx->optimizer, params, grads, actual_params);
                         lnn_network_set_params(ctx->network, params, actual_params);
                     }
 
-                    /* Zero gradients for next iteration */
                     lnn_network_zero_gradients(ctx->network);
                 }
 
@@ -528,7 +680,6 @@ int lnn_training_step(
                 if (grads) nimcp_free(grads);
             }
 
-            /* Clear gradient context accumulated state */
             if (ctx->gradient_ctx) {
                 lnn_gradient_reset(ctx->gradient_ctx);
             }
