@@ -113,7 +113,7 @@ typedef struct nimcp_sec_integration nimcp_sec_integration_t;
 #endif
 
 #ifndef BBB_SYSTEM_DEFINED
-typedef struct bbb_system bbb_system_t;
+typedef struct bbb_system_struct* bbb_system_t;
 #endif
 
 #ifndef NIMCP_PQ_CONFIG_DEFINED

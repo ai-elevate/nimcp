@@ -1344,6 +1344,28 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
+    // SPARSE CODING: K-WTA sparsity enforcement on output activations
+    // ========================================================================
+    // WHAT: Apply K-Winner-Take-All to output_vector, zeroing non-top-K neurons
+    // WHY:  Forces different inputs to activate different neuron subsets,
+    //       breaking mode collapse where all inputs produce near-identical outputs
+    // HOW:  cortical_sparse_enforce_sparsity() keeps top K values, zeros the rest.
+    //       Homeostatic thresholds adapt to maintain target sparsity over time.
+    if (brain->enable_sparse_coding && brain->sparse_coding_system &&
+        decision->output_vector && decision->output_size > 0) {
+        cortical_sparse_enforce_sparsity(
+            brain->sparse_coding_system,
+            decision->output_vector,
+            decision->output_size,
+            decision->output_vector);  // In-place: output overwrites input
+        float pop_sparsity = cortical_sparse_compute_population_sparsity(
+            brain->sparse_coding_system,
+            decision->output_vector,
+            decision->output_size);
+        cortical_sparse_update_thresholds(brain->sparse_coding_system, pop_sparsity);
+    }
+
+    // ========================================================================
     // OPTIMIZATION: Classification-only fast path — skip non-essential stages
     // ========================================================================
     // WHAT: For pure classification tasks, skip expensive cognitive stages

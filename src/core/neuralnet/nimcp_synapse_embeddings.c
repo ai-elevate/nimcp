@@ -214,8 +214,8 @@ bool synapse_init_embedding(synapse_t *synapse, uint16_t dim) {
     // Use synapse_init_embedding_pooled() instead.
     (void)dim;
     if (synapse) {
-        synapse->embedding_pool_index = NIMCP_EMBEDDING_POOL_NONE;
-        synapse->embedding_dim = 0;
+        // embedding_pool_index and embedding_dim are now in cold storage
+        // Cannot set without network handle — just clear semantic_relevance (hot)
         synapse->semantic_relevance = 0.5f;
     }
     return false;  // Cannot allocate without network handle
@@ -228,22 +228,27 @@ bool synapse_init_embedding_pooled(neural_network_t net, synapse_t *synapse) {
     }
 
     uint16_t dim = net->embedding_dim;
+    synapse_cold_t* cold = SYNAPSE_ENSURE_COLD(net, synapse);
+    if (!cold) {
+        synapse->semantic_relevance = 0.5f;
+        return false;
+    }
 
     // Free existing if present
-    if (synapse->embedding_pool_index != NIMCP_EMBEDDING_POOL_NONE) {
-        embedding_pool_free_slot(net, synapse->embedding_pool_index);
+    if (cold->embedding_pool_index != NIMCP_EMBEDDING_POOL_NONE) {
+        embedding_pool_free_slot(net, cold->embedding_pool_index);
     }
 
     // Allocate pool slot
     uint32_t idx = embedding_pool_allocate(net);
     if (idx == NIMCP_EMBEDDING_POOL_NONE) {
-        synapse->embedding_dim = 0;
+        cold->embedding_dim = 0;
         synapse->semantic_relevance = 0.5f;
         return false;
     }
 
-    synapse->embedding_pool_index = idx;
-    synapse->embedding_dim = dim;
+    cold->embedding_pool_index = idx;
+    cold->embedding_dim = dim;
 
     // Initialize with Xavier/Glorot
     float* emb = embedding_pool_get(net, idx);
@@ -283,8 +288,9 @@ uint32_t embedding_pool_init_all_synapses(neural_network_t net) {
         for (uint32_t s = 0; s < num_in; s++) {
             synapse_t* meta = NEURON_IN_META(net, neuron, s);
             if (!meta) continue;
-            // Skip if already has an embedding
-            if (meta->embedding_pool_index != NIMCP_EMBEDDING_POOL_NONE) continue;
+            // Skip if already has an embedding (check cold storage)
+            synapse_cold_t* sc = SYNAPSE_COLD(net, meta);
+            if (sc && sc->embedding_pool_index != NIMCP_EMBEDDING_POOL_NONE) continue;
             if (synapse_init_embedding_pooled(net, meta)) {
                 initialized++;
             } else {
@@ -318,16 +324,19 @@ float synapse_semantic_similarity_pooled(neural_network_t net,
                                           const synapse_t *syn1,
                                           const synapse_t *syn2) {
     if (!net || !syn1 || !syn2) return 0.0f;
-    if (syn1->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE ||
-        syn2->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE) return 0.0f;
-    if (syn1->embedding_dim != syn2->embedding_dim) return 0.0f;
+    const synapse_cold_t* cold1 = SYNAPSE_COLD(net, (synapse_t*)syn1);
+    const synapse_cold_t* cold2 = SYNAPSE_COLD(net, (synapse_t*)syn2);
+    if (!cold1 || !cold2) return 0.0f;
+    if (cold1->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE ||
+        cold2->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE) return 0.0f;
+    if (cold1->embedding_dim != cold2->embedding_dim) return 0.0f;
 
-    const float* emb1 = embedding_pool_get(net, syn1->embedding_pool_index);
-    const float* emb2 = embedding_pool_get(net, syn2->embedding_pool_index);
+    const float* emb1 = embedding_pool_get(net, cold1->embedding_pool_index);
+    const float* emb2 = embedding_pool_get(net, cold2->embedding_pool_index);
     if (!emb1 || !emb2) return 0.0f;
 
     float dot = 0.0f;
-    for (uint16_t i = 0; i < syn1->embedding_dim; i++) {
+    for (uint16_t i = 0; i < cold1->embedding_dim; i++) {
         dot += emb1[i] * emb2[i];
     }
     return dot;  // Already normalized → cosine similarity
@@ -348,12 +357,13 @@ bool synapse_update_embedding(synapse_t *synapse, const float *target_embedding,
 bool synapse_update_embedding_pooled(neural_network_t net, synapse_t *synapse,
                                       const float *target_embedding, float learning_rate) {
     if (!net || !synapse || !target_embedding) return false;
-    if (synapse->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE) return false;
+    synapse_cold_t* cold = SYNAPSE_COLD(net, synapse);
+    if (!cold || cold->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE) return false;
 
-    float* emb = embedding_pool_get(net, synapse->embedding_pool_index);
+    float* emb = embedding_pool_get(net, cold->embedding_pool_index);
     if (!emb) return false;
 
-    uint16_t dim = synapse->embedding_dim;
+    uint16_t dim = cold->embedding_dim;
 
     // Gradient descent: emb += lr * (target - emb)
     for (uint16_t i = 0; i < dim; i++) {
@@ -390,10 +400,11 @@ float synapse_compute_relevance(synapse_t *synapse, const float *context_embeddi
 float synapse_compute_relevance_pooled(neural_network_t net, synapse_t *synapse,
                                         const float *context_embedding, uint16_t context_dim) {
     if (!net || !synapse || !context_embedding) return 0.0f;
-    if (synapse->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE) return 0.0f;
-    if (synapse->embedding_dim != context_dim) return 0.0f;
+    synapse_cold_t* cold = SYNAPSE_COLD(net, synapse);
+    if (!cold || cold->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE) return 0.0f;
+    if (cold->embedding_dim != context_dim) return 0.0f;
 
-    const float* emb = embedding_pool_get(net, synapse->embedding_pool_index);
+    const float* emb = embedding_pool_get(net, cold->embedding_pool_index);
     if (!emb) return 0.0f;
 
     float dot = 0.0f;
@@ -442,9 +453,11 @@ uint32_t embedding_pool_recompute_relevance_cpu(neural_network_t net,
         uint32_t num_in = sparse_synapse_count(&neuron->incoming);
         for (uint32_t s = 0; s < num_in; s++) {
             synapse_t* meta = NEURON_IN_META(net, neuron, s);
-            if (!meta || meta->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE) continue;
+            if (!meta) continue;
+            synapse_cold_t* mc = SYNAPSE_COLD(net, meta);
+            if (!mc || mc->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE) continue;
 
-            const float* emb = embedding_pool_get(net, meta->embedding_pool_index);
+            const float* emb = embedding_pool_get(net, mc->embedding_pool_index);
             if (!emb) continue;
 
             float dot = 0.0f;
@@ -468,10 +481,8 @@ uint32_t embedding_pool_recompute_relevance_cpu(neural_network_t net,
 void synapse_destroy_embedding(synapse_t *synapse) {
     if (!synapse) return;
 
-    // Pool-based: just reset the index. Actual memory freed when pool is destroyed.
-    // For slot recycling, use synapse_destroy_embedding_pooled().
-    synapse->embedding_pool_index = NIMCP_EMBEDDING_POOL_NONE;
-    synapse->embedding_dim = 0;
+    // Pool-based: just reset the cached relevance on hot struct.
+    // Cold fields (embedding_pool_index, embedding_dim) freed with cold pool.
     synapse->semantic_relevance = 0.0f;
 }
 
@@ -479,12 +490,13 @@ void synapse_destroy_embedding(synapse_t *synapse) {
 void synapse_destroy_embedding_pooled(neural_network_t net, synapse_t *synapse) {
     if (!net || !synapse) return;
 
-    if (synapse->embedding_pool_index != NIMCP_EMBEDDING_POOL_NONE) {
-        embedding_pool_free_slot(net, synapse->embedding_pool_index);
+    synapse_cold_t* cold = SYNAPSE_COLD(net, synapse);
+    if (cold && cold->embedding_pool_index != NIMCP_EMBEDDING_POOL_NONE) {
+        embedding_pool_free_slot(net, cold->embedding_pool_index);
+        cold->embedding_pool_index = NIMCP_EMBEDDING_POOL_NONE;
+        cold->embedding_dim = 0;
     }
 
-    synapse->embedding_pool_index = NIMCP_EMBEDDING_POOL_NONE;
-    synapse->embedding_dim = 0;
     synapse->semantic_relevance = 0.0f;
 }
 
@@ -536,9 +548,11 @@ uint32_t embedding_pool_recompute_relevance(
         uint32_t num_in = sparse_synapse_count(&neuron->incoming);
         for (uint32_t s = 0; s < num_in; s++) {
             synapse_t* meta = NEURON_IN_META(net, neuron, s);
-            if (!meta || meta->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE) continue;
+            if (!meta) continue;
+            synapse_cold_t* gc = SYNAPSE_COLD(net, meta);
+            if (!gc || gc->embedding_pool_index == NIMCP_EMBEDDING_POOL_NONE) continue;
             if (num_active >= max_active) goto gather_done;
-            active_indices[num_active] = meta->embedding_pool_index;
+            active_indices[num_active] = gc->embedding_pool_index;
             active_synapses[num_active] = meta;
             num_active++;
         }

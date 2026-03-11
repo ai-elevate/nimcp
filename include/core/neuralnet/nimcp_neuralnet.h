@@ -232,30 +232,16 @@ typedef struct {
 } homeostatic_params_t;
 
 /**
- * @brief Synapse structure (NIMCP 2.7: Now with programmable computation!)
+ * @brief Synapse cold data — rarely-accessed fields, allocated on demand
  *
- * DESIGN EVOLUTION:
- * - NIMCP 2.0-2.5: Synapse = weight
- * - NIMCP 2.6: Synapse = weight + STP state
- * - NIMCP 2.7: Synapse = weight + STP + COMPUTATION
- * - NIMCP 2.8.7 (Phase 8.7): Synapse = weight + STP + COMPUTATION + TYPE
- *
- * This makes synapses first-class computational units with biological type diversity.
+ * NIMCP 2.11: Hot/cold split for memory efficiency.
+ * Only ~5% of synapses need cold data (STP, BCM, eligibility, compute fns,
+ * typed synapse state, embeddings, ternary weights).
+ * For 2M neurons: cold pool ~1 GB vs 23 GB if stored inline.
  */
-typedef struct synapse_t {
-    uint32_t target_id;    /**< Target neuron ID */
-    float weight;          /**< Synaptic weight */
-    float plasticity;      /**< Plasticity coefficient */
-    float last_change;     /**< Last weight change (for momentum) */
-    uint64_t last_active;  /**< Last activation timestamp */
-    float strength;        /**< Synaptic strength (separate from weight) */
-    float meta_plasticity; /**< Meta-plasticity factor */
-    float trace;           /**< Synaptic trace for STDP */
+#define SYNAPSE_COLD_NONE UINT32_MAX
 
-    // Axon integration - Track source neuron and axon for spike propagation
-    uint32_t source_neuron_id;  /**< Pre-synaptic neuron ID (0 = unset/legacy) */
-    uint32_t axon_id;           /**< Axon delivering spikes (0 = no axon, direct connection) */
-
+typedef struct synapse_cold_t {
     // Short-term plasticity (NIMCP 2.6)
     stp_state_t stp;       /**< Short-term plasticity state */
     bool enable_stp;       /**< Enable STP for this synapse */
@@ -268,34 +254,57 @@ typedef struct synapse_t {
     eligibility_trace_t* eligibility;  /**< Eligibility trace for RL (NULL = disabled) */
     bool enable_eligibility;           /**< Enable eligibility traces for this synapse */
 
-    // Programmable computation (NIMCP 2.7) - MAJOR FEATURE
+    // Programmable computation (NIMCP 2.7)
     synapse_compute_fn compute_function;  /**< Custom computation (NULL = default) */
     synapse_learn_fn learn_function;      /**< Custom learning (NULL = default) */
     struct synapse_compute_state_t* compute_state; /**< Function-specific state (NULL = none) */
 
-    // Synapse type system (NIMCP 2.8.7 / Phase 8.7) - BIOLOGICAL DIVERSITY
+    // Synapse type system (NIMCP 2.8.7 / Phase 8.7)
     synapse_type_t type;           /**< Synapse type (AMPA, NMDA, GABA-A, etc) */
     synapse_type_state_t type_state; /**< Type-specific state (conductance, modulation, etc) */
 
-    // ENHANCEMENT 1: Semantic Embeddings (NIMCP 2.9, CPU-staged in 2.6.4)
+    // Semantic Embeddings (NIMCP 2.9, CPU-staged in 2.6.4)
     uint32_t embedding_pool_index; /**< Index into network's CPU embedding pool (NIMCP_EMBEDDING_POOL_NONE = none) */
     uint16_t embedding_dim;        /**< Embedding dimension (0 = no embedding, typically 2048) */
-    float semantic_relevance;      /**< Cached relevance score (0-1) for current context */
 
-    // ENHANCEMENT 2: Ternary Weight Support (NIMCP 2.10)
-    // WHAT: Optional ternary weight representation for memory efficiency
-    // WHY:  20x memory savings for synaptic weight matrices (600 bytes -> 1.6 bits)
-    // HOW:  Ternary weight {-1, 0, +1} stored alongside float for optional use
-    trit_t ternary_weight;         /**< Ternary weight {-1, 0, +1} (TRIT_INHIBITORY, TRIT_SILENT, TRIT_EXCITATORY) */
+    // Ternary Weight Support (NIMCP 2.10)
+    trit_t ternary_weight;         /**< Ternary weight {-1, 0, +1} */
     bool use_ternary_weight;       /**< Use ternary weight instead of float weight */
     float ternary_scale;           /**< Scale factor for ternary dequantization (default 1.0) */
+} synapse_cold_t;
 
-    // PERFORMANCE NOTE: Function pointers add 24 bytes per synapse (on 64-bit)
-    // Type system adds ~40 bytes per synapse (type enum + union state)
-    // Semantic embeddings: 10 bytes inline (pool_index + dim + relevance), vectors in CPU pool
-    //   CPU pool: 2048D * 4 bytes = 8 KB per embedding, staged to GPU on demand
-    // Ternary weights add ~4 bytes per synapse (trit + bool + scale)
-    // Total synapse_t: ~100 bytes inline (embeddings stored in network-level CPU pool)
+/**
+ * @brief Synapse structure — HOT path only (~56 bytes)
+ *
+ * DESIGN EVOLUTION:
+ * - NIMCP 2.0-2.5: Synapse = weight (monolithic)
+ * - NIMCP 2.6-2.10: Synapse = weight + STP + type + compute (~200 bytes)
+ * - NIMCP 2.11: Hot/cold split — hot = learning-critical fields (~56 bytes),
+ *   cold = STP/BCM/eligibility/compute/type/embeddings (on-demand, ~128 bytes)
+ *
+ * HOT struct stored in metadata pool (every outgoing synapse with metadata).
+ * COLD struct stored in separate cold pool (only synapses that need advanced features).
+ * Reduces metadata pool from ~32 GB to ~8 GB for 2M-neuron networks.
+ */
+typedef struct synapse_t {
+    uint32_t target_id;        /**< Target neuron ID */
+    float weight;              /**< Synaptic weight (synced with handle) */
+    float plasticity;          /**< Plasticity coefficient */
+    float last_change;         /**< Last weight change (for momentum) */
+    uint64_t last_active;      /**< Last activation timestamp */
+    float strength;            /**< Synaptic strength (separate from weight) */
+    float meta_plasticity;     /**< Meta-plasticity factor */
+    float trace;               /**< Synaptic trace for STDP */
+
+    // Axon integration
+    uint32_t source_neuron_id; /**< Pre-synaptic neuron ID (0 = unset/legacy) */
+    uint32_t axon_id;          /**< Axon delivering spikes (0 = no axon) */
+
+    // Cached hot-path field from cold (avoids cold lookup in forward pass)
+    float semantic_relevance;  /**< Cached relevance score (0-1) for current context */
+
+    // Cold data link
+    uint32_t cold_index;       /**< Index into cold pool (SYNAPSE_COLD_NONE = no cold data) */
 } synapse_t;
 
 // Phase 11: Eligibility traces for temporal credit assignment
@@ -880,7 +889,7 @@ float synapse_ternary_to_weight(trit_t ternary_weight, float positive_scale, flo
  * @param scale Scale factor for dequantization
  * @return true on success
  */
-bool synapse_enable_ternary_weight(synapse_t* synapse, float threshold, float scale);
+bool synapse_enable_ternary_weight(neural_network_t net, synapse_t* synapse, float threshold, float scale);
 
 /**
  * @brief Disable ternary mode for synapse
@@ -889,22 +898,24 @@ bool synapse_enable_ternary_weight(synapse_t* synapse, float threshold, float sc
  * WHY:  Allow fine-grained weight adjustments
  * HOW:  Dequantize ternary weight to float, clear flag
  *
+ * @param net Network (for cold pool access)
  * @param synapse Synapse to convert
  * @return true on success
  */
-bool synapse_disable_ternary_weight(synapse_t* synapse);
+bool synapse_disable_ternary_weight(neural_network_t net, synapse_t* synapse);
 
 /**
  * @brief Get effective weight (handles ternary/float transparently)
  *
  * WHAT: Return weight value regardless of storage mode
  * WHY:  Unified interface for synapse computation
- * HOW:  Check use_ternary_weight, return appropriate value
+ * HOW:  Check use_ternary_weight in cold, return appropriate value
  *
+ * @param net Network (for cold pool access)
  * @param synapse Synapse to query
  * @return Effective weight value
  */
-float synapse_get_effective_weight(const synapse_t* synapse);
+float synapse_get_effective_weight(neural_network_t net, const synapse_t* synapse);
 
 /**
  * @brief Set effective weight (handles ternary/float transparently)
@@ -913,11 +924,12 @@ float synapse_get_effective_weight(const synapse_t* synapse);
  * WHY:  Unified interface for synapse learning
  * HOW:  If ternary mode, quantize; otherwise set float
  *
+ * @param net Network (for cold pool access)
  * @param synapse Synapse to modify
  * @param weight New weight value
  * @param threshold Threshold for ternary quantization (if in ternary mode)
  */
-void synapse_set_effective_weight(synapse_t* synapse, float weight, float threshold);
+void synapse_set_effective_weight(neural_network_t net, synapse_t* synapse, float weight, float threshold);
 
 /**
  * @brief Export network weights to ternary matrix

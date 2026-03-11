@@ -43,3 +43,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_struct_consistency.cpp
     unit
 )
+
+# Test 7: Synapse Hot/Cold Split (NIMCP 2.11)
+add_test_binary(
+    test_synapse_hot_cold
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_synapse_hot_cold.cpp
+    unit
+)

@@ -1548,6 +1548,7 @@ uint32_t synapse_metadata_pool_allocate(synapse_metadata_pool_t pool) {
     uint32_t blk = index >> SYNAPSE_METADATA_BLOCK_SHIFT;
     uint32_t off = index & SYNAPSE_METADATA_BLOCK_MASK;
     memset(&pool->blocks[blk][off], 0, sizeof(synapse_t));
+    pool->blocks[blk][off].cold_index = SYNAPSE_COLD_NONE;  // No cold data by default
 
     LOG_TRACE("Allocated metadata slot %u (%u remaining)", index, pool->free_count);
     return index;
@@ -1630,6 +1631,224 @@ size_t synapse_metadata_pool_available(synapse_metadata_pool_t pool) {
 }
 
 //=============================================================================
+// Synapse Cold Pool Implementation (NIMCP 2.11: Hot/cold split)
+//=============================================================================
+
+#define SYNAPSE_COLD_POOL_MAGIC 0xC01DC01D
+#define SYNAPSE_COLD_BLOCK_SHIFT 14
+#define SYNAPSE_COLD_BLOCK_SIZE  (1u << SYNAPSE_COLD_BLOCK_SHIFT)  // 16384
+#define SYNAPSE_COLD_BLOCK_MASK  (SYNAPSE_COLD_BLOCK_SIZE - 1)
+#define SYNAPSE_COLD_INITIAL_MAX_BLOCKS 16
+#define SYNAPSE_COLD_MAX_POOL_SIZE (64u * 1024u * 1024u)  // 64M max cold slots
+
+typedef struct synapse_cold_pool_struct {
+    uint32_t magic;
+    synapse_cold_pool_config_t config;
+    synapse_cold_t** blocks;
+    uint32_t num_blocks;
+    uint32_t max_blocks;
+    uint32_t* free_list;
+    uint32_t free_count;
+    uint32_t free_list_capacity;
+    uint32_t pool_size;
+    _Atomic uint64_t total_allocations;
+    _Atomic uint64_t total_deallocations;
+    nimcp_mutex_t mutex;
+} synapse_cold_pool_struct_t;
+
+static bool validate_cold_pool(synapse_cold_pool_t pool) {
+    return pool != NULL && pool->magic == SYNAPSE_COLD_POOL_MAGIC;
+}
+
+synapse_cold_pool_config_t synapse_cold_pool_default_config(void) {
+    return (synapse_cold_pool_config_t){
+        .pool_size = SYNAPSE_COLD_BLOCK_SIZE,  // Start small, grow on demand
+        .enable_statistics = true,
+        .thread_safe = true
+    };
+}
+
+synapse_cold_pool_t synapse_cold_pool_create(
+    const synapse_cold_pool_config_t* config
+) {
+    synapse_cold_pool_config_t cfg;
+    if (config != NULL) {
+        cfg = *config;
+    } else {
+        cfg = synapse_cold_pool_default_config();
+    }
+    if (cfg.pool_size == 0) {
+        cfg.pool_size = SYNAPSE_COLD_BLOCK_SIZE;
+    }
+
+    synapse_cold_pool_struct_t* pool = (synapse_cold_pool_struct_t*)
+        nimcp_calloc(1, sizeof(synapse_cold_pool_struct_t));
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_cold_pool_create: alloc failed");
+        return NULL;
+    }
+    pool->magic = SYNAPSE_COLD_POOL_MAGIC;
+    pool->config = cfg;
+
+    uint32_t num_blocks = ((uint32_t)cfg.pool_size + SYNAPSE_COLD_BLOCK_SIZE - 1)
+                          >> SYNAPSE_COLD_BLOCK_SHIFT;
+    uint32_t actual_pool_size = num_blocks * SYNAPSE_COLD_BLOCK_SIZE;
+
+    pool->max_blocks = (num_blocks < SYNAPSE_COLD_INITIAL_MAX_BLOCKS)
+                     ? SYNAPSE_COLD_INITIAL_MAX_BLOCKS : num_blocks * 2;
+    pool->blocks = (synapse_cold_t**)nimcp_calloc(pool->max_blocks, sizeof(synapse_cold_t*));
+    if (!pool->blocks) {
+        nimcp_free(pool);
+        return NULL;
+    }
+
+    for (uint32_t b = 0; b < num_blocks; b++) {
+        pool->blocks[b] = (synapse_cold_t*)nimcp_calloc(
+            SYNAPSE_COLD_BLOCK_SIZE, sizeof(synapse_cold_t));
+        if (!pool->blocks[b]) {
+            for (uint32_t k = 0; k < b; k++) nimcp_free(pool->blocks[k]);
+            nimcp_free(pool->blocks);
+            nimcp_free(pool);
+            return NULL;
+        }
+    }
+    pool->num_blocks = num_blocks;
+    pool->pool_size = actual_pool_size;
+
+    pool->free_list_capacity = actual_pool_size;
+    pool->free_list = (uint32_t*)nimcp_calloc(actual_pool_size, sizeof(uint32_t));
+    if (!pool->free_list) {
+        for (uint32_t b = 0; b < num_blocks; b++) nimcp_free(pool->blocks[b]);
+        nimcp_free(pool->blocks);
+        nimcp_free(pool);
+        return NULL;
+    }
+    for (uint32_t i = 0; i < actual_pool_size; i++) {
+        pool->free_list[i] = actual_pool_size - 1 - i;
+    }
+    pool->free_count = actual_pool_size;
+
+    if (cfg.thread_safe) {
+        nimcp_mutex_init(&pool->mutex, NULL);
+    }
+
+    LOG_INFO("Created synapse cold pool with %u slots in %u blocks (%.2f MB total)",
+             pool->pool_size, pool->num_blocks,
+             (pool->pool_size * sizeof(synapse_cold_t)) / (1024.0 * 1024.0));
+    return pool;
+}
+
+void synapse_cold_pool_destroy(synapse_cold_pool_t pool) {
+    if (!validate_cold_pool(pool)) return;
+    if (pool->config.thread_safe) nimcp_mutex_destroy(&pool->mutex);
+    if (pool->blocks) {
+        for (uint32_t b = 0; b < pool->num_blocks; b++) {
+            if (pool->blocks[b]) nimcp_free(pool->blocks[b]);
+        }
+        nimcp_free(pool->blocks);
+    }
+    if (pool->free_list) nimcp_free(pool->free_list);
+    pool->magic = 0;
+    nimcp_free(pool);
+}
+
+uint32_t synapse_cold_pool_allocate(synapse_cold_pool_t pool) {
+    if (!validate_cold_pool(pool)) return SYNAPSE_COLD_NONE;
+
+    if (pool->config.thread_safe) nimcp_mutex_lock(&pool->mutex);
+
+    if (pool->free_count == 0) {
+        uint32_t new_pool_size = pool->pool_size + SYNAPSE_COLD_BLOCK_SIZE;
+        if (new_pool_size > SYNAPSE_COLD_MAX_POOL_SIZE) {
+            if (pool->config.thread_safe) nimcp_mutex_unlock(&pool->mutex);
+            return SYNAPSE_COLD_NONE;
+        }
+
+        if (pool->num_blocks >= pool->max_blocks) {
+            uint32_t new_max = pool->max_blocks * 2;
+            synapse_cold_t** new_blocks = (synapse_cold_t**)nimcp_realloc(
+                pool->blocks, new_max * sizeof(synapse_cold_t*));
+            if (!new_blocks) {
+                if (pool->config.thread_safe) nimcp_mutex_unlock(&pool->mutex);
+                return SYNAPSE_COLD_NONE;
+            }
+            memset(&new_blocks[pool->max_blocks], 0,
+                   (new_max - pool->max_blocks) * sizeof(synapse_cold_t*));
+            pool->blocks = new_blocks;
+            pool->max_blocks = new_max;
+        }
+
+        synapse_cold_t* new_block = (synapse_cold_t*)nimcp_calloc(
+            SYNAPSE_COLD_BLOCK_SIZE, sizeof(synapse_cold_t));
+        if (!new_block) {
+            if (pool->config.thread_safe) nimcp_mutex_unlock(&pool->mutex);
+            return SYNAPSE_COLD_NONE;
+        }
+        pool->blocks[pool->num_blocks++] = new_block;
+
+        uint32_t new_fl_cap = pool->free_list_capacity + SYNAPSE_COLD_BLOCK_SIZE;
+        uint32_t* new_fl = (uint32_t*)nimcp_realloc(
+            pool->free_list, new_fl_cap * sizeof(uint32_t));
+        if (!new_fl) {
+            nimcp_free(new_block);
+            pool->blocks[--pool->num_blocks] = NULL;
+            if (pool->config.thread_safe) nimcp_mutex_unlock(&pool->mutex);
+            return SYNAPSE_COLD_NONE;
+        }
+        pool->free_list = new_fl;
+        pool->free_list_capacity = new_fl_cap;
+
+        uint32_t old_size = pool->pool_size;
+        for (uint32_t i = 0; i < SYNAPSE_COLD_BLOCK_SIZE; i++) {
+            pool->free_list[i] = old_size + SYNAPSE_COLD_BLOCK_SIZE - 1 - i;
+        }
+        pool->free_count = SYNAPSE_COLD_BLOCK_SIZE;
+        pool->pool_size = new_pool_size;
+        pool->config.pool_size = new_pool_size;
+
+        LOG_INFO("Cold pool grew: block %u (%u total slots, %.2f MB)",
+                 pool->num_blocks - 1, pool->pool_size,
+                 (pool->pool_size * sizeof(synapse_cold_t)) / (1024.0 * 1024.0));
+    }
+
+    uint32_t index = pool->free_list[--pool->free_count];
+    if (pool->config.enable_statistics) {
+        atomic_fetch_add(&pool->total_allocations, 1);
+    }
+
+    if (pool->config.thread_safe) nimcp_mutex_unlock(&pool->mutex);
+
+    // Zero-init the cold struct
+    uint32_t blk = index >> SYNAPSE_COLD_BLOCK_SHIFT;
+    uint32_t off = index & SYNAPSE_COLD_BLOCK_MASK;
+    memset(&pool->blocks[blk][off], 0, sizeof(synapse_cold_t));
+
+    return index;
+}
+
+void synapse_cold_pool_free(synapse_cold_pool_t pool, uint32_t index) {
+    if (!validate_cold_pool(pool)) return;
+    if (index == SYNAPSE_COLD_NONE || index >= pool->pool_size) return;
+
+    if (pool->config.thread_safe) nimcp_mutex_lock(&pool->mutex);
+    pool->free_list[pool->free_count++] = index;
+    if (pool->config.enable_statistics) {
+        atomic_fetch_add(&pool->total_deallocations, 1);
+    }
+    if (pool->config.thread_safe) nimcp_mutex_unlock(&pool->mutex);
+}
+
+synapse_cold_t* synapse_cold_pool_get(
+    synapse_cold_pool_t pool, uint32_t index
+) {
+    if (!validate_cold_pool(pool)) return NULL;
+    if (index == SYNAPSE_COLD_NONE || index >= pool->pool_size) return NULL;
+    uint32_t blk = index >> SYNAPSE_COLD_BLOCK_SHIFT;
+    uint32_t off = index & SYNAPSE_COLD_BLOCK_MASK;
+    return &pool->blocks[blk][off];
+}
+
+//=============================================================================
 // Extended Synapse Handle API Implementation
 //=============================================================================
 
@@ -1679,52 +1898,23 @@ int sparse_synapse_add_with_metadata(
     // Link handle to metadata
     handle->metadata_index = metadata_index;
 
-    // Initialize the full synapse_t
+    // Initialize the hot synapse_t fields
     synapse_t* syn = synapse_metadata_pool_get(metadata_pool, metadata_index);
     if (syn != NULL) {
         syn->target_id = target_neuron_id;
         syn->weight = weight;
-        syn->type = (synapse_type_t)synapse_type;
         syn->plasticity = 1.0F;
         syn->strength = 1.0F;
         syn->meta_plasticity = 1.0F;
         syn->trace = 0.0F;
         syn->last_change = 0.0F;
         syn->last_active = 0;
-        syn->embedding_pool_index = NIMCP_EMBEDDING_POOL_NONE;
-        syn->embedding_dim = 0;
         syn->semantic_relevance = 0.5f;
-
-        // Initialize type-specific state based on synapse type
-        switch (syn->type) {
-            case SYNAPSE_AMPA:
-                synapse_init_ampa(&syn->type_state.ampa);
-                break;
-            case SYNAPSE_NMDA:
-                synapse_init_nmda(&syn->type_state.nmda);
-                break;
-            case SYNAPSE_GABA_A:
-                synapse_init_gaba_a(&syn->type_state.gaba_a);
-                break;
-            case SYNAPSE_GABA_B:
-                synapse_init_gaba_b(&syn->type_state.gaba_b);
-                break;
-            case SYNAPSE_DOPAMINE:
-                synapse_init_dopamine(&syn->type_state.dopamine);
-                break;
-            case SYNAPSE_SEROTONIN:
-                synapse_init_serotonin(&syn->type_state.serotonin);
-                break;
-            case SYNAPSE_ACETYLCHOLINE:
-                synapse_init_acetylcholine(&syn->type_state.acetylcholine);
-                break;
-            case SYNAPSE_ELECTRICAL:
-                synapse_init_electrical(&syn->type_state.electrical);
-                break;
-            default:
-                // SYNAPSE_GENERIC - no special initialization
-                break;
-        }
+        syn->cold_index = SYNAPSE_COLD_NONE;
+        // Cold fields (type, type_state, embedding_pool_index, embedding_dim,
+        // STP, BCM, eligibility, ternary) initialized via SYNAPSE_ENSURE_COLD()
+        // by callers that have network access (e.g., add_typed_connection,
+        // backbone wiring, checkpoint load).
     }
 
     LOG_TRACE("Added synapse with metadata: target=%u, weight=%f, type=%d, metadata_index=%u",

@@ -449,6 +449,37 @@ set_tests_properties(test_cortical_dendritic
 #         LABELS "unit;core;cortical_columns;surround"
 # )
 
+# Test executable for sparse coding integration (K-WTA in brain_decide)
+add_executable(test_sparse_coding_integration
+    test_sparse_coding_integration.cpp
+)
+
+target_link_libraries(test_sparse_coding_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_sparse_coding_integration PRIVATE cxx_std_17)
+
+target_include_directories(test_sparse_coding_integration
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME test_sparse_coding_integration
+         COMMAND test_sparse_coding_integration)
+
+set_tests_properties(test_sparse_coding_integration
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;sparse_coding;integration"
+)
+
 # ============================================================================
 # Cortical Substrate Bridge Tests
 # ============================================================================

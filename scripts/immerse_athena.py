@@ -31,7 +31,10 @@ Usage:
 import argparse
 import logging
 import os
+import socket
+import struct
 import sys
+import threading
 import time
 import random
 import json
@@ -375,6 +378,97 @@ class CosineAnnealingLR:
         progress = (self.step_count - self.warmup_steps) / max(1, self.t_max - self.warmup_steps)
         progress = min(progress, 1.0)
         return self.lr_min + 0.5 * (self.lr_max - self.lr_min) * (1.0 + math.cos(math.pi * progress))
+
+
+LR_TRIGGER_FILE = "/tmp/athena_lr"
+
+
+class AdaptiveLRController:
+    """Auto-adjusts learning rate based on loss trends + manual override.
+
+    Monitors rolling loss windows and adjusts LR:
+    - Plateau (loss not improving): increase LR by scale_up
+    - Diverging (loss increasing): decrease LR by scale_down
+    - Improving: hold steady
+    - Manual override via /tmp/athena_lr trigger file
+    """
+
+    def __init__(self, initial_lr=BASE_LEARNING_RATE, min_lr=MIN_LEARNING_RATE,
+                 max_lr=MAX_LEARNING_RATE, window=500, patience=3,
+                 scale_up=1.5, scale_down=0.5, min_delta=0.002):
+        self.lr = initial_lr
+        self.min_lr = min_lr
+        self.max_lr = max_lr
+        self.window = window          # Loss averaging window
+        self.patience = patience      # Evals without improvement before adjust
+        self.scale_up = scale_up
+        self.scale_down = scale_down
+        self.min_delta = min_delta    # Minimum improvement to count
+        self.best_loss = float('inf')
+        self.stale_count = 0
+        self.history = []             # (step, lr, avg_loss, action)
+
+    def check_trigger_file(self):
+        """Check for manual LR override via /tmp/athena_lr."""
+        if os.path.exists(LR_TRIGGER_FILE):
+            try:
+                with open(LR_TRIGGER_FILE) as f:
+                    new_lr = float(f.read().strip())
+                os.remove(LR_TRIGGER_FILE)
+                new_lr = max(self.min_lr, min(self.max_lr, new_lr))
+                old_lr = self.lr
+                self.lr = new_lr
+                self.stale_count = 0
+                self.best_loss = float('inf')  # Reset plateau detection
+                print(f"    [LR] Manual override: {old_lr:.6f} → {new_lr:.6f}")
+                return True
+            except (ValueError, OSError):
+                try:
+                    os.remove(LR_TRIGGER_FILE)
+                except OSError:
+                    pass
+        return False
+
+    def update(self, avg_loss, step):
+        """Update LR based on loss trend. Call every eval interval (e.g. 500 steps)."""
+        # Check manual override first
+        if self.check_trigger_file():
+            self.history.append((step, self.lr, avg_loss, "MANUAL"))
+            return self.lr
+
+        action = "HOLD"
+        if avg_loss < self.best_loss - self.min_delta:
+            # Improving — reset patience, keep current LR
+            self.best_loss = avg_loss
+            self.stale_count = 0
+            action = "IMPROVING"
+        else:
+            self.stale_count += 1
+
+            if self.stale_count >= self.patience:
+                if avg_loss > self.best_loss + self.min_delta:
+                    # Loss is going UP — decrease LR
+                    old_lr = self.lr
+                    self.lr = max(self.min_lr, self.lr * self.scale_down)
+                    self.stale_count = 0
+                    action = f"DIVERGE {old_lr:.6f}→{self.lr:.6f}"
+                    print(f"    [LR] Loss diverging — reducing: {old_lr:.6f} → {self.lr:.6f}")
+                else:
+                    # Plateau — increase LR to explore
+                    old_lr = self.lr
+                    self.lr = min(self.max_lr, self.lr * self.scale_up)
+                    self.stale_count = 0
+                    self.best_loss = avg_loss  # Reset baseline after boost
+                    action = f"PLATEAU {old_lr:.6f}→{self.lr:.6f}"
+                    print(f"    [LR] Loss plateaued — boosting: {old_lr:.6f} → {self.lr:.6f}")
+
+        self.history.append((step, self.lr, avg_loss, action))
+        return self.lr
+
+    def get_lr(self):
+        """Get current LR (also checks trigger file)."""
+        self.check_trigger_file()
+        return self.lr
 
 
 class AdaptiveBatchSize:
@@ -1021,11 +1115,202 @@ class SensoryComposer:
         return vec.tolist()
 
 
-def make_semantic_target(text, target_dim=BRAIN_OUTPUT_DIM):
-    """Create a target vector by tiling the semantic embedding to target_dim."""
+class TargetDiversifier:
+    """Diversifies semantic targets to combat mode collapse.
+
+    Three strategies work together:
+    1. Category signal: Adds orthogonal one-hot category component
+    2. Category rotation: Applies a fixed random rotation per category
+    3. Mean subtraction: Subtracts running mean of recent targets
+
+    Without diversification, "a brown cow" and "a black dog" produce embeddings
+    with cosine similarity >0.8 — the network can't help but collapse them.
+    With diversification, each category occupies a distinct region of target space.
+    """
+
+    # Category definitions — each text gets assigned by keyword matching
+    CATEGORIES = [
+        "animal", "nature", "food", "body", "home", "vehicle", "music",
+        "weather", "tool", "science", "math", "philosophy", "psychology",
+        "technology", "literature", "art", "emotion", "social", "space",
+        "geography", "history", "language", "sport", "unknown"
+    ]
+
+    # Keywords for category detection
+    _CATEGORY_KEYWORDS = {
+        "animal": ["dog", "cat", "bird", "fish", "horse", "bear", "cow",
+                   "elephant", "whale", "dolphin", "rabbit", "frog", "snake",
+                   "butterfly", "bee", "owl", "lion", "tiger", "monkey",
+                   "sheep", "pig", "chicken", "duck", "deer", "wolf",
+                   "fox", "penguin", "turtle", "spider", "ant", "mouse",
+                   "squirrel", "giraffe", "zebra", "eagle", "hawk",
+                   "parrot", "beetle", "ladybug", "caterpillar", "peacock",
+                   "rooster", "skunk", "chipmunk", "starling", "goldfish"],
+        "nature": ["tree", "flower", "river", "mountain", "ocean", "cloud",
+                   "rain", "snow", "forest", "desert", "volcano", "rainbow",
+                   "moon", "sun", "star", "sunset", "sunrise", "lake",
+                   "garden", "leaf", "seed", "grass", "vine", "moss",
+                   "tide", "wave", "fog", "mist", "aurora", "northern lights"],
+        "food": ["apple", "bread", "milk", "egg", "rice", "honey",
+                 "banana", "cookie", "cheese", "orange", "strawberry",
+                 "chocolate", "water", "juice", "soup", "cake", "pizza",
+                 "potato", "carrot", "tomato", "pepper", "lemon", "grape",
+                 "eggplant", "peel", "mint"],
+        "body": ["hand", "eye", "heart", "brain", "finger", "arm",
+                 "leg", "nose", "ear", "mouth", "teeth", "hair",
+                 "skin", "bone", "blood", "muscle"],
+        "home": ["house", "door", "window", "chair", "table", "bed",
+                 "lamp", "book", "clock", "mirror", "pillow", "blanket",
+                 "cup", "spoon", "plate", "candle", "key", "stairs",
+                 "ceiling", "floor", "wall", "roof", "kitchen", "sink",
+                 "radiator", "curtain", "fireplace"],
+        "vehicle": ["car", "bus", "train", "bicycle", "boat", "airplane",
+                    "truck", "ship", "rocket", "helicopter", "subway"],
+        "music": ["music", "song", "piano", "guitar", "drum", "violin",
+                  "trumpet", "flute", "melody", "rhythm", "harmony",
+                  "orchestra", "choir", "cello", "accordion", "metronome",
+                  "tempo", "note", "chord", "scale", "octave", "fugue",
+                  "chimes", "wind chimes", "foghorn", "bell"],
+        "weather": ["rain", "thunder", "lightning", "wind", "storm",
+                    "tornado", "hurricane", "fog", "hail", "frost",
+                    "breeze", "temperature", "climate"],
+        "tool": ["hammer", "scissors", "needle", "pencil", "brush",
+                 "wrench", "screwdriver", "shovel", "rope", "saw",
+                 "magnifying glass", "prism", "kaleidoscope", "pinwheel",
+                 "kite", "balloon"],
+        "science": ["atom", "molecule", "cell", "DNA", "evolution",
+                    "gravity", "energy", "photosynthesis", "electron",
+                    "neuron", "synapse", "gene", "protein", "vaccine",
+                    "antibiotic", "electromagnetic", "spectrum",
+                    "tectonic", "mitochondria", "experiment"],
+        "math": ["number", "equation", "theorem", "geometry", "algebra",
+                 "calculus", "probability", "statistics", "fibonacci",
+                 "prime", "pi ", "fraction", "exponential", "logarithm"],
+        "philosophy": ["socrates", "plato", "aristotle", "descartes",
+                       "kant", "ethics", "morality", "consciousness",
+                       "free will", "existential", "epistemology",
+                       "trolley problem", "meaning of life"],
+        "psychology": ["memory", "emotion", "cognitive", "attachment",
+                       "motivation", "placebo", "empathy", "creativity",
+                       "bias", "stress", "anxiety", "perception"],
+        "technology": ["computer", "internet", "algorithm", "software",
+                       "encryption", "programming", "artificial intelligence",
+                       "machine learning", "neural network", "quantum",
+                       "digital", "robot", "database", "code"],
+        "literature": ["shakespeare", "poetry", "novel", "fable",
+                       "mythology", "metaphor", "narrative", "tragedy",
+                       "comedy", "irony", "story", "author", "poem"],
+        "art": ["painting", "sculpture", "color", "perspective",
+                "photography", "architecture", "composition", "canvas",
+                "abstract", "portrait", "dance", "gallery", "sketch"],
+        "space": ["planet", "galaxy", "comet", "asteroid", "orbit",
+                  "telescope", "constellation", "nebula", "mars",
+                  "saturn", "jupiter", "milky way", "cosmos"],
+    }
+
+    def __init__(self, embedding_dim=1024, target_dim=BRAIN_OUTPUT_DIM,
+                 category_weight=0.3, rotation_strength=0.2,
+                 mean_sub_strength=0.5, mean_buffer_size=200):
+        self.embedding_dim = embedding_dim
+        self.target_dim = target_dim
+        self.num_categories = len(self.CATEGORIES)
+        self.category_weight = category_weight
+        self.rotation_strength = rotation_strength
+        self.mean_sub_strength = mean_sub_strength
+
+        # Pre-generate a fixed random rotation matrix per category (seeded)
+        rng = np.random.RandomState(42)
+        self._rotations = {}
+        for i, cat in enumerate(self.CATEGORIES):
+            # Random orthogonal matrix via QR decomposition
+            A = rng.randn(embedding_dim, embedding_dim).astype(np.float32)
+            Q, _ = np.linalg.qr(A)
+            # Blend with identity: R = (1-s)*I + s*Q
+            self._rotations[cat] = (
+                (1.0 - rotation_strength) * np.eye(embedding_dim, dtype=np.float32)
+                + rotation_strength * Q
+            )
+
+        # Running mean of recent targets for mean subtraction
+        self._mean_buffer = []
+        self._mean_buffer_size = mean_buffer_size
+        self._running_mean = np.zeros(embedding_dim, dtype=np.float32)
+
+    def _detect_category(self, text):
+        """Detect category from text via keyword matching."""
+        text_lower = text.lower()
+        best_cat = "unknown"
+        best_count = 0
+        for cat, keywords in self._CATEGORY_KEYWORDS.items():
+            count = sum(1 for kw in keywords if kw in text_lower)
+            if count > best_count:
+                best_count = count
+                best_cat = cat
+        return best_cat
+
+    def diversify(self, embedding, text, category=None):
+        """Apply all three diversification strategies to an embedding.
+
+        Args:
+            embedding: 1024-dim semantic embedding (numpy array)
+            text: Original text (for category detection)
+            category: Optional explicit category string
+
+        Returns:
+            Diversified embedding (1024-dim numpy array)
+        """
+        emb = np.array(embedding, dtype=np.float32)
+
+        # 1. Category rotation — rotate embedding into category-specific subspace
+        cat = category or self._detect_category(text)
+        if cat in self._rotations:
+            emb = self._rotations[cat] @ emb
+
+        # 2. Category signal — add scaled one-hot in a reserved band
+        cat_idx = self.CATEGORIES.index(cat) if cat in self.CATEGORIES else len(self.CATEGORIES) - 1
+        cat_signal = np.zeros(self.embedding_dim, dtype=np.float32)
+        # Spread the category signal across multiple dimensions for robustness
+        band_start = (cat_idx * 40) % self.embedding_dim
+        for k in range(40):
+            dim = (band_start + k) % self.embedding_dim
+            cat_signal[dim] = self.category_weight
+        emb = emb + cat_signal
+
+        # 3. Mean subtraction — push away from the running centroid
+        if len(self._mean_buffer) > 10:
+            emb = emb - self.mean_sub_strength * self._running_mean
+
+        # Update running mean
+        self._mean_buffer.append(emb.copy())
+        if len(self._mean_buffer) > self._mean_buffer_size:
+            self._mean_buffer.pop(0)
+        self._running_mean = np.mean(self._mean_buffer, axis=0)
+
+        # Re-normalize to preserve scale
+        orig_norm = np.linalg.norm(embedding)
+        new_norm = np.linalg.norm(emb)
+        if new_norm > 1e-8 and orig_norm > 1e-8:
+            emb = emb * (orig_norm / new_norm)
+
+        return emb
+
+
+# Global diversifier instance
+_target_diversifier = TargetDiversifier()
+
+
+def make_semantic_target(text, target_dim=BRAIN_OUTPUT_DIM, category=None):
+    """Create a diversified target vector from text.
+
+    Uses three strategies to spread targets apart:
+    1. Per-category rotation of the embedding space
+    2. Category one-hot signal injection
+    3. Running mean subtraction (push away from centroid)
+    """
     emb = encode_text(text)  # 1024-dim
+    emb = _target_diversifier.diversify(emb, text, category=category)
+
     target = np.zeros(target_dim, dtype=np.float32)
-    # Tile embedding across target
     for i in range(0, target_dim, len(emb)):
         n = min(len(emb), target_dim - i)
         target[i:i + n] = emb[:n]
@@ -1043,16 +1328,358 @@ def tile_to_brain_input(embedding, dim=BRAIN_INPUT_DIM):
 
 
 def batch_make_semantic_targets(texts, target_dim=BRAIN_OUTPUT_DIM):
-    """Batch-compute semantic targets — uses batch encoding for ~10x speedup."""
+    """Batch-compute diversified semantic targets."""
     embeddings = batch_encode_texts(texts)
     targets = []
-    for emb in embeddings:
+    for emb, text in zip(embeddings, texts):
+        emb = _target_diversifier.diversify(emb, text)
         target = np.zeros(target_dim, dtype=np.float32)
         for i in range(0, target_dim, len(emb)):
             n = min(len(emb), target_dim - i)
             target[i:i + n] = emb[:n]
         targets.append(target.tolist())
     return targets
+
+
+class ContrastiveRegularizer:
+    """Combats mode collapse by pushing outputs apart for different inputs.
+
+    Maintains a rolling buffer of (input_embedding, output_vector) pairs.
+    Every `interval` steps, samples pairs from the buffer and applies
+    contrastive corrections: if two outputs are very similar (high cosine)
+    but their inputs are dissimilar, we push the outputs apart by training
+    each to move AWAY from the other.
+
+    This gives the brain a gradient signal: "different inputs should produce
+    different outputs."
+    """
+
+    def __init__(self, buffer_size=200, interval=50, batch_size=16,
+                 similarity_threshold=0.90, min_input_distance=0.3,
+                 strength=0.3):
+        """
+        Args:
+            buffer_size: Max recent pairs to keep.
+            interval: Apply contrastive correction every N steps.
+            batch_size: Number of pairs to sample per correction.
+            similarity_threshold: Output cosine sim above this triggers correction.
+            min_input_distance: Minimum input dissimilarity to count as "different".
+            strength: Blend factor for anti-target (0=no correction, 1=full push).
+        """
+        self.buffer_size = buffer_size
+        self.interval = interval
+        self.batch_size = batch_size
+        self.sim_threshold = similarity_threshold
+        self.min_input_dist = min_input_distance
+        self.strength = strength
+
+        self._input_buf = []   # list of 1024-dim input embeddings
+        self._output_buf = []  # list of output vectors (full dim)
+        self._feature_buf = [] # list of brain input features (for re-training)
+        self._step = 0
+        self._corrections_applied = 0
+        self._total_checks = 0
+
+    def record(self, input_embedding, output_vector, features):
+        """Record an (input, output, features) triple."""
+        inp = np.asarray(input_embedding, dtype=np.float32).ravel()
+        out = np.asarray(output_vector, dtype=np.float32).ravel()
+        self._input_buf.append(inp)
+        self._output_buf.append(out)
+        self._feature_buf.append(features)
+        if len(self._input_buf) > self.buffer_size:
+            self._input_buf.pop(0)
+            self._output_buf.pop(0)
+            self._feature_buf.pop(0)
+        self._step += 1
+
+    def should_correct(self):
+        """Check if it's time to apply contrastive corrections."""
+        return (self._step % self.interval == 0
+                and len(self._input_buf) >= self.batch_size * 2)
+
+    def apply_corrections(self, brain, learning_rate=None):
+        """Sample pairs from buffer and apply contrastive push-apart signals.
+
+        For each pair (A, B) where outputs are too similar but inputs differ:
+          - Train A's input features toward (A_output - strength * B_output)
+          - Train B's input features toward (B_output - strength * A_output)
+
+        This pushes each output AWAY from the other while preserving its
+        general direction, creating differentiation pressure.
+
+        Returns: (num_corrections, mean_output_similarity)
+        """
+        n = len(self._input_buf)
+        if n < self.batch_size * 2:
+            return 0, 0.0
+
+        # Sample indices
+        indices = np.random.choice(n, size=min(self.batch_size * 2, n),
+                                   replace=False)
+
+        # Compute output embeddings (extract 1024-dim from full output)
+        out_embs = []
+        for idx in indices:
+            out_embs.append(
+                extract_embedding_from_output(self._output_buf[idx]))
+        out_embs = np.array(out_embs, dtype=np.float32)
+
+        # Compute input embeddings
+        in_embs = np.array([self._input_buf[idx] for idx in indices],
+                           dtype=np.float32)
+
+        # Pairwise output cosine similarity
+        out_norms = np.linalg.norm(out_embs, axis=1, keepdims=True)
+        out_norms = np.maximum(out_norms, 1e-8)
+        out_normed = out_embs / out_norms
+
+        in_norms = np.linalg.norm(in_embs, axis=1, keepdims=True)
+        in_norms = np.maximum(in_norms, 1e-8)
+        in_normed = in_embs / in_norms
+
+        out_sim = out_normed @ out_normed.T
+        in_sim = in_normed @ in_normed.T
+
+        corrections = 0
+        sims_found = []
+
+        lr_kwargs = {"learning_rate": learning_rate} if learning_rate else {}
+
+        for i in range(len(indices)):
+            for j in range(i + 1, len(indices)):
+                o_sim = float(out_sim[i, j])
+                i_sim = float(in_sim[i, j])
+                input_distance = 1.0 - i_sim
+
+                sims_found.append(o_sim)
+                self._total_checks += 1
+
+                # High output similarity + low input similarity = mode collapse
+                if o_sim > self.sim_threshold and input_distance > self.min_input_dist:
+                    idx_a = indices[i]
+                    idx_b = indices[j]
+
+                    # Anti-target for A: push away from B
+                    out_a = np.array(self._output_buf[idx_a], dtype=np.float32)
+                    out_b = np.array(self._output_buf[idx_b], dtype=np.float32)
+
+                    anti_a = out_a - self.strength * out_b
+                    anti_b = out_b - self.strength * out_a
+
+                    # Normalize to same scale as original targets
+                    norm_a = np.linalg.norm(anti_a)
+                    norm_b = np.linalg.norm(anti_b)
+                    if norm_a > 1e-8:
+                        anti_a = anti_a * (np.linalg.norm(out_a) / norm_a)
+                    if norm_b > 1e-8:
+                        anti_b = anti_b * (np.linalg.norm(out_b) / norm_b)
+
+                    try:
+                        brain.learn_vector(
+                            self._feature_buf[idx_a], anti_a.tolist(),
+                            label="contrastive", confidence=0.7,
+                            **lr_kwargs)
+                        brain.learn_vector(
+                            self._feature_buf[idx_b], anti_b.tolist(),
+                            label="contrastive", confidence=0.7,
+                            **lr_kwargs)
+                        corrections += 1
+                    except Exception:
+                        pass
+
+                    if corrections >= self.batch_size:
+                        break
+            if corrections >= self.batch_size:
+                break
+
+        self._corrections_applied += corrections
+        mean_sim = float(np.mean(sims_found)) if sims_found else 0.0
+        return corrections, mean_sim
+
+    def stats_str(self):
+        return (f"contrastive: {self._corrections_applied} corrections, "
+                f"{self._total_checks} pairs checked, "
+                f"buf={len(self._input_buf)}")
+
+
+class DiversityRegularizer:
+    """Combats mode collapse via output decorrelation.
+
+    Maintains a rolling buffer of recent output embeddings. Every `interval`
+    steps, computes the covariance matrix of outputs and generates corrective
+    targets that push outputs toward underrepresented directions.
+
+    Key insight: mode collapse means the output covariance has one dominant
+    eigenvalue. We fix this by training outputs to be more spread along
+    the minor eigenvectors.
+
+    Works alongside ContrastiveRegularizer:
+      - Contrastive: pairwise push-apart (local correction)
+      - Diversity: global decorrelation (structural correction)
+    """
+
+    def __init__(self, buffer_size=100, interval=100, num_corrections=8,
+                 strength=0.2, min_variance_ratio=0.1):
+        """
+        Args:
+            buffer_size: Number of recent outputs to track.
+            interval: Apply decorrelation every N steps.
+            num_corrections: Number of corrective targets per application.
+            strength: How far to push toward minor eigenvectors (0-1).
+            min_variance_ratio: Trigger correction when top eigenvalue
+                accounts for more than (1 - min_variance_ratio) of variance.
+        """
+        self.buffer_size = buffer_size
+        self.interval = interval
+        self.num_corrections = num_corrections
+        self.strength = strength
+        self.min_variance_ratio = min_variance_ratio
+
+        self._output_buf = []    # list of 1024-dim output embeddings
+        self._feature_buf = []   # corresponding brain input features
+        self._step = 0
+        self._corrections_applied = 0
+        self._last_top_ratio = 0.0
+        self._last_effective_rank = 0.0
+
+    def record(self, output_vector, features):
+        """Record an output embedding and its input features."""
+        out_emb = extract_embedding_from_output(
+            np.asarray(output_vector, dtype=np.float32))
+        self._output_buf.append(out_emb)
+        self._feature_buf.append(features)
+        if len(self._output_buf) > self.buffer_size:
+            self._output_buf.pop(0)
+            self._feature_buf.pop(0)
+        self._step += 1
+
+    def should_correct(self):
+        """Check if it's time to apply decorrelation."""
+        return (self._step % self.interval == 0
+                and len(self._output_buf) >= 30)
+
+    def apply_corrections(self, brain, learning_rate=None):
+        """Analyze output covariance and generate decorrelation targets.
+
+        Algorithm:
+          1. Compute covariance of recent output embeddings
+          2. Eigendecompose to find dominant vs. minor directions
+          3. If variance is too concentrated (top eigenvalue dominates):
+             - Sample outputs from the buffer
+             - For each, create a target that shifts it toward a random
+               minor eigenvector, spreading the output distribution
+
+        Returns: (num_corrections, top_eigenvalue_ratio, effective_rank)
+        """
+        n = len(self._output_buf)
+        if n < 30:
+            return 0, 0.0, 0.0
+
+        embs = np.array(self._output_buf, dtype=np.float32)
+
+        # Center the embeddings
+        mean_emb = embs.mean(axis=0)
+        centered = embs - mean_emb
+
+        # Covariance (use smaller dimension for efficiency)
+        # If n < embed_dim, compute n×n Gram matrix instead
+        if n < centered.shape[1]:
+            gram = centered @ centered.T / n
+            eigenvalues, eigenvectors_small = np.linalg.eigh(gram)
+            # Map back to full space
+            eigenvalues = np.maximum(eigenvalues, 0)
+            idx = np.argsort(eigenvalues)[::-1]
+            eigenvalues = eigenvalues[idx]
+            eigenvectors_small = eigenvectors_small[:, idx]
+            # Full eigenvectors: V = X^T @ U @ diag(1/sqrt(λ))
+            nonzero = eigenvalues > 1e-8
+            eigenvectors = centered.T @ eigenvectors_small[:, nonzero]
+            norms = np.linalg.norm(eigenvectors, axis=0, keepdims=True)
+            norms = np.maximum(norms, 1e-8)
+            eigenvectors = eigenvectors / norms
+        else:
+            cov = centered.T @ centered / n
+            eigenvalues, eigenvectors = np.linalg.eigh(cov)
+            idx = np.argsort(eigenvalues)[::-1]
+            eigenvalues = eigenvalues[idx]
+            eigenvectors = eigenvectors[:, idx]
+
+        # Compute variance concentration
+        total_var = eigenvalues.sum()
+        if total_var < 1e-8:
+            return 0, 0.0, 0.0
+
+        top_ratio = float(eigenvalues[0] / total_var)
+        # Effective rank: exp(entropy of normalized eigenvalues)
+        normed_evals = eigenvalues / total_var
+        normed_evals = normed_evals[normed_evals > 1e-10]
+        effective_rank = float(np.exp(-np.sum(normed_evals * np.log(normed_evals))))
+
+        self._last_top_ratio = top_ratio
+        self._last_effective_rank = effective_rank
+
+        # Only correct if variance is too concentrated
+        if top_ratio < (1.0 - self.min_variance_ratio):
+            return 0, top_ratio, effective_rank
+
+        # Select minor eigenvectors (bottom half)
+        num_eigs = len(eigenvalues)
+        minor_start = max(1, num_eigs // 2)
+        minor_vecs = eigenvectors[:, minor_start:min(minor_start + 20, num_eigs)]
+        if minor_vecs.shape[1] == 0:
+            return 0, top_ratio, effective_rank
+
+        # Generate corrective targets
+        lr_kwargs = {"learning_rate": learning_rate} if learning_rate else {}
+        corrections = 0
+        sample_idx = np.random.choice(n, size=min(self.num_corrections, n),
+                                       replace=False)
+
+        for idx in sample_idx:
+            out_emb = self._output_buf[idx]
+            features = self._feature_buf[idx]
+
+            # Pick a random minor eigenvector
+            minor_idx = np.random.randint(minor_vecs.shape[1])
+            direction = minor_vecs[:, minor_idx]
+
+            # Create target: shift output toward this minor direction
+            # Scale by strength and the output's norm
+            out_norm = np.linalg.norm(out_emb)
+            if out_norm < 1e-8:
+                continue
+
+            shifted = out_emb + self.strength * out_norm * direction
+            # Normalize to same scale
+            shifted = shifted * (out_norm / max(np.linalg.norm(shifted), 1e-8))
+
+            # Tile back to full output dimension
+            target_dim = len(features) if hasattr(features, '__len__') else 2048
+            # Use BRAIN_OUTPUT_DIM if available
+            target_dim = BRAIN_OUTPUT_DIM
+            target = np.zeros(target_dim, dtype=np.float32)
+            for j in range(0, target_dim, len(shifted)):
+                end = min(j + len(shifted), target_dim)
+                target[j:end] = shifted[:end - j]
+
+            try:
+                brain.learn_vector(
+                    features, target.tolist(),
+                    label="diversity", confidence=0.3,
+                    **lr_kwargs)
+                corrections += 1
+            except Exception:
+                pass
+
+        self._corrections_applied += corrections
+        return corrections, top_ratio, effective_rank
+
+    def stats_str(self):
+        return (f"diversity: {self._corrections_applied} corr, "
+                f"top_eig={self._last_top_ratio:.2f}, "
+                f"eff_rank={self._last_effective_rank:.1f}, "
+                f"buf={len(self._output_buf)}")
 
 
 class StimulusPrefetcher:
@@ -2198,7 +2825,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
 
     # --- Stage 1: "That's a ___! Can you see?" ---
 
-    def show_and_name(self, brain, composer, name, description):
+    def show_and_name(self, brain, composer, name, description, learning_rate=None):
         """Associate a percept with meaning, with enthusiasm.
 
         Tries to load a real image matching `name` from CIFAR-100.
@@ -2231,7 +2858,9 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             print(f"  Parent: {narration}")
 
         # Dense target trains adaptive network; label trains CNN classifier
-        loss = brain.learn_vector(features, target, label=name[:50], confidence=0.65)
+        lr_kwargs = {"learning_rate": learning_rate} if learning_rate is not None else {}
+        loss = brain.learn_vector(features, target, label=name[:50], confidence=0.65,
+                                  **lr_kwargs)
 
         # Train ALL cognitive modules on this text
         self._train_cognitive(brain, name + ". " + description, domain=0)  # LANGUAGE
@@ -2255,7 +2884,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
 
     # --- Stage 2: "Good try! Almost!" ---
 
-    def ask_and_encourage(self, brain, composer, concept, description):
+    def ask_and_encourage(self, brain, composer, concept, description,
+                          learning_rate=None):
         """Show Athena a stimulus, observe her response, teach, encourage.
 
         There is no correct or incorrect. Athena experiences, responds,
@@ -2272,9 +2902,10 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 features, target, paired_concept, teaching = pair
                 result = brain.decide_full(features)
                 response_text = self.observe_response(result)
+                lr_kwargs = {"learning_rate": learning_rate} if learning_rate is not None else {}
                 loss = brain.learn_vector(features, target,
                                           label=paired_concept[:50],
-                                          confidence=0.6)
+                                          confidence=0.6, **lr_kwargs)
                 self._train_cognitive(brain, teaching, domain=10)
                 encouragement = self._pop_content("_encouragements")
                 if loss is not None and loss < 0.5 and encouragement:
@@ -2308,7 +2939,9 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         response_text = self.observe_response(result)
 
         # Dense target trains adaptive network; label trains CNN classifier
-        loss = brain.learn_vector(features, target, label=concept[:50], confidence=0.6)
+        lr_kwargs = {"learning_rate": learning_rate} if learning_rate is not None else {}
+        loss = brain.learn_vector(features, target, label=concept[:50], confidence=0.6,
+                                  **lr_kwargs)
 
         # Train ALL cognitive modules on this text
         self._train_cognitive(brain, concept + ". " + description, domain=10)  # GENERAL
@@ -2867,6 +3500,12 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
     hard_miner = HardExampleMiner(max_buffer=500, replay_fraction=0.2)
     temporal = MultiResolutionTemporal(brain, slow_interval=5)
     early_stop = EarlyStopping(patience=8, min_delta=0.005, mode="min")
+    contrastive = ContrastiveRegularizer(
+        buffer_size=200, interval=20, batch_size=32,
+        similarity_threshold=0.80, min_input_distance=0.3, strength=0.6)
+    diversity = DiversityRegularizer(
+        buffer_size=100, interval=100, num_corrections=8,
+        strength=0.2, min_variance_ratio=0.1)
     mini_batch_buf = []
     for i in range(start_from, num_stimuli):
         # Check biological clock
@@ -2935,9 +3574,25 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                     if out_vec is not None:
                         target_emb = encode_text(desc)
                         parent.decoder.record_pair(out_vec, target_emb, desc)
+                        contrastive.record(target_emb, out_vec, f)
+                        diversity.record(out_vec, f)
             mini_batch_buf = []
             lr_scheduler.step()
             adaptive_batch.step()
+
+            # Contrastive + diversity corrections
+            if contrastive.should_correct():
+                n_corr, mean_sim = contrastive.apply_corrections(
+                    brain, learning_rate=lr_scheduler.get_lr())
+                if n_corr > 0 and (i + 1) % 500 < 60:
+                    print(f"    [Contrastive] {n_corr} corrections, "
+                          f"mean_output_sim={mean_sim:.3f}")
+            if diversity.should_correct():
+                n_div, top_r, eff_r = diversity.apply_corrections(
+                    brain, learning_rate=lr_scheduler.get_lr() * 0.3)
+                if n_div > 0 and (i + 1) % 500 < 110:
+                    print(f"    [Diversity] {n_div} corrections, "
+                          f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}")
 
         try:
             brain.bg_update_reward(0.5, 0.3)
@@ -2948,12 +3603,26 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         # Multi-resolution temporal processing (fast + slow LNN)
         temporal.step(features)
 
+        # Check for manual LR override
+        if os.path.exists(LR_TRIGGER_FILE):
+            try:
+                with open(LR_TRIGGER_FILE) as f:
+                    new_lr = float(f.read().strip())
+                os.remove(LR_TRIGGER_FILE)
+                new_lr = max(MIN_LEARNING_RATE, min(MAX_LEARNING_RATE, new_lr))
+                lr_scheduler.lr_max = new_lr
+                lr_scheduler.lr_min = new_lr * 0.1
+                print(f"    [LR] Manual override: lr_max → {new_lr:.6f}")
+            except (ValueError, OSError):
+                pass
+
         # Progress report
         if (i + 1) % 500 == 0:
             avg_loss = np.mean(losses[-500:]) if losses else 0
             print(f"\n  [Stage 0] {i+1}/{num_stimuli} — "
                   f"avg_loss={avg_loss:.4f} lr={lr_scheduler.get_lr():.6f} "
                   f"batch={adaptive_batch.size} hard_buf={len(hard_miner.buffer)}")
+            print(f"    {contrastive.stats_str()} | {diversity.stats_str()}")
             _print_bio_stats(brain)
             losses_to_report = losses[-500:]
             if len(losses_to_report) > 100:
@@ -3008,6 +3677,13 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         pass
 
     losses = []
+    lr_ctrl = AdaptiveLRController(initial_lr=BASE_LEARNING_RATE)
+    contrastive = ContrastiveRegularizer(
+        buffer_size=200, interval=20, batch_size=32,
+        similarity_threshold=0.80, min_input_distance=0.3, strength=0.6)
+    diversity = DiversityRegularizer(
+        buffer_size=100, interval=100, num_corrections=8,
+        strength=0.2, min_variance_ratio=0.1)
     for i in range(start_from, num_stimuli):
         action = clock.tick(brain)
         if action == "sleep":
@@ -3018,8 +3694,31 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         # Get an object to name
         name, description = source.get_object()
 
-        loss, result = parent.show_and_name(brain, composer, name, description)
+        loss, result = parent.show_and_name(brain, composer, name, description,
+                                            learning_rate=lr_ctrl.get_lr())
         losses.append(loss if loss is not None else 0)
+
+        # Record for contrastive + diversity regularization
+        output_vec = result.get("output_vector") if result else None
+        if output_vec is not None:
+            input_emb = encode_text(name + " " + description)
+            features_for_cr = composer.compose(text=description, modality="text")
+            contrastive.record(input_emb, output_vec, features_for_cr)
+            diversity.record(output_vec, features_for_cr)
+
+        # Contrastive + diversity corrections
+        if contrastive.should_correct():
+            n_corr, mean_sim = contrastive.apply_corrections(
+                brain, learning_rate=lr_ctrl.get_lr())
+            if n_corr > 0 and (i + 1) % 500 < contrastive.interval:
+                print(f"    [Contrastive] {n_corr} corrections, "
+                      f"mean_output_sim={mean_sim:.3f}")
+        if diversity.should_correct():
+            n_div, top_r, eff_r = diversity.apply_corrections(
+                brain, learning_rate=lr_ctrl.get_lr() * 0.3)
+            if n_div > 0 and (i + 1) % 500 < diversity.interval:
+                print(f"    [Diversity] {n_div} corrections, "
+                      f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}")
 
         # LNN temporal step
         try:
@@ -3038,8 +3737,10 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         # Progress
         if (i + 1) % 500 == 0:
             avg_loss = np.mean(losses[-500:]) if losses else 0
+            lr_ctrl.update(avg_loss, i + 1)
             print(f"\n  [Stage 1] {i+1}/{num_stimuli} — "
-                  f"avg_loss={avg_loss:.4f}")
+                  f"avg_loss={avg_loss:.4f} lr={lr_ctrl.get_lr():.6f}"
+                  f" | {contrastive.stats_str()} | {diversity.stats_str()}")
             _print_bio_stats(brain)
             if decoder:
                 decoder.force_refit()
@@ -3092,6 +3793,13 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     parent.pre_generate_content(stage=2, num_stimuli=num_stimuli)
 
     losses = []
+    lr_ctrl = AdaptiveLRController(initial_lr=BASE_LEARNING_RATE)
+    contrastive = ContrastiveRegularizer(
+        buffer_size=200, interval=20, batch_size=32,
+        similarity_threshold=0.75, min_input_distance=0.3, strength=0.6)
+    diversity = DiversityRegularizer(
+        buffer_size=100, interval=100, num_corrections=8,
+        strength=0.2, min_variance_ratio=0.1)
 
     for i in range(start_from, num_stimuli):
         action = clock.tick(brain)
@@ -3110,8 +3818,31 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         # Athena experiences the stimulus and learns from it.
         # The loss is a developmental signal — how new this is to her.
         loss, result = parent.ask_and_encourage(
-            brain, composer, expected, description)
+            brain, composer, expected, description,
+            learning_rate=lr_ctrl.get_lr())
         losses.append(loss if loss is not None else 0)
+
+        # Record for contrastive + diversity regularization
+        output_vec = result.get("output_vector") if result else None
+        if output_vec is not None:
+            input_emb = encode_text(expected + " " + description)
+            features_for_cr = composer.compose(text=description, modality="text")
+            contrastive.record(input_emb, output_vec, features_for_cr)
+            diversity.record(output_vec, features_for_cr)
+
+        # Contrastive + diversity corrections
+        if contrastive.should_correct():
+            n_corr, mean_sim = contrastive.apply_corrections(
+                brain, learning_rate=lr_ctrl.get_lr())
+            if n_corr > 0 and (i + 1) % 500 < contrastive.interval:
+                print(f"    [Contrastive] {n_corr} corrections, "
+                      f"mean_output_sim={mean_sim:.3f}")
+        if diversity.should_correct():
+            n_div, top_r, eff_r = diversity.apply_corrections(
+                brain, learning_rate=lr_ctrl.get_lr() * 0.3)
+            if n_div > 0 and (i + 1) % 500 < diversity.interval:
+                print(f"    [Diversity] {n_div} corrections, "
+                      f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}")
 
         # Eligibility trace — every experience contributes to growth
         try:
@@ -3130,8 +3861,10 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 500 == 0:
             recent = losses[-500:]
             mean_loss = np.mean(recent) if recent else 0
+            lr_ctrl.update(mean_loss, i + 1)
             print(f"\n  [Stage 2] {i+1}/{num_stimuli} — "
-                  f"mean_loss={mean_loss:.4f}")
+                  f"mean_loss={mean_loss:.4f} lr={lr_ctrl.get_lr():.6f}"
+                  f" | {contrastive.stats_str()} | {diversity.stats_str()}")
             _print_bio_stats(brain)
             if decoder:
                 decoder.force_refit()
@@ -3224,6 +3957,12 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
     distiller = ClaudeDistiller(teacher=parent.teacher)
     temporal = MultiResolutionTemporal(brain, slow_interval=5)
     early_stop = EarlyStopping(patience=6, min_delta=0.003, mode="min")
+    contrastive = ContrastiveRegularizer(
+        buffer_size=200, interval=20, batch_size=32,
+        similarity_threshold=0.75, min_input_distance=0.3, strength=0.6)
+    diversity = DiversityRegularizer(
+        buffer_size=100, interval=100, num_corrections=8,
+        strength=0.2, min_variance_ratio=0.1)
 
     for i in range(start_from, num_interactions):
         action = clock.tick(brain)
@@ -3248,6 +3987,12 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             response_text = parent.observe_response(result)
             print(f"  Q: {question}")
             print(f"  Athena: {response_text or '(still forming thoughts)'}")
+
+            # Record for contrastive regularization
+            out_v = result.get("output_vector")
+            if out_v is not None:
+                contrastive.record(encode_text(question), out_v, features)
+                diversity.record(out_v, features)
 
             parent_reply = parent._pop_content("_conversation_replies")
             if parent_reply:
@@ -3284,6 +4029,8 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                     decoder.record_pair(output_vec, target_emb, topic_text)
                     embed_adapter.record_pair(target_emb,
                                                extract_embedding_from_output(np.array(output_vec)))
+                    contrastive.record(target_emb, output_vec, features)
+                    diversity.record(output_vec, features)
 
             if loss is not None:
                 print(f"    loss={loss:.4f} conf={confidence:.2f}")
@@ -3392,6 +4139,20 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
         except Exception:
             pass
 
+        # Contrastive + diversity corrections
+        if contrastive.should_correct():
+            n_corr, mean_sim = contrastive.apply_corrections(
+                brain, learning_rate=lr_scheduler.get_lr())
+            if n_corr > 0 and (i + 1) % 200 < contrastive.interval:
+                print(f"    [Contrastive] {n_corr} corrections, "
+                      f"mean_output_sim={mean_sim:.3f}")
+        if diversity.should_correct():
+            n_div, top_r, eff_r = diversity.apply_corrections(
+                brain, learning_rate=lr_scheduler.get_lr() * 0.3)
+            if n_div > 0 and (i + 1) % 200 < diversity.interval:
+                print(f"    [Diversity] {n_div} corrections, "
+                      f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}")
+
         # Progress — show active domains
         # Adapt difficulty every 50 steps
         if (i + 1) % 50 == 0:
@@ -3407,7 +4168,8 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 200 == 0:
             print(f"\n  [Stage 3] {i+1}/{num_interactions} — "
                   f"domains: {', '.join(active_domains)} "
-                  f"hard_buf={len(hard_miner.buffer)}")
+                  f"hard_buf={len(hard_miner.buffer)}"
+                  f" | {contrastive.stats_str()} | {diversity.stats_str()}")
             # Show adaptive LR per domain
             lr_info = ", ".join(
                 f"{d}={mastery.get_adaptive_lr(d):.5f}" for d in active_domains[:5]
@@ -3831,33 +4593,15 @@ _checkpoint_thread = None
 def _cleanup_old_checkpoints(keep_current=True):
     """Remove old checkpoint files to free disk space.
 
-    Keeps only athena_immersive.bin (the rolling checkpoint).
-    Removes all other .bin files and their .meta/.mirror_neurons/.executive sidecars.
+    Keeps the canonical athena_immersive.bin (symlink) and the 2 most recent snapshots.
+    Removes all other .bin files and their sidecars.
     """
     if not os.path.isdir(CHECKPOINT_DIR):
         return
-    keep_prefix = "athena_immersive"
-    removed_bytes = 0
-    removed_count = 0
-    for fname in sorted(os.listdir(CHECKPOINT_DIR)):
-        fpath = os.path.join(CHECKPOINT_DIR, fname)
-        if not os.path.isfile(fpath):
-            continue
-        # Keep the current rolling checkpoint and its sidecars
-        if keep_current and fname.startswith(keep_prefix):
-            continue
-        # Remove old .bin files and their sidecars (.meta, .mirror_neurons, .executive)
-        if fname.endswith((".bin", ".bin.meta", ".bin.mirror_neurons", ".bin.executive")):
-            try:
-                sz = os.path.getsize(fpath)
-                os.remove(fpath)
-                removed_bytes += sz
-                removed_count += 1
-            except OSError:
-                pass
-    if removed_count > 0:
-        print(f"  Cleaned up {removed_count} old checkpoint files "
-              f"({removed_bytes / (1024**3):.1f} GB freed)")
+    if keep_current:
+        _prune_checkpoint_snapshots(max_snapshots=2)
+    else:
+        _prune_checkpoint_snapshots(max_snapshots=0)
 
 
 def _check_disk_space(min_gb=5.0):
@@ -3873,26 +4617,135 @@ def _check_disk_space(min_gb=5.0):
         return True
 
 
+def _register_checkpoint_questdb(ckpt_path, stage, step):
+    """Register checkpoint metadata in QuestDB via ILP protocol."""
+    try:
+        import socket
+        blob_size = os.path.getsize(ckpt_path)
+        ts_ns = int(time.time() * 1e9)
+        line = (
+            f'kg_brain_snapshots,'
+            f'snapshot_id=ckpt_{stage}_{step},'
+            f'brain_id=athena,'
+            f'name=athena_immersive '
+            f'description="Stage {stage} step {step} checkpoint",'
+            f'version=1i,'
+            f'format_version=1i,'
+            f'blob_path="{ckpt_path}",'
+            f'blob_size={blob_size}i,'
+            f'neuron_count=2000000i,'
+            f'stage={stage}i,'
+            f'step={step}i '
+            f'{ts_ns}'
+        )
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        sock.connect(('localhost', 9009))
+        sock.sendall((line + '\n').encode())
+        sock.close()
+        logger.info("Checkpoint registered in QuestDB: stage=%d, step=%d", stage, step)
+    except Exception as e:
+        logger.debug("QuestDB registration skipped: %s", e)
+
+
+def _prune_checkpoint_snapshots(max_snapshots=5):
+    """Keep only the most recent `max_snapshots` timestamped snapshots.
+
+    Deletes oldest snapshots (and their sidecars) when count exceeds limit.
+    """
+    import glob as glob_mod
+    sidecars = ['.meta', '.tokenizer', '.mirror_neurons', '.executive']
+    pattern = os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")
+    snapshots = sorted(glob_mod.glob(pattern))
+
+    # Filter out sidecar matches — only count bare .bin files
+    snapshots = [s for s in snapshots if not any(s.endswith(ext) for ext in sidecars)]
+
+    if len(snapshots) <= max_snapshots:
+        return
+
+    to_remove = snapshots[:len(snapshots) - max_snapshots]
+    freed = 0
+    for snap in to_remove:
+        for ext in [''] + sidecars:
+            f = snap + ext if ext else snap
+            if os.path.exists(f):
+                try:
+                    freed += os.path.getsize(f)
+                    os.remove(f)
+                except OSError:
+                    pass
+    if freed > 0:
+        logger.info("Pruned %d old snapshots (freed %.1f MB)", len(to_remove), freed / 1e6)
+
+
 def _save_checkpoint_sync(brain, decoder, stage, step):
-    """Synchronous checkpoint save (runs in background thread)."""
+    """Synchronous checkpoint save (runs in background thread).
+
+    Saves timestamped snapshots: athena_s{stage}_step{step}.bin
+    Also maintains athena_immersive.bin as a symlink to the latest for --resume.
+    Keeps up to 5 snapshots, auto-prunes oldest.
+    Uses write-to-temp + size validation to prevent corruption.
+    """
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
     # Check disk space before saving
     if not _check_disk_space(min_gb=5.0):
-        logger.warning("Low disk space — attempting cleanup before save")
-        _cleanup_old_checkpoints(keep_current=True)
+        logger.warning("Low disk space — pruning old snapshots")
+        _prune_checkpoint_snapshots(max_snapshots=2)
         if not _check_disk_space(min_gb=2.0):
             logger.error("Still insufficient disk space — skipping checkpoint save")
             return
 
-    ckpt = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
+    snapshot_name = f"athena_s{stage}_step{step}.bin"
+    snapshot_path = os.path.join(CHECKPOINT_DIR, snapshot_name)
+    snapshot_tmp = snapshot_path + ".tmp"
+    canonical = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
+    sidecars = ['.meta', '.tokenizer', '.mirror_neurons', '.executive']
+
     try:
-        brain.save(ckpt)
-        logger.info("Checkpoint saved: %s (stage=%d, step=%d)",
-                     ckpt, stage, step)
+        # Write to temp file — if interrupted, no existing checkpoint is touched
+        brain.save(snapshot_tmp)
+
+        # Verify the temp file is non-trivial (at least 100MB for a 2M neuron brain)
+        tmp_size = os.path.getsize(snapshot_tmp)
+        if tmp_size < 100_000_000:  # 100 MB minimum
+            logger.error("Checkpoint too small (%d bytes) — likely truncated, discarding",
+                         tmp_size)
+            os.remove(snapshot_tmp)
+            return
+
+        # Atomic rename temp -> snapshot
+        os.replace(snapshot_tmp, snapshot_path)
+
+        # Update canonical symlink (athena_immersive.bin -> latest snapshot)
+        # Use tmp symlink + atomic rename for safety
+        canonical_tmp = canonical + ".lnk"
+        try:
+            if os.path.exists(canonical_tmp):
+                os.remove(canonical_tmp)
+            os.symlink(snapshot_name, canonical_tmp)
+            os.replace(canonical_tmp, canonical)
+        except OSError:
+            # Fallback: just copy if symlinks fail
+            try:
+                import shutil
+                shutil.copy2(snapshot_path, canonical)
+            except Exception:
+                pass
+
+        logger.info("Checkpoint snapshot: %s (stage=%d, step=%d, size=%.1f MB)",
+                     snapshot_name, stage, step, tmp_size / 1e6)
     except Exception as e:
         logger.warning("Checkpoint save failed: %s", e)
+        if os.path.exists(snapshot_tmp):
+            try:
+                os.remove(snapshot_tmp)
+            except OSError:
+                pass
+        return
 
+    # Save sidecar files alongside the snapshot
     if decoder:
         os.makedirs(DECODER_DIR, exist_ok=True)
         try:
@@ -3901,12 +4754,19 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
             pass
 
     state = {"stage": stage, "step": step,
+             "snapshot": snapshot_name,
              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")}
     try:
         with open(STATE_FILE, "w") as f:
             json.dump(state, f, indent=2)
     except Exception:
         pass
+
+    # Prune old snapshots (keep 5)
+    _prune_checkpoint_snapshots(max_snapshots=5)
+
+    # Register checkpoint in QuestDB
+    _register_checkpoint_questdb(snapshot_path, stage, step)
 
 
 def _save_checkpoint(brain, decoder, stage, step):
@@ -3918,7 +4778,7 @@ def _save_checkpoint(brain, decoder, stage, step):
         _checkpoint_thread.join(timeout=30)
     _checkpoint_thread = Thread(target=_save_checkpoint_sync,
                                 args=(brain, decoder, stage, step),
-                                daemon=True)
+                                daemon=False)
     _checkpoint_thread.start()
 
 
@@ -4023,6 +4883,216 @@ def _kill_stale_processes():
         time.sleep(1)  # let resources release
         for label, pid in killed:
             print(f"  [Cleanup] Killed stale {label} process (PID {pid})")
+
+
+# ---------------------------------------------------------------------------
+# IPC Server — allows talk_to_athena.py to query the running brain
+# ---------------------------------------------------------------------------
+
+ATHENA_SOCKET_PATH = "/tmp/athena_brain.sock"
+
+
+class AthenaIPCServer:
+    """Unix socket server that exposes the running brain for external queries.
+
+    Protocol: length-prefixed JSON messages.
+      Request:  4-byte big-endian length + JSON bytes
+      Response: 4-byte big-endian length + JSON bytes
+
+    Supported commands:
+      {"cmd": "decide", "text": "..."}           → run decide_full
+      {"cmd": "decide", "text": "...", "top_k": 5} → with top-k vocab matches
+      {"cmd": "status"}                           → training progress
+      {"cmd": "transcript"}                       → last cognitive transcript
+      {"cmd": "stats"}                            → brain stats
+    """
+
+    def __init__(self, brain, decoder, composer, training_progress):
+        self.brain = brain
+        self.decoder = decoder
+        self.composer = composer
+        self.training_progress = training_progress
+        self._lock = threading.Lock()
+        self._server_sock = None
+        self._thread = None
+        self._running = False
+
+    def start(self):
+        # Clean up stale socket
+        if os.path.exists(ATHENA_SOCKET_PATH):
+            os.unlink(ATHENA_SOCKET_PATH)
+
+        self._server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self._server_sock.bind(ATHENA_SOCKET_PATH)
+        self._server_sock.listen(2)
+        self._server_sock.settimeout(1.0)  # allow periodic shutdown checks
+        self._running = True
+
+        self._thread = threading.Thread(target=self._serve, daemon=True,
+                                         name="athena-ipc")
+        self._thread.start()
+        print(f"  IPC server: listening on {ATHENA_SOCKET_PATH}")
+
+    def stop(self):
+        self._running = False
+        if self._server_sock:
+            self._server_sock.close()
+        if os.path.exists(ATHENA_SOCKET_PATH):
+            os.unlink(ATHENA_SOCKET_PATH)
+
+    def _serve(self):
+        while self._running:
+            try:
+                conn, _ = self._server_sock.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            try:
+                self._handle_connection(conn)
+            except Exception as e:
+                logging.getLogger("athena_ipc").warning("IPC error: %s", e)
+            finally:
+                conn.close()
+
+    def _recv_msg(self, conn):
+        """Read a length-prefixed message."""
+        hdr = b""
+        while len(hdr) < 4:
+            chunk = conn.recv(4 - len(hdr))
+            if not chunk:
+                return None
+            hdr += chunk
+        length = struct.unpack(">I", hdr)[0]
+        if length > 10 * 1024 * 1024:  # 10 MB sanity limit
+            return None
+        data = b""
+        while len(data) < length:
+            chunk = conn.recv(min(length - len(data), 65536))
+            if not chunk:
+                return None
+            data += chunk
+        return json.loads(data.decode("utf-8"))
+
+    def _send_msg(self, conn, obj):
+        """Send a length-prefixed JSON message."""
+        data = json.dumps(obj).encode("utf-8")
+        conn.sendall(struct.pack(">I", len(data)) + data)
+
+    def _handle_connection(self, conn):
+        conn.settimeout(30.0)
+        req = self._recv_msg(conn)
+        if req is None:
+            return
+
+        cmd = req.get("cmd", "")
+
+        if cmd == "decide":
+            resp = self._handle_decide(req)
+        elif cmd == "status":
+            resp = self._handle_status()
+        elif cmd == "transcript":
+            resp = self._handle_transcript()
+        elif cmd == "stats":
+            resp = self._handle_stats()
+        elif cmd == "ping":
+            resp = {"ok": True}
+        else:
+            resp = {"error": f"Unknown command: {cmd}"}
+
+        self._send_msg(conn, resp)
+
+    def _handle_decide(self, req):
+        text = req.get("text", "")
+        top_k = req.get("top_k", 5)
+        if not text:
+            return {"error": "No text provided"}
+
+        with self._lock:
+            input_emb = encode_text(text)
+            features = self.composer.compose(text=text, modality="text")
+            result = self.brain.decide_full(features)
+
+        output_vec = result.get("output_vector")
+        label = result.get("label", "")
+        confidence = result.get("confidence", 0.0)
+
+        resp = {
+            "label": label,
+            "confidence": confidence,
+            "output_size": len(output_vec) if output_vec else 0,
+        }
+
+        # Decode through vocabulary
+        if output_vec and self.decoder and len(self.decoder.vocabulary) > 0:
+            output_arr = np.array(output_vec, dtype=np.float32)
+            output_emb = extract_embedding_from_output(output_arr)
+            matches = self.decoder.vocabulary.decode(output_emb, top_k=top_k)
+            resp["decoded"] = [{"text": t, "similarity": float(s)}
+                               for t, s in matches if t]
+            if matches and matches[0][0]:
+                resp["response"] = matches[0][0]
+
+            # Coherence
+            input_emb_raw = encode_text(text)
+            coherence = float(np.dot(output_emb, input_emb_raw) /
+                            (np.linalg.norm(output_emb) *
+                             np.linalg.norm(input_emb_raw) + 1e-8))
+            resp["coherence"] = coherence
+            resp["output_norm"] = float(np.linalg.norm(output_arr))
+
+        # Try grounded response
+        try:
+            grounded = self.brain.grounded_respond(text)
+            gt = grounded.get("response", "")
+            gc = grounded.get("confidence", 0.0)
+            if gt and gc >= 0.3:
+                resp["grounded_response"] = gt
+                resp["grounded_confidence"] = gc
+        except Exception:
+            pass
+
+        # Try generate_text
+        if output_vec:
+            try:
+                gen = self.brain.generate_text(list(output_vec))
+                gt = gen.get("text", "")
+                if gt and len(gt.strip()) > 2:
+                    resp["generated_text"] = gt
+            except Exception:
+                pass
+
+        # Transcript
+        try:
+            transcript = self.brain.get_transcript()
+            if transcript:
+                resp["transcript"] = transcript
+        except Exception:
+            pass
+
+        return resp
+
+    def _handle_status(self):
+        stage, step = self.training_progress
+        return {
+            "stage": stage,
+            "step": step,
+            "vocab_size": len(self.decoder.vocabulary) if self.decoder else 0,
+        }
+
+    def _handle_transcript(self):
+        try:
+            transcript = self.brain.get_transcript()
+            return {"transcript": transcript or []}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _handle_stats(self):
+        try:
+            stats = self.brain.get_stats()
+            return {"stats": stats}
+        except Exception as e:
+            return {"error": str(e)}
 
 
 def main():
@@ -4205,6 +5275,10 @@ def main():
 
     # --- Handle graceful shutdown ---
     shutdown_requested = [False]
+    # Mutable training progress for signal handlers [stage, step]
+    training_progress = [start_stage, 0]
+
+    ipc_server = [None]  # mutable container for signal handler access
 
     def signal_handler(sig, frame):
         if shutdown_requested[0]:
@@ -4212,10 +5286,31 @@ def main():
             sys.exit(1)
         shutdown_requested[0] = True
         print("\n  Graceful shutdown... saving checkpoint...")
-        _save_checkpoint(brain, decoder, start_stage, -1)
+        if ipc_server[0]:
+            ipc_server[0].stop()
+        _save_checkpoint(brain, decoder, training_progress[0], training_progress[1])
+        # Wait for checkpoint save to complete before exiting
+        if _checkpoint_thread is not None and _checkpoint_thread.is_alive():
+            print("  Waiting for checkpoint save to complete...")
+            _checkpoint_thread.join(timeout=600)  # 10 min max for 2M neuron save
+            if _checkpoint_thread.is_alive():
+                print("  WARNING: Checkpoint save timed out after 600s")
+            else:
+                print("  Checkpoint saved successfully.")
         sys.exit(0)
 
+    def sigusr1_handler(sig, frame):
+        stage, step = training_progress
+        print(f"\n  [SIGUSR1] On-demand checkpoint requested (stage={stage}, step={step})...")
+        _save_checkpoint(brain, decoder, stage, step)
+        print("  [SIGUSR1] Checkpoint save initiated — training continues.")
+
     signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGUSR1, sigusr1_handler)
+
+    # --- Start IPC server (allows talk_to_athena.py to query this brain) ---
+    ipc_server[0] = AthenaIPCServer(brain, decoder, composer, training_progress)
+    ipc_server[0].start()
 
     # --- Print initial bio stats ---
     print("\n  Initial biological state:")
@@ -4229,18 +5324,21 @@ def main():
     print(f"\n  Starting from stage {start_stage}")
 
     if start_stage <= 0:
+        training_progress[0] = 0
         run_stage_0(brain, composer, parent, clock, source, decoder,
                     num_stimuli=args.stage0_stimuli,
                     start_from=start_step if start_stage == 0 else 0)
         start_step = 0  # Reset for next stage
 
     if start_stage <= 1:
+        training_progress[0], training_progress[1] = 1, 0
         run_stage_1(brain, composer, parent, clock, source, decoder,
                     num_stimuli=args.stage1_stimuli,
                     start_from=start_step if start_stage == 1 else 0)
         start_step = 0
 
     if start_stage <= 2:
+        training_progress[0], training_progress[1] = 2, 0
         stage2_losses = run_stage_2(
             brain, composer, parent, clock, source, decoder,
             num_stimuli=args.stage2_stimuli,
@@ -4251,6 +5349,7 @@ def main():
         start_step = 0
 
     if start_stage <= 3:
+        training_progress[0], training_progress[1] = 3, 0
         run_stage_3(brain, composer, parent, clock, source, decoder,
                     num_interactions=args.stage3_interactions,
                     start_from=start_step if start_stage == 3 else 0)

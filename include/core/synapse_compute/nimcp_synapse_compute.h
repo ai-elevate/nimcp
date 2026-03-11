@@ -93,6 +93,9 @@ typedef struct synapse_compute_context_t {
     // Three-factor learning integration (Phase 2.7.1)
     void* network;              /**< Neural network pointer (for accessing neuromod system) */
     void* neuromodulator_system; /**< Neuromodulator system pointer (for direct access) */
+
+    // Hot/cold split (NIMCP 2.11): Cold synapse data passed through context
+    void* synapse_cold;         /**< synapse_cold_t* for accessing type_state, compute_state, etc. */
 } synapse_compute_context_t;
 
 //=============================================================================
@@ -419,6 +422,7 @@ void synapse_compute_state_cleanup(synapse_compute_state_t* state);
  * @return 0 on success, -1 on failure
  */
 int synapse_set_compute_function(
+    neural_network_t net,
     struct synapse_t* syn,
     synapse_compute_fn compute_fn,
     synapse_learn_fn learn_fn,

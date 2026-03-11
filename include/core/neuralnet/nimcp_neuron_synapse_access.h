@@ -9,9 +9,10 @@
  * WHY:  Decouple callers from storage layout (fixed array vs sparse)
  * HOW:  Macros delegate to sparse_synapse_* API functions
  *
- * TWO TIERS:
+ * THREE TIERS:
  * - Tier 1 (handle-level): No network context needed. Count, handle access.
- * - Tier 2 (metadata-level): Needs network for metadata pool lookup.
+ * - Tier 2 (hot metadata): Needs network for metadata pool lookup.
+ * - Tier 3 (cold metadata): Needs network for cold pool lookup. Lazy allocation.
  */
 
 #ifndef NIMCP_NEURON_SYNAPSE_ACCESS_H
@@ -44,11 +45,11 @@ extern "C" {
     sparse_synapse_get(&(n)->incoming, (i))
 
 //=============================================================================
-// Tier 2: Full synapse_t metadata access (needs network for pool)
+// Tier 2: Hot synapse_t metadata access (needs network for pool)
 //=============================================================================
 
 /**
- * Macro for full metadata access — requires network->synapse_metadata_pool
+ * Macro for hot metadata access — requires network->synapse_metadata_pool
  * Usage: synapse_t* syn = NEURON_OUT_META(network, neuron, i);
  */
 #define NEURON_OUT_META(net, n, i) \
@@ -58,7 +59,7 @@ extern "C" {
     _neuron_meta_from_pool((net)->synapse_metadata_pool, &(n)->incoming, (i))
 
 /**
- * @brief Internal helper: get metadata from pool via storage index
+ * @brief Internal helper: get hot metadata from pool via storage index
  */
 static inline synapse_t* _neuron_meta_from_pool(
     synapse_metadata_pool_t pool,
@@ -68,6 +69,47 @@ static inline synapse_t* _neuron_meta_from_pool(
     synapse_handle_t* h = sparse_synapse_get(storage, i);
     if (!h || h->metadata_index == SPARSE_SYNAPSE_NO_METADATA) return NULL;
     return synapse_metadata_pool_get(pool, h->metadata_index);
+}
+
+//=============================================================================
+// Tier 3: Cold synapse_cold_t access (lazy allocation)
+//=============================================================================
+
+/**
+ * Get cold data for a synapse (NULL if none allocated)
+ * Usage: synapse_cold_t* cold = SYNAPSE_COLD(network, syn);
+ */
+#define SYNAPSE_COLD(net, syn) \
+    _synapse_get_cold((net)->synapse_cold_pool, (syn))
+
+/**
+ * Get or allocate cold data for a synapse (lazy init)
+ * Usage: synapse_cold_t* cold = SYNAPSE_ENSURE_COLD(network, syn);
+ */
+#define SYNAPSE_ENSURE_COLD(net, syn) \
+    _synapse_ensure_cold((net)->synapse_cold_pool, (syn))
+
+static inline synapse_cold_t* _synapse_get_cold(
+    synapse_cold_pool_t cold_pool,
+    synapse_t* hot
+) {
+    if (!hot || hot->cold_index == SYNAPSE_COLD_NONE) return NULL;
+    return synapse_cold_pool_get(cold_pool, hot->cold_index);
+}
+
+static inline synapse_cold_t* _synapse_ensure_cold(
+    synapse_cold_pool_t cold_pool,
+    synapse_t* hot
+) {
+    if (!hot) return NULL;
+    if (hot->cold_index == SYNAPSE_COLD_NONE) {
+        hot->cold_index = synapse_cold_pool_allocate(cold_pool);
+        if (hot->cold_index == SYNAPSE_COLD_NONE) return NULL;
+        synapse_cold_t* cold = synapse_cold_pool_get(cold_pool, hot->cold_index);
+        if (cold) memset(cold, 0, sizeof(synapse_cold_t));
+        return cold;
+    }
+    return synapse_cold_pool_get(cold_pool, hot->cold_index);
 }
 
 #ifdef __cplusplus

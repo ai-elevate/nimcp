@@ -305,6 +305,13 @@ void brain_destroy(brain_t brain)
         brain->grounded_lang = NULL;
     }
 
+    // Cleanup sparse coding system
+    if (brain->sparse_coding_system) {
+        cortical_sparse_destroy(brain->sparse_coding_system);
+        brain->sparse_coding_system = NULL;
+        brain->enable_sparse_coding = false;
+    }
+
     // Free learning workspace
     nimcp_free(brain->learning_workspace.temp_float);
     nimcp_free(brain->learning_workspace.temp_uint);
@@ -918,7 +925,6 @@ void brain_destroy(brain_t brain)
         brain_bio_async_shutdown(brain);
         brain->bio_async_enabled = false;
     }
-
 
     nimcp_free(brain);
 }

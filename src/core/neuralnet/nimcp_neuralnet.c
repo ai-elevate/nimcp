@@ -913,7 +913,15 @@ neural_network_t neural_network_create(const network_config_t* config)
         mpool_cfg.thread_safe = true;
         network->synapse_metadata_pool = synapse_metadata_pool_create(&mpool_cfg);
 
-        LOG_MODULE_DEBUG(LOG_MODULE, "Synapse pools created (handles=%u, metadata=%u)", pool_size, meta_initial);
+        // Cold pool: 5% of metadata pool (most synapses won't need cold data)
+        synapse_cold_pool_config_t cpool_cfg = synapse_cold_pool_default_config();
+        cpool_cfg.pool_size = meta_initial / 20;  // 5% of metadata pool
+        if (cpool_cfg.pool_size < 16384) cpool_cfg.pool_size = 16384;
+        cpool_cfg.thread_safe = true;
+        network->synapse_cold_pool = synapse_cold_pool_create(&cpool_cfg);
+
+        LOG_MODULE_DEBUG(LOG_MODULE, "Synapse pools created (handles=%u, metadata=%u, cold=%zu)",
+                         pool_size, meta_initial, cpool_cfg.pool_size);
 
         // Bulk BCM/eligibility pools: single allocation replaces 1M+ individual callocs.
         // Each connection gets one BCM and one eligibility entry (outgoing only).
@@ -940,9 +948,10 @@ neural_network_t neural_network_create(const network_config_t* config)
         }
     }
 
-    // CPU-staged embedding pool: 5% of estimated connections get embeddings.
+    // CPU-staged embedding pool: only created when input dim matches embedding dim.
     // Full 2048-dim vectors live in CPU pinned memory; only relevance cache on GPU.
-    {
+    // Skip for mismatched dims — relevance recompute won't fire, saves 16+ GB RAM.
+    if (config->input_size == NIMCP_DEFAULT_EMBEDDING_DIM) {
         uint64_t est_conn = will_skip_dense ? backbone_connections : dense_connections;
         if (est_conn == 0) est_conn = (uint64_t)actual_neurons * 20;
         uint32_t emb_cap = (uint32_t)((est_conn / 20) < UINT32_MAX ? (est_conn / 20) : UINT32_MAX);
@@ -1279,13 +1288,16 @@ void neural_network_destroy(neural_network_t network)
                 for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
                     synapse_t* syn = NEURON_OUT_META(network, neuron, j);
                     if (!syn) continue;
-                    if (!bcm_bulk && syn->bcm) {
-                        nimcp_free(syn->bcm);
-                        syn->bcm = NULL;
-                    }
-                    if (!elig_bulk && syn->eligibility) {
-                        nimcp_free(syn->eligibility);
-                        syn->eligibility = NULL;
+                    synapse_cold_t* cold = SYNAPSE_COLD(network, syn);
+                    if (cold) {
+                        if (!bcm_bulk && cold->bcm) {
+                            nimcp_free(cold->bcm);
+                            cold->bcm = NULL;
+                        }
+                        if (!elig_bulk && cold->eligibility) {
+                            nimcp_free(cold->eligibility);
+                            cold->eligibility = NULL;
+                        }
                     }
                 }
             }
@@ -1352,6 +1364,9 @@ void neural_network_destroy(neural_network_t network)
     }
     if (network->synapse_metadata_pool) {
         synapse_metadata_pool_destroy(network->synapse_metadata_pool);
+    }
+    if (network->synapse_cold_pool) {
+        synapse_cold_pool_destroy(network->synapse_cold_pool);
     }
     if (network->synapse_handle_pool) {
         sparse_synapse_pool_destroy(network->synapse_handle_pool);
@@ -1614,23 +1629,24 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
 
         // NIMCP 2.6: Apply STP modulation if enabled
         float stp_modulation = 1.0F;
-        if (incoming_meta && incoming_meta->enable_stp) {
+        synapse_cold_t* in_cold = incoming_meta ? SYNAPSE_COLD(network, incoming_meta) : NULL;
+        if (in_cold && in_cold->enable_stp) {
             // Update STP continuous decay
-            stp_update(&incoming_meta->stp, network->network_time);
+            stp_update(&in_cold->stp, network->network_time);
 
             // Get modulation factor (u × x)
-            stp_modulation = stp_get_modulation(&incoming_meta->stp);
+            stp_modulation = stp_get_modulation(&in_cold->stp);
 
             // Process spike if presynaptic neuron is firing
             if (pre_activity > 0.0F) {
-                stp_process_spike(&incoming_meta->stp, network->network_time);
+                stp_process_spike(&in_cold->stp, network->network_time);
             }
         }
 
         // NIMCP 2.7: Programmable synapse computation (MAJOR FEATURE!)
         // If synapse has custom compute function, use it; otherwise default computation
         float synaptic_transmission;
-        if (incoming_meta && incoming_meta->compute_function != NULL) {
+        if (in_cold && in_cold->compute_function != NULL) {
             // Custom computation - synapse decides how to compute transmission
             // This enables attention, semantic similarity, gating, etc.
 
@@ -1643,10 +1659,11 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
                 .neuromodulation = neuromod_level,  // Dopamine/ACh/etc levels
                 .current_time = network->network_time,
                 .custom_data = NULL,
-                .custom_data_size = 0
+                .custom_data_size = 0,
+                .synapse_cold = in_cold  // NIMCP 2.11: Pass cold data through context
             };
 
-            synaptic_transmission = incoming_meta->compute_function(
+            synaptic_transmission = in_cold->compute_function(
                 incoming_meta,
                 src_neuron,
                 neuron,
@@ -1663,7 +1680,7 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
         // WHAT: Modulate transmission by semantic relevance
         // WHY: Route information through semantically relevant synapses (70% faster)
         // HOW: Use cached semantic_relevance if embeddings enabled
-        if (incoming_meta && incoming_meta->embedding_pool_index != NIMCP_EMBEDDING_POOL_NONE && incoming_meta->embedding_dim > 0) {
+        if (in_cold && in_cold->embedding_pool_index != NIMCP_EMBEDDING_POOL_NONE && in_cold->embedding_dim > 0) {
             // Use cached relevance (computed during context update)
             // Relevance in [0,1]: 0=irrelevant, 1=highly relevant
             float semantic_modulation = 0.5F + 0.5F * incoming_meta->semantic_relevance;
@@ -2173,28 +2190,31 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
         // WHAT: Apply BCM rule to prevent runaway weight growth
         // WHY: STDP can cause weights to saturate without homeostatic control
         // HOW: Use BCM sliding threshold to stabilize weights
-        if (syn->enable_bcm && syn->bcm) {
-            // Get BCM parameters (cortical preset for neural networks)
-            bcm_params_t bcm_params = bcm_params_cortical();
+        {
+            synapse_cold_t* cold = SYNAPSE_COLD(network, syn);
+            if (cold && cold->enable_bcm && cold->bcm) {
+                // Get BCM parameters (cortical preset for neural networks)
+                bcm_params_t bcm_params = bcm_params_cortical();
 
-            // Compute time delta in seconds (guard against backward timestamps)
-            float dt = (timestamp > syn->last_active) ?
-                (float)(timestamp - syn->last_active) / 1000.0F : 0.001F;
+                // Compute time delta in seconds (guard against backward timestamps)
+                float dt = (timestamp > syn->last_active) ?
+                    (float)(timestamp - syn->last_active) / 1000.0F : 0.001F;
 
-            // Use synaptic trace as pre-synaptic activity measure
-            float pre_activity = syn->trace;
+                // Use synaptic trace as pre-synaptic activity measure
+                float pre_activity = syn->trace;
 
-            // Use post-synaptic neuron activation as post-synaptic activity
-            float post_activity = post_neuron->state;
+                // Use post-synaptic neuron activation as post-synaptic activity
+                float post_activity = post_neuron->state;
 
-            // Apply BCM rule for weight stabilization
-            bcm_apply_rule(syn->bcm, pre_activity, post_activity, dt, &bcm_params);
+                // Apply BCM rule for weight stabilization
+                bcm_apply_rule(cold->bcm, pre_activity, post_activity, dt, &bcm_params);
 
-            // Update synaptic weight from BCM (overrides STDP if BCM makes larger change)
-            // This ensures homeostatic stability takes precedence
-            if (fabsf(syn->bcm->weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
-                out_h->weight = syn->bcm->weight;
-                syn->weight = syn->bcm->weight;  // Keep metadata in sync
+                // Update synaptic weight from BCM (overrides STDP if BCM makes larger change)
+                // This ensures homeostatic stability takes precedence
+                if (fabsf(cold->bcm->weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                    out_h->weight = cold->bcm->weight;
+                    syn->weight = cold->bcm->weight;  // Keep metadata in sync
+                }
             }
         }
     }
@@ -2290,49 +2310,52 @@ static void* _bio_learn_main_worker(void* arg) {
             synapse_t* syn = NEURON_OUT_META(network, neuron, syn_idx);
             if (!syn) continue;
 
-            if (syn->enable_eligibility && syn->eligibility) {
-                eligibility_config_t elig_config = eligibility_default_config();
-                elig_config.learning_rate = w->learning_rate;
+            {
+                synapse_cold_t* cold = SYNAPSE_COLD(network, syn);
+                if (cold && cold->enable_eligibility && cold->eligibility) {
+                    eligibility_config_t elig_config = eligibility_default_config();
+                    elig_config.learning_rate = w->learning_rate;
 
-                if (syn->trace > 0.1f) {
-                    eligibility_trace_update(syn->eligibility, &elig_config,
-                                             w->current_time, syn->trace);
-                } else {
-                    eligibility_trace_decay(syn->eligibility, &elig_config, w->current_time);
+                    if (syn->trace > 0.1f) {
+                        eligibility_trace_update(cold->eligibility, &elig_config,
+                                                 w->current_time, syn->trace);
+                    } else {
+                        eligibility_trace_decay(cold->eligibility, &elig_config, w->current_time);
+                    }
+
+                    float old_weight = out_h->weight;
+                    eligibility_apply_reward(syn, cold->eligibility, &elig_config,
+                                              w->reward, dopamine);
+                    out_h->weight = syn->weight;
+
+                    if (!isfinite(out_h->weight)) {
+                        out_h->weight = old_weight;
+                        syn->weight = old_weight;
+                    }
+                    if (!nimcp_security_validate_weight_change(old_weight, out_h->weight,
+                                                              NIMCP_MAX_WEIGHT_DELTA_PER_STEP)) {
+                        out_h->weight = old_weight;
+                        syn->weight = old_weight;
+                        continue;
+                    }
+                    out_h->weight = fmaxf(network->config.min_weight,
+                                      fminf(network->config.max_weight, out_h->weight));
+                    syn->weight = out_h->weight;
+                    if (fabsf(out_h->weight - old_weight) > WEIGHT_UPDATE_THRESHOLD) {
+                        modified++;
+                    }
                 }
 
-                float old_weight = out_h->weight;
-                eligibility_apply_reward(syn, syn->eligibility, &elig_config,
-                                          w->reward, dopamine);
-                out_h->weight = syn->weight;
-
-                if (!isfinite(out_h->weight)) {
-                    out_h->weight = old_weight;
-                    syn->weight = old_weight;
-                }
-                if (!nimcp_security_validate_weight_change(old_weight, out_h->weight,
-                                                          NIMCP_MAX_WEIGHT_DELTA_PER_STEP)) {
-                    out_h->weight = old_weight;
-                    syn->weight = old_weight;
-                    continue;
-                }
-                out_h->weight = fmaxf(network->config.min_weight,
-                                  fminf(network->config.max_weight, out_h->weight));
-                syn->weight = out_h->weight;
-                if (fabsf(out_h->weight - old_weight) > WEIGHT_UPDATE_THRESHOLD) {
-                    modified++;
-                }
-            }
-
-            if (syn->enable_bcm && syn->bcm) {
-                if (out_h->target_neuron_id >= network->num_neurons) continue;
-                bcm_params_t bcm_params = bcm_params_cortical();
-                const neuron_t* post_neuron = &network->neurons[out_h->target_neuron_id];
-                bcm_apply_rule(syn->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
-                if (fabsf(syn->bcm->weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
-                    out_h->weight = syn->bcm->weight;
-                    syn->weight = syn->bcm->weight;
-                    modified++;
+                if (cold && cold->enable_bcm && cold->bcm) {
+                    if (out_h->target_neuron_id >= network->num_neurons) continue;
+                    bcm_params_t bcm_params = bcm_params_cortical();
+                    const neuron_t* post_neuron = &network->neurons[out_h->target_neuron_id];
+                    bcm_apply_rule(cold->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
+                    if (fabsf(cold->bcm->weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                        out_h->weight = cold->bcm->weight;
+                        syn->weight = cold->bcm->weight;
+                        modified++;
+                    }
                 }
             }
         }
@@ -2683,38 +2706,41 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
                     if (!out_h) continue;
                     synapse_t* syn = NEURON_OUT_META(network, neuron, syn_idx);
 
-                    if (syn && syn->enable_eligibility && syn->eligibility) {
-                        eligibility_config_t elig_config = eligibility_default_config();
-                        elig_config.learning_rate = learning_rate;
-                        if (syn->trace > 0.1f)
-                            eligibility_trace_update(syn->eligibility, &elig_config, current_time, syn->trace);
-                        else
-                            eligibility_trace_decay(syn->eligibility, &elig_config, current_time);
+                    {
+                        synapse_cold_t* cold = syn ? SYNAPSE_COLD(network, syn) : NULL;
+                        if (cold && cold->enable_eligibility && cold->eligibility) {
+                            eligibility_config_t elig_config = eligibility_default_config();
+                            elig_config.learning_rate = learning_rate;
+                            if (syn->trace > 0.1f)
+                                eligibility_trace_update(cold->eligibility, &elig_config, current_time, syn->trace);
+                            else
+                                eligibility_trace_decay(cold->eligibility, &elig_config, current_time);
 
-                        float old_weight = out_h->weight;
-                        syn->weight = out_h->weight;
-                        eligibility_apply_reward(syn, syn->eligibility, &elig_config, reward, dopamine);
-                        if (!isfinite(syn->weight)) syn->weight = old_weight;
-                        if (!nimcp_security_validate_weight_change(old_weight, syn->weight,
-                                                                  NIMCP_MAX_WEIGHT_DELTA_PER_STEP)) {
-                            syn->weight = old_weight; continue;
+                            float old_weight = out_h->weight;
+                            syn->weight = out_h->weight;
+                            eligibility_apply_reward(syn, cold->eligibility, &elig_config, reward, dopamine);
+                            if (!isfinite(syn->weight)) syn->weight = old_weight;
+                            if (!nimcp_security_validate_weight_change(old_weight, syn->weight,
+                                                                      NIMCP_MAX_WEIGHT_DELTA_PER_STEP)) {
+                                syn->weight = old_weight; continue;
+                            }
+                            syn->weight = fmaxf(network->config.min_weight,
+                                              fminf(network->config.max_weight, syn->weight));
+                            out_h->weight = syn->weight;
+                            if (fabsf(out_h->weight - old_weight) > WEIGHT_UPDATE_THRESHOLD) total_modified++;
                         }
-                        syn->weight = fmaxf(network->config.min_weight,
-                                          fminf(network->config.max_weight, syn->weight));
-                        out_h->weight = syn->weight;
-                        if (fabsf(out_h->weight - old_weight) > WEIGHT_UPDATE_THRESHOLD) total_modified++;
-                    }
 
-                    if (syn && syn->enable_bcm && syn->bcm) {
-                        uint32_t target_id = out_h->target_neuron_id;
-                        if (target_id < network->num_neurons) {
-                            bcm_params_t bcm_params = bcm_params_cortical();
-                            const neuron_t* post_neuron = &network->neurons[target_id];
-                            bcm_apply_rule(syn->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
-                            if (fabsf(syn->bcm->weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
-                                out_h->weight = syn->bcm->weight;
-                                syn->weight = syn->bcm->weight;
-                                total_modified++;
+                        if (cold && cold->enable_bcm && cold->bcm) {
+                            uint32_t target_id = out_h->target_neuron_id;
+                            if (target_id < network->num_neurons) {
+                                bcm_params_t bcm_params = bcm_params_cortical();
+                                const neuron_t* post_neuron = &network->neurons[target_id];
+                                bcm_apply_rule(cold->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
+                                if (fabsf(cold->bcm->weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                                    out_h->weight = cold->bcm->weight;
+                                    syn->weight = cold->bcm->weight;
+                                    total_modified++;
+                                }
                             }
                         }
                     }
@@ -3285,7 +3311,7 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     out_h->strength = 1.0F;
     synapse_t* syn = NEURON_OUT_META(network, from_neuron, out_idx);
 
-    // Initialize outgoing metadata
+    // Initialize outgoing hot metadata
     if (syn) {
         syn->target_id = to_id;
         syn->weight = clamped_weight;
@@ -3297,62 +3323,62 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
         syn->trace = 0.0F;
         syn->source_neuron_id = from_id;
         syn->axon_id = 0;
+        syn->semantic_relevance = 0.0F;
+        syn->cold_index = SYNAPSE_COLD_NONE;
 
-        // NIMCP 2.6: Initialize STP (Short-Term Plasticity)
-        stp_preset_t preset = (from_neuron->type == NEURON_EXCITATORY)
-                            ? STP_PRESET_DEPRESSING
-                            : STP_PRESET_FACILITATING;
-        stp_params_t stp_params = stp_get_preset_params(preset);
-        stp_init(&syn->stp, &stp_params, network->network_time);
-        syn->enable_stp = true;
+        // Initialize cold data only if STP/BCM/eligibility are needed
+        bool need_cold = true;  // STP always enabled for now
+        if (need_cold) {
+            synapse_cold_t* cold = SYNAPSE_ENSURE_COLD(network, syn);
+            if (cold) {
+                // NIMCP 2.6: Initialize STP (Short-Term Plasticity)
+                stp_preset_t preset = (from_neuron->type == NEURON_EXCITATORY)
+                                    ? STP_PRESET_DEPRESSING
+                                    : STP_PRESET_FACILITATING;
+                stp_params_t stp_params = stp_get_preset_params(preset);
+                stp_init(&cold->stp, &stp_params, network->network_time);
+                cold->enable_stp = true;
 
-        // Phase 11: Initialize BCM — from bulk pool if available, else heap
-        if (network->config.enable_bcm) {
-            if (network->bcm_pool && network->bcm_pool_used < network->bcm_pool_capacity) {
-                syn->bcm = &network->bcm_pool[network->bcm_pool_used++];
-                memset(syn->bcm, 0, sizeof(bcm_synapse_t));
-            } else {
-                syn->bcm = (bcm_synapse_t*)nimcp_calloc(1, sizeof(bcm_synapse_t));
-            }
-            if (syn->bcm) {
-                *syn->bcm = bcm_synapse_init(syn->weight, 0.5F);
-                syn->enable_bcm = true;
-            } else {
-                syn->enable_bcm = false;
-            }
-        } else {
-            syn->bcm = NULL;
-            syn->enable_bcm = false;
-        }
+                // Phase 11: Initialize BCM — from bulk pool if available, else heap
+                if (network->config.enable_bcm) {
+                    if (network->bcm_pool && network->bcm_pool_used < network->bcm_pool_capacity) {
+                        cold->bcm = &network->bcm_pool[network->bcm_pool_used++];
+                        memset(cold->bcm, 0, sizeof(bcm_synapse_t));
+                    } else {
+                        cold->bcm = (bcm_synapse_t*)nimcp_calloc(1, sizeof(bcm_synapse_t));
+                    }
+                    if (cold->bcm) {
+                        *cold->bcm = bcm_synapse_init(syn->weight, 0.5F);
+                        cold->enable_bcm = true;
+                    }
+                }
 
-        // Phase 11: Initialize Eligibility Traces — from bulk pool if available, else heap
-        if (network->config.enable_eligibility) {
-            if (network->eligibility_pool && network->eligibility_pool_used < network->eligibility_pool_capacity) {
-                syn->eligibility = &network->eligibility_pool[network->eligibility_pool_used++];
-                memset(syn->eligibility, 0, sizeof(eligibility_trace_t));
-            } else {
-                syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
+                // Phase 11: Initialize Eligibility Traces
+                if (network->config.enable_eligibility) {
+                    if (network->eligibility_pool && network->eligibility_pool_used < network->eligibility_pool_capacity) {
+                        cold->eligibility = &network->eligibility_pool[network->eligibility_pool_used++];
+                        memset(cold->eligibility, 0, sizeof(eligibility_trace_t));
+                    } else {
+                        cold->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
+                    }
+                    if (cold->eligibility) {
+                        eligibility_trace_init(cold->eligibility, network->network_time);
+                        cold->enable_eligibility = true;
+                    }
+                }
             }
-            if (syn->eligibility) {
-                eligibility_trace_init(syn->eligibility, network->network_time);
-                syn->enable_eligibility = true;
-            } else {
-                syn->enable_eligibility = false;
-            }
-        } else {
-            syn->eligibility = NULL;
-            syn->enable_eligibility = false;
         }
     }
 
-    // Add INCOMING synapse handle + metadata via sparse API
-    int in_rc = sparse_synapse_add_with_metadata(
+    // Add INCOMING synapse handle WITHOUT metadata (handle-only, saves ~200 bytes/synapse)
+    // WHY: Incoming handles are reverse-lookup only. Forward pass reads outgoing metadata.
+    //       STP/BCM/eligibility state lives on the outgoing side. Eliminating incoming
+    //       metadata saves ~21 GB for 2M-neuron networks (113M incoming × 200 bytes).
+    int in_rc = sparse_synapse_add(
         network->synapse_handle_pool,
-        network->synapse_metadata_pool,
         &to_neuron->incoming,
         from_id,           // In incoming handle, target_neuron_id stores source
-        clamped_weight,
-        SYNAPSE_GENERIC
+        clamped_weight
     );
     if (in_rc != 0) {
         // Rollback outgoing (best effort)
@@ -3363,7 +3389,7 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
         return false;
     }
 
-    // Get newly-added incoming handle and metadata
+    // Get newly-added incoming handle (no metadata)
     uint32_t in_idx = NEURON_IN_COUNT(to_neuron) - 1;
     synapse_handle_t* in_h = NEURON_IN_HANDLE(to_neuron, in_idx);
     if (!in_h) {
@@ -3375,28 +3401,6 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
         return false;
     }
     in_h->strength = 1.0F;
-    synapse_t* incoming_meta = NEURON_IN_META(network, to_neuron, in_idx);
-
-    // Initialize incoming metadata (mirror of outgoing)
-    if (incoming_meta && syn) {
-        incoming_meta->target_id = from_id;
-        incoming_meta->weight = clamped_weight;
-        incoming_meta->plasticity = syn->plasticity;
-        incoming_meta->last_change = syn->last_change;
-        incoming_meta->last_active = syn->last_active;
-        incoming_meta->strength = syn->strength;
-        incoming_meta->meta_plasticity = syn->meta_plasticity;
-        incoming_meta->trace = syn->trace;
-        incoming_meta->source_neuron_id = from_id;
-        incoming_meta->axon_id = 0;
-        incoming_meta->stp = syn->stp;
-        incoming_meta->enable_stp = syn->enable_stp;
-        // Share BCM and eligibility state (both directions use same pointers)
-        incoming_meta->bcm = syn->bcm;
-        incoming_meta->enable_bcm = syn->enable_bcm;
-        incoming_meta->eligibility = syn->eligibility;
-        incoming_meta->enable_eligibility = syn->enable_eligibility;
-    }
 
     // Set peer_index on both handles for O(1) cross-reference
     out_h->peer_index = in_idx;
@@ -3726,32 +3730,9 @@ bool neural_network_rebuild_incoming(neural_network_t network)
             if (!out_h || out_h->target_neuron_id >= network->num_neurons) continue;
             neuron_t* tgt = &network->neurons[out_h->target_neuron_id];
 
-            // Get outgoing metadata to copy STP and other state
-            synapse_t* out_meta = NEURON_OUT_META(network, src, s);
-
-            // Add incoming handle with metadata
-            uint32_t meta_idx = SPARSE_SYNAPSE_NO_METADATA;
-            if (out_meta) {
-                meta_idx = synapse_metadata_pool_allocate(network->synapse_metadata_pool);
-                if (meta_idx != UINT32_MAX) {
-                    synapse_t* in_meta = synapse_metadata_pool_get(network->synapse_metadata_pool, meta_idx);
-                    if (in_meta) {
-                        *in_meta = *out_meta;
-                        in_meta->source_neuron_id = i;
-                        in_meta->target_id = out_h->target_neuron_id;
-                        // Reset incoming STP to resting state (x=1, u=U).
-                        // Incoming STP evolves independently during forward pass
-                        // and cannot be reconstructed from outgoing STP state.
-                        if (in_meta->enable_stp) {
-                            stp_reset(&in_meta->stp, 0);
-                        }
-                        // Prevent shared pointer double-free with outgoing metadata
-                        in_meta->bcm = NULL;
-                        in_meta->eligibility = NULL;
-                    }
-                }
-            }
-
+            // Add incoming handle WITHOUT metadata (handle-only)
+            // WHY: Incoming handles are reverse-lookup only. STP/BCM/eligibility
+            //       state lives on the outgoing side. Saves ~21 GB for 2M neurons.
             int rc = sparse_synapse_add(
                 network->synapse_handle_pool, &tgt->incoming,
                 i,  // source neuron id stored in target_neuron_id field
@@ -3762,7 +3743,6 @@ bool neural_network_rebuild_incoming(neural_network_t network)
                 synapse_handle_t* in_h = NEURON_IN_HANDLE(tgt, in_idx);
                 if (in_h) {
                     in_h->strength = out_h->strength;
-                    in_h->metadata_index = meta_idx;
                     in_h->peer_index = s;
                     in_h->ternary_weight = out_h->ternary_weight;
                     in_h->use_ternary_weight = out_h->use_ternary_weight;
@@ -4574,58 +4554,50 @@ bool neural_network_add_connection_typed(neural_network_t network, uint32_t from
 
     // 2. Get the newly created synapse (last one added)
     neuron_t* from_neuron = &network->neurons[from_id];
-    neuron_t* to_neuron = &network->neurons[to_id];
 
     uint32_t out_last = NEURON_OUT_COUNT(from_neuron) - 1;
-    uint32_t in_last = NEURON_IN_COUNT(to_neuron) - 1;
     synapse_t* syn = NEURON_OUT_META(network, from_neuron, out_last);
-    synapse_t* incoming_syn = NEURON_IN_META(network, to_neuron, in_last);
-    if (!syn || !incoming_syn) return false;
+    if (!syn) return false;
 
-    // 3. Set synapse type
-    syn->type = type;
-    incoming_syn->type = type;
+    // 3. Set synapse type (cold field)
+    synapse_cold_t* cold = SYNAPSE_ENSURE_COLD(network, syn);
+    if (!cold) return false;
+    cold->type = type;
+    // Note: incoming_syn type init removed — incoming synapses are handle-only
+    // (no cold metadata), type state is authoritative on outgoing side
 
     // 4. Initialize type-specific state based on type
     switch (type) {
         case SYNAPSE_AMPA:
-            synapse_init_ampa(&syn->type_state.ampa);
-            synapse_init_ampa(&incoming_syn->type_state.ampa);
+            synapse_init_ampa(&cold->type_state.ampa);
             break;
 
         case SYNAPSE_NMDA:
-            synapse_init_nmda(&syn->type_state.nmda);
-            synapse_init_nmda(&incoming_syn->type_state.nmda);
+            synapse_init_nmda(&cold->type_state.nmda);
             break;
 
         case SYNAPSE_GABA_A:
-            synapse_init_gaba_a(&syn->type_state.gaba_a);
-            synapse_init_gaba_a(&incoming_syn->type_state.gaba_a);
+            synapse_init_gaba_a(&cold->type_state.gaba_a);
             break;
 
         case SYNAPSE_GABA_B:
-            synapse_init_gaba_b(&syn->type_state.gaba_b);
-            synapse_init_gaba_b(&incoming_syn->type_state.gaba_b);
+            synapse_init_gaba_b(&cold->type_state.gaba_b);
             break;
 
         case SYNAPSE_DOPAMINE:
-            synapse_init_dopamine(&syn->type_state.dopamine);
-            synapse_init_dopamine(&incoming_syn->type_state.dopamine);
+            synapse_init_dopamine(&cold->type_state.dopamine);
             break;
 
         case SYNAPSE_SEROTONIN:
-            synapse_init_serotonin(&syn->type_state.serotonin);
-            synapse_init_serotonin(&incoming_syn->type_state.serotonin);
+            synapse_init_serotonin(&cold->type_state.serotonin);
             break;
 
         case SYNAPSE_ACETYLCHOLINE:
-            synapse_init_acetylcholine(&syn->type_state.acetylcholine);
-            synapse_init_acetylcholine(&incoming_syn->type_state.acetylcholine);
+            synapse_init_acetylcholine(&cold->type_state.acetylcholine);
             break;
 
         case SYNAPSE_ELECTRICAL:
-            synapse_init_electrical(&syn->type_state.electrical);
-            synapse_init_electrical(&incoming_syn->type_state.electrical);
+            synapse_init_electrical(&cold->type_state.electrical);
             break;
 
         case SYNAPSE_GENERIC:
@@ -4676,16 +4648,19 @@ float synapse_ternary_to_weight(trit_t ternary_weight, float positive_scale, flo
 /**
  * @brief Enable ternary mode for synapse
  */
-bool synapse_enable_ternary_weight(synapse_t* synapse, float threshold, float scale) {
-    if (!synapse) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_enable_ternary_weight: synapse is NULL");
+bool synapse_enable_ternary_weight(neural_network_t net, synapse_t* synapse, float threshold, float scale) {
+    if (!net || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_enable_ternary_weight: net or synapse is NULL");
         return false;
     }
 
+    synapse_cold_t* cold = SYNAPSE_ENSURE_COLD(net, synapse);
+    if (!cold) return false;
+
     // Quantize current weight to ternary
-    synapse->ternary_weight = synapse_weight_to_ternary(synapse->weight, threshold);
-    synapse->use_ternary_weight = true;
-    synapse->ternary_scale = scale;
+    cold->ternary_weight = synapse_weight_to_ternary(synapse->weight, threshold);
+    cold->use_ternary_weight = true;
+    cold->ternary_scale = scale;
 
     return true;
 }
@@ -4693,22 +4668,25 @@ bool synapse_enable_ternary_weight(synapse_t* synapse, float threshold, float sc
 /**
  * @brief Disable ternary mode for synapse
  */
-bool synapse_disable_ternary_weight(synapse_t* synapse) {
-    if (!synapse) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_disable_ternary_weight: synapse is NULL");
+bool synapse_disable_ternary_weight(neural_network_t net, synapse_t* synapse) {
+    if (!net || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_disable_ternary_weight: net or synapse is NULL");
         return false;
     }
 
+    synapse_cold_t* cold = SYNAPSE_COLD(net, synapse);
+    if (!cold) return true;  // No cold data = not in ternary mode
+
     // Dequantize ternary weight to float if currently in ternary mode
-    if (synapse->use_ternary_weight) {
+    if (cold->use_ternary_weight) {
         synapse->weight = synapse_ternary_to_weight(
-            synapse->ternary_weight,
-            synapse->ternary_scale,
-            -synapse->ternary_scale
+            cold->ternary_weight,
+            cold->ternary_scale,
+            -cold->ternary_scale
         );
     }
 
-    synapse->use_ternary_weight = false;
+    cold->use_ternary_weight = false;
 
     return true;
 }
@@ -4716,15 +4694,18 @@ bool synapse_disable_ternary_weight(synapse_t* synapse) {
 /**
  * @brief Get effective weight (handles ternary/float transparently)
  */
-float synapse_get_effective_weight(const synapse_t* synapse) {
+float synapse_get_effective_weight(neural_network_t net, const synapse_t* synapse) {
     if (!synapse) return 0.0f;
 
-    if (synapse->use_ternary_weight) {
-        return synapse_ternary_to_weight(
-            synapse->ternary_weight,
-            synapse->ternary_scale,
-            -synapse->ternary_scale
-        );
+    if (net) {
+        const synapse_cold_t* cold = SYNAPSE_COLD(net, (synapse_t*)synapse);
+        if (cold && cold->use_ternary_weight) {
+            return synapse_ternary_to_weight(
+                cold->ternary_weight,
+                cold->ternary_scale,
+                -cold->ternary_scale
+            );
+        }
     }
 
     return synapse->weight;
@@ -4733,14 +4714,17 @@ float synapse_get_effective_weight(const synapse_t* synapse) {
 /**
  * @brief Set effective weight (handles ternary/float transparently)
  */
-void synapse_set_effective_weight(synapse_t* synapse, float weight, float threshold) {
+void synapse_set_effective_weight(neural_network_t net, synapse_t* synapse, float weight, float threshold) {
     if (!synapse) return;
 
-    if (synapse->use_ternary_weight) {
-        synapse->ternary_weight = synapse_weight_to_ternary(weight, threshold);
-    } else {
-        synapse->weight = weight;
+    if (net) {
+        synapse_cold_t* cold = SYNAPSE_COLD(net, synapse);
+        if (cold && cold->use_ternary_weight) {
+            cold->ternary_weight = synapse_weight_to_ternary(weight, threshold);
+            return;
+        }
     }
+    synapse->weight = weight;
 }
 
 /**

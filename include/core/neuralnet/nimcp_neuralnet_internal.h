@@ -91,6 +91,7 @@ struct neural_network_struct {
     /* Sparse synapse pools (NIMCP 2.11: Memory-efficient synapse storage) */
     sparse_synapse_pool_t synapse_handle_pool;
     synapse_metadata_pool_t synapse_metadata_pool;
+    synapse_cold_pool_t synapse_cold_pool;  /**< Cold data pool for STP/BCM/eligibility/compute/type */
 
     /* Bulk allocation for large networks - reduces 2M tracked allocs to 2 */
     spike_record_t* spike_history_bulk;   /**< Single contiguous spike history allocation */

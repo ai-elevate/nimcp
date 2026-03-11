@@ -424,23 +424,31 @@ int cortical_sparse_enforce_sparsity(
             if (k > num_activations) k = num_activations;
 
             uint32_t* winner_indices = (uint32_t*)nimcp_malloc(k * sizeof(uint32_t));
-            if (!winner_indices) {
+            float* winner_values = (float*)nimcp_malloc(k * sizeof(float));
+            if (!winner_indices || !winner_values) {
+                nimcp_free(winner_indices);
+                nimcp_free(winner_values);
                 nimcp_platform_mutex_unlock(system->mutex);
-                NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate winner_indices");
+                NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate winner buffers");
             }
 
             find_k_largest_indices(activations, num_activations, k, winner_indices);
 
+            /* Save winner values BEFORE zeroing (supports in-place where activations == output) */
+            for (uint32_t i = 0; i < k; i++) {
+                winner_values[i] = activations[winner_indices[i]];
+            }
+
             /* Zero all outputs */
             memset(output_activations, 0, num_activations * sizeof(float));
 
-            /* Set winners */
+            /* Restore winners */
             for (uint32_t i = 0; i < k; i++) {
-                uint32_t idx = winner_indices[i];
-                output_activations[idx] = activations[idx];
+                output_activations[winner_indices[i]] = winner_values[i];
             }
 
             nimcp_free(winner_indices);
+            nimcp_free(winner_values);
             break;
         }
 

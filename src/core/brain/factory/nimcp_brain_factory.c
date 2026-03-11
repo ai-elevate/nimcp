@@ -429,6 +429,29 @@ brain_t brain_create_custom(const brain_config_t* config)
                 loaded_brain->config.enable_glial = config->enable_glial;
                 /* enable_homeostasis removed - field no longer exists in brain_config_t */
                 loaded_brain->config.minimal_mode = config->minimal_mode;
+
+                // Initialize sparse coding on loaded brain (not saved in checkpoint)
+                if (!loaded_brain->sparse_coding_system) {
+                    sparse_coding_config_t sc_config;
+                    cortical_sparse_default_config(&sc_config);
+                    sc_config.sparsity_method = SPARSITY_METHOD_K_WTA;
+                    sc_config.target_sparsity = 0.05f;
+                    sc_config.num_columns = loaded_brain->config.num_outputs > 0
+                        ? loaded_brain->config.num_outputs : 4096;
+                    sc_config.k_winners = (uint32_t)(sc_config.num_columns * sc_config.target_sparsity);
+                    if (sc_config.k_winners < 8) sc_config.k_winners = 8;
+                    sc_config.enable_homeostasis = true;
+                    sc_config.adaptation_rate = 0.002f;
+                    sc_config.enable_bio_async = false;
+                    sc_config.enable_lateral_inhibition = false;
+                    loaded_brain->sparse_coding_system = cortical_sparse_create(&sc_config);
+                    loaded_brain->enable_sparse_coding = (loaded_brain->sparse_coding_system != NULL);
+                    if (loaded_brain->enable_sparse_coding) {
+                        LOG_INFO(LOG_MODULE, "Sparse coding initialized on loaded brain: K-WTA k=%u/%u",
+                                 sc_config.k_winners, sc_config.num_columns);
+                    }
+                }
+
                 return loaded_brain;
             }
             LOG_WARN(LOG_MODULE, "Failed to load checkpoint from '%s', creating fresh brain",
@@ -496,8 +519,10 @@ brain_t brain_create_custom(const brain_config_t* config)
     brain->config = *config;
 
     // Copy KG persistence settings (Phase SNAPSHOT-KG)
+    // NOTE: C-side kg_persistence module has API mismatches and is disabled.
+    // QuestDB checkpoint registration is handled Python-side in immerse_athena.py.
     brain->snapshot_backend = config->snapshot_backend;
-    brain->kg_persistence = NULL;  // Will be set if KG persistence is enabled
+    brain->kg_persistence = NULL;
     brain->owns_kg_persistence = false;
 
     // Create strategy for task
@@ -797,6 +822,29 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // Phase CC-1: Cortical columns architecture (Tier 0.65)
     if (!init_cortical_columns_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // Sparse coding: K-WTA sparsity enforcement on output layer
+    // Breaks mode collapse by forcing only ~5% of output neurons to fire per input
+    {
+        sparse_coding_config_t sc_config;
+        cortical_sparse_default_config(&sc_config);
+        sc_config.sparsity_method = SPARSITY_METHOD_K_WTA;
+        sc_config.target_sparsity = 0.05f;  // 5% active (slightly more permissive than cortical 3%)
+        sc_config.num_columns = brain->config.num_outputs > 0 ? brain->config.num_outputs : 4096;
+        sc_config.k_winners = (uint32_t)(sc_config.num_columns * sc_config.target_sparsity);
+        if (sc_config.k_winners < 8) sc_config.k_winners = 8;  // At least 8 winners
+        sc_config.enable_homeostasis = true;
+        sc_config.adaptation_rate = 0.002f;
+        sc_config.enable_bio_async = false;  // Don't need messaging overhead
+        sc_config.enable_lateral_inhibition = false;  // K-WTA is sufficient
+        brain->sparse_coding_system = cortical_sparse_create(&sc_config);
+        brain->enable_sparse_coding = (brain->sparse_coding_system != NULL);
+        if (brain->enable_sparse_coding) {
+            LOG_INFO("Sparse coding initialized: K-WTA with k=%u/%u (%.1f%% sparsity)",
+                     sc_config.k_winners, sc_config.num_columns,
+                     sc_config.target_sparsity * 100.0f);
+        }
+    }
 
     // Language Layer: Orchestrator + LNN generator + tokenizer + embeddings
     nimcp_brain_factory_init_language_subsystem(brain);  // Non-fatal if prerequisites missing

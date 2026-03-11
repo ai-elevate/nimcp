@@ -73,6 +73,7 @@ extern "C" {
 // WHY: Avoid circular dependency - neuralnet.h will include this file
 typedef struct neuron_struct neuron_t;
 typedef struct synapse_t synapse_t;
+typedef struct synapse_cold_t synapse_cold_t;
 struct synapse_compute_context_t;
 
 //=============================================================================
@@ -382,6 +383,7 @@ typedef union synapse_type_state_t {
  */
 float synapse_compute_ampa(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -413,6 +415,7 @@ float synapse_compute_ampa(
  */
 float synapse_compute_nmda(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -430,6 +433,7 @@ float synapse_compute_nmda(
  */
 float synapse_compute_gaba_a(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -447,6 +451,7 @@ float synapse_compute_gaba_a(
  */
 float synapse_compute_gaba_b(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -471,6 +476,7 @@ float synapse_compute_gaba_b(
  */
 float synapse_compute_dopamine(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -488,6 +494,7 @@ float synapse_compute_dopamine(
  */
 float synapse_compute_serotonin(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -505,6 +512,7 @@ float synapse_compute_serotonin(
  */
 float synapse_compute_acetylcholine(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -526,6 +534,7 @@ float synapse_compute_acetylcholine(
  */
 float synapse_compute_electrical(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -543,6 +552,7 @@ float synapse_compute_electrical(
  */
 float synapse_compute_generic(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,

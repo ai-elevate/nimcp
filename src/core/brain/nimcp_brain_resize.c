@@ -76,6 +76,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_resize, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #include "core/brain/nimcp_brain.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 #include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_system_resources.h"
@@ -769,10 +770,18 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
                 : NULL;
             if (old_meta && new_meta) {
                 *new_meta = *old_meta;
-                // BCM/eligibility pointers are shared — NULL them on the copy
-                // so only the old network frees them during destroy
-                new_meta->bcm = NULL;
-                new_meta->eligibility = NULL;
+                // Copy cold data if old synapse has it
+                synapse_cold_t* old_cold = SYNAPSE_COLD(base_network, old_meta);
+                if (old_cold) {
+                    synapse_cold_t* new_cold = SYNAPSE_ENSURE_COLD(new_base, new_meta);
+                    if (new_cold) {
+                        *new_cold = *old_cold;
+                        // BCM/eligibility pointers are shared — NULL them on the copy
+                        // so only the old network frees them during destroy
+                        new_cold->bcm = NULL;
+                        new_cold->eligibility = NULL;
+                    }
+                }
             }
         }
     }

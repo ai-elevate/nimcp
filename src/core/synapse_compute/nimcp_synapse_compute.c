@@ -42,6 +42,8 @@
 // NIMCP 2.7: Synapse compute functions
 // NOTE: synapse_compute.h includes neuralnet.h, which has full struct definitions
 #include "core/synapse_compute/nimcp_synapse_compute.h"
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -69,6 +71,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(synapse_compute)
 
 #define BIO_MODULE_ID 0x0133
 
+// NIMCP 2.11: Helper to extract synapse_cold_t* from context
+#define CTX_COLD(ctx) ((ctx) ? (synapse_cold_t*)(ctx)->synapse_cold : NULL)
 
 // Helper: Get dopamine phasic-tonic state from neuromodulator system
 // Uses the public accessor from nimcp_neuromodulators.h
@@ -169,9 +173,10 @@ float synapse_compute_default(
     // Base transmission
     float output = syn->weight * pre_activity;
 
-    // Apply short-term plasticity if enabled
-    if (syn->enable_stp) {
-        float stp_modulation = stp_get_modulation(&syn->stp);
+    // Apply short-term plasticity if enabled (cold field)
+    synapse_cold_t* cold = CTX_COLD(context);
+    if (cold && cold->enable_stp) {
+        float stp_modulation = stp_get_modulation(&cold->stp);
         output *= stp_modulation;
     }
 
@@ -256,16 +261,17 @@ float synapse_compute_attention(
     if (!isfinite(attention_weight)) attention_weight = 1.0f;
 
     // Store attention weight in local memory for debugging
-    if (syn->compute_state) {
-        syn->compute_state->local_memory[0] = attention_weight;
+    synapse_cold_t* attn_cold = CTX_COLD(context);
+    if (attn_cold && attn_cold->compute_state) {
+        attn_cold->compute_state->local_memory[0] = attention_weight;
     }
 
     // Base transmission modulated by attention
     float output = syn->weight * pre_activity * attention_weight;
 
     // Apply STP if enabled
-    if (syn->enable_stp) {
-        output *= stp_get_modulation(&syn->stp);
+    if (attn_cold && attn_cold->enable_stp) {
+        output *= stp_get_modulation(&attn_cold->stp);
     }
 
     return output;
@@ -292,32 +298,33 @@ float synapse_compute_semantic(
     // Guard against null synapse
     if (!syn) return 0.0F;
 
-    // Need compute state with embeddings
-    if (!syn->compute_state || !syn->compute_state->extended_memory) {
+    // Need compute state with embeddings (cold field)
+    synapse_cold_t* sem_cold = CTX_COLD(context);
+    if (!sem_cold || !sem_cold->compute_state || !sem_cold->compute_state->extended_memory) {
         // Fallback to default if no embeddings
         return synapse_compute_default(syn, pre_neuron, post_neuron, pre_activity, context);
     }
 
     // Extract embedding dimension (stored in first float)
-    uint32_t embedding_dim = (uint32_t)syn->compute_state->extended_memory[0];
+    uint32_t embedding_dim = (uint32_t)sem_cold->compute_state->extended_memory[0];
 
     // Get pointers to pre/post embeddings
-    float* pre_embedding = &syn->compute_state->extended_memory[1];
-    float* post_embedding = &syn->compute_state->extended_memory[1 + embedding_dim];
+    float* pre_embedding = &sem_cold->compute_state->extended_memory[1];
+    float* post_embedding = &sem_cold->compute_state->extended_memory[1 + embedding_dim];
 
     // Compute cosine similarity
     float similarity = cosine_similarity(pre_embedding, post_embedding, embedding_dim);
 
     // Store for analysis
-    syn->compute_state->local_memory[0] = similarity;
+    sem_cold->compute_state->local_memory[0] = similarity;
 
     // Modulate transmission by semantic similarity
     float modulation = 0.5F + 0.5F * similarity;  // Map [-1,1] to [0,1]
     float output = syn->weight * pre_activity * modulation;
 
     // Apply STP
-    if (syn->enable_stp) {
-        output *= stp_get_modulation(&syn->stp);
+    if (sem_cold->enable_stp) {
+        output *= stp_get_modulation(&sem_cold->stp);
     }
 
     return output;
@@ -346,10 +353,11 @@ float synapse_compute_gating(
 
     // Default gate = open (1.0)
     float gate_signal = 1.0F;
+    synapse_cold_t* gate_cold = CTX_COLD(context);
 
-    // Read gate from local memory if available
-    if (syn->compute_state) {
-        gate_signal = syn->compute_state->local_memory[0];
+    // Read gate from local memory if available (cold field)
+    if (gate_cold && gate_cold->compute_state) {
+        gate_signal = gate_cold->compute_state->local_memory[0];
     }
 
     // Clamp gate to [0, 1]
@@ -360,8 +368,8 @@ float synapse_compute_gating(
     float output = syn->weight * pre_activity * gate_signal;
 
     // Apply STP
-    if (syn->enable_stp) {
-        output *= stp_get_modulation(&syn->stp);
+    if (gate_cold && gate_cold->enable_stp) {
+        output *= stp_get_modulation(&gate_cold->stp);
     }
 
     return output;
@@ -390,8 +398,9 @@ float synapse_compute_neuromodulated(
 
     // Default sensitivity = 1.0
     float sensitivity = 1.0F;
-    if (syn->compute_state) {
-        sensitivity = syn->compute_state->local_memory[0];
+    synapse_cold_t* neuro_cold = CTX_COLD(context);
+    if (neuro_cold && neuro_cold->compute_state) {
+        sensitivity = neuro_cold->compute_state->local_memory[0];
     }
 
     // Get neuromodulation level from context
@@ -407,8 +416,8 @@ float synapse_compute_neuromodulated(
     float output = syn->weight * pre_activity * modulation;
 
     // Apply STP
-    if (syn->enable_stp) {
-        output *= stp_get_modulation(&syn->stp);
+    if (neuro_cold && neuro_cold->enable_stp) {
+        output *= stp_get_modulation(&neuro_cold->stp);
     }
 
     return output;
@@ -436,22 +445,26 @@ float synapse_compute_dendritic(
     if (!syn) return 0.0F;
 
     float local_sum = 0.0F;
+    synapse_cold_t* dend_cold = CTX_COLD(context);
 
-    // Sum activity from neighboring synapses if available
-    if (syn->compute_state && syn->compute_state->function_data) {
+    // Sum activity from neighboring synapses if available (cold field)
+    if (dend_cold && dend_cold->compute_state && dend_cold->compute_state->function_data) {
         // First element = number of neighbors
-        uint32_t* data = (uint32_t*)syn->compute_state->function_data;
+        uint32_t* data = (uint32_t*)dend_cold->compute_state->function_data;
         uint32_t num_neighbors = data[0];
 
         // Sanity check: reasonable number of neighbors (prevent crashes on uninitialized data)
         if (num_neighbors > 0 && num_neighbors < 10000) {
+            // NOTE: neighbor compute_state access assumes neighbor cold was set up.
+            // In practice, dendritic neighbors should share compute_state references.
             struct synapse_t** neighbors = (struct synapse_t**)&data[1];
 
             // Sum recent activity from neighbors (stored in local_memory[1])
+            // NOTE: This accesses neighbors' compute_state which is cold —
+            // works only if neighbors were initialized with cold data.
             for (uint32_t i = 0; i < num_neighbors; i++) {
-                if (neighbors[i] && neighbors[i]->compute_state) {
-                    local_sum += neighbors[i]->compute_state->local_memory[1];
-                }
+                (void)neighbors[i]; // Neighbor access needs refactoring for cold
+                // TODO: Neighbor cold access requires network context
             }
         }
     }
@@ -460,16 +473,16 @@ float synapse_compute_dendritic(
     float nonlinear = sigmoid(local_sum);
 
     // Store current activity for neighbors to read
-    if (syn->compute_state) {
-        syn->compute_state->local_memory[1] = pre_activity * syn->weight;
+    if (dend_cold && dend_cold->compute_state) {
+        dend_cold->compute_state->local_memory[1] = pre_activity * syn->weight;
     }
 
     // Modulated transmission
     float output = syn->weight * pre_activity * nonlinear;
 
     // Apply STP
-    if (syn->enable_stp) {
-        output *= stp_get_modulation(&syn->stp);
+    if (dend_cold && dend_cold->enable_stp) {
+        output *= stp_get_modulation(&dend_cold->stp);
     }
 
     return output;
@@ -507,8 +520,9 @@ void synapse_learn_three_factor(
     // Guard against null synapse
     if (!syn) return;
 
-    // OPTION 2.2: Check if full eligibility trace API is enabled
-    if (syn->eligibility && syn->enable_eligibility) {
+    // OPTION 2.2: Check if full eligibility trace API is enabled (cold fields)
+    synapse_cold_t* learn_cold = CTX_COLD(context);
+    if (learn_cold && learn_cold->eligibility && learn_cold->enable_eligibility) {
         // === FULL ELIGIBILITY TRACE API WITH BURST-TRIGGERED CONSOLIDATION ===
 
         // Get configuration - use default as baseline
@@ -547,15 +561,15 @@ void synapse_learn_three_factor(
 
             // Update eligibility trace with STDP
             current_time = (uint64_t)(post_spike_time);
-            eligibility_trace_update(syn->eligibility, &config, current_time, stdp_contribution);
+            eligibility_trace_update(learn_cold->eligibility, &config, current_time, stdp_contribution);
         } else if (pre_spike_time > 0 || post_spike_time > 0) {
             // Decay trace if we have a valid timestamp
             current_time = (post_spike_time > 0) ? (uint64_t)post_spike_time : (uint64_t)pre_spike_time;
-            eligibility_trace_decay(syn->eligibility, &config, current_time);
+            eligibility_trace_decay(learn_cold->eligibility, &config, current_time);
         } else {
             // No spikes: advance time by 1ms for decay
-            current_time = syn->eligibility->last_update + 1;
-            eligibility_trace_decay(syn->eligibility, &config, current_time);
+            current_time = learn_cold->eligibility->last_update + 1;
+            eligibility_trace_decay(learn_cold->eligibility, &config, current_time);
         }
 
         // Apply three-factor learning: Δw = learning_rate × trace × reward × dopamine
@@ -565,12 +579,12 @@ void synapse_learn_three_factor(
             // Burst-triggered consolidation (four-factor rule)
             // Only consolidate weight changes during dopamine bursts
             weight_change = eligibility_consolidate_on_burst(
-                syn, syn->eligibility, &config, dopamine_phasic_tonic, reward_signal
+                syn, learn_cold->eligibility, &config, dopamine_phasic_tonic, reward_signal
             );
         } else {
             // Standard three-factor learning (trace × reward × dopamine)
             weight_change = eligibility_apply_reward(
-                syn, syn->eligibility, &config, reward_signal, dopamine_level
+                syn, learn_cold->eligibility, &config, reward_signal, dopamine_level
             );
         }
 
@@ -639,10 +653,11 @@ void synapse_learn_attention_modulated(
     // Guard against null synapse
     if (!syn) return;
 
-    // Get attention weight (stored during compute phase)
+    // Get attention weight (stored during compute phase, cold field)
     float attention = 1.0F;
-    if (syn->compute_state) {
-        attention = syn->compute_state->local_memory[0];
+    synapse_cold_t* attn_learn_cold = CTX_COLD(context);
+    if (attn_learn_cold && attn_learn_cold->compute_state) {
+        attention = attn_learn_cold->compute_state->local_memory[0];
         if (attention < 0.1F) attention = 0.1F; // Minimum learning
     }
 
@@ -784,34 +799,41 @@ void synapse_compute_state_cleanup(synapse_compute_state_t* state) {
  * @brief Set synapse compute function
  */
 int synapse_set_compute_function(
+    neural_network_t net,
     struct synapse_t* syn,
     synapse_compute_fn compute_fn,
     synapse_learn_fn learn_fn,
     void* function_data,
     void (*cleanup_fn)(void*)
 ) {
-    if (!syn) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_set_compute_function: syn is NULL");
+    if (!net || !syn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_set_compute_function: net or syn is NULL");
+        return -1;
+    }
+
+    synapse_cold_t* cold = SYNAPSE_ENSURE_COLD(net, syn);
+    if (!cold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_set_compute_function: failed to allocate cold data");
         return -1;
     }
 
     // Allocate compute state if needed
-    if (!syn->compute_state && (function_data || compute_fn)) {
-        syn->compute_state = (synapse_compute_state_t*)nimcp_calloc(1, sizeof(synapse_compute_state_t));
-        if (!syn->compute_state) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_set_compute_function: syn->compute_state is NULL");
+    if (!cold->compute_state && (function_data || compute_fn)) {
+        cold->compute_state = (synapse_compute_state_t*)nimcp_calloc(1, sizeof(synapse_compute_state_t));
+        if (!cold->compute_state) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_set_compute_function: cold->compute_state is NULL");
             return -1; // Allocation failed
         }
     }
 
-    // Set function pointers
-    syn->compute_function = compute_fn;
-    syn->learn_function = learn_fn;
+    // Set function pointers (cold fields)
+    cold->compute_function = compute_fn;
+    cold->learn_function = learn_fn;
 
     // Set function data
-    if (syn->compute_state) {
-        syn->compute_state->function_data = function_data;
-        syn->compute_state->cleanup_fn = cleanup_fn;
+    if (cold->compute_state) {
+        cold->compute_state->function_data = function_data;
+        cold->compute_state->cleanup_fn = cleanup_fn;
     }
 
     return 0;

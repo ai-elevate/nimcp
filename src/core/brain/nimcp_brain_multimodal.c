@@ -764,8 +764,7 @@ static bool format_output(
         strncpy(output->decision_label, brain->output_labels[max_idx],
                 sizeof(output->decision_label) - 1);
     } else {
-        snprintf(output->decision_label, sizeof(output->decision_label),
-                 "output_%u", max_idx);
+        output->decision_label[0] = '\0';
     }
 
     // Generate comprehensive explanation with all 4 modalities

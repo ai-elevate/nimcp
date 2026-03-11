@@ -524,9 +524,8 @@ nimcp_status_t nimcp_brain_predict_fast(
     if (ib->output_labels && max_idx < ib->num_output_labels && ib->output_labels[max_idx]) {
         strncpy(out_label, ib->output_labels[max_idx], NIMCP_MAX_LABEL_SIZE - 1);
     } else {
-        snprintf(out_label, NIMCP_MAX_LABEL_SIZE, "output_%u", max_idx);
+        out_label[0] = '\0';
     }
-    out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
 
     // I-M2: Confidence uses max/sum_abs normalization (not softmax). This is faster
     // than softmax and provides a reasonable confidence estimate for classification.
@@ -689,9 +688,8 @@ nimcp_status_t nimcp_brain_predict_in_domain(
             && ib->output_labels[global_max_idx]) {
             strncpy(out_label, ib->output_labels[global_max_idx], NIMCP_MAX_LABEL_SIZE - 1);
         } else {
-            snprintf(out_label, NIMCP_MAX_LABEL_SIZE, "output_%u", global_max_idx);
+            out_label[0] = '\0';
         }
-        out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
 
         // Confidence via sum_abs normalization (matching predict_fast)
         float global_sum = 0.0f;

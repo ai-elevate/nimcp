@@ -665,6 +665,23 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
         tasks[n++] = TASK(nimcp_brain_factory_init_stdp_quantum_bridge_subsystem, "stdp_quantum_bridge");
         if (!execute_wave(pool, &ctx, tasks, n, 25)) goto cleanup;
 
+        // Sparse coding: K-WTA sparsity enforcement on output layer (lightweight)
+        {
+            sparse_coding_config_t sc_config;
+            cortical_sparse_default_config(&sc_config);
+            sc_config.sparsity_method = SPARSITY_METHOD_K_WTA;
+            sc_config.target_sparsity = 0.05f;
+            sc_config.num_columns = brain->config.num_outputs > 0 ? brain->config.num_outputs : 4096;
+            sc_config.k_winners = (uint32_t)(sc_config.num_columns * sc_config.target_sparsity);
+            if (sc_config.k_winners < 8) sc_config.k_winners = 8;
+            sc_config.enable_homeostasis = true;
+            sc_config.adaptation_rate = 0.002f;
+            sc_config.enable_bio_async = false;
+            sc_config.enable_lateral_inhibition = false;
+            brain->sparse_coding_system = cortical_sparse_create(&sc_config);
+            brain->enable_sparse_coding = (brain->sparse_coding_system != NULL);
+        }
+
         LOG_MODULE_DEBUG(LOG_MODULE, "FAST init complete (6 waves)");
         LOG_INFO(LOG_MODULE, "FAST parallel init complete (6 waves, skipped ~20 non-essential)");
         goto cleanup;

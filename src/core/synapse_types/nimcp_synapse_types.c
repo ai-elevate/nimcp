@@ -90,15 +90,16 @@ void synapse_init_ampa(ampa_state_t* state) {
  */
 float synapse_compute_ampa(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
     float dt
 ) {
     (void)pre_neuron;  // Unused - AMPA current depends only on post_neuron voltage
-    if (!syn || !post_neuron) return 0.0F;
+    if (!syn || !cold || !post_neuron) return 0.0F;
 
-    ampa_state_t* state = &syn->type_state.ampa;
+    ampa_state_t* state = &cold->type_state.ampa;
 
     // 1. Exponential decay of conductance
     state->conductance *= nimcp_safe_expf(-dt / state->tau_decay);
@@ -169,15 +170,16 @@ void synapse_init_nmda(nmda_state_t* state) {
  */
 float synapse_compute_nmda(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
     float dt
 ) {
     (void)pre_neuron;  // Unused - NMDA current depends only on post_neuron voltage
-    if (!syn || !post_neuron) return 0.0F;
+    if (!syn || !cold || !post_neuron) return 0.0F;
 
-    nmda_state_t* state = &syn->type_state.nmda;
+    nmda_state_t* state = &cold->type_state.nmda;
 
     // 1. Exponential decay of conductance
     state->conductance *= nimcp_safe_expf(-dt / state->tau_decay);
@@ -250,15 +252,16 @@ void synapse_init_gaba_a(gaba_a_state_t* state) {
  */
 float synapse_compute_gaba_a(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
     float dt
 ) {
     (void)pre_neuron;  // Unused - GABA-A current depends only on post_neuron voltage
-    if (!syn || !post_neuron) return 0.0F;
+    if (!syn || !cold || !post_neuron) return 0.0F;
 
-    gaba_a_state_t* state = &syn->type_state.gaba_a;
+    gaba_a_state_t* state = &cold->type_state.gaba_a;
 
     // 1. Exponential decay
     state->conductance *= nimcp_safe_expf(-dt / state->tau_decay);
@@ -314,15 +317,16 @@ void synapse_init_gaba_b(gaba_b_state_t* state) {
  */
 float synapse_compute_gaba_b(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
     float dt
 ) {
     (void)pre_neuron;  // Unused - GABA-B current depends only on post_neuron voltage
-    if (!syn || !post_neuron) return 0.0F;
+    if (!syn || !cold || !post_neuron) return 0.0F;
 
-    gaba_b_state_t* state = &syn->type_state.gaba_b;
+    gaba_b_state_t* state = &cold->type_state.gaba_b;
 
     // 1. Exponential decay (much slower than GABA-A)
     state->conductance *= nimcp_safe_expf(-dt / state->tau_decay);
@@ -390,6 +394,7 @@ void synapse_init_dopamine(dopamine_state_t* state) {
  */
 float synapse_compute_dopamine(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -397,9 +402,9 @@ float synapse_compute_dopamine(
 ) {
     (void)pre_neuron;   // Unused - modulation computed from internal D1/D2 state
     (void)post_neuron;  // Unused - dopamine modulates weight, not voltage-dependent
-    if (!syn) return 0.0F;
+    if (!syn || !cold) return 0.0F;
 
-    dopamine_state_t* state = &syn->type_state.dopamine;
+    dopamine_state_t* state = &cold->type_state.dopamine;
 
     // 1. Exponential decay of D1/D2 receptor activation
     state->d1_level *= nimcp_safe_expf(-dt / state->tau_d1);
@@ -459,6 +464,7 @@ void synapse_init_serotonin(serotonin_state_t* state) {
  */
 float synapse_compute_serotonin(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -466,9 +472,9 @@ float synapse_compute_serotonin(
 ) {
     (void)pre_neuron;   // Unused - modulation computed from internal 5-HT state
     (void)post_neuron;  // Unused - serotonin modulates weight, not voltage-dependent
-    if (!syn) return 0.0F;
+    if (!syn || !cold) return 0.0F;
 
-    serotonin_state_t* state = &syn->type_state.serotonin;
+    serotonin_state_t* state = &cold->type_state.serotonin;
 
     // 1. Exponential decay
     state->ht1a_level *= nimcp_safe_expf(-dt / state->tau_ht1a);
@@ -530,6 +536,7 @@ void synapse_init_acetylcholine(acetylcholine_state_t* state) {
  */
 float synapse_compute_acetylcholine(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -537,9 +544,9 @@ float synapse_compute_acetylcholine(
 ) {
     (void)pre_neuron;   // Unused - modulation computed from internal ACh state
     (void)post_neuron;  // Unused - acetylcholine modulates weight, not voltage-dependent
-    if (!syn) return 0.0F;
+    if (!syn || !cold) return 0.0F;
 
-    acetylcholine_state_t* state = &syn->type_state.acetylcholine;
+    acetylcholine_state_t* state = &cold->type_state.acetylcholine;
 
     // 1. Exponential decay
     state->nicotinic_level *= nimcp_safe_expf(-dt / state->tau_nicotinic);
@@ -600,6 +607,7 @@ void synapse_init_electrical(electrical_state_t* state) {
  */
 float synapse_compute_electrical(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
@@ -607,9 +615,9 @@ float synapse_compute_electrical(
 ) {
     (void)pre_spike;  // Unused - electrical synapses transmit voltage, not spikes
     (void)dt;         // Unused - instantaneous coupling (no dynamics)
-    if (!syn || !pre_neuron || !post_neuron) return 0.0F;
+    if (!syn || !cold || !pre_neuron || !post_neuron) return 0.0F;
 
-    electrical_state_t* state = &syn->type_state.electrical;
+    electrical_state_t* state = &cold->type_state.electrical;
 
     // Ohmic current: I = g * (V_pre - V_post)
     float voltage_diff = pre_neuron->state - post_neuron->state;
@@ -633,11 +641,13 @@ float synapse_compute_electrical(
  */
 float synapse_compute_generic(
     synapse_t* syn,
+    synapse_cold_t* cold,
     const neuron_t* pre_neuron,
     const neuron_t* post_neuron,
     float pre_spike,
     float dt
 ) {
+    (void)cold;         // Unused - generic synapse has no type_state
     (void)pre_neuron;   // Unused - generic synapse is a simple weighted sum
     (void)post_neuron;  // Unused - no voltage dependence
     (void)dt;           // Unused - no dynamics

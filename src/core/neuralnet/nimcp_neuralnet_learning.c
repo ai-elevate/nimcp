@@ -425,18 +425,21 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
         }
 
         // Apply BCM homeostatic plasticity after STDP (if enabled)
-        if (meta && meta->enable_bcm && meta->bcm) {
-            bcm_params_t bcm_params = bcm_params_cortical();
-            float dt_sec = (timestamp > meta->last_active) ?
-                (float)(timestamp - meta->last_active) / 1000.0f : 0.001f;
-            float pre_activity = trace_val;
-            float post_activity = post_neuron->state;
+        if (meta) {
+            synapse_cold_t* meta_cold = SYNAPSE_COLD(network, meta);
+            if (meta_cold && meta_cold->enable_bcm && meta_cold->bcm) {
+                bcm_params_t bcm_params = bcm_params_cortical();
+                float dt_sec = (timestamp > meta->last_active) ?
+                    (float)(timestamp - meta->last_active) / 1000.0f : 0.001f;
+                float pre_activity = trace_val;
+                float post_activity = post_neuron->state;
 
-            bcm_apply_rule(meta->bcm, pre_activity, post_activity, dt_sec, &bcm_params);
+                bcm_apply_rule(meta_cold->bcm, pre_activity, post_activity, dt_sec, &bcm_params);
 
-            if (fabsf(meta->bcm->weight - handle->weight) > WEIGHT_UPDATE_THRESHOLD) {
-                handle->weight = meta->bcm->weight;
-                meta->weight = meta->bcm->weight;
+                if (fabsf(meta_cold->bcm->weight - handle->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                    handle->weight = meta_cold->bcm->weight;
+                    meta->weight = meta_cold->bcm->weight;
+                }
             }
         }
     }
@@ -589,16 +592,17 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                                                 handle->metadata_index);
             }
 
-            // Update eligibility traces (requires metadata)
-            if (syn && syn->enable_eligibility && syn->eligibility) {
+            // Update eligibility traces (requires metadata + cold)
+            synapse_cold_t* syn_cold = syn ? SYNAPSE_COLD(network, syn) : NULL;
+            if (syn && syn_cold && syn_cold->enable_eligibility && syn_cold->eligibility) {
                 eligibility_config_t elig_config = eligibility_default_config();
                 elig_config.learning_rate = learning_rate;
 
                 // Update trace based on synaptic activity
                 if (syn->trace > 0.1f) {
-                    eligibility_trace_update(syn->eligibility, &elig_config, current_time, syn->trace);
+                    eligibility_trace_update(syn_cold->eligibility, &elig_config, current_time, syn->trace);
                 } else {
-                    eligibility_trace_decay(syn->eligibility, &elig_config, current_time);
+                    eligibility_trace_decay(syn_cold->eligibility, &elig_config, current_time);
                 }
 
                 // Get dopamine level from neuromodulator system (if available)
@@ -611,7 +615,7 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                 // Apply eligibility-based weight update
                 float old_weight = handle->weight;
                 syn->weight = handle->weight;  // sync before eligibility modifies it
-                eligibility_apply_reward(syn, syn->eligibility, &elig_config, reward, dopamine);
+                eligibility_apply_reward(syn, syn_cold->eligibility, &elig_config, reward, dopamine);
 
                 // Guard against NaN/Inf from numerical instability
                 if (!isfinite(syn->weight)) syn->weight = old_weight;
@@ -633,18 +637,18 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                 }
             }
 
-            // Apply BCM homeostatic plasticity (requires metadata)
-            if (syn && syn->enable_bcm && syn->bcm) {
+            // Apply BCM homeostatic plasticity (requires metadata + cold)
+            if (syn && syn_cold && syn_cold->enable_bcm && syn_cold->bcm) {
                 uint32_t target_id = handle->target_neuron_id;
                 if (target_id < network->num_neurons) {
                     bcm_params_t bcm_params = bcm_params_cortical();
                     const neuron_t* post_neuron = &network->neurons[target_id];
 
-                    bcm_apply_rule(syn->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
+                    bcm_apply_rule(syn_cold->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
 
-                    if (fabsf(syn->bcm->weight - handle->weight) > WEIGHT_UPDATE_THRESHOLD) {
-                        handle->weight = syn->bcm->weight;
-                        syn->weight = syn->bcm->weight;
+                    if (fabsf(syn_cold->bcm->weight - handle->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                        handle->weight = syn_cold->bcm->weight;
+                        syn->weight = syn_cold->bcm->weight;
                         total_modified++;
                     }
                 }
@@ -781,14 +785,15 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
             }
 
             /* Eligibility-trace learning */
-            if (syn && syn->enable_eligibility && syn->eligibility) {
+            synapse_cold_t* syn_cold2 = syn ? SYNAPSE_COLD(network, syn) : NULL;
+            if (syn && syn_cold2 && syn_cold2->enable_eligibility && syn_cold2->eligibility) {
                 eligibility_config_t elig_config = eligibility_default_config();
                 elig_config.learning_rate = learning_rate;
 
                 if (syn->trace > 0.1f) {
-                    eligibility_trace_update(syn->eligibility, &elig_config, current_time, syn->trace);
+                    eligibility_trace_update(syn_cold2->eligibility, &elig_config, current_time, syn->trace);
                 } else {
-                    eligibility_trace_decay(syn->eligibility, &elig_config, current_time);
+                    eligibility_trace_decay(syn_cold2->eligibility, &elig_config, current_time);
                 }
 
                 float dopamine = 0.5f;
@@ -799,7 +804,7 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
 
                 float old_weight = handle->weight;
                 syn->weight = handle->weight;
-                eligibility_apply_reward(syn, syn->eligibility, &elig_config, reward, dopamine);
+                eligibility_apply_reward(syn, syn_cold2->eligibility, &elig_config, reward, dopamine);
 
                 if (!isfinite(syn->weight)) syn->weight = old_weight;
                 if (!nimcp_security_validate_weight_change(old_weight, syn->weight,
@@ -816,15 +821,15 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
             }
 
             /* BCM homeostatic plasticity */
-            if (syn && syn->enable_bcm && syn->bcm) {
+            if (syn && syn_cold2 && syn_cold2->enable_bcm && syn_cold2->bcm) {
                 uint32_t target_id = handle->target_neuron_id;
                 if (target_id < network->num_neurons) {
                     bcm_params_t bcm_params = bcm_params_cortical();
                     const neuron_t* post_neuron = &network->neurons[target_id];
-                    bcm_apply_rule(syn->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
-                    if (fabsf(syn->bcm->weight - handle->weight) > WEIGHT_UPDATE_THRESHOLD) {
-                        handle->weight = syn->bcm->weight;
-                        syn->weight = syn->bcm->weight;
+                    bcm_apply_rule(syn_cold2->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
+                    if (fabsf(syn_cold2->bcm->weight - handle->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                        handle->weight = syn_cold2->bcm->weight;
+                        syn->weight = syn_cold2->bcm->weight;
                         total_modified++;
                     }
                 }

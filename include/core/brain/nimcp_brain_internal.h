@@ -144,6 +144,7 @@ struct recovery_executive_internal;
 #include "core/cortical_columns/nimcp_topographic_maps.h"
 #include "core/cortical_columns/nimcp_orientation_columns.h"
 #include "core/cortical_columns/nimcp_feature_hypercolumns.h"
+#include "core/cortical_columns/nimcp_cortical_sparse_coding.h"
 
 //=============================================================================
 // Middleware and Memory Management
@@ -580,6 +581,12 @@ struct brain_struct {
     bool cortical_needs_lazy_init;                    // Flag: cortical columns need lazy init
     bool topographic_needs_lazy_init;                 // Flag: topographic maps need lazy init
     uint64_t last_cortical_update_us;                 // Last cortical column update timestamp
+
+    // Sparse coding system — K-WTA sparsity enforcement on output layer
+    // Forces only ~3% of output neurons to fire per input, breaking mode collapse
+    // by requiring different inputs to activate different neuron subsets.
+    cortical_sparse_coding_system_t* sparse_coding_system;
+    bool enable_sparse_coding;                        // Enable output sparsity enforcement
 
     // === PHASE 1.5: MEMORY POOLS FOR HOT-PATH ALLOCATIONS ===
 

@@ -802,6 +802,38 @@ NIMCP_EXPORT float synapse_metadata_pool_utilization(synapse_metadata_pool_t poo
 NIMCP_EXPORT size_t synapse_metadata_pool_available(synapse_metadata_pool_t pool);
 
 //=============================================================================
+// Synapse Cold Pool API (NIMCP 2.11: Hot/cold split)
+//=============================================================================
+//
+// WHAT: Pool of synapse_cold_t objects for rarely-used synapse features
+// WHY:  Only ~5% of synapses need STP/BCM/eligibility/compute/type/embeddings
+// HOW:  Lazy allocation — cold data created on first use via SYNAPSE_ENSURE_COLD()
+//       Saves ~23 GB for 2M-neuron networks (200B→56B per metadata entry)
+//
+
+// Forward declaration
+struct synapse_cold_t;
+
+typedef struct synapse_cold_pool_struct* synapse_cold_pool_t;
+
+typedef struct {
+    size_t pool_size;               /**< Number of synapse_cold_t slots */
+    bool enable_statistics;
+    bool thread_safe;
+} synapse_cold_pool_config_t;
+
+NIMCP_EXPORT synapse_cold_pool_t synapse_cold_pool_create(
+    const synapse_cold_pool_config_t* config
+);
+NIMCP_EXPORT void synapse_cold_pool_destroy(synapse_cold_pool_t pool);
+NIMCP_EXPORT synapse_cold_pool_config_t synapse_cold_pool_default_config(void);
+NIMCP_EXPORT uint32_t synapse_cold_pool_allocate(synapse_cold_pool_t pool);
+NIMCP_EXPORT void synapse_cold_pool_free(synapse_cold_pool_t pool, uint32_t index);
+NIMCP_EXPORT struct synapse_cold_t* synapse_cold_pool_get(
+    synapse_cold_pool_t pool, uint32_t index
+);
+
+//=============================================================================
 // Extended Synapse Handle API (with metadata support)
 //=============================================================================
 

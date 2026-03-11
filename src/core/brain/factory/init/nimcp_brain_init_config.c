@@ -155,7 +155,13 @@ network_config_t nimcp_brain_factory_build_base_network_config(uint32_t num_inpu
     //   [1024, 16384, 131072, 524288, 131072, 16384, 2048]
     // ========================================================================
 
-    uint32_t hidden_budget = num_neurons;  // Total hidden neurons to distribute
+    // Hidden budget = total neurons minus input/output layers
+    // The layer_sizes array includes input/output layers, so hidden_budget
+    // must exclude them to avoid total exceeding num_neurons.
+    uint32_t hidden_budget = num_neurons;
+    if (num_neurons > num_inputs + num_outputs) {
+        hidden_budget = num_neurons - num_inputs - num_outputs;
+    }
 
     if (hidden_budget <= 5000) {
         // Small: 3 layers — single hidden layer (backward compatible)

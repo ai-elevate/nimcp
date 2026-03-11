@@ -400,8 +400,16 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
     }
     if (config_total != total_neurons) {
         NIMCP_LOG_WARN("GPU cache layer_sizes sum (%u) != network neurons (%u) — "
-                       "possible architecture mismatch",
+                       "clamping layer sizes to actual neuron count",
                        config_total, total_neurons);
+        // Clamp last layer so total matches actual neuron count
+        if (config_total > total_neurons && cache->num_layers > 0) {
+            uint32_t excess = config_total - total_neurons;
+            uint32_t last = cache->num_layers - 1;
+            if (cache->layer_sizes[last] > excess) {
+                cache->layer_sizes[last] -= excess;
+            }
+        }
     }
 
     uint32_t num_transitions = cache->num_layers - 1;
@@ -423,6 +431,11 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
             for (uint32_t l = 0; l < num_transitions; l++) {
                 uint32_t dst_layer_size = cache->layer_sizes[l + 1];
                 uint32_t dst_offset = cache->layer_offsets[l + 1];
+
+                // Clamp to actual neuron count
+                if (dst_offset + dst_layer_size > total_neurons) {
+                    dst_layer_size = (dst_offset < total_neurons) ? total_neurons - dst_offset : 0;
+                }
 
                 // Count connected neurons
                 uint32_t count = 0;

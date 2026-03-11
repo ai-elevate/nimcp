@@ -10,3 +10,171 @@
 2026-03-08 18:35:08 Process exited with error
 2026-03-08 18:50:17 CRASH: Training process PID 2274802 is dead!
 2026-03-08 18:50:17 Process exited with error
+2026-03-10 01:57:29 HANG: Log file not updated for 112152s (threshold: 600s). Process may be stuck.
+2026-03-10 01:57:29   Process stats: CPU=91.6%, MEM=90.4%
+2026-03-10 02:09:29 HANG: Log file not updated for 714s (threshold: 600s). Process may be stuck.
+2026-03-10 02:09:29   Process stats: CPU= 367%, MEM=89.7%
+2026-03-10 02:11:29 HANG: Log file not updated for 834s (threshold: 600s). Process may be stuck.
+2026-03-10 02:11:30   Process stats: CPU= 442%, MEM=89.8%
+2026-03-10 02:13:30 HANG: Log file not updated for 955s (threshold: 600s). Process may be stuck.
+2026-03-10 02:13:30   Process stats: CPU= 504%, MEM=89.4%
+2026-03-10 02:15:30 HANG: Log file not updated for 1075s (threshold: 600s). Process may be stuck.
+2026-03-10 02:15:30   Process stats: CPU= 547%, MEM=89.4%
+2026-03-10 02:17:30 HANG: Log file not updated for 1195s (threshold: 600s). Process may be stuck.
+2026-03-10 02:17:30   Process stats: CPU= 589%, MEM=89.4%
+2026-03-10 02:19:30 HANG: Log file not updated for 1315s (threshold: 600s). Process may be stuck.
+2026-03-10 02:19:30   Process stats: CPU= 625%, MEM=89.4%
+2026-03-10 02:21:30 HANG: Log file not updated for 1435s (threshold: 600s). Process may be stuck.
+2026-03-10 02:21:30   Process stats: CPU= 654%, MEM=89.4%
+2026-03-10 02:23:30 HANG: Log file not updated for 1555s (threshold: 600s). Process may be stuck.
+2026-03-10 02:23:30   Process stats: CPU= 680%, MEM=89.5%
+2026-03-10 02:25:30 HANG: Log file not updated for 1675s (threshold: 600s). Process may be stuck.
+2026-03-10 02:25:30   Process stats: CPU= 704%, MEM=89.5%
+2026-03-10 02:27:30 HANG: Log file not updated for 1795s (threshold: 600s). Process may be stuck.
+2026-03-10 02:27:30   Process stats: CPU= 722%, MEM=89.5%
+2026-03-10 02:29:30 HANG: Log file not updated for 1915s (threshold: 600s). Process may be stuck.
+2026-03-10 02:29:30   Process stats: CPU= 737%, MEM=89.5%
+2026-03-10 02:31:30 HANG: Log file not updated for 2035s (threshold: 600s). Process may be stuck.
+2026-03-10 02:31:30   Process stats: CPU= 754%, MEM=89.4%
+2026-03-10 02:33:30 HANG: Log file not updated for 2155s (threshold: 600s). Process may be stuck.
+2026-03-10 02:33:30   Process stats: CPU= 768%, MEM=89.4%
+2026-03-10 02:35:30 HANG: Log file not updated for 2275s (threshold: 600s). Process may be stuck.
+2026-03-10 02:35:30   Process stats: CPU= 781%, MEM=89.5%
+2026-03-10 02:37:30 HANG: Log file not updated for 2395s (threshold: 600s). Process may be stuck.
+2026-03-10 02:37:30   Process stats: CPU= 791%, MEM=89.5%
+2026-03-10 02:39:30 HANG: Log file not updated for 2515s (threshold: 600s). Process may be stuck.
+2026-03-10 02:39:30   Process stats: CPU= 802%, MEM=89.5%
+2026-03-10 02:41:30 HANG: Log file not updated for 2635s (threshold: 600s). Process may be stuck.
+2026-03-10 02:41:31   Process stats: CPU= 810%, MEM=89.6%
+2026-03-10 02:43:31 HANG: Log file not updated for 2756s (threshold: 600s). Process may be stuck.
+2026-03-10 02:43:31   Process stats: CPU= 818%, MEM=89.6%
+2026-03-10 02:45:31 HANG: Log file not updated for 2876s (threshold: 600s). Process may be stuck.
+2026-03-10 02:45:31   Process stats: CPU= 826%, MEM=89.7%
+2026-03-10 02:47:31 HANG: Log file not updated for 2996s (threshold: 600s). Process may be stuck.
+2026-03-10 02:47:31   Process stats: CPU= 835%, MEM=89.7%
+2026-03-10 02:49:31 HANG: Log file not updated for 3116s (threshold: 600s). Process may be stuck.
+2026-03-10 02:49:31   Process stats: CPU= 841%, MEM=89.7%
+2026-03-10 02:51:31 HANG: Log file not updated for 3236s (threshold: 600s). Process may be stuck.
+2026-03-10 02:51:31   Process stats: CPU= 850%, MEM=89.7%
+2026-03-10 02:53:31 HANG: Log file not updated for 3356s (threshold: 600s). Process may be stuck.
+2026-03-10 02:53:31   Process stats: CPU= 855%, MEM=89.8%
+2026-03-10 02:55:31 HANG: Log file not updated for 3476s (threshold: 600s). Process may be stuck.
+2026-03-10 02:55:31   Process stats: CPU= 861%, MEM=89.8%
+2026-03-10 02:57:31 HANG: Log file not updated for 3596s (threshold: 600s). Process may be stuck.
+2026-03-10 02:57:31   Process stats: CPU= 854%, MEM=89.8%
+2026-03-10 02:59:31 HANG: Log file not updated for 3716s (threshold: 600s). Process may be stuck.
+2026-03-10 02:59:31   Process stats: CPU= 835%, MEM=89.8%
+2026-03-10 03:01:31 HANG: Log file not updated for 3836s (threshold: 600s). Process may be stuck.
+2026-03-10 03:01:31   Process stats: CPU= 818%, MEM=89.7%
+2026-03-10 03:03:31 HANG: Log file not updated for 3956s (threshold: 600s). Process may be stuck.
+2026-03-10 03:03:31   Process stats: CPU= 801%, MEM=89.4%
+2026-03-10 03:05:31 HANG: Log file not updated for 4076s (threshold: 600s). Process may be stuck.
+2026-03-10 03:05:31   Process stats: CPU= 785%, MEM=89.4%
+2026-03-10 03:07:31 HANG: Log file not updated for 4196s (threshold: 600s). Process may be stuck.
+2026-03-10 03:07:31   Process stats: CPU= 771%, MEM=89.4%
+2026-03-10 03:09:31 HANG: Log file not updated for 4316s (threshold: 600s). Process may be stuck.
+2026-03-10 03:09:31   Process stats: CPU= 757%, MEM=89.4%
+2026-03-10 03:11:31 HANG: Log file not updated for 4436s (threshold: 600s). Process may be stuck.
+2026-03-10 03:11:31   Process stats: CPU= 744%, MEM=89.4%
+2026-03-10 03:13:31 HANG: Log file not updated for 4556s (threshold: 600s). Process may be stuck.
+2026-03-10 03:13:31   Process stats: CPU= 732%, MEM=89.4%
+2026-03-10 03:15:31 HANG: Log file not updated for 4676s (threshold: 600s). Process may be stuck.
+2026-03-10 03:15:31   Process stats: CPU= 720%, MEM=89.4%
+2026-03-10 03:17:31 HANG: Log file not updated for 4796s (threshold: 600s). Process may be stuck.
+2026-03-10 03:17:31   Process stats: CPU= 710%, MEM=89.4%
+2026-03-10 03:19:31 HANG: Log file not updated for 4916s (threshold: 600s). Process may be stuck.
+2026-03-10 03:19:31   Process stats: CPU= 700%, MEM=89.4%
+2026-03-10 03:21:31 HANG: Log file not updated for 5036s (threshold: 600s). Process may be stuck.
+2026-03-10 03:21:31   Process stats: CPU= 689%, MEM=89.4%
+2026-03-10 03:23:31 HANG: Log file not updated for 5156s (threshold: 600s). Process may be stuck.
+2026-03-10 03:23:31   Process stats: CPU= 680%, MEM=89.4%
+2026-03-10 03:25:31 HANG: Log file not updated for 5276s (threshold: 600s). Process may be stuck.
+2026-03-10 03:25:31   Process stats: CPU= 671%, MEM=89.4%
+2026-03-10 03:27:31 HANG: Log file not updated for 5396s (threshold: 600s). Process may be stuck.
+2026-03-10 03:27:32   Process stats: CPU= 662%, MEM=89.4%
+2026-03-10 03:29:32 HANG: Log file not updated for 5517s (threshold: 600s). Process may be stuck.
+2026-03-10 03:29:32   Process stats: CPU= 653%, MEM=89.4%
+2026-03-10 03:31:32 HANG: Log file not updated for 5637s (threshold: 600s). Process may be stuck.
+2026-03-10 03:31:32   Process stats: CPU= 645%, MEM=89.4%
+2026-03-10 03:33:32 HANG: Log file not updated for 5757s (threshold: 600s). Process may be stuck.
+2026-03-10 03:33:32   Process stats: CPU= 638%, MEM=89.4%
+2026-03-10 03:35:32 HANG: Log file not updated for 5877s (threshold: 600s). Process may be stuck.
+2026-03-10 03:35:32   Process stats: CPU= 630%, MEM=89.4%
+2026-03-10 03:37:32 HANG: Log file not updated for 5997s (threshold: 600s). Process may be stuck.
+2026-03-10 03:37:32   Process stats: CPU= 623%, MEM=89.5%
+2026-03-10 03:39:32 HANG: Log file not updated for 6117s (threshold: 600s). Process may be stuck.
+2026-03-10 03:39:32   Process stats: CPU= 616%, MEM=89.5%
+2026-03-10 03:41:32 HANG: Log file not updated for 6237s (threshold: 600s). Process may be stuck.
+2026-03-10 03:41:32   Process stats: CPU= 610%, MEM=89.5%
+2026-03-10 03:43:32 HANG: Log file not updated for 6357s (threshold: 600s). Process may be stuck.
+2026-03-10 03:43:32   Process stats: CPU= 604%, MEM=89.5%
+2026-03-10 03:45:32 HANG: Log file not updated for 6477s (threshold: 600s). Process may be stuck.
+2026-03-10 03:45:32   Process stats: CPU= 597%, MEM=89.5%
+2026-03-10 03:47:32 HANG: Log file not updated for 6597s (threshold: 600s). Process may be stuck.
+2026-03-10 03:47:32   Process stats: CPU= 591%, MEM=89.5%
+2026-03-10 03:49:32 HANG: Log file not updated for 6717s (threshold: 600s). Process may be stuck.
+2026-03-10 03:49:32   Process stats: CPU= 586%, MEM=89.5%
+2026-03-10 03:51:32 HANG: Log file not updated for 6837s (threshold: 600s). Process may be stuck.
+2026-03-10 03:51:32   Process stats: CPU= 580%, MEM=89.5%
+2026-03-10 03:53:32 HANG: Log file not updated for 6957s (threshold: 600s). Process may be stuck.
+2026-03-10 03:53:32   Process stats: CPU= 575%, MEM=89.5%
+2026-03-10 03:55:32 HANG: Log file not updated for 7077s (threshold: 600s). Process may be stuck.
+2026-03-10 03:55:32   Process stats: CPU= 570%, MEM=89.5%
+2026-03-10 03:57:32 HANG: Log file not updated for 7197s (threshold: 600s). Process may be stuck.
+2026-03-10 03:57:32   Process stats: CPU= 565%, MEM=89.5%
+2026-03-10 03:59:32 HANG: Log file not updated for 7317s (threshold: 600s). Process may be stuck.
+2026-03-10 03:59:32   Process stats: CPU= 560%, MEM=89.5%
+2026-03-10 04:01:32 HANG: Log file not updated for 7437s (threshold: 600s). Process may be stuck.
+2026-03-10 04:01:32   Process stats: CPU= 556%, MEM=89.5%
+2026-03-10 04:03:32 HANG: Log file not updated for 7557s (threshold: 600s). Process may be stuck.
+2026-03-10 04:03:32   Process stats: CPU= 551%, MEM=89.5%
+2026-03-10 04:05:32 HANG: Log file not updated for 7677s (threshold: 600s). Process may be stuck.
+2026-03-10 04:05:32   Process stats: CPU= 547%, MEM=89.5%
+2026-03-10 04:07:32 HANG: Log file not updated for 7797s (threshold: 600s). Process may be stuck.
+2026-03-10 04:07:32   Process stats: CPU= 542%, MEM=89.5%
+2026-03-10 04:09:32 HANG: Log file not updated for 7917s (threshold: 600s). Process may be stuck.
+2026-03-10 04:09:32   Process stats: CPU= 538%, MEM=89.5%
+2026-03-10 04:11:32 HANG: Log file not updated for 8037s (threshold: 600s). Process may be stuck.
+2026-03-10 04:11:32   Process stats: CPU= 534%, MEM=89.5%
+2026-03-10 04:13:32 HANG: Log file not updated for 8157s (threshold: 600s). Process may be stuck.
+2026-03-10 04:13:32   Process stats: CPU= 530%, MEM=89.5%
+2026-03-10 04:15:32 HANG: Log file not updated for 8277s (threshold: 600s). Process may be stuck.
+2026-03-10 04:15:32   Process stats: CPU= 526%, MEM=89.5%
+2026-03-10 04:17:32 HANG: Log file not updated for 8397s (threshold: 600s). Process may be stuck.
+2026-03-10 04:17:32   Process stats: CPU= 523%, MEM=89.5%
+2026-03-10 04:19:32 HANG: Log file not updated for 8517s (threshold: 600s). Process may be stuck.
+2026-03-10 04:19:33   Process stats: CPU= 519%, MEM=89.5%
+2026-03-10 04:21:33 HANG: Log file not updated for 8638s (threshold: 600s). Process may be stuck.
+2026-03-10 04:21:33   Process stats: CPU= 517%, MEM=89.6%
+2026-03-10 04:23:33 HANG: Log file not updated for 8758s (threshold: 600s). Process may be stuck.
+2026-03-10 04:23:33   Process stats: CPU= 513%, MEM=89.6%
+2026-03-10 04:25:33 HANG: Log file not updated for 8878s (threshold: 600s). Process may be stuck.
+2026-03-10 04:25:33   Process stats: CPU= 510%, MEM=89.6%
+2026-03-10 04:27:33 HANG: Log file not updated for 8998s (threshold: 600s). Process may be stuck.
+2026-03-10 04:27:33   Process stats: CPU= 507%, MEM=89.6%
+2026-03-10 04:29:33 HANG: Log file not updated for 9118s (threshold: 600s). Process may be stuck.
+2026-03-10 04:29:33   Process stats: CPU= 504%, MEM=89.6%
+2026-03-10 04:31:33 HANG: Log file not updated for 9238s (threshold: 600s). Process may be stuck.
+2026-03-10 04:31:33   Process stats: CPU= 500%, MEM=89.6%
+2026-03-10 04:33:33 HANG: Log file not updated for 9358s (threshold: 600s). Process may be stuck.
+2026-03-10 04:33:33   Process stats: CPU= 497%, MEM=89.6%
+2026-03-10 04:35:33 HANG: Log file not updated for 9478s (threshold: 600s). Process may be stuck.
+2026-03-10 04:35:33   Process stats: CPU= 495%, MEM=89.6%
+2026-03-10 04:37:33 HANG: Log file not updated for 9598s (threshold: 600s). Process may be stuck.
+2026-03-10 04:37:33   Process stats: CPU= 492%, MEM=89.6%
+2026-03-10 04:39:33 HANG: Log file not updated for 9718s (threshold: 600s). Process may be stuck.
+2026-03-10 04:39:33   Process stats: CPU= 489%, MEM=89.6%
+2026-03-10 04:41:33 HANG: Log file not updated for 9838s (threshold: 600s). Process may be stuck.
+2026-03-10 04:41:33   Process stats: CPU= 486%, MEM=89.6%
+2026-03-10 04:43:33 HANG: Log file not updated for 9958s (threshold: 600s). Process may be stuck.
+2026-03-10 04:43:33   Process stats: CPU= 484%, MEM=89.6%
+2026-03-10 04:45:33 HANG: Log file not updated for 10078s (threshold: 600s). Process may be stuck.
+2026-03-10 04:45:33   Process stats: CPU= 481%, MEM=89.6%
+2026-03-10 04:47:33 HANG: Log file not updated for 10198s (threshold: 600s). Process may be stuck.
+2026-03-10 04:47:33   Process stats: CPU= 479%, MEM=89.6%
+2026-03-10 04:49:33 HANG: Log file not updated for 10318s (threshold: 600s). Process may be stuck.
+2026-03-10 04:49:33   Process stats: CPU= 476%, MEM=89.6%
+2026-03-10 04:51:33 HANG: Log file not updated for 10438s (threshold: 600s). Process may be stuck.
+2026-03-10 04:51:33   Process stats: CPU= 474%, MEM=89.6%
+2026-03-10 04:53:33 CRASH: Training process PID 844534 is dead!
+2026-03-10 04:53:33 Process exited with error

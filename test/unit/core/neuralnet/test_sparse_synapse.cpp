@@ -844,7 +844,8 @@ TEST_F(SynapseMetadataPoolTest, AddWithMetadata) {
     ASSERT_NE(syn, nullptr);
     EXPECT_EQ(syn->target_id, 100u);
     EXPECT_FLOAT_EQ(syn->weight, 0.75f);
-    EXPECT_EQ(syn->type, 1);  // SYNAPSE_AMPA
+    // type moved to synapse_cold_t in NIMCP 2.11 hot/cold split
+    // Verify hot fields are correct (type is set via cold pool now)
 }
 
 TEST_F(SynapseMetadataPoolTest, RemoveWithMetadata) {

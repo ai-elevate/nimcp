@@ -42,6 +42,7 @@
 #include <sched.h>  // C-ADP-11: sched_yield() for pool cleanup drain
 #endif
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 #include "core/neuralnet/nimcp_neuralnet_learning.h"
 #include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/containers/nimcp_hash_table.h"
@@ -2950,7 +2951,15 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
                         float meta_plasticity = syn ? syn->meta_plasticity : 0.0f;
                         float last_change = syn ? syn->last_change : 0.0f;
                         uint64_t last_active = syn ? syn->last_active : 0;
-                        bool enable_stp = syn ? syn->enable_stp : false;
+                        bool enable_stp = false;
+                        stp_state_t stp_save = {0};
+                        if (syn) {
+                            synapse_cold_t* save_cold = SYNAPSE_COLD(network->base_network, syn);
+                            if (save_cold) {
+                                enable_stp = save_cold->enable_stp;
+                                if (enable_stp) stp_save = save_cold->stp;
+                            }
+                        }
                         FWRITE_CHECKED(&plasticity, sizeof(float), 1, file);
                         FWRITE_CHECKED(&trace, sizeof(float), 1, file);
                         FWRITE_CHECKED(&strength, sizeof(float), 1, file);
@@ -2958,8 +2967,8 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
                         FWRITE_CHECKED(&last_change, sizeof(float), 1, file);
                         FWRITE_CHECKED(&last_active, sizeof(uint64_t), 1, file);
                         FWRITE_CHECKED(&enable_stp, sizeof(bool), 1, file);
-                        if (enable_stp && syn) {
-                            FWRITE_CHECKED(&syn->stp, sizeof(stp_state_t), 1, file);
+                        if (enable_stp) {
+                            FWRITE_CHECKED(&stp_save, sizeof(stp_state_t), 1, file);
                         }
                     }
 
@@ -3472,8 +3481,13 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                             syn->meta_plasticity = meta_plasticity;
                             syn->last_change = last_change;
                             syn->last_active = last_active;
-                            syn->enable_stp = enable_stp;
-                            if (enable_stp) syn->stp = stp_data;
+                            if (enable_stp) {
+                                synapse_cold_t* load_cold = SYNAPSE_ENSURE_COLD(network->base_network, syn);
+                                if (load_cold) {
+                                    load_cold->enable_stp = enable_stp;
+                                    load_cold->stp = stp_data;
+                                }
+                            }
                         }
                     } else {
                         total_synapses_dropped++;

@@ -42,6 +42,26 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
         goto cleanup;
     }
 
+    // Initialize sparse coding on loaded brain (not serialized in checkpoint)
+    {
+        brain_t b = handle->internal_brain;
+        if (!b->sparse_coding_system) {
+            sparse_coding_config_t sc_config;
+            cortical_sparse_default_config(&sc_config);
+            sc_config.sparsity_method = SPARSITY_METHOD_K_WTA;
+            sc_config.target_sparsity = 0.05f;
+            sc_config.num_columns = b->config.num_outputs > 0 ? b->config.num_outputs : 4096;
+            sc_config.k_winners = (uint32_t)(sc_config.num_columns * sc_config.target_sparsity);
+            if (sc_config.k_winners < 8) sc_config.k_winners = 8;
+            sc_config.enable_homeostasis = true;
+            sc_config.adaptation_rate = 0.002f;
+            sc_config.enable_bio_async = false;
+            sc_config.enable_lateral_inhibition = false;
+            b->sparse_coding_system = cortical_sparse_create(&sc_config);
+            b->enable_sparse_coding = (b->sparse_coding_system != NULL);
+        }
+    }
+
     set_error("No error");
     return handle;
 

@@ -267,7 +267,7 @@ static void determine_output_label(brain_t brain, brain_decision_t* decision)
         && brain->output_labels[max_idx]) {
         strncpy(decision->label, brain->output_labels[max_idx], sizeof(decision->label) - 1);
     } else {
-        snprintf(decision->label, sizeof(decision->label), "output_%u", max_idx);
+        decision->label[0] = '\0';
     }
 
     // W6-3 FIX: Use ratio normalization (max/sum_abs) matching predict_fast,
