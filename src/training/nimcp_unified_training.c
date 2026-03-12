@@ -876,10 +876,39 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             }
         }
 
+        /* Adapt input dimensions if network expects smaller input than provided.
+         * Use average-pooling to downsample (preserves signal magnitude). */
+        uint32_t net_in_dim = net->ops->get_input_dim(net->ctx);
+        float* adapted_input = NULL;
+        if (net_in_dim > 0 && net_input_dim > net_in_dim) {
+            adapted_input = (float*)nimcp_calloc(net_in_dim, sizeof(float));
+            if (adapted_input) {
+                /* Average-pool: each output = mean of (input_dim/net_dim) input elements */
+                float ratio = (float)net_input_dim / (float)net_in_dim;
+                for (uint32_t j = 0; j < net_in_dim; j++) {
+                    uint32_t start = (uint32_t)(j * ratio);
+                    uint32_t end = (uint32_t)((j + 1) * ratio);
+                    if (end > net_input_dim) end = net_input_dim;
+                    if (end <= start) end = start + 1;
+                    float sum = 0.0f;
+                    for (uint32_t k = start; k < end; k++) {
+                        sum += net_input[k];
+                    }
+                    adapted_input[j] = sum / (float)(end - start);
+                }
+                /* If we had a bridged input, free it before replacing */
+                if (net_input != input) {
+                    nimcp_free((void*)net_input);
+                }
+                net_input = adapted_input;
+                net_input_dim = net_in_dim;
+            }
+        }
+
         int rc = net->ops->forward(net->ctx, net_input, net_input_dim,
                                    net_outputs[i], out_dim);
 
-        /* Free bridged input if we allocated one */
+        /* Free adapted or bridged input if we allocated one */
         if (net_input != input) {
             nimcp_free((void*)net_input);
         }

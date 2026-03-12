@@ -723,3 +723,8 @@
 [2026-03-12 18:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-03-12 18:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-03-12 18:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 18:45:01] [WARN] RSS memory high: 56.2GB (threshold: 55GB)
+[2026-03-12 18:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 18:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 19:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 19:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
