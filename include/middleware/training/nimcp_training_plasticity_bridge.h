@@ -338,7 +338,10 @@ typedef struct {
 /**
  * @brief Training-Plasticity Bridge context (opaque)
  */
+#ifndef TPB_CONTEXT_TYPEDEF
+#define TPB_CONTEXT_TYPEDEF
 typedef struct tpb_context tpb_context_t;
+#endif
 
 //=============================================================================
 // Lifecycle Functions
@@ -1075,6 +1078,30 @@ NIMCP_EXPORT bool tpb_is_perception_training_connected(
 NIMCP_EXPORT bool tpb_is_cortical_training_connected(
     const tpb_context_t* ctx
 );
+
+//=============================================================================
+// Phase 5: Backprop Gating
+//=============================================================================
+
+/**
+ * @brief Set backprop-active flag to suppress biological plasticity during backprop
+ *
+ * WHAT: Thread-safe flag to gate plasticity during gradient computation
+ * WHY:  Biological plasticity (STDP, BCM, etc.) interferes with gradient-based training
+ * HOW:  Uses GCC __atomic_store_n with release semantics
+ *
+ * @param ctx    Bridge context
+ * @param active true to suppress plasticity, false to re-enable
+ */
+NIMCP_EXPORT void nimcp_tpb_set_backprop_active(tpb_context_t* ctx, bool active);
+
+/**
+ * @brief Check if backprop is currently active (plasticity should be suppressed)
+ *
+ * @param ctx Bridge context
+ * @return true if backprop is active, false otherwise
+ */
+NIMCP_EXPORT bool nimcp_tpb_is_backprop_active(tpb_context_t* ctx);
 
 #ifdef __cplusplus
 }

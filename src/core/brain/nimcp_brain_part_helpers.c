@@ -984,10 +984,48 @@ static void fuse_forward_outputs(const forward_task_ctx_t* ctx,
                                   uint32_t* active_neurons_out,
                                   brain_decision_t* decision)
 {
-    float total_confidence = 0.0f;
-
     /* Zero fused output */
     memset(fused_output, 0, output_size * sizeof(float));
+
+    /* Phase 6: Use explicit fusion weights when enabled */
+    if (ctx->brain && ctx->brain->enable_fusion) {
+        /* Softmax normalization of fusion weights for active networks */
+        float weights[3] = {0};  /* adaptive, CNN, SNN */
+        float wsum = 0.0f;
+        if (ctx->adaptive_success) { weights[0] = ctx->brain->fusion_weights[0]; wsum += weights[0]; }
+        if (ctx->cnn_success)      { weights[1] = ctx->brain->fusion_weights[1]; wsum += weights[1]; }
+        if (ctx->snn_success)      { weights[2] = ctx->brain->fusion_weights[2]; wsum += weights[2]; }
+        if (wsum > 0.0f) {
+            float inv = 1.0f / wsum;
+            for (int k = 0; k < 3; k++) weights[k] *= inv;
+        } else {
+            weights[0] = 1.0f;  /* Fallback to adaptive only */
+        }
+
+        if (ctx->adaptive_success) {
+            for (uint32_t i = 0; i < output_size; i++)
+                fused_output[i] += weights[0] * ctx->adaptive_output[i];
+            *active_neurons_out = ctx->adaptive_active;
+        }
+        if (ctx->cnn_success) {
+            for (uint32_t i = 0; i < output_size; i++)
+                fused_output[i] += weights[1] * ctx->cnn_output[i];
+            if (ctx->cnn_has_label) {
+                strncpy(decision->label, ctx->cnn_label, sizeof(decision->label) - 1);
+                decision->label[sizeof(decision->label) - 1] = '\0';
+            }
+        }
+        if (ctx->snn_success) {
+            for (uint32_t i = 0; i < output_size; i++) {
+                if (isfinite(ctx->snn_output[i]))
+                    fused_output[i] += weights[2] * ctx->snn_output[i];
+            }
+        }
+        return;
+    }
+
+    /* Legacy confidence-weighted fusion */
+    float total_confidence = 0.0f;
 
     /* Adaptive contribution (always expected to succeed) */
     if (ctx->adaptive_success) {
@@ -1213,11 +1251,19 @@ sequential_fallback:
             int rc = snn_network_forward(brain->snn_network, snn_input_ptr, snn_input_dim,
                                          snn_output, snn_out_dim, 10.0f);
             if (rc == 0) {
-                /* Blend: 70% adaptive + 30% SNN (only first snn_out_dim elements) */
+                /* Blend adaptive + SNN outputs */
+                float w_adapt = 0.7f, w_snn = 0.3f;
+                if (brain->enable_fusion) {
+                    float ws = brain->fusion_weights[0] + brain->fusion_weights[2];
+                    if (ws > 0.0f) {
+                        w_adapt = brain->fusion_weights[0] / ws;
+                        w_snn = brain->fusion_weights[2] / ws;
+                    }
+                }
                 for (uint32_t i = 0; i < snn_out_dim; i++) {
                     if (isfinite(snn_output[i])) {
-                        decision->output_vector[i] = 0.7f * decision->output_vector[i]
-                                                   + 0.3f * snn_output[i];
+                        decision->output_vector[i] = w_adapt * decision->output_vector[i]
+                                                   + w_snn * snn_output[i];
                     }
                 }
             }
@@ -1268,13 +1314,25 @@ lnn_gating:
             if (rc == 0) {
                 const float* lo_data = (const float*)nimcp_tensor_data(lnn_output);
                 if (lo_data) {
-                    /* Multiplicative sigmoid gating on first lnn_out_size outputs */
+                    /* LNN gating on first lnn_out_size outputs */
                     uint32_t gate_size = (lnn_out_size < decision->output_size)
                                        ? lnn_out_size : decision->output_size;
-                    for (uint32_t i = 0; i < gate_size; i++) {
-                        if (isfinite(lo_data[i])) {
-                            float gate = 1.0f / (1.0f + expf(-lo_data[i]));
-                            decision->output_vector[i] *= gate;
+                    if (brain->enable_fusion && brain->fusion_weights[3] > 0.0f) {
+                        /* Fusion mode: additive blending with LNN weight */
+                        float w_lnn = brain->fusion_weights[3];
+                        for (uint32_t i = 0; i < gate_size; i++) {
+                            if (isfinite(lo_data[i])) {
+                                decision->output_vector[i] = (1.0f - w_lnn) * decision->output_vector[i]
+                                                           + w_lnn * lo_data[i];
+                            }
+                        }
+                    } else {
+                        /* Legacy: multiplicative sigmoid gating */
+                        for (uint32_t i = 0; i < gate_size; i++) {
+                            if (isfinite(lo_data[i])) {
+                                float gate = 1.0f / (1.0f + expf(-lo_data[i]));
+                                decision->output_vector[i] *= gate;
+                            }
                         }
                     }
                 }

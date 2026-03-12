@@ -29,6 +29,7 @@ Usage:
 """
 
 import argparse
+import hashlib
 import logging
 import os
 import socket
@@ -507,6 +508,66 @@ class AdaptiveBatchSize:
     @property
     def size(self):
         return self.current
+
+
+class MiniBatchTrainer:
+    """Accumulates learn_vector calls into mini-batches for GPU gradient accumulation.
+
+    Instead of per-sample SGD, collects N samples and calls learn_vector_batch()
+    for more stable gradients and better GPU utilization.
+    """
+
+    def __init__(self, brain, batch_size=8):
+        self.brain = brain
+        self.batch_size = batch_size
+        self._buffer = []  # list of (features, target, label, confidence, lr)
+        self._last_avg_loss = 0.0
+
+    def learn(self, features, target, label="", confidence=0.5, learning_rate=None):
+        """Buffer a sample. Returns estimated loss (batch average when flushed)."""
+        self._buffer.append((features, target, label, confidence, learning_rate))
+        if len(self._buffer) >= self.batch_size:
+            return self.flush()
+        return self._last_avg_loss  # return last batch average as estimate
+
+    def flush(self):
+        """Flush accumulated samples as a batch."""
+        if not self._buffer:
+            return self._last_avg_loss
+
+        pairs = [(f, t) for f, t, _, _, _ in self._buffer]
+        # Use the average LR across samples
+        lrs = [lr for _, _, _, _, lr in self._buffer if lr is not None]
+        avg_lr = sum(lrs) / len(lrs) if lrs else None
+
+        try:
+            lr_kw = {"learning_rate": avg_lr} if avg_lr is not None else {}
+            avg_loss = self.brain.learn_vector_batch(pairs, **lr_kw)
+            if avg_loss is not None and avg_loss >= 0:
+                self._last_avg_loss = avg_loss
+            else:
+                self._last_avg_loss = 0.0
+        except (AttributeError, TypeError):
+            # Fallback: per-sample learning
+            losses = []
+            for f, t, lbl, conf, lr in self._buffer:
+                lr_kw = {"learning_rate": lr} if lr is not None else {}
+                loss = self.brain.learn_vector(f, t, label=lbl,
+                                               confidence=conf, **lr_kw)
+                losses.append(loss if loss is not None and loss >= 0 else 0.0)
+            self._last_avg_loss = sum(losses) / len(losses) if losses else 0.0
+        except Exception:
+            # Fallback: per-sample learning
+            losses = []
+            for f, t, lbl, conf, lr in self._buffer:
+                lr_kw = {"learning_rate": lr} if lr is not None else {}
+                loss = self.brain.learn_vector(f, t, label=lbl,
+                                               confidence=conf, **lr_kw)
+                losses.append(loss if loss is not None and loss >= 0 else 0.0)
+            self._last_avg_loss = sum(losses) / len(losses) if losses else 0.0
+
+        self._buffer.clear()
+        return self._last_avg_loss
 
 
 class ParallelDataLoader:
@@ -2808,6 +2869,13 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         target = make_semantic_target(description)
         submit_multimodal(brain, description)
         result = brain.decide_full(features)
+
+        # Held-out check: 20% of items are evaluation-only (no learning)
+        if _held_out_buffer.is_held_out(features):
+            _held_out_buffer.add(features, target, domain="stage0_experience")
+            self.interaction_count += 1
+            return 0.0, result
+
         loss = brain.learn_vector(features, target, label=description[:50],
                                   confidence=0.5)
         self._train_cognitive(brain, description, domain=10)
@@ -2856,6 +2924,12 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         narration = self._pop_content("_narrations")
         if narration:
             print(f"  Parent: {narration}")
+
+        # Held-out check: 20% of items are evaluation-only (no learning)
+        if _held_out_buffer.is_held_out(features):
+            _held_out_buffer.add(features, target, domain="stage1_naming")
+            self.interaction_count += 1
+            return 0.0, result
 
         # Dense target trains adaptive network; label trains CNN classifier
         lr_kwargs = {"learning_rate": learning_rate} if learning_rate is not None else {}
@@ -2937,6 +3011,12 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         submit_multimodal(brain, description)
         result = brain.decide_full(features)
         response_text = self.observe_response(result)
+
+        # Held-out check: 20% of items are evaluation-only (no learning)
+        if _held_out_buffer.is_held_out(features):
+            _held_out_buffer.add(features, target, domain="stage2_encourage")
+            self.interaction_count += 1
+            return 0.0, result
 
         # Dense target trains adaptive network; label trains CNN classifier
         lr_kwargs = {"learning_rate": learning_rate} if learning_rate is not None else {}
@@ -3529,8 +3609,14 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         submit_multimodal(brain, description)
         result = brain.decide_full(features)
 
-        # Accumulate into mini-batch (adaptive size)
-        mini_batch_buf.append((features, target, description))
+        # Held-out check: 20% of items are evaluation-only (no learning)
+        _is_held_out = _held_out_buffer.is_held_out(features)
+        if _is_held_out:
+            _held_out_buffer.add(features, target, domain="stage0_sensory")
+
+        # Accumulate into mini-batch (adaptive size) — skip held-out items
+        if not _is_held_out:
+            mini_batch_buf.append((features, target, description))
 
         # Inject hard example replays periodically
         if hard_miner.should_replay() and len(mini_batch_buf) < adaptive_batch.size:
@@ -3957,6 +4043,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
     distiller = ClaudeDistiller(teacher=parent.teacher)
     temporal = MultiResolutionTemporal(brain, slow_interval=5)
     early_stop = EarlyStopping(patience=6, min_delta=0.003, mode="min")
+    batch_trainer = MiniBatchTrainer(brain, batch_size=8)
     contrastive = ContrastiveRegularizer(
         buffer_size=200, interval=20, batch_size=32,
         similarity_threshold=0.75, min_input_distance=0.3, strength=0.6)
@@ -4013,34 +4100,40 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             target = make_semantic_target(topic_text)
             submit_multimodal(brain, topic_text)
             result = brain.decide_full(features)
-            confidence = mastery.get_confidence_for_domain(domain_name, progress)
-            adaptive_lr = mastery.get_adaptive_lr(domain_name) * lr_scheduler.get_lr()
-            loss = brain.learn_vector(features, target,
-                                       label=domain_name[:50], confidence=confidence,
-                                       learning_rate=adaptive_lr)
-            lr_scheduler.step()
-            mastery.record(domain_name, loss, confidence)
-            hard_miner.record(loss, topic_text, features, target)
 
-            if decoder:
-                output_vec = result.get("output_vector")
-                if output_vec is not None:
-                    target_emb = encode_text(topic_text)
-                    decoder.record_pair(output_vec, target_emb, topic_text)
-                    embed_adapter.record_pair(target_emb,
-                                               extract_embedding_from_output(np.array(output_vec)))
-                    contrastive.record(target_emb, output_vec, features)
-                    diversity.record(output_vec, features)
+            # Held-out check: 20% of items are evaluation-only (no learning)
+            if _held_out_buffer.is_held_out(features):
+                _held_out_buffer.add(features, target, domain=domain_name)
+                lr_scheduler.step()
+            else:
+                confidence = mastery.get_confidence_for_domain(domain_name, progress)
+                adaptive_lr = mastery.get_adaptive_lr(domain_name) * lr_scheduler.get_lr()
+                loss = batch_trainer.learn(features, target,
+                                           label=domain_name[:50], confidence=confidence,
+                                           learning_rate=adaptive_lr)
+                lr_scheduler.step()
+                mastery.record(domain_name, loss, confidence)
+                hard_miner.record(loss, topic_text, features, target)
 
-            if loss is not None:
-                print(f"    loss={loss:.4f} conf={confidence:.2f}")
+                if decoder:
+                    output_vec = result.get("output_vector")
+                    if output_vec is not None:
+                        target_emb = encode_text(topic_text)
+                        decoder.record_pair(output_vec, target_emb, topic_text)
+                        embed_adapter.record_pair(target_emb,
+                                                   extract_embedding_from_output(np.array(output_vec)))
+                        contrastive.record(target_emb, output_vec, features)
+                        diversity.record(output_vec, features)
+
+                if loss is not None:
+                    print(f"    loss={loss:.4f} conf={confidence:.2f}")
 
         elif r < 0.44:
             # Hard example replay — re-train on highest-loss examples
             if hard_miner.should_replay():
                 replays = hard_miner.get_hard_examples(3)
                 for rdesc, rfeat, rtgt in replays:
-                    loss = brain.learn_vector(rfeat, rtgt, label="replay",
+                    loss = batch_trainer.learn(rfeat, rtgt, label="replay",
                                                confidence=0.7,
                                                learning_rate=lr_scheduler.get_lr())
                     if loss is not None and (i + 1) % 200 == 0:
@@ -4065,7 +4158,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                         features = composer.compose(text=lesson_text, modality="text",
                                                      text_embedding=lesson_emb.tolist())
                         target = make_semantic_target(lesson_text)
-                        loss = brain.learn_vector(features, target,
+                        loss = batch_trainer.learn(features, target,
                                             label=spec.domain[:50], confidence=0.7)
                         hard_miner.record(loss, lesson_text, features, target)
 
@@ -4073,7 +4166,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                         distill_targets = distiller.make_distillation_targets(lesson_text)
                         for concept_text, concept_target in distill_targets[:2]:
                             cfeat = composer.compose(text=concept_text, modality="text")
-                            brain.learn_vector(cfeat, concept_target,
+                            batch_trainer.learn(cfeat, concept_target,
                                                 label=f"distill:{concept_text[:40]}",
                                                 confidence=0.6)
                     except Exception as e:
@@ -4105,7 +4198,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             snippet_text, snippet_label, _ = source.get_codebase_snippet()
             features = composer.compose(text=snippet_text, modality="text")
             target = make_semantic_target(snippet_text)
-            loss = brain.learn_vector(features, target,
+            loss = batch_trainer.learn(features, target,
                                        label=snippet_label[:50], confidence=0.6)
             if decoder:
                 output_vec = brain.decide_full(features).get("output_vector")
@@ -4124,13 +4217,13 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                     topic = gaps.get("suggested_topic", "the world")
                     features = composer.compose(text=f"Let's learn about {topic}")
                     target = make_semantic_target(f"exploring {topic}")
-                    brain.learn_vector(features, target, label=topic[:50], confidence=0.5)
+                    batch_trainer.learn(features, target, label=topic[:50], confidence=0.5)
             except Exception:
                 # Free exploration from advanced topics
                 topic_text, domain = source.get_advanced(random.choice(active_domains))
                 features = composer.compose(text=topic_text)
                 target = make_semantic_target(topic_text)
-                brain.learn_vector(features, target, label=domain[:50], confidence=0.4)
+                batch_trainer.learn(features, target, label=domain[:50], confidence=0.4)
 
         # Multi-resolution temporal processing (fast + slow LNN)
         try:
@@ -4219,6 +4312,9 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                     print(f"    KB: {derived} new facts derived")
             except Exception:
                 pass
+
+    # Flush any remaining samples in the mini-batch buffer
+    batch_trainer.flush()
 
 
 # ============================================================================
@@ -4461,6 +4557,169 @@ def chat_eval(brain, composer, decoder, stage, step):
         print(f"  [Chat log write failed: {e}]")
 
 
+# ============================================================================
+# Held-out evaluation buffer + metrics
+# ============================================================================
+
+METRICS_LOG_FILE = "metrics_log.jsonl"
+
+
+class HeldOutBuffer:
+    """Deterministic 80/20 train/eval split based on md5 hash of input vector.
+
+    Items where md5(input_bytes) % 5 == 0 are held out for evaluation only
+    (no learn_vector call). Capped at max_items to bound memory.
+    """
+
+    def __init__(self, max_items=2000):
+        self.max_items = max_items
+        self._items = []  # list of (input_vector, target_vector, domain)
+
+    def is_held_out(self, input_vector):
+        """Deterministic check: True if this input should be held out (20%)."""
+        v = np.asarray(input_vector, dtype=np.float32)
+        h = hashlib.md5(v.tobytes()).hexdigest()
+        return int(h, 16) % 5 == 0
+
+    def add(self, input_vector, target_vector, domain="general"):
+        """Add a held-out item for future evaluation."""
+        if len(self._items) >= self.max_items:
+            # Evict oldest item
+            self._items.pop(0)
+        self._items.append((
+            np.asarray(input_vector, dtype=np.float32).copy(),
+            np.asarray(target_vector, dtype=np.float32).copy(),
+            domain,
+        ))
+
+    def get_eval_items(self):
+        """Return all held-out items as list of (input, target, domain)."""
+        return list(self._items)
+
+    def __len__(self):
+        return len(self._items)
+
+
+class MetricsComputer:
+    """Compute real accuracy metrics on held-out evaluation items.
+
+    For each held-out item, runs brain.decide_full(input) and compares the
+    output against the target via cosine similarity. Also checks top-k
+    accuracy using the decoder vocabulary.
+    """
+
+    @staticmethod
+    def compute(brain, composer, decoder, held_out_items):
+        """Compute metrics on held-out items.
+
+        Args:
+            brain: nimcp.Brain instance
+            composer: SensoryComposer (unused here, items already composed)
+            decoder: NeuralDecoder with vocabulary for top-k lookup
+            held_out_items: list of (input_vector, target_vector, domain)
+
+        Returns:
+            dict with top_1, top_3, top_5 accuracy, mean_cosine_sim,
+            differentiation_score, per_domain breakdown, count.
+        """
+        if not held_out_items:
+            return None
+
+        top1_correct = 0
+        top3_correct = 0
+        top5_correct = 0
+        cosine_sims = []
+        outputs = []
+        per_domain = {}  # domain -> {cosine_sims, count}
+
+        has_vocab = decoder and len(decoder.vocabulary) > 0
+
+        for input_vec, target_vec, domain in held_out_items:
+            result = brain.decide_full(input_vec)
+            output_vec = result.get("output_vector")
+            if output_vec is None:
+                continue
+
+            output_arr = np.array(output_vec, dtype=np.float32)
+            target_arr = np.asarray(target_vec, dtype=np.float32)
+
+            # Cosine similarity between output and target
+            out_norm = np.linalg.norm(output_arr)
+            tgt_norm = np.linalg.norm(target_arr)
+            if out_norm > 1e-8 and tgt_norm > 1e-8:
+                cos_sim = float(np.dot(output_arr, target_arr) / (out_norm * tgt_norm))
+            else:
+                cos_sim = 0.0
+            cosine_sims.append(cos_sim)
+            outputs.append(output_arr)
+
+            # Per-domain tracking
+            if domain not in per_domain:
+                per_domain[domain] = {"cosine_sims": [], "count": 0}
+            per_domain[domain]["cosine_sims"].append(cos_sim)
+            per_domain[domain]["count"] += 1
+
+            # Top-k accuracy via decoder vocabulary nearest-neighbor
+            if has_vocab:
+                output_emb = extract_embedding_from_output(output_arr)
+                target_emb = extract_embedding_from_output(target_arr)
+                # Get the "correct" label: nearest vocab entry to target
+                target_matches = decoder.vocabulary.decode(target_emb, top_k=1)
+                correct_label = target_matches[0][0] if target_matches and target_matches[0][0] else None
+
+                if correct_label:
+                    # Check if correct label appears in top-k of output
+                    output_matches = decoder.vocabulary.decode(output_emb, top_k=5)
+                    output_labels = [m[0] for m in output_matches if m[0]]
+                    if correct_label in output_labels[:1]:
+                        top1_correct += 1
+                    if correct_label in output_labels[:3]:
+                        top3_correct += 1
+                    if correct_label in output_labels[:5]:
+                        top5_correct += 1
+
+        n = len(cosine_sims)
+        if n == 0:
+            return None
+
+        # Differentiation score: 1 - mean pairwise cosine between outputs
+        diff_score = 0.0
+        if len(outputs) >= 2:
+            out_mat = np.array(outputs, dtype=np.float32)
+            out_norms = np.linalg.norm(out_mat, axis=1, keepdims=True)
+            out_norms = np.maximum(out_norms, 1e-8)
+            sim_mat = (out_mat @ out_mat.T) / (out_norms @ out_norms.T)
+            # Upper triangle only (exclude diagonal)
+            upper = []
+            for i in range(len(outputs)):
+                for j in range(i + 1, len(outputs)):
+                    upper.append(sim_mat[i, j])
+            if upper:
+                diff_score = 1.0 - float(np.mean(upper))
+
+        # Per-domain summary
+        domain_breakdown = {}
+        for dom, data in per_domain.items():
+            domain_breakdown[dom] = {
+                "mean_cosine_sim": float(np.mean(data["cosine_sims"])),
+                "count": data["count"],
+            }
+
+        return {
+            "count": n,
+            "top_1_accuracy": top1_correct / n if has_vocab else None,
+            "top_3_accuracy": top3_correct / n if has_vocab else None,
+            "top_5_accuracy": top5_correct / n if has_vocab else None,
+            "mean_cosine_sim": float(np.mean(cosine_sims)),
+            "differentiation_score": diff_score,
+            "per_domain": domain_breakdown,
+        }
+
+
+# Module-level held-out buffer (shared across stages)
+_held_out_buffer = HeldOutBuffer(max_items=2000)
+
+
 _EVAL_PROBES = [
     ("dog", "A friendly dog with soft fur"),
     ("cat", "A cat that purrs when happy"),
@@ -4486,6 +4745,11 @@ def evaluate_performance(brain, composer, decoder, stage, step):
     2. Produce responses that grow more similar to related concepts
     3. Differentiate between unrelated stimuli
     """
+    # Freeze decoder during evaluation to prevent eval data from
+    # contaminating the projector training
+    if decoder:
+        decoder.freeze()
+
     print(f"\n  {'─' * 56}")
     print(f"  PERFORMANCE EVAL — Stage {stage}, Step {step}")
     print(f"  {'─' * 56}")
@@ -4573,7 +4837,7 @@ def evaluate_performance(brain, composer, decoder, stage, step):
     # --- Show evolution for any probe with history ---
     probes_with_history = [p for p in _eval_history if len(_eval_history[p]) >= 2]
     if probes_with_history:
-        print(f"\n  Response evolution (first → latest):")
+        print(f"\n  Response evolution (first -> latest):")
         for probe_name in probes_with_history[:4]:
             history = _eval_history[probe_name]
             first = history[0]
@@ -4582,10 +4846,43 @@ def evaluate_performance(brain, composer, decoder, stage, step):
             latest_text = latest[1][:30] if latest[1] else f"|v|={latest[3]:.1f}"
             sim_change = latest[2] - first[2]
             norm_change = latest[3] - first[3]
-            print(f"    {probe_name:8s}: {first_text:>32s} → {latest_text:<32s}"
-                  f"  Δsim={sim_change:+.3f}  Δ|v|={norm_change:+.1f}")
+            print(f"    {probe_name:8s}: {first_text:>32s} -> {latest_text:<32s}"
+                  f"  dsim={sim_change:+.3f}  d|v|={norm_change:+.1f}")
+
+    # --- Held-out metrics (real accuracy on unseen data) ---
+    if len(_held_out_buffer) >= 50:
+        held_out_items = _held_out_buffer.get_eval_items()
+        metrics = MetricsComputer.compute(brain, composer, decoder, held_out_items)
+        if metrics:
+            print(f"\n  Held-out metrics ({metrics['count']} items):")
+            print(f"    Mean cosine sim:        {metrics['mean_cosine_sim']:.4f}")
+            print(f"    Differentiation score:  {metrics['differentiation_score']:.4f}")
+            if metrics['top_1_accuracy'] is not None:
+                print(f"    Top-1 accuracy:         {metrics['top_1_accuracy']:.4f}")
+                print(f"    Top-3 accuracy:         {metrics['top_3_accuracy']:.4f}")
+                print(f"    Top-5 accuracy:         {metrics['top_5_accuracy']:.4f}")
+            if metrics['per_domain']:
+                print(f"    Per-domain:")
+                for dom, ddata in sorted(metrics['per_domain'].items()):
+                    print(f"      {dom:20s}: cos={ddata['mean_cosine_sim']:.4f}  "
+                          f"n={ddata['count']}")
+            # Log to metrics_log.jsonl
+            try:
+                entry = {
+                    "stage": stage, "step": step,
+                    "timestamp": time.time(),
+                    **metrics,
+                }
+                with open(METRICS_LOG_FILE, "a") as f:
+                    f.write(json.dumps(entry) + "\n")
+            except Exception:
+                pass
 
     print(f"  {'─' * 56}\n")
+
+    # Unfreeze decoder after evaluation
+    if decoder:
+        decoder.unfreeze()
 
 
 _checkpoint_thread = None

@@ -173,6 +173,12 @@ typedef struct {
  */
 typedef struct neural_plasticity_coordinator neural_plasticity_coordinator_t;
 
+/** Forward declaration for plasticity bridge (Phase 5 backprop gating) */
+#ifndef TPB_CONTEXT_TYPEDEF
+#define TPB_CONTEXT_TYPEDEF
+typedef struct tpb_context tpb_context_t;
+#endif
+
 /* ============================================================================
  * Lifecycle API
  * ============================================================================ */
@@ -530,6 +536,20 @@ axon_network_t* neural_plasticity_get_axon_network(
  */
 dendrite_network_t* neural_plasticity_get_dendrite_network(
     neural_plasticity_coordinator_t* coordinator
+);
+
+/**
+ * @brief Set plasticity bridge for backprop gating (Phase 5)
+ *
+ * When set, the coordinator skips all plasticity updates while backprop is active,
+ * preventing STDP/BCM interference with gradient-based training.
+ *
+ * @param coordinator Coordinator
+ * @param tpb         Plasticity bridge context (not owned; NULL to disable gating)
+ */
+void neural_plasticity_set_plasticity_bridge(
+    neural_plasticity_coordinator_t* coordinator,
+    tpb_context_t* tpb
 );
 
 #ifdef __cplusplus

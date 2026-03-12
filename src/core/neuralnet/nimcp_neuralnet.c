@@ -1049,14 +1049,14 @@ neural_network_t neural_network_create(const network_config_t* config)
                         tasks[t].dst_start = layer_starts[t + 1];
                         tasks[t].dst_size = config->layer_sizes[t + 1];
 
-                        uint32_t MIN_FAN_IN = 64;
-                        uint32_t MAX_FAN_IN = 256;
+                        uint32_t MIN_FAN_IN = 128;
+                        uint32_t MAX_FAN_IN = 512;
                         uint32_t fan_in = MIN_FAN_IN;
                         if (fan_in > tasks[t].src_size) fan_in = tasks[t].src_size;
                         if (fan_in > MAX_FAN_IN) fan_in = MAX_FAN_IN;
                         tasks[t].fan_in = fan_in;
 
-                        uint32_t max_total = 20000000;
+                        uint32_t max_total = 40000000;
                         uint32_t dst_wired = tasks[t].dst_size;
                         uint64_t total_planned = (uint64_t)dst_wired * (uint64_t)fan_in;
                         if (total_planned > max_total) {
@@ -1224,6 +1224,65 @@ neural_network_t neural_network_create(const network_config_t* config)
         }
     }
 
+    /* Phase 3: Allocate learnable layer norm gamma/beta for hidden layers */
+    if (config->num_layers > 2) {
+        uint32_t norm_layers = config->num_layers - 2;  /* Skip input + output */
+        network->layer_norm_gamma = (float**)nimcp_calloc(norm_layers, sizeof(float*));
+        network->layer_norm_beta = (float**)nimcp_calloc(norm_layers, sizeof(float*));
+        if (network->layer_norm_gamma && network->layer_norm_beta) {
+            network->num_norm_layers = norm_layers;
+            for (uint32_t l = 0; l < norm_layers; l++) {
+                uint32_t lsize = config->layer_sizes[l + 1];  /* Hidden layer sizes */
+                network->layer_norm_gamma[l] = (float*)nimcp_malloc(lsize * sizeof(float));
+                network->layer_norm_beta[l] = (float*)nimcp_malloc(lsize * sizeof(float));
+                if (network->layer_norm_gamma[l] && network->layer_norm_beta[l]) {
+                    for (uint32_t i = 0; i < lsize; i++) {
+                        network->layer_norm_gamma[l][i] = 1.0f;
+                        network->layer_norm_beta[l][i] = 0.0f;
+                    }
+                }
+            }
+        }
+    }
+
+    /* Phase 4: Allocate residual/skip connection state */
+    network->enable_residual = config->enable_residual;
+    if (config->enable_residual && config->num_layers > 3) {
+        uint32_t num_pairs = (config->num_layers - 3);  /* L -> L+2, starting from layer 1 */
+        network->num_residual_pairs = num_pairs;
+        network->residual_saved_states = (float**)nimcp_calloc(config->num_layers, sizeof(float*));
+        network->residual_projections = (float**)nimcp_calloc(num_pairs, sizeof(float*));
+        network->residual_proj_src_dim = (uint32_t*)nimcp_calloc(num_pairs, sizeof(uint32_t));
+        network->residual_proj_dst_dim = (uint32_t*)nimcp_calloc(num_pairs, sizeof(uint32_t));
+
+        if (network->residual_saved_states) {
+            for (uint32_t l = 0; l < config->num_layers; l++) {
+                network->residual_saved_states[l] = (float*)nimcp_calloc(config->layer_sizes[l], sizeof(float));
+            }
+        }
+        if (network->residual_projections && network->residual_proj_src_dim && network->residual_proj_dst_dim) {
+            for (uint32_t p = 0; p < num_pairs; p++) {
+                uint32_t src_dim = config->layer_sizes[p + 1];   /* Layer L (hidden) */
+                uint32_t dst_dim = config->layer_sizes[p + 3];   /* Layer L+2 */
+                network->residual_proj_src_dim[p] = src_dim;
+                network->residual_proj_dst_dim[p] = dst_dim;
+                if (src_dim != dst_dim) {
+                    /* Allocate projection matrix for dimension mismatch */
+                    network->residual_projections[p] = (float*)nimcp_calloc(dst_dim * src_dim, sizeof(float));
+                    if (network->residual_projections[p]) {
+                        /* Xavier init */
+                        float scale = sqrtf(2.0f / (float)(src_dim + dst_dim));
+                        for (uint32_t i = 0; i < dst_dim * src_dim; i++) {
+                            network->residual_projections[p][i] =
+                                (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * scale;
+                        }
+                    }
+                }
+                /* NULL projection = identity (same dims) */
+            }
+        }
+    }
+
     LOG_MODULE_DEBUG(LOG_MODULE, "neural_network_create complete: %u neurons, %u layers",
                      network->num_neurons, network->config.num_layers);
     return network;
@@ -1373,6 +1432,43 @@ void neural_network_destroy(neural_network_t network)
     }
 
     LOG_MODULE_DEBUG(LOG_MODULE, "Sparse synapse cleanup done");
+
+    /* Free learnable layer norm parameters */
+    if (network->layer_norm_gamma) {
+        for (uint32_t l = 0; l < network->num_norm_layers; l++) {
+            nimcp_free(network->layer_norm_gamma[l]);
+        }
+        nimcp_free(network->layer_norm_gamma);
+        network->layer_norm_gamma = NULL;
+    }
+    if (network->layer_norm_beta) {
+        for (uint32_t l = 0; l < network->num_norm_layers; l++) {
+            nimcp_free(network->layer_norm_beta[l]);
+        }
+        nimcp_free(network->layer_norm_beta);
+        network->layer_norm_beta = NULL;
+    }
+
+    /* Free residual/skip connection state */
+    if (network->residual_saved_states) {
+        for (uint32_t l = 0; l < network->config.num_layers; l++) {
+            nimcp_free(network->residual_saved_states[l]);
+        }
+        nimcp_free(network->residual_saved_states);
+        network->residual_saved_states = NULL;
+    }
+    if (network->residual_projections) {
+        for (uint32_t p = 0; p < network->num_residual_pairs; p++) {
+            nimcp_free(network->residual_projections[p]);
+        }
+        nimcp_free(network->residual_projections);
+        network->residual_projections = NULL;
+    }
+    nimcp_free(network->residual_proj_src_dim);
+    nimcp_free(network->residual_proj_dst_dim);
+    network->residual_proj_src_dim = NULL;
+    network->residual_proj_dst_dim = NULL;
+
     nimcp_free(network->active_neuron_ids);
     network->active_neuron_ids = NULL;
 
@@ -4243,6 +4339,33 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                 }
             }
 
+            // Phase 4: Add residual/skip connection from layer L-2 (pre-norm residual)
+            if (network->enable_residual && layer >= 3 && network->residual_saved_states) {
+                uint32_t pair_idx = layer - 3;  /* layer 3 uses pair 0, etc. */
+                if (pair_idx < network->num_residual_pairs) {
+                    uint32_t src_dim = network->residual_proj_src_dim[pair_idx];
+                    float* src_state = network->residual_saved_states[layer - 2];
+                    if (src_state) {
+                        if (network->residual_projections[pair_idx]) {
+                            /* Dimension mismatch: project then add */
+                            float* proj = network->residual_projections[pair_idx];
+                            for (uint32_t i = 0; i < layer_size && neuron_offset + i < network->num_neurons; i++) {
+                                float sum = 0.0f;
+                                for (uint32_t k = 0; k < src_dim; k++) {
+                                    sum += proj[i * src_dim + k] * src_state[k];
+                                }
+                                network->neurons[neuron_offset + i].state += sum;
+                            }
+                        } else if (src_dim == layer_size) {
+                            /* Same dims: identity skip */
+                            for (uint32_t i = 0; i < layer_size && neuron_offset + i < network->num_neurons; i++) {
+                                network->neurons[neuron_offset + i].state += src_state[i];
+                            }
+                        }
+                    }
+                }
+            }
+
             // LAYER NORMALIZATION for hidden layers:
             // Normalize activations to zero-mean, unit-variance across the layer.
             // This prevents vanishing/exploding activations through deep networks
@@ -4263,11 +4386,28 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                 if (count > 1) {
                     float variance = M2 / (float)count;
                     float inv_std = 1.0F / sqrtf(variance + 1e-5F);
-                    // Normalize: (x - mean) / std
+                    uint32_t norm_idx = layer - 1;  /* Hidden layer index (0-based) */
+                    bool has_affine = (network->layer_norm_gamma &&
+                                       norm_idx < network->num_norm_layers &&
+                                       network->layer_norm_gamma[norm_idx] &&
+                                       network->layer_norm_beta[norm_idx]);
                     for (uint32_t i = 0; i < count; i++) {
-                        network->neurons[neuron_offset + i].state =
-                            (network->neurons[neuron_offset + i].state - mean) * inv_std;
+                        float normalized = (network->neurons[neuron_offset + i].state - mean) * inv_std;
+                        if (has_affine) {
+                            /* Phase 3: Learnable affine transform */
+                            normalized = network->layer_norm_gamma[norm_idx][i] * normalized
+                                       + network->layer_norm_beta[norm_idx][i];
+                        }
+                        network->neurons[neuron_offset + i].state = normalized;
                     }
+                }
+            }
+
+            // Save post-activation state for future residual connections
+            if (network->enable_residual && network->residual_saved_states &&
+                layer < network->config.num_layers && network->residual_saved_states[layer]) {
+                for (uint32_t i = 0; i < layer_size && neuron_offset + i < network->num_neurons; i++) {
+                    network->residual_saved_states[layer][i] = network->neurons[neuron_offset + i].state;
                 }
             }
 

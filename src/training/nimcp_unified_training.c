@@ -11,6 +11,7 @@
  */
 
 #include "training/nimcp_unified_training.h"
+#include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -36,10 +37,18 @@ void nimcp_utm_default_config(nimcp_unified_training_config_t* config) {
     config->anti_collapse.use_gradient_normalization = true;
     config->anti_collapse.gradient_target_norm = NIMCP_UTM_DEFAULT_GRADIENT_TARGET;
     config->anti_collapse.gradient_clip_value = 5.0f;
+    config->anti_collapse.adaptive_gradient_target = true;
 
     config->loss_type = 0; /* NIMCP_LOSS_MSE */
     config->use_composite_loss = true;
     config->enable_cross_network_gradients = false;
+
+    config->lr_schedule.type = NIMCP_LR_SCHEDULE_COSINE;
+    config->lr_schedule.warmup_steps = 1000;
+    config->lr_schedule.total_steps = 100000;
+    config->lr_schedule.min_lr_ratio = 0.01f;
+    config->lr_schedule.step_decay_factor = 0.5f;
+    config->lr_schedule.step_decay_interval = 10000;
 }
 
 //=============================================================================
@@ -66,6 +75,14 @@ nimcp_unified_training_manager_t* nimcp_utm_create(
 
     /* Initialize anti-collapse state */
     nimcp_anti_collapse_init(&mgr->anti_collapse, &mgr->config.anti_collapse);
+
+    /* Initialize AdamW optimizer state */
+    mgr->adam_m = NULL;
+    mgr->adam_v = NULL;
+    mgr->adam_sizes = NULL;
+    mgr->adam_num_groups = 0;
+    mgr->adam_beta1_t = 1.0f;
+    mgr->adam_beta2_t = 1.0f;
 
     NIMCP_LOGGING_INFO("Unified training manager created (lr=%.4f, diversity_w=%.2f, grad_norm=%s)",
                        mgr->current_lr,
@@ -100,6 +117,17 @@ void nimcp_utm_destroy(nimcp_unified_training_manager_t* mgr) {
 
     /* Destroy anti-collapse state */
     nimcp_anti_collapse_destroy(&mgr->anti_collapse);
+
+    /* Free Adam optimizer state */
+    if (mgr->adam_m) {
+        for (uint32_t i = 0; i < mgr->adam_num_groups; i++) {
+            nimcp_free(mgr->adam_m[i]);
+            nimcp_free(mgr->adam_v[i]);
+        }
+        nimcp_free(mgr->adam_m);
+        nimcp_free(mgr->adam_v);
+        nimcp_free(mgr->adam_sizes);
+    }
 
     nimcp_free(mgr);
     NIMCP_LOGGING_INFO("Unified training manager destroyed");
@@ -139,6 +167,12 @@ int nimcp_utm_set_network_enabled(nimcp_unified_training_manager_t* mgr,
     if (!mgr || network_idx >= mgr->num_networks) return -1;
     mgr->networks[network_idx].enabled = enabled;
     return 0;
+}
+
+void nimcp_utm_set_plasticity_bridge(nimcp_unified_training_manager_t* mgr,
+                                      tpb_context_t* tpb) {
+    if (!mgr) return;
+    mgr->plasticity_bridge = tpb;
 }
 
 //=============================================================================
@@ -314,6 +348,49 @@ static int bridge_backward(nimcp_cross_network_bridge_t* b,
 }
 
 //=============================================================================
+// Learning Rate Schedule
+//=============================================================================
+
+float nimcp_utm_get_scheduled_lr(const nimcp_unified_training_manager_t* mgr) {
+    if (!mgr) return 0.01f;
+
+    float base_lr = mgr->config.learning_rate;
+    const nimcp_lr_schedule_config_t* sched = &mgr->config.lr_schedule;
+    uint64_t step = mgr->step_count;
+
+    /* Linear warmup */
+    if (sched->warmup_steps > 0 && step < sched->warmup_steps) {
+        float warmup_ratio = (float)(step + 1) / (float)sched->warmup_steps;
+        return base_lr * warmup_ratio;
+    }
+
+    float min_lr = base_lr * sched->min_lr_ratio;
+
+    switch (sched->type) {
+        case NIMCP_LR_SCHEDULE_COSINE: {
+            if (sched->total_steps <= sched->warmup_steps) return base_lr;
+            uint64_t decay_steps = sched->total_steps - sched->warmup_steps;
+            uint64_t decay_step = step - sched->warmup_steps;
+            if (decay_step >= decay_steps) return min_lr;
+            float progress = (float)decay_step / (float)decay_steps;
+            /* Cosine annealing: lr = min_lr + 0.5 * (base_lr - min_lr) * (1 + cos(pi * progress)) */
+            return min_lr + 0.5f * (base_lr - min_lr) * (1.0f + cosf((float)M_PI * progress));
+        }
+        case NIMCP_LR_SCHEDULE_STEP: {
+            if (sched->step_decay_interval == 0) return base_lr;
+            uint64_t num_decays = step / sched->step_decay_interval;
+            float lr = base_lr;
+            for (uint64_t d = 0; d < num_decays && d < 20; d++) {
+                lr *= sched->step_decay_factor;
+            }
+            return fmaxf(lr, min_lr);
+        }
+        default:
+            return base_lr;
+    }
+}
+
+//=============================================================================
 // Unified Training Step
 //=============================================================================
 
@@ -446,6 +523,12 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     /* ------------------------------------------------------------------ */
     /* Step 4: Backward pass (reverse order, with bridge gradient flow)   */
     /* ------------------------------------------------------------------ */
+
+    /* Phase 5: Suppress biological plasticity during backprop */
+    if (mgr->plasticity_bridge) {
+        nimcp_tpb_set_backprop_active(mgr->plasticity_bridge, true);
+    }
+
     for (int i = (int)mgr->num_networks - 1; i >= 0; i--) {
         if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
         nimcp_trainable_network_t* net = &mgr->networks[i];
@@ -497,6 +580,11 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         nimcp_free(dl_din);
     }
 
+    /* Phase 5: Re-enable biological plasticity after backprop */
+    if (mgr->plasticity_bridge) {
+        nimcp_tpb_set_backprop_active(mgr->plasticity_bridge, false);
+    }
+
     /* ------------------------------------------------------------------ */
     /* Step 5: Gradient normalization / clipping (unified, single pass)   */
     /* ------------------------------------------------------------------ */
@@ -536,41 +624,140 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         }
 
         float scale = nimcp_anti_collapse_normalize_gradients(
-            &mgr->config.anti_collapse, all_grads, all_sizes, total_arrays);
+            &mgr->anti_collapse, all_grads, all_sizes, total_arrays);
 
         /* Compute gradient norm for reporting (before normalization was applied) */
+        float effective_target = mgr->anti_collapse.config.gradient_target_norm;
+        if (mgr->anti_collapse.config.adaptive_gradient_target && effective_target <= 0.0f) {
+            effective_target = sqrtf(mgr->anti_collapse.ema_gradient_norm > 0.0f ?
+                                     mgr->anti_collapse.ema_gradient_norm : 1.0f);
+        }
         local_result.gradient_norm = (scale != 0.0f) ?
-            mgr->config.anti_collapse.gradient_target_norm / scale : 0.0f;
+            effective_target / scale : 0.0f;
         local_result.gradient_scale = scale;
     }
 
     /* ------------------------------------------------------------------ */
-    /* Step 6: Optimizer step (apply gradients to parameters)             */
+    /* Step 6: Optimizer step (AdamW with LR schedule)                    */
     /* ------------------------------------------------------------------ */
-    for (uint32_t i = 0; i < mgr->num_networks; i++) {
-        if (!mgr->networks[i].enabled) continue;
-        nimcp_trainable_network_t* net = &mgr->networks[i];
 
-        nimcp_utm_param_group_t* groups = NULL;
-        uint32_t num_groups = 0;
-        if (net->ops->get_param_groups &&
-            net->ops->get_param_groups(net->ctx, &groups, &num_groups) == 0) {
-            for (uint32_t g = 0; g < num_groups; g++) {
-                if (!groups[g].params || !groups[g].gradients || groups[g].count == 0) continue;
+    /* Update learning rate from schedule */
+    mgr->current_lr = nimcp_utm_get_scheduled_lr(mgr);
 
-                float lr = mgr->current_lr * groups[g].lr_scale;
-                float wd = groups[g].weight_decay;
+    /* AdamW constants */
+    const float adam_beta1 = 0.9f;
+    const float adam_beta2 = 0.999f;
+    const float adam_eps = 1e-8f;
 
-                /* SGD with weight decay: param -= lr * (grad + wd * param) */
-                for (size_t j = 0; j < groups[g].count; j++) {
-                    float grad = groups[g].gradients[j];
-                    if (wd > 0.0f) {
-                        grad += wd * groups[g].params[j];
-                    }
-                    groups[g].params[j] -= lr * grad;
-                }
+    /* Update bias correction terms: beta^t */
+    mgr->adam_beta1_t *= adam_beta1;
+    mgr->adam_beta2_t *= adam_beta2;
+
+    /* Collect all param groups across all networks to assign moment indices */
+    {
+        /* First pass: count total param groups */
+        uint32_t total_groups = 0;
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled) continue;
+            nimcp_trainable_network_t* net = &mgr->networks[i];
+            nimcp_utm_param_group_t* groups = NULL;
+            uint32_t num_groups = 0;
+            if (net->ops->get_param_groups &&
+                net->ops->get_param_groups(net->ctx, &groups, &num_groups) == 0) {
+                total_groups += num_groups;
+                nimcp_free(groups);
             }
-            nimcp_free(groups);
+        }
+
+        /* Lazy-allocate or re-allocate Adam moment arrays if group count changed */
+        if (total_groups > 0 && (mgr->adam_m == NULL || total_groups != mgr->adam_num_groups)) {
+            /* Free old state if group count changed */
+            if (mgr->adam_m) {
+                for (uint32_t i = 0; i < mgr->adam_num_groups; i++) {
+                    nimcp_free(mgr->adam_m[i]);
+                    nimcp_free(mgr->adam_v[i]);
+                }
+                nimcp_free(mgr->adam_m);
+                nimcp_free(mgr->adam_v);
+                nimcp_free(mgr->adam_sizes);
+            }
+
+            mgr->adam_m = (float**)nimcp_calloc(total_groups, sizeof(float*));
+            mgr->adam_v = (float**)nimcp_calloc(total_groups, sizeof(float*));
+            mgr->adam_sizes = (size_t*)nimcp_calloc(total_groups, sizeof(size_t));
+            mgr->adam_num_groups = total_groups;
+            /* Reset bias correction on realloc */
+            mgr->adam_beta1_t = adam_beta1;
+            mgr->adam_beta2_t = adam_beta2;
+        }
+
+        /* Second pass: apply AdamW update */
+        uint32_t group_idx = 0;
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled) continue;
+            nimcp_trainable_network_t* net = &mgr->networks[i];
+
+            nimcp_utm_param_group_t* groups = NULL;
+            uint32_t num_groups = 0;
+            if (net->ops->get_param_groups &&
+                net->ops->get_param_groups(net->ctx, &groups, &num_groups) == 0) {
+                for (uint32_t g = 0; g < num_groups; g++) {
+                    if (!groups[g].params || !groups[g].gradients || groups[g].count == 0) {
+                        group_idx++;
+                        continue;
+                    }
+
+                    /* Lazy-allocate moment vectors for this group */
+                    if (group_idx < mgr->adam_num_groups) {
+                        if (!mgr->adam_m[group_idx] || mgr->adam_sizes[group_idx] != groups[g].count) {
+                            nimcp_free(mgr->adam_m[group_idx]);
+                            nimcp_free(mgr->adam_v[group_idx]);
+                            mgr->adam_m[group_idx] = (float*)nimcp_calloc(groups[g].count, sizeof(float));
+                            mgr->adam_v[group_idx] = (float*)nimcp_calloc(groups[g].count, sizeof(float));
+                            mgr->adam_sizes[group_idx] = groups[g].count;
+                        }
+                    }
+
+                    float lr = mgr->current_lr * groups[g].lr_scale;
+                    float wd = groups[g].weight_decay;
+                    float bc1 = 1.0f - mgr->adam_beta1_t;  /* 1 - beta1^t */
+                    float bc2 = 1.0f - mgr->adam_beta2_t;  /* 1 - beta2^t */
+
+                    float* m = (group_idx < mgr->adam_num_groups) ? mgr->adam_m[group_idx] : NULL;
+                    float* v = (group_idx < mgr->adam_num_groups) ? mgr->adam_v[group_idx] : NULL;
+
+                    for (size_t j = 0; j < groups[g].count; j++) {
+                        float grad = groups[g].gradients[j];
+
+                        if (m && v) {
+                            /* AdamW: update moments */
+                            m[j] = adam_beta1 * m[j] + (1.0f - adam_beta1) * grad;
+                            v[j] = adam_beta2 * v[j] + (1.0f - adam_beta2) * grad * grad;
+
+                            /* Bias-corrected estimates */
+                            float m_hat = m[j] / bc1;
+                            float v_hat = v[j] / bc2;
+
+                            /* AdamW: decoupled weight decay (applied to param directly) */
+                            if (wd > 0.0f) {
+                                groups[g].params[j] -= lr * wd * groups[g].params[j];
+                            }
+
+                            /* Adam update */
+                            groups[g].params[j] -= lr * m_hat / (sqrtf(v_hat) + adam_eps);
+                        } else {
+                            /* Fallback SGD if moments not allocated */
+                            if (wd > 0.0f) {
+                                groups[g].params[j] -= lr * wd * groups[g].params[j];
+                            }
+                            groups[g].params[j] -= lr * grad;
+                        }
+                    }
+
+                    group_idx++;
+                }
+                nimcp_free(groups);
+            }
         }
     }
 

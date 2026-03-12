@@ -156,6 +156,58 @@ int backprop_with_accumulation(
     float* out_grad_norm);
 
 /**
+ * @brief Run sparse backprop with weight decay and diversity gradient injection
+ *
+ * Extended version that supports:
+ * - Decoupled weight decay (AdamW-style): w *= (1 - lr * wd) before gradient step
+ * - Diversity gradient: added to output layer deltas to push outputs apart
+ *
+ * @param net           Base neural network handle
+ * @param num_layers    Number of layers (must be >= 2)
+ * @param layer_sizes   Array of per-layer neuron counts [num_layers]
+ * @param learning_rate Base learning rate (output layer gets 10x boost)
+ * @param min_weight    Weight clamp lower bound
+ * @param max_weight    Weight clamp upper bound
+ * @param target        Target vector [target_size]
+ * @param output        Network output vector [target_size]
+ * @param target_size   Length of target/output vectors
+ * @param max_grad_norm Maximum gradient norm for clipping (0.0 = no clipping)
+ * @param weight_decay  Decoupled weight decay coefficient (0.0 = disabled)
+ * @param diversity_grad Diversity gradient to add to output deltas (NULL = disabled)
+ * @param out_grad_norm Output: global L2 gradient norm
+ * @param out_layer_grads Output: per-layer gradient norms (NULL to skip tracking)
+ * @return 0 on success, -1 on allocation failure
+ */
+int backprop_sparse_full_ex2(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float max_grad_norm,
+    float weight_decay,
+    const float* diversity_grad,
+    float* out_grad_norm,
+    backprop_layer_grads_t* out_layer_grads);
+
+/** @brief Regression-mode backprop with weight decay. MSE on ALL outputs. */
+int backprop_sparse_full_regression_wd(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float max_grad_norm,
+    float weight_decay,
+    const float* diversity_grad,
+    float* out_grad_norm,
+    backprop_layer_grads_t* out_layer_grads);
+
+/**
  * @brief Destroy the static backprop thread pool
  *
  * Call during shutdown to release worker threads.

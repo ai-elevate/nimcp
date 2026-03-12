@@ -168,7 +168,7 @@ int lnn_training_config_default(lnn_training_config_t* config) {
     config->diversity_buffer_size = 16;
     config->use_gradient_normalization = true;
     config->gradient_target_norm = 1.0f;
-    config->max_adjoint_steps = 50;
+    config->max_adjoint_steps = 200;
     config->lr_scale_tau = 0.1f;
     config->lr_scale_bias = 2.0f;
 
@@ -225,6 +225,7 @@ lnn_training_ctx_t* lnn_training_create(
                 .use_gradient_normalization = config->use_gradient_normalization,
                 .gradient_target_norm = config->gradient_target_norm,
                 .gradient_clip_value = config->gradient_clip_norm,
+                .adaptive_gradient_target = true,
             };
             nimcp_anti_collapse_init(ac, &ac_cfg);
         }

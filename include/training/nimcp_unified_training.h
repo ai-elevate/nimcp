@@ -36,8 +36,8 @@ extern "C" {
 /** Default diversity buffer size */
 #define NIMCP_UTM_DEFAULT_DIVERSITY_BUFFER  16
 
-/** Default gradient target norm */
-#define NIMCP_UTM_DEFAULT_GRADIENT_TARGET   1.0f
+/** Default gradient target norm (0.0 = sentinel for adaptive mode) */
+#define NIMCP_UTM_DEFAULT_GRADIENT_TARGET   0.0f
 
 /** Default diversity loss weight */
 #define NIMCP_UTM_DEFAULT_DIVERSITY_WEIGHT  0.1f
@@ -53,6 +53,10 @@ typedef struct nimcp_cross_network_bridge nimcp_cross_network_bridge_t;
 typedef struct nimcp_optimizer_context nimcp_optimizer_context_t;
 typedef struct nimcp_gradient_manager_ctx nimcp_gradient_manager_ctx_t;
 typedef struct nimcp_loss_context nimcp_loss_context_t;
+#ifndef TPB_CONTEXT_TYPEDEF
+#define TPB_CONTEXT_TYPEDEF
+typedef struct tpb_context tpb_context_t;
+#endif
 
 //=============================================================================
 // Network Type Enum
@@ -224,9 +228,29 @@ typedef struct nimcp_anti_collapse_config {
     float diversity_loss_weight;        /**< Weight for diversity penalty (default: 0.1) */
     uint32_t diversity_buffer_size;     /**< Ring buffer size (default: 16) */
     bool use_gradient_normalization;    /**< Normalize to target norm (default: true) */
-    float gradient_target_norm;         /**< Target norm (default: 1.0) */
+    float gradient_target_norm;         /**< Target norm (0.0 = adaptive, else fixed) */
     float gradient_clip_value;          /**< Fallback clip value if normalization off (default: 5.0) */
+    bool adaptive_gradient_target;     /**< Use adaptive target based on EMA of gradient norms (default: true) */
 } nimcp_anti_collapse_config_t;
+
+//=============================================================================
+// Learning Rate Schedule
+//=============================================================================
+
+typedef enum nimcp_lr_schedule_type {
+    NIMCP_LR_SCHEDULE_CONSTANT = 0,
+    NIMCP_LR_SCHEDULE_COSINE,
+    NIMCP_LR_SCHEDULE_STEP
+} nimcp_lr_schedule_type_t;
+
+typedef struct nimcp_lr_schedule_config {
+    nimcp_lr_schedule_type_t type;
+    uint64_t warmup_steps;          /**< Linear warmup steps (default: 1000) */
+    uint64_t total_steps;           /**< Total training steps for cosine schedule (default: 100000) */
+    float min_lr_ratio;             /**< Minimum LR as ratio of base (default: 0.01) */
+    float step_decay_factor;        /**< Decay factor for step schedule (default: 0.5) */
+    uint64_t step_decay_interval;   /**< Steps between decays (default: 10000) */
+} nimcp_lr_schedule_config_t;
 
 //=============================================================================
 // Unified Training Manager Configuration
@@ -250,6 +274,9 @@ typedef struct nimcp_unified_training_config {
     /* Execution */
     bool enable_cross_network_gradients;/**< Enable gradient flow through bridges */
 
+    /* LR Schedule */
+    nimcp_lr_schedule_config_t lr_schedule;
+
 } nimcp_unified_training_config_t;
 
 //=============================================================================
@@ -262,6 +289,8 @@ typedef struct nimcp_anti_collapse_state {
     uint32_t buffer_count;
     uint32_t output_dim;
     nimcp_anti_collapse_config_t config;
+    float ema_gradient_norm;            /**< EMA of gradient norms for adaptive target */
+    float ema_alpha;                    /**< EMA smoothing factor (default: 0.01) */
 } nimcp_anti_collapse_state_t;
 
 //=============================================================================
@@ -290,6 +319,17 @@ struct nimcp_unified_training_manager {
 
     /* Configuration */
     nimcp_unified_training_config_t config;
+
+    /* Phase 5: Plasticity bridge for backprop gating (optional, may be NULL) */
+    tpb_context_t* plasticity_bridge;
+
+    /* AdamW optimizer state per param group */
+    float** adam_m;                 /**< First moment vectors (one per param group) */
+    float** adam_v;                 /**< Second moment vectors (one per param group) */
+    size_t* adam_sizes;             /**< Size of each moment vector */
+    uint32_t adam_num_groups;       /**< Number of allocated moment groups */
+    float adam_beta1_t;             /**< beta1^t for bias correction */
+    float adam_beta2_t;             /**< beta2^t for bias correction */
 };
 
 //=============================================================================
@@ -337,6 +377,18 @@ int nimcp_utm_register_network(nimcp_unified_training_manager_t* mgr,
  */
 int nimcp_utm_set_network_enabled(nimcp_unified_training_manager_t* mgr,
                                   uint32_t network_idx, bool enabled);
+
+/**
+ * @brief Set the plasticity bridge for backprop gating (Phase 5)
+ *
+ * When set, the manager will suppress biological plasticity during the backward
+ * pass to prevent STDP/BCM interference with gradient-based training.
+ *
+ * @param mgr  Manager
+ * @param tpb  Plasticity bridge context (not owned, must outlive manager; NULL to disable)
+ */
+void nimcp_utm_set_plasticity_bridge(nimcp_unified_training_manager_t* mgr,
+                                      tpb_context_t* tpb);
 
 //=============================================================================
 // Bridge API
@@ -393,6 +445,11 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                    const float* target, uint32_t target_dim,
                    nimcp_utm_step_result_t* result);
 
+/**
+ * @brief Compute scheduled learning rate for current step
+ */
+float nimcp_utm_get_scheduled_lr(const nimcp_unified_training_manager_t* mgr);
+
 //=============================================================================
 // Anti-Collapse API (standalone, usable without full manager)
 //=============================================================================
@@ -438,7 +495,7 @@ float nimcp_anti_collapse_diversity_loss(nimcp_anti_collapse_state_t* state,
  * @return Scale factor applied (1.0 if no scaling needed)
  */
 float nimcp_anti_collapse_normalize_gradients(
-    const nimcp_anti_collapse_config_t* config,
+    nimcp_anti_collapse_state_t* state,
     float** gradients, const size_t* sizes, uint32_t num_arrays);
 
 //=============================================================================

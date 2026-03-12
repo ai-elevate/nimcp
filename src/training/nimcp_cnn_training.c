@@ -384,6 +384,7 @@ cnn_trainer_t* cnn_trainer_create(const cnn_trainer_config_t* config) {
             .use_gradient_normalization = config->use_gradient_normalization,
             .gradient_target_norm = config->gradient_target_norm,
             .gradient_clip_value = config->gradient_clip_value,
+            .adaptive_gradient_target = true,
         };
         nimcp_anti_collapse_init(&trainer->anti_collapse, &ac_cfg);
     }
@@ -1065,11 +1066,83 @@ static void cnn_apply_activation(nimcp_tensor_t* tensor, cnn_activation_t activa
 }
 
 /**
+ * @brief im2col — unfold image patches into columns for GEMM-based convolution
+ *
+ * Converts (C, H, W) input into (C*kH*kW, outH*outW) column matrix.
+ * Convolution then becomes a single matrix multiply: W × col_buffer.
+ */
+static void im2col(const float* data_im, uint32_t channels,
+                   uint32_t height, uint32_t width,
+                   uint32_t kernel_h, uint32_t kernel_w,
+                   uint32_t stride_h, uint32_t stride_w,
+                   uint32_t pad_h, uint32_t pad_w,
+                   uint32_t dilation_h, uint32_t dilation_w,
+                   float* data_col)
+{
+    uint32_t out_h = (height + 2 * pad_h - dilation_h * (kernel_h - 1) - 1) / stride_h + 1;
+    uint32_t out_w = (width + 2 * pad_w - dilation_w * (kernel_w - 1) - 1) / stride_w + 1;
+
+    uint32_t col_idx = 0;
+    for (uint32_t c = 0; c < channels; c++) {
+        for (uint32_t kh = 0; kh < kernel_h; kh++) {
+            for (uint32_t kw = 0; kw < kernel_w; kw++) {
+                for (uint32_t oh = 0; oh < out_h; oh++) {
+                    for (uint32_t ow = 0; ow < out_w; ow++) {
+                        int ih = (int)(oh * stride_h + kh * dilation_h) - (int)pad_h;
+                        int iw = (int)(ow * stride_w + kw * dilation_w) - (int)pad_w;
+                        if (ih >= 0 && ih < (int)height && iw >= 0 && iw < (int)width) {
+                            data_col[col_idx] = data_im[c * height * width + ih * width + iw];
+                        } else {
+                            data_col[col_idx] = 0.0f;
+                        }
+                        col_idx++;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * @brief col2im — accumulate column gradients back to image layout (backward pass)
+ */
+static void col2im(const float* data_col, uint32_t channels,
+                   uint32_t height, uint32_t width,
+                   uint32_t kernel_h, uint32_t kernel_w,
+                   uint32_t stride_h, uint32_t stride_w,
+                   uint32_t pad_h, uint32_t pad_w,
+                   uint32_t dilation_h, uint32_t dilation_w,
+                   float* data_im)
+{
+    memset(data_im, 0, channels * height * width * sizeof(float));
+    uint32_t out_h = (height + 2 * pad_h - dilation_h * (kernel_h - 1) - 1) / stride_h + 1;
+    uint32_t out_w = (width + 2 * pad_w - dilation_w * (kernel_w - 1) - 1) / stride_w + 1;
+
+    uint32_t col_idx = 0;
+    for (uint32_t c = 0; c < channels; c++) {
+        for (uint32_t kh = 0; kh < kernel_h; kh++) {
+            for (uint32_t kw = 0; kw < kernel_w; kw++) {
+                for (uint32_t oh = 0; oh < out_h; oh++) {
+                    for (uint32_t ow = 0; ow < out_w; ow++) {
+                        int ih = (int)(oh * stride_h + kh * dilation_h) - (int)pad_h;
+                        int iw = (int)(ow * stride_w + kw * dilation_w) - (int)pad_w;
+                        if (ih >= 0 && ih < (int)height && iw >= 0 && iw < (int)width) {
+                            data_im[c * height * width + ih * width + iw] += data_col[col_idx];
+                        }
+                        col_idx++;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * @brief Forward pass through conv layer
  *
- * WHAT: Apply convolution operation
- * WHY:  Feature extraction via learned filters
- * HOW:  Sliding window dot product with kernels
+ * WHAT: Apply convolution operation using im2col + GEMM
+ * WHY:  Feature extraction via learned filters; im2col converts to matrix multiply
+ * HOW:  Unfold input patches -> GEMM with weight matrix -> add bias -> activate
  */
 static nimcp_tensor_t* cnn_forward_conv(const cnn_layer_t* layer, const nimcp_tensor_t* input) {
     const cnn_conv_config_t* cfg = &layer->config.conv;
@@ -1131,11 +1204,15 @@ static nimcp_tensor_t* cnn_forward_conv(const cnn_layer_t* layer, const nimcp_te
         }
     }
 
-    /* Convolution (naive implementation for correctness) */
+    /* Convolution via im2col + GEMM (replaces naive 6-deep loop)
+     * im2col unrolls patches into columns, then W × col gives the output.
+     * For grouped convolution, we slice the column buffer per group. */
     uint32_t groups = cfg->groups > 0 ? cfg->groups : 1;
     uint32_t ic_per_group = cfg->in_channels / groups;
     uint32_t oc_per_group = cfg->out_channels / groups;
 
+#ifdef NIMCP_CNN_NAIVE_CONV
+    /* Legacy naive path (kept for regression testing) */
     for (uint32_t b = 0; b < batch; b++) {
         for (uint32_t g = 0; g < groups; g++) {
             for (uint32_t oc = 0; oc < oc_per_group; oc++) {
@@ -1149,7 +1226,6 @@ static nimcp_tensor_t* cnn_forward_conv(const cnn_layer_t* layer, const nimcp_te
                                 for (uint32_t kw = 0; kw < cfg->kernel_w; kw++) {
                                     int ih = (int)(oh * cfg->stride_h + kh * cfg->dilation_h) - (int)cfg->padding_h;
                                     int iw = (int)(ow * cfg->stride_w + kw * cfg->dilation_w) - (int)cfg->padding_w;
-
                                     if (ih >= 0 && ih < (int)in_h && iw >= 0 && iw < (int)in_w) {
                                         size_t in_idx = b * cfg->in_channels * in_h * in_w +
                                                        ic_abs * in_h * in_w + ih * in_w + iw;
@@ -1167,6 +1243,49 @@ static nimcp_tensor_t* cnn_forward_conv(const cnn_layer_t* layer, const nimcp_te
             }
         }
     }
+#else
+    /* im2col + GEMM path */
+    {
+        size_t col_h = ic_per_group * cfg->kernel_h * cfg->kernel_w;
+        size_t col_w = out_h * out_w;
+        float* col_buffer = (float*)nimcp_calloc(col_h * col_w, sizeof(float));
+        if (!col_buffer) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_forward_conv: col_buffer alloc failed");
+            nimcp_tensor_destroy(output);
+            return NULL;
+        }
+
+        for (uint32_t b = 0; b < batch; b++) {
+            for (uint32_t g = 0; g < groups; g++) {
+                /* im2col: unfold this group's input channels into column matrix */
+                const float* group_in = in_data + b * cfg->in_channels * in_h * in_w
+                                      + g * ic_per_group * in_h * in_w;
+                im2col(group_in, ic_per_group, in_h, in_w,
+                       cfg->kernel_h, cfg->kernel_w, cfg->stride_h, cfg->stride_w,
+                       cfg->padding_h, cfg->padding_w, cfg->dilation_h, cfg->dilation_w,
+                       col_buffer);
+
+                /* GEMM: W[oc_per_group × col_h] × col[col_h × col_w] → out[oc_per_group × col_w]
+                 * Weight layout: [oc_abs][ic_per_group * kH * kW] */
+                const float* group_w = weight_data + g * oc_per_group * col_h;
+                float* group_out = out_data + b * cfg->out_channels * out_spatial
+                                 + g * oc_per_group * out_spatial;
+
+                for (uint32_t oc = 0; oc < oc_per_group; oc++) {
+                    for (size_t j = 0; j < col_w; j++) {
+                        float sum = 0.0f;
+                        for (size_t k = 0; k < col_h; k++) {
+                            sum += group_w[oc * col_h + k] * col_buffer[k * col_w + j];
+                        }
+                        group_out[oc * out_spatial + j] += sum;
+                    }
+                }
+            }
+        }
+
+        nimcp_free(col_buffer);
+    }
+#endif
 
     /* Apply activation */
     cnn_apply_activation(output, cfg->activation);
@@ -2273,7 +2392,7 @@ nimcp_error_t cnn_trainer_step(cnn_trainer_t* trainer) {
             }
 
             nimcp_anti_collapse_normalize_gradients(
-                &trainer->anti_collapse.config, grad_arrays, grad_sizes, n_arrays);
+                &trainer->anti_collapse, grad_arrays, grad_sizes, n_arrays);
         }
 
         /* Update each layer's weights */

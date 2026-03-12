@@ -2111,6 +2111,11 @@ struct brain_struct {
     float* inference_buf_cnn;                    // Pre-allocated CNN output [num_outputs]
     float* inference_buf_snn;                    // Pre-allocated SNN output [num_outputs]
     uint32_t inference_buf_size;                 // Current buffer capacity (num_outputs)
+
+    // === MULTI-NETWORK FUSION (Phase 6: Architecture Eval) ===
+    bool enable_fusion;                          // Weighted ensemble of network outputs
+    float fusion_weights[4];                     // [adaptive, CNN, SNN, LNN] (softmax-normalized)
+    float* fusion_scratch_lnn;                   // Scratch buffer for LNN output [num_outputs]
 };
 
 //=============================================================================

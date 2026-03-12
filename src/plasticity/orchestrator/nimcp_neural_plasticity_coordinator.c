@@ -12,6 +12,7 @@
  */
 
 #include "plasticity/orchestrator/nimcp_neural_plasticity_coordinator.h"
+#include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
@@ -81,6 +82,9 @@ struct neural_plasticity_coordinator {
 
     /* Ownership tracking */
     bool owns_orchestrator;
+
+    /* Phase 5: Plasticity bridge for backprop gating */
+    tpb_context_t* plasticity_bridge;
 };
 
 /* ============================================================================
@@ -486,6 +490,12 @@ int neural_plasticity_step(
         return -1;
     }
 
+    /* Phase 5: Skip plasticity during backprop to prevent interference */
+    if (coordinator->plasticity_bridge &&
+        nimcp_tpb_is_backprop_active(coordinator->plasticity_bridge)) {
+        return 0;
+    }
+
     /* Use default dt if not specified */
     if (dt_ms <= 0.0f) {
         dt_ms = coordinator->config.default_dt_ms;
@@ -772,4 +782,12 @@ dendrite_network_t* neural_plasticity_get_dendrite_network(
     neural_plasticity_coordinator_t* coordinator
 ) {
     return coordinator ? coordinator->dendrite_network : NULL;
+}
+
+void neural_plasticity_set_plasticity_bridge(
+    neural_plasticity_coordinator_t* coordinator,
+    tpb_context_t* tpb
+) {
+    if (!coordinator) return;
+    coordinator->plasticity_bridge = tpb;
 }

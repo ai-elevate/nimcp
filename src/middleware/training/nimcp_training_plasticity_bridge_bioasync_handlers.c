@@ -91,6 +91,9 @@ struct tpb_context {
     struct tpb_rpe_state rpe_state;
     struct tpb_stats stats;
     struct tpb_config config;
+
+    /* Phase 5: Backprop gating — suppress biological plasticity during backprop */
+    volatile int backprop_active;
 };
 
 /* Helper to init message header */

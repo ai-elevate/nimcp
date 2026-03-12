@@ -36,11 +36,16 @@ int nimcp_anti_collapse_init(nimcp_anti_collapse_state_t* state,
         state->config.use_gradient_normalization = true;
         state->config.gradient_target_norm = NIMCP_UTM_DEFAULT_GRADIENT_TARGET;
         state->config.gradient_clip_value = 5.0f;
+        state->config.adaptive_gradient_target = true;
     }
 
     if (state->config.diversity_buffer_size == 0) {
         state->config.diversity_buffer_size = NIMCP_UTM_DEFAULT_DIVERSITY_BUFFER;
     }
+
+    /* Adaptive gradient target EMA state */
+    state->ema_gradient_norm = 0.0f;
+    state->ema_alpha = 0.01f;
 
     /* Buffer is lazily allocated on first use (when output_dim is known) */
     return 0;
@@ -140,10 +145,11 @@ float nimcp_anti_collapse_diversity_loss(nimcp_anti_collapse_state_t* state,
 //=============================================================================
 
 float nimcp_anti_collapse_normalize_gradients(
-    const nimcp_anti_collapse_config_t* config,
+    nimcp_anti_collapse_state_t* state,
     float** gradients, const size_t* sizes, uint32_t num_arrays) {
 
-    if (!config || !gradients || !sizes || num_arrays == 0) return 1.0f;
+    if (!state || !gradients || !sizes || num_arrays == 0) return 1.0f;
+    const nimcp_anti_collapse_config_t* config = &state->config;
 
     /* Compute global gradient norm across all arrays */
     double global_norm_sq = 0.0;
@@ -158,10 +164,29 @@ float nimcp_anti_collapse_normalize_gradients(
 
     if (global_norm <= 1e-8f) return 1.0f;
 
+    /* Update EMA of gradient norms for adaptive target */
+    if (config->adaptive_gradient_target) {
+        if (state->ema_gradient_norm <= 0.0f) {
+            /* Bootstrap: first step sets EMA directly */
+            state->ema_gradient_norm = global_norm;
+        } else {
+            state->ema_gradient_norm = state->ema_alpha * global_norm
+                                     + (1.0f - state->ema_alpha) * state->ema_gradient_norm;
+        }
+        /* Clamp EMA to reasonable range */
+        if (state->ema_gradient_norm < 1.0f) state->ema_gradient_norm = 1.0f;
+        if (state->ema_gradient_norm > 1e6f) state->ema_gradient_norm = 1e6f;
+    }
+
     float scale = 1.0f;
     if (config->use_gradient_normalization) {
-        /* Always normalize to target norm (preserves direction) */
-        scale = config->gradient_target_norm / global_norm;
+        /* Determine target norm: adaptive (sqrt of EMA) or fixed */
+        float target = config->gradient_target_norm;
+        if (config->adaptive_gradient_target && target <= 0.0f) {
+            target = sqrtf(state->ema_gradient_norm);
+        }
+        if (target <= 0.0f) target = 1.0f;  /* Safety fallback */
+        scale = target / global_norm;
     } else if (global_norm > config->gradient_clip_value) {
         /* Legacy clipping: only scale down when above threshold */
         scale = config->gradient_clip_value / global_norm;

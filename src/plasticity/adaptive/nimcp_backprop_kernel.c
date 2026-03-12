@@ -347,6 +347,7 @@ typedef struct {
     float layer_lr;
     float min_weight;
     float max_weight;
+    float weight_decay;     // Decoupled weight decay coefficient
     const uint32_t* sparse_cur;
     uint32_t chunk_start;   // index into sparse_cur
     uint32_t chunk_end;
@@ -409,6 +410,10 @@ static void backprop_worker(void* arg)
                 }
             }
 
+            // Decoupled weight decay: w *= (1 - lr * wd) BEFORE gradient step
+            if (w->weight_decay > 0.0f) {
+                in_syn->weight *= (1.0f - w->layer_lr * w->weight_decay);
+            }
             in_syn->weight += weight_delta;
             if (in_syn->weight < w->min_weight) in_syn->weight = w->min_weight;
             if (in_syn->weight > w->max_weight) in_syn->weight = w->max_weight;
@@ -455,6 +460,27 @@ int backprop_sparse_full_ex(
     const float* target, const float* output,
     uint32_t target_size,
     float max_grad_norm,
+    float* out_grad_norm,
+    backprop_layer_grads_t* out_layer_grads)
+{
+    return backprop_sparse_full_ex2(net, num_layers, layer_sizes,
+        learning_rate, min_weight, max_weight,
+        target, output, target_size,
+        max_grad_norm, 0.0f, NULL,
+        out_grad_norm, out_layer_grads);
+}
+
+int backprop_sparse_full_ex2(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float max_grad_norm,
+    float weight_decay,
+    const float* diversity_grad,
     float* out_grad_norm,
     backprop_layer_grads_t* out_layer_grads)
 {
@@ -597,6 +623,25 @@ int backprop_sparse_full_ex(
         }
     }
 
+    // Inject diversity gradient into output layer deltas (anti-collapse)
+    if (diversity_grad) {
+        for (uint32_t j = 0; j < bp_min_output; j++) {
+            float dg = diversity_grad[j];
+            if (fabsf(dg) < 1e-10f) continue;
+            delta_cur[j] += dg;
+            // If this index wasn't already in sparse set, add it
+            if (fabsf(delta_cur[j]) > 1e-10f) {
+                bool found = false;
+                for (uint32_t si = 0; si < nsparse_cur; si++) {
+                    if (sparse_cur[si] == j) { found = true; break; }
+                }
+                if (!found && nsparse_cur < bp_min_output) {
+                    sparse_cur[nsparse_cur++] = j;
+                }
+            }
+        }
+    }
+
     // Get thread pool for parallel dispatch
     nimcp_thread_pool_t* tpool = get_bp_thread_pool();
 
@@ -699,6 +744,7 @@ int backprop_sparse_full_ex(
                 workers[w].layer_lr = layer_lr;
                 workers[w].min_weight = min_weight;
                 workers[w].max_weight = max_weight;
+                workers[w].weight_decay = weight_decay;
                 workers[w].sparse_cur = sparse_cur;
                 workers[w].chunk_start = w * chunk;
                 workers[w].chunk_end = (w == nw - 1) ? nsparse_cur : (w + 1) * chunk;
@@ -824,6 +870,10 @@ serial_path:
                     }
                 }
 
+                // Decoupled weight decay: w *= (1 - lr * wd) BEFORE gradient step
+                if (weight_decay > 0.0f) {
+                    in_syn->weight *= (1.0f - layer_lr * weight_decay);
+                }
                 in_syn->weight += weight_delta;
                 if (in_syn->weight < min_weight) in_syn->weight = min_weight;
                 if (in_syn->weight > max_weight) in_syn->weight = max_weight;
@@ -999,6 +1049,27 @@ int backprop_sparse_full_regression(
     float* out_grad_norm,
     backprop_layer_grads_t* out_layer_grads)
 {
+    return backprop_sparse_full_regression_wd(net, num_layers, layer_sizes,
+        learning_rate, min_weight, max_weight,
+        target, output, target_size,
+        max_grad_norm, 0.0f, NULL,
+        out_grad_norm, out_layer_grads);
+}
+
+int backprop_sparse_full_regression_wd(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float max_grad_norm,
+    float weight_decay,
+    const float* diversity_grad,
+    float* out_grad_norm,
+    backprop_layer_grads_t* out_layer_grads)
+{
     if (!net || num_layers < 2 || !layer_sizes || !target || !output || !out_grad_norm)
         return -1;
 
@@ -1067,6 +1138,24 @@ int backprop_sparse_full_regression(
         delta_cur[j] = mse_scale * diff;
         if (fabsf(delta_cur[j]) > 1e-10f) {
             sparse_cur[nsparse_cur++] = j;
+        }
+    }
+
+    // Inject diversity gradient into output layer deltas (anti-collapse)
+    if (diversity_grad) {
+        for (uint32_t j = 0; j < bp_min_output; j++) {
+            float dg = diversity_grad[j];
+            if (fabsf(dg) < 1e-10f) continue;
+            delta_cur[j] += dg;
+            if (fabsf(delta_cur[j]) > 1e-10f) {
+                bool found = false;
+                for (uint32_t si = 0; si < nsparse_cur; si++) {
+                    if (sparse_cur[si] == j) { found = true; break; }
+                }
+                if (!found && nsparse_cur < bp_min_output) {
+                    sparse_cur[nsparse_cur++] = j;
+                }
+            }
         }
     }
 
@@ -1139,6 +1228,10 @@ int backprop_sparse_full_regression(
                     }
                 }
 
+                // Decoupled weight decay: w *= (1 - lr * wd) BEFORE gradient step
+                if (weight_decay > 0.0f) {
+                    in_syn->weight *= (1.0f - layer_lr * weight_decay);
+                }
                 in_syn->weight += weight_delta;
                 if (in_syn->weight < min_weight) in_syn->weight = min_weight;
                 if (in_syn->weight > max_weight) in_syn->weight = max_weight;

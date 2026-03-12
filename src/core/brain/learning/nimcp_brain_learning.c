@@ -1002,8 +1002,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     } else {
         /* Legacy path: secondary networks learn IN PARALLEL (after adaptive completes) */
         bool has_cnn = (label && label[0]) && brain->config.train_cnn;
-        bool has_snn = (brain->snn_network && brain->snn_training_ctx && !brain->config.fast_training_mode && brain->config.train_snn);
-        bool has_lnn = (brain->lnn_network && brain->lnn_training_ctx && !brain->config.fast_training_mode && brain->config.train_lnn);
+        bool has_snn = (brain->snn_network && brain->snn_training_ctx && brain->config.train_snn);
+        bool has_lnn = (brain->lnn_network && brain->lnn_training_ctx && brain->config.train_lnn);
         int secondary_count = (has_cnn ? 1 : 0) + (has_snn ? 1 : 0) + (has_lnn ? 1 : 0);
 
         if (brain->inference_pool && secondary_count >= 2) {

@@ -135,6 +135,19 @@ struct neural_network_struct {
     /* GPU-side buffers for batch relevance recomputation */
     nimcp_embedding_gpu_state_t embedding_gpu_state;
     bool embedding_gpu_initialized;         /**< True if GPU state is ready */
+
+    /* Learnable layer normalization affine parameters (Phase 3: Architecture Eval) */
+    float** layer_norm_gamma;               /**< Per-layer scale (init 1.0), NULL = raw norm */
+    float** layer_norm_beta;                /**< Per-layer shift (init 0.0) */
+    uint32_t num_norm_layers;               /**< Number of layers with learnable norm params */
+
+    /* Residual/skip connections (Phase 4: Architecture Eval) */
+    bool enable_residual;                   /**< Enable skip connections (layer L -> L+2) */
+    float** residual_projections;           /**< Projection matrices for dim-mismatched skips (NULL=identity) */
+    uint32_t* residual_proj_src_dim;        /**< Source dimension for each projection */
+    uint32_t* residual_proj_dst_dim;        /**< Destination dimension for each projection */
+    uint32_t num_residual_pairs;            /**< Number of residual skip pairs */
+    float** residual_saved_states;          /**< Saved pre-activation states for residual add */
 };
 
 //=============================================================================

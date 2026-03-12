@@ -105,6 +105,9 @@ struct tpb_context {
     /* State */
     atomic_bool initialized;
     atomic_bool shutdown;
+
+    /* Phase 5: Backprop gating — suppress biological plasticity during backprop */
+    volatile int backprop_active;
 };
 
 /**
@@ -2017,4 +2020,18 @@ bool tpb_is_perception_training_connected(const tpb_context_t* ctx)
 bool tpb_is_cortical_training_connected(const tpb_context_t* ctx)
 {
     return ctx && ctx->cortical_training != NULL;
+}
+
+//=============================================================================
+// Phase 5: Backprop Gating
+//=============================================================================
+
+void nimcp_tpb_set_backprop_active(tpb_context_t* ctx, bool active) {
+    if (!ctx) return;
+    __atomic_store_n(&ctx->backprop_active, active ? 1 : 0, __ATOMIC_RELEASE);
+}
+
+bool nimcp_tpb_is_backprop_active(tpb_context_t* ctx) {
+    if (!ctx) return false;
+    return __atomic_load_n(&ctx->backprop_active, __ATOMIC_ACQUIRE) != 0;
 }

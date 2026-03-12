@@ -81,6 +81,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adaptive)
 #define SPARSITY_EMA_WEIGHT 0.1f
 // OUTPUT_LR_BOOST is defined in nimcp_backprop_kernel.h (single source of truth)
 #define LATERAL_INHIBITION_STRENGTH 0.3f  /* Strength for output layer lateral inhibition */
+#define ADAPTIVE_WEIGHT_DECAY 1e-4f       /* Decoupled weight decay for AdamW-style regularization */
+#define ADAPTIVE_WEIGHT_DECAY 1e-4f       /* L2 weight decay for backprop paths */
 
 // WHAT: Helper macros for checked file I/O (cert-err33-c compliance)
 // WHY:  fwrite/fread return values must be checked to detect I/O errors
@@ -2117,7 +2119,9 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             if (!isfinite(loss) || loss < 0.0f) loss = 0.0f;
         }
 
-        // 3b. Diversity loss (unified anti-collapse)
+        // 3b. Diversity loss (unified anti-collapse) with gradient correction
+        float* div_grad = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
+        if (div_grad) memset(div_grad, 0, example->target_size * sizeof(float));
         {
             static __thread nimcp_anti_collapse_state_t s_adap_anti_collapse;
             static __thread bool s_adap_ac_inited = false;
@@ -2126,7 +2130,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 s_adap_ac_inited = true;
             }
             float div_loss = nimcp_anti_collapse_diversity_loss(
-                &s_adap_anti_collapse, output, NULL, example->target_size);
+                &s_adap_anti_collapse, output, div_grad, example->target_size);
             loss += div_loss;
         }
 
@@ -2174,19 +2178,21 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
                                                         network->base_network);
                 if (mode == LEARN_MODE_DISTILLATION) {
-                    backprop_sparse_full_regression(network->base_network,
+                    backprop_sparse_full_regression_wd(network->base_network,
                         num_layers, layer_sizes, effective_lr,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
-                        1.0f, &grad_norm, &layer_grads);
+                        1.0f, ADAPTIVE_WEIGHT_DECAY, div_grad,
+                        &grad_norm, &layer_grads);
                 } else {
-                    backprop_sparse_full_ex(network->base_network,
+                    backprop_sparse_full_ex2(network->base_network,
                         num_layers, layer_sizes, effective_lr,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
-                        1.0f, &grad_norm, &layer_grads);
+                        1.0f, ADAPTIVE_WEIGHT_DECAY, div_grad,
+                        &grad_norm, &layer_grads);
                 }
             }
             network->last_grad_norm = grad_norm;
@@ -2258,6 +2264,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         }
 
         free_hot_buffer(output);
+        free_hot_buffer(div_grad);
         network->total_learning_steps++;
 
         // L-3: Update EMA of training loss in GPU path (same logic as CPU path)
@@ -2315,10 +2322,11 @@ cpu_learn_path:
                     nimcp_anti_collapse_init(&s_cpu_dist_ac, NULL);
                     s_cpu_dist_ac_inited = true;
                 }
+                float* div_grad = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
+                if (div_grad) memset(div_grad, 0, example->target_size * sizeof(float));
                 float div_loss = nimcp_anti_collapse_diversity_loss(
-                    &s_cpu_dist_ac, output, NULL, example->target_size);
+                    &s_cpu_dist_ac, output, div_grad, example->target_size);
                 loss += div_loss;
-            }
 
             // Regression backprop: MSE gradients on ALL outputs
             {
@@ -2339,12 +2347,13 @@ cpu_learn_path:
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
-                    backprop_sparse_full_regression(network->base_network,
+                    backprop_sparse_full_regression_wd(network->base_network,
                         num_layers, layer_sizes, cpu_eff_lr,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
-                        1.0f, &grad_norm, &layer_grads);
+                        1.0f, ADAPTIVE_WEIGHT_DECAY, div_grad,
+                        &grad_norm, &layer_grads);
                 }
                 network->last_grad_norm = grad_norm;
                 network->num_grad_layers = layer_grads.num_layers;
@@ -2363,6 +2372,8 @@ cpu_learn_path:
                     }
                     NIMCP_EMA_GUARD(network->ema_grad_norm, grad_norm);
                 }
+            }
+                free_hot_buffer(div_grad);
             }
             break;
 
@@ -2391,10 +2402,11 @@ cpu_learn_path:
                     nimcp_anti_collapse_init(&s_cpu_sup_ac, NULL);
                     s_cpu_sup_ac_inited = true;
                 }
+                float* div_grad = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
+                if (div_grad) memset(div_grad, 0, example->target_size * sizeof(float));
                 float div_loss = nimcp_anti_collapse_diversity_loss(
-                    &s_cpu_sup_ac, output, NULL, example->target_size);
+                    &s_cpu_sup_ac, output, div_grad, example->target_size);
                 loss += div_loss;
-            }
 
             // =================================================================
             // BIOLOGICAL PLASTICITY: Apply STDP/BCM to synapses
@@ -2431,12 +2443,12 @@ cpu_learn_path:
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
-                    backprop_sparse_full_ex(network->base_network,
+                    backprop_sparse_full_ex2(network->base_network,
                         num_layers, layer_sizes, cpu_eff_lr,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
-                        1.0f,
+                        1.0f, ADAPTIVE_WEIGHT_DECAY, div_grad,
                         &grad_norm, &layer_grads);
                 }
                 network->last_grad_norm = grad_norm;
@@ -2460,6 +2472,8 @@ cpu_learn_path:
                     }
                     NIMCP_EMA_GUARD(network->ema_grad_norm, grad_norm);
                 }
+            }
+                free_hot_buffer(div_grad);
             }
             break;
 
@@ -2544,10 +2558,11 @@ cpu_learn_path:
                     nimcp_anti_collapse_init(&s_cpu_hyb_ac, NULL);
                     s_cpu_hyb_ac_inited = true;
                 }
+                float* div_grad = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
+                if (div_grad) memset(div_grad, 0, example->target_size * sizeof(float));
                 float div_loss = nimcp_anti_collapse_diversity_loss(
-                    &s_cpu_hyb_ac, output, NULL, example->target_size);
+                    &s_cpu_hyb_ac, output, div_grad, example->target_size);
                 loss += div_loss;
-            }
 
             // Phase 2: Full backpropagation (delegated to shared kernel)
             {
@@ -2568,12 +2583,12 @@ cpu_learn_path:
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
-                    backprop_sparse_full_ex(network->base_network,
+                    backprop_sparse_full_ex2(network->base_network,
                         num_layers, layer_sizes, cpu_eff_lr,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
-                        1.0f,
+                        1.0f, ADAPTIVE_WEIGHT_DECAY, div_grad,
                         &grad_norm, &layer_grads);
 
                     // Phase 3: Biological plasticity AFTER backprop
@@ -2625,6 +2640,8 @@ cpu_learn_path:
                     }
                     NIMCP_EMA_GUARD(network->ema_grad_norm, grad_norm);
                 }
+            }
+                free_hot_buffer(div_grad);
             }
             break;
     }

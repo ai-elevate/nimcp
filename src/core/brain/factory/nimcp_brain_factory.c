@@ -1209,6 +1209,14 @@ brain_t brain_create_custom(const brain_config_t* config)
         brain->inference_buf_cnn = NULL;
         brain->inference_buf_snn = NULL;
         brain->inference_buf_size = 0;
+
+        // Multi-network fusion defaults (Phase 6)
+        brain->enable_fusion = false;
+        brain->fusion_weights[0] = 0.7f;  // Adaptive
+        brain->fusion_weights[1] = 0.1f;  // CNN
+        brain->fusion_weights[2] = 0.1f;  // SNN
+        brain->fusion_weights[3] = 0.1f;  // LNN
+        brain->fusion_scratch_lnn = NULL;
     }
 
     // ========================================================================

@@ -6337,6 +6337,30 @@ static PyObject* Brain_set_network_ablation_py(BrainObject* self, PyObject* args
     Py_RETURN_NONE;
 }
 
+static PyObject* Brain_set_fusion_enabled_py(BrainObject* self, PyObject* args) {
+    if (!self->brain) Py_RETURN_NONE;
+    CHECK_INTERNAL_BRAIN(self);
+    int enabled;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    self->brain->internal_brain->enable_fusion = (bool)enabled;
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_set_fusion_weights_py(BrainObject* self, PyObject* args) {
+    if (!self->brain) Py_RETURN_NONE;
+    CHECK_INTERNAL_BRAIN(self);
+    PyObject* list;
+    if (!PyArg_ParseTuple(args, "O", &list)) return NULL;
+    if (!PyList_Check(list) || PyList_Size(list) != 4) {
+        PyErr_SetString(PyExc_ValueError, "fusion_weights must be a list of 4 floats");
+        return NULL;
+    }
+    for (int i = 0; i < 4; i++) {
+        self->brain->internal_brain->fusion_weights[i] = (float)PyFloat_AsDouble(PyList_GetItem(list, i));
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_get_network_metrics_py(BrainObject* self, PyObject* Py_UNUSED(args)) {
     if (!self->brain) Py_RETURN_NONE;
     float ema_ann = 0, ema_cnn = 0, ema_snn = 0, ema_lnn = 0;
@@ -6756,6 +6780,10 @@ static PyMethodDef Brain_methods[] = {
      "Enable/disable network types: set_network_ablation(train_cnn=1, train_snn=1, train_lnn=1)"},
     {"get_network_metrics", (PyCFunction)Brain_get_network_metrics_py, METH_NOARGS,
      "Get per-network training metrics: get_network_metrics() -> dict"},
+    {"set_fusion_enabled", (PyCFunction)Brain_set_fusion_enabled_py, METH_VARARGS,
+     "Enable/disable multi-network fusion: set_fusion_enabled(True) -> None"},
+    {"set_fusion_weights", (PyCFunction)Brain_set_fusion_weights_py, METH_VARARGS,
+     "Set fusion weights: set_fusion_weights([0.7, 0.1, 0.1, 0.1]) -> None"},
 
     {NULL}
 };

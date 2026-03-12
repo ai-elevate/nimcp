@@ -6684,6 +6684,9 @@
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_stability_test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_symbolic_logic_hub_test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_dispatch_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_architecture_phase2_fixes.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_architecture_eval_fixes.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_architecture_audit_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/rebuild_cache.dir
@@ -6702,6 +6705,7 @@
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_quantization_ternary.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_snn_backprop_stubs.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_training_dispatch.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_cross_network_bridges.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/rebuild_cache.dir

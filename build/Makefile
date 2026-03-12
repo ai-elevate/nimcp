@@ -39227,6 +39227,45 @@ regression_training_dispatch_test/fast:
 .PHONY : regression_training_dispatch_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_training_architecture_phase2_fixes
+
+# Build rule for target.
+regression_training_architecture_phase2_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_architecture_phase2_fixes
+.PHONY : regression_training_architecture_phase2_fixes
+
+# fast build rule for target.
+regression_training_architecture_phase2_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_architecture_phase2_fixes.dir/build.make test/regression/training/CMakeFiles/regression_training_architecture_phase2_fixes.dir/build
+.PHONY : regression_training_architecture_phase2_fixes/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_architecture_eval_fixes
+
+# Build rule for target.
+regression_training_architecture_eval_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_architecture_eval_fixes
+.PHONY : regression_training_architecture_eval_fixes
+
+# fast build rule for target.
+regression_training_architecture_eval_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_architecture_eval_fixes.dir/build.make test/regression/training/CMakeFiles/regression_training_architecture_eval_fixes.dir/build
+.PHONY : regression_training_architecture_eval_fixes/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_architecture_audit_fixes
+
+# Build rule for target.
+regression_training_architecture_audit_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_architecture_audit_fixes
+.PHONY : regression_training_architecture_audit_fixes
+
+# fast build rule for target.
+regression_training_architecture_audit_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_architecture_audit_fixes.dir/build.make test/regression/training/CMakeFiles/regression_training_architecture_audit_fixes.dir/build
+.PHONY : regression_training_architecture_audit_fixes/fast
+
+#=============================================================================
 # Target rules for targets named unit_training_test_cnn_backprop
 
 # Build rule for target.
@@ -39368,6 +39407,19 @@ unit_training_test_training_dispatch: cmake_check_build_system
 unit_training_test_training_dispatch/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_training_dispatch.dir/build.make test/unit/training/CMakeFiles/unit_training_test_training_dispatch.dir/build
 .PHONY : unit_training_test_training_dispatch/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_test_cross_network_bridges
+
+# Build rule for target.
+unit_training_test_cross_network_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_cross_network_bridges
+.PHONY : unit_training_test_cross_network_bridges
+
+# fast build rule for target.
+unit_training_test_cross_network_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_cross_network_bridges.dir/build.make test/unit/training/CMakeFiles/unit_training_test_cross_network_bridges.dir/build
+.PHONY : unit_training_test_cross_network_bridges/fast
 
 #=============================================================================
 # Target rules for targets named unit_test_training_integration_hub
@@ -43644,6 +43696,9 @@ help:
 	@echo "... regression_thalamus_test"
 	@echo "... regression_thread_safety_test_callback_wrapper_mutex"
 	@echo "... regression_thread_safety_test_thread_local_error_buffer"
+	@echo "... regression_training_architecture_audit_fixes"
+	@echo "... regression_training_architecture_eval_fixes"
+	@echo "... regression_training_architecture_phase2_fixes"
 	@echo "... regression_training_cnn_backprop_test"
 	@echo "... regression_training_cnn_cortex_bridge_test"
 	@echo "... regression_training_dispatch_test"
@@ -45200,6 +45255,7 @@ help:
 	@echo "... unit_training_test_cl_mtl"
 	@echo "... unit_training_test_cnn_backprop"
 	@echo "... unit_training_test_cnn_cortex_bridge"
+	@echo "... unit_training_test_cross_network_bridges"
 	@echo "... unit_training_test_kd_qat"
 	@echo "... unit_training_test_meta_hpo"
 	@echo "... unit_training_test_quantization_ternary"

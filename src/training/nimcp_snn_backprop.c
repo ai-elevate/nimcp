@@ -672,6 +672,7 @@ snn_backprop_ctx_t* snn_backprop_create(
             .use_gradient_normalization = config->use_gradient_normalization,
             .gradient_target_norm = 1.0f,
             .gradient_clip_value = config->gradient_clip_norm,
+            .adaptive_gradient_target = true,
         };
         nimcp_anti_collapse_init(&ctx->anti_collapse, &ac_cfg);
     }
@@ -908,7 +909,7 @@ int snn_backprop_step(
                 float* ga[1] = { g };
                 size_t gs[1] = { numel };
                 nimcp_anti_collapse_normalize_gradients(
-                    &ctx->anti_collapse.config, ga, gs, 1);
+                    &ctx->anti_collapse, ga, gs, 1);
             }
 
             /* Apply weight decay */

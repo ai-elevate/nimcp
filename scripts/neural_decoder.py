@@ -227,19 +227,32 @@ class NeuralDecoder:
         self.projector = EmbeddingProjector(output_dim, embed_dim, refit_interval)
         self.vocabulary = VocabularyBank(embed_dim)
         self._decode_count = 0
+        self._frozen = False
 
     def record_pair(self, output_vector: np.ndarray, target_embedding: np.ndarray,
                     text: str | None = None):
         """Record a training pair for projector fitting + vocabulary building.
+
+        No-op when decoder is frozen (during evaluation).
 
         Args:
             output_vector: Brain's raw output vector after forward pass
             target_embedding: The target embedding this output should match
             text: Optional text to add to vocabulary bank for this embedding
         """
+        if self._frozen:
+            return
         self.projector.record_pair(output_vector, target_embedding)
         if text:
             self.vocabulary.add(text, target_embedding)
+
+    def freeze(self):
+        """Freeze decoder — record_pair becomes a no-op."""
+        self._frozen = True
+
+    def unfreeze(self):
+        """Unfreeze decoder — record_pair resumes normal operation."""
+        self._frozen = False
 
     def decode_output(self, output_vector: np.ndarray,
                       top_k: int = 1) -> list[tuple[str, float]]:
