@@ -3089,8 +3089,10 @@ int brain_enable_multi_network_training(brain_t brain)
                     if (nimcp_trainable_snn_create(
                             brain->snn_backprop_ctx,
                             &ops, &adapter_ctx) == 0) {
+                        /* Use SNN network's actual dims, not brain I/O dims */
+                        snn_network_t* snn_net = (snn_network_t*)brain->snn_network;
                         nimcp_trainable_snn_set_dims(adapter_ctx,
-                            brain->config.num_inputs, brain->config.num_outputs);
+                            snn_net->config.n_inputs, snn_net->config.n_outputs);
                         nimcp_trainable_snn_set_managed(adapter_ctx, true);
                         nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
                     }
@@ -3104,8 +3106,7 @@ int brain_enable_multi_network_training(brain_t brain)
                 if (nimcp_trainable_lnn_create(
                         (struct lnn_training_ctx_s*)brain->lnn_training_ctx,
                         &ops, &adapter_ctx) == 0) {
-                    nimcp_trainable_lnn_set_dims(adapter_ctx,
-                        brain->config.num_inputs, brain->config.num_outputs);
+                    /* Dims already set from lnn_ctx->network in create() */
                     nimcp_trainable_lnn_set_managed(adapter_ctx, true);
                     nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
                 }
