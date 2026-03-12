@@ -529,7 +529,9 @@ int lnn_training_step(
             lnn_network_zero_gradients(ctx->network);
             grad_norm = 0.0f;
         } else if (!ctx->managed_by_utm) {
-            /* Normalize or clip gradients — skip when UTM manages globally */
+            /* Normalize or clip gradients — skip when UTM manages globally.
+             * When UTM-managed, the LNN adapter applies gradient normalization
+             * after lnn_backward() instead. */
             if (ctx->config.use_gradient_normalization) {
                 float current_norm = lnn_gradient_norm(ctx->gradient_ctx);
                 if (current_norm > 1e-8f) {

@@ -77,6 +77,19 @@ static int lnn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
 
     int rc = lnn_backward(a->lnn_ctx->network, grad_t);
 
+    /* Normalize LNN gradients after adjoint computation.
+     * The raw adjoint produces norms of 60K-770K which cause NaN in loss.
+     * The direct LNN training path (lnn_training_step) applies this, but the
+     * UTM adapter calls lnn_backward() directly, bypassing that pipeline. */
+    if (rc == 0 && a->lnn_ctx->gradient_ctx) {
+        float gnorm = lnn_gradient_norm(a->lnn_ctx->gradient_ctx);
+        if (gnorm > 1e-8f) {
+            float target_norm = 1.0f;
+            float scale = target_norm / gnorm;
+            lnn_gradient_scale(a->lnn_ctx->gradient_ctx, scale);
+        }
+    }
+
     /* Apply LNN gradients via its internal optimizer — unless UTM manages params.
      * When managed_by_utm, UTM handles optimizer stepping via param groups. */
     if (rc == 0 && !a->managed_by_utm && a->lnn_ctx->optimizer && a->lnn_ctx->network) {
