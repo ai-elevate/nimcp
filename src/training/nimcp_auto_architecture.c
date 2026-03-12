@@ -2136,15 +2136,73 @@ auto_arch_architecture_t* auto_arch_get_best(const auto_arch_context_t* ctx)
 float auto_arch_compute_bio_score(const auto_arch_architecture_t* arch)
 {
     if (!arch) return 0.0f;
+    if (!arch->layers || arch->n_layers == 0) return 0.0f;
 
     float score = 0.0f;
 
     /* Sparsity score (cortical typical: 80-95%) */
     if (arch->avg_sparsity >= 0.8f && arch->avg_sparsity <= 0.95f) {
         score += 0.3f;
+    } else if (arch->avg_sparsity >= 0.7f) {
+        /* Partial credit for close-to-biological sparsity */
+        score += 0.15f;
     }
 
-    /* TODO: Add more bio-plausibility metrics */
+    /* Time constants in biological range (1-100ms) — +0.2 */
+    uint32_t bio_tau_count = 0;
+    for (uint32_t i = 0; i < arch->n_layers; i++) {
+        float tau = arch->layers[i].tau_mem;
+        if (tau >= 1.0f && tau <= 100.0f) {
+            bio_tau_count++;
+        }
+    }
+    if (arch->n_layers > 0) {
+        float tau_ratio = (float)bio_tau_count / (float)arch->n_layers;
+        score += 0.2f * tau_ratio;
+    }
+
+    /* Local connectivity pattern — +0.2 if >70% layers use local/sparse wiring */
+    uint32_t local_layers = 0;
+    for (uint32_t i = 0; i < arch->n_layers; i++) {
+        if (arch->layers[i].sparsity >= 0.5f) {
+            local_layers++;
+        }
+    }
+    if (arch->n_layers > 0) {
+        float local_ratio = (float)local_layers / (float)arch->n_layers;
+        if (local_ratio >= 0.7f) {
+            score += 0.2f;
+        } else {
+            score += 0.2f * (local_ratio / 0.7f);
+        }
+    }
+
+    /* Layer depth plausibility — cortex has 6 layers, +0.2 for 3-8 layers */
+    if (arch->n_layers >= 3 && arch->n_layers <= 8) {
+        score += 0.2f;
+    } else if (arch->n_layers >= 2 && arch->n_layers <= 12) {
+        score += 0.1f;
+    }
+
+    /* Dale's law compliance (E/I segregation) — +0.1 if threshold variance suggests
+     * inhibitory/excitatory separation (different threshold values across layers) */
+    if (arch->n_layers >= 2) {
+        float thresh_min = arch->layers[0].v_thresh;
+        float thresh_max = arch->layers[0].v_thresh;
+        for (uint32_t i = 1; i < arch->n_layers; i++) {
+            if (arch->layers[i].v_thresh < thresh_min)
+                thresh_min = arch->layers[i].v_thresh;
+            if (arch->layers[i].v_thresh > thresh_max)
+                thresh_max = arch->layers[i].v_thresh;
+        }
+        /* Nonzero threshold variance suggests E/I segregation */
+        if (thresh_max - thresh_min > 1.0f) {
+            score += 0.1f;
+        }
+    }
+
+    /* Cap at 1.0 */
+    if (score > 1.0f) score = 1.0f;
 
     return score;
 }

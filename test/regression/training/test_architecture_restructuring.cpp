@@ -44,6 +44,11 @@ extern "C" {
 #include "middleware/training/nimcp_gradient_manager.h"
 #include "middleware/training/nimcp_regularization.h"
 
+/* Enhancement batch: auto-architecture, middleware adapters, state manager */
+#include "training/nimcp_auto_architecture.h"
+#include "training/integration/nimcp_training_state_manager.h"
+#include "middleware/training/nimcp_training_adapters.h"
+
 /* Forward-declare inference health API (can't include the header because
  * nimcp_brain_inference.h → nimcp_brain_internal.h → CUDA headers, which
  * break inside extern "C" in a C++ compilation unit) */
@@ -3549,4 +3554,171 @@ TEST_F(ArchRestructuringTest, GapAPI_GradientsHealthy) {
     bool healthy = nimcp_utm_gradients_healthy(mgr);
     EXPECT_TRUE(healthy);
     nimcp_utm_destroy(mgr);
+}
+
+/* ============================================================================
+ * Section 21: Enhancement Batch Tests
+ * ============================================================================ */
+
+/* --- Riemannian SGD Config --- */
+
+TEST_F(ArchRestructuringTest, Enhance_RiemannianSGD_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg = {};
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_riemannian_sgd);
+    EXPECT_EQ(cfg.riemannian_max_params, 2048u);
+}
+
+TEST_F(ArchRestructuringTest, Enhance_RiemannianSGD_ManagerState) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    /* Riemannian metric should be NULL initially (lazy-created) */
+    EXPECT_EQ(mgr->riemannian_metric, nullptr);
+    EXPECT_TRUE(mgr->riemannian_enabled);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Bio-Plausibility Scoring --- */
+
+TEST_F(ArchRestructuringTest, Enhance_BioScore_NullArch) {
+    float score = auto_arch_compute_bio_score(NULL);
+    EXPECT_FLOAT_EQ(score, 0.0f);
+}
+
+TEST_F(ArchRestructuringTest, Enhance_BioScore_GoodArchHighScore) {
+    /* Create an architecture with biologically plausible properties */
+    auto_arch_architecture_t arch = {};
+    auto_arch_layer_spec_t layers[5];
+    memset(layers, 0, sizeof(layers));
+
+    arch.layers = layers;
+    arch.n_layers = 5;
+    arch.avg_sparsity = 0.9f;  /* Cortical range */
+
+    /* Bio-plausible time constants */
+    for (int i = 0; i < 5; i++) {
+        layers[i].tau_mem = 20.0f;  /* 20ms — biological range */
+        layers[i].sparsity = 0.85f; /* Local connectivity */
+        layers[i].v_thresh = (i < 3) ? -50.0f : -65.0f; /* E/I segregation */
+    }
+
+    float score = auto_arch_compute_bio_score(&arch);
+    /* Should get good scores for sparsity (0.3) + tau (0.2) + local (0.2) +
+     * depth 3-8 (0.2) + E/I (0.1) = ~1.0 */
+    EXPECT_GT(score, 0.8f);
+}
+
+/* --- State Manager Stats Extraction --- */
+
+TEST_F(ArchRestructuringTest, Enhance_StateManager_CreateDestroy) {
+    training_state_registry_t* reg = training_state_registry_create();
+    ASSERT_NE(reg, nullptr);
+    EXPECT_EQ(training_state_get_module_count(reg), 0u);
+    training_state_registry_destroy(reg);
+}
+
+TEST_F(ArchRestructuringTest, Enhance_StateManager_TotalSize) {
+    training_state_registry_t* reg = training_state_registry_create();
+    ASSERT_NE(reg, nullptr);
+    /* No modules registered → 0 size */
+    EXPECT_EQ(training_state_get_total_size(reg), 0u);
+    training_state_registry_destroy(reg);
+}
+
+/* --- Inference Health API --- */
+
+TEST_F(ArchRestructuringTest, Enhance_InferenceHealth_InitAndRecord) {
+    nimcp_inference_health_t h = {};
+    int rc = nimcp_inference_health_init(&h, 16, 64);
+    EXPECT_EQ(rc, 0);
+    EXPECT_NE(h.output_history, nullptr);
+    EXPECT_NE(h.per_network_magnitude, nullptr);
+    EXPECT_EQ(h.output_dim, 16u);
+    EXPECT_EQ(h.history_size, 64u);
+    EXPECT_EQ(h.history_count, 0u);
+
+    /* Record some outputs */
+    float output[16] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f,
+                         0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f};
+    float contrib[4] = {0.6f, 0.2f, 0.1f, 0.1f};
+    nimcp_inference_health_record(&h, output, 16, contrib);
+    EXPECT_EQ(h.history_count, 1u);
+
+    nimcp_inference_health_destroy(&h);
+    EXPECT_EQ(h.output_history, nullptr);
+}
+
+/* --- Middleware Adapters (existence + default config) --- */
+
+TEST_F(ArchRestructuringTest, Enhance_LearningSignalAdapter_DefaultConfig) {
+    learning_signal_adapter_config_t cfg = learning_signal_adapter_default_config();
+    EXPECT_EQ(cfg.normalization, NORMALIZE_ADAPTIVE);
+    EXPECT_GT(cfg.learning_rate_scale, 0.0f);
+    EXPECT_TRUE(cfg.enable_attention_weighting);
+    EXPECT_TRUE(cfg.enable_novelty_boost);
+    EXPECT_GT(cfg.novelty_boost_factor, 1.0f);
+    EXPECT_GT(cfg.history_window_size, 0u);
+}
+
+TEST_F(ArchRestructuringTest, Enhance_LearningSignalAdapter_CreateDestroy) {
+    learning_signal_adapter_config_t cfg = learning_signal_adapter_default_config();
+    learning_signal_adapter_t adapter = learning_signal_adapter_create(&cfg);
+    ASSERT_NE(adapter, nullptr);
+    learning_signal_adapter_destroy(adapter);
+}
+
+TEST_F(ArchRestructuringTest, Enhance_WeightUpdateRouter_DefaultConfig) {
+    weight_update_router_config_t cfg = weight_update_router_default_config();
+    EXPECT_GT(cfg.routing_table_capacity, 0u);
+    EXPECT_GT(cfg.max_batch_size, 0u);
+    EXPECT_GT(cfg.route_learning_rate, 0.0f);
+}
+
+TEST_F(ArchRestructuringTest, Enhance_WeightUpdateRouter_CreateDestroy) {
+    weight_update_router_config_t cfg = weight_update_router_default_config();
+    weight_update_router_t router = weight_update_router_create(&cfg, NULL);
+    ASSERT_NE(router, nullptr);
+    weight_update_router_destroy(router);
+}
+
+TEST_F(ArchRestructuringTest, Enhance_TrainingEventManager_DefaultConfig) {
+    training_event_manager_config_t cfg = training_event_manager_default_config();
+    EXPECT_GT(cfg.event_queue_capacity, 0u);
+}
+
+TEST_F(ArchRestructuringTest, Enhance_TrainingEventManager_CreateDestroy) {
+    training_event_manager_config_t cfg = training_event_manager_default_config();
+    training_event_manager_t mgr = training_event_manager_create(&cfg, NULL);
+    ASSERT_NE(mgr, nullptr);
+    training_event_manager_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Enhance_TrainingEventData_Publish) {
+    training_event_manager_config_t cfg = training_event_manager_default_config();
+    training_event_manager_t mgr = training_event_manager_create(&cfg, NULL);
+    ASSERT_NE(mgr, nullptr);
+
+    training_event_data_t evt = {};
+    evt.type = TRAINING_EVENT_LOSS_UPDATE;
+    evt.epoch = 1;
+    evt.batch = 10;
+    evt.loss = 0.5f;
+    evt.learning_rate = 0.001f;
+    bool ok = training_event_manager_publish(mgr, &evt);
+    EXPECT_TRUE(ok);
+
+    training_event_manager_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Enhance_LearningSignalAdapter_Stats) {
+    learning_signal_adapter_config_t cfg = learning_signal_adapter_default_config();
+    learning_signal_adapter_t adapter = learning_signal_adapter_create(&cfg);
+    ASSERT_NE(adapter, nullptr);
+
+    learning_signal_adapter_stats_t stats = {};
+    bool ok = learning_signal_adapter_get_stats(adapter, &stats);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(stats.signals_extracted, 0u);
+
+    learning_signal_adapter_destroy(adapter);
 }

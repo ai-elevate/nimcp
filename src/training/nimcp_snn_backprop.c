@@ -1538,9 +1538,37 @@ int snn_backprop_train_step(
     if (result) {
         memset(result, 0, sizeof(snn_train_result_t));
         result->loss = loss;
-        result->gradient_norm = 0.0f; /* Would compute from gradients */
-        result->mean_firing_rate = 0.0f;
-        result->gradients_valid = true;
+
+        /* Compute gradient L2 norm from weight gradients */
+        float grad_norm_sq = 0.0f;
+        if (ctx->gradients && ctx->gradients->weight_grads) {
+            const float* gdata = nimcp_tensor_data_const(ctx->gradients->weight_grads);
+            uint32_t gcount = nimcp_tensor_numel(ctx->gradients->weight_grads);
+            if (gdata && gcount > 0) {
+                for (uint32_t gi = 0; gi < gcount; gi++) {
+                    grad_norm_sq += gdata[gi] * gdata[gi];
+                }
+            }
+        }
+        result->gradient_norm = sqrtf(grad_norm_sq);
+
+        /* Compute mean firing rate from forward pass spikes */
+        float total_spikes = 0.0f;
+        uint32_t total_neurons_time = 0;
+        if (ctx->activations && ctx->activations->spikes) {
+            const float* sdata = nimcp_tensor_data_const(ctx->activations->spikes);
+            uint32_t scount = nimcp_tensor_numel(ctx->activations->spikes);
+            if (sdata && scount > 0) {
+                for (uint32_t si = 0; si < scount; si++) {
+                    total_spikes += sdata[si];
+                }
+                total_neurons_time = scount;
+            }
+        }
+        result->mean_firing_rate = (total_neurons_time > 0)
+            ? (total_spikes / (float)total_neurons_time) : 0.0f;
+
+        result->gradients_valid = (result->gradient_norm < 1e6f);
     }
 
     nimcp_free(outputs);

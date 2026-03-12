@@ -48308,6 +48308,30 @@ __/training/nimcp_snn_backprop.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_snn_backprop.c.s
 .PHONY : __/training/nimcp_snn_backprop.c.s
 
+__/training/nimcp_training_checkpoint.o: __/training/nimcp_training_checkpoint.c.o
+.PHONY : __/training/nimcp_training_checkpoint.o
+
+# target to build an object file
+__/training/nimcp_training_checkpoint.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_training_checkpoint.c.o
+.PHONY : __/training/nimcp_training_checkpoint.c.o
+
+__/training/nimcp_training_checkpoint.i: __/training/nimcp_training_checkpoint.c.i
+.PHONY : __/training/nimcp_training_checkpoint.i
+
+# target to preprocess a source file
+__/training/nimcp_training_checkpoint.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_training_checkpoint.c.i
+.PHONY : __/training/nimcp_training_checkpoint.c.i
+
+__/training/nimcp_training_checkpoint.s: __/training/nimcp_training_checkpoint.c.s
+.PHONY : __/training/nimcp_training_checkpoint.s
+
+# target to generate assembly for a file
+__/training/nimcp_training_checkpoint.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_training_checkpoint.c.s
+.PHONY : __/training/nimcp_training_checkpoint.c.s
+
 __/training/nimcp_training_data_pipeline.o: __/training/nimcp_training_data_pipeline.c.o
 .PHONY : __/training/nimcp_training_data_pipeline.o
 
@@ -58393,6 +58417,9 @@ help:
 	@echo "... __/training/nimcp_snn_backprop.o"
 	@echo "... __/training/nimcp_snn_backprop.i"
 	@echo "... __/training/nimcp_snn_backprop.s"
+	@echo "... __/training/nimcp_training_checkpoint.o"
+	@echo "... __/training/nimcp_training_checkpoint.i"
+	@echo "... __/training/nimcp_training_checkpoint.s"
 	@echo "... __/training/nimcp_training_data_pipeline.o"
 	@echo "... __/training/nimcp_training_data_pipeline.i"
 	@echo "... __/training/nimcp_training_data_pipeline.s"

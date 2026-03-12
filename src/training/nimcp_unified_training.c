@@ -1392,7 +1392,69 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                                 groups[g].params, groups[g].gradients,
                                 (uint32_t)groups[g].count);
                         }
+                    } else if (mgr->riemannian_enabled &&
+                               groups[g].count <= mgr->riemannian_max_params &&
+                               groups[g].count > 0) {
+                        /* Riemannian SGD: precondition gradients with metric tensor.
+                         * The metric captures parameter space curvature, producing
+                         * geometry-aware updates (shorter steps in curved directions). */
+                        uint32_t pdim = (uint32_t)groups[g].count;
+
+                        /* Lazy-create metric for this network */
+                        if (!mgr->riemannian_metric) {
+                            mgr->riemannian_metric = riemannian_metric_create(pdim);
+                        }
+                        riemannian_metric_t* metric = (riemannian_metric_t*)mgr->riemannian_metric;
+
+                        if (metric && metric->dim == pdim) {
+                            /* Build metric from gradient outer product (empirical Fisher approx):
+                             * g_{ij} += grad_i * grad_j, then regularize with identity */
+                            for (uint32_t r = 0; r < pdim; r++) {
+                                for (uint32_t c = r; c < pdim; c++) {
+                                    float val = groups[g].gradients[r] * groups[g].gradients[c];
+                                    /* Exponential moving average */
+                                    uint32_t idx = r * pdim + c;
+                                    metric->g[idx] = 0.9f * metric->g[idx] + 0.1f * val;
+                                    if (r != c) {
+                                        metric->g[c * pdim + r] = metric->g[idx];
+                                    }
+                                }
+                                /* Tikhonov regularization for stability */
+                                metric->g[r * pdim + r] += 1e-4f;
+                            }
+                            metric->inv_valid = false;
+                            riemannian_metric_invert(metric);
+
+                            if (metric->inv_valid) {
+                                /* Riemannian gradient: g^{ij} grad_j */
+                                float* riem_grad = (float*)nimcp_calloc(pdim, sizeof(float));
+                                if (riem_grad) {
+                                    riemannian_raise_index(metric, groups[g].gradients, riem_grad);
+
+                                    /* Weight decay + Riemannian update */
+                                    for (size_t j = 0; j < groups[g].count; j++) {
+                                        if (wd > 0.0f) {
+                                            groups[g].params[j] -= lr * wd * groups[g].params[j];
+                                        }
+                                        groups[g].params[j] -= lr * riem_grad[j];
+                                    }
+                                    nimcp_free(riem_grad);
+                                }
+                            } else {
+                                /* Fallback to plain SGD if metric singular */
+                                for (size_t j = 0; j < groups[g].count; j++) {
+                                    if (wd > 0.0f) {
+                                        groups[g].params[j] -= lr * wd * groups[g].params[j];
+                                    }
+                                    groups[g].params[j] -= lr * groups[g].gradients[j];
+                                }
+                            }
+                        } else {
+                            /* Dimension mismatch — fall through to AdamW */
+                            goto adamw_fallback;
+                        }
                     } else {
+                        adamw_fallback:
                         /* Standard AdamW */
                         for (size_t j = 0; j < groups[g].count; j++) {
                             float grad = groups[g].gradients[j];

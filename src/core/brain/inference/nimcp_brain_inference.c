@@ -78,6 +78,10 @@
 
 BRIDGE_BOILERPLATE_MESH_ONLY(brain_inference, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
+/* File-scoped inference health monitor — avoids modifying 800+ field brain_internal.h.
+ * Lazily initialized on first ensemble inference call. Thread-safety via brain mutex. */
+static nimcp_inference_health_t s_inference_health = {0};
+static bool s_inference_health_inited = false;
 
 // Forward declarations for brain internal functions (defined in nimcp_brain.c)
 extern void set_error(const char* fmt, ...);
@@ -316,6 +320,43 @@ static uint32_t perform_forward_pass(brain_t brain, const float* features, uint3
             float inv_sum = 1.0f / w_sum;
             for (uint32_t j = 0; j < decision->output_size; j++) {
                 decision->output_vector[j] *= inv_sum;
+            }
+        }
+    }
+
+    /* Inference health monitoring: record ensemble output for DFA analysis */
+    if (brain->config.enable_ensemble_inference && decision->output_size > 0) {
+        if (!s_inference_health_inited) {
+            if (nimcp_inference_health_init(&s_inference_health,
+                                             decision->output_size, 128) == 0) {
+                s_inference_health.enabled = true;
+                s_inference_health.check_interval = 32;
+                s_inference_health_inited = true;
+            }
+        }
+        if (s_inference_health.enabled) {
+            /* Compute per-network contribution magnitudes */
+            float contributions[4] = {0};
+            float w_a = brain->config.ensemble_weights[0];
+            float w_s = brain->config.ensemble_weights[1];
+            float w_l = brain->config.ensemble_weights[2];
+            float w_c = brain->config.ensemble_weights[3];
+            if (w_a == 0.0f && w_s == 0.0f && w_l == 0.0f && w_c == 0.0f) {
+                w_a = 0.6f; w_s = 0.2f; w_l = 0.1f; w_c = 0.1f;
+            }
+            contributions[0] = w_a;
+            contributions[1] = (brain->snn_network) ? w_s : 0.0f;
+            contributions[2] = (brain->lnn_network) ? w_l : 0.0f;
+            contributions[3] = (brain->cnn_trainer) ? w_c : 0.0f;
+
+            nimcp_inference_health_record(&s_inference_health,
+                decision->output_vector, decision->output_size,
+                contributions);
+
+            /* Periodic health check */
+            if (s_inference_health.history_count > 0 &&
+                s_inference_health.history_count % s_inference_health.check_interval == 0) {
+                nimcp_inference_health_check(&s_inference_health);
             }
         }
     }
