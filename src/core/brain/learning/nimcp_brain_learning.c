@@ -3151,6 +3151,15 @@ int brain_enable_multi_network_training(brain_t brain)
                 NIMCP_LOGGING_INFO("Plasticity coordinator bridge wired — STDP/BCM gated "
                                   "during backprop");
             }
+
+            /* Wire pink noise system for DFA-driven amplitude feedback.
+             * DFA monitors training health; pink noise amplitudes adjust to
+             * steer dynamics toward optimal α≈1.0 (pink noise regime). */
+            if (brain->pink_noise) {
+                nimcp_utm_set_pink_noise(utm, brain->pink_noise);
+                NIMCP_LOGGING_INFO("UTM pink noise feedback wired — DFA will modulate "
+                                  "neuromodulator noise amplitudes");
+            }
         }
     }
 

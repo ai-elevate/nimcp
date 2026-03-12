@@ -303,6 +303,13 @@ check_utm_health() {
         log "  Last DFA LR adjustment: $dfa_lr_line"
     fi
 
+    # Pink noise DFA feedback
+    local pink_line
+    pink_line=$(grep "DFA→PinkNoise" "$TRAINING_LOG" | tail -1 || true)
+    if [ -n "$pink_line" ]; then
+        log "  Pink noise feedback: $pink_line"
+    fi
+
     # EMA evaluation count
     local ema_count
     ema_count=$(grep -c "\[EMA\]" "$TRAINING_LOG" 2>/dev/null || echo "0")

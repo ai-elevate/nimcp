@@ -39,6 +39,7 @@
 #include "middleware/training/nimcp_regularization.h"
 #include "training/nimcp_continual_learning.h"
 #include "training/nimcp_adversarial_training.h"
+#include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
 
 #ifdef NIMCP_ENABLE_CUDA
 #include "gpu/training/nimcp_gradient_checkpoint.h"
@@ -95,6 +96,7 @@ void nimcp_utm_default_config(nimcp_unified_training_config_t* config) {
     config->loss_history_size = 256;
     config->health_check_interval = 64;
     config->dfa_auto_adjust_lr = true;
+    config->enable_pink_noise_dfa_feedback = true;
 
     /* Quantum annealing (default: enabled) */
     config->enable_quantum_anneal = true;
@@ -220,6 +222,7 @@ nimcp_unified_training_manager_t* nimcp_utm_create(
     mgr->loss_history_size = mgr->config.loss_history_size;
     mgr->health_check_interval = mgr->config.health_check_interval;
     mgr->dfa_auto_adjust_lr = mgr->config.dfa_auto_adjust_lr;
+    mgr->pink_noise_dfa_feedback = mgr->config.enable_pink_noise_dfa_feedback;
     if (mgr->loss_history_size > 0) {
         mgr->loss_history = (float*)nimcp_calloc(mgr->loss_history_size, sizeof(float));
     }
@@ -2077,6 +2080,71 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                     }
                 }
 
+                /* DFA → Pink Noise closed-loop feedback.
+                 * Adjusts neuromodulator pink noise amplitudes based on training health:
+                 *   NOISY/OSCILLATING: reduce amplitude (dampen stochasticity)
+                 *   DRIFTING: reduce amplitude (stabilize)
+                 *   PLATEAU: boost amplitude (inject exploration to escape local minimum)
+                 *   OPTIMAL: restore to baseline (ideal dynamics, no correction needed)
+                 *
+                 * This creates a self-tuning system: DFA measures whether training
+                 * dynamics are in the pink noise regime, pink noise amplitude adjusts
+                 * to steer dynamics back toward α≈1.0. */
+                if (mgr->pink_noise_dfa_feedback && mgr->pink_noise) {
+                    neuromod_pink_noise_t* pn = (neuromod_pink_noise_t*)mgr->pink_noise;
+
+                    /* Capture baseline amplitudes on first access */
+                    if (!mgr->pink_noise_base_captured) {
+                        mgr->pink_noise_base_amplitude[0] = pn->dopamine_noise_amplitude;
+                        mgr->pink_noise_base_amplitude[1] = pn->serotonin_noise_amplitude;
+                        mgr->pink_noise_base_amplitude[2] = pn->acetylcholine_noise_amplitude;
+                        mgr->pink_noise_base_amplitude[3] = pn->norepinephrine_noise_amplitude;
+                        mgr->pink_noise_base_captured = true;
+                    }
+
+                    /* Compute amplitude scale factor from health */
+                    float amp_scale = 1.0f;
+                    switch (mgr->training_health) {
+                        case NIMCP_TRAINING_HEALTH_NOISY:
+                            amp_scale = 0.6f;   /* Reduce noise — too much randomness */
+                            break;
+                        case NIMCP_TRAINING_HEALTH_OSCILLATING:
+                            amp_scale = 0.3f;   /* Strongly reduce — chaotic dynamics */
+                            break;
+                        case NIMCP_TRAINING_HEALTH_DRIFTING:
+                            amp_scale = 0.5f;   /* Reduce — diverging */
+                            break;
+                        case NIMCP_TRAINING_HEALTH_PLATEAU:
+                            amp_scale = 2.0f;   /* Boost — escape local minimum */
+                            break;
+                        case NIMCP_TRAINING_HEALTH_OPTIMAL:
+                            amp_scale = 1.0f;   /* Restore baseline — ideal regime */
+                            break;
+                        default:
+                            break;
+                    }
+
+                    /* Apply scaled amplitudes (relative to captured baseline) */
+                    pn->dopamine_noise_amplitude =
+                        mgr->pink_noise_base_amplitude[0] * amp_scale;
+                    pn->serotonin_noise_amplitude =
+                        mgr->pink_noise_base_amplitude[1] * amp_scale;
+                    pn->acetylcholine_noise_amplitude =
+                        mgr->pink_noise_base_amplitude[2] * amp_scale;
+                    pn->norepinephrine_noise_amplitude =
+                        mgr->pink_noise_base_amplitude[3] * amp_scale;
+
+                    if (amp_scale != 1.0f) {
+                        NIMCP_LOGGING_INFO("UTM: DFA→PinkNoise feedback: health=%d, "
+                            "amp_scale=%.1f (DA=%.3f, 5-HT=%.3f, ACh=%.3f, NE=%.3f)",
+                            (int)mgr->training_health, amp_scale,
+                            pn->dopamine_noise_amplitude,
+                            pn->serotonin_noise_amplitude,
+                            pn->acetylcholine_noise_amplitude,
+                            pn->norepinephrine_noise_amplitude);
+                    }
+                }
+
                 /* Feature 3: Extended fractal analysis */
                 /* Lacunarity */
                 if (count >= 8) {
@@ -2349,6 +2417,12 @@ void nimcp_utm_set_kd(nimcp_unified_training_manager_t* mgr, void* kd_ctx) {
 void nimcp_utm_set_neuromod(nimcp_unified_training_manager_t* mgr, void* neuromod_adapter) {
     if (!mgr) return;
     mgr->neuromod_adapter = neuromod_adapter;
+}
+
+void nimcp_utm_set_pink_noise(nimcp_unified_training_manager_t* mgr, void* pink_noise) {
+    if (!mgr) return;
+    mgr->pink_noise = pink_noise;
+    mgr->pink_noise_base_captured = false; /* Will capture on first health check */
 }
 
 void nimcp_utm_set_per_network_lr(nimcp_unified_training_manager_t* mgr,

@@ -325,6 +325,7 @@ typedef struct nimcp_unified_training_config {
     uint32_t loss_history_size;             /**< Ring buffer size (default: 256, 0=disabled) */
     uint32_t health_check_interval;         /**< Run DFA every N steps (default: 64) */
     bool dfa_auto_adjust_lr;                /**< Auto-adjust LR based on health (default: true) */
+    bool enable_pink_noise_dfa_feedback;    /**< DFA health → pink noise amplitude (default: true) */
 
     /* Quantum annealing for plateau escape */
     bool enable_quantum_anneal;             /**< Anneal weights on plateau (default: true) */
@@ -626,6 +627,12 @@ struct nimcp_unified_training_manager {
 
     /* Gap 13: EMA inference swap tracking */
     bool ema_swapped_in;                            /**< True when EMA params are loaded for inference */
+
+    /* Pink noise ↔ DFA closed-loop feedback */
+    void* pink_noise;                               /**< neuromod_pink_noise_t* (set externally) */
+    bool pink_noise_dfa_feedback;                   /**< Enable DFA → pink noise amplitude modulation */
+    float pink_noise_base_amplitude[4];             /**< Original amplitudes [DA, 5-HT, ACh, NE] */
+    bool pink_noise_base_captured;                  /**< True once base amplitudes are captured */
 };
 
 //=============================================================================
@@ -963,6 +970,9 @@ void nimcp_utm_set_kd(nimcp_unified_training_manager_t* mgr, void* kd_ctx);
 
 /** @brief Set neuromodulator pool adapter (caller-owned, must outlive manager) */
 void nimcp_utm_set_neuromod(nimcp_unified_training_manager_t* mgr, void* neuromod_adapter);
+
+/** @brief Set pink noise system for DFA-driven amplitude feedback (caller-owned) */
+void nimcp_utm_set_pink_noise(nimcp_unified_training_manager_t* mgr, void* pink_noise);
 
 /** @brief Set per-network learning rate (0 = use global) */
 void nimcp_utm_set_per_network_lr(nimcp_unified_training_manager_t* mgr,
