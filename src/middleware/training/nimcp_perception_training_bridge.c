@@ -45,6 +45,74 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/math/nimcp_math_helpers.h"
 
+/*=============================================================================
+ * PERCEPTION CORTEX API DECLARATIONS
+ *
+ * The bridge header forward-declares cortex types as pointer typedefs
+ * (e.g., typedef struct visual_cortex_struct* visual_cortex_t) which conflicts
+ * with the cortex headers' non-pointer typedefs. To avoid type conflicts, we
+ * declare the specific functions we need using the bridge's pointer types.
+ *============================================================================*/
+
+/* Visual cortex training state */
+typedef struct {
+    float* gabor_activations;
+    uint32_t gabor_size;
+    float* conv_activations;
+    uint32_t conv_size;
+    float* pool_output;
+    uint32_t pool_output_size;
+    float confidence;
+    float novelty;
+    uint64_t timestamp_ms;
+    bool valid;
+} visual_training_state_t;
+
+/* Visual cortex stats */
+typedef struct {
+    uint32_t images_processed;
+    uint32_t memories_stored;
+    float avg_processing_time;
+    float memory_usage_mb;
+} visual_cortex_stats_local_t;
+
+/* Audio cortex training state */
+typedef struct {
+    float* mel_features;
+    uint32_t num_mel_filters;
+    float* mfcc_features;
+    uint32_t num_mfcc;
+    float quality;
+    float speech_salience;
+    float temporal_coherence;
+    uint64_t timestamp_ms;
+    bool valid;
+} audio_training_state_t;
+
+/* Audio cortex stats */
+typedef struct {
+    uint64_t frames_processed;
+    uint32_t memories_stored;
+    float avg_processing_time;
+} audio_cortex_stats_local_t;
+
+/* Speech cortex stats */
+typedef struct {
+    uint64_t frames_processed;
+    uint32_t phonemes_detected;
+    uint32_t words_recognized;
+    float avg_processing_time_ms;
+    float phoneme_accuracy;
+} speech_cortex_stats_local_t;
+
+/* Extern declarations using the bridge's pointer types (struct X_struct*) */
+extern int visual_cortex_get_training_state(visual_cortex_t cortex, visual_training_state_t* state);
+extern bool visual_cortex_get_stats(const visual_cortex_t cortex, visual_cortex_stats_local_t* stats);
+extern int audio_cortex_get_training_state(audio_cortex_t cortex, audio_training_state_t* state);
+extern bool audio_cortex_get_stats(const audio_cortex_t cortex, audio_cortex_stats_local_t* stats);
+extern bool speech_cortex_get_stats(const speech_cortex_t cortex, speech_cortex_stats_local_t* stats);
+extern float speech_cortex_get_phoneme_confidence(speech_cortex_t cortex);
+
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(perception_training_bridge)
 
 /*=============================================================================
@@ -151,31 +219,91 @@ static int extract_perception_state(perception_training_bridge_t* bridge) {
 
     perception_training_effects_t* effects = &bridge->perception_effects;
 
-    /* TODO: When perception cortex APIs are implemented, query them here.
-     * For now, use default/placeholder values that produce neutral modulation.
-     * This allows the bridge to be tested and integrated without requiring
-     * all perception cortices to be fully implemented.
-     */
-
-    /* Visual: Default to moderate confidence and novelty */
+    /* Visual: Query training state from visual cortex for confidence/novelty */
     if (bridge->visual_cortex && bridge->config.enable_visual) {
-        effects->visual_confidence = 0.7f;  /* Moderate-high confidence */
-        effects->visual_novelty = 0.5f;     /* Moderate novelty */
-        /* visual_attention_weights would be queried from cortex */
+        visual_training_state_t vts;
+        if (visual_cortex_get_training_state(bridge->visual_cortex, &vts) == 0 && vts.valid) {
+            effects->visual_confidence = vts.confidence;
+            effects->visual_novelty = vts.novelty;
+        } else {
+            /* Fallback: use processing stats as proxy — more images processed
+             * implies warmed-up cortex with higher confidence */
+            visual_cortex_stats_local_t vstats;
+            if (visual_cortex_get_stats(bridge->visual_cortex, &vstats)) {
+                /* Proxy confidence from processing time: faster processing → higher confidence.
+                 * Map avg_processing_time [0.1ms, 50ms] → confidence [0.9, 0.3] */
+                float time_proxy = vstats.avg_processing_time > 0.0f
+                    ? nimcp_clampf(1.0f - (vstats.avg_processing_time - 0.1f) / 50.0f, 0.3f, 0.9f)
+                    : 0.5f;
+                effects->visual_confidence = time_proxy;
+                /* Proxy novelty from memories: more stored → less novel new input */
+                float mem_ratio = (float)vstats.memories_stored / 1000.0f;
+                effects->visual_novelty = nimcp_clampf(1.0f - mem_ratio, 0.1f, 0.9f);
+            } else {
+                effects->visual_confidence = 0.5f;
+                effects->visual_novelty = 0.5f;
+            }
+        }
     }
 
-    /* Audio: Default to good quality and coherence */
+    /* Audio: Query training state from audio cortex for quality/salience/coherence */
     if (bridge->audio_cortex && bridge->config.enable_audio) {
-        effects->audio_quality = 0.8f;       /* Good quality */
-        effects->speech_salience = 0.6f;     /* Moderate salience */
-        effects->temporal_coherence = 0.7f;  /* Good coherence */
+        audio_training_state_t ats;
+        if (audio_cortex_get_training_state(bridge->audio_cortex, &ats) == 0 && ats.valid) {
+            effects->audio_quality = ats.quality;
+            effects->speech_salience = ats.speech_salience;
+            effects->temporal_coherence = ats.temporal_coherence;
+        } else {
+            /* Fallback: use audio cortex stats as proxy */
+            audio_cortex_stats_local_t astats;
+            if (audio_cortex_get_stats(bridge->audio_cortex, &astats)) {
+                /* Proxy quality from processing time: faster → better quality/simpler signal */
+                float time_proxy = astats.avg_processing_time > 0.0f
+                    ? nimcp_clampf(1.0f - (astats.avg_processing_time - 0.5f) / 20.0f, 0.3f, 0.95f)
+                    : 0.5f;
+                effects->audio_quality = time_proxy;
+                /* Proxy speech salience from frames processed — active processing implies speech */
+                effects->speech_salience = astats.frames_processed > 0 ? 0.6f : 0.2f;
+                /* Proxy temporal coherence from memory count — more memories → more coherent */
+                float mem_ratio = (float)astats.memories_stored / 500.0f;
+                effects->temporal_coherence = nimcp_clampf(0.4f + mem_ratio * 0.5f, 0.3f, 0.9f);
+            } else {
+                effects->audio_quality = 0.5f;
+                effects->speech_salience = 0.4f;
+                effects->temporal_coherence = 0.5f;
+            }
+        }
     }
 
-    /* Speech: Default to moderate comprehension */
+    /* Speech: Query speech cortex for comprehension/accuracy/prosody */
     if (bridge->speech_cortex && bridge->config.enable_speech) {
-        effects->comprehension = 0.7f;        /* Moderate comprehension */
-        effects->phoneme_accuracy = 0.75f;    /* Good accuracy */
-        effects->prosody_confidence = 0.65f;  /* Moderate prosody */
+        speech_cortex_stats_local_t sstats;
+        if (speech_cortex_get_stats(bridge->speech_cortex, &sstats)) {
+            /* Phoneme accuracy is directly available from stats */
+            effects->phoneme_accuracy = sstats.phoneme_accuracy;
+            /* Comprehension from phoneme confidence API */
+            float phoneme_conf = speech_cortex_get_phoneme_confidence(bridge->speech_cortex);
+            effects->comprehension = phoneme_conf;
+            /* Proxy prosody confidence from recognition confidence:
+             * high phoneme accuracy + many words recognized → good prosody extraction */
+            float word_ratio = sstats.words_recognized > 0
+                ? nimcp_clampf((float)sstats.words_recognized / (float)(sstats.phonemes_detected + 1), 0.0f, 1.0f)
+                : 0.0f;
+            effects->prosody_confidence = nimcp_clampf(
+                (sstats.phoneme_accuracy * 0.5f + word_ratio * 0.5f), 0.1f, 0.95f);
+        } else {
+            /* Fallback: use phoneme confidence as sole signal */
+            float phoneme_conf = speech_cortex_get_phoneme_confidence(bridge->speech_cortex);
+            if (phoneme_conf >= 0.0f) {
+                effects->comprehension = phoneme_conf;
+                effects->phoneme_accuracy = phoneme_conf;
+                effects->prosody_confidence = phoneme_conf * 0.8f;
+            } else {
+                effects->comprehension = 0.5f;
+                effects->phoneme_accuracy = 0.5f;
+                effects->prosody_confidence = 0.4f;
+            }
+        }
     }
 
     effects->valid = true;

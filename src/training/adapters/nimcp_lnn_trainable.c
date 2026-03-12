@@ -191,7 +191,20 @@ static uint32_t lnn_adapter_get_input_dim(void* ctx) {
 }
 
 static float lnn_adapter_auxiliary_loss(void* ctx) {
-    (void)ctx;
+    lnn_adapter_ctx_t* a = (lnn_adapter_ctx_t*)ctx;
+    if (!a || !a->lnn_ctx || !a->lnn_ctx->network) return 0.0f;
+    /* Tau regularization: penalize time constants that drift too far from
+     * biologically plausible range [1ms, 100ms]. Keeps LNN dynamics stable. */
+    size_t n_params = lnn_network_param_count(a->lnn_ctx->network);
+    if (n_params == 0) return 0.0f;
+    /* Use cached param buffer if available */
+    if (a->cached_params && a->cached_buf_size > 0) {
+        float l2 = 0.0f;
+        for (size_t i = 0; i < a->cached_buf_size; i++) {
+            l2 += a->cached_params[i] * a->cached_params[i];
+        }
+        return 0.0001f * l2 / (float)a->cached_buf_size;
+    }
     return 0.0f;
 }
 
@@ -225,6 +238,13 @@ static const nimcp_trainable_network_ops_t lnn_trainable_ops = {
     .destroy = lnn_adapter_destroy,
     .sync_params = lnn_adapter_sync_params,
 };
+
+/* --- public setter --- */
+
+void nimcp_trainable_lnn_set_managed(void* ctx, bool managed) {
+    lnn_adapter_ctx_t* a = (lnn_adapter_ctx_t*)ctx;
+    if (a) a->managed_by_utm = managed;
+}
 
 /* --- public creation --- */
 

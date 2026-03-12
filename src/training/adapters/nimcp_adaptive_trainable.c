@@ -8,6 +8,7 @@
 
 #include "training/nimcp_unified_training.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -47,19 +48,38 @@ static int adaptive_adapter_backward(void* ctx, const float* dl_doutput, uint32_
     adaptive_adapter_ctx_t* a = (adaptive_adapter_ctx_t*)ctx;
     if (!a || !a->network) return -1;
     /* Adaptive network's backward pass is handled internally by
-     * adaptive_network_learn(). The gradients are accumulated there.
-     * This stub propagates input gradients for bridge flow if needed. */
-    if (dl_dinput) {
-        /* Approximate: pass output gradient through as input gradient (residual-like).
-         * Full Jacobian computation is expensive; this enables basic gradient flow. */
-        uint32_t dim = (input_dim < output_dim) ? input_dim : output_dim;
-        if (dl_doutput) {
-            memcpy(dl_dinput, dl_doutput, dim * sizeof(float));
+     * adaptive_network_learn(). This propagates scaled input gradients for
+     * cross-network bridge gradient flow. */
+    if (dl_dinput && dl_doutput) {
+        /* Scale gradient by output-to-input ratio derived from cached forward pass.
+         * This approximates the average Jacobian magnitude without computing the
+         * full n×m matrix. Better than identity copy for bridge gradient flow. */
+        float out_norm_sq = 0.0f;
+        for (uint32_t i = 0; i < output_dim; i++) {
+            out_norm_sq += dl_doutput[i] * dl_doutput[i];
         }
-        /* Zero extra dims if input_dim > output_dim to prevent garbage gradient */
+        /* Use last_output to estimate the network's gain (output_norm / expected_input_norm) */
+        float output_mag = 0.0f;
+        if (a->last_output) {
+            for (uint32_t i = 0; i < a->output_dim && i < output_dim; i++) {
+                output_mag += a->last_output[i] * a->last_output[i];
+            }
+            output_mag = sqrtf(output_mag + 1e-8f);
+        }
+        /* Scale factor: normalize gradient by network gain to prevent explosion/vanishing.
+         * Target: gradient magnitude ~ 1.0 relative to loss gradient. */
+        float scale = (output_mag > 0.1f) ? (1.0f / output_mag) : 1.0f;
+        if (scale > 10.0f) scale = 10.0f; /* Clamp for stability */
+
+        uint32_t dim = (input_dim < output_dim) ? input_dim : output_dim;
+        for (uint32_t i = 0; i < dim; i++) {
+            dl_dinput[i] = dl_doutput[i] * scale;
+        }
         if (input_dim > dim) {
             memset(dl_dinput + dim, 0, (input_dim - dim) * sizeof(float));
         }
+    } else if (dl_dinput) {
+        memset(dl_dinput, 0, input_dim * sizeof(float));
     }
     return 0;
 }
@@ -93,8 +113,15 @@ static uint32_t adaptive_adapter_get_input_dim(void* ctx) {
 }
 
 static float adaptive_adapter_auxiliary_loss(void* ctx) {
-    (void)ctx;
-    return 0.0f;
+    adaptive_adapter_ctx_t* a = (adaptive_adapter_ctx_t*)ctx;
+    if (!a || !a->last_output || a->output_dim == 0) return 0.0f;
+    /* L2 activity regularization: penalize excessively large outputs
+     * to encourage sparse, bounded activations (biologically plausible) */
+    float l2 = 0.0f;
+    for (uint32_t i = 0; i < a->output_dim; i++) {
+        l2 += a->last_output[i] * a->last_output[i];
+    }
+    return 0.001f * l2 / (float)a->output_dim;
 }
 
 static void adaptive_adapter_destroy(void* ctx) {
@@ -102,6 +129,16 @@ static void adaptive_adapter_destroy(void* ctx) {
     if (a) {
         nimcp_free(a->last_output);
         nimcp_free(a);
+    }
+}
+
+/* --- public setter --- */
+
+void nimcp_trainable_adaptive_set_dims(void* ctx, uint32_t input_dim, uint32_t output_dim) {
+    adaptive_adapter_ctx_t* a = (adaptive_adapter_ctx_t*)ctx;
+    if (a) {
+        a->input_dim = input_dim;
+        a->output_dim = output_dim;
     }
 }
 
@@ -133,10 +170,9 @@ int nimcp_trainable_adaptive_create(struct neural_network_struct* network,
     if (!a) return -1;
 
     a->network = network;  /* neural_network_t is already a pointer */
-    /* Dims set from brain config at registration time.
-     * The neural_network_t API doesn't expose separate input/output counts. */
-    a->input_dim = 0;
-    a->output_dim = 0;
+    /* Extract dims from network config (internal header gives struct access) */
+    a->input_dim = network->config.input_size;
+    a->output_dim = network->config.output_size;
 
     *ops = &adaptive_trainable_ops;
     *ctx = a;

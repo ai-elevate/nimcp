@@ -853,6 +853,9 @@ int nimcp_trainable_snn_create(struct snn_backprop_ctx_s* snn_ctx,
                                const nimcp_trainable_network_ops_t** ops,
                                void** ctx);
 
+/** @brief Set managed_by_utm flag on SNN adapter (enables UTM optimizer for SNN weights) */
+void nimcp_trainable_snn_set_managed(void* ctx, bool managed);
+
 /**
  * @brief Create adapter for LNN training context
  */
@@ -860,12 +863,21 @@ int nimcp_trainable_lnn_create(struct lnn_training_ctx_s* lnn_ctx,
                                const nimcp_trainable_network_ops_t** ops,
                                void** ctx);
 
+/** @brief Set managed_by_utm flag on LNN adapter (enables UTM optimizer for LNN params) */
+void nimcp_trainable_lnn_set_managed(void* ctx, bool managed);
+
 /**
  * @brief Create adapter for Adaptive (backbone) network
  */
 int nimcp_trainable_adaptive_create(struct neural_network_struct* network,
                                     const nimcp_trainable_network_ops_t** ops,
                                     void** ctx);
+
+/** @brief Set input/output dimensions on Adaptive adapter */
+void nimcp_trainable_adaptive_set_dims(void* ctx, uint32_t input_dim, uint32_t output_dim);
+
+/** @brief Set input/output dimensions on CNN adapter */
+void nimcp_trainable_cnn_set_dims(void* ctx, uint32_t input_dim, uint32_t output_dim);
 
 //=============================================================================
 // Cross-Network Bridge Forward/Backward (specialized implementations)

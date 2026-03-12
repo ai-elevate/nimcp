@@ -192,6 +192,11 @@ nimcp_unified_training_manager_t* nimcp_utm_create(
 
     mgr->current_lr = mgr->config.learning_rate;
 
+    /* Wire enable_mixed_precision → enable_amp (alias) */
+    if (mgr->config.enable_mixed_precision && !mgr->config.enable_amp) {
+        mgr->config.enable_amp = true;
+    }
+
     /* Initialize per-network anti-collapse state */
     for (uint32_t i = 0; i < NIMCP_UTM_MAX_NETWORKS; i++) {
         nimcp_anti_collapse_init(&mgr->anti_collapse[i], &mgr->config.anti_collapse);
@@ -897,6 +902,33 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             contrastive /= (float)pair_count;
             composite_loss += mgr->config.contrastive_loss_weight * contrastive;
             local_result.contrastive_loss = contrastive;
+        }
+    }
+
+    /* Knowledge distillation loss — soft targets from teacher */
+    if (mgr->config.enable_knowledge_distillation && mgr->kd_ctx && input) {
+        /* Use first network's output as student logits for KD */
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
+            uint32_t out_dim = net_output_dims[i];
+            if (out_dim == 0) continue;
+
+            uint32_t s_dims[1] = { out_dim };
+            nimcp_tensor_t* student_t = nimcp_tensor_create(s_dims, 1, NIMCP_DTYPE_F32);
+            uint32_t i_dims[1] = { input_dim };
+            nimcp_tensor_t* input_t = nimcp_tensor_create(i_dims, 1, NIMCP_DTYPE_F32);
+            if (student_t && input_t) {
+                memcpy(nimcp_tensor_data(student_t), net_outputs[i], out_dim * sizeof(float));
+                memcpy(nimcp_tensor_data(input_t), input, input_dim * sizeof(float));
+                float kd_loss = 0.0f;
+                if (kd_compute_loss((kd_ctx_t*)mgr->kd_ctx, student_t, input_t,
+                                    NULL, &kd_loss) == 0) {
+                    composite_loss += mgr->kd_loss_weight * kd_loss;
+                }
+            }
+            nimcp_tensor_destroy(student_t);
+            nimcp_tensor_destroy(input_t);
+            break; /* KD on first active network only */
         }
     }
 
@@ -1674,18 +1706,100 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             mgr->diagnoser = training_diagnoser_create();
         }
         if (mgr->diagnoser) {
+            /* Compute loss_volatility: stddev of recent losses from ring buffer */
+            float loss_volatility = 0.0f;
+            if (mgr->loss_history && mgr->loss_history_count >= 2) {
+                uint32_t count = mgr->loss_history_count;
+                uint32_t start = (count < mgr->loss_history_size) ?
+                    0 : mgr->loss_history_pos;
+                float sum = 0.0f;
+                for (uint32_t k = 0; k < count; k++) {
+                    sum += mgr->loss_history[(start + k) % mgr->loss_history_size];
+                }
+                float mean = sum / (float)count;
+                float var_sum = 0.0f;
+                for (uint32_t k = 0; k < count; k++) {
+                    float diff = mgr->loss_history[(start + k) % mgr->loss_history_size] - mean;
+                    var_sum += diff * diff;
+                }
+                loss_volatility = sqrtf(var_sum / (float)count);
+            }
+
+            /* Compute gradient_variance: variance of per-network EMA gradient norms */
+            float gradient_variance = 0.0f;
+            if (mgr->num_networks >= 2) {
+                float gn_sum = 0.0f;
+                uint32_t gn_count = 0;
+                for (uint32_t i = 0; i < mgr->num_networks; i++) {
+                    if (mgr->networks[i].enabled) {
+                        gn_sum += mgr->anti_collapse[i].ema_gradient_norm;
+                        gn_count++;
+                    }
+                }
+                if (gn_count >= 2) {
+                    float gn_mean = gn_sum / (float)gn_count;
+                    float gn_var = 0.0f;
+                    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+                        if (mgr->networks[i].enabled) {
+                            float d = mgr->anti_collapse[i].ema_gradient_norm - gn_mean;
+                            gn_var += d * d;
+                        }
+                    }
+                    gradient_variance = gn_var / (float)gn_count;
+                }
+            }
+
+            /* Arousal level: neuromod LR scale captures NE/DA state (0.5 = neutral) */
+            float arousal_level = mgr->neuromod_lr_scale;
+            if (arousal_level < 0.0f) arousal_level = 0.0f;
+            if (arousal_level > 1.0f) arousal_level = 1.0f;
+
+            /* Inflammation level: ratio of sanitized gradients (NaN/Inf replaced) */
+            float inflammation_level = 0.0f;
+            if (local_result.gradients_sanitized > 0) {
+                /* Estimate total gradient count from all param groups */
+                uint64_t total_params = 0;
+                for (uint32_t i = 0; i < mgr->num_networks; i++) {
+                    if (!mgr->networks[i].enabled) continue;
+                    nimcp_utm_param_group_t* groups = NULL;
+                    uint32_t num_groups = 0;
+                    if (mgr->networks[i].ops->get_param_groups &&
+                        mgr->networks[i].ops->get_param_groups(
+                            mgr->networks[i].ctx, &groups, &num_groups) == 0) {
+                        for (uint32_t g = 0; g < num_groups; g++) {
+                            total_params += groups[g].count;
+                        }
+                        nimcp_free(groups);
+                    }
+                }
+                if (total_params > 0) {
+                    inflammation_level = (float)local_result.gradients_sanitized /
+                                         (float)total_params;
+                    if (inflammation_level > 1.0f) inflammation_level = 1.0f;
+                }
+            }
+
+            /* Resource pressure: batch accumulation progress (0 = fresh, 1 = full) */
+            float resource_pressure = 0.0f;
+            {
+                uint32_t eff_batch = (mgr->config.batch_size > 1) ?
+                    mgr->config.batch_size : 1;
+                resource_pressure = (float)mgr->batch_accumulation_count / (float)eff_batch;
+                if (resource_pressure > 1.0f) resource_pressure = 1.0f;
+            }
+
             training_diagnoser_observe_from_metrics(mgr->diagnoser,
                 composite_loss,                         /* loss_current */
                 mgr->previous_loss,                     /* loss_previous */
                 local_result.gradient_norm,             /* grad_norm */
                 mgr->previous_grad_norm,                /* grad_norm_previous */
-                0.0f,                                   /* loss_volatility (placeholder) */
-                0.0f,                                   /* gradient_variance (placeholder) */
+                loss_volatility,                        /* loss_volatility */
+                gradient_variance,                      /* gradient_variance */
                 mgr->current_lr,                        /* learning_rate */
                 (float)(mgr->config.batch_size > 0 ? mgr->config.batch_size : 1), /* batch_size */
-                0.5f,                                   /* arousal_level (placeholder) */
-                0.0f,                                   /* inflammation_level (placeholder) */
-                0.0f);                                  /* resource_pressure (placeholder) */
+                arousal_level,                          /* arousal_level */
+                inflammation_level,                     /* inflammation_level */
+                resource_pressure);                     /* resource_pressure */
 
             training_diagnosis_t diagnosis = {0};
             if (training_diagnoser_diagnose(mgr->diagnoser, &diagnosis) == 0) {

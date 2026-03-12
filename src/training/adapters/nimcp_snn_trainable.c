@@ -138,9 +138,11 @@ static uint32_t snn_adapter_get_input_dim(void* ctx) {
 }
 
 static float snn_adapter_auxiliary_loss(void* ctx) {
-    /* Could add spike regularization loss here */
-    (void)ctx;
-    return 0.0f;
+    snn_adapter_ctx_t* a = (snn_adapter_ctx_t*)ctx;
+    if (!a || !a->snn_ctx) return 0.0f;
+    /* L2 weight regularization to prevent SNN weight explosion */
+    float w_norm = snn_backprop_get_weight_norm(a->snn_ctx);
+    return 0.0001f * w_norm * w_norm;
 }
 
 static int snn_adapter_sync_params(void* ctx) {
@@ -173,6 +175,13 @@ static const nimcp_trainable_network_ops_t snn_trainable_ops = {
     .destroy = snn_adapter_destroy,
     .sync_params = snn_adapter_sync_params,
 };
+
+/* --- public setter --- */
+
+void nimcp_trainable_snn_set_managed(void* ctx, bool managed) {
+    snn_adapter_ctx_t* a = (snn_adapter_ctx_t*)ctx;
+    if (a) a->managed_by_utm = managed;
+}
 
 /* --- public creation --- */
 

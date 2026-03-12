@@ -5523,6 +5523,15 @@ def main():
     except Exception as e:
         print(f"  LNN: FAILED ({e})")
 
+    # --- Enable multi-network unified training (UTM) ---
+    # Registers Adaptive, CNN, SNN, LNN into unified training manager
+    # with shared composite loss, cross-network bridges, and optimizer
+    try:
+        brain.enable_multi_network()
+        print("  Multi-network UTM: ON (4 networks, unified optimizer)")
+    except Exception as e:
+        print(f"  Multi-network UTM: FAILED ({e})")
+
     # --- Initialize reasoning KB ---
     try:
         brain.ti_init_reasoning()

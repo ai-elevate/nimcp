@@ -3722,3 +3722,66 @@ TEST_F(ArchRestructuringTest, Enhance_LearningSignalAdapter_Stats) {
 
     learning_signal_adapter_destroy(adapter);
 }
+
+/* ===================================================================== */
+/* Section 22: Gap Fix Verification Tests                                */
+/* ===================================================================== */
+
+/* --- Adapter dim setter tests --- */
+TEST_F(ArchRestructuringTest, GapFix_AdaptiveDimSetter) {
+    nimcp_trainable_adaptive_set_dims(nullptr, 128, 64); /* NULL safety */
+}
+
+TEST_F(ArchRestructuringTest, GapFix_CnnDimSetter) {
+    nimcp_trainable_cnn_set_dims(nullptr, 128, 64); /* NULL safety */
+}
+
+/* --- SNN/LNN managed_by_utm setter --- */
+TEST_F(ArchRestructuringTest, GapFix_SnnManagedSetter) {
+    nimcp_trainable_snn_set_managed(nullptr, true); /* NULL safety */
+}
+
+TEST_F(ArchRestructuringTest, GapFix_LnnManagedSetter) {
+    nimcp_trainable_lnn_set_managed(nullptr, true); /* NULL safety */
+}
+
+/* --- UTM config enable_mixed_precision → enable_amp alias --- */
+TEST_F(ArchRestructuringTest, GapFix_MixedPrecisionAliasesAmp) {
+    nimcp_unified_training_config_t cfg = {};
+    nimcp_utm_default_config(&cfg);
+    cfg.enable_amp = false;
+    cfg.enable_mixed_precision = true;
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_TRUE(mgr->config.enable_amp);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- KD loss config wired --- */
+TEST_F(ArchRestructuringTest, GapFix_KdLossConfigured) {
+    nimcp_unified_training_config_t cfg = {};
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_knowledge_distillation);
+    EXPECT_GT(cfg.kd_loss_weight, 0.0f);
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_GT(mgr->kd_loss_weight, 0.0f);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Contrastive loss config --- */
+TEST_F(ArchRestructuringTest, GapFix_ContrastiveLossConfigured) {
+    nimcp_unified_training_config_t cfg = {};
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_contrastive_loss);
+    EXPECT_GT(cfg.contrastive_loss_weight, 0.0f);
+    EXPECT_GT(cfg.contrastive_margin, 0.0f);
+}
+
+/* --- EWC continual learning config --- */
+TEST_F(ArchRestructuringTest, GapFix_EwcConfigured) {
+    nimcp_unified_training_config_t cfg = {};
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_continual_learning);
+    EXPECT_GT(cfg.ewc_lambda, 0.0f);
+}

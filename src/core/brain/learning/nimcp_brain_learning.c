@@ -3056,45 +3056,48 @@ int brain_enable_multi_network_training(brain_t brain)
             const nimcp_trainable_network_ops_t* ops = NULL;
             void* adapter_ctx = NULL;
 
-            /* Adaptive backbone */
+            /* Adaptive backbone — uses own internal optimizer (synapse-level weights)
+             * but participates in UTM composite loss and gradient flow */
             if (brain->network) {
                 if (nimcp_trainable_adaptive_create(brain->network, &ops, &adapter_ctx) == 0) {
+                    nimcp_trainable_adaptive_set_dims(adapter_ctx,
+                        brain->config.num_inputs, brain->config.num_outputs);
                     nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 1.0f);
                 }
             }
 
-            /* CNN */
+            /* CNN — uses own internal optimizer (tensor-level weights)
+             * but participates in UTM composite loss and gradient flow */
             if (brain->cnn_trainer) {
                 ops = NULL; adapter_ctx = NULL;
                 if (nimcp_trainable_cnn_create(brain->cnn_trainer, &ops, &adapter_ctx) == 0) {
+                    nimcp_trainable_cnn_set_dims(adapter_ctx,
+                        brain->config.num_inputs, brain->config.num_outputs);
                     nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
-                    /* Don't set managed_by_utm: UTM can't reach CNN params
-                     * (adapter returns 0 param groups), so CNN must use its
-                     * own optimizer.  Adapter backward calls cnn_trainer_step(). */
                 }
             }
 
-            /* SNN */
+            /* SNN — managed by UTM: adapter exposes flat weights as param groups,
+             * UTM runs unified AdamW on SNN weights + sync_params writes back */
             if (brain->snn_training_ctx) {
                 ops = NULL; adapter_ctx = NULL;
                 if (nimcp_trainable_snn_create(
                         (struct snn_backprop_ctx_s*)brain->snn_training_ctx,
                         &ops, &adapter_ctx) == 0) {
+                    nimcp_trainable_snn_set_managed(adapter_ctx, true);
                     nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
-                    /* Don't set managed_by_utm: UTM can't reach SNN params.
-                     * Adapter backward calls snn_backprop_step(). */
                 }
             }
 
-            /* LNN */
+            /* LNN — managed by UTM: adapter exposes flat params,
+             * UTM runs unified AdamW on LNN params + sync_params writes back */
             if (brain->lnn_training_ctx) {
                 ops = NULL; adapter_ctx = NULL;
                 if (nimcp_trainable_lnn_create(
                         (struct lnn_training_ctx_s*)brain->lnn_training_ctx,
                         &ops, &adapter_ctx) == 0) {
+                    nimcp_trainable_lnn_set_managed(adapter_ctx, true);
                     nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
-                    /* Don't set managed_by_utm: UTM can't reach LNN params.
-                     * LNN uses its own adjoint optimizer internally. */
                 }
             }
 

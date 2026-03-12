@@ -148,33 +148,143 @@ static int extract_cortical_state(cortical_training_bridge_t* bridge) {
      * Each module provides specific cortical signals that modulate training.
      */
 
-    /* Predictive Coding: Query free energy, prediction error, convergence */
+    /* Predictive Coding: Estimate free energy, prediction error, convergence
+     * from training loss history.
+     *
+     * NOTE: predictive_coding_context_t is currently an opaque forward-declared
+     * type with no public API. When pc_hierarchy_get_free_energy() and
+     * pc_hierarchy_get_stats() become available via a concrete type, call them
+     * directly. Until then, use the bridge's loss/FE history as proxy metrics:
+     *   - Free energy ∝ training loss (both measure surprise/mismatch)
+     *   - Prediction error ∝ loss delta (change in surprise)
+     *   - Convergence rate from trend in FE history
+     */
     if (bridge->predictive_coding && bridge->config.enable_predictive_coding) {
-        /* Use placeholder values until FEP API is available */
-        effects->free_energy = 5.0f;       /* Default moderate FE */
-        effects->convergence_rate = 0.5f;  /* Default moderate convergence */
-        effects->prediction_error_mag = 1.0f;  /* Default moderate PE */
+        /* Estimate free energy from FE history or training loss */
+        if (bridge->history_count > 0) {
+            /* Use most recent FE history entry as free energy estimate */
+            uint32_t latest = (bridge->history_head + CORTICAL_HISTORY_SIZE - 1)
+                              % CORTICAL_HISTORY_SIZE;
+            effects->free_energy = fabsf(bridge->fe_history[latest]);
 
-        /* Set precision weights uniformly */
+            /* Prediction error magnitude from recent FE change */
+            if (bridge->history_count >= 2) {
+                uint32_t prev = (latest + CORTICAL_HISTORY_SIZE - 1)
+                                % CORTICAL_HISTORY_SIZE;
+                effects->prediction_error_mag = fabsf(
+                    bridge->fe_history[latest] - bridge->fe_history[prev]);
+            } else {
+                effects->prediction_error_mag = effects->free_energy * 0.2f;
+            }
+
+            /* Convergence rate: fraction of recent FE decreases.
+             * Look at last min(history_count, 10) entries */
+            uint32_t window = bridge->history_count < 10 ? bridge->history_count : 10;
+            uint32_t decreases = 0;
+            for (uint32_t i = 1; i < window; i++) {
+                uint32_t cur = (bridge->history_head + CORTICAL_HISTORY_SIZE - i)
+                               % CORTICAL_HISTORY_SIZE;
+                uint32_t prv = (cur + CORTICAL_HISTORY_SIZE - 1)
+                               % CORTICAL_HISTORY_SIZE;
+                if (bridge->fe_history[cur] < bridge->fe_history[prv]) {
+                    decreases++;
+                }
+            }
+            effects->convergence_rate = (window > 1)
+                ? (float)decreases / (float)(window - 1)
+                : 0.5f;
+        } else {
+            /* No history yet — use moderate defaults based on module presence */
+            effects->free_energy = 5.0f;
+            effects->convergence_rate = 0.5f;
+            effects->prediction_error_mag = 1.0f;
+        }
+
+        /* Set precision weights: use convergence as proxy for precision.
+         * High convergence → predictions are good → high precision.
+         * Low convergence → uncertain → lower precision (more learning) */
         if (effects->precision_weights && effects->num_layers > 0) {
+            float base_precision = nimcp_clampf(
+                0.5f + effects->convergence_rate * 0.5f, 0.5f, 1.0f);
             for (uint32_t i = 0; i < effects->num_layers; i++) {
-                effects->precision_weights[i] = 1.0f;
+                /* Deeper layers get slightly higher precision (more stable) */
+                float layer_factor = 1.0f + (float)i * 0.05f;
+                effects->precision_weights[i] = nimcp_clampf(
+                    base_precision * layer_factor,
+                    bridge->config.precision_min_weight,
+                    bridge->config.precision_max_weight);
             }
         }
     }
 
-    /* Dendritic: Default to moderate burst rate (API TBD) */
+    /* Dendritic: Estimate burst rate, BAC success, calcium from training state.
+     *
+     * NOTE: dendritic_compartment_t is a forward-declared opaque type with no
+     * public getter API (dendritic_tree_get_stats requires dendritic_tree_t).
+     * When a concrete dendritic API becomes available, call it directly.
+     * Until then, derive proxies from training effects:
+     *   - Burst rate ∝ gradient stability (stable gradients → stable predictions → bursts)
+     *   - BAC success ∝ loss improvement (improving loss → successful predictions)
+     *   - Calcium spikes ∝ gradient norm (high gradient activity → Ca2+ influx)
+     */
     if (bridge->dendritic && bridge->config.enable_dendritic) {
-        effects->burst_rate = 0.5f;           /* Moderate burst rate */
-        effects->bac_success_rate = 0.5f;     /* Moderate BAC success */
-        effects->calcium_spikes = 5.0f;       /* Moderate Ca spikes */
+        if (bridge->training_effects.valid) {
+            /* Burst rate: map gradient stability [0,1] to burst rate [0.2, 0.9] */
+            effects->burst_rate = nimcp_clampf(
+                0.2f + bridge->training_effects.gradient_stability * 0.7f, 0.1f, 0.95f);
+            /* BAC success: loss improvement rate as proxy */
+            effects->bac_success_rate = nimcp_clampf(
+                bridge->training_effects.loss_improvement_rate, 0.1f, 0.95f);
+            /* Calcium spikes: gradient norm as proxy for neural activity */
+            effects->calcium_spikes = nimcp_clampf(
+                bridge->training_effects.gradient_norm * 2.0f, 0.5f, 20.0f);
+        } else {
+            /* No training effects yet — estimate from FE history trend */
+            if (bridge->history_count >= 2) {
+                uint32_t latest = (bridge->history_head + CORTICAL_HISTORY_SIZE - 1)
+                                  % CORTICAL_HISTORY_SIZE;
+                uint32_t prev = (latest + CORTICAL_HISTORY_SIZE - 1)
+                                % CORTICAL_HISTORY_SIZE;
+                float fe_delta = bridge->fe_history[prev] - bridge->fe_history[latest];
+                /* Positive delta (FE decreasing) → stable → higher burst rate */
+                effects->burst_rate = nimcp_clampf(0.5f + fe_delta * 0.1f, 0.1f, 0.9f);
+                effects->bac_success_rate = effects->burst_rate * 0.9f;
+            } else {
+                effects->burst_rate = 0.5f;
+                effects->bac_success_rate = 0.5f;
+            }
+            effects->calcium_spikes = 5.0f;
+        }
     }
 
-    /* Cortical Columns: Default to moderate winner confidence (API TBD) */
+    /* Cortical Columns: Estimate winner confidence, entropy, inhibition.
+     *
+     * NOTE: hypercolumn_t's stats API (hypercolumn_get_stats) requires a concrete
+     * hypercolumn_t*, but bridge->columns is typed as the opaque forward-declared
+     * type from the bridge header. When the types are unified, call
+     * hypercolumn_get_stats() directly. Until then, derive proxies:
+     *   - Winner confidence ∝ inverse of prediction error (low PE → clear winner)
+     *   - Population entropy ∝ free energy (high FE → distributed/uncertain)
+     *   - Inhibition strength ∝ convergence rate (converging → strong inhibition)
+     */
     if (bridge->columns && bridge->config.enable_columns) {
-        effects->winner_confidence = 0.6f;    /* Moderate confidence */
-        effects->population_entropy = 1.0f;   /* Moderate entropy */
-        effects->inhibition_strength = 0.5f;  /* Moderate inhibition */
+        /* Derive from predictive coding effects if available */
+        if (effects->valid || bridge->history_count > 0) {
+            /* Winner confidence: inversely related to prediction error */
+            float pe = effects->prediction_error_mag;
+            effects->winner_confidence = nimcp_clampf(
+                1.0f / (1.0f + pe), 0.1f, 0.95f);
+            /* Population entropy: proportional to free energy (normalized) */
+            effects->population_entropy = nimcp_clampf(
+                effects->free_energy * 0.2f, 0.1f, 3.0f);
+            /* Inhibition: proportional to convergence (stable → strong inhibition) */
+            effects->inhibition_strength = nimcp_clampf(
+                effects->convergence_rate, 0.1f, 0.9f);
+        } else {
+            effects->winner_confidence = 0.5f;
+            effects->population_entropy = 1.0f;
+            effects->inhibition_strength = 0.5f;
+        }
     }
 
     effects->valid = true;

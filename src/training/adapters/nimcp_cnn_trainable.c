@@ -136,8 +136,17 @@ static uint32_t cnn_adapter_get_input_dim(void* ctx) {
 }
 
 static float cnn_adapter_auxiliary_loss(void* ctx) {
-    (void)ctx;
-    return 0.0f;
+    cnn_adapter_ctx_t* a = (cnn_adapter_ctx_t*)ctx;
+    if (!a || !a->has_result || !a->last_result.output) return 0.0f;
+    /* L2 activity regularization on CNN output to prevent feature explosion */
+    const float* out = (const float*)nimcp_tensor_data_const(a->last_result.output);
+    size_t n = nimcp_tensor_numel(a->last_result.output);
+    if (!out || n == 0) return 0.0f;
+    float l2 = 0.0f;
+    for (size_t i = 0; i < n; i++) {
+        l2 += out[i] * out[i];
+    }
+    return 0.001f * l2 / (float)n;
 }
 
 static void cnn_adapter_destroy(void* ctx) {
@@ -145,6 +154,16 @@ static void cnn_adapter_destroy(void* ctx) {
     if (!a) return;
     /* Don't free last_result — CNN trainer owns the activation tensors */
     nimcp_free(a);
+}
+
+/* --- public setter --- */
+
+void nimcp_trainable_cnn_set_dims(void* ctx, uint32_t input_dim, uint32_t output_dim) {
+    cnn_adapter_ctx_t* a = (cnn_adapter_ctx_t*)ctx;
+    if (a) {
+        a->input_dim = input_dim;
+        a->output_dim = output_dim;
+    }
 }
 
 /* --- static vtable --- */
