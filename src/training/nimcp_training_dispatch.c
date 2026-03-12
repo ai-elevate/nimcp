@@ -320,7 +320,7 @@ int training_dispatch_snn_step(
             uint32_t snn_out = snn->config.n_outputs;
             uint32_t grad_dim = (num_targets < snn_out) ? num_targets : snn_out;
             float* predictions = nimcp_calloc(snn_out, sizeof(float));
-            float* output_grad = nimcp_malloc(grad_dim * sizeof(float));
+            float* output_grad = nimcp_calloc(grad_dim, sizeof(float));
             float* membrane_v = nimcp_calloc(grad_dim, sizeof(float));
             float* input_grad = nimcp_calloc(grad_dim, sizeof(float));
             if (predictions && output_grad && membrane_v && input_grad) {
@@ -349,7 +349,8 @@ int training_dispatch_snn_step(
 
                 // Apply surrogate gradients to output population synapse weights
                 if (snn->output_pop && snn->neural_net) {
-                    float lr = 0.001f;  /* SNN surrogate LR (ctx has no lr field) */
+                    float lr = snn->config.learning_rate;
+                    if (lr <= 0.0f) lr = 0.001f;
                     for (uint32_t i = 0; i < grad_dim && i < snn->output_pop->n_neurons; i++) {
                         neuron_t* n = neural_network_get_neuron(
                             snn->neural_net, snn->output_pop->neuron_ids[i]);

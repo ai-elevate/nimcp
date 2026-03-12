@@ -1002,6 +1002,22 @@ void cnn_trainer_set_managed_by_utm(cnn_trainer_t* trainer, bool managed);
 const nimcp_tensor_t* cnn_trainer_get_input_grad(const cnn_trainer_t* trainer);
 
 /**
+ * @brief C5: Backward pass with externally provided gradient (skip internal MSE)
+ *
+ * Used by UTM adapter: the composite loss gradient is computed by UTM,
+ * so CNN backward should use that gradient directly instead of computing
+ * its own MSE gradient from targets.
+ *
+ * @param trainer     CNN trainer
+ * @param grad_tensor External gradient tensor (dL/dOutput)
+ * @param forward_result Cached forward pass activations
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_error_t cnn_trainer_backward_with_gradient(cnn_trainer_t* trainer,
+                                                   const nimcp_tensor_t* grad_tensor,
+                                                   const cnn_forward_result_t* forward_result);
+
+/**
  * @brief Save CNN trainer weights and state to file
  * @return 0 on success, -1 on error
  */

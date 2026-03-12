@@ -115,6 +115,68 @@ bool brain_observe_action(brain_t brain, const float* features, uint32_t num_fea
                           uint32_t agent_id);
 
 //=============================================================================
+// Fractal-Aware Inference Health Monitor
+//=============================================================================
+
+/** Forward declaration of training health enum */
+#ifndef NIMCP_TRAINING_HEALTH_DEFINED
+#define NIMCP_TRAINING_HEALTH_DEFINED
+typedef enum nimcp_training_health nimcp_training_health_t;
+#endif
+
+/**
+ * @brief Inference health monitor using DFA on output distributions
+ *
+ * Tracks per-network contribution magnitudes over time. When any network's
+ * DFA exponent indicates oscillation or collapse, inference quality degrades.
+ */
+typedef struct nimcp_inference_health {
+    float* output_history;              /**< [history_size × output_dim] ring buffer */
+    float* per_network_magnitude;       /**< [history_size × 4] per-network contribution magnitudes */
+    uint32_t history_size;              /**< Buffer capacity (default: 128) */
+    uint32_t history_pos;               /**< Current write position */
+    uint32_t history_count;             /**< Filled count */
+    uint32_t output_dim;                /**< Dimension of output vectors */
+    uint32_t check_interval;            /**< Run DFA every N records (default: 32) */
+    float dfa_exponents[4];             /**< Per-network DFA exponents */
+    int health;                         /**< Overall inference health (nimcp_training_health_t) */
+    bool enabled;                       /**< Whether monitoring is active */
+} nimcp_inference_health_t;
+
+/**
+ * @brief Initialize inference health monitor
+ * @param h           Health monitor struct (caller-owned)
+ * @param output_dim  Dimension of output vectors
+ * @param history_size Ring buffer size (0 = use default 128)
+ * @return 0 on success, -1 on failure
+ */
+int nimcp_inference_health_init(nimcp_inference_health_t* h,
+                                 uint32_t output_dim, uint32_t history_size);
+
+/**
+ * @brief Destroy inference health monitor (frees internal buffers)
+ */
+void nimcp_inference_health_destroy(nimcp_inference_health_t* h);
+
+/**
+ * @brief Record an inference output and per-network contributions
+ * @param h             Health monitor
+ * @param output        Output vector
+ * @param dim           Output dimension
+ * @param contributions Per-network contribution magnitudes [4]
+ */
+void nimcp_inference_health_record(nimcp_inference_health_t* h,
+                                    const float* output, uint32_t dim,
+                                    const float contributions[4]);
+
+/**
+ * @brief Check inference health using DFA on contribution histories
+ * @param h Health monitor
+ * @return Current health status
+ */
+int nimcp_inference_health_check(nimcp_inference_health_t* h);
+
+//=============================================================================
 // Frozen Inference Network
 //=============================================================================
 

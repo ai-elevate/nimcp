@@ -58,6 +58,11 @@ typedef struct nimcp_loss_context nimcp_loss_context_t;
 typedef struct tpb_context tpb_context_t;
 #endif
 
+/* Information geometry opaque handles */
+typedef struct nimcp_fisher_info_struct* nimcp_fisher_info_t;
+typedef struct nimcp_natural_gradient_struct* nimcp_natural_gradient_t;
+typedef struct nimcp_neural_manifold_struct* nimcp_neural_manifold_t;
+
 //=============================================================================
 // Network Type Enum
 //=============================================================================
@@ -171,6 +176,18 @@ typedef struct nimcp_trainable_network_ops {
      */
     void (*destroy)(void* ctx);
 
+    /**
+     * @brief Phase 4: Sync cached params back to underlying network after optimizer step
+     *
+     * Called after UTM's AdamW updates param groups. Only needed when the adapter
+     * caches a copy of params (LNN, SNN). CNN modifies tensors in-place → no-op.
+     * NULL is valid (no sync needed).
+     *
+     * @param ctx Network-specific adapter context
+     * @return 0 on success, negative on error
+     */
+    int (*sync_params)(void* ctx);
+
 } nimcp_trainable_network_ops_t;
 
 /**
@@ -216,6 +233,12 @@ struct nimcp_cross_network_bridge {
     /* Cached for backward pass */
     float* last_source_output;      /**< Cached source output */
     float* last_target_input;       /**< Cached transformed output */
+
+    /* B7: Configurable bridge parameters (instead of #define constants) */
+    float surrogate_beta;           /**< SuperSpike sharpness (default: 1.0) */
+    float spike_rate_alpha;         /**< Spike-to-rate smoothing factor (default: 0.3) */
+    float spike_gain;               /**< Rate-to-spike sigmoid gain (default: 5.0) */
+    float spike_threshold;          /**< Spike threshold (default: 0.5) */
 
     bool enabled;
 };
@@ -287,6 +310,26 @@ typedef struct nimcp_unified_training_config {
     /* LR Schedule */
     nimcp_lr_schedule_config_t lr_schedule;
 
+    /* DFA health monitoring */
+    uint32_t loss_history_size;             /**< Ring buffer size (default: 256, 0=disabled) */
+    uint32_t health_check_interval;         /**< Run DFA every N steps (default: 64) */
+    bool dfa_auto_adjust_lr;                /**< Auto-adjust LR based on health (default: true) */
+
+    /* Quantum annealing for plateau escape */
+    bool enable_quantum_anneal;             /**< Anneal weights on plateau (default: true) */
+    uint32_t plateau_anneal_threshold;      /**< Consecutive PLATEAU checks before trigger (default: 3) */
+
+    /* Quantum Shannon bottleneck detection */
+    uint32_t bottleneck_check_interval;     /**< Check bridges every N steps (default: 128, 0=disabled) */
+
+    /* Natural gradient optimizer */
+    bool enable_natural_gradient;           /**< Use NG instead of AdamW where practical (default: true) */
+    uint32_t fisher_update_interval;        /**< Recompute Fisher every N steps (default: 16) */
+    uint32_t natural_grad_max_params;       /**< Max param group size for NG (default: 4096) */
+
+    /* Manifold tracking */
+    bool enable_manifold_tracking;          /**< Track output manifold dimensionality (default: true) */
+
 } nimcp_unified_training_config_t;
 
 //=============================================================================
@@ -302,6 +345,19 @@ typedef struct nimcp_anti_collapse_state {
     float ema_gradient_norm;            /**< EMA of gradient norms for adaptive target */
     float ema_alpha;                    /**< EMA smoothing factor (default: 0.01) */
 } nimcp_anti_collapse_state_t;
+
+//=============================================================================
+// Training Health (DFA-based monitoring)
+//=============================================================================
+
+typedef enum nimcp_training_health {
+    NIMCP_TRAINING_HEALTH_UNKNOWN = 0,
+    NIMCP_TRAINING_HEALTH_OPTIMAL,      /**< DFA α ≈ 0.8-1.2, pink-noise-like */
+    NIMCP_TRAINING_HEALTH_NOISY,        /**< DFA α < 0.6, white-noise-like */
+    NIMCP_TRAINING_HEALTH_DRIFTING,     /**< DFA α > 1.3, brown-noise-like */
+    NIMCP_TRAINING_HEALTH_OSCILLATING,  /**< DFA α < 0.3, anti-persistent */
+    NIMCP_TRAINING_HEALTH_PLATEAU       /**< Hurst H > 0.8, persistent stagnation */
+} nimcp_training_health_t;
 
 //=============================================================================
 // Unified Training Manager
@@ -344,6 +400,49 @@ struct nimcp_unified_training_manager {
     uint32_t adam_num_groups;       /**< Number of allocated moment groups */
     float adam_beta1_t;             /**< beta1^t for bias correction */
     float adam_beta2_t;             /**< beta2^t for bias correction */
+
+    /* Fractal-aware training (optional) */
+    float fractal_lr_multiplier[NIMCP_UTM_MAX_NETWORKS]; /**< Per-network LR scale from centrality (default: 1.0) */
+    bool fractal_enabled;                                  /**< Enable fractal-aware LR scaling */
+
+    /* DFA health monitoring */
+    float* loss_history;                    /**< Ring buffer of recent losses */
+    uint32_t loss_history_size;             /**< Buffer capacity (default: 256) */
+    uint32_t loss_history_pos;              /**< Current write position */
+    uint32_t loss_history_count;            /**< Filled count */
+    uint32_t health_check_interval;         /**< Run DFA every N steps (default: 64) */
+    nimcp_training_health_t training_health; /**< Last computed health status */
+    float dfa_exponent;                     /**< Last DFA alpha */
+    float hurst_exponent;                   /**< Last Hurst exponent */
+    float lacunarity_value;                 /**< Last lacunarity */
+    bool is_multifractal;                   /**< Last multifractal analysis result */
+    float multifractal_width;               /**< Spectrum width (0 = monofractal) */
+    bool dfa_auto_adjust_lr;                /**< Auto-adjust LR based on health */
+
+    /* Quantum annealing for plateau escape */
+    uint32_t plateau_consecutive_count;     /**< How many consecutive PLATEAU checks */
+    uint32_t plateau_anneal_threshold;      /**< Trigger annealing after N consecutive */
+    bool enable_quantum_anneal;             /**< Enable quantum annealing */
+
+    /* Quantum Shannon bottleneck detection */
+    float bridge_bottleneck_severity[NIMCP_UTM_MAX_BRIDGES]; /**< 0=no bottleneck, 1=severe */
+    uint32_t bottleneck_check_interval;     /**< Check every N steps */
+
+    /* Natural gradient optimizer (optional, per-network) */
+    nimcp_natural_gradient_t natural_grad[NIMCP_UTM_MAX_NETWORKS];
+    nimcp_fisher_info_t fisher[NIMCP_UTM_MAX_NETWORKS];
+    bool natural_gradient_enabled;
+    uint32_t fisher_update_interval;        /**< Recompute Fisher every N steps */
+    uint32_t natural_grad_max_params;       /**< Max param group size for NG */
+
+    /* Phase coherence (cross-network health) */
+    float cross_network_coherence;          /**< Phase coherence (0=diverse, 1=collapsed) */
+    float* per_network_loss_history;        /**< [loss_history_size × num_networks] ring buffer */
+
+    /* Manifold tracking */
+    nimcp_neural_manifold_t output_manifold[NIMCP_UTM_MAX_NETWORKS];
+    uint32_t manifold_intrinsic_dim[NIMCP_UTM_MAX_NETWORKS];
+    bool manifold_tracking_enabled;
 };
 
 //=============================================================================
@@ -434,6 +533,19 @@ typedef struct nimcp_utm_step_result {
     float gradient_norm;                /**< Global gradient norm before normalization */
     float gradient_scale;               /**< Scale factor applied to gradients */
     uint64_t step;                      /**< Current step count */
+
+    /* Fractal health monitoring */
+    nimcp_training_health_t training_health; /**< Last computed health status */
+    float dfa_exponent;                 /**< Last DFA alpha */
+    float hurst_exponent;               /**< Last Hurst H */
+    float lacunarity_value;             /**< Last lacunarity */
+    bool is_multifractal;               /**< Last multifractal result */
+
+    /* Cross-network coherence */
+    float cross_network_coherence;      /**< Phase coherence (0=diverse, 1=collapsed) */
+
+    /* Manifold tracking */
+    uint32_t manifold_intrinsic_dim[NIMCP_UTM_MAX_NETWORKS]; /**< 0 = not computed */
 } nimcp_utm_step_result_t;
 
 /**
@@ -590,6 +702,24 @@ void bridge_continuous_to_spike_forward(const nimcp_cross_network_bridge_t* b,
 void bridge_continuous_to_spike_backward(const nimcp_cross_network_bridge_t* b,
                                           const float* dl_dtarget,
                                           float* dl_dsource);
+
+//=============================================================================
+// Fractal-Aware Training API
+//=============================================================================
+
+/** @brief Set per-network fractal LR multiplier (hub centrality) */
+void nimcp_utm_set_fractal_lr(nimcp_unified_training_manager_t* mgr,
+                               uint32_t net_idx, float scale);
+
+/** @brief Query current training health (from most recent DFA check) */
+nimcp_training_health_t nimcp_utm_get_health(const nimcp_unified_training_manager_t* mgr);
+
+/** @brief Query last DFA exponent */
+float nimcp_utm_get_dfa_exponent(const nimcp_unified_training_manager_t* mgr);
+
+/** @brief Enable/disable natural gradient optimizer for a specific network */
+void nimcp_utm_set_natural_gradient(nimcp_unified_training_manager_t* mgr,
+                                     uint32_t net_idx, bool enabled);
 
 #ifdef __cplusplus
 }

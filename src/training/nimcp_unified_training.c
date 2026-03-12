@@ -15,27 +15,26 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
+/* Fractal + geometry + quantum integration */
+#include "cognitive/memory/core/nimcp_fractal.h"
+#include "physics/geometry/nimcp_information_geometry.h"
+#include "utils/math/nimcp_complex_math.h"
+#include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
+
 #include <math.h>
 #include <string.h>
 #include <float.h>
 #include <stdlib.h>
 
-/* GPU acceleration: forward-declare functions to avoid header enum conflicts */
-typedef struct nimcp_autocast_ctx nimcp_autocast_ctx_t;
-extern bool nimcp_autocast_begin(nimcp_autocast_ctx_t* ctx);
-extern bool nimcp_autocast_end(nimcp_autocast_ctx_t* ctx);
+/* C1: GPU acceleration — forward declarations gated behind NIMCP_ENABLE_CUDA.
+ * These are called only when mgr->gpu_ctx is non-NULL at runtime. */
+#ifdef NIMCP_ENABLE_CUDA
 extern bool nimcp_gpu_loss_mse(void* gpu_ctx, const float* pred, const float* target,
                                 uint32_t n, float* loss);
-extern bool nimcp_gpu_gradient_clip_norm(void* gpu_ctx, float* grads, uint32_t n,
-                                          float max_norm, float* total_norm);
 extern bool nimcp_gpu_optim_adamw(void* gpu_ctx, float* params, float* grads, float* m, float* v,
                                     uint32_t n, float lr, float beta1, float beta2, float eps, float wd,
                                     uint64_t step);
-extern bool nimcp_gpu_sparse_backward_accumulate(void* gpu_ctx, const float* grad,
-                                                   const uint32_t* indices, uint32_t nnz,
-                                                   float* acc_grad, uint32_t dim);
-extern bool nimcp_gpu_gradient_flush(void* gpu_ctx, float* acc_grad, uint32_t dim,
-                                       uint32_t n_accumulated);
+#endif
 
 //=============================================================================
 // Default Configuration
@@ -68,6 +67,26 @@ void nimcp_utm_default_config(nimcp_unified_training_config_t* config) {
     config->lr_schedule.min_lr_ratio = 0.01f;
     config->lr_schedule.step_decay_factor = 0.5f;
     config->lr_schedule.step_decay_interval = 10000;
+
+    /* DFA health monitoring (default: enabled) */
+    config->loss_history_size = 256;
+    config->health_check_interval = 64;
+    config->dfa_auto_adjust_lr = true;
+
+    /* Quantum annealing (default: enabled) */
+    config->enable_quantum_anneal = true;
+    config->plateau_anneal_threshold = 3;
+
+    /* Quantum Shannon bottleneck (default: enabled) */
+    config->bottleneck_check_interval = 128;
+
+    /* Natural gradient (default: enabled) */
+    config->enable_natural_gradient = true;
+    config->fisher_update_interval = 16;
+    config->natural_grad_max_params = 4096;
+
+    /* Manifold tracking (default: enabled) */
+    config->enable_manifold_tracking = true;
 }
 
 //=============================================================================
@@ -105,10 +124,54 @@ nimcp_unified_training_manager_t* nimcp_utm_create(
     mgr->adam_beta1_t = 1.0f;
     mgr->adam_beta2_t = 1.0f;
 
-    NIMCP_LOGGING_INFO("Unified training manager created (lr=%.4f, diversity_w=%.2f, grad_norm=%s)",
+    /* Initialize fractal LR multipliers */
+    for (uint32_t i = 0; i < NIMCP_UTM_MAX_NETWORKS; i++) {
+        mgr->fractal_lr_multiplier[i] = 1.0f;
+    }
+    mgr->fractal_enabled = false;
+
+    /* Initialize DFA health monitoring */
+    mgr->loss_history_size = mgr->config.loss_history_size;
+    mgr->health_check_interval = mgr->config.health_check_interval;
+    mgr->dfa_auto_adjust_lr = mgr->config.dfa_auto_adjust_lr;
+    if (mgr->loss_history_size > 0) {
+        mgr->loss_history = (float*)nimcp_calloc(mgr->loss_history_size, sizeof(float));
+    }
+    mgr->training_health = NIMCP_TRAINING_HEALTH_UNKNOWN;
+
+    /* Initialize quantum annealing */
+    mgr->enable_quantum_anneal = mgr->config.enable_quantum_anneal;
+    mgr->plateau_anneal_threshold = mgr->config.plateau_anneal_threshold;
+    mgr->plateau_consecutive_count = 0;
+
+    /* Initialize bottleneck detection */
+    mgr->bottleneck_check_interval = mgr->config.bottleneck_check_interval;
+
+    /* Initialize natural gradient */
+    mgr->natural_gradient_enabled = mgr->config.enable_natural_gradient;
+    mgr->fisher_update_interval = (mgr->config.fisher_update_interval > 0) ?
+                                    mgr->config.fisher_update_interval : 16;
+    mgr->natural_grad_max_params = (mgr->config.natural_grad_max_params > 0) ?
+                                    mgr->config.natural_grad_max_params : 4096;
+    /* Natural gradient handles are created lazily when param groups are known */
+
+    /* Initialize manifold tracking */
+    mgr->manifold_tracking_enabled = mgr->config.enable_manifold_tracking;
+    /* Manifold handles are created lazily when output dims are known */
+
+    /* Initialize phase coherence */
+    mgr->cross_network_coherence = 0.0f;
+    mgr->per_network_loss_history = NULL;
+
+    NIMCP_LOGGING_INFO("Unified training manager created (lr=%.4f, diversity_w=%.2f, grad_norm=%s, "
+                       "dfa=%s, quantum=%s, nat_grad=%s, manifold=%s)",
                        mgr->current_lr,
                        mgr->config.anti_collapse.diversity_loss_weight,
-                       mgr->config.anti_collapse.use_gradient_normalization ? "normalize" : "clip");
+                       mgr->config.anti_collapse.use_gradient_normalization ? "normalize" : "clip",
+                       mgr->loss_history_size > 0 ? "on" : "off",
+                       mgr->enable_quantum_anneal ? "on" : "off",
+                       mgr->natural_gradient_enabled ? "on" : "off",
+                       mgr->manifold_tracking_enabled ? "on" : "off");
 
     return mgr;
 }
@@ -150,6 +213,23 @@ void nimcp_utm_destroy(nimcp_unified_training_manager_t* mgr) {
         nimcp_free(mgr->adam_m);
         nimcp_free(mgr->adam_v);
         nimcp_free(mgr->adam_sizes);
+    }
+
+    /* Free DFA loss history */
+    nimcp_free(mgr->loss_history);
+    nimcp_free(mgr->per_network_loss_history);
+
+    /* Destroy natural gradient handles */
+    for (uint32_t i = 0; i < NIMCP_UTM_MAX_NETWORKS; i++) {
+        if (mgr->natural_grad[i]) {
+            nimcp_natural_grad_destroy(mgr->natural_grad[i]);
+        }
+        if (mgr->fisher[i]) {
+            nimcp_fisher_destroy(mgr->fisher[i]);
+        }
+        if (mgr->output_manifold[i]) {
+            nimcp_manifold_destroy(mgr->output_manifold[i]);
+        }
     }
 
     nimcp_free(mgr);
@@ -218,6 +298,12 @@ int nimcp_utm_add_bridge(nimcp_unified_training_manager_t* mgr,
     b->type = type;
     b->enabled = true;
 
+    /* B7: Set configurable bridge parameter defaults */
+    b->surrogate_beta = 1.0f;
+    b->spike_rate_alpha = 0.3f;
+    b->spike_gain = 5.0f;
+    b->spike_threshold = 0.5f;
+
     /* Get dimensions from registered networks */
     nimcp_trainable_network_t* src = &mgr->networks[source_idx];
     nimcp_trainable_network_t* tgt = &mgr->networks[target_idx];
@@ -284,6 +370,7 @@ static int bridge_forward(nimcp_cross_network_bridge_t* b,
             break;
 
         case NIMCP_BRIDGE_LINEAR:
+            if (!b->transform_weights) return -1; /* B8: null guard */
             /* target = W @ source + bias */
             for (uint32_t t = 0; t < b->target_dim; t++) {
                 float sum = b->transform_bias ? b->transform_bias[t] : 0.0f;
@@ -475,7 +562,7 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         const float* net_input = input;
         uint32_t net_input_dim = input_dim;
 
-        /* Check if any bridge feeds into this network */
+        /* Check if any bridge feeds into this network (use first matching) */
         for (uint32_t b = 0; b < mgr->num_bridges; b++) {
             if (mgr->bridges[b].target_idx == i && mgr->bridges[b].enabled) {
                 uint32_t src = mgr->bridges[b].source_idx;
@@ -487,8 +574,7 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                         bridge_forward(&mgr->bridges[b], net_outputs[src], bridged_input);
                         net_input = bridged_input;
                         net_input_dim = bridged_dim;
-                        /* Note: bridged_input will leak if multiple bridges feed same network.
-                         * In practice, networks have at most one incoming bridge. */
+                        break; /* A1: Use first bridge only — prevents memory leak */
                     }
                 }
             }
@@ -514,22 +600,39 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     float composite_loss = 0.0f;
     float total_weight = 0.0f;
 
-    /* Per-network MSE loss against target */
-    /* In composite mode, the final network's output is compared to target.
-     * Each network can also contribute auxiliary loss. */
+    /* Per-network loss against target (B2: MSE/MAE/cross-entropy) */
+    uint32_t loss_type = mgr->config.loss_type;
     for (uint32_t i = 0; i < mgr->num_networks; i++) {
         if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
         nimcp_trainable_network_t* net = &mgr->networks[i];
 
-        /* MSE loss: 1/n Σ(output - target)² */
         uint32_t cmp_dim = (net_output_dims[i] < target_dim) ?
                             net_output_dims[i] : target_dim;
-        float mse = 0.0f;
-        for (uint32_t j = 0; j < cmp_dim; j++) {
-            float diff = net_outputs[i][j] - target[j];
-            mse += diff * diff;
+        float loss_val = 0.0f;
+        float n = (float)(cmp_dim > 0 ? cmp_dim : 1);
+        switch (loss_type) {
+            case 1: /* MAE: Σ|out-tgt|/n */
+                for (uint32_t j = 0; j < cmp_dim; j++) {
+                    loss_val += fabsf(net_outputs[i][j] - target[j]);
+                }
+                loss_val /= n;
+                break;
+            case 2: /* Cross-entropy: -Σ tgt*log(max(out,ε))/n */
+                for (uint32_t j = 0; j < cmp_dim; j++) {
+                    float o = net_outputs[i][j];
+                    if (o < 1e-7f) o = 1e-7f;
+                    loss_val -= target[j] * logf(o);
+                }
+                loss_val /= n;
+                break;
+            default: /* MSE: Σ(out-tgt)²/n */
+                for (uint32_t j = 0; j < cmp_dim; j++) {
+                    float diff = net_outputs[i][j] - target[j];
+                    loss_val += diff * diff;
+                }
+                loss_val /= n;
+                break;
         }
-        mse /= (float)(cmp_dim > 0 ? cmp_dim : 1);
 
         /* Auxiliary loss from the network (e.g., spike regularization) */
         float aux = 0.0f;
@@ -537,7 +640,7 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             aux = net->ops->compute_auxiliary_loss(net->ctx);
         }
 
-        float net_loss = mse + aux;
+        float net_loss = loss_val + aux;
         local_result.per_network_loss[i] = net_loss;
         composite_loss += net_loss * net->loss_weight;
         total_weight += net->loss_weight;
@@ -567,15 +670,32 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
         nimcp_trainable_network_t* net = &mgr->networks[i];
 
-        /* Compute dL/dOutput for this network */
+        /* Compute dL/dOutput for this network (B2: loss-type-aware gradient) */
         uint32_t out_dim = net_output_dims[i];
         float* dl_dout = (float*)nimcp_calloc(out_dim, sizeof(float));
         if (!dl_dout) continue;
 
-        /* MSE gradient: dL/dy = 2(y - target) / n */
         uint32_t cmp_dim = (out_dim < target_dim) ? out_dim : target_dim;
-        for (uint32_t j = 0; j < cmp_dim; j++) {
-            dl_dout[j] = 2.0f * (net_outputs[i][j] - target[j]) / (float)cmp_dim;
+        float n_cmp = (float)(cmp_dim > 0 ? cmp_dim : 1);
+        switch (loss_type) {
+            case 1: /* MAE gradient: sign(out-tgt)/n */
+                for (uint32_t j = 0; j < cmp_dim; j++) {
+                    float diff = net_outputs[i][j] - target[j];
+                    dl_dout[j] = (diff > 0.0f ? 1.0f : (diff < 0.0f ? -1.0f : 0.0f)) / n_cmp;
+                }
+                break;
+            case 2: /* Cross-entropy gradient: -tgt/max(out,ε)/n */
+                for (uint32_t j = 0; j < cmp_dim; j++) {
+                    float o = net_outputs[i][j];
+                    if (o < 1e-7f) o = 1e-7f;
+                    dl_dout[j] = -target[j] / o / n_cmp;
+                }
+                break;
+            default: /* MSE gradient: 2(y-target)/n */
+                for (uint32_t j = 0; j < cmp_dim; j++) {
+                    dl_dout[j] = 2.0f * (net_outputs[i][j] - target[j]) / n_cmp;
+                }
+                break;
         }
 
         /* Add gradient from any downstream bridge using the target network's
@@ -608,6 +728,7 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         /* Backward through the network */
         uint32_t in_dim = net->ops->get_input_dim(net->ctx);
         float* dl_din = (float*)nimcp_calloc(in_dim, sizeof(float));
+        if (!dl_din) { nimcp_free(dl_dout); dl_dinputs[i] = NULL; continue; }
 
         net->ops->backward(net->ctx, dl_dout, out_dim, dl_din, in_dim);
 
@@ -641,11 +762,20 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         goto cleanup;
     }
 
+    /* B4: Track which networks actually ran backward successfully */
+    bool backward_ran[NIMCP_UTM_MAX_NETWORKS];
+    memset(backward_ran, 0, sizeof(backward_ran));
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        if (mgr->networks[i].enabled && net_outputs[i]) {
+            backward_ran[i] = true;
+        }
+    }
+
     /* Batch complete — divide accumulated gradients by batch_size */
     if (effective_batch > 1) {
         float inv_batch = 1.0f / (float)effective_batch;
         for (uint32_t i = 0; i < mgr->num_networks; i++) {
-            if (!mgr->networks[i].enabled) continue;
+            if (!mgr->networks[i].enabled || !backward_ran[i]) continue;
             nimcp_utm_param_group_t* groups = NULL;
             uint32_t num_groups = 0;
             if (mgr->networks[i].ops->get_param_groups &&
@@ -667,15 +797,43 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     /* Step 5: Gradient normalization / clipping (unified, single pass)   */
     /* ------------------------------------------------------------------ */
     {
-        /* Collect all gradient arrays from all networks */
-        float* all_grads[NIMCP_UTM_MAX_NETWORKS * 32]; /* generous upper bound */
+        /* B3: Per-network gradient normalization, then lighter global safety clip */
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled) continue;
+            nimcp_trainable_network_t* net = &mgr->networks[i];
+
+            float* net_grads[32];
+            size_t net_sizes[32];
+            uint32_t net_arrays = 0;
+
+            nimcp_utm_param_group_t* groups = NULL;
+            uint32_t num_groups = 0;
+            if (net->ops->get_param_groups &&
+                net->ops->get_param_groups(net->ctx, &groups, &num_groups) == 0) {
+                for (uint32_t g = 0; g < num_groups && net_arrays < 32; g++) {
+                    if (groups[g].gradients && groups[g].count > 0) {
+                        net_grads[net_arrays] = groups[g].gradients;
+                        net_sizes[net_arrays] = groups[g].count;
+                        net_arrays++;
+                    }
+                }
+                nimcp_free(groups);
+            }
+
+            if (net_arrays > 0) {
+                nimcp_anti_collapse_normalize_gradients(
+                    &mgr->anti_collapse[i], net_grads, net_sizes, net_arrays);
+            }
+        }
+
+        /* Global safety clip at 10x target norm using anti_collapse[0] */
+        float* all_grads[NIMCP_UTM_MAX_NETWORKS * 32];
         size_t all_sizes[NIMCP_UTM_MAX_NETWORKS * 32];
         uint32_t total_arrays = 0;
 
         for (uint32_t i = 0; i < mgr->num_networks; i++) {
             if (!mgr->networks[i].enabled) continue;
             nimcp_trainable_network_t* net = &mgr->networks[i];
-
             nimcp_utm_param_group_t* groups = NULL;
             uint32_t num_groups = 0;
             if (net->ops->get_param_groups &&
@@ -701,11 +859,10 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             }
         }
 
-        /* Use anti_collapse[0] for global gradient normalization */
+        /* Global safety clip (10x target norm) */
         float scale = nimcp_anti_collapse_normalize_gradients(
             &mgr->anti_collapse[0], all_grads, all_sizes, total_arrays);
 
-        /* Compute gradient norm for reporting (before normalization was applied) */
         float effective_target = mgr->anti_collapse[0].config.gradient_target_norm;
         if (mgr->anti_collapse[0].config.adaptive_gradient_target && effective_target <= 0.0f) {
             effective_target = sqrtf(mgr->anti_collapse[0].ema_gradient_norm > 0.0f ?
@@ -797,7 +954,10 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                         }
                     }
 
-                    float lr = mgr->current_lr * groups[g].lr_scale;
+                    /* Feature 1: Hub-aware fractal LR scaling */
+                    float fractal_scale = mgr->fractal_enabled ?
+                        mgr->fractal_lr_multiplier[i] : 1.0f;
+                    float lr = mgr->current_lr * groups[g].lr_scale * fractal_scale;
                     float wd = groups[g].weight_decay;
                     float bc1 = 1.0f - mgr->adam_beta1_t;  /* 1 - beta1^t */
                     float bc2 = 1.0f - mgr->adam_beta2_t;  /* 1 - beta2^t */
@@ -805,31 +965,86 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                     float* m = (group_idx < mgr->adam_num_groups) ? mgr->adam_m[group_idx] : NULL;
                     float* v = (group_idx < mgr->adam_num_groups) ? mgr->adam_v[group_idx] : NULL;
 
-                    for (size_t j = 0; j < groups[g].count; j++) {
-                        float grad = groups[g].gradients[j];
+                    /* Feature 7: Natural gradient optimizer for small param groups */
+                    bool use_ng = mgr->natural_gradient_enabled &&
+                                  groups[g].count <= mgr->natural_grad_max_params &&
+                                  groups[g].count > 0;
 
-                        if (m && v) {
-                            /* AdamW: update moments */
-                            m[j] = adam_beta1 * m[j] + (1.0f - adam_beta1) * grad;
-                            v[j] = adam_beta2 * v[j] + (1.0f - adam_beta2) * grad * grad;
+                    if (use_ng) {
+                        /* Lazy-create Fisher + NG handles for this network */
+                        if (!mgr->fisher[i]) {
+                            nimcp_fisher_config_t f_cfg = {0};
+                            f_cfg.param_dim = (uint32_t)groups[g].count;
+                            f_cfg.sample_size = 1;
+                            f_cfg.regularization = 1e-4f;
+                            f_cfg.use_empirical = true;
+                            f_cfg.enable_damping = true;
+                            f_cfg.initial_damping = 1e-3f;
+                            mgr->fisher[i] = nimcp_fisher_create(&f_cfg);
+                        }
+                        if (!mgr->natural_grad[i]) {
+                            nimcp_natural_grad_config_t ng_cfg = {0};
+                            ng_cfg.learning_rate = lr;
+                            ng_cfg.momentum = 0.9f;
+                            ng_cfg.gradient_clip = 5.0f;
+                            ng_cfg.use_preconditioner = true;
+                            ng_cfg.enable_warmup = false;
+                            mgr->natural_grad[i] = nimcp_natural_grad_create(
+                                &ng_cfg, (uint32_t)groups[g].count);
+                        }
 
-                            /* Bias-corrected estimates */
-                            float m_hat = m[j] / bc1;
-                            float v_hat = v[j] / bc2;
+                        /* Periodically recompute Fisher */
+                        if (mgr->fisher[i] &&
+                            mgr->step_count % mgr->fisher_update_interval == 0) {
+                            nimcp_fisher_compute(mgr->fisher[i],
+                                groups[g].gradients, 1, (uint32_t)groups[g].count);
+                            if (mgr->natural_grad[i]) {
+                                nimcp_natural_grad_update_fisher(
+                                    mgr->natural_grad[i], mgr->fisher[i]);
+                            }
+                        }
 
-                            /* AdamW: decoupled weight decay (applied to param directly) */
-                            if (wd > 0.0f) {
+                        /* Apply weight decay before NG step */
+                        if (wd > 0.0f) {
+                            for (size_t j = 0; j < groups[g].count; j++) {
                                 groups[g].params[j] -= lr * wd * groups[g].params[j];
                             }
+                        }
 
-                            /* Adam update */
-                            groups[g].params[j] -= lr * m_hat / (sqrtf(v_hat) + adam_eps);
-                        } else {
-                            /* Fallback SGD if moments not allocated */
-                            if (wd > 0.0f) {
-                                groups[g].params[j] -= lr * wd * groups[g].params[j];
+                        /* Natural gradient step */
+                        if (mgr->natural_grad[i]) {
+                            nimcp_natural_grad_step(mgr->natural_grad[i],
+                                groups[g].params, groups[g].gradients,
+                                (uint32_t)groups[g].count);
+                        }
+                    } else {
+                        /* Standard AdamW */
+                        for (size_t j = 0; j < groups[g].count; j++) {
+                            float grad = groups[g].gradients[j];
+
+                            if (m && v) {
+                                /* AdamW: update moments */
+                                m[j] = adam_beta1 * m[j] + (1.0f - adam_beta1) * grad;
+                                v[j] = adam_beta2 * v[j] + (1.0f - adam_beta2) * grad * grad;
+
+                                /* Bias-corrected estimates */
+                                float m_hat = m[j] / bc1;
+                                float v_hat = v[j] / bc2;
+
+                                /* AdamW: decoupled weight decay */
+                                if (wd > 0.0f) {
+                                    groups[g].params[j] -= lr * wd * groups[g].params[j];
+                                }
+
+                                /* Adam update */
+                                groups[g].params[j] -= lr * m_hat / (sqrtf(v_hat) + adam_eps);
+                            } else {
+                                /* Fallback SGD */
+                                if (wd > 0.0f) {
+                                    groups[g].params[j] -= lr * wd * groups[g].params[j];
+                                }
+                                groups[g].params[j] -= lr * grad;
                             }
-                            groups[g].params[j] -= lr * grad;
                         }
                     }
 
@@ -837,6 +1052,14 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                 }
                 nimcp_free(groups);
             }
+        }
+    }
+
+    /* Phase 4: Sync cached params back to underlying networks after AdamW */
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        if (!mgr->networks[i].enabled) continue;
+        if (mgr->networks[i].ops->sync_params) {
+            mgr->networks[i].ops->sync_params(mgr->networks[i].ctx);
         }
     }
 
@@ -865,6 +1088,294 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
 
     local_result.step = mgr->step_count;
 
+    /* ------------------------------------------------------------------ */
+    /* Step 8: DFA health monitoring + fractal analysis                    */
+    /* ------------------------------------------------------------------ */
+    if (mgr->loss_history && mgr->loss_history_size > 0) {
+        /* Record loss in ring buffer */
+        mgr->loss_history[mgr->loss_history_pos] = composite_loss;
+        mgr->loss_history_pos = (mgr->loss_history_pos + 1) % mgr->loss_history_size;
+        if (mgr->loss_history_count < mgr->loss_history_size) {
+            mgr->loss_history_count++;
+        }
+
+        /* Record per-network losses for phase coherence */
+        if (mgr->num_networks >= 2 && mgr->per_network_loss_history == NULL) {
+            mgr->per_network_loss_history = (float*)nimcp_calloc(
+                (size_t)mgr->loss_history_size * mgr->num_networks, sizeof(float));
+        }
+        if (mgr->per_network_loss_history) {
+            uint32_t pos = (mgr->loss_history_pos == 0) ?
+                            mgr->loss_history_size - 1 : mgr->loss_history_pos - 1;
+            for (uint32_t n = 0; n < mgr->num_networks; n++) {
+                mgr->per_network_loss_history[pos * mgr->num_networks + n] =
+                    local_result.per_network_loss[n];
+            }
+        }
+
+        /* Run health check every N steps when enough data */
+        if (mgr->health_check_interval > 0 &&
+            mgr->step_count % mgr->health_check_interval == 0 &&
+            mgr->loss_history_count >= 32) {
+
+            /* Linearize ring buffer for fractal analysis */
+            uint32_t count = mgr->loss_history_count;
+            float* linear = (float*)nimcp_malloc(count * sizeof(float));
+            if (linear) {
+                uint32_t start = (mgr->loss_history_count < mgr->loss_history_size) ?
+                    0 : mgr->loss_history_pos;
+                for (uint32_t k = 0; k < count; k++) {
+                    linear[k] = mgr->loss_history[(start + k) % mgr->loss_history_size];
+                }
+
+                /* Feature 2: DFA + Hurst */
+                fractal_config_t fcfg = fractal_config_default();
+                fractal_result_t dfa_result = {0};
+                fractal_result_t hurst_result = {0};
+
+                if (fractal_dfa(linear, count, &fcfg, &dfa_result) == 0) {
+                    mgr->dfa_exponent = dfa_result.dfa_exponent;
+                }
+                if (fractal_hurst_rs(linear, count, &fcfg, &hurst_result) == 0) {
+                    mgr->hurst_exponent = hurst_result.hurst_exponent;
+                }
+
+                /* Classify health */
+                float alpha = mgr->dfa_exponent;
+                float H = mgr->hurst_exponent;
+                if (alpha < 0.3f) {
+                    mgr->training_health = NIMCP_TRAINING_HEALTH_OSCILLATING;
+                } else if (alpha < 0.6f) {
+                    mgr->training_health = NIMCP_TRAINING_HEALTH_NOISY;
+                } else if (alpha > 1.3f) {
+                    mgr->training_health = NIMCP_TRAINING_HEALTH_DRIFTING;
+                } else if (H > 0.8f) {
+                    mgr->training_health = NIMCP_TRAINING_HEALTH_PLATEAU;
+                } else {
+                    mgr->training_health = NIMCP_TRAINING_HEALTH_OPTIMAL;
+                }
+
+                /* Feature 2: Auto-adjust LR based on health */
+                if (mgr->dfa_auto_adjust_lr) {
+                    switch (mgr->training_health) {
+                        case NIMCP_TRAINING_HEALTH_NOISY:
+                            mgr->current_lr *= 0.8f;
+                            break;
+                        case NIMCP_TRAINING_HEALTH_DRIFTING:
+                            mgr->current_lr *= 0.5f;
+                            break;
+                        case NIMCP_TRAINING_HEALTH_OSCILLATING:
+                            mgr->current_lr *= 0.3f;
+                            break;
+                        case NIMCP_TRAINING_HEALTH_PLATEAU:
+                            mgr->current_lr *= 1.5f;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                /* Feature 3: Extended fractal analysis */
+                /* Lacunarity */
+                if (count >= 8) {
+                    mgr->lacunarity_value = fractal_lacunarity(linear, count, count / 8);
+                }
+
+                /* Multifractal spectrum */
+                multifractal_spectrum_t* spectrum = NULL;
+                if (fractal_multifractal_spectrum(linear, count,
+                        -3.0f, 3.0f, 13, &spectrum) == 0 && spectrum) {
+                    mgr->is_multifractal = spectrum->is_multifractal;
+                    mgr->multifractal_width = spectrum->width;
+                    multifractal_spectrum_destroy(spectrum);
+                }
+
+                /* Spectral exponent (supplementary) */
+                fractal_result_t spectral_result = {0};
+                fractal_spectral_exponent(linear, count, &spectral_result);
+
+                /* Feature 5: Quantum annealing for plateau escape */
+                if (mgr->training_health == NIMCP_TRAINING_HEALTH_PLATEAU) {
+                    mgr->plateau_consecutive_count++;
+                } else {
+                    mgr->plateau_consecutive_count = 0;
+                }
+
+                if (mgr->enable_quantum_anneal &&
+                    mgr->plateau_consecutive_count >= mgr->plateau_anneal_threshold) {
+
+                    NIMCP_LOGGING_INFO("UTM: Triggering quantum annealing (plateau for %u checks)",
+                                       mgr->plateau_consecutive_count);
+
+                    quantum_annealing_config_t qa_cfg = quantum_annealing_default_config();
+                    qa_cfg.num_iterations = 50;
+                    qa_cfg.quantum_strength = 0.1f;
+                    qa_cfg.enable_tunneling = true;
+                    quantum_annealer_t annealer = quantum_annealer_create(&qa_cfg);
+                    if (annealer) {
+                        /* Perturb each network's first small param group */
+                        for (uint32_t n = 0; n < mgr->num_networks; n++) {
+                            if (!mgr->networks[n].enabled) continue;
+                            nimcp_utm_param_group_t* pgroups = NULL;
+                            uint32_t npg = 0;
+                            if (mgr->networks[n].ops->get_param_groups &&
+                                mgr->networks[n].ops->get_param_groups(
+                                    mgr->networks[n].ctx, &pgroups, &npg) == 0 && npg > 0) {
+                                /* Anneal first group if small enough */
+                                if (pgroups[0].params && pgroups[0].count > 0 &&
+                                    pgroups[0].count <= 4096) {
+                                    float* optimized = (float*)nimcp_malloc(
+                                        pgroups[0].count * sizeof(float));
+                                    if (optimized) {
+                                        quantum_anneal(annealer, NULL,
+                                            pgroups[0].params, optimized,
+                                            (uint32_t)pgroups[0].count, NULL);
+                                        memcpy(pgroups[0].params, optimized,
+                                            pgroups[0].count * sizeof(float));
+                                        nimcp_free(optimized);
+                                    }
+                                }
+                                nimcp_free(pgroups);
+                            }
+                        }
+                        quantum_annealer_destroy(annealer);
+                        mgr->plateau_consecutive_count = 0;
+                    }
+                }
+
+                /* Feature 8: Phase coherence (cross-network mode collapse detection) */
+                if (mgr->num_networks >= 2 && mgr->per_network_loss_history && count >= 16) {
+                    float total_sync = 0.0f;
+                    uint32_t pair_count = 0;
+
+                    /* Allocate phasor buffers */
+                    neural_phasor_t* phasors_a = (neural_phasor_t*)nimcp_malloc(
+                        count * sizeof(neural_phasor_t));
+                    neural_phasor_t* phasors_b = (neural_phasor_t*)nimcp_malloc(
+                        count * sizeof(neural_phasor_t));
+                    float* net_series = (float*)nimcp_malloc(count * sizeof(float));
+
+                    if (phasors_a && phasors_b && net_series) {
+                        for (uint32_t na = 0; na < mgr->num_networks; na++) {
+                            /* Extract network na's loss history */
+                            for (uint32_t k = 0; k < count; k++) {
+                                uint32_t idx = (start + k) % mgr->loss_history_size;
+                                net_series[k] = mgr->per_network_loss_history[
+                                    idx * mgr->num_networks + na];
+                            }
+                            if (!phasor_hilbert_transform(net_series, phasors_a, count))
+                                continue;
+
+                            for (uint32_t nb = na + 1; nb < mgr->num_networks; nb++) {
+                                for (uint32_t k = 0; k < count; k++) {
+                                    uint32_t idx = (start + k) % mgr->loss_history_size;
+                                    net_series[k] = mgr->per_network_loss_history[
+                                        idx * mgr->num_networks + nb];
+                                }
+                                if (!phasor_hilbert_transform(net_series, phasors_b, count))
+                                    continue;
+
+                                float sync = phasor_array_synchrony(phasors_a, phasors_b, count);
+                                total_sync += sync;
+                                pair_count++;
+                            }
+                        }
+                    }
+                    nimcp_free(phasors_a);
+                    nimcp_free(phasors_b);
+                    nimcp_free(net_series);
+
+                    if (pair_count > 0) {
+                        mgr->cross_network_coherence = total_sync / (float)pair_count;
+                        /* Override health if networks are locked together */
+                        if (mgr->cross_network_coherence > 0.9f) {
+                            mgr->training_health = NIMCP_TRAINING_HEALTH_OSCILLATING;
+                        }
+                    }
+                }
+
+                nimcp_free(linear);
+            }
+        }
+
+        /* Feature 6: Bottleneck detection (less frequent) */
+        if (mgr->bottleneck_check_interval > 0 &&
+            mgr->step_count % mgr->bottleneck_check_interval == 0 &&
+            mgr->num_bridges > 0) {
+            for (uint32_t b = 0; b < mgr->num_bridges; b++) {
+                nimcp_cross_network_bridge_t* br = &mgr->bridges[b];
+                if (!br->enabled || !br->last_source_output || !br->last_target_input)
+                    continue;
+
+                /* Simple bottleneck metric: cosine similarity between source and target */
+                float dot = 0.0f, norm_s = 0.0f, norm_t = 0.0f;
+                uint32_t min_dim = (br->source_dim < br->target_dim) ?
+                                    br->source_dim : br->target_dim;
+                for (uint32_t j = 0; j < min_dim; j++) {
+                    dot += br->last_source_output[j] * br->last_target_input[j];
+                    norm_s += br->last_source_output[j] * br->last_source_output[j];
+                    norm_t += br->last_target_input[j] * br->last_target_input[j];
+                }
+                float denom = sqrtf(norm_s) * sqrtf(norm_t);
+                float similarity = (denom > 1e-7f) ? (dot / denom) : 0.0f;
+                /* Low similarity = information bottleneck */
+                mgr->bridge_bottleneck_severity[b] = 1.0f - fabsf(similarity);
+
+                if (mgr->bridge_bottleneck_severity[b] > 0.7f) {
+                    NIMCP_LOGGING_WARN("UTM: Bridge %u bottleneck severity %.2f",
+                                        b, mgr->bridge_bottleneck_severity[b]);
+                }
+            }
+        }
+    }
+
+    /* Feature 9: Manifold dimensionality tracking */
+    if (mgr->manifold_tracking_enabled &&
+        mgr->health_check_interval > 0 &&
+        mgr->step_count % mgr->health_check_interval == 0) {
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
+            uint32_t out_dim = net_output_dims[i];
+            if (out_dim == 0) continue;
+
+            /* Lazy-create manifold handle */
+            if (!mgr->output_manifold[i]) {
+                nimcp_manifold_config_t m_cfg = {0};
+                m_cfg.intrinsic_dim = 0; /* auto-detect */
+                m_cfg.num_samples = 64;
+                m_cfg.neighborhood_radius = 0.1f;
+                m_cfg.compute_curvature = false;
+                m_cfg.enable_embedding = false;
+                mgr->output_manifold[i] = nimcp_manifold_create(&m_cfg, out_dim);
+            }
+
+            /* Add current output as a sample */
+            if (mgr->output_manifold[i]) {
+                nimcp_manifold_add_samples(mgr->output_manifold[i],
+                    net_outputs[i], 1, out_dim);
+
+                /* Estimate intrinsic dimensionality */
+                uint32_t dim = 0;
+                if (nimcp_manifold_estimate_dim(mgr->output_manifold[i], &dim) == 0) {
+                    mgr->manifold_intrinsic_dim[i] = dim;
+                    if (dim < 2 && dim > 0) {
+                        NIMCP_LOGGING_WARN("UTM: Network %u manifold dim collapsed to %u", i, dim);
+                    }
+                }
+            }
+        }
+    }
+
+    /* Populate extended result fields */
+    local_result.training_health = mgr->training_health;
+    local_result.dfa_exponent = mgr->dfa_exponent;
+    local_result.hurst_exponent = mgr->hurst_exponent;
+    local_result.lacunarity_value = mgr->lacunarity_value;
+    local_result.is_multifractal = mgr->is_multifractal;
+    local_result.cross_network_coherence = mgr->cross_network_coherence;
+    memcpy(local_result.manifold_intrinsic_dim, mgr->manifold_intrinsic_dim,
+           sizeof(mgr->manifold_intrinsic_dim));
+
     if (result) {
         *result = local_result;
     }
@@ -876,4 +1387,40 @@ cleanup:
     }
 
     return 0;
+}
+
+//=============================================================================
+// Fractal-Aware Training API
+//=============================================================================
+
+void nimcp_utm_set_fractal_lr(nimcp_unified_training_manager_t* mgr,
+                               uint32_t net_idx, float scale) {
+    if (!mgr || net_idx >= NIMCP_UTM_MAX_NETWORKS) return;
+    mgr->fractal_lr_multiplier[net_idx] = scale;
+    mgr->fractal_enabled = true;
+}
+
+nimcp_training_health_t nimcp_utm_get_health(const nimcp_unified_training_manager_t* mgr) {
+    if (!mgr) return NIMCP_TRAINING_HEALTH_UNKNOWN;
+    return mgr->training_health;
+}
+
+float nimcp_utm_get_dfa_exponent(const nimcp_unified_training_manager_t* mgr) {
+    if (!mgr) return 0.0f;
+    return mgr->dfa_exponent;
+}
+
+void nimcp_utm_set_natural_gradient(nimcp_unified_training_manager_t* mgr,
+                                     uint32_t net_idx, bool enabled) {
+    if (!mgr || net_idx >= NIMCP_UTM_MAX_NETWORKS) return;
+    /* Toggle per-network by destroying/allowing lazy creation */
+    if (!enabled && mgr->natural_grad[net_idx]) {
+        nimcp_natural_grad_destroy(mgr->natural_grad[net_idx]);
+        mgr->natural_grad[net_idx] = NULL;
+    }
+    if (!enabled && mgr->fisher[net_idx]) {
+        nimcp_fisher_destroy(mgr->fisher[net_idx]);
+        mgr->fisher[net_idx] = NULL;
+    }
+    /* If enabling, handles will be lazy-created in the optimizer loop */
 }

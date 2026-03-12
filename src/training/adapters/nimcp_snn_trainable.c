@@ -18,6 +18,10 @@ typedef struct {
     uint32_t output_dim;
     uint32_t input_dim;
     bool managed_by_utm;            /* When true, skip internal optimizer step */
+    /* C2: Cached flat weights for UTM param group exposure */
+    float* cached_weights;
+    float* cached_grads;
+    size_t cached_count;
 } snn_adapter_ctx_t;
 
 /* --- vtable implementations --- */
@@ -65,9 +69,52 @@ static int snn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
 static int snn_adapter_get_param_groups(void* ctx,
                                         nimcp_utm_param_group_t** groups,
                                         uint32_t* num_groups) {
-    (void)ctx;
+    snn_adapter_ctx_t* a = (snn_adapter_ctx_t*)ctx;
     if (!groups || !num_groups) return -1;
-    /* SNN parameters managed internally via surrogate gradient / e-prop */
+
+    /* C2: When UTM-managed, expose flat weights as param group */
+    if (a && a->managed_by_utm && a->snn_ctx) {
+        size_t w_count = 0;
+        float* flat_w = snn_backprop_get_flat_weights(a->snn_ctx, &w_count);
+        if (flat_w && w_count > 0) {
+            /* Update cached weights */
+            if (a->cached_count != w_count) {
+                nimcp_free(a->cached_weights);
+                nimcp_free(a->cached_grads);
+                a->cached_weights = flat_w;
+                a->cached_grads = (float*)nimcp_calloc(w_count, sizeof(float));
+                a->cached_count = w_count;
+            } else {
+                memcpy(a->cached_weights, flat_w, w_count * sizeof(float));
+                nimcp_free(flat_w);
+            }
+
+            /* Get gradient data */
+            size_t g_count = 0;
+            float* grad_ptr = snn_backprop_get_flat_weight_grads(a->snn_ctx, &g_count);
+            if (grad_ptr && g_count > 0 && a->cached_grads) {
+                size_t copy_n = (g_count < w_count) ? g_count : w_count;
+                memcpy(a->cached_grads, grad_ptr, copy_n * sizeof(float));
+            }
+
+            nimcp_utm_param_group_t* g = (nimcp_utm_param_group_t*)
+                nimcp_calloc(1, sizeof(nimcp_utm_param_group_t));
+            if (g) {
+                g->params = a->cached_weights;
+                g->gradients = a->cached_grads;
+                g->count = w_count;
+                g->lr_scale = 1.0f;
+                g->weight_decay = 0.0f;
+                g->name = "snn_weights";
+                *groups = g;
+                *num_groups = 1;
+                return 0;
+            }
+        } else {
+            nimcp_free(flat_w);
+        }
+    }
+
     *groups = NULL;
     *num_groups = 0;
     return 0;
@@ -96,7 +143,18 @@ static float snn_adapter_auxiliary_loss(void* ctx) {
     return 0.0f;
 }
 
+static int snn_adapter_sync_params(void* ctx) {
+    snn_adapter_ctx_t* a = (snn_adapter_ctx_t*)ctx;
+    if (!a || !a->snn_ctx || !a->cached_weights || a->cached_count == 0) return 0;
+    return snn_backprop_set_flat_weights(a->snn_ctx, a->cached_weights, a->cached_count);
+}
+
 static void snn_adapter_destroy(void* ctx) {
+    snn_adapter_ctx_t* a = (snn_adapter_ctx_t*)ctx;
+    if (a) {
+        nimcp_free(a->cached_weights);
+        nimcp_free(a->cached_grads);
+    }
     nimcp_free(ctx);
 }
 
@@ -113,6 +171,7 @@ static const nimcp_trainable_network_ops_t snn_trainable_ops = {
     .get_input_dim = snn_adapter_get_input_dim,
     .compute_auxiliary_loss = snn_adapter_auxiliary_loss,
     .destroy = snn_adapter_destroy,
+    .sync_params = snn_adapter_sync_params,
 };
 
 /* --- public creation --- */

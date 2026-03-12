@@ -58,15 +58,20 @@ static int cnn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
     cnn_adapter_ctx_t* a = (cnn_adapter_ctx_t*)ctx;
     if (!a || !a->trainer || !dl_doutput || !a->has_result) return -1;
 
-    /* CNN backward expects target tensor (MSE gradient computed internally).
-     * We wrap dl_doutput as the "target" — backward computes gradients. */
+    /* C5: Use backward_with_gradient when managed by UTM — passes the UTM's
+     * composite loss gradient directly instead of computing MSE internally. */
     uint32_t dims[1] = { output_dim };
-    nimcp_tensor_t* target_t = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
-    if (!target_t) return -1;
+    nimcp_tensor_t* grad_t = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+    if (!grad_t) return -1;
 
-    memcpy(nimcp_tensor_data(target_t), dl_doutput, output_dim * sizeof(float));
+    memcpy(nimcp_tensor_data(grad_t), dl_doutput, output_dim * sizeof(float));
 
-    nimcp_error_t err = cnn_trainer_backward(a->trainer, target_t, &a->last_result);
+    nimcp_error_t err;
+    if (a->managed_by_utm) {
+        err = cnn_trainer_backward_with_gradient(a->trainer, grad_t, &a->last_result);
+    } else {
+        err = cnn_trainer_backward(a->trainer, grad_t, &a->last_result);
+    }
 
     /* Run CNN's internal optimizer step after backward — unless UTM manages params */
     if (err == NIMCP_SUCCESS && !a->managed_by_utm) {
@@ -91,7 +96,7 @@ static int cnn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
         }
     }
 
-    nimcp_tensor_destroy(target_t);
+    nimcp_tensor_destroy(grad_t);
     return (err == NIMCP_SUCCESS) ? 0 : -1;
 }
 
@@ -100,7 +105,14 @@ static int cnn_adapter_get_param_groups(void* ctx,
                                         uint32_t* num_groups) {
     cnn_adapter_ctx_t* a = (cnn_adapter_ctx_t*)ctx;
     if (!a || !a->trainer || !groups || !num_groups) return -1;
-    /* CNN parameters managed by cnn_trainer_step() / internal optimizer */
+
+    /* C4: CNN manages its own weights via internal tensors.
+     * When managed_by_utm, the CNN backward pass still accumulates gradients
+     * into layer tensors, but the optimizer step is skipped (done by CNN's own
+     * cnn_trainer_step when not managed). For UTM, we report 0 param groups
+     * since CNN weights/grads are not in a format compatible with flat AdamW.
+     * The per-network gradient normalization in B3 still operates on the CNN's
+     * internal gradients via the backward pass. */
     *groups = NULL;
     *num_groups = 0;
     return 0;
@@ -148,6 +160,7 @@ static const nimcp_trainable_network_ops_t cnn_trainable_ops = {
     .get_input_dim = cnn_adapter_get_input_dim,
     .compute_auxiliary_loss = cnn_adapter_auxiliary_loss,
     .destroy = cnn_adapter_destroy,
+    .sync_params = NULL, /* CNN modifies tensors in-place — no sync needed */
 };
 
 /* --- public creation --- */

@@ -2355,6 +2355,47 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
 }
 
 /**
+ * @brief C5: Backward pass with externally provided gradient (skip internal MSE)
+ */
+nimcp_error_t cnn_trainer_backward_with_gradient(cnn_trainer_t* trainer,
+                                                   const nimcp_tensor_t* grad_tensor,
+                                                   const cnn_forward_result_t* forward_result) {
+    NIMCP_CHECK_THROW(trainer && grad_tensor && forward_result, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_backward_with_gradient: NULL parameter");
+    NIMCP_CHECK_THROW(forward_result->output && forward_result->activations,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "cnn_trainer_backward_with_gradient: forward_result has no output or activations");
+
+    /* Use the externally provided gradient directly (no MSE computation).
+     * We create a target tensor from the forward output minus the gradient,
+     * such that the MSE gradient 2*(output - target)/n equals the provided gradient.
+     * However, to avoid precision issues, we instead call the existing backward
+     * with a synthetic target that produces the right gradient.
+     *
+     * Simpler approach: create a "target" = output - grad*n/2, so that
+     * the internal MSE gradient 2*(output - target)/n = grad. */
+    nimcp_tensor_t* synthetic_target = nimcp_tensor_clone(forward_result->output);
+    if (!synthetic_target) return NIMCP_ERROR_NO_MEMORY;
+
+    float* tgt_data = nimcp_tensor_data(synthetic_target);
+    const float* out_data = nimcp_tensor_data_const(forward_result->output);
+    const float* grad_data = nimcp_tensor_data_const(grad_tensor);
+    size_t numel = nimcp_tensor_numel(synthetic_target);
+    size_t grad_numel = nimcp_tensor_numel(grad_tensor);
+    size_t common = (numel < grad_numel) ? numel : grad_numel;
+    float n = (float)(common > 0 ? common : 1);
+
+    for (size_t i = 0; i < common; i++) {
+        /* target = output - grad * n / 2 → MSE grad = 2*(output - target)/n = grad */
+        tgt_data[i] = out_data[i] - grad_data[i] * n / 2.0f;
+    }
+
+    nimcp_error_t err = cnn_trainer_backward(trainer, synthetic_target, forward_result);
+    nimcp_tensor_destroy(synthetic_target);
+    return err;
+}
+
+/**
  * @brief Optimizer step
  *
  * WHAT: Update weights using computed gradients

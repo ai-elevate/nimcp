@@ -1890,3 +1890,83 @@ const float* snn_backprop_get_input_grad(const snn_backprop_ctx_t* ctx,
     if (out_size) *out_size = ctx->input_grad_size;
     return ctx->last_input_grad;
 }
+
+//=============================================================================
+// C2: Flat Weight Extraction/Setting for UTM Param Groups
+//=============================================================================
+
+float* snn_backprop_get_flat_weights(snn_backprop_ctx_t* ctx, size_t* out_count) {
+    if (!ctx || !ctx->network || !ctx->network->neural_net || !out_count) {
+        if (out_count) *out_count = 0;
+        return NULL;
+    }
+
+    /* Count total synapses across all populations */
+    snn_network_t* net = ctx->network;
+    size_t total = 0;
+    for (uint32_t p = 0; p < net->n_populations; p++) {
+        snn_population_t* pop = net->populations[p];
+        if (!pop) continue;
+        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+            neuron_t* neuron = neural_network_get_neuron(net->neural_net, pop->neuron_ids[n]);
+            if (!neuron) continue;
+            total += sparse_synapse_count(&neuron->incoming);
+        }
+    }
+
+    if (total == 0) { *out_count = 0; return NULL; }
+
+    float* flat = (float*)nimcp_malloc(total * sizeof(float));
+    if (!flat) { *out_count = 0; return NULL; }
+
+    size_t idx = 0;
+    for (uint32_t p = 0; p < net->n_populations; p++) {
+        snn_population_t* pop = net->populations[p];
+        if (!pop) continue;
+        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+            neuron_t* neuron = neural_network_get_neuron(net->neural_net, pop->neuron_ids[n]);
+            if (!neuron) continue;
+            uint32_t sc = sparse_synapse_count(&neuron->incoming);
+            for (uint32_t s = 0; s < sc; s++) {
+                synapse_handle_t* h = sparse_synapse_get(&neuron->incoming, s);
+                flat[idx++] = h ? h->weight : 0.0f;
+            }
+        }
+    }
+
+    *out_count = total;
+    return flat;
+}
+
+int snn_backprop_set_flat_weights(snn_backprop_ctx_t* ctx, const float* weights, size_t count) {
+    if (!ctx || !ctx->network || !ctx->network->neural_net || !weights) return -1;
+
+    snn_network_t* net = ctx->network;
+    size_t idx = 0;
+    for (uint32_t p = 0; p < net->n_populations; p++) {
+        snn_population_t* pop = net->populations[p];
+        if (!pop) continue;
+        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+            neuron_t* neuron = neural_network_get_neuron(net->neural_net, pop->neuron_ids[n]);
+            if (!neuron) continue;
+            uint32_t sc = sparse_synapse_count(&neuron->incoming);
+            for (uint32_t s = 0; s < sc; s++) {
+                if (idx >= count) return 0;
+                synapse_handle_t* h = sparse_synapse_get(&neuron->incoming, s);
+                if (h) h->weight = weights[idx];
+                idx++;
+            }
+        }
+    }
+    return 0;
+}
+
+float* snn_backprop_get_flat_weight_grads(snn_backprop_ctx_t* ctx, size_t* out_count) {
+    if (!ctx || !ctx->gradients || !ctx->gradients->weight_grads || !out_count) {
+        if (out_count) *out_count = 0;
+        return NULL;
+    }
+    float* data = (float*)nimcp_tensor_data(ctx->gradients->weight_grads);
+    *out_count = (size_t)nimcp_tensor_numel(ctx->gradients->weight_grads);
+    return data;
+}

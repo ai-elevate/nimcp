@@ -1035,6 +1035,31 @@ void snn_backprop_set_managed_by_utm(snn_backprop_ctx_t* ctx, bool managed);
 const float* snn_backprop_get_input_grad(const snn_backprop_ctx_t* ctx,
                                          uint32_t* out_size);
 
+/**
+ * @brief C2: Extract all synapse weights as a flat array for UTM param groups
+ * @param ctx Backprop context
+ * @param out_count Output: number of floats in returned array
+ * @return Malloc'd flat weight array (caller must free), or NULL
+ */
+float* snn_backprop_get_flat_weights(snn_backprop_ctx_t* ctx, size_t* out_count);
+
+/**
+ * @brief C2: Write flat weights back to sparse synapses
+ * @param ctx Backprop context
+ * @param weights Flat weight array
+ * @param count Number of weights
+ * @return 0 on success
+ */
+int snn_backprop_set_flat_weights(snn_backprop_ctx_t* ctx, const float* weights, size_t count);
+
+/**
+ * @brief C2: Get pointer to flat weight gradients (from gradient buffer tensor)
+ * @param ctx Backprop context
+ * @param out_count Output: number of gradient floats
+ * @return Pointer to gradient data (owned by ctx, do NOT free), or NULL
+ */
+float* snn_backprop_get_flat_weight_grads(snn_backprop_ctx_t* ctx, size_t* out_count);
+
 #ifdef __cplusplus
 }
 #endif

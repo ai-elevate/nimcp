@@ -1214,10 +1214,13 @@ int snn_network_apply_gradients(snn_network_t* network, float learning_rate) {
     }
 
     float lr = (learning_rate > 0.0f) ? learning_rate : network->config.learning_rate;
-    (void)lr;  /* TODO: Use lr in gradient descent when surrogate gradients are implemented */
 
-    /* For now, just apply STDP as gradient approximation */
-    return snn_network_apply_stdp(network);
+    /* Temporarily override config LR so STDP uses the caller's rate */
+    float saved_lr = network->config.learning_rate;
+    network->config.learning_rate = lr;
+    int rc = snn_network_apply_stdp(network);
+    network->config.learning_rate = saved_lr;
+    return rc;
 }
 
 float snn_network_train_step(snn_network_t* network,
@@ -1242,21 +1245,22 @@ float snn_network_train_step(snn_network_t* network,
     /* Enable training mode */
     snn_network_set_training(network, true);
 
-    /* Forward pass */
-    float outputs[4096];  /* Max outputs */
-    if (n_targets > 4096) return -1.0f;
+    /* Forward pass — dynamic allocation instead of fixed 4096 stack buffer */
+    float* outputs = (float*)nimcp_calloc(n_targets, sizeof(float));
+    if (!outputs) return -1.0f;
 
     int result = snn_network_forward(network, inputs, n_inputs,
                                      outputs, n_targets, duration_ms);
-    if (result < 0) return -1.0f;
+    if (result < 0) { nimcp_free(outputs); return -1.0f; }
 
     /* Compute gradients */
     result = snn_network_compute_gradients(network, targets, n_targets);
-    if (result != SNN_SUCCESS) return -1.0f;
+    if (result != SNN_SUCCESS) { nimcp_free(outputs); return -1.0f; }
 
     /* Apply gradients (STDP for now) */
     snn_network_apply_gradients(network, 0.0f);
 
+    nimcp_free(outputs);
     return network->train_ctx->current_loss;
 }
 

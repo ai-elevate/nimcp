@@ -548,3 +548,39 @@
 [2026-03-12 09:15:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
 [2026-03-12 09:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-03-12 09:20:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 09:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 09:25:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 09:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 09:30:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 09:35:02] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 09:35:02] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 09:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 09:40:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 09:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 09:45:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 09:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 09:50:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 09:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 09:55:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:00:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:05:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:10:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:15:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:20:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:25:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:30:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:35:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:40:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:45:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)
+[2026-03-12 10:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 10:50:01] [WARN] Poor output differentiation! eff_rank=2.5 (threshold: 10)

@@ -117,6 +117,7 @@ static const nimcp_trainable_network_ops_t adaptive_trainable_ops = {
     .get_input_dim = adaptive_adapter_get_input_dim,
     .compute_auxiliary_loss = adaptive_adapter_auxiliary_loss,
     .destroy = adaptive_adapter_destroy,
+    .sync_params = NULL, /* Adaptive modifies weights in-place */
 };
 
 /* --- public creation --- */

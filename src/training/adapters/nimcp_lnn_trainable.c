@@ -130,9 +130,44 @@ static int lnn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
 static int lnn_adapter_get_param_groups(void* ctx,
                                         nimcp_utm_param_group_t** groups,
                                         uint32_t* num_groups) {
-    (void)ctx;
+    lnn_adapter_ctx_t* a = (lnn_adapter_ctx_t*)ctx;
     if (!groups || !num_groups) return -1;
-    /* LNN parameters managed via adjoint method + internal optimizer */
+
+    /* C3: When UTM-managed, expose LNN params via cached buffers */
+    if (a && a->managed_by_utm && a->lnn_ctx && a->lnn_ctx->network) {
+        size_t n_params = lnn_network_param_count(a->lnn_ctx->network);
+        if (n_params > 0) {
+            if (n_params > a->cached_buf_size) {
+                nimcp_free(a->cached_params);
+                nimcp_free(a->cached_grads);
+                a->cached_params = (float*)nimcp_malloc(n_params * sizeof(float));
+                a->cached_grads = (float*)nimcp_malloc(n_params * sizeof(float));
+                a->cached_buf_size = (a->cached_params && a->cached_grads) ? n_params : 0;
+            }
+            if (a->cached_params && a->cached_grads) {
+                size_t actual_p = 0, actual_g = 0;
+                lnn_network_get_params(a->lnn_ctx->network, a->cached_params, &actual_p);
+                lnn_network_get_gradients(a->lnn_ctx->network, a->cached_grads, &actual_g);
+                size_t count = (actual_p < actual_g) ? actual_p : actual_g;
+                if (count > 0) {
+                    nimcp_utm_param_group_t* g = (nimcp_utm_param_group_t*)
+                        nimcp_calloc(1, sizeof(nimcp_utm_param_group_t));
+                    if (g) {
+                        g->params = a->cached_params;
+                        g->gradients = a->cached_grads;
+                        g->count = count;
+                        g->lr_scale = 1.0f;
+                        g->weight_decay = 0.0f;
+                        g->name = "lnn_params";
+                        *groups = g;
+                        *num_groups = 1;
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+
     *groups = NULL;
     *num_groups = 0;
     return 0;
@@ -160,6 +195,12 @@ static float lnn_adapter_auxiliary_loss(void* ctx) {
     return 0.0f;
 }
 
+static int lnn_adapter_sync_params(void* ctx) {
+    lnn_adapter_ctx_t* a = (lnn_adapter_ctx_t*)ctx;
+    if (!a || !a->lnn_ctx || !a->lnn_ctx->network || !a->cached_params || a->cached_buf_size == 0) return 0;
+    return lnn_network_set_params(a->lnn_ctx->network, a->cached_params, a->cached_buf_size);
+}
+
 static void lnn_adapter_destroy(void* ctx) {
     lnn_adapter_ctx_t* a = (lnn_adapter_ctx_t*)ctx;
     if (a) {
@@ -182,6 +223,7 @@ static const nimcp_trainable_network_ops_t lnn_trainable_ops = {
     .get_input_dim = lnn_adapter_get_input_dim,
     .compute_auxiliary_loss = lnn_adapter_auxiliary_loss,
     .destroy = lnn_adapter_destroy,
+    .sync_params = lnn_adapter_sync_params,
 };
 
 /* --- public creation --- */

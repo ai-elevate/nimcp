@@ -304,6 +304,22 @@ static uint32_t perform_forward_pass(brain_t brain, const float* features, uint3
         }
     }
 
+    /* B1: Normalize ensemble blended outputs by weight sum */
+    if (brain->config.enable_ensemble_inference && decision->output_size > 0) {
+        float w_sum = brain->config.ensemble_weights[0] +
+                      brain->config.ensemble_weights[1] +
+                      brain->config.ensemble_weights[2] +
+                      brain->config.ensemble_weights[3];
+        /* Use defaults if all zero (matches above) */
+        if (w_sum == 0.0f) w_sum = 1.0f;
+        if (w_sum > 0.0f && fabsf(w_sum - 1.0f) > 1e-6f) {
+            float inv_sum = 1.0f / w_sum;
+            for (uint32_t j = 0; j < decision->output_size; j++) {
+                decision->output_vector[j] *= inv_sum;
+            }
+        }
+    }
+
     decision->inference_time_us = nimcp_time_elapsed_us(start_time);
 
     return active_neurons;
@@ -420,17 +436,17 @@ static void update_inference_stats(brain_t brain, brain_decision_t* decision)
     // Use atomic increment for thread-safe stats update
     uint64_t new_count = __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED) + 1;
 
-    // Update average inference time using the new count
-    // W6-10 NOTE: This is a non-atomic read-modify-write on avg_inference_time_us
-    // (torn read/write possible under concurrent inference). This is benign under
-    // typical usage because: (1) the value is only used for monitoring/logging,
-    // (2) worst case is a transiently inaccurate average, and (3) using atomics
-    // for double would require _Atomic double + -latomic which adds overhead.
-    brain->stats.avg_inference_time_us =
-        (brain->stats.avg_inference_time_us * (new_count - 1) +
-         decision->inference_time_us) /
-        new_count;
-    brain->stats.avg_sparsity = decision->sparsity;
+    /* B5: Use atomic load/store for avg_inference_time_us to prevent torn reads */
+    {
+        float old_avg;
+        __atomic_load(&brain->stats.avg_inference_time_us, &old_avg, __ATOMIC_RELAXED);
+        float new_avg = (old_avg * (float)(new_count - 1) + (float)decision->inference_time_us) / (float)new_count;
+        __atomic_store(&brain->stats.avg_inference_time_us, &new_avg, __ATOMIC_RELAXED);
+    }
+    {
+        float sparsity = decision->sparsity;
+        __atomic_store(&brain->stats.avg_sparsity, &sparsity, __ATOMIC_RELAXED);
+    }
 }
 
 //=============================================================================
@@ -757,6 +773,11 @@ typedef struct {
 static void batch_decide_worker(void* arg)
 {
     batch_decide_task_t* task = (batch_decide_task_t*)arg;
+    /* B6: Safety guard — refuse concurrent inference on mutable brain */
+    if (!task->brain->frozen && !task->brain->can_use_readonly) {
+        task->success = false;
+        return;
+    }
     brain_decision_t* result = brain_decide(task->brain, task->features, task->num_features);
     if (result) {
         memcpy(task->decision, result, sizeof(brain_decision_t));
@@ -1196,4 +1217,125 @@ nimcp_future_t nimcp_brain_infer_async(brain_t brain, const float* features,
 
     // Return future to caller (caller must destroy)
     return future;
+}
+
+//=============================================================================
+// Fractal-Aware Inference Health Monitor
+//=============================================================================
+
+/* Forward-declare fractal_dfa to avoid fractal_config_t name conflict.
+ * The cognitive/memory/core header and topology header both define fractal_config_t
+ * as different types. We pass NULL for config (uses defaults) and use fractal_result_t
+ * from the cognitive/memory/core module (ABI-compatible, declared locally here). */
+typedef struct {
+    float hurst_exponent;
+    float spectral_exponent;
+    float dfa_exponent;
+    float fractal_dimension;
+    float lacunarity;
+    float confidence;
+    float hurst_r2;
+    float dfa_r2;
+    float spectral_r2;
+    uint32_t samples_analyzed;
+    uint32_t scales_computed;
+} infer_fractal_result_t;
+
+extern int fractal_dfa(const float* samples, size_t count,
+                       const void* config, void* result);
+
+int nimcp_inference_health_init(nimcp_inference_health_t* h,
+                                 uint32_t output_dim, uint32_t history_size) {
+    if (!h) return -1;
+    memset(h, 0, sizeof(nimcp_inference_health_t));
+
+    h->output_dim = output_dim;
+    h->history_size = (history_size > 0) ? history_size : 128;
+    h->check_interval = 32;
+
+    if (output_dim > 0) {
+        h->output_history = (float*)nimcp_calloc(
+            (size_t)h->history_size * output_dim, sizeof(float));
+        if (!h->output_history) return -1;
+    }
+
+    h->per_network_magnitude = (float*)nimcp_calloc(
+        (size_t)h->history_size * 4, sizeof(float));
+    if (!h->per_network_magnitude) {
+        nimcp_free(h->output_history);
+        h->output_history = NULL;
+        return -1;
+    }
+
+    h->enabled = true;
+    return 0;
+}
+
+void nimcp_inference_health_destroy(nimcp_inference_health_t* h) {
+    if (!h) return;
+    nimcp_free(h->output_history);
+    nimcp_free(h->per_network_magnitude);
+    memset(h, 0, sizeof(nimcp_inference_health_t));
+}
+
+void nimcp_inference_health_record(nimcp_inference_health_t* h,
+                                    const float* output, uint32_t dim,
+                                    const float contributions[4]) {
+    if (!h || !h->enabled) return;
+
+    /* Record output */
+    if (h->output_history && output && dim > 0) {
+        uint32_t copy_dim = (dim < h->output_dim) ? dim : h->output_dim;
+        memcpy(&h->output_history[h->history_pos * h->output_dim],
+               output, copy_dim * sizeof(float));
+    }
+
+    /* Record per-network contributions */
+    if (h->per_network_magnitude && contributions) {
+        memcpy(&h->per_network_magnitude[h->history_pos * 4],
+               contributions, 4 * sizeof(float));
+    }
+
+    h->history_pos = (h->history_pos + 1) % h->history_size;
+    if (h->history_count < h->history_size) {
+        h->history_count++;
+    }
+}
+
+int nimcp_inference_health_check(nimcp_inference_health_t* h) {
+    if (!h || !h->enabled || !h->per_network_magnitude || h->history_count < 16) {
+        return 0; /* UNKNOWN */
+    }
+
+    uint32_t count = h->history_count;
+
+    /* Run DFA on each network's contribution magnitude time series */
+    float* series = (float*)nimcp_malloc(count * sizeof(float));
+    if (!series) return 0;
+
+    uint32_t start = (h->history_count < h->history_size) ? 0 : h->history_pos;
+
+    for (uint32_t net = 0; net < 4; net++) {
+        for (uint32_t k = 0; k < count; k++) {
+            uint32_t idx = (start + k) % h->history_size;
+            series[k] = h->per_network_magnitude[idx * 4 + net];
+        }
+
+        infer_fractal_result_t result = {0};
+        if (fractal_dfa(series, count, NULL, &result) == 0) {
+            h->dfa_exponents[net] = result.dfa_exponent;
+        }
+    }
+    nimcp_free(series);
+
+    /* Classify: if any network is oscillating or collapsed */
+    int health = 1; /* OPTIMAL */
+    for (uint32_t net = 0; net < 4; net++) {
+        float alpha = h->dfa_exponents[net];
+        if (alpha < 0.3f) { health = 4; break; } /* OSCILLATING */
+        if (alpha < 0.6f && health < 3) { health = 3; } /* NOISY */
+        if (alpha > 1.3f && health < 3) { health = 3; } /* DRIFTING mapped to NOISY for inference */
+    }
+    h->health = health;
+    return health;
 }

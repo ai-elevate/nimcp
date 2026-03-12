@@ -27,17 +27,13 @@
 // SuperSpike Surrogate Gradient (Zenke & Ganguli 2018)
 //=============================================================================
 
-/** SuperSpike sharpness parameter */
-#define BRIDGE_SURROGATE_BETA  1.0f
-
 /**
  * @brief SuperSpike surrogate gradient: σ'(x) = 1 / (β|x| + 1)²
  *
- * This is the derivative of the spike threshold function used to make
- * the non-differentiable spike step function differentiable for backprop.
+ * B7: Now takes beta as parameter (from bridge struct) instead of #define.
  */
-static inline float superspike_surrogate(float x) {
-    float denom = BRIDGE_SURROGATE_BETA * fabsf(x) + 1.0f;
+static inline float superspike_surrogate(float x, float beta) {
+    float denom = beta * fabsf(x) + 1.0f;
     return 1.0f / (denom * denom);
 }
 
@@ -54,24 +50,22 @@ static inline float superspike_surrogate(float x) {
 //           Falls back to surrogate gradient near threshold
 //=============================================================================
 
-#define RATE_TO_SPIKE_GAIN      5.0f
-#define RATE_TO_SPIKE_THRESHOLD 0.5f
-
 /**
  * @brief Forward pass: continuous rates → soft spike rates
+ * B7: Uses configurable gain/threshold from bridge struct
  */
 void bridge_rate_to_spike_forward(const nimcp_cross_network_bridge_t* b,
                                    const float* source_output,
                                    float* target_input) {
     uint32_t dim = (b->source_dim < b->target_dim) ? b->source_dim : b->target_dim;
+    float gain = b->spike_gain;
+    float threshold = b->spike_threshold;
 
     for (uint32_t i = 0; i < dim; i++) {
-        float x = RATE_TO_SPIKE_GAIN * (source_output[i] - RATE_TO_SPIKE_THRESHOLD);
-        /* Sigmoid: soft spike probability */
+        float x = gain * (source_output[i] - threshold);
         float spike_rate = 1.0f / (1.0f + expf(-x));
         target_input[i] = spike_rate;
     }
-    /* Zero-pad if target is larger */
     for (uint32_t i = dim; i < b->target_dim; i++) {
         target_input[i] = 0.0f;
     }
@@ -85,15 +79,15 @@ void bridge_rate_to_spike_backward(const nimcp_cross_network_bridge_t* b,
                                     float* dl_dsource) {
     if (!dl_dsource) return;
     uint32_t dim = (b->source_dim < b->target_dim) ? b->source_dim : b->target_dim;
+    float gain = b->spike_gain;
+    float threshold = b->spike_threshold;
+    float beta = b->surrogate_beta;
 
     for (uint32_t i = 0; i < dim; i++) {
-        float x = RATE_TO_SPIKE_GAIN * (b->last_source_output[i] - RATE_TO_SPIKE_THRESHOLD);
+        float x = gain * (b->last_source_output[i] - threshold);
         float sig = 1.0f / (1.0f + expf(-x));
-        /* Sigmoid derivative: σ(x)·(1-σ(x)) */
         float dsig = sig * (1.0f - sig);
-        /* Chain rule: dL/drate = dL/dspike × gain × dsig */
-        /* Blend with surrogate gradient for numerical stability near saturation */
-        float grad = RATE_TO_SPIKE_GAIN * (dsig + 0.1f * superspike_surrogate(x));
+        float grad = gain * (dsig + 0.1f * superspike_surrogate(x, beta));
         dl_dsource[i] = dl_dtarget[i] * grad;
     }
 }
@@ -112,24 +106,20 @@ void bridge_rate_to_spike_backward(const nimcp_cross_network_bridge_t* b,
 //           Surrogate gradient makes the spike→rate boundary differentiable
 //=============================================================================
 
-#define SPIKE_TO_RATE_ALPHA     0.3f   /* Smoothing factor (higher = more responsive) */
-#define SPIKE_TO_RATE_THRESHOLD 0.5f
-
 /**
  * @brief Forward pass: spikes → continuous rates via exponential smoothing
+ * B7: Uses configurable alpha/threshold from bridge struct
  */
 void bridge_spike_to_rate_forward(const nimcp_cross_network_bridge_t* b,
                                    const float* source_output,
                                    float* target_input) {
     uint32_t dim = (b->source_dim < b->target_dim) ? b->source_dim : b->target_dim;
+    float alpha = b->spike_rate_alpha;
 
     for (uint32_t i = 0; i < dim; i++) {
-        /* Exponential moving average with previous cached state */
         float prev = (b->last_target_input && i < b->target_dim) ?
                       b->last_target_input[i] : 0.0f;
-        float rate = (1.0f - SPIKE_TO_RATE_ALPHA) * prev +
-                     SPIKE_TO_RATE_ALPHA * source_output[i];
-        /* Clamp to [0, 1] for downstream ANN */
+        float rate = (1.0f - alpha) * prev + alpha * source_output[i];
         if (rate < 0.0f) rate = 0.0f;
         if (rate > 1.0f) rate = 1.0f;
         target_input[i] = rate;
@@ -148,13 +138,14 @@ void bridge_spike_to_rate_backward(const nimcp_cross_network_bridge_t* b,
     if (!dl_dsource) return;
     uint32_t dim = (b->source_dim < b->target_dim) ? b->source_dim : b->target_dim;
 
+    float alpha = b->spike_rate_alpha;
+    float threshold = b->spike_threshold;
+    float beta = b->surrogate_beta;
+
     for (uint32_t i = 0; i < dim; i++) {
-        /* The forward function is: rate = (1-α)*prev + α*spike
-         * So drate/dspike = α
-         * But spike is non-differentiable, so use surrogate: */
         float spike_val = b->last_source_output[i];
-        float surrogate = superspike_surrogate(spike_val - SPIKE_TO_RATE_THRESHOLD);
-        dl_dsource[i] = dl_dtarget[i] * SPIKE_TO_RATE_ALPHA * surrogate;
+        float surr = superspike_surrogate(spike_val - threshold, beta);
+        dl_dsource[i] = dl_dtarget[i] * alpha * surr;
     }
 }
 
@@ -177,24 +168,22 @@ static inline float source_output_val(const nimcp_cross_network_bridge_t* b, uin
 //=============================================================================
 
 #define CONT_TO_SPIKE_SCALE     1.0f   /* tanh input scaling */
-#define CONT_TO_SPIKE_GAIN      5.0f
-#define CONT_TO_SPIKE_THRESHOLD 0.5f
 
 /**
  * @brief Forward pass: continuous ODE states → soft spike probabilities
+ * B7: Uses configurable gain/threshold from bridge struct
  */
 void bridge_continuous_to_spike_forward(const nimcp_cross_network_bridge_t* b,
                                          const float* source_output,
                                          float* target_input) {
     uint32_t dim = (b->source_dim < b->target_dim) ? b->source_dim : b->target_dim;
+    float gain = b->spike_gain;
+    float threshold = b->spike_threshold;
 
     for (uint32_t i = 0; i < dim; i++) {
-        /* Step 1: Normalize unbounded ODE output to [0,1] via tanh */
         float t = tanhf(CONT_TO_SPIKE_SCALE * source_output[i]);
         float normalized = 0.5f * (t + 1.0f);
-
-        /* Step 2: Sigmoid threshold for soft spike */
-        float x = CONT_TO_SPIKE_GAIN * (normalized - CONT_TO_SPIKE_THRESHOLD);
+        float x = gain * (normalized - threshold);
         float spike_prob = 1.0f / (1.0f + expf(-x));
         target_input[i] = spike_prob;
     }
@@ -212,21 +201,21 @@ void bridge_continuous_to_spike_backward(const nimcp_cross_network_bridge_t* b,
     if (!dl_dsource) return;
     uint32_t dim = (b->source_dim < b->target_dim) ? b->source_dim : b->target_dim;
 
+    float gain = b->spike_gain;
+    float threshold = b->spike_threshold;
+    float beta = b->surrogate_beta;
+
     for (uint32_t i = 0; i < dim; i++) {
         float src = source_output_val(b, i);
 
-        /* Recompute forward intermediates */
         float t = tanhf(CONT_TO_SPIKE_SCALE * src);
         float normalized = 0.5f * (t + 1.0f);
-        float x = CONT_TO_SPIKE_GAIN * (normalized - CONT_TO_SPIKE_THRESHOLD);
+        float x = gain * (normalized - threshold);
         float sig = 1.0f / (1.0f + expf(-x));
 
-        /* Chain rule: dL/dsrc = dL/dspike × dspike/dnorm × dnorm/dsrc */
-        /* dspike/dnorm = gain * sig * (1 - sig) + surrogate blend */
         float dsig = sig * (1.0f - sig);
-        float dspike_dnorm = CONT_TO_SPIKE_GAIN * (dsig + 0.1f * superspike_surrogate(x));
+        float dspike_dnorm = gain * (dsig + 0.1f * superspike_surrogate(x, beta));
 
-        /* dnorm/dsrc = 0.5 * scale * (1 - tanh²(scale * src)) */
         float dtanh = 1.0f - t * t;
         float dnorm_dsrc = 0.5f * CONT_TO_SPIKE_SCALE * dtanh;
 
