@@ -374,8 +374,8 @@ static void backprop_worker(void* arg)
             continue;
 
         float dj = w->delta_cur[j];
-        if (dj > 1.0f) dj = 1.0f;
-        if (dj < -1.0f) dj = -1.0f;
+        if (dj > 5.0f) dj = 5.0f;
+        if (dj < -5.0f) dj = -5.0f;
 
         neuron_t* cur_n = neural_network_get_neuron(w->net, w->cur_offset + j);
         if (!cur_n) continue;
@@ -670,7 +670,7 @@ int backprop_sparse_full_ex2(
         // progressively updated norm. The output layer itself sees grad_norm_sq=0
         // on its first pass and is never clipped by its own contribution.
         // This is a deliberate design choice: the output layer already receives
-        // OUTPUT_LR_BOOST (10x) and its deltas are individually clamped to [-1, 1],
+        // OUTPUT_LR_BOOST (10x) and its deltas are individually clamped to [-5, 5],
         // so the combined effect provides adequate gradient control. A two-pass
         // approach (compute norm first, then clip) would double the computation cost
         // for marginal benefit given the existing per-delta clamps.

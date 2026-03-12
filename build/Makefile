@@ -39253,6 +39253,19 @@ regression_training_architecture_eval_fixes/fast:
 .PHONY : regression_training_architecture_eval_fixes/fast
 
 #=============================================================================
+# Target rules for targets named regression_training_architecture_phase3_fixes
+
+# Build rule for target.
+regression_training_architecture_phase3_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_architecture_phase3_fixes
+.PHONY : regression_training_architecture_phase3_fixes
+
+# fast build rule for target.
+regression_training_architecture_phase3_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_architecture_phase3_fixes.dir/build.make test/regression/training/CMakeFiles/regression_training_architecture_phase3_fixes.dir/build
+.PHONY : regression_training_architecture_phase3_fixes/fast
+
+#=============================================================================
 # Target rules for targets named regression_training_architecture_audit_fixes
 
 # Build rule for target.
@@ -43699,6 +43712,7 @@ help:
 	@echo "... regression_training_architecture_audit_fixes"
 	@echo "... regression_training_architecture_eval_fixes"
 	@echo "... regression_training_architecture_phase2_fixes"
+	@echo "... regression_training_architecture_phase3_fixes"
 	@echo "... regression_training_cnn_backprop_test"
 	@echo "... regression_training_cnn_cortex_bridge_test"
 	@echo "... regression_training_dispatch_test"

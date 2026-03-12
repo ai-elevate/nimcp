@@ -6337,6 +6337,13 @@ static PyObject* Brain_set_network_ablation_py(BrainObject* self, PyObject* args
     Py_RETURN_NONE;
 }
 
+static PyObject* Brain_reset_inference_state_py(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) Py_RETURN_NONE;
+    CHECK_INTERNAL_BRAIN(self);
+    int ret = brain_reset_inference_state(self->brain->internal_brain);
+    return PyLong_FromLong(ret);
+}
+
 static PyObject* Brain_set_fusion_enabled_py(BrainObject* self, PyObject* args) {
     if (!self->brain) Py_RETURN_NONE;
     CHECK_INTERNAL_BRAIN(self);
@@ -6780,6 +6787,8 @@ static PyMethodDef Brain_methods[] = {
      "Enable/disable network types: set_network_ablation(train_cnn=1, train_snn=1, train_lnn=1)"},
     {"get_network_metrics", (PyCFunction)Brain_get_network_metrics_py, METH_NOARGS,
      "Get per-network training metrics: get_network_metrics() -> dict"},
+    {"reset_inference_state", (PyCFunction)Brain_reset_inference_state_py, METH_NOARGS,
+     "Reset neuron and LNN hidden states for clean inference -> int (0=ok)"},
     {"set_fusion_enabled", (PyCFunction)Brain_set_fusion_enabled_py, METH_VARARGS,
      "Enable/disable multi-network fusion: set_fusion_enabled(True) -> None"},
     {"set_fusion_weights", (PyCFunction)Brain_set_fusion_weights_py, METH_VARARGS,

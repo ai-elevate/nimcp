@@ -92,6 +92,7 @@
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "middleware/training/nimcp_event_driven_plasticity.h"
 #include "plasticity/nimcp_plasticity_coordinator.h"
+#include "plasticity/orchestrator/nimcp_neural_plasticity_coordinator.h"
 
 #include "core/brain_regions/nimcp_brain_regions.h"
 
@@ -989,7 +990,9 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
 
     /* Step 2: Secondary networks — unified or legacy path */
     if (brain->unified_training && brain->config.use_unified_training) {
-        /* Unified training path: single composite loss across all networks */
+        /* Unified training path: single composite loss across all networks.
+         * Each network receives direct ground truth supervision via MSE gradient,
+         * plus cross-network gradient bridges, shared AdamW + LR scheduling. */
         nimcp_utm_step_result_t utm_result = {0};
         int utm_rc = nimcp_utm_step(brain->unified_training,
                                     features, num_features,
@@ -998,6 +1001,47 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         if (utm_rc == 0) {
             /* Blend unified composite loss with adaptive loss */
             loss = 0.5f * loss + 0.5f * utm_result.composite_loss;
+
+            /* Update per-network metrics from UTM results so monitoring works */
+            const float a = 0.01f;
+            nimcp_unified_training_manager_t* utm = brain->unified_training;
+            for (uint32_t n = 0; n < utm->num_networks; n++) {
+                if (!utm->networks[n].enabled) continue;
+                float nloss = utm_result.per_network_loss[n];
+                if (!isfinite(nloss) || nloss < 0.0f) continue;
+
+                switch (utm->networks[n].ops->type) {
+                    case NIMCP_TRAINABLE_CNN:
+                        brain->network_metrics.last_cnn_loss = nloss;
+                        brain->network_metrics.cnn_steps++;
+                        if (!isfinite(brain->network_metrics.ema_cnn_loss))
+                            brain->network_metrics.ema_cnn_loss = nloss;
+                        else
+                            brain->network_metrics.ema_cnn_loss =
+                                (1.0f - a) * brain->network_metrics.ema_cnn_loss + a * nloss;
+                        break;
+                    case NIMCP_TRAINABLE_SNN:
+                        brain->network_metrics.last_snn_loss = nloss;
+                        brain->network_metrics.snn_steps++;
+                        if (!isfinite(brain->network_metrics.ema_snn_loss))
+                            brain->network_metrics.ema_snn_loss = nloss;
+                        else
+                            brain->network_metrics.ema_snn_loss =
+                                (1.0f - a) * brain->network_metrics.ema_snn_loss + a * nloss;
+                        break;
+                    case NIMCP_TRAINABLE_LNN:
+                        brain->network_metrics.last_lnn_loss = nloss;
+                        brain->network_metrics.lnn_steps++;
+                        if (!isfinite(brain->network_metrics.ema_lnn_loss))
+                            brain->network_metrics.ema_lnn_loss = nloss;
+                        else
+                            brain->network_metrics.ema_lnn_loss =
+                                (1.0f - a) * brain->network_metrics.ema_lnn_loss + a * nloss;
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
     } else {
         /* Legacy path: secondary networks learn IN PARALLEL (after adaptive completes) */
@@ -1797,6 +1841,16 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         float phase = fmodf((float)brain->stats.total_learning_steps * 0.01f * theta_freq, 1.0f);
         float theta_modulation = 0.8f + 0.2f * sinf(phase * 2.0f * 3.14159265f);
         effective_learning_rate *= theta_modulation;
+    }
+
+    // Neuromodulator-gated backprop LR: dopamine boosts LR when learning is
+    // productive (loss decreasing), suppresses when worsening. This connects
+    // the biological reward signal to gradient-based learning, not just STDP.
+    // DA range [0.1, 1.0] → LR scale [0.5, 1.5] (centered on baseline DA=0.5)
+    if (brain->neuromodulator_system) {
+        float da = neuromodulator_get_level(brain->neuromodulator_system, NEUROMOD_DOPAMINE);
+        float da_lr_scale = 0.5f + da;  // DA=0.1→0.6x, DA=0.5→1.0x, DA=1.0→1.5x
+        effective_learning_rate *= da_lr_scale;
     }
 
     // Learn using adaptive network with curiosity-modulated learning rate
@@ -2977,8 +3031,20 @@ int brain_enable_multi_network_training(brain_t brain)
         brain->attention_training_enabled ? "Attention" : "(no Attention)");
 
     // ========================================================================
-    // STEP 5: Create Unified Training Manager (if config.use_unified_training)
+    // STEP 5: Create Unified Training Manager
     // ========================================================================
+    // Enable unified training automatically when secondary networks exist.
+    // The UTM provides: composite loss across all networks, cross-network
+    // gradient bridges, shared AdamW optimizer, LR scheduling, and ensures
+    // all networks receive ground truth supervision (not just the adaptive).
+    {
+        bool has_secondary = (brain->cnn_trainer || brain->snn_training_ctx ||
+                              brain->lnn_training_ctx);
+        if (has_secondary && !brain->config.use_unified_training) {
+            brain->config.use_unified_training = true;
+            NIMCP_LOGGING_INFO("Auto-enabling unified training (secondary networks detected)");
+        }
+    }
     if (brain->config.use_unified_training && !brain->unified_training) {
         nimcp_unified_training_config_t utm_cfg;
         nimcp_utm_default_config(&utm_cfg);
@@ -3063,6 +3129,21 @@ int brain_enable_multi_network_training(brain_t brain)
                 utm->config.enable_cross_network_gradients = true;
                 NIMCP_LOGGING_INFO("Auto-wired %u cross-network bridges (gradient flow enabled)",
                                   utm->num_bridges);
+            }
+
+            /* Phase 5: Wire plasticity bridge into UTM and plasticity coordinator
+             * so backprop can suppress biological plasticity during gradient updates.
+             * Without this, STDP/BCM modify weights concurrently with backprop. */
+            if (brain->plasticity_bridge && brain->enable_plasticity_bridge) {
+                nimcp_utm_set_plasticity_bridge(utm, brain->plasticity_bridge);
+                NIMCP_LOGGING_INFO("UTM plasticity bridge wired — biological plasticity will be "
+                                  "suppressed during backprop");
+            }
+            if (brain->plasticity_coordinator && brain->plasticity_coordinator_enabled) {
+                neural_plasticity_set_plasticity_bridge(
+                    brain->plasticity_coordinator, brain->plasticity_bridge);
+                NIMCP_LOGGING_INFO("Plasticity coordinator bridge wired — STDP/BCM gated "
+                                  "during backprop");
             }
         }
     }

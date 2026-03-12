@@ -6686,6 +6686,7 @@
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_dispatch_test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_architecture_phase2_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_architecture_eval_fixes.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_architecture_phase3_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_architecture_audit_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/edit_cache.dir

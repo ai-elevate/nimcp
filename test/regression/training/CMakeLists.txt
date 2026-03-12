@@ -341,6 +341,28 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_architecture_eval_fixes.cpp)
             TIMEOUT 60)
 endif()
 
+# Architecture Phase 3 Fixes Regression Tests (Post-eval audit)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_architecture_phase3_fixes.cpp)
+    add_executable(regression_training_architecture_phase3_fixes
+        test_architecture_phase3_fixes.cpp
+    )
+    target_include_directories(regression_training_architecture_phase3_fixes PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_architecture_phase3_fixes PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_architecture_phase3_fixes PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME regression_training_architecture_phase3_fixes
+             COMMAND regression_training_architecture_phase3_fixes
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(regression_training_architecture_phase3_fixes
+        PROPERTIES
+            LABELS "regression;training;architecture-phase3"
+            TIMEOUT 60)
+endif()
+
 # Architecture Audit Fixes Regression Tests (Session 57-58)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_architecture_audit_fixes.cpp)
     add_executable(regression_training_architecture_audit_fixes

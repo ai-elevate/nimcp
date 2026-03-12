@@ -1002,23 +1002,48 @@ static void fuse_forward_outputs(const forward_task_ctx_t* ctx,
             weights[0] = 1.0f;  /* Fallback to adaptive only */
         }
 
+        /* Compute per-network L2 norms for scale normalization.
+         * Without this, the network with largest activation magnitudes
+         * dominates regardless of fusion weights. */
+        float norm_adapt = 0.0f, norm_cnn = 0.0f, norm_snn = 0.0f;
         if (ctx->adaptive_success) {
             for (uint32_t i = 0; i < output_size; i++)
-                fused_output[i] += weights[0] * ctx->adaptive_output[i];
-            *active_neurons_out = ctx->adaptive_active;
+                norm_adapt += ctx->adaptive_output[i] * ctx->adaptive_output[i];
+            norm_adapt = sqrtf(norm_adapt + 1e-8f);
         }
         if (ctx->cnn_success) {
             for (uint32_t i = 0; i < output_size; i++)
-                fused_output[i] += weights[1] * ctx->cnn_output[i];
+                norm_cnn += ctx->cnn_output[i] * ctx->cnn_output[i];
+            norm_cnn = sqrtf(norm_cnn + 1e-8f);
+        }
+        if (ctx->snn_success) {
+            for (uint32_t i = 0; i < output_size; i++) {
+                if (isfinite(ctx->snn_output[i]))
+                    norm_snn += ctx->snn_output[i] * ctx->snn_output[i];
+            }
+            norm_snn = sqrtf(norm_snn + 1e-8f);
+        }
+
+        if (ctx->adaptive_success) {
+            float scale = weights[0] / norm_adapt;
+            for (uint32_t i = 0; i < output_size; i++)
+                fused_output[i] += scale * ctx->adaptive_output[i];
+            *active_neurons_out = ctx->adaptive_active;
+        }
+        if (ctx->cnn_success) {
+            float scale = weights[1] / norm_cnn;
+            for (uint32_t i = 0; i < output_size; i++)
+                fused_output[i] += scale * ctx->cnn_output[i];
             if (ctx->cnn_has_label) {
                 strncpy(decision->label, ctx->cnn_label, sizeof(decision->label) - 1);
                 decision->label[sizeof(decision->label) - 1] = '\0';
             }
         }
         if (ctx->snn_success) {
+            float scale = weights[2] / norm_snn;
             for (uint32_t i = 0; i < output_size; i++) {
                 if (isfinite(ctx->snn_output[i]))
-                    fused_output[i] += weights[2] * ctx->snn_output[i];
+                    fused_output[i] += scale * ctx->snn_output[i];
             }
         }
         return;

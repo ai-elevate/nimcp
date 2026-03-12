@@ -203,10 +203,10 @@ static network_config_t build_base_network_config(uint32_t num_inputs, uint32_t 
     config.enable_bcm = false;
     config.enable_eligibility = false;
 
-    // BUGFIX: Set weight bounds to allow random initialization to work
-    // Without these, fmaxf(0, fminf(0, weight)) clamps all weights to 0!
-    config.min_weight = -1.0F;
-    config.max_weight = 1.0F;
+    // Weight bounds: [-10, +10] allows sufficient representational capacity
+    // with 128-512 fan-in. Original [-1, +1] was too restrictive.
+    config.min_weight = -10.0F;
+    config.max_weight = 10.0F;
 
     return config;
 }

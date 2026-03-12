@@ -225,7 +225,7 @@ snn_backprop_config_t snn_backprop_default_config(snn_train_algorithm_t algorith
 
     config.spike_regularization = 0.0f;
     config.membrane_regularization = 0.0f;
-    config.use_homeostatic = false;
+    config.use_homeostatic = true;
     config.target_population_rate = 10.0f;
 
     config.use_gradient_manager = true;

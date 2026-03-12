@@ -56,6 +56,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "lnn/nimcp_lnn.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "cognitive/nimcp_working_memory.h"
@@ -455,6 +456,26 @@ static action_t features_to_action(const float* features, uint32_t num_features,
  *
  * @param decision Decision to free
  */
+
+int brain_reset_inference_state(brain_t brain)
+{
+    if (!brain) return -1;
+
+    /* Reset main adaptive network neuron states */
+    if (brain->network) {
+        neural_network_t base_net = adaptive_network_get_base_network(brain->network);
+        if (base_net) {
+            neural_network_reset(base_net);
+        }
+    }
+
+    /* Reset LNN hidden states if present */
+    if (brain->lnn_network) {
+        lnn_reset_state((lnn_network_t*)brain->lnn_network);
+    }
+
+    return 0;
+}
 
 void brain_set_active_modalities(brain_t brain, uint32_t modality_flags)
 {

@@ -2911,6 +2911,20 @@ typedef struct brain_decision {
  */
 brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t num_features);
 
+/**
+ * @brief Reset neuron and LNN hidden states for clean inference
+ *
+ * WHAT: Clears accumulated neuron state and LNN hidden state
+ * WHY:  Without reset, inference results depend on query history —
+ *       LNN hidden state accumulates across unrelated inferences
+ * HOW:  Calls neural_network_reset() on the main network and
+ *       resets LNN neuron states if LNN is present
+ *
+ * @param brain Brain handle
+ * @return 0 on success, -1 on error
+ */
+int brain_reset_inference_state(brain_t brain);
+
 //=============================================================================
 // Input Modality Gating
 //=============================================================================
