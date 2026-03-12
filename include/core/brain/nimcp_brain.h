@@ -1618,6 +1618,10 @@ typedef struct {
     float gradient_clip_value;            /**< Max gradient value for clipping (default: 0.0 = disabled) */
     float gradient_clip_norm;             /**< Max gradient norm for clipping (default: 0.0 = disabled) */
 
+    /* Ensemble inference: blend outputs from all network types */
+    bool enable_ensemble_inference;        /**< Enable multi-network ensemble (default: false) */
+    float ensemble_weights[4];             /**< Weights: [adaptive, snn, lnn, cnn] (default: {0.6, 0.2, 0.1, 0.1}) */
+
     // === FAULT TOLERANCE (Intelligent Recovery with Parietal Integration) ===
     /**
      * Fault Tolerance Subsystem Configuration

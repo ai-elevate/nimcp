@@ -45,7 +45,8 @@ static snn_population_t* snn_population_create_internal(
     uint32_t id,
     uint32_t n_neurons,
     neuron_type_t type,
-    const char* name
+    const char* name,
+    uint32_t start_neuron_id
 ) {
     snn_population_t* pop = (snn_population_t*)nimcp_malloc(sizeof(snn_population_t));
     if (!pop) {
@@ -84,9 +85,10 @@ static snn_population_t* snn_population_create_internal(
     }
     memset(pop->spike_trains, 0, n_neurons * sizeof(snn_spike_train_t));
 
-    /* Initialize spike trains */
+    /* Initialize spike trains and neuron IDs */
     for (uint32_t i = 0; i < n_neurons; i++) {
-        pop->spike_trains[i].neuron_id = i;
+        pop->neuron_ids[i] = start_neuron_id + i;
+        pop->spike_trains[i].neuron_id = start_neuron_id + i;
     }
 
     /* Allocate tensor views for efficient computation */
@@ -271,7 +273,7 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
     /* Create underlying neural network */
     network_config_t nn_config;
     memset(&nn_config, 0, sizeof(network_config_t));
-    nn_config.num_neurons = config->n_inputs + config->n_outputs;
+    nn_config.num_neurons = config->n_inputs + config->n_hidden + config->n_outputs;
     nn_config.input_size = config->n_inputs;
     nn_config.output_size = config->n_outputs;
     nn_config.enable_stdp = config->enable_stdp;
@@ -313,7 +315,7 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
 
     /* Create input population */
     network->input_pop = snn_population_create_internal(
-        0, config->n_inputs, NEURON_GENERIC_LIF, "input");
+        0, config->n_inputs, NEURON_GENERIC_LIF, "input", 0);
     if (!network->input_pop) {
         /* Exception already thrown by snn_population_create_internal */
         snn_network_destroy(network);
@@ -323,17 +325,35 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
     network->populations[0] = network->input_pop;
     network->n_populations = 1;
 
+    /* Create hidden populations if n_hidden > 0 */
+    uint32_t next_neuron_id = config->n_inputs;
+    uint32_t next_pop_id = 1;
+
+    if (config->n_hidden > 0) {
+        snn_population_t* hidden_pop = snn_population_create_internal(
+            next_pop_id, config->n_hidden, NEURON_GENERIC_LIF, "hidden", next_neuron_id);
+        if (!hidden_pop) {
+            snn_network_destroy(network);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_network_create: hidden_pop is NULL");
+            return NULL;
+        }
+        network->populations[next_pop_id] = hidden_pop;
+        next_neuron_id += config->n_hidden;
+        next_pop_id++;
+        network->n_populations = next_pop_id;
+    }
+
     /* Create output population */
     network->output_pop = snn_population_create_internal(
-        1, config->n_outputs, NEURON_GENERIC_LIF, "output");
+        next_pop_id, config->n_outputs, NEURON_GENERIC_LIF, "output", next_neuron_id);
     if (!network->output_pop) {
         /* Exception already thrown by snn_population_create_internal */
         snn_network_destroy(network);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_network_create: network->output_pop is NULL");
         return NULL;
     }
-    network->populations[1] = network->output_pop;
-    network->n_populations = 2;
+    network->populations[next_pop_id] = network->output_pop;
+    network->n_populations = next_pop_id + 1;
 
     /* Create mutex for thread safety */
     network->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
@@ -1265,7 +1285,7 @@ int snn_network_add_population(snn_network_t* network,
     uint32_t pop_id = network->n_populations;
 
     snn_population_t* pop = snn_population_create_internal(
-        pop_id, n_neurons, neuron_type, name);
+        pop_id, n_neurons, neuron_type, name, 0);
     if (!pop) return SNN_ERROR_OUT_OF_MEMORY;
 
     /* Add neurons to underlying neural network */

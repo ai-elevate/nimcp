@@ -22,6 +22,11 @@ typedef struct {
     lnn_training_ctx_t* lnn_ctx;    /* NOT owned */
     uint32_t output_dim;
     uint32_t input_dim;
+    bool managed_by_utm;            /* When true, skip internal optimizer step */
+    /* Cached param/grad buffers to avoid malloc/free every backward step */
+    float* cached_params;
+    float* cached_grads;
+    size_t cached_buf_size;         /* Number of floats allocated */
 } lnn_adapter_ctx_t;
 
 /* --- vtable implementations --- */
@@ -72,25 +77,28 @@ static int lnn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
 
     int rc = lnn_backward(a->lnn_ctx->network, grad_t);
 
-    /* Apply LNN gradients via its internal optimizer.
-     * UTM can't reach LNN params (adapter returns 0 param groups),
-     * so we apply gradients directly after backward. */
-    if (rc == 0 && a->lnn_ctx->optimizer && a->lnn_ctx->network) {
+    /* Apply LNN gradients via its internal optimizer — unless UTM manages params.
+     * When managed_by_utm, UTM handles optimizer stepping via param groups. */
+    if (rc == 0 && !a->managed_by_utm && a->lnn_ctx->optimizer && a->lnn_ctx->network) {
         size_t n_params = lnn_network_param_count(a->lnn_ctx->network);
         if (n_params > 0) {
-            float* params = (float*)nimcp_malloc(n_params * sizeof(float));
-            float* grads = (float*)nimcp_malloc(n_params * sizeof(float));
-            if (params && grads) {
+            /* Reuse cached buffers if large enough; only realloc if size changed */
+            if (n_params > a->cached_buf_size) {
+                nimcp_free(a->cached_params);
+                nimcp_free(a->cached_grads);
+                a->cached_params = (float*)nimcp_malloc(n_params * sizeof(float));
+                a->cached_grads = (float*)nimcp_malloc(n_params * sizeof(float));
+                a->cached_buf_size = (a->cached_params && a->cached_grads) ? n_params : 0;
+            }
+            if (a->cached_params && a->cached_grads) {
                 size_t actual_p = 0, actual_g = 0;
-                if (lnn_network_get_params(a->lnn_ctx->network, params, &actual_p) == 0 &&
-                    lnn_network_get_gradients(a->lnn_ctx->network, grads, &actual_g) == 0 &&
+                if (lnn_network_get_params(a->lnn_ctx->network, a->cached_params, &actual_p) == 0 &&
+                    lnn_network_get_gradients(a->lnn_ctx->network, a->cached_grads, &actual_g) == 0 &&
                     actual_p == actual_g && actual_p > 0) {
-                    nimcp_optimizer_step(a->lnn_ctx->optimizer, params, grads, actual_p);
-                    lnn_network_set_params(a->lnn_ctx->network, params, actual_p);
+                    nimcp_optimizer_step(a->lnn_ctx->optimizer, a->cached_params, a->cached_grads, actual_p);
+                    lnn_network_set_params(a->lnn_ctx->network, a->cached_params, actual_p);
                 }
             }
-            nimcp_free(params);
-            nimcp_free(grads);
         }
         lnn_network_zero_gradients(a->lnn_ctx->network);
     }
@@ -153,6 +161,11 @@ static float lnn_adapter_auxiliary_loss(void* ctx) {
 }
 
 static void lnn_adapter_destroy(void* ctx) {
+    lnn_adapter_ctx_t* a = (lnn_adapter_ctx_t*)ctx;
+    if (a) {
+        nimcp_free(a->cached_params);
+        nimcp_free(a->cached_grads);
+    }
     nimcp_free(ctx);
 }
 

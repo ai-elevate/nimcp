@@ -20,6 +20,23 @@
 #include <float.h>
 #include <stdlib.h>
 
+/* GPU acceleration: forward-declare functions to avoid header enum conflicts */
+typedef struct nimcp_autocast_ctx nimcp_autocast_ctx_t;
+extern bool nimcp_autocast_begin(nimcp_autocast_ctx_t* ctx);
+extern bool nimcp_autocast_end(nimcp_autocast_ctx_t* ctx);
+extern bool nimcp_gpu_loss_mse(void* gpu_ctx, const float* pred, const float* target,
+                                uint32_t n, float* loss);
+extern bool nimcp_gpu_gradient_clip_norm(void* gpu_ctx, float* grads, uint32_t n,
+                                          float max_norm, float* total_norm);
+extern bool nimcp_gpu_optim_adamw(void* gpu_ctx, float* params, float* grads, float* m, float* v,
+                                    uint32_t n, float lr, float beta1, float beta2, float eps, float wd,
+                                    uint64_t step);
+extern bool nimcp_gpu_sparse_backward_accumulate(void* gpu_ctx, const float* grad,
+                                                   const uint32_t* indices, uint32_t nnz,
+                                                   float* acc_grad, uint32_t dim);
+extern bool nimcp_gpu_gradient_flush(void* gpu_ctx, float* acc_grad, uint32_t dim,
+                                       uint32_t n_accumulated);
+
 //=============================================================================
 // Default Configuration
 //=============================================================================
@@ -39,6 +56,8 @@ void nimcp_utm_default_config(nimcp_unified_training_config_t* config) {
     config->anti_collapse.gradient_clip_value = 5.0f;
     config->anti_collapse.adaptive_gradient_target = true;
 
+    config->batch_size = 1;
+    config->unified_optimizer = false;
     config->loss_type = 0; /* NIMCP_LOSS_MSE */
     config->use_composite_loss = true;
     config->enable_cross_network_gradients = false;
@@ -73,8 +92,10 @@ nimcp_unified_training_manager_t* nimcp_utm_create(
 
     mgr->current_lr = mgr->config.learning_rate;
 
-    /* Initialize anti-collapse state */
-    nimcp_anti_collapse_init(&mgr->anti_collapse, &mgr->config.anti_collapse);
+    /* Initialize per-network anti-collapse state */
+    for (uint32_t i = 0; i < NIMCP_UTM_MAX_NETWORKS; i++) {
+        nimcp_anti_collapse_init(&mgr->anti_collapse[i], &mgr->config.anti_collapse);
+    }
 
     /* Initialize AdamW optimizer state */
     mgr->adam_m = NULL;
@@ -115,8 +136,10 @@ void nimcp_utm_destroy(nimcp_unified_training_manager_t* mgr) {
         nimcp_free(b->last_target_input);
     }
 
-    /* Destroy anti-collapse state */
-    nimcp_anti_collapse_destroy(&mgr->anti_collapse);
+    /* Destroy per-network anti-collapse state */
+    for (uint32_t i = 0; i < NIMCP_UTM_MAX_NETWORKS; i++) {
+        nimcp_anti_collapse_destroy(&mgr->anti_collapse[i]);
+    }
 
     /* Free Adam optimizer state */
     if (mgr->adam_m) {
@@ -405,23 +428,28 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     memset(&local_result, 0, sizeof(local_result));
 
     /* ------------------------------------------------------------------ */
-    /* Step 1: Zero all gradients                                         */
+    /* Step 1: Zero all gradients (only on first sample of batch)         */
     /* ------------------------------------------------------------------ */
-    for (uint32_t i = 0; i < mgr->num_networks; i++) {
-        if (!mgr->networks[i].enabled) continue;
-        const nimcp_trainable_network_ops_t* ops = mgr->networks[i].ops;
-        if (ops->zero_grad) {
-            ops->zero_grad(mgr->networks[i].ctx);
-        }
-    }
+    uint32_t effective_batch = (mgr->config.batch_size > 0) ? mgr->config.batch_size : 1;
+    bool is_first_in_batch = (mgr->batch_accumulation_count == 0);
 
-    /* Zero bridge gradients */
-    for (uint32_t i = 0; i < mgr->num_bridges; i++) {
-        nimcp_cross_network_bridge_t* b = &mgr->bridges[i];
-        if (b->weight_grad) memset(b->weight_grad, 0,
-            (size_t)b->target_dim * b->source_dim * sizeof(float));
-        if (b->bias_grad) memset(b->bias_grad, 0,
-            b->target_dim * sizeof(float));
+    if (is_first_in_batch) {
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled) continue;
+            const nimcp_trainable_network_ops_t* ops = mgr->networks[i].ops;
+            if (ops->zero_grad) {
+                ops->zero_grad(mgr->networks[i].ctx);
+            }
+        }
+
+        /* Zero bridge gradients */
+        for (uint32_t i = 0; i < mgr->num_bridges; i++) {
+            nimcp_cross_network_bridge_t* b = &mgr->bridges[i];
+            if (b->weight_grad) memset(b->weight_grad, 0,
+                (size_t)b->target_dim * b->source_dim * sizeof(float));
+            if (b->bias_grad) memset(b->bias_grad, 0,
+                b->target_dim * sizeof(float));
+        }
     }
 
     /* ------------------------------------------------------------------ */
@@ -529,6 +557,12 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         nimcp_tpb_set_backprop_active(mgr->plasticity_bridge, true);
     }
 
+    /* Store per-network input gradients for cross-network gradient flow.
+     * Backward runs in reverse order so downstream networks compute their
+     * dl_dinput before upstream networks need it for bridge backward. */
+    float* dl_dinputs[NIMCP_UTM_MAX_NETWORKS];
+    memset(dl_dinputs, 0, sizeof(dl_dinputs));
+
     for (int i = (int)mgr->num_networks - 1; i >= 0; i--) {
         if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
         nimcp_trainable_network_t* net = &mgr->networks[i];
@@ -544,30 +578,31 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             dl_dout[j] = 2.0f * (net_outputs[i][j] - target[j]) / (float)cmp_dim;
         }
 
-        /* Add gradient from any downstream bridge */
+        /* Add gradient from any downstream bridge using the target network's
+         * input gradient (dl_dinputs[tgt]) instead of dl_dout approximation */
         if (mgr->config.enable_cross_network_gradients) {
             for (uint32_t b = 0; b < mgr->num_bridges; b++) {
                 if (mgr->bridges[b].source_idx == (uint32_t)i && mgr->bridges[b].enabled) {
-                    /* This network is a source — add gradient from bridge backward */
-                    float* bridge_grad = (float*)nimcp_calloc(out_dim, sizeof(float));
-                    if (bridge_grad) {
-                        /* The bridge backward needs dL/d(target_input), which is
-                         * the input gradient of the downstream network. For now,
-                         * use the downstream network's output gradient as approximation.
-                         * Full implementation in Phase 4. */
-                        bridge_backward(&mgr->bridges[b], dl_dout, bridge_grad);
-                        for (uint32_t j = 0; j < out_dim; j++) {
-                            dl_dout[j] += bridge_grad[j];
+                    uint32_t tgt = mgr->bridges[b].target_idx;
+                    /* Use target network's input gradient if available */
+                    const float* tgt_grad = dl_dinputs[tgt];
+                    if (tgt_grad) {
+                        float* bridge_grad = (float*)nimcp_calloc(out_dim, sizeof(float));
+                        if (bridge_grad) {
+                            bridge_backward(&mgr->bridges[b], tgt_grad, bridge_grad);
+                            for (uint32_t j = 0; j < out_dim; j++) {
+                                dl_dout[j] += bridge_grad[j];
+                            }
+                            nimcp_free(bridge_grad);
                         }
-                        nimcp_free(bridge_grad);
                     }
                 }
             }
         }
 
-        /* Add diversity loss gradient (shared anti-collapse) */
+        /* Add diversity loss gradient (per-network anti-collapse) */
         float div_loss = nimcp_anti_collapse_diversity_loss(
-            &mgr->anti_collapse, net_outputs[i], dl_dout, out_dim);
+            &mgr->anti_collapse[i], net_outputs[i], dl_dout, out_dim);
         local_result.diversity_loss += div_loss;
 
         /* Backward through the network */
@@ -576,14 +611,57 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
 
         net->ops->backward(net->ctx, dl_dout, out_dim, dl_din, in_dim);
 
+        /* Store input gradient for upstream bridge backward (don't free yet) */
+        dl_dinputs[i] = dl_din;
+
         nimcp_free(dl_dout);
-        nimcp_free(dl_din);
     }
 
     /* Phase 5: Re-enable biological plasticity after backprop */
     if (mgr->plasticity_bridge) {
         nimcp_tpb_set_backprop_active(mgr->plasticity_bridge, false);
     }
+
+    /* Free all stored input gradients */
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        nimcp_free(dl_dinputs[i]);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Step 4.5: Mini-batch accumulation check                            */
+    /* ------------------------------------------------------------------ */
+    mgr->batch_accumulation_count++;
+    bool batch_complete = (mgr->batch_accumulation_count >= effective_batch);
+
+    if (!batch_complete) {
+        /* Accumulating — skip gradient normalization and optimizer step */
+        local_result.composite_loss = composite_loss;
+        local_result.step = mgr->step_count;
+        if (result) *result = local_result;
+        goto cleanup;
+    }
+
+    /* Batch complete — divide accumulated gradients by batch_size */
+    if (effective_batch > 1) {
+        float inv_batch = 1.0f / (float)effective_batch;
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled) continue;
+            nimcp_utm_param_group_t* groups = NULL;
+            uint32_t num_groups = 0;
+            if (mgr->networks[i].ops->get_param_groups &&
+                mgr->networks[i].ops->get_param_groups(mgr->networks[i].ctx, &groups, &num_groups) == 0) {
+                for (uint32_t g = 0; g < num_groups; g++) {
+                    if (groups[g].gradients && groups[g].count > 0) {
+                        for (size_t j = 0; j < groups[g].count; j++) {
+                            groups[g].gradients[j] *= inv_batch;
+                        }
+                    }
+                }
+                nimcp_free(groups);
+            }
+        }
+    }
+    mgr->batch_accumulation_count = 0;
 
     /* ------------------------------------------------------------------ */
     /* Step 5: Gradient normalization / clipping (unified, single pass)   */
@@ -623,14 +701,15 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             }
         }
 
+        /* Use anti_collapse[0] for global gradient normalization */
         float scale = nimcp_anti_collapse_normalize_gradients(
-            &mgr->anti_collapse, all_grads, all_sizes, total_arrays);
+            &mgr->anti_collapse[0], all_grads, all_sizes, total_arrays);
 
         /* Compute gradient norm for reporting (before normalization was applied) */
-        float effective_target = mgr->anti_collapse.config.gradient_target_norm;
-        if (mgr->anti_collapse.config.adaptive_gradient_target && effective_target <= 0.0f) {
-            effective_target = sqrtf(mgr->anti_collapse.ema_gradient_norm > 0.0f ?
-                                     mgr->anti_collapse.ema_gradient_norm : 1.0f);
+        float effective_target = mgr->anti_collapse[0].config.gradient_target_norm;
+        if (mgr->anti_collapse[0].config.adaptive_gradient_target && effective_target <= 0.0f) {
+            effective_target = sqrtf(mgr->anti_collapse[0].ema_gradient_norm > 0.0f ?
+                                     mgr->anti_collapse[0].ema_gradient_norm : 1.0f);
         }
         local_result.gradient_norm = (scale != 0.0f) ?
             effective_target / scale : 0.0f;

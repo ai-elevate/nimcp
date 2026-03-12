@@ -4294,6 +4294,7 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/regression/training/CMakeFiles/regression_training_architecture_phase3_fixes.dir/DependInfo.cmake"
   "test/regression/training/CMakeFiles/regression_training_architecture_phase4_fixes.dir/DependInfo.cmake"
   "test/regression/training/CMakeFiles/regression_training_snn_bptt_test.dir/DependInfo.cmake"
+  "test/regression/training/CMakeFiles/regression_training_architecture_restructuring.dir/DependInfo.cmake"
   "test/regression/training/CMakeFiles/regression_training_architecture_audit_fixes.dir/DependInfo.cmake"
   "test/unit/training/CMakeFiles/unit_training_test_cnn_backprop.dir/DependInfo.cmake"
   "test/unit/training/CMakeFiles/unit_training_test_cnn_cortex_bridge.dir/DependInfo.cmake"

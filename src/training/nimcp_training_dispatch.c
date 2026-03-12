@@ -89,6 +89,7 @@ static int init_snn_training(brain_t brain, const nimcp_training_config_t* confi
 
     // Get actual neuron count from SNN network config
     uint32_t n_neurons = brain->snn_network->config.n_inputs
+                       + brain->snn_network->config.n_hidden
                        + brain->snn_network->config.n_outputs;
 
     switch (config->snn_method) {
@@ -734,7 +735,14 @@ int training_dispatch_get_stats(
                     &weight_updates, &training_steps, &total_delta_w);
                 if (total_steps) *total_steps = training_steps;
                 if (total_loss) *total_loss = 0.0F;  // SNN doesn't track loss same way
-                if (current_lr) *current_lr = 0.0F;  // TODO: get from config
+                if (current_lr) {
+                    /* Read LR from SNN training context or network config */
+                    if (brain->snn_training_ctx) {
+                        *current_lr = brain->snn_network->config.learning_rate;
+                    } else {
+                        *current_lr = 0.0F;
+                    }
+                }
                 return 0;
             }
             break;

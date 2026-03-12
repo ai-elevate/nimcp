@@ -118,6 +118,7 @@ int snn_config_feedforward(snn_config_t* config,
     /* Set dimensions */
     config->n_inputs = n_inputs;
     config->n_outputs = n_outputs;
+    config->n_hidden = n_hidden;
     config->n_populations = (n_hidden > 0) ? 3 : 2;  /* input, [hidden], output */
 
     NIMCP_LOGGING_INFO("snn_config_feedforward: %u -> %u -> %u",

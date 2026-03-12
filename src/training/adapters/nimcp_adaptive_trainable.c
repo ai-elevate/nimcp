@@ -49,10 +49,16 @@ static int adaptive_adapter_backward(void* ctx, const float* dl_doutput, uint32_
      * adaptive_network_learn(). The gradients are accumulated there.
      * This stub propagates input gradients for bridge flow if needed. */
     if (dl_dinput) {
-        /* Approximate: scale output gradient uniformly as input gradient.
+        /* Approximate: pass output gradient through as input gradient (residual-like).
          * Full Jacobian computation is expensive; this enables basic gradient flow. */
         uint32_t dim = (input_dim < output_dim) ? input_dim : output_dim;
-        memcpy(dl_dinput, dl_doutput, dim * sizeof(float));
+        if (dl_doutput) {
+            memcpy(dl_dinput, dl_doutput, dim * sizeof(float));
+        }
+        /* Zero extra dims if input_dim > output_dim to prevent garbage gradient */
+        if (input_dim > dim) {
+            memset(dl_dinput + dim, 0, (input_dim - dim) * sizeof(float));
+        }
     }
     return 0;
 }

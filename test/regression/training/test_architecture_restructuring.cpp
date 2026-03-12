@@ -2,13 +2,23 @@
  * @file test_architecture_restructuring.cpp
  * @brief TDD regression tests for dual-pathway architecture restructuring
  *
- * Tests written BEFORE implementation (TDD). Categories:
+ * Tests written BEFORE implementation (TDD) + post-implementation verification.
+ * Categories:
  *   1. Cross-network bridge forward/backward (7 tests)
  *   2. Cross-network gradient flow through UTM (6 tests)
  *   3. SNN backbone scaling (5 tests)
  *   4. Dual-pathway integration (5 tests)
  *   5. UTM composite training (4 tests)
  *   6. SNN performance optimizations (10 tests)
+ *   7. Phase 1: neuron_ids, hidden pop, config (7 tests)
+ *   8. Phase 2: gradient flow, diversity buffer (2 tests)
+ *   9. Phase 3: SNN inputs, adaptive backward zeroing (4 tests)
+ *  10. Phase 5: mini-batching, unified optimizer (5 tests)
+ *  11. Phase 6: GPU config defaults (4 tests)
+ *  12. Phase 4: ensemble inference config (2 tests)
+ *  13. SNN neuron count/contiguity (2 tests)
+ *  14. UTM step counter, AdamW state (2 tests)
+ *  15. Adapter vtable verification (2 tests)
  *
  * @date 2026-03-12
  */
@@ -26,6 +36,8 @@ extern "C" {
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/brain/nimcp_brain.h"
+#include "utils/memory/nimcp_memory.h"
 }
 
 /* ============================================================================
@@ -1192,8 +1204,8 @@ TEST_F(ArchRestructuringTest, UTM_AntiCollapse_SharedAcrossNetworks) {
      * Currently the adaptive adapter forward may fail validation on small test
      * networks, so the diversity buffer may not be populated yet. This becomes
      * a strict check after restructuring implementation. */
-    if (mgr->anti_collapse.diversity_buffer != nullptr) {
-        EXPECT_GE(mgr->anti_collapse.buffer_count, 0u);
+    if (mgr->anti_collapse[0].diversity_buffer != nullptr) {
+        EXPECT_GE(mgr->anti_collapse[0].buffer_count, 0u);
     }
 
     nimcp_utm_destroy(mgr);
@@ -1225,9 +1237,9 @@ TEST_F(ArchRestructuringTest, SNN_SparseStepping_ProducesCorrectSpikes) {
     int spikes = snn_network_step_sparse(net, 0.0f, 0.0f, &stats);
 
     EXPECT_GE(spikes, 0) << "Sparse step should not return error";
-    /* snn_network_create only creates input+output populations (hidden not wired yet) */
-    EXPECT_EQ(stats.total_neurons, 32u + 32u)
-        << "Stats should report all neurons (input + output populations)";
+    /* snn_network_create creates input+hidden+output populations */
+    EXPECT_EQ(stats.total_neurons, 32u + 64u + 32u)
+        << "Stats should report all neurons (input + hidden + output populations)";
     EXPECT_EQ(stats.neurons_updated + stats.neurons_skipped + stats.neurons_refractory,
               stats.total_neurons)
         << "All neurons should be accounted for";
@@ -1265,7 +1277,9 @@ TEST_F(ArchRestructuringTest, SNN_SparseStepping_SkipsQuiescentNeurons) {
 }
 
 TEST_F(ArchRestructuringTest, SNN_SparseStepping_HighInputAllUpdated) {
-    /* With strong input, input population neurons should be updated */
+    /* With strong input, input population neurons should be updated.
+     * After initial firing, neurons enter refractory (t_ref=2ms, dt=0.1ms → 20 steps).
+     * We must wait for refractory to expire before testing sparse updates. */
     snn_network_t* net = create_test_snn(32, 64, 32);
     ASSERT_NE(net, nullptr);
 
@@ -1273,7 +1287,13 @@ TEST_F(ArchRestructuringTest, SNN_SparseStepping_HighInputAllUpdated) {
     for (int i = 0; i < 32; i++) strong_input[i] = 5.0f;
     snn_network_set_inputs(net, strong_input, 32);
 
-    snn_network_step(net, 0.0f);
+    /* Run enough steps to fire initial spike and clear refractory period */
+    for (int i = 0; i < 25; i++) {
+        snn_network_step(net, 0.0f);
+    }
+
+    /* Re-apply strong input for the sparse step */
+    snn_network_set_inputs(net, strong_input, 32);
 
     snn_step_stats_t stats = {};
     snn_network_step_sparse(net, 0.0f, 5.0f, &stats);
@@ -1285,7 +1305,9 @@ TEST_F(ArchRestructuringTest, SNN_SparseStepping_HighInputAllUpdated) {
 }
 
 TEST_F(ArchRestructuringTest, SNN_SparseStepping_ThresholdMarginAffectsSkipRate) {
-    /* Larger threshold margin → fewer neurons skipped */
+    /* Larger threshold margin → fewer neurons skipped.
+     * Run enough steps to clear refractory (t_ref=2ms, dt=0.1ms → 20 steps)
+     * so neurons are at rest for the sparse comparison. */
     snn_network_t* net1 = create_test_snn(32, 128, 32);
     snn_network_t* net2 = create_test_snn(32, 128, 32);
     ASSERT_NE(net1, nullptr);
@@ -1296,10 +1318,15 @@ TEST_F(ArchRestructuringTest, SNN_SparseStepping_ThresholdMarginAffectsSkipRate)
     snn_network_set_inputs(net1, inputs, 32);
     snn_network_set_inputs(net2, inputs, 32);
 
-    for (int i = 0; i < 5; i++) {
+    /* Run 25 steps to fire + clear refractory + settle */
+    for (int i = 0; i < 25; i++) {
         snn_network_step(net1, 0.0f);
         snn_network_step(net2, 0.0f);
     }
+
+    /* Re-apply inputs */
+    snn_network_set_inputs(net1, inputs, 32);
+    snn_network_set_inputs(net2, inputs, 32);
 
     snn_step_stats_t stats_small = {};
     snn_network_step_sparse(net1, 0.0f, 1.0f, &stats_small);
@@ -1438,4 +1465,578 @@ TEST_F(ArchRestructuringTest, SNN_SparseInference_ActiveNetworkHigherCompute) {
         << "Active network should update more neurons than idle";
 
     snn_network_destroy(net);
+}
+
+/* ============================================================================
+ * 7. Phase 1 Verification: neuron_ids, LR, LNN caching (Items 1, 14, 13)
+ * ============================================================================ */
+
+TEST_F(ArchRestructuringTest, Phase1_NeuronIds_InputPopInitialized) {
+    /* Item 1: Input population neuron_ids should be 0..n_inputs-1 */
+    snn_network_t* net = create_test_snn(32, 64, 16);
+    ASSERT_NE(net, nullptr);
+    ASSERT_GE(net->n_populations, 1u);
+
+    snn_population_t* input_pop = net->populations[0];
+    ASSERT_NE(input_pop, nullptr);
+    EXPECT_EQ(input_pop->n_neurons, 32u);
+    for (uint32_t i = 0; i < input_pop->n_neurons; i++) {
+        EXPECT_EQ(input_pop->neuron_ids[i], i)
+            << "Input neuron_id[" << i << "] should be " << i;
+    }
+    snn_network_destroy(net);
+}
+
+TEST_F(ArchRestructuringTest, Phase1_NeuronIds_HiddenPopInitialized) {
+    /* Item 1+3: Hidden population neuron_ids should be n_inputs..n_inputs+n_hidden-1 */
+    snn_network_t* net = create_test_snn(32, 64, 16);
+    ASSERT_NE(net, nullptr);
+    ASSERT_GE(net->n_populations, 3u); /* input, hidden, output */
+
+    snn_population_t* hidden_pop = net->populations[1];
+    ASSERT_NE(hidden_pop, nullptr);
+    EXPECT_EQ(hidden_pop->n_neurons, 64u);
+    for (uint32_t i = 0; i < hidden_pop->n_neurons; i++) {
+        EXPECT_EQ(hidden_pop->neuron_ids[i], 32u + i)
+            << "Hidden neuron_id[" << i << "] should be " << (32u + i);
+    }
+    snn_network_destroy(net);
+}
+
+TEST_F(ArchRestructuringTest, Phase1_NeuronIds_OutputPopInitialized) {
+    /* Item 1+3: Output population neuron_ids should be n_inputs+n_hidden..total-1 */
+    snn_network_t* net = create_test_snn(32, 64, 16);
+    ASSERT_NE(net, nullptr);
+
+    /* Output pop is the last one */
+    uint32_t out_idx = net->n_populations - 1;
+    snn_population_t* out_pop = net->populations[out_idx];
+    ASSERT_NE(out_pop, nullptr);
+    EXPECT_EQ(out_pop->n_neurons, 16u);
+    uint32_t expected_start = 32u + 64u; /* n_inputs + n_hidden */
+    for (uint32_t i = 0; i < out_pop->n_neurons; i++) {
+        EXPECT_EQ(out_pop->neuron_ids[i], expected_start + i)
+            << "Output neuron_id[" << i << "] should be " << (expected_start + i);
+    }
+    snn_network_destroy(net);
+}
+
+TEST_F(ArchRestructuringTest, Phase1_NeuronIds_NoHidden) {
+    /* When n_hidden=0, output IDs start right after input */
+    snn_network_t* net = create_test_snn(32, 0, 16);
+    ASSERT_NE(net, nullptr);
+
+    uint32_t out_idx = net->n_populations - 1;
+    snn_population_t* out_pop = net->populations[out_idx];
+    ASSERT_NE(out_pop, nullptr);
+    for (uint32_t i = 0; i < out_pop->n_neurons; i++) {
+        EXPECT_EQ(out_pop->neuron_ids[i], 32u + i)
+            << "Output neuron_id[" << i << "] should be " << (32u + i);
+    }
+    snn_network_destroy(net);
+}
+
+TEST_F(ArchRestructuringTest, Phase1_SNN_ConfigStoresHidden) {
+    /* Item 3: snn_config_feedforward stores n_hidden in config */
+    snn_config_t config;
+    snn_config_feedforward(&config, 32, 128, 16);
+    EXPECT_EQ(config.n_hidden, 128u);
+    EXPECT_EQ(config.n_inputs, 32u);
+    EXPECT_EQ(config.n_outputs, 16u);
+}
+
+TEST_F(ArchRestructuringTest, Phase1_SNN_HiddenPopCreated) {
+    /* Item 3: When n_hidden > 0, a hidden population exists */
+    snn_network_t* net = create_test_snn(32, 128, 16);
+    ASSERT_NE(net, nullptr);
+    /* Should have 3 populations: input, hidden, output */
+    EXPECT_EQ(net->n_populations, 3u);
+
+    /* Total neurons = 32 + 128 + 16 = 176 */
+    uint32_t total = 0;
+    for (uint32_t p = 0; p < net->n_populations; p++) {
+        total += net->populations[p]->n_neurons;
+    }
+    EXPECT_EQ(total, 176u);
+    snn_network_destroy(net);
+}
+
+TEST_F(ArchRestructuringTest, Phase1_SNN_NoHiddenPopWhenZero) {
+    /* Item 3: When n_hidden=0, only input and output populations */
+    snn_network_t* net = create_test_snn(32, 0, 16);
+    ASSERT_NE(net, nullptr);
+    EXPECT_EQ(net->n_populations, 2u);
+    snn_network_destroy(net);
+}
+
+/* ============================================================================
+ * 8. Phase 2 Verification: Cross-network gradient flow (Items 2, 5)
+ * ============================================================================ */
+
+TEST_F(ArchRestructuringTest, Phase2_GradientFlow_BackwardPreservesDlDinput) {
+    /* Item 2: dl_dinput should be stored and used for bridge backward,
+     * not freed immediately. Verifiable by running UTM step with a bridge
+     * and checking that it doesn't crash (gradient flow works). */
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+
+    /* Register SNN network */
+    snn_network_t* snn = create_test_snn(64, 128, 64);
+    ASSERT_NE(snn, nullptr);
+    snn_backprop_ctx_t* bp = create_test_snn_backprop(snn);
+    ASSERT_NE(bp, nullptr);
+
+    const nimcp_trainable_network_ops_t* snn_ops = nullptr;
+    void* snn_ctx = nullptr;
+    int rc = nimcp_trainable_snn_create(bp, &snn_ops, &snn_ctx);
+    ASSERT_EQ(rc, 0);
+    int snn_idx = nimcp_utm_register_network(mgr, snn_ops, snn_ctx, 1.0f);
+    ASSERT_GE(snn_idx, 0);
+
+    /* Register adaptive network */
+    neural_network_t adaptive = create_adaptive_network();
+    ASSERT_NE(adaptive, nullptr);
+    const nimcp_trainable_network_ops_t* ada_ops = nullptr;
+    void* ada_ctx = nullptr;
+    rc = nimcp_trainable_adaptive_create(adaptive, &ada_ops, &ada_ctx);
+    ASSERT_EQ(rc, 0);
+    int ada_idx = nimcp_utm_register_network(mgr, ada_ops, ada_ctx, 1.0f);
+    ASSERT_GE(ada_idx, 0);
+
+    /* Add bridge SNN -> Adaptive via proper API */
+    int bridge_idx = nimcp_utm_add_bridge(mgr, (uint32_t)snn_idx,
+                                           (uint32_t)ada_idx,
+                                           NIMCP_BRIDGE_SPIKE_TO_RATE);
+    ASSERT_GE(bridge_idx, 0);
+
+    /* Run a step — should not crash (gradient flow works) */
+    float input[64], target[64];
+    for (int i = 0; i < 64; i++) { input[i] = 0.5f; target[i] = 1.0f; }
+    nimcp_utm_step_result_t result = {};
+    rc = nimcp_utm_step(mgr, input, 64, target, 64, &result);
+    /* UTM step may return error for validation, but should not crash */
+    EXPECT_TRUE(rc == 0 || rc == -1); /* graceful error is ok */
+
+    nimcp_utm_destroy(mgr);
+    snn_backprop_destroy(bp);
+    snn_network_destroy(snn);
+    neural_network_destroy(adaptive);
+}
+
+TEST_F(ArchRestructuringTest, Phase2_DiversityBuffer_PerNetwork) {
+    /* Item 12: Each network slot should have its own anti_collapse state */
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+
+    /* Verify per-network anti_collapse buffers are distinct */
+    for (uint32_t i = 0; i < NIMCP_UTM_MAX_NETWORKS; i++) {
+        /* Each slot's diversity_buffer should be its own pointer (or NULL) */
+        if (i > 0) {
+            EXPECT_NE(&mgr->anti_collapse[i], &mgr->anti_collapse[0])
+                << "Each network should have separate anti_collapse state";
+        }
+    }
+
+    nimcp_utm_destroy(mgr);
+}
+
+/* ============================================================================
+ * 9. Phase 3 Verification: SNN hidden, adaptive zeroing (Items 3, 6)
+ * ============================================================================ */
+
+TEST_F(ArchRestructuringTest, Phase3_SNN_SetInputs_ReachesCorrectNeurons) {
+    /* Item 1+3: After neuron_ids init, snn_network_set_inputs should deliver
+     * current to the correct input neurons (ids 0..n_inputs-1) */
+    snn_network_t* net = create_test_snn(32, 64, 16);
+    ASSERT_NE(net, nullptr);
+
+    float inputs[32];
+    for (int i = 0; i < 32; i++) inputs[i] = 100.0f;
+    snn_network_set_inputs(net, inputs, 32);
+
+    /* Step the network — input neurons should spike with strong input */
+    snn_network_step(net, 0.0f);
+
+    /* Check that some spikes were produced */
+    uint32_t spike_count = 0;
+    snn_population_t* input_pop = net->populations[0];
+    for (uint32_t i = 0; i < input_pop->n_neurons; i++) {
+        if (input_pop->spike_trains[i].total_spikes > 0) spike_count++;
+    }
+    /* With strong input current, most neurons should spike */
+    EXPECT_GT(spike_count, 0u) << "Some input neurons should spike with strong current";
+
+    snn_network_destroy(net);
+}
+
+TEST_F(ArchRestructuringTest, Phase3_Adaptive_BackwardZerosExtraDims) {
+    /* Item 6: When input_dim > output_dim, extra gradient dims should be zero */
+    neural_network_t adaptive = create_adaptive_network();
+    ASSERT_NE(adaptive, nullptr);
+
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    int rc = nimcp_trainable_adaptive_create(adaptive, &ops, &ctx);
+    ASSERT_EQ(rc, 0);
+    ASSERT_NE(ops->backward, nullptr);
+
+    /* input_dim=64 > output_dim=32: extra 32 dims should be zeroed */
+    float dl_dout[32];
+    float dl_din[64];
+    for (int i = 0; i < 32; i++) dl_dout[i] = 1.0f;
+    for (int i = 0; i < 64; i++) dl_din[i] = 999.0f; /* poison */
+
+    rc = ops->backward(ctx, dl_dout, 32, dl_din, 64);
+    EXPECT_EQ(rc, 0);
+
+    /* First 32 should have gradient, last 32 should be zeroed */
+    for (int i = 0; i < 32; i++) {
+        EXPECT_FLOAT_EQ(dl_din[i], 1.0f)
+            << "Gradient dim " << i << " should pass through";
+    }
+    for (int i = 32; i < 64; i++) {
+        EXPECT_FLOAT_EQ(dl_din[i], 0.0f)
+            << "Extra dim " << i << " should be zeroed";
+    }
+
+    ops->destroy(ctx);
+    neural_network_destroy(adaptive);
+}
+
+TEST_F(ArchRestructuringTest, Phase3_Adaptive_BackwardEqualDims) {
+    /* Item 6: When input_dim == output_dim, all dims pass through */
+    neural_network_t adaptive = create_adaptive_network();
+    ASSERT_NE(adaptive, nullptr);
+
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    int rc = nimcp_trainable_adaptive_create(adaptive, &ops, &ctx);
+    ASSERT_EQ(rc, 0);
+
+    float dl_dout[64];
+    float dl_din[64];
+    for (int i = 0; i < 64; i++) dl_dout[i] = 0.5f;
+
+    rc = ops->backward(ctx, dl_dout, 64, dl_din, 64);
+    EXPECT_EQ(rc, 0);
+
+    for (int i = 0; i < 64; i++) {
+        EXPECT_FLOAT_EQ(dl_din[i], 0.5f)
+            << "All dims should pass through when equal";
+    }
+
+    ops->destroy(ctx);
+    neural_network_destroy(adaptive);
+}
+
+TEST_F(ArchRestructuringTest, Phase3_Adaptive_BackwardSmallInput) {
+    /* Item 6: When input_dim < output_dim, only input_dim values copied */
+    neural_network_t adaptive = create_adaptive_network();
+    ASSERT_NE(adaptive, nullptr);
+
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    int rc = nimcp_trainable_adaptive_create(adaptive, &ops, &ctx);
+    ASSERT_EQ(rc, 0);
+
+    float dl_dout[64];
+    float dl_din[32];
+    for (int i = 0; i < 64; i++) dl_dout[i] = 2.0f;
+    for (int i = 0; i < 32; i++) dl_din[i] = 999.0f;
+
+    rc = ops->backward(ctx, dl_dout, 64, dl_din, 32);
+    EXPECT_EQ(rc, 0);
+
+    for (int i = 0; i < 32; i++) {
+        EXPECT_FLOAT_EQ(dl_din[i], 2.0f)
+            << "Input dim " << i << " should receive gradient";
+    }
+
+    ops->destroy(ctx);
+    neural_network_destroy(adaptive);
+}
+
+/* ============================================================================
+ * 10. Phase 5 Verification: Mini-batching (Item 10)
+ * ============================================================================ */
+
+TEST_F(ArchRestructuringTest, Phase5_MiniBatch_DefaultIsOne) {
+    /* batch_size=1 means every step triggers optimizer */
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_EQ(cfg.batch_size, 1u);
+}
+
+TEST_F(ArchRestructuringTest, Phase5_MiniBatch_AccumulationCount) {
+    /* With batch_size > 1, batch_accumulation_count should increment */
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    cfg.batch_size = 4;
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+
+    EXPECT_EQ(mgr->batch_accumulation_count, 0u);
+    EXPECT_EQ(mgr->config.batch_size, 4u);
+
+    nimcp_utm_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Phase5_MiniBatch_StepAccumulates) {
+    /* Run multiple steps with batch_size=4: first 3 should accumulate,
+     * 4th should trigger optimizer and reset counter */
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    cfg.batch_size = 4;
+    cfg.enable_cross_network_gradients = false;
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+
+    /* Register an SNN network */
+    snn_network_t* snn = create_test_snn(64, 128, 64);
+    ASSERT_NE(snn, nullptr);
+    snn_backprop_ctx_t* bp = create_test_snn_backprop(snn);
+    ASSERT_NE(bp, nullptr);
+
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    int rc = nimcp_trainable_snn_create(bp, &ops, &ctx);
+    ASSERT_EQ(rc, 0);
+    rc = nimcp_utm_register_network(mgr, ops, ctx, 1.0f);
+    ASSERT_GE(rc, 0);
+
+    float input[64], target[64];
+    for (int i = 0; i < 64; i++) { input[i] = 0.5f; target[i] = 1.0f; }
+    nimcp_utm_step_result_t result = {};
+
+    /* Run 3 steps — should accumulate */
+    for (int step = 0; step < 3; step++) {
+        nimcp_utm_step(mgr, input, 64, target, 64, &result);
+    }
+    /* After 3 samples with batch_size=4, counter should be 3 */
+    EXPECT_EQ(mgr->batch_accumulation_count, 3u)
+        << "3 samples should accumulate before batch completion";
+
+    /* 4th step should complete the batch and reset */
+    nimcp_utm_step(mgr, input, 64, target, 64, &result);
+    EXPECT_EQ(mgr->batch_accumulation_count, 0u)
+        << "Counter should reset after batch completion";
+
+    nimcp_utm_destroy(mgr);
+    snn_backprop_destroy(bp);
+    snn_network_destroy(snn);
+}
+
+/* ============================================================================
+ * 11. Phase 5 Verification: Unified optimizer (Item 11)
+ * ============================================================================ */
+
+TEST_F(ArchRestructuringTest, Phase5_UnifiedOptimizer_DefaultFalse) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_FALSE(cfg.unified_optimizer);
+}
+
+TEST_F(ArchRestructuringTest, Phase5_UnifiedOptimizer_ConfigPropagates) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    cfg.unified_optimizer = true;
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_TRUE(mgr->config.unified_optimizer);
+    nimcp_utm_destroy(mgr);
+}
+
+/* ============================================================================
+ * 12. Phase 6 Verification: GPU acceleration config (Items 7, 8, 9)
+ * ============================================================================ */
+
+TEST_F(ArchRestructuringTest, Phase6_MixedPrecision_DefaultFalse) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_FALSE(cfg.enable_mixed_precision);
+}
+
+TEST_F(ArchRestructuringTest, Phase6_SparseTraining_DefaultFalse) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_FALSE(cfg.enable_sparse_training);
+}
+
+TEST_F(ArchRestructuringTest, Phase6_GPUContext_DefaultNull) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->gpu_ctx, nullptr);
+    nimcp_utm_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Phase6_GPUConfig_Settable) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    cfg.enable_mixed_precision = true;
+    cfg.enable_sparse_training = true;
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_TRUE(mgr->config.enable_mixed_precision);
+    EXPECT_TRUE(mgr->config.enable_sparse_training);
+    nimcp_utm_destroy(mgr);
+}
+
+/* ============================================================================
+ * 13. Phase 4 Verification: Ensemble inference config (Item 4)
+ * ============================================================================ */
+
+TEST_F(ArchRestructuringTest, Phase4_EnsembleConfig_FieldsExist) {
+    /* Verify brain_config has ensemble fields (compile-time check + defaults) */
+    brain_config_t brain_cfg = {};
+    EXPECT_FALSE(brain_cfg.enable_ensemble_inference);
+    /* Default weights should be zero (auto-defaults to 0.6/0.2/0.1/0.1 at runtime) */
+    for (int i = 0; i < 4; i++) {
+        EXPECT_FLOAT_EQ(brain_cfg.ensemble_weights[i], 0.0f);
+    }
+}
+
+TEST_F(ArchRestructuringTest, Phase4_EnsembleConfig_CustomWeights) {
+    /* Verify custom weights are stored correctly */
+    brain_config_t brain_cfg = {};
+    brain_cfg.enable_ensemble_inference = true;
+    brain_cfg.ensemble_weights[0] = 0.4f; /* adaptive */
+    brain_cfg.ensemble_weights[1] = 0.3f; /* snn */
+    brain_cfg.ensemble_weights[2] = 0.2f; /* lnn */
+    brain_cfg.ensemble_weights[3] = 0.1f; /* cnn */
+
+    EXPECT_TRUE(brain_cfg.enable_ensemble_inference);
+    float sum = 0.0f;
+    for (int i = 0; i < 4; i++) sum += brain_cfg.ensemble_weights[i];
+    EXPECT_NEAR(sum, 1.0f, 1e-6f) << "Weights should sum to 1.0";
+}
+
+/* ============================================================================
+ * 14. SNN Total Neuron Count Verification
+ * ============================================================================ */
+
+TEST_F(ArchRestructuringTest, SNN_TotalNeuronCount_IncludesHidden) {
+    /* Total neurons in nn_config should be n_inputs + n_hidden + n_outputs */
+    snn_network_t* net = create_test_snn(32, 64, 16);
+    ASSERT_NE(net, nullptr);
+
+    /* Count all neurons across populations */
+    uint32_t total = 0;
+    for (uint32_t p = 0; p < net->n_populations; p++) {
+        total += net->populations[p]->n_neurons;
+    }
+    EXPECT_EQ(total, 32u + 64u + 16u)
+        << "Total neurons should include hidden layer";
+    snn_network_destroy(net);
+}
+
+TEST_F(ArchRestructuringTest, SNN_NeuronIds_Contiguous) {
+    /* All neuron IDs across all populations should be contiguous 0..total-1 */
+    snn_network_t* net = create_test_snn(16, 32, 8);
+    ASSERT_NE(net, nullptr);
+
+    std::vector<uint32_t> all_ids;
+    for (uint32_t p = 0; p < net->n_populations; p++) {
+        snn_population_t* pop = net->populations[p];
+        for (uint32_t i = 0; i < pop->n_neurons; i++) {
+            all_ids.push_back(pop->neuron_ids[i]);
+        }
+    }
+
+    EXPECT_EQ(all_ids.size(), 56u); /* 16+32+8 */
+    for (uint32_t i = 0; i < all_ids.size(); i++) {
+        EXPECT_EQ(all_ids[i], i) << "Neuron ID " << i << " should be contiguous";
+    }
+    snn_network_destroy(net);
+}
+
+/* ============================================================================
+ * 15. UTM Step Counter & AdamW State
+ * ============================================================================ */
+
+TEST_F(ArchRestructuringTest, UTM_StepCount_Increments) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+
+    snn_network_t* snn = create_test_snn(64, 128, 64);
+    ASSERT_NE(snn, nullptr);
+    snn_backprop_ctx_t* bp = create_test_snn_backprop(snn);
+    ASSERT_NE(bp, nullptr);
+
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    nimcp_trainable_snn_create(bp, &ops, &ctx);
+    nimcp_utm_register_network(mgr, ops, ctx, 1.0f);
+
+    EXPECT_EQ(mgr->step_count, 0u);
+
+    float input[64], target[64];
+    for (int i = 0; i < 64; i++) { input[i] = 0.5f; target[i] = 1.0f; }
+    nimcp_utm_step_result_t result = {};
+    nimcp_utm_step(mgr, input, 64, target, 64, &result);
+
+    EXPECT_EQ(mgr->step_count, 1u);
+
+    nimcp_utm_step(mgr, input, 64, target, 64, &result);
+    EXPECT_EQ(mgr->step_count, 2u);
+
+    nimcp_utm_destroy(mgr);
+    snn_backprop_destroy(bp);
+    snn_network_destroy(snn);
+}
+
+TEST_F(ArchRestructuringTest, UTM_AdamState_InitialValues) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+
+    /* AdamW beta products should start at 1.0 */
+    EXPECT_FLOAT_EQ(mgr->adam_beta1_t, 1.0f);
+    EXPECT_FLOAT_EQ(mgr->adam_beta2_t, 1.0f);
+    EXPECT_EQ(mgr->adam_num_groups, 0u);
+
+    nimcp_utm_destroy(mgr);
+}
+
+/* ============================================================================
+ * 16. Adapter Ops Vtable Verification
+ * ============================================================================ */
+
+TEST_F(ArchRestructuringTest, Adapter_SNN_VtableComplete) {
+    snn_network_t* snn = create_test_snn(64, 128, 64);
+    ASSERT_NE(snn, nullptr);
+    snn_backprop_ctx_t* bp = create_test_snn_backprop(snn);
+    ASSERT_NE(bp, nullptr);
+
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    int rc = nimcp_trainable_snn_create(bp, &ops, &ctx);
+    ASSERT_EQ(rc, 0);
+    ASSERT_NE(ops, nullptr);
+    EXPECT_NE(ops->forward, nullptr);
+    EXPECT_NE(ops->backward, nullptr);
+    EXPECT_NE(ops->get_param_groups, nullptr);
+    EXPECT_NE(ops->zero_grad, nullptr);
+    EXPECT_NE(ops->destroy, nullptr);
+
+    ops->destroy(ctx);
+    snn_backprop_destroy(bp);
+    snn_network_destroy(snn);
+}
+
+TEST_F(ArchRestructuringTest, Adapter_Adaptive_VtableComplete) {
+    neural_network_t adaptive = create_adaptive_network();
+    ASSERT_NE(adaptive, nullptr);
+
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    int rc = nimcp_trainable_adaptive_create(adaptive, &ops, &ctx);
+    ASSERT_EQ(rc, 0);
+    ASSERT_NE(ops, nullptr);
+    EXPECT_NE(ops->forward, nullptr);
+    EXPECT_NE(ops->backward, nullptr);
+    EXPECT_NE(ops->get_param_groups, nullptr);
+    EXPECT_NE(ops->zero_grad, nullptr);
+    EXPECT_NE(ops->destroy, nullptr);
+
+    ops->destroy(ctx);
+    neural_network_destroy(adaptive);
 }

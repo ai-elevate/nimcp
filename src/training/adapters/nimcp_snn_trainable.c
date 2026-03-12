@@ -17,6 +17,7 @@ typedef struct {
     snn_backprop_ctx_t* snn_ctx;    /* NOT owned */
     uint32_t output_dim;
     uint32_t input_dim;
+    bool managed_by_utm;            /* When true, skip internal optimizer step */
 } snn_adapter_ctx_t;
 
 /* --- vtable implementations --- */
@@ -39,10 +40,8 @@ static int snn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
     /* SNN backward: accumulates gradients into ctx->gradients */
     int rc = snn_backprop_backward(a->snn_ctx, dl_doutput, 1);
 
-    /* Run SNN's internal optimizer step after backward.
-     * UTM can't reach SNN params (adapter returns 0 param groups),
-     * so SNN must apply its own gradients via snn_backprop_step(). */
-    if (rc == 0) {
+    /* Run SNN's internal optimizer step after backward — unless UTM manages params */
+    if (rc == 0 && !a->managed_by_utm) {
         snn_backprop_step(a->snn_ctx, 0.0f);  /* 0 = use config LR */
     }
 

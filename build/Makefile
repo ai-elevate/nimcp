@@ -39292,6 +39292,19 @@ regression_training_snn_bptt_test/fast:
 .PHONY : regression_training_snn_bptt_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_training_architecture_restructuring
+
+# Build rule for target.
+regression_training_architecture_restructuring: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_architecture_restructuring
+.PHONY : regression_training_architecture_restructuring
+
+# fast build rule for target.
+regression_training_architecture_restructuring/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_architecture_restructuring.dir/build.make test/regression/training/CMakeFiles/regression_training_architecture_restructuring.dir/build
+.PHONY : regression_training_architecture_restructuring/fast
+
+#=============================================================================
 # Target rules for targets named regression_training_architecture_audit_fixes
 
 # Build rule for target.
@@ -43740,6 +43753,7 @@ help:
 	@echo "... regression_training_architecture_phase2_fixes"
 	@echo "... regression_training_architecture_phase3_fixes"
 	@echo "... regression_training_architecture_phase4_fixes"
+	@echo "... regression_training_architecture_restructuring"
 	@echo "... regression_training_cnn_backprop_test"
 	@echo "... regression_training_cnn_cortex_bridge_test"
 	@echo "... regression_training_dispatch_test"

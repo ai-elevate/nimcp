@@ -20,6 +20,7 @@ typedef struct {
     bool has_result;
     uint32_t output_dim;
     uint32_t input_dim;
+    bool managed_by_utm;        /* When true, skip internal optimizer step */
 } cnn_adapter_ctx_t;
 
 /* --- vtable implementations --- */
@@ -67,10 +68,8 @@ static int cnn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
 
     nimcp_error_t err = cnn_trainer_backward(a->trainer, target_t, &a->last_result);
 
-    /* Run CNN's internal optimizer step after backward.
-     * UTM can't reach CNN params (adapter returns 0 param groups),
-     * so CNN must apply its own gradients via cnn_trainer_step(). */
-    if (err == NIMCP_SUCCESS) {
+    /* Run CNN's internal optimizer step after backward — unless UTM manages params */
+    if (err == NIMCP_SUCCESS && !a->managed_by_utm) {
         cnn_trainer_step(a->trainer);
     }
 

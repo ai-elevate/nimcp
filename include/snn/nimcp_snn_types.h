@@ -333,6 +333,7 @@ struct snn_config_s {
     /* Network dimensions */
     uint32_t n_inputs;              /**< Number of input neurons */
     uint32_t n_outputs;             /**< Number of output neurons */
+    uint32_t n_hidden;              /**< Number of hidden neurons (0 = no hidden layer) */
     uint32_t n_populations;         /**< Number of populations (layers) */
 
     /* Simulation parameters */

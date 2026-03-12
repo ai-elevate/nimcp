@@ -274,6 +274,16 @@ typedef struct nimcp_unified_training_config {
     /* Execution */
     bool enable_cross_network_gradients;/**< Enable gradient flow through bridges */
 
+    /* Mini-batching */
+    uint32_t batch_size;                /**< Accumulate gradients over N samples (default: 1) */
+
+    /* Unified optimizer control */
+    bool unified_optimizer;             /**< When true, adapters skip internal optimizer step (default: false) */
+
+    /* GPU acceleration */
+    bool enable_mixed_precision;        /**< Enable FP16/AMP via autocast (default: false) */
+    bool enable_sparse_training;        /**< Enable sparse GPU gradient ops (default: false) */
+
     /* LR Schedule */
     nimcp_lr_schedule_config_t lr_schedule;
 
@@ -306,8 +316,8 @@ struct nimcp_unified_training_manager {
     nimcp_cross_network_bridge_t bridges[NIMCP_UTM_MAX_BRIDGES];
     uint32_t num_bridges;
 
-    /* Shared anti-collapse state */
-    nimcp_anti_collapse_state_t anti_collapse;
+    /* Per-network anti-collapse state (prevents diversity buffer sharing) */
+    nimcp_anti_collapse_state_t anti_collapse[NIMCP_UTM_MAX_NETWORKS];
 
     /* Composite loss tracking */
     float last_composite_loss;
@@ -316,12 +326,16 @@ struct nimcp_unified_training_manager {
     /* Training state */
     uint64_t step_count;
     float current_lr;
+    uint32_t batch_accumulation_count;  /**< Samples accumulated in current batch */
 
     /* Configuration */
     nimcp_unified_training_config_t config;
 
     /* Phase 5: Plasticity bridge for backprop gating (optional, may be NULL) */
     tpb_context_t* plasticity_bridge;
+
+    /* GPU acceleration context (optional, may be NULL) */
+    void* gpu_ctx;                  /**< nimcp_gpu_training_ctx_t* (not owned) */
 
     /* AdamW optimizer state per param group */
     float** adam_m;                 /**< First moment vectors (one per param group) */

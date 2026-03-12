@@ -58,6 +58,7 @@
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "lnn/nimcp_lnn.h"
 #include "snn/nimcp_snn_network.h"
+#include "training/nimcp_cnn_training.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "cognitive/nimcp_working_memory.h"
@@ -220,6 +221,87 @@ static uint32_t perform_forward_pass(brain_t brain, const float* features, uint3
         // Original brain or post-COW clone - normal inference with statistics
         active_neurons = adaptive_network_forward(
             brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
+    }
+
+    /* Ensemble inference: blend outputs from SNN, LNN, CNN when enabled */
+    if (brain->config.enable_ensemble_inference && decision->output_size > 0) {
+        float w_adaptive = brain->config.ensemble_weights[0];
+        float w_snn = brain->config.ensemble_weights[1];
+        float w_lnn = brain->config.ensemble_weights[2];
+        float w_cnn = brain->config.ensemble_weights[3];
+
+        /* Use defaults if weights are all zero (not configured) */
+        if (w_adaptive == 0.0f && w_snn == 0.0f && w_lnn == 0.0f && w_cnn == 0.0f) {
+            w_adaptive = 0.6f; w_snn = 0.2f; w_lnn = 0.1f; w_cnn = 0.1f;
+        }
+
+        /* Scale adaptive output by its weight */
+        for (uint32_t j = 0; j < decision->output_size; j++) {
+            decision->output_vector[j] *= w_adaptive;
+        }
+
+        /* Blend SNN output */
+        if (brain->snn_network && w_snn > 0.0f) {
+            uint32_t snn_out = brain->snn_network->config.n_outputs;
+            float* snn_buf = nimcp_calloc(snn_out, sizeof(float));
+            if (snn_buf) {
+                snn_network_forward((snn_network_t*)brain->snn_network,
+                                    features, num_features, snn_buf, snn_out, 1.0f);
+                uint32_t blend_dim = (snn_out < decision->output_size) ?
+                                      snn_out : decision->output_size;
+                for (uint32_t j = 0; j < blend_dim; j++) {
+                    decision->output_vector[j] += w_snn * snn_buf[j];
+                }
+                nimcp_free(snn_buf);
+            }
+        }
+
+        /* Blend LNN output */
+        if (brain->lnn_network && w_lnn > 0.0f) {
+            lnn_network_t* lnn = (lnn_network_t*)brain->lnn_network;
+            uint32_t lnn_out = lnn->n_outputs;
+            uint32_t lnn_in = lnn->n_inputs;
+            uint32_t in_dims[1] = { lnn_in };
+            uint32_t out_dims[1] = { lnn_out };
+            nimcp_tensor_t* in_t = nimcp_tensor_create(in_dims, 1, NIMCP_DTYPE_F32);
+            nimcp_tensor_t* out_t = nimcp_tensor_create(out_dims, 1, NIMCP_DTYPE_F32);
+            if (in_t && out_t) {
+                float* in_data = (float*)nimcp_tensor_data(in_t);
+                uint32_t copy_in = (num_features < lnn_in) ? num_features : lnn_in;
+                memcpy(in_data, features, copy_in * sizeof(float));
+                if (lnn_forward_step(lnn, in_t, out_t, 1.0f) == 0) {
+                    const float* out_data = (const float*)nimcp_tensor_data_const(out_t);
+                    uint32_t blend_dim = (lnn_out < decision->output_size) ?
+                                          lnn_out : decision->output_size;
+                    for (uint32_t j = 0; j < blend_dim; j++) {
+                        decision->output_vector[j] += w_lnn * out_data[j];
+                    }
+                }
+            }
+            nimcp_tensor_destroy(in_t);
+            nimcp_tensor_destroy(out_t);
+        }
+
+        /* Blend CNN output */
+        if (brain->cnn_trainer && w_cnn > 0.0f) {
+            uint32_t cnn_dims[1] = { num_features };
+            nimcp_tensor_t* cnn_in = nimcp_tensor_create(cnn_dims, 1, NIMCP_DTYPE_F32);
+            if (cnn_in) {
+                memcpy(nimcp_tensor_data(cnn_in), features, num_features * sizeof(float));
+                cnn_forward_result_t cnn_result = {0};
+                if (cnn_trainer_forward(brain->cnn_trainer, cnn_in, &cnn_result) == NIMCP_SUCCESS
+                    && cnn_result.output) {
+                    const float* cnn_data = (const float*)nimcp_tensor_data_const(cnn_result.output);
+                    size_t cnn_numel = nimcp_tensor_numel(cnn_result.output);
+                    uint32_t blend_dim = ((uint32_t)cnn_numel < decision->output_size) ?
+                                          (uint32_t)cnn_numel : decision->output_size;
+                    for (uint32_t j = 0; j < blend_dim; j++) {
+                        decision->output_vector[j] += w_cnn * cnn_data[j];
+                    }
+                }
+                nimcp_tensor_destroy(cnn_in);
+            }
+        }
     }
 
     decision->inference_time_us = nimcp_time_elapsed_us(start_time);
