@@ -471,6 +471,40 @@ class AdaptiveLRController:
         self.check_trigger_file()
         return self.lr
 
+    def update_from_utm(self, brain, step):
+        """Use UTM DFA health to guide LR adjustment (supplements loss-based).
+
+        DFA health provides principled, fractal-analysis-based training diagnostics:
+        - OPTIMAL (α≈0.8-1.2): pink noise, ideal learning dynamics
+        - NOISY (α<0.6): too much noise, reduce LR
+        - DRIFTING (α>1.3): diverging, reduce LR aggressively
+        - OSCILLATING (α<0.3): chaotic, reduce LR significantly
+        - PLATEAU (H>0.8): stuck, increase LR
+        """
+        try:
+            health = brain.utm_get_training_health()
+        except (AttributeError, RuntimeError):
+            return  # UTM not available
+
+        health_name = health.get("health_name", "unknown")
+        dfa_exp = health.get("dfa_exponent", 0.0)
+
+        # DFA-guided LR adjustment factors
+        adjustments = {
+            "noisy": 0.8,
+            "drifting": 0.5,
+            "oscillating": 0.3,
+            "plateau": 1.5,
+        }
+        factor = adjustments.get(health_name, 1.0)
+        if factor != 1.0:
+            old_lr = self.lr
+            self.lr = max(self.min_lr, min(self.max_lr, self.lr * factor))
+            if self.lr != old_lr:
+                print(f"    [LR/DFA] Health={health_name} (α={dfa_exp:.2f}) "
+                      f"— adjusting: {old_lr:.6f} → {self.lr:.6f}")
+                self.history.append((step, self.lr, 0.0, f"DFA_{health_name.upper()}"))
+
 
 class AdaptiveBatchSize:
     """Adaptive batch size based on loss stability.
@@ -3709,6 +3743,7 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                   f"avg_loss={avg_loss:.4f} lr={lr_scheduler.get_lr():.6f} "
                   f"batch={adaptive_batch.size} hard_buf={len(hard_miner.buffer)}")
             print(f"    {contrastive.stats_str()} | {diversity.stats_str()}")
+            _print_utm_health(brain)
             _print_bio_stats(brain)
             losses_to_report = losses[-500:]
             if len(losses_to_report) > 100:
@@ -3824,9 +3859,11 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 500 == 0:
             avg_loss = np.mean(losses[-500:]) if losses else 0
             lr_ctrl.update(avg_loss, i + 1)
+            lr_ctrl.update_from_utm(brain, i + 1)
             print(f"\n  [Stage 1] {i+1}/{num_stimuli} — "
                   f"avg_loss={avg_loss:.4f} lr={lr_ctrl.get_lr():.6f}"
                   f" | {contrastive.stats_str()} | {diversity.stats_str()}")
+            _print_utm_health(brain)
             _print_bio_stats(brain)
             if decoder:
                 decoder.force_refit()
@@ -3948,9 +3985,11 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             recent = losses[-500:]
             mean_loss = np.mean(recent) if recent else 0
             lr_ctrl.update(mean_loss, i + 1)
+            lr_ctrl.update_from_utm(brain, i + 1)
             print(f"\n  [Stage 2] {i+1}/{num_stimuli} — "
                   f"mean_loss={mean_loss:.4f} lr={lr_ctrl.get_lr():.6f}"
                   f" | {contrastive.stats_str()} | {diversity.stats_str()}")
+            _print_utm_health(brain)
             _print_bio_stats(brain)
             if decoder:
                 decoder.force_refit()
@@ -4269,6 +4308,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             )
             print(f"  Adaptive LR: {lr_info} (envelope={lr_scheduler.get_lr():.3f})")
             print(f"  Mastery:\n{mastery.summary()}")
+            _print_utm_health(brain)
             _print_bio_stats(brain)
 
         if (i + 1) % 500 == 0:
@@ -4320,6 +4360,24 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
 # ============================================================================
 # Utilities
 # ============================================================================
+
+def _print_utm_health(brain):
+    """Print UTM training health from DFA analysis."""
+    try:
+        health = brain.utm_get_training_health()
+        name = health.get("health_name", "unknown")
+        dfa = health.get("dfa_exponent", 0.0)
+        grad_ok = health.get("gradients_healthy", 1)
+        early = health.get("early_stopped", 0)
+        parts = [f"health={name}", f"DFA_α={dfa:.2f}"]
+        if not grad_ok:
+            parts.append("GRAD_UNHEALTHY")
+        if early:
+            parts.append("EARLY_STOPPED")
+        print(f"    [UTM] {' | '.join(parts)}")
+    except (AttributeError, RuntimeError):
+        pass  # UTM not available
+
 
 def _print_bio_stats(brain):
     """Print biological subsystem status."""
@@ -4750,8 +4808,17 @@ def evaluate_performance(brain, composer, decoder, stage, step):
     if decoder:
         decoder.freeze()
 
+    # Swap to EMA parameters for smoother inference during evaluation
+    ema_active = False
+    try:
+        brain.utm_swap_to_ema()
+        ema_active = True
+    except (AttributeError, RuntimeError):
+        pass  # UTM/EMA not available
+
     print(f"\n  {'─' * 56}")
-    print(f"  PERFORMANCE EVAL — Stage {stage}, Step {step}")
+    print(f"  PERFORMANCE EVAL — Stage {stage}, Step {step}"
+          f"{' [EMA]' if ema_active else ''}")
     print(f"  {'─' * 56}")
 
     responses = []
@@ -4879,6 +4946,13 @@ def evaluate_performance(brain, composer, decoder, stage, step):
                 pass
 
     print(f"  {'─' * 56}\n")
+
+    # Swap back from EMA to live parameters
+    if ema_active:
+        try:
+            brain.utm_swap_from_ema()
+        except (AttributeError, RuntimeError):
+            pass
 
     # Unfreeze decoder after evaluation
     if decoder:

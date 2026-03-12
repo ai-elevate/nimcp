@@ -81,6 +81,7 @@
 #include <stddef.h>  /* for NULL */
 #include <stdint.h>  /* for UINT32_MAX (H-6 bounds checks) */
 #include "utils/memory/nimcp_memory.h"
+#include "training/nimcp_unified_training.h"  /* UTM Python bindings */
 #include "security/nimcp_bbb_helpers.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "core/brain/learning/nimcp_brain_learning.h"
@@ -6387,6 +6388,107 @@ static PyObject* Brain_get_network_metrics_py(BrainObject* self, PyObject* Py_UN
         "lnn_steps", lnn_steps);
 }
 
+// ==========================================================================
+// UTM (Unified Training Manager) Python Bindings
+// ==========================================================================
+
+#define UTM_FROM_BRAIN(self) \
+    ((self)->brain && (self)->brain->internal_brain \
+     ? (self)->brain->internal_brain->unified_training : NULL)
+
+static PyObject* Brain_utm_swap_to_ema(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    nimcp_unified_training_manager_t* mgr = UTM_FROM_BRAIN(self);
+    if (!mgr) { PyErr_SetString(PyExc_RuntimeError, "UTM not initialized"); return NULL; }
+    int rc = nimcp_utm_swap_to_ema(mgr);
+    if (rc != 0) { PyErr_SetString(PyExc_RuntimeError, "EMA swap failed"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_utm_swap_from_ema(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    nimcp_unified_training_manager_t* mgr = UTM_FROM_BRAIN(self);
+    if (!mgr) { PyErr_SetString(PyExc_RuntimeError, "UTM not initialized"); return NULL; }
+    int rc = nimcp_utm_swap_from_ema(mgr);
+    if (rc != 0) { PyErr_SetString(PyExc_RuntimeError, "EMA restore failed"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_utm_get_training_health(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    nimcp_unified_training_manager_t* mgr = UTM_FROM_BRAIN(self);
+    if (!mgr) { PyErr_SetString(PyExc_RuntimeError, "UTM not initialized"); return NULL; }
+    nimcp_training_health_t health = nimcp_utm_get_health(mgr);
+    const char* names[] = {"unknown", "optimal", "noisy", "drifting", "oscillating", "plateau"};
+    const char* name = (health >= 0 && health <= 5) ? names[health] : "unknown";
+    return Py_BuildValue("{s:i,s:s,s:f,s:i,s:i}",
+        "health", (int)health,
+        "health_name", name,
+        "dfa_exponent", (double)nimcp_utm_get_dfa_exponent(mgr),
+        "gradients_healthy", (int)nimcp_utm_gradients_healthy(mgr),
+        "early_stopped", (int)nimcp_utm_is_early_stopped(mgr));
+}
+
+static PyObject* Brain_utm_forward_only(BrainObject* self, PyObject* args) {
+    nimcp_unified_training_manager_t* mgr = UTM_FROM_BRAIN(self);
+    if (!mgr) { PyErr_SetString(PyExc_RuntimeError, "UTM not initialized"); return NULL; }
+
+    PyObject* input_obj;
+    int output_dim = 0;
+    if (!PyArg_ParseTuple(args, "Oi", &input_obj, &output_dim)) return NULL;
+
+    PyObject* input_arr = PySequence_Fast(input_obj, "input must be a sequence");
+    if (!input_arr) return NULL;
+    Py_ssize_t input_dim = PySequence_Fast_GET_SIZE(input_arr);
+
+    float* input = (float*)malloc(input_dim * sizeof(float));
+    float* output = (float*)calloc(output_dim, sizeof(float));
+    if (!input || !output) {
+        free(input); free(output); Py_DECREF(input_arr);
+        PyErr_NoMemory(); return NULL;
+    }
+    for (Py_ssize_t i = 0; i < input_dim; i++) {
+        input[i] = (float)PyFloat_AsDouble(PySequence_Fast_GET_ITEM(input_arr, i));
+    }
+    Py_DECREF(input_arr);
+
+    int rc = nimcp_utm_forward_only(mgr, input, (uint32_t)input_dim,
+                                     output, (uint32_t)output_dim);
+    free(input);
+    if (rc != 0) { free(output); PyErr_SetString(PyExc_RuntimeError, "forward_only failed"); return NULL; }
+
+    PyObject* result = PyList_New(output_dim);
+    for (int i = 0; i < output_dim; i++) {
+        PyList_SET_ITEM(result, i, PyFloat_FromDouble((double)output[i]));
+    }
+    free(output);
+    return result;
+}
+
+static PyObject* Brain_utm_set_per_network_lr(BrainObject* self, PyObject* args) {
+    nimcp_unified_training_manager_t* mgr = UTM_FROM_BRAIN(self);
+    if (!mgr) { PyErr_SetString(PyExc_RuntimeError, "UTM not initialized"); return NULL; }
+    unsigned int net_idx; float lr;
+    if (!PyArg_ParseTuple(args, "If", &net_idx, &lr)) return NULL;
+    nimcp_utm_set_per_network_lr(mgr, net_idx, lr);
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_utm_set_fractal_lr(BrainObject* self, PyObject* args) {
+    nimcp_unified_training_manager_t* mgr = UTM_FROM_BRAIN(self);
+    if (!mgr) { PyErr_SetString(PyExc_RuntimeError, "UTM not initialized"); return NULL; }
+    unsigned int net_idx; float scale;
+    if (!PyArg_ParseTuple(args, "If", &net_idx, &scale)) return NULL;
+    nimcp_utm_set_fractal_lr(mgr, net_idx, scale);
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_utm_set_natural_gradient(BrainObject* self, PyObject* args) {
+    nimcp_unified_training_manager_t* mgr = UTM_FROM_BRAIN(self);
+    if (!mgr) { PyErr_SetString(PyExc_RuntimeError, "UTM not initialized"); return NULL; }
+    unsigned int net_idx; int enabled;
+    if (!PyArg_ParseTuple(args, "Ip", &net_idx, &enabled)) return NULL;
+    nimcp_utm_set_natural_gradient(mgr, net_idx, (bool)enabled);
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
      "Learn from example: learn(features, label, lr=0.0, confidence=1.0) -> float (loss value)\n"
@@ -6793,6 +6895,22 @@ static PyMethodDef Brain_methods[] = {
      "Enable/disable multi-network fusion: set_fusion_enabled(True) -> None"},
     {"set_fusion_weights", (PyCFunction)Brain_set_fusion_weights_py, METH_VARARGS,
      "Set fusion weights: set_fusion_weights([0.7, 0.1, 0.1, 0.1]) -> None"},
+
+    // UTM (Unified Training Manager) methods
+    {"utm_swap_to_ema", (PyCFunction)Brain_utm_swap_to_ema, METH_NOARGS,
+     "Swap to EMA parameters for smoother inference -> True"},
+    {"utm_swap_from_ema", (PyCFunction)Brain_utm_swap_from_ema, METH_NOARGS,
+     "Swap back to live parameters after EMA inference -> True"},
+    {"utm_get_training_health", (PyCFunction)Brain_utm_get_training_health, METH_NOARGS,
+     "Get DFA-based training health: -> dict{health, health_name, dfa_exponent, gradients_healthy, early_stopped}"},
+    {"utm_forward_only", (PyCFunction)Brain_utm_forward_only, METH_VARARGS,
+     "Forward-only inference through UTM: utm_forward_only(features, output_dim) -> [float, ...]"},
+    {"utm_set_per_network_lr", (PyCFunction)Brain_utm_set_per_network_lr, METH_VARARGS,
+     "Set per-network learning rate: utm_set_per_network_lr(net_idx, lr)"},
+    {"utm_set_fractal_lr", (PyCFunction)Brain_utm_set_fractal_lr, METH_VARARGS,
+     "Set fractal LR scaling for network: utm_set_fractal_lr(net_idx, scale)"},
+    {"utm_set_natural_gradient", (PyCFunction)Brain_utm_set_natural_gradient, METH_VARARGS,
+     "Enable/disable natural gradient for network: utm_set_natural_gradient(net_idx, True/False)"},
 
     {NULL}
 };

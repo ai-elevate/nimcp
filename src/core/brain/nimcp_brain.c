@@ -216,6 +216,7 @@ int snn_routing_bridge_update(struct snn_routing_bridge_s* bridge, float dt);
 #include "utils/tensor/nimcp_tensor.h"
 #include "core/brain/nimcp_brain_parallel_stages.h"
 #include "utils/thread/nimcp_thread_pool.h"
+#include "training/nimcp_unified_training.h"  /* EMA swap for inference */
 
 //=============================================================================
 // Bio-Async Module Registration

@@ -245,7 +245,75 @@ check_bio_metrics() {
 }
 
 #=============================================================================
-# 3. OUTPUT DIFFERENTIATION
+# 3. UTM HEALTH (DFA / Fractal Analysis)
+#=============================================================================
+check_utm_health() {
+    log "--- UTM HEALTH CHECK ---"
+
+    if [ ! -f "$TRAINING_LOG" ]; then
+        log "No training.log found"
+        return
+    fi
+
+    # Parse [UTM] health output from training script
+    local utm_line
+    utm_line=$(grep "\[UTM\]" "$TRAINING_LOG" | tail -1 || true)
+    if [ -n "$utm_line" ]; then
+        log "$utm_line"
+
+        local health_name dfa_alpha
+        health_name=$(echo "$utm_line" | grep -oP 'health=\K\w+' || true)
+        dfa_alpha=$(echo "$utm_line" | grep -oP 'DFA_α=\K[0-9.+-]+' || true)
+
+        [ -n "$health_name" ] && log "  Training health: $health_name"
+        [ -n "$dfa_alpha" ] && log "  DFA exponent: $dfa_alpha"
+
+        case "$health_name" in
+            oscillating)
+                alert "CRITICAL" "UTM health: OSCILLATING (DFA α=${dfa_alpha}) — chaotic gradient dynamics"
+                ;;
+            drifting)
+                alert "WARN" "UTM health: DRIFTING (DFA α=${dfa_alpha}) — loss diverging"
+                ;;
+            noisy)
+                alert "WARN" "UTM health: NOISY (DFA α=${dfa_alpha}) — excessive randomness"
+                ;;
+            plateau)
+                alert "WARN" "UTM health: PLATEAU (DFA α=${dfa_alpha}) — learning stalled"
+                ;;
+            optimal)
+                log "  Training health OPTIMAL — pink noise dynamics"
+                ;;
+        esac
+
+        if echo "$utm_line" | grep -q "GRAD_UNHEALTHY"; then
+            alert "CRITICAL" "UTM reports UNHEALTHY gradients"
+        fi
+        if echo "$utm_line" | grep -q "EARLY_STOPPED"; then
+            alert "WARN" "UTM triggered early stopping"
+        fi
+    else
+        log "No UTM health output yet"
+    fi
+
+    # DFA-based LR adjustments
+    local dfa_lr_line
+    dfa_lr_line=$(grep "\[LR/DFA\]" "$TRAINING_LOG" | tail -1 || true)
+    if [ -n "$dfa_lr_line" ]; then
+        log "  Last DFA LR adjustment: $dfa_lr_line"
+    fi
+
+    # EMA evaluation count
+    local ema_count
+    ema_count=$(grep -c "\[EMA\]" "$TRAINING_LOG" 2>/dev/null || echo "0")
+    ema_count=$(echo "$ema_count" | tr -d '[:space:]')
+    if [ "$ema_count" -gt 0 ]; then
+        log "  EMA evaluations: $ema_count"
+    fi
+}
+
+#=============================================================================
+# 4. OUTPUT DIFFERENTIATION
 #=============================================================================
 check_differentiation() {
     log "--- DIFFERENTIATION CHECK ---"
@@ -299,7 +367,7 @@ check_differentiation() {
 }
 
 #=============================================================================
-# 4. CHECKPOINT INTEGRITY & STAGE PROGRESSION
+# 5. CHECKPOINT INTEGRITY & STAGE PROGRESSION
 #=============================================================================
 check_checkpoints() {
     log "--- CHECKPOINT CHECK ---"
@@ -388,6 +456,7 @@ log "========== TRAINING MONITOR RUN =========="
 
 check_health
 check_bio_metrics
+check_utm_health
 check_differentiation
 check_checkpoints
 

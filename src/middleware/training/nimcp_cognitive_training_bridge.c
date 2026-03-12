@@ -46,6 +46,11 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/math/nimcp_math_helpers.h"
 
+/* Forward-declare real module APIs to avoid header conflicts (Python.h, etc.) */
+extern float executive_get_cognitive_load(executive_controller_t* exec);
+extern float multihead_attention_get_strength(multihead_attention_t mha);
+extern float curiosity_get_drive(curiosity_engine_t engine);
+
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cognitive_training_bridge)
 
 /*=============================================================================
@@ -166,33 +171,40 @@ static int extract_cognitive_state(cognitive_training_bridge_t* bridge) {
      * Each module provides specific cognitive signals that modulate training.
      */
 
-    /* Executive: Query cognitive load from task queue statistics */
+    /* Executive: Query cognitive load from executive controller */
     if (bridge->executive && bridge->config.enable_executive) {
-        /* Use placeholder values until executive API is available */
-        effects->cognitive_load = 0.5f;  /* Default moderate load */
+        float load = executive_get_cognitive_load(bridge->executive);
+        effects->cognitive_load = (load >= 0.0f && load <= 1.0f) ? load : 0.5f;
     }
 
-    /* Introspection: Query uncertainty and consciousness phi */
+    /* Introspection: Query uncertainty (no features available at bridge level,
+     * so we can't call brain_get_uncertainty which requires input features).
+     * Consciousness phi is expensive — skip in hot path.
+     * Use moderate defaults; cross-bridge integration overrides below. */
     if (bridge->introspection && bridge->config.enable_introspection) {
-        /* Use placeholder values until brain state API is available */
-        effects->epistemic_uncertainty = 0.3f;  /* Default low-moderate uncertainty */
-        effects->consciousness_phi = 0.6f;      /* Default moderate consciousness */
+        effects->epistemic_uncertainty = 0.3f;
+        effects->consciousness_phi = 0.6f;
     }
 
-    /* Attention: Query focus from attention module */
+    /* Attention: Query focus strength from multihead attention module */
     if (bridge->attention && bridge->config.enable_attention) {
-        effects->attention_focus = 0.7f;  /* Moderate-high focus (API TBD) */
+        float strength = multihead_attention_get_strength(bridge->attention);
+        effects->attention_focus = (strength >= 0.0f && strength <= 1.0f)
+                                   ? strength : 0.7f;
     }
 
     /* Curiosity: Query exploration drive from curiosity engine */
     if (bridge->curiosity && bridge->config.enable_curiosity) {
-        effects->exploration_drive = 0.5f;  /* Balanced exploration (API TBD) */
+        float drive = curiosity_get_drive(bridge->curiosity);
+        effects->exploration_drive = (drive >= 0.0f && drive <= 1.0f)
+                                     ? drive : 0.5f;
     }
 
-    /* Emotion: Default to neutral */
+    /* Emotion: No valence/arousal getter on emotion_recognition_system_t
+     * (emotion_tensor API uses different type). Default to neutral. */
     if (bridge->emotion && bridge->config.enable_emotion) {
-        effects->emotional_valence = 0.0f;   /* Neutral valence */
-        effects->emotional_arousal = 0.5f;   /* Moderate arousal */
+        effects->emotional_valence = 0.0f;
+        effects->emotional_arousal = 0.5f;
     }
 
     /*=========================================================================

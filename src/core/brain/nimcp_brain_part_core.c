@@ -1310,6 +1310,15 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // HOW:  After initial forward pass, check confidence. If below threshold,
     //       blend output into input and re-run. Cap at max_iterations.
     //
+    /* EMA swap: Use exponential moving average parameters for smoother inference.
+     * Swaps live weights ↔ EMA weights before forward pass, swaps back after. */
+    bool ema_swapped = false;
+    if (brain->unified_training && brain->config.use_unified_training) {
+        if (nimcp_utm_swap_to_ema(brain->unified_training) == 0) {
+            ema_swapped = true;
+        }
+    }
+
     uint32_t active_neurons = perform_forward_pass(brain, features, num_features, decision);
 
     if (brain->recurrent_enabled && brain->recurrent_max_iterations > 1) {
@@ -1341,6 +1350,11 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         brain->recurrent_iteration_count = iter;
     } else {
         brain->recurrent_iteration_count = 1;
+    }
+
+    /* Swap EMA parameters back to live weights after forward pass */
+    if (ema_swapped) {
+        nimcp_utm_swap_from_ema(brain->unified_training);
     }
 
     // ========================================================================

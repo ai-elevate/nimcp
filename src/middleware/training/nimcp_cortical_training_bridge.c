@@ -45,6 +45,52 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/math/nimcp_math_helpers.h"
 
+/* Forward-declare real cortical module types and APIs to avoid header conflicts
+ * (bio_module_context_t typedef clash, Python.h dependency, etc.).
+ * Bridge's opaque types are cast to these concrete types at call sites. */
+typedef struct predictive_hierarchy predictive_hierarchy_t;
+typedef struct nimcp_cortical_dendritic cortical_dendritic_t;
+typedef struct feature_hypercolumn feature_hypercolumn_t;
+
+/* pred_hier_stats_t — subset of fields we use */
+typedef struct {
+    uint64_t forward_passes;
+    uint64_t backward_passes;
+    uint64_t full_updates;
+    float avg_free_energy;
+    float* avg_level_error;
+    float* avg_level_precision;
+    uint64_t gpu_updates;
+    uint64_t cpu_updates;
+} pred_hier_stats_t;
+
+/* dendritic_stats_t — subset of fields we use */
+typedef struct {
+    uint64_t total_updates;
+    uint64_t calcium_spikes_generated;
+    uint64_t burst_outputs;
+    uint64_t single_spike_outputs;
+    float burst_rate;
+    float bac_success_rate;
+} dendritic_stats_t;
+
+/* feature_hypercolumn_stats_t — subset of fields we use */
+typedef struct {
+    float mean_activation;
+    float max_activation;
+    float sparsity;
+    float selectivity;
+    float entropy;
+    uint32_t num_active;
+    uint32_t winner_index;
+} feature_hypercolumn_stats_t;
+
+extern float pred_hier_compute_free_energy(predictive_hierarchy_t* hier);
+extern int pred_hier_get_stats(const predictive_hierarchy_t* hier, pred_hier_stats_t* stats);
+extern int pred_hier_get_precision(const predictive_hierarchy_t* hier, uint32_t level_index, float* precision);
+extern int cortical_dendritic_get_stats(const cortical_dendritic_t* dend, dendritic_stats_t* stats);
+extern void feature_hypercolumn_get_stats(feature_hypercolumn_t* hcol, feature_hypercolumn_stats_t* stats);
+
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_training_bridge)
 
 /*=============================================================================
@@ -148,26 +194,44 @@ static int extract_cortical_state(cortical_training_bridge_t* bridge) {
      * Each module provides specific cortical signals that modulate training.
      */
 
-    /* Predictive Coding: Estimate free energy, prediction error, convergence
-     * from training loss history.
-     *
-     * NOTE: predictive_coding_context_t is currently an opaque forward-declared
-     * type with no public API. When pc_hierarchy_get_free_energy() and
-     * pc_hierarchy_get_stats() become available via a concrete type, call them
-     * directly. Until then, use the bridge's loss/FE history as proxy metrics:
-     *   - Free energy ∝ training loss (both measure surprise/mismatch)
-     *   - Prediction error ∝ loss delta (change in surprise)
-     *   - Convergence rate from trend in FE history
-     */
+    /* Predictive Coding: Query real predictive hierarchy for free energy,
+     * prediction error, and convergence. Falls back to FE history proxies
+     * if the hierarchy API returns invalid data. */
     if (bridge->predictive_coding && bridge->config.enable_predictive_coding) {
-        /* Estimate free energy from FE history or training loss */
-        if (bridge->history_count > 0) {
-            /* Use most recent FE history entry as free energy estimate */
+        /* Try real predictive hierarchy API first */
+        predictive_hierarchy_t* hier = (predictive_hierarchy_t*)bridge->predictive_coding;
+        float real_fe = pred_hier_compute_free_energy(hier);
+        pred_hier_stats_t ph_stats;
+        bool got_stats = (pred_hier_get_stats((const predictive_hierarchy_t*)hier,
+                                               &ph_stats) == 0);
+
+        if (!isnan(real_fe) && real_fe >= 0.0f) {
+            effects->free_energy = real_fe;
+            /* Use avg_free_energy delta as PE proxy, or FE-based estimate */
+            effects->prediction_error_mag = got_stats
+                ? fabsf(real_fe - ph_stats.avg_free_energy) : real_fe * 0.2f;
+            /* Convergence from FE history trend (still useful with real FE) */
+            if (bridge->history_count > 1) {
+                uint32_t window = bridge->history_count < 10 ? bridge->history_count : 10;
+                uint32_t decreases = 0;
+                for (uint32_t i = 1; i < window; i++) {
+                    uint32_t cur = (bridge->history_head + CORTICAL_HISTORY_SIZE - i)
+                                   % CORTICAL_HISTORY_SIZE;
+                    uint32_t prv = (cur + CORTICAL_HISTORY_SIZE - 1)
+                                   % CORTICAL_HISTORY_SIZE;
+                    if (bridge->fe_history[cur] < bridge->fe_history[prv]) {
+                        decreases++;
+                    }
+                }
+                effects->convergence_rate = (float)decreases / (float)(window - 1);
+            } else {
+                effects->convergence_rate = 0.5f;
+            }
+        } else if (bridge->history_count > 0) {
+            /* Fallback: use FE history as proxy */
             uint32_t latest = (bridge->history_head + CORTICAL_HISTORY_SIZE - 1)
                               % CORTICAL_HISTORY_SIZE;
             effects->free_energy = fabsf(bridge->fe_history[latest]);
-
-            /* Prediction error magnitude from recent FE change */
             if (bridge->history_count >= 2) {
                 uint32_t prev = (latest + CORTICAL_HISTORY_SIZE - 1)
                                 % CORTICAL_HISTORY_SIZE;
@@ -176,9 +240,6 @@ static int extract_cortical_state(cortical_training_bridge_t* bridge) {
             } else {
                 effects->prediction_error_mag = effects->free_energy * 0.2f;
             }
-
-            /* Convergence rate: fraction of recent FE decreases.
-             * Look at last min(history_count, 10) entries */
             uint32_t window = bridge->history_count < 10 ? bridge->history_count : 10;
             uint32_t decreases = 0;
             for (uint32_t i = 1; i < window; i++) {
@@ -194,59 +255,71 @@ static int extract_cortical_state(cortical_training_bridge_t* bridge) {
                 ? (float)decreases / (float)(window - 1)
                 : 0.5f;
         } else {
-            /* No history yet — use moderate defaults based on module presence */
             effects->free_energy = 5.0f;
             effects->convergence_rate = 0.5f;
             effects->prediction_error_mag = 1.0f;
         }
 
-        /* Set precision weights: use convergence as proxy for precision.
-         * High convergence → predictions are good → high precision.
-         * Low convergence → uncertain → lower precision (more learning) */
+        /* Set precision weights from real hierarchy if available, else proxy */
         if (effects->precision_weights && effects->num_layers > 0) {
-            float base_precision = nimcp_clampf(
-                0.5f + effects->convergence_rate * 0.5f, 0.5f, 1.0f);
-            for (uint32_t i = 0; i < effects->num_layers; i++) {
-                /* Deeper layers get slightly higher precision (more stable) */
-                float layer_factor = 1.0f + (float)i * 0.05f;
-                effects->precision_weights[i] = nimcp_clampf(
-                    base_precision * layer_factor,
-                    bridge->config.precision_min_weight,
-                    bridge->config.precision_max_weight);
+            bool used_real_precision = false;
+            if (got_stats) {
+                /* Try per-level precision from real hierarchy */
+                for (uint32_t i = 0; i < effects->num_layers; i++) {
+                    float prec = 0.0f;
+                    if (pred_hier_get_precision((const predictive_hierarchy_t*)hier,
+                                                 i, &prec) == 0 && prec > 0.0f) {
+                        effects->precision_weights[i] = nimcp_clampf(
+                            prec, bridge->config.precision_min_weight,
+                            bridge->config.precision_max_weight);
+                        used_real_precision = true;
+                    }
+                }
+            }
+            if (!used_real_precision) {
+                float base_precision = nimcp_clampf(
+                    0.5f + effects->convergence_rate * 0.5f, 0.5f, 1.0f);
+                for (uint32_t i = 0; i < effects->num_layers; i++) {
+                    float layer_factor = 1.0f + (float)i * 0.05f;
+                    effects->precision_weights[i] = nimcp_clampf(
+                        base_precision * layer_factor,
+                        bridge->config.precision_min_weight,
+                        bridge->config.precision_max_weight);
+                }
             }
         }
     }
 
-    /* Dendritic: Estimate burst rate, BAC success, calcium from training state.
-     *
-     * NOTE: dendritic_compartment_t is a forward-declared opaque type with no
-     * public getter API (dendritic_tree_get_stats requires dendritic_tree_t).
-     * When a concrete dendritic API becomes available, call it directly.
-     * Until then, derive proxies from training effects:
-     *   - Burst rate ∝ gradient stability (stable gradients → stable predictions → bursts)
-     *   - BAC success ∝ loss improvement (improving loss → successful predictions)
-     *   - Calcium spikes ∝ gradient norm (high gradient activity → Ca2+ influx)
-     */
+    /* Dendritic: Query real dendritic module for burst/BAC/calcium stats.
+     * Falls back to training-effect proxies if API returns error. */
     if (bridge->dendritic && bridge->config.enable_dendritic) {
-        if (bridge->training_effects.valid) {
-            /* Burst rate: map gradient stability [0,1] to burst rate [0.2, 0.9] */
+        /* Try real dendritic API first */
+        cortical_dendritic_t* dend = (cortical_dendritic_t*)bridge->dendritic;
+        dendritic_stats_t dend_stats;
+        bool got_dend = (cortical_dendritic_get_stats(
+            (const cortical_dendritic_t*)dend, &dend_stats) == 0);
+
+        if (got_dend && dend_stats.burst_rate >= 0.0f) {
+            effects->burst_rate = nimcp_clampf(dend_stats.burst_rate, 0.1f, 0.95f);
+            effects->bac_success_rate = nimcp_clampf(
+                dend_stats.bac_success_rate, 0.1f, 0.95f);
+            effects->calcium_spikes = nimcp_clampf(
+                (float)dend_stats.calcium_spikes_generated, 0.5f, 20.0f);
+        } else if (bridge->training_effects.valid) {
+            /* Fallback: derive from training gradient stability */
             effects->burst_rate = nimcp_clampf(
                 0.2f + bridge->training_effects.gradient_stability * 0.7f, 0.1f, 0.95f);
-            /* BAC success: loss improvement rate as proxy */
             effects->bac_success_rate = nimcp_clampf(
                 bridge->training_effects.loss_improvement_rate, 0.1f, 0.95f);
-            /* Calcium spikes: gradient norm as proxy for neural activity */
             effects->calcium_spikes = nimcp_clampf(
                 bridge->training_effects.gradient_norm * 2.0f, 0.5f, 20.0f);
         } else {
-            /* No training effects yet — estimate from FE history trend */
             if (bridge->history_count >= 2) {
                 uint32_t latest = (bridge->history_head + CORTICAL_HISTORY_SIZE - 1)
                                   % CORTICAL_HISTORY_SIZE;
                 uint32_t prev = (latest + CORTICAL_HISTORY_SIZE - 1)
                                 % CORTICAL_HISTORY_SIZE;
                 float fe_delta = bridge->fe_history[prev] - bridge->fe_history[latest];
-                /* Positive delta (FE decreasing) → stable → higher burst rate */
                 effects->burst_rate = nimcp_clampf(0.5f + fe_delta * 0.1f, 0.1f, 0.9f);
                 effects->bac_success_rate = effects->burst_rate * 0.9f;
             } else {
@@ -257,27 +330,30 @@ static int extract_cortical_state(cortical_training_bridge_t* bridge) {
         }
     }
 
-    /* Cortical Columns: Estimate winner confidence, entropy, inhibition.
-     *
-     * NOTE: hypercolumn_t's stats API (hypercolumn_get_stats) requires a concrete
-     * hypercolumn_t*, but bridge->columns is typed as the opaque forward-declared
-     * type from the bridge header. When the types are unified, call
-     * hypercolumn_get_stats() directly. Until then, derive proxies:
-     *   - Winner confidence ∝ inverse of prediction error (low PE → clear winner)
-     *   - Population entropy ∝ free energy (high FE → distributed/uncertain)
-     *   - Inhibition strength ∝ convergence rate (converging → strong inhibition)
-     */
+    /* Cortical Columns: Query real hypercolumn stats for winner confidence,
+     * entropy, and inhibition. Falls back to PE/FE-derived proxies. */
     if (bridge->columns && bridge->config.enable_columns) {
-        /* Derive from predictive coding effects if available */
-        if (effects->valid || bridge->history_count > 0) {
-            /* Winner confidence: inversely related to prediction error */
+        /* Try real hypercolumn API first */
+        feature_hypercolumn_t* hcol = (feature_hypercolumn_t*)bridge->columns;
+        feature_hypercolumn_stats_t hcol_stats;
+        feature_hypercolumn_get_stats(hcol, &hcol_stats);
+
+        if (hcol_stats.selectivity > 0.0f || hcol_stats.entropy > 0.0f) {
+            /* Use real hypercolumn statistics */
+            effects->winner_confidence = nimcp_clampf(
+                hcol_stats.selectivity, 0.1f, 0.95f);
+            effects->population_entropy = nimcp_clampf(
+                hcol_stats.entropy, 0.1f, 3.0f);
+            /* Sparsity as proxy for lateral inhibition strength */
+            effects->inhibition_strength = nimcp_clampf(
+                hcol_stats.sparsity, 0.1f, 0.9f);
+        } else if (effects->valid || bridge->history_count > 0) {
+            /* Fallback: derive from prediction error / FE */
             float pe = effects->prediction_error_mag;
             effects->winner_confidence = nimcp_clampf(
                 1.0f / (1.0f + pe), 0.1f, 0.95f);
-            /* Population entropy: proportional to free energy (normalized) */
             effects->population_entropy = nimcp_clampf(
                 effects->free_energy * 0.2f, 0.1f, 3.0f);
-            /* Inhibition: proportional to convergence (stable → strong inhibition) */
             effects->inhibition_strength = nimcp_clampf(
                 effects->convergence_rate, 0.1f, 0.9f);
         } else {
