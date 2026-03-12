@@ -999,8 +999,12 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                                     target, target_size,
                                     &utm_result);
         if (utm_rc == 0) {
-            /* Blend unified composite loss with adaptive loss */
-            loss = 0.5f * loss + 0.5f * utm_result.composite_loss;
+            /* Blend unified composite loss with adaptive loss.
+             * Guard against NaN/inf from UTM (e.g. LNN gradient explosion). */
+            float utm_loss = utm_result.composite_loss;
+            if (isfinite(utm_loss) && utm_loss >= 0.0f) {
+                loss = 0.5f * loss + 0.5f * utm_loss;
+            }
 
             /* Update per-network metrics from UTM results so monitoring works */
             const float a = 0.01f;

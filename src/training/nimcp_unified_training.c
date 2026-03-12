@@ -993,6 +993,10 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         }
 
         float net_loss = loss_val + aux;
+        /* Guard against NaN/inf from individual networks (e.g. gradient explosion) */
+        if (!isfinite(net_loss) || net_loss < 0.0f) {
+            net_loss = 0.0f;
+        }
         local_result.per_network_loss[i] = net_loss;
         composite_loss += net_loss * net->loss_weight;
         total_weight += net->loss_weight;
