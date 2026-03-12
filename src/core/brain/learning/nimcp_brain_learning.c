@@ -3056,20 +3056,15 @@ int brain_enable_multi_network_training(brain_t brain)
             const nimcp_trainable_network_ops_t* ops = NULL;
             void* adapter_ctx = NULL;
 
-            /* Adaptive backbone — uses own internal optimizer (synapse-level weights)
-             * but participates in UTM composite loss and gradient flow */
-            if (brain->network) {
-                if (nimcp_trainable_adaptive_create(brain->network, &ops, &adapter_ctx) == 0) {
-                    nimcp_trainable_adaptive_set_dims(adapter_ctx,
-                        brain->config.num_inputs, brain->config.num_outputs);
-                    nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 1.0f);
-                }
-            }
+            /* Adaptive backbone — trains independently in Step 1 via
+             * adaptive_network_learn(). Do NOT register in UTM because running
+             * neural_network_forward() a second time within the same learn_vector
+             * call corrupts neuron model state and causes SIGSEGV.
+             * Cross-network gradient flow is handled via bridge loss instead. */
 
             /* CNN — uses own internal optimizer (tensor-level weights)
              * but participates in UTM composite loss and gradient flow */
             if (brain->cnn_trainer) {
-                ops = NULL; adapter_ctx = NULL;
                 if (nimcp_trainable_cnn_create(brain->cnn_trainer, &ops, &adapter_ctx) == 0) {
                     nimcp_trainable_cnn_set_dims(adapter_ctx,
                         brain->config.num_inputs, brain->config.num_outputs);
@@ -3078,16 +3073,27 @@ int brain_enable_multi_network_training(brain_t brain)
             }
 
             /* SNN — managed by UTM: adapter exposes flat weights as param groups,
-             * UTM runs unified AdamW on SNN weights + sync_params writes back */
-            if (brain->snn_training_ctx) {
-                ops = NULL; adapter_ctx = NULL;
-                if (nimcp_trainable_snn_create(
-                        (struct snn_backprop_ctx_s*)brain->snn_training_ctx,
-                        &ops, &adapter_ctx) == 0) {
-                    nimcp_trainable_snn_set_dims(adapter_ctx,
-                        brain->config.num_inputs, brain->config.num_outputs);
-                    nimcp_trainable_snn_set_managed(adapter_ctx, true);
-                    nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
+             * UTM runs unified AdamW on SNN weights + sync_params writes back.
+             * NOTE: brain->snn_training_ctx is snn_training_ctx_t (STDP/eProp) — a
+             * DIFFERENT struct from snn_backprop_ctx_t (BPTT).  The trainable adapter
+             * requires snn_backprop_ctx_t, so we create one from brain->snn_network. */
+            if (brain->snn_network) {
+                if (!brain->snn_backprop_ctx) {
+                    snn_backprop_config_t bp_cfg = snn_backprop_default_config(SNN_TRAIN_BPTT);
+                    bp_cfg.use_gradient_normalization = true;
+                    bp_cfg.diversity_loss_weight = 0.1f;
+                    brain->snn_backprop_ctx = snn_backprop_create(brain->snn_network, &bp_cfg);
+                }
+                if (brain->snn_backprop_ctx) {
+                    ops = NULL; adapter_ctx = NULL;
+                    if (nimcp_trainable_snn_create(
+                            brain->snn_backprop_ctx,
+                            &ops, &adapter_ctx) == 0) {
+                        nimcp_trainable_snn_set_dims(adapter_ctx,
+                            brain->config.num_inputs, brain->config.num_outputs);
+                        nimcp_trainable_snn_set_managed(adapter_ctx, true);
+                        nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
+                    }
                 }
             }
 

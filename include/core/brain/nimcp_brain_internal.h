@@ -205,6 +205,7 @@ struct brain_struct {
     // === SPECIALIZED TRAINING CONTEXTS ===
     // Training contexts for each network type (created on demand)
     struct snn_training_ctx_s* snn_training_ctx;   // SNN training (STDP/eProp/surrogate)
+    struct snn_backprop_ctx_s* snn_backprop_ctx;   // SNN backprop (BPTT, for UTM adapter)
     struct lnn_training_ctx_s* lnn_training_ctx;   // LNN training (adjoint ODE)
     // CNN training is integrated into cnn_trainer
     struct nimcp_unified_training_manager* unified_training;  // UTM: unified training manager (Phase 3)

@@ -223,6 +223,11 @@ void brain_destroy(brain_t brain)
     /* Destroy SNN/LNN training contexts and networks created by
      * brain_enable_multi_network_training() — must happen after UTM
      * (which holds adapter references) and before general network teardown. */
+    if (brain->snn_backprop_ctx) {
+        extern void snn_backprop_destroy(struct snn_backprop_ctx_s* ctx);
+        snn_backprop_destroy(brain->snn_backprop_ctx);
+        brain->snn_backprop_ctx = NULL;
+    }
     if (brain->snn_training_ctx) {
         extern void snn_training_destroy(struct snn_training_ctx_s* ctx);
         snn_training_destroy(brain->snn_training_ctx);
