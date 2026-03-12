@@ -844,6 +844,11 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
 
         nimcp_trainable_network_t* net = &mgr->networks[i];
         uint32_t out_dim = net->ops->get_output_dim(net->ctx);
+        if (out_dim == 0) {
+            NIMCP_LOGGING_WARN("utm_step: Network '%s' has output_dim=0, skipping",
+                              net->ops->name);
+            continue;
+        }
         net_output_dims[i] = out_dim;
 
         net_outputs[i] = (float*)nimcp_calloc(out_dim, sizeof(float));

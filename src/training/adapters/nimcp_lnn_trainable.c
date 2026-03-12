@@ -246,6 +246,14 @@ void nimcp_trainable_lnn_set_managed(void* ctx, bool managed) {
     if (a) a->managed_by_utm = managed;
 }
 
+void nimcp_trainable_lnn_set_dims(void* ctx, uint32_t input_dim, uint32_t output_dim) {
+    lnn_adapter_ctx_t* a = (lnn_adapter_ctx_t*)ctx;
+    if (a) {
+        a->input_dim = input_dim;
+        a->output_dim = output_dim;
+    }
+}
+
 /* --- public creation --- */
 
 int nimcp_trainable_lnn_create(struct lnn_training_ctx_s* lnn_ctx,

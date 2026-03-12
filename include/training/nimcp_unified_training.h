@@ -880,6 +880,9 @@ int nimcp_trainable_snn_create(struct snn_backprop_ctx_s* snn_ctx,
 /** @brief Set managed_by_utm flag on SNN adapter (enables UTM optimizer for SNN weights) */
 void nimcp_trainable_snn_set_managed(void* ctx, bool managed);
 
+/** @brief Set input/output dimensions on SNN adapter */
+void nimcp_trainable_snn_set_dims(void* ctx, uint32_t input_dim, uint32_t output_dim);
+
 /**
  * @brief Create adapter for LNN training context
  */
@@ -889,6 +892,9 @@ int nimcp_trainable_lnn_create(struct lnn_training_ctx_s* lnn_ctx,
 
 /** @brief Set managed_by_utm flag on LNN adapter (enables UTM optimizer for LNN params) */
 void nimcp_trainable_lnn_set_managed(void* ctx, bool managed);
+
+/** @brief Set input/output dimensions on LNN adapter */
+void nimcp_trainable_lnn_set_dims(void* ctx, uint32_t input_dim, uint32_t output_dim);
 
 /**
  * @brief Create adapter for Adaptive (backbone) network

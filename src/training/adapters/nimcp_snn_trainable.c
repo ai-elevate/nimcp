@@ -176,11 +176,19 @@ static const nimcp_trainable_network_ops_t snn_trainable_ops = {
     .sync_params = snn_adapter_sync_params,
 };
 
-/* --- public setter --- */
+/* --- public setters --- */
 
 void nimcp_trainable_snn_set_managed(void* ctx, bool managed) {
     snn_adapter_ctx_t* a = (snn_adapter_ctx_t*)ctx;
     if (a) a->managed_by_utm = managed;
+}
+
+void nimcp_trainable_snn_set_dims(void* ctx, uint32_t input_dim, uint32_t output_dim) {
+    snn_adapter_ctx_t* a = (snn_adapter_ctx_t*)ctx;
+    if (a) {
+        a->input_dim = input_dim;
+        a->output_dim = output_dim;
+    }
 }
 
 /* --- public creation --- */
