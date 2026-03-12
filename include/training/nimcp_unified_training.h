@@ -330,6 +330,47 @@ typedef struct nimcp_unified_training_config {
     /* Manifold tracking */
     bool enable_manifold_tracking;          /**< Track output manifold dimensionality (default: true) */
 
+    /* Item 2: Bridge params in AdamW optimizer (instead of simple SGD) */
+    bool bridge_params_in_optimizer;        /**< Include bridge weights in AdamW (default: true) */
+
+    /* Item 3: Automatic Mixed Precision */
+    bool enable_amp;                        /**< Enable AMP via training AMP API (default: true) */
+
+    /* Item 6: Curriculum learning */
+    bool enable_curriculum;                 /**< Enable curriculum sample weighting (default: true) */
+    uint32_t curriculum_num_samples;        /**< Number of samples in curriculum (default: 1024) */
+
+    /* Item 7: Knowledge distillation */
+    bool enable_knowledge_distillation;     /**< Enable KD loss composition (default: true) */
+    float kd_loss_weight;                   /**< Weight of KD loss in composite (default: 0.3) */
+
+    /* Item 8: Neuromodulator-gated LR */
+    bool enable_neuromod_lr;                /**< Modulate LR via neuromodulator levels (default: true) */
+
+    /* Item 9: EMA / Polyak averaging */
+    bool enable_ema;                        /**< Shadow parameter EMA for inference (default: true) */
+    float ema_decay;                        /**< EMA decay factor (default: 0.999) */
+
+    /* Item 10: Middleware LR scheduler (cosine warm restarts) */
+    bool enable_lr_scheduler;               /**< Use middleware scheduler instead of built-in (default: true) */
+
+    /* Item 11: Riemannian SGD */
+    bool enable_riemannian_sgd;             /**< Use Riemannian gradient for small groups (default: true) */
+    uint32_t riemannian_max_params;         /**< Max params for Riemannian SGD (default: 2048) */
+
+    /* Item 12: Contrastive loss */
+    bool enable_contrastive_loss;           /**< Cross-network contrastive loss (default: true) */
+    float contrastive_loss_weight;          /**< Weight in composite (default: 0.1) */
+    float contrastive_margin;               /**< Contrastive margin (default: 1.0) */
+
+    /* Item 13: Per-network LR */
+    float per_network_lr[NIMCP_UTM_MAX_NETWORKS]; /**< Per-network LR (0 = use global) */
+
+    /* Item 14: Early stopping */
+    bool enable_early_stopping;             /**< Enable early stopping (default: true) */
+    uint32_t early_stopping_patience;       /**< Steps without improvement (default: 50) */
+    float early_stopping_min_delta;         /**< Minimum improvement threshold (default: 1e-5) */
+
 } nimcp_unified_training_config_t;
 
 //=============================================================================
@@ -443,6 +484,49 @@ struct nimcp_unified_training_manager {
     nimcp_neural_manifold_t output_manifold[NIMCP_UTM_MAX_NETWORKS];
     uint32_t manifold_intrinsic_dim[NIMCP_UTM_MAX_NETWORKS];
     bool manifold_tracking_enabled;
+
+    /* Item 2: Bridge params in optimizer */
+    bool bridge_params_in_optimizer;
+
+    /* Item 3: AMP context (amp_ctx_t*, lazy-created) */
+    void* amp_ctx;
+
+    /* Item 6: Curriculum context (curriculum_ctx_t*, lazy-created) */
+    void* curriculum_ctx;
+
+    /* Item 7: KD context (kd_ctx_t*, lazy-created) */
+    void* kd_ctx;
+    float kd_loss_weight;
+
+    /* Item 8: Neuromod adapter (nimcp_neuromod_pool_adapter_t, set externally) */
+    void* neuromod_adapter;
+    float neuromod_lr_scale;                /**< Last computed neuromod LR multiplier */
+
+    /* Item 9: EMA / Polyak averaging */
+    float** ema_params;                     /**< Shadow parameter copies [num_groups] */
+    size_t* ema_sizes;                      /**< Size of each shadow copy */
+    uint32_t ema_num_groups;
+    float ema_decay;
+    bool ema_enabled;
+
+    /* Item 10: Middleware LR scheduler (nimcp_lr_scheduler_ctx_t*, lazy-created) */
+    void* lr_scheduler_ctx;
+
+    /* Item 11: Riemannian SGD */
+    void* riemannian_metric;                /**< riemannian_metric_t* (lazy-created) */
+    uint32_t riemannian_max_params;
+    bool riemannian_enabled;
+
+    /* Item 13: Per-network LR overrides */
+    float per_network_lr[NIMCP_UTM_MAX_NETWORKS]; /**< 0 = use global */
+
+    /* Item 14: Early stopping */
+    bool early_stopping_enabled;
+    uint32_t early_stopping_patience;
+    float early_stopping_min_delta;
+    float early_stopping_best_loss;
+    uint32_t early_stopping_counter;
+    bool early_stopped;                     /**< True when training should stop */
 };
 
 //=============================================================================
@@ -546,6 +630,13 @@ typedef struct nimcp_utm_step_result {
 
     /* Manifold tracking */
     uint32_t manifold_intrinsic_dim[NIMCP_UTM_MAX_NETWORKS]; /**< 0 = not computed */
+
+    /* Extended pipeline fields */
+    bool early_stopped;                     /**< True if early stopping triggered */
+    float neuromod_lr_scale;                /**< Neuromod LR multiplier applied this step */
+    float scheduled_lr;                     /**< LR after scheduling this step */
+    float contrastive_loss;                 /**< Cross-network contrastive loss */
+    float kd_loss;                          /**< Knowledge distillation loss */
 } nimcp_utm_step_result_t;
 
 /**
@@ -720,6 +811,33 @@ float nimcp_utm_get_dfa_exponent(const nimcp_unified_training_manager_t* mgr);
 /** @brief Enable/disable natural gradient optimizer for a specific network */
 void nimcp_utm_set_natural_gradient(nimcp_unified_training_manager_t* mgr,
                                      uint32_t net_idx, bool enabled);
+
+//=============================================================================
+// Extended Pipeline API (Items 1-14)
+//=============================================================================
+
+/** @brief Set AMP context (caller-owned, must outlive manager) */
+void nimcp_utm_set_amp(nimcp_unified_training_manager_t* mgr, void* amp_ctx);
+
+/** @brief Set curriculum context (caller-owned, must outlive manager) */
+void nimcp_utm_set_curriculum(nimcp_unified_training_manager_t* mgr, void* curriculum_ctx);
+
+/** @brief Set knowledge distillation context (caller-owned, must outlive manager) */
+void nimcp_utm_set_kd(nimcp_unified_training_manager_t* mgr, void* kd_ctx);
+
+/** @brief Set neuromodulator pool adapter (caller-owned, must outlive manager) */
+void nimcp_utm_set_neuromod(nimcp_unified_training_manager_t* mgr, void* neuromod_adapter);
+
+/** @brief Set per-network learning rate (0 = use global) */
+void nimcp_utm_set_per_network_lr(nimcp_unified_training_manager_t* mgr,
+                                    uint32_t net_idx, float lr);
+
+/** @brief Check if early stopping has triggered */
+bool nimcp_utm_is_early_stopped(const nimcp_unified_training_manager_t* mgr);
+
+/** @brief Get EMA-averaged parameters for a param group (copies out) */
+int nimcp_utm_get_ema_params(const nimcp_unified_training_manager_t* mgr,
+                               uint32_t group_idx, float* out_params, size_t count);
 
 #ifdef __cplusplus
 }

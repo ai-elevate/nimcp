@@ -19,6 +19,7 @@ typedef struct {
     float* last_output;             /* Cached forward output for backward */
     uint32_t output_dim;
     uint32_t input_dim;
+    bool managed_by_utm;            /* Item 1: When true, UTM owns optimizer step */
 } adaptive_adapter_ctx_t;
 
 /* --- vtable implementations --- */

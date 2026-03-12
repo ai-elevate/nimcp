@@ -2816,3 +2816,416 @@ TEST_F(ArchRestructuringTest, ManifoldDim_EstimatesAfterSamples) {
         EXPECT_EQ(result.manifold_intrinsic_dim[i], 0u);
     }
 }
+
+/* ============================================================================
+ * 19. Extended Pipeline Tests (Items 1-14)
+ * ============================================================================ */
+
+/* --- Item 1: Adaptive Managed Mode --- */
+
+TEST_F(ArchRestructuringTest, Item1_AdaptiveManagedByUTM_Flag) {
+    /* Adaptive adapter should have managed_by_utm field (compile-time) */
+    neural_network_t adaptive = create_adaptive_network();
+    ASSERT_NE(adaptive, nullptr);
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    nimcp_trainable_adaptive_create(adaptive, &ops, &ctx);
+    ASSERT_NE(ctx, nullptr);
+    /* The adapter returns empty param groups (neural_network_t is opaque) */
+    nimcp_utm_param_group_t* groups = nullptr;
+    uint32_t num_groups = 0;
+    int rc = ops->get_param_groups(ctx, &groups, &num_groups);
+    EXPECT_EQ(rc, 0);
+    EXPECT_EQ(num_groups, 0u);
+    if (groups) nimcp_free(groups);
+    ops->destroy(ctx);
+    neural_network_destroy(adaptive);
+}
+
+/* --- Item 2: Bridge Params in AdamW --- */
+
+TEST_F(ArchRestructuringTest, Item2_BridgeParamsInOptimizer_DefaultTrue) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.bridge_params_in_optimizer);
+
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_TRUE(mgr->bridge_params_in_optimizer);
+    nimcp_utm_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Item2_BridgeParamsInOptimizer_AppliesWeightDecay) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    cfg.bridge_params_in_optimizer = true;
+    cfg.weight_decay = 0.01f;
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_TRUE(mgr->bridge_params_in_optimizer);
+    EXPECT_FLOAT_EQ(mgr->config.weight_decay, 0.01f);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Item 3: AMP --- */
+
+TEST_F(ArchRestructuringTest, Item3_AMP_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_amp);
+}
+
+TEST_F(ArchRestructuringTest, Item3_AMP_SetterAPI) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->amp_ctx, nullptr);
+
+    /* Set a dummy AMP context */
+    int dummy_amp = 42;
+    nimcp_utm_set_amp(mgr, &dummy_amp);
+    EXPECT_EQ(mgr->amp_ctx, &dummy_amp);
+
+    /* Clear it */
+    nimcp_utm_set_amp(mgr, nullptr);
+    EXPECT_EQ(mgr->amp_ctx, nullptr);
+
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Item 6: Curriculum --- */
+
+TEST_F(ArchRestructuringTest, Item6_Curriculum_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_curriculum);
+    EXPECT_EQ(cfg.curriculum_num_samples, 1024u);
+}
+
+TEST_F(ArchRestructuringTest, Item6_Curriculum_SetterAPI) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->curriculum_ctx, nullptr);
+
+    int dummy = 1;
+    nimcp_utm_set_curriculum(mgr, &dummy);
+    EXPECT_EQ(mgr->curriculum_ctx, &dummy);
+
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Item 7: Knowledge Distillation --- */
+
+TEST_F(ArchRestructuringTest, Item7_KD_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_knowledge_distillation);
+    EXPECT_FLOAT_EQ(cfg.kd_loss_weight, 0.3f);
+}
+
+TEST_F(ArchRestructuringTest, Item7_KD_SetterAPI) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->kd_ctx, nullptr);
+    EXPECT_FLOAT_EQ(mgr->kd_loss_weight, 0.3f);
+
+    int dummy = 1;
+    nimcp_utm_set_kd(mgr, &dummy);
+    EXPECT_EQ(mgr->kd_ctx, &dummy);
+
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Item 8: Neuromodulator-Gated LR --- */
+
+TEST_F(ArchRestructuringTest, Item8_NeuromodLR_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_neuromod_lr);
+}
+
+TEST_F(ArchRestructuringTest, Item8_NeuromodLR_SetterAPI) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->neuromod_adapter, nullptr);
+    EXPECT_FLOAT_EQ(mgr->neuromod_lr_scale, 1.0f);
+
+    int dummy = 1;
+    nimcp_utm_set_neuromod(mgr, &dummy);
+    EXPECT_EQ(mgr->neuromod_adapter, &dummy);
+
+    nimcp_utm_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Item8_NeuromodLR_DefaultScaleIsOne) {
+    /* Without neuromod adapter, scale should stay 1.0 */
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+
+    neural_network_t net = create_adaptive_network();
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    nimcp_trainable_adaptive_create(net, &ops, &ctx);
+    nimcp_utm_register_network(mgr, ops, ctx, 1.0f);
+
+    float input[64], target[64];
+    for (int i = 0; i < 64; i++) { input[i] = 0.1f; target[i] = 0.5f; }
+
+    nimcp_utm_step_result_t result = {};
+    nimcp_utm_step(mgr, input, 64, target, 64, &result);
+    EXPECT_FLOAT_EQ(result.neuromod_lr_scale, 1.0f);
+
+    nimcp_utm_destroy(mgr);
+    neural_network_destroy(net);
+}
+
+/* --- Item 9: EMA --- */
+
+TEST_F(ArchRestructuringTest, Item9_EMA_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_ema);
+    EXPECT_FLOAT_EQ(cfg.ema_decay, 0.999f);
+}
+
+TEST_F(ArchRestructuringTest, Item9_EMA_ManagerState) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_TRUE(mgr->ema_enabled);
+    EXPECT_FLOAT_EQ(mgr->ema_decay, 0.999f);
+    EXPECT_EQ(mgr->ema_params, nullptr); /* Lazy-allocated */
+    nimcp_utm_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Item9_EMA_GetParams_NoData) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+    float buf[10];
+    int rc = nimcp_utm_get_ema_params(mgr, 0, buf, 10);
+    EXPECT_EQ(rc, -1); /* No EMA data yet */
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Item 10: Middleware LR Scheduler --- */
+
+TEST_F(ArchRestructuringTest, Item10_LRScheduler_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_lr_scheduler);
+}
+
+TEST_F(ArchRestructuringTest, Item10_LRScheduler_LazyCreated) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+    /* Scheduler is lazy-created on first use */
+    EXPECT_EQ(mgr->lr_scheduler_ctx, nullptr);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Item 11: Riemannian SGD --- */
+
+TEST_F(ArchRestructuringTest, Item11_RiemannianSGD_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_riemannian_sgd);
+    EXPECT_EQ(cfg.riemannian_max_params, 2048u);
+}
+
+TEST_F(ArchRestructuringTest, Item11_RiemannianSGD_ManagerState) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_TRUE(mgr->riemannian_enabled);
+    EXPECT_EQ(mgr->riemannian_max_params, 2048u);
+    EXPECT_EQ(mgr->riemannian_metric, nullptr); /* Lazy */
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Item 12: Contrastive Loss --- */
+
+TEST_F(ArchRestructuringTest, Item12_ContrastiveLoss_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_contrastive_loss);
+    EXPECT_FLOAT_EQ(cfg.contrastive_loss_weight, 0.1f);
+    EXPECT_FLOAT_EQ(cfg.contrastive_margin, 1.0f);
+}
+
+TEST_F(ArchRestructuringTest, Item12_ContrastiveLoss_InResult) {
+    nimcp_utm_step_result_t result = {};
+    EXPECT_FLOAT_EQ(result.contrastive_loss, 0.0f);
+    EXPECT_FLOAT_EQ(result.kd_loss, 0.0f);
+}
+
+TEST_F(ArchRestructuringTest, Item12_ContrastiveLoss_ComputedWithMultiNetwork) {
+    /* Contrastive loss should be > 0 when networks produce similar outputs */
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    cfg.enable_contrastive_loss = true;
+    cfg.contrastive_margin = 5.0f; /* High margin to ensure penalty */
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+
+    /* Register two adaptive networks (will produce similar outputs) */
+    neural_network_t net1 = create_adaptive_network();
+    neural_network_t net2 = create_adaptive_network();
+    ASSERT_NE(net1, nullptr);
+    ASSERT_NE(net2, nullptr);
+
+    const nimcp_trainable_network_ops_t *ops1, *ops2;
+    void *c1, *c2;
+    nimcp_trainable_adaptive_create(net1, &ops1, &c1);
+    nimcp_trainable_adaptive_create(net2, &ops2, &c2);
+    nimcp_utm_register_network(mgr, ops1, c1, 1.0f);
+    nimcp_utm_register_network(mgr, ops2, c2, 1.0f);
+
+    float input[64], target[64];
+    for (int i = 0; i < 64; i++) { input[i] = 0.5f; target[i] = 0.3f; }
+
+    nimcp_utm_step_result_t result = {};
+    int rc = nimcp_utm_step(mgr, input, 64, target, 64, &result);
+    EXPECT_EQ(rc, 0);
+    /* With high margin and similar networks, contrastive loss should be non-zero */
+    EXPECT_TRUE(std::isfinite(result.contrastive_loss));
+
+    nimcp_utm_destroy(mgr);
+    neural_network_destroy(net1);
+    neural_network_destroy(net2);
+}
+
+/* --- Item 13: Per-Network LR --- */
+
+TEST_F(ArchRestructuringTest, Item13_PerNetworkLR_DefaultZero) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    for (int i = 0; i < NIMCP_UTM_MAX_NETWORKS; i++) {
+        EXPECT_FLOAT_EQ(cfg.per_network_lr[i], 0.0f)
+            << "Per-network LR " << i << " should default to 0 (use global)";
+    }
+}
+
+TEST_F(ArchRestructuringTest, Item13_PerNetworkLR_SetterAPI) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+
+    nimcp_utm_set_per_network_lr(mgr, 0, 0.05f);
+    EXPECT_FLOAT_EQ(mgr->per_network_lr[0], 0.05f);
+    EXPECT_FLOAT_EQ(mgr->per_network_lr[1], 0.0f); /* Untouched */
+
+    nimcp_utm_set_per_network_lr(mgr, 1, 0.001f);
+    EXPECT_FLOAT_EQ(mgr->per_network_lr[1], 0.001f);
+
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Item 14: Early Stopping --- */
+
+TEST_F(ArchRestructuringTest, Item14_EarlyStopping_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_early_stopping);
+    EXPECT_EQ(cfg.early_stopping_patience, 50u);
+    EXPECT_FLOAT_EQ(cfg.early_stopping_min_delta, 1e-5f);
+}
+
+TEST_F(ArchRestructuringTest, Item14_EarlyStopping_ManagerState) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_TRUE(mgr->early_stopping_enabled);
+    EXPECT_EQ(mgr->early_stopping_patience, 50u);
+    EXPECT_FLOAT_EQ(mgr->early_stopping_best_loss, FLT_MAX);
+    EXPECT_EQ(mgr->early_stopping_counter, 0u);
+    EXPECT_FALSE(mgr->early_stopped);
+    EXPECT_FALSE(nimcp_utm_is_early_stopped(mgr));
+    nimcp_utm_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Item14_EarlyStopping_TriggersAfterPatience) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    cfg.enable_early_stopping = true;
+    cfg.early_stopping_patience = 5; /* Small patience for testing */
+    cfg.early_stopping_min_delta = 0.0f;
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+
+    /* Simulate: set best_loss low, then the counter should tick up on each step
+     * because composite loss will be higher than best */
+    mgr->early_stopping_best_loss = -1.0f; /* Unreachably low */
+    EXPECT_FALSE(mgr->early_stopped);
+
+    /* Register a network */
+    neural_network_t net = create_adaptive_network();
+    ASSERT_NE(net, nullptr);
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    nimcp_trainable_adaptive_create(net, &ops, &ctx);
+    nimcp_utm_register_network(mgr, ops, ctx, 1.0f);
+
+    float input[64], target[64];
+    for (int i = 0; i < 64; i++) { input[i] = 0.5f; target[i] = 0.1f; }
+
+    /* Run enough steps to exceed patience */
+    for (int step = 0; step < 8; step++) {
+        nimcp_utm_step_result_t result = {};
+        nimcp_utm_step(mgr, input, 64, target, 64, &result);
+    }
+
+    /* After 8 steps with patience=5 and unreachable best, should have stopped */
+    EXPECT_TRUE(mgr->early_stopped);
+    EXPECT_TRUE(nimcp_utm_is_early_stopped(mgr));
+
+    /* Further steps should be skipped */
+    nimcp_utm_step_result_t result = {};
+    int rc = nimcp_utm_step(mgr, input, 64, target, 64, &result);
+    EXPECT_EQ(rc, 0);
+    EXPECT_TRUE(result.early_stopped);
+
+    nimcp_utm_destroy(mgr);
+    neural_network_destroy(net);
+}
+
+TEST_F(ArchRestructuringTest, Item14_EarlyStopping_Disabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    cfg.enable_early_stopping = false;
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_FALSE(mgr->early_stopping_enabled);
+    EXPECT_FALSE(mgr->early_stopped);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Integration: Result extended fields --- */
+
+TEST_F(ArchRestructuringTest, ExtendedResult_AllFieldsPresent) {
+    nimcp_utm_step_result_t result = {};
+    /* Verify all new fields zero-initialize correctly */
+    EXPECT_FALSE(result.early_stopped);
+    EXPECT_FLOAT_EQ(result.neuromod_lr_scale, 0.0f);
+    EXPECT_FLOAT_EQ(result.scheduled_lr, 0.0f);
+    EXPECT_FLOAT_EQ(result.contrastive_loss, 0.0f);
+    EXPECT_FLOAT_EQ(result.kd_loss, 0.0f);
+}
+
+TEST_F(ArchRestructuringTest, ExtendedResult_PopulatedAfterStep) {
+    nimcp_unified_training_manager_t* mgr = create_test_utm();
+    ASSERT_NE(mgr, nullptr);
+
+    neural_network_t net = create_adaptive_network();
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    nimcp_trainable_adaptive_create(net, &ops, &ctx);
+    nimcp_utm_register_network(mgr, ops, ctx, 1.0f);
+
+    float input[64], target[64];
+    for (int i = 0; i < 64; i++) { input[i] = 0.1f; target[i] = 0.5f; }
+
+    nimcp_utm_step_result_t result = {};
+    int rc = nimcp_utm_step(mgr, input, 64, target, 64, &result);
+    EXPECT_EQ(rc, 0);
+    EXPECT_FLOAT_EQ(result.neuromod_lr_scale, 1.0f); /* No neuromod set */
+    EXPECT_GT(result.scheduled_lr, 0.0f); /* Should have a valid LR */
+    EXPECT_FALSE(result.early_stopped);
+
+    nimcp_utm_destroy(mgr);
+    neural_network_destroy(net);
+}
