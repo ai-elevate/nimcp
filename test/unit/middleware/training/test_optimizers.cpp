@@ -1145,6 +1145,249 @@ TEST_F(OptimizersTest, InitParams_InvalidInput) {
     nimcp_optimizer_destroy(ctx);
 }
 
+// ============================================================================
+// Optimizer State Persistence Tests (H9)
+// ============================================================================
+
+TEST_F(OptimizersTest, SaveLoad_SGD_RoundTrip) {
+    nimcp_optimizer_config_t config = nimcp_optimizer_default_config(NIMCP_OPTIMIZER_SGD);
+    config.params.sgd.learning_rate = 0.05f;
+
+    nimcp_optimizer_context_t* ctx = nimcp_optimizer_create(&config, security_ctx, memory_mgr);
+    ASSERT_NE(ctx, nullptr);
+
+    // Run some steps to build up state
+    float params[] = {5.0f, -3.0f};
+    float gradients[] = {1.0f, -0.5f};
+    for (int i = 0; i < 10; i++) {
+        nimcp_optimizer_step(ctx, params, gradients, 2);
+    }
+
+    uint64_t step_before = nimcp_optimizer_get_step(ctx);
+    float lr_before = nimcp_optimizer_get_lr(ctx);
+
+    // Save
+    FILE* f = tmpfile();
+    ASSERT_NE(f, nullptr);
+    int save_ret = nimcp_optimizer_save(ctx, f);
+    EXPECT_EQ(save_ret, 0);
+
+    // Rewind and load into fresh context
+    rewind(f);
+    nimcp_optimizer_context_t* ctx2 = nimcp_optimizer_create(&config, security_ctx, memory_mgr);
+    ASSERT_NE(ctx2, nullptr);
+
+    int load_ret = nimcp_optimizer_load(ctx2, f);
+    EXPECT_EQ(load_ret, 0);
+    fclose(f);
+
+    // Verify state restored
+    EXPECT_EQ(nimcp_optimizer_get_step(ctx2), step_before);
+    EXPECT_FLOAT_EQ(nimcp_optimizer_get_lr(ctx2), lr_before);
+
+    nimcp_optimizer_destroy(ctx);
+    nimcp_optimizer_destroy(ctx2);
+}
+
+TEST_F(OptimizersTest, SaveLoad_Adam_MomentumPreserved) {
+    nimcp_optimizer_config_t config = nimcp_optimizer_default_config(NIMCP_OPTIMIZER_ADAM);
+    config.params.adam.learning_rate = 0.01f;
+
+    nimcp_optimizer_context_t* ctx = nimcp_optimizer_create(&config, security_ctx, memory_mgr);
+    ASSERT_NE(ctx, nullptr);
+
+    // Build up Adam m/v state with 50 steps
+    float params[] = {5.0f, -3.0f, 2.0f, -1.5f};
+    float gradients[4];
+    for (int i = 0; i < 50; i++) {
+        computeQuadraticGradient(params, gradients, 4);
+        nimcp_optimizer_step(ctx, params, gradients, 4);
+    }
+    float params_after_50[4];
+    memcpy(params_after_50, params, sizeof(params));
+
+    // Save state
+    FILE* f = tmpfile();
+    ASSERT_NE(f, nullptr);
+    EXPECT_EQ(nimcp_optimizer_save(ctx, f), 0);
+
+    // Load into fresh context — must init params first to allocate buffers
+    rewind(f);
+    nimcp_optimizer_context_t* ctx_loaded = nimcp_optimizer_create(&config, security_ctx, memory_mgr);
+    ASSERT_NE(ctx_loaded, nullptr);
+    nimcp_optimizer_init_params(ctx_loaded, 4);
+    EXPECT_EQ(nimcp_optimizer_load(ctx_loaded, f), 0);
+    fclose(f);
+
+    // Continue original for 10 more steps
+    float params_orig[4];
+    memcpy(params_orig, params_after_50, sizeof(params));
+    for (int i = 0; i < 10; i++) {
+        computeQuadraticGradient(params_orig, gradients, 4);
+        nimcp_optimizer_step(ctx, params_orig, gradients, 4);
+    }
+
+    // Continue loaded for 10 more steps (should produce same result)
+    float params_loaded[4];
+    memcpy(params_loaded, params_after_50, sizeof(params));
+    for (int i = 0; i < 10; i++) {
+        computeQuadraticGradient(params_loaded, gradients, 4);
+        nimcp_optimizer_step(ctx_loaded, params_loaded, gradients, 4);
+    }
+
+    // Both should produce identical results (same optimizer state)
+    for (int i = 0; i < 4; i++) {
+        EXPECT_FLOAT_EQ(params_orig[i], params_loaded[i])
+            << "Mismatch at param[" << i << "]";
+    }
+
+    nimcp_optimizer_destroy(ctx);
+    nimcp_optimizer_destroy(ctx_loaded);
+}
+
+TEST_F(OptimizersTest, SaveLoad_AllTypes_RoundTrip) {
+    nimcp_optimizer_type_t types[] = {
+        NIMCP_OPTIMIZER_SGD,
+        NIMCP_OPTIMIZER_SGD_MOMENTUM,
+        NIMCP_OPTIMIZER_NESTEROV,
+        NIMCP_OPTIMIZER_ADAM,
+        NIMCP_OPTIMIZER_ADAMW,
+        NIMCP_OPTIMIZER_NADAM,
+        NIMCP_OPTIMIZER_RMSPROP,
+        NIMCP_OPTIMIZER_ADAGRAD
+    };
+
+    for (auto type : types) {
+        nimcp_optimizer_config_t config = nimcp_optimizer_default_config(type);
+        nimcp_optimizer_context_t* ctx = nimcp_optimizer_create(&config, security_ctx, memory_mgr);
+        ASSERT_NE(ctx, nullptr) << "Failed to create type " << (int)type;
+
+        // Run a few steps
+        float params[] = {3.0f, -2.0f};
+        float gradients[] = {0.5f, -0.3f};
+        for (int i = 0; i < 5; i++) {
+            nimcp_optimizer_step(ctx, params, gradients, 2);
+        }
+
+        // Save
+        FILE* f = tmpfile();
+        ASSERT_NE(f, nullptr);
+        int save_ret = nimcp_optimizer_save(ctx, f);
+        EXPECT_EQ(save_ret, 0) << "Save failed for type " << (int)type;
+
+        // Load — init params first so buffers are allocated for restore
+        rewind(f);
+        nimcp_optimizer_context_t* ctx2 = nimcp_optimizer_create(&config, security_ctx, memory_mgr);
+        ASSERT_NE(ctx2, nullptr);
+        nimcp_optimizer_init_params(ctx2, 2);
+
+        int load_ret = nimcp_optimizer_load(ctx2, f);
+        EXPECT_EQ(load_ret, 0) << "Load failed for type " << (int)type;
+        fclose(f);
+
+        EXPECT_EQ(nimcp_optimizer_get_step(ctx2), nimcp_optimizer_get_step(ctx))
+            << "Step mismatch for type " << (int)type;
+
+        nimcp_optimizer_destroy(ctx);
+        nimcp_optimizer_destroy(ctx2);
+    }
+}
+
+TEST_F(OptimizersTest, SaveLoad_TypeMismatch_Fails) {
+    // Save an Adam optimizer
+    nimcp_optimizer_config_t adam_config = nimcp_optimizer_default_config(NIMCP_OPTIMIZER_ADAM);
+    nimcp_optimizer_context_t* adam_ctx = nimcp_optimizer_create(&adam_config, security_ctx, memory_mgr);
+    ASSERT_NE(adam_ctx, nullptr);
+
+    float params[] = {1.0f};
+    float gradients[] = {0.1f};
+    nimcp_optimizer_step(adam_ctx, params, gradients, 1);
+
+    FILE* f = tmpfile();
+    ASSERT_NE(f, nullptr);
+    EXPECT_EQ(nimcp_optimizer_save(adam_ctx, f), 0);
+
+    // Try to load into an SGD context — should fail
+    rewind(f);
+    nimcp_optimizer_config_t sgd_config = nimcp_optimizer_default_config(NIMCP_OPTIMIZER_SGD);
+    nimcp_optimizer_context_t* sgd_ctx = nimcp_optimizer_create(&sgd_config, security_ctx, memory_mgr);
+    ASSERT_NE(sgd_ctx, nullptr);
+
+    int load_ret = nimcp_optimizer_load(sgd_ctx, f);
+    EXPECT_EQ(load_ret, -1) << "Loading Adam state into SGD should fail";
+
+    fclose(f);
+    nimcp_optimizer_destroy(adam_ctx);
+    nimcp_optimizer_destroy(sgd_ctx);
+}
+
+TEST_F(OptimizersTest, SaveLoad_NullContext_Fails) {
+    FILE* f = tmpfile();
+    ASSERT_NE(f, nullptr);
+
+    EXPECT_EQ(nimcp_optimizer_save(nullptr, f), -1);
+    EXPECT_EQ(nimcp_optimizer_load(nullptr, f), -1);
+
+    fclose(f);
+}
+
+TEST_F(OptimizersTest, SaveLoad_NullFile_Fails) {
+    nimcp_optimizer_config_t config = nimcp_optimizer_default_config(NIMCP_OPTIMIZER_SGD);
+    nimcp_optimizer_context_t* ctx = nimcp_optimizer_create(&config, security_ctx, memory_mgr);
+    ASSERT_NE(ctx, nullptr);
+
+    EXPECT_EQ(nimcp_optimizer_save(ctx, nullptr), -1);
+    EXPECT_EQ(nimcp_optimizer_load(ctx, nullptr), -1);
+
+    nimcp_optimizer_destroy(ctx);
+}
+
+TEST_F(OptimizersTest, SaveLoad_TruncatedFile_Fails) {
+    // Save a valid optimizer state
+    nimcp_optimizer_config_t config = nimcp_optimizer_default_config(NIMCP_OPTIMIZER_ADAM);
+    nimcp_optimizer_context_t* ctx = nimcp_optimizer_create(&config, security_ctx, memory_mgr);
+    ASSERT_NE(ctx, nullptr);
+
+    float params[] = {1.0f};
+    float gradients[] = {0.1f};
+    nimcp_optimizer_step(ctx, params, gradients, 1);
+
+    FILE* f = tmpfile();
+    ASSERT_NE(f, nullptr);
+    EXPECT_EQ(nimcp_optimizer_save(ctx, f), 0);
+
+    // Get file size, then truncate to half
+    long file_size = ftell(f);
+    rewind(f);
+
+    // Create a truncated copy
+    FILE* trunc = tmpfile();
+    ASSERT_NE(trunc, nullptr);
+    char buf[256];
+    long half = file_size / 2;
+    long written = 0;
+    while (written < half) {
+        size_t to_read = (size_t)((half - written) < 256 ? (half - written) : 256);
+        size_t n = fread(buf, 1, to_read, f);
+        if (n == 0) break;
+        fwrite(buf, 1, n, trunc);
+        written += (long)n;
+    }
+    rewind(trunc);
+
+    // Loading from truncated file should fail
+    nimcp_optimizer_context_t* ctx2 = nimcp_optimizer_create(&config, security_ctx, memory_mgr);
+    ASSERT_NE(ctx2, nullptr);
+
+    int load_ret = nimcp_optimizer_load(ctx2, trunc);
+    EXPECT_EQ(load_ret, -1) << "Loading from truncated file should fail";
+
+    fclose(f);
+    fclose(trunc);
+    nimcp_optimizer_destroy(ctx);
+    nimcp_optimizer_destroy(ctx2);
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {

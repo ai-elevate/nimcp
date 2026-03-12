@@ -1648,3 +1648,232 @@ float nimcp_optimizer_clip_by_norm_tensor(
     }
     return norm;
 }
+
+/* ============================================================================
+ * Optimizer State Persistence
+ * ============================================================================ */
+
+#define OPT_STATE_MAGIC 0x4F505453  /* "OPTS" */
+
+int nimcp_optimizer_save(const nimcp_optimizer_context_t* ctx, FILE* file) {
+    if (!ctx || !file) return -1;
+
+    uint32_t magic = OPT_STATE_MAGIC;
+    uint32_t type = (uint32_t)ctx->config.type;
+    uint64_t step = ctx->step_count;
+    float lr = ctx->current_lr;
+
+    if (fwrite(&magic, sizeof(uint32_t), 1, file) != 1) return -1;
+    if (fwrite(&type, sizeof(uint32_t), 1, file) != 1) return -1;
+    if (fwrite(&step, sizeof(uint64_t), 1, file) != 1) return -1;
+    if (fwrite(&lr, sizeof(float), 1, file) != 1) return -1;
+
+    switch (ctx->config.type) {
+        case NIMCP_OPTIMIZER_SGD:
+        case NIMCP_OPTIMIZER_SGD_MOMENTUM:
+        case NIMCP_OPTIMIZER_NESTEROV: {
+            uint64_t count = (uint64_t)ctx->state.momentum.count;
+            if (fwrite(&count, sizeof(uint64_t), 1, file) != 1) return -1;
+            if (count > 0 && ctx->state.momentum.velocity) {
+                if (fwrite(ctx->state.momentum.velocity, sizeof(float), count, file) != count)
+                    return -1;
+            }
+            break;
+        }
+
+        case NIMCP_OPTIMIZER_ADAM:
+        case NIMCP_OPTIMIZER_ADAMW:
+        case NIMCP_OPTIMIZER_NADAM: {
+            uint64_t count = (uint64_t)ctx->state.adam.count;
+            uint64_t t = ctx->state.adam.t;
+            if (fwrite(&count, sizeof(uint64_t), 1, file) != 1) return -1;
+            if (fwrite(&t, sizeof(uint64_t), 1, file) != 1) return -1;
+            if (count > 0) {
+                if (ctx->state.adam.m &&
+                    fwrite(ctx->state.adam.m, sizeof(float), count, file) != count) return -1;
+                if (ctx->state.adam.v &&
+                    fwrite(ctx->state.adam.v, sizeof(float), count, file) != count) return -1;
+                /* v_max for AMSGrad (may be NULL) */
+                bool has_vmax = (ctx->state.adam.v_max != NULL);
+                if (fwrite(&has_vmax, sizeof(bool), 1, file) != 1) return -1;
+                if (has_vmax &&
+                    fwrite(ctx->state.adam.v_max, sizeof(float), count, file) != count) return -1;
+            }
+            break;
+        }
+
+        case NIMCP_OPTIMIZER_RMSPROP: {
+            uint64_t count = (uint64_t)ctx->state.rmsprop.count;
+            if (fwrite(&count, sizeof(uint64_t), 1, file) != 1) return -1;
+            if (count > 0) {
+                if (ctx->state.rmsprop.square_avg &&
+                    fwrite(ctx->state.rmsprop.square_avg, sizeof(float), count, file) != count) return -1;
+                bool has_momentum_buf = (ctx->state.rmsprop.momentum_buffer != NULL);
+                if (fwrite(&has_momentum_buf, sizeof(bool), 1, file) != 1) return -1;
+                if (has_momentum_buf &&
+                    fwrite(ctx->state.rmsprop.momentum_buffer, sizeof(float), count, file) != count) return -1;
+                bool has_grad_avg = (ctx->state.rmsprop.grad_avg != NULL);
+                if (fwrite(&has_grad_avg, sizeof(bool), 1, file) != 1) return -1;
+                if (has_grad_avg &&
+                    fwrite(ctx->state.rmsprop.grad_avg, sizeof(float), count, file) != count) return -1;
+            }
+            break;
+        }
+
+        case NIMCP_OPTIMIZER_ADAGRAD: {
+            uint64_t count = (uint64_t)ctx->state.adagrad.count;
+            uint64_t adagrad_step = ctx->state.adagrad.step;
+            if (fwrite(&count, sizeof(uint64_t), 1, file) != 1) return -1;
+            if (fwrite(&adagrad_step, sizeof(uint64_t), 1, file) != 1) return -1;
+            if (count > 0 && ctx->state.adagrad.sum &&
+                fwrite(ctx->state.adagrad.sum, sizeof(float), count, file) != count) return -1;
+            break;
+        }
+
+        default:
+            /* Unknown/custom — save nothing beyond header */
+            break;
+    }
+
+    return 0;
+}
+
+int nimcp_optimizer_load(nimcp_optimizer_context_t* ctx, FILE* file) {
+    if (!ctx || !file) return -1;
+
+    uint32_t magic = 0, type = 0;
+    uint64_t step = 0;
+    float lr = 0.0f;
+
+    if (fread(&magic, sizeof(uint32_t), 1, file) != 1 || magic != OPT_STATE_MAGIC) return -1;
+    if (fread(&type, sizeof(uint32_t), 1, file) != 1) return -1;
+    if (fread(&step, sizeof(uint64_t), 1, file) != 1) return -1;
+    if (fread(&lr, sizeof(float), 1, file) != 1) return -1;
+
+    /* Type mismatch — skip restore */
+    if (type != (uint32_t)ctx->config.type) {
+        NIMCP_LOGGING_WARN("nimcp_optimizer_load: type mismatch (file=%u, ctx=%u)",
+                           type, (uint32_t)ctx->config.type);
+        return -1;
+    }
+
+    ctx->step_count = step;
+    if (lr > 0.0f) ctx->current_lr = lr;
+
+    switch (ctx->config.type) {
+        case NIMCP_OPTIMIZER_SGD:
+        case NIMCP_OPTIMIZER_SGD_MOMENTUM:
+        case NIMCP_OPTIMIZER_NESTEROV: {
+            uint64_t count = 0;
+            if (fread(&count, sizeof(uint64_t), 1, file) != 1) return -1;
+            if (count > 0) {
+                if (ctx->state.momentum.count != (size_t)count || !ctx->state.momentum.velocity) {
+                    if (ctx->state.momentum.velocity) free_buffer(ctx, ctx->state.momentum.velocity);
+                    ctx->state.momentum.velocity = alloc_buffer(ctx, (size_t)count);
+                    ctx->state.momentum.count = (size_t)count;
+                }
+                if (ctx->state.momentum.velocity &&
+                    fread(ctx->state.momentum.velocity, sizeof(float), count, file) != count)
+                    return -1;
+            }
+            break;
+        }
+
+        case NIMCP_OPTIMIZER_ADAM:
+        case NIMCP_OPTIMIZER_ADAMW:
+        case NIMCP_OPTIMIZER_NADAM: {
+            uint64_t count = 0, t = 0;
+            if (fread(&count, sizeof(uint64_t), 1, file) != 1) return -1;
+            if (fread(&t, sizeof(uint64_t), 1, file) != 1) return -1;
+            ctx->state.adam.t = t;
+            if (count > 0) {
+                /* Allocate buffers if needed (fresh context after load) */
+                if (ctx->state.adam.count != (size_t)count || !ctx->state.adam.m) {
+                    if (ctx->state.adam.m) free_buffer(ctx, ctx->state.adam.m);
+                    if (ctx->state.adam.v) free_buffer(ctx, ctx->state.adam.v);
+                    if (ctx->state.adam.v_max) free_buffer(ctx, ctx->state.adam.v_max);
+                    ctx->state.adam.m = alloc_buffer(ctx, (size_t)count);
+                    ctx->state.adam.v = alloc_buffer(ctx, (size_t)count);
+                    ctx->state.adam.v_max = NULL;
+                    ctx->state.adam.count = (size_t)count;
+                }
+                if (ctx->state.adam.m &&
+                    fread(ctx->state.adam.m, sizeof(float), count, file) != count) return -1;
+                if (ctx->state.adam.v &&
+                    fread(ctx->state.adam.v, sizeof(float), count, file) != count) return -1;
+                bool has_vmax = false;
+                if (fread(&has_vmax, sizeof(bool), 1, file) != 1) return -1;
+                if (has_vmax) {
+                    if (!ctx->state.adam.v_max) {
+                        ctx->state.adam.v_max = alloc_buffer(ctx, (size_t)count);
+                    }
+                    if (ctx->state.adam.v_max &&
+                        fread(ctx->state.adam.v_max, sizeof(float), count, file) != count) return -1;
+                }
+            }
+            break;
+        }
+
+        case NIMCP_OPTIMIZER_RMSPROP: {
+            uint64_t count = 0;
+            if (fread(&count, sizeof(uint64_t), 1, file) != 1) return -1;
+            if (count > 0) {
+                if (ctx->state.rmsprop.count != (size_t)count || !ctx->state.rmsprop.square_avg) {
+                    if (ctx->state.rmsprop.square_avg) free_buffer(ctx, ctx->state.rmsprop.square_avg);
+                    if (ctx->state.rmsprop.momentum_buffer) free_buffer(ctx, ctx->state.rmsprop.momentum_buffer);
+                    if (ctx->state.rmsprop.grad_avg) free_buffer(ctx, ctx->state.rmsprop.grad_avg);
+                    ctx->state.rmsprop.square_avg = alloc_buffer(ctx, (size_t)count);
+                    ctx->state.rmsprop.momentum_buffer = NULL;
+                    ctx->state.rmsprop.grad_avg = NULL;
+                    ctx->state.rmsprop.count = (size_t)count;
+                }
+                if (ctx->state.rmsprop.square_avg &&
+                    fread(ctx->state.rmsprop.square_avg, sizeof(float), count, file) != count) return -1;
+                bool has_momentum_buf = false;
+                if (fread(&has_momentum_buf, sizeof(bool), 1, file) != 1) return -1;
+                if (has_momentum_buf) {
+                    if (!ctx->state.rmsprop.momentum_buffer) {
+                        ctx->state.rmsprop.momentum_buffer = alloc_buffer(ctx, (size_t)count);
+                    }
+                    if (ctx->state.rmsprop.momentum_buffer &&
+                        fread(ctx->state.rmsprop.momentum_buffer, sizeof(float), count, file) != count) return -1;
+                }
+                bool has_grad_avg = false;
+                if (fread(&has_grad_avg, sizeof(bool), 1, file) != 1) return -1;
+                if (has_grad_avg) {
+                    if (!ctx->state.rmsprop.grad_avg) {
+                        ctx->state.rmsprop.grad_avg = alloc_buffer(ctx, (size_t)count);
+                    }
+                    if (ctx->state.rmsprop.grad_avg &&
+                        fread(ctx->state.rmsprop.grad_avg, sizeof(float), count, file) != count) return -1;
+                }
+            }
+            break;
+        }
+
+        case NIMCP_OPTIMIZER_ADAGRAD: {
+            uint64_t count = 0, adagrad_step = 0;
+            if (fread(&count, sizeof(uint64_t), 1, file) != 1) return -1;
+            if (fread(&adagrad_step, sizeof(uint64_t), 1, file) != 1) return -1;
+            ctx->state.adagrad.step = adagrad_step;
+            if (count > 0) {
+                if (ctx->state.adagrad.count != (size_t)count || !ctx->state.adagrad.sum) {
+                    if (ctx->state.adagrad.sum) free_buffer(ctx, ctx->state.adagrad.sum);
+                    ctx->state.adagrad.sum = alloc_buffer(ctx, (size_t)count);
+                    ctx->state.adagrad.count = (size_t)count;
+                }
+                if (ctx->state.adagrad.sum &&
+                    fread(ctx->state.adagrad.sum, sizeof(float), count, file) != count) return -1;
+            }
+            break;
+        }
+
+        default:
+            break;
+    }
+
+    NIMCP_LOGGING_INFO("Restored optimizer state: type=%s, step=%lu, lr=%.6f",
+                       nimcp_optimizer_type_name(ctx->config.type),
+                       (unsigned long)ctx->step_count, ctx->current_lr);
+    return 0;
+}

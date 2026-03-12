@@ -585,7 +585,8 @@ nimcp_result_t brain_region_update_from_error(brain_region_t* region,
         // Set error as input to hierarchy
         pc_hierarchy_set_input(pred->hierarchy, error);
 
-        // Run inference step with learning
+        // Run inference step with learning (this function is called during
+        // active learning/error-update only, not during pure inference)
         pc_hierarchy_inference_step(pred->hierarchy, dt, true);
 
         // Update free energy

@@ -296,3 +296,25 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_dispatch_regression.c)
             TIMEOUT 300
             RESOURCE_LOCK "brain_heavy")
 endif()
+
+# Architecture Audit Fixes Regression Tests (Session 57-58)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_architecture_audit_fixes.cpp)
+    add_executable(regression_training_architecture_audit_fixes
+        test_architecture_audit_fixes.cpp
+    )
+    target_include_directories(regression_training_architecture_audit_fixes PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_architecture_audit_fixes PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_architecture_audit_fixes PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME regression_training_architecture_audit_fixes
+             COMMAND regression_training_architecture_audit_fixes
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(regression_training_architecture_audit_fixes
+        PROPERTIES
+            LABELS "regression;training;architecture-audit"
+            TIMEOUT 60)
+endif()

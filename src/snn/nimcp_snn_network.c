@@ -1226,58 +1226,81 @@ int snn_network_validate(const snn_network_t* network) {
 #include <stdio.h>
 #include "core/neuralnet/nimcp_sparse_synapse.h"
 
+/* Checked fwrite helper — returns -1 on failure */
+#define SNN_FWRITE(ptr, size, count, stream) \
+    do { if (fwrite((ptr), (size), (count), (stream)) != (count)) { \
+        NIMCP_LOGGING_ERROR("snn_network_save: fwrite failed"); \
+        fclose(stream); if (tmp_path[0]) remove(tmp_path); return -1; \
+    } } while (0)
+
 int snn_network_save(snn_network_t* network, const char* path) {
     if (!network || !path) return -1;
 
-    FILE* f = fopen(path, "wb");
+    /* Atomic write: write to temp file, then rename */
+    char tmp_path[1024];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
+
+    FILE* f = fopen(tmp_path, "wb");
     if (!f) {
-        NIMCP_LOGGING_ERROR("snn_network_save: failed to open %s", path);
+        NIMCP_LOGGING_ERROR("snn_network_save: failed to open %s", tmp_path);
         return -1;
     }
 
     uint32_t magic = 0x534E4E53; /* "SNNS" */
-    uint32_t version = 1;
-    fwrite(&magic, sizeof(uint32_t), 1, f);
-    fwrite(&version, sizeof(uint32_t), 1, f);
+    uint32_t version = 2;  /* v2: saves target neuron IDs per synapse */
+    SNN_FWRITE(&magic, sizeof(uint32_t), 1, f);
+    SNN_FWRITE(&version, sizeof(uint32_t), 1, f);
 
     /* Save config (contains all architecture parameters) */
-    fwrite(&network->config, sizeof(snn_config_t), 1, f);
-    fwrite(&network->is_training, sizeof(bool), 1, f);
+    SNN_FWRITE(&network->config, sizeof(snn_config_t), 1, f);
+    SNN_FWRITE(&network->is_training, sizeof(bool), 1, f);
 
     /* Save neuron state and outgoing synapse weights via sparse synapse API */
     uint32_t total_neurons = network->neural_net
         ? neural_network_get_num_neurons(network->neural_net) : 0;
-    fwrite(&total_neurons, sizeof(uint32_t), 1, f);
+    SNN_FWRITE(&total_neurons, sizeof(uint32_t), 1, f);
 
     for (uint32_t i = 0; i < total_neurons && network->neural_net; i++) {
         neuron_t* n = neural_network_get_neuron(network->neural_net, i);
         if (!n) {
             float zero = 0.0f;
             uint32_t zero_u = 0;
-            fwrite(&zero, sizeof(float), 1, f);
-            fwrite(&zero, sizeof(float), 1, f);
-            fwrite(&zero, sizeof(float), 1, f);
-            fwrite(&zero_u, sizeof(uint32_t), 1, f);
+            SNN_FWRITE(&zero, sizeof(float), 1, f);
+            SNN_FWRITE(&zero, sizeof(float), 1, f);
+            SNN_FWRITE(&zero, sizeof(float), 1, f);
+            SNN_FWRITE(&zero_u, sizeof(uint32_t), 1, f);
             continue;
         }
 
-        fwrite(&n->state, sizeof(float), 1, f);
-        fwrite(&n->threshold, sizeof(float), 1, f);
-        fwrite(&n->bias, sizeof(float), 1, f);
+        SNN_FWRITE(&n->state, sizeof(float), 1, f);
+        SNN_FWRITE(&n->threshold, sizeof(float), 1, f);
+        SNN_FWRITE(&n->bias, sizeof(float), 1, f);
 
         uint32_t n_synapses = sparse_synapse_count(&n->outgoing);
-        fwrite(&n_synapses, sizeof(uint32_t), 1, f);
+        SNN_FWRITE(&n_synapses, sizeof(uint32_t), 1, f);
         for (uint32_t s = 0; s < n_synapses; s++) {
             synapse_handle_t* h = sparse_synapse_get(&n->outgoing, s);
             float w = h ? h->weight : 0.0f;
-            fwrite(&w, sizeof(float), 1, f);
+            uint32_t tid = h ? h->target_neuron_id : 0;
+            SNN_FWRITE(&w, sizeof(float), 1, f);
+            SNN_FWRITE(&tid, sizeof(uint32_t), 1, f);
         }
     }
 
     fclose(f);
+
+    /* Atomic rename: temp → final path */
+    if (rename(tmp_path, path) != 0) {
+        NIMCP_LOGGING_ERROR("snn_network_save: rename %s → %s failed", tmp_path, path);
+        remove(tmp_path);
+        return -1;
+    }
+
     NIMCP_LOGGING_INFO("SNN network saved to %s (%u neurons)", path, total_neurons);
     return 0;
 }
+
+#undef SNN_FWRITE
 
 snn_network_t* snn_network_load(const char* path) {
     if (!path) return NULL;
@@ -1294,12 +1317,18 @@ snn_network_t* snn_network_load(const char* path) {
         fclose(f);
         return NULL;
     }
-    fread(&version, sizeof(uint32_t), 1, f);
+    if (fread(&version, sizeof(uint32_t), 1, f) != 1 || version > 2) {
+        NIMCP_LOGGING_ERROR("snn_network_load: unsupported version %u", version);
+        fclose(f); return NULL;
+    }
 
     snn_config_t config;
     bool is_training = false;
-    fread(&config, sizeof(snn_config_t), 1, f);
-    fread(&is_training, sizeof(bool), 1, f);
+    if (fread(&config, sizeof(snn_config_t), 1, f) != 1 ||
+        fread(&is_training, sizeof(bool), 1, f) != 1) {
+        NIMCP_LOGGING_ERROR("snn_network_load: truncated config");
+        fclose(f); return NULL;
+    }
 
     /* Recreate network from config */
     snn_network_t* net = snn_network_create(&config);
@@ -1312,7 +1341,10 @@ snn_network_t* snn_network_load(const char* path) {
 
     /* Restore neuron state and synapse weights */
     uint32_t total_neurons = 0;
-    fread(&total_neurons, sizeof(uint32_t), 1, f);
+    if (fread(&total_neurons, sizeof(uint32_t), 1, f) != 1) {
+        NIMCP_LOGGING_ERROR("snn_network_load: truncated neuron count");
+        snn_network_destroy(net); fclose(f); return NULL;
+    }
 
     uint32_t actual_neurons = net->neural_net
         ? neural_network_get_num_neurons(net->neural_net) : 0;
@@ -1320,27 +1352,35 @@ snn_network_t* snn_network_load(const char* path) {
 
     for (uint32_t i = 0; i < total_neurons; i++) {
         float state_val, threshold, bias;
-        fread(&state_val, sizeof(float), 1, f);
-        fread(&threshold, sizeof(float), 1, f);
-        fread(&bias, sizeof(float), 1, f);
+        if (fread(&state_val, sizeof(float), 1, f) != 1 ||
+            fread(&threshold, sizeof(float), 1, f) != 1 ||
+            fread(&bias, sizeof(float), 1, f) != 1) {
+            NIMCP_LOGGING_WARN("snn_network_load: truncated at neuron %u", i);
+            break;
+        }
 
         uint32_t n_synapses = 0;
-        fread(&n_synapses, sizeof(uint32_t), 1, f);
+        if (fread(&n_synapses, sizeof(uint32_t), 1, f) != 1) {
+            NIMCP_LOGGING_WARN("snn_network_load: truncated synapse count at neuron %u", i);
+            break;
+        }
 
-        /* Read weights into temp buffer */
+        /* Read per-synapse data: v1=weight only, v2=weight+target_id */
         float* weights = NULL;
+        uint32_t* target_ids = NULL;
         if (n_synapses > 0) {
             weights = nimcp_malloc(n_synapses * sizeof(float));
-            if (weights) {
-                if (fread(weights, sizeof(float), n_synapses, f) != n_synapses) {
-                    nimcp_free(weights);
-                    weights = NULL;
-                }
-            } else {
-                /* Skip weight data */
-                for (uint32_t s = 0; s < n_synapses; s++) {
-                    float dummy;
-                    fread(&dummy, sizeof(float), 1, f);
+            if (version >= 2) {
+                target_ids = nimcp_malloc(n_synapses * sizeof(uint32_t));
+            }
+            for (uint32_t s = 0; s < n_synapses; s++) {
+                float w = 0.0f;
+                (void)fread(&w, sizeof(float), 1, f);
+                if (weights) weights[s] = w;
+                if (version >= 2) {
+                    uint32_t tid = 0;
+                    (void)fread(&tid, sizeof(uint32_t), 1, f);
+                    if (target_ids) target_ids[s] = tid;
                 }
             }
         }
@@ -1352,7 +1392,21 @@ snn_network_t* snn_network_load(const char* path) {
                 n->state = state_val;
                 n->threshold = threshold;
                 n->bias = bias;
-                if (weights) {
+                if (weights && target_ids) {
+                    /* v2: match by target neuron ID for correct restoration */
+                    uint32_t cur_syn = sparse_synapse_count(&n->outgoing);
+                    for (uint32_t s = 0; s < n_synapses; s++) {
+                        /* Find matching synapse in current network by target ID */
+                        for (uint32_t cs = 0; cs < cur_syn; cs++) {
+                            synapse_handle_t* h = sparse_synapse_get(&n->outgoing, cs);
+                            if (h && h->target_neuron_id == target_ids[s]) {
+                                h->weight = weights[s];
+                                break;
+                            }
+                        }
+                    }
+                } else if (weights) {
+                    /* v1 fallback: positional restore */
                     uint32_t cur_syn = sparse_synapse_count(&n->outgoing);
                     uint32_t s_count = (n_synapses < cur_syn) ? n_synapses : cur_syn;
                     for (uint32_t s = 0; s < s_count; s++) {
@@ -1363,6 +1417,7 @@ snn_network_t* snn_network_load(const char* path) {
             }
         }
         nimcp_free(weights);
+        nimcp_free(target_ids);
     }
 
     fclose(f);

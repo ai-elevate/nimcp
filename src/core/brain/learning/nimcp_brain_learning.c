@@ -1025,24 +1025,29 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
 
                 /* Collect per-network metrics from parallel results */
                 const float a = 0.01f;
-                if (ctx->cnn_done && ctx->cnn_loss >= 0.0f) {
+                /* NaN-safe EMA update macro: reset EMA if it becomes non-finite */
+                #define SAFE_EMA_UPDATE(ema, val, alpha) do { \
+                    if (!isfinite(ema)) (ema) = (val); \
+                    else (ema) = (1.0f - (alpha)) * (ema) + (alpha) * (val); \
+                } while (0)
+
+                if (ctx->cnn_done && ctx->cnn_loss >= 0.0f && isfinite(ctx->cnn_loss)) {
                     brain->network_metrics.last_cnn_loss = ctx->cnn_loss;
                     brain->network_metrics.cnn_steps++;
-                    brain->network_metrics.ema_cnn_loss =
-                        (1.0f - a) * brain->network_metrics.ema_cnn_loss + a * ctx->cnn_loss;
+                    SAFE_EMA_UPDATE(brain->network_metrics.ema_cnn_loss, ctx->cnn_loss, a);
                 }
-                if (ctx->snn_done && ctx->snn_res.loss >= 0.0f) {
+                if (ctx->snn_done && ctx->snn_res.loss >= 0.0f && isfinite(ctx->snn_res.loss)) {
                     brain->network_metrics.last_snn_loss = ctx->snn_res.loss;
                     brain->network_metrics.snn_steps++;
-                    brain->network_metrics.ema_snn_loss =
-                        (1.0f - a) * brain->network_metrics.ema_snn_loss + a * ctx->snn_res.loss;
+                    SAFE_EMA_UPDATE(brain->network_metrics.ema_snn_loss, ctx->snn_res.loss, a);
                 }
-                if (ctx->lnn_done && ctx->lnn_res.loss >= 0.0f) {
+                if (ctx->lnn_done && ctx->lnn_res.loss >= 0.0f && isfinite(ctx->lnn_res.loss)) {
                     brain->network_metrics.last_lnn_loss = ctx->lnn_res.loss;
                     brain->network_metrics.lnn_steps++;
-                    brain->network_metrics.ema_lnn_loss =
-                        (1.0f - a) * brain->network_metrics.ema_lnn_loss + a * ctx->lnn_res.loss;
+                    SAFE_EMA_UPDATE(brain->network_metrics.ema_lnn_loss, ctx->lnn_res.loss, a);
                 }
+
+                #undef SAFE_EMA_UPDATE
 
                 nimcp_free(ctx);
             } else {
@@ -1051,38 +1056,43 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         } else {
 sequential_training:
             /* Sequential fallback (original code path) */
+            /* NaN-safe EMA update macro */
+            #define SAFE_EMA_UPDATE2(ema, val, alpha) do { \
+                if (!isfinite(ema)) (ema) = (val); \
+                else (ema) = (1.0f - (alpha)) * (ema) + (alpha) * (val); \
+            } while (0)
+
             if (has_cnn) {
                 float cnn_loss = brain_learn_vector_cnn_step(brain, features, num_features, label);
-                if (cnn_loss >= 0.0f) {
+                if (cnn_loss >= 0.0f && isfinite(cnn_loss)) {
                     const float a = 0.01f;
                     brain->network_metrics.last_cnn_loss = cnn_loss;
                     brain->network_metrics.cnn_steps++;
-                    brain->network_metrics.ema_cnn_loss =
-                        (1.0f - a) * brain->network_metrics.ema_cnn_loss + a * cnn_loss;
+                    SAFE_EMA_UPDATE2(brain->network_metrics.ema_cnn_loss, cnn_loss, a);
                 }
             }
             if (has_snn) {
                 training_dispatch_result_t snn_res = {0};
                 training_dispatch_snn_step(brain, features, num_features, target, target_size, &snn_res);
-                if (snn_res.loss >= 0.0f) {
+                if (snn_res.loss >= 0.0f && isfinite(snn_res.loss)) {
                     const float a = 0.01f;
                     brain->network_metrics.last_snn_loss = snn_res.loss;
                     brain->network_metrics.snn_steps++;
-                    brain->network_metrics.ema_snn_loss =
-                        (1.0f - a) * brain->network_metrics.ema_snn_loss + a * snn_res.loss;
+                    SAFE_EMA_UPDATE2(brain->network_metrics.ema_snn_loss, snn_res.loss, a);
                 }
             }
             if (has_lnn) {
                 training_dispatch_result_t lnn_res = {0};
                 training_dispatch_lnn_step(brain, features, num_features, target, target_size, &lnn_res);
-                if (lnn_res.loss >= 0.0f) {
+                if (lnn_res.loss >= 0.0f && isfinite(lnn_res.loss)) {
                     const float a = 0.01f;
                     brain->network_metrics.last_lnn_loss = lnn_res.loss;
                     brain->network_metrics.lnn_steps++;
-                    brain->network_metrics.ema_lnn_loss =
-                        (1.0f - a) * brain->network_metrics.ema_lnn_loss + a * lnn_res.loss;
+                    SAFE_EMA_UPDATE2(brain->network_metrics.ema_lnn_loss, lnn_res.loss, a);
                 }
             }
+
+            #undef SAFE_EMA_UPDATE2
         }
     }
 
@@ -1104,7 +1114,11 @@ sequential_training:
         }
         if (brain->network_metrics.last_cnn_loss >= 0.0f &&
             brain->network_metrics.cnn_steps > 0) {
-            l_sum += brain->network_metrics.last_cnn_loss * 0.10f;
+            /* Normalize CNN cross-entropy loss to [0,1] range for compatible
+             * blending with MSE losses. log(1+x)/log(2) maps: 0→0, 1→1, 5→2.58 */
+            float cnn_norm = logf(1.0f + brain->network_metrics.last_cnn_loss) / logf(2.0f);
+            if (cnn_norm > 1.0f) cnn_norm = 1.0f;
+            l_sum += cnn_norm * 0.10f;
             w_sum += 0.10f;
         }
         loss = l_sum / w_sum;

@@ -1735,7 +1735,7 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
     // Phase GPU: GPU-accelerated forward pass
     if (network->gpu_enabled && network->gpu_weight_cache) {
         // Re-upload weights if CPU biological learning modified them
-        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
+        if (__atomic_load_n(&network->gpu_weight_cache->weights_dirty_on_cpu, __ATOMIC_ACQUIRE)) {
             nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
                                          network->base_network);
         }
@@ -1841,7 +1841,7 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
     // H-1: In readonly path, don't upload weights (that mutates GPU state).
     //       Fall through to CPU path if weights are dirty on CPU.
     if (network->gpu_enabled && network->gpu_weight_cache &&
-        !network->gpu_weight_cache->weights_dirty_on_cpu) {
+        !__atomic_load_n(&network->gpu_weight_cache->weights_dirty_on_cpu, __ATOMIC_ACQUIRE)) {
         // H-1: Apply spike encoding before GPU forward (matches mutable path)
         float fixed_threshold = network->config.spike_params.min_threshold;
         if (fixed_threshold <= 0.0f) fixed_threshold = 0.1f;
@@ -1947,7 +1947,7 @@ uint32_t adaptive_network_forward_raw(adaptive_network_t network, const float* i
     // the computational path used during training.
     if (network->gpu_enabled && network->gpu_weight_cache) {
         // Re-upload weights if CPU biological learning modified them
-        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
+        if (__atomic_load_n(&network->gpu_weight_cache->weights_dirty_on_cpu, __ATOMIC_ACQUIRE)) {
             nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
                                          network->base_network);
         }
@@ -2119,8 +2119,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
         // 3b. Diversity loss (unified anti-collapse)
         {
-            static nimcp_anti_collapse_state_t s_adap_anti_collapse;
-            static bool s_adap_ac_inited = false;
+            static __thread nimcp_anti_collapse_state_t s_adap_anti_collapse;
+            static __thread bool s_adap_ac_inited = false;
             if (!s_adap_ac_inited) {
                 nimcp_anti_collapse_init(&s_adap_anti_collapse, NULL);
                 s_adap_ac_inited = true;
@@ -2309,8 +2309,8 @@ cpu_learn_path:
 
             // Diversity loss (unified anti-collapse, parity with GPU path)
             {
-                static nimcp_anti_collapse_state_t s_cpu_dist_ac;
-                static bool s_cpu_dist_ac_inited = false;
+                static __thread nimcp_anti_collapse_state_t s_cpu_dist_ac;
+                static __thread bool s_cpu_dist_ac_inited = false;
                 if (!s_cpu_dist_ac_inited) {
                     nimcp_anti_collapse_init(&s_cpu_dist_ac, NULL);
                     s_cpu_dist_ac_inited = true;
@@ -2352,7 +2352,7 @@ cpu_learn_path:
                        sizeof(network->last_layer_grad_norms));
 
                 if (network->gpu_weight_cache) {
-                    network->gpu_weight_cache->weights_dirty_on_cpu = true;
+                    __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);
                 }
 
                 if (isfinite(grad_norm)) {
@@ -2385,8 +2385,8 @@ cpu_learn_path:
 
             // Diversity loss (unified anti-collapse, parity with GPU path)
             {
-                static nimcp_anti_collapse_state_t s_cpu_sup_ac;
-                static bool s_cpu_sup_ac_inited = false;
+                static __thread nimcp_anti_collapse_state_t s_cpu_sup_ac;
+                static __thread bool s_cpu_sup_ac_inited = false;
                 if (!s_cpu_sup_ac_inited) {
                     nimcp_anti_collapse_init(&s_cpu_sup_ac, NULL);
                     s_cpu_sup_ac_inited = true;
@@ -2447,7 +2447,7 @@ cpu_learn_path:
                 // W6-03 FIX: Mark GPU weight cache dirty after CPU backprop modifies weights.
                 // Without this, the next GPU-path learn/forward uses stale cached weights.
                 if (network->gpu_weight_cache) {
-                    network->gpu_weight_cache->weights_dirty_on_cpu = true;
+                    __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);
                 }
 
                 // Update EMA of gradient norm for training stability detection
@@ -2493,7 +2493,7 @@ cpu_learn_path:
             // W6-04 FIX: Mark GPU weight cache dirty after reward learning modifies CPU weights.
             // Without this, the next GPU-path learn/forward uses stale cached weights.
             if (network->gpu_weight_cache) {
-                network->gpu_weight_cache->weights_dirty_on_cpu = true;
+                __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);
             }
             }
             // H-3: No backprop gradient to track for reinforcement mode
@@ -2538,8 +2538,8 @@ cpu_learn_path:
 
             // Diversity loss (unified anti-collapse, parity with GPU path)
             {
-                static nimcp_anti_collapse_state_t s_cpu_hyb_ac;
-                static bool s_cpu_hyb_ac_inited = false;
+                static __thread nimcp_anti_collapse_state_t s_cpu_hyb_ac;
+                static __thread bool s_cpu_hyb_ac_inited = false;
                 if (!s_cpu_hyb_ac_inited) {
                     nimcp_anti_collapse_init(&s_cpu_hyb_ac, NULL);
                     s_cpu_hyb_ac_inited = true;
@@ -2612,7 +2612,7 @@ cpu_learn_path:
 
                 // W6-03 FIX: Mark GPU weight cache dirty after CPU HYBRID backprop + bio-plasticity.
                 if (network->gpu_weight_cache) {
-                    network->gpu_weight_cache->weights_dirty_on_cpu = true;
+                    __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);
                 }
 
                 // Update EMA of gradient norm for training stability detection
@@ -2692,9 +2692,9 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
      * gradients on GPU without updating weights. After all samples, apply averaged
      * gradients in one shot. This gives true mini-batch gradient descent. */
     if (gpu_batch_opt && num_examples >= 2) {
-        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
+        if (__atomic_load_n(&network->gpu_weight_cache->weights_dirty_on_cpu, __ATOMIC_ACQUIRE)) {
             nimcp_gpu_weight_cache_upload(network->gpu_weight_cache, network->base_network);
-            network->gpu_weight_cache->weights_dirty_on_cpu = false;
+            __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, false, __ATOMIC_RELEASE);
         }
 
         float fixed_threshold = network->config.spike_params.min_threshold;
@@ -2752,10 +2752,36 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
                 if (!isfinite(loss) || loss < 0.0f) loss = 0.0f;
             }
 
+            /* Diversity loss (anti-collapse parity with single-example path) */
+            {
+                static __thread nimcp_anti_collapse_state_t s_batch_ac;
+                static __thread bool s_batch_ac_inited = false;
+                if (!s_batch_ac_inited) {
+                    nimcp_anti_collapse_init(&s_batch_ac, NULL);
+                    s_batch_ac_inited = true;
+                }
+                float div_loss = nimcp_anti_collapse_diversity_loss(
+                    &s_batch_ac, output, NULL, ex->target_size);
+                loss += div_loss;
+            }
+
+            /* Gradient-normalized LR for batch accumulation */
+            float batch_eff_lr = learning_rate;
+            {
+                float ema_gn = network->ema_grad_norm;
+                if (ema_gn > 1e-4f && isfinite(ema_gn)) {
+                    batch_eff_lr = learning_rate * (1.0f / ema_gn);
+                    float lr_min = learning_rate * 0.01f;
+                    float lr_max = learning_rate * 100.0f;
+                    if (batch_eff_lr < lr_min) batch_eff_lr = lr_min;
+                    if (batch_eff_lr > lr_max) batch_eff_lr = lr_max;
+                }
+            }
+
             /* Accumulate gradients on GPU (no weight update) */
             nimcp_gpu_backward_accumulate(network->gpu_weight_cache,
                                            ex->target, output, ex->target_size,
-                                           learning_rate);
+                                           batch_eff_lr);
 
             if (loss >= 0.0f && isfinite(loss)) {
                 total_loss += loss;
@@ -2773,7 +2799,7 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
                                           network->config.base_config.max_weight,
                                           &grad_norm);
         network->last_grad_norm = grad_norm;
-        network->gpu_weight_cache->weights_dirty_on_cpu = true;
+        __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);
         network->total_learning_steps += successful;
 
         if (isfinite(grad_norm)) {
@@ -2797,11 +2823,11 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
 
     /* Fallback: per-sample learning (original path, for GPU batch_size=1 or CPU) */
     if (gpu_batch_opt) {
-        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
+        if (__atomic_load_n(&network->gpu_weight_cache->weights_dirty_on_cpu, __ATOMIC_ACQUIRE)) {
             nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
                                          network->base_network);
         }
-        network->gpu_weight_cache->weights_dirty_on_cpu = false;
+        __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, false, __ATOMIC_RELEASE);
     }
 
     float total_loss = 0.0F;
@@ -2815,12 +2841,12 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
         }
 
         if (gpu_batch_opt && network->gpu_weight_cache) {
-            network->gpu_weight_cache->weights_dirty_on_cpu = false;
+            __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, false, __ATOMIC_RELEASE);
         }
     }
 
     if (gpu_batch_opt && network->gpu_weight_cache) {
-        network->gpu_weight_cache->weights_dirty_on_cpu = true;
+        __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);
     }
 
     return (successful > 0) ? (total_loss / successful) : -1.0F;
@@ -4199,7 +4225,7 @@ void adaptive_network_mark_gpu_weights_dirty(adaptive_network_t network)
 {
     if (!network) return;
     if (network->gpu_weight_cache) {
-        network->gpu_weight_cache->weights_dirty_on_cpu = true;
+        __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);
     }
 }
 
@@ -4215,7 +4241,7 @@ void adaptive_network_invalidate_gpu_structure(adaptive_network_t network)
         }
         network->gpu_weight_cache->connected_dst_valid = false;
     }
-    network->gpu_weight_cache->weights_dirty_on_cpu = true;
+    __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);
 }
 
 //=============================================================================
@@ -4257,7 +4283,7 @@ void adaptive_network_freeze(adaptive_network_t network)
 
     // Clear dirty flag — weights are final
     if (network->gpu_weight_cache) {
-        network->gpu_weight_cache->weights_dirty_on_cpu = false;
+        __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, false, __ATOMIC_RELEASE);
     }
 }
 

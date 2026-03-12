@@ -56,7 +56,11 @@
 #endif
 
 // Core dependencies
+#include "nimcp.h"
+#include "training/nimcp_training_dispatch.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "middleware/training/nimcp_optimizers.h"
+#include "middleware/training/nimcp_brain_training_integration.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -486,6 +490,32 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     fwrite(&brain->last_novelty_score, sizeof(float), 1, meta_file);
     fwrite(&brain->stats.total_inferences, sizeof(uint64_t), 1, meta_file);
     fwrite(&brain->stats.total_learning_steps, sizeof(uint64_t), 1, meta_file);
+
+    /* Save optimizer states (H9: preserve momentum/velocity across restarts) */
+    if (brain->training_ctx) {
+        uint32_t opt_magic = 0x4F505453; /* "OPTS" */
+        fwrite(&opt_magic, sizeof(uint32_t), 1, meta_file);
+        /* Probe active optimizers via public API (IDs 0..15) */
+        uint32_t active_ids[16];
+        nimcp_optimizer_context_t* active_ctxs[16];
+        uint32_t opt_count = 0;
+        for (uint32_t id = 0; id < 16; id++) {
+            nimcp_optimizer_context_t* opt = nimcp_brain_training_get_optimizer(
+                brain->training_ctx, id);
+            if (opt) {
+                active_ids[opt_count] = id;
+                active_ctxs[opt_count] = opt;
+                opt_count++;
+            }
+        }
+        fwrite(&opt_count, sizeof(uint32_t), 1, meta_file);
+        for (uint32_t i = 0; i < opt_count; i++) {
+            fwrite(&active_ids[i], sizeof(uint32_t), 1, meta_file);
+            if (nimcp_optimizer_save(active_ctxs[i], meta_file) != 0) {
+                NIMCP_LOGGING_WARN("Failed to save optimizer state for id %u", active_ids[i]);
+            }
+        }
+    }
 
     fclose(meta_file);
 
@@ -1043,24 +1073,64 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
     uint32_t training_state_magic = 0;
     if (fread(&training_state_magic, sizeof(uint32_t), 1, meta_file) == 1 &&
         training_state_magic == 0x54524E53 /* "TRNS" */) {
-        fread(brain->loss_history, sizeof(float), 10, meta_file);
-        fread(&brain->loss_history_index, sizeof(uint32_t), 1, meta_file);
-        fread(&brain->loss_history_count, sizeof(uint32_t), 1, meta_file);
-        fread(&brain->base_learning_rate, sizeof(float), 1, meta_file);
-
-        float saved_lr = 0.0f;
-        if (fread(&saved_lr, sizeof(float), 1, meta_file) == 1 && saved_lr > 0.0f) {
-            brain->config.learning_rate = saved_lr;
+        if (fread(brain->loss_history, sizeof(float), 10, meta_file) != 10 ||
+            fread(&brain->loss_history_index, sizeof(uint32_t), 1, meta_file) != 1 ||
+            fread(&brain->loss_history_count, sizeof(uint32_t), 1, meta_file) != 1 ||
+            fread(&brain->base_learning_rate, sizeof(float), 1, meta_file) != 1) {
+            NIMCP_LOGGING_WARN("Truncated training state in checkpoint");
+        } else {
+            float saved_lr = 0.0f;
+            if (fread(&saved_lr, sizeof(float), 1, meta_file) == 1 && saved_lr > 0.0f) {
+                brain->config.learning_rate = saved_lr;
+            }
+            (void)fread(&brain->last_curiosity_drive, sizeof(float), 1, meta_file);
+            (void)fread(&brain->last_novelty_score, sizeof(float), 1, meta_file);
+            (void)fread(&brain->stats.total_inferences, sizeof(uint64_t), 1, meta_file);
+            (void)fread(&brain->stats.total_learning_steps, sizeof(uint64_t), 1, meta_file);
         }
-        fread(&brain->last_curiosity_drive, sizeof(float), 1, meta_file);
-        fread(&brain->last_novelty_score, sizeof(float), 1, meta_file);
-        fread(&brain->stats.total_inferences, sizeof(uint64_t), 1, meta_file);
-        fread(&brain->stats.total_learning_steps, sizeof(uint64_t), 1, meta_file);
         fprintf(stderr, "[INFO] Restored training state: LR=%.6f, loss_count=%u, "
                 "inferences=%lu, learning_steps=%lu\n",
                 brain->config.learning_rate, brain->loss_history_count,
                 (unsigned long)brain->stats.total_inferences,
                 (unsigned long)brain->stats.total_learning_steps);
+    }
+
+    /* Load optimizer states (H9: restore momentum/velocity from checkpoint) */
+    if (brain->training_ctx) {
+        uint32_t opt_magic = 0;
+        if (fread(&opt_magic, sizeof(uint32_t), 1, meta_file) == 1 &&
+            opt_magic == 0x4F505453 /* "OPTS" */) {
+            uint32_t opt_count = 0;
+            if (fread(&opt_count, sizeof(uint32_t), 1, meta_file) == 1) {
+                uint32_t restored = 0;
+                for (uint32_t i = 0; i < opt_count; i++) {
+                    uint32_t slot_id = 0;
+                    if (fread(&slot_id, sizeof(uint32_t), 1, meta_file) != 1) {
+                        NIMCP_LOGGING_WARN("Truncated optimizer state at slot %u", i);
+                        break;
+                    }
+                    /* Find matching optimizer slot by ID */
+                    nimcp_optimizer_context_t* opt_ctx =
+                        nimcp_brain_training_get_optimizer(brain->training_ctx, slot_id);
+                    if (opt_ctx) {
+                        if (nimcp_optimizer_load(opt_ctx, meta_file) == 0) {
+                            restored++;
+                        } else {
+                            NIMCP_LOGGING_WARN("Failed to load optimizer state for slot %u", slot_id);
+                            break; /* Stream position uncertain, stop reading */
+                        }
+                    } else {
+                        /* Optimizer not yet created — skip its data.
+                         * We can't skip without knowing the size, so stop here. */
+                        NIMCP_LOGGING_WARN("Optimizer slot %u not found, skipping remaining", slot_id);
+                        break;
+                    }
+                }
+                if (restored > 0) {
+                    fprintf(stderr, "[INFO] Restored %u optimizer state(s)\n", restored);
+                }
+            }
+        }
     }
 
     fclose(meta_file);
@@ -1200,6 +1270,40 @@ brain_t brain_load(const char* filepath)
             extern int cnn_trainer_load_weights(void* trainer, const char* path);
             if (cnn_trainer_load_weights(brain->cnn_trainer, sec_path) == 0) {
                 fprintf(stderr, "[INFO] Restored CNN weights from %s\n", sec_path);
+            }
+        }
+
+        /* Reconnect restored secondary networks to training contexts.
+         * Without this, restored SNN/LNN/CNN don't participate in training. */
+        if (brain->snn_network && !brain->snn_training_ctx) {
+            /* Create SNN training context using surrogate method (default) */
+            nimcp_training_config_t snn_cfg = {0};
+            snn_cfg.network_type = NIMCP_NETWORK_SNN;
+            snn_cfg.snn_method = NIMCP_SNN_TRAIN_SURROGATE;
+            snn_cfg.learning_rate = brain->config.learning_rate;
+            snn_cfg.snn_surrogate_beta = 10.0f;
+            snn_cfg.snn_eligibility_tau = 20.0f;
+            training_dispatch_init(brain, &snn_cfg);
+            if (brain->snn_training_ctx) {
+                fprintf(stderr, "[INFO] Reconnected SNN to training context\n");
+            }
+        }
+        if (brain->lnn_network && !brain->lnn_training_ctx) {
+            extern void* lnn_training_create(void* network, const void* config);
+            extern void lnn_training_config_default(void* config);
+
+            /* Use LNN training API directly */
+            uint8_t lnn_cfg_buf[256];
+            memset(lnn_cfg_buf, 0, sizeof(lnn_cfg_buf));
+            lnn_training_config_default(lnn_cfg_buf);
+            /* Set learning rate at offset 0 (first float field) */
+            *(float*)lnn_cfg_buf = brain->config.learning_rate > 0
+                ? brain->config.learning_rate : 0.01f;
+
+            void* lnn_ctx = lnn_training_create(brain->lnn_network, lnn_cfg_buf);
+            if (lnn_ctx) {
+                brain->lnn_training_ctx = lnn_ctx;
+                fprintf(stderr, "[INFO] Reconnected LNN to training context\n");
             }
         }
     }

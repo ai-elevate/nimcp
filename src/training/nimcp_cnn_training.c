@@ -3556,35 +3556,45 @@ void cnn_trainer_set_managed_by_utm(cnn_trainer_t* trainer, bool managed) {
 int cnn_trainer_save(const cnn_trainer_t* trainer, const char* path) {
     if (!trainer || !path) return -1;
 
-    FILE* f = fopen(path, "wb");
+    /* Atomic write: write to temp file, then rename */
+    char tmp_path[1024];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
+
+    FILE* f = fopen(tmp_path, "wb");
     if (!f) {
-        NIMCP_LOGGING_ERROR("cnn_trainer_save: failed to open %s", path);
+        NIMCP_LOGGING_ERROR("cnn_trainer_save: failed to open %s", tmp_path);
         return -1;
     }
 
+    #define CNN_FWRITE(ptr, size, count) \
+        do { if (fwrite((ptr), (size), (count), f) != (count)) { \
+            NIMCP_LOGGING_ERROR("cnn_trainer_save: fwrite failed"); \
+            fclose(f); remove(tmp_path); return -1; \
+        } } while (0)
+
     uint32_t magic = 0x434E4E53; /* "CNNS" */
     uint32_t version = 1;
-    fwrite(&magic, sizeof(uint32_t), 1, f);
-    fwrite(&version, sizeof(uint32_t), 1, f);
+    CNN_FWRITE(&magic, sizeof(uint32_t), 1);
+    CNN_FWRITE(&version, sizeof(uint32_t), 1);
 
     /* Trainer state */
-    fwrite(&trainer->num_layers, sizeof(uint32_t), 1, f);
-    fwrite(&trainer->current_epoch, sizeof(uint32_t), 1, f);
-    fwrite(&trainer->global_step, sizeof(uint32_t), 1, f);
-    fwrite(&trainer->best_val_loss, sizeof(float), 1, f);
+    CNN_FWRITE(&trainer->num_layers, sizeof(uint32_t), 1);
+    CNN_FWRITE(&trainer->current_epoch, sizeof(uint32_t), 1);
+    CNN_FWRITE(&trainer->global_step, sizeof(uint32_t), 1);
+    CNN_FWRITE(&trainer->best_val_loss, sizeof(float), 1);
 
     /* Per-layer: type + config union + weight/bias tensors + batch norm stats */
     cnn_layer_t* layer = trainer->layers_head;
     while (layer) {
         uint32_t type = (uint32_t)layer->type;
-        fwrite(&type, sizeof(uint32_t), 1, f);
+        CNN_FWRITE(&type, sizeof(uint32_t), 1);
 
         /* Save the full config union (fixed-size) */
-        fwrite(&layer->config, sizeof(layer->config), 1, f);
+        CNN_FWRITE(&layer->config, sizeof(layer->config), 1);
 
         /* Save shapes */
-        fwrite(&layer->input_shape, sizeof(nimcp_tensor_shape_t), 1, f);
-        fwrite(&layer->output_shape, sizeof(nimcp_tensor_shape_t), 1, f);
+        CNN_FWRITE(&layer->input_shape, sizeof(nimcp_tensor_shape_t), 1);
+        CNN_FWRITE(&layer->output_shape, sizeof(nimcp_tensor_shape_t), 1);
 
         /* Save weight tensors */
         nimcp_tensor_save(layer->weights, f);
@@ -3595,7 +3605,17 @@ int cnn_trainer_save(const cnn_trainer_t* trainer, const char* path) {
         layer = layer->next;
     }
 
+    #undef CNN_FWRITE
+
     fclose(f);
+
+    /* Atomic rename: temp → final path */
+    if (rename(tmp_path, path) != 0) {
+        NIMCP_LOGGING_ERROR("cnn_trainer_save: rename %s → %s failed", tmp_path, path);
+        remove(tmp_path);
+        return -1;
+    }
+
     NIMCP_LOGGING_INFO("CNN trainer saved to %s (%u layers, step %u)",
                        path, trainer->num_layers, trainer->global_step);
     return 0;
@@ -3616,28 +3636,40 @@ int cnn_trainer_load_weights(cnn_trainer_t* trainer, const char* path) {
         fclose(f);
         return -1;
     }
-    fread(&version, sizeof(uint32_t), 1, f);
+    if (fread(&version, sizeof(uint32_t), 1, f) != 1 || version > 1) {
+        NIMCP_LOGGING_ERROR("cnn_trainer_load_weights: unsupported version %u", version);
+        fclose(f); return -1;
+    }
 
     /* Trainer state */
     uint32_t num_layers = 0;
-    fread(&num_layers, sizeof(uint32_t), 1, f);
-    fread(&trainer->current_epoch, sizeof(uint32_t), 1, f);
-    fread(&trainer->global_step, sizeof(uint32_t), 1, f);
-    fread(&trainer->best_val_loss, sizeof(float), 1, f);
+    if (fread(&num_layers, sizeof(uint32_t), 1, f) != 1 ||
+        fread(&trainer->current_epoch, sizeof(uint32_t), 1, f) != 1 ||
+        fread(&trainer->global_step, sizeof(uint32_t), 1, f) != 1 ||
+        fread(&trainer->best_val_loss, sizeof(float), 1, f) != 1) {
+        NIMCP_LOGGING_ERROR("cnn_trainer_load_weights: truncated state");
+        fclose(f); return -1;
+    }
 
     /* Per-layer: restore weights into existing trainer */
     cnn_layer_t* layer = trainer->layers_head;
     for (uint32_t i = 0; i < num_layers; i++) {
         uint32_t type = 0;
-        fread(&type, sizeof(uint32_t), 1, f);
+        if (fread(&type, sizeof(uint32_t), 1, f) != 1) {
+            NIMCP_LOGGING_WARN("cnn_trainer_load_weights: truncated at layer %u", i);
+            break;
+        }
 
         /* Skip config union and shapes */
         union { cnn_conv_config_t c; cnn_pool_config_t p; cnn_batch_norm_config_t b;
                 cnn_dropout_config_t d; cnn_dense_config_t e; } dummy_config;
         nimcp_tensor_shape_t dummy_shape;
-        fread(&dummy_config, sizeof(dummy_config), 1, f);
-        fread(&dummy_shape, sizeof(nimcp_tensor_shape_t), 1, f);
-        fread(&dummy_shape, sizeof(nimcp_tensor_shape_t), 1, f);
+        if (fread(&dummy_config, sizeof(dummy_config), 1, f) != 1 ||
+            fread(&dummy_shape, sizeof(nimcp_tensor_shape_t), 1, f) != 1 ||
+            fread(&dummy_shape, sizeof(nimcp_tensor_shape_t), 1, f) != 1) {
+            NIMCP_LOGGING_WARN("cnn_trainer_load_weights: truncated layer %u config", i);
+            break;
+        }
 
         /* Load weight tensors */
         nimcp_tensor_t* weights = nimcp_tensor_load(f);

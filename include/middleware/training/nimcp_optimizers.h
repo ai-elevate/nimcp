@@ -27,6 +27,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -463,6 +464,36 @@ float nimcp_optimizer_clip_by_norm_tensor(
     nimcp_tensor_t* gradients,
     float max_norm
 );
+
+/* ============================================================================
+ * Optimizer State Persistence
+ * ============================================================================ */
+
+/**
+ * @brief Save optimizer state to file
+ *
+ * WHAT: Serialize optimizer momentum/velocity buffers and step count
+ * WHY:  Resume training without loss of optimizer state (Adam m/v, etc.)
+ * HOW:  Write type, step count, buffer sizes, and raw float arrays
+ *
+ * @param ctx Optimizer context
+ * @param file Open file handle (binary write mode)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_optimizer_save(const nimcp_optimizer_context_t* ctx, FILE* file);
+
+/**
+ * @brief Load optimizer state from file
+ *
+ * WHAT: Restore optimizer momentum/velocity buffers and step count
+ * WHY:  Continue training from checkpoint with warm optimizer state
+ * HOW:  Read type, step count, buffer sizes, and raw float arrays
+ *
+ * @param ctx Optimizer context (must already be created with matching type)
+ * @param file Open file handle (binary read mode)
+ * @return 0 on success, -1 on error or type mismatch
+ */
+int nimcp_optimizer_load(nimcp_optimizer_context_t* ctx, FILE* file);
 
 #ifdef __cplusplus
 }

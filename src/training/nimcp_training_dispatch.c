@@ -24,6 +24,8 @@
 #include "snn/nimcp_snn_training.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_types.h"
+#include "core/neuralnet/nimcp_sparse_synapse.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
 
 // LNN training includes
 #include "lnn/nimcp_lnn_training.h"
@@ -85,8 +87,9 @@ static int init_snn_training(brain_t brain, const nimcp_training_config_t* confi
     // Create SNN training context based on method
     snn_training_ctx_t* ctx = NULL;
 
-    // Default neuron count for R-STDP, eProp, surrogate
-    uint32_t n_neurons = 100;
+    // Get actual neuron count from SNN network config
+    uint32_t n_neurons = brain->snn_network->config.n_inputs
+                       + brain->snn_network->config.n_outputs;
 
     switch (config->snn_method) {
         case NIMCP_SNN_TRAIN_STDP: {
@@ -282,8 +285,8 @@ int training_dispatch_snn_step(
     snn_network_set_inputs(snn, input_ptr, input_dim);
     nimcp_free(pooled_input);
 
-    // Run SNN simulation for one timestep
-    float dt = 1.0F;  // 1ms timestep
+    // Use SNN's configured timestep (from snn_config or simulation), default 1.0ms
+    float dt = (snn->sim && snn->sim->dt_ms > 0.0f) ? snn->sim->dt_ms : 1.0F;
     int rc = snn_network_step(snn, dt);
     if (rc < 0) {
         NIMCP_LOGGING_ERROR("SNN network step failed: %d", rc);
@@ -317,9 +320,20 @@ int training_dispatch_snn_step(
             uint32_t grad_dim = (num_targets < snn_out) ? num_targets : snn_out;
             float* predictions = nimcp_calloc(snn_out, sizeof(float));
             float* output_grad = nimcp_malloc(grad_dim * sizeof(float));
-            if (predictions && output_grad) {
+            float* membrane_v = nimcp_calloc(grad_dim, sizeof(float));
+            float* input_grad = nimcp_calloc(grad_dim, sizeof(float));
+            if (predictions && output_grad && membrane_v && input_grad) {
                 // Decode output spikes to firing rates
                 snn_network_get_outputs(snn, predictions, snn_out);
+
+                // Get membrane potentials from output population neurons
+                if (snn->output_pop && snn->neural_net) {
+                    for (uint32_t i = 0; i < grad_dim && i < snn->output_pop->n_neurons; i++) {
+                        neuron_t* n = neural_network_get_neuron(
+                            snn->neural_net, snn->output_pop->neuron_ids[i]);
+                        membrane_v[i] = n ? n->state : 0.0f;
+                    }
+                }
 
                 // Compute MSE gradient against targets
                 for (uint32_t i = 0; i < grad_dim; i++) {
@@ -329,11 +343,29 @@ int training_dispatch_snn_step(
                 }
                 loss /= (float)grad_dim;
 
-                // Backprop with surrogate
-                snn_surrogate_backward(ctx, output_grad, NULL, grad_dim, NULL);
+                // Backprop with surrogate (now with real membrane_v and input_grad)
+                snn_surrogate_backward(ctx, output_grad, membrane_v, grad_dim, input_grad);
+
+                // Apply surrogate gradients to output population synapse weights
+                if (snn->output_pop && snn->neural_net) {
+                    float lr = 0.001f;  /* SNN surrogate LR (ctx has no lr field) */
+                    for (uint32_t i = 0; i < grad_dim && i < snn->output_pop->n_neurons; i++) {
+                        neuron_t* n = neural_network_get_neuron(
+                            snn->neural_net, snn->output_pop->neuron_ids[i]);
+                        if (!n) continue;
+                        uint32_t syn_count = sparse_synapse_count(&n->incoming);
+                        for (uint32_t s = 0; s < syn_count; s++) {
+                            synapse_handle_t* h = sparse_synapse_get(&n->incoming, s);
+                            if (h) h->weight -= lr * input_grad[i];
+                        }
+                        updates++;
+                    }
+                }
             }
             nimcp_free(predictions);
             nimcp_free(output_grad);
+            nimcp_free(membrane_v);
+            nimcp_free(input_grad);
             break;
         }
 
@@ -341,8 +373,25 @@ int training_dispatch_snn_step(
             break;
     }
 
+    /* For non-surrogate modes, compute MSE loss from output spike rates
+     * so callers get meaningful loss metrics for all SNN training methods. */
+    if (loss == 0.0f && mode != SNN_TRAIN_SURROGATE && targets && num_targets > 0) {
+        uint32_t snn_out = snn->config.n_outputs;
+        float* predictions = nimcp_calloc(snn_out, sizeof(float));
+        if (predictions) {
+            snn_network_get_outputs(snn, predictions, snn_out);
+            uint32_t cmp_dim = (num_targets < snn_out) ? num_targets : snn_out;
+            for (uint32_t i = 0; i < cmp_dim; i++) {
+                float diff = predictions[i] - targets[i];
+                loss += diff * diff;
+            }
+            loss /= (float)cmp_dim;
+            nimcp_free(predictions);
+        }
+    }
+
     if (result) {
-        result->loss = loss;
+        result->loss = isfinite(loss) ? loss : 1.0f;
         result->type_specific.snn.ltp_events = updates / 2;  // Approximate
         result->type_specific.snn.ltd_events = updates / 2;
     }
@@ -376,6 +425,10 @@ int training_dispatch_lnn_step(
     uint32_t lnn_out = brain->lnn_network->n_outputs;
     uint32_t eff_inputs = (num_inputs > lnn_in) ? lnn_in : num_inputs;
     uint32_t eff_targets = (num_targets > lnn_out) ? lnn_out : num_targets;
+    if (num_targets > lnn_out) {
+        NIMCP_LOGGING_WARN("LNN target truncation: %u targets → %u (LNN output dim)",
+                           num_targets, lnn_out);
+    }
 
     uint32_t input_dims[1] = {eff_inputs};
     uint32_t target_dims[1] = {eff_targets};

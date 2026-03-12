@@ -1321,37 +1321,48 @@ int lnn_network_save(const lnn_network_t* network, const char* path) {
         return LNN_ERROR_NULL_POINTER;
     }
 
-    FILE* f = fopen(path, "wb");
+    /* Atomic write: write to temp file, then rename */
+    char tmp_path[1024];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
+
+    FILE* f = fopen(tmp_path, "wb");
     if (!f) {
-        NIMCP_LOGGING_ERROR("lnn_network_save: failed to open %s", path);
+        NIMCP_LOGGING_ERROR("lnn_network_save: failed to open %s", tmp_path);
         return -1;
     }
+
+    /* Checked fwrite helper macro */
+    #define LNN_FWRITE(ptr, size, count) \
+        do { if (fwrite((ptr), (size), (count), f) != (count)) { \
+            NIMCP_LOGGING_ERROR("lnn_network_save: fwrite failed"); \
+            fclose(f); remove(tmp_path); return -1; \
+        } } while (0)
 
     /* Header */
     uint32_t magic = 0x4C4E4E53; /* "LNNS" */
     uint32_t version = 1;
-    fwrite(&magic, sizeof(uint32_t), 1, f);
-    fwrite(&version, sizeof(uint32_t), 1, f);
+    LNN_FWRITE(&magic, sizeof(uint32_t), 1);
+    LNN_FWRITE(&version, sizeof(uint32_t), 1);
 
     /* Network metadata */
-    fwrite(&network->n_layers, sizeof(uint32_t), 1, f);
-    fwrite(&network->n_inputs, sizeof(uint32_t), 1, f);
-    fwrite(&network->n_outputs, sizeof(uint32_t), 1, f);
-    fwrite(&network->is_training, sizeof(bool), 1, f);
+    LNN_FWRITE(&network->n_layers, sizeof(uint32_t), 1);
+    LNN_FWRITE(&network->n_inputs, sizeof(uint32_t), 1);
+    LNN_FWRITE(&network->n_outputs, sizeof(uint32_t), 1);
+    LNN_FWRITE(&network->is_training, sizeof(bool), 1);
 
     /* Per-layer weights and state */
     for (uint32_t i = 0; i < network->n_layers; i++) {
         lnn_layer_t* layer = network->layers[i];
         if (!layer) {
             uint32_t zero = 0;
-            fwrite(&zero, sizeof(uint32_t), 1, f);
+            LNN_FWRITE(&zero, sizeof(uint32_t), 1);
             continue;
         }
-        fwrite(&layer->n_neurons, sizeof(uint32_t), 1, f);
-        fwrite(&layer->ode_method, sizeof(uint32_t), 1, f);
-        fwrite(&layer->dt, sizeof(float), 1, f);
-        fwrite(&layer->use_layer_norm, sizeof(bool), 1, f);
-        fwrite(&layer->layer_norm_eps, sizeof(float), 1, f);
+        LNN_FWRITE(&layer->n_neurons, sizeof(uint32_t), 1);
+        LNN_FWRITE(&layer->ode_method, sizeof(uint32_t), 1);
+        LNN_FWRITE(&layer->dt, sizeof(float), 1);
+        LNN_FWRITE(&layer->use_layer_norm, sizeof(bool), 1);
+        LNN_FWRITE(&layer->layer_norm_eps, sizeof(float), 1);
 
         /* Save weight tensors (NULL-safe via nimcp_tensor_save) */
         nimcp_tensor_save(layer->W_in, f);
@@ -1366,7 +1377,17 @@ int lnn_network_save(const lnn_network_t* network, const char* path) {
         nimcp_tensor_save(layer->tau, f);
     }
 
+    #undef LNN_FWRITE
+
     fclose(f);
+
+    /* Atomic rename: temp → final path */
+    if (rename(tmp_path, path) != 0) {
+        NIMCP_LOGGING_ERROR("lnn_network_save: rename %s → %s failed", tmp_path, path);
+        remove(tmp_path);
+        return -1;
+    }
+
     NIMCP_LOGGING_INFO("LNN network saved to %s (%u layers)", path, network->n_layers);
     return 0;
 }
@@ -1399,15 +1420,21 @@ lnn_network_t* lnn_network_load(const char* path) {
         fclose(f);
         return NULL;
     }
-    fread(&version, sizeof(uint32_t), 1, f);
+    if (fread(&version, sizeof(uint32_t), 1, f) != 1 || version > 1) {
+        NIMCP_LOGGING_ERROR("lnn_network_load: unsupported version %u", version);
+        fclose(f); return NULL;
+    }
 
     /* Network metadata */
     uint32_t n_layers = 0, n_inputs = 0, n_outputs = 0;
     bool is_training = false;
-    fread(&n_layers, sizeof(uint32_t), 1, f);
-    fread(&n_inputs, sizeof(uint32_t), 1, f);
-    fread(&n_outputs, sizeof(uint32_t), 1, f);
-    fread(&is_training, sizeof(bool), 1, f);
+    if (fread(&n_layers, sizeof(uint32_t), 1, f) != 1 ||
+        fread(&n_inputs, sizeof(uint32_t), 1, f) != 1 ||
+        fread(&n_outputs, sizeof(uint32_t), 1, f) != 1 ||
+        fread(&is_training, sizeof(bool), 1, f) != 1) {
+        NIMCP_LOGGING_ERROR("lnn_network_load: truncated metadata");
+        fclose(f); return NULL;
+    }
 
     /* Recreate network using NCP topology (matches brain_enable_multi_network_training) */
     uint32_t n_inter = (n_inputs + n_outputs) / 2;
@@ -1431,13 +1458,19 @@ lnn_network_t* lnn_network_load(const char* path) {
         bool use_layer_norm = false;
         float layer_norm_eps = 0.0f;
 
-        fread(&n_neurons, sizeof(uint32_t), 1, f);
+        if (fread(&n_neurons, sizeof(uint32_t), 1, f) != 1) {
+            NIMCP_LOGGING_WARN("lnn_network_load: truncated at layer %u", i);
+            break;
+        }
         if (n_neurons == 0) continue;
 
-        fread(&ode_method, sizeof(uint32_t), 1, f);
-        fread(&dt, sizeof(float), 1, f);
-        fread(&use_layer_norm, sizeof(bool), 1, f);
-        fread(&layer_norm_eps, sizeof(float), 1, f);
+        if (fread(&ode_method, sizeof(uint32_t), 1, f) != 1 ||
+            fread(&dt, sizeof(float), 1, f) != 1 ||
+            fread(&use_layer_norm, sizeof(bool), 1, f) != 1 ||
+            fread(&layer_norm_eps, sizeof(float), 1, f) != 1) {
+            NIMCP_LOGGING_WARN("lnn_network_load: truncated layer %u config", i);
+            break;
+        }
 
         /* Load weight tensors */
         nimcp_tensor_t* W_in = nimcp_tensor_load(f);

@@ -16,13 +16,18 @@
  */
 
 #include "snn/nimcp_snn_training.h"
+#include "snn/nimcp_snn_network.h"
+#include "snn/nimcp_snn_types.h"
 #include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor.h"
+#include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/validation/nimcp_common.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "core/neuralnet/nimcp_sparse_synapse.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -382,10 +387,49 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
         return 0;
     }
 
+    /* R-STDP: weight update = lr * (reward - baseline) * eligibility_trace
+     * Reward modulates accumulated STDP eligibility traces.
+     * Positive reward strengthens recently co-active synapses. */
     float reward_modulation = ctx->reward - ctx->reward_baseline;
-    (void)reward_modulation;
+    if (fabsf(reward_modulation) < 1e-8f) return 0;
 
-    return 0;  /* Placeholder */
+    float lr = 0.001f;  /* R-STDP learning rate (ctx has no lr field) */
+    float scale = lr * reward_modulation;
+
+    /* Apply eligibility-modulated update to network synapses */
+    uint32_t updates = 0;
+    if (network->neural_net) {
+        uint32_t n_neurons = neural_network_get_num_neurons(network->neural_net);
+        float* elig_data = (float*)ctx->eligibility->data;
+        uint32_t elig_cols = ctx->eligibility->shape.dims[ctx->eligibility->shape.rank - 1];
+
+        for (uint32_t i = 0; i < n_neurons; i++) {
+            neuron_t* n = neural_network_get_neuron(network->neural_net, i);
+            if (!n) continue;
+            uint32_t syn_count = sparse_synapse_count(&n->outgoing);
+            for (uint32_t s = 0; s < syn_count; s++) {
+                synapse_handle_t* h = sparse_synapse_get(&n->outgoing, s);
+                if (!h) continue;
+                /* Look up eligibility for this synapse (i, target) */
+                uint32_t j = h->target_neuron_id;
+                if (i < elig_cols && j < elig_cols && elig_data) {
+                    float e = elig_data[i * elig_cols + j];
+                    if (fabsf(e) > 1e-10f) {
+                        h->weight += scale * e;
+                        /* Clamp weight to [-2, 2] */
+                        if (h->weight > 2.0f) h->weight = 2.0f;
+                        if (h->weight < -2.0f) h->weight = -2.0f;
+                        updates++;
+                    }
+                }
+            }
+        }
+    }
+
+    /* Decay reward baseline toward recent rewards (EMA) */
+    ctx->reward_baseline = 0.99f * ctx->reward_baseline + 0.01f * ctx->reward;
+
+    return updates;
 }
 
 //=============================================================================
@@ -548,8 +592,41 @@ uint32_t snn_eprop_apply(snn_training_ctx_t* ctx,
         return 0;
     }
 
-    (void)learning_signal;
-    return 0;  /* Placeholder */
+    /* eProp: weight update = lr * learning_signal * eligibility_trace
+     * learning_signal is the error signal broadcast to all neurons.
+     * eProp uses only local information (eligibility) + global signal. */
+    float lr = 0.001f;  /* eProp learning rate (ctx has no lr field) */
+    float scale = lr * learning_signal;
+    if (fabsf(scale) < 1e-10f) return 0;
+
+    uint32_t updates = 0;
+    if (network->neural_net) {
+        uint32_t n_neurons = neural_network_get_num_neurons(network->neural_net);
+        float* elig_data = (float*)ctx->eligibility->data;
+        uint32_t elig_cols = ctx->eligibility->shape.dims[ctx->eligibility->shape.rank - 1];
+
+        for (uint32_t i = 0; i < n_neurons; i++) {
+            neuron_t* n = neural_network_get_neuron(network->neural_net, i);
+            if (!n) continue;
+            uint32_t syn_count = sparse_synapse_count(&n->outgoing);
+            for (uint32_t s = 0; s < syn_count; s++) {
+                synapse_handle_t* h = sparse_synapse_get(&n->outgoing, s);
+                if (!h) continue;
+                uint32_t j = h->target_neuron_id;
+                if (i < elig_cols && j < elig_cols && elig_data) {
+                    float e = elig_data[i * elig_cols + j];
+                    if (fabsf(e) > 1e-10f) {
+                        h->weight -= scale * e;
+                        if (h->weight > 2.0f) h->weight = 2.0f;
+                        if (h->weight < -2.0f) h->weight = -2.0f;
+                        updates++;
+                    }
+                }
+            }
+        }
+    }
+
+    return updates;
 }
 
 //=============================================================================

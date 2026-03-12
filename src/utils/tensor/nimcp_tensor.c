@@ -3421,9 +3421,10 @@ int nimcp_tensor_save(const nimcp_tensor_t* tensor, FILE* file) {
         if (fwrite(tensor->shape.dims, sizeof(uint32_t), rank, file) != rank) return -1;
     }
 
-    /* Data */
+    /* Data (use uint64_t for cross-platform portability) */
+    uint64_t nbytes_u64 = (uint64_t)tensor->shape.nbytes;
+    if (fwrite(&nbytes_u64, sizeof(uint64_t), 1, file) != 1) return -1;
     size_t nbytes = tensor->shape.nbytes;
-    if (fwrite(&nbytes, sizeof(size_t), 1, file) != 1) return -1;
     if (nbytes > 0 && tensor->data) {
         if (fwrite(tensor->data, 1, nbytes, file) != nbytes) return -1;
     }
@@ -3467,9 +3468,10 @@ nimcp_tensor_t* nimcp_tensor_load(FILE* file) {
         if (fread(dims, sizeof(uint32_t), rank, file) != rank) return NULL;
     }
 
-    /* Read data size */
-    size_t nbytes = 0;
-    if (fread(&nbytes, sizeof(size_t), 1, file) != 1) return NULL;
+    /* Read data size (uint64_t for cross-platform portability) */
+    uint64_t nbytes_u64 = 0;
+    if (fread(&nbytes_u64, sizeof(uint64_t), 1, file) != 1) return NULL;
+    size_t nbytes = (size_t)nbytes_u64;
 
     /* Create tensor */
     nimcp_dtype_t dtype = (nimcp_dtype_t)dtype_u32;
