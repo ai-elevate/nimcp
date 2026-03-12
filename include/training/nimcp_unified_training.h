@@ -770,6 +770,23 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                    nimcp_utm_step_result_t* result);
 
 /**
+ * @brief Forward-only inference through registered networks (no backward/optimizer)
+ *
+ * When enable_fused_inference is true, skips gradient checkpointing and
+ * backward-related allocations for faster inference throughput.
+ *
+ * @param mgr      Training manager
+ * @param input    Input data
+ * @param input_dim Input dimensionality
+ * @param output   [out] Blended output from all networks
+ * @param output_dim Output buffer size
+ * @return 0 on success, negative on error
+ */
+int nimcp_utm_forward_only(nimcp_unified_training_manager_t* mgr,
+                           const float* input, uint32_t input_dim,
+                           float* output, uint32_t output_dim);
+
+/**
  * @brief Compute scheduled learning rate for current step
  */
 float nimcp_utm_get_scheduled_lr(const nimcp_unified_training_manager_t* mgr);

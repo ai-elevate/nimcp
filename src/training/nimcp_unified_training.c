@@ -703,6 +703,59 @@ float nimcp_utm_get_scheduled_lr(const nimcp_unified_training_manager_t* mgr) {
 }
 
 //=============================================================================
+// Forward-Only Inference (no backward/optimizer)
+//=============================================================================
+
+int nimcp_utm_forward_only(nimcp_unified_training_manager_t* mgr,
+                           const float* input, uint32_t input_dim,
+                           float* output, uint32_t output_dim) {
+    if (!mgr || !input || !output) return -1;
+    if (mgr->num_networks == 0) return -1;
+
+    /* Allocate per-network output buffers */
+    float* net_outputs[NIMCP_UTM_MAX_NETWORKS];
+    uint32_t net_output_dims[NIMCP_UTM_MAX_NETWORKS];
+    memset(net_outputs, 0, sizeof(net_outputs));
+    memset(net_output_dims, 0, sizeof(net_output_dims));
+
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        if (!mgr->networks[i].enabled) continue;
+        nimcp_trainable_network_t* net = &mgr->networks[i];
+        uint32_t out_dim = net->ops->get_output_dim(net->ctx);
+        net_output_dims[i] = out_dim;
+        net_outputs[i] = (float*)nimcp_calloc(out_dim, sizeof(float));
+        if (!net_outputs[i]) continue;
+
+        net->ops->forward(net->ctx, input, input_dim, net_outputs[i], out_dim);
+    }
+
+    /* Blend outputs (weighted average, same as training ensemble) */
+    memset(output, 0, output_dim * sizeof(float));
+    float total_weight = 0.0f;
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
+        float w = mgr->networks[i].loss_weight;
+        uint32_t blend_dim = (net_output_dims[i] < output_dim) ?
+                              net_output_dims[i] : output_dim;
+        for (uint32_t j = 0; j < blend_dim; j++) {
+            output[j] += w * net_outputs[i][j];
+        }
+        total_weight += w;
+    }
+    if (total_weight > 0.0f && total_weight != 1.0f) {
+        for (uint32_t j = 0; j < output_dim; j++) {
+            output[j] /= total_weight;
+        }
+    }
+
+    /* Cleanup */
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        nimcp_free(net_outputs[i]);
+    }
+    return 0;
+}
+
+//=============================================================================
 // Unified Training Step
 //=============================================================================
 
@@ -760,6 +813,23 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     /* ------------------------------------------------------------------ */
     /* Step 2: Forward pass through networks (topology order)             */
     /* ------------------------------------------------------------------ */
+
+    /* Gradient checkpointing: begin forward pass (CUDA-gated) */
+#ifdef NIMCP_ENABLE_CUDA
+    if (mgr->config.enable_gradient_checkpointing && mgr->gpu_ctx) {
+        /* Lazy-create checkpoint context */
+        if (!mgr->grad_checkpoint_ctx) {
+            mgr->grad_checkpoint_ctx = nimcp_checkpoint_ctx_create(
+                (nimcp_gpu_context_t*)mgr->gpu_ctx,
+                CKPT_STRATEGY_SQRT,
+                (int)mgr->num_networks, 0);
+        }
+        if (mgr->grad_checkpoint_ctx) {
+            nimcp_checkpoint_begin_forward(mgr->grad_checkpoint_ctx);
+        }
+    }
+#endif
+
     /* Allocate per-network output buffers */
     float* net_outputs[NIMCP_UTM_MAX_NETWORKS];
     uint32_t net_output_dims[NIMCP_UTM_MAX_NETWORKS];
@@ -817,6 +887,13 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         amp_autocast_exit((amp_ctx_t*)mgr->amp_ctx);
     }
 
+    /* Gradient checkpointing: end forward pass */
+#ifdef NIMCP_ENABLE_CUDA
+    if (mgr->grad_checkpoint_ctx) {
+        nimcp_checkpoint_end_forward(mgr->grad_checkpoint_ctx);
+    }
+#endif
+
     /* ------------------------------------------------------------------ */
     /* Step 3: Compute composite loss                                     */
     /* ------------------------------------------------------------------ */
@@ -849,11 +926,26 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                 loss_val /= n;
                 break;
             default: /* MSE: Σ(out-tgt)²/n */
-                for (uint32_t j = 0; j < cmp_dim; j++) {
-                    float diff = net_outputs[i][j] - target[j];
-                    loss_val += diff * diff;
+#ifdef NIMCP_ENABLE_CUDA
+                if (mgr->gpu_ctx && cmp_dim >= 256) {
+                    /* GPU-accelerated MSE for large dimensions */
+                    if (!nimcp_gpu_loss_mse(mgr->gpu_ctx, net_outputs[i], target,
+                                            cmp_dim, &loss_val)) {
+                        /* GPU failed — fall through to CPU */
+                        goto cpu_mse;
+                    }
+                } else
+#endif
+                {
+#ifdef NIMCP_ENABLE_CUDA
+                    cpu_mse:
+#endif
+                    for (uint32_t j = 0; j < cmp_dim; j++) {
+                        float diff = net_outputs[i][j] - target[j];
+                        loss_val += diff * diff;
+                    }
+                    loss_val /= n;
                 }
-                loss_val /= n;
                 break;
         }
 
@@ -959,6 +1051,13 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     /* ------------------------------------------------------------------ */
     /* Step 4: Backward pass (reverse order, with bridge gradient flow)   */
     /* ------------------------------------------------------------------ */
+
+    /* Gradient checkpointing: begin backward pass */
+#ifdef NIMCP_ENABLE_CUDA
+    if (mgr->grad_checkpoint_ctx) {
+        nimcp_checkpoint_begin_backward(mgr->grad_checkpoint_ctx);
+    }
+#endif
 
     /* Phase 5: Suppress biological plasticity during backprop */
     if (mgr->plasticity_bridge) {
@@ -1097,6 +1196,13 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         }
     }
     mgr->batch_accumulation_count = 0;
+
+    /* Gradient checkpointing: end backward pass */
+#ifdef NIMCP_ENABLE_CUDA
+    if (mgr->grad_checkpoint_ctx) {
+        nimcp_checkpoint_end_backward(mgr->grad_checkpoint_ctx);
+    }
+#endif
 
     /* ------------------------------------------------------------------ */
     /* Step 5: Gradient normalization / clipping (unified, single pass)   */
@@ -1487,7 +1593,20 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                         }
                     } else {
                         adamw_fallback:
-                        /* Standard AdamW */
+                        /* Standard AdamW — try GPU first for large param groups */
+#ifdef NIMCP_ENABLE_CUDA
+                        if (mgr->gpu_ctx && m && v && groups[g].count >= 1024) {
+                            /* GPU-accelerated AdamW for large parameter groups */
+                            if (nimcp_gpu_optim_adamw(mgr->gpu_ctx,
+                                    groups[g].params, groups[g].gradients, m, v,
+                                    (uint32_t)groups[g].count,
+                                    lr, adam_beta1, adam_beta2, adam_eps, wd,
+                                    mgr->step_count)) {
+                                goto adamw_done;  /* GPU succeeded */
+                            }
+                            /* GPU failed — fall through to CPU */
+                        }
+#endif
                         for (size_t j = 0; j < groups[g].count; j++) {
                             float grad = groups[g].gradients[j];
 
@@ -1513,6 +1632,18 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                                     groups[g].params[j] -= lr * wd * groups[g].params[j];
                                 }
                                 groups[g].params[j] -= lr * grad;
+                            }
+                        }
+#ifdef NIMCP_ENABLE_CUDA
+                        adamw_done:
+#endif
+                        /* Sparse training: zero out small gradients to maintain sparsity */
+                        if (mgr->config.enable_sparse_training) {
+                            float sparse_threshold = 1e-6f;
+                            for (size_t j = 0; j < groups[g].count; j++) {
+                                if (fabsf(groups[g].params[j]) < sparse_threshold) {
+                                    groups[g].params[j] = 0.0f;
+                                }
                             }
                         }
                     }

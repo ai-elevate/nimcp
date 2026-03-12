@@ -14,6 +14,7 @@
 #include "training/integration/nimcp_training_integration_hub.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/containers/nimcp_ring_buffer.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -52,6 +53,14 @@ typedef struct module_entry {
  * WHAT: Internal hub structure
  * WHY: Hold all hub state and resources
  */
+/** Entry in the async event queue — copies the event data (no payload ownership) */
+typedef struct {
+    uint32_t publisher_id;
+    training_event_data_t data;
+} async_event_entry_t;
+
+#define ASYNC_QUEUE_CAPACITY 256
+
 struct training_integration_hub_struct {
     training_hub_config_t config;
     module_entry_t* modules;           /* Array of max_modules */
@@ -61,6 +70,7 @@ struct training_integration_hub_struct {
     training_hub_stats_t stats;
     nimcp_mutex_t* mutex;
     bool initialized;
+    nimcp_ring_buffer_t* async_queue;   /* Ring buffer of async_event_entry_t */
 };
 
 /* ========================================================================
@@ -366,6 +376,8 @@ training_integration_hub_t training_hub_create(const training_hub_config_t* conf
     memset(&hub->stats, 0, sizeof(training_hub_stats_t));
 
     hub->module_count = 0;
+    hub->async_queue = nimcp_ring_buffer_create(sizeof(async_event_entry_t),
+                                                 ASYNC_QUEUE_CAPACITY);
     hub->initialized = true;
 
     return hub;
@@ -397,6 +409,11 @@ void training_hub_destroy(training_integration_hub_t hub) {
     /* Free modules array */
     if (hub->modules) {
         nimcp_free(hub->modules);
+    }
+
+    /* Free async queue */
+    if (hub->async_queue) {
+        nimcp_ring_buffer_destroy(hub->async_queue);
     }
 
     /* Destroy mutex */
@@ -653,9 +670,47 @@ int training_hub_publish_async(training_integration_hub_t hub,
                                 uint32_t publisher_id,
                                 training_event_type_t event_type,
                                 const training_event_data_t* data) {
-    /* For now, just call synchronous publish */
-    /* Async processing can be added later with a worker thread */
-    return training_hub_publish(hub, publisher_id, event_type, data);
+    if (!hub || !hub->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "training_hub_publish_async: hub NULL or not initialized");
+        return -1;
+    }
+
+    if (!hub->async_queue) {
+        /* No queue — fall back to synchronous delivery */
+        return training_hub_publish(hub, publisher_id, event_type, data);
+    }
+
+    /* Build a queue entry with a shallow copy of event data.
+     * Per the API contract: "Asynchronous: Hub copies payload, caller can free" */
+    async_event_entry_t entry;
+    memset(&entry, 0, sizeof(entry));
+    entry.publisher_id = publisher_id;
+    if (data) {
+        entry.data = *data;
+        /* Deep-copy payload if present */
+        if (data->payload && data->payload_size > 0) {
+            entry.data.payload = nimcp_malloc(data->payload_size);
+            if (entry.data.payload) {
+                memcpy(entry.data.payload, data->payload, data->payload_size);
+            } else {
+                entry.data.payload_size = 0;
+            }
+        }
+    }
+    entry.data.event_type = event_type;
+
+    nimcp_mutex_lock(hub->mutex);
+    bool ok = nimcp_ring_buffer_push(hub->async_queue, &entry);
+    if (ok) {
+        hub->stats.async_queue_depth = (uint32_t)nimcp_ring_buffer_size(hub->async_queue);
+        if (hub->stats.async_queue_depth > hub->stats.async_queue_max) {
+            hub->stats.async_queue_max = hub->stats.async_queue_depth;
+        }
+    }
+    nimcp_mutex_unlock(hub->mutex);
+
+    return ok ? 0 : -1;
 }
 
 /* ========================================================================
@@ -927,22 +982,49 @@ int training_hub_publish_to_category(training_integration_hub_t hub,
 int training_hub_flush_async_queue(training_integration_hub_t hub,
                                     uint32_t timeout_ms) {
     if (!hub || !hub->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_hub_reset_stats: required parameter is NULL (hub, hub->initialized)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "training_hub_flush_async_queue: hub NULL or not initialized");
         return -1;
     }
+    (void)timeout_ms;  /* No blocking wait needed — we drain immediately */
 
-    /* Currently no async queue implemented - always succeeds */
-    (void)timeout_ms;
-    return 0;
-}
-
-uint32_t training_hub_get_async_queue_depth(training_integration_hub_t hub) {
-    if (!hub || !hub->initialized) {
+    if (!hub->async_queue) {
         return 0;
     }
 
-    /* Currently no async queue implemented */
-    return 0;
+    /* Drain all queued events, delivering each synchronously */
+    int delivered = 0;
+    async_event_entry_t entry;
+    while (true) {
+        nimcp_mutex_lock(hub->mutex);
+        bool got = nimcp_ring_buffer_pop_front(hub->async_queue, &entry);
+        if (got) {
+            hub->stats.async_queue_depth =
+                (uint32_t)nimcp_ring_buffer_size(hub->async_queue);
+        }
+        nimcp_mutex_unlock(hub->mutex);
+
+        if (!got) break;
+
+        /* Deliver synchronously (publish handles its own locking) */
+        training_hub_publish(hub, entry.publisher_id,
+                             entry.data.event_type, &entry.data);
+        /* Free deep-copied payload */
+        if (entry.data.payload) {
+            nimcp_free(entry.data.payload);
+        }
+        delivered++;
+    }
+
+    return delivered;
+}
+
+uint32_t training_hub_get_async_queue_depth(training_integration_hub_t hub) {
+    if (!hub || !hub->initialized || !hub->async_queue) {
+        return 0;
+    }
+
+    return (uint32_t)nimcp_ring_buffer_size(hub->async_queue);
 }
 
 /* ========================================================================
