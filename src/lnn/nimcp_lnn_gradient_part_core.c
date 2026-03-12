@@ -154,6 +154,23 @@ int lnn_gradient_compute_adjoint(
             NIMCP_LOGGING_WARN("Failed to accumulate gradients at step %d", step);
         }
 
+        // Clamp adjoint NORM per step to prevent gradient explosion.
+        // Per-element clamping (±1e6) allows norm up to 8e6 for 64 neurons;
+        // with parameter gradient accumulation this produces norms of 60K-770K.
+        // Instead, rescale the adjoint vector to a max norm of 100.
+        {
+            float* nd = (float*)nimcp_tensor_data(adjoint_next);
+            size_t nn = nimcp_tensor_numel(adjoint_next);
+            float norm_sq = 0.0f;
+            for (size_t k = 0; k < nn; k++) norm_sq += nd[k] * nd[k];
+            float norm = sqrtf(norm_sq);
+            float max_adjoint_norm = 100.0f;
+            if (norm > max_adjoint_norm) {
+                float scale = max_adjoint_norm / norm;
+                for (size_t k = 0; k < nn; k++) nd[k] *= scale;
+            }
+        }
+
         // Update adjoint state
         nimcp_tensor_destroy(adjoint_current);
         adjoint_current = adjoint_next;

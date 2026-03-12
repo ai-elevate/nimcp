@@ -740,3 +740,33 @@
 [2026-03-12 20:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-03-12 20:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-03-12 20:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 20:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 20:25:01] [WARN] RSS memory high: 55.1GB (threshold: 55GB)
+[2026-03-12 20:30:01] [WARN] RSS memory high: 56.6GB (threshold: 55GB)
+[2026-03-12 20:35:01] [WARN] RSS memory high: 56.9GB (threshold: 55GB)
+[2026-03-12 20:40:01] [WARN] RSS memory high: 57.2GB (threshold: 55GB)
+[2026-03-12 20:45:01] [WARN] RSS memory high: 57.4GB (threshold: 55GB)
+[2026-03-12 20:50:01] [WARN] RSS memory high: 57.5GB (threshold: 55GB)
+[2026-03-12 20:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 21:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 22:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 22:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 22:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 22:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 22:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 22:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 22:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 22:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 22:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-12 22:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
