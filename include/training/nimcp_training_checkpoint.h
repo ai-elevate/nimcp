@@ -297,7 +297,7 @@ void checkpoint_mgr_destroy(checkpoint_mgr_t* mgr);
  * @param val_loss Current validation loss (or -1)
  * @return 0 on success, negative on error
  */
-int checkpoint_save(
+int training_checkpoint_save(
     checkpoint_mgr_t* mgr,
     nimcp_tensor_t** weights,
     const char** weight_names,
@@ -392,7 +392,7 @@ int checkpoint_mark_best(
  * @param data Output checkpoint data (caller must call checkpoint_data_free)
  * @return 0 on success, negative on error
  */
-int checkpoint_load(
+int training_checkpoint_load(
     checkpoint_mgr_t* mgr,
     const char* path,
     checkpoint_data_t* data
@@ -506,7 +506,7 @@ checkpoint_status_t checkpoint_verify(const char* path);
  * @param count Output: number of checkpoints found
  * @return 0 on success, negative on error
  */
-int checkpoint_list(
+int training_checkpoint_list(
     checkpoint_mgr_t* mgr,
     char*** paths,
     checkpoint_header_t** headers,

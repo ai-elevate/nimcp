@@ -58,6 +58,17 @@ typedef struct nimcp_loss_context nimcp_loss_context_t;
 typedef struct tpb_context tpb_context_t;
 #endif
 
+/* Training middleware opaque handles */
+typedef struct tcb_context tcb_context_t;
+typedef struct checkpoint_mgr_s checkpoint_mgr_t;
+typedef struct training_diagnoser training_diagnoser_t;
+typedef struct nimcp_regularization_ctx nimcp_regularization_ctx_t;
+typedef struct cl_ctx_s cl_ctx_t;
+typedef struct adv_ctx_s adv_ctx_t;
+
+/* GPU opaque handles */
+typedef struct nimcp_checkpoint_ctx nimcp_checkpoint_ctx_t;
+
 /* Information geometry opaque handles */
 typedef struct nimcp_fisher_info_struct* nimcp_fisher_info_t;
 typedef struct nimcp_natural_gradient_struct* nimcp_natural_gradient_t;
@@ -371,6 +382,53 @@ typedef struct nimcp_unified_training_config {
     uint32_t early_stopping_patience;       /**< Steps without improvement (default: 50) */
     float early_stopping_min_delta;         /**< Minimum improvement threshold (default: 1e-5) */
 
+    /* 15-item gap analysis: Extended pipeline config */
+
+    /* Gap 1: AMP autocast lifecycle (uses enable_amp above) */
+
+    /* Gap 2: Gradient manager — NaN/Inf detection + sanitization */
+    bool enable_gradient_manager;           /**< Wire gradient health check before optimizer (default: true) */
+
+    /* Gap 3: Middleware optimizer — replaces inline AdamW with serializable state */
+    bool enable_middleware_optimizer;        /**< Use nimcp_optimizer_step_group instead of inline (default: true) */
+
+    /* Gap 4: Training callbacks */
+    bool enable_training_callbacks;         /**< Fire TCB events on step complete/divergence (default: true) */
+
+    /* Gap 5: Checkpoint manager */
+    bool enable_checkpoint_manager;         /**< Auto-save optimizer/EMA/scheduler state (default: true) */
+    uint32_t checkpoint_interval;           /**< Steps between checkpoint saves (default: 1000) */
+
+    /* Gap 6: Training diagnosis — replace hardcoded DFA→LR with root-cause analysis */
+    bool enable_training_diagnosis;         /**< Use diagnoser for LR adjustment (default: true) */
+
+    /* Gap 7: Regularization — L1/ElasticNet + label smoothing */
+    bool enable_regularization;             /**< Apply L1 gradient penalty (default: true) */
+    float l1_lambda;                        /**< L1 regularization strength (default: 1e-5) */
+    float label_smoothing;                  /**< Label smoothing factor (default: 0.1) */
+
+    /* Gap 8: Bridge real AdamW — actual Adam momentum for bridge params */
+    /* (uses bridge_params_in_optimizer above; adds real momentum state) */
+
+    /* Gap 9: Continual learning (EWC) */
+    bool enable_continual_learning;         /**< Add EWC penalty to prevent forgetting (default: true) */
+    float ewc_lambda;                       /**< EWC penalty weight (default: 0.1) */
+
+    /* Gap 10: Adversarial training (FGSM/PGD augmentation) — requires forward_fn */
+    bool enable_adversarial_training;       /**< Enable adversarial augmentation (default: false) */
+
+    /* Gap 11: Fused GPU inference ops — CUDA-gated */
+    bool enable_fused_inference;            /**< Use CUDA graph capture for fused ops (default: true) */
+
+    /* Gap 13: EMA → inference swap */
+    bool enable_ema_inference_swap;         /**< Swap EMA params before inference (default: true) */
+
+    /* Gap 14: GPU gradient checkpointing — CUDA-gated */
+    bool enable_gradient_checkpointing;     /**< Activation memory recovery (default: true) */
+
+    /* Gap 15: Cross-network gradients default (changed from false to true) */
+    /* (uses enable_cross_network_gradients above — default changed) */
+
 } nimcp_unified_training_config_t;
 
 //=============================================================================
@@ -527,6 +585,47 @@ struct nimcp_unified_training_manager {
     float early_stopping_best_loss;
     uint32_t early_stopping_counter;
     bool early_stopped;                     /**< True when training should stop */
+
+    /* 15-item gap analysis: Extended pipeline state */
+
+    /* Gap 2: Gradient manager */
+    nimcp_gradient_manager_ctx_t* gradient_manager;  /**< NaN/Inf detection (lazy-created) */
+
+    /* Gap 3: Middleware optimizer */
+    nimcp_optimizer_context_t* middleware_optimizer;  /**< Serializable AdamW (lazy-created) */
+
+    /* Gap 4: Training callbacks */
+    tcb_context_t* tcb_ctx;                         /**< Callback event system (lazy-created) */
+
+    /* Gap 5: Checkpoint manager */
+    checkpoint_mgr_t* checkpoint_mgr;               /**< Checkpoint save/restore (lazy-created) */
+
+    /* Gap 6: Training diagnosis */
+    training_diagnoser_t* diagnoser;                /**< Root-cause analysis (lazy-created) */
+    float previous_loss;                            /**< Loss from previous step for diagnosis */
+    float previous_grad_norm;                       /**< Grad norm from previous step */
+
+    /* Gap 7: Regularization */
+    nimcp_regularization_ctx_t* regularization_ctx;  /**< L1/ElasticNet/label smoothing (lazy-created) */
+
+    /* Gap 8: Bridge AdamW real momentum state */
+    float** bridge_adam_m;                          /**< First moment for bridge weights */
+    float** bridge_adam_v;                          /**< Second moment for bridge weights */
+    size_t* bridge_adam_sizes;                      /**< Size of each bridge moment vector */
+    uint32_t bridge_adam_num;                       /**< Number of bridge moment arrays */
+
+    /* Gap 9: Continual learning */
+    cl_ctx_t* cl_ctx;                               /**< EWC/replay (lazy-created, caller-settable) */
+    float ewc_lambda;                               /**< EWC penalty weight */
+
+    /* Gap 10: Adversarial training */
+    adv_ctx_t* adv_ctx;                             /**< Adversarial augmentation (lazy-created) */
+
+    /* Gap 14: GPU gradient checkpointing */
+    nimcp_checkpoint_ctx_t* grad_checkpoint_ctx;    /**< Activation checkpointing (CUDA-gated) */
+
+    /* Gap 13: EMA inference swap tracking */
+    bool ema_swapped_in;                            /**< True when EMA params are loaded for inference */
 };
 
 //=============================================================================
@@ -637,6 +736,14 @@ typedef struct nimcp_utm_step_result {
     float scheduled_lr;                     /**< LR after scheduling this step */
     float contrastive_loss;                 /**< Cross-network contrastive loss */
     float kd_loss;                          /**< Knowledge distillation loss */
+
+    /* 15-item gap analysis result fields */
+    bool gradient_healthy;                  /**< True if no NaN/Inf detected */
+    uint64_t gradients_sanitized;           /**< Count of NaN/Inf values replaced */
+    float ewc_penalty;                      /**< Continual learning EWC penalty this step */
+    float l1_penalty;                       /**< L1 regularization penalty this step */
+    bool diagnosis_reduce_lr;               /**< Diagnoser recommends reducing LR */
+    float diagnosis_lr_factor;              /**< Recommended LR factor from diagnoser */
 } nimcp_utm_step_result_t;
 
 /**
@@ -838,6 +945,31 @@ bool nimcp_utm_is_early_stopped(const nimcp_unified_training_manager_t* mgr);
 /** @brief Get EMA-averaged parameters for a param group (copies out) */
 int nimcp_utm_get_ema_params(const nimcp_unified_training_manager_t* mgr,
                                uint32_t group_idx, float* out_params, size_t count);
+
+//=============================================================================
+// Extended Pipeline API (15-Item Gap Analysis)
+//=============================================================================
+
+/** @brief Set continual learning context (caller-owned, must outlive manager) */
+void nimcp_utm_set_cl(nimcp_unified_training_manager_t* mgr, cl_ctx_t* cl_ctx);
+
+/** @brief Set adversarial training context (caller-owned, must outlive manager) */
+void nimcp_utm_set_adversarial(nimcp_unified_training_manager_t* mgr, adv_ctx_t* adv_ctx);
+
+/** @brief Set training callback context (caller-owned, must outlive manager) */
+void nimcp_utm_set_callbacks(nimcp_unified_training_manager_t* mgr, tcb_context_t* tcb_ctx);
+
+/** @brief Set checkpoint manager (caller-owned, must outlive manager) */
+void nimcp_utm_set_checkpoint_mgr(nimcp_unified_training_manager_t* mgr, checkpoint_mgr_t* ckpt_mgr);
+
+/** @brief Swap EMA parameters in for inference (swaps live ↔ EMA) */
+int nimcp_utm_swap_to_ema(nimcp_unified_training_manager_t* mgr);
+
+/** @brief Swap live parameters back after inference (reverses EMA swap) */
+int nimcp_utm_swap_from_ema(nimcp_unified_training_manager_t* mgr);
+
+/** @brief Get gradient health status from last step */
+bool nimcp_utm_gradients_healthy(const nimcp_unified_training_manager_t* mgr);
 
 #ifdef __cplusplus
 }

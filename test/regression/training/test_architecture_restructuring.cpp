@@ -40,6 +40,10 @@ extern "C" {
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 
+/* 15-item gap analysis: needed for direct API tests */
+#include "middleware/training/nimcp_gradient_manager.h"
+#include "middleware/training/nimcp_regularization.h"
+
 /* Forward-declare inference health API (can't include the header because
  * nimcp_brain_inference.h → nimcp_brain_internal.h → CUDA headers, which
  * break inside extern "C" in a C++ compilation unit) */
@@ -3228,4 +3232,321 @@ TEST_F(ArchRestructuringTest, ExtendedResult_PopulatedAfterStep) {
 
     nimcp_utm_destroy(mgr);
     neural_network_destroy(net);
+}
+
+/* ============================================================================
+ * 20. Extended Pipeline Tests (15-Item Gap Analysis)
+ * ============================================================================ */
+
+/* --- Gap 1: AMP Autocast Lifecycle --- */
+
+TEST_F(ArchRestructuringTest, Gap1_AMP_AutocastEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_amp);
+}
+
+TEST_F(ArchRestructuringTest, Gap1_AMP_CtxNullByDefault) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->amp_ctx, nullptr);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Gap 2: Gradient Manager --- */
+
+TEST_F(ArchRestructuringTest, Gap2_GradientManager_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_gradient_manager);
+}
+
+TEST_F(ArchRestructuringTest, Gap2_GradientManager_HealthInResult) {
+    nimcp_utm_step_result_t result = {};
+    EXPECT_EQ(result.gradients_sanitized, 0u);
+}
+
+TEST_F(ArchRestructuringTest, Gap2_GradientManager_HealthCheckAPI) {
+    float grads[] = {0.1f, -0.2f, 0.3f, -0.4f};
+    nimcp_grad_health_t health = nimcp_gradient_check_health(grads, 4);
+    EXPECT_EQ(health, NIMCP_GRAD_HEALTHY);
+}
+
+TEST_F(ArchRestructuringTest, Gap2_GradientManager_SanitizeNaN) {
+    float grads[] = {0.1f, NAN, 0.3f, INFINITY};
+    uint64_t sanitized = nimcp_gradient_sanitize(grads, 4, 0.0f);
+    EXPECT_GE(sanitized, 1u);
+    EXPECT_TRUE(isfinite(grads[1]));
+    EXPECT_TRUE(isfinite(grads[3]));
+}
+
+/* --- Gap 3: Middleware Optimizer --- */
+
+TEST_F(ArchRestructuringTest, Gap3_MiddlewareOptimizer_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_middleware_optimizer);
+}
+
+TEST_F(ArchRestructuringTest, Gap3_MiddlewareOptimizer_NullByDefault) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->middleware_optimizer, nullptr);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Gap 4: Training Callbacks --- */
+
+TEST_F(ArchRestructuringTest, Gap4_Callbacks_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_training_callbacks);
+}
+
+TEST_F(ArchRestructuringTest, Gap4_Callbacks_SetterAPI) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->tcb_ctx, nullptr);
+    nimcp_utm_set_callbacks(mgr, NULL);
+    EXPECT_EQ(mgr->tcb_ctx, nullptr);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Gap 5: Checkpoint Manager --- */
+
+TEST_F(ArchRestructuringTest, Gap5_Checkpoint_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_checkpoint_manager);
+    EXPECT_EQ(cfg.checkpoint_interval, 1000u);
+}
+
+TEST_F(ArchRestructuringTest, Gap5_Checkpoint_SetterAPI) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->checkpoint_mgr, nullptr);
+    nimcp_utm_set_checkpoint_mgr(mgr, NULL);
+    EXPECT_EQ(mgr->checkpoint_mgr, nullptr);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Gap 6: Training Diagnosis --- */
+
+TEST_F(ArchRestructuringTest, Gap6_Diagnosis_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_training_diagnosis);
+}
+
+TEST_F(ArchRestructuringTest, Gap6_Diagnosis_LazyCreated) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->diagnoser, nullptr);
+    nimcp_utm_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Gap6_Diagnosis_ResultFields) {
+    nimcp_utm_step_result_t result = {};
+    EXPECT_FALSE(result.diagnosis_reduce_lr);
+    EXPECT_FLOAT_EQ(result.diagnosis_lr_factor, 0.0f);
+}
+
+/* --- Gap 7: Regularization --- */
+
+TEST_F(ArchRestructuringTest, Gap7_Regularization_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_regularization);
+    EXPECT_FLOAT_EQ(cfg.l1_lambda, 1e-5f);
+    EXPECT_FLOAT_EQ(cfg.label_smoothing, 0.1f);
+}
+
+TEST_F(ArchRestructuringTest, Gap7_L1Gradient_ModifiesGradients) {
+    float weights[] = {1.0f, -2.0f, 0.5f, -0.3f};
+    float grads[] = {0.0f, 0.0f, 0.0f, 0.0f};
+    nimcp_l1_gradient(weights, grads, 4, 0.01f);
+    EXPECT_GT(grads[0], 0.0f);
+    EXPECT_LT(grads[1], 0.0f);
+}
+
+/* --- Gap 8: Bridge Real AdamW --- */
+
+TEST_F(ArchRestructuringTest, Gap8_BridgeAdamW_MomentumState) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->bridge_adam_m, nullptr);
+    EXPECT_EQ(mgr->bridge_adam_v, nullptr);
+    EXPECT_EQ(mgr->bridge_adam_num, 0u);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Gap 9: Continual Learning (EWC) --- */
+
+TEST_F(ArchRestructuringTest, Gap9_ContinualLearning_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_continual_learning);
+    EXPECT_FLOAT_EQ(cfg.ewc_lambda, 0.1f);
+}
+
+TEST_F(ArchRestructuringTest, Gap9_ContinualLearning_SetterAPI) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->cl_ctx, nullptr);
+    nimcp_utm_set_cl(mgr, NULL);
+    EXPECT_EQ(mgr->cl_ctx, nullptr);
+    nimcp_utm_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Gap9_EWC_PenaltyInResult) {
+    nimcp_utm_step_result_t result = {};
+    EXPECT_FLOAT_EQ(result.ewc_penalty, 0.0f);
+}
+
+/* --- Gap 10: Adversarial Training --- */
+
+TEST_F(ArchRestructuringTest, Gap10_Adversarial_DefaultDisabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_FALSE(cfg.enable_adversarial_training);
+}
+
+TEST_F(ArchRestructuringTest, Gap10_Adversarial_SetterAPI) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->adv_ctx, nullptr);
+    nimcp_utm_set_adversarial(mgr, NULL);
+    EXPECT_EQ(mgr->adv_ctx, nullptr);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Gap 11: Fused GPU Inference --- */
+
+TEST_F(ArchRestructuringTest, Gap11_FusedInference_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_fused_inference);
+}
+
+/* --- Gap 13: EMA Inference Swap --- */
+
+TEST_F(ArchRestructuringTest, Gap13_EMASwap_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_ema_inference_swap);
+}
+
+TEST_F(ArchRestructuringTest, Gap13_EMASwap_InitiallyNotSwapped) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_FALSE(mgr->ema_swapped_in);
+    nimcp_utm_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Gap13_EMASwap_FailsWithNoEMA) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    int rc = nimcp_utm_swap_to_ema(mgr);
+    EXPECT_EQ(rc, -1);
+    EXPECT_FALSE(mgr->ema_swapped_in);
+    nimcp_utm_destroy(mgr);
+}
+
+TEST_F(ArchRestructuringTest, Gap13_EMASwap_SwapFromEMA_FailsIfNotSwapped) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    int rc = nimcp_utm_swap_from_ema(mgr);
+    EXPECT_EQ(rc, -1);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Gap 14: Gradient Checkpointing --- */
+
+TEST_F(ArchRestructuringTest, Gap14_GradientCheckpointing_DefaultEnabled) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_gradient_checkpointing);
+}
+
+TEST_F(ArchRestructuringTest, Gap14_GradientCheckpointing_NullByDefault) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    EXPECT_EQ(mgr->grad_checkpoint_ctx, nullptr);
+    nimcp_utm_destroy(mgr);
+}
+
+/* --- Gap 15: Cross-Network Gradients Default --- */
+
+TEST_F(ArchRestructuringTest, Gap15_CrossNetworkGradients_DefaultTrue) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    EXPECT_TRUE(cfg.enable_cross_network_gradients);
+}
+
+/* --- Integration: Step with gradient health + diagnosis --- */
+
+TEST_F(ArchRestructuringTest, GapIntegration_StepResultHasNewFields) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+
+    neural_network_t net = create_adaptive_network();
+    const nimcp_trainable_network_ops_t* ops = nullptr;
+    void* ctx = nullptr;
+    nimcp_trainable_adaptive_create(net, &ops, &ctx);
+    nimcp_utm_register_network(mgr, ops, ctx, 1.0f);
+
+    float input[] = {0.5f, 0.3f, 0.1f, 0.8f};
+    float target[] = {1.0f, 0.0f, 0.0f, 0.0f};
+    nimcp_utm_step_result_t result = {};
+    int rc = nimcp_utm_step(mgr, input, 4, target, 4, &result);
+    EXPECT_EQ(rc, 0);
+    EXPECT_GE(result.gradients_sanitized, 0u);
+    EXPECT_GE(result.diagnosis_lr_factor, 0.0f);
+
+    nimcp_utm_destroy(mgr);
+    neural_network_destroy(net);
+}
+
+/* --- Integration: Bridge AdamW momentum allocation --- */
+
+TEST_F(ArchRestructuringTest, Gap8_BridgeAdamW_AllocatedAfterStep) {
+    nimcp_unified_training_config_t cfg;
+    nimcp_utm_default_config(&cfg);
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(&cfg);
+    ASSERT_NE(mgr, nullptr);
+
+    neural_network_t net1 = create_adaptive_network();
+    neural_network_t net2 = create_adaptive_network();
+    const nimcp_trainable_network_ops_t* ops1 = nullptr;
+    const nimcp_trainable_network_ops_t* ops2 = nullptr;
+    void* ctx1 = nullptr;
+    void* ctx2 = nullptr;
+    nimcp_trainable_adaptive_create(net1, &ops1, &ctx1);
+    nimcp_trainable_adaptive_create(net2, &ops2, &ctx2);
+    nimcp_utm_register_network(mgr, ops1, ctx1, 1.0f);
+    nimcp_utm_register_network(mgr, ops2, ctx2, 1.0f);
+    nimcp_utm_add_bridge(mgr, 0, 1, NIMCP_BRIDGE_IDENTITY);
+
+    float input[] = {0.5f, 0.3f, 0.1f, 0.8f};
+    float target[] = {1.0f, 0.0f, 0.0f, 0.0f};
+    nimcp_utm_step(mgr, input, 4, target, 4, NULL);
+
+    EXPECT_NE(mgr->bridge_adam_m, nullptr);
+    EXPECT_EQ(mgr->bridge_adam_num, 1u);
+
+    nimcp_utm_destroy(mgr);
+    neural_network_destroy(net1);
+    neural_network_destroy(net2);
+}
+
+/* --- API: Gradients healthy query --- */
+
+TEST_F(ArchRestructuringTest, GapAPI_GradientsHealthy) {
+    nimcp_unified_training_manager_t* mgr = nimcp_utm_create(NULL);
+    ASSERT_NE(mgr, nullptr);
+    bool healthy = nimcp_utm_gradients_healthy(mgr);
+    EXPECT_TRUE(healthy);
+    nimcp_utm_destroy(mgr);
 }

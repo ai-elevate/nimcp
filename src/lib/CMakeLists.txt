@@ -2464,6 +2464,7 @@ set(NIMCP_CORE_SOURCES
     # Unified Training Manager (UTM: single training infrastructure for all network types)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_unified_training.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_unified_anti_collapse.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_training_checkpoint.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cross_network_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/adapters/nimcp_cnn_trainable.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/adapters/nimcp_snn_trainable.c

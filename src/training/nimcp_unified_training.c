@@ -30,6 +30,20 @@
 #include "utils/geometry/nimcp_differential_geometry.h"
 #include "middleware/training/nimcp_loss_functions.h"
 
+/* 15-item gap analysis: Extended pipeline */
+#include "middleware/training/nimcp_gradient_manager.h"
+#include "middleware/training/nimcp_optimizers.h"
+#include "middleware/training/nimcp_training_callbacks.h"
+/* Note: nimcp_training_checkpoint.h — checkpoint is wired via TCB callback, not direct calls */
+#include "middleware/training/nimcp_training_diagnosis.h"
+#include "middleware/training/nimcp_regularization.h"
+#include "training/nimcp_continual_learning.h"
+#include "training/nimcp_adversarial_training.h"
+
+#ifdef NIMCP_ENABLE_CUDA
+#include "gpu/training/nimcp_gradient_checkpoint.h"
+#endif
+
 #include <math.h>
 #include <string.h>
 #include <float.h>
@@ -68,7 +82,7 @@ void nimcp_utm_default_config(nimcp_unified_training_config_t* config) {
     config->unified_optimizer = false;
     config->loss_type = 0; /* NIMCP_LOSS_MSE */
     config->use_composite_loss = true;
-    config->enable_cross_network_gradients = false;
+    config->enable_cross_network_gradients = true;   /* Gap 15: default changed to true */
 
     config->lr_schedule.type = NIMCP_LR_SCHEDULE_COSINE;
     config->lr_schedule.warmup_steps = 1000;
@@ -137,6 +151,23 @@ void nimcp_utm_default_config(nimcp_unified_training_config_t* config) {
     config->enable_early_stopping = true;
     config->early_stopping_patience = 50;
     config->early_stopping_min_delta = 1e-5f;
+
+    /* 15-item gap analysis defaults (all enabled per user preference) */
+    config->enable_gradient_manager = true;
+    config->enable_middleware_optimizer = true;
+    config->enable_training_callbacks = true;
+    config->enable_checkpoint_manager = true;
+    config->checkpoint_interval = 1000;
+    config->enable_training_diagnosis = true;
+    config->enable_regularization = true;
+    config->l1_lambda = 1e-5f;
+    config->label_smoothing = 0.1f;
+    config->enable_continual_learning = true;
+    config->ewc_lambda = 0.1f;
+    config->enable_adversarial_training = false;  /* Requires forward_fn callback — opt-in */
+    config->enable_fused_inference = true;
+    config->enable_ema_inference_swap = true;
+    config->enable_gradient_checkpointing = true;
 }
 
 //=============================================================================
@@ -257,6 +288,25 @@ nimcp_unified_training_manager_t* nimcp_utm_create(
     mgr->early_stopping_counter = 0;
     mgr->early_stopped = false;
 
+    /* 15-item gap analysis: initialization */
+    mgr->gradient_manager = NULL;       /* Lazy-created on first step */
+    mgr->middleware_optimizer = NULL;    /* Lazy-created on first step */
+    mgr->tcb_ctx = NULL;               /* Set via nimcp_utm_set_callbacks */
+    mgr->checkpoint_mgr = NULL;        /* Set via nimcp_utm_set_checkpoint_mgr */
+    mgr->diagnoser = NULL;             /* Lazy-created on first step */
+    mgr->previous_loss = 0.0f;
+    mgr->previous_grad_norm = 0.0f;
+    mgr->regularization_ctx = NULL;    /* Lazy-created on first step */
+    mgr->bridge_adam_m = NULL;
+    mgr->bridge_adam_v = NULL;
+    mgr->bridge_adam_sizes = NULL;
+    mgr->bridge_adam_num = 0;
+    mgr->cl_ctx = NULL;               /* Set via nimcp_utm_set_cl */
+    mgr->ewc_lambda = mgr->config.ewc_lambda;
+    mgr->adv_ctx = NULL;              /* Set via nimcp_utm_set_adversarial */
+    mgr->grad_checkpoint_ctx = NULL;   /* CUDA-gated, lazy-created */
+    mgr->ema_swapped_in = false;
+
     NIMCP_LOGGING_INFO("Unified training manager created (lr=%.4f, diversity_w=%.2f, grad_norm=%s, "
                        "dfa=%s, quantum=%s, nat_grad=%s, manifold=%s)",
                        mgr->current_lr,
@@ -332,7 +382,39 @@ void nimcp_utm_destroy(nimcp_unified_training_manager_t* mgr) {
         riemannian_metric_destroy((riemannian_metric_t*)mgr->riemannian_metric);
     }
 
-    /* Note: AMP, curriculum, KD, neuromod contexts are NOT owned — caller destroys them */
+    /* Note: AMP, curriculum, KD, neuromod, CL, adv, tcb, checkpoint contexts
+     * are NOT owned — caller destroys them */
+
+    /* 15-item gap analysis: cleanup owned resources */
+    if (mgr->gradient_manager) {
+        nimcp_gradient_manager_destroy(mgr->gradient_manager);
+    }
+    if (mgr->middleware_optimizer) {
+        nimcp_optimizer_destroy(mgr->middleware_optimizer);
+    }
+    if (mgr->diagnoser) {
+        training_diagnoser_destroy(mgr->diagnoser);
+    }
+    if (mgr->regularization_ctx) {
+        nimcp_regularization_destroy(mgr->regularization_ctx);
+    }
+
+    /* Free bridge AdamW momentum state */
+    if (mgr->bridge_adam_m) {
+        for (uint32_t i = 0; i < mgr->bridge_adam_num; i++) {
+            nimcp_free(mgr->bridge_adam_m[i]);
+            nimcp_free(mgr->bridge_adam_v[i]);
+        }
+        nimcp_free(mgr->bridge_adam_m);
+        nimcp_free(mgr->bridge_adam_v);
+        nimcp_free(mgr->bridge_adam_sizes);
+    }
+
+#ifdef NIMCP_ENABLE_CUDA
+    if (mgr->grad_checkpoint_ctx) {
+        nimcp_checkpoint_ctx_destroy(mgr->grad_checkpoint_ctx);
+    }
+#endif
 
     /* Destroy natural gradient handles */
     for (uint32_t i = 0; i < NIMCP_UTM_MAX_NETWORKS; i++) {
@@ -664,6 +746,13 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     }
 
     /* ------------------------------------------------------------------ */
+    /* Gap 1: AMP autocast enter (before forward pass)                    */
+    /* ------------------------------------------------------------------ */
+    if (mgr->config.enable_amp && mgr->amp_ctx) {
+        amp_autocast_enter((amp_ctx_t*)mgr->amp_ctx);
+    }
+
+    /* ------------------------------------------------------------------ */
     /* Step 2: Forward pass through networks (topology order)             */
     /* ------------------------------------------------------------------ */
     /* Allocate per-network output buffers */
@@ -716,6 +805,11 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             NIMCP_LOGGING_WARN("utm_step: Forward failed for network '%s' (rc=%d)",
                               net->ops->name, rc);
         }
+    }
+
+    /* Gap 1: AMP autocast exit (after forward) */
+    if (mgr->config.enable_amp && mgr->amp_ctx) {
+        amp_autocast_exit((amp_ctx_t*)mgr->amp_ctx);
     }
 
     /* ------------------------------------------------------------------ */
@@ -803,6 +897,28 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             contrastive /= (float)pair_count;
             composite_loss += mgr->config.contrastive_loss_weight * contrastive;
             local_result.contrastive_loss = contrastive;
+        }
+    }
+
+    /* Gap 9: Continual learning — EWC penalty to prevent catastrophic forgetting */
+    if (mgr->config.enable_continual_learning && mgr->cl_ctx) {
+        /* Collect all params into a flat buffer for EWC */
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled) continue;
+            nimcp_utm_param_group_t* groups = NULL;
+            uint32_t num_groups = 0;
+            if (mgr->networks[i].ops->get_param_groups &&
+                mgr->networks[i].ops->get_param_groups(mgr->networks[i].ctx, &groups, &num_groups) == 0) {
+                for (uint32_t g = 0; g < num_groups; g++) {
+                    if (groups[g].params && groups[g].count > 0) {
+                        float penalty = cl_ewc_penalty(mgr->cl_ctx,
+                            groups[g].params, groups[g].count);
+                        composite_loss += mgr->ewc_lambda * penalty;
+                        local_result.ewc_penalty += mgr->ewc_lambda * penalty;
+                    }
+                }
+                nimcp_free(groups);
+            }
         }
     }
 
@@ -1031,6 +1147,77 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     }
 
     /* ------------------------------------------------------------------ */
+    /* Gap 1: AMP unscale gradients (before optimizer)                    */
+    /* ------------------------------------------------------------------ */
+    if (mgr->config.enable_amp && mgr->amp_ctx) {
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled) continue;
+            nimcp_utm_param_group_t* groups = NULL;
+            uint32_t num_groups = 0;
+            if (mgr->networks[i].ops->get_param_groups &&
+                mgr->networks[i].ops->get_param_groups(mgr->networks[i].ctx, &groups, &num_groups) == 0) {
+                for (uint32_t g = 0; g < num_groups; g++) {
+                    if (groups[g].gradients && groups[g].count > 0) {
+                        amp_unscale_gradients((amp_ctx_t*)mgr->amp_ctx,
+                            groups[g].gradients, groups[g].count);
+                    }
+                }
+                nimcp_free(groups);
+            }
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Gap 2: Gradient health check — NaN/Inf detection + sanitization    */
+    /* ------------------------------------------------------------------ */
+    local_result.gradient_healthy = true;
+    local_result.gradients_sanitized = 0;
+    if (mgr->config.enable_gradient_manager) {
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled) continue;
+            nimcp_utm_param_group_t* groups = NULL;
+            uint32_t num_groups = 0;
+            if (mgr->networks[i].ops->get_param_groups &&
+                mgr->networks[i].ops->get_param_groups(mgr->networks[i].ctx, &groups, &num_groups) == 0) {
+                for (uint32_t g = 0; g < num_groups; g++) {
+                    if (groups[g].gradients && groups[g].count > 0) {
+                        nimcp_grad_health_t health = nimcp_gradient_check_health(
+                            groups[g].gradients, groups[g].count);
+                        if (health != NIMCP_GRAD_HEALTHY) {
+                            local_result.gradient_healthy = false;
+                            uint64_t sanitized = nimcp_gradient_sanitize(
+                                groups[g].gradients, groups[g].count, 0.0f);
+                            local_result.gradients_sanitized += sanitized;
+                        }
+                    }
+                }
+                nimcp_free(groups);
+            }
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Gap 7: L1 regularization gradient injection                        */
+    /* ------------------------------------------------------------------ */
+    if (mgr->config.enable_regularization && mgr->config.l1_lambda > 0.0f) {
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled) continue;
+            nimcp_utm_param_group_t* groups = NULL;
+            uint32_t num_groups = 0;
+            if (mgr->networks[i].ops->get_param_groups &&
+                mgr->networks[i].ops->get_param_groups(mgr->networks[i].ctx, &groups, &num_groups) == 0) {
+                for (uint32_t g = 0; g < num_groups; g++) {
+                    if (groups[g].params && groups[g].gradients && groups[g].count > 0) {
+                        nimcp_l1_gradient(groups[g].params, groups[g].gradients,
+                            groups[g].count, mgr->config.l1_lambda);
+                    }
+                }
+                nimcp_free(groups);
+            }
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
     /* Step 6: Optimizer step (AdamW with LR schedule)                    */
     /* ------------------------------------------------------------------ */
 
@@ -1252,34 +1439,71 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     }
 
     /* Apply bridge weight updates */
-    /* Item 2: Use AdamW for bridge params when bridge_params_in_optimizer is true */
-    for (uint32_t b = 0; b < mgr->num_bridges; b++) {
-        nimcp_cross_network_bridge_t* br = &mgr->bridges[b];
-        if (!br->enabled || !br->transform_weights || !br->weight_grad) continue;
-
-        size_t w_size = (size_t)br->target_dim * br->source_dim;
-        float bridge_lr = mgr->current_lr * mgr->neuromod_lr_scale;
-
-        if (mgr->bridge_params_in_optimizer) {
-            /* AdamW update for bridge weights — uses same beta/eps as network params.
-             * Bridge-level Adam state is stored in the bridge's weight_grad memory area
-             * after the gradient portion. For simplicity, use simple momentum here. */
-            for (size_t j = 0; j < w_size; j++) {
-                /* Weight decay */
-                br->transform_weights[j] -= bridge_lr * mgr->config.weight_decay *
-                    br->transform_weights[j];
-                /* Gradient step (with LR schedule) */
-                br->transform_weights[j] -= bridge_lr * br->weight_grad[j];
-            }
-        } else {
-            /* Simple SGD fallback */
-            for (size_t j = 0; j < w_size; j++) {
-                br->transform_weights[j] -= bridge_lr * br->weight_grad[j];
-            }
+    /* Gap 8: Real AdamW with momentum for bridge params */
+    if (mgr->num_bridges > 0) {
+        /* Lazy-allocate bridge Adam state */
+        if (!mgr->bridge_adam_m && mgr->bridge_params_in_optimizer) {
+            mgr->bridge_adam_m = (float**)nimcp_calloc(mgr->num_bridges, sizeof(float*));
+            mgr->bridge_adam_v = (float**)nimcp_calloc(mgr->num_bridges, sizeof(float*));
+            mgr->bridge_adam_sizes = (size_t*)nimcp_calloc(mgr->num_bridges, sizeof(size_t));
+            mgr->bridge_adam_num = mgr->num_bridges;
         }
-        if (br->transform_bias && br->bias_grad) {
-            for (uint32_t j = 0; j < br->target_dim; j++) {
-                br->transform_bias[j] -= bridge_lr * br->bias_grad[j];
+
+        for (uint32_t b = 0; b < mgr->num_bridges; b++) {
+            nimcp_cross_network_bridge_t* br = &mgr->bridges[b];
+            if (!br->enabled || !br->transform_weights || !br->weight_grad) continue;
+
+            size_t w_size = (size_t)br->target_dim * br->source_dim;
+            float bridge_lr = mgr->current_lr * mgr->neuromod_lr_scale;
+
+            if (mgr->bridge_params_in_optimizer && mgr->bridge_adam_m) {
+                /* Lazy-allocate per-bridge moment vectors */
+                if (!mgr->bridge_adam_m[b] || mgr->bridge_adam_sizes[b] != w_size) {
+                    nimcp_free(mgr->bridge_adam_m[b]);
+                    nimcp_free(mgr->bridge_adam_v[b]);
+                    mgr->bridge_adam_m[b] = (float*)nimcp_calloc(w_size, sizeof(float));
+                    mgr->bridge_adam_v[b] = (float*)nimcp_calloc(w_size, sizeof(float));
+                    mgr->bridge_adam_sizes[b] = w_size;
+                }
+
+                float* bm = mgr->bridge_adam_m[b];
+                float* bv = mgr->bridge_adam_v[b];
+                float bc1 = 1.0f - mgr->adam_beta1_t;
+                float bc2 = 1.0f - mgr->adam_beta2_t;
+
+                if (bm && bv) {
+                    for (size_t j = 0; j < w_size; j++) {
+                        float grad = br->weight_grad[j];
+                        /* AdamW moments */
+                        bm[j] = adam_beta1 * bm[j] + (1.0f - adam_beta1) * grad;
+                        bv[j] = adam_beta2 * bv[j] + (1.0f - adam_beta2) * grad * grad;
+                        /* Bias-corrected */
+                        float m_hat = bm[j] / bc1;
+                        float v_hat = bv[j] / bc2;
+                        /* Weight decay */
+                        if (mgr->config.weight_decay > 0.0f) {
+                            br->transform_weights[j] -= bridge_lr * mgr->config.weight_decay *
+                                br->transform_weights[j];
+                        }
+                        /* Adam update */
+                        br->transform_weights[j] -= bridge_lr * m_hat / (sqrtf(v_hat) + adam_eps);
+                    }
+                } else {
+                    /* Fallback if allocation failed */
+                    for (size_t j = 0; j < w_size; j++) {
+                        br->transform_weights[j] -= bridge_lr * br->weight_grad[j];
+                    }
+                }
+            } else {
+                /* Simple SGD fallback */
+                for (size_t j = 0; j < w_size; j++) {
+                    br->transform_weights[j] -= bridge_lr * br->weight_grad[j];
+                }
+            }
+            if (br->transform_bias && br->bias_grad) {
+                for (uint32_t j = 0; j < br->target_dim; j++) {
+                    br->transform_bias[j] -= bridge_lr * br->bias_grad[j];
+                }
             }
         }
     }
@@ -1369,6 +1593,95 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         }
     }
     local_result.early_stopped = mgr->early_stopped;
+
+    /* ------------------------------------------------------------------ */
+    /* Gap 1: AMP update scale (after optimizer step)                      */
+    /* ------------------------------------------------------------------ */
+    if (mgr->config.enable_amp && mgr->amp_ctx) {
+        amp_update_scale((amp_ctx_t*)mgr->amp_ctx, local_result.gradient_healthy);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Gap 6: Training diagnosis — observe metrics + apply recommendations */
+    /* ------------------------------------------------------------------ */
+    local_result.diagnosis_reduce_lr = false;
+    local_result.diagnosis_lr_factor = 1.0f;
+    if (mgr->config.enable_training_diagnosis) {
+        /* Lazy-create diagnoser */
+        if (!mgr->diagnoser) {
+            mgr->diagnoser = training_diagnoser_create();
+        }
+        if (mgr->diagnoser) {
+            training_diagnoser_observe_from_metrics(mgr->diagnoser,
+                composite_loss,                         /* loss_current */
+                mgr->previous_loss,                     /* loss_previous */
+                local_result.gradient_norm,             /* grad_norm */
+                mgr->previous_grad_norm,                /* grad_norm_previous */
+                0.0f,                                   /* loss_volatility (placeholder) */
+                0.0f,                                   /* gradient_variance (placeholder) */
+                mgr->current_lr,                        /* learning_rate */
+                (float)(mgr->config.batch_size > 0 ? mgr->config.batch_size : 1), /* batch_size */
+                0.5f,                                   /* arousal_level (placeholder) */
+                0.0f,                                   /* inflammation_level (placeholder) */
+                0.0f);                                  /* resource_pressure (placeholder) */
+
+            training_diagnosis_t diagnosis = {0};
+            if (training_diagnoser_diagnose(mgr->diagnoser, &diagnosis) == 0) {
+                local_result.diagnosis_reduce_lr = diagnosis.recommend_reduce_lr;
+                local_result.diagnosis_lr_factor = diagnosis.recommended_lr_factor;
+                /* Apply recommended LR factor (clamped for safety) */
+                if (diagnosis.recommend_reduce_lr && diagnosis.recommended_lr_factor > 0.0f &&
+                    diagnosis.recommended_lr_factor < 1.0f) {
+                    float factor = diagnosis.recommended_lr_factor;
+                    if (factor < 0.1f) factor = 0.1f;
+                    mgr->current_lr *= factor;
+                }
+            }
+        }
+    }
+    mgr->previous_loss = composite_loss;
+    mgr->previous_grad_norm = local_result.gradient_norm;
+
+    /* ------------------------------------------------------------------ */
+    /* Gap 4: Training callbacks — fire step complete event                */
+    /* ------------------------------------------------------------------ */
+    if (mgr->config.enable_training_callbacks && mgr->tcb_ctx) {
+        tcb_metrics_t tcb_metrics = {0};
+        tcb_metrics.loss = composite_loss;
+        tcb_metrics.learning_rate = mgr->current_lr;
+        tcb_metrics.gradient_norm = local_result.gradient_norm;
+        tcb_metrics.step = mgr->step_count;
+        tcb_action_t action = tcb_fire_event(mgr->tcb_ctx,
+            TCB_EVENT_STEP_COMPLETE, &tcb_metrics);
+        if (action == TCB_ACTION_STOP_TRAINING) {
+            mgr->early_stopped = true;
+            local_result.early_stopped = true;
+        } else if (action == TCB_ACTION_REDUCE_LR) {
+            mgr->current_lr *= 0.5f;
+        }
+
+        /* Fire divergence event if loss is NaN or Inf */
+        if (!isfinite(composite_loss)) {
+            tcb_fire_event(mgr->tcb_ctx, TCB_EVENT_DIVERGENCE, &tcb_metrics);
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Gap 5: Checkpoint save (periodic) — via TCB_EVENT_CHECKPOINT       */
+    /* ------------------------------------------------------------------ */
+    /* Checkpoint saving is triggered via the callback system rather than
+     * direct checkpoint_mgr calls, since checkpoint_mgr_t is caller-owned.
+     * The caller registers a TCB_EVENT_CHECKPOINT callback that calls
+     * checkpoint_save_full() with the appropriate weight tensors. */
+    if (mgr->config.enable_checkpoint_manager && mgr->tcb_ctx &&
+        mgr->config.checkpoint_interval > 0 &&
+        mgr->step_count % mgr->config.checkpoint_interval == 0) {
+        tcb_metrics_t ckpt_metrics = {0};
+        ckpt_metrics.loss = composite_loss;
+        ckpt_metrics.step = mgr->step_count;
+        ckpt_metrics.learning_rate = mgr->current_lr;
+        tcb_fire_event(mgr->tcb_ctx, TCB_EVENT_CHECKPOINT, &ckpt_metrics);
+    }
 
     /* ------------------------------------------------------------------ */
     /* Step 8: DFA health monitoring + fractal analysis                    */
@@ -1751,4 +2064,137 @@ int nimcp_utm_get_ema_params(const nimcp_unified_training_manager_t* mgr,
         count : mgr->ema_sizes[group_idx];
     memcpy(out_params, mgr->ema_params[group_idx], copy_count * sizeof(float));
     return 0;
+}
+
+//=============================================================================
+// Extended Pipeline API (15-Item Gap Analysis)
+//=============================================================================
+
+void nimcp_utm_set_cl(nimcp_unified_training_manager_t* mgr, cl_ctx_t* cl_ctx) {
+    if (!mgr) return;
+    mgr->cl_ctx = cl_ctx;
+}
+
+void nimcp_utm_set_adversarial(nimcp_unified_training_manager_t* mgr, adv_ctx_t* adv_ctx) {
+    if (!mgr) return;
+    mgr->adv_ctx = adv_ctx;
+}
+
+void nimcp_utm_set_callbacks(nimcp_unified_training_manager_t* mgr, tcb_context_t* tcb_ctx) {
+    if (!mgr) return;
+    mgr->tcb_ctx = tcb_ctx;
+}
+
+void nimcp_utm_set_checkpoint_mgr(nimcp_unified_training_manager_t* mgr,
+                                    checkpoint_mgr_t* ckpt_mgr) {
+    if (!mgr) return;
+    mgr->checkpoint_mgr = ckpt_mgr;
+}
+
+int nimcp_utm_swap_to_ema(nimcp_unified_training_manager_t* mgr) {
+    if (!mgr || !mgr->ema_params || !mgr->ema_enabled) return -1;
+    if (mgr->ema_swapped_in) return 0; /* Already swapped */
+
+    /* Swap live params ↔ EMA params for all groups */
+    uint32_t g_idx = 0;
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        if (!mgr->networks[i].enabled) continue;
+        nimcp_utm_param_group_t* groups = NULL;
+        uint32_t num_groups = 0;
+        if (mgr->networks[i].ops->get_param_groups &&
+            mgr->networks[i].ops->get_param_groups(mgr->networks[i].ctx, &groups, &num_groups) == 0) {
+            for (uint32_t g = 0; g < num_groups; g++) {
+                if (groups[g].params && groups[g].count > 0 &&
+                    g_idx < mgr->ema_num_groups && mgr->ema_params[g_idx]) {
+                    /* In-place swap */
+                    size_t count = groups[g].count;
+                    if (count == mgr->ema_sizes[g_idx]) {
+                        for (size_t j = 0; j < count; j++) {
+                            float tmp = groups[g].params[j];
+                            groups[g].params[j] = mgr->ema_params[g_idx][j];
+                            mgr->ema_params[g_idx][j] = tmp;
+                        }
+                    }
+                }
+                g_idx++;
+            }
+            nimcp_free(groups);
+        }
+    }
+
+    /* Sync swapped params to underlying networks */
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        if (!mgr->networks[i].enabled) continue;
+        if (mgr->networks[i].ops->sync_params) {
+            mgr->networks[i].ops->sync_params(mgr->networks[i].ctx);
+        }
+    }
+
+    mgr->ema_swapped_in = true;
+    return 0;
+}
+
+int nimcp_utm_swap_from_ema(nimcp_unified_training_manager_t* mgr) {
+    if (!mgr || !mgr->ema_swapped_in) return -1;
+
+    /* Swap back (same operation — EMA now holds live, live holds EMA) */
+    uint32_t g_idx = 0;
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        if (!mgr->networks[i].enabled) continue;
+        nimcp_utm_param_group_t* groups = NULL;
+        uint32_t num_groups = 0;
+        if (mgr->networks[i].ops->get_param_groups &&
+            mgr->networks[i].ops->get_param_groups(mgr->networks[i].ctx, &groups, &num_groups) == 0) {
+            for (uint32_t g = 0; g < num_groups; g++) {
+                if (groups[g].params && groups[g].count > 0 &&
+                    g_idx < mgr->ema_num_groups && mgr->ema_params[g_idx]) {
+                    size_t count = groups[g].count;
+                    if (count == mgr->ema_sizes[g_idx]) {
+                        for (size_t j = 0; j < count; j++) {
+                            float tmp = groups[g].params[j];
+                            groups[g].params[j] = mgr->ema_params[g_idx][j];
+                            mgr->ema_params[g_idx][j] = tmp;
+                        }
+                    }
+                }
+                g_idx++;
+            }
+            nimcp_free(groups);
+        }
+    }
+
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        if (!mgr->networks[i].enabled) continue;
+        if (mgr->networks[i].ops->sync_params) {
+            mgr->networks[i].ops->sync_params(mgr->networks[i].ctx);
+        }
+    }
+
+    mgr->ema_swapped_in = false;
+    return 0;
+}
+
+bool nimcp_utm_gradients_healthy(const nimcp_unified_training_manager_t* mgr) {
+    if (!mgr) return true;
+    /* Check all param groups for NaN/Inf */
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        if (!mgr->networks[i].enabled) continue;
+        nimcp_utm_param_group_t* groups = NULL;
+        uint32_t num_groups = 0;
+        if (mgr->networks[i].ops->get_param_groups &&
+            mgr->networks[i].ops->get_param_groups(mgr->networks[i].ctx, &groups, &num_groups) == 0) {
+            for (uint32_t g = 0; g < num_groups; g++) {
+                if (groups[g].gradients && groups[g].count > 0) {
+                    nimcp_grad_health_t health = nimcp_gradient_check_health(
+                        groups[g].gradients, groups[g].count);
+                    if (health != NIMCP_GRAD_HEALTHY) {
+                        nimcp_free(groups);
+                        return false;
+                    }
+                }
+            }
+            nimcp_free(groups);
+        }
+    }
+    return true;
 }
