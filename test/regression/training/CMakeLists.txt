@@ -363,6 +363,50 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_architecture_phase3_fixes.cpp)
             TIMEOUT 60)
 endif()
 
+# Architecture Phase 4 Fixes Regression Tests (Post-eval audit #3)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_architecture_phase4_fixes.cpp)
+    add_executable(regression_training_architecture_phase4_fixes
+        test_architecture_phase4_fixes.cpp
+    )
+    target_include_directories(regression_training_architecture_phase4_fixes PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_architecture_phase4_fixes PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_architecture_phase4_fixes PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME regression_training_architecture_phase4_fixes
+             COMMAND regression_training_architecture_phase4_fixes
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(regression_training_architecture_phase4_fixes
+        PROPERTIES
+            LABELS "regression;training;architecture-phase4"
+            TIMEOUT 60)
+endif()
+
+# SNN BPTT Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_bptt.cpp)
+    add_executable(regression_training_snn_bptt_test
+        test_snn_bptt.cpp
+    )
+    target_include_directories(regression_training_snn_bptt_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_snn_bptt_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_snn_bptt_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME regression_training_snn_bptt_test
+             COMMAND regression_training_snn_bptt_test
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(regression_training_snn_bptt_test
+        PROPERTIES
+            LABELS "regression;training;snn;bptt"
+            TIMEOUT 60)
+endif()
+
 # Architecture Audit Fixes Regression Tests (Session 57-58)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_architecture_audit_fixes.cpp)
     add_executable(regression_training_architecture_audit_fixes

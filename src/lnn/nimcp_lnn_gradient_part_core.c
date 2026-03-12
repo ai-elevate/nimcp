@@ -174,8 +174,11 @@ int lnn_gradient_compute_adjoint(
         }
     }
 
-    // Cleanup
-    nimcp_tensor_destroy(adjoint_current);
+    // Save final adjoint state as input gradient (dL/d_input = λ(t=0))
+    if (ctx->last_input_grad) {
+        nimcp_tensor_destroy(ctx->last_input_grad);
+    }
+    ctx->last_input_grad = adjoint_current;  /* Transfer ownership */
 
     // Compute final gradient norm
     ctx->gradient_norm = lnn_gradient_norm(ctx);
@@ -1089,6 +1092,11 @@ int lnn_gradient_recompute_from_checkpoint(
  * WHY:  Monitor gradient health
  * HOW:  L2 norm
  */
+const nimcp_tensor_t* lnn_gradient_get_input_grad(const lnn_gradient_ctx_t* ctx) {
+    if (!ctx) return NULL;
+    return ctx->last_input_grad;
+}
+
 float lnn_gradient_norm(const lnn_gradient_ctx_t* ctx) {
     // Guard: check NULL
     if (!ctx) {

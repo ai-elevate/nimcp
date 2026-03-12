@@ -756,10 +756,36 @@ static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint3
             act_ok = nimcp_gpu_leaky_relu(cache->ctx,
                 cache->activations[l + 1], cache->activations[l + 1], 0.01f);
             break;
-        case ACTIVATION_ADAPTIVE:
-            act_ok = nimcp_gpu_tanh(cache->ctx,
-                cache->activations[l + 1], cache->activations[l + 1]);
+        case ACTIVATION_ADAPTIVE: {
+            /* GPU/CPU alignment fix: match CPU's threshold-gated tanh.
+             * CPU does: if (x > threshold) tanh((x - threshold) / 10.0) else 0.
+             * Since per-neuron thresholds live on CPU, download pre-activation
+             * values, apply the gated activation on host, then upload back.
+             * Uses a fixed threshold (0.1) as a proxy for the per-neuron
+             * adaptive threshold, which converges to a narrow range. */
+            uint32_t layer_size = cache->layer_sizes[l + 1];
+            if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
+                                          cache->host_activation_buf)) {
+                return false;
+            }
+            const float fixed_thresh = 0.1f;
+            for (uint32_t ci = 0; ci < layer_size; ci++) {
+                float x = cache->host_activation_buf[ci];
+                if (x > fixed_thresh) {
+                    cache->host_activation_buf[ci] = tanhf((x - fixed_thresh) / 10.0f);
+                } else {
+                    cache->host_activation_buf[ci] = 0.0f;
+                }
+            }
+            size_t a_dims[1] = { layer_size };
+            nimcp_gpu_tensor_t* act_result = nimcp_gpu_tensor_from_host(
+                cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
+            if (!act_result) return false;
+            nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
+            cache->activations[l + 1] = act_result;
+            act_ok = true;
             break;
+        }
         default:
             act_ok = nimcp_gpu_tanh(cache->ctx,
                 cache->activations[l + 1], cache->activations[l + 1]);

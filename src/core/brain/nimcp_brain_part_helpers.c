@@ -1049,14 +1049,37 @@ static void fuse_forward_outputs(const forward_task_ctx_t* ctx,
         return;
     }
 
-    /* Legacy confidence-weighted fusion */
+    /* Legacy confidence-weighted fusion with L2 normalization.
+     * L2-normalize each network's output before weighting to prevent
+     * magnitude-dominant networks from overwhelming the ensemble. */
     float total_confidence = 0.0f;
+
+    /* Compute per-network L2 norms */
+    float norm_a = 0.0f, norm_c = 0.0f, norm_s = 0.0f;
+    if (ctx->adaptive_success) {
+        for (uint32_t i = 0; i < output_size; i++)
+            norm_a += ctx->adaptive_output[i] * ctx->adaptive_output[i];
+        norm_a = sqrtf(norm_a + 1e-8f);
+    }
+    if (ctx->cnn_success) {
+        for (uint32_t i = 0; i < output_size; i++)
+            norm_c += ctx->cnn_output[i] * ctx->cnn_output[i];
+        norm_c = sqrtf(norm_c + 1e-8f);
+    }
+    if (ctx->snn_success) {
+        for (uint32_t i = 0; i < output_size; i++) {
+            if (isfinite(ctx->snn_output[i]))
+                norm_s += ctx->snn_output[i] * ctx->snn_output[i];
+        }
+        norm_s = sqrtf(norm_s + 1e-8f);
+    }
 
     /* Adaptive contribution (always expected to succeed) */
     if (ctx->adaptive_success) {
         float w = ctx->adaptive_confidence;
+        float scale = w / norm_a;
         for (uint32_t i = 0; i < output_size; i++) {
-            fused_output[i] += w * ctx->adaptive_output[i];
+            fused_output[i] += scale * ctx->adaptive_output[i];
         }
         total_confidence += w;
         *active_neurons_out = ctx->adaptive_active;
@@ -1065,8 +1088,9 @@ static void fuse_forward_outputs(const forward_task_ctx_t* ctx,
     /* CNN contribution */
     if (ctx->cnn_success) {
         float w = ctx->cnn_confidence;
+        float scale = w / norm_c;
         for (uint32_t i = 0; i < output_size; i++) {
-            fused_output[i] += w * ctx->cnn_output[i];
+            fused_output[i] += scale * ctx->cnn_output[i];
         }
         total_confidence += w;
 
@@ -1080,9 +1104,10 @@ static void fuse_forward_outputs(const forward_task_ctx_t* ctx,
     /* SNN contribution */
     if (ctx->snn_success) {
         float w = ctx->snn_confidence;
+        float scale = w / norm_s;
         for (uint32_t i = 0; i < output_size; i++) {
             if (isfinite(ctx->snn_output[i])) {
-                fused_output[i] += w * ctx->snn_output[i];
+                fused_output[i] += scale * ctx->snn_output[i];
             }
         }
         total_confidence += w;

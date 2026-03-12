@@ -57,6 +57,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "lnn/nimcp_lnn.h"
+#include "snn/nimcp_snn_network.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "cognitive/nimcp_working_memory.h"
@@ -472,6 +473,11 @@ int brain_reset_inference_state(brain_t brain)
     /* Reset LNN hidden states if present */
     if (brain->lnn_network) {
         lnn_reset_state((lnn_network_t*)brain->lnn_network);
+    }
+
+    /* Reset SNN spike buffers and membrane potentials */
+    if (brain->snn_network) {
+        snn_network_reset((snn_network_t*)brain->snn_network);
     }
 
     return 0;

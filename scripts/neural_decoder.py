@@ -254,6 +254,11 @@ class NeuralDecoder:
         """Unfreeze decoder — record_pair resumes normal operation."""
         self._frozen = False
 
+    # Minimum projector training pairs before decode_output uses the projector.
+    # Below this threshold, the projection matrix is essentially random (identity
+    # initialization), so decoded text would be misleading.
+    MIN_FITTED_PAIRS = 50
+
     def decode_output(self, output_vector: np.ndarray,
                       top_k: int = 1) -> list[tuple[str, float]]:
         """Decode a brain output vector to text.
@@ -262,7 +267,11 @@ class NeuralDecoder:
         2. Find nearest text in vocabulary bank
 
         Returns list of (text, similarity) tuples.
+        Returns empty list if projector hasn't been fitted with enough samples.
         """
+        if not self.projector._is_fitted and self.projector._total_pairs < self.MIN_FITTED_PAIRS:
+            self._decode_count += 1
+            return [("", 0.0)] * top_k
         embedding = self.projector.project(output_vector)
         results = self.vocabulary.decode(embedding, top_k=top_k)
         self._decode_count += 1

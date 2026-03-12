@@ -39266,6 +39266,32 @@ regression_training_architecture_phase3_fixes/fast:
 .PHONY : regression_training_architecture_phase3_fixes/fast
 
 #=============================================================================
+# Target rules for targets named regression_training_architecture_phase4_fixes
+
+# Build rule for target.
+regression_training_architecture_phase4_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_architecture_phase4_fixes
+.PHONY : regression_training_architecture_phase4_fixes
+
+# fast build rule for target.
+regression_training_architecture_phase4_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_architecture_phase4_fixes.dir/build.make test/regression/training/CMakeFiles/regression_training_architecture_phase4_fixes.dir/build
+.PHONY : regression_training_architecture_phase4_fixes/fast
+
+#=============================================================================
+# Target rules for targets named regression_training_snn_bptt_test
+
+# Build rule for target.
+regression_training_snn_bptt_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_snn_bptt_test
+.PHONY : regression_training_snn_bptt_test
+
+# fast build rule for target.
+regression_training_snn_bptt_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_snn_bptt_test.dir/build.make test/regression/training/CMakeFiles/regression_training_snn_bptt_test.dir/build
+.PHONY : regression_training_snn_bptt_test/fast
+
+#=============================================================================
 # Target rules for targets named regression_training_architecture_audit_fixes
 
 # Build rule for target.
@@ -43713,6 +43739,7 @@ help:
 	@echo "... regression_training_architecture_eval_fixes"
 	@echo "... regression_training_architecture_phase2_fixes"
 	@echo "... regression_training_architecture_phase3_fixes"
+	@echo "... regression_training_architecture_phase4_fixes"
 	@echo "... regression_training_cnn_backprop_test"
 	@echo "... regression_training_cnn_cortex_bridge_test"
 	@echo "... regression_training_dispatch_test"
@@ -43722,6 +43749,7 @@ help:
 	@echo "... regression_training_portia_test"
 	@echo "... regression_training_snn_backprop_stubs_test"
 	@echo "... regression_training_snn_backprop_test"
+	@echo "... regression_training_snn_bptt_test"
 	@echo "... regression_training_stability_test"
 	@echo "... regression_training_symbolic_logic_hub_test"
 	@echo "... regression_utils_containers_test_queue_regression"

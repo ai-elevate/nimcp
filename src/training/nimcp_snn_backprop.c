@@ -24,6 +24,7 @@
 
 #include "training/nimcp_snn_backprop.h"
 #include "training/nimcp_unified_training.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
 #include "constants/nimcp_constants.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
@@ -123,6 +124,25 @@ struct snn_backprop_ctx_s {
 
     /* UTM management flag — when true, UTM owns gradient norm + diversity */
     bool managed_by_utm;
+
+    /* Input gradient for cross-network gradient bridges */
+    float* last_input_grad;          /**< dL/d_input from last backward pass */
+    uint32_t input_grad_size;        /**< Size of last_input_grad array */
+
+    /* BPTT neuron/synapse mapping (built lazily on first forward) */
+    uint32_t total_neurons_flat;     /**< Total neurons across all populations */
+    uint32_t total_synapses_actual;  /**< Actual incoming synapse count */
+    uint32_t* neuron_id_to_flat;     /**< neuron_id -> flat index [0..N-1] */
+    uint32_t* flat_to_neuron_id;     /**< flat index -> neuron_id (reverse) */
+    uint32_t max_neuron_id;          /**< For array sizing */
+    uint32_t* synapse_offset;        /**< flat neuron i -> start index in weight_grads */
+    uint32_t* synapse_count;         /**< Number of incoming synapses per flat neuron */
+    bool mapping_built;              /**< Whether synapse mapping has been built */
+
+    /* Forward pass state for backward */
+    float* last_outputs;             /**< Outputs from last forward [n_outputs] */
+    uint32_t last_n_outputs;
+    uint32_t last_timesteps;         /**< Timesteps used in last forward */
 };
 
 /**
@@ -719,6 +739,27 @@ void snn_backprop_destroy(snn_backprop_ctx_t* ctx) {
         ctx->loss_ctx = NULL;
     }
 
+    /* Free input gradient buffer */
+    if (ctx->last_input_grad) {
+        nimcp_free(ctx->last_input_grad);
+        ctx->last_input_grad = NULL;
+        ctx->input_grad_size = 0;
+    }
+
+    /* Free BPTT mapping buffers */
+    nimcp_free(ctx->neuron_id_to_flat);
+    nimcp_free(ctx->flat_to_neuron_id);
+    nimcp_free(ctx->synapse_offset);
+    nimcp_free(ctx->synapse_count);
+    ctx->neuron_id_to_flat = NULL;
+    ctx->flat_to_neuron_id = NULL;
+    ctx->synapse_offset = NULL;
+    ctx->synapse_count = NULL;
+
+    /* Free last_outputs buffer */
+    nimcp_free(ctx->last_outputs);
+    ctx->last_outputs = NULL;
+
     /* Destroy anti-collapse state */
     nimcp_anti_collapse_destroy(&ctx->anti_collapse);
 
@@ -785,7 +826,109 @@ int snn_backprop_reset(snn_backprop_ctx_t* ctx) {
 }
 
 //=============================================================================
-// Forward/Backward Pass Functions (Stubs)
+// BPTT Synapse Mapping Helper
+//=============================================================================
+
+/**
+ * @brief Build flat neuron index and synapse offset tables for BPTT
+ *
+ * WHAT: Map population neuron IDs to dense [0..N-1] indices for efficient BPTT
+ * WHY:  Activation/gradient buffers need contiguous indexing across populations
+ * HOW:  Iterate populations, assign flat indices, count incoming synapses
+ */
+static int build_synapse_mapping(snn_backprop_ctx_t* ctx) {
+    if (!ctx || !ctx->network) return -1;
+    if (ctx->mapping_built) return 0;
+
+    snn_network_t* net = ctx->network;
+    neural_network_t nn = net->neural_net;
+
+    /* Pass 1: count total neurons and find max neuron ID */
+    uint32_t total_flat = 0;
+    uint32_t max_nid = 0;
+    for (uint32_t p = 0; p < net->n_populations; p++) {
+        snn_population_t* pop = net->populations[p];
+        if (!pop) continue;
+        total_flat += pop->n_neurons;
+        for (uint32_t i = 0; i < pop->n_neurons; i++) {
+            if (pop->neuron_ids[i] > max_nid)
+                max_nid = pop->neuron_ids[i];
+        }
+    }
+
+    if (total_flat == 0) return -1;
+    ctx->total_neurons_flat = total_flat;
+    ctx->max_neuron_id = max_nid;
+
+    /* Allocate mapping arrays */
+    ctx->neuron_id_to_flat = (uint32_t*)nimcp_calloc(max_nid + 1, sizeof(uint32_t));
+    ctx->flat_to_neuron_id = (uint32_t*)nimcp_calloc(total_flat, sizeof(uint32_t));
+    ctx->synapse_count = (uint32_t*)nimcp_calloc(total_flat, sizeof(uint32_t));
+    ctx->synapse_offset = (uint32_t*)nimcp_calloc(total_flat + 1, sizeof(uint32_t));
+
+    if (!ctx->neuron_id_to_flat || !ctx->flat_to_neuron_id ||
+        !ctx->synapse_count || !ctx->synapse_offset) {
+        NIMCP_LOGGING_ERROR("build_synapse_mapping: allocation failed");
+        return -1;
+    }
+
+    /* Init neuron_id_to_flat to UINT32_MAX ("not in SNN") */
+    for (uint32_t i = 0; i <= max_nid; i++) {
+        ctx->neuron_id_to_flat[i] = UINT32_MAX;
+    }
+
+    /* Pass 2: assign flat indices */
+    uint32_t flat_idx = 0;
+    for (uint32_t p = 0; p < net->n_populations; p++) {
+        snn_population_t* pop = net->populations[p];
+        if (!pop) continue;
+        for (uint32_t i = 0; i < pop->n_neurons; i++) {
+            uint32_t nid = pop->neuron_ids[i];
+            ctx->neuron_id_to_flat[nid] = flat_idx;
+            ctx->flat_to_neuron_id[flat_idx] = nid;
+            flat_idx++;
+        }
+    }
+
+    /* Pass 3: count incoming synapses per flat neuron */
+    uint32_t total_syns = 0;
+    for (uint32_t f = 0; f < total_flat; f++) {
+        uint32_t nid = ctx->flat_to_neuron_id[f];
+        neuron_t* neuron = neural_network_get_neuron(nn, nid);
+        if (!neuron) continue;
+        uint32_t count = neuron->incoming.embedded_count + neuron->incoming.overflow_count;
+        ctx->synapse_count[f] = count;
+        total_syns += count;
+    }
+
+    /* Pass 4: prefix-sum for synapse_offset */
+    ctx->synapse_offset[0] = 0;
+    for (uint32_t f = 0; f < total_flat; f++) {
+        ctx->synapse_offset[f + 1] = ctx->synapse_offset[f] + ctx->synapse_count[f];
+    }
+    ctx->total_synapses_actual = total_syns;
+
+    /* Reallocate gradient buffer if estimated size was too small */
+    if (ctx->gradients && ctx->gradients->weight_grads) {
+        size_t current_numel = nimcp_tensor_numel(ctx->gradients->weight_grads);
+        if (current_numel < total_syns) {
+            free_gradient_buffer(ctx->gradients);
+            ctx->gradients = alloc_gradient_buffer(total_syns, total_flat);
+            if (!ctx->gradients) {
+                NIMCP_LOGGING_ERROR("build_synapse_mapping: gradient realloc failed");
+                return -1;
+            }
+        }
+    }
+
+    ctx->mapping_built = true;
+    NIMCP_LOGGING_INFO("SNN BPTT mapping: %u flat neurons, %u synapses",
+                       total_flat, total_syns);
+    return 0;
+}
+
+//=============================================================================
+// Forward/Backward Pass Functions
 //=============================================================================
 
 int snn_backprop_forward(
@@ -795,40 +938,134 @@ int snn_backprop_forward(
     float duration_ms,
     float* outputs
 ) {
-    // Guard: Null checks
+    /* Guard: Null checks */
     if (!ctx || !inputs) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
             "snn_backprop_forward: ctx or inputs is NULL");
         return SNN_ERROR_NULL_POINTER;
     }
-
-    // Guard: Validate batch size
     if (batch_size == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "snn_backprop_forward: batch_size is 0");
         return SNN_ERROR_INVALID_STATE;
     }
-
-    /* Forward pass: run SNN for duration, recording activations for BPTT.
-     * The caller provides per-sample input/output buffers. */
     if (!ctx->network) return SNN_ERROR_INVALID_STATE;
 
-    /* Use BPTT unroll steps as proxy for duration if not specified via duration_ms param */
-    float dur = (float)(ctx->config.bptt.unroll_steps > 0 ? ctx->config.bptt.unroll_steps : 100);
-    (void)duration_ms;  /* duration_ms comes through the train_step path */
-
-    /* Forward pass uses the network API directly.
-     * Note: SNN network handles its own input/output sizing. */
-    snn_network_reset(ctx->network);
-
-    /* Process batch — for SNN, the entire input batch is treated as
-     * a single forward pass with batch_size samples. */
-    if (outputs) {
-        /* Clear output buffer */
-        memset(outputs, 0, batch_size * sizeof(float));
+    /* Lazy-build synapse mapping on first forward */
+    if (!ctx->mapping_built) {
+        if (build_synapse_mapping(ctx) != 0) {
+            NIMCP_LOGGING_ERROR("snn_backprop_forward: failed to build synapse mapping");
+            return SNN_ERROR_INVALID_STATE;
+        }
     }
 
-    ctx->stats.total_forward_time_ms += dur;
+    snn_network_t* net = ctx->network;
+    neural_network_t nn = net->neural_net;
+
+    /* Compute timestep count */
+    float dt = net->config.dt;
+    if (dt <= 0.0f) dt = 1.0f;
+    uint32_t unroll = ctx->config.bptt.unroll_steps;
+    if (unroll == 0) unroll = 50;
+
+    uint32_t n_steps;
+    if (duration_ms > 0.0f) {
+        n_steps = (uint32_t)(duration_ms / dt);
+        if (n_steps > unroll) n_steps = unroll;
+    } else {
+        n_steps = unroll;
+    }
+    if (n_steps > SNN_BPTT_MAX_UNROLL) n_steps = SNN_BPTT_MAX_UNROLL;
+    if (n_steps == 0) n_steps = 1;
+
+    uint32_t N = ctx->total_neurons_flat;
+
+    /* Allocate/reallocate activation buffer if needed */
+    if (!ctx->activations || ctx->activations->timesteps < n_steps ||
+        ctx->activations->n_neurons < N) {
+        if (ctx->activations) free_activation_buffer(ctx->activations);
+        ctx->activations = alloc_activation_buffer(n_steps, 1, N);
+        if (!ctx->activations) {
+            NIMCP_LOGGING_ERROR("snn_backprop_forward: activation buffer alloc failed");
+            return SNN_ERROR_INVALID_STATE;
+        }
+    }
+
+    float* act_v = (float*)nimcp_tensor_data(ctx->activations->membrane_v);
+    float* act_s = (float*)nimcp_tensor_data(ctx->activations->spikes);
+    if (!act_v || !act_s) return SNN_ERROR_INVALID_STATE;
+
+    /* Zero activation buffers */
+    memset(act_v, 0, (size_t)n_steps * N * sizeof(float));
+    memset(act_s, 0, (size_t)n_steps * N * sizeof(float));
+
+    /* Reset network state */
+    snn_network_reset(net);
+
+    /* Set inputs — use network's actual n_inputs, not batch_size.
+     * Input layout is [batch_size × n_inputs]; we simulate sample 0. */
+    uint32_t n_inputs = net->config.n_inputs;
+    if (n_inputs > 0) {
+        snn_network_set_inputs(net, inputs, n_inputs);
+    }
+
+    /* Simulate n_steps, recording activations at each step */
+    for (uint32_t t = 0; t < n_steps; t++) {
+        snn_network_step(net, dt);
+
+        /* Snapshot membrane_v and spike_output from each population */
+        float* v_row = act_v + (size_t)t * N;
+        float* s_row = act_s + (size_t)t * N;
+
+        for (uint32_t p = 0; p < net->n_populations; p++) {
+            snn_population_t* pop = net->populations[p];
+            if (!pop) continue;
+
+            const float* pop_v = pop->membrane_v ?
+                (const float*)nimcp_tensor_data_const(pop->membrane_v) : NULL;
+            const float* pop_s = pop->spike_output ?
+                (const float*)nimcp_tensor_data_const(pop->spike_output) : NULL;
+
+            for (uint32_t i = 0; i < pop->n_neurons; i++) {
+                uint32_t nid = pop->neuron_ids[i];
+                if (nid > ctx->max_neuron_id) continue;
+                uint32_t flat = ctx->neuron_id_to_flat[nid];
+                if (flat == UINT32_MAX || flat >= N) continue;
+
+                if (pop_v) v_row[flat] = pop_v[i];
+                if (pop_s) s_row[flat] = pop_s[i];
+            }
+        }
+    }
+
+    /* Get decoded outputs */
+    uint32_t n_out = net->output_pop ? net->output_pop->n_neurons : 0;
+    if (n_out == 0) n_out = batch_size;
+
+    /* (Re)allocate last_outputs */
+    if (ctx->last_n_outputs < n_out) {
+        nimcp_free(ctx->last_outputs);
+        ctx->last_outputs = (float*)nimcp_calloc(n_out, sizeof(float));
+        ctx->last_n_outputs = ctx->last_outputs ? n_out : 0;
+    }
+
+    if (ctx->last_outputs) {
+        memset(ctx->last_outputs, 0, n_out * sizeof(float));
+        snn_network_get_outputs(net, ctx->last_outputs, n_out);
+    }
+
+    /* Copy to caller's output buffer */
+    if (outputs) {
+        uint32_t copy_n = (batch_size < n_out) ? batch_size : n_out;
+        if (ctx->last_outputs) {
+            memcpy(outputs, ctx->last_outputs, copy_n * sizeof(float));
+        } else {
+            memset(outputs, 0, batch_size * sizeof(float));
+        }
+    }
+
+    ctx->last_timesteps = n_steps;
+    ctx->stats.total_forward_time_ms += (float)n_steps * dt;
     return SNN_SUCCESS;
 }
 
@@ -837,37 +1074,222 @@ int snn_backprop_backward(
     const float* targets,
     uint32_t batch_size
 ) {
-    // Guard: Null checks
+    /* Guard: Null checks */
     if (!ctx || !targets) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
             "snn_backprop_backward: ctx or targets is NULL");
         return SNN_ERROR_NULL_POINTER;
     }
-
-    /* Backward pass: compute loss gradient and accumulate weight gradients.
-     * Uses surrogate gradients for non-differentiable spike function. */
     if (!ctx->network) return SNN_ERROR_INVALID_STATE;
+    if (!ctx->mapping_built || !ctx->activations) return SNN_ERROR_INVALID_STATE;
 
-    /* Compute loss from targets (MSE over batch) */
-    float total_loss = 0.0f;
-    for (uint32_t i = 0; i < batch_size; i++) {
-        float diff = targets[i];  /* Simplified: use target directly as error proxy */
-        total_loss += diff * diff;
+    snn_network_t* net = ctx->network;
+    neural_network_t nn = net->neural_net;
+    snn_population_t* out_pop = net->output_pop;
+    snn_population_t* in_pop = net->input_pop;
+    uint32_t N = ctx->total_neurons_flat;
+    uint32_t T = ctx->last_timesteps;
+    if (T == 0 || N == 0) return SNN_ERROR_INVALID_STATE;
+
+    /* Compute output error: dL/d_output = 2/N * (output - target) */
+    uint32_t n_out = out_pop ? out_pop->n_neurons : 0;
+    uint32_t out_dim = (batch_size < n_out) ? batch_size : n_out;
+
+    float* output_error = (float*)nimcp_calloc(n_out > 0 ? n_out : 1, sizeof(float));
+    if (!output_error) return SNN_ERROR_INVALID_STATE;
+
+    /* Compute MSE gradient as output error */
+    if (ctx->last_outputs && out_dim > 0) {
+        float scale = 2.0f / (float)out_dim;
+        for (uint32_t j = 0; j < out_dim; j++) {
+            output_error[j] = scale * (ctx->last_outputs[j] - targets[j]);
+        }
     }
-    if (batch_size > 0) total_loss /= (float)batch_size;
 
-    /* Update running statistics */
-    ctx->stats.total_steps++;
+    /* Compute loss for statistics */
+    float total_loss = 0.0f;
+    if (ctx->last_outputs) {
+        for (uint32_t j = 0; j < out_dim; j++) {
+            float diff = ctx->last_outputs[j] - targets[j];
+            total_loss += diff * diff;
+        }
+        if (out_dim > 0) total_loss /= (float)out_dim;
+    }
+
+    /* Update loss statistics (total_steps incremented in snn_backprop_step) */
     ctx->stats.total_loss += total_loss;
-    if (total_loss < ctx->stats.min_loss) ctx->stats.min_loss = total_loss;
-    if (total_loss > ctx->stats.max_loss) ctx->stats.max_loss = total_loss;
-    ctx->stats.avg_loss = ctx->stats.total_loss / (double)ctx->stats.total_steps;
+    if (ctx->stats.total_steps == 0 || total_loss < ctx->stats.min_loss)
+        ctx->stats.min_loss = total_loss;
+    if (total_loss > ctx->stats.max_loss)
+        ctx->stats.max_loss = total_loss;
 
-    /* Accumulate gradients (weight update deferred to snn_backprop_step) */
-    if (ctx->gradients && ctx->gradients->weight_grads) {
+    /* Get activation data pointers */
+    const float* act_v = (const float*)nimcp_tensor_data_const(ctx->activations->membrane_v);
+    const float* act_s = (const float*)nimcp_tensor_data_const(ctx->activations->spikes);
+    if (!act_v || !act_s) {
+        nimcp_free(output_error);
+        return SNN_ERROR_INVALID_STATE;
+    }
+
+    /* Get gradient data pointers */
+    float* weight_grads = ctx->gradients ?
+        (float*)nimcp_tensor_data(ctx->gradients->weight_grads) : NULL;
+    float* threshold_grads = ctx->gradients ?
+        (float*)nimcp_tensor_data(ctx->gradients->threshold_grads) : NULL;
+    if (!weight_grads || !threshold_grads) {
+        nimcp_free(output_error);
+        return SNN_ERROR_INVALID_STATE;
+    }
+
+    /* Allocate delta buffers (current and previous timestep) */
+    float* delta_curr = (float*)nimcp_calloc(N, sizeof(float));
+    float* delta_prev = (float*)nimcp_calloc(N, sizeof(float));
+    if (!delta_curr || !delta_prev) {
+        nimcp_free(output_error);
+        nimcp_free(delta_curr);
+        nimcp_free(delta_prev);
+        return SNN_ERROR_INVALID_STATE;
+    }
+
+    /* Initialize delta_curr from output error at output population neurons */
+    if (out_pop) {
+        for (uint32_t j = 0; j < out_dim; j++) {
+            uint32_t nid = out_pop->neuron_ids[j];
+            if (nid <= ctx->max_neuron_id) {
+                uint32_t flat = ctx->neuron_id_to_flat[nid];
+                if (flat != UINT32_MAX && flat < N) {
+                    delta_curr[flat] = output_error[j];
+                }
+            }
+        }
+    }
+
+    /* Determine truncation bounds */
+    uint32_t t_start = 0;
+    if (ctx->config.bptt.truncate && ctx->config.bptt.truncation_length > 0 &&
+        ctx->config.bptt.truncation_length < T) {
+        t_start = T - ctx->config.bptt.truncation_length;
+    }
+
+    /* LIF membrane time constant for temporal recurrence */
+    float tau_mem = net->config.tau_mem;
+    if (tau_mem <= 0.0f) tau_mem = 20.0f;
+    float dt = net->config.dt;
+    if (dt <= 0.0f) dt = 1.0f;
+    float leak_factor = 1.0f - dt / tau_mem;
+
+    /* BPTT unroll: t = T-1 down to t_start */
+    for (uint32_t t_rev = 0; t_rev < T - t_start; t_rev++) {
+        uint32_t t = (T - 1) - t_rev;
+        const float* v_t = act_v + (size_t)t * N;
+        const float* s_t = act_s + (size_t)t * N;
+
+        memset(delta_prev, 0, N * sizeof(float));
+
+        for (uint32_t n = 0; n < N; n++) {
+            float d = delta_curr[n];
+            if (d == 0.0f) continue;
+
+            /* Surrogate gradient at this neuron's membrane potential */
+            uint32_t nid = ctx->flat_to_neuron_id[n];
+            neuron_t* neuron = neural_network_get_neuron(nn, nid);
+            if (!neuron) continue;
+
+            float v_thresh = neuron->threshold;
+            float surr = snn_surrogate_gradient(ctx, v_t[n] - v_thresh);
+
+            /* Temporal recurrence: propagate delta back through LIF leak */
+            delta_prev[n] += d * leak_factor * surr;
+
+            /* Weight gradients: for each incoming synapse */
+            uint32_t syn_off = ctx->synapse_offset[n];
+            uint32_t syn_idx = 0;
+
+            /* Iterate embedded synapses */
+            uint32_t n_emb = neuron->incoming.embedded_count;
+            for (uint32_t si = 0; si < n_emb && syn_idx < ctx->synapse_count[n]; si++) {
+                synapse_handle_t* sh = &neuron->incoming.embedded[si];
+                uint32_t src_nid = sh->target_neuron_id;
+
+                float spike_src = 0.0f;
+                if (src_nid <= ctx->max_neuron_id) {
+                    uint32_t src_flat = ctx->neuron_id_to_flat[src_nid];
+                    if (src_flat != UINT32_MAX && src_flat < N) {
+                        spike_src = s_t[src_flat];
+                        /* Spatial backprop: propagate delta to source neuron */
+                        delta_prev[src_flat] += d * surr * sh->weight;
+                    }
+                }
+
+                /* Accumulate weight gradient */
+                weight_grads[syn_off + syn_idx] += d * surr * spike_src;
+                syn_idx++;
+            }
+
+            /* Iterate overflow synapses */
+            uint32_t n_ovf = neuron->incoming.overflow_count;
+            for (uint32_t si = 0; si < n_ovf && syn_idx < ctx->synapse_count[n]; si++) {
+                synapse_handle_t* sh = &neuron->incoming.overflow[si];
+                uint32_t src_nid = sh->target_neuron_id;
+
+                float spike_src = 0.0f;
+                if (src_nid <= ctx->max_neuron_id) {
+                    uint32_t src_flat = ctx->neuron_id_to_flat[src_nid];
+                    if (src_flat != UINT32_MAX && src_flat < N) {
+                        spike_src = s_t[src_flat];
+                        delta_prev[src_flat] += d * surr * sh->weight;
+                    }
+                }
+
+                weight_grads[syn_off + syn_idx] += d * surr * spike_src;
+                syn_idx++;
+            }
+
+            /* Threshold gradient */
+            threshold_grads[n] += -d * surr;
+        }
+
+        /* Clamp delta_prev to [-1e4, 1e4] to prevent explosion */
+        for (uint32_t n = 0; n < N; n++) {
+            if (delta_prev[n] > 1e4f) delta_prev[n] = 1e4f;
+            if (delta_prev[n] < -1e4f) delta_prev[n] = -1e4f;
+        }
+
+        /* Swap delta_curr <-> delta_prev */
+        float* tmp = delta_curr;
+        delta_curr = delta_prev;
+        delta_prev = tmp;
+    }
+
+    /* Extract input gradients from delta_curr at input population neurons */
+    if (in_pop && in_pop->n_neurons > 0) {
+        uint32_t n_in = in_pop->n_neurons;
+        if (ctx->input_grad_size < n_in) {
+            nimcp_free(ctx->last_input_grad);
+            ctx->last_input_grad = (float*)nimcp_calloc(n_in, sizeof(float));
+            ctx->input_grad_size = ctx->last_input_grad ? n_in : 0;
+        }
+        if (ctx->last_input_grad) {
+            for (uint32_t i = 0; i < n_in; i++) {
+                uint32_t nid = in_pop->neuron_ids[i];
+                if (nid <= ctx->max_neuron_id) {
+                    uint32_t flat = ctx->neuron_id_to_flat[nid];
+                    if (flat != UINT32_MAX && flat < N) {
+                        ctx->last_input_grad[i] = delta_curr[flat];
+                    }
+                }
+            }
+        }
+    }
+
+    /* Increment accumulation count */
+    if (ctx->gradients) {
         ctx->gradients->accumulation_count++;
     }
 
+    nimcp_free(output_error);
+    nimcp_free(delta_curr);
+    nimcp_free(delta_prev);
     return SNN_SUCCESS;
 }
 
@@ -918,15 +1340,118 @@ int snn_backprop_step(
                     g[i] += weight_decay * g[i];
                 }
             }
+        }
 
-            ctx->stats.total_steps++;
+        /* Apply weight gradients to actual synapse weights */
+        if (ctx->mapping_built && g) {
+            neural_network_t nn = ctx->network->neural_net;
+            float* tg = ctx->gradients->threshold_grads ?
+                (float*)nimcp_tensor_data(ctx->gradients->threshold_grads) : NULL;
+
+            for (uint32_t f = 0; f < ctx->total_neurons_flat; f++) {
+                uint32_t nid = ctx->flat_to_neuron_id[f];
+                neuron_t* neuron = neural_network_get_neuron(nn, nid);
+                if (!neuron) continue;
+
+                /* Apply weight gradients to incoming synapses */
+                uint32_t syn_off = ctx->synapse_offset[f];
+                uint32_t syn_idx = 0;
+
+                uint32_t n_emb = neuron->incoming.embedded_count;
+                for (uint32_t si = 0; si < n_emb && syn_idx < ctx->synapse_count[f]; si++) {
+                    synapse_handle_t* sh = &neuron->incoming.embedded[si];
+                    float grad = g[syn_off + syn_idx];
+                    if (!isnan(grad) && !isinf(grad)) {
+                        sh->weight -= learning_rate * grad;
+                        if (sh->weight > 10.0f) sh->weight = 10.0f;
+                        if (sh->weight < -10.0f) sh->weight = -10.0f;
+                    }
+                    syn_idx++;
+                }
+
+                uint32_t n_ovf = neuron->incoming.overflow_count;
+                for (uint32_t si = 0; si < n_ovf && syn_idx < ctx->synapse_count[f]; si++) {
+                    synapse_handle_t* sh = &neuron->incoming.overflow[si];
+                    float grad = g[syn_off + syn_idx];
+                    if (!isnan(grad) && !isinf(grad)) {
+                        sh->weight -= learning_rate * grad;
+                        if (sh->weight > 10.0f) sh->weight = 10.0f;
+                        if (sh->weight < -10.0f) sh->weight = -10.0f;
+                    }
+                    syn_idx++;
+                }
+
+                /* Apply threshold gradient */
+                if (tg && !isnan(tg[f]) && !isinf(tg[f])) {
+                    neuron->threshold -= learning_rate * 0.1f * tg[f];
+                    if (neuron->threshold < -70.0f) neuron->threshold = -70.0f;
+                    if (neuron->threshold > -30.0f) neuron->threshold = -30.0f;
+                }
+            }
         }
 
         /* Zero gradients after applying */
+        if (g) memset(g, 0, numel * sizeof(float));
+        if (ctx->gradients->threshold_grads) {
+            float* tg = (float*)nimcp_tensor_data(ctx->gradients->threshold_grads);
+            if (tg) {
+                memset(tg, 0, nimcp_tensor_numel(ctx->gradients->threshold_grads) * sizeof(float));
+            }
+        }
         ctx->gradients->accumulation_count = 0;
     }
 
+    /* Homeostatic regulation: adjust neuron thresholds to maintain
+     * target population firing rate.  Operates on a slower timescale
+     * than Hebbian learning (Turrigiano & Nelson, 2004).
+     *
+     * If neurons fire too much → increase threshold (reduce excitability)
+     * If neurons fire too little → decrease threshold (increase excitability)
+     */
+    if (ctx->config.use_homeostatic && ctx->network) {
+        float target_rate = ctx->config.target_population_rate;
+        if (target_rate <= 0.0f) target_rate = 10.0f;
+
+        for (uint32_t p = 0; p < ctx->network->n_populations; p++) {
+            snn_population_t* pop = ctx->network->populations[p];
+            if (!pop || pop->n_neurons == 0) continue;
+
+            float pop_rate = pop->mean_rate;
+            float rate_dev = pop_rate - target_rate;
+
+            /* Only adjust if deviation exceeds 10% of target */
+            if (fabsf(rate_dev) < target_rate * 0.1f) continue;
+
+            /* Adjustment: small threshold shift proportional to deviation.
+             * Scale: 0.01 mV per Hz deviation, clamped to ±0.5 mV/step */
+            float thresh_shift = rate_dev * 0.01f;
+            if (thresh_shift > 0.5f) thresh_shift = 0.5f;
+            if (thresh_shift < -0.5f) thresh_shift = -0.5f;
+
+            /* Apply to membrane_v threshold via population-level shift.
+             * Positive shift = harder to spike (for over-firing neurons).
+             * The shift is applied to the neural_network_t neurons that
+             * back this population. */
+            if (ctx->network->neural_net && pop->neuron_ids) {
+                neural_network_t nn = ctx->network->neural_net;
+                for (uint32_t ni = 0; ni < pop->n_neurons; ni++) {
+                    uint32_t nid = pop->neuron_ids[ni];
+                    neuron_t* neuron = neural_network_get_neuron(nn, nid);
+                    if (neuron) {
+                        neuron->threshold += thresh_shift;
+                        /* Clamp to biologically reasonable range (-70 to -30 mV) */
+                        if (neuron->threshold < -70.0f) neuron->threshold = -70.0f;
+                        if (neuron->threshold > -30.0f) neuron->threshold = -30.0f;
+                    }
+                }
+            }
+        }
+    }
+
     ctx->stats.total_steps++;
+    if (ctx->stats.total_steps > 0) {
+        ctx->stats.avg_loss = ctx->stats.total_loss / (double)ctx->stats.total_steps;
+    }
     return SNN_SUCCESS;
 }
 
@@ -1354,4 +1879,14 @@ float snn_backprop_get_weight_norm(const snn_backprop_ctx_t* ctx) {
 
 void snn_backprop_set_managed_by_utm(snn_backprop_ctx_t* ctx, bool managed) {
     if (ctx) ctx->managed_by_utm = managed;
+}
+
+const float* snn_backprop_get_input_grad(const snn_backprop_ctx_t* ctx,
+                                         uint32_t* out_size) {
+    if (!ctx || !ctx->last_input_grad) {
+        if (out_size) *out_size = 0;
+        return NULL;
+    }
+    if (out_size) *out_size = ctx->input_grad_size;
+    return ctx->last_input_grad;
 }

@@ -67,10 +67,29 @@ static int cnn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
 
     nimcp_error_t err = cnn_trainer_backward(a->trainer, target_t, &a->last_result);
 
-    /* Propagate input gradient for bridge flow */
-    if (dl_dinput && err == NIMCP_SUCCESS) {
-        uint32_t dim = (input_dim < output_dim) ? input_dim : output_dim;
-        memcpy(dl_dinput, dl_doutput, dim * sizeof(float));
+    /* Run CNN's internal optimizer step after backward.
+     * UTM can't reach CNN params (adapter returns 0 param groups),
+     * so CNN must apply its own gradients via cnn_trainer_step(). */
+    if (err == NIMCP_SUCCESS) {
+        cnn_trainer_step(a->trainer);
+    }
+
+    /* Copy real input gradients from CNN backward pass if available */
+    if (dl_dinput) {
+        const nimcp_tensor_t* in_grad = cnn_trainer_get_input_grad(a->trainer);
+        if (in_grad) {
+            const float* grad_data = (const float*)nimcp_tensor_data_const(in_grad);
+            size_t grad_numel = nimcp_tensor_numel(in_grad);
+            uint32_t copy_dim = (input_dim < (uint32_t)grad_numel) ?
+                                 input_dim : (uint32_t)grad_numel;
+            memcpy(dl_dinput, grad_data, copy_dim * sizeof(float));
+            /* Zero any remaining elements if input_dim > grad tensor size */
+            if (input_dim > copy_dim) {
+                memset(dl_dinput + copy_dim, 0, (input_dim - copy_dim) * sizeof(float));
+            }
+        } else {
+            memset(dl_dinput, 0, input_dim * sizeof(float));
+        }
     }
 
     nimcp_tensor_destroy(target_t);

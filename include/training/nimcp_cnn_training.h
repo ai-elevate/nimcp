@@ -996,6 +996,12 @@ nimcp_error_t cnn_get_layer_weight_grad(const cnn_trainer_t* trainer,
 void cnn_trainer_set_managed_by_utm(cnn_trainer_t* trainer, bool managed);
 
 /**
+ * @brief Get the input gradient from the last backward pass
+ * @return Pointer to tensor (owned by trainer, do NOT destroy), or NULL
+ */
+const nimcp_tensor_t* cnn_trainer_get_input_grad(const cnn_trainer_t* trainer);
+
+/**
  * @brief Save CNN trainer weights and state to file
  * @return 0 on success, -1 on error
  */

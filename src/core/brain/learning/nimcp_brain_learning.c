@@ -3068,7 +3068,9 @@ int brain_enable_multi_network_training(brain_t brain)
                 ops = NULL; adapter_ctx = NULL;
                 if (nimcp_trainable_cnn_create(brain->cnn_trainer, &ops, &adapter_ctx) == 0) {
                     nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
-                    cnn_trainer_set_managed_by_utm(brain->cnn_trainer, true);
+                    /* Don't set managed_by_utm: UTM can't reach CNN params
+                     * (adapter returns 0 param groups), so CNN must use its
+                     * own optimizer.  Adapter backward calls cnn_trainer_step(). */
                 }
             }
 
@@ -3079,8 +3081,8 @@ int brain_enable_multi_network_training(brain_t brain)
                         (struct snn_backprop_ctx_s*)brain->snn_training_ctx,
                         &ops, &adapter_ctx) == 0) {
                     nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
-                    snn_backprop_set_managed_by_utm(
-                        (snn_backprop_ctx_t*)brain->snn_training_ctx, true);
+                    /* Don't set managed_by_utm: UTM can't reach SNN params.
+                     * Adapter backward calls snn_backprop_step(). */
                 }
             }
 
@@ -3091,7 +3093,8 @@ int brain_enable_multi_network_training(brain_t brain)
                         (struct lnn_training_ctx_s*)brain->lnn_training_ctx,
                         &ops, &adapter_ctx) == 0) {
                     nimcp_utm_register_network(brain->unified_training, ops, adapter_ctx, 0.5f);
-                    ((lnn_training_ctx_t*)brain->lnn_training_ctx)->managed_by_utm = true;
+                    /* Don't set managed_by_utm: UTM can't reach LNN params.
+                     * LNN uses its own adjoint optimizer internally. */
                 }
             }
 

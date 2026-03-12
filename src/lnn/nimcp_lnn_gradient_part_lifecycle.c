@@ -100,6 +100,12 @@ void lnn_gradient_ctx_destroy(lnn_gradient_ctx_t* ctx) {
         return;
     }
 
+    // Free saved input gradient
+    if (ctx->last_input_grad) {
+        nimcp_tensor_destroy(ctx->last_input_grad);
+        ctx->last_input_grad = NULL;
+    }
+
     // Free gradient storage
     free_gradient_storage(ctx);
 

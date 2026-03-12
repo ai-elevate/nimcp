@@ -171,6 +171,9 @@ struct cnn_trainer_s {
     /* UTM management flag — when true, UTM owns gradient norm + optimizer stepping */
     bool managed_by_utm;
 
+    /* Input gradient from last backward pass (for cross-network gradient bridges) */
+    nimcp_tensor_t* last_input_grad;
+
     /* Statistics */
     uint64_t total_forward_calls;
     uint64_t total_backward_calls;
@@ -459,6 +462,12 @@ void cnn_trainer_destroy(cnn_trainer_t* trainer) {
 
     /* Destroy anti-collapse state */
     nimcp_anti_collapse_destroy(&trainer->anti_collapse);
+
+    /* Free cached input gradient */
+    if (trainer->last_input_grad) {
+        nimcp_tensor_destroy(trainer->last_input_grad);
+        trainer->last_input_grad = NULL;
+    }
 
     nimcp_free(trainer);
     NIMCP_LOGGING_INFO("CNN trainer destroyed");
@@ -2331,7 +2340,15 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
     }
 
     nimcp_free(layer_stack);
-    nimcp_tensor_destroy(grad);
+
+    /* Save input gradient for cross-network gradient bridges.
+     * After the backward loop, `grad` holds dL/d(input) — the gradient
+     * of the loss w.r.t. the network's input tensor. */
+    if (trainer->last_input_grad) {
+        nimcp_tensor_destroy(trainer->last_input_grad);
+    }
+    trainer->last_input_grad = grad;  /* Transfer ownership (don't destroy) */
+
     trainer->total_backward_calls++;
 
     return NIMCP_SUCCESS;
@@ -3664,6 +3681,11 @@ nimcp_error_t cnn_get_layer_weight_grad(const cnn_trainer_t* trainer,
 
 void cnn_trainer_set_managed_by_utm(cnn_trainer_t* trainer, bool managed) {
     if (trainer) trainer->managed_by_utm = managed;
+}
+
+const nimcp_tensor_t* cnn_trainer_get_input_grad(const cnn_trainer_t* trainer) {
+    if (!trainer) return NULL;
+    return trainer->last_input_grad;
 }
 
 //=============================================================================

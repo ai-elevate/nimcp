@@ -106,6 +106,9 @@ struct lnn_gradient_ctx_s {
     /* Adjoint truncation */
     uint32_t max_adjoint_steps;     /**< Max backward steps (0 = unlimited) */
 
+    /* Input gradient (final adjoint state = dL/d_input) */
+    nimcp_tensor_t* last_input_grad; /**< λ(t=0) from last adjoint computation */
+
     /* Thread safety */
     void* mutex;                    /**< Mutex for thread safety */
 };
@@ -403,6 +406,13 @@ int lnn_gradient_recompute_from_checkpoint(
  * @return Gradient norm
  */
 float lnn_gradient_norm(const lnn_gradient_ctx_t* ctx);
+
+/**
+ * @brief Get the input gradient from the last adjoint computation
+ * @param ctx Gradient context
+ * @return Pointer to tensor (owned by ctx, do NOT destroy), or NULL
+ */
+const nimcp_tensor_t* lnn_gradient_get_input_grad(const lnn_gradient_ctx_t* ctx);
 
 /**
  * @brief Clip gradients by norm

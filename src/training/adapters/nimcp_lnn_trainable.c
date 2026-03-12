@@ -9,6 +9,9 @@
 #include "training/nimcp_unified_training.h"
 #include "lnn/nimcp_lnn_training.h"
 #include "lnn/nimcp_lnn.h"
+#include "lnn/nimcp_lnn_network.h"
+#include "lnn/nimcp_lnn_gradient.h"
+#include "middleware/training/nimcp_optimizers.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -69,10 +72,47 @@ static int lnn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
 
     int rc = lnn_backward(a->lnn_ctx->network, grad_t);
 
-    /* Propagate input gradient for bridge flow */
-    if (dl_dinput && rc == 0) {
-        uint32_t dim = (input_dim < output_dim) ? input_dim : output_dim;
-        memcpy(dl_dinput, dl_doutput, dim * sizeof(float));
+    /* Apply LNN gradients via its internal optimizer.
+     * UTM can't reach LNN params (adapter returns 0 param groups),
+     * so we apply gradients directly after backward. */
+    if (rc == 0 && a->lnn_ctx->optimizer && a->lnn_ctx->network) {
+        size_t n_params = lnn_network_param_count(a->lnn_ctx->network);
+        if (n_params > 0) {
+            float* params = (float*)nimcp_malloc(n_params * sizeof(float));
+            float* grads = (float*)nimcp_malloc(n_params * sizeof(float));
+            if (params && grads) {
+                size_t actual_p = 0, actual_g = 0;
+                if (lnn_network_get_params(a->lnn_ctx->network, params, &actual_p) == 0 &&
+                    lnn_network_get_gradients(a->lnn_ctx->network, grads, &actual_g) == 0 &&
+                    actual_p == actual_g && actual_p > 0) {
+                    nimcp_optimizer_step(a->lnn_ctx->optimizer, params, grads, actual_p);
+                    lnn_network_set_params(a->lnn_ctx->network, params, actual_p);
+                }
+            }
+            nimcp_free(params);
+            nimcp_free(grads);
+        }
+        lnn_network_zero_gradients(a->lnn_ctx->network);
+    }
+
+    /* Copy real input gradients from LNN adjoint (λ(t=0) = dL/d_input) */
+    if (dl_dinput) {
+        const nimcp_tensor_t* in_grad = NULL;
+        if (a->lnn_ctx->gradient_ctx) {
+            in_grad = lnn_gradient_get_input_grad(a->lnn_ctx->gradient_ctx);
+        }
+        if (in_grad) {
+            const float* grad_data = (const float*)nimcp_tensor_data_const(in_grad);
+            size_t grad_numel = nimcp_tensor_numel(in_grad);
+            uint32_t copy_dim = (input_dim < (uint32_t)grad_numel) ?
+                                 input_dim : (uint32_t)grad_numel;
+            memcpy(dl_dinput, grad_data, copy_dim * sizeof(float));
+            if (input_dim > copy_dim) {
+                memset(dl_dinput + copy_dim, 0, (input_dim - copy_dim) * sizeof(float));
+            }
+        } else {
+            memset(dl_dinput, 0, input_dim * sizeof(float));
+        }
     }
 
     nimcp_tensor_destroy(grad_t);

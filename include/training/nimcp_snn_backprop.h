@@ -1022,6 +1022,19 @@ int snn_backprop_validate_config(const snn_backprop_config_t* config);
  */
 void snn_backprop_set_managed_by_utm(snn_backprop_ctx_t* ctx, bool managed);
 
+/**
+ * @brief Get the input gradient from the last backward pass
+ *
+ * Returns dL/d_input computed via surrogate gradient backpropagation
+ * from output to input populations.
+ *
+ * @param ctx Backprop context
+ * @param out_size Output: number of elements in returned array
+ * @return Pointer to float array (owned by ctx, do NOT free), or NULL
+ */
+const float* snn_backprop_get_input_grad(const snn_backprop_ctx_t* ctx,
+                                         uint32_t* out_size);
+
 #ifdef __cplusplus
 }
 #endif

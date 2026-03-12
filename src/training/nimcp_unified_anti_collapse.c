@@ -167,8 +167,11 @@ float nimcp_anti_collapse_normalize_gradients(
     /* Update EMA of gradient norms for adaptive target */
     if (config->adaptive_gradient_target) {
         if (state->ema_gradient_norm <= 0.0f) {
-            /* Bootstrap: first step sets EMA directly */
-            state->ema_gradient_norm = global_norm;
+            /* Bootstrap: first step sets EMA directly.
+             * Guard against NaN/Inf poisoning the EMA permanently. */
+            state->ema_gradient_norm = isfinite(global_norm) ? global_norm : 1.0f;
+        } else if (!isfinite(global_norm)) {
+            /* Skip EMA update on NaN/Inf gradient norms */
         } else {
             state->ema_gradient_norm = state->ema_alpha * global_norm
                                      + (1.0f - state->ema_alpha) * state->ema_gradient_norm;

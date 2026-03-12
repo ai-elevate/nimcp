@@ -39,10 +39,26 @@ static int snn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
     /* SNN backward: accumulates gradients into ctx->gradients */
     int rc = snn_backprop_backward(a->snn_ctx, dl_doutput, 1);
 
-    /* Propagate input gradient for bridge flow */
-    if (dl_dinput && rc == 0) {
-        uint32_t dim = (input_dim < output_dim) ? input_dim : output_dim;
-        memcpy(dl_dinput, dl_doutput, dim * sizeof(float));
+    /* Run SNN's internal optimizer step after backward.
+     * UTM can't reach SNN params (adapter returns 0 param groups),
+     * so SNN must apply its own gradients via snn_backprop_step(). */
+    if (rc == 0) {
+        snn_backprop_step(a->snn_ctx, 0.0f);  /* 0 = use config LR */
+    }
+
+    /* Copy real input gradients from SNN surrogate gradient backprop */
+    if (dl_dinput) {
+        uint32_t grad_size = 0;
+        const float* in_grad = snn_backprop_get_input_grad(a->snn_ctx, &grad_size);
+        if (in_grad && grad_size > 0) {
+            uint32_t copy_dim = (input_dim < grad_size) ? input_dim : grad_size;
+            memcpy(dl_dinput, in_grad, copy_dim * sizeof(float));
+            if (input_dim > copy_dim) {
+                memset(dl_dinput + copy_dim, 0, (input_dim - copy_dim) * sizeof(float));
+            }
+        } else {
+            memset(dl_dinput, 0, input_dim * sizeof(float));
+        }
     }
     return (rc == 0) ? 0 : -1;
 }
