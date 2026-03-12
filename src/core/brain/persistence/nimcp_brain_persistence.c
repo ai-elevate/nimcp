@@ -554,6 +554,28 @@ bool brain_save(brain_t brain, const char* filepath)
         return false;
     }
 
+    // Save secondary networks (SNN/LNN/CNN) for checkpoint persistence
+    {
+        if (brain->snn_network) {
+            char snn_path[NIMCP_METRICS_PATH_SIZE];
+            snprintf(snn_path, sizeof(snn_path), "%s.snn", filepath);
+            extern int snn_network_save(struct snn_network_s* network, const char* path);
+            snn_network_save(brain->snn_network, snn_path);
+        }
+        if (brain->lnn_network) {
+            char lnn_path[NIMCP_METRICS_PATH_SIZE];
+            snprintf(lnn_path, sizeof(lnn_path), "%s.lnn", filepath);
+            extern int lnn_network_save(const struct lnn_network_s* network, const char* path);
+            lnn_network_save(brain->lnn_network, lnn_path);
+        }
+        if (brain->cnn_trainer) {
+            char cnn_path[NIMCP_METRICS_PATH_SIZE];
+            snprintf(cnn_path, sizeof(cnn_path), "%s.cnn", filepath);
+            extern int cnn_trainer_save(const void* trainer, const char* path);
+            cnn_trainer_save(brain->cnn_trainer, cnn_path);
+        }
+    }
+
     // Health monitoring: save complete
     brain_heartbeat(brain, "brain_save:complete", 1.0f);
 
@@ -1145,6 +1167,41 @@ brain_t brain_load(const char* filepath)
         brain_destroy(brain);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_load: brain->strategy is NULL");
         return NULL;
+    }
+
+    // Restore secondary networks (SNN/LNN/CNN) from checkpoint files
+    {
+        char sec_path[NIMCP_METRICS_PATH_SIZE];
+
+        snprintf(sec_path, sizeof(sec_path), "%s.snn", filepath);
+        {
+            extern struct snn_network_s* snn_network_load(const char* path);
+            struct snn_network_s* snn = snn_network_load(sec_path);
+            if (snn) {
+                brain->snn_network = snn;
+                brain->owns_specialized_network = true;
+                fprintf(stderr, "[INFO] Restored SNN network from %s\n", sec_path);
+            }
+        }
+
+        snprintf(sec_path, sizeof(sec_path), "%s.lnn", filepath);
+        {
+            extern struct lnn_network_s* lnn_network_load(const char* path);
+            struct lnn_network_s* lnn = lnn_network_load(sec_path);
+            if (lnn) {
+                brain->lnn_network = lnn;
+                brain->owns_specialized_network = true;
+                fprintf(stderr, "[INFO] Restored LNN network from %s\n", sec_path);
+            }
+        }
+
+        snprintf(sec_path, sizeof(sec_path), "%s.cnn", filepath);
+        if (brain->cnn_trainer) {
+            extern int cnn_trainer_load_weights(void* trainer, const char* path);
+            if (cnn_trainer_load_weights(brain->cnn_trainer, sec_path) == 0) {
+                fprintf(stderr, "[INFO] Restored CNN weights from %s\n", sec_path);
+            }
+        }
     }
 
     // NOTE: If metadata was loaded successfully, stats already contain saved values

@@ -3546,3 +3546,131 @@ nimcp_error_t cnn_get_layer_weight_grad(const cnn_trainer_t* trainer,
 void cnn_trainer_set_managed_by_utm(cnn_trainer_t* trainer, bool managed) {
     if (trainer) trainer->managed_by_utm = managed;
 }
+
+//=============================================================================
+// Persistence (save/load)
+//=============================================================================
+
+#include "utils/tensor/nimcp_tensor.h"
+
+int cnn_trainer_save(const cnn_trainer_t* trainer, const char* path) {
+    if (!trainer || !path) return -1;
+
+    FILE* f = fopen(path, "wb");
+    if (!f) {
+        NIMCP_LOGGING_ERROR("cnn_trainer_save: failed to open %s", path);
+        return -1;
+    }
+
+    uint32_t magic = 0x434E4E53; /* "CNNS" */
+    uint32_t version = 1;
+    fwrite(&magic, sizeof(uint32_t), 1, f);
+    fwrite(&version, sizeof(uint32_t), 1, f);
+
+    /* Trainer state */
+    fwrite(&trainer->num_layers, sizeof(uint32_t), 1, f);
+    fwrite(&trainer->current_epoch, sizeof(uint32_t), 1, f);
+    fwrite(&trainer->global_step, sizeof(uint32_t), 1, f);
+    fwrite(&trainer->best_val_loss, sizeof(float), 1, f);
+
+    /* Per-layer: type + config union + weight/bias tensors + batch norm stats */
+    cnn_layer_t* layer = trainer->layers_head;
+    while (layer) {
+        uint32_t type = (uint32_t)layer->type;
+        fwrite(&type, sizeof(uint32_t), 1, f);
+
+        /* Save the full config union (fixed-size) */
+        fwrite(&layer->config, sizeof(layer->config), 1, f);
+
+        /* Save shapes */
+        fwrite(&layer->input_shape, sizeof(nimcp_tensor_shape_t), 1, f);
+        fwrite(&layer->output_shape, sizeof(nimcp_tensor_shape_t), 1, f);
+
+        /* Save weight tensors */
+        nimcp_tensor_save(layer->weights, f);
+        nimcp_tensor_save(layer->bias, f);
+        nimcp_tensor_save(layer->running_mean, f);
+        nimcp_tensor_save(layer->running_var, f);
+
+        layer = layer->next;
+    }
+
+    fclose(f);
+    NIMCP_LOGGING_INFO("CNN trainer saved to %s (%u layers, step %u)",
+                       path, trainer->num_layers, trainer->global_step);
+    return 0;
+}
+
+int cnn_trainer_load_weights(cnn_trainer_t* trainer, const char* path) {
+    if (!trainer || !path) return -1;
+
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        NIMCP_LOGGING_WARN("cnn_trainer_load_weights: file not found %s", path);
+        return -1;
+    }
+
+    uint32_t magic = 0, version = 0;
+    if (fread(&magic, sizeof(uint32_t), 1, f) != 1 || magic != 0x434E4E53) {
+        NIMCP_LOGGING_ERROR("cnn_trainer_load_weights: invalid magic");
+        fclose(f);
+        return -1;
+    }
+    fread(&version, sizeof(uint32_t), 1, f);
+
+    /* Trainer state */
+    uint32_t num_layers = 0;
+    fread(&num_layers, sizeof(uint32_t), 1, f);
+    fread(&trainer->current_epoch, sizeof(uint32_t), 1, f);
+    fread(&trainer->global_step, sizeof(uint32_t), 1, f);
+    fread(&trainer->best_val_loss, sizeof(float), 1, f);
+
+    /* Per-layer: restore weights into existing trainer */
+    cnn_layer_t* layer = trainer->layers_head;
+    for (uint32_t i = 0; i < num_layers; i++) {
+        uint32_t type = 0;
+        fread(&type, sizeof(uint32_t), 1, f);
+
+        /* Skip config union and shapes */
+        union { cnn_conv_config_t c; cnn_pool_config_t p; cnn_batch_norm_config_t b;
+                cnn_dropout_config_t d; cnn_dense_config_t e; } dummy_config;
+        nimcp_tensor_shape_t dummy_shape;
+        fread(&dummy_config, sizeof(dummy_config), 1, f);
+        fread(&dummy_shape, sizeof(nimcp_tensor_shape_t), 1, f);
+        fread(&dummy_shape, sizeof(nimcp_tensor_shape_t), 1, f);
+
+        /* Load weight tensors */
+        nimcp_tensor_t* weights = nimcp_tensor_load(f);
+        nimcp_tensor_t* bias = nimcp_tensor_load(f);
+        nimcp_tensor_t* running_mean = nimcp_tensor_load(f);
+        nimcp_tensor_t* running_var = nimcp_tensor_load(f);
+
+        /* Apply to matching layer */
+        if (layer && (uint32_t)layer->type == type) {
+            #define SWAP_IF_MATCH(dst, src) do { \
+                if ((src) && (dst) && nimcp_tensor_numel(src) == nimcp_tensor_numel(dst)) { \
+                    nimcp_tensor_destroy(dst); \
+                    (dst) = (src); \
+                    (src) = NULL; \
+                } \
+            } while(0)
+
+            SWAP_IF_MATCH(layer->weights, weights);
+            SWAP_IF_MATCH(layer->bias, bias);
+            SWAP_IF_MATCH(layer->running_mean, running_mean);
+            SWAP_IF_MATCH(layer->running_var, running_var);
+            #undef SWAP_IF_MATCH
+
+            layer = layer->next;
+        }
+
+        nimcp_tensor_destroy(weights);
+        nimcp_tensor_destroy(bias);
+        nimcp_tensor_destroy(running_mean);
+        nimcp_tensor_destroy(running_var);
+    }
+
+    fclose(f);
+    NIMCP_LOGGING_INFO("CNN trainer weights loaded from %s (%u layers)", path, num_layers);
+    return 0;
+}

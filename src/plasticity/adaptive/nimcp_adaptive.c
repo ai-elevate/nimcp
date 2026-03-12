@@ -2307,15 +2307,40 @@ cpu_learn_path:
                 if (!isfinite(loss)) loss = 0.0f;
             }
 
+            // Diversity loss (unified anti-collapse, parity with GPU path)
+            {
+                static nimcp_anti_collapse_state_t s_cpu_dist_ac;
+                static bool s_cpu_dist_ac_inited = false;
+                if (!s_cpu_dist_ac_inited) {
+                    nimcp_anti_collapse_init(&s_cpu_dist_ac, NULL);
+                    s_cpu_dist_ac_inited = true;
+                }
+                float div_loss = nimcp_anti_collapse_diversity_loss(
+                    &s_cpu_dist_ac, output, NULL, example->target_size);
+                loss += div_loss;
+            }
+
             // Regression backprop: MSE gradients on ALL outputs
             {
+                // Gradient-normalized LR (parity with GPU path)
+                float cpu_eff_lr = learning_rate;
+                {
+                    float ema_gn = network->ema_grad_norm;
+                    if (ema_gn > 1e-4f && isfinite(ema_gn)) {
+                        cpu_eff_lr = learning_rate * (1.0f / ema_gn);
+                        float lr_min = learning_rate * 0.01f;
+                        float lr_max = learning_rate * 100.0f;
+                        if (cpu_eff_lr < lr_min) cpu_eff_lr = lr_min;
+                        if (cpu_eff_lr > lr_max) cpu_eff_lr = lr_max;
+                    }
+                }
                 float grad_norm = 0.0f;
                 backprop_layer_grads_t layer_grads = {0};
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
                     backprop_sparse_full_regression(network->base_network,
-                        num_layers, layer_sizes, learning_rate,
+                        num_layers, layer_sizes, cpu_eff_lr,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
@@ -2358,6 +2383,19 @@ cpu_learn_path:
                 loss /= fmaxf(2.0f * active_targets, 1.0f);
             }
 
+            // Diversity loss (unified anti-collapse, parity with GPU path)
+            {
+                static nimcp_anti_collapse_state_t s_cpu_sup_ac;
+                static bool s_cpu_sup_ac_inited = false;
+                if (!s_cpu_sup_ac_inited) {
+                    nimcp_anti_collapse_init(&s_cpu_sup_ac, NULL);
+                    s_cpu_sup_ac_inited = true;
+                }
+                float div_loss = nimcp_anti_collapse_diversity_loss(
+                    &s_cpu_sup_ac, output, NULL, example->target_size);
+                loss += div_loss;
+            }
+
             // =================================================================
             // BIOLOGICAL PLASTICITY: Apply STDP/BCM to synapses
             // =================================================================
@@ -2376,13 +2414,25 @@ cpu_learn_path:
             // Full backpropagation through all layers (sparse-efficient)
             // Delegated to shared kernel with parallel + SIMD optimizations
             {
+                // Gradient-normalized LR (parity with GPU path)
+                float cpu_eff_lr = learning_rate;
+                {
+                    float ema_gn = network->ema_grad_norm;
+                    if (ema_gn > 1e-4f && isfinite(ema_gn)) {
+                        cpu_eff_lr = learning_rate * (1.0f / ema_gn);
+                        float lr_min = learning_rate * 0.01f;
+                        float lr_max = learning_rate * 100.0f;
+                        if (cpu_eff_lr < lr_min) cpu_eff_lr = lr_min;
+                        if (cpu_eff_lr > lr_max) cpu_eff_lr = lr_max;
+                    }
+                }
                 float grad_norm = 0.0f;
                 backprop_layer_grads_t layer_grads = {0};
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
                     backprop_sparse_full_ex(network->base_network,
-                        num_layers, layer_sizes, learning_rate,
+                        num_layers, layer_sizes, cpu_eff_lr,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,
@@ -2486,15 +2536,40 @@ cpu_learn_path:
                 loss /= fmaxf(2.0f * active_targets, 1.0f);
             }
 
+            // Diversity loss (unified anti-collapse, parity with GPU path)
+            {
+                static nimcp_anti_collapse_state_t s_cpu_hyb_ac;
+                static bool s_cpu_hyb_ac_inited = false;
+                if (!s_cpu_hyb_ac_inited) {
+                    nimcp_anti_collapse_init(&s_cpu_hyb_ac, NULL);
+                    s_cpu_hyb_ac_inited = true;
+                }
+                float div_loss = nimcp_anti_collapse_diversity_loss(
+                    &s_cpu_hyb_ac, output, NULL, example->target_size);
+                loss += div_loss;
+            }
+
             // Phase 2: Full backpropagation (delegated to shared kernel)
             {
+                // Gradient-normalized LR (parity with GPU path)
+                float cpu_eff_lr = learning_rate;
+                {
+                    float ema_gn = network->ema_grad_norm;
+                    if (ema_gn > 1e-4f && isfinite(ema_gn)) {
+                        cpu_eff_lr = learning_rate * (1.0f / ema_gn);
+                        float lr_min = learning_rate * 0.01f;
+                        float lr_max = learning_rate * 100.0f;
+                        if (cpu_eff_lr < lr_min) cpu_eff_lr = lr_min;
+                        if (cpu_eff_lr > lr_max) cpu_eff_lr = lr_max;
+                    }
+                }
                 float grad_norm = 0.0f;
                 backprop_layer_grads_t layer_grads = {0};
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
                     backprop_sparse_full_ex(network->base_network,
-                        num_layers, layer_sizes, learning_rate,
+                        num_layers, layer_sizes, cpu_eff_lr,
                         network->config.base_config.min_weight,
                         network->config.base_config.max_weight,
                         example->target, output, example->target_size,

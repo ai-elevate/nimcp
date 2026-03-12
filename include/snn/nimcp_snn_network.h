@@ -560,6 +560,18 @@ neural_network_t snn_network_get_neural_net(snn_network_t* network);
  */
 int snn_network_validate(const snn_network_t* network);
 
+/**
+ * @brief Save SNN network (config + neuron weights) to file
+ * @return 0 on success, -1 on error
+ */
+int snn_network_save(snn_network_t* network, const char* path);
+
+/**
+ * @brief Load SNN network from file
+ * @return Network handle, or NULL on error
+ */
+snn_network_t* snn_network_load(const char* path);
+
 #ifdef __cplusplus
 }
 #endif

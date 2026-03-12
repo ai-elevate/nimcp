@@ -1665,11 +1665,20 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         prediction = NULL;
     }
 
-    // EDP Online Learning: Feed prediction error for continuous STDP
-    if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity
-        && edp_is_active(brain->event_driven_plasticity)) {
-        edp_process_prediction_error(brain->event_driven_plasticity, prediction_error, 0);
-        edp_update_eligibility(brain->event_driven_plasticity, 0.001f);
+    // EDP Online Learning: Feed prediction error for continuous STDP.
+    // Gate: skip during active gradient training to avoid weight drift that
+    // conflicts with backprop updates. EDP runs freely in inference-only mode.
+    // "Active training" = learning steps have occurred (stats.total_learning_steps > 0
+    // AND fast_training_mode or defer_bio_plasticity is set).
+    {
+        bool training_active = (brain->config.fast_training_mode ||
+                                brain->config.defer_bio_plasticity);
+        if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity
+            && edp_is_active(brain->event_driven_plasticity)
+            && !training_active) {
+            edp_process_prediction_error(brain->event_driven_plasticity, prediction_error, 0);
+            edp_update_eligibility(brain->event_driven_plasticity, 0.001f);
+        }
     }
 
     // Apply task-specific output transformation

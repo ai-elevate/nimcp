@@ -13,6 +13,7 @@
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_layer.h"
 #include "lnn/nimcp_lnn_config.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
@@ -1315,14 +1316,59 @@ int lnn_network_zero_gradients(lnn_network_t* network) {
  * NOTE: Placeholder implementation - full serialization requires binary format
  */
 int lnn_network_save(const lnn_network_t* network, const char* path) {
-    // Guard: Validate inputs
     if (!network || !path) {
         NIMCP_LOGGING_ERROR("lnn_network_save: NULL argument");
         return LNN_ERROR_NULL_POINTER;
     }
 
-    NIMCP_LOGGING_WARN("lnn_network_save: Not yet implemented");
-    return LNN_ERROR_NOT_INITIALIZED;
+    FILE* f = fopen(path, "wb");
+    if (!f) {
+        NIMCP_LOGGING_ERROR("lnn_network_save: failed to open %s", path);
+        return -1;
+    }
+
+    /* Header */
+    uint32_t magic = 0x4C4E4E53; /* "LNNS" */
+    uint32_t version = 1;
+    fwrite(&magic, sizeof(uint32_t), 1, f);
+    fwrite(&version, sizeof(uint32_t), 1, f);
+
+    /* Network metadata */
+    fwrite(&network->n_layers, sizeof(uint32_t), 1, f);
+    fwrite(&network->n_inputs, sizeof(uint32_t), 1, f);
+    fwrite(&network->n_outputs, sizeof(uint32_t), 1, f);
+    fwrite(&network->is_training, sizeof(bool), 1, f);
+
+    /* Per-layer weights and state */
+    for (uint32_t i = 0; i < network->n_layers; i++) {
+        lnn_layer_t* layer = network->layers[i];
+        if (!layer) {
+            uint32_t zero = 0;
+            fwrite(&zero, sizeof(uint32_t), 1, f);
+            continue;
+        }
+        fwrite(&layer->n_neurons, sizeof(uint32_t), 1, f);
+        fwrite(&layer->ode_method, sizeof(uint32_t), 1, f);
+        fwrite(&layer->dt, sizeof(float), 1, f);
+        fwrite(&layer->use_layer_norm, sizeof(bool), 1, f);
+        fwrite(&layer->layer_norm_eps, sizeof(float), 1, f);
+
+        /* Save weight tensors (NULL-safe via nimcp_tensor_save) */
+        nimcp_tensor_save(layer->W_in, f);
+        nimcp_tensor_save(layer->W_rec, f);
+        nimcp_tensor_save(layer->W_tau, f);
+        nimcp_tensor_save(layer->b_in, f);
+        nimcp_tensor_save(layer->b_tau, f);
+        nimcp_tensor_save(layer->tau_base, f);
+
+        /* Save state tensors */
+        nimcp_tensor_save(layer->x, f);
+        nimcp_tensor_save(layer->tau, f);
+    }
+
+    fclose(f);
+    NIMCP_LOGGING_INFO("LNN network saved to %s (%u layers)", path, network->n_layers);
+    return 0;
 }
 
 /**
@@ -1335,14 +1381,116 @@ int lnn_network_save(const lnn_network_t* network, const char* path) {
  * NOTE: Placeholder implementation
  */
 lnn_network_t* lnn_network_load(const char* path) {
-    // Guard: Validate input
     if (!path) {
         NIMCP_LOGGING_ERROR("lnn_network_load: NULL path");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_network_load: path is NULL");
         return NULL;
     }
 
-    NIMCP_LOGGING_WARN("lnn_network_load: Not yet implemented");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_network_load: path is NULL");
-    return NULL;
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        NIMCP_LOGGING_WARN("lnn_network_load: file not found %s", path);
+        return NULL;
+    }
+
+    /* Header */
+    uint32_t magic = 0, version = 0;
+    if (fread(&magic, sizeof(uint32_t), 1, f) != 1 || magic != 0x4C4E4E53) {
+        NIMCP_LOGGING_ERROR("lnn_network_load: invalid magic");
+        fclose(f);
+        return NULL;
+    }
+    fread(&version, sizeof(uint32_t), 1, f);
+
+    /* Network metadata */
+    uint32_t n_layers = 0, n_inputs = 0, n_outputs = 0;
+    bool is_training = false;
+    fread(&n_layers, sizeof(uint32_t), 1, f);
+    fread(&n_inputs, sizeof(uint32_t), 1, f);
+    fread(&n_outputs, sizeof(uint32_t), 1, f);
+    fread(&is_training, sizeof(bool), 1, f);
+
+    /* Recreate network using NCP topology (matches brain_enable_multi_network_training) */
+    uint32_t n_inter = (n_inputs + n_outputs) / 2;
+    if (n_inter < 8) n_inter = 8;
+    uint32_t n_command = n_outputs * 2;
+    if (n_command < 8) n_command = 8;
+
+    lnn_network_t* net = lnn_network_create_ncp(n_inputs, n_inter, n_command, n_outputs);
+    if (!net) {
+        NIMCP_LOGGING_ERROR("lnn_network_load: failed to create NCP network");
+        fclose(f);
+        return NULL;
+    }
+
+    /* Restore per-layer weights from file */
+    uint32_t restore_layers = (n_layers < net->n_layers) ? n_layers : net->n_layers;
+    for (uint32_t i = 0; i < n_layers; i++) {
+        uint32_t n_neurons = 0;
+        uint32_t ode_method = 0;
+        float dt = 0.0f;
+        bool use_layer_norm = false;
+        float layer_norm_eps = 0.0f;
+
+        fread(&n_neurons, sizeof(uint32_t), 1, f);
+        if (n_neurons == 0) continue;
+
+        fread(&ode_method, sizeof(uint32_t), 1, f);
+        fread(&dt, sizeof(float), 1, f);
+        fread(&use_layer_norm, sizeof(bool), 1, f);
+        fread(&layer_norm_eps, sizeof(float), 1, f);
+
+        /* Load weight tensors */
+        nimcp_tensor_t* W_in = nimcp_tensor_load(f);
+        nimcp_tensor_t* W_rec = nimcp_tensor_load(f);
+        nimcp_tensor_t* W_tau = nimcp_tensor_load(f);
+        nimcp_tensor_t* b_in = nimcp_tensor_load(f);
+        nimcp_tensor_t* b_tau = nimcp_tensor_load(f);
+        nimcp_tensor_t* tau_base = nimcp_tensor_load(f);
+        nimcp_tensor_t* x = nimcp_tensor_load(f);
+        nimcp_tensor_t* tau = nimcp_tensor_load(f);
+
+        /* Apply to matching layer in recreated network */
+        if (i < restore_layers && net->layers[i]) {
+            lnn_layer_t* layer = net->layers[i];
+
+            /* Replace weight tensors if dimensions match */
+            #define SWAP_TENSOR(dst, src) do { \
+                if ((src) && (dst) && nimcp_tensor_numel(src) == nimcp_tensor_numel(dst)) { \
+                    nimcp_tensor_destroy(dst); \
+                    (dst) = (src); \
+                    (src) = NULL; \
+                } \
+            } while(0)
+
+            SWAP_TENSOR(layer->W_in, W_in);
+            SWAP_TENSOR(layer->W_rec, W_rec);
+            SWAP_TENSOR(layer->W_tau, W_tau);
+            SWAP_TENSOR(layer->b_in, b_in);
+            SWAP_TENSOR(layer->b_tau, b_tau);
+            SWAP_TENSOR(layer->tau_base, tau_base);
+            SWAP_TENSOR(layer->x, x);
+            SWAP_TENSOR(layer->tau, tau);
+            #undef SWAP_TENSOR
+
+            layer->ode_method = (lnn_ode_method_t)ode_method;
+            layer->dt = dt;
+            layer->use_layer_norm = use_layer_norm;
+            layer->layer_norm_eps = layer_norm_eps;
+        }
+
+        /* Clean up any tensors not consumed */
+        nimcp_tensor_destroy(W_in);
+        nimcp_tensor_destroy(W_rec);
+        nimcp_tensor_destroy(W_tau);
+        nimcp_tensor_destroy(b_in);
+        nimcp_tensor_destroy(b_tau);
+        nimcp_tensor_destroy(tau_base);
+        nimcp_tensor_destroy(x);
+        nimcp_tensor_destroy(tau);
+    }
+
+    net->is_training = is_training;
+    fclose(f);
+    NIMCP_LOGGING_INFO("LNN network loaded from %s (%u layers restored)", path, restore_layers);
+    return net;
 }

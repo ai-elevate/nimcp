@@ -1086,6 +1086,30 @@ sequential_training:
         }
     }
 
+    /* Blend secondary network losses into composite return value.
+     * Weights: ANN 60%, SNN 15%, LNN 15%, CNN 10%.
+     * Only include networks that produced valid loss this step. */
+    {
+        float w_sum = 0.6f;  /* ANN always contributes */
+        float l_sum = loss * 0.6f;
+        if (brain->network_metrics.last_snn_loss >= 0.0f &&
+            brain->network_metrics.snn_steps > 0) {
+            l_sum += brain->network_metrics.last_snn_loss * 0.15f;
+            w_sum += 0.15f;
+        }
+        if (brain->network_metrics.last_lnn_loss >= 0.0f &&
+            brain->network_metrics.lnn_steps > 0) {
+            l_sum += brain->network_metrics.last_lnn_loss * 0.15f;
+            w_sum += 0.15f;
+        }
+        if (brain->network_metrics.last_cnn_loss >= 0.0f &&
+            brain->network_metrics.cnn_steps > 0) {
+            l_sum += brain->network_metrics.last_cnn_loss * 0.10f;
+            w_sum += 0.10f;
+        }
+        loss = l_sum / w_sum;
+    }
+
     /* --- Per-network metrics tracking (ablation analysis) --- */
     {
         const float ema_alpha = 0.01f;

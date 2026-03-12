@@ -995,6 +995,18 @@ nimcp_error_t cnn_get_layer_weight_grad(const cnn_trainer_t* trainer,
  */
 void cnn_trainer_set_managed_by_utm(cnn_trainer_t* trainer, bool managed);
 
+/**
+ * @brief Save CNN trainer weights and state to file
+ * @return 0 on success, -1 on error
+ */
+int cnn_trainer_save(const cnn_trainer_t* trainer, const char* path);
+
+/**
+ * @brief Load CNN trainer weights from file into existing trainer
+ * @return 0 on success, -1 on error
+ */
+int cnn_trainer_load_weights(cnn_trainer_t* trainer, const char* path);
+
 #ifdef __cplusplus
 }
 #endif
