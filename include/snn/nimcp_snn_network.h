@@ -123,6 +123,77 @@ int snn_network_step(snn_network_t* network, float dt);
 int snn_network_run(snn_network_t* network, float duration_ms);
 
 //=============================================================================
+// Performance-Optimized Stepping
+//=============================================================================
+
+/**
+ * @brief Per-step performance statistics
+ */
+typedef struct snn_step_stats_s {
+    uint32_t total_neurons;         /**< Total neurons across populations */
+    uint32_t neurons_updated;       /**< Neurons that were actually updated */
+    uint32_t neurons_skipped;       /**< Neurons skipped (far from threshold) */
+    uint32_t neurons_refractory;    /**< Neurons in refractory period */
+    uint32_t spikes_generated;      /**< Spikes this step */
+    float    compute_ratio;         /**< neurons_updated / total_neurons */
+} snn_step_stats_t;
+
+/**
+ * @brief Spike-driven sparse step — only updates active neurons
+ *
+ * WHAT: Event-driven neuron update that skips quiescent neurons
+ * WHY:  At 2-5% firing rate, 95-98% of neurons are silent; O(spikes) not O(N)
+ * HOW:  Skip neurons whose membrane potential is far below threshold AND
+ *       have no incoming synaptic current. Only neurons that received a spike
+ *       or are within threshold_margin of firing are updated.
+ *
+ * @param network SNN network
+ * @param dt Timestep in milliseconds (uses config.dt if 0)
+ * @param threshold_margin Neurons within this margin of v_thresh are always updated (mV).
+ *                         Use 0 for default (5.0 mV).
+ * @param stats [out] Optional step statistics (may be NULL)
+ * @return Number of spikes generated, or negative on error
+ *
+ * COMPLEXITY: O(active_neurons) where active = spiked + near-threshold + has-input
+ */
+int snn_network_step_sparse(snn_network_t* network, float dt,
+                             float threshold_margin,
+                             snn_step_stats_t* stats);
+
+/**
+ * @brief Population-parallel step — independent populations step concurrently
+ *
+ * WHAT: Step populations in parallel using thread pool
+ * WHY:  Independent populations have no cross-dependencies within a step
+ * HOW:  Partition populations into independent groups, step each in parallel
+ *
+ * @param network SNN network
+ * @param dt Timestep in milliseconds (uses config.dt if 0)
+ * @param n_threads Number of threads (0 = use config.n_threads or auto-detect)
+ * @return Number of spikes generated, or negative on error
+ *
+ * COMPLEXITY: O(n_neurons / n_threads × avg_synapses)
+ */
+int snn_network_step_parallel(snn_network_t* network, float dt,
+                               uint32_t n_threads);
+
+/**
+ * @brief Run simulation using sparse (event-driven) stepping
+ *
+ * WHAT: Run for duration using snn_network_step_sparse for each timestep
+ * WHY:  Combines sparse stepping with full simulation convenience
+ *
+ * @param network SNN network
+ * @param duration_ms Simulation duration
+ * @param threshold_margin Skip margin (0 = default 5.0 mV)
+ * @param stats [out] Accumulated statistics (may be NULL)
+ * @return Total spikes generated, or negative on error
+ */
+int snn_network_run_sparse(snn_network_t* network, float duration_ms,
+                            float threshold_margin,
+                            snn_step_stats_t* stats);
+
+//=============================================================================
 // Input/Output (Encoding/Decoding)
 //=============================================================================
 

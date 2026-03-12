@@ -562,6 +562,361 @@ int snn_network_run(snn_network_t* network, float duration_ms) {
 }
 
 //=============================================================================
+// Performance-Optimized Stepping
+//=============================================================================
+
+/** Default threshold margin for sparse stepping (mV) */
+#define SNN_SPARSE_THRESHOLD_MARGIN_DEFAULT 5.0f
+
+/**
+ * @brief Spike-driven sparse step — skip quiescent neurons
+ *
+ * WHAT: Only update neurons that are near threshold or received input
+ * WHY:  At 2-5% firing rate, most neurons decay passively → skip them
+ * HOW:  Two-pass: (1) identify active neurons, (2) update only those
+ *
+ * A neuron is "active" if any of:
+ * - In refractory period (needs countdown)
+ * - Has non-zero external_current (received a spike)
+ * - Membrane potential is within threshold_margin of v_thresh
+ * - Was spiking last step (needs reset propagation)
+ */
+int snn_network_step_sparse(snn_network_t* network, float dt,
+                             float threshold_margin,
+                             snn_step_stats_t* stats) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_network_step_sparse: null network pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!network->sim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+            "snn_network_step_sparse: null simulation context");
+        return SNN_ERROR_INVALID_STATE;
+    }
+
+    snn_network_heartbeat("snn_step_sparse", 0.0f);
+
+    float dt_ms = (dt > 0.0f) ? dt : network->config.dt;
+    uint64_t dt_us = (uint64_t)(dt_ms * 1000.0f);
+    float margin = (threshold_margin > 0.0f) ? threshold_margin
+                                              : SNN_SPARSE_THRESHOLD_MARGIN_DEFAULT;
+
+    int total_spikes = 0;
+    uint32_t total_neurons = 0;
+    uint32_t neurons_updated = 0;
+    uint32_t neurons_skipped = 0;
+    uint32_t neurons_refractory = 0;
+
+    float v_thresh = network->config.v_thresh;
+    float v_reset = network->config.v_reset;
+    float v_rest = network->config.v_rest;
+    float tau_mem = network->config.tau_mem;
+    float active_threshold = v_thresh - margin;
+
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop) continue;
+
+        float* v_data = (float*)nimcp_tensor_data(pop->membrane_v);
+        float* spike_data = (float*)nimcp_tensor_data(pop->spike_output);
+        float* ref_data = (float*)nimcp_tensor_data(pop->refractory);
+
+        total_neurons += pop->n_neurons;
+
+        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+            spike_data[n] = 0.0f;
+
+            /* Refractory neurons: just decrement, count as refractory */
+            if (ref_data[n] > 0.0f) {
+                ref_data[n] -= dt_ms;
+                neurons_refractory++;
+                continue;
+            }
+
+            /* Get synaptic input */
+            float I_syn = 0.0f;
+            if (network->neural_net) {
+                neuron_t* neuron = neural_network_get_neuron(
+                    network->neural_net, pop->neuron_ids[n]);
+                if (neuron) {
+                    I_syn = neuron->external_current;
+                }
+            }
+
+            /* Sparse optimization: skip neuron if quiescent
+             * - No synaptic input AND
+             * - Membrane potential far below threshold (passive decay only)
+             *
+             * For passive decay: dV = (v_rest - V) / tau * dt
+             * If V < active_threshold and I_syn == 0, the neuron is decaying
+             * toward rest and won't spike. Apply the decay analytically. */
+            if (I_syn == 0.0f && v_data[n] < active_threshold) {
+                /* Analytical exponential decay: V → v_rest + (V-v_rest)*exp(-dt/tau) */
+                float alpha = expf(-dt_ms / tau_mem);
+                v_data[n] = v_rest + (v_data[n] - v_rest) * alpha;
+                neurons_skipped++;
+                continue;
+            }
+
+            /* Full LIF update for active neurons */
+            neurons_updated++;
+            float dv = (v_rest - v_data[n] + I_syn) / tau_mem * dt_ms;
+            v_data[n] += dv;
+
+            /* Spike generation */
+            if (v_data[n] >= v_thresh) {
+                spike_data[n] = 1.0f;
+                v_data[n] = v_reset;
+                ref_data[n] = network->config.t_ref;
+
+                record_spike(&pop->spike_trains[n], network->sim->current_time_us);
+                total_spikes++;
+                pop->total_spikes++;
+            }
+        }
+    }
+
+    /* Update simulation time */
+    network->sim->current_time_us += dt_us;
+    network->sim->step_count++;
+    network->stats.total_steps = network->sim->step_count;
+    network->stats.total_spikes += total_spikes;
+
+    /* Fill statistics if requested */
+    if (stats) {
+        stats->total_neurons = total_neurons;
+        stats->neurons_updated = neurons_updated;
+        stats->neurons_skipped = neurons_skipped;
+        stats->neurons_refractory = neurons_refractory;
+        stats->spikes_generated = (uint32_t)total_spikes;
+        stats->compute_ratio = (total_neurons > 0)
+            ? (float)neurons_updated / (float)total_neurons
+            : 0.0f;
+    }
+
+    return total_spikes;
+}
+
+/**
+ * @brief Worker context for parallel population stepping
+ */
+typedef struct {
+    snn_population_t* pop;
+    neural_network_t neural_net;
+    float dt_ms;
+    float v_thresh;
+    float v_reset;
+    float v_rest;
+    float tau_mem;
+    float t_ref;
+    uint64_t current_time_us;
+    int spikes;  /* output */
+} snn_pop_step_ctx_t;
+
+/**
+ * @brief Step a single population (thread worker function)
+ */
+static void snn_pop_step_worker(snn_pop_step_ctx_t* ctx) {
+    snn_population_t* pop = ctx->pop;
+    if (!pop) { ctx->spikes = 0; return; }
+
+    float* v_data = (float*)nimcp_tensor_data(pop->membrane_v);
+    float* spike_data = (float*)nimcp_tensor_data(pop->spike_output);
+    float* ref_data = (float*)nimcp_tensor_data(pop->refractory);
+
+    int spikes = 0;
+
+    for (uint32_t n = 0; n < pop->n_neurons; n++) {
+        spike_data[n] = 0.0f;
+
+        if (ref_data[n] > 0.0f) {
+            ref_data[n] -= ctx->dt_ms;
+            continue;
+        }
+
+        float I_syn = 0.0f;
+        if (ctx->neural_net) {
+            neuron_t* neuron = neural_network_get_neuron(
+                ctx->neural_net, pop->neuron_ids[n]);
+            if (neuron) {
+                I_syn = neuron->external_current;
+            }
+        }
+
+        float dv = (ctx->v_rest - v_data[n] + I_syn) / ctx->tau_mem * ctx->dt_ms;
+        v_data[n] += dv;
+
+        if (v_data[n] >= ctx->v_thresh) {
+            spike_data[n] = 1.0f;
+            v_data[n] = ctx->v_reset;
+            ref_data[n] = ctx->t_ref;
+            record_spike(&pop->spike_trains[n], ctx->current_time_us);
+            spikes++;
+            pop->total_spikes++;
+        }
+    }
+
+    ctx->spikes = spikes;
+}
+
+/**
+ * @brief Population-parallel step using pthreads
+ *
+ * WHAT: Step independent populations concurrently
+ * WHY:  Populations within a step don't have cross-dependencies
+ * HOW:  Launch one thread per population (up to n_threads), join all
+ */
+int snn_network_step_parallel(snn_network_t* network, float dt,
+                               uint32_t n_threads) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_network_step_parallel: null network pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!network->sim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+            "snn_network_step_parallel: null simulation context");
+        return SNN_ERROR_INVALID_STATE;
+    }
+
+    snn_network_heartbeat("snn_step_parallel", 0.0f);
+
+    float dt_ms = (dt > 0.0f) ? dt : network->config.dt;
+    uint64_t dt_us = (uint64_t)(dt_ms * 1000.0f);
+
+    uint32_t n_pops = network->n_populations;
+    if (n_pops == 0) return 0;
+
+    /* For single population or 1 thread, fall back to serial */
+    uint32_t actual_threads = (n_threads > 0) ? n_threads : network->config.n_threads;
+    if (actual_threads == 0) actual_threads = 4;  /* Default */
+    if (n_pops == 1 || actual_threads <= 1) {
+        return snn_network_step(network, dt);
+    }
+
+    /* Cap threads to population count */
+    if (actual_threads > n_pops) actual_threads = n_pops;
+
+    /* Prepare per-population contexts */
+    snn_pop_step_ctx_t* ctxs = (snn_pop_step_ctx_t*)nimcp_malloc(
+        n_pops * sizeof(snn_pop_step_ctx_t));
+    if (!ctxs) return snn_network_step(network, dt);  /* Fallback */
+
+    for (uint32_t p = 0; p < n_pops; p++) {
+        ctxs[p].pop = network->populations[p];
+        ctxs[p].neural_net = network->neural_net;
+        ctxs[p].dt_ms = dt_ms;
+        ctxs[p].v_thresh = network->config.v_thresh;
+        ctxs[p].v_reset = network->config.v_reset;
+        ctxs[p].v_rest = network->config.v_rest;
+        ctxs[p].tau_mem = network->config.tau_mem;
+        ctxs[p].t_ref = network->config.t_ref;
+        ctxs[p].current_time_us = network->sim->current_time_us;
+        ctxs[p].spikes = 0;
+    }
+
+    /* Launch threads for populations (use nimcp_thread API) */
+    nimcp_thread_t* threads = (nimcp_thread_t*)nimcp_malloc(
+        actual_threads * sizeof(nimcp_thread_t));
+    if (!threads) {
+        /* Fallback: run serially */
+        for (uint32_t p = 0; p < n_pops; p++) {
+            snn_pop_step_worker(&ctxs[p]);
+        }
+    } else {
+        /* Round-robin populations to threads in batches */
+        uint32_t launched = 0;
+        uint32_t p = 0;
+
+        while (p < n_pops) {
+            launched = 0;
+            uint32_t batch = (n_pops - p < actual_threads) ? (n_pops - p) : actual_threads;
+
+            for (uint32_t t = 0; t < batch; t++) {
+                int rc = nimcp_thread_create(&threads[t],
+                    (void*(*)(void*))snn_pop_step_worker, &ctxs[p + t], NULL);
+                if (rc != 0) {
+                    /* Thread creation failed — run serially */
+                    snn_pop_step_worker(&ctxs[p + t]);
+                } else {
+                    launched++;
+                }
+            }
+
+            /* Join all launched threads */
+            for (uint32_t t = 0; t < batch; t++) {
+                if (launched > 0) {
+                    nimcp_thread_join(threads[t], NULL);
+                }
+            }
+            p += batch;
+        }
+        nimcp_free(threads);
+    }
+
+    /* Accumulate results */
+    int total_spikes = 0;
+    for (uint32_t p = 0; p < n_pops; p++) {
+        total_spikes += ctxs[p].spikes;
+    }
+    nimcp_free(ctxs);
+
+    /* Update simulation time */
+    network->sim->current_time_us += dt_us;
+    network->sim->step_count++;
+    network->stats.total_steps = network->sim->step_count;
+    network->stats.total_spikes += total_spikes;
+
+    return total_spikes;
+}
+
+int snn_network_run_sparse(snn_network_t* network, float duration_ms,
+                            float threshold_margin,
+                            snn_step_stats_t* stats) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_network_run_sparse: null network pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+
+    float dt_ms = network->config.dt;
+    int n_steps = (int)(duration_ms / dt_ms);
+    int total_spikes = 0;
+
+    /* Accumulate stats across steps */
+    snn_step_stats_t acc = {0};
+
+    for (int i = 0; i < n_steps; i++) {
+        snn_step_stats_t step_stats = {0};
+        int spikes = snn_network_step_sparse(network, dt_ms,
+                                              threshold_margin, &step_stats);
+        if (spikes < 0) return spikes;
+        total_spikes += spikes;
+
+        acc.total_neurons = step_stats.total_neurons;  /* Same each step */
+        acc.neurons_updated += step_stats.neurons_updated;
+        acc.neurons_skipped += step_stats.neurons_skipped;
+        acc.neurons_refractory += step_stats.neurons_refractory;
+        acc.spikes_generated += step_stats.spikes_generated;
+    }
+
+    if (stats && n_steps > 0) {
+        stats->total_neurons = acc.total_neurons;
+        stats->neurons_updated = acc.neurons_updated / (uint32_t)n_steps;
+        stats->neurons_skipped = acc.neurons_skipped / (uint32_t)n_steps;
+        stats->neurons_refractory = acc.neurons_refractory / (uint32_t)n_steps;
+        stats->spikes_generated = acc.spikes_generated;
+        stats->compute_ratio = (acc.total_neurons > 0)
+            ? (float)acc.neurons_updated /
+              (float)(acc.total_neurons * (uint32_t)n_steps)
+            : 0.0f;
+    }
+
+    return total_spikes;
+}
+
+//=============================================================================
 // Input/Output
 //=============================================================================
 

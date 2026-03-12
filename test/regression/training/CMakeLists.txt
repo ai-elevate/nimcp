@@ -407,6 +407,28 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_bptt.cpp)
             TIMEOUT 60)
 endif()
 
+# Architecture Restructuring TDD Tests (dual-pathway, cross-network bridges)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_architecture_restructuring.cpp)
+    add_executable(regression_training_architecture_restructuring
+        test_architecture_restructuring.cpp
+    )
+    target_include_directories(regression_training_architecture_restructuring PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_training_architecture_restructuring PRIVATE cxx_std_20)
+    target_link_libraries(regression_training_architecture_restructuring PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME regression_training_architecture_restructuring
+             COMMAND regression_training_architecture_restructuring
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(regression_training_architecture_restructuring
+        PROPERTIES
+            LABELS "regression;training;architecture-restructuring"
+            TIMEOUT 120)
+endif()
+
 # Architecture Audit Fixes Regression Tests (Session 57-58)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_architecture_audit_fixes.cpp)
     add_executable(regression_training_architecture_audit_fixes
