@@ -39,6 +39,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -1310,6 +1311,35 @@ void nimcp_tensor_print_data(const nimcp_tensor_t* t, uint32_t max_elements);
  * @brief Get error message for error code
  */
 const char* nimcp_tensor_error_string(nimcp_tensor_error_t err);
+
+//=============================================================================
+// Persistence (save/load)
+//=============================================================================
+
+/**
+ * @brief Save tensor to a FILE stream
+ *
+ * WHAT: Serialize tensor shape, dtype, and data to binary
+ * WHY:  Checkpoint persistence for network weights
+ * HOW:  Write magic + rank + dims + dtype + raw data
+ *
+ * @param tensor Tensor to save (may be NULL — writes a null marker)
+ * @param file   Open FILE stream for binary writing
+ * @return 0 on success, -1 on error
+ */
+int nimcp_tensor_save(const nimcp_tensor_t* tensor, FILE* file);
+
+/**
+ * @brief Load tensor from a FILE stream
+ *
+ * WHAT: Deserialize tensor from binary
+ * WHY:  Restore checkpointed weights
+ * HOW:  Read magic + rank + dims + dtype, create tensor, read data
+ *
+ * @param file Open FILE stream for binary reading
+ * @return Tensor handle, or NULL on error or if a null marker was saved
+ */
+nimcp_tensor_t* nimcp_tensor_load(FILE* file);
 
 #ifdef __cplusplus
 }

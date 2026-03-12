@@ -3387,3 +3387,111 @@ int nimcp_autodiff_backward(nimcp_autodiff_ctx_t* ctx,
 
     return NIMCP_TENSOR_OK;
 }
+
+//=============================================================================
+// Persistence (save/load)
+//=============================================================================
+
+#include <stdio.h>
+
+#define NIMCP_TENSOR_FILE_MAGIC 0x544E5352  /* "TNSR" */
+#define NIMCP_TENSOR_NULL_MAGIC 0x544E4C4C  /* "TNLL" — null tensor marker */
+
+int nimcp_tensor_save(const nimcp_tensor_t* tensor, FILE* file) {
+    if (!file) return -1;
+
+    /* Handle NULL tensor — write a null marker so load knows to return NULL */
+    if (!tensor) {
+        uint32_t null_magic = NIMCP_TENSOR_NULL_MAGIC;
+        if (fwrite(&null_magic, sizeof(uint32_t), 1, file) != 1) return -1;
+        return 0;
+    }
+
+    /* Header: magic + rank + dtype */
+    uint32_t magic = NIMCP_TENSOR_FILE_MAGIC;
+    uint32_t rank = tensor->shape.rank;
+    uint32_t dtype = (uint32_t)tensor->dtype;
+
+    if (fwrite(&magic, sizeof(uint32_t), 1, file) != 1) return -1;
+    if (fwrite(&rank, sizeof(uint32_t), 1, file) != 1) return -1;
+    if (fwrite(&dtype, sizeof(uint32_t), 1, file) != 1) return -1;
+
+    /* Dimensions */
+    if (rank > 0) {
+        if (fwrite(tensor->shape.dims, sizeof(uint32_t), rank, file) != rank) return -1;
+    }
+
+    /* Data */
+    size_t nbytes = tensor->shape.nbytes;
+    if (fwrite(&nbytes, sizeof(size_t), 1, file) != 1) return -1;
+    if (nbytes > 0 && tensor->data) {
+        if (fwrite(tensor->data, 1, nbytes, file) != nbytes) return -1;
+    }
+
+    return 0;
+}
+
+nimcp_tensor_t* nimcp_tensor_load(FILE* file) {
+    if (!file) return NULL;
+
+    /* Read magic */
+    uint32_t magic = 0;
+    if (fread(&magic, sizeof(uint32_t), 1, file) != 1) return NULL;
+
+    /* Check for null marker */
+    if (magic == NIMCP_TENSOR_NULL_MAGIC) return NULL;
+
+    if (magic != NIMCP_TENSOR_FILE_MAGIC) {
+        NIMCP_LOGGING_ERROR("nimcp_tensor_load: invalid magic 0x%08X (expected 0x%08X)",
+                           magic, NIMCP_TENSOR_FILE_MAGIC);
+        return NULL;
+    }
+
+    /* Read rank + dtype */
+    uint32_t rank = 0, dtype_u32 = 0;
+    if (fread(&rank, sizeof(uint32_t), 1, file) != 1) return NULL;
+    if (fread(&dtype_u32, sizeof(uint32_t), 1, file) != 1) return NULL;
+
+    if (rank > NIMCP_TENSOR_MAX_RANK) {
+        NIMCP_LOGGING_ERROR("nimcp_tensor_load: rank %u exceeds max %d", rank, NIMCP_TENSOR_MAX_RANK);
+        return NULL;
+    }
+    if (dtype_u32 >= NIMCP_DTYPE_COUNT) {
+        NIMCP_LOGGING_ERROR("nimcp_tensor_load: invalid dtype %u", dtype_u32);
+        return NULL;
+    }
+
+    /* Read dimensions */
+    uint32_t dims[NIMCP_TENSOR_MAX_RANK] = {0};
+    if (rank > 0) {
+        if (fread(dims, sizeof(uint32_t), rank, file) != rank) return NULL;
+    }
+
+    /* Read data size */
+    size_t nbytes = 0;
+    if (fread(&nbytes, sizeof(size_t), 1, file) != 1) return NULL;
+
+    /* Create tensor */
+    nimcp_dtype_t dtype = (nimcp_dtype_t)dtype_u32;
+    nimcp_tensor_t* t = nimcp_tensor_create(dims, rank, dtype);
+    if (!t) return NULL;
+
+    /* Validate data size matches */
+    if (nbytes != t->shape.nbytes) {
+        NIMCP_LOGGING_ERROR("nimcp_tensor_load: data size mismatch (file=%zu, tensor=%zu)",
+                           nbytes, t->shape.nbytes);
+        nimcp_tensor_destroy(t);
+        return NULL;
+    }
+
+    /* Read data */
+    if (nbytes > 0 && t->data) {
+        if (fread(t->data, 1, nbytes, file) != nbytes) {
+            NIMCP_LOGGING_ERROR("nimcp_tensor_load: short read on data (%zu bytes)", nbytes);
+            nimcp_tensor_destroy(t);
+            return NULL;
+        }
+    }
+
+    return t;
+}
