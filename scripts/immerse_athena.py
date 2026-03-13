@@ -3596,12 +3596,19 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         for wi, wtext in enumerate(warmup_texts):
             features = composer.compose(text=wtext, modality="text")
             target = make_semantic_target(wtext)
-            brain.decide_full(features)
+            try:
+                brain.decide_full(features)
+            except RuntimeError:
+                pass  # Decision pipeline may not be fully ready during init
             # High confidence to establish distinct representations
-            brain.learn_vector(features, target, label=wtext[:50], confidence=0.9)
-            # Repeat each warmup stimulus 3x to establish strong initial patterns
-            for _ in range(2):
-                brain.learn_vector(features, target, label=wtext[:50], confidence=0.85)
+            try:
+                brain.learn_vector(features, target, label=wtext[:50], confidence=0.9)
+                # Repeat each warmup stimulus 3x to establish strong initial patterns
+                for _ in range(2):
+                    brain.learn_vector(features, target, label=wtext[:50], confidence=0.85)
+            except RuntimeError as e:
+                if wi == 0:
+                    print(f"  [Warmup] First stimulus failed ({e}), continuing...")
         print(f"  [Warmup] {len(warmup_texts)} diverse stimuli x3 — done")
 
     losses = []

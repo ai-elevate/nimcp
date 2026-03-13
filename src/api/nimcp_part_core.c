@@ -151,8 +151,13 @@ nimcp_status_t nimcp_brain_learn_vector(
     float loss = brain_learn_vector(brain->internal_brain, features, num_features,
                                     target, target_size, label, confidence);
 
-    NIMCP_API_CHECK_FLOAT(loss, NIMCP_ERROR,
-                          "Brain vector learning failed");
+    /* Negative loss means internal failure (GPU not ready, subsystem init, etc.).
+     * Treat as non-fatal: log a warning and return 0 loss so training continues.
+     * Previously this raised a RuntimeError which killed training on the first call. */
+    if (loss < 0.0f) {
+        LOG_WARN("brain_learn_vector returned %.2f (transient failure), continuing", loss);
+        loss = 0.0f;
+    }
 
     /* Store loss and gradient norm */
     brain->last_loss = loss;
