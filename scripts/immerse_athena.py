@@ -4700,7 +4700,13 @@ class MetricsComputer:
         has_vocab = decoder and len(decoder.vocabulary) > 0
 
         for input_vec, target_vec, domain in held_out_items:
-            result = brain.decide_full(input_vec)
+            # Ensure input is a flat list of floats — held_out_items may contain
+            # numpy arrays or mixed types from the composer/data pipeline.
+            try:
+                input_floats = [float(x) for x in input_vec]
+            except (TypeError, ValueError):
+                continue
+            result = brain.decide_full(input_floats)
             output_vec = result.get("output_vector")
             if output_vec is None:
                 continue
