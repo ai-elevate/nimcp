@@ -3734,10 +3734,10 @@ static PyObject* Brain_bg_update_reward(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "ff", &reward, &expected)) return NULL;
 
     int result = brain_ti_update_reward(self->brain->internal_brain, reward, expected);
-    /* M-4: Raise exception on error instead of silently returning error code */
+    /* Return False if BG is not enabled/initialized — non-fatal for training.
+     * The prior exception-raising behavior spammed daemon logs every ~3s. */
     if (result != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "bg_update_reward failed");
-        return NULL;
+        Py_RETURN_FALSE;
     }
     Py_RETURN_TRUE;
 }

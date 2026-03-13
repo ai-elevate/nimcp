@@ -1407,6 +1407,13 @@ lnn_network_t* lnn_network_load(const char* path) {
         return NULL;
     }
 
+    /* Ensure LNN library is initialized — checkpoint load may bypass
+     * the normal brain_init LNN wave that calls lnn_init(). Without
+     * this, g_lnn_initialized is false and all forward/backward calls
+     * return LNN_ERROR_INVALID_STATE. */
+    extern int lnn_init(uint32_t n_threads);
+    lnn_init(1);
+
     FILE* f = fopen(path, "rb");
     if (!f) {
         NIMCP_LOGGING_WARN("lnn_network_load: file not found %s", path);

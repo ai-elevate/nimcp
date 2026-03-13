@@ -416,9 +416,11 @@ class BrainProxy:
 # ---------------------------------------------------------------------------
 
 def _to_list(obj):
-    """Convert numpy arrays and other iterables to plain lists."""
+    """Convert numpy arrays, bytes, and other iterables to plain lists."""
     if obj is None:
         return None
+    if isinstance(obj, (bytes, bytearray)):
+        return list(obj)  # bytes → list of ints [0-255]
     if hasattr(obj, "tolist"):
         return obj.tolist()
     if isinstance(obj, (list, tuple)):

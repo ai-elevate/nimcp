@@ -42,6 +42,12 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
         goto cleanup;
     }
 
+    // Re-initialize GPU subsystem (GPU state is not serialized in checkpoint)
+    {
+        extern bool nimcp_brain_factory_init_gpu_subsystem(brain_t brain);
+        nimcp_brain_factory_init_gpu_subsystem(handle->internal_brain);
+    }
+
     // Initialize sparse coding on loaded brain (not serialized in checkpoint)
     {
         brain_t b = handle->internal_brain;
