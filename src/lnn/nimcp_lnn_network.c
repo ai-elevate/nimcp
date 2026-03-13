@@ -1584,6 +1584,24 @@ lnn_network_t* lnn_network_load(const char* path) {
                 }
             }
 
+            /* Post-restore: sanitize loaded tau — NaN/Inf from old
+             * checkpoints would cause 1/tau division to produce NaN/Inf
+             * on the first forward step. Reset to tau_base_init. */
+            {
+                float* td = (float*)nimcp_tensor_data(layer->tau);
+                uint32_t n = layer->n_neurons;
+                bool had_nan = false;
+                for (uint32_t ti = 0; ti < n; ti++) {
+                    if (!isfinite(td[ti]) || td[ti] < 0.01f) {
+                        td[ti] = 10.0f;  /* Default tau_base_init */
+                        had_nan = true;
+                    }
+                }
+                if (had_nan) {
+                    NIMCP_LOGGING_WARN("lnn_network_load: layer %u had NaN/Inf in tau — reset to 10.0", i);
+                }
+            }
+
             /* Post-restore: enforce tau_base floor.
              * tau = tau_base * sigmoid(...), so if tau_base < 0.01,
              * the decay term -x/tau can explode even with sigmoid ≈ 1. */
