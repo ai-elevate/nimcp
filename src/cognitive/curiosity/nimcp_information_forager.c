@@ -20,6 +20,7 @@
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "cognitive/salience/nimcp_salience.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/thread/nimcp_thread.h"
 
@@ -430,7 +431,6 @@ static int tick_seeking(information_forager_t f)
                     f->curiosity, related[i]);
 
                 if (gap.gap_size < 0.3f) {
-                    free(related[i]);
                     continue; /* Already mostly known */
                 }
 
@@ -441,7 +441,6 @@ static int tick_seeking(information_forager_t f)
                 float ig = compute_expected_ig(f, &gap, epistemic_u);
 
                 if (ig < f->config.ig_threshold) {
-                    free(related[i]);
                     continue;
                 }
 
@@ -484,12 +483,9 @@ static int tick_seeking(information_forager_t f)
                 }
 
                 gaps_found++;
-                free(related[i]);
             }
-            /* Free any remaining related concepts */
-            for (uint32_t i = gaps_found; i < n_related; i++) {
-                free(related[i]);
-            }
+            /* related[i] are non-owned pointers into the curiosity engine's
+             * internal bucket storage — do NOT free them. */
         }
     }
 
@@ -810,7 +806,7 @@ information_forager_t forager_create(
         return NULL;
     }
 
-    information_forager_t f = calloc(1, sizeof(struct information_forager_struct));
+    information_forager_t f = nimcp_calloc(1, sizeof(struct information_forager_struct));
     if (!f) return NULL;
 
     f->brain = brain;
@@ -826,9 +822,9 @@ information_forager_t forager_create(
 
     /* Allocate priority queue */
     f->queue_capacity = f->config.max_queue_depth;
-    f->queue = calloc(f->queue_capacity, sizeof(forager_target_t));
+    f->queue = nimcp_calloc(f->queue_capacity, sizeof(forager_target_t));
     if (!f->queue) {
-        free(f);
+        nimcp_free(f);
         f = NULL;
         return NULL;
     }
@@ -839,8 +835,8 @@ information_forager_t forager_create(
     attr.type = MUTEX_TYPE_RECURSIVE;
     f->mutex = nimcp_mutex_create(&attr);
     if (!f->mutex) {
-        free(f->queue);
-        free(f);
+        nimcp_free(f->queue);
+        nimcp_free(f);
         f = NULL;
         return NULL;
     }
@@ -860,14 +856,14 @@ void forager_destroy(information_forager_t forager)
     free(forager->pending_text);
 
     /* Free queue */
-    free(forager->queue);
+    nimcp_free(forager->queue);
 
     /* Destroy mutex */
     if (forager->mutex) {
         nimcp_mutex_destroy(forager->mutex);
     }
 
-    free(forager);
+    nimcp_free(forager);
     forager = NULL;
 }
 

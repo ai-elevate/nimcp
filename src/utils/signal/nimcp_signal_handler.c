@@ -1014,12 +1014,18 @@ bool signal_handler_install(const signal_handler_config_t* config)
         }
     }
 
-    /* Install SIGABRT handler with SA_SIGINFO */
+    /* Install SIGABRT handler with SA_SIGINFO.
+     * NOTE: Do NOT use SA_RESETHAND for SIGABRT — glibc's free() heap
+     * corruption check calls abort() which raises SIGABRT. With SA_RESETHAND,
+     * the handler fires once then resets to SIG_DFL, so subsequent SIGABRT
+     * from heap corruption bypasses our handler entirely. Without SA_RESETHAND,
+     * abort() will still terminate after our handler runs (it unblocks SIGABRT
+     * and re-raises), but we get to log the backtrace and save a checkpoint. */
     if (g_config.sigabrt_mode != SIGNAL_MODE_IGNORE) {
         memset(&sa, 0, sizeof(sa));
         sigemptyset(&sa.sa_mask);
         sa.sa_sigaction = handle_fatal_signal_extended;
-        sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
+        sa.sa_flags = SA_SIGINFO;  /* No SA_RESETHAND — persist across signals */
         if (sigaction(SIGABRT, &sa, &g_old_sigabrt) != 0) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
             return false;

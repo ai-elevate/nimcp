@@ -531,7 +531,7 @@ int lnn_layer_compute_tau(lnn_layer_t* layer, const nimcp_tensor_t* input)
         float* tau_data = (float*)nimcp_tensor_data(tau_new);
         uint32_t tn = layer->n_neurons;
         for (uint32_t ti = 0; ti < tn; ti++) {
-            if (tau_data[ti] < 0.01f) tau_data[ti] = 0.01f;
+            if (!isfinite(tau_data[ti]) || tau_data[ti] < 0.01f) tau_data[ti] = 0.01f;
         }
     }
     nimcp_tensor_destroy(layer->tau);

@@ -1602,6 +1602,32 @@ lnn_network_t* lnn_network_load(const char* path) {
                 }
             }
 
+            /* Post-restore: sanitize all weight/bias tensors for NaN/Inf.
+             * Any NaN in W_tau or b_tau → NaN logits → NaN tau at runtime. */
+            {
+                struct { nimcp_tensor_t* t; const char* name; } tensors[] = {
+                    {layer->W_in, "W_in"}, {layer->W_rec, "W_rec"},
+                    {layer->W_tau, "W_tau"}, {layer->b_in, "b_in"},
+                    {layer->b_tau, "b_tau"},
+                };
+                for (int ti = 0; ti < 5; ti++) {
+                    if (!tensors[ti].t) continue;
+                    float* data = (float*)nimcp_tensor_data(tensors[ti].t);
+                    uint32_t numel = nimcp_tensor_numel(tensors[ti].t);
+                    uint32_t fixed = 0;
+                    for (uint32_t fi = 0; fi < numel; fi++) {
+                        if (!isfinite(data[fi])) {
+                            data[fi] = 0.0f;
+                            fixed++;
+                        }
+                    }
+                    if (fixed > 0) {
+                        NIMCP_LOGGING_WARN("lnn_network_load: layer %u %s had %u NaN/Inf values — reset to 0",
+                                           i, tensors[ti].name, fixed);
+                    }
+                }
+            }
+
             /* Post-restore: enforce tau_base floor.
              * tau = tau_base * sigmoid(...), so if tau_base < 0.01,
              * the decay term -x/tau can explode even with sigmoid ≈ 1. */
