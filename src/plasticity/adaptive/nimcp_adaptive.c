@@ -2085,9 +2085,12 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         // I-C2 FIX: Check GPU forward return value — fall back to CPU on failure.
         // Previously the return value was unchecked; if GPU forward failed, the output
         // buffer contained garbage but loss computation and backprop proceeded.
+        // BUG FIX: Use network output_size, NOT example->target_size. The GPU cache
+        // validates output_size == last layer size; using target_size (which may differ)
+        // caused validation failure → CPU fallback → truncated gradients → mode collapse.
         bool gpu_fwd_ok = nimcp_gpu_forward_pass(network->gpu_weight_cache,
                                                   spike_input, example->input_size,
-                                                  output, example->target_size);
+                                                  output, network->config.base_config.output_size);
 
         free_hot_buffer(spike_input);
 
@@ -2302,8 +2305,10 @@ cpu_learn_path:
     if (!output) {
         return -1.0F;
     }
+    // BUG FIX: Use network output_size for forward pass, not target_size.
+    // target_size may be smaller, causing truncated forward → partial gradients → mode collapse.
     adaptive_network_forward_raw(network, example->input, example->input_size, output,
-                                 example->target_size);
+                                 network->config.base_config.output_size);
 
     // Compute loss based on mode
     float loss = 0.0F;
@@ -2742,10 +2747,10 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
             float* output = (float*)alloc_hot_buffer(out_buf_size * sizeof(float));
             if (!output) { free_hot_buffer(spike_input); continue; }
 
-            /* GPU forward pass */
+            /* GPU forward pass — use network output_size, not target_size */
             bool fwd_ok = nimcp_gpu_forward_pass(network->gpu_weight_cache,
                                                   spike_input, ex->input_size,
-                                                  output, ex->target_size);
+                                                  output, network->config.base_config.output_size);
             free_hot_buffer(spike_input);
 
             if (!fwd_ok) { free_hot_buffer(output); continue; }
