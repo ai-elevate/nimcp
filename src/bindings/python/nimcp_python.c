@@ -219,24 +219,38 @@ static float* py_list_to_float_array(PyObject* list_obj, Py_ssize_t* size) {
         return NULL;
     }
 
-    // Convert elements
+    // Convert elements — use PyNumber_Float() coercion to handle native Python
+    // floats/ints, numpy scalars (np.float32, np.float64, np.int64, etc.),
+    // and any type implementing __float__.
     for (Py_ssize_t i = 0; i < *size; i++) {
-        PyObject* item = PyList_GetItem(list, i);
-        if (!PyFloat_Check(item) && !PyLong_Check(item)) {
-            nimcp_free(array);
-            Py_XDECREF(converted_list);
-            /* M-9: NIMCP_THROW first, then PyErr_SetString last */
-            NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
-                       "py_list_to_float_array: List element %zd is not a number", i);
-            PyErr_SetString(PyExc_TypeError, "List must contain only numbers");
-            return NULL;
-        }
-        /* C-2: Check for PyFloat_AsDouble overflow/error */
-        array[i] = (float)PyFloat_AsDouble(item);
-        if (array[i] == -1.0f && PyErr_Occurred()) {
-            nimcp_free(array);
-            Py_XDECREF(converted_list);
-            return NULL;
+        PyObject* item = PyList_GetItem(list, i);  /* borrowed ref */
+        PyObject* as_float = NULL;
+
+        if (PyFloat_Check(item)) {
+            /* Fast path: native Python float — no coercion needed */
+            array[i] = (float)PyFloat_AS_DOUBLE(item);
+        } else if (PyLong_Check(item)) {
+            /* Fast path: native Python int */
+            array[i] = (float)PyLong_AsDouble(item);
+            if (array[i] == -1.0 && PyErr_Occurred()) {
+                nimcp_free(array);
+                Py_XDECREF(converted_list);
+                return NULL;
+            }
+        } else {
+            /* General path: numpy scalars, decimal.Decimal, any __float__ type */
+            as_float = PyNumber_Float(item);
+            if (!as_float) {
+                nimcp_free(array);
+                Py_XDECREF(converted_list);
+                PyErr_Clear();
+                NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                           "py_list_to_float_array: List element %zd is not a number", i);
+                PyErr_SetString(PyExc_TypeError, "List must contain only numbers");
+                return NULL;
+            }
+            array[i] = (float)PyFloat_AS_DOUBLE(as_float);
+            Py_DECREF(as_float);
         }
     }
 
