@@ -39110,6 +39110,58 @@ regression_training_pipeline_test/fast:
 .PHONY : regression_training_pipeline_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_cortex_cnn_unit_test
+
+# Build rule for target.
+regression_cortex_cnn_unit_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cortex_cnn_unit_test
+.PHONY : regression_cortex_cnn_unit_test
+
+# fast build rule for target.
+regression_cortex_cnn_unit_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_cortex_cnn_unit_test.dir/build.make test/regression/training/CMakeFiles/regression_cortex_cnn_unit_test.dir/build
+.PHONY : regression_cortex_cnn_unit_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_cortex_cnn_integration_test
+
+# Build rule for target.
+regression_cortex_cnn_integration_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cortex_cnn_integration_test
+.PHONY : regression_cortex_cnn_integration_test
+
+# fast build rule for target.
+regression_cortex_cnn_integration_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_cortex_cnn_integration_test.dir/build.make test/regression/training/CMakeFiles/regression_cortex_cnn_integration_test.dir/build
+.PHONY : regression_cortex_cnn_integration_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_cortex_cnn_regression_test
+
+# Build rule for target.
+regression_cortex_cnn_regression_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cortex_cnn_regression_test
+.PHONY : regression_cortex_cnn_regression_test
+
+# fast build rule for target.
+regression_cortex_cnn_regression_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_cortex_cnn_regression_test.dir/build.make test/regression/training/CMakeFiles/regression_cortex_cnn_regression_test.dir/build
+.PHONY : regression_cortex_cnn_regression_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_cortex_cnn_e2e_test
+
+# Build rule for target.
+regression_cortex_cnn_e2e_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cortex_cnn_e2e_test
+.PHONY : regression_cortex_cnn_e2e_test
+
+# fast build rule for target.
+regression_cortex_cnn_e2e_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_cortex_cnn_e2e_test.dir/build.make test/regression/training/CMakeFiles/regression_cortex_cnn_e2e_test.dir/build
+.PHONY : regression_cortex_cnn_e2e_test/fast
+
+#=============================================================================
 # Target rules for targets named regression_training_cnn_backprop_test
 
 # Build rule for target.
@@ -43448,6 +43500,10 @@ help:
 	@echo "... regression_core_test_wm_transfer_backward_compat"
 	@echo "... regression_core_topology_test_fractal_topology_backward_compat"
 	@echo "... regression_corpus_callosum_regression"
+	@echo "... regression_cortex_cnn_e2e_test"
+	@echo "... regression_cortex_cnn_integration_test"
+	@echo "... regression_cortex_cnn_regression_test"
+	@echo "... regression_cortex_cnn_unit_test"
 	@echo "... regression_cortical_column"
 	@echo "... regression_cortical_columns_performance"
 	@echo "... regression_cortical_features"

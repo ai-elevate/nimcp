@@ -293,6 +293,16 @@ class BrainService:
         with self._lock:
             return {"probe": self.brain.probe()}
 
+    def _cmd_get_network_metrics(self, _req):
+        with self._lock:
+            m = self.brain.get_network_metrics()
+            return {"metrics": m if m else {}}
+
+    def _cmd_get_cortex_cnn_metrics(self, _req):
+        with self._lock:
+            m = self.brain.get_cortex_cnn_metrics()
+            return {"metrics": m if m else {}}
+
     # -- Biological state --
 
     def _cmd_substrate_get_health(self, _req):
@@ -516,9 +526,9 @@ class BrainService:
 
     # -- Brain config --
 
-    def _cmd_enable_multi_network(self, req):
+    def _cmd_enable_multi_network(self, _req):
         with self._lock:
-            self.brain.enable_multi_network(req.get("enabled", True))
+            self.brain.enable_multi_network()
         return {"ok": True}
 
     def _cmd_enable_world_model(self, req):

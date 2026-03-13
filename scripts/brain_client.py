@@ -177,6 +177,14 @@ class BrainProxy:
         resp = self._send({"cmd": "probe"})
         return resp.get("probe", {})
 
+    def get_network_metrics(self):
+        resp = self._send({"cmd": "get_network_metrics"})
+        return resp.get("metrics", {})
+
+    def get_cortex_cnn_metrics(self):
+        resp = self._send({"cmd": "get_cortex_cnn_metrics"})
+        return resp.get("metrics", {})
+
     # -- Biological state --
 
     def substrate_get_health(self):
@@ -348,8 +356,8 @@ class BrainProxy:
 
     # -- Brain config --
 
-    def enable_multi_network(self, enabled=True):
-        self._send({"cmd": "enable_multi_network", "enabled": enabled})
+    def enable_multi_network(self):
+        self._send({"cmd": "enable_multi_network"})
 
     def enable_world_model(self, enabled=True):
         self._send({"cmd": "enable_world_model", "enabled": enabled})

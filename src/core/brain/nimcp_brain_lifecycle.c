@@ -986,6 +986,20 @@ void brain_destroy(brain_t brain)
         brain->bptt_enabled = false;
     }
 
+    // Per-cortex CNN processors cleanup
+    {
+        extern void cortex_cnn_destroy(struct cortex_cnn_processor* proc);
+        for (int i = 0; i < 4; i++) {
+            if (brain->cortex_cnns[i]) {
+                cortex_cnn_destroy(brain->cortex_cnns[i]);
+                brain->cortex_cnns[i] = NULL;
+            }
+        }
+        nimcp_free(brain->cortex_cnn_fused_embedding);
+        brain->cortex_cnn_fused_embedding = NULL;
+        brain->cortex_cnn_fused_dim = 0;
+    }
+
     // Pre-allocated inference output buffers cleanup
     nimcp_free(brain->inference_buf_adaptive);
     nimcp_free(brain->inference_buf_cnn);

@@ -210,6 +210,11 @@ struct brain_struct {
     // CNN training is integrated into cnn_trainer
     struct nimcp_unified_training_manager* unified_training;  // UTM: unified training manager (Phase 3)
 
+    // === PER-CORTEX CNN PROCESSORS (modality-specific feature extraction) ===
+    struct cortex_cnn_processor* cortex_cnns[4];  // [VISUAL, AUDIO, SPEECH, SOMATO]
+    float* cortex_cnn_fused_embedding;            // Attention-fused embedding from active cortices
+    uint32_t cortex_cnn_fused_dim;                // Dimension of fused embedding (0 if none active)
+
     // === PER-NETWORK TRAINING METRICS (ablation tracking) ===
     struct {
         float last_ann_loss;     /**< Last ANN/Adaptive backbone loss */

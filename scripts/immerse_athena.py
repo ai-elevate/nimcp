@@ -356,6 +356,87 @@ LR_EVAL_INTERVAL = 100       # Steps between LR recalculations
 LR_WARMUP_STEPS = 500        # Linear warmup from MIN to BASE
 LR_COSINE_T_MAX = 20000      # Full cosine cycle length
 
+# Mode collapse detection constants
+COLLAPSE_CHECK_INTERVAL = 100     # Check every N steps
+COLLAPSE_WARMUP_STEPS = 200       # Don't check during initial warmup
+COLLAPSE_THRESHOLD = 0.99         # Cosine sim above this = collapsed
+COLLAPSE_CONSECUTIVE_LIMIT = 3    # Halt after N consecutive collapse detections
+
+
+class CollapseDetector:
+    """Detects mode collapse by checking output differentiation.
+
+    Sends 3 fixed probe inputs through the brain and computes pairwise
+    cosine similarity. If all outputs are nearly identical (cosine sim > threshold),
+    that's mode collapse. After consecutive_limit consecutive detections,
+    halts training and writes alert.
+    """
+
+    _PROBE_SEEDS = [42, 99, 7]  # Fixed seeds for reproducible probe inputs
+
+    def __init__(self, threshold=COLLAPSE_THRESHOLD,
+                 consecutive_limit=COLLAPSE_CONSECUTIVE_LIMIT):
+        self.threshold = threshold
+        self.consecutive_limit = consecutive_limit
+        self.consecutive_collapses = 0
+        self.last_mean_sim = None
+
+    def check(self, brain, step, stage):
+        """Returns True if training should halt due to mode collapse."""
+        outputs = []
+        for seed in self._PROBE_SEEDS:
+            rng = np.random.RandomState(seed)
+            probe = rng.randn(BRAIN_INPUT_DIM).astype(np.float32).tolist()
+            try:
+                result = brain.decide_full(probe)
+                vec = result.get("output_vector", [])
+                if vec:
+                    outputs.append(np.array(vec, dtype=np.float32))
+            except Exception:
+                return False  # Can't check, don't halt
+
+        if len(outputs) < 2:
+            return False
+
+        # Compute pairwise cosine similarities
+        sims = []
+        for i in range(len(outputs)):
+            for j in range(i + 1, len(outputs)):
+                norm_i = np.linalg.norm(outputs[i])
+                norm_j = np.linalg.norm(outputs[j])
+                if norm_i > 1e-8 and norm_j > 1e-8:
+                    sims.append(np.dot(outputs[i], outputs[j]) / (norm_i * norm_j))
+
+        if not sims:
+            return False
+
+        self.last_mean_sim = float(np.mean(sims))
+
+        if self.last_mean_sim >= self.threshold:
+            self.consecutive_collapses += 1
+            print(f"    *** COLLAPSE WARNING [{self.consecutive_collapses}/"
+                  f"{self.consecutive_limit}]: mean cosine sim = "
+                  f"{self.last_mean_sim:.6f} ***", flush=True)
+            if self.consecutive_collapses >= self.consecutive_limit:
+                msg = (f"MODE COLLAPSE DETECTED at stage {stage} step {step}. "
+                       f"Mean cosine sim = {self.last_mean_sim:.6f} for "
+                       f"{self.consecutive_limit} consecutive checks. "
+                       f"Training halted.")
+                print(f"\n    *** {msg} ***\n", flush=True)
+                try:
+                    with open("TRAINING_ALERT.txt", "a") as f:
+                        f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}\n")
+                except OSError:
+                    pass
+                return True
+        else:
+            if self.consecutive_collapses > 0:
+                print(f"    Collapse cleared: mean cosine sim = "
+                      f"{self.last_mean_sim:.4f}", flush=True)
+            self.consecutive_collapses = 0
+
+        return False
+
 
 class CosineAnnealingLR:
     """Cosine annealing learning rate with linear warmup.
@@ -3644,8 +3725,16 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
     diversity = DiversityRegularizer(
         buffer_size=100, interval=100, num_corrections=8,
         strength=0.2, min_variance_ratio=0.1)
+    collapse_detector = CollapseDetector()
     mini_batch_buf = []
     for i in range(start_from, num_stimuli):
+        # Mode collapse early detection
+        if ((i + 1) % COLLAPSE_CHECK_INTERVAL == 0
+                and (i + 1) >= COLLAPSE_WARMUP_STEPS):
+            if collapse_detector.check(brain, step=i + 1, stage=0):
+                print("  Training halted due to mode collapse.", flush=True)
+                return losses
+
         # Check biological clock
         action = clock.tick(brain)
         if action == "sleep":
@@ -3836,7 +3925,15 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
     diversity = DiversityRegularizer(
         buffer_size=100, interval=100, num_corrections=8,
         strength=0.2, min_variance_ratio=0.1)
+    collapse_detector = CollapseDetector()
     for i in range(start_from, num_stimuli):
+        # Mode collapse early detection
+        if ((i + 1) % COLLAPSE_CHECK_INTERVAL == 0
+                and (i + 1) >= COLLAPSE_WARMUP_STEPS):
+            if collapse_detector.check(brain, step=i + 1, stage=1):
+                print("  Training halted due to mode collapse.", flush=True)
+                return losses
+
         action = clock.tick(brain)
         if action == "sleep":
             clock.do_sleep(brain, parent)
@@ -3961,8 +4058,16 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     diversity = DiversityRegularizer(
         buffer_size=100, interval=100, num_corrections=8,
         strength=0.2, min_variance_ratio=0.1)
+    collapse_detector = CollapseDetector()
 
     for i in range(start_from, num_stimuli):
+        # Mode collapse early detection
+        if ((i + 1) % COLLAPSE_CHECK_INTERVAL == 0
+                and (i + 1) >= COLLAPSE_WARMUP_STEPS):
+            if collapse_detector.check(brain, step=i + 1, stage=2):
+                print("  Training halted due to mode collapse.", flush=True)
+                return losses
+
         action = clock.tick(brain)
         if action == "sleep":
             clock.do_sleep(brain, parent)
@@ -5639,7 +5744,7 @@ def main():
             ("Gradient checkpointing", lambda: brain.enable_gradient_checkpointing(True, 2)),
             ("World model", lambda: brain.enable_world_model(True)),
             ("LNN", lambda: brain.lnn_create(128, 64, 32, 64)),
-            ("Multi-network UTM", lambda: brain.enable_multi_network(True)),
+            ("Multi-network UTM", lambda: brain.enable_multi_network()),
         ]:
             try:
                 fn()

@@ -1156,6 +1156,157 @@ sequential_training:
         }
     }
 
+    /* Step 3: Per-cortex CNN training — train each cortex that has staged sensory data.
+     * Lazily create cortex CNN processors on first use. Each trains independently
+     * using the same label signal but different modality data. */
+    if (label && label[0]) {
+        extern struct cortex_cnn_processor* cortex_cnn_create(int type, uint32_t embed_dim);
+        extern float cortex_cnn_backward(struct cortex_cnn_processor* proc,
+                                          const char* label, uint32_t num_outputs);
+        extern const float* cortex_cnn_forward_visual(struct cortex_cnn_processor* proc,
+            const uint8_t* pixels, uint32_t w, uint32_t h, uint32_t ch);
+        extern const float* cortex_cnn_forward_audio(struct cortex_cnn_processor* proc,
+            const float* mel, uint32_t mel_size);
+        extern const float* cortex_cnn_forward_speech(struct cortex_cnn_processor* proc,
+            const float* phonemes, uint32_t size);
+        extern const float* cortex_cnn_forward_somato(struct cortex_cnn_processor* proc,
+            const float* segments, uint32_t n_segments);
+
+        /* Lazy init: create cortex CNN when sensory data first arrives for that modality.
+         * Also auto-enable UTM and register the new cortex CNN for composite loss. */
+        extern int cortex_cnn_utm_adapter_create(struct cortex_cnn_processor* proc,
+            const nimcp_trainable_network_ops_t** ops, void** ctx);
+
+        bool cortex_newly_created[4] = {false, false, false, false};
+        if (brain->staged_sensory.visual_frame && !brain->cortex_cnns[0]) {
+            brain->cortex_cnns[0] = cortex_cnn_create(0 /* VISUAL */, 0);
+            if (brain->cortex_cnns[0]) cortex_newly_created[0] = true;
+        }
+        if (brain->staged_sensory.audio_data && !brain->cortex_cnns[1]) {
+            brain->cortex_cnns[1] = cortex_cnn_create(1 /* AUDIO */, 0);
+            if (brain->cortex_cnns[1]) cortex_newly_created[1] = true;
+        }
+        if (brain->staged_sensory.speech_data && !brain->cortex_cnns[2]) {
+            brain->cortex_cnns[2] = cortex_cnn_create(2 /* SPEECH */, 0);
+            if (brain->cortex_cnns[2]) cortex_newly_created[2] = true;
+        }
+        if (brain->staged_sensory.somato_data && !brain->cortex_cnns[3]) {
+            brain->cortex_cnns[3] = cortex_cnn_create(3 /* SOMATO */, 0);
+            if (brain->cortex_cnns[3]) cortex_newly_created[3] = true;
+        }
+
+        /* Auto-enable UTM when cortex CNNs are first created.
+         * This ensures cortex CNNs participate in composite loss, cross-network
+         * bridges, per-network anti-collapse, and gradient health monitoring. */
+        bool any_new = cortex_newly_created[0] || cortex_newly_created[1] ||
+                       cortex_newly_created[2] || cortex_newly_created[3];
+        if (any_new) {
+            /* Enable unified training if not already active */
+            if (!brain->config.use_unified_training) {
+                brain->config.use_unified_training = true;
+                NIMCP_LOGGING_INFO("Auto-enabling unified training (cortex CNNs created)");
+            }
+
+            /* Create UTM if needed */
+            if (!brain->unified_training) {
+                nimcp_unified_training_config_t utm_cfg;
+                nimcp_utm_default_config(&utm_cfg);
+                utm_cfg.learning_rate = brain->config.learning_rate;
+                brain->unified_training = nimcp_utm_create(&utm_cfg);
+                if (brain->unified_training) {
+                    NIMCP_LOGGING_INFO("Created UTM for cortex CNN integration");
+                }
+            }
+
+            /* Register newly created cortex CNNs in UTM */
+            if (brain->unified_training) {
+                for (int ci = 0; ci < 4; ci++) {
+                    if (cortex_newly_created[ci] && brain->cortex_cnns[ci]) {
+                        const nimcp_trainable_network_ops_t* utm_ops = NULL;
+                        void* utm_ctx = NULL;
+                        if (cortex_cnn_utm_adapter_create(brain->cortex_cnns[ci],
+                                                           &utm_ops, &utm_ctx) == 0) {
+                            nimcp_utm_register_network(brain->unified_training,
+                                                       utm_ops, utm_ctx, 0.3f);
+                        }
+                    }
+                }
+
+                /* Wire cross-cortex LINEAR bridges for any newly registered pair.
+                 * Find registered cortex indices by name. */
+                nimcp_unified_training_manager_t* utm = brain->unified_training;
+                int cx[4] = {-1, -1, -1, -1};
+                for (uint32_t n = 0; n < utm->num_networks; n++) {
+                    if (!utm->networks[n].ops || !utm->networks[n].ops->name) continue;
+                    if (utm->networks[n].ops->type != NIMCP_TRAINABLE_CUSTOM) continue;
+                    const char* nm = utm->networks[n].ops->name;
+                    if (strstr(nm, "Visual"))  cx[0] = (int)n;
+                    else if (strstr(nm, "Audio"))   cx[1] = (int)n;
+                    else if (strstr(nm, "Speech"))  cx[2] = (int)n;
+                    else if (strstr(nm, "Somato"))  cx[3] = (int)n;
+                }
+
+                /* Visual <-> Audio */
+                if (cx[0] >= 0 && cx[1] >= 0) {
+                    nimcp_utm_add_bridge(utm, (uint32_t)cx[0], (uint32_t)cx[1],
+                                         NIMCP_BRIDGE_LINEAR);
+                    nimcp_utm_add_bridge(utm, (uint32_t)cx[1], (uint32_t)cx[0],
+                                         NIMCP_BRIDGE_LINEAR);
+                }
+                /* Audio <-> Speech */
+                if (cx[1] >= 0 && cx[2] >= 0) {
+                    nimcp_utm_add_bridge(utm, (uint32_t)cx[1], (uint32_t)cx[2],
+                                         NIMCP_BRIDGE_LINEAR);
+                    nimcp_utm_add_bridge(utm, (uint32_t)cx[2], (uint32_t)cx[1],
+                                         NIMCP_BRIDGE_LINEAR);
+                }
+                /* Visual <-> Somato */
+                if (cx[0] >= 0 && cx[3] >= 0) {
+                    nimcp_utm_add_bridge(utm, (uint32_t)cx[0], (uint32_t)cx[3],
+                                         NIMCP_BRIDGE_LINEAR);
+                    nimcp_utm_add_bridge(utm, (uint32_t)cx[3], (uint32_t)cx[0],
+                                         NIMCP_BRIDGE_LINEAR);
+                }
+
+                if (utm->num_bridges > 0) {
+                    utm->config.enable_cross_network_gradients = true;
+                    NIMCP_LOGGING_INFO("Cortex CNN cross-modal bridges wired (%u bridges)",
+                                      utm->num_bridges);
+                }
+            }
+        }
+
+        /* Forward + backward for each cortex with available data */
+        uint32_t num_out = brain->config.num_outputs;
+
+        if (brain->cortex_cnns[0] && brain->staged_sensory.visual_frame) {
+            cortex_cnn_forward_visual(brain->cortex_cnns[0],
+                brain->staged_sensory.visual_frame,
+                brain->staged_sensory.visual_width,
+                brain->staged_sensory.visual_height,
+                brain->staged_sensory.visual_channels);
+            cortex_cnn_backward(brain->cortex_cnns[0], label, num_out);
+        }
+        if (brain->cortex_cnns[1] && brain->staged_sensory.audio_data) {
+            cortex_cnn_forward_audio(brain->cortex_cnns[1],
+                brain->staged_sensory.audio_data,
+                brain->staged_sensory.audio_size);
+            cortex_cnn_backward(brain->cortex_cnns[1], label, num_out);
+        }
+        if (brain->cortex_cnns[2] && brain->staged_sensory.speech_data) {
+            cortex_cnn_forward_speech(brain->cortex_cnns[2],
+                brain->staged_sensory.speech_data,
+                brain->staged_sensory.speech_size);
+            cortex_cnn_backward(brain->cortex_cnns[2], label, num_out);
+        }
+        if (brain->cortex_cnns[3] && brain->staged_sensory.somato_data) {
+            cortex_cnn_forward_somato(brain->cortex_cnns[3],
+                brain->staged_sensory.somato_data,
+                brain->staged_sensory.somato_segments);
+            cortex_cnn_backward(brain->cortex_cnns[3], label, num_out);
+        }
+    }
+
     /* Blend secondary network losses into composite return value.
      * Weights: ANN 60%, SNN 15%, LNN 15%, CNN 10%.
      * Only include networks that produced valid loss this step. */
@@ -3056,6 +3207,10 @@ int brain_enable_multi_network_training(brain_t brain)
     {
         bool has_secondary = (brain->cnn_trainer || brain->snn_training_ctx ||
                               brain->lnn_training_ctx);
+        /* Also check for cortex CNNs */
+        for (int ci = 0; ci < 4 && !has_secondary; ci++) {
+            if (brain->cortex_cnns[ci]) has_secondary = true;
+        }
         if (has_secondary && !brain->config.use_unified_training) {
             brain->config.use_unified_training = true;
             NIMCP_LOGGING_INFO("Auto-enabling unified training (secondary networks detected)");
@@ -3128,21 +3283,51 @@ int brain_enable_multi_network_training(brain_t brain)
                 }
             }
 
+            /* Register per-cortex CNN processors in UTM for composite loss + bridges */
+            {
+                extern int cortex_cnn_utm_adapter_create(struct cortex_cnn_processor* proc,
+                    const nimcp_trainable_network_ops_t** ops, void** ctx);
+                for (int ci = 0; ci < 4; ci++) {
+                    if (brain->cortex_cnns[ci]) {
+                        ops = NULL; adapter_ctx = NULL;
+                        if (cortex_cnn_utm_adapter_create(brain->cortex_cnns[ci],
+                                                           &ops, &adapter_ctx) == 0) {
+                            nimcp_utm_register_network(brain->unified_training,
+                                                       ops, adapter_ctx, 0.3f);
+                        }
+                    }
+                }
+            }
+
             NIMCP_LOGGING_INFO("Unified training manager created with %u networks",
                               brain->unified_training->num_networks);
 
             /* Auto-wire cross-network bridges based on registered network types.
-             * Convention: networks[0]=Adaptive, [1]=CNN, [2]=SNN, [3]=LNN
+             * Convention: networks[0]=Adaptive, [1]=CNN, [2]=SNN, [3]=LNN, [4+]=CortexCNNs
              * Bridges: Adaptive→SNN (rate-to-spike), SNN→Adaptive (spike-to-rate),
-             *          LNN→SNN (continuous-to-spike) */
+             *          LNN→SNN (continuous-to-spike),
+             *          CortexVisual↔CortexAudio, CortexAudio↔CortexSpeech,
+             *          CortexVisual↔CortexSomato (LINEAR bridges) */
             nimcp_unified_training_manager_t* utm = brain->unified_training;
             int adaptive_idx = -1, snn_idx = -1, lnn_idx = -1;
+            int cortex_idx[4] = {-1, -1, -1, -1};
             for (uint32_t n = 0; n < utm->num_networks; n++) {
                 if (!utm->networks[n].ops) continue;
                 switch (utm->networks[n].ops->type) {
                     case NIMCP_TRAINABLE_ADAPTIVE: adaptive_idx = (int)n; break;
                     case NIMCP_TRAINABLE_SNN:      snn_idx = (int)n; break;
                     case NIMCP_TRAINABLE_LNN:      lnn_idx = (int)n; break;
+                    case NIMCP_TRAINABLE_CUSTOM: {
+                        /* Match cortex CNN by name */
+                        const char* name = utm->networks[n].ops->name;
+                        if (name) {
+                            if (strstr(name, "Visual"))  cortex_idx[0] = (int)n;
+                            else if (strstr(name, "Audio"))   cortex_idx[1] = (int)n;
+                            else if (strstr(name, "Speech"))  cortex_idx[2] = (int)n;
+                            else if (strstr(name, "Somato"))  cortex_idx[3] = (int)n;
+                        }
+                        break;
+                    }
                     default: break;
                 }
             }
@@ -3156,6 +3341,26 @@ int brain_enable_multi_network_training(brain_t brain)
             if (lnn_idx >= 0 && snn_idx >= 0) {
                 nimcp_utm_add_bridge(utm, (uint32_t)lnn_idx, (uint32_t)snn_idx,
                                      NIMCP_BRIDGE_CONTINUOUS_TO_SPIKE);
+            }
+
+            /* Cross-cortex LINEAR bridges for cross-modal gradient flow */
+            if (cortex_idx[0] >= 0 && cortex_idx[1] >= 0) {
+                nimcp_utm_add_bridge(utm, (uint32_t)cortex_idx[0], (uint32_t)cortex_idx[1],
+                                     NIMCP_BRIDGE_LINEAR);
+                nimcp_utm_add_bridge(utm, (uint32_t)cortex_idx[1], (uint32_t)cortex_idx[0],
+                                     NIMCP_BRIDGE_LINEAR);
+            }
+            if (cortex_idx[1] >= 0 && cortex_idx[2] >= 0) {
+                nimcp_utm_add_bridge(utm, (uint32_t)cortex_idx[1], (uint32_t)cortex_idx[2],
+                                     NIMCP_BRIDGE_LINEAR);
+                nimcp_utm_add_bridge(utm, (uint32_t)cortex_idx[2], (uint32_t)cortex_idx[1],
+                                     NIMCP_BRIDGE_LINEAR);
+            }
+            if (cortex_idx[0] >= 0 && cortex_idx[3] >= 0) {
+                nimcp_utm_add_bridge(utm, (uint32_t)cortex_idx[0], (uint32_t)cortex_idx[3],
+                                     NIMCP_BRIDGE_LINEAR);
+                nimcp_utm_add_bridge(utm, (uint32_t)cortex_idx[3], (uint32_t)cortex_idx[0],
+                                     NIMCP_BRIDGE_LINEAR);
             }
 
             if (utm->num_bridges > 0) {

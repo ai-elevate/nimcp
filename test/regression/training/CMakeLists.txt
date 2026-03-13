@@ -92,6 +92,97 @@ gtest_discover_tests(regression_training_pipeline_test
 )
 
 # =============================================================================
+# =============================================================================
+# Per-Cortex CNN Processor Tests
+# =============================================================================
+
+# Cortex CNN Unit Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cortex_cnn_unit.cpp)
+    add_executable(regression_cortex_cnn_unit_test
+        test_cortex_cnn_unit.cpp
+    )
+    target_include_directories(regression_cortex_cnn_unit_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_cortex_cnn_unit_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_cortex_cnn_unit_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_cortex_cnn_unit_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;cortex;cnn;unit"
+            TIMEOUT 120
+    )
+endif()
+
+# Cortex CNN Integration Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cortex_cnn_integration.cpp)
+    add_executable(regression_cortex_cnn_integration_test
+        test_cortex_cnn_integration.cpp
+    )
+    target_include_directories(regression_cortex_cnn_integration_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_cortex_cnn_integration_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_cortex_cnn_integration_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_cortex_cnn_integration_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;cortex;cnn;integration"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()
+
+# Cortex CNN Regression Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cortex_cnn_regression.cpp)
+    add_executable(regression_cortex_cnn_regression_test
+        test_cortex_cnn_regression.cpp
+    )
+    target_include_directories(regression_cortex_cnn_regression_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_cortex_cnn_regression_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_cortex_cnn_regression_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_cortex_cnn_regression_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;cortex;cnn"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()
+
+# Cortex CNN E2E Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cortex_cnn_e2e.cpp)
+    add_executable(regression_cortex_cnn_e2e_test
+        test_cortex_cnn_e2e.cpp
+    )
+    target_include_directories(regression_cortex_cnn_e2e_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_cortex_cnn_e2e_test PRIVATE cxx_std_20)
+    target_link_libraries(regression_cortex_cnn_e2e_test PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    gtest_discover_tests(regression_cortex_cnn_e2e_test
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;training;cortex;cnn;e2e"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy"
+    )
+endif()
+
 # Orphaned Regression Test Targets
 # =============================================================================
 

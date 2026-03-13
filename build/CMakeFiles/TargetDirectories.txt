@@ -6675,6 +6675,10 @@
 /home/bbrelin/nimcp/build/test/regression/quantum/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_integration_test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_pipeline_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_cortex_cnn_unit_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_cortex_cnn_integration_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_cortex_cnn_regression_test.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_cortex_cnn_e2e_test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_cnn_backprop_test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_cnn_cortex_bridge_test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_nas_test.dir

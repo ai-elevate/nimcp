@@ -1224,6 +1224,66 @@ sequential_fallback:
 
     /* === Sequential fallback (original code path) === */
 
+    /* 0.5. Per-cortex CNN feature extraction — run before adaptive to augment features.
+     * Each cortex CNN processes its modality's staged sensory data independently,
+     * then embeddings are fused via cross-modal attention and prepended to features. */
+    {
+        extern const float* cortex_cnn_forward_visual(struct cortex_cnn_processor* proc,
+            const uint8_t* pixels, uint32_t w, uint32_t h, uint32_t ch);
+        extern const float* cortex_cnn_forward_audio(struct cortex_cnn_processor* proc,
+            const float* mel, uint32_t mel_size);
+        extern const float* cortex_cnn_forward_speech(struct cortex_cnn_processor* proc,
+            const float* phonemes, uint32_t size);
+        extern const float* cortex_cnn_forward_somato(struct cortex_cnn_processor* proc,
+            const float* segments, uint32_t n_segments);
+        extern uint32_t cortex_cnn_fuse(struct cortex_cnn_processor* procs[], uint32_t count,
+            float* fused_out, uint32_t max_dim);
+
+        bool has_cortex = false;
+        for (int ci = 0; ci < 4; ci++) {
+            if (brain->cortex_cnns[ci]) { has_cortex = true; break; }
+        }
+
+        if (has_cortex) {
+            /* Run forward on each cortex with available sensory data */
+            if (brain->cortex_cnns[0] && brain->staged_sensory.visual_frame) {
+                cortex_cnn_forward_visual(brain->cortex_cnns[0],
+                    brain->staged_sensory.visual_frame,
+                    brain->staged_sensory.visual_width,
+                    brain->staged_sensory.visual_height,
+                    brain->staged_sensory.visual_channels);
+            }
+            if (brain->cortex_cnns[1] && brain->staged_sensory.audio_data) {
+                cortex_cnn_forward_audio(brain->cortex_cnns[1],
+                    brain->staged_sensory.audio_data,
+                    brain->staged_sensory.audio_size);
+            }
+            if (brain->cortex_cnns[2] && brain->staged_sensory.speech_data) {
+                cortex_cnn_forward_speech(brain->cortex_cnns[2],
+                    brain->staged_sensory.speech_data,
+                    brain->staged_sensory.speech_size);
+            }
+            if (brain->cortex_cnns[3] && brain->staged_sensory.somato_data) {
+                cortex_cnn_forward_somato(brain->cortex_cnns[3],
+                    brain->staged_sensory.somato_data,
+                    brain->staged_sensory.somato_segments);
+            }
+
+            /* Fuse embeddings via cross-modal attention */
+            uint32_t max_fused = 64 + 64 + 32 + 32;  /* Max total embedding dim */
+            if (!brain->cortex_cnn_fused_embedding ||
+                brain->cortex_cnn_fused_dim < max_fused) {
+                nimcp_free(brain->cortex_cnn_fused_embedding);
+                brain->cortex_cnn_fused_embedding = (float*)nimcp_calloc(max_fused, sizeof(float));
+            }
+            if (brain->cortex_cnn_fused_embedding) {
+                brain->cortex_cnn_fused_dim = cortex_cnn_fuse(
+                    (struct cortex_cnn_processor**)brain->cortex_cnns, 4,
+                    brain->cortex_cnn_fused_embedding, max_fused);
+            }
+        }
+    }
+
     /* 1. Adaptive network — primary forward pass (always runs) */
     if (brain->can_use_readonly) {
         active_neurons = adaptive_network_forward_readonly(

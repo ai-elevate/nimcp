@@ -48044,6 +48044,30 @@ __/training/nimcp_continual_learning.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_continual_learning.c.s
 .PHONY : __/training/nimcp_continual_learning.c.s
 
+__/training/nimcp_cortex_cnn.o: __/training/nimcp_cortex_cnn.c.o
+.PHONY : __/training/nimcp_cortex_cnn.o
+
+# target to build an object file
+__/training/nimcp_cortex_cnn.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_cortex_cnn.c.o
+.PHONY : __/training/nimcp_cortex_cnn.c.o
+
+__/training/nimcp_cortex_cnn.i: __/training/nimcp_cortex_cnn.c.i
+.PHONY : __/training/nimcp_cortex_cnn.i
+
+# target to preprocess a source file
+__/training/nimcp_cortex_cnn.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_cortex_cnn.c.i
+.PHONY : __/training/nimcp_cortex_cnn.c.i
+
+__/training/nimcp_cortex_cnn.s: __/training/nimcp_cortex_cnn.c.s
+.PHONY : __/training/nimcp_cortex_cnn.s
+
+# target to generate assembly for a file
+__/training/nimcp_cortex_cnn.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_cortex_cnn.c.s
+.PHONY : __/training/nimcp_cortex_cnn.c.s
+
 __/training/nimcp_cross_network_bridge.o: __/training/nimcp_cross_network_bridge.c.o
 .PHONY : __/training/nimcp_cross_network_bridge.o
 
@@ -58384,6 +58408,9 @@ help:
 	@echo "... __/training/nimcp_continual_learning.o"
 	@echo "... __/training/nimcp_continual_learning.i"
 	@echo "... __/training/nimcp_continual_learning.s"
+	@echo "... __/training/nimcp_cortex_cnn.o"
+	@echo "... __/training/nimcp_cortex_cnn.i"
+	@echo "... __/training/nimcp_cortex_cnn.s"
 	@echo "... __/training/nimcp_cross_network_bridge.o"
 	@echo "... __/training/nimcp_cross_network_bridge.i"
 	@echo "... __/training/nimcp_cross_network_bridge.s"

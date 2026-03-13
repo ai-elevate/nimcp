@@ -2458,6 +2458,9 @@ set(NIMCP_CORE_SOURCES
     # Training - CNN Training Module (Conv2D, Dense, Pool, BatchNorm, Dropout, full backprop)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cnn_training.c
 
+    # Training - Per-Cortex CNN Processors (modality-specific feature extraction)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cortex_cnn.c
+
     # Training - SNN Backpropagation (surrogate gradients, BPTT, E-prop, RTRL)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_snn_backprop.c
 

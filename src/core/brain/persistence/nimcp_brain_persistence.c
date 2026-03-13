@@ -604,6 +604,21 @@ bool brain_save(brain_t brain, const char* filepath)
             extern int cnn_trainer_save(const void* trainer, const char* path);
             cnn_trainer_save(brain->cnn_trainer, cnn_path);
         }
+
+        /* Save per-cortex CNN processors */
+        {
+            extern int cortex_cnn_save(const struct cortex_cnn_processor* proc, const char* path);
+            const char* cortex_suffixes[4] = {".cortex_visual", ".cortex_audio",
+                                               ".cortex_speech", ".cortex_somato"};
+            for (int ci = 0; ci < 4; ci++) {
+                if (brain->cortex_cnns[ci]) {
+                    char cortex_path[NIMCP_METRICS_PATH_SIZE];
+                    snprintf(cortex_path, sizeof(cortex_path), "%s%s",
+                             filepath, cortex_suffixes[ci]);
+                    cortex_cnn_save(brain->cortex_cnns[ci], cortex_path);
+                }
+            }
+        }
     }
 
     // Health monitoring: save complete
@@ -1270,6 +1285,25 @@ brain_t brain_load(const char* filepath)
             extern int cnn_trainer_load_weights(void* trainer, const char* path);
             if (cnn_trainer_load_weights(brain->cnn_trainer, sec_path) == 0) {
                 fprintf(stderr, "[INFO] Restored CNN weights from %s\n", sec_path);
+            }
+        }
+
+        /* Restore per-cortex CNN processor weights */
+        {
+            extern int cortex_cnn_load(struct cortex_cnn_processor* proc, const char* path);
+            const char* cortex_suffixes[4] = {".cortex_visual", ".cortex_audio",
+                                               ".cortex_speech", ".cortex_somato"};
+            for (int ci = 0; ci < 4; ci++) {
+                if (brain->cortex_cnns[ci]) {
+                    char cortex_path[NIMCP_METRICS_PATH_SIZE];
+                    snprintf(cortex_path, sizeof(cortex_path), "%s%s",
+                             filepath, cortex_suffixes[ci]);
+                    if (cortex_cnn_load(brain->cortex_cnns[ci], cortex_path) == 0) {
+                        fprintf(stderr, "[INFO] Restored %s cortex CNN from %s\n",
+                                ci == 0 ? "visual" : ci == 1 ? "audio" :
+                                ci == 2 ? "speech" : "somato", cortex_path);
+                    }
+                }
             }
         }
 
