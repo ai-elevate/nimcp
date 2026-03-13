@@ -314,9 +314,10 @@ static int accumulate_parameter_gradients(
                 for (uint32_t k = 0; k < n; k++) {
                     float inc = adjoint_data[j] * act_deriv * x_data[k] * dt;
                     grad_W_rec[j * n + k] += inc;
-                    /* Per-step clamp to prevent unbounded accumulation */
-                    if (grad_W_rec[j * n + k] > 1e4f) grad_W_rec[j * n + k] = 1e4f;
-                    else if (grad_W_rec[j * n + k] < -1e4f) grad_W_rec[j * n + k] = -1e4f;
+                    /* Per-step clamp — ±1e4 was too loose (norm → 640K for 4096 params).
+                     * ±10 keeps overall norm ≤ sqrt(4096)*10 ≈ 640 per layer. */
+                    if (grad_W_rec[j * n + k] > 10.0f) grad_W_rec[j * n + k] = 10.0f;
+                    else if (grad_W_rec[j * n + k] < -10.0f) grad_W_rec[j * n + k] = -10.0f;
                 }
             }
         }
@@ -334,8 +335,8 @@ static int accumulate_parameter_gradients(
                 float inc = adjoint_data[j] * df_dtau * dt;
                 grad_tau_base[j] += inc;
                 /* Per-step clamp */
-                if (grad_tau_base[j] > 1e4f) grad_tau_base[j] = 1e4f;
-                else if (grad_tau_base[j] < -1e4f) grad_tau_base[j] = -1e4f;
+                if (grad_tau_base[j] > 10.0f) grad_tau_base[j] = 10.0f;
+                else if (grad_tau_base[j] < -10.0f) grad_tau_base[j] = -10.0f;
             }
         }
 
@@ -352,8 +353,8 @@ static int accumulate_parameter_gradients(
                 // Simplified: assume contribution through recurrent path
                 grad_b_in[j] += adjoint_data[j] * dt;
                 /* Per-step clamp */
-                if (grad_b_in[j] > 1e4f) grad_b_in[j] = 1e4f;
-                else if (grad_b_in[j] < -1e4f) grad_b_in[j] = -1e4f;
+                if (grad_b_in[j] > 10.0f) grad_b_in[j] = 10.0f;
+                else if (grad_b_in[j] < -10.0f) grad_b_in[j] = -10.0f;
             }
         }
     }

@@ -197,8 +197,15 @@ int lnn_gradient_compute_adjoint(
     }
     ctx->last_input_grad = adjoint_current;  /* Transfer ownership */
 
-    // Compute final gradient norm
+    // Clamp accumulated parameter gradient norm to prevent explosion.
+    // Even with per-step adjoint norm clamping (100), the parameter Jacobians
+    // ∂f/∂θ can be large, producing accumulated norms of 60K+.
     ctx->gradient_norm = lnn_gradient_norm(ctx);
+    if (ctx->gradient_norm > 100.0f) {
+        float scale = 100.0f / ctx->gradient_norm;
+        lnn_gradient_scale(ctx, scale);
+        ctx->gradient_norm = 100.0f;
+    }
     ctx->max_gradient = fmaxf(ctx->max_gradient, ctx->gradient_norm);
 
     ctx->compute_time_ms = lnn_gradient_get_time_ms() - start_time;
@@ -895,6 +902,80 @@ int lnn_gradient_apply(
             if (opt_result != NIMCP_SUCCESS) {
                 NIMCP_LOGGING_WARN("Optimizer step failed for W_rec in layer %u", layer_idx);
                 ret = LNN_ERROR_OPERATION_FAILED;
+            }
+
+            /* Spectral normalization of W_rec — ROOT FIX for gradient explosion.
+             *
+             * The adjoint ODE dλ/dt = -J^T λ has Jacobian J = diag(tanh'(h)) * W_rec - diag(1/τ).
+             * When σ_max(W_rec) is large, J has large positive eigenvalues → the adjoint
+             * backward pass is unstable → parameter gradients explode exponentially.
+             *
+             * Fix: After each optimizer step, enforce σ_max(W_rec) ≤ 1.0 via power iteration.
+             * With σ_max ≤ 1 and tanh' ∈ (0,1], the Jacobian eigenvalues are bounded by
+             * 1.0 - 1/τ_max ≈ 1.0 (marginally stable), and the -1/τ decay term in the
+             * forward ODE keeps the overall system dissipative.
+             *
+             * Power iteration: 10 iterations, O(n²) per iteration — negligible for n=128.
+             */
+            {
+                uint32_t n = layer->n_neurons;
+                float* W = (float*)nimcp_tensor_data(layer->W_rec);
+                float spectral_norm_target = 1.0f;
+
+                /* Allocate temp vectors for power iteration: u, v, Wu, Wv */
+                float* u = (float*)nimcp_calloc(n, sizeof(float));
+                float* v = (float*)nimcp_calloc(n, sizeof(float));
+                if (u && v) {
+                    /* Initialize u to uniform unit vector */
+                    float init_val = 1.0f / sqrtf((float)n);
+                    for (uint32_t i = 0; i < n; i++) u[i] = init_val;
+
+                    /* Power iteration: estimate σ_max(W) */
+                    float sigma = 0.0f;
+                    for (int iter = 0; iter < 10; iter++) {
+                        /* v = W^T u, then normalize */
+                        float v_norm = 0.0f;
+                        for (uint32_t j = 0; j < n; j++) {
+                            float sum = 0.0f;
+                            for (uint32_t i = 0; i < n; i++) {
+                                sum += W[i * n + j] * u[i];  /* W^T[j,i] = W[i,j] */
+                            }
+                            v[j] = sum;
+                            v_norm += sum * sum;
+                        }
+                        v_norm = sqrtf(v_norm);
+                        if (v_norm < 1e-12f) break;
+                        for (uint32_t j = 0; j < n; j++) v[j] /= v_norm;
+
+                        /* u = W v, then normalize */
+                        float u_norm = 0.0f;
+                        for (uint32_t i = 0; i < n; i++) {
+                            float sum = 0.0f;
+                            for (uint32_t j = 0; j < n; j++) {
+                                sum += W[i * n + j] * v[j];
+                            }
+                            u[i] = sum;
+                            u_norm += sum * sum;
+                        }
+                        u_norm = sqrtf(u_norm);
+                        if (u_norm < 1e-12f) break;
+                        sigma = u_norm;
+                        for (uint32_t i = 0; i < n; i++) u[i] /= u_norm;
+                    }
+
+                    /* If spectral norm exceeds target, rescale W_rec */
+                    if (sigma > spectral_norm_target) {
+                        float scale = spectral_norm_target / sigma;
+                        size_t W_size = (size_t)n * n;
+                        for (size_t i = 0; i < W_size; i++) {
+                            W[i] *= scale;
+                        }
+                        NIMCP_LOGGING_DEBUG("Spectral norm W_rec layer %u: %.2f → %.2f (rescaled)",
+                                           layer_idx, sigma, spectral_norm_target);
+                    }
+                }
+                if (u) nimcp_free(u);
+                if (v) nimcp_free(v);
             }
         }
 

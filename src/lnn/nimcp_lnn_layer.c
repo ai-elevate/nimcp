@@ -424,6 +424,60 @@ int lnn_layer_init_weights(lnn_layer_t* layer, float std, uint64_t seed)
         }
     }
 
+    /* Spectral normalization of W_rec at initialization.
+     * Ensures σ_max(W_rec) ≤ 1.0 from the start, preventing adjoint ODE
+     * instability on the very first backward pass.
+     * Power iteration: 10 iterations, O(n²) each. */
+    {
+        uint32_t n = layer->n_neurons;
+        float* u = (float*)nimcp_calloc(n, sizeof(float));
+        float* v = (float*)nimcp_calloc(n, sizeof(float));
+        if (u && v && n > 0) {
+            float init_val = 1.0f / sqrtf((float)n);
+            for (uint32_t i = 0; i < n; i++) u[i] = init_val;
+
+            float sigma = 0.0f;
+            for (int iter = 0; iter < 10; iter++) {
+                float v_norm = 0.0f;
+                for (uint32_t j = 0; j < n; j++) {
+                    float sum = 0.0f;
+                    for (uint32_t ii = 0; ii < n; ii++) {
+                        sum += W_rec_data[ii * n + j] * u[ii];
+                    }
+                    v[j] = sum;
+                    v_norm += sum * sum;
+                }
+                v_norm = sqrtf(v_norm);
+                if (v_norm < 1e-12f) break;
+                for (uint32_t j = 0; j < n; j++) v[j] /= v_norm;
+
+                float u_norm = 0.0f;
+                for (uint32_t ii = 0; ii < n; ii++) {
+                    float sum = 0.0f;
+                    for (uint32_t j = 0; j < n; j++) {
+                        sum += W_rec_data[ii * n + j] * v[j];
+                    }
+                    u[ii] = sum;
+                    u_norm += sum * sum;
+                }
+                u_norm = sqrtf(u_norm);
+                if (u_norm < 1e-12f) break;
+                sigma = u_norm;
+                for (uint32_t ii = 0; ii < n; ii++) u[ii] /= u_norm;
+            }
+
+            if (sigma > 1.0f) {
+                float scale = 1.0f / sigma;
+                for (size_t i = 0; i < W_rec_size; i++) {
+                    W_rec_data[i] *= scale;
+                }
+                NIMCP_LOGGING_DEBUG("W_rec init spectral norm: %.2f → 1.0 (rescaled)", sigma);
+            }
+        }
+        if (u) nimcp_free(u);
+        if (v) nimcp_free(v);
+    }
+
     /* Initialize W_tau with small random values */
     float* W_tau_data = (float*)nimcp_tensor_data(layer->W_tau);
     size_t W_tau_size = nimcp_tensor_numel(layer->W_tau);
