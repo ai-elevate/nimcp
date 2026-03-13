@@ -523,7 +523,17 @@ int lnn_layer_compute_tau(lnn_layer_t* layer, const nimcp_tensor_t* input)
     nimcp_tensor_destroy(tau_sigmoid);
     if (!tau_new) return LNN_ERROR_OPERATION_FAILED;
 
-    /* Update layer tau */
+    /* Update layer tau with floor enforcement.
+     * tau = tau_base * sigmoid(...) can produce near-zero values when tau_base
+     * is small. The decay term -x/tau then explodes → NaN.
+     * Floor at 0.01 matches the backward pass tau_safe floor. */
+    {
+        float* tau_data = (float*)nimcp_tensor_data(tau_new);
+        uint32_t tn = layer->n_neurons;
+        for (uint32_t ti = 0; ti < tn; ti++) {
+            if (tau_data[ti] < 0.01f) tau_data[ti] = 0.01f;
+        }
+    }
     nimcp_tensor_destroy(layer->tau);
     layer->tau = tau_new;
 
@@ -613,6 +623,24 @@ int lnn_layer_step(lnn_layer_t* layer, float dt, lnn_ode_method_t method)
     nimcp_tensor_destroy(layer->x);
     layer->x = x_new;
     layer->step_count++;
+
+    /* Stability guard: clamp state to [-10, 10] and replace NaN/Inf with 0.
+     * The ODE integrator can diverge when W_rec eigenvalues exceed 1/tau,
+     * producing NaN/Inf that propagates to every downstream consumer
+     * (feature vectors, loss computation, gradient flow). */
+    {
+        float* x_data = (float*)nimcp_tensor_data(layer->x);
+        uint32_t n = layer->n_neurons;
+        for (uint32_t i = 0; i < n; i++) {
+            if (!isfinite(x_data[i])) {
+                x_data[i] = 0.0f;
+            } else if (x_data[i] > 10.0f) {
+                x_data[i] = 10.0f;
+            } else if (x_data[i] < -10.0f) {
+                x_data[i] = -10.0f;
+            }
+        }
+    }
 
     return LNN_SUCCESS;
 }

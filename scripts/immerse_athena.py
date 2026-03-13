@@ -59,7 +59,12 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 
 # Import nimcp FIRST — it initializes the CUDA context for brain training.
-import nimcp
+# In --daemon mode, nimcp is only needed for nimcp.init() which is optional
+# since the daemon process already initialized everything.
+if "--daemon" not in sys.argv:
+    import nimcp
+else:
+    nimcp = None  # not needed — BrainProxy handles everything
 
 # Hide GPU from PyTorch to prevent dual-CUDA-context crashes.
 # BUT: nimcp's gpu_detect uses pthread_once + cuInit which reads
@@ -1178,23 +1183,32 @@ class SensoryComposer:
 
         # --- Biological context [912:1024] ---
         ctx_start = TAG_DIM + PRIMARY_DIM + TEXT_DIM
+
+        def _safe(v, default=0.0):
+            """Sanitize biological values — NaN/Inf → default."""
+            try:
+                f = float(v)
+                return f if np.isfinite(f) else default
+            except (TypeError, ValueError):
+                return default
+
         try:
-            vec[ctx_start] = self.brain.medulla_get_arousal()
-            vec[ctx_start + 1] = self.brain.sleep_get_pressure()
-            vec[ctx_start + 2] = self.brain.medulla_get_circadian_efficiency()
+            vec[ctx_start] = _safe(self.brain.medulla_get_arousal(), 0.5)
+            vec[ctx_start + 1] = _safe(self.brain.sleep_get_pressure())
+            vec[ctx_start + 2] = _safe(self.brain.medulla_get_circadian_efficiency(), 1.0)
         except Exception:
             pass
         try:
-            vec[ctx_start + 3] = self.brain.bg_get_dopamine()
-            vec[ctx_start + 4] = self.brain.bg_get_rpe()
-            vec[ctx_start + 5] = self.brain.bg_get_conflict()
-            vec[ctx_start + 6] = float(self.brain.bg_get_mode())
+            vec[ctx_start + 3] = _safe(self.brain.bg_get_dopamine())
+            vec[ctx_start + 4] = _safe(self.brain.bg_get_rpe())
+            vec[ctx_start + 5] = _safe(self.brain.bg_get_conflict())
+            vec[ctx_start + 6] = _safe(self.brain.bg_get_mode())
         except Exception:
             pass
         try:
             met = self.brain.substrate_get_metabolic()
-            vec[ctx_start + 7] = met.get("atp", 1.0)
-            vec[ctx_start + 8] = met.get("capacity", 1.0)
+            vec[ctx_start + 7] = _safe(met.get("atp", 1.0), 1.0)
+            vec[ctx_start + 8] = _safe(met.get("capacity", 1.0), 1.0)
         except Exception:
             pass
         # LNN state (32 dims) at context_start + 16..48
@@ -1203,10 +1217,13 @@ class SensoryComposer:
             if lnn_state:
                 n = min(len(lnn_state), 32)
                 for i in range(n):
-                    vec[ctx_start + 16 + i] = lnn_state[i]
+                    v = float(lnn_state[i])
+                    vec[ctx_start + 16 + i] = v if np.isfinite(v) else 0.0
         except Exception:
             pass
 
+        # Safety: replace any remaining NaN/Inf with 0
+        vec = np.nan_to_num(vec, nan=0.0, posinf=1.0, neginf=-1.0)
         return vec.tolist()
 
 
@@ -3743,6 +3760,13 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             except (ValueError, OSError):
                 pass
 
+        # Quick feedback every 50 steps
+        if (i + 1) % 50 == 0:
+            recent = losses[-50:]
+            rl = np.mean(recent) if recent else 0
+            nz = sum(1 for x in recent if x > 0.001)
+            print(f"    [{i+1}] loss={rl:.4f} ({nz}/{len(recent)} non-zero)", flush=True)
+
         # Progress report
         if (i + 1) % 500 == 0:
             avg_loss = np.mean(losses[-500:]) if losses else 0
@@ -3861,6 +3885,13 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                 brain.cerebellum_process_error(loss)
             except Exception:
                 pass
+
+        # Quick feedback every 50 steps
+        if (i + 1) % 50 == 0:
+            recent = losses[-50:]
+            rl = np.mean(recent) if recent else 0
+            nz = sum(1 for x in recent if x > 0.001)
+            print(f"    [{i+1}] loss={rl:.4f} ({nz}/{len(recent)} non-zero)", flush=True)
 
         # Progress
         if (i + 1) % 500 == 0:
@@ -5273,7 +5304,7 @@ def _kill_stale_processes():
 # IPC Server — allows talk_to_athena.py to query the running brain
 # ---------------------------------------------------------------------------
 
-ATHENA_SOCKET_PATH = "/tmp/athena_brain.sock"
+ATHENA_SOCKET_PATH = "/var/run/athena/brain.sock"
 
 
 class AthenaIPCServer:
@@ -5302,6 +5333,21 @@ class AthenaIPCServer:
         self._running = False
 
     def start(self):
+        # Check if the brain daemon holds the socket lock — never steal it
+        lock_path = ATHENA_SOCKET_PATH + ".lock"
+        if os.path.exists(lock_path):
+            import fcntl
+            try:
+                fd = open(lock_path, "r")
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                # Lock acquired → no daemon holding it, release and proceed
+                fcntl.flock(fd, fcntl.LOCK_UN)
+                fd.close()
+            except (IOError, OSError):
+                # Lock is held by the daemon — don't bind
+                print(f"  IPC server: skipped — brain daemon owns {ATHENA_SOCKET_PATH}")
+                return
+
         # Clean up stale socket
         if os.path.exists(ATHENA_SOCKET_PATH):
             os.unlink(ATHENA_SOCKET_PATH)
@@ -5501,6 +5547,8 @@ def main():
                         help="Start fresh (ignore existing checkpoint)")
     parser.add_argument("--no-multimodal", action="store_true",
                         help="Disable multimodal dataset download")
+    parser.add_argument("--daemon", action="store_true",
+                        help="Connect to brain daemon instead of loading brain")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO,
@@ -5553,7 +5601,16 @@ def main():
     elif "CUDA_VISIBLE_DEVICES" in os.environ:
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
-    if checkpoint_path and os.path.exists(checkpoint_path):
+    if args.daemon:
+        # Connect to running brain daemon — no brain loading needed
+        from brain_client import BrainProxy, is_daemon_running
+        if not is_daemon_running():
+            print("  ERROR: Brain daemon is not running!")
+            print("  Start it with: sudo systemctl start athena-brain")
+            sys.exit(1)
+        brain = BrainProxy()
+        print(f"  Connected to brain daemon (neurons={brain.get_neuron_count():,})")
+    elif checkpoint_path and os.path.exists(checkpoint_path):
         # Resume: load full brain state from checkpoint (avoids 52GB+ fresh init)
         print(f"  Loading brain from checkpoint: {checkpoint_path}")
         brain = nimcp.Brain.load(checkpoint_path)
@@ -5565,59 +5622,80 @@ def main():
                             neuron_count=args.neuron_count,
                             init_mode='full')
 
-    # --- CRITICAL: Disable fast training → ALL bio subsystems active ---
-    brain.set_fast_training(False)
-    print("  Fast training: OFF (full biological pipeline)")
+    # --- Brain configuration ---
+    # In daemon mode, the brain was already configured when first created.
+    # These calls are idempotent but some (lnn_create, enable_multi_network)
+    # may fail if already initialized — wrap in try/except.
+    if args.daemon:
+        # Full config via daemon — same as non-daemon but with try/except
+        try:
+            brain.set_fast_training(False)
+            brain.set_task_type("regression")
+            brain.enable_biological_plasticity(True)
+        except Exception as e:
+            print(f"  Daemon config (basic): {e} (non-fatal)")
+        for label, fn in [
+            ("Mixed precision", lambda: brain.enable_mixed_precision(True)),
+            ("Gradient checkpointing", lambda: brain.enable_gradient_checkpointing(True, 2)),
+            ("World model", lambda: brain.enable_world_model(True)),
+            ("LNN", lambda: brain.lnn_create(128, 64, 32, 64)),
+            ("Multi-network UTM", lambda: brain.enable_multi_network(True)),
+        ]:
+            try:
+                fn()
+            except Exception as e:
+                print(f"  {label}: {e} (non-fatal)")
+        print("  Daemon mode: training config applied")
+    else:
+        # --- CRITICAL: Disable fast training → ALL bio subsystems active ---
+        brain.set_fast_training(False)
+        print("  Fast training: OFF (full biological pipeline)")
 
-    # --- CRITICAL: Use regression strategy (raw output, no softmax) ---
-    # Classification strategy applies softmax which crushes output to ~1/N per neuron.
-    # Athena needs raw output vectors for embedding-based developmental learning.
-    brain.set_task_type("regression")
-    print("  Task type: REGRESSION (raw output, no softmax)")
+        # --- CRITICAL: Use regression strategy (raw output, no softmax) ---
+        brain.set_task_type("regression")
+        print("  Task type: REGRESSION (raw output, no softmax)")
 
-    # --- Enable mixed precision (FP16) for ~2x GPU throughput ---
-    try:
-        brain.enable_mixed_precision(True)
-        print("  Mixed precision: ON (FP16 compute, FP32 accumulation)")
-    except Exception as e:
-        print(f"  Mixed precision: FAILED ({e})")
+        # --- Enable mixed precision (FP16) for ~2x GPU throughput ---
+        try:
+            brain.enable_mixed_precision(True)
+            print("  Mixed precision: ON (FP16 compute, FP32 accumulation)")
+        except Exception as e:
+            print(f"  Mixed precision: FAILED ({e})")
 
-    # --- Enable gradient checkpointing for memory-efficient training ---
-    try:
-        brain.enable_gradient_checkpointing(True, 2)
-        print("  Gradient checkpointing: ON (every 2 layers)")
-    except Exception as e:
-        print(f"  Gradient checkpointing: FAILED ({e})")
+        # --- Enable gradient checkpointing for memory-efficient training ---
+        try:
+            brain.enable_gradient_checkpointing(True, 2)
+            print("  Gradient checkpointing: ON (every 2 layers)")
+        except Exception as e:
+            print(f"  Gradient checkpointing: FAILED ({e})")
 
-    # --- Enable biological plasticity ---
-    try:
-        brain.enable_biological_plasticity(True)
-        print("  Biological plasticity: ON (TPB + EDP + coordinator)")
-    except Exception as e:
-        print(f"  Biological plasticity: FAILED ({e})")
+        # --- Enable biological plasticity ---
+        try:
+            brain.enable_biological_plasticity(True)
+            print("  Biological plasticity: ON (TPB + EDP + coordinator)")
+        except Exception as e:
+            print(f"  Biological plasticity: FAILED ({e})")
 
-    # --- Enable world model ---
-    try:
-        brain.enable_world_model(True)
-        print("  World model: ON (JEPA + RSSM)")
-    except Exception as e:
-        print(f"  World model: FAILED ({e})")
+        # --- Enable world model ---
+        try:
+            brain.enable_world_model(True)
+            print("  World model: ON (JEPA + RSSM)")
+        except Exception as e:
+            print(f"  World model: FAILED ({e})")
 
-    # --- Create LNN temporal processor ---
-    try:
-        brain.lnn_create(128, 64, 32, 64)
-        print("  LNN temporal processor: ON (128→64→32→64)")
-    except Exception as e:
-        print(f"  LNN: FAILED ({e})")
+        # --- Create LNN temporal processor ---
+        try:
+            brain.lnn_create(128, 64, 32, 64)
+            print("  LNN temporal processor: ON (128→64→32→64)")
+        except Exception as e:
+            print(f"  LNN: FAILED ({e})")
 
-    # --- Enable multi-network unified training (UTM) ---
-    # Registers Adaptive, CNN, SNN, LNN into unified training manager
-    # with shared composite loss, cross-network bridges, and optimizer
-    try:
-        brain.enable_multi_network()
-        print("  Multi-network UTM: ON (4 networks, unified optimizer)")
-    except Exception as e:
-        print(f"  Multi-network UTM: FAILED ({e})")
+        # --- Enable multi-network unified training (UTM) ---
+        try:
+            brain.enable_multi_network()
+            print("  Multi-network UTM: ON (4 networks, unified optimizer)")
+        except Exception as e:
+            print(f"  Multi-network UTM: FAILED ({e})")
 
     # --- Initialize reasoning KB ---
     try:
@@ -5702,8 +5780,10 @@ def main():
     signal.signal(signal.SIGUSR1, sigusr1_handler)
 
     # --- Start IPC server (allows talk_to_athena.py to query this brain) ---
-    ipc_server[0] = AthenaIPCServer(brain, decoder, composer, training_progress)
-    ipc_server[0].start()
+    # In daemon mode, the brain daemon already provides IPC — don't bind the same socket.
+    if not args.daemon:
+        ipc_server[0] = AthenaIPCServer(brain, decoder, composer, training_progress)
+        ipc_server[0].start()
 
     # --- Print initial bio stats ---
     print("\n  Initial biological state:")

@@ -524,8 +524,11 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: /hom
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h \
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h \
   /usr/include/x86_64-linux-gnu/bits/sched.h \
+  /usr/include/x86_64-linux-gnu/bits/select-decl.h \
   /usr/include/x86_64-linux-gnu/bits/select.h \
+  /usr/include/x86_64-linux-gnu/bits/select2.h \
   /usr/include/x86_64-linux-gnu/bits/setjmp.h \
+  /usr/include/x86_64-linux-gnu/bits/setjmp2.h \
   /usr/include/x86_64-linux-gnu/bits/sigaction.h \
   /usr/include/x86_64-linux-gnu/bits/sigcontext.h \
   /usr/include/x86_64-linux-gnu/bits/sigevent-consts.h \
@@ -545,8 +548,15 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: /hom
   /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
   /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
   /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio2.h \
   /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
   /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib.h \
+  /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
+  /usr/include/x86_64-linux-gnu/bits/strings_fortified.h \
   /usr/include/x86_64-linux-gnu/bits/struct_mutex.h \
   /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h \
   /usr/include/x86_64-linux-gnu/bits/struct_stat.h \
@@ -592,10 +602,14 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: /hom
   /usr/include/x86_64-linux-gnu/bits/typesizes.h \
   /usr/include/x86_64-linux-gnu/bits/uintn-identity.h \
   /usr/include/x86_64-linux-gnu/bits/uio_lim.h \
+  /usr/include/x86_64-linux-gnu/bits/unistd-decl.h \
+  /usr/include/x86_64-linux-gnu/bits/unistd.h \
   /usr/include/x86_64-linux-gnu/bits/unistd_ext.h \
   /usr/include/x86_64-linux-gnu/bits/waitflags.h \
   /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
   /usr/include/x86_64-linux-gnu/bits/wchar.h \
+  /usr/include/x86_64-linux-gnu/bits/wchar2-decl.h \
+  /usr/include/x86_64-linux-gnu/bits/wchar2.h \
   /usr/include/x86_64-linux-gnu/bits/wordsize.h \
   /usr/include/x86_64-linux-gnu/bits/xopen_lim.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
@@ -838,8 +852,11 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h \
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h \
   /usr/include/x86_64-linux-gnu/bits/sched.h \
+  /usr/include/x86_64-linux-gnu/bits/select-decl.h \
   /usr/include/x86_64-linux-gnu/bits/select.h \
+  /usr/include/x86_64-linux-gnu/bits/select2.h \
   /usr/include/x86_64-linux-gnu/bits/setjmp.h \
+  /usr/include/x86_64-linux-gnu/bits/setjmp2.h \
   /usr/include/x86_64-linux-gnu/bits/sigaction.h \
   /usr/include/x86_64-linux-gnu/bits/sigcontext.h \
   /usr/include/x86_64-linux-gnu/bits/sigevent-consts.h \
@@ -859,8 +876,15 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
   /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
   /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
   /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio2.h \
   /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
   /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib.h \
+  /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
+  /usr/include/x86_64-linux-gnu/bits/strings_fortified.h \
   /usr/include/x86_64-linux-gnu/bits/struct_mutex.h \
   /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h \
   /usr/include/x86_64-linux-gnu/bits/struct_stat.h \
@@ -906,10 +930,14 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
   /usr/include/x86_64-linux-gnu/bits/typesizes.h \
   /usr/include/x86_64-linux-gnu/bits/uintn-identity.h \
   /usr/include/x86_64-linux-gnu/bits/uio_lim.h \
+  /usr/include/x86_64-linux-gnu/bits/unistd-decl.h \
+  /usr/include/x86_64-linux-gnu/bits/unistd.h \
   /usr/include/x86_64-linux-gnu/bits/unistd_ext.h \
   /usr/include/x86_64-linux-gnu/bits/waitflags.h \
   /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
   /usr/include/x86_64-linux-gnu/bits/wchar.h \
+  /usr/include/x86_64-linux-gnu/bits/wchar2-decl.h \
+  /usr/include/x86_64-linux-gnu/bits/wchar2.h \
   /usr/include/x86_64-linux-gnu/bits/wordsize.h \
   /usr/include/x86_64-linux-gnu/bits/xopen_lim.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
@@ -966,11 +994,17 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
 
+/usr/include/x86_64-linux-gnu/bits/wchar2.h:
+
 /usr/include/x86_64-linux-gnu/bits/wchar.h:
 
 /usr/include/x86_64-linux-gnu/bits/waitflags.h:
 
 /usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
+
+/usr/include/x86_64-linux-gnu/bits/unistd.h:
+
+/usr/include/x86_64-linux-gnu/bits/unistd-decl.h:
 
 /usr/include/x86_64-linux-gnu/bits/uio_lim.h:
 
@@ -1028,7 +1062,23 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h:
 
+/usr/include/x86_64-linux-gnu/bits/strings_fortified.h:
+
+/usr/include/x86_64-linux-gnu/bits/string_fortified.h:
+
 /usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdio2-decl.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdio.h:
+
+/home/bbrelin/.local/lib/python3.12/site-packages/numpy/_core/include/numpy/npy_cpu.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
+
+/usr/include/x86_64-linux-gnu/bits/statx.h:
 
 /home/bbrelin/nimcp/include/training/nimcp_cnn_training.h:
 
@@ -1177,6 +1227,8 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /home/bbrelin/nimcp/include/core/neuron_types/nimcp_neural_logic.h:
 
 /home/bbrelin/nimcp/include/core/neuralnet/nimcp_sparse_synapse.h:
+
+/usr/include/x86_64-linux-gnu/bits/select-decl.h:
 
 /home/bbrelin/nimcp/include/core/neural_substrate/nimcp_neural_substrate.h:
 
@@ -1449,10 +1501,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h:
 
 /home/bbrelin/nimcp/include/cognitive/jepa/nimcp_jepa_latent.h:
-
-/home/bbrelin/.local/lib/python3.12/site-packages/numpy/_core/include/numpy/npy_cpu.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
 
 /home/bbrelin/nimcp/include/lnn/nimcp_lnn_network.h:
 
@@ -1908,6 +1956,8 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h:
 
+/usr/include/x86_64-linux-gnu/bits/setjmp2.h:
+
 /usr/include/python3.12/cpython/bytesobject.h:
 
 /usr/include/python3.12/cpython/classobject.h:
@@ -1919,6 +1969,8 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/python3.12/enumobject.h:
 
 /usr/include/python3.12/cpython/compile.h:
+
+/usr/include/x86_64-linux-gnu/bits/wchar2-decl.h:
 
 /usr/include/linux/errno.h:
 
@@ -2062,8 +2114,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/unistd.h:
 
-/usr/include/x86_64-linux-gnu/bits/statx.h:
-
 /usr/include/python3.12/pystrtod.h:
 
 /usr/include/python3.12/structseq.h:
@@ -2089,6 +2139,12 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/texture_types.h:
 
 /usr/include/vector_functions.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
+
+/usr/include/x86_64-linux-gnu/bits/statx-generic.h:
+
+/usr/include/wchar.h:
 
 /usr/include/x86_64-linux-gnu/asm/posix_types_64.h:
 
@@ -2116,6 +2172,8 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/x86_64-linux-gnu/bits/fp-logb.h:
 
+/usr/include/x86_64-linux-gnu/bits/stdlib.h:
+
 /home/bbrelin/nimcp/include/cognitive/parietal/nimcp_fep_parietal_bridge.h:
 
 /usr/include/x86_64-linux-gnu/bits/getopt_core.h:
@@ -2125,6 +2183,8 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h:
 
 /usr/include/x86_64-linux-gnu/bits/long-double.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h:
 
 /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h:
 
@@ -2145,6 +2205,8 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /home/bbrelin/nimcp/include/cognitive/nimcp_theory_of_mind.h:
 
 /usr/include/x86_64-linux-gnu/bits/sched.h:
+
+/usr/include/x86_64-linux-gnu/bits/select2.h:
 
 /home/bbrelin/nimcp/include/dragonfly/nimcp_dragonfly_prediction.h:
 
@@ -2179,9 +2241,3 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/x86_64-linux-gnu/bits/stat.h:
 
 /usr/include/x86_64-linux-gnu/bits/ss_flags.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
-
-/usr/include/wchar.h:
-
-/usr/include/x86_64-linux-gnu/bits/statx-generic.h:

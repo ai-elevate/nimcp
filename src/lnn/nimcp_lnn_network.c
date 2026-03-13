@@ -1509,6 +1509,91 @@ lnn_network_t* lnn_network_load(const char* path) {
             layer->dt = dt;
             layer->use_layer_norm = use_layer_norm;
             layer->layer_norm_eps = layer_norm_eps;
+
+            /* Post-restore stability: spectral-normalize W_rec.
+             * Checkpoints from before spectral normalization was added may
+             * contain W_rec with σ_max >> 1, causing ODE divergence → NaN
+             * in the very first forward step. */
+            {
+                uint32_t n = layer->n_neurons;
+                float* W = (float*)nimcp_tensor_data(layer->W_rec);
+                if (W && n > 0) {
+                    float* u_vec = (float*)nimcp_calloc(n, sizeof(float));
+                    float* v_vec = (float*)nimcp_calloc(n, sizeof(float));
+                    if (u_vec && v_vec) {
+                        float iv = 1.0f / sqrtf((float)n);
+                        for (uint32_t ui = 0; ui < n; ui++) u_vec[ui] = iv;
+                        float sigma = 0.0f;
+                        for (int iter = 0; iter < 10; iter++) {
+                            float vn = 0.0f;
+                            for (uint32_t j = 0; j < n; j++) {
+                                float s = 0.0f;
+                                for (uint32_t k = 0; k < n; k++)
+                                    s += W[k * n + j] * u_vec[k];
+                                v_vec[j] = s; vn += s * s;
+                            }
+                            vn = sqrtf(vn);
+                            if (vn < 1e-12f) break;
+                            for (uint32_t j = 0; j < n; j++) v_vec[j] /= vn;
+                            float un = 0.0f;
+                            for (uint32_t k = 0; k < n; k++) {
+                                float s = 0.0f;
+                                for (uint32_t j = 0; j < n; j++)
+                                    s += W[k * n + j] * v_vec[j];
+                                u_vec[k] = s; un += s * s;
+                            }
+                            un = sqrtf(un);
+                            if (un < 1e-12f) break;
+                            sigma = un;
+                            for (uint32_t k = 0; k < n; k++) u_vec[k] /= un;
+                        }
+                        if (sigma > 1.0f) {
+                            float scale = 1.0f / sigma;
+                            size_t sz = (size_t)n * n;
+                            for (size_t wi = 0; wi < sz; wi++) W[wi] *= scale;
+                            NIMCP_LOGGING_INFO("lnn_network_load: layer %u W_rec spectral norm %.2f → 1.0", i, sigma);
+                        }
+                    }
+                    if (u_vec) nimcp_free(u_vec);
+                    if (v_vec) nimcp_free(v_vec);
+                }
+            }
+
+            /* Post-restore: sanitize loaded state x — NaN/Inf from old
+             * checkpoints would immediately produce NaN on the first
+             * forward step and propagate to all feature vectors. */
+            {
+                float* xd = (float*)nimcp_tensor_data(layer->x);
+                uint32_t n = layer->n_neurons;
+                bool had_nan = false;
+                for (uint32_t xi = 0; xi < n; xi++) {
+                    if (!isfinite(xd[xi])) {
+                        xd[xi] = 0.0f;
+                        had_nan = true;
+                    }
+                }
+                if (had_nan) {
+                    NIMCP_LOGGING_WARN("lnn_network_load: layer %u had NaN/Inf in state — reset to 0", i);
+                }
+            }
+
+            /* Post-restore: enforce tau_base floor.
+             * tau = tau_base * sigmoid(...), so if tau_base < 0.01,
+             * the decay term -x/tau can explode even with sigmoid ≈ 1. */
+            {
+                float* tb = (float*)nimcp_tensor_data(layer->tau_base);
+                uint32_t n = layer->n_neurons;
+                uint32_t fixed = 0;
+                for (uint32_t ti = 0; ti < n; ti++) {
+                    if (!isfinite(tb[ti]) || tb[ti] < 0.01f) {
+                        tb[ti] = 1.0f;  /* Reset to default 1.0 */
+                        fixed++;
+                    }
+                }
+                if (fixed > 0) {
+                    NIMCP_LOGGING_WARN("lnn_network_load: layer %u fixed %u tau_base values (< 0.01 or NaN)", i, fixed);
+                }
+            }
         }
 
         /* Clean up any tensors not consumed */

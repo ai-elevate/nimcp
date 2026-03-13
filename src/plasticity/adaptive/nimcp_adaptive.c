@@ -2020,15 +2020,19 @@ uint32_t adaptive_network_prune(adaptive_network_t network, float threshold)
 float adaptive_network_learn(adaptive_network_t network, const training_example_t* example,
                              learning_mode_t mode, float learning_rate)
 {
-    if (!network || !example)
+    if (!network || !example) {
+        NIMCP_LOGGING_WARN("adaptive_network_learn: NULL network=%p or example=%p", (void*)network, (void*)example);
         return -1.0F;
+    }
 
     // Guard: target_size==0 would cause division by zero in MSE computation.
     // Only enforced for modes that require targets (supervised, distillation, hybrid).
     // Unsupervised and reinforcement modes don't use example->target.
     if (mode != LEARN_MODE_UNSUPERVISED && mode != LEARN_MODE_REINFORCEMENT) {
-        if (example->target_size == 0 || !example->target)
+        if (example->target_size == 0 || !example->target) {
+            NIMCP_LOGGING_WARN("adaptive_network_learn: no target (size=%u, ptr=%p)", example->target_size, (void*)example->target);
             return -1.0F;
+        }
     }
 
     // Frozen network rejects learning
@@ -2059,7 +2063,10 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         float* spike_input = convert_input_to_spikes(example->input, example->input_size,
                                                      fixed_threshold,
                                                      network->config.spike_params.encoding);
-        if (!spike_input) return -1.0F;
+        if (!spike_input) {
+            NIMCP_LOGGING_WARN("adaptive_network_learn: spike encoding failed (input_size=%u, threshold=%.4f)", example->input_size, fixed_threshold);
+            return -1.0F;
+        }
 
         // 3. GPU forward pass with spike-encoded input
         // M-5: Allocate max(target_size, output_size) to prevent OOB write when

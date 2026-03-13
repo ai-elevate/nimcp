@@ -784,12 +784,16 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     }
 
     if (num_features != brain->config.num_inputs) {
+        NIMCP_LOGGING_WARN("brain_learn_vector: feature count mismatch: expected %u, got %u",
+                  brain->config.num_inputs, num_features);
         set_error("Feature count mismatch: expected %u, got %u",
                   brain->config.num_inputs, num_features);
         return -1.0f;
     }
 
     if (target_size != brain->config.num_outputs) {
+        NIMCP_LOGGING_WARN("brain_learn_vector: target size mismatch: expected %u, got %u",
+                  brain->config.num_outputs, target_size);
         set_error("Target size mismatch: expected %u, got %u",
                   brain->config.num_outputs, target_size);
         return -1.0f;
@@ -798,6 +802,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     /* Validate features for NaN/Inf */
     for (uint32_t i = 0; i < num_features; i++) {
         if (isnan(features[i]) || isinf(features[i])) {
+            NIMCP_LOGGING_WARN("brain_learn_vector: NaN/Inf in features[%u] = %f", i, features[i]);
             set_error("Invalid feature value at index %u: NaN or Inf", i);
             return -1.0f;
         }
@@ -806,6 +811,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     /* Validate target for NaN/Inf */
     for (uint32_t i = 0; i < target_size; i++) {
         if (isnan(target[i]) || isinf(target[i])) {
+            NIMCP_LOGGING_WARN("brain_learn_vector: NaN/Inf in target[%u] = %f", i, target[i]);
             set_error("Invalid target value at index %u: NaN or Inf", i);
             return -1.0f;
         }
@@ -840,6 +846,12 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     float loss = adaptive_network_learn(brain->network, &example,
                                          LEARN_MODE_DISTILLATION,
                                          brain->config.learning_rate);
+
+    if (loss < 0.0f) {
+        NIMCP_LOGGING_WARN("adaptive_network_learn returned %.2f: network=%p, input_size=%u, target_size=%u, lr=%.6f",
+                           loss, (void*)brain->network,
+                           num_features, target_size, brain->config.learning_rate);
+    }
 
     /* === HYPERLEDGER EOV: ORDER + VALIDATE === */
     if (brain->hyperledger_bridge && brain->hyperledger_enabled && hl_tx_id > 0) {
