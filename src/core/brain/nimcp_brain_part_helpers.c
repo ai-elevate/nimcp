@@ -938,8 +938,10 @@ static void forward_snn_task(void* arg)
     }
 
     uint32_t out_dim = (ctx->output_size < snn_out) ? ctx->output_size : snn_out;
+    /* Simulate for 30ms — enough for LIF neurons with tau_mem=20ms to integrate
+     * input currents and reach threshold. At dt=0.1ms this is 300 steps. */
     int rc = snn_network_forward(ctx->brain->snn_network, input_ptr, input_dim,
-                                  ctx->snn_output, out_dim, 10.0f);
+                                  ctx->snn_output, out_dim, 30.0f);
     nimcp_free(snn_input);
     if (rc != 0) return;
 

@@ -51,8 +51,8 @@ int snn_config_default(snn_config_t* config) {
     config->dt = SNN_DT_DEFAULT;        /* 0.1 ms timestep */
     config->t_ref = SNN_REFRACTORY_DEFAULT;  /* 2 ms refractory */
     config->v_thresh = -50.0f;          /* Spike threshold (mV) */
-    config->v_reset = NIMCP_RESTING_POTENTIAL_MV;           /* Reset potential (mV) */
-    config->v_rest = NIMCP_RESET_POTENTIAL_MV;            /* Resting potential (mV) */
+    config->v_reset = NIMCP_RESET_POTENTIAL_MV;             /* Reset after spike: -65 mV */
+    config->v_rest = NIMCP_RESTING_POTENTIAL_MV;            /* Resting potential: -70 mV */
     config->tau_mem = NIMCP_MEMBRANE_TAU_MS;            /* Membrane τ (ms) */
     config->tau_syn = 5.0f;             /* Synaptic τ (ms) */
 
