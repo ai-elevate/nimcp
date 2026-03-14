@@ -225,3 +225,4 @@ frontend/backend/brain_data/
 teaching_state/
 build/
 data/multimodal/*.pkl
+models/*.gguf

@@ -5409,7 +5409,10 @@ def _kill_stale_processes():
 # IPC Server — allows talk_to_athena.py to query the running brain
 # ---------------------------------------------------------------------------
 
-ATHENA_SOCKET_PATH = "/var/run/athena/brain.sock"
+ATHENA_SOCKET_PATH = "/var/run/athena/athena_ipc.sock"
+# Fallback if /var/run/athena doesn't exist (non-daemon mode)
+if not os.path.isdir(os.path.dirname(ATHENA_SOCKET_PATH)):
+    ATHENA_SOCKET_PATH = "/tmp/athena_ipc.sock"
 
 
 class AthenaIPCServer:

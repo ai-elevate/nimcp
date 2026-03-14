@@ -601,6 +601,25 @@ class BrainService:
             self.brain.utm_swap_from_ema()
         return {"ok": True}
 
+    # -- Phi-3 Language Cortex --
+
+    def _cmd_phi3_generate(self, req):
+        text = req.get("text", "")
+        max_tokens = req.get("max_tokens", 256)
+        if not text:
+            return {"error": "No text provided"}
+        if not hasattr(self, '_hybrid_decoder'):
+            try:
+                from phi3_decoder import Phi3Decoder
+                from hybrid_decoder import HybridDecoder
+                self._phi3 = Phi3Decoder()
+                self._hybrid_decoder = HybridDecoder(
+                    phi3_decoder=self._phi3, brain=self.brain)
+            except Exception as e:
+                return {"error": f"Phi-3 init failed: {e}"}
+        result = self._hybrid_decoder.respond(text, brain=self.brain)
+        return {"ok": True, **result}
+
     # -- Keepalive --
 
     def _cmd_keepalive(self, _req):

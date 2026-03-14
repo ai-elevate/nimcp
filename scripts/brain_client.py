@@ -185,6 +185,14 @@ class BrainProxy:
         resp = self._send({"cmd": "get_cortex_cnn_metrics"})
         return resp.get("metrics", {})
 
+    # -- Phi-3 Language Cortex --
+
+    def phi3_generate(self, text, max_tokens=256):
+        """Generate a response using Phi-3 conditioned on brain state."""
+        resp = self._send({"cmd": "phi3_generate", "text": text,
+                           "max_tokens": max_tokens})
+        return resp
+
     # -- Biological state --
 
     def substrate_get_health(self):
