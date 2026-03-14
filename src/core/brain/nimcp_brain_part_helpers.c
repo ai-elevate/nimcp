@@ -1376,7 +1376,7 @@ sequential_fallback:
         uint32_t snn_out_dim = (decision->output_size < snn_out) ? decision->output_size : snn_out;
         if (snn_output) {
             int rc = snn_network_forward(brain->snn_network, snn_input_ptr, snn_input_dim,
-                                         snn_output, snn_out_dim, 10.0f);
+                                         snn_output, snn_out_dim, 100.0f);
             if (rc == 0) {
                 /* Blend adaptive + SNN outputs */
                 float w_adapt = 0.7f, w_snn = 0.3f;
