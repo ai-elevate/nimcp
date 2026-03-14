@@ -281,13 +281,23 @@ static int accumulate_parameter_gradients(
         return 0;  // Not an error — just skip this step
     }
 
-    // For each layer, compute and accumulate parameter gradients
+    // For each layer, compute and accumulate parameter gradients.
+    // NOTE: The adjoint tensor has shape [n_outputs] (last layer output dim).
+    // Only accumulate gradients for layers whose n_neurons <= adjoint numel,
+    // otherwise adjoint_data[j] reads beyond the buffer (heap corruption).
+    uint32_t adjoint_numel = nimcp_tensor_numel(adjoint);
+
     for (uint32_t layer_idx = 0; layer_idx < network->n_layers; layer_idx++) {
         lnn_layer_t* layer = network->layers[layer_idx];
         if (!layer || !layer->x) continue;
 
         uint32_t n = layer->n_neurons;
-        /* n_inputs can be derived from W_in->shape.dims[1] if needed */
+
+        /* Skip layers larger than the adjoint — reading adjoint_data[j] for
+         * j >= adjoint_numel would be a buffer overread. In a multi-layer LNN,
+         * only the output layer's gradients can be directly accumulated from
+         * the output-space adjoint. */
+        if (n > adjoint_numel) continue;
 
         const float* adjoint_data = (const float*)nimcp_tensor_data_const(adjoint);
         const float* x_data = (const float*)nimcp_tensor_data_const(layer->x);
