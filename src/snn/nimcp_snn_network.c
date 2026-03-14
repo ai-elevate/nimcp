@@ -970,8 +970,14 @@ int snn_network_set_inputs(snn_network_t* network,
             neuron_t* neuron = neural_network_get_neuron(
                 network->neural_net, network->input_pop->neuron_ids[i]);
             if (neuron) {
-                /* Scale input to current (simple linear mapping) */
-                neuron->external_current = inputs[i] * 10.0f;  /* Scale factor */
+                /* Scale input to current.
+             * Neurons need ~20mV above resting (-70mV) to reach threshold (-50mV).
+             * Features are in [-1, 1] range. Positive features should reliably
+             * produce suprathreshold currents. Scale factor 30 maps:
+             *   input 0.7 → 21mV (fires), input 0.3 → 9mV (subthreshold),
+             *   input -1.0 → -30mV (inhibition).
+             * This creates a natural sparsity: only strong features trigger spikes. */
+                neuron->external_current = inputs[i] * network->config.input_current_scale;
             }
         }
     }

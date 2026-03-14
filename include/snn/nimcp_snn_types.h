@@ -345,6 +345,12 @@ struct snn_config_s {
     float tau_mem;                  /**< Default membrane time constant (ms) */
     float tau_syn;                  /**< Default synaptic time constant (ms) */
 
+    /* Input scaling */
+    float input_current_scale;      /**< Scale factor for external input currents (mV per unit input).
+                                     *   Default 30.0: maps input 0.7 → 21mV (suprathreshold),
+                                     *   input 0.3 → 9mV (subthreshold). Must exceed
+                                     *   (v_thresh - v_rest) for max input to produce spikes. */
+
     /* Encoding/Decoding */
     snn_encoder_config_t encoder;   /**< Input encoding configuration */
     snn_decoder_config_t decoder;   /**< Output decoding configuration */

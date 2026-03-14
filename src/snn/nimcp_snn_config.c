@@ -56,6 +56,9 @@ int snn_config_default(snn_config_t* config) {
     config->tau_mem = NIMCP_MEMBRANE_TAU_MS;            /* Membrane τ (ms) */
     config->tau_syn = 5.0f;             /* Synaptic τ (ms) */
 
+    /* Input current scaling */
+    config->input_current_scale = 30.0f;  /* 30 mV/unit: input 0.7 → 21mV above rest (fires) */
+
     /* Encoder defaults - Poisson rate coding */
     config->encoder.method = SNN_ENCODE_POISSON;
     config->encoder.max_rate = 100.0f;  /* Max 100 Hz */
