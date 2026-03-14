@@ -5710,10 +5710,20 @@ def main():
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
     if args.daemon:
-        # Connect to running brain daemon — no brain loading needed
+        # Connect to running brain daemon — wait for it to be ready
         from brain_client import BrainProxy, is_daemon_running
+        import time as _time
+        max_wait = 900  # 15 min max (full brain init can take 14 min)
+        waited = 0
+        while not is_daemon_running() and waited < max_wait:
+            if waited == 0:
+                print("  Waiting for brain daemon to become ready...")
+            _time.sleep(10)
+            waited += 10
+            if waited % 60 == 0:
+                print(f"  ... still waiting ({waited}s)")
         if not is_daemon_running():
-            print("  ERROR: Brain daemon is not running!")
+            print("  ERROR: Brain daemon not ready after 15 minutes!")
             print("  Start it with: sudo systemctl start athena-brain")
             sys.exit(1)
         brain = BrainProxy()
