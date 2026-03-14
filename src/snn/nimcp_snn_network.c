@@ -972,12 +972,16 @@ int snn_network_set_inputs(snn_network_t* network,
             if (neuron) {
                 /* Scale input to current.
              * Neurons need ~20mV above resting (-70mV) to reach threshold (-50mV).
-             * Features are in [-1, 1] range. Positive features should reliably
-             * produce suprathreshold currents. Scale factor 30 maps:
-             *   input 0.7 → 21mV (fires), input 0.3 → 9mV (subthreshold),
-             *   input -1.0 → -30mV (inhibition).
-             * This creates a natural sparsity: only strong features trigger spikes. */
-                neuron->external_current = inputs[i] * network->config.input_current_scale;
+             * After average-pooling, BERT features are typically [-0.5, 0.5].
+             * Apply ReLU (only positive features drive spikes) then scale.
+             * Scale factor maps: input 0.3 → 21mV (fires), 0.1 → 7mV (sub).
+             * This creates sparse activation from the strongest features. */
+                float inp = inputs[i];
+                if (inp > 0.0f) {
+                    neuron->external_current = inp * network->config.input_current_scale;
+                } else {
+                    neuron->external_current = 0.0f;  /* No inhibitory drive from negative features */
+                }
             }
         }
     }

@@ -1087,3 +1087,8 @@
 [2026-03-14 12:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-03-14 12:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-03-14 12:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-14 13:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-14 13:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-14 13:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-14 13:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-14 13:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
