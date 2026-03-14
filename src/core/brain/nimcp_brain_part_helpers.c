@@ -926,12 +926,26 @@ static void forward_snn_task(void* arg)
         snn_input = nimcp_calloc(snn_in, sizeof(float));
         if (!snn_input) return;
         uint32_t stride = ctx->num_features / snn_in;
+        /* Average-pool to SNN input dimension */
+        float pool_min = 1e30f, pool_max = -1e30f;
         for (uint32_t i = 0; i < snn_in; i++) {
             float sum = 0.0f;
             uint32_t start = i * stride;
             uint32_t end = (i + 1 < snn_in) ? (i + 1) * stride : ctx->num_features;
             for (uint32_t j = start; j < end; j++) sum += ctx->features[j];
             snn_input[i] = sum / (float)(end - start);
+            if (snn_input[i] < pool_min) pool_min = snn_input[i];
+            if (snn_input[i] > pool_max) pool_max = snn_input[i];
+        }
+        /* Normalize pooled features to [0, 1] so SNN input_current_scale
+         * maps directly to membrane current in mV. BERT embeddings after
+         * avg pooling are in ~[-0.05, 0.05] — without normalization the
+         * currents are < 1mV and neurons never spike. */
+        float pool_range = pool_max - pool_min;
+        if (pool_range > 1e-8f) {
+            for (uint32_t i = 0; i < snn_in; i++) {
+                snn_input[i] = (snn_input[i] - pool_min) / pool_range;
+            }
         }
         input_ptr = snn_input;
         input_dim = snn_in;
