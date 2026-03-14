@@ -458,9 +458,8 @@ static void generate_scales(size_t min_scale, size_t max_scale, size_t num_scale
             }
 
             scales[i] = (size_t)exp(log_min + (double)i * log_step);
-            if (scales[i] < min_scale) {
-                scales[i] = min_scale;
-            }
+            if (scales[i] < min_scale) scales[i] = min_scale;
+            if (scales[i] > max_scale) scales[i] = max_scale;
         }
     } else {
         double step = (double)(max_scale - min_scale) / (double)(num_scales - 1);
@@ -472,6 +471,7 @@ static void generate_scales(size_t min_scale, size_t max_scale, size_t num_scale
             }
 
             scales[i] = min_scale + (size_t)((double)i * step);
+            if (scales[i] > max_scale) scales[i] = max_scale;
         }
     }
 
@@ -1846,6 +1846,7 @@ int fractal_multifractal_spectrum(
             }
 
             size_t n = scales[si];
+            if (n > max_scale) n = max_scale;  /* Clamp: x_seg allocated for max_scale */
             if (n > count || n < 4) {
                 continue;
             }
