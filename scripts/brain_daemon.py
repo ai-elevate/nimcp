@@ -844,6 +844,8 @@ def main():
                         help="Load brain from checkpoint file")
     parser.add_argument("--resume", action="store_true",
                         help="Auto-resume from latest checkpoint")
+    parser.add_argument("--fresh", action="store_true",
+                        help="Ignore checkpoints, create fresh brain")
     parser.add_argument("--init-mode", type=str, default="full",
                         choices=["full", "fast", "minimal"],
                         help="Brain init mode (default: full)")
@@ -887,7 +889,10 @@ def main():
 
     # Determine checkpoint path
     checkpoint_path = args.checkpoint
-    if args.resume and not checkpoint_path:
+    if args.fresh:
+        checkpoint_path = None
+        logger.info("Fresh mode: ignoring checkpoints, creating new brain")
+    elif args.resume and not checkpoint_path:
         default_ckpt = os.path.join(args.checkpoint_dir, "athena_immersive.bin")
         daemon_ckpt = os.path.join(args.checkpoint_dir, "athena_daemon.bin")
         if os.path.exists(daemon_ckpt):

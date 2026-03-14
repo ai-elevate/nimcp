@@ -5744,7 +5744,7 @@ def main():
             print(f"  Daemon config (basic): {e} (non-fatal)")
         for label, fn in [
             ("Mixed precision", lambda: brain.enable_mixed_precision(True)),
-            ("Gradient checkpointing", lambda: brain.enable_gradient_checkpointing(True, 2)),
+            ("Gradient checkpointing", lambda: brain.enable_gradient_checkpointing(False, 0)),
             ("World model", lambda: brain.enable_world_model(True)),
             ("LNN", lambda: brain.lnn_create(128, 64, 32, 64)),
             ("Multi-network UTM", lambda: brain.enable_multi_network()),
@@ -5772,8 +5772,8 @@ def main():
 
         # --- Enable gradient checkpointing for memory-efficient training ---
         try:
-            brain.enable_gradient_checkpointing(True, 2)
-            print("  Gradient checkpointing: ON (every 2 layers)")
+            brain.enable_gradient_checkpointing(False, 0)
+            print("  Gradient checkpointing: OFF (avoiding stack smash in fresh init)")
         except Exception as e:
             print(f"  Gradient checkpointing: FAILED ({e})")
 
