@@ -829,6 +829,7 @@ int fractal_dfa(
         }
 
         size_t n = scales[si];
+        if (n > max_scale) n = max_scale;  /* Clamp: x_seg allocated for max_scale */
         if (n > count || n < (size_t)(cfg.dfa_poly_order + 2)) {
             continue;
         }
