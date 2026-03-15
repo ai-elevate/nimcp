@@ -487,7 +487,8 @@ nimcp_error_t nimcp_ephaptic_compute_lfp(
     for (uint32_t i = 0; i < system->neuron_count; i++) {
         freq_sum += system->neurons[i].natural_frequency;
     }
-    result->dominant_frequency = freq_sum / (float)system->neuron_count;
+    result->dominant_frequency = (system->neuron_count > 0)
+        ? freq_sum / (float)system->neuron_count : 0.0f;
 
     /* Simplified band power estimation */
     /* In a full implementation, would use FFT on time series */

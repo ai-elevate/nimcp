@@ -753,7 +753,8 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
             float modulated_target = controller->config.scaling_params.target_rate * sleep_target_modifier;
 
             /* Check stability (within 20% of modulated target) */
-            float ratio = ss->average_rate / modulated_target;
+            float ratio = (modulated_target > 1e-8f)
+                ? ss->average_rate / modulated_target : 0.0f;
             ss->is_stable = (ratio >= 0.8F && ratio <= 1.2F);
 
             /* Compute scaling factor with modulated target */

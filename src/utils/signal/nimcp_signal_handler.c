@@ -353,7 +353,8 @@ static void safe_write_hex(uintptr_t value)
 static bool parse_proc_maps_for_address(void* addr, char* out_buf, size_t buf_size)
 {
     if (!out_buf || buf_size == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_proc_maps_for_address: out_buf is NULL");
+        /* NO NIMCP_THROW_TO_IMMUNE here — this function is called from signal
+         * handlers where longjmp (used by THROW) is NOT async-signal-safe */
         return false;
     }
 
@@ -361,7 +362,7 @@ static bool parse_proc_maps_for_address(void* addr, char* out_buf, size_t buf_si
 
     int fd = open("/proc/self/maps", O_RDONLY);
     if (fd < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_proc_maps_for_address: validation failed");
+        /* No THROW — signal handler context, not async-signal-safe */
         return false;
     }
 
@@ -448,7 +449,7 @@ static bool parse_proc_maps_for_address(void* addr, char* out_buf, size_t buf_si
     }
 
     close(fd);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_proc_maps_for_address: validation failed");
+    /* No THROW — signal handler context */
     return false;
 }
 
@@ -467,7 +468,7 @@ static bool capture_crash_context(int sig, siginfo_t* info,
                                    ucontext_t* uc, crash_context_t* ctx)
 {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "capture_crash_context: ctx is NULL");
+        /* No THROW — called from signal handler, not async-signal-safe */
         return false;
     }
 

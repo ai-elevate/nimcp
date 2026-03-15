@@ -945,6 +945,12 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 brain->bptt_buffer[i].input = nimcp_calloc(num_features, sizeof(float));
                 brain->bptt_buffer[i].output = nimcp_calloc(target_size, sizeof(float));
                 brain->bptt_buffer[i].target = nimcp_calloc(target_size, sizeof(float));
+                /* Guard partial allocation failure */
+                if (!brain->bptt_buffer[i].input || !brain->bptt_buffer[i].output ||
+                    !brain->bptt_buffer[i].target) {
+                    NIMCP_LOGGING_WARN("BPTT buffer realloc failed at slot %u", i);
+                    break;
+                }
             }
             brain->bptt_input_dim = num_features;
             brain->bptt_output_dim = target_size;
@@ -1558,6 +1564,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                                   .target_size = brain->config.num_outputs,
                                   .confidence = confidence};
     strncpy(example.label, label, sizeof(example.label) - 1);
+    example.label[sizeof(example.label) - 1] = '\0';  /* Ensure NULL termination */
 
     // ========================================================================
     // FAST TRAINING MODE: Skip all biological subsystems for bulk throughput
