@@ -1356,17 +1356,26 @@ sequential_fallback:
         const float* snn_input_ptr = features;
         uint32_t snn_input_dim = num_features;
 
-        /* Average-pool features to match SNN input dimension */
+        /* Average-pool features to match SNN input dimension, then normalize to [0,1] */
         if (num_features > snn_in) {
             snn_input = nimcp_calloc(snn_in, sizeof(float));
             if (snn_input) {
                 uint32_t stride = num_features / snn_in;
+                float pool_min = 1e30f, pool_max = -1e30f;
                 for (uint32_t i = 0; i < snn_in; i++) {
                     float sum = 0.0f;
                     uint32_t start = i * stride;
                     uint32_t end = (i + 1 < snn_in) ? (i + 1) * stride : num_features;
                     for (uint32_t j = start; j < end; j++) sum += features[j];
                     snn_input[i] = sum / (float)(end - start);
+                    if (snn_input[i] < pool_min) pool_min = snn_input[i];
+                    if (snn_input[i] > pool_max) pool_max = snn_input[i];
+                }
+                float pool_range = pool_max - pool_min;
+                if (pool_range > 1e-8f) {
+                    for (uint32_t i = 0; i < snn_in; i++) {
+                        snn_input[i] = (snn_input[i] - pool_min) / pool_range;
+                    }
                 }
                 snn_input_ptr = snn_input;
                 snn_input_dim = snn_in;
