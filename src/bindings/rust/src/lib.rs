@@ -327,6 +327,117 @@ pub struct Phasor {
     pub phase: f32,
 }
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AvatarState {
+    pub mouth_open: f32,
+    pub lip_round: f32,
+    pub lip_upper: f32,
+    pub lip_lower: f32,
+    pub tongue_position: f32,
+    pub current_viseme: u8,
+    pub au1_inner_brow_raise: f32,
+    pub au2_outer_brow_raise: f32,
+    pub au4_brow_lower: f32,
+    pub au5_upper_lid_raise: f32,
+    pub au6_cheek_raise: f32,
+    pub au7_lid_tighten: f32,
+    pub au9_nose_wrinkle: f32,
+    pub au10_upper_lip_raise: f32,
+    pub au12_lip_corner_pull: f32,
+    pub au15_lip_corner_drop: f32,
+    pub au17_chin_raise: f32,
+    pub au20_lip_stretch: f32,
+    pub au23_lip_tighten: f32,
+    pub au25_lips_part: f32,
+    pub au26_jaw_drop: f32,
+    pub au28_lip_suck: f32,
+    pub valence: f32,
+    pub arousal: f32,
+    pub dominance: f32,
+    pub emotion_id: u32,
+    pub emotion_intensity: f32,
+    pub gaze_x: f32,
+    pub gaze_y: f32,
+    pub head_pitch: f32,
+    pub head_yaw: f32,
+    pub head_roll: f32,
+    pub blink: f32,
+    pub pitch_hz: f32,
+    pub speaking_rate: f32,
+    pub volume: f32,
+    pub timestamp_us: u64,
+    pub is_speaking: bool,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct RubricData {
+    pub internal_consistency: f32,
+    pub confidence_calibration: f32,
+    pub completeness: f32,
+    pub reasoning_chain_quality: f32,
+    pub epistemic_quality: f32,
+    pub ethical_alignment: f32,
+    pub tier1_score: f32,
+    pub originality: f32,
+    pub integration_depth: f32,
+    pub communication_clarity: f32,
+    pub engagement_quality: f32,
+    pub empathetic_accuracy: f32,
+    pub information_density: f32,
+    pub tier2_score: f32,
+    pub overall_score: f32,
+    pub grade: u8,
+    pub grade_modifier: u8,
+    pub subsystems_available: u32,
+    pub evaluation_time_us: u64,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ImmuneMetrics {
+    pub total_exceptions: u32,
+    pub recovered_exceptions: u32,
+    pub inflammation_level: f32,
+    pub active_antibodies: u32,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct SynapseStats {
+    pub total_synapses: u64,
+    pub growth_since_last: i64,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ExperienceResult {
+    pub prediction_error: f32,
+    pub attention_level: f32,
+    pub learning_rate_used: f32,
+    pub learning_applied: bool,
+    pub synapse_formed: bool,
+    pub reward_signal: f32,
+    pub experience_id: u64,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ExperienceConfig {
+    pub enabled: bool,
+    pub base_learning_rate: f32,
+    pub attention_threshold: f32,
+    pub attention_lr_scale: f32,
+    pub novelty_boost: f32,
+    pub enable_hebbian: bool,
+    pub enable_reward_learning: bool,
+    pub enable_world_model_update: bool,
+    pub enable_structural_plasticity: bool,
+    pub synaptogenesis_threshold: f32,
+    pub consolidation_interval: u32,
+}
+
 // ============================================================================
 // Opaque Handle Types
 // ============================================================================
@@ -399,6 +510,20 @@ extern "C" {
     fn nimcp_brain_save(brain: *mut NimcpBrainHandle, filepath: *const c_char) -> c_int;
     fn nimcp_brain_load(filepath: *const c_char) -> *mut NimcpBrainHandle;
     fn nimcp_brain_create_from_config(filepath: *const c_char) -> *mut NimcpBrainHandle;
+
+    // --- Brain creation variants ---
+    fn nimcp_brain_create_full(
+        name: *const c_char, task: c_int,
+        num_inputs: c_uint, num_outputs: c_uint, neuron_count: c_uint,
+    ) -> *mut NimcpBrainHandle;
+    fn nimcp_brain_create_with_neurons(
+        name: *const c_char, task: c_int,
+        num_inputs: c_uint, num_outputs: c_uint, neuron_count: c_uint,
+    ) -> *mut NimcpBrainHandle;
+    fn nimcp_brain_create_fast(
+        name: *const c_char, task: c_int,
+        num_inputs: c_uint, num_outputs: c_uint, neuron_count: c_uint,
+    ) -> *mut NimcpBrainHandle;
 
     // --- Brain training ---
     fn nimcp_training_config_default() -> TrainingConfig;
@@ -537,6 +662,336 @@ extern "C" {
     ) -> c_int;
     fn nimcp_brain_broadcast_probe(brain: *mut NimcpBrainHandle) -> c_int;
 
+    // --- Cognitive decision ---
+    fn nimcp_brain_decide_full(
+        brain: *mut NimcpBrainHandle,
+        features: *const c_float, num_features: c_uint,
+        out_label: *mut c_char, out_confidence: *mut c_float,
+        out_explanation: *mut c_char,
+        out_output_vector: *mut c_float, out_output_size: *mut c_uint,
+        out_num_active_neurons: *mut c_uint, out_sparsity: *mut c_float,
+        out_inference_time_us: *mut u64,
+    ) -> c_int;
+
+    // --- Language production ---
+    fn nimcp_brain_speak(
+        brain: *mut NimcpBrainHandle,
+        semantic_input: *const c_float, semantic_dim: c_uint,
+        out_text: *mut c_char, text_max_len: c_uint,
+        out_confidence: *mut c_float, out_fluency: *mut c_float,
+    ) -> c_int;
+    fn nimcp_brain_generate_text(
+        brain: *mut NimcpBrainHandle,
+        prompt: *const c_char,
+        semantic_input: *const c_float, semantic_dim: c_uint,
+        out_text: *mut c_char, text_max_len: c_uint,
+        out_confidence: *mut c_float, out_perplexity: *mut c_float,
+    ) -> c_int;
+    fn nimcp_brain_comprehend(
+        brain: *mut NimcpBrainHandle,
+        text: *const c_char,
+        out_semantic: *mut c_float, semantic_dim: c_uint,
+        out_confidence: *mut c_float,
+    ) -> c_int;
+    fn nimcp_brain_produce_text(
+        brain: *mut NimcpBrainHandle,
+        intent: *const c_float, intent_dim: c_uint,
+        out_text: *mut c_char, text_max_len: c_uint,
+        out_confidence: *mut c_float,
+    ) -> c_int;
+    fn nimcp_brain_creative_blend(
+        brain: *mut NimcpBrainHandle,
+        vector_a: *const c_float, vector_b: *const c_float,
+        vec_dim: c_uint, blend_ratio: c_float,
+        out_text: *mut c_char, text_max: c_uint,
+    ) -> c_int;
+    fn nimcp_brain_grounded_respond(
+        brain: *mut NimcpBrainHandle,
+        input_text: *const c_char,
+        out_response: *mut c_char, response_max: c_uint,
+        out_confidence: *mut c_float,
+    ) -> c_int;
+
+    // --- Metrics getters ---
+    fn nimcp_brain_get_accuracy(brain: *mut NimcpBrainHandle) -> c_float;
+    fn nimcp_brain_get_last_gradient_norm(brain: *mut NimcpBrainHandle) -> c_float;
+    fn nimcp_brain_get_last_loss(brain: *mut NimcpBrainHandle) -> c_float;
+    fn nimcp_brain_get_network_metrics(
+        brain: *mut NimcpBrainHandle,
+        ema_ann: *mut c_float, ema_cnn: *mut c_float,
+        ema_snn: *mut c_float, ema_lnn: *mut c_float,
+        ann_steps: *mut u64, cnn_steps: *mut u64,
+        snn_steps: *mut u64, lnn_steps: *mut u64,
+    ) -> bool;
+    fn nimcp_brain_get_cognitive_stats(
+        brain: *mut NimcpBrainHandle,
+        out_stats: *mut c_uint, out_losses: *mut c_float,
+        out_count: *mut c_uint,
+    ) -> c_int;
+    fn nimcp_brain_get_avatar_state(
+        brain: *mut NimcpBrainHandle, state: *mut AvatarState,
+    ) -> c_int;
+    fn nimcp_brain_get_last_transcript(
+        brain: *mut NimcpBrainHandle,
+        out_entries: *mut [c_char; 256],
+        out_saliences: *mut c_float,
+        out_confidences: *mut c_float,
+        out_modules: *mut *const c_char,
+        max_entries: c_uint,
+    ) -> c_uint;
+    fn nimcp_brain_get_cortex_cnn_metrics(
+        brain: *mut NimcpBrainHandle,
+        out_types: *mut c_int, out_losses: *mut c_float,
+        out_fwd_steps: *mut u64, out_bwd_steps: *mut u64,
+        out_embed_norms: *mut c_float, out_count: *mut c_uint,
+    ) -> c_int;
+
+    // --- Vector / batch learning ---
+    fn nimcp_brain_learn_vector(
+        brain: *mut NimcpBrainHandle,
+        features: *const c_float, num_features: c_uint,
+        target: *const c_float, target_size: c_uint,
+        label: *const c_char, confidence: c_float,
+    ) -> c_int;
+    fn nimcp_brain_learn_vector_batch(
+        brain: *mut NimcpBrainHandle,
+        features_array: *const *const c_float,
+        targets_array: *const *const c_float,
+        num_features: c_uint, target_size: c_uint,
+        num_examples: c_uint, learning_rate: c_float,
+    ) -> c_float;
+    fn nimcp_brain_learn_batch(
+        brain: *mut NimcpBrainHandle,
+        features_array: *const *const c_float,
+        num_features_array: *const c_uint,
+        labels: *const *const c_char,
+        confidences: *const c_float,
+        num_examples: c_uint,
+        losses_out: *mut c_float,
+    ) -> c_int;
+
+    // --- Knowledge / language learning ---
+    fn nimcp_brain_learn_knowledge(
+        brain: *mut NimcpBrainHandle, text: *const c_char, domain: c_int,
+    ) -> c_int;
+    fn nimcp_brain_learn_language(
+        brain: *mut NimcpBrainHandle, text: *const c_char,
+        out_loss: *mut c_float,
+    ) -> c_int;
+    fn nimcp_brain_learn_language_pair(
+        brain: *mut NimcpBrainHandle,
+        input_text: *const c_char, target_text: *const c_char,
+        learning_rate: c_float, out_loss: *mut c_float,
+    ) -> c_int;
+    fn nimcp_brain_train_cognitive(
+        brain: *mut NimcpBrainHandle,
+        text: *const c_char, domain: c_int,
+        target_text: *const c_char, learning_rate: c_float,
+        out_loss: *mut c_float,
+    ) -> c_int;
+    fn nimcp_brain_train_language(
+        brain: *mut NimcpBrainHandle,
+        input_text: *const c_char, target_text: *const c_char,
+        learning_rate: c_float, out_loss: *mut c_float,
+    ) -> c_int;
+
+    // --- Fast / domain prediction ---
+    fn nimcp_brain_predict_fast(
+        brain: *mut NimcpBrainHandle, features: *const c_float,
+        num_features: c_uint, out_label: *mut c_char, out_confidence: *mut c_float,
+    ) -> c_int;
+    fn nimcp_brain_predict_in_domain(
+        brain: *mut NimcpBrainHandle, features: *const c_float,
+        num_features: c_uint, domain_prefix: *const c_char,
+        out_label: *mut c_char, out_confidence: *mut c_float,
+    ) -> c_int;
+
+    // --- Freeze / mode ---
+    fn nimcp_brain_freeze(brain: *mut NimcpBrainHandle) -> c_int;
+    fn nimcp_brain_is_frozen(brain: *mut NimcpBrainHandle) -> bool;
+    fn nimcp_brain_enable_mixed_precision(
+        brain: *mut NimcpBrainHandle, enable: bool,
+    ) -> c_int;
+    fn nimcp_brain_enable_gradient_checkpointing(
+        brain: *mut NimcpBrainHandle, enable: bool, checkpoint_interval: c_uint,
+    ) -> c_int;
+    fn nimcp_brain_enable_hemispheric(
+        brain: *mut NimcpBrainHandle, enable: bool,
+    ) -> c_int;
+    fn nimcp_brain_enable_recurrent(
+        brain: *mut NimcpBrainHandle, enable: bool,
+        max_iterations: c_uint, confidence_threshold: c_float,
+        blend_alpha: c_float,
+    ) -> c_int;
+    fn nimcp_brain_enable_bptt(
+        brain: *mut NimcpBrainHandle, enable: bool,
+        window_size: c_uint, discount: c_float,
+    ) -> c_int;
+    fn nimcp_brain_enable_multi_network(brain: *mut NimcpBrainHandle) -> c_int;
+    fn nimcp_brain_enable_biological_plasticity(
+        brain: *mut NimcpBrainHandle, enabled: bool,
+    ) -> c_int;
+    fn nimcp_brain_set_fast_training(
+        brain: *mut NimcpBrainHandle, enabled: bool,
+    ) -> c_int;
+    fn nimcp_brain_set_task_type(
+        brain: *mut NimcpBrainHandle, task_type: *const c_char,
+    ) -> c_int;
+    fn nimcp_brain_set_training_mode(
+        brain: *mut NimcpBrainHandle, active: bool,
+    );
+    fn nimcp_brain_set_network_ablation(
+        brain: *mut NimcpBrainHandle,
+        train_cnn: c_int, train_snn: c_int, train_lnn: c_int,
+    );
+
+    // --- Sensory / cortex ---
+    fn nimcp_brain_submit_sensory(
+        brain: *mut NimcpBrainHandle,
+        modality: *const c_char,
+        data: *const c_float, num_elements: c_uint,
+        width: c_uint, height: c_uint, channels: c_uint,
+        n_segments: c_uint,
+    ) -> c_int;
+    fn nimcp_brain_visual_cortex_process(
+        brain: *mut NimcpBrainHandle,
+        pixels: *const c_float, num_pixels: c_uint,
+        width: c_uint, height: c_uint, channels: c_uint,
+        out_features: *mut c_float, max_features: c_uint,
+        out_feature_count: *mut c_uint,
+    ) -> c_int;
+
+    // --- Brain region probes ---
+    fn nimcp_brain_medulla_get_arousal(brain: *mut NimcpBrainHandle) -> c_float;
+    fn nimcp_brain_bg_get_dopamine(brain: *mut NimcpBrainHandle) -> c_float;
+    fn nimcp_brain_sleep_get_pressure(brain: *mut NimcpBrainHandle) -> c_float;
+    fn nimcp_brain_substrate_get_health(
+        brain: *mut NimcpBrainHandle,
+        out_status: *mut c_char, max_len: c_uint,
+    ) -> c_int;
+
+    // --- Sub-network creation / stats ---
+    fn nimcp_brain_lnn_create(
+        brain: *mut NimcpBrainHandle,
+        n_sensory: c_uint, n_inter: c_uint,
+        n_command: c_uint, n_output: c_uint,
+    ) -> c_int;
+    fn nimcp_brain_lnn_get_stats(
+        brain: *mut NimcpBrainHandle,
+        out_forward_steps: *mut u64, out_backward_steps: *mut u64,
+        out_ode_evals: *mut u64, out_avg_tau: *mut c_float,
+        out_state_norm: *mut c_float, out_gradient_norm: *mut c_float,
+        out_nan_count: *mut c_uint, out_inf_count: *mut c_uint,
+    ) -> c_int;
+    fn nimcp_brain_snn_get_stats(
+        brain: *mut NimcpBrainHandle,
+        out_total_steps: *mut u64, out_total_spikes: *mut u64,
+        out_mean_firing_rate: *mut c_float, out_sparsity: *mut c_float,
+        out_synchrony: *mut c_float, out_silent_neurons: *mut c_uint,
+        out_hyperactive_neurons: *mut c_uint, out_health: *mut c_int,
+        out_memory_bytes: *mut usize,
+    ) -> c_int;
+    fn nimcp_brain_cnn_get_stats(
+        brain: *mut NimcpBrainHandle,
+        out_num_layers: *mut c_uint, out_num_parameters: *mut usize,
+        out_num_labels: *mut c_uint, out_active: *mut bool,
+    ) -> c_int;
+
+    // --- Rubric ---
+    fn nimcp_brain_rubric(
+        brain: *mut NimcpBrainHandle, rubric: *mut RubricData,
+    ) -> c_int;
+    fn nimcp_brain_broadcast_rubric(brain: *mut NimcpBrainHandle) -> c_int;
+    fn nimcp_brain_set_rubric_validation(
+        brain: *mut NimcpBrainHandle, features: *const c_float,
+        num_features: c_uint,
+    ) -> c_int;
+    fn nimcp_brain_get_rubric_training_stats(
+        brain: *mut NimcpBrainHandle,
+        eval_count: *mut u64, min_score: *mut c_float,
+        max_score: *mut c_float, avg_score: *mut c_float,
+        last_rubric: *mut RubricData,
+    ) -> c_int;
+
+    // --- Experience ---
+    fn nimcp_brain_experience(
+        brain: *mut NimcpBrainHandle,
+        input: *const c_float, input_size: c_uint,
+        output: *mut c_float, output_size: c_uint,
+        teacher_reward: c_float,
+        result: *mut ExperienceResult,
+    ) -> c_int;
+    fn nimcp_brain_experience_configure(
+        brain: *mut NimcpBrainHandle,
+        config: *const ExperienceConfig,
+    ) -> c_int;
+    fn nimcp_brain_experience_correct(
+        brain: *mut NimcpBrainHandle,
+        expected: *const c_float, expected_size: c_uint,
+    ) -> c_float;
+    fn nimcp_brain_experience_attend(
+        brain: *mut NimcpBrainHandle,
+        modality: *const c_char, strength: c_float,
+    ) -> c_int;
+
+    // --- Grounded language ---
+    fn nimcp_brain_ground_word(
+        brain: *mut NimcpBrainHandle,
+        word: *const c_char,
+        features: *const c_float, feature_dim: c_uint,
+        modality: c_uint, attention: c_float,
+    ) -> c_int;
+    fn nimcp_brain_innate_hardwire(
+        brain: *mut NimcpBrainHandle,
+        config: *const c_void,
+    ) -> c_int;
+
+    // --- Cloud ---
+    fn nimcp_brain_connect_cloud(
+        brain: *mut NimcpBrainHandle, cloud_brain: *mut NimcpBrainHandle,
+        confidence_threshold: c_float, enable_distillation: bool,
+    ) -> c_int;
+    fn nimcp_brain_disconnect_cloud(brain: *mut NimcpBrainHandle) -> c_int;
+    fn nimcp_brain_distill_cloud_batch(
+        brain: *mut NimcpBrainHandle, max_examples: c_uint,
+    ) -> c_uint;
+    fn nimcp_brain_get_cloud_stats(
+        brain: *mut NimcpBrainHandle,
+        total_queries: *mut u64, local_handled: *mut u64,
+        cloud_escalated: *mut u64, distillation_steps: *mut u64,
+    ) -> c_int;
+    fn nimcp_brain_connect_collective(
+        brain_a: *mut NimcpBrainHandle, brain_b: *mut NimcpBrainHandle,
+        instance_id: c_uint,
+    ) -> c_int;
+
+    // --- Attention / hemispheric ---
+    fn nimcp_brain_focus_attention(
+        brain: *mut NimcpBrainHandle, modality: *const c_char,
+    ) -> c_int;
+    fn nimcp_brain_get_hemispheric_balance(brain: *mut NimcpBrainHandle) -> c_float;
+    fn nimcp_brain_get_callosum_transfers(brain: *mut NimcpBrainHandle) -> u64;
+    fn nimcp_brain_get_lateralization(
+        brain: *mut NimcpBrainHandle, domain: c_uint,
+    ) -> c_float;
+    fn nimcp_brain_shift_lateralization(
+        brain: *mut NimcpBrainHandle, domain: c_uint, shift: c_float,
+    ) -> c_int;
+    fn nimcp_brain_get_recurrent_iterations(brain: *mut NimcpBrainHandle) -> c_uint;
+
+    // --- Health probes ---
+    fn nimcp_brain_get_immune_metrics(
+        brain: *mut NimcpBrainHandle, out: *mut ImmuneMetrics,
+    ) -> c_int;
+    fn nimcp_brain_get_sparsity_ratio(brain: *mut NimcpBrainHandle) -> c_float;
+    fn nimcp_brain_get_synapse_stats(
+        brain: *mut NimcpBrainHandle, out: *mut SynapseStats,
+    ) -> c_int;
+    fn nimcp_brain_get_active_neuron_count(brain: *mut NimcpBrainHandle) -> c_uint;
+    fn nimcp_brain_get_neuron_utilization(brain: *mut NimcpBrainHandle) -> c_float;
+    fn nimcp_brain_get_gpu_vram_used(brain: *mut NimcpBrainHandle) -> usize;
+    fn nimcp_brain_get_memory_rss() -> usize;
+
     // --- Network ---
     fn nimcp_network_create(
         num_inputs: c_uint, num_outputs: c_uint,
@@ -571,191 +1026,6 @@ extern "C" {
         knowledge: *mut NimcpKnowledgeHandle, query: *const c_char,
         out_result: *mut c_char, max_result_len: c_uint,
     ) -> c_int;
-
-    // --- Brain extended creation ---
-    fn nimcp_brain_create_with_neurons(
-        name: *const c_char, task: c_int, num_inputs: c_uint,
-        num_outputs: c_uint, neuron_count: c_uint,
-    ) -> *mut NimcpBrainHandle;
-    fn nimcp_brain_create_full(
-        name: *const c_char, task: c_int, num_inputs: c_uint,
-        num_outputs: c_uint, neuron_count: c_uint,
-    ) -> *mut NimcpBrainHandle;
-
-    // --- Brain freeze ---
-    fn nimcp_brain_freeze(brain: *mut NimcpBrainHandle) -> c_int;
-    fn nimcp_brain_is_frozen(brain: *mut NimcpBrainHandle) -> bool;
-
-    // --- Brain prediction extended ---
-    fn nimcp_brain_predict_fast(
-        brain: *mut NimcpBrainHandle, features: *const c_float,
-        num_features: c_uint, out_label: *mut c_char, out_confidence: *mut c_float,
-    ) -> c_int;
-    fn nimcp_brain_predict_in_domain(
-        brain: *mut NimcpBrainHandle, features: *const c_float,
-        num_features: c_uint, domain_prefix: *const c_char,
-        out_label: *mut c_char, out_confidence: *mut c_float,
-    ) -> c_int;
-    fn nimcp_brain_decide_full(
-        brain: *mut NimcpBrainHandle, features: *const c_float, num_features: c_uint,
-        out_label: *mut c_char, out_confidence: *mut c_float,
-        out_explanation: *mut c_char,
-        out_output_vector: *mut c_float, out_output_size: *mut c_uint,
-        out_active_neurons: *mut c_uint, out_sparsity: *mut c_float,
-        out_time_us: *mut u64,
-    ) -> c_int;
-
-    // --- Brain learning extended ---
-    fn nimcp_brain_learn_vector(
-        brain: *mut NimcpBrainHandle, features: *const c_float, num_features: c_uint,
-        target: *const c_float, target_size: c_uint,
-        label: *const c_char, confidence: c_float, learning_rate: c_float,
-    ) -> c_int;
-    fn nimcp_brain_learn_batch(
-        brain: *mut NimcpBrainHandle, features_array: *const *const c_float,
-        num_features_array: *const c_uint, labels: *const *const c_char,
-        confidences: *const c_float, batch_size: c_uint,
-        out_losses: *mut c_float,
-    ) -> c_int;
-    fn nimcp_brain_learn_knowledge(
-        brain: *mut NimcpBrainHandle, text: *const c_char, domain: c_int,
-    ) -> c_int;
-    fn nimcp_brain_learn_language(
-        brain: *mut NimcpBrainHandle, text: *const c_char, out_loss: *mut c_float,
-    ) -> c_int;
-    fn nimcp_brain_learn_language_pair(
-        brain: *mut NimcpBrainHandle, input: *const c_char, target: *const c_char,
-        learning_rate: c_float, out_loss: *mut c_float,
-    ) -> c_int;
-    fn nimcp_brain_train_cognitive(
-        brain: *mut NimcpBrainHandle, text: *const c_char, domain: c_int,
-        target_text: *const c_char, learning_rate: c_float, out_loss: *mut c_float,
-    ) -> c_int;
-    fn nimcp_brain_train_language(
-        brain: *mut NimcpBrainHandle, input: *const c_char, target: *const c_char,
-        learning_rate: c_float, out_loss: *mut c_float,
-    ) -> c_int;
-
-    // --- Brain language generation ---
-    fn nimcp_brain_speak(
-        brain: *mut NimcpBrainHandle, semantic_input: *const c_float,
-        semantic_dim: c_uint, out_text: *mut c_char, text_max_len: c_uint,
-        out_confidence: *mut c_float, out_fluency: *mut c_float,
-    ) -> c_int;
-    fn nimcp_brain_generate_text(
-        brain: *mut NimcpBrainHandle, prompt: *const c_char,
-        semantic_input: *const c_float, semantic_dim: c_uint,
-        out_text: *mut c_char, text_max_len: c_uint,
-        out_confidence: *mut c_float, out_perplexity: *mut c_float,
-    ) -> c_int;
-    fn nimcp_brain_comprehend(
-        brain: *mut NimcpBrainHandle, text: *const c_char,
-        out_semantic: *mut c_float, semantic_dim: c_uint,
-        out_confidence: *mut c_float,
-    ) -> c_int;
-    fn nimcp_brain_produce_text(
-        brain: *mut NimcpBrainHandle, intent: *const c_float, intent_dim: c_uint,
-        out_text: *mut c_char, text_max_len: c_uint, out_confidence: *mut c_float,
-    ) -> c_int;
-
-    // --- Brain configuration ---
-    fn nimcp_brain_set_fast_training(brain: *mut NimcpBrainHandle, enabled: bool) -> c_int;
-    fn nimcp_brain_set_task_type(brain: *mut NimcpBrainHandle, task: *const c_char) -> c_int;
-    fn nimcp_brain_set_training_mode(brain: *mut NimcpBrainHandle, active: bool) -> c_int;
-    fn nimcp_brain_set_network_ablation(
-        brain: *mut NimcpBrainHandle, train_cnn: c_int, train_snn: c_int, train_lnn: c_int,
-    ) -> c_int;
-    fn nimcp_brain_enable_biological_plasticity(brain: *mut NimcpBrainHandle, enabled: bool) -> c_int;
-    fn nimcp_brain_enable_mixed_precision(brain: *mut NimcpBrainHandle, enable: bool) -> c_int;
-    fn nimcp_brain_enable_gradient_checkpointing(
-        brain: *mut NimcpBrainHandle, enable: bool, interval: c_uint,
-    ) -> c_int;
-    fn nimcp_brain_enable_hemispheric(brain: *mut NimcpBrainHandle, enable: bool) -> c_int;
-    fn nimcp_brain_enable_recurrent(
-        brain: *mut NimcpBrainHandle, enable: bool, max_iter: c_uint,
-        confidence_threshold: c_float, blend_alpha: c_float,
-    ) -> c_int;
-    fn nimcp_brain_enable_bptt(
-        brain: *mut NimcpBrainHandle, enable: bool, window: c_uint, discount: c_float,
-    ) -> c_int;
-    fn nimcp_brain_enable_multi_network(brain: *mut NimcpBrainHandle) -> c_int;
-
-    // --- Brain metrics ---
-    fn nimcp_brain_get_accuracy(brain: *mut NimcpBrainHandle) -> c_float;
-    fn nimcp_brain_get_last_gradient_norm(brain: *mut NimcpBrainHandle) -> c_float;
-    fn nimcp_brain_get_last_loss(brain: *mut NimcpBrainHandle) -> c_float;
-    fn nimcp_brain_get_network_metrics(
-        brain: *mut NimcpBrainHandle,
-        ema_ann: *mut c_float, ema_cnn: *mut c_float,
-        ema_snn: *mut c_float, ema_lnn: *mut c_float,
-        ann_steps: *mut u64, cnn_steps: *mut u64,
-        snn_steps: *mut u64, lnn_steps: *mut u64,
-    ) -> bool;
-    fn nimcp_brain_get_cortex_cnn_metrics(
-        brain: *mut NimcpBrainHandle,
-        out_types: *mut c_int, out_losses: *mut c_float,
-        out_fwd_steps: *mut u64, out_bwd_steps: *mut u64,
-        out_embed_norms: *mut c_float, out_count: *mut c_uint,
-    ) -> c_int;
-    fn nimcp_brain_medulla_get_arousal(brain: *mut NimcpBrainHandle) -> c_float;
-    fn nimcp_brain_bg_get_dopamine(brain: *mut NimcpBrainHandle) -> c_float;
-    fn nimcp_brain_sleep_get_pressure(brain: *mut NimcpBrainHandle) -> c_float;
-    fn nimcp_brain_substrate_get_health(
-        brain: *mut NimcpBrainHandle, out_health: *mut c_char, max_len: c_uint,
-    ) -> c_int;
-
-    // --- Brain sensory ---
-    fn nimcp_brain_submit_sensory(
-        brain: *mut NimcpBrainHandle, modality: *const c_char,
-        data: *const c_float, num_elements: c_uint,
-        width: c_uint, height: c_uint, channels: c_uint, n_segments: c_uint,
-    ) -> c_int;
-    fn nimcp_brain_visual_cortex_process(
-        brain: *mut NimcpBrainHandle, pixels: *const c_float, num_pixels: c_uint,
-        width: c_uint, height: c_uint, channels: c_uint,
-        out_features: *mut c_float, max_features: c_uint, out_feature_count: *mut c_uint,
-    ) -> c_int;
-
-    // --- Brain LNN/SNN/CNN ---
-    fn nimcp_brain_lnn_create(
-        brain: *mut NimcpBrainHandle,
-        n_sensory: c_uint, n_inter: c_uint, n_command: c_uint, n_output: c_uint,
-    ) -> c_int;
-    fn nimcp_brain_lnn_get_stats(
-        brain: *mut NimcpBrainHandle,
-        out_fwd: *mut u64, out_bwd: *mut u64, out_ode: *mut u64,
-        out_tau: *mut c_float, out_state_norm: *mut c_float,
-        out_grad_norm: *mut c_float, out_nan: *mut c_uint, out_inf: *mut c_uint,
-    ) -> c_int;
-    fn nimcp_brain_snn_get_stats(
-        brain: *mut NimcpBrainHandle,
-        out_steps: *mut u64, out_spikes: *mut u64,
-        out_mean_rate: *mut c_float, out_max_rate: *mut c_float,
-        out_sparsity: *mut c_float, out_synchrony: *mut c_float,
-        out_health: *mut c_int, out_mem_bytes: *mut u64,
-    ) -> c_int;
-    fn nimcp_brain_cnn_get_stats(
-        brain: *mut NimcpBrainHandle,
-        out_layers: *mut c_uint, out_params: *mut c_uint, out_labels: *mut c_uint,
-    ) -> c_int;
-
-    // --- Brain experience ---
-    fn nimcp_brain_experience(
-        brain: *mut NimcpBrainHandle, input: *const c_float, input_size: c_uint,
-        output: *mut c_float, output_size: c_uint,
-        teacher_reward: c_float, out_prediction_error: *mut c_float,
-    ) -> c_int;
-    fn nimcp_brain_experience_correct(
-        brain: *mut NimcpBrainHandle, expected: *const c_float, size: c_uint,
-        out_loss: *mut c_float,
-    ) -> c_int;
-
-    // --- Brain cloud ---
-    fn nimcp_brain_connect_cloud(
-        brain: *mut NimcpBrainHandle, cloud: *mut NimcpBrainHandle,
-        confidence_threshold: c_float, enable_distillation: bool,
-    ) -> c_int;
-    fn nimcp_brain_disconnect_cloud(brain: *mut NimcpBrainHandle) -> c_int;
 }
 
 // ============================================================================
@@ -793,6 +1063,11 @@ pub fn callback_config_default() -> CallbackConfig {
     unsafe { nimcp_callback_config_default() }
 }
 
+/// Get process RSS in bytes (global, not per-brain)
+pub fn get_memory_rss() -> usize {
+    unsafe { nimcp_brain_get_memory_rss() }
+}
+
 // ============================================================================
 // Safe Data Types
 // ============================================================================
@@ -821,67 +1096,6 @@ pub struct WorkspaceReadResult {
     pub content: Vec<f32>,
     pub actual_dim: u32,
     pub source_module: CognitiveModule,
-}
-
-#[derive(Debug)]
-pub struct DecideFullResult {
-    pub label: String,
-    pub confidence: f32,
-    pub explanation: String,
-    pub output_vector: Vec<f32>,
-    pub active_neurons: u32,
-    pub sparsity: f32,
-    pub inference_time_us: u64,
-}
-
-#[derive(Debug)]
-pub struct SpeakResult {
-    pub text: String,
-    pub confidence: f32,
-    pub fluency: f32,
-}
-
-#[derive(Debug, Default)]
-pub struct NetworkMetrics {
-    pub ann_loss: f32,
-    pub cnn_loss: f32,
-    pub snn_loss: f32,
-    pub lnn_loss: f32,
-    pub ann_steps: u64,
-    pub cnn_steps: u64,
-    pub snn_steps: u64,
-    pub lnn_steps: u64,
-}
-
-#[derive(Debug, Default)]
-pub struct LnnStats {
-    pub forward_steps: u64,
-    pub backward_steps: u64,
-    pub ode_evals: u64,
-    pub avg_tau: f32,
-    pub state_norm: f32,
-    pub gradient_norm: f32,
-    pub nan_count: u32,
-    pub inf_count: u32,
-}
-
-#[derive(Debug, Default)]
-pub struct SnnStats {
-    pub total_steps: u64,
-    pub total_spikes: u64,
-    pub mean_firing_rate: f32,
-    pub max_firing_rate: f32,
-    pub sparsity: f32,
-    pub synchrony: f32,
-    pub health: i32,
-    pub memory_bytes: u64,
-}
-
-#[derive(Debug, Default)]
-pub struct CnnStats {
-    pub num_layers: u32,
-    pub num_params: u32,
-    pub num_labels: u32,
 }
 
 #[derive(Debug)]
@@ -927,6 +1141,103 @@ pub struct BrainProbe {
     pub cow_private_bytes: usize,
 }
 
+/// Full decision result from decide_full()
+#[derive(Debug)]
+pub struct DecisionFull {
+    pub label: String,
+    pub confidence: f32,
+    pub explanation: String,
+    pub output_vector: Vec<f32>,
+    pub num_active_neurons: u32,
+    pub sparsity: f32,
+    pub inference_time_us: u64,
+}
+
+/// Per-network training metrics
+#[derive(Debug)]
+pub struct NetworkMetrics {
+    pub ema_ann: f32,
+    pub ema_cnn: f32,
+    pub ema_snn: f32,
+    pub ema_lnn: f32,
+    pub ann_steps: u64,
+    pub cnn_steps: u64,
+    pub snn_steps: u64,
+    pub lnn_steps: u64,
+}
+
+/// LNN statistics
+#[derive(Debug)]
+pub struct LnnStats {
+    pub forward_steps: u64,
+    pub backward_steps: u64,
+    pub ode_evals: u64,
+    pub avg_tau: f32,
+    pub state_norm: f32,
+    pub gradient_norm: f32,
+    pub nan_count: u32,
+    pub inf_count: u32,
+}
+
+/// SNN statistics
+#[derive(Debug)]
+pub struct SnnStats {
+    pub total_steps: u64,
+    pub total_spikes: u64,
+    pub mean_firing_rate: f32,
+    pub sparsity: f32,
+    pub synchrony: f32,
+    pub silent_neurons: u32,
+    pub hyperactive_neurons: u32,
+    pub health: i32,
+    pub memory_bytes: usize,
+}
+
+/// CNN statistics
+#[derive(Debug)]
+pub struct CnnStats {
+    pub num_layers: u32,
+    pub num_parameters: usize,
+    pub num_labels: u32,
+    pub active: bool,
+}
+
+/// Cloud inference statistics
+#[derive(Debug)]
+pub struct CloudStats {
+    pub total_queries: u64,
+    pub local_handled: u64,
+    pub cloud_escalated: u64,
+    pub distillation_steps: u64,
+}
+
+/// Rubric training statistics
+#[derive(Debug)]
+pub struct RubricTrainingStats {
+    pub eval_count: u64,
+    pub min_score: f32,
+    pub max_score: f32,
+    pub avg_score: f32,
+    pub last_rubric: RubricData,
+}
+
+/// Per-cortex CNN metrics
+#[derive(Debug)]
+pub struct CortexCnnMetrics {
+    pub types: Vec<i32>,
+    pub losses: Vec<f32>,
+    pub fwd_steps: Vec<u64>,
+    pub bwd_steps: Vec<u64>,
+    pub embed_norms: Vec<f32>,
+}
+
+/// Cognitive training stats per module
+#[derive(Debug)]
+pub struct CognitiveStats {
+    pub step_counts: Vec<u32>,
+    pub losses: Vec<f32>,
+}
+
 // ============================================================================
 // Brain
 // ============================================================================
@@ -936,8 +1247,6 @@ type CallbackBoxPtr =
 
 pub struct Brain {
     handle: *mut NimcpBrainHandle,
-    // Raw pointers to heap-allocated callback closures — C holds these as user_data.
-    // We free them only when the Brain is dropped.
     _callback_ptrs: Vec<CallbackBoxPtr>,
 }
 
@@ -951,6 +1260,42 @@ impl Brain {
             let handle = nimcp_brain_create(
                 c_name.as_ptr(), size as c_int, task as c_int,
                 num_inputs, num_outputs,
+            );
+            if handle.is_null() {
+                Err(NimcpError::Generic(get_error_string()))
+            } else {
+                Ok(Brain { handle, _callback_ptrs: Vec::new() })
+            }
+        }
+    }
+
+    pub fn create_with_neurons(
+        name: &str, task: BrainTask,
+        num_inputs: u32, num_outputs: u32, neuron_count: u32,
+    ) -> Result<Self> {
+        let c_name = CString::new(name).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        unsafe {
+            let handle = nimcp_brain_create_with_neurons(
+                c_name.as_ptr(), task as c_int,
+                num_inputs, num_outputs, neuron_count,
+            );
+            if handle.is_null() {
+                Err(NimcpError::Generic(get_error_string()))
+            } else {
+                Ok(Brain { handle, _callback_ptrs: Vec::new() })
+            }
+        }
+    }
+
+    pub fn create_full(
+        name: &str, task: BrainTask,
+        num_inputs: u32, num_outputs: u32, neuron_count: u32,
+    ) -> Result<Self> {
+        let c_name = CString::new(name).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        unsafe {
+            let handle = nimcp_brain_create_full(
+                c_name.as_ptr(), task as c_int,
+                num_inputs, num_outputs, neuron_count,
             );
             if handle.is_null() {
                 Err(NimcpError::Generic(get_error_string()))
@@ -1026,6 +1371,794 @@ impl Brain {
         check_status(unsafe { nimcp_brain_save(self.handle, c_path.as_ptr()) })
     }
 
+    // --- Cognitive Decision ---
+
+    pub fn decide_full(&self, features: &[f32], max_outputs: u32) -> Result<DecisionFull> {
+        let mut label_buf = vec![0u8; 64];
+        let mut confidence: f32 = 0.0;
+        let mut explanation_buf = vec![0u8; 256];
+        let mut output_vec = vec![0.0f32; max_outputs as usize];
+        let mut output_size: u32 = max_outputs;
+        let mut active_neurons: u32 = 0;
+        let mut sparsity: f32 = 0.0;
+        let mut inference_us: u64 = 0;
+        check_status(unsafe {
+            nimcp_brain_decide_full(
+                self.handle, features.as_ptr(), features.len() as c_uint,
+                label_buf.as_mut_ptr() as *mut c_char, &mut confidence,
+                explanation_buf.as_mut_ptr() as *mut c_char,
+                output_vec.as_mut_ptr(), &mut output_size,
+                &mut active_neurons, &mut sparsity, &mut inference_us,
+            )
+        })?;
+        let label = unsafe {
+            CStr::from_ptr(label_buf.as_ptr() as *const c_char)
+                .to_string_lossy().into_owned()
+        };
+        let explanation = unsafe {
+            CStr::from_ptr(explanation_buf.as_ptr() as *const c_char)
+                .to_string_lossy().into_owned()
+        };
+        output_vec.truncate(output_size as usize);
+        Ok(DecisionFull {
+            label, confidence, explanation, output_vector: output_vec,
+            num_active_neurons: active_neurons, sparsity, inference_time_us: inference_us,
+        })
+    }
+
+    // --- Language Production ---
+
+    pub fn speak(
+        &self, semantic_input: Option<&[f32]>, max_len: u32,
+    ) -> Result<(String, f32, f32)> {
+        let mut text_buf = vec![0u8; max_len as usize];
+        let mut confidence: f32 = 0.0;
+        let mut fluency: f32 = 0.0;
+        let (sem_ptr, sem_dim) = match semantic_input {
+            Some(s) => (s.as_ptr(), s.len() as c_uint),
+            None => (ptr::null(), 0),
+        };
+        check_status(unsafe {
+            nimcp_brain_speak(
+                self.handle, sem_ptr, sem_dim,
+                text_buf.as_mut_ptr() as *mut c_char, max_len,
+                &mut confidence, &mut fluency,
+            )
+        })?;
+        let text = unsafe {
+            CStr::from_ptr(text_buf.as_ptr() as *const c_char)
+                .to_string_lossy().into_owned()
+        };
+        Ok((text, confidence, fluency))
+    }
+
+    pub fn generate_text(
+        &self, prompt: Option<&str>, semantic_input: Option<&[f32]>, max_len: u32,
+    ) -> Result<(String, f32, f32)> {
+        let mut text_buf = vec![0u8; max_len as usize];
+        let mut confidence: f32 = 0.0;
+        let mut perplexity: f32 = 0.0;
+        let c_prompt = prompt.map(|p| CString::new(p).unwrap());
+        let prompt_ptr = c_prompt.as_ref().map_or(ptr::null(), |s| s.as_ptr());
+        let (sem_ptr, sem_dim) = match semantic_input {
+            Some(s) => (s.as_ptr(), s.len() as c_uint),
+            None => (ptr::null(), 0),
+        };
+        check_status(unsafe {
+            nimcp_brain_generate_text(
+                self.handle, prompt_ptr, sem_ptr, sem_dim,
+                text_buf.as_mut_ptr() as *mut c_char, max_len,
+                &mut confidence, &mut perplexity,
+            )
+        })?;
+        let text = unsafe {
+            CStr::from_ptr(text_buf.as_ptr() as *const c_char)
+                .to_string_lossy().into_owned()
+        };
+        Ok((text, confidence, perplexity))
+    }
+
+    pub fn comprehend(&self, text: &str, semantic_dim: u32) -> Result<(Vec<f32>, f32)> {
+        let c_text = CString::new(text).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        let mut semantic = vec![0.0f32; semantic_dim as usize];
+        let mut confidence: f32 = 0.0;
+        check_status(unsafe {
+            nimcp_brain_comprehend(
+                self.handle, c_text.as_ptr(),
+                semantic.as_mut_ptr(), semantic_dim, &mut confidence,
+            )
+        })?;
+        Ok((semantic, confidence))
+    }
+
+    pub fn produce_text(&self, intent: &[f32], max_len: u32) -> Result<(String, f32)> {
+        let mut text_buf = vec![0u8; max_len as usize];
+        let mut confidence: f32 = 0.0;
+        check_status(unsafe {
+            nimcp_brain_produce_text(
+                self.handle, intent.as_ptr(), intent.len() as c_uint,
+                text_buf.as_mut_ptr() as *mut c_char, max_len,
+                &mut confidence,
+            )
+        })?;
+        let text = unsafe {
+            CStr::from_ptr(text_buf.as_ptr() as *const c_char)
+                .to_string_lossy().into_owned()
+        };
+        Ok((text, confidence))
+    }
+
+    pub fn creative_blend(
+        &self, vector_a: &[f32], vector_b: &[f32], blend_ratio: f32, max_len: u32,
+    ) -> Result<String> {
+        assert_eq!(vector_a.len(), vector_b.len(), "vectors must have same dimension");
+        let mut text_buf = vec![0u8; max_len as usize];
+        check_status(unsafe {
+            nimcp_brain_creative_blend(
+                self.handle, vector_a.as_ptr(), vector_b.as_ptr(),
+                vector_a.len() as c_uint, blend_ratio,
+                text_buf.as_mut_ptr() as *mut c_char, max_len,
+            )
+        })?;
+        let text = unsafe {
+            CStr::from_ptr(text_buf.as_ptr() as *const c_char)
+                .to_string_lossy().into_owned()
+        };
+        Ok(text)
+    }
+
+    pub fn grounded_respond(&self, input_text: &str, max_len: u32) -> Result<(String, f32)> {
+        let c_input = CString::new(input_text).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        let mut resp_buf = vec![0u8; max_len as usize];
+        let mut confidence: f32 = 0.0;
+        check_status(unsafe {
+            nimcp_brain_grounded_respond(
+                self.handle, c_input.as_ptr(),
+                resp_buf.as_mut_ptr() as *mut c_char, max_len,
+                &mut confidence,
+            )
+        })?;
+        let text = unsafe {
+            CStr::from_ptr(resp_buf.as_ptr() as *const c_char)
+                .to_string_lossy().into_owned()
+        };
+        Ok((text, confidence))
+    }
+
+    // --- Metrics Getters ---
+
+    pub fn get_accuracy(&self) -> f32 {
+        unsafe { nimcp_brain_get_accuracy(self.handle) }
+    }
+
+    pub fn get_last_gradient_norm(&self) -> f32 {
+        unsafe { nimcp_brain_get_last_gradient_norm(self.handle) }
+    }
+
+    pub fn get_last_loss(&self) -> f32 {
+        unsafe { nimcp_brain_get_last_loss(self.handle) }
+    }
+
+    pub fn get_network_metrics(&self) -> Option<NetworkMetrics> {
+        let mut ema_ann: f32 = 0.0;
+        let mut ema_cnn: f32 = 0.0;
+        let mut ema_snn: f32 = 0.0;
+        let mut ema_lnn: f32 = 0.0;
+        let mut ann_steps: u64 = 0;
+        let mut cnn_steps: u64 = 0;
+        let mut snn_steps: u64 = 0;
+        let mut lnn_steps: u64 = 0;
+        let ok = unsafe {
+            nimcp_brain_get_network_metrics(
+                self.handle,
+                &mut ema_ann, &mut ema_cnn, &mut ema_snn, &mut ema_lnn,
+                &mut ann_steps, &mut cnn_steps, &mut snn_steps, &mut lnn_steps,
+            )
+        };
+        if ok {
+            Some(NetworkMetrics {
+                ema_ann, ema_cnn, ema_snn, ema_lnn,
+                ann_steps, cnn_steps, snn_steps, lnn_steps,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn get_cognitive_stats(&self) -> Result<CognitiveStats> {
+        let mut stats = [0u32; 13];
+        let mut losses = [0.0f32; 13];
+        let mut count: u32 = 0;
+        check_status(unsafe {
+            nimcp_brain_get_cognitive_stats(
+                self.handle, stats.as_mut_ptr(), losses.as_mut_ptr(), &mut count,
+            )
+        })?;
+        let n = count as usize;
+        Ok(CognitiveStats {
+            step_counts: stats[..n].to_vec(),
+            losses: losses[..n].to_vec(),
+        })
+    }
+
+    pub fn get_avatar_state(&self) -> Result<AvatarState> {
+        let mut state = std::mem::MaybeUninit::<AvatarState>::zeroed();
+        check_status(unsafe {
+            nimcp_brain_get_avatar_state(self.handle, state.as_mut_ptr())
+        })?;
+        Ok(unsafe { state.assume_init() })
+    }
+
+    pub fn get_last_transcript(&self, max_entries: u32) -> Vec<(String, f32, f32)> {
+        let mut entries: Vec<[c_char; 256]> = vec![[0i8; 256]; max_entries as usize];
+        let mut saliences = vec![0.0f32; max_entries as usize];
+        let mut confidences = vec![0.0f32; max_entries as usize];
+        let mut modules = vec![ptr::null::<c_char>(); max_entries as usize];
+        let count = unsafe {
+            nimcp_brain_get_last_transcript(
+                self.handle, entries.as_mut_ptr(), saliences.as_mut_ptr(),
+                confidences.as_mut_ptr(), modules.as_mut_ptr(), max_entries,
+            )
+        };
+        let mut result = Vec::new();
+        for i in 0..count as usize {
+            let text = unsafe {
+                CStr::from_ptr(entries[i].as_ptr())
+                    .to_string_lossy().into_owned()
+            };
+            result.push((text, saliences[i], confidences[i]));
+        }
+        result
+    }
+
+    pub fn get_cortex_cnn_metrics(&self) -> Result<CortexCnnMetrics> {
+        let mut types = [0i32; 4];
+        let mut losses = [0.0f32; 4];
+        let mut fwd_steps = [0u64; 4];
+        let mut bwd_steps = [0u64; 4];
+        let mut embed_norms = [0.0f32; 4];
+        let mut count: u32 = 0;
+        check_status(unsafe {
+            nimcp_brain_get_cortex_cnn_metrics(
+                self.handle, types.as_mut_ptr(), losses.as_mut_ptr(),
+                fwd_steps.as_mut_ptr(), bwd_steps.as_mut_ptr(),
+                embed_norms.as_mut_ptr(), &mut count,
+            )
+        })?;
+        let n = count as usize;
+        Ok(CortexCnnMetrics {
+            types: types[..n].to_vec(),
+            losses: losses[..n].to_vec(),
+            fwd_steps: fwd_steps[..n].to_vec(),
+            bwd_steps: bwd_steps[..n].to_vec(),
+            embed_norms: embed_norms[..n].to_vec(),
+        })
+    }
+
+    // --- Vector / Batch Learning ---
+
+    pub fn learn_vector(
+        &mut self, features: &[f32], target: &[f32],
+        label: Option<&str>, confidence: f32,
+    ) -> Result<()> {
+        let c_label = label.map(|l| CString::new(l).unwrap());
+        let label_ptr = c_label.as_ref().map_or(ptr::null(), |s| s.as_ptr());
+        check_status(unsafe {
+            nimcp_brain_learn_vector(
+                self.handle, features.as_ptr(), features.len() as c_uint,
+                target.as_ptr(), target.len() as c_uint,
+                label_ptr, confidence,
+            )
+        })
+    }
+
+    pub fn learn_vector_batch(
+        &mut self, features: &[&[f32]], targets: &[&[f32]],
+        learning_rate: f32,
+    ) -> f32 {
+        assert_eq!(features.len(), targets.len());
+        let num = features.len() as c_uint;
+        let num_features = features.first().map_or(0, |f| f.len()) as c_uint;
+        let target_size = targets.first().map_or(0, |t| t.len()) as c_uint;
+        let feat_ptrs: Vec<*const c_float> = features.iter().map(|f| f.as_ptr()).collect();
+        let tgt_ptrs: Vec<*const c_float> = targets.iter().map(|t| t.as_ptr()).collect();
+        unsafe {
+            nimcp_brain_learn_vector_batch(
+                self.handle, feat_ptrs.as_ptr(), tgt_ptrs.as_ptr(),
+                num_features, target_size, num, learning_rate,
+            )
+        }
+    }
+
+    pub fn learn_batch(
+        &mut self, features: &[&[f32]], labels: &[&str],
+        confidences: Option<&[f32]>,
+    ) -> Result<Vec<f32>> {
+        assert_eq!(features.len(), labels.len());
+        let num = features.len() as c_uint;
+        let feat_ptrs: Vec<*const c_float> = features.iter().map(|f| f.as_ptr()).collect();
+        let feat_lens: Vec<c_uint> = features.iter().map(|f| f.len() as c_uint).collect();
+        let c_labels: Vec<CString> = labels.iter()
+            .map(|l| CString::new(*l).unwrap()).collect();
+        let label_ptrs: Vec<*const c_char> = c_labels.iter().map(|l| l.as_ptr()).collect();
+        let conf_ptr = confidences.map_or(ptr::null(), |c| c.as_ptr());
+        let mut losses = vec![0.0f32; features.len()];
+        check_status(unsafe {
+            nimcp_brain_learn_batch(
+                self.handle, feat_ptrs.as_ptr(), feat_lens.as_ptr(),
+                label_ptrs.as_ptr(), conf_ptr, num, losses.as_mut_ptr(),
+            )
+        })?;
+        Ok(losses)
+    }
+
+    // --- Knowledge / Language Learning ---
+
+    pub fn learn_knowledge(&mut self, text: &str, domain: i32) -> Result<()> {
+        let c_text = CString::new(text).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        check_status(unsafe {
+            nimcp_brain_learn_knowledge(self.handle, c_text.as_ptr(), domain)
+        })
+    }
+
+    pub fn learn_language(&mut self, text: &str) -> Result<f32> {
+        let c_text = CString::new(text).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        let mut loss: f32 = 0.0;
+        check_status(unsafe {
+            nimcp_brain_learn_language(self.handle, c_text.as_ptr(), &mut loss)
+        })?;
+        Ok(loss)
+    }
+
+    pub fn learn_language_pair(
+        &mut self, input_text: &str, target_text: &str, learning_rate: f32,
+    ) -> Result<f32> {
+        let c_input = CString::new(input_text).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        let c_target = CString::new(target_text).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        let mut loss: f32 = 0.0;
+        check_status(unsafe {
+            nimcp_brain_learn_language_pair(
+                self.handle, c_input.as_ptr(), c_target.as_ptr(),
+                learning_rate, &mut loss,
+            )
+        })?;
+        Ok(loss)
+    }
+
+    pub fn train_cognitive(
+        &mut self, text: &str, domain: i32,
+        target_text: Option<&str>, learning_rate: f32,
+    ) -> Result<f32> {
+        let c_text = CString::new(text).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        let c_target = target_text.map(|t| CString::new(t).unwrap());
+        let target_ptr = c_target.as_ref().map_or(ptr::null(), |s| s.as_ptr());
+        let mut loss: f32 = 0.0;
+        check_status(unsafe {
+            nimcp_brain_train_cognitive(
+                self.handle, c_text.as_ptr(), domain,
+                target_ptr, learning_rate, &mut loss,
+            )
+        })?;
+        Ok(loss)
+    }
+
+    pub fn train_language(
+        &mut self, input_text: &str, target_text: &str, learning_rate: f32,
+    ) -> Result<f32> {
+        let c_input = CString::new(input_text).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        let c_target = CString::new(target_text).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        let mut loss: f32 = 0.0;
+        check_status(unsafe {
+            nimcp_brain_train_language(
+                self.handle, c_input.as_ptr(), c_target.as_ptr(),
+                learning_rate, &mut loss,
+            )
+        })?;
+        Ok(loss)
+    }
+
+    // --- Fast / Domain Prediction ---
+
+    pub fn predict_fast(&self, features: &[f32]) -> Result<Prediction> {
+        let mut label_buf = vec![0u8; 64];
+        let mut confidence: f32 = 0.0;
+        check_status(unsafe {
+            nimcp_brain_predict_fast(
+                self.handle, features.as_ptr(), features.len() as c_uint,
+                label_buf.as_mut_ptr() as *mut c_char, &mut confidence,
+            )
+        })?;
+        let label = unsafe {
+            CStr::from_ptr(label_buf.as_ptr() as *const c_char)
+                .to_string_lossy().into_owned()
+        };
+        Ok(Prediction { label, confidence })
+    }
+
+    pub fn predict_in_domain(
+        &self, features: &[f32], domain_prefix: Option<&str>,
+    ) -> Result<Prediction> {
+        let mut label_buf = vec![0u8; 64];
+        let mut confidence: f32 = 0.0;
+        let c_prefix = domain_prefix.map(|d| CString::new(d).unwrap());
+        let prefix_ptr = c_prefix.as_ref().map_or(ptr::null(), |s| s.as_ptr());
+        check_status(unsafe {
+            nimcp_brain_predict_in_domain(
+                self.handle, features.as_ptr(), features.len() as c_uint,
+                prefix_ptr, label_buf.as_mut_ptr() as *mut c_char, &mut confidence,
+            )
+        })?;
+        let label = unsafe {
+            CStr::from_ptr(label_buf.as_ptr() as *const c_char)
+                .to_string_lossy().into_owned()
+        };
+        Ok(Prediction { label, confidence })
+    }
+
+    // --- Freeze / Mode ---
+
+    pub fn freeze(&mut self) -> Result<()> {
+        check_status(unsafe { nimcp_brain_freeze(self.handle) })
+    }
+
+    pub fn is_frozen(&self) -> bool {
+        unsafe { nimcp_brain_is_frozen(self.handle) }
+    }
+
+    pub fn enable_mixed_precision(&mut self, enable: bool) -> Result<()> {
+        check_status(unsafe { nimcp_brain_enable_mixed_precision(self.handle, enable) })
+    }
+
+    pub fn enable_gradient_checkpointing(
+        &mut self, enable: bool, checkpoint_interval: u32,
+    ) -> Result<()> {
+        check_status(unsafe {
+            nimcp_brain_enable_gradient_checkpointing(self.handle, enable, checkpoint_interval)
+        })
+    }
+
+    pub fn enable_hemispheric(&mut self, enable: bool) -> Result<()> {
+        check_status(unsafe { nimcp_brain_enable_hemispheric(self.handle, enable) })
+    }
+
+    pub fn enable_recurrent(
+        &mut self, enable: bool, max_iterations: u32,
+        confidence_threshold: f32, blend_alpha: f32,
+    ) -> Result<()> {
+        check_status(unsafe {
+            nimcp_brain_enable_recurrent(
+                self.handle, enable, max_iterations, confidence_threshold, blend_alpha,
+            )
+        })
+    }
+
+    pub fn enable_bptt(&mut self, enable: bool, window_size: u32, discount: f32) -> Result<()> {
+        check_status(unsafe {
+            nimcp_brain_enable_bptt(self.handle, enable, window_size, discount)
+        })
+    }
+
+    pub fn enable_multi_network(&mut self) -> Result<()> {
+        check_status(unsafe { nimcp_brain_enable_multi_network(self.handle) })
+    }
+
+    pub fn enable_biological_plasticity(&mut self, enabled: bool) -> Result<()> {
+        check_status(unsafe { nimcp_brain_enable_biological_plasticity(self.handle, enabled) })
+    }
+
+    pub fn set_fast_training(&mut self, enabled: bool) -> Result<()> {
+        check_status(unsafe { nimcp_brain_set_fast_training(self.handle, enabled) })
+    }
+
+    pub fn set_task_type(&mut self, task_type: &str) -> Result<()> {
+        let c_task = CString::new(task_type).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        check_status(unsafe { nimcp_brain_set_task_type(self.handle, c_task.as_ptr()) })
+    }
+
+    pub fn set_training_mode(&mut self, active: bool) {
+        unsafe { nimcp_brain_set_training_mode(self.handle, active) }
+    }
+
+    pub fn set_network_ablation(&mut self, train_cnn: i32, train_snn: i32, train_lnn: i32) {
+        unsafe { nimcp_brain_set_network_ablation(self.handle, train_cnn, train_snn, train_lnn) }
+    }
+
+    // --- Sensory / Cortex ---
+
+    pub fn submit_sensory(
+        &mut self, modality: &str, data: &[f32],
+        width: u32, height: u32, channels: u32, n_segments: u32,
+    ) -> Result<()> {
+        let c_mod = CString::new(modality).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        check_status(unsafe {
+            nimcp_brain_submit_sensory(
+                self.handle, c_mod.as_ptr(), data.as_ptr(), data.len() as c_uint,
+                width, height, channels, n_segments,
+            )
+        })
+    }
+
+    pub fn visual_cortex_process(
+        &mut self, pixels: &[f32],
+        width: u32, height: u32, channels: u32, max_features: u32,
+    ) -> Result<Vec<f32>> {
+        let mut features = vec![0.0f32; max_features as usize];
+        let mut count: u32 = 0;
+        check_status(unsafe {
+            nimcp_brain_visual_cortex_process(
+                self.handle, pixels.as_ptr(), pixels.len() as c_uint,
+                width, height, channels, features.as_mut_ptr(), max_features, &mut count,
+            )
+        })?;
+        features.truncate(count as usize);
+        Ok(features)
+    }
+
+    // --- Brain Region Probes ---
+
+    pub fn medulla_get_arousal(&self) -> f32 {
+        unsafe { nimcp_brain_medulla_get_arousal(self.handle) }
+    }
+
+    pub fn bg_get_dopamine(&self) -> f32 {
+        unsafe { nimcp_brain_bg_get_dopamine(self.handle) }
+    }
+
+    pub fn sleep_get_pressure(&self) -> f32 {
+        unsafe { nimcp_brain_sleep_get_pressure(self.handle) }
+    }
+
+    pub fn substrate_get_health(&self) -> Result<String> {
+        let mut buf = vec![0u8; 64];
+        check_status(unsafe {
+            nimcp_brain_substrate_get_health(self.handle, buf.as_mut_ptr() as *mut c_char, 64)
+        })?;
+        let text = unsafe {
+            CStr::from_ptr(buf.as_ptr() as *const c_char).to_string_lossy().into_owned()
+        };
+        Ok(text)
+    }
+
+    // --- Sub-network Creation / Stats ---
+
+    pub fn lnn_create(
+        &mut self, n_sensory: u32, n_inter: u32, n_command: u32, n_output: u32,
+    ) -> Result<()> {
+        check_status(unsafe {
+            nimcp_brain_lnn_create(self.handle, n_sensory, n_inter, n_command, n_output)
+        })
+    }
+
+    pub fn lnn_get_stats(&self) -> Result<LnnStats> {
+        let (mut fwd, mut bwd, mut ode) = (0u64, 0u64, 0u64);
+        let (mut tau, mut state, mut grad) = (0.0f32, 0.0f32, 0.0f32);
+        let (mut nan, mut inf) = (0u32, 0u32);
+        check_status(unsafe {
+            nimcp_brain_lnn_get_stats(
+                self.handle, &mut fwd, &mut bwd, &mut ode,
+                &mut tau, &mut state, &mut grad, &mut nan, &mut inf,
+            )
+        })?;
+        Ok(LnnStats {
+            forward_steps: fwd, backward_steps: bwd, ode_evals: ode,
+            avg_tau: tau, state_norm: state, gradient_norm: grad,
+            nan_count: nan, inf_count: inf,
+        })
+    }
+
+    pub fn snn_get_stats(&self) -> Result<SnnStats> {
+        let (mut steps, mut spikes) = (0u64, 0u64);
+        let (mut rate, mut sparsity, mut sync) = (0.0f32, 0.0f32, 0.0f32);
+        let (mut silent, mut hyper) = (0u32, 0u32);
+        let mut health: c_int = 0;
+        let mut mem: usize = 0;
+        check_status(unsafe {
+            nimcp_brain_snn_get_stats(
+                self.handle, &mut steps, &mut spikes,
+                &mut rate, &mut sparsity, &mut sync,
+                &mut silent, &mut hyper, &mut health, &mut mem,
+            )
+        })?;
+        Ok(SnnStats {
+            total_steps: steps, total_spikes: spikes,
+            mean_firing_rate: rate, sparsity, synchrony: sync,
+            silent_neurons: silent, hyperactive_neurons: hyper,
+            health, memory_bytes: mem,
+        })
+    }
+
+    pub fn cnn_get_stats(&self) -> Result<CnnStats> {
+        let (mut layers, mut labels) = (0u32, 0u32);
+        let mut params: usize = 0;
+        let mut active: bool = false;
+        check_status(unsafe {
+            nimcp_brain_cnn_get_stats(self.handle, &mut layers, &mut params, &mut labels, &mut active)
+        })?;
+        Ok(CnnStats { num_layers: layers, num_parameters: params, num_labels: labels, active })
+    }
+
+    // --- Rubric ---
+
+    pub fn rubric(&self) -> Result<RubricData> {
+        let mut r = std::mem::MaybeUninit::<RubricData>::zeroed();
+        check_status(unsafe { nimcp_brain_rubric(self.handle, r.as_mut_ptr()) })?;
+        Ok(unsafe { r.assume_init() })
+    }
+
+    pub fn broadcast_rubric(&self) -> Result<()> {
+        check_status(unsafe { nimcp_brain_broadcast_rubric(self.handle) })
+    }
+
+    pub fn set_rubric_validation(&mut self, features: &[f32]) -> Result<()> {
+        check_status(unsafe {
+            nimcp_brain_set_rubric_validation(
+                self.handle, features.as_ptr(), features.len() as c_uint,
+            )
+        })
+    }
+
+    pub fn get_rubric_training_stats(&self) -> Result<RubricTrainingStats> {
+        let (mut eval_count, mut min_s, mut max_s, mut avg_s) = (0u64, 0.0f32, 0.0f32, 0.0f32);
+        let mut last = std::mem::MaybeUninit::<RubricData>::zeroed();
+        check_status(unsafe {
+            nimcp_brain_get_rubric_training_stats(
+                self.handle, &mut eval_count, &mut min_s, &mut max_s, &mut avg_s,
+                last.as_mut_ptr(),
+            )
+        })?;
+        Ok(RubricTrainingStats {
+            eval_count, min_score: min_s, max_score: max_s, avg_score: avg_s,
+            last_rubric: unsafe { last.assume_init() },
+        })
+    }
+
+    // --- Experience ---
+
+    pub fn experience(
+        &mut self, input: &[f32], output: &mut [f32], teacher_reward: f32,
+    ) -> Result<ExperienceResult> {
+        let mut result = std::mem::MaybeUninit::<ExperienceResult>::zeroed();
+        check_status(unsafe {
+            nimcp_brain_experience(
+                self.handle, input.as_ptr(), input.len() as c_uint,
+                output.as_mut_ptr(), output.len() as c_uint,
+                teacher_reward, result.as_mut_ptr(),
+            )
+        })?;
+        Ok(unsafe { result.assume_init() })
+    }
+
+    pub fn experience_configure(&mut self, config: &ExperienceConfig) -> Result<()> {
+        check_status(unsafe {
+            nimcp_brain_experience_configure(self.handle, config as *const ExperienceConfig)
+        })
+    }
+
+    pub fn experience_correct(&mut self, expected: &[f32]) -> f32 {
+        unsafe {
+            nimcp_brain_experience_correct(self.handle, expected.as_ptr(), expected.len() as c_uint)
+        }
+    }
+
+    pub fn experience_attend(&mut self, modality: &str, strength: f32) -> Result<()> {
+        let c_mod = CString::new(modality).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        check_status(unsafe { nimcp_brain_experience_attend(self.handle, c_mod.as_ptr(), strength) })
+    }
+
+    // --- Grounded Language ---
+
+    pub fn ground_word(
+        &mut self, word: &str, features: &[f32], modality: u32, attention: f32,
+    ) -> Result<()> {
+        let c_word = CString::new(word).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        check_status(unsafe {
+            nimcp_brain_ground_word(
+                self.handle, c_word.as_ptr(),
+                features.as_ptr(), features.len() as c_uint, modality, attention,
+            )
+        })
+    }
+
+    pub fn innate_hardwire(&mut self, config: *const c_void) -> Result<()> {
+        check_status(unsafe { nimcp_brain_innate_hardwire(self.handle, config) })
+    }
+
+    // --- Cloud ---
+
+    pub fn connect_cloud(
+        &mut self, cloud: &Brain, confidence_threshold: f32, enable_distillation: bool,
+    ) -> Result<()> {
+        check_status(unsafe {
+            nimcp_brain_connect_cloud(
+                self.handle, cloud.handle, confidence_threshold, enable_distillation,
+            )
+        })
+    }
+
+    pub fn disconnect_cloud(&mut self) -> Result<()> {
+        check_status(unsafe { nimcp_brain_disconnect_cloud(self.handle) })
+    }
+
+    pub fn distill_cloud_batch(&mut self, max_examples: u32) -> u32 {
+        unsafe { nimcp_brain_distill_cloud_batch(self.handle, max_examples) }
+    }
+
+    pub fn get_cloud_stats(&self) -> Result<CloudStats> {
+        let (mut total, mut local, mut escalated, mut distill) = (0u64, 0u64, 0u64, 0u64);
+        check_status(unsafe {
+            nimcp_brain_get_cloud_stats(
+                self.handle, &mut total, &mut local, &mut escalated, &mut distill,
+            )
+        })?;
+        Ok(CloudStats {
+            total_queries: total, local_handled: local,
+            cloud_escalated: escalated, distillation_steps: distill,
+        })
+    }
+
+    pub fn connect_collective(&mut self, other: &Brain, instance_id: u32) -> Result<()> {
+        check_status(unsafe {
+            nimcp_brain_connect_collective(self.handle, other.handle, instance_id)
+        })
+    }
+
+    // --- Attention / Hemispheric ---
+
+    pub fn focus_attention(&mut self, modality: &str) -> Result<()> {
+        let c_mod = CString::new(modality).map_err(|e| NimcpError::Invalid(e.to_string()))?;
+        check_status(unsafe { nimcp_brain_focus_attention(self.handle, c_mod.as_ptr()) })
+    }
+
+    pub fn get_hemispheric_balance(&self) -> f32 {
+        unsafe { nimcp_brain_get_hemispheric_balance(self.handle) }
+    }
+
+    pub fn get_callosum_transfers(&self) -> u64 {
+        unsafe { nimcp_brain_get_callosum_transfers(self.handle) }
+    }
+
+    pub fn get_lateralization(&self, domain: u32) -> f32 {
+        unsafe { nimcp_brain_get_lateralization(self.handle, domain) }
+    }
+
+    pub fn shift_lateralization(&mut self, domain: u32, shift: f32) -> Result<()> {
+        check_status(unsafe { nimcp_brain_shift_lateralization(self.handle, domain, shift) })
+    }
+
+    pub fn get_recurrent_iterations(&self) -> u32 {
+        unsafe { nimcp_brain_get_recurrent_iterations(self.handle) }
+    }
+
+    // --- Health Probes ---
+
+    pub fn get_immune_metrics(&self) -> Result<ImmuneMetrics> {
+        let mut m = std::mem::MaybeUninit::<ImmuneMetrics>::zeroed();
+        check_status(unsafe { nimcp_brain_get_immune_metrics(self.handle, m.as_mut_ptr()) })?;
+        Ok(unsafe { m.assume_init() })
+    }
+
+    pub fn get_sparsity_ratio(&self) -> f32 {
+        unsafe { nimcp_brain_get_sparsity_ratio(self.handle) }
+    }
+
+    pub fn get_synapse_stats(&self) -> Result<SynapseStats> {
+        let mut s = std::mem::MaybeUninit::<SynapseStats>::zeroed();
+        check_status(unsafe { nimcp_brain_get_synapse_stats(self.handle, s.as_mut_ptr()) })?;
+        Ok(unsafe { s.assume_init() })
+    }
+
+    pub fn get_active_neuron_count(&self) -> u32 {
+        unsafe { nimcp_brain_get_active_neuron_count(self.handle) }
+    }
+
+    pub fn get_neuron_utilization(&self) -> f32 {
+        unsafe { nimcp_brain_get_neuron_utilization(self.handle) }
+    }
+
+    pub fn get_gpu_vram_used(&self) -> usize {
+        unsafe { nimcp_brain_get_gpu_vram_used(self.handle) }
+    }
+
     // --- Training Pipeline ---
 
     pub fn configure_training(&mut self, config: &TrainingConfig) -> Result<()> {
@@ -1039,8 +2172,7 @@ impl Brain {
         check_status(unsafe {
             nimcp_brain_train_step(
                 self.handle, features.as_ptr(), features.len() as c_uint,
-                targets.as_ptr(), targets.len() as c_uint,
-                result.as_mut_ptr(),
+                targets.as_ptr(), targets.len() as c_uint, result.as_mut_ptr(),
             )
         })?;
         Ok(unsafe { result.assume_init() })
@@ -1054,17 +2186,14 @@ impl Brain {
         check_status(unsafe {
             nimcp_brain_train_batch(
                 self.handle, features.as_ptr(), targets.as_ptr(),
-                batch_size, num_features, num_targets,
-                result.as_mut_ptr(),
+                batch_size, num_features, num_targets, result.as_mut_ptr(),
             )
         })?;
         Ok(unsafe { result.assume_init() })
     }
 
     pub fn get_training_stats(&self) -> Result<TrainingStats> {
-        let mut steps: u64 = 0;
-        let mut loss: f32 = 0.0;
-        let mut lr: f32 = 0.0;
+        let (mut steps, mut loss, mut lr) = (0u64, 0.0f32, 0.0f32);
         check_status(unsafe {
             nimcp_brain_get_training_stats(self.handle, &mut steps, &mut loss, &mut lr)
         })?;
@@ -1128,28 +2257,20 @@ impl Brain {
         };
 
         if id == 0 {
-            // Clean up on failure
             let _ = unsafe { Box::from_raw(raw) };
             return Err(NimcpError::Generic("Failed to register callback".into()));
         }
 
-        // Keep the raw pointer alive — C library holds it as user_data.
-        // We'll free it in Brain::drop().
         self._callback_ptrs.push(raw);
-
         Ok(id)
     }
 
     pub fn unregister_callback(&mut self, callback_id: u32) -> Result<()> {
-        check_status(unsafe {
-            nimcp_brain_unregister_callback(self.handle, callback_id)
-        })
+        check_status(unsafe { nimcp_brain_unregister_callback(self.handle, callback_id) })
     }
 
     pub fn get_callback_stats(&self) -> Result<CallbackStats> {
-        let mut fired: u64 = 0;
-        let mut avg: f32 = 0.0;
-        let mut early: u32 = 0;
+        let (mut fired, mut avg, mut early) = (0u64, 0.0f32, 0u32);
         check_status(unsafe {
             nimcp_brain_get_callback_stats(self.handle, &mut fired, &mut avg, &mut early)
         })?;
@@ -1171,11 +2292,8 @@ impl Brain {
     }
 
     pub fn get_utilization_metrics(&self) -> Option<UtilizationMetrics> {
-        let mut util: f32 = 0.0;
-        let mut sat: f32 = 0.0;
-        let ok = unsafe {
-            nimcp_brain_get_utilization_metrics(self.handle, &mut util, &mut sat)
-        };
+        let (mut util, mut sat) = (0.0f32, 0.0f32);
+        let ok = unsafe { nimcp_brain_get_utilization_metrics(self.handle, &mut util, &mut sat) };
         if ok { Some(UtilizationMetrics { utilization: util, saturation: sat }) } else { None }
     }
 
@@ -1185,9 +2303,7 @@ impl Brain {
         let c_name = CString::new(name).map_err(|e| NimcpError::Invalid(e.to_string()))?;
         let c_desc = description.map(|d| CString::new(d).unwrap());
         let desc_ptr = c_desc.as_ref().map_or(ptr::null(), |s| s.as_ptr());
-        check_status(unsafe {
-            nimcp_brain_snapshot_save(self.handle, c_name.as_ptr(), desc_ptr)
-        })
+        check_status(unsafe { nimcp_brain_snapshot_save(self.handle, c_name.as_ptr(), desc_ptr) })
     }
 
     pub fn snapshot_restore(&self, name: &str) -> Result<Brain> {
@@ -1204,9 +2320,7 @@ impl Brain {
 
     pub fn snapshot_delete(&self, name: &str) -> Result<()> {
         let c_name = CString::new(name).map_err(|e| NimcpError::Invalid(e.to_string()))?;
-        check_status(unsafe {
-            nimcp_brain_snapshot_delete(self.handle, c_name.as_ptr())
-        })
+        check_status(unsafe { nimcp_brain_snapshot_delete(self.handle, c_name.as_ptr()) })
     }
 
     // --- COW ---
@@ -1234,9 +2348,7 @@ impl Brain {
     }
 
     pub fn restore_cow(&mut self, snapshot: &BrainSnapshot) -> Result<()> {
-        check_status(unsafe {
-            nimcp_brain_restore_cow(self.handle, snapshot.handle)
-        })
+        check_status(unsafe { nimcp_brain_restore_cow(self.handle, snapshot.handle) })
     }
 
     // --- Working Memory ---
@@ -1251,9 +2363,7 @@ impl Brain {
 
     pub fn working_memory_get(&self, index: u32) -> Option<Vec<f32>> {
         let mut size: u32 = 0;
-        let ptr = unsafe {
-            nimcp_brain_working_memory_get(self.handle, index, &mut size)
-        };
+        let ptr = unsafe { nimcp_brain_working_memory_get(self.handle, index, &mut size) };
         if ptr.is_null() || size == 0 {
             None
         } else {
@@ -1264,8 +2374,7 @@ impl Brain {
     }
 
     pub fn working_memory_stats(&self) -> Result<WorkingMemoryStats> {
-        let mut cur: u32 = 0;
-        let mut cap: u32 = 0;
+        let (mut cur, mut cap) = (0u32, 0u32);
         check_status(unsafe {
             nimcp_brain_working_memory_stats(self.handle, &mut cur, &mut cap)
         })?;
@@ -1273,9 +2382,7 @@ impl Brain {
     }
 
     pub fn working_memory_refresh(&mut self, index: u32) -> Result<()> {
-        check_status(unsafe {
-            nimcp_brain_working_memory_refresh(self.handle, index)
-        })
+        check_status(unsafe { nimcp_brain_working_memory_refresh(self.handle, index) })
     }
 
     // --- Workspace ---
@@ -1293,52 +2400,39 @@ impl Brain {
 
     pub fn workspace_read(&self, max_dim: u32) -> Result<WorkspaceReadResult> {
         let mut buf = vec![0.0f32; max_dim as usize];
-        let mut actual_dim: u32 = 0;
-        let mut source: c_int = 0;
+        let (mut actual_dim, mut source) = (0u32, 0i32);
         check_status(unsafe {
             nimcp_brain_workspace_read(
-                self.handle, buf.as_mut_ptr(), max_dim,
-                &mut actual_dim, &mut source,
+                self.handle, buf.as_mut_ptr(), max_dim, &mut actual_dim, &mut source,
             )
         })?;
         buf.truncate(actual_dim as usize);
         Ok(WorkspaceReadResult {
-            content: buf,
-            actual_dim,
+            content: buf, actual_dim,
             source_module: unsafe { std::mem::transmute::<c_int, CognitiveModule>(source) },
         })
     }
 
     pub fn workspace_subscribe(&mut self, module: CognitiveModule) -> Result<()> {
-        check_status(unsafe {
-            nimcp_brain_workspace_subscribe(self.handle, module as c_int)
-        })
+        check_status(unsafe { nimcp_brain_workspace_subscribe(self.handle, module as c_int) })
     }
 
     pub fn workspace_unsubscribe(&mut self, module: CognitiveModule) -> Result<()> {
-        check_status(unsafe {
-            nimcp_brain_workspace_unsubscribe(self.handle, module as c_int)
-        })
+        check_status(unsafe { nimcp_brain_workspace_unsubscribe(self.handle, module as c_int) })
     }
 
     pub fn workspace_has_broadcast(&self) -> Result<bool> {
         let mut has: bool = false;
-        check_status(unsafe {
-            nimcp_brain_workspace_has_broadcast(self.handle, &mut has)
-        })?;
+        check_status(unsafe { nimcp_brain_workspace_has_broadcast(self.handle, &mut has) })?;
         Ok(has)
     }
 
     pub fn workspace_stats(&self) -> Result<WorkspaceStats> {
-        let mut bc: u32 = 0;
-        let mut comp: u32 = 0;
-        let mut avg: f32 = 0.0;
+        let (mut bc, mut comp, mut avg) = (0u32, 0u32, 0.0f32);
         check_status(unsafe {
             nimcp_brain_workspace_stats(self.handle, &mut bc, &mut comp, &mut avg)
         })?;
-        Ok(WorkspaceStats {
-            total_broadcasts: bc, total_competitions: comp, avg_strength: avg,
-        })
+        Ok(WorkspaceStats { total_broadcasts: bc, total_competitions: comp, avg_strength: avg })
     }
 
     // --- Oscillations ---
@@ -1357,9 +2451,7 @@ impl Brain {
 
     pub fn get_phase_coherence(&self, neuron_ids: &[u32]) -> f32 {
         unsafe {
-            nimcp_get_phase_coherence(
-                self.handle, neuron_ids.as_ptr(), neuron_ids.len() as c_uint,
-            )
+            nimcp_get_phase_coherence(self.handle, neuron_ids.as_ptr(), neuron_ids.len() as c_uint)
         }
     }
 
@@ -1371,9 +2463,7 @@ impl Brain {
 
     pub fn probe(&self) -> Result<BrainProbe> {
         let mut raw = std::mem::MaybeUninit::<BrainProbeData>::zeroed();
-        check_status(unsafe {
-            nimcp_brain_probe(self.handle, raw.as_mut_ptr())
-        })?;
+        check_status(unsafe { nimcp_brain_probe(self.handle, raw.as_mut_ptr()) })?;
         let raw = unsafe { raw.assume_init() };
         let task_name = {
             let end = raw.task_name.iter().position(|&b| b == 0).unwrap_or(64);
@@ -1383,396 +2473,22 @@ impl Brain {
             task_name,
             size: unsafe { std::mem::transmute::<c_int, BrainSize>(raw.size) },
             task: unsafe { std::mem::transmute::<c_int, BrainTask>(raw.task) },
-            num_neurons: raw.num_neurons,
-            num_synapses: raw.num_synapses,
+            num_neurons: raw.num_neurons, num_synapses: raw.num_synapses,
             num_active_synapses: raw.num_active_synapses,
             total_inferences: raw.total_inferences,
             total_learning_steps: raw.total_learning_steps,
             avg_sparsity: raw.avg_sparsity,
             avg_inference_time_us: raw.avg_inference_time_us,
             current_learning_rate: raw.current_learning_rate,
-            accuracy: raw.accuracy,
-            memory_bytes: raw.memory_bytes,
-            num_inputs: raw.num_inputs,
-            num_outputs: raw.num_outputs,
-            is_cow_clone: raw.is_cow_clone,
-            cow_ref_count: raw.cow_ref_count,
-            cow_shared_bytes: raw.cow_shared_bytes,
-            cow_private_bytes: raw.cow_private_bytes,
+            accuracy: raw.accuracy, memory_bytes: raw.memory_bytes,
+            num_inputs: raw.num_inputs, num_outputs: raw.num_outputs,
+            is_cow_clone: raw.is_cow_clone, cow_ref_count: raw.cow_ref_count,
+            cow_shared_bytes: raw.cow_shared_bytes, cow_private_bytes: raw.cow_private_bytes,
         })
     }
 
     pub fn broadcast_probe(&self) -> Result<()> {
         check_status(unsafe { nimcp_brain_broadcast_probe(self.handle) })
-    }
-
-    // --- Freeze ---
-
-    pub fn freeze(&mut self) -> Result<()> {
-        check_status(unsafe { nimcp_brain_freeze(self.handle) })
-    }
-
-    pub fn is_frozen(&self) -> bool {
-        unsafe { nimcp_brain_is_frozen(self.handle) }
-    }
-
-    // --- Prediction extended ---
-
-    pub fn predict_fast(&self, features: &[f32]) -> Result<Prediction> {
-        let mut label_buf = [0u8; 256];
-        let mut confidence: f32 = 0.0;
-        check_status(unsafe {
-            nimcp_brain_predict_fast(
-                self.handle, features.as_ptr(), features.len() as c_uint,
-                label_buf.as_mut_ptr() as *mut c_char, &mut confidence,
-            )
-        })?;
-        let label = unsafe { CStr::from_ptr(label_buf.as_ptr() as *const c_char) }
-            .to_string_lossy().into_owned();
-        Ok(Prediction { label, confidence })
-    }
-
-    pub fn predict_in_domain(&self, features: &[f32], domain: &str) -> Result<Prediction> {
-        let c_domain = CString::new(domain).map_err(|_| NimcpError::Invalid("invalid domain".into()))?;
-        let mut label_buf = [0u8; 256];
-        let mut confidence: f32 = 0.0;
-        check_status(unsafe {
-            nimcp_brain_predict_in_domain(
-                self.handle, features.as_ptr(), features.len() as c_uint,
-                c_domain.as_ptr(), label_buf.as_mut_ptr() as *mut c_char, &mut confidence,
-            )
-        })?;
-        let label = unsafe { CStr::from_ptr(label_buf.as_ptr() as *const c_char) }
-            .to_string_lossy().into_owned();
-        Ok(Prediction { label, confidence })
-    }
-
-    pub fn decide_full(&self, features: &[f32]) -> Result<DecideFullResult> {
-        let mut label_buf = [0u8; 256];
-        let mut explanation_buf = [0u8; 1024];
-        let mut confidence: f32 = 0.0;
-        let mut output_vec = vec![0.0f32; 4096];
-        let mut output_size: u32 = 0;
-        let mut active_neurons: u32 = 0;
-        let mut sparsity: f32 = 0.0;
-        let mut time_us: u64 = 0;
-        check_status(unsafe {
-            nimcp_brain_decide_full(
-                self.handle, features.as_ptr(), features.len() as c_uint,
-                label_buf.as_mut_ptr() as *mut c_char, &mut confidence,
-                explanation_buf.as_mut_ptr() as *mut c_char,
-                output_vec.as_mut_ptr(), &mut output_size,
-                &mut active_neurons, &mut sparsity, &mut time_us,
-            )
-        })?;
-        output_vec.truncate(output_size as usize);
-        let label = unsafe { CStr::from_ptr(label_buf.as_ptr() as *const c_char) }
-            .to_string_lossy().into_owned();
-        let explanation = unsafe { CStr::from_ptr(explanation_buf.as_ptr() as *const c_char) }
-            .to_string_lossy().into_owned();
-        Ok(DecideFullResult { label, confidence, explanation, output_vector: output_vec,
-            active_neurons, sparsity, inference_time_us: time_us })
-    }
-
-    // --- Learning extended ---
-
-    pub fn learn_vector(&mut self, features: &[f32], target: &[f32],
-                        label: Option<&str>, confidence: f32, lr: f32) -> Result<()> {
-        let c_label = label.map(|l| CString::new(l).unwrap());
-        let label_ptr = c_label.as_ref().map_or(ptr::null(), |s| s.as_ptr());
-        check_status(unsafe {
-            nimcp_brain_learn_vector(
-                self.handle, features.as_ptr(), features.len() as c_uint,
-                target.as_ptr(), target.len() as c_uint,
-                label_ptr, confidence, lr,
-            )
-        })
-    }
-
-    pub fn learn_knowledge(&mut self, text: &str, domain: i32) -> Result<()> {
-        let c_text = CString::new(text).map_err(|_| NimcpError::Invalid("invalid text".into()))?;
-        check_status(unsafe { nimcp_brain_learn_knowledge(self.handle, c_text.as_ptr(), domain) })
-    }
-
-    pub fn learn_language(&mut self, text: &str) -> Result<f32> {
-        let c_text = CString::new(text).map_err(|_| NimcpError::Invalid("invalid text".into()))?;
-        let mut loss: f32 = 0.0;
-        check_status(unsafe { nimcp_brain_learn_language(self.handle, c_text.as_ptr(), &mut loss) })?;
-        Ok(loss)
-    }
-
-    pub fn learn_language_pair(&mut self, input: &str, target: &str, lr: f32) -> Result<f32> {
-        let c_in = CString::new(input).map_err(|_| NimcpError::Invalid("invalid input".into()))?;
-        let c_tgt = CString::new(target).map_err(|_| NimcpError::Invalid("invalid target".into()))?;
-        let mut loss: f32 = 0.0;
-        check_status(unsafe {
-            nimcp_brain_learn_language_pair(self.handle, c_in.as_ptr(), c_tgt.as_ptr(), lr, &mut loss)
-        })?;
-        Ok(loss)
-    }
-
-    pub fn train_cognitive(&mut self, text: &str, domain: i32,
-                           target_text: Option<&str>, lr: f32) -> Result<f32> {
-        let c_text = CString::new(text).map_err(|_| NimcpError::Invalid("invalid text".into()))?;
-        let c_tgt = target_text.map(|t| CString::new(t).unwrap());
-        let tgt_ptr = c_tgt.as_ref().map_or(ptr::null(), |s| s.as_ptr());
-        let mut loss: f32 = 0.0;
-        check_status(unsafe {
-            nimcp_brain_train_cognitive(self.handle, c_text.as_ptr(), domain, tgt_ptr, lr, &mut loss)
-        })?;
-        Ok(loss)
-    }
-
-    pub fn train_language(&mut self, input: &str, target: &str, lr: f32) -> Result<f32> {
-        let c_in = CString::new(input).map_err(|_| NimcpError::Invalid("invalid input".into()))?;
-        let c_tgt = CString::new(target).map_err(|_| NimcpError::Invalid("invalid target".into()))?;
-        let mut loss: f32 = 0.0;
-        check_status(unsafe {
-            nimcp_brain_train_language(self.handle, c_in.as_ptr(), c_tgt.as_ptr(), lr, &mut loss)
-        })?;
-        Ok(loss)
-    }
-
-    // --- Language generation ---
-
-    pub fn speak(&self, semantic_input: Option<&[f32]>) -> Result<SpeakResult> {
-        let mut text_buf = [0u8; 4096];
-        let mut confidence: f32 = 0.0;
-        let mut fluency: f32 = 0.0;
-        let (ptr, dim) = semantic_input.map_or((ptr::null(), 0), |s| (s.as_ptr(), s.len() as c_uint));
-        check_status(unsafe {
-            nimcp_brain_speak(self.handle, ptr, dim,
-                text_buf.as_mut_ptr() as *mut c_char, 4096, &mut confidence, &mut fluency)
-        })?;
-        let text = unsafe { CStr::from_ptr(text_buf.as_ptr() as *const c_char) }
-            .to_string_lossy().into_owned();
-        Ok(SpeakResult { text, confidence, fluency })
-    }
-
-    pub fn comprehend(&self, text: &str) -> Result<(Vec<f32>, f32)> {
-        let c_text = CString::new(text).map_err(|_| NimcpError::Invalid("invalid text".into()))?;
-        let mut semantic = vec![0.0f32; 128];
-        let mut confidence: f32 = 0.0;
-        check_status(unsafe {
-            nimcp_brain_comprehend(self.handle, c_text.as_ptr(),
-                semantic.as_mut_ptr(), 128, &mut confidence)
-        })?;
-        Ok((semantic, confidence))
-    }
-
-    pub fn produce_text(&self, intent: &[f32]) -> Result<(String, f32)> {
-        let mut text_buf = [0u8; 4096];
-        let mut confidence: f32 = 0.0;
-        check_status(unsafe {
-            nimcp_brain_produce_text(self.handle, intent.as_ptr(), intent.len() as c_uint,
-                text_buf.as_mut_ptr() as *mut c_char, 4096, &mut confidence)
-        })?;
-        let text = unsafe { CStr::from_ptr(text_buf.as_ptr() as *const c_char) }
-            .to_string_lossy().into_owned();
-        Ok((text, confidence))
-    }
-
-    // --- Configuration ---
-
-    pub fn set_fast_training(&mut self, enabled: bool) -> Result<()> {
-        check_status(unsafe { nimcp_brain_set_fast_training(self.handle, enabled) })
-    }
-
-    pub fn set_task_type(&mut self, task: &str) -> Result<()> {
-        let c_task = CString::new(task).map_err(|_| NimcpError::Invalid("invalid task".into()))?;
-        check_status(unsafe { nimcp_brain_set_task_type(self.handle, c_task.as_ptr()) })
-    }
-
-    pub fn set_training_mode(&mut self, active: bool) -> Result<()> {
-        check_status(unsafe { nimcp_brain_set_training_mode(self.handle, active) })
-    }
-
-    pub fn set_network_ablation(&mut self, cnn: i32, snn: i32, lnn: i32) -> Result<()> {
-        check_status(unsafe { nimcp_brain_set_network_ablation(self.handle, cnn, snn, lnn) })
-    }
-
-    pub fn enable_biological_plasticity(&mut self, enabled: bool) -> Result<()> {
-        check_status(unsafe { nimcp_brain_enable_biological_plasticity(self.handle, enabled) })
-    }
-
-    pub fn enable_mixed_precision(&mut self, enable: bool) -> Result<()> {
-        check_status(unsafe { nimcp_brain_enable_mixed_precision(self.handle, enable) })
-    }
-
-    pub fn enable_gradient_checkpointing(&mut self, enable: bool, interval: u32) -> Result<()> {
-        check_status(unsafe { nimcp_brain_enable_gradient_checkpointing(self.handle, enable, interval) })
-    }
-
-    pub fn enable_hemispheric(&mut self, enable: bool) -> Result<()> {
-        check_status(unsafe { nimcp_brain_enable_hemispheric(self.handle, enable) })
-    }
-
-    pub fn enable_recurrent(&mut self, enable: bool, max_iter: u32,
-                            confidence_threshold: f32, blend_alpha: f32) -> Result<()> {
-        check_status(unsafe {
-            nimcp_brain_enable_recurrent(self.handle, enable, max_iter, confidence_threshold, blend_alpha)
-        })
-    }
-
-    pub fn enable_bptt(&mut self, enable: bool, window: u32, discount: f32) -> Result<()> {
-        check_status(unsafe { nimcp_brain_enable_bptt(self.handle, enable, window, discount) })
-    }
-
-    pub fn enable_multi_network(&mut self) -> Result<()> {
-        check_status(unsafe { nimcp_brain_enable_multi_network(self.handle) })
-    }
-
-    // --- Metrics ---
-
-    pub fn get_accuracy(&self) -> f32 {
-        unsafe { nimcp_brain_get_accuracy(self.handle) }
-    }
-
-    pub fn get_last_gradient_norm(&self) -> f32 {
-        unsafe { nimcp_brain_get_last_gradient_norm(self.handle) }
-    }
-
-    pub fn get_last_loss(&self) -> f32 {
-        unsafe { nimcp_brain_get_last_loss(self.handle) }
-    }
-
-    pub fn get_network_metrics(&self) -> Option<NetworkMetrics> {
-        let mut m = NetworkMetrics::default();
-        let ok = unsafe {
-            nimcp_brain_get_network_metrics(
-                self.handle, &mut m.ann_loss, &mut m.cnn_loss,
-                &mut m.snn_loss, &mut m.lnn_loss,
-                &mut m.ann_steps, &mut m.cnn_steps,
-                &mut m.snn_steps, &mut m.lnn_steps,
-            )
-        };
-        if ok { Some(m) } else { None }
-    }
-
-    pub fn medulla_get_arousal(&self) -> f32 {
-        unsafe { nimcp_brain_medulla_get_arousal(self.handle) }
-    }
-
-    pub fn bg_get_dopamine(&self) -> f32 {
-        unsafe { nimcp_brain_bg_get_dopamine(self.handle) }
-    }
-
-    pub fn sleep_get_pressure(&self) -> f32 {
-        unsafe { nimcp_brain_sleep_get_pressure(self.handle) }
-    }
-
-    pub fn substrate_get_health(&self) -> String {
-        let mut buf = [0u8; 64];
-        let _ = unsafe {
-            nimcp_brain_substrate_get_health(self.handle, buf.as_mut_ptr() as *mut c_char, 64)
-        };
-        unsafe { CStr::from_ptr(buf.as_ptr() as *const c_char) }
-            .to_string_lossy().into_owned()
-    }
-
-    // --- Sensory ---
-
-    pub fn submit_sensory(&mut self, modality: &str, data: &[f32],
-                          width: u32, height: u32, channels: u32, n_segments: u32) -> Result<()> {
-        let c_mod = CString::new(modality).map_err(|_| NimcpError::Invalid("invalid modality".into()))?;
-        check_status(unsafe {
-            nimcp_brain_submit_sensory(
-                self.handle, c_mod.as_ptr(), data.as_ptr(), data.len() as c_uint,
-                width, height, channels, n_segments,
-            )
-        })
-    }
-
-    pub fn visual_cortex_process(&self, pixels: &[f32], width: u32, height: u32,
-                                 channels: u32) -> Result<Vec<f32>> {
-        let mut features = vec![0.0f32; 256];
-        let mut count: u32 = 0;
-        check_status(unsafe {
-            nimcp_brain_visual_cortex_process(
-                self.handle, pixels.as_ptr(), pixels.len() as c_uint,
-                width, height, channels, features.as_mut_ptr(), 256, &mut count,
-            )
-        })?;
-        features.truncate(count as usize);
-        Ok(features)
-    }
-
-    // --- LNN/SNN/CNN ---
-
-    pub fn lnn_create(&mut self, n_sensory: u32, n_inter: u32,
-                      n_command: u32, n_output: u32) -> Result<()> {
-        check_status(unsafe {
-            nimcp_brain_lnn_create(self.handle, n_sensory, n_inter, n_command, n_output)
-        })
-    }
-
-    pub fn lnn_get_stats(&self) -> Result<LnnStats> {
-        let mut s = LnnStats::default();
-        check_status(unsafe {
-            nimcp_brain_lnn_get_stats(
-                self.handle, &mut s.forward_steps, &mut s.backward_steps,
-                &mut s.ode_evals, &mut s.avg_tau, &mut s.state_norm,
-                &mut s.gradient_norm, &mut s.nan_count, &mut s.inf_count,
-            )
-        })?;
-        Ok(s)
-    }
-
-    pub fn snn_get_stats(&self) -> Result<SnnStats> {
-        let mut s = SnnStats::default();
-        check_status(unsafe {
-            nimcp_brain_snn_get_stats(
-                self.handle, &mut s.total_steps, &mut s.total_spikes,
-                &mut s.mean_firing_rate, &mut s.max_firing_rate,
-                &mut s.sparsity, &mut s.synchrony, &mut s.health, &mut s.memory_bytes,
-            )
-        })?;
-        Ok(s)
-    }
-
-    pub fn cnn_get_stats(&self) -> Result<CnnStats> {
-        let mut s = CnnStats::default();
-        check_status(unsafe {
-            nimcp_brain_cnn_get_stats(self.handle, &mut s.num_layers, &mut s.num_params, &mut s.num_labels)
-        })?;
-        Ok(s)
-    }
-
-    // --- Experience ---
-
-    pub fn experience(&mut self, input: &[f32], output_size: u32,
-                      teacher_reward: f32) -> Result<(Vec<f32>, f32)> {
-        let mut output = vec![0.0f32; output_size as usize];
-        let mut prediction_error: f32 = 0.0;
-        check_status(unsafe {
-            nimcp_brain_experience(
-                self.handle, input.as_ptr(), input.len() as c_uint,
-                output.as_mut_ptr(), output_size, teacher_reward, &mut prediction_error,
-            )
-        })?;
-        Ok((output, prediction_error))
-    }
-
-    pub fn experience_correct(&mut self, expected: &[f32]) -> Result<f32> {
-        let mut loss: f32 = 0.0;
-        check_status(unsafe {
-            nimcp_brain_experience_correct(
-                self.handle, expected.as_ptr(), expected.len() as c_uint, &mut loss,
-            )
-        })?;
-        Ok(loss)
-    }
-
-    // --- Cloud ---
-
-    pub fn connect_cloud(&mut self, cloud: &Brain, threshold: f32, distill: bool) -> Result<()> {
-        check_status(unsafe {
-            nimcp_brain_connect_cloud(self.handle, cloud.handle, threshold, distill)
-        })
-    }
-
-    pub fn disconnect_cloud(&mut self) -> Result<()> {
-        check_status(unsafe { nimcp_brain_disconnect_cloud(self.handle) })
     }
 }
 
@@ -1781,7 +2497,6 @@ impl Drop for Brain {
         if !self.handle.is_null() {
             unsafe { nimcp_brain_destroy(self.handle) }
         }
-        // Free callback closure allocations (C no longer references them after destroy)
         for ptr in self._callback_ptrs.drain(..) {
             if !ptr.is_null() {
                 let _ = unsafe { Box::from_raw(ptr) };
@@ -1881,10 +2596,7 @@ impl Ethics {
     pub fn check(&self, situation: &[f32]) -> Result<f32> {
         let mut score: f32 = 0.0;
         check_status(unsafe {
-            nimcp_ethics_check(
-                self.handle, situation.as_ptr(),
-                situation.len() as c_uint, &mut score,
-            )
+            nimcp_ethics_check(self.handle, situation.as_ptr(), situation.len() as c_uint, &mut score)
         })?;
         Ok(score)
     }
@@ -1923,9 +2635,7 @@ impl KnowledgeGraph {
         let c_pred = CString::new(predicate).map_err(|e| NimcpError::Invalid(e.to_string()))?;
         let c_obj = CString::new(object).map_err(|e| NimcpError::Invalid(e.to_string()))?;
         check_status(unsafe {
-            nimcp_knowledge_add_fact(
-                self.handle, c_sub.as_ptr(), c_pred.as_ptr(), c_obj.as_ptr(),
-            )
+            nimcp_knowledge_add_fact(self.handle, c_sub.as_ptr(), c_pred.as_ptr(), c_obj.as_ptr())
         })
     }
 
@@ -1934,13 +2644,11 @@ impl KnowledgeGraph {
         let mut buf = vec![0u8; max_len as usize];
         check_status(unsafe {
             nimcp_knowledge_query(
-                self.handle, c_query.as_ptr(),
-                buf.as_mut_ptr() as *mut c_char, max_len,
+                self.handle, c_query.as_ptr(), buf.as_mut_ptr() as *mut c_char, max_len,
             )
         })?;
         let result = unsafe {
-            CStr::from_ptr(buf.as_ptr() as *const c_char)
-                .to_string_lossy().into_owned()
+            CStr::from_ptr(buf.as_ptr() as *const c_char).to_string_lossy().into_owned()
         };
         Ok(result)
     }
