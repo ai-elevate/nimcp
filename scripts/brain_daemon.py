@@ -925,6 +925,41 @@ def main():
         handlers=log_handlers,
     )
 
+    # Kill stale daemon processes before starting
+    my_pid = os.getpid()
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["pgrep", "-f", "brain_daemon.py"],
+            capture_output=True, text=True)
+        for line in result.stdout.strip().split('\n'):
+            if not line:
+                continue
+            pid = int(line.strip())
+            if pid != my_pid:
+                logger.info("Killing stale brain_daemon process (PID %d)", pid)
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                    import time as _time
+                    _time.sleep(1)
+                    # Force kill if still alive
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                except ProcessLookupError:
+                    pass
+    except Exception as e:
+        logger.debug("Stale process cleanup: %s", e)
+
+    # Clean stale socket
+    if os.path.exists(args.socket):
+        try:
+            os.unlink(args.socket)
+            logger.info("Removed stale socket: %s", args.socket)
+        except OSError:
+            pass
+
     # Write PID file
     with open(PID_FILE, "w") as f:
         f.write(str(os.getpid()))
