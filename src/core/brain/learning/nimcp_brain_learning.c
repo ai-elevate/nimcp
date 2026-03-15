@@ -1053,6 +1053,25 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                         else
                             brain->network_metrics.ema_lnn_loss =
                                 (1.0f - a) * brain->network_metrics.ema_lnn_loss + a * nloss;
+                        /* Update HNN metrics if Hamiltonian is active on any LNN layer */
+                        if (brain->lnn_network) {
+                            extern float lnn_hamiltonian_get_energy(const void*);
+                            extern float lnn_hamiltonian_get_energy_deviation(const void*);
+                            /* Check first layer for Hamiltonian */
+                            if (brain->lnn_network->n_layers > 0 &&
+                                brain->lnn_network->layers[0] &&
+                                brain->lnn_network->layers[0]->use_hamiltonian &&
+                                brain->lnn_network->layers[0]->H_net) {
+                                brain->network_metrics.hnn_active = true;
+                                brain->network_metrics.hnn_energy =
+                                    lnn_hamiltonian_get_energy(brain->lnn_network->layers[0]->H_net);
+                                brain->network_metrics.hnn_energy_deviation =
+                                    lnn_hamiltonian_get_energy_deviation(brain->lnn_network->layers[0]->H_net);
+                                if (brain->network_metrics.hnn_initial_energy == 0.0f)
+                                    brain->network_metrics.hnn_initial_energy =
+                                        brain->network_metrics.hnn_energy;
+                            }
+                        }
                         break;
                     default:
                         break;

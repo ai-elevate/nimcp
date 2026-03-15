@@ -6471,7 +6471,7 @@ static PyObject* Brain_get_network_metrics_py(BrainObject* self, PyObject* Py_UN
             &ema_ann, &ema_cnn, &ema_snn, &ema_lnn,
             &ann_steps, &cnn_steps, &snn_steps, &lnn_steps))
         Py_RETURN_NONE;
-    return Py_BuildValue("{s:f,s:f,s:f,s:f,s:K,s:K,s:K,s:K}",
+    PyObject* d = Py_BuildValue("{s:f,s:f,s:f,s:f,s:K,s:K,s:K,s:K}",
         "ann_loss", (double)ema_ann,
         "cnn_loss", (double)ema_cnn,
         "snn_loss", (double)ema_snn,
@@ -6480,6 +6480,53 @@ static PyObject* Brain_get_network_metrics_py(BrainObject* self, PyObject* Py_UN
         "cnn_steps", cnn_steps,
         "snn_steps", snn_steps,
         "lnn_steps", lnn_steps);
+    if (!d) return NULL;
+
+    /* Add HNN metrics if available */
+    CHECK_INTERNAL_BRAIN(self);
+    brain_t ib = self->brain->internal_brain;
+    if (ib->network_metrics.hnn_active) {
+        PyObject* v;
+        v = PyFloat_FromDouble(ib->network_metrics.hnn_energy);
+        PyDict_SetItemString(d, "hnn_energy", v); Py_DECREF(v);
+        v = PyFloat_FromDouble(ib->network_metrics.hnn_energy_deviation);
+        PyDict_SetItemString(d, "hnn_energy_deviation", v); Py_DECREF(v);
+        v = PyFloat_FromDouble(ib->network_metrics.hnn_initial_energy);
+        PyDict_SetItemString(d, "hnn_initial_energy", v); Py_DECREF(v);
+        v = Py_True; Py_INCREF(v);
+        PyDict_SetItemString(d, "hnn_active", v); Py_DECREF(v);
+    }
+
+    /* Add FNO audio metrics if available */
+    if (ib->network_metrics.fno_audio_steps > 0) {
+        PyObject* v;
+        v = PyFloat_FromDouble(ib->network_metrics.fno_audio_loss);
+        PyDict_SetItemString(d, "fno_audio_loss", v); Py_DECREF(v);
+        v = PyFloat_FromDouble(ib->network_metrics.fno_audio_ema_loss);
+        PyDict_SetItemString(d, "fno_audio_ema_loss", v); Py_DECREF(v);
+        v = PyLong_FromUnsignedLongLong(ib->network_metrics.fno_audio_steps);
+        PyDict_SetItemString(d, "fno_audio_steps", v); Py_DECREF(v);
+        v = PyLong_FromUnsignedLong(ib->network_metrics.fno_audio_params);
+        PyDict_SetItemString(d, "fno_audio_params", v); Py_DECREF(v);
+    }
+
+    /* Add FNO population metrics if available */
+    if (ib->network_metrics.fno_pop_train_steps > 0) {
+        PyObject* v;
+        v = PyFloat_FromDouble(ib->network_metrics.fno_pop_train_mse);
+        PyDict_SetItemString(d, "fno_pop_train_mse", v); Py_DECREF(v);
+        v = PyFloat_FromDouble(ib->network_metrics.fno_pop_val_mse);
+        PyDict_SetItemString(d, "fno_pop_val_mse", v); Py_DECREF(v);
+        v = ib->network_metrics.fno_pop_ready ? Py_True : Py_False;
+        Py_INCREF(v);
+        PyDict_SetItemString(d, "fno_pop_ready", v); Py_DECREF(v);
+        v = PyLong_FromUnsignedLongLong(ib->network_metrics.fno_pop_train_steps);
+        PyDict_SetItemString(d, "fno_pop_train_steps", v); Py_DECREF(v);
+        v = PyLong_FromUnsignedLongLong(ib->network_metrics.fno_pop_inference_steps);
+        PyDict_SetItemString(d, "fno_pop_inference_steps", v); Py_DECREF(v);
+    }
+
+    return d;
 }
 
 /**

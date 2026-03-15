@@ -229,6 +229,24 @@ struct brain_struct {
         uint64_t cnn_steps;      /**< Total CNN training steps */
         uint64_t snn_steps;      /**< Total SNN training steps */
         uint64_t lnn_steps;      /**< Total LNN training steps */
+
+        /* Hamiltonian Neural Network metrics */
+        float hnn_energy;        /**< Current Hamiltonian H(q,p) value */
+        float hnn_energy_deviation; /**< |H(t) - H(0)| / |H(0)| — drift from conservation */
+        float hnn_initial_energy;/**< H(q,p) at t=0 */
+        bool hnn_active;         /**< Whether HNN is active on any LNN layer */
+
+        /* Fourier Neural Operator metrics */
+        float fno_audio_loss;    /**< Last FNO audio cortex embedding loss */
+        float fno_audio_ema_loss;/**< EMA of FNO audio loss */
+        uint64_t fno_audio_steps;/**< FNO audio forward steps */
+        uint32_t fno_audio_params;/**< FNO audio parameter count */
+
+        float fno_pop_train_mse; /**< SNN FNO population training MSE */
+        float fno_pop_val_mse;   /**< SNN FNO population validation MSE */
+        bool fno_pop_ready;      /**< SNN FNO ready to replace LIF */
+        uint64_t fno_pop_train_steps; /**< FNO population training steps */
+        uint64_t fno_pop_inference_steps; /**< FNO population inference steps */
     } network_metrics;
 
     // Label to output mapping
