@@ -620,6 +620,17 @@ class BrainService:
         result = self._hybrid_decoder.respond(text, brain=self.brain)
         return {"ok": True, **result}
 
+    # -- Identity --
+
+    def _cmd_get_identity(self, _req):
+        if not hasattr(self, '_identity'):
+            try:
+                from athena_identity import IdentityController
+                self._identity = IdentityController(brain=self.brain)
+            except Exception as e:
+                return {"error": f"Identity init failed: {e}"}
+        return {"ok": True, **self._identity.get_identity_summary()}
+
     # -- TTS --
 
     def _cmd_tts_speak(self, req):

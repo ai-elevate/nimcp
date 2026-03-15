@@ -193,6 +193,12 @@ class BrainProxy:
                            "max_tokens": max_tokens})
         return resp
 
+    # -- Identity --
+
+    def get_identity(self):
+        """Get Athena's current identity state (personality, voice, accent)."""
+        return self._send({"cmd": "get_identity"})
+
     # -- TTS --
 
     def tts_speak(self, text, accent=None, output_path=None):
