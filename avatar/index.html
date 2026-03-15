@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Athena — Neural Avatar</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+        }
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        #avatar-panel {
+            flex: 1;
+            position: relative;
+        }
+        #canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #status-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 15, 0.85);
+            padding: 8px 16px;
+            font-size: 12px;
+            display: flex;
+            gap: 20px;
+            border-top: 1px solid #1a1a2e;
+        }
+        .stat { color: #888; }
+        .stat-value { color: #4fc3f7; font-weight: 600; }
+        .stat-label { color: #666; }
+
+        #side-panel {
+            width: 320px;
+            background: #0d0d14;
+            border-left: 1px solid #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            overflow-y: auto;
+        }
+        h2 { font-size: 14px; color: #4fc3f7; margin: 12px 0 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 13px;
+            border-bottom: 1px solid #111;
+        }
+        .metric-name { color: #888; }
+        .metric-val { color: #e0e0e0; font-family: monospace; }
+
+        #chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            margin-top: 12px;
+        }
+        #chat-log {
+            flex: 1;
+            overflow-y: auto;
+            font-size: 13px;
+            padding: 8px;
+            background: #08080c;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .msg { margin: 6px 0; padding: 6px 10px; border-radius: 8px; }
+        .msg-user { background: #1a2a3a; color: #b0d0f0; }
+        .msg-athena { background: #1a1a2e; color: #d0d0e0; }
+        .msg-system { color: #555; font-style: italic; font-size: 11px; }
+
+        #chat-input-area { display: flex; gap: 6px; }
+        #chat-input {
+            flex: 1;
+            background: #111;
+            border: 1px solid #2a2a3e;
+            border-radius: 6px;
+            color: #e0e0e0;
+            padding: 8px 12px;
+            font-size: 13px;
+            outline: none;
+        }
+        #chat-input:focus { border-color: #4fc3f7; }
+        #send-btn {
+            background: #1a3a5a;
+            border: none;
+            color: #4fc3f7;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        #send-btn:hover { background: #2a4a6a; }
+
+        .emotion-bar {
+            height: 4px;
+            background: #111;
+            border-radius: 2px;
+            margin: 2px 0 6px;
+            overflow: hidden;
+        }
+        .emotion-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        .fill-valence { background: linear-gradient(90deg, #f44, #4f4); }
+        .fill-arousal { background: linear-gradient(90deg, #44f, #f84); }
+        .fill-spikes { background: #4fc3f7; }
+
+        #connection-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .connected { background: #4caf50; }
+        .disconnected { background: #f44336; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="avatar-panel">
+            <canvas id="canvas"></canvas>
+            <div id="status-bar">
+                <span class="stat">
+                    <span id="connection-dot" class="disconnected"></span>
+                    <span id="conn-status">Disconnected</span>
+                </span>
+                <span class="stat"><span class="stat-label">FPS:</span> <span id="fps" class="stat-value">0</span></span>
+                <span class="stat"><span class="stat-label">Spikes:</span> <span id="spikes" class="stat-value">0</span></span>
+                <span class="stat"><span class="stat-label">Emotion:</span> <span id="emotion-label" class="stat-value">neutral</span></span>
+                <span class="stat"><span class="stat-label">Speaking:</span> <span id="speaking" class="stat-value">no</span></span>
+            </div>
+        </div>
+
+        <div id="side-panel">
+            <h2>Neural State</h2>
+            <div class="metric"><span class="metric-name">Valence</span><span id="val-valence" class="metric-val">0.00</span></div>
+            <div class="emotion-bar"><div id="bar-valence" class="emotion-fill fill-valence" style="width:50%"></div></div>
+
+            <div class="metric"><span class="metric-name">Arousal</span><span id="val-arousal" class="metric-val">0.50</span></div>
+            <div class="emotion-bar"><div id="bar-arousal" class="emotion-fill fill-arousal" style="width:50%"></div></div>
+
+            <div class="metric"><span class="metric-name">SNN Spikes</span><span id="val-spikes" class="metric-val">0</span></div>
+            <div class="emotion-bar"><div id="bar-spikes" class="emotion-fill fill-spikes" style="width:0%"></div></div>
+
+            <h2>FACS Action Units</h2>
+            <div class="metric"><span class="metric-name">AU12 Smile</span><span id="au12" class="metric-val">0.00</span></div>
+            <div class="metric"><span class="metric-name">AU15 Frown</span><span id="au15" class="metric-val">0.00</span></div>
+            <div class="metric"><span class="metric-name">AU1 Brow Raise</span><span id="au1" class="metric-val">0.00</span></div>
+            <div class="metric"><span class="metric-name">AU4 Brow Lower</span><span id="au4" class="metric-val">0.00</span></div>
+            <div class="metric"><span class="metric-name">AU6 Cheek Raise</span><span id="au6" class="metric-val">0.00</span></div>
+            <div class="metric"><span class="metric-name">AU26 Jaw Drop</span><span id="au26" class="metric-val">0.00</span></div>
+
+            <h2>Voice</h2>
+            <div class="metric"><span class="metric-name">Pitch</span><span id="val-pitch" class="metric-val">210 Hz</span></div>
+            <div class="metric"><span class="metric-name">Rate</span><span id="val-rate" class="metric-val">1.0x</span></div>
+            <div class="metric"><span class="metric-name">Quality</span><span id="val-quality" class="metric-val">normal</span></div>
+            <div class="metric"><span class="metric-name">Accent</span><span id="val-accent" class="metric-val">neutral</span></div>
+
+            <h2>Identity</h2>
+            <div class="metric"><span class="metric-name">Personality</span><span id="val-personality" class="metric-val">—</span></div>
+            <div class="metric"><span class="metric-name">Narrative</span><span id="val-narrative" class="metric-val">—</span></div>
+
+            <div id="chat-area">
+                <h2>Conversation</h2>
+                <div id="chat-log">
+                    <div class="msg msg-system">Connect to brain daemon to start talking to Athena.</div>
+                </div>
+                <div id="chat-input-area">
+                    <input id="chat-input" type="text" placeholder="Talk to Athena..." autocomplete="off">
+                    <button id="send-btn">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.169/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // ============================================================
+        // Scene setup
+        // ============================================================
+        const canvas = document.getElementById('canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0f);
+
+        const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+        camera.position.set(0, 0.1, 0.8);
+
+        const controls = new OrbitControls(camera, canvas);
+        controls.target.set(0, 0.05, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 2;
+        controls.minDistance = 0.3;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.8);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xddeeff, 1.5);
+        keyLight.position.set(1, 1, 1);
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(0x4466aa, 0.5);
+        fillLight.position.set(-1, 0.5, 0.5);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(0x4fc3f7, 0.3);
+        rimLight.position.set(0, 0.5, -1);
+        scene.add(rimLight);
+
+        // ============================================================
+        // Procedural head (until GLB model is loaded)
+        // ============================================================
+        let headMesh = null;
+        let leftEye = null, rightEye = null;
+        let jawPivot = null;
+
+        function createProceduralHead() {
+            const headGroup = new THREE.Group();
+
+            // Head
+            const headGeom = new THREE.SphereGeometry(0.12, 32, 32);
+            headGeom.scale(0.85, 1.0, 0.9);
+            const headMat = new THREE.MeshStandardMaterial({
+                color: 0xd4a574,
+                roughness: 0.6,
+                metalness: 0.05
+            });
+            headMesh = new THREE.Mesh(headGeom, headMat);
+            headGroup.add(headMesh);
+
+            // Eyes
+            const eyeGeom = new THREE.SphereGeometry(0.015, 16, 16);
+            const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
+            const irisMat = new THREE.MeshStandardMaterial({ color: 0x2a6e3f, roughness: 0.3 });
+            const irisGeom = new THREE.SphereGeometry(0.008, 12, 12);
+            const pupilMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+            const pupilGeom = new THREE.SphereGeometry(0.004, 8, 8);
+
+            leftEye = new THREE.Group();
+            const le = new THREE.Mesh(eyeGeom, eyeMat);
+            const li = new THREE.Mesh(irisGeom, irisMat);
+            const lp = new THREE.Mesh(pupilGeom, pupilMat);
+            li.position.z = 0.012;
+            lp.position.z = 0.014;
+            leftEye.add(le, li, lp);
+            leftEye.position.set(-0.04, 0.02, 0.09);
+            headGroup.add(leftEye);
+
+            rightEye = new THREE.Group();
+            const re = new THREE.Mesh(eyeGeom, eyeMat);
+            const ri = new THREE.Mesh(irisGeom, irisMat);
+            const rp = new THREE.Mesh(pupilGeom, pupilMat);
+            ri.position.z = 0.012;
+            rp.position.z = 0.014;
+            rightEye.add(re, ri, rp);
+            rightEye.position.set(0.04, 0.02, 0.09);
+            headGroup.add(rightEye);
+
+            // Mouth/jaw
+            jawPivot = new THREE.Group();
+            jawPivot.position.set(0, -0.04, 0.07);
+            const jawGeom = new THREE.BoxGeometry(0.06, 0.01, 0.03);
+            const jawMat = new THREE.MeshStandardMaterial({ color: 0xc08060, roughness: 0.7 });
+            const jaw = new THREE.Mesh(jawGeom, jawMat);
+            jaw.position.y = -0.005;
+            jawPivot.add(jaw);
+            headGroup.add(jawPivot);
+
+            // Nose
+            const noseGeom = new THREE.ConeGeometry(0.008, 0.025, 8);
+            const noseMat = new THREE.MeshStandardMaterial({ color: 0xc89e7a, roughness: 0.6 });
+            const nose = new THREE.Mesh(noseGeom, noseMat);
+            nose.position.set(0, 0, 0.1);
+            nose.rotation.x = Math.PI / 2;
+            headGroup.add(nose);
+
+            // Eyebrows (thin boxes)
+            const browGeom = new THREE.BoxGeometry(0.04, 0.004, 0.005);
+            const browMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a });
+            const lBrow = new THREE.Mesh(browGeom, browMat);
+            lBrow.position.set(-0.04, 0.045, 0.085);
+            lBrow.name = 'leftBrow';
+            headGroup.add(lBrow);
+            const rBrow = new THREE.Mesh(browGeom, browMat);
+            rBrow.position.set(0.04, 0.045, 0.085);
+            rBrow.name = 'rightBrow';
+            headGroup.add(rBrow);
+
+            scene.add(headGroup);
+            return headGroup;
+        }
+
+        const headGroup = createProceduralHead();
+
+        // ============================================================
+        // Avatar state from brain
+        // ============================================================
+        let avatarState = {
+            valence: 0, arousal: 0.5, dominance: 0,
+            au1: 0, au2: 0, au4: 0, au5: 0, au6: 0,
+            au12: 0, au15: 0, au17: 0, au26: 0,
+            gaze_x: 0, gaze_y: 0,
+            head_pitch: 0, head_yaw: 0, head_roll: 0,
+            blink: 0, is_speaking: false,
+            pitch_hz: 210, speaking_rate: 1.0
+        };
+
+        function applyAvatarState(state) {
+            if (!headGroup) return;
+
+            // Head pose
+            headGroup.rotation.x = (state.head_pitch || 0) * 0.3;
+            headGroup.rotation.y = (state.head_yaw || 0) * 0.4;
+            headGroup.rotation.z = (state.head_roll || 0) * 0.2;
+
+            // Gaze
+            if (leftEye && rightEye) {
+                const gx = (state.gaze_x || 0) * 0.15;
+                const gy = (state.gaze_y || 0) * 0.1;
+                leftEye.rotation.y = gx;
+                leftEye.rotation.x = -gy;
+                rightEye.rotation.y = gx;
+                rightEye.rotation.x = -gy;
+
+                // Blink
+                const blinkScale = 1.0 - (state.blink || 0) * 0.9;
+                leftEye.scale.y = blinkScale;
+                rightEye.scale.y = blinkScale;
+            }
+
+            // Jaw (AU26 + speaking)
+            if (jawPivot) {
+                let jawOpen = state.au26 || 0;
+                if (state.is_speaking) {
+                    jawOpen = Math.max(jawOpen, 0.3 + Math.sin(Date.now() * 0.015) * 0.2);
+                }
+                jawPivot.rotation.x = jawOpen * 0.3;
+            }
+
+            // Eyebrows (AU1, AU4)
+            const lBrow = headGroup.getObjectByName('leftBrow');
+            const rBrow = headGroup.getObjectByName('rightBrow');
+            if (lBrow && rBrow) {
+                const raise = (state.au1 || 0) * 0.015;
+                const lower = (state.au4 || 0) * 0.01;
+                lBrow.position.y = 0.045 + raise - lower;
+                rBrow.position.y = 0.045 + raise - lower;
+            }
+
+            // Smile/frown via color shift
+            if (headMesh) {
+                const smile = state.au12 || 0;
+                const frown = state.au15 || 0;
+                const warmth = 0.83 + smile * 0.07 - frown * 0.05;
+                headMesh.material.color.setRGB(warmth, warmth * 0.78, warmth * 0.56);
+            }
+        }
+
+        // ============================================================
+        // Idle animation (breathing, micro-movements)
+        // ============================================================
+        let idleTime = 0;
+        let blinkTimer = 0;
+        let nextBlink = 3 + Math.random() * 4;
+
+        function updateIdle(dt) {
+            idleTime += dt;
+            blinkTimer += dt;
+
+            // Subtle breathing
+            headGroup.position.y = Math.sin(idleTime * 1.2) * 0.002;
+
+            // Micro head movement
+            headGroup.rotation.y += Math.sin(idleTime * 0.3) * 0.0003;
+            headGroup.rotation.x += Math.sin(idleTime * 0.5) * 0.0002;
+
+            // Blink
+            if (blinkTimer > nextBlink) {
+                avatarState.blink = 1.0;
+                setTimeout(() => { avatarState.blink = 0; }, 150);
+                blinkTimer = 0;
+                nextBlink = 2 + Math.random() * 5;
+            }
+
+            // Idle gaze drift
+            if (!avatarState.is_speaking) {
+                avatarState.gaze_x = Math.sin(idleTime * 0.2) * 0.3;
+                avatarState.gaze_y = Math.sin(idleTime * 0.15) * 0.15;
+            }
+        }
+
+        // ============================================================
+        // WebSocket connection to brain daemon
+        // ============================================================
+        let ws = null;
+        const WS_URL = `ws://${window.location.hostname || 'localhost'}:8765`;
+
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket(WS_URL);
+                ws.onopen = () => {
+                    document.getElementById('connection-dot').className = 'connected';
+                    document.getElementById('conn-status').textContent = 'Connected';
+                    addChatMessage('system', 'Connected to Athena brain daemon.');
+                };
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'avatar_state') {
+                            Object.assign(avatarState, data.state);
+                            updateUI(data);
+                        } else if (data.type === 'chat_response') {
+                            addChatMessage('athena', data.text);
+                        } else if (data.type === 'identity') {
+                            updateIdentityUI(data);
+                        }
+                    } catch (e) { console.error('Parse error:', e); }
+                };
+                ws.onclose = () => {
+                    document.getElementById('connection-dot').className = 'disconnected';
+                    document.getElementById('conn-status').textContent = 'Disconnected';
+                    setTimeout(connectWebSocket, 3000);
+                };
+                ws.onerror = () => {
+                    ws.close();
+                };
+            } catch (e) {
+                setTimeout(connectWebSocket, 3000);
+            }
+        }
+
+        function updateUI(data) {
+            const s = data.state || {};
+            document.getElementById('val-valence').textContent = (s.valence || 0).toFixed(2);
+            document.getElementById('val-arousal').textContent = (s.arousal || 0.5).toFixed(2);
+            document.getElementById('bar-valence').style.width = ((s.valence || 0) * 50 + 50) + '%';
+            document.getElementById('bar-arousal').style.width = ((s.arousal || 0.5) * 100) + '%';
+
+            if (data.snn_spikes !== undefined) {
+                document.getElementById('val-spikes').textContent = data.snn_spikes;
+                document.getElementById('spikes').textContent = data.snn_spikes;
+                document.getElementById('bar-spikes').style.width = Math.min(100, data.snn_spikes / 20) + '%';
+            }
+
+            document.getElementById('au12').textContent = (s.au12_lip_corner_pull || 0).toFixed(2);
+            document.getElementById('au15').textContent = (s.au15_lip_corner_drop || 0).toFixed(2);
+            document.getElementById('au1').textContent = (s.au1_inner_brow_raise || 0).toFixed(2);
+            document.getElementById('au4').textContent = (s.au4_brow_lower || 0).toFixed(2);
+            document.getElementById('au6').textContent = (s.au6_cheek_raise || 0).toFixed(2);
+            document.getElementById('au26').textContent = (s.au26_jaw_drop || 0).toFixed(2);
+
+            document.getElementById('speaking').textContent = s.is_speaking ? 'yes' : 'no';
+            document.getElementById('emotion-label').textContent = getEmotionName(s.emotion_id || 0);
+        }
+
+        function updateIdentityUI(data) {
+            if (data.personality) document.getElementById('val-personality').textContent = data.personality;
+            if (data.accent) document.getElementById('val-accent').textContent = data.accent;
+            if (data.voice_quality) document.getElementById('val-quality').textContent = data.voice_quality;
+            if (data.narrative) document.getElementById('val-narrative').textContent = data.narrative.substring(0, 60);
+            if (data.pitch_hz) document.getElementById('val-pitch').textContent = data.pitch_hz.toFixed(0) + ' Hz';
+            if (data.speed) document.getElementById('val-rate').textContent = data.speed.toFixed(2) + 'x';
+        }
+
+        function getEmotionName(id) {
+            const names = ['neutral', 'happy', 'sad', 'angry', 'fearful', 'surprised',
+                          'disgusted', 'contemptuous', 'curious', 'confused', 'excited',
+                          'bored', 'proud', 'ashamed', 'grateful', 'hopeful', 'anxious',
+                          'calm', 'loving'];
+            return names[id] || 'neutral';
+        }
+
+        // ============================================================
+        // Chat
+        // ============================================================
+        function addChatMessage(role, text) {
+            const log = document.getElementById('chat-log');
+            const div = document.createElement('div');
+            div.className = `msg msg-${role}`;
+            div.textContent = role === 'user' ? `You: ${text}` :
+                             role === 'athena' ? `Athena: ${text}` : text;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function sendChat() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            addChatMessage('user', text);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'chat', text: text }));
+            } else {
+                addChatMessage('system', 'Not connected to brain daemon.');
+            }
+        }
+
+        document.getElementById('send-btn').addEventListener('click', sendChat);
+        document.getElementById('chat-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendChat();
+        });
+
+        // ============================================================
+        // Render loop
+        // ============================================================
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let fpsTimer = 0;
+
+        function resize() {
+            const panel = document.getElementById('avatar-panel');
+            const w = panel.clientWidth;
+            const h = panel.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const now = performance.now();
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            // FPS counter
+            frameCount++;
+            fpsTimer += dt;
+            if (fpsTimer >= 1.0) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                fpsTimer = 0;
+            }
+
+            updateIdle(dt);
+            applyAvatarState(avatarState);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+        connectWebSocket();
+    </script>
+</body>
+</html>
