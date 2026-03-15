@@ -578,6 +578,43 @@ int snn_network_run(snn_network_t* network, float duration_ms) {
         total_spikes += spikes;
     }
 
+    /* Compute derived stats after run completes */
+    float duration_s = duration_ms / 1000.0f;
+    uint32_t total_neurons = 0;
+    uint32_t silent = 0;
+    uint32_t hyperactive = 0;
+    float max_rate = 0.0f;
+
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop) continue;
+
+        /* Per-neuron firing rate from spike trains */
+        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+            float rate = (duration_s > 0.0f) ?
+                (float)pop->spike_trains[n].total_spikes / duration_s : 0.0f;
+            if (rate == 0.0f) silent++;
+            if (rate > 200.0f) hyperactive++;  /* >200 Hz is pathological */
+            if (rate > max_rate) max_rate = rate;
+        }
+
+        /* Population mean rate */
+        pop->mean_rate = (duration_s > 0.0f && pop->n_neurons > 0) ?
+            (float)pop->total_spikes / (float)pop->n_neurons / duration_s : 0.0f;
+        total_neurons += pop->n_neurons;
+    }
+
+    /* Update network stats */
+    if (total_neurons > 0) {
+        network->stats.mean_firing_rate = (duration_s > 0.0f) ?
+            (float)total_spikes / (float)total_neurons / duration_s : 0.0f;
+        network->stats.max_firing_rate = max_rate;
+        network->stats.sparsity = (float)silent / (float)total_neurons;
+        network->stats.silent_neurons = silent;
+        network->stats.hyperactive_neurons = hyperactive;
+        network->stats.spikes_per_sample = (float)total_spikes / (float)total_neurons;
+    }
+
     return total_spikes;
 }
 
