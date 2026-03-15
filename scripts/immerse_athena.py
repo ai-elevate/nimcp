@@ -305,15 +305,47 @@ def submit_multimodal(brain, description):
         except Exception:
             pass
 
-    # Somatosensory: anything with touch/temperature keywords
-    somato_keywords = ["warm", "hot", "cold", "cool", "smooth", "rough", "soft",
-                       "hard", "heavy", "light", "wet", "dry", "sand", "fur",
-                       "hug", "touch", "hand", "finger", "ice", "fire", "sun",
-                       "freeze", "silk"]
-    if any(w in desc_lower for w in somato_keywords):
-        segments = generate_somatosensory(description)
+    # Somatosensory: encode touch/temperature/texture from description
+    try:
+        from sensory_encoder import encode_sensory
+        somato_vec = encode_sensory(description)
+        if somato_vec is not None:
+            brain.submit_sensory("somatosensory", somato_vec.tolist(),
+                                n_segments=len(somato_vec))
+    except Exception:
+        pass
+
+    # Cross-modal integration: process through visual cortex (occipital)
+    # and focus thalamic attention on the active modalities. This triggers
+    # cortical column binding — neurons that fire together wire together.
+    active_modalities = []
+    if any(w in desc_lower for w in ["ball", "sky", "cloud", "leaf", "water",
+           "flower", "cat", "rain", "candle", "snow", "bubble", "rainbow",
+           "fire", "tree", "bird", "color", "light", "bright", "glow",
+           "sun", "moon", "star", "shadow", "dark"]):
+        active_modalities.append("visual")
+    if any(w in desc_lower for w in ["singing", "music", "thunder", "crash",
+           "bark", "whisper", "rain", "wave", "wind", "tick", "tap",
+           "crunch", "sound", "noise", "clock", "purr", "hum"]):
+        active_modalities.append("auditory")
+    try:
+        from sensory_encoder import encode_sensory
+        if encode_sensory(description) is not None:
+            active_modalities.append("somatosensory")
+    except Exception:
+        pass
+
+    # Focus thalamic attention on active modalities for cross-modal binding
+    for modality in active_modalities:
         try:
-            brain.submit_sensory("somatosensory", segments)
+            brain.focus_attention(modality)
+        except Exception:
+            pass
+
+    # Process through visual cortex if visual data was submitted
+    if "visual" in active_modalities:
+        try:
+            brain.visual_cortex_process(pixels, w, h, ch)
         except Exception:
             pass
 
