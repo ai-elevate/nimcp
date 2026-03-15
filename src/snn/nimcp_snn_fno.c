@@ -44,17 +44,18 @@ static void dft_real(const float* in, uint32_t n, float* re, float* im) {
     }
 }
 
-/** Simple inverse DFT */
+/** Inverse DFT (complex half-spectrum → real) using Hermitian symmetry */
 static void idft_real(const float* re, const float* im, uint32_t n, float* out) {
     uint32_t fn = n / 2 + 1;
     float inv = 1.0f / (float)n;
     for (uint32_t j = 0; j < n; j++) {
-        double r = 0;
-        for (uint32_t k = 0; k < fn; k++) {
+        double r = re[0]; /* DC component */
+        for (uint32_t k = 1; k < fn - 1; k++) {
             double a = 2.0 * M_PI * k * j / n;
-            r += re[k] * cos(a) - im[k] * sin(a);
-            if (k > 0 && k < fn - 1)
-                r += re[k] * cos(a) + im[k] * sin(a);
+            r += 2.0 * (re[k] * cos(a) - im[k] * sin(a));
+        }
+        if (n % 2 == 0 && fn > 1) {
+            r += re[fn - 1] * cos(M_PI * j);
         }
         out[j] = (float)(r * inv);
     }
@@ -174,11 +175,20 @@ snn_fno_population_t* snn_fno_population_create(
     fno->buffer_size = cfg.training_buffer_size;
     fno->buffer = nimcp_calloc(fno->buffer_size, sizeof(snn_fno_state_pair_t));
     if (fno->buffer) {
-        for (uint32_t i = 0; i < fno->buffer_size; i++) {
+        bool alloc_ok = true;
+        for (uint32_t i = 0; i < fno->buffer_size && alloc_ok; i++) {
             fno->buffer[i].state_in = nimcp_calloc(n_neurons, sizeof(float));
             fno->buffer[i].synaptic_input = nimcp_calloc(n_neurons, sizeof(float));
             fno->buffer[i].state_out = nimcp_calloc(n_neurons, sizeof(float));
             fno->buffer[i].spike_out = nimcp_calloc(n_neurons, sizeof(float));
+            if (!fno->buffer[i].state_in || !fno->buffer[i].synaptic_input ||
+                !fno->buffer[i].state_out || !fno->buffer[i].spike_out) {
+                alloc_ok = false;
+            }
+        }
+        if (!alloc_ok) {
+            snn_fno_population_destroy(fno);
+            return NULL;
         }
     }
 

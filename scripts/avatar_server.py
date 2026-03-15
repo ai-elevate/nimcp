@@ -78,7 +78,7 @@ class AvatarBroadcaster:
             return
         data = json.dumps(message)
         disconnected = set()
-        for client in self.clients:
+        for client in list(self.clients):  # Snapshot to avoid set-changed-during-iteration
             try:
                 await client.send(data)
             except Exception:

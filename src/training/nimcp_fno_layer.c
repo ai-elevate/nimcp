@@ -44,20 +44,22 @@ static void fft_real(const float* input, uint32_t n,
     }
 }
 
-/** Simple inverse FFT (complex → real output) */
+/** Inverse FFT (complex half-spectrum → real output) using Hermitian symmetry */
 static void ifft_real(const float* in_real, const float* in_imag,
                       uint32_t n, float* output) {
     uint32_t freq_n = n / 2 + 1;
     float inv_n = 1.0f / (float)n;
     for (uint32_t j = 0; j < n; j++) {
-        double re = 0.0;
-        for (uint32_t k = 0; k < freq_n; k++) {
+        double re = in_real[0]; /* DC component (k=0, real only) */
+        for (uint32_t k = 1; k < freq_n - 1; k++) {
             double angle = 2.0 * M_PI * k * j / n;
-            re += in_real[k] * cos(angle) - in_imag[k] * sin(angle);
-            /* Mirror for k > n/2 */
-            if (k > 0 && k < freq_n - 1) {
-                re += in_real[k] * cos(angle) - (-in_imag[k]) * sin(angle);
-            }
+            /* Positive freq + Hermitian conjugate (negative freq) */
+            re += 2.0 * (in_real[k] * cos(angle) - in_imag[k] * sin(angle));
+        }
+        /* Nyquist component (k=n/2, real only if n is even) */
+        if (n % 2 == 0 && freq_n > 1) {
+            double angle = M_PI * j; /* cos(pi*j) = (-1)^j */
+            re += in_real[freq_n - 1] * cos(angle);
         }
         output[j] = (float)(re * inv_n);
     }
@@ -345,7 +347,13 @@ int fno_spectral_conv_backward(fno_spectral_conv_t* layer,
                 float* din_hat_real = nimcp_calloc(freq_n, sizeof(float));
                 float* din_hat_imag = nimcp_calloc(freq_n, sizeof(float));
                 float* din_spatial = nimcp_calloc(fft_n, sizeof(float));
-                if (din_hat_real && din_hat_imag && din_spatial) {
+                if (!din_hat_real || !din_hat_imag || !din_spatial) {
+                    nimcp_free(din_hat_real);
+                    nimcp_free(din_hat_imag);
+                    nimcp_free(din_spatial);
+                    continue;  /* Skip this channel pair */
+                }
+                {
                     for (uint32_t k = 0; k < n_modes && k < freq_n; k++) {
                         float wr = layer->W_real[w_off + k];
                         float wi = layer->W_imag[w_off + k];
@@ -615,7 +623,8 @@ int fno_audio_backward(fno_audio_processor_t* proc,
     /* Backward through lifting */
     for (uint32_t ch = 0; ch < hc; ch++) {
         for (uint32_t i = 0; i < sp; i++) {
-            proc->grad_W_lift[ch] += dl_dcurrent[ch * sp + i] * proc->lifted[ch * sp + i] / (proc->W_lift[ch] + 1e-8f);
+            /* Lifting gradient: d(W*x+b)/dW = x. Use original mel input, not lifted. */
+            proc->grad_W_lift[ch] += dl_dcurrent[ch * sp + i];
             proc->grad_b_lift[ch] += dl_dcurrent[ch * sp + i];
         }
     }

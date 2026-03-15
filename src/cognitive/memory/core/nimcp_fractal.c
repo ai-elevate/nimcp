@@ -475,10 +475,11 @@ static void generate_scales(size_t min_scale, size_t max_scale, size_t num_scale
         }
     }
 
-    /* Ensure unique scales */
+    /* Ensure unique scales, clamped to max_scale */
     for (size_t i = 1; i < num_scales; i++) {
         if (scales[i] <= scales[i - 1]) {
             scales[i] = scales[i - 1] + 1;
+            if (scales[i] > max_scale) scales[i] = max_scale;
         }
     }
 }

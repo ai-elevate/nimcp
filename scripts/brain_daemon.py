@@ -620,7 +620,8 @@ class BrainService:
                     phi3_decoder=self._phi3, brain=self.brain)
             except Exception as e:
                 return {"error": f"Phi-3 init failed: {e}"}
-        result = self._hybrid_decoder.respond(text, brain=self.brain)
+        with self._lock:
+            result = self._hybrid_decoder.respond(text, brain=self.brain)
         return {"ok": True, **result}
 
     # -- Identity --

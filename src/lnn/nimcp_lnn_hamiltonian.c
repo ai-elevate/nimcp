@@ -371,14 +371,22 @@ int lnn_hamiltonian_step_stormer_verlet(
     float* q_data = (float*)nimcp_tensor_data(q);
     float* p_data = (float*)nimcp_tensor_data(p);
 
-    /* Step 1: p_half = p - (dt/2) * ∂H/∂q */
+    /* Störmer-Verlet symplectic integrator (correct ordering):
+     *   Step 1: p_{1/2} = p_n - (dt/2) * ∂H/∂q(q_n, p_n)
+     *   Step 2: q_{n+1} = q_n + dt * ∂H/∂p(q_n, p_{1/2})
+     *   Step 3: p_{n+1} = p_{1/2} - (dt/2) * ∂H/∂q(q_{n+1}, p_{1/2})
+     * Note: p is modified in-place to p_half after step 1, then q is updated,
+     * then p_half is updated to p_new. This is the correct leapfrog ordering. */
+
+    /* Step 1: p_half = p - (dt/2) * ∂H/∂q(q, p) */
     lnn_hamiltonian_grad(net, q, p, dH_dq, dH_dp);
     float* dHdq = (float*)nimcp_tensor_data(dH_dq);
     for (uint32_t i = 0; i < n; i++) {
         p_data[i] -= 0.5f * dt * dHdq[i];
     }
+    /* p_data now holds p_half */
 
-    /* Add input coupling: p += dt * coupling * input */
+    /* Add input coupling to momentum: p_half += dt * coupling * input */
     if (input && input_coupling > 0.0f) {
         const float* in_data = (const float*)nimcp_tensor_data_const(input);
         uint32_t in_n = nimcp_tensor_numel(input);
@@ -390,17 +398,21 @@ int lnn_hamiltonian_step_stormer_verlet(
 
     /* Step 2: q_new = q + dt * ∂H/∂p(q, p_half) */
     lnn_hamiltonian_grad(net, q, p, dH_dq, dH_dp);
+    /* p is already p_half, q is still q_n — gradient computed at (q_n, p_half) */
     float* dHdp = (float*)nimcp_tensor_data(dH_dp);
     for (uint32_t i = 0; i < n; i++) {
         q_data[i] += dt * dHdp[i];
     }
+    /* q_data now holds q_{n+1} */
 
     /* Step 3: p_new = p_half - (dt/2) * ∂H/∂q(q_new, p_half) */
     lnn_hamiltonian_grad(net, q, p, dH_dq, dH_dp);
+    /* q is now q_{n+1}, p is still p_half — gradient at (q_{n+1}, p_half) */
     dHdq = (float*)nimcp_tensor_data(dH_dq);
     for (uint32_t i = 0; i < n; i++) {
         p_data[i] -= 0.5f * dt * dHdq[i];
     }
+    /* p_data now holds p_{n+1} */
 
     /* Clamp to prevent divergence */
     for (uint32_t i = 0; i < n; i++) {

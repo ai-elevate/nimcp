@@ -108,6 +108,7 @@ static void extract_embedding(cortex_cnn_processor_t* proc) {
     const float* out = (const float*)nimcp_tensor_data_const(proc->last_fwd.output);
     size_t numel = nimcp_tensor_numel(proc->last_fwd.output);
     if (!out || numel == 0) return;
+    if (!proc->embedding) return;  /* Guard against NULL embedding buffer */
 
     uint32_t copy_dim = (proc->embedding_dim < (uint32_t)numel) ?
                          proc->embedding_dim : (uint32_t)numel;
