@@ -10,9 +10,10 @@
 package nimcp
 
 /*
-#cgo CFLAGS: -I${SRCDIR}/../../../include
+#cgo CFLAGS: -I${SRCDIR}/../../../include -I${SRCDIR}
 #cgo LDFLAGS: -L${SRCDIR}/../../../build/lib -lnimcp -Wl,-rpath,${SRCDIR}/../../../build/lib
 #include "nimcp.h"
+#include "nimcp_go_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -1128,4 +1129,419 @@ func (kg *KnowledgeGraph) Query(query string) (string, error) {
 		return "", err
 	}
 	return C.GoString(&buf[0]), nil
+}
+
+// ============================================================================
+// Group 1 — Sensory/Multimodal
+// ============================================================================
+
+// SensoryOpts holds optional parameters for SubmitSensory.
+type SensoryOpts struct {
+	Width     uint32
+	Height    uint32
+	Channels  uint32
+	NSegments uint32
+}
+
+// SubmitSensory stages sensory data for cross-modal cortex CNN processing.
+// Supported modalities: "visual", "audio", "speech", "somatosensory".
+// Optional opts (at most one) provides width/height/channels for visual,
+// n_segments for somatosensory.
+func (b *Brain) SubmitSensory(modality string, data []float32, opts ...SensoryOpts) error {
+	if len(data) == 0 {
+		return &NimcpError{Code: ErrInvalid, Message: "empty data slice"}
+	}
+	cMod := C.CString(modality)
+	defer C.free(unsafe.Pointer(cMod))
+	var o SensoryOpts
+	if len(opts) > 0 {
+		o = opts[0]
+	}
+	status := C.go_brain_submit_sensory(b.handle, cMod,
+		(*C.float)(unsafe.Pointer(&data[0])), C.uint(len(data)),
+		C.uint(o.Width), C.uint(o.Height),
+		C.uint(o.Channels), C.uint(o.NSegments))
+	return checkStatus(status)
+}
+
+// VisualCortexProcess runs an image through the brain's visual cortex CNN
+// and returns the extracted feature vector.
+func (b *Brain) VisualCortexProcess(pixels []float32, width, height, channels uint32) ([]float32, error) {
+	if len(pixels) == 0 {
+		return nil, &NimcpError{Code: ErrInvalid, Message: "empty pixel data"}
+	}
+	const maxFeat = 1024
+	features := make([]float32, maxFeat)
+	n := C.go_brain_visual_cortex_process(b.handle,
+		(*C.float)(unsafe.Pointer(&pixels[0])), C.uint(len(pixels)),
+		C.uint(width), C.uint(height), C.uint(channels),
+		(*C.float)(unsafe.Pointer(&features[0])), C.uint(maxFeat))
+	if n == 0 {
+		return nil, &NimcpError{Code: ErrGeneric, Message: "visual cortex processing failed or unavailable"}
+	}
+	return features[:int(n)], nil
+}
+
+// ============================================================================
+// Group 2 — Avatar/Metrics
+// ============================================================================
+
+// GetAvatarState returns the full avatar face/emotion/voice state.
+func (b *Brain) GetAvatarState() (map[string]interface{}, error) {
+	var state C.nimcp_avatar_state_t
+	status := C.nimcp_brain_get_avatar_state(b.handle, &state)
+	if err := checkStatus(status); err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		// Viseme / mouth
+		"mouth_open":       float32(state.mouth_open),
+		"lip_round":        float32(state.lip_round),
+		"lip_upper":        float32(state.lip_upper),
+		"lip_lower":        float32(state.lip_lower),
+		"tongue_position":  float32(state.tongue_position),
+		"current_viseme":   uint8(state.current_viseme),
+		// FACS AUs
+		"au1_inner_brow_raise": float32(state.au1_inner_brow_raise),
+		"au2_outer_brow_raise": float32(state.au2_outer_brow_raise),
+		"au4_brow_lower":       float32(state.au4_brow_lower),
+		"au5_upper_lid_raise":  float32(state.au5_upper_lid_raise),
+		"au6_cheek_raise":      float32(state.au6_cheek_raise),
+		"au7_lid_tighten":      float32(state.au7_lid_tighten),
+		"au9_nose_wrinkle":     float32(state.au9_nose_wrinkle),
+		"au10_upper_lip_raise": float32(state.au10_upper_lip_raise),
+		"au12_lip_corner_pull": float32(state.au12_lip_corner_pull),
+		"au15_lip_corner_drop": float32(state.au15_lip_corner_drop),
+		"au17_chin_raise":      float32(state.au17_chin_raise),
+		"au20_lip_stretch":     float32(state.au20_lip_stretch),
+		"au23_lip_tighten":     float32(state.au23_lip_tighten),
+		"au25_lips_part":       float32(state.au25_lips_part),
+		"au26_jaw_drop":        float32(state.au26_jaw_drop),
+		"au28_lip_suck":        float32(state.au28_lip_suck),
+		// Emotion
+		"valence":           float32(state.valence),
+		"arousal":           float32(state.arousal),
+		"dominance":         float32(state.dominance),
+		"emotion_id":        uint32(state.emotion_id),
+		"emotion_intensity": float32(state.emotion_intensity),
+		// Gaze + head
+		"gaze_x":     float32(state.gaze_x),
+		"gaze_y":     float32(state.gaze_y),
+		"head_pitch":  float32(state.head_pitch),
+		"head_yaw":    float32(state.head_yaw),
+		"head_roll":   float32(state.head_roll),
+		"blink":       float32(state.blink),
+		// Voice
+		"pitch_hz":      float32(state.pitch_hz),
+		"speaking_rate": float32(state.speaking_rate),
+		"volume":        float32(state.volume),
+		// Metadata
+		"timestamp_us": uint64(state.timestamp_us),
+		"is_speaking":  bool(state.is_speaking),
+	}, nil
+}
+
+// GetNetworkMetrics returns per-network training loss EMA and step counts.
+func (b *Brain) GetNetworkMetrics() (map[string]interface{}, error) {
+	var emaANN, emaCNN, emaSNN, emaLNN C.float
+	var annSteps, cnnSteps, snnSteps, lnnSteps C.ulong
+	ok := C.nimcp_brain_get_network_metrics(b.handle,
+		&emaANN, &emaCNN, &emaSNN, &emaLNN,
+		&annSteps, &cnnSteps, &snnSteps, &lnnSteps)
+	if !bool(ok) {
+		return nil, &NimcpError{Code: ErrGeneric, Message: "get_network_metrics failed"}
+	}
+	return map[string]interface{}{
+		"ann_loss":  float32(emaANN),
+		"cnn_loss":  float32(emaCNN),
+		"snn_loss":  float32(emaSNN),
+		"lnn_loss":  float32(emaLNN),
+		"ann_steps": uint64(annSteps),
+		"cnn_steps": uint64(cnnSteps),
+		"snn_steps": uint64(snnSteps),
+		"lnn_steps": uint64(lnnSteps),
+	}, nil
+}
+
+// GetCortexCNNMetrics returns per-cortex CNN processor metrics.
+// Keys: "visual", "audio", "speech", "somato".
+func (b *Brain) GetCortexCNNMetrics() (map[string]interface{}, error) {
+	typeKeys := [4]string{"visual", "audio", "speech", "somato"}
+	result := make(map[string]interface{})
+	for ci := 0; ci < 4; ci++ {
+		var m C.go_cortex_cnn_metrics_t
+		if bool(C.go_brain_get_cortex_cnn_metrics(b.handle, C.int(ci), &m)) {
+			result[typeKeys[ci]] = map[string]interface{}{
+				"last_loss":      float32(m.last_loss),
+				"ema_loss":       float32(m.ema_loss),
+				"forward_steps":  uint64(m.forward_steps),
+				"backward_steps": uint64(m.backward_steps),
+				"embedding_norm": float32(m.embedding_norm),
+				"confidence":     float32(m.confidence),
+				"embedding_dim":  uint32(m.embedding_dim),
+				"num_params":     uint32(m.num_params),
+			}
+		}
+	}
+	return result, nil
+}
+
+// ============================================================================
+// Group 3 — Core Inference
+// ============================================================================
+
+// DecideFull runs the full cognitive decision pipeline and returns a rich result.
+func (b *Brain) DecideFull(features []float32) (map[string]interface{}, error) {
+	if len(features) == 0 {
+		return nil, &NimcpError{Code: ErrInvalid, Message: "empty features"}
+	}
+	var label [64]C.char
+	var confidence C.float
+	var explanation [256]C.char
+	const maxOutput = 4096
+	var outputVec [maxOutput]C.float
+	outputSize := C.uint(maxOutput)
+	var numActive C.uint
+	var sparsity C.float
+	var inferenceTimeUS C.ulong
+
+	status := C.nimcp_brain_decide_full(b.handle,
+		(*C.float)(unsafe.Pointer(&features[0])), C.uint(len(features)),
+		&label[0], &confidence, &explanation[0],
+		&outputVec[0], &outputSize,
+		&numActive, &sparsity, &inferenceTimeUS)
+	if err := checkStatus(status); err != nil {
+		return nil, err
+	}
+
+	vecLen := int(outputSize)
+	if vecLen > maxOutput {
+		vecLen = maxOutput
+	}
+	vec := make([]float32, vecLen)
+	for i := 0; i < vecLen; i++ {
+		vec[i] = float32(outputVec[i])
+	}
+
+	return map[string]interface{}{
+		"label":              C.GoString(&label[0]),
+		"confidence":         float32(confidence),
+		"explanation":        C.GoString(&explanation[0]),
+		"output_vector":      vec,
+		"num_active_neurons": uint32(numActive),
+		"sparsity":           float32(sparsity),
+		"inference_time_us":  uint64(inferenceTimeUS),
+	}, nil
+}
+
+// GetTranscript returns the cognitive transcript from the last DecideFull call.
+func (b *Brain) GetTranscript() ([]interface{}, error) {
+	const maxEntries = 32
+	var summaries [maxEntries][256]C.char
+	var saliences [maxEntries]C.float
+	var confidences [maxEntries]C.float
+	var modules [maxEntries]*C.char
+
+	count := C.nimcp_brain_get_last_transcript(b.handle,
+		&summaries[0], &saliences[0], &confidences[0], &modules[0],
+		C.uint(maxEntries))
+
+	n := int(count)
+	result := make([]interface{}, n)
+	for i := 0; i < n; i++ {
+		modName := "unknown"
+		if modules[i] != nil {
+			modName = C.GoString(modules[i])
+		}
+		result[i] = map[string]interface{}{
+			"module":     modName,
+			"summary":    C.GoString(&summaries[i][0]),
+			"salience":   float32(saliences[i]),
+			"confidence": float32(confidences[i]),
+		}
+	}
+	return result, nil
+}
+
+// GetCognitiveStats returns per-module cognitive training statistics.
+func (b *Brain) GetCognitiveStats() (map[string]interface{}, error) {
+	var steps [13]C.uint
+	var losses [13]C.float
+	var count C.uint
+
+	status := C.nimcp_brain_get_cognitive_stats(b.handle, &steps[0], &losses[0], &count)
+	if err := checkStatus(status); err != nil {
+		return nil, err
+	}
+
+	moduleNames := []string{
+		"grounded_language", "knowledge", "vae", "fep_parietal",
+		"physics_nn", "pred_hierarchy", "jepa", "creative",
+		"self_heal", "intuition", "fep_orchestrator",
+	}
+
+	result := make(map[string]interface{})
+	n := int(count)
+	if n > 11 {
+		n = 11
+	}
+	for i := 0; i < n; i++ {
+		result[moduleNames[i]] = map[string]interface{}{
+			"steps":     uint32(steps[i]),
+			"last_loss": float32(losses[i]),
+		}
+	}
+	return result, nil
+}
+
+// GetAccuracy returns the running label-match accuracy (EMA).
+func (b *Brain) GetAccuracy() float32 {
+	return float32(C.nimcp_brain_get_accuracy(b.handle))
+}
+
+// ============================================================================
+// Group 4 — LNN/SNN/CNN
+// ============================================================================
+
+// LNNCreate creates an NCP-architecture LNN temporal processor on the brain.
+// Default values: nSensory=128, nInter=64, nCommand=32, nOutput=64.
+func (b *Brain) LNNCreate(nSensory, nInter, nCommand, nOutput uint32) error {
+	ok := C.go_brain_lnn_create(b.handle,
+		C.uint(nSensory), C.uint(nInter),
+		C.uint(nCommand), C.uint(nOutput))
+	if !bool(ok) {
+		return &NimcpError{Code: ErrGeneric, Message: "failed to create LNN network"}
+	}
+	return nil
+}
+
+// LNNGetStats returns LNN network statistics.
+func (b *Brain) LNNGetStats() (map[string]interface{}, error) {
+	var stats C.go_lnn_stats_t
+	if !bool(C.go_brain_lnn_get_stats(b.handle, &stats)) {
+		return nil, &NimcpError{Code: ErrGeneric, Message: "LNN stats unavailable (network not created?)"}
+	}
+	return map[string]interface{}{
+		"forward_steps":  uint64(stats.forward_steps),
+		"backward_steps": uint64(stats.backward_steps),
+		"total_ode_evals": uint64(stats.ode_evaluations),
+		"avg_tau":         float32(stats.avg_tau),
+		"state_norm":      float32(stats.state_norm),
+		"gradient_norm":   float32(stats.gradient_norm),
+		"nan_count":       uint32(stats.nan_count),
+		"inf_count":       uint32(stats.inf_count),
+	}, nil
+}
+
+// SNNGetStats returns SNN network statistics.
+func (b *Brain) SNNGetStats() (map[string]interface{}, error) {
+	var stats C.go_snn_stats_t
+	if !bool(C.go_brain_snn_get_stats(b.handle, &stats)) {
+		return nil, &NimcpError{Code: ErrGeneric, Message: "SNN stats unavailable (network not created?)"}
+	}
+	return map[string]interface{}{
+		"total_steps":        uint64(stats.total_steps),
+		"total_spikes":       uint64(stats.total_spikes),
+		"mean_firing_rate":   float32(stats.mean_firing_rate),
+		"max_firing_rate":    float32(stats.max_firing_rate),
+		"sparsity":           float32(stats.sparsity),
+		"synchrony":          float32(stats.synchrony),
+		"spikes_per_sample":  float32(stats.spikes_per_sample),
+		"silent_neurons":     uint32(stats.silent_neurons),
+		"hyperactive_neurons": uint32(stats.hyperactive_neurons),
+		"health":             int(stats.health),
+		"memory_usage_bytes": uint64(stats.memory_usage_bytes),
+	}, nil
+}
+
+// CNNGetStats returns CNN trainer statistics.
+func (b *Brain) CNNGetStats() (map[string]interface{}, error) {
+	var stats C.go_cnn_stats_t
+	if !bool(C.go_brain_cnn_get_stats(b.handle, &stats)) {
+		return nil, &NimcpError{Code: ErrGeneric, Message: "CNN stats unavailable (trainer not created?)"}
+	}
+	return map[string]interface{}{
+		"num_layers":     uint32(stats.num_layers),
+		"num_parameters": uint64(stats.num_parameters),
+		"num_labels":     uint32(stats.num_labels),
+		"active":         bool(stats.active),
+	}, nil
+}
+
+// ============================================================================
+// Group 5 — Configuration
+// ============================================================================
+
+// SetFastTraining enables or disables fast training mode.
+func (b *Brain) SetFastTraining(enabled bool) error {
+	if !bool(C.go_brain_set_fast_training(b.handle, C.bool(enabled))) {
+		return &NimcpError{Code: ErrGeneric, Message: "set_fast_training failed (brain not initialized?)"}
+	}
+	return nil
+}
+
+// SetTaskType sets the brain's task strategy.
+// Valid values: "regression", "classification", "pattern", "association".
+func (b *Brain) SetTaskType(taskType string) error {
+	cTask := C.CString(taskType)
+	defer C.free(unsafe.Pointer(cTask))
+	if !bool(C.go_brain_set_task_type(b.handle, cTask)) {
+		return &NimcpError{Code: ErrInvalid, Message: fmt.Sprintf("unknown task type: %q (use regression/classification/pattern/association)", taskType)}
+	}
+	return nil
+}
+
+// EnableBiologicalPlasticity wires or unwires the biological plasticity bridge
+// (TPB + EDP + coordinator) into the learn path.
+func (b *Brain) EnableBiologicalPlasticity(enabled bool) error {
+	if !bool(C.go_brain_enable_biological_plasticity(b.handle, C.bool(enabled))) {
+		return &NimcpError{Code: ErrGeneric, Message: "enable_biological_plasticity failed (brain not initialized?)"}
+	}
+	return nil
+}
+
+// EnableMultiNetwork enables ensemble training across all network architectures
+// (ANN, SNN, LNN, CNN).
+func (b *Brain) EnableMultiNetwork() error {
+	rc := C.go_brain_enable_multi_network(b.handle)
+	if rc < 0 {
+		return &NimcpError{Code: ErrGeneric, Message: "failed to enable multi-network training"}
+	}
+	return nil
+}
+
+// ============================================================================
+// Group 6 — Brain State
+// ============================================================================
+
+// MedullaGetArousal returns the medulla arousal level [0.0, 1.0].
+func (b *Brain) MedullaGetArousal() float32 {
+	return float32(C.go_brain_medulla_get_arousal(b.handle))
+}
+
+// SleepGetPressure returns the current sleep pressure (adenosine) [0.0, 1.0].
+func (b *Brain) SleepGetPressure() float32 {
+	return float32(C.go_brain_sleep_get_pressure(b.handle))
+}
+
+// BGGetDopamine returns the basal ganglia dopamine level [0.0, 1.0].
+func (b *Brain) BGGetDopamine() float32 {
+	return float32(C.go_brain_bg_get_dopamine(b.handle))
+}
+
+// SubstrateGetHealth returns the computational substrate health status.
+// Returns one of: "OPTIMAL", "STRESSED", "COMPROMISED", "CRITICAL", "UNKNOWN".
+func (b *Brain) SubstrateGetHealth() string {
+	return C.GoString(C.go_brain_substrate_get_health(b.handle))
+}
+
+// FocusAttention hints the attention system to prioritize a modality.
+// Modality: "visual", "audio", "speech", "somatosensory".
+func (b *Brain) FocusAttention(modality string) error {
+	cMod := C.CString(modality)
+	defer C.free(unsafe.Pointer(cMod))
+	if !bool(C.go_brain_focus_attention(b.handle, cMod)) {
+		return &NimcpError{Code: ErrGeneric, Message: "focus_attention failed"}
+	}
+	return nil
 }

@@ -48,10 +48,25 @@ tau(x,I) = tau_base * sigma(W_tau*[x;I] + b_tau)
 - `brain.lnn_forward_step()` - single forward step
 - `brain.lnn_get_state()` - current LNN state
 
+## Hamiltonian Extension
+
+When `layer->use_hamiltonian = true`, LNN dynamics switch from dissipative to energy-conserving:
+
+```
+Standard:    dx/dt = -x/τ + f(W·input + W_rec·x)    [dissipative]
+Hamiltonian: dq/dt = ∂H/∂p,  dp/dt = -∂H/∂q        [conservative]
+```
+
+- H-network: [q;p] → 2-layer softplus → scalar H (energy)
+- Störmer-Verlet symplectic integrator preserves energy by construction
+- H(q,p) = variational free energy F in FEP terms
+- See [hnn.md](hnn.md) for full details
+
 ## Key Files
-- 17 header files in `include/lnn/`
+- 18 header files in `include/lnn/` (includes `nimcp_lnn_hamiltonian.h`)
 - `nimcp_lnn_gradient.c` (SRP split into 5 part files)
 - `nimcp_lnn_training.c`, `nimcp_lnn_network.c`
+- `nimcp_lnn_hamiltonian.c` — H-network, Störmer-Verlet integrator
 
 ## Bio-async Module ID: 0x0600
 

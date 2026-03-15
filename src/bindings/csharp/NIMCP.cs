@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -585,7 +586,196 @@ namespace NIMCP
             [MarshalAs(UnmanagedType.LPStr)] string query,
             StringBuilder outResult, uint maxResultLen);
 
+        // --- Sensory / Multimodal ---
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_submit_sensory(
+            IntPtr brain,
+            [MarshalAs(UnmanagedType.LPStr)] string modality,
+            float[] data, uint numElements,
+            uint width, uint height, uint channels,
+            uint nSegments);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_visual_cortex_process(
+            IntPtr brain,
+            float[] pixels, uint numPixels,
+            uint width, uint height, uint channels,
+            float[] outFeatures, uint maxFeatures,
+            ref uint outFeatureCount);
+
+        // --- Avatar / Metrics ---
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_get_avatar_state(
+            IntPtr brain, ref NativeAvatarState state);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool nimcp_brain_get_network_metrics(
+            IntPtr brain,
+            ref float emaAnn, ref float emaCnn,
+            ref float emaSnn, ref float emaLnn,
+            ref ulong annSteps, ref ulong cnnSteps,
+            ref ulong snnSteps, ref ulong lnnSteps);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_get_cortex_cnn_metrics(
+            IntPtr brain,
+            int[] outTypes, float[] outLosses,
+            ulong[] outFwdSteps, ulong[] outBwdSteps,
+            float[] outEmbedNorms, ref uint outCount);
+
+        // --- Core Inference ---
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_decide_full(
+            IntPtr brain,
+            float[] features, uint numFeatures,
+            StringBuilder outLabel, ref float outConfidence,
+            StringBuilder outExplanation,
+            float[] outOutputVector, ref uint outOutputSize,
+            ref uint outNumActiveNeurons, ref float outSparsity,
+            ref ulong outInferenceTimeUs);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern uint nimcp_brain_get_last_transcript(
+            IntPtr brain,
+            IntPtr outEntries,
+            float[] outSaliences,
+            float[] outConfidences,
+            IntPtr outModules,
+            uint maxEntries);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_get_cognitive_stats(
+            IntPtr brain,
+            uint[] outSteps, float[] outLosses, ref uint outCount);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern float nimcp_brain_get_accuracy(IntPtr brain);
+
+        // --- LNN / SNN / CNN ---
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_lnn_create(
+            IntPtr brain,
+            uint nSensory, uint nInter, uint nCommand, uint nOutput);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_lnn_get_stats(
+            IntPtr brain,
+            ref ulong outForwardSteps, ref ulong outBackwardSteps,
+            ref ulong outOdeEvals, ref float outAvgTau,
+            ref float outStateNorm, ref float outGradientNorm,
+            ref uint outNanCount, ref uint outInfCount);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_snn_get_stats(
+            IntPtr brain,
+            ref ulong outTotalSteps, ref ulong outTotalSpikes,
+            ref float outMeanFiringRate, ref float outSparsity,
+            ref float outSynchrony, ref uint outSilentNeurons,
+            ref uint outHyperactiveNeurons, ref int outHealth,
+            ref ulong outMemoryBytes);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_cnn_get_stats(
+            IntPtr brain,
+            ref uint outNumLayers, ref ulong outNumParameters,
+            ref uint outNumLabels,
+            [MarshalAs(UnmanagedType.I1)] ref bool outActive);
+
+        // --- Configuration ---
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_set_fast_training(
+            IntPtr brain, [MarshalAs(UnmanagedType.I1)] bool enabled);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_set_task_type(
+            IntPtr brain,
+            [MarshalAs(UnmanagedType.LPStr)] string taskType);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_enable_biological_plasticity(
+            IntPtr brain, [MarshalAs(UnmanagedType.I1)] bool enabled);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_enable_multi_network(IntPtr brain);
+
+        // --- Brain State ---
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern float nimcp_brain_medulla_get_arousal(IntPtr brain);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern float nimcp_brain_sleep_get_pressure(IntPtr brain);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern float nimcp_brain_bg_get_dopamine(IntPtr brain);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_substrate_get_health(
+            IntPtr brain, StringBuilder outStatus, uint maxLen);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_focus_attention(
+            IntPtr brain,
+            [MarshalAs(UnmanagedType.LPStr)] string modality);
+
         // --- Native structs ---
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeAvatarState
+        {
+            /* Viseme / mouth shape */
+            public float mouth_open;
+            public float lip_round;
+            public float lip_upper;
+            public float lip_lower;
+            public float tongue_position;
+            public byte current_viseme;
+            private byte _pad0;   /* C struct padding after uint8_t */
+            private byte _pad1;
+            private byte _pad2;
+
+            /* FACS Action Units */
+            public float au1_inner_brow_raise;
+            public float au2_outer_brow_raise;
+            public float au4_brow_lower;
+            public float au5_upper_lid_raise;
+            public float au6_cheek_raise;
+            public float au7_lid_tighten;
+            public float au9_nose_wrinkle;
+            public float au10_upper_lip_raise;
+            public float au12_lip_corner_pull;
+            public float au15_lip_corner_drop;
+            public float au17_chin_raise;
+            public float au20_lip_stretch;
+            public float au23_lip_tighten;
+            public float au25_lips_part;
+            public float au26_jaw_drop;
+            public float au28_lip_suck;
+
+            /* Emotional state */
+            public float valence;
+            public float arousal;
+            public float dominance;
+            public uint emotion_id;
+            public float emotion_intensity;
+
+            /* Gaze and head pose */
+            public float gaze_x;
+            public float gaze_y;
+            public float head_pitch;
+            public float head_yaw;
+            public float head_roll;
+            public float blink;
+
+            /* Voice parameters */
+            public float pitch_hz;
+            public float speaking_rate;
+            public float volume;
+
+            /* Metadata */
+            public ulong timestamp_us;
+            [MarshalAs(UnmanagedType.I1)] public bool is_speaking;
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct NativeTrainingConfig
@@ -1204,6 +1394,509 @@ namespace NIMCP
             CheckOpen();
             return Native.nimcp_get_pac_modulation(
                 handle, thetaFreq, gammaFreq);
+        }
+
+        // --- Group 1: Sensory / Multimodal ---
+
+        /// <summary>
+        /// Stage sensory data for the next DecideFull() call.
+        /// Supported modalities: "visual", "audio", "speech", "somatosensory"/"somato".
+        /// </summary>
+        public void SubmitSensory(string modality, float[] data,
+            uint width = 0, uint height = 0, uint channels = 0, uint nSegments = 0)
+        {
+            CheckOpen();
+            Helper.CheckStatus(Native.nimcp_brain_submit_sensory(
+                handle, modality, data, (uint)data.Length,
+                width, height, channels, nSegments));
+        }
+
+        /// <summary>
+        /// Process image through visual cortex and return extracted features.
+        /// Pixels should be in [0-1] or [0-255] range.
+        /// </summary>
+        public float[] VisualCortexProcess(float[] pixels, uint width,
+            uint height, uint channels)
+        {
+            CheckOpen();
+            uint maxFeatures = 512;
+            float[] features = new float[maxFeatures];
+            uint featureCount = 0;
+            Helper.CheckStatus(Native.nimcp_brain_visual_cortex_process(
+                handle, pixels, (uint)pixels.Length,
+                width, height, channels,
+                features, maxFeatures, ref featureCount));
+            float[] result = new float[featureCount];
+            Array.Copy(features, result, featureCount);
+            return result;
+        }
+
+        // --- Group 2: Avatar / Metrics ---
+
+        /// <summary>
+        /// Get avatar visual state including FACS action units, visemes, gaze,
+        /// emotion, and voice parameters.
+        /// </summary>
+        public Dictionary<string, object> GetAvatarState()
+        {
+            CheckOpen();
+            var state = new Native.NativeAvatarState();
+            Helper.CheckStatus(Native.nimcp_brain_get_avatar_state(
+                handle, ref state));
+
+            return new Dictionary<string, object>
+            {
+                { "mouth_open", state.mouth_open },
+                { "lip_round", state.lip_round },
+                { "lip_upper", state.lip_upper },
+                { "lip_lower", state.lip_lower },
+                { "tongue_position", state.tongue_position },
+                { "current_viseme", (int)state.current_viseme },
+                { "au1_inner_brow_raise", state.au1_inner_brow_raise },
+                { "au2_outer_brow_raise", state.au2_outer_brow_raise },
+                { "au4_brow_lower", state.au4_brow_lower },
+                { "au5_upper_lid_raise", state.au5_upper_lid_raise },
+                { "au6_cheek_raise", state.au6_cheek_raise },
+                { "au7_lid_tighten", state.au7_lid_tighten },
+                { "au9_nose_wrinkle", state.au9_nose_wrinkle },
+                { "au10_upper_lip_raise", state.au10_upper_lip_raise },
+                { "au12_lip_corner_pull", state.au12_lip_corner_pull },
+                { "au15_lip_corner_drop", state.au15_lip_corner_drop },
+                { "au17_chin_raise", state.au17_chin_raise },
+                { "au20_lip_stretch", state.au20_lip_stretch },
+                { "au23_lip_tighten", state.au23_lip_tighten },
+                { "au25_lips_part", state.au25_lips_part },
+                { "au26_jaw_drop", state.au26_jaw_drop },
+                { "au28_lip_suck", state.au28_lip_suck },
+                { "valence", state.valence },
+                { "arousal", state.arousal },
+                { "dominance", state.dominance },
+                { "emotion_id", state.emotion_id },
+                { "emotion_intensity", state.emotion_intensity },
+                { "gaze_x", state.gaze_x },
+                { "gaze_y", state.gaze_y },
+                { "head_pitch", state.head_pitch },
+                { "head_yaw", state.head_yaw },
+                { "head_roll", state.head_roll },
+                { "blink", state.blink },
+                { "pitch_hz", state.pitch_hz },
+                { "speaking_rate", state.speaking_rate },
+                { "volume", state.volume },
+                { "timestamp_us", state.timestamp_us },
+                { "is_speaking", state.is_speaking }
+            };
+        }
+
+        /// <summary>
+        /// Get per-network training metrics (ANN/CNN/SNN/LNN loss + step counts).
+        /// </summary>
+        public Dictionary<string, object> GetNetworkMetrics()
+        {
+            CheckOpen();
+            float emaAnn = 0, emaCnn = 0, emaSnn = 0, emaLnn = 0;
+            ulong annSteps = 0, cnnSteps = 0, snnSteps = 0, lnnSteps = 0;
+            bool ok = Native.nimcp_brain_get_network_metrics(
+                handle,
+                ref emaAnn, ref emaCnn, ref emaSnn, ref emaLnn,
+                ref annSteps, ref cnnSteps, ref snnSteps, ref lnnSteps);
+
+            if (!ok) return new Dictionary<string, object>();
+
+            return new Dictionary<string, object>
+            {
+                { "ann_loss", emaAnn },
+                { "cnn_loss", emaCnn },
+                { "snn_loss", emaSnn },
+                { "lnn_loss", emaLnn },
+                { "ann_steps", annSteps },
+                { "cnn_steps", cnnSteps },
+                { "snn_steps", snnSteps },
+                { "lnn_steps", lnnSteps }
+            };
+        }
+
+        /// <summary>
+        /// Get per-cortex CNN processor metrics.
+        /// Returns dict with keys "visual"/"audio"/"speech"/"somato",
+        /// each mapping to a metrics dictionary.
+        /// </summary>
+        public Dictionary<string, object> GetCortexCnnMetrics()
+        {
+            CheckOpen();
+            int[] types = new int[4];
+            float[] losses = new float[4];
+            ulong[] fwdSteps = new ulong[4];
+            ulong[] bwdSteps = new ulong[4];
+            float[] embedNorms = new float[4];
+            uint count = 0;
+
+            Helper.CheckStatus(Native.nimcp_brain_get_cortex_cnn_metrics(
+                handle, types, losses, fwdSteps, bwdSteps,
+                embedNorms, ref count));
+
+            string[] typeKeys = { "visual", "audio", "speech", "somato" };
+            var result = new Dictionary<string, object>();
+
+            for (uint i = 0; i < count && i < 4; i++)
+            {
+                var entry = new Dictionary<string, object>
+                {
+                    { "ema_loss", losses[i] },
+                    { "forward_steps", fwdSteps[i] },
+                    { "backward_steps", bwdSteps[i] },
+                    { "embedding_norm", embedNorms[i] }
+                };
+                string key = (types[i] >= 0 && types[i] < typeKeys.Length)
+                    ? typeKeys[types[i]] : "cortex_" + types[i];
+                result[key] = entry;
+            }
+
+            return result;
+        }
+
+        // --- Group 3: Core Inference ---
+
+        /// <summary>
+        /// Run the full cognitive pipeline and return a rich result dictionary
+        /// with label, confidence, explanation, output vector, active neuron
+        /// count, sparsity, and inference time.
+        /// </summary>
+        public Dictionary<string, object> DecideFull(float[] features)
+        {
+            CheckOpen();
+            var labelBuf = new StringBuilder(256);
+            float confidence = 0;
+            var explanationBuf = new StringBuilder(1024);
+            float[] outputVector = new float[4096];
+            uint outputSize = 4096;
+            uint numActiveNeurons = 0;
+            float sparsity = 0;
+            ulong inferenceTimeUs = 0;
+
+            Helper.CheckStatus(Native.nimcp_brain_decide_full(
+                handle, features, (uint)features.Length,
+                labelBuf, ref confidence, explanationBuf,
+                outputVector, ref outputSize,
+                ref numActiveNeurons, ref sparsity, ref inferenceTimeUs));
+
+            uint vecLen = Math.Min(outputSize, 4096);
+            float[] vec = new float[vecLen];
+            Array.Copy(outputVector, vec, vecLen);
+
+            return new Dictionary<string, object>
+            {
+                { "label", labelBuf.ToString() },
+                { "confidence", confidence },
+                { "explanation", explanationBuf.ToString() },
+                { "output_vector", vec },
+                { "num_active_neurons", numActiveNeurons },
+                { "sparsity", sparsity },
+                { "inference_time_us", inferenceTimeUs }
+            };
+        }
+
+        /// <summary>
+        /// Get the cognitive transcript from the last DecideFull() call.
+        /// Each entry contains module name, summary, salience, and confidence.
+        /// </summary>
+        public List<Dictionary<string, object>> GetTranscript()
+        {
+            CheckOpen();
+            const int maxEntries = 32;
+            const int summaryLen = 256;
+
+            // Allocate unmanaged memory for the summary strings array
+            IntPtr entriesPtr = Marshal.AllocHGlobal(maxEntries * summaryLen);
+            float[] saliences = new float[maxEntries];
+            float[] confidences = new float[maxEntries];
+            IntPtr modulesPtr = Marshal.AllocHGlobal(maxEntries * IntPtr.Size);
+
+            try
+            {
+                // Zero out
+                for (int i = 0; i < maxEntries * summaryLen; i++)
+                    Marshal.WriteByte(entriesPtr, i, 0);
+                for (int i = 0; i < maxEntries * IntPtr.Size; i++)
+                    Marshal.WriteByte(modulesPtr, i, 0);
+
+                uint count = Native.nimcp_brain_get_last_transcript(
+                    handle, entriesPtr, saliences, confidences,
+                    modulesPtr, (uint)maxEntries);
+
+                var result = new List<Dictionary<string, object>>();
+                for (uint i = 0; i < count; i++)
+                {
+                    IntPtr summaryAddr = IntPtr.Add(entriesPtr, (int)(i * summaryLen));
+                    string summary = Marshal.PtrToStringAnsi(summaryAddr) ?? "";
+
+                    IntPtr moduleAddr = Marshal.ReadIntPtr(modulesPtr, (int)(i * IntPtr.Size));
+                    string module = moduleAddr != IntPtr.Zero
+                        ? Marshal.PtrToStringAnsi(moduleAddr) ?? "unknown"
+                        : "unknown";
+
+                    result.Add(new Dictionary<string, object>
+                    {
+                        { "module", module },
+                        { "summary", summary },
+                        { "salience", saliences[i] },
+                        { "confidence", confidences[i] }
+                    });
+                }
+                return result;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(entriesPtr);
+                Marshal.FreeHGlobal(modulesPtr);
+            }
+        }
+
+        /// <summary>
+        /// Get per-module cognitive training statistics.
+        /// Returns dictionary with module names mapped to {steps, last_loss}.
+        /// </summary>
+        public Dictionary<string, object> GetCognitiveStats()
+        {
+            CheckOpen();
+            uint[] steps = new uint[13];
+            float[] losses = new float[13];
+            uint count = 0;
+
+            int status = Native.nimcp_brain_get_cognitive_stats(
+                handle, steps, losses, ref count);
+
+            string[] moduleNames =
+            {
+                "grounded_language", "knowledge", "vae", "fep_parietal",
+                "physics_nn", "pred_hierarchy", "jepa", "creative",
+                "self_heal", "intuition", "fep_orchestrator"
+            };
+
+            var result = new Dictionary<string, object>();
+            if (status != 0) return result;
+
+            for (uint i = 0; i < count && i < 11; i++)
+            {
+                result[moduleNames[i]] = new Dictionary<string, object>
+                {
+                    { "steps", steps[i] },
+                    { "last_loss", losses[i] }
+                };
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Get running label-match accuracy (EMA).
+        /// </summary>
+        public float GetAccuracy()
+        {
+            CheckOpen();
+            return Native.nimcp_brain_get_accuracy(handle);
+        }
+
+        // --- Group 4: LNN / SNN / CNN ---
+
+        /// <summary>
+        /// Create NCP-architecture LNN temporal processor.
+        /// Idempotent: returns without error if already created.
+        /// </summary>
+        public void LnnCreate(uint nSensory = 128, uint nInter = 64,
+            uint nCommand = 32, uint nOutput = 64)
+        {
+            CheckOpen();
+            Helper.CheckStatus(Native.nimcp_brain_lnn_create(
+                handle, nSensory, nInter, nCommand, nOutput));
+        }
+
+        /// <summary>
+        /// Get LNN network statistics.
+        /// Returns null if LNN is not initialized.
+        /// </summary>
+        public Dictionary<string, object> LnnGetStats()
+        {
+            CheckOpen();
+            ulong fwdSteps = 0, bwdSteps = 0, odeEvals = 0;
+            float avgTau = 0, stateNorm = 0, gradNorm = 0;
+            uint nanCount = 0, infCount = 0;
+
+            int status = Native.nimcp_brain_lnn_get_stats(
+                handle,
+                ref fwdSteps, ref bwdSteps, ref odeEvals,
+                ref avgTau, ref stateNorm, ref gradNorm,
+                ref nanCount, ref infCount);
+
+            if (status != 0) return null;
+
+            return new Dictionary<string, object>
+            {
+                { "forward_steps", fwdSteps },
+                { "backward_steps", bwdSteps },
+                { "total_ode_evals", odeEvals },
+                { "avg_tau", avgTau },
+                { "state_norm", stateNorm },
+                { "gradient_norm", gradNorm },
+                { "nan_count", nanCount },
+                { "inf_count", infCount }
+            };
+        }
+
+        /// <summary>
+        /// Get SNN network statistics.
+        /// Returns null if SNN is not initialized.
+        /// </summary>
+        public Dictionary<string, object> SnnGetStats()
+        {
+            CheckOpen();
+            ulong totalSteps = 0, totalSpikes = 0;
+            float meanFiringRate = 0, sparsity = 0, synchrony = 0;
+            uint silentNeurons = 0, hyperactiveNeurons = 0;
+            int health = 0;
+            ulong memoryBytes = 0;
+
+            int status = Native.nimcp_brain_snn_get_stats(
+                handle,
+                ref totalSteps, ref totalSpikes,
+                ref meanFiringRate, ref sparsity,
+                ref synchrony, ref silentNeurons,
+                ref hyperactiveNeurons, ref health,
+                ref memoryBytes);
+
+            if (status != 0) return null;
+
+            return new Dictionary<string, object>
+            {
+                { "total_steps", totalSteps },
+                { "total_spikes", totalSpikes },
+                { "mean_firing_rate", meanFiringRate },
+                { "sparsity", sparsity },
+                { "synchrony", synchrony },
+                { "silent_neurons", silentNeurons },
+                { "hyperactive_neurons", hyperactiveNeurons },
+                { "health", health },
+                { "memory_usage_bytes", memoryBytes }
+            };
+        }
+
+        /// <summary>
+        /// Get CNN trainer statistics.
+        /// Returns null if CNN trainer is not initialized.
+        /// </summary>
+        public Dictionary<string, object> CnnGetStats()
+        {
+            CheckOpen();
+            uint numLayers = 0, numLabels = 0;
+            ulong numParameters = 0;
+            bool active = false;
+
+            int status = Native.nimcp_brain_cnn_get_stats(
+                handle,
+                ref numLayers, ref numParameters,
+                ref numLabels, ref active);
+
+            if (status != 0) return null;
+
+            return new Dictionary<string, object>
+            {
+                { "num_layers", numLayers },
+                { "num_parameters", numParameters },
+                { "num_labels", numLabels },
+                { "active", active }
+            };
+        }
+
+        // --- Group 5: Configuration ---
+
+        /// <summary>
+        /// Toggle fast training mode.
+        /// </summary>
+        public void SetFastTraining(bool enabled)
+        {
+            CheckOpen();
+            Helper.CheckStatus(Native.nimcp_brain_set_fast_training(
+                handle, enabled));
+        }
+
+        /// <summary>
+        /// Set task strategy: "regression", "classification", "pattern", or "association".
+        /// </summary>
+        public void SetTaskType(string type)
+        {
+            CheckOpen();
+            Helper.CheckStatus(Native.nimcp_brain_set_task_type(handle, type));
+        }
+
+        /// <summary>
+        /// Enable/disable biological plasticity (TPB + EDP + coordinator).
+        /// </summary>
+        public void EnableBiologicalPlasticity(bool enabled)
+        {
+            CheckOpen();
+            Helper.CheckStatus(
+                Native.nimcp_brain_enable_biological_plasticity(handle, enabled));
+        }
+
+        /// <summary>
+        /// Enable multi-network ensemble training (LNN + CNN + Adaptive).
+        /// </summary>
+        public void EnableMultiNetwork()
+        {
+            CheckOpen();
+            Helper.CheckStatus(Native.nimcp_brain_enable_multi_network(handle));
+        }
+
+        // --- Group 6: Brain State ---
+
+        /// <summary>
+        /// Get medulla arousal level [0,1].
+        /// </summary>
+        public float MedullaGetArousal()
+        {
+            CheckOpen();
+            return Native.nimcp_brain_medulla_get_arousal(handle);
+        }
+
+        /// <summary>
+        /// Get sleep pressure [0,1].
+        /// </summary>
+        public float SleepGetPressure()
+        {
+            CheckOpen();
+            return Native.nimcp_brain_sleep_get_pressure(handle);
+        }
+
+        /// <summary>
+        /// Get basal ganglia dopamine level.
+        /// </summary>
+        public float BgGetDopamine()
+        {
+            CheckOpen();
+            return Native.nimcp_brain_bg_get_dopamine(handle);
+        }
+
+        /// <summary>
+        /// Get substrate health status ("OPTIMAL"/"STRESSED"/"COMPROMISED"/"CRITICAL"/"UNKNOWN").
+        /// </summary>
+        public string SubstrateGetHealth()
+        {
+            CheckOpen();
+            var buf = new StringBuilder(64);
+            Helper.CheckStatus(Native.nimcp_brain_substrate_get_health(
+                handle, buf, 64));
+            return buf.ToString();
+        }
+
+        /// <summary>
+        /// Focus attention on a sensory modality (e.g., "visual", "audio").
+        /// The actual gating is managed automatically by thalamic bridges
+        /// during DecideFull().
+        /// </summary>
+        public void FocusAttention(string modality)
+        {
+            CheckOpen();
+            Helper.CheckStatus(Native.nimcp_brain_focus_attention(
+                handle, modality));
         }
 
         // --- Probe ---

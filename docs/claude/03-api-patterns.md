@@ -193,3 +193,88 @@ metabolic_compute_effects(&input, &cfg, &effects);  // Returns 0 on success, -1 
 ```
 
 **GOTCHA**: Always call `metabolic_effects_init_full()` before `metabolic_compute_effects()` to ensure defaults.
+
+---
+
+## Hamiltonian Neural Network API (`include/lnn/nimcp_lnn_hamiltonian.h`)
+
+```c
+// Create H-network
+lnn_hamiltonian_config_t cfg;
+lnn_hamiltonian_config_default(&cfg);
+lnn_hamiltonian_net_t* net = lnn_hamiltonian_net_create(state_dim, &cfg);
+
+// Evaluate energy
+float H = lnn_hamiltonian_eval(net, q, p);
+
+// Compute gradients (Hamilton's equations: dq/dt = ∂H/∂p, dp/dt = -∂H/∂q)
+lnn_hamiltonian_grad(net, q, p, dH_dq, dH_dp);
+
+// Symplectic step (Störmer-Verlet)
+lnn_hamiltonian_step_stormer_verlet(net, q, p, input, dt, coupling);
+
+// Monitor energy conservation
+float deviation = lnn_hamiltonian_get_energy_deviation(net);
+```
+
+**GOTCHA**: H-network is an AUXILIARY network that defines the energy landscape — it is NOT the LNN layer itself.
+
+**GOTCHA**: Momentum tensor `p` must be allocated alongside state `x`. Both are destroyed in layer cleanup.
+
+---
+
+## Fourier Neural Operator API
+
+### Spectral Convolution (`include/training/nimcp_fno_layer.h`)
+
+```c
+fno_spectral_conv_t* layer = fno_spectral_conv_create(in_ch, out_ch, n_modes, spatial_size);
+fno_spectral_conv_forward(layer, input, output);
+fno_spectral_conv_backward(layer, dl_dout, dl_din);
+fno_spectral_conv_step(layer, lr);
+```
+
+### Audio Processor (`include/training/nimcp_fno_layer.h`)
+
+```c
+fno_audio_processor_t* proc = fno_audio_create(mel_size, embed_dim, hidden_ch, n_modes, n_blocks);
+fno_audio_forward(proc, mel, mel_size, embedding);
+fno_audio_backward(proc, dl_dembed, NULL);
+fno_audio_step(proc, lr);
+```
+
+### Population Dynamics (`include/snn/nimcp_snn_fno.h`)
+
+```c
+snn_fno_config_t cfg;
+snn_fno_config_default(&cfg);
+snn_fno_population_t* fno = snn_fno_population_create(pop_id, n_neurons, &cfg);
+snn_fno_record_pair(fno, v_before, i_syn, v_after, spikes, n);
+snn_fno_train(fno, n_epochs);
+snn_fno_predict(fno, v_current, i_syn, n, v_next, spikes);
+```
+
+**GOTCHA**: FFT size is padded to next power of 2. For mel_size=128, fft_size=128 (already power of 2).
+
+**GOTCHA**: IFFT uses Hermitian symmetry — 2× real-part contribution for positive frequencies + separate Nyquist handling.
+
+---
+
+## Per-Cortex CNN API (`include/training/nimcp_cortex_cnn.h`)
+
+```c
+// Create modality-specific CNN
+cortex_cnn_processor_t* proc = cortex_cnn_create(CORTEX_CNN_VISUAL, 64);
+
+// Forward (returns embedding pointer, owned by proc)
+const float* emb = cortex_cnn_forward_visual(proc, pixels, 64, 64, 3);
+const float* emb = cortex_cnn_forward_audio(proc, mel, 128);
+
+// Backward (returns loss)
+float loss = cortex_cnn_backward(proc, label, num_outputs);
+
+// Attention-weighted fusion across modalities
+uint32_t dim = cortex_cnn_fuse(procs, count, fused_out, max_dim);
+```
+
+**GOTCHA**: Types are `CORTEX_CNN_VISUAL`, `CORTEX_CNN_AUDIO`, `CORTEX_CNN_SPEECH`, `CORTEX_CNN_SOMATO`.

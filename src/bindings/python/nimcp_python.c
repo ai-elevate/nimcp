@@ -86,6 +86,7 @@
 #include "constants/nimcp_buffer_constants.h"
 #include "core/brain/learning/nimcp_brain_learning.h"
 #include "cognitive/training/nimcp_training_integration.h"
+#include "training/nimcp_cortex_cnn.h"
 #include "utils/signal/nimcp_signal_handler.h"
 #include "middleware/training/nimcp_training_convergent_decision.h"
 #include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
@@ -6541,10 +6542,6 @@ static PyObject* Brain_get_cortex_cnn_metrics_py(BrainObject* self, PyObject* Py
     if (!self->brain || !self->brain->internal_brain) Py_RETURN_NONE;
     brain_t brain = self->brain->internal_brain;
 
-    extern int cortex_cnn_get_metrics(const struct cortex_cnn_processor* proc,
-                                       void* out);
-    extern const char* cortex_cnn_type_name(int type);
-
     PyObject* result = PyDict_New();
     if (!result) return NULL;
 
@@ -6553,16 +6550,7 @@ static PyObject* Brain_get_cortex_cnn_metrics_py(BrainObject* self, PyObject* Py
     for (int ci = 0; ci < 4; ci++) {
         if (!brain->cortex_cnns[ci]) continue;
 
-        /* cortex_cnn_metrics_t is 48 bytes — just read the fields directly.
-         * Layout: type(4), last_loss(4), ema_loss(4), fwd_steps(8), bwd_steps(8),
-         *         embed_norm(4), confidence(4), embed_dim(4), num_params(4) */
-        struct {
-            int type;
-            float last_loss, ema_loss;
-            uint64_t forward_steps, backward_steps;
-            float embedding_norm, confidence;
-            uint32_t embedding_dim, num_params;
-        } m = {0};
+        cortex_cnn_metrics_t m = {0};
         if (cortex_cnn_get_metrics(brain->cortex_cnns[ci], &m) != 0) continue;
 
         PyObject* d = Py_BuildValue(

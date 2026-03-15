@@ -2752,6 +2752,93 @@ bool nimcp_brain_get_network_metrics(nimcp_brain_t brain,
                                       uint64_t* ann_steps, uint64_t* cnn_steps,
                                       uint64_t* snn_steps, uint64_t* lnn_steps);
 
+// =========================================================================
+// BINDING-LANGUAGE PUBLIC API (sensory, config, brain state, sub-network stats)
+// =========================================================================
+
+/** @brief Stage sensory data for the next decide_full() call */
+nimcp_status_t nimcp_brain_submit_sensory(
+    nimcp_brain_t brain,
+    const char* modality,
+    const float* data, uint32_t num_elements,
+    uint32_t width, uint32_t height, uint32_t channels,
+    uint32_t n_segments);
+
+/** @brief Process image through visual cortex, return feature vector */
+nimcp_status_t nimcp_brain_visual_cortex_process(
+    nimcp_brain_t brain,
+    const float* pixels, uint32_t num_pixels,
+    uint32_t width, uint32_t height, uint32_t channels,
+    float* out_features, uint32_t max_features,
+    uint32_t* out_feature_count);
+
+/** @brief Get per-cortex CNN processor metrics (up to 4 cortices) */
+nimcp_status_t nimcp_brain_get_cortex_cnn_metrics(
+    nimcp_brain_t brain,
+    int* out_types, float* out_losses,
+    uint64_t* out_fwd_steps, uint64_t* out_bwd_steps,
+    float* out_embed_norms, uint32_t* out_count);
+
+/** @brief Create NCP-architecture LNN temporal processor */
+nimcp_status_t nimcp_brain_lnn_create(
+    nimcp_brain_t brain,
+    uint32_t n_sensory, uint32_t n_inter,
+    uint32_t n_command, uint32_t n_output);
+
+/** @brief Get LNN network statistics */
+nimcp_status_t nimcp_brain_lnn_get_stats(
+    nimcp_brain_t brain,
+    uint64_t* out_forward_steps, uint64_t* out_backward_steps,
+    uint64_t* out_ode_evals, float* out_avg_tau,
+    float* out_state_norm, float* out_gradient_norm,
+    uint32_t* out_nan_count, uint32_t* out_inf_count);
+
+/** @brief Get SNN network statistics */
+nimcp_status_t nimcp_brain_snn_get_stats(
+    nimcp_brain_t brain,
+    uint64_t* out_total_steps, uint64_t* out_total_spikes,
+    float* out_mean_firing_rate, float* out_sparsity,
+    float* out_synchrony, uint32_t* out_silent_neurons,
+    uint32_t* out_hyperactive_neurons, int* out_health,
+    size_t* out_memory_bytes);
+
+/** @brief Get CNN trainer statistics */
+nimcp_status_t nimcp_brain_cnn_get_stats(
+    nimcp_brain_t brain,
+    uint32_t* out_num_layers, size_t* out_num_parameters,
+    uint32_t* out_num_labels, bool* out_active);
+
+/** @brief Toggle fast training mode */
+nimcp_status_t nimcp_brain_set_fast_training(nimcp_brain_t brain, bool enabled);
+
+/** @brief Set task strategy: "regression"/"classification"/"pattern"/"association" */
+nimcp_status_t nimcp_brain_set_task_type(nimcp_brain_t brain, const char* task_type);
+
+/** @brief Enable/disable biological plasticity (TPB+EDP+coordinator) */
+nimcp_status_t nimcp_brain_enable_biological_plasticity(nimcp_brain_t brain, bool enabled);
+
+/** @brief Enable multi-network ensemble training */
+nimcp_status_t nimcp_brain_enable_multi_network(nimcp_brain_t brain);
+
+/** @brief Get medulla arousal level [0,1] */
+float nimcp_brain_medulla_get_arousal(nimcp_brain_t brain);
+
+/** @brief Get sleep pressure [0,1] */
+float nimcp_brain_sleep_get_pressure(nimcp_brain_t brain);
+
+/** @brief Get basal ganglia dopamine level */
+float nimcp_brain_bg_get_dopamine(nimcp_brain_t brain);
+
+/** @brief Get substrate health status ("OPTIMAL"/"STRESSED"/"COMPROMISED"/"CRITICAL"/"UNKNOWN") */
+nimcp_status_t nimcp_brain_substrate_get_health(
+    nimcp_brain_t brain,
+    char* out_status, uint32_t max_len);
+
+/** @brief Focus attention on a sensory modality */
+nimcp_status_t nimcp_brain_focus_attention(
+    nimcp_brain_t brain,
+    const char* modality);
+
 #ifdef __cplusplus
 }
 #endif

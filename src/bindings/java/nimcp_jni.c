@@ -13,6 +13,25 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
+/* Internal headers for methods that require brain internals */
+#include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/accessors/nimcp_brain_accessors.h"
+#include "perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_speech_cortex.h"
+#include "lnn/nimcp_lnn.h"
+#include "lnn/nimcp_lnn_network.h"
+#include "lnn/nimcp_lnn_training.h"
+#include "snn/nimcp_snn_network.h"
+#include "snn/nimcp_snn_types.h"
+#include "training/nimcp_cnn_training.h"
+#include "training/nimcp_cortex_cnn.h"
+#include "cognitive/nimcp_sleep_wake.h"
+#include "cognitive/training/nimcp_training_integration.h"
+#include "core/brain/factory/init/nimcp_brain_init_medulla.h"
+#include "core/neural_substrate/nimcp_neural_substrate.h"
 
 // ============================================================================
 // Helper Functions
@@ -1076,4 +1095,829 @@ JNIEXPORT jstring JNICALL Java_com_nimcp_NIMCP_00024KnowledgeGraph_nativeQuery(
     }
     nimcp_free(buf);
     return result;
+}
+
+// ============================================================================
+// Brain - Sensory/Multimodal (Group 1)
+// ============================================================================
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSubmitSensory(
+    JNIEnv *env, jclass cls, jlong h, jstring modality,
+    jfloatArray data, jint width, jint height, jint channels, jint nSegments)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || !brain->internal_brain) {
+        throw_nimcp_exception(env, 1004, "Brain not initialized");
+        return -1;
+    }
+
+    const char *c_mod = (*env)->GetStringUTFChars(env, modality, NULL);
+    if (!c_mod) return -1;
+    jint len = (*env)->GetArrayLength(env, data);
+    jfloat *arr = (*env)->GetFloatArrayElements(env, data, NULL);
+    if (!arr) {
+        (*env)->ReleaseStringUTFChars(env, modality, c_mod);
+        return -1;
+    }
+
+    brain_t ib = brain->internal_brain;
+    int rc = 0;
+
+    if (strcmp(c_mod, "visual") == 0) {
+        if (ib->staged_sensory.visual_frame)
+            nimcp_free(ib->staged_sensory.visual_frame);
+        uint8_t *pixels = (uint8_t *)nimcp_malloc((size_t)len);
+        if (!pixels) { rc = -1; goto cleanup_sensory; }
+        for (jint i = 0; i < len; i++) {
+            float v = arr[i];
+            if (v <= 1.0f && v >= 0.0f) v *= 255.0f;
+            pixels[i] = (uint8_t)(v > 255.0f ? 255 : (v < 0.0f ? 0 : v));
+        }
+        ib->staged_sensory.visual_frame = pixels;
+        ib->staged_sensory.visual_width = (width > 0) ? (uint32_t)width : 32;
+        ib->staged_sensory.visual_height = (height > 0) ? (uint32_t)height : 32;
+        ib->staged_sensory.visual_channels = (channels > 0) ? (uint32_t)channels : 3;
+    } else if (strcmp(c_mod, "audio") == 0) {
+        if (ib->staged_sensory.audio_data)
+            nimcp_free(ib->staged_sensory.audio_data);
+        float *copy = (float *)nimcp_malloc((size_t)len * sizeof(float));
+        if (!copy) { rc = -1; goto cleanup_sensory; }
+        memcpy(copy, arr, (size_t)len * sizeof(float));
+        ib->staged_sensory.audio_data = copy;
+        ib->staged_sensory.audio_size = (uint32_t)len;
+    } else if (strcmp(c_mod, "speech") == 0) {
+        if (ib->staged_sensory.speech_data)
+            nimcp_free(ib->staged_sensory.speech_data);
+        float *copy = (float *)nimcp_malloc((size_t)len * sizeof(float));
+        if (!copy) { rc = -1; goto cleanup_sensory; }
+        memcpy(copy, arr, (size_t)len * sizeof(float));
+        ib->staged_sensory.speech_data = copy;
+        ib->staged_sensory.speech_size = (uint32_t)len;
+    } else if (strcmp(c_mod, "somatosensory") == 0 || strcmp(c_mod, "somato") == 0) {
+        if (ib->staged_sensory.somato_data)
+            nimcp_free(ib->staged_sensory.somato_data);
+        float *copy = (float *)nimcp_malloc((size_t)len * sizeof(float));
+        if (!copy) { rc = -1; goto cleanup_sensory; }
+        memcpy(copy, arr, (size_t)len * sizeof(float));
+        ib->staged_sensory.somato_data = copy;
+        ib->staged_sensory.somato_segments = (nSegments > 0) ? (uint32_t)nSegments : (uint32_t)len;
+    } else {
+        rc = -1;
+    }
+
+cleanup_sensory:
+    (*env)->ReleaseFloatArrayElements(env, data, arr, JNI_ABORT);
+    (*env)->ReleaseStringUTFChars(env, modality, c_mod);
+    return rc;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeVisualCortexProcess(
+    JNIEnv *env, jclass cls, jlong h, jfloatArray pixels,
+    jint width, jint height, jint channels)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || !brain->internal_brain) return NULL;
+    brain_t ib = brain->internal_brain;
+    if (!ib->visual_cortex) return (*env)->NewFloatArray(env, 0);
+
+    jint len = (*env)->GetArrayLength(env, pixels);
+    jfloat *pix = (*env)->GetFloatArrayElements(env, pixels, NULL);
+    if (!pix) return NULL;
+
+    /* Convert float [0,1] to uint8 [0,255] */
+    uint8_t *img = (uint8_t *)nimcp_malloc((size_t)len);
+    if (!img) {
+        (*env)->ReleaseFloatArrayElements(env, pixels, pix, JNI_ABORT);
+        return NULL;
+    }
+    for (jint i = 0; i < len; i++) {
+        float v = pix[i];
+        if (v <= 1.0f && v >= 0.0f) v *= 255.0f;
+        img[i] = (uint8_t)(v > 255.0f ? 255 : (v < 0.0f ? 0 : v));
+    }
+    (*env)->ReleaseFloatArrayElements(env, pixels, pix, JNI_ABORT);
+
+    uint32_t feat_dim = visual_cortex_get_feature_dim(ib->visual_cortex);
+    if (feat_dim == 0) feat_dim = 128;
+
+    float *features = (float *)nimcp_calloc(feat_dim, sizeof(float));
+    if (!features) { nimcp_free(img); return NULL; }
+
+    bool ok = visual_cortex_process(ib->visual_cortex, img,
+                                     (uint32_t)width, (uint32_t)height,
+                                     (uint32_t)channels, features);
+    nimcp_free(img);
+
+    if (!ok) { nimcp_free(features); return (*env)->NewFloatArray(env, 0); }
+
+    jfloatArray out = (*env)->NewFloatArray(env, (jsize)feat_dim);
+    (*env)->SetFloatArrayRegion(env, out, 0, (jsize)feat_dim, features);
+    nimcp_free(features);
+    return out;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeAudioCortexProcess(
+    JNIEnv *env, jclass cls, jlong h, jfloatArray samples)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || !brain->internal_brain) return NULL;
+    brain_t ib = brain->internal_brain;
+    if (!ib->audio_cortex) return (*env)->NewFloatArray(env, 0);
+
+    jint len = (*env)->GetArrayLength(env, samples);
+    jfloat *samps = (*env)->GetFloatArrayElements(env, samples, NULL);
+    if (!samps) return NULL;
+
+    uint32_t feat_dim = audio_cortex_get_feature_dim(ib->audio_cortex);
+    if (feat_dim == 0) feat_dim = 128;
+
+    float *features = (float *)nimcp_calloc(feat_dim, sizeof(float));
+    if (!features) {
+        (*env)->ReleaseFloatArrayElements(env, samples, samps, JNI_ABORT);
+        return NULL;
+    }
+
+    bool ok = audio_cortex_process(ib->audio_cortex, samps,
+                                    (uint32_t)len, 1, features);
+    (*env)->ReleaseFloatArrayElements(env, samples, samps, JNI_ABORT);
+
+    if (!ok) { nimcp_free(features); return (*env)->NewFloatArray(env, 0); }
+
+    jfloatArray out = (*env)->NewFloatArray(env, (jsize)feat_dim);
+    (*env)->SetFloatArrayRegion(env, out, 0, (jsize)feat_dim, features);
+    nimcp_free(features);
+    return out;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSpeechCortexProcess(
+    JNIEnv *env, jclass cls, jlong h, jfloatArray samples)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || !brain->internal_brain) return NULL;
+    brain_t ib = brain->internal_brain;
+    if (!ib->speech_cortex) return (*env)->NewFloatArray(env, 0);
+
+    jint len = (*env)->GetArrayLength(env, samples);
+    jfloat *samps = (*env)->GetFloatArrayElements(env, samples, NULL);
+    if (!samps) return NULL;
+
+    uint32_t feat_dim = speech_cortex_get_feature_dim(ib->speech_cortex);
+    if (feat_dim == 0) feat_dim = 128;
+
+    float *features = (float *)nimcp_calloc(feat_dim, sizeof(float));
+    if (!features) {
+        (*env)->ReleaseFloatArrayElements(env, samples, samps, JNI_ABORT);
+        return NULL;
+    }
+
+    bool ok = speech_cortex_process(ib->speech_cortex, samps,
+                                     (uint32_t)len, 1, features);
+    (*env)->ReleaseFloatArrayElements(env, samples, samps, JNI_ABORT);
+
+    if (!ok) { nimcp_free(features); return (*env)->NewFloatArray(env, 0); }
+
+    jfloatArray out = (*env)->NewFloatArray(env, (jsize)feat_dim);
+    (*env)->SetFloatArrayRegion(env, out, 0, (jsize)feat_dim, features);
+    nimcp_free(features);
+    return out;
+}
+
+// ============================================================================
+// Brain - Avatar/Identity (Group 2)
+// ============================================================================
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetAvatarState(
+    JNIEnv *env, jclass cls, jlong h, jobjectArray outStrings)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    nimcp_avatar_state_t state;
+    nimcp_status_t rc = nimcp_brain_get_avatar_state(brain, &state);
+    if (rc != NIMCP_OK) return NULL;
+
+    /* Pack key fields: mouth(6), AUs(16), emotion(5), gaze+head(6), voice(3), meta(1) = 37 floats */
+    jfloatArray out = (*env)->NewFloatArray(env, 37);
+    jfloat vals[37] = {
+        /* mouth */
+        state.mouth_open, state.lip_round, state.lip_upper,
+        state.lip_lower, state.tongue_position, (float)state.current_viseme,
+        /* FACS AUs */
+        state.au1_inner_brow_raise, state.au2_outer_brow_raise,
+        state.au4_brow_lower, state.au5_upper_lid_raise,
+        state.au6_cheek_raise, state.au7_lid_tighten,
+        state.au9_nose_wrinkle, state.au10_upper_lip_raise,
+        state.au12_lip_corner_pull, state.au15_lip_corner_drop,
+        state.au17_chin_raise, state.au20_lip_stretch,
+        state.au23_lip_tighten, state.au25_lips_part,
+        state.au26_jaw_drop, state.au28_lip_suck,
+        /* emotion */
+        state.valence, state.arousal, state.dominance,
+        (float)state.emotion_id, state.emotion_intensity,
+        /* gaze + head */
+        state.gaze_x, state.gaze_y,
+        state.head_pitch, state.head_yaw, state.head_roll, state.blink,
+        /* voice */
+        state.pitch_hz, state.speaking_rate, state.volume,
+        /* meta */
+        state.is_speaking ? 1.0f : 0.0f,
+        (float)(state.timestamp_us / 1000000ULL) /* seconds, lossy */
+    };
+    (*env)->SetFloatArrayRegion(env, out, 0, 37, vals);
+    return out;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSpeak(
+    JNIEnv *env, jclass cls, jlong h, jfloatArray semanticInput,
+    jobjectArray outText)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    float *features = NULL;
+    uint32_t num_features = 0;
+
+    if (semanticInput) {
+        jint flen = (*env)->GetArrayLength(env, semanticInput);
+        features = (*env)->GetFloatArrayElements(env, semanticInput, NULL);
+        if (!features) return NULL;
+        num_features = (uint32_t)flen;
+    }
+
+    enum { SPEAK_MAX_TEXT = 4096 };
+    char text[SPEAK_MAX_TEXT];
+    memset(text, 0, sizeof(text));
+    float confidence = 0.0f;
+    float fluency = 0.0f;
+
+    nimcp_status_t rc = nimcp_brain_speak(
+        brain, features, num_features,
+        text, SPEAK_MAX_TEXT, &confidence, &fluency);
+
+    if (semanticInput && features)
+        (*env)->ReleaseFloatArrayElements(env, semanticInput, features, JNI_ABORT);
+
+    if (rc != NIMCP_OK) return NULL;
+
+    /* Return text via outText[0] */
+    (*env)->SetObjectArrayElement(env, outText, 0,
+        (*env)->NewStringUTF(env, text));
+
+    /* Return [confidence, fluency] */
+    jfloatArray out = (*env)->NewFloatArray(env, 2);
+    jfloat vals[2] = { confidence, fluency };
+    (*env)->SetFloatArrayRegion(env, out, 0, 2, vals);
+    return out;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetNetworkMetrics(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    float ema_ann = 0, ema_cnn = 0, ema_snn = 0, ema_lnn = 0;
+    uint64_t ann_steps = 0, cnn_steps = 0, snn_steps = 0, lnn_steps = 0;
+
+    if (!nimcp_brain_get_network_metrics(brain,
+            &ema_ann, &ema_cnn, &ema_snn, &ema_lnn,
+            &ann_steps, &cnn_steps, &snn_steps, &lnn_steps))
+        return NULL;
+
+    /* Pack: 4 losses + 4 step counts = 8 floats */
+    jfloatArray out = (*env)->NewFloatArray(env, 8);
+    jfloat vals[8] = {
+        ema_ann, ema_cnn, ema_snn, ema_lnn,
+        (float)ann_steps, (float)cnn_steps,
+        (float)snn_steps, (float)lnn_steps
+    };
+    (*env)->SetFloatArrayRegion(env, out, 0, 8, vals);
+    return out;
+}
+
+// ============================================================================
+// Brain - Core Inference (Group 3)
+// ============================================================================
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeDecideFull(
+    JNIEnv *env, jclass cls, jlong h, jfloatArray features,
+    jobjectArray outStrings, jfloatArray outMeta)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    jint flen = (*env)->GetArrayLength(env, features);
+    jfloat *feats = (*env)->GetFloatArrayElements(env, features, NULL);
+    if (!feats) return NULL;
+
+    char label[NIMCP_MAX_LABEL_SIZE];
+    memset(label, 0, sizeof(label));
+    float confidence = 0.0f;
+    char explanation[NIMCP_NAME_BUFFER_SIZE];
+    memset(explanation, 0, sizeof(explanation));
+    enum { MAX_OUT = 4096 };
+    float output_vector[MAX_OUT];
+    uint32_t output_size = MAX_OUT;
+    uint32_t num_active = 0;
+    float sparsity = 0.0f;
+    uint64_t inference_time_us = 0;
+
+    nimcp_status_t rc = nimcp_brain_decide_full(
+        brain, feats, (uint32_t)flen,
+        label, &confidence, explanation,
+        output_vector, &output_size,
+        &num_active, &sparsity, &inference_time_us);
+
+    (*env)->ReleaseFloatArrayElements(env, features, feats, JNI_ABORT);
+    if (rc != NIMCP_OK) return NULL;
+
+    /* Return label and explanation via outStrings */
+    (*env)->SetObjectArrayElement(env, outStrings, 0,
+        (*env)->NewStringUTF(env, label));
+    (*env)->SetObjectArrayElement(env, outStrings, 1,
+        (*env)->NewStringUTF(env, explanation));
+
+    /* Return meta: [confidence, num_active, sparsity, inference_time_us] */
+    jfloat meta[4] = { confidence, (float)num_active, sparsity,
+                       (float)(inference_time_us / 1000.0f) };
+    (*env)->SetFloatArrayRegion(env, outMeta, 0, 4, meta);
+
+    /* Return output vector */
+    uint32_t vec_len = (output_size < MAX_OUT) ? output_size : MAX_OUT;
+    jfloatArray out = (*env)->NewFloatArray(env, (jsize)vec_len);
+    (*env)->SetFloatArrayRegion(env, out, 0, (jsize)vec_len, output_vector);
+    return out;
+}
+
+JNIEXPORT jobjectArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetTranscript(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    enum { MAX_ENTRIES = 32 };
+    char summaries[MAX_ENTRIES][256];
+    float saliences[MAX_ENTRIES];
+    float confidences[MAX_ENTRIES];
+    const char *modules[MAX_ENTRIES];
+
+    memset(summaries, 0, sizeof(summaries));
+    memset(saliences, 0, sizeof(saliences));
+    memset(confidences, 0, sizeof(confidences));
+    memset(modules, 0, sizeof(modules));
+
+    uint32_t count = nimcp_brain_get_last_transcript(
+        brain, summaries, saliences, confidences, modules, MAX_ENTRIES);
+
+    if (count == 0) return NULL;
+
+    /* Return as String[] where each entry is "module\tsummary\tsalience\tconfidence" */
+    jclass strCls = (*env)->FindClass(env, "java/lang/String");
+    jobjectArray arr = (*env)->NewObjectArray(env, (jsize)count, strCls, NULL);
+
+    for (uint32_t i = 0; i < count; i++) {
+        char buf[512];
+        snprintf(buf, sizeof(buf), "%s\t%s\t%.6f\t%.6f",
+            modules[i] ? modules[i] : "unknown",
+            summaries[i], saliences[i], confidences[i]);
+        (*env)->SetObjectArrayElement(env, arr, (jsize)i,
+            (*env)->NewStringUTF(env, buf));
+    }
+    return arr;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetCognitiveStats(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    uint32_t steps[13];
+    float losses[13];
+    uint32_t count = 0;
+    memset(steps, 0, sizeof(steps));
+    memset(losses, 0, sizeof(losses));
+
+    nimcp_status_t rc = nimcp_brain_get_cognitive_stats(brain, steps, losses, &count);
+    if (rc != NIMCP_OK) return NULL;
+
+    /* Pack as interleaved [steps0, loss0, steps1, loss1, ...] */
+    uint32_t n = (count < 13) ? count : 13;
+    jfloatArray out = (*env)->NewFloatArray(env, (jsize)(n * 2));
+    jfloat *vals = (jfloat *)nimcp_calloc(n * 2, sizeof(jfloat));
+    if (!vals) return NULL;
+    for (uint32_t i = 0; i < n; i++) {
+        vals[i * 2] = (float)steps[i];
+        vals[i * 2 + 1] = losses[i];
+    }
+    (*env)->SetFloatArrayRegion(env, out, 0, (jsize)(n * 2), vals);
+    nimcp_free(vals);
+    return out;
+}
+
+JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetAccuracy(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)env; (void)cls;
+    return nimcp_brain_get_accuracy((nimcp_brain_t)(uintptr_t)h);
+}
+
+JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetLastGradientNorm(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)env; (void)cls;
+    return nimcp_brain_get_last_gradient_norm((nimcp_brain_t)(uintptr_t)h);
+}
+
+// ============================================================================
+// Brain - LNN/SNN/CNN (Group 4)
+// ============================================================================
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeLnnCreate(
+    JNIEnv *env, jclass cls, jlong h,
+    jint nSensory, jint nInter, jint nCommand, jint nOutput)
+{
+    (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) {
+        throw_nimcp_exception(env, 1004, "Brain not initialized");
+        return -1;
+    }
+    brain_t brain = brain_h->internal_brain;
+
+    if (brain->lnn_network) return 0; /* Already created — idempotent */
+
+    if (!lnn_is_initialized()) lnn_init(1);
+
+    brain->lnn_network = lnn_network_create_ncp(
+        (uint32_t)nSensory, (uint32_t)nInter,
+        (uint32_t)nCommand, (uint32_t)nOutput);
+    if (!brain->lnn_network) {
+        throw_nimcp_exception(env, 2000, "Failed to create LNN network");
+        return -1;
+    }
+    lnn_network_init_weights(brain->lnn_network, 42);
+
+    lnn_training_config_t cfg;
+    lnn_training_config_default(&cfg);
+    cfg.learning_rate = 0.01f;
+    cfg.gradient_clip_norm = 100.0f;
+    cfg.enable_plasticity_integration = true;
+    cfg.lnn_train_mode = LNN_TRAIN_ADJOINT;
+    cfg.track_statistics = true;
+
+    if (brain->lnn_training_ctx) {
+        lnn_training_destroy(brain->lnn_training_ctx);
+        brain->lnn_training_ctx = NULL;
+    }
+    brain->lnn_training_ctx = lnn_training_create(brain->lnn_network, &cfg);
+    return 0;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeLnnForwardStep(
+    JNIEnv *env, jclass cls, jlong h, jfloatArray features)
+{
+    (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return NULL;
+    brain_t brain = brain_h->internal_brain;
+    if (!brain->lnn_network) return NULL;
+
+    jint flen = (*env)->GetArrayLength(env, features);
+    jfloat *feats = (*env)->GetFloatArrayElements(env, features, NULL);
+    if (!feats) return NULL;
+
+    uint32_t in_dims[] = {(uint32_t)flen};
+    nimcp_tensor_t *input = nimcp_tensor_create(in_dims, 1, NIMCP_DTYPE_F32);
+    if (!input) {
+        (*env)->ReleaseFloatArrayElements(env, features, feats, JNI_ABORT);
+        return NULL;
+    }
+    memcpy(nimcp_tensor_data(input), feats, (size_t)flen * sizeof(float));
+    (*env)->ReleaseFloatArrayElements(env, features, feats, JNI_ABORT);
+
+    nimcp_tensor_t *output = lnn_network_forward(brain->lnn_network, input, 0.01f);
+    nimcp_tensor_destroy(input);
+
+    if (!output) return NULL;
+
+    uint32_t out_size = nimcp_tensor_total_elements(output);
+    float *out_data = (float *)nimcp_tensor_data(output);
+
+    jfloatArray out = (*env)->NewFloatArray(env, (jsize)out_size);
+    (*env)->SetFloatArrayRegion(env, out, 0, (jsize)out_size, out_data);
+    nimcp_tensor_destroy(output);
+    return out;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeLnnGetStats(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return NULL;
+    brain_t brain = brain_h->internal_brain;
+    if (!brain->lnn_network) return NULL;
+
+    lnn_network_stats_t stats;
+    if (lnn_get_stats(brain->lnn_network, &stats) != 0) return NULL;
+
+    /* Pack: fwd_steps, bwd_steps, ode_evals, avg_tau, state_norm, grad_norm, nan_count, inf_count */
+    jfloatArray out = (*env)->NewFloatArray(env, 8);
+    jfloat vals[8] = {
+        (float)stats.forward_steps, (float)stats.backward_steps,
+        (float)stats.ode_evaluations, stats.avg_tau_network,
+        stats.state_norm, stats.gradient_norm,
+        (float)stats.nan_count, (float)stats.inf_count
+    };
+    (*env)->SetFloatArrayRegion(env, out, 0, 8, vals);
+    return out;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSnnGetStats(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return NULL;
+    brain_t brain = brain_h->internal_brain;
+    if (!brain->snn_network) return NULL;
+
+    snn_stats_t stats;
+    memset(&stats, 0, sizeof(stats));
+    if (snn_network_get_stats(brain->snn_network, &stats) != 0) return NULL;
+
+    /* Pack: total_steps, total_spikes, mean_firing_rate, max_firing_rate,
+             sparsity, synchrony, spikes_per_sample, silent, hyperactive, health, mem_bytes */
+    jfloatArray out = (*env)->NewFloatArray(env, 11);
+    jfloat vals[11] = {
+        (float)stats.total_steps, (float)stats.total_spikes,
+        stats.mean_firing_rate, stats.max_firing_rate,
+        stats.sparsity, stats.synchrony,
+        stats.spikes_per_sample,
+        (float)stats.silent_neurons, (float)stats.hyperactive_neurons,
+        (float)stats.health, (float)stats.memory_usage_bytes
+    };
+    (*env)->SetFloatArrayRegion(env, out, 0, 11, vals);
+    return out;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeCnnGetStats(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return NULL;
+    brain_t brain = brain_h->internal_brain;
+    if (!brain->cnn_trainer) return NULL;
+
+    /* Pack: num_layers, num_parameters, num_labels */
+    jfloatArray out = (*env)->NewFloatArray(env, 3);
+    jfloat vals[3] = {
+        (float)cnn_get_layer_count(brain->cnn_trainer),
+        (float)cnn_count_parameters(brain->cnn_trainer),
+        (float)brain->num_output_labels
+    };
+    (*env)->SetFloatArrayRegion(env, out, 0, 3, vals);
+    return out;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetCortexCnnMetrics(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return NULL;
+    brain_t brain = brain_h->internal_brain;
+
+    /* 4 cortex types x 4 fields each = 16 floats */
+    /* Fields per cortex: last_loss, ema_loss, forward_steps, backward_steps */
+    jfloat vals[16];
+    memset(vals, 0, sizeof(vals));
+
+    for (int ci = 0; ci < 4; ci++) {
+        if (!brain->cortex_cnns[ci]) continue;
+        cortex_cnn_metrics_t m = {0};
+        if (cortex_cnn_get_metrics(brain->cortex_cnns[ci], &m) != 0) continue;
+        vals[ci * 4 + 0] = m.last_loss;
+        vals[ci * 4 + 1] = m.ema_loss;
+        vals[ci * 4 + 2] = (float)m.forward_steps;
+        vals[ci * 4 + 3] = (float)m.backward_steps;
+    }
+
+    jfloatArray out = (*env)->NewFloatArray(env, 16);
+    (*env)->SetFloatArrayRegion(env, out, 0, 16, vals);
+    return out;
+}
+
+// ============================================================================
+// Brain - Configuration (Group 5)
+// ============================================================================
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSetFastTraining(
+    JNIEnv *env, jclass cls, jlong h, jboolean enabled)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return -1;
+    brain_h->internal_brain->config.fast_training_mode = (bool)enabled;
+    return 0;
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSetTaskType(
+    JNIEnv *env, jclass cls, jlong h, jstring taskType)
+{
+    (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return -1;
+    brain_t brain = brain_h->internal_brain;
+
+    const char *c_task = (*env)->GetStringUTFChars(env, taskType, NULL);
+    if (!c_task) return -1;
+
+    extern task_strategy_t *strategy_create(brain_task_t task);
+    brain_task_t task;
+    int rc = 0;
+
+    if (strcmp(c_task, "regression") == 0)            task = BRAIN_TASK_REGRESSION;
+    else if (strcmp(c_task, "classification") == 0)    task = BRAIN_TASK_CLASSIFICATION;
+    else if (strcmp(c_task, "pattern") == 0)           task = BRAIN_TASK_PATTERN_MATCHING;
+    else if (strcmp(c_task, "association") == 0)       task = BRAIN_TASK_ASSOCIATION;
+    else { rc = -1; goto done_task; }
+
+    {
+        task_strategy_t *new_strat = strategy_create(task);
+        if (!new_strat) { rc = -1; goto done_task; }
+        if (brain->strategy && !brain->is_cow_clone)
+            nimcp_free(brain->strategy);
+        brain->strategy = new_strat;
+        brain->config.task = task;
+    }
+
+done_task:
+    (*env)->ReleaseStringUTFChars(env, taskType, c_task);
+    return rc;
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEnableBiologicalPlasticity(
+    JNIEnv *env, jclass cls, jlong h, jboolean enabled)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return -1;
+    brain_t brain = brain_h->internal_brain;
+    brain->enable_plasticity_bridge = (bool)enabled;
+    brain->enable_event_driven_plasticity = (bool)enabled;
+    brain->plasticity_coordinator_enabled = (bool)enabled;
+    return 0;
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEnableMixedPrecision(
+    JNIEnv *env, jclass cls, jlong h, jboolean enabled)
+{
+    (void)cls;
+    nimcp_status_t rc = nimcp_brain_enable_mixed_precision(
+        (nimcp_brain_t)(uintptr_t)h, (bool)enabled);
+    if (rc != NIMCP_OK) {
+        check_status(env, rc);
+        return -1;
+    }
+    return 0;
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEnableGradientCheckpointing(
+    JNIEnv *env, jclass cls, jlong h, jboolean enabled, jint interval)
+{
+    (void)cls;
+    nimcp_status_t rc = nimcp_brain_enable_gradient_checkpointing(
+        (nimcp_brain_t)(uintptr_t)h, (bool)enabled, (uint32_t)interval);
+    if (rc != NIMCP_OK) {
+        check_status(env, rc);
+        return -1;
+    }
+    return 0;
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEnableWorldModel(
+    JNIEnv *env, jclass cls, jlong h, jboolean enabled)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return -1;
+    brain_t brain = brain_h->internal_brain;
+    brain->config.enable_world_model = (bool)enabled;
+    if (enabled && !brain->world_model_enabled)
+        brain->world_model_lazy_init = true;
+    return 0;
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEnableMultiNetwork(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) {
+        throw_nimcp_exception(env, 1004, "Brain not initialized");
+        return -1;
+    }
+    extern int brain_enable_multi_network_training(brain_t brain);
+    int rc = brain_enable_multi_network_training(brain_h->internal_brain);
+    if (rc < 0) {
+        throw_nimcp_exception(env, 1004, "Failed to enable multi-network training");
+        return -1;
+    }
+    return 0;
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEnableHemispheric(
+    JNIEnv *env, jclass cls, jlong h, jboolean enabled)
+{
+    (void)cls;
+    nimcp_status_t rc = nimcp_brain_enable_hemispheric(
+        (nimcp_brain_t)(uintptr_t)h, (bool)enabled);
+    if (rc != NIMCP_OK) {
+        check_status(env, rc);
+        return -1;
+    }
+    return 0;
+}
+
+// ============================================================================
+// Brain - Brain Regions (Group 6)
+// ============================================================================
+
+JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMedullaGetArousal(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return 0.0f;
+    return brain_ti_get_arousal(brain_h->internal_brain);
+}
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMedullaBoostArousal(
+    JNIEnv *env, jclass cls, jlong h, jfloat amount)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return;
+    brain_ti_boost_arousal(brain_h->internal_brain, amount);
+}
+
+JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSleepGetPressure(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return 0.0f;
+    sleep_system_t ss = brain_get_sleep_system(brain_h->internal_brain);
+    if (!ss) return 0.0f;
+    return sleep_get_pressure(ss);
+}
+
+JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeBgGetDopamine(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain) return 0.0f;
+    return brain_ti_get_dopamine(brain_h->internal_brain);
+}
+
+JNIEXPORT jstring JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSubstrateGetHealth(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain_h = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain_h || !brain_h->internal_brain)
+        return (*env)->NewStringUTF(env, "UNKNOWN");
+    brain_t brain = brain_h->internal_brain;
+    if (!brain->substrate_gpu_ctx)
+        return (*env)->NewStringUTF(env, "UNKNOWN");
+    return (*env)->NewStringUTF(env, "OPTIMAL");
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeFocusAttention(
+    JNIEnv *env, jclass cls, jlong h, jstring modality)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return -1;
+
+    const char *c_mod = (*env)->GetStringUTFChars(env, modality, NULL);
+    if (!c_mod) return -1;
+
+    nimcp_status_t rc = nimcp_brain_experience_attend(brain, c_mod, 1.0f);
+    (*env)->ReleaseStringUTFChars(env, modality, c_mod);
+    return (jint)rc;
 }

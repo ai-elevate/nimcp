@@ -23,8 +23,8 @@ include/
 │   ├── common/           # Shared utilities (metabolic modulation, clamp functions)
 │   ├── global_workspace/ # Global workspace theory
 │   └── ...               # Working memory, emotion, attention, reasoning, ethics, etc.
-├── lnn/                  # 17 headers — Liquid Neural Networks (LTC neurons, ODE solvers, wiring)
-├── snn/                  # 50 headers — Spiking Neural Networks, 42 cross-modal bridges
+├── lnn/                  # 18 headers — Liquid Neural Networks (LTC neurons, ODE solvers, wiring, Hamiltonian)
+├── snn/                  # 51 headers — Spiking Neural Networks, 42 cross-modal bridges, FNO population
 ├── plasticity/           # 164 headers — largest subsystem (STDP, BCM, homeostatic, etc.)
 │   └── attention/        # Multihead attention with positional encoding
 ├── perception/           # Visual, audio, speech, somatosensory cortex
@@ -64,6 +64,13 @@ src/                      # Mirrors include/ structure
 scripts/
 ├── immerse_athena.py     # Immersive developmental training
 ├── talk_to_athena.py     # Interactive conversation with trained brain
+├── phi3_decoder.py       # Phi-3 language cortex (text generation, encoding)
+├── hybrid_decoder.py     # NeuralDecoder + Phi-3 + inner speech orchestration
+├── athena_tts.py         # Coqui XTTS voice synthesis with brain-state prosody
+├── athena_identity.py    # Identity controller (personality→voice, emotion→quality)
+├── athena_meeting.py     # Zoom/Teams meeting bridge via virtual camera + mic
+├── avatar_server.py      # WebSocket server streaming brain state at 30fps
+├── sensory_encoder.py    # Somatosensory encoder (text→45-dim touch vectors)
 └── ...                   # Monitoring, utilities
 
 test/

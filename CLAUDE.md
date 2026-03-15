@@ -1,7 +1,7 @@
 # NIMCP Project Reference
 
-**Version**: 2.6.3
-**Last Updated**: 2026-03-11
+**Version**: 2.6.4
+**Last Updated**: 2026-03-15
 **Path**: `/home/bbrelin/nimcp`
 
 > **Documentation is modularized.** See `docs/claude/` for detailed documentation.
@@ -26,7 +26,7 @@
 ## Architecture At A Glance
 
 - **2M neuron brain** with multi-layer diamond architecture (3/5/7 layers by size)
-- **4 network types**: Main neural net, LNN (liquid/temporal), SNN (spiking), CNN (visual/audio)
+- **6 network types**: Main neural net, LNN (liquid/temporal + Hamiltonian), SNN (spiking + FNO population), CNN (visual/audio), FNO (Fourier spectral), HNN (energy-conserving)
 - **60+ cognitive modules**: introspection, ethics, theory of mind, imagination, reasoning, emotions, etc.
 - **33+ brain regions**: prefrontal, occipital, parietal, hippocampus, cerebellum, basal ganglia, etc.
 - **Full biological plasticity**: STDP, BCM, eligibility traces, dendritic, homeostatic, 6 neuromodulators
@@ -81,6 +81,8 @@
 | Imagination Engine | [modules/imagination-engine.md](docs/claude/modules/imagination-engine.md) |
 | Genius Profiles | [modules/genius-profiles.md](docs/claude/modules/genius-profiles.md) |
 | Lock Ordering | [modules/lock-ordering.md](docs/claude/modules/lock-ordering.md) |
+| Hamiltonian Neural Networks | [modules/hnn.md](docs/claude/modules/hnn.md) |
+| Fourier Neural Operators | [modules/fno.md](docs/claude/modules/fno.md) |
 
 ---
 
