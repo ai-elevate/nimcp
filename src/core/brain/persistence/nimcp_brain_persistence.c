@@ -28,6 +28,7 @@
 #include "constants/nimcp_buffer_constants.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "snn/nimcp_snn_types.h"
 #include "security/nimcp_path_traversal.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
@@ -1265,7 +1266,11 @@ brain_t brain_load(const char* filepath)
             if (snn) {
                 brain->snn_network = snn;
                 brain->owns_specialized_network = true;
-                fprintf(stderr, "[INFO] Restored SNN network from %s\n", sec_path);
+                /* Override input_current_scale — old checkpoints have 10.0
+                 * which is too low for avg-pooled BERT features normalized
+                 * to [0,1]. Scale 70 maps input 0.3 → 21mV (suprathreshold). */
+                snn->config.input_current_scale = 70.0f;
+                fprintf(stderr, "[INFO] Restored SNN network from %s (input_scale=70)\n", sec_path);
             }
         }
 
