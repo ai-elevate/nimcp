@@ -947,6 +947,24 @@ static void forward_snn_task(void* arg)
                 snn_input[i] = (snn_input[i] - pool_min) / pool_range;
             }
         }
+        /* Blend somatosensory data into SNN input — mechanoreceptors
+         * produce spike trains proportional to stimulus intensity.
+         * Inject somatosensory features as additional current drive. */
+        if (ctx->brain->staged_sensory.somato_data &&
+            ctx->brain->staged_sensory.somato_segments > 0) {
+            uint32_t somato_n = ctx->brain->staged_sensory.somato_segments;
+            uint32_t inject_start = (snn_in > somato_n) ? snn_in - somato_n : 0;
+            uint32_t inject_n = (somato_n < snn_in - inject_start)
+                              ? somato_n : snn_in - inject_start;
+            for (uint32_t i = 0; i < inject_n; i++) {
+                float somato_val = ctx->brain->staged_sensory.somato_data[i];
+                /* Somatosensory is already [0,1] from encode_sensory.
+                 * Blend with normalized pooled features. */
+                snn_input[inject_start + i] = 0.5f * snn_input[inject_start + i]
+                                            + 0.5f * somato_val;
+            }
+        }
+
         input_ptr = snn_input;
         input_dim = snn_in;
     }
@@ -1443,6 +1461,30 @@ lnn_gating:
                     }
                 } else {
                     memcpy(li_data, features, num_features * sizeof(float));
+                }
+
+                /* Blend somatosensory data into LNN input — touch sensations
+                 * have continuous temporal dynamics (pressure building,
+                 * temperature changing, texture being explored). The LNN's
+                 * ODE solver naturally captures these dynamics.
+                 * Inject into last N channels of LNN input. */
+                if (brain->staged_sensory.somato_data &&
+                    brain->staged_sensory.somato_segments > 0) {
+                    uint32_t somato_n = brain->staged_sensory.somato_segments;
+                    /* Map somatosensory into the last portion of LNN input.
+                     * If LNN has 128 inputs and somato has 45 dims, fill
+                     * inputs [83..127] with somatosensory data. This gives
+                     * the LNN temporal processor direct access to touch. */
+                    uint32_t inject_start = (lnn_in_size > somato_n)
+                                         ? lnn_in_size - somato_n : 0;
+                    uint32_t inject_n = (somato_n < lnn_in_size - inject_start)
+                                      ? somato_n : lnn_in_size - inject_start;
+                    for (uint32_t i = 0; i < inject_n; i++) {
+                        /* Additive blend: existing feature + somatosensory */
+                        float somato_val = brain->staged_sensory.somato_data[i];
+                        li_data[inject_start + i] = 0.5f * li_data[inject_start + i]
+                                                  + 0.5f * somato_val;
+                    }
                 }
             }
 
