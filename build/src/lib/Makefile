@@ -35708,6 +35708,30 @@ __/lnn/nimcp_lnn_gradient.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/lnn/nimcp_lnn_gradient.c.s
 .PHONY : __/lnn/nimcp_lnn_gradient.c.s
 
+__/lnn/nimcp_lnn_hamiltonian.o: __/lnn/nimcp_lnn_hamiltonian.c.o
+.PHONY : __/lnn/nimcp_lnn_hamiltonian.o
+
+# target to build an object file
+__/lnn/nimcp_lnn_hamiltonian.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/lnn/nimcp_lnn_hamiltonian.c.o
+.PHONY : __/lnn/nimcp_lnn_hamiltonian.c.o
+
+__/lnn/nimcp_lnn_hamiltonian.i: __/lnn/nimcp_lnn_hamiltonian.c.i
+.PHONY : __/lnn/nimcp_lnn_hamiltonian.i
+
+# target to preprocess a source file
+__/lnn/nimcp_lnn_hamiltonian.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/lnn/nimcp_lnn_hamiltonian.c.i
+.PHONY : __/lnn/nimcp_lnn_hamiltonian.c.i
+
+__/lnn/nimcp_lnn_hamiltonian.s: __/lnn/nimcp_lnn_hamiltonian.c.s
+.PHONY : __/lnn/nimcp_lnn_hamiltonian.s
+
+# target to generate assembly for a file
+__/lnn/nimcp_lnn_hamiltonian.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/lnn/nimcp_lnn_hamiltonian.c.s
+.PHONY : __/lnn/nimcp_lnn_hamiltonian.c.s
+
 __/lnn/nimcp_lnn_immune.o: __/lnn/nimcp_lnn_immune.c.o
 .PHONY : __/lnn/nimcp_lnn_immune.o
 
@@ -45980,6 +46004,30 @@ __/snn/nimcp_snn_encoding.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/nimcp_snn_encoding.c.s
 .PHONY : __/snn/nimcp_snn_encoding.c.s
 
+__/snn/nimcp_snn_fno.o: __/snn/nimcp_snn_fno.c.o
+.PHONY : __/snn/nimcp_snn_fno.o
+
+# target to build an object file
+__/snn/nimcp_snn_fno.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/nimcp_snn_fno.c.o
+.PHONY : __/snn/nimcp_snn_fno.c.o
+
+__/snn/nimcp_snn_fno.i: __/snn/nimcp_snn_fno.c.i
+.PHONY : __/snn/nimcp_snn_fno.i
+
+# target to preprocess a source file
+__/snn/nimcp_snn_fno.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/nimcp_snn_fno.c.i
+.PHONY : __/snn/nimcp_snn_fno.c.i
+
+__/snn/nimcp_snn_fno.s: __/snn/nimcp_snn_fno.c.s
+.PHONY : __/snn/nimcp_snn_fno.s
+
+# target to generate assembly for a file
+__/snn/nimcp_snn_fno.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/nimcp_snn_fno.c.s
+.PHONY : __/snn/nimcp_snn_fno.c.s
+
 __/snn/nimcp_snn_immune.o: __/snn/nimcp_snn_immune.c.o
 .PHONY : __/snn/nimcp_snn_immune.o
 
@@ -48139,6 +48187,30 @@ __/training/nimcp_distributed_training.s: __/training/nimcp_distributed_training
 __/training/nimcp_distributed_training.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_distributed_training.c.s
 .PHONY : __/training/nimcp_distributed_training.c.s
+
+__/training/nimcp_fno_layer.o: __/training/nimcp_fno_layer.c.o
+.PHONY : __/training/nimcp_fno_layer.o
+
+# target to build an object file
+__/training/nimcp_fno_layer.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_fno_layer.c.o
+.PHONY : __/training/nimcp_fno_layer.c.o
+
+__/training/nimcp_fno_layer.i: __/training/nimcp_fno_layer.c.i
+.PHONY : __/training/nimcp_fno_layer.i
+
+# target to preprocess a source file
+__/training/nimcp_fno_layer.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_fno_layer.c.i
+.PHONY : __/training/nimcp_fno_layer.c.i
+
+__/training/nimcp_fno_layer.s: __/training/nimcp_fno_layer.c.s
+.PHONY : __/training/nimcp_fno_layer.s
+
+# target to generate assembly for a file
+__/training/nimcp_fno_layer.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_fno_layer.c.s
+.PHONY : __/training/nimcp_fno_layer.c.s
 
 __/training/nimcp_gradient_scaling.o: __/training/nimcp_gradient_scaling.c.o
 .PHONY : __/training/nimcp_gradient_scaling.o
@@ -56866,6 +56938,9 @@ help:
 	@echo "... __/lnn/nimcp_lnn_gradient.o"
 	@echo "... __/lnn/nimcp_lnn_gradient.i"
 	@echo "... __/lnn/nimcp_lnn_gradient.s"
+	@echo "... __/lnn/nimcp_lnn_hamiltonian.o"
+	@echo "... __/lnn/nimcp_lnn_hamiltonian.i"
+	@echo "... __/lnn/nimcp_lnn_hamiltonian.s"
 	@echo "... __/lnn/nimcp_lnn_immune.o"
 	@echo "... __/lnn/nimcp_lnn_immune.i"
 	@echo "... __/lnn/nimcp_lnn_immune.s"
@@ -58150,6 +58225,9 @@ help:
 	@echo "... __/snn/nimcp_snn_encoding.o"
 	@echo "... __/snn/nimcp_snn_encoding.i"
 	@echo "... __/snn/nimcp_snn_encoding.s"
+	@echo "... __/snn/nimcp_snn_fno.o"
+	@echo "... __/snn/nimcp_snn_fno.i"
+	@echo "... __/snn/nimcp_snn_fno.s"
 	@echo "... __/snn/nimcp_snn_immune.o"
 	@echo "... __/snn/nimcp_snn_immune.i"
 	@echo "... __/snn/nimcp_snn_immune.s"
@@ -58420,6 +58498,9 @@ help:
 	@echo "... __/training/nimcp_distributed_training.o"
 	@echo "... __/training/nimcp_distributed_training.i"
 	@echo "... __/training/nimcp_distributed_training.s"
+	@echo "... __/training/nimcp_fno_layer.o"
+	@echo "... __/training/nimcp_fno_layer.i"
+	@echo "... __/training/nimcp_fno_layer.s"
 	@echo "... __/training/nimcp_gradient_scaling.o"
 	@echo "... __/training/nimcp_gradient_scaling.i"
 	@echo "... __/training/nimcp_gradient_scaling.s"

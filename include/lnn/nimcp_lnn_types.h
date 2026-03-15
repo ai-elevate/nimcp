@@ -270,9 +270,14 @@ struct lnn_layer_s {
     lnn_wiring_t* wiring;       /**< Sparse wiring pattern */
 
     /* Layer-level state (tensor form for SIMD) */
-    nimcp_tensor_t* x;          /**< State vector [n_neurons] */
+    nimcp_tensor_t* x;          /**< State vector [n_neurons] (position q in Hamiltonian) */
     nimcp_tensor_t* tau;        /**< Time constants [n_neurons] */
     nimcp_tensor_t* dx_dt;      /**< Derivative vector [n_neurons] */
+
+    /* Hamiltonian dynamics (optional — NULL if standard LTC) */
+    nimcp_tensor_t* p;          /**< Momentum vector [n_neurons] (conjugate to x=q) */
+    void* H_net;                /**< lnn_hamiltonian_net_t* (NULL = standard LTC) */
+    bool use_hamiltonian;       /**< Use Hamiltonian dynamics instead of LTC */
 
     /* Weight tensors (for batched operations) */
     nimcp_tensor_t* W_in;       /**< Input weight matrix [n_neurons, n_inputs] */

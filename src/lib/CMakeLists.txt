@@ -1317,6 +1317,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_wiring.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_gradient.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_training.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_hamiltonian.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_bio_async.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_immune.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_parallel.c
@@ -2461,8 +2462,14 @@ set(NIMCP_CORE_SOURCES
     # Training - Per-Cortex CNN Processors (modality-specific feature extraction)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cortex_cnn.c
 
+    # Training - Fourier Neural Operator (spectral convolution layers)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_fno_layer.c
+
     # Training - SNN Backpropagation (surrogate gradients, BPTT, E-prop, RTRL)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_snn_backprop.c
+
+    # SNN - Fourier Neural Operator for Population Dynamics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_fno.c
 
     # Unified Training Manager (UTM: single training infrastructure for all network types)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_unified_training.c
