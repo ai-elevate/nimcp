@@ -32,6 +32,9 @@ class HybridDecoder:
         self.phi3 = phi3_decoder
         self.brain = brain
         self._encode_text = None  # Lazy import
+        self.enable_inner_speech = False
+        self.inner_speech_rounds = 2
+        self.inner_speech_max_time = 2.0  # seconds
 
     def _get_encode_text(self):
         """Lazy import of encode_text to avoid circular imports."""
@@ -209,6 +212,12 @@ class HybridDecoder:
             if output_vec is None:
                 return {'text': '(brain produced no output)', 'source': 'none'}
 
+            # Inner speech loop (if enabled)
+            if self.enable_inner_speech and output_vec is not None:
+                inner = self.inner_speech(output_vec, text)
+                if inner.get('final_output') is not None:
+                    output_vec = inner['final_output']
+
             # Hybrid decode
             decoded = self.decode(output_vec, user_text=text)
             decoded['brain_confidence'] = confidence
@@ -220,3 +229,68 @@ class HybridDecoder:
         except Exception as e:
             logger.error("Hybrid respond failed: %s", e)
             return {'text': f'(error: {e})', 'source': 'error'}
+
+    # =================================================================
+    # Task B: Inner speech — brain output → text → re-encode → brain
+    # =================================================================
+
+    def inner_speech(self, output_vector, user_text, max_rounds=None,
+                     max_time=None):
+        """Run inner speech loop for reflection.
+
+        The brain "hears its own thoughts": output → Phi-3 text → re-encode
+        → brain forward → repeat. Each round refines the response.
+
+        Args:
+            output_vector: Initial 4096-dim brain output.
+            user_text: Original input text for context.
+            max_rounds: Max reflection rounds (default: self.inner_speech_rounds).
+            max_time: Max total time in seconds (default: self.inner_speech_max_time).
+
+        Returns:
+            Dict with 'rounds' (list of inner speech texts) and 'final_output'.
+        """
+        import time as _time
+
+        if not self.phi3 or not self.phi3.available or not self.brain:
+            return {'rounds': [], 'final_output': output_vector}
+
+        rounds = max_rounds or self.inner_speech_rounds
+        timeout = max_time or self.inner_speech_max_time
+        t0 = _time.time()
+        speech_log = []
+        current_output = output_vector
+
+        for i in range(rounds):
+            if _time.time() - t0 > timeout:
+                break
+
+            # Decode current brain output to text
+            decoded = self.decode(current_output, user_text=user_text,
+                                  max_tokens=64)
+            inner_text = decoded.get('text', '')
+            if not inner_text:
+                break
+
+            speech_log.append({'round': i, 'text': inner_text})
+
+            # Re-encode inner speech and feed back to brain
+            # Try Phi-3 encoder first, fall back to BERT
+            if self.phi3:
+                inner_emb = self.phi3.encode_text(inner_text)
+            if inner_emb is None:
+                encode_text = self._get_encode_text()
+                inner_emb = encode_text(inner_text)
+
+            features = inner_emb[:1024].tolist()
+
+            # Feed back through brain
+            try:
+                result = self.brain.decide_full(features)
+                current_output = result.get('output_vector')
+                if current_output is None:
+                    break
+            except Exception:
+                break
+
+        return {'rounds': speech_log, 'final_output': current_output}

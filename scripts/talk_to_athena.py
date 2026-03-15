@@ -30,6 +30,8 @@ from neural_decoder import NeuralDecoder, VocabularyBank
 from claude_teacher import encode_text
 from response_composer import ResponseComposer
 from conversation_context import ConversationContext
+from phi3_decoder import Phi3Decoder
+from hybrid_decoder import HybridDecoder
 
 logger = logging.getLogger("talk_to_athena")
 
@@ -270,9 +272,10 @@ def run_ipc_conversation(client: AthenaIPCClient, args):
         output_norm = resp.get("output_norm", 0.0)
         athena_response = ""
 
-        # Priority: grounded > generated > decoded vocab
+        # Priority: grounded > phi3 > generated > decoded vocab
         grounded = resp.get("grounded_response", "")
         grounded_conf = resp.get("grounded_confidence", 0.0)
+        phi3_resp = resp.get("phi3_response", "")
         generated = resp.get("generated_text", "")
         decoded = resp.get("decoded", [])
         response_text = resp.get("response", "")
@@ -282,6 +285,12 @@ def run_ipc_conversation(client: AthenaIPCClient, args):
             print(f"Athena: {grounded}")
             print(f"        [grounded | conf={grounded_conf:.4f} | "
                   f"{elapsed*1000:.0f}ms]")
+        elif phi3_resp:
+            athena_response = phi3_resp
+            print(f"Athena: {phi3_resp}")
+            vocab_hint = response_text[:40] if response_text else ""
+            print(f"        [phi3 | vocab: {vocab_hint} | "
+                  f"conf={confidence:.4f} | {elapsed*1000:.0f}ms]")
         elif generated:
             athena_response = generated
             print(f"Athena: {generated}")
@@ -371,6 +380,10 @@ def run_local_conversation(args):
     has_grounded = hasattr(brain, 'grounded_respond')
     has_generate = hasattr(brain, 'generate_text')
 
+    # Initialize Phi-3 hybrid decoder
+    phi3 = Phi3Decoder()
+    hybrid = HybridDecoder(neural_decoder=decoder, phi3_decoder=phi3, brain=brain)
+
     print()
     print("=" * 60)
     print("  ATHENA CONVERSATION (LOCAL — brain loaded from checkpoint)")
@@ -382,7 +395,7 @@ def run_local_conversation(args):
     print(f"    System 1 (fast): grounded_respond "
           f"{'[available]' if has_grounded else '[unavailable]'}")
     print(f"    System 2 (full): decide_full + "
-          f"{'generate_text' if has_generate else 'vocab lookup'}")
+          f"{'Phi-3 [available]' if phi3.available else 'vocab lookup'}")
     if vocab and len(vocab) > 0:
         print(f"  Vocabulary: {len(vocab)} entries")
     print()
@@ -588,6 +601,23 @@ def run_local_conversation(args):
             print(f"        [composed from: {src_str} | "
                   f"conf={confidence:.4f} | phase={phase} | "
                   f"{(encode_time + infer_time)*1000:.0f}ms]")
+        elif phi3.available and output_vector:
+            # Phi-3 language cortex: brain-state conditioned generation
+            phi3_result = hybrid.decode(output_vector, user_text=user_input)
+            if phi3_result and phi3_result.get('source') == 'phi3':
+                athena_response = phi3_result['text']
+                print(f"Athena: {phi3_result['text']}")
+                vocab_hint = vocab_response[:40] if vocab_response else ""
+                print(f"        [phi3 | vocab: {vocab_hint} | "
+                      f"conf={confidence:.4f} | "
+                      f"{(encode_time + infer_time)*1000:.0f}ms]")
+            elif vocab_response:
+                athena_response = vocab_response
+                print(f"Athena: {vocab_response}")
+                print(f"        [vocab lookup | similarity={best_sim:.4f}]")
+            else:
+                athena_response = label or ""
+                print(f"Athena: [{label}] (confidence: {confidence:.4f})")
         elif gen_text:
             athena_response = gen_text
             print(f"Athena: {gen_text}")

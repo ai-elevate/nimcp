@@ -3886,7 +3886,7 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
             if os.path.exists("/tmp/athena_chat_now"):
                 os.remove("/tmp/athena_chat_now")
-            chat_eval(brain, composer, decoder, stage=0, step=i+1)
+            chat_eval(brain, composer, decoder, stage=0, step=i+1, phi3=phi3)
 
         # Inspire every 2000 stimuli
         if (i + 1) % 2000 == 0:
@@ -4016,7 +4016,7 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
             if os.path.exists("/tmp/athena_chat_now"):
                 os.remove("/tmp/athena_chat_now")
-            chat_eval(brain, composer, decoder, stage=1, step=i+1)
+            chat_eval(brain, composer, decoder, stage=1, step=i+1, phi3=phi3)
 
         # Inspire every 5000
         if (i + 1) % 5000 == 0:
@@ -4150,7 +4150,7 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
             if os.path.exists("/tmp/athena_chat_now"):
                 os.remove("/tmp/athena_chat_now")
-            chat_eval(brain, composer, decoder, stage=2, step=i+1)
+            chat_eval(brain, composer, decoder, stage=2, step=i+1, phi3=phi3)
 
         # Inspire every 3000
         if (i + 1) % 3000 == 0:
@@ -4485,7 +4485,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
             if os.path.exists("/tmp/athena_chat_now"):
                 os.remove("/tmp/athena_chat_now")
-            chat_eval(brain, composer, decoder, stage=3, step=i+1)
+            chat_eval(brain, composer, decoder, stage=3, step=i+1, phi3=phi3)
 
         # Forward chain KB
         if (i + 1) % 1000 == 0:
@@ -4622,7 +4622,7 @@ def _load_chat_prompts():
     return _CHAT_PROMPTS_CACHE
 
 
-def chat_eval(brain, composer, decoder, stage, step):
+def chat_eval(brain, composer, decoder, stage, step, phi3=None):
     """Run conversational chat prompts through Athena and log responses.
 
     Samples _CHAT_EVAL_SAMPLE_SIZE prompts from the full 500-prompt pool,
@@ -4694,8 +4694,25 @@ def chat_eval(brain, composer, decoder, stage, step):
         coherence = float(np.dot(output_emb, input_emb) /
                          (np.linalg.norm(output_emb) * np.linalg.norm(input_emb) + 1e-8))
 
+        # Try Phi-3 generation for richer response
+        phi3_text = ""
+        if phi3 and phi3.available:
+            try:
+                phi3_result = phi3.generate(
+                    user_text=prompt_text,
+                    vocab_match=decoded if decoded else None,
+                    max_tokens=128,
+                )
+                if phi3_result and phi3_result.get('text'):
+                    phi3_text = phi3_result['text']
+            except Exception:
+                pass
+
         print(f"    You:    {prompt_text}")
-        if decoded:
+        if phi3_text:
+            print(f"    Athena: {phi3_text[:120]}")
+            print(f"            [phi3 | vocab: {decoded[:40]}({similarity:.2f})]")
+        elif decoded:
             print(f"    Athena: {decoded[:80]}")
             if top3_str:
                 print(f"            [{top3_str}]")
@@ -5430,11 +5447,12 @@ class AthenaIPCServer:
       {"cmd": "stats"}                            → brain stats
     """
 
-    def __init__(self, brain, decoder, composer, training_progress):
+    def __init__(self, brain, decoder, composer, training_progress, phi3=None):
         self.brain = brain
         self.decoder = decoder
         self.composer = composer
         self.training_progress = training_progress
+        self.phi3 = phi3
         self._lock = threading.Lock()
         self._server_sock = None
         self._thread = None
@@ -5589,6 +5607,19 @@ class AthenaIPCServer:
                 resp["grounded_confidence"] = gc
         except Exception:
             pass
+
+        # Try Phi-3 language cortex
+        if output_vec and self.phi3 and self.phi3.available:
+            try:
+                phi3_result = self.phi3.generate(
+                    user_text=text,
+                    vocab_match=resp.get("response"),
+                    max_tokens=128,
+                )
+                if phi3_result and phi3_result.get('text'):
+                    resp["phi3_response"] = phi3_result['text']
+            except Exception:
+                pass
 
         # Try generate_text
         if output_vec:
@@ -5897,10 +5928,23 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGUSR1, sigusr1_handler)
 
+    # --- Initialize Phi-3 language cortex ---
+    try:
+        from phi3_decoder import Phi3Decoder
+        phi3 = Phi3Decoder()
+        if phi3.available:
+            print("  Phi-3 language cortex: ON")
+        else:
+            phi3 = None
+            print("  Phi-3 language cortex: OFF (model not found)")
+    except Exception:
+        phi3 = None
+
     # --- Start IPC server (allows talk_to_athena.py to query this brain) ---
     # In daemon mode, the brain daemon already provides IPC — don't bind the same socket.
     if not args.daemon:
-        ipc_server[0] = AthenaIPCServer(brain, decoder, composer, training_progress)
+        ipc_server[0] = AthenaIPCServer(brain, decoder, composer, training_progress,
+                                         phi3=phi3)
         ipc_server[0].start()
 
     # --- Print initial bio stats ---

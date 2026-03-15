@@ -182,9 +182,102 @@ class Phi3Decoder:
 
         return "\n\n".join(parts)
 
+    # =================================================================
+    # Task A: Input path — text → Phi-3 hidden states → 1024-dim embedding
+    # =================================================================
+
+    def encode_text(self, text):
+        """Encode text to 1024-dim embedding using Phi-3 hidden states.
+
+        Richer than BERT — captures instruction-following and reasoning
+        representations from a 3.8B parameter model.
+
+        Args:
+            text: Input text string.
+
+        Returns:
+            1024-dim np.float32 array, or None if unavailable.
+        """
+        if not self._load_model():
+            return None
+
+        try:
+            # Tokenize
+            tokens = self._llm.tokenize(text.encode('utf-8'))
+            if not tokens:
+                return None
+
+            # Truncate to context window
+            if len(tokens) > self.n_ctx - 4:
+                tokens = tokens[:self.n_ctx - 4]
+
+            # Run forward pass to get embeddings
+            self._llm.reset()
+            self._llm.eval(tokens)
+
+            # Extract embeddings from the model context
+            import llama_cpp
+            n_embd = self._llm.n_embd()  # Phi-3-mini: 3072
+
+            # Get sequence embedding (mean-pooled across tokens)
+            emb_ptr = llama_cpp.llama_get_embeddings_seq(
+                self._llm.ctx, 0)
+
+            if emb_ptr:
+                # Direct pointer access to embedding
+                raw_emb = np.ctypeslib.as_array(emb_ptr, shape=(n_embd,)).copy()
+            else:
+                # Fallback: get per-token embeddings and mean-pool
+                emb_ptr = llama_cpp.llama_get_embeddings(self._llm.ctx)
+                if not emb_ptr:
+                    logger.debug("Cannot extract Phi-3 embeddings, falling back")
+                    return None
+                raw_emb = np.ctypeslib.as_array(emb_ptr, shape=(n_embd,)).copy()
+
+            # Project from n_embd (3072) to 1024 dims
+            projection = self._get_projection(n_embd, 1024)
+            emb_1024 = raw_emb @ projection
+
+            # L2 normalize
+            norm = np.linalg.norm(emb_1024)
+            if norm > 1e-8:
+                emb_1024 = emb_1024 / norm
+
+            return emb_1024.astype(np.float32)
+
+        except Exception as e:
+            logger.debug("Phi-3 encode_text failed: %s", e)
+            return None
+
+    def _get_projection(self, in_dim, out_dim):
+        """Get or create projection matrix from in_dim to out_dim."""
+        if not hasattr(self, '_projection') or self._projection is None:
+            proj_path = os.path.join(
+                os.path.dirname(self.model_path), "phi3_projection.npy")
+            if os.path.exists(proj_path):
+                self._projection = np.load(proj_path)
+                if self._projection.shape != (in_dim, out_dim):
+                    self._projection = None
+
+            if self._projection is None:
+                # Random orthogonal initialization
+                rng = np.random.RandomState(42)
+                A = rng.randn(in_dim, out_dim).astype(np.float32)
+                # Approximate orthogonal via QR decomposition
+                Q, _ = np.linalg.qr(A)
+                self._projection = Q[:, :out_dim].astype(np.float32)
+                # Save for reproducibility
+                try:
+                    np.save(proj_path, self._projection)
+                except Exception:
+                    pass
+
+        return self._projection
+
     def unload(self):
         """Free model memory."""
         if self._llm is not None:
             del self._llm
             self._llm = None
+            self._projection = None
             logger.info("Phi-3 model unloaded")
