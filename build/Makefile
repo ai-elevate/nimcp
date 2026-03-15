@@ -39370,6 +39370,19 @@ regression_training_architecture_audit_fixes/fast:
 .PHONY : regression_training_architecture_audit_fixes/fast
 
 #=============================================================================
+# Target rules for targets named regression_hamiltonian_fno_unit_test
+
+# Build rule for target.
+regression_hamiltonian_fno_unit_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_hamiltonian_fno_unit_test
+.PHONY : regression_hamiltonian_fno_unit_test
+
+# fast build rule for target.
+regression_hamiltonian_fno_unit_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_hamiltonian_fno_unit_test.dir/build.make test/regression/training/CMakeFiles/regression_hamiltonian_fno_unit_test.dir/build
+.PHONY : regression_hamiltonian_fno_unit_test/fast
+
+#=============================================================================
 # Target rules for targets named unit_training_test_cnn_backprop
 
 # Build rule for target.
@@ -43559,6 +43572,7 @@ help:
 	@echo "... regression_gpu_test_substrate_gpu_regression"
 	@echo "... regression_gpu_test_visual_processing_regression"
 	@echo "... regression_grounded_language"
+	@echo "... regression_hamiltonian_fno_unit_test"
 	@echo "... regression_health_stability"
 	@echo "... regression_heartbeat_B01_memory_core"
 	@echo "... regression_heartbeat_B02_memory"

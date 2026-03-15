@@ -541,3 +541,30 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_architecture_audit_fixes.cpp)
             LABELS "regression;training;architecture-audit"
             TIMEOUT 60)
 endif()
+
+# Hamiltonian LNN + FNO unit tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_hamiltonian_fno_unit.cpp")
+    add_executable(regression_hamiltonian_fno_unit_test
+        test_hamiltonian_fno_unit.cpp
+    )
+    target_link_libraries(regression_hamiltonian_fno_unit_test
+        PRIVATE
+            nimcp
+            nimcp_middleware
+            GTest::gtest
+            GTest::gtest_main
+            Threads::Threads
+    )
+    target_include_directories(regression_hamiltonian_fno_unit_test PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    set_target_properties(regression_hamiltonian_fno_unit_test PROPERTIES
+        LABELS "regression;training;hamiltonian;fno;unit"
+        TIMEOUT 120
+    )
+    gtest_discover_tests(regression_hamiltonian_fno_unit_test
+        PROPERTIES LABELS "regression;training;hamiltonian;fno;unit"
+        PROPERTIES TIMEOUT 120
+    )
+endif()
