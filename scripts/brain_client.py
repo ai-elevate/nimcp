@@ -193,6 +193,23 @@ class BrainProxy:
                            "max_tokens": max_tokens})
         return resp
 
+    # -- TTS --
+
+    def tts_speak(self, text, accent=None, output_path=None):
+        """Synthesize speech with brain-state modulation."""
+        resp = self._send({"cmd": "tts_speak", "text": text,
+                           "accent": accent, "output_path": output_path})
+        return resp
+
+    def tts_register_accent(self, name, audio_path):
+        """Register a new accent from reference audio."""
+        return self._send({"cmd": "tts_register_accent", "name": name,
+                           "audio_path": audio_path})
+
+    def tts_list_accents(self):
+        """List available accents."""
+        return self._send({"cmd": "tts_list_accents"})
+
     # -- Biological state --
 
     def substrate_get_health(self):

@@ -620,6 +620,42 @@ class BrainService:
         result = self._hybrid_decoder.respond(text, brain=self.brain)
         return {"ok": True, **result}
 
+    # -- TTS --
+
+    def _cmd_tts_speak(self, req):
+        text = req.get("text", "")
+        accent = req.get("accent", None)
+        output_path = req.get("output_path", None)
+        if not text:
+            return {"error": "No text provided"}
+        if not hasattr(self, '_tts'):
+            try:
+                from athena_tts import AthenaTTS
+                self._tts = AthenaTTS()
+            except Exception as e:
+                return {"error": f"TTS init failed: {e}"}
+        result = self._tts.speak(text, brain=self.brain,
+                                accent=accent, output_path=output_path)
+        if result:
+            return {"ok": True, "duration": result.get("duration", 0),
+                    "prosody": result.get("prosody"), "accent": result.get("accent")}
+        return {"error": "TTS synthesis failed"}
+
+    def _cmd_tts_register_accent(self, req):
+        name = req.get("name", "")
+        audio_path = req.get("audio_path", "")
+        if not name or not audio_path:
+            return {"error": "name and audio_path required"}
+        if not hasattr(self, '_tts'):
+            return {"error": "TTS not initialized — call tts_speak first"}
+        ok = self._tts.register_accent(name, audio_path)
+        return {"ok": ok}
+
+    def _cmd_tts_list_accents(self, _req):
+        if hasattr(self, '_tts'):
+            return {"accents": self._tts.accent_library.list_accents()}
+        return {"accents": {"loaded": [], "available": [], "descriptions": {}}}
+
     # -- Keepalive --
 
     def _cmd_keepalive(self, _req):
