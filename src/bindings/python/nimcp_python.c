@@ -5011,6 +5011,86 @@ static PyObject* Brain_speech_cortex_process(BrainObject* self, PyObject* args) 
 }
 
 /**
+ * WHAT: Stage sensory data for cross-modal cortex CNN processing
+ * WHY:  Feed somatosensory/visual/audio/speech data to cortex CNNs
+ * HOW:  Copy data into brain->staged_sensory fields, picked up by next learn_vector
+ *
+ * @param modality "visual", "audio", "speech", or "somatosensory"
+ * @param data Python list of floats
+ * @param kwargs: width, height, channels (for visual), n_segments (for somato)
+ */
+static PyObject* Brain_submit_sensory(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* modality;
+    PyObject* data_list;
+    unsigned int width = 0, height = 0, channels = 0, n_segments = 0;
+
+    static char* kwlist[] = {"modality", "data", "width", "height", "channels",
+                             "n_segments", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|IIII", kwlist,
+                                      &modality, &data_list,
+                                      &width, &height, &channels, &n_segments))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+
+    Py_ssize_t num_elements;
+    float* data = py_list_to_float_array(data_list, &num_elements);
+    if (!data) return NULL;
+
+    brain_t ib = self->brain->internal_brain;
+
+    if (strcmp(modality, "somatosensory") == 0 || strcmp(modality, "somato") == 0) {
+        /* Stage somatosensory data */
+        if (ib->staged_sensory.somato_data) {
+            nimcp_free(ib->staged_sensory.somato_data);
+        }
+        ib->staged_sensory.somato_data = data;  /* Transfer ownership */
+        ib->staged_sensory.somato_segments = (n_segments > 0) ? n_segments : (uint32_t)num_elements;
+    } else if (strcmp(modality, "visual") == 0) {
+        /* Stage visual data */
+        if (ib->staged_sensory.visual_frame) {
+            nimcp_free(ib->staged_sensory.visual_frame);
+        }
+        /* Convert float [0,1] to uint8 [0,255] */
+        uint8_t* pixels = (uint8_t*)nimcp_malloc((size_t)num_elements);
+        if (!pixels) { nimcp_free(data); return PyErr_NoMemory(); }
+        for (Py_ssize_t i = 0; i < num_elements; i++) {
+            float v = data[i];
+            if (v <= 1.0f && v >= 0.0f) v *= 255.0f;
+            pixels[i] = (uint8_t)(v > 255.0f ? 255 : (v < 0.0f ? 0 : v));
+        }
+        nimcp_free(data);
+        ib->staged_sensory.visual_frame = pixels;
+        ib->staged_sensory.visual_width = (width > 0) ? width : 32;
+        ib->staged_sensory.visual_height = (height > 0) ? height : 32;
+        ib->staged_sensory.visual_channels = (channels > 0) ? channels : 3;
+    } else if (strcmp(modality, "audio") == 0) {
+        /* Stage audio data */
+        if (ib->staged_sensory.audio_data) {
+            nimcp_free(ib->staged_sensory.audio_data);
+        }
+        ib->staged_sensory.audio_data = data;  /* Transfer ownership */
+        ib->staged_sensory.audio_size = (uint32_t)num_elements;
+    } else if (strcmp(modality, "speech") == 0) {
+        /* Stage speech data */
+        if (ib->staged_sensory.speech_data) {
+            nimcp_free(ib->staged_sensory.speech_data);
+        }
+        ib->staged_sensory.speech_data = data;  /* Transfer ownership */
+        ib->staged_sensory.speech_size = (uint32_t)num_elements;
+    } else {
+        nimcp_free(data);
+        PyErr_Format(PyExc_ValueError, "Unknown modality: %s", modality);
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/**
  * WHAT: LGSS content safety check
  * WHY:  Gate web-fetched and generated content before learning
  * HOW:  Create temporary LGSS filter, run is_safe check, destroy
@@ -6767,6 +6847,9 @@ static PyMethodDef Brain_methods[] = {
     // Sensory cortex bindings for multimodal training
     {"audio_cortex_process", (PyCFunction)Brain_audio_cortex_process, METH_VARARGS,
      "Process audio through audio cortex: audio_cortex_process(samples) -> list of features"},
+    {"submit_sensory", (PyCFunction)Brain_submit_sensory, METH_VARARGS | METH_KEYWORDS,
+     "Stage sensory data: submit_sensory(modality, data, width=0, height=0, channels=0, n_segments=0)\n"
+     "Modalities: 'visual', 'audio', 'speech', 'somatosensory'"},
     {"visual_cortex_process", (PyCFunction)Brain_visual_cortex_process, METH_VARARGS,
      "Process image through visual cortex: visual_cortex_process(pixels, width, height, channels) -> list of features"},
     {"speech_cortex_process", (PyCFunction)Brain_speech_cortex_process, METH_VARARGS,

@@ -453,6 +453,9 @@ class BrainService:
                 self.brain.audio_cortex_process(data)
             elif modality == "speech":
                 self.brain.speech_cortex_process(data)
+            elif modality == "somatosensory" or modality == "somato":
+                self.brain.submit_sensory("somatosensory", data,
+                                          n_segments=req.get("n_segments", len(data)))
             else:
                 return {"ok": True}  # unsupported modality, ignore
         return {"ok": True}
