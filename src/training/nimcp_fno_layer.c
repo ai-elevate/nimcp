@@ -143,8 +143,10 @@ fno_spectral_conv_t* fno_spectral_conv_create(
         return NULL;
     }
 
-    /* Xavier init */
-    float scale = sqrtf(2.0f / (float)(in_ch * n_modes));
+    /* Spectral-aware initialization: scale by 1/sqrt(in_ch * n_modes)
+     * to account for FFT amplification. Lower modes get slightly larger
+     * weights since they carry more signal energy. */
+    float scale = 1.0f / sqrtf((float)(in_ch * n_modes));
     for (size_t i = 0; i < w_size; i++) {
         layer->W_real[i] = scale * (2.0f * ((float)rand() / RAND_MAX) - 1.0f);
         layer->W_imag[i] = scale * (2.0f * ((float)rand() / RAND_MAX) - 1.0f);

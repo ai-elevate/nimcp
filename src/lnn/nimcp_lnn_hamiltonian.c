@@ -69,6 +69,11 @@ lnn_hamiltonian_net_t* lnn_hamiltonian_net_create(
     uint32_t n_layers = n_hidden + 1;  /* hidden layers + output layer */
     uint32_t input_dim = 2 * state_dim; /* [q; p] */
 
+    if (n_layers > 100) {
+        NIMCP_LOGGING_ERROR("lnn_hamiltonian_net_create: n_layers %u unreasonably large", n_layers);
+        return NULL;
+    }
+
     lnn_hamiltonian_net_t* net = nimcp_calloc(1, sizeof(lnn_hamiltonian_net_t));
     if (!net) return NULL;
 

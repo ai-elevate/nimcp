@@ -216,6 +216,9 @@ struct brain_struct {
     uint32_t cortex_cnn_fused_dim;                // Dimension of fused embedding (0 if none active)
 
     // === PER-NETWORK TRAINING METRICS (ablation tracking) ===
+    // NOTE: These are written by the training thread and read by the daemon
+    // IPC thread. Reads are best-effort (monitoring only, not control flow).
+    // Torn reads on 64-bit step counters are acceptable for display purposes.
     struct {
         float last_ann_loss;     /**< Last ANN/Adaptive backbone loss */
         float last_cnn_loss;     /**< Last CNN loss (0 if disabled) */
