@@ -179,6 +179,25 @@ bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t brain) {
     register_async_bridges(brain, orch);
     register_core_bridges(brain, orch);
 
+    /* Register physics-informed bridges (HNN, FNO Audio, FNO Population) */
+    {
+        extern int fep_register_physics_bridges(void*, void*, void*, void*);
+        int physics_count = fep_register_physics_bridges(
+            orch,
+            brain->lnn_network,       /* HNN — Hamiltonian energy as free energy */
+            brain->cortex_cnns[1],    /* FNO Audio cortex — spectral prediction */
+            brain->snn_network        /* FNO Population — collective dynamics */
+        );
+        if (physics_count > 0) {
+            NIMCP_LOGGING_INFO("Physics-informed FEP bridges: %d registered "
+                             "(HNN=%s, FNO_Audio=%s, FNO_Pop=%s)",
+                             physics_count,
+                             brain->lnn_network ? "yes" : "no",
+                             brain->cortex_cnns[1] ? "yes" : "no",
+                             brain->snn_network ? "yes" : "no");
+        }
+    }
+
     /* Start orchestrator */
     if (fep_orchestrator_start(orch) != 0) {
         NIMCP_LOGGING_WARN("Failed to start FEP orchestrator");

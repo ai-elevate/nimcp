@@ -1009,6 +1009,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_context.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_sleep.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_orchestrator.c  # FEP Orchestrator - coordinates all FEP bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_hnn_fno_bridges.c  # HNN + FNO → FEP bridges
 
     # JEPA (Joint Embedding Predictive Architecture) - Phase JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_latent.c           # Latent space embeddings
