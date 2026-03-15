@@ -1,7 +1,7 @@
 /**
  * @file nimcp.hpp
  * @brief Idiomatic C++20 bindings for NIMCP
- * @version 2.6.3
+ * @version 2.6.4
  *
  * Single-header C++ wrapper providing RAII classes, strongly-typed enums,
  * exception-based error handling, and std::function callbacks over the
@@ -576,6 +576,28 @@ public:
         check_status(nimcp_brain_save(handle_, std::string(filepath).c_str()));
     }
 
+    static Brain create_with_neurons(std::string_view name, TaskType task,
+                                     uint32_t num_inputs, uint32_t num_outputs,
+                                     uint32_t neuron_count) {
+        auto h = nimcp_brain_create_with_neurons(
+            std::string(name).c_str(),
+            static_cast<nimcp_brain_task_t>(task),
+            num_inputs, num_outputs, neuron_count);
+        if (!h) throw MemoryError("Failed to create brain with neurons");
+        return Brain(h);
+    }
+
+    static Brain create_full(std::string_view name, TaskType task,
+                              uint32_t num_inputs, uint32_t num_outputs,
+                              uint32_t neuron_count) {
+        auto h = nimcp_brain_create_full(
+            std::string(name).c_str(),
+            static_cast<nimcp_brain_task_t>(task),
+            num_inputs, num_outputs, neuron_count);
+        if (!h) throw MemoryError("Failed to create full brain");
+        return Brain(h);
+    }
+
     // --- Learning / Inference ---
 
     void learn(std::span<const float> features, std::string_view label,
@@ -601,6 +623,249 @@ public:
             handle_, features.data(), static_cast<uint32_t>(features.size()),
             outputs.data(), num_outputs));
         return outputs;
+    }
+
+    // --- Extended Learning ---
+
+    void learn_vector(std::span<const float> features,
+                      std::span<const float> target,
+                      std::string_view label = "",
+                      float confidence = 1.0f) {
+        check_status(nimcp_brain_learn_vector(
+            handle_, features.data(), static_cast<uint32_t>(features.size()),
+            target.data(), static_cast<uint32_t>(target.size()),
+            label.empty() ? nullptr : std::string(label).c_str(),
+            confidence));
+    }
+
+    float learn_vector_batch(const float** features_array,
+                             const float** targets_array,
+                             uint32_t num_features, uint32_t target_size,
+                             uint32_t num_examples, float learning_rate) {
+        return nimcp_brain_learn_vector_batch(
+            handle_, features_array, targets_array,
+            num_features, target_size, num_examples, learning_rate);
+    }
+
+    void learn_batch(const float** features_array,
+                     const uint32_t* num_features_array,
+                     const char** labels,
+                     const float* confidences,
+                     uint32_t num_examples,
+                     float* losses_out = nullptr) {
+        check_status(nimcp_brain_learn_batch(
+            handle_, features_array, num_features_array,
+            labels, confidences, num_examples, losses_out));
+    }
+
+    void learn_knowledge(std::string_view text, int domain) {
+        check_status(nimcp_brain_learn_knowledge(
+            handle_, std::string(text).c_str(), domain));
+    }
+
+    void learn_language(std::string_view text, float* out_loss = nullptr) {
+        check_status(nimcp_brain_learn_language(
+            handle_, std::string(text).c_str(), out_loss));
+    }
+
+    void learn_language_pair(std::string_view input_text,
+                             std::string_view target_text,
+                             float learning_rate = 0.0f,
+                             float* out_loss = nullptr) {
+        check_status(nimcp_brain_learn_language_pair(
+            handle_,
+            std::string(input_text).c_str(),
+            std::string(target_text).c_str(),
+            learning_rate, out_loss));
+    }
+
+    // --- Extended Prediction ---
+
+    Prediction predict_fast(std::span<const float> features) const {
+        char label_buf[NIMCP_MAX_LABEL_SIZE]{};
+        float confidence = 0.0f;
+        check_status(nimcp_brain_predict_fast(
+            handle_, features.data(), static_cast<uint32_t>(features.size()),
+            label_buf, &confidence));
+        return {label_buf, confidence};
+    }
+
+    Prediction predict_in_domain(std::span<const float> features,
+                                 std::string_view domain_prefix) const {
+        char label_buf[NIMCP_MAX_LABEL_SIZE]{};
+        float confidence = 0.0f;
+        check_status(nimcp_brain_predict_in_domain(
+            handle_, features.data(), static_cast<uint32_t>(features.size()),
+            domain_prefix.empty() ? nullptr : std::string(domain_prefix).c_str(),
+            label_buf, &confidence));
+        return {label_buf, confidence};
+    }
+
+    // --- Full Decision ---
+
+    struct DecisionResult {
+        std::string label;
+        float confidence = 0.0f;
+        std::string explanation;
+        std::vector<float> output_vector;
+        uint32_t num_active_neurons = 0;
+        float sparsity = 0.0f;
+        uint64_t inference_time_us = 0;
+    };
+
+    DecisionResult decide_full(std::span<const float> features,
+                               uint32_t max_outputs = 256) const {
+        DecisionResult r;
+        char label_buf[NIMCP_MAX_LABEL_SIZE]{};
+        char explanation_buf[1024]{};
+        r.output_vector.resize(max_outputs);
+        uint32_t output_size = max_outputs;
+        check_status(nimcp_brain_decide_full(
+            handle_, features.data(), static_cast<uint32_t>(features.size()),
+            label_buf, &r.confidence,
+            explanation_buf,
+            r.output_vector.data(), &output_size,
+            &r.num_active_neurons, &r.sparsity,
+            &r.inference_time_us));
+        r.label = label_buf;
+        r.explanation = explanation_buf;
+        r.output_vector.resize(output_size);
+        return r;
+    }
+
+    // --- Language / Speech ---
+
+    struct SpeakResult {
+        std::string text;
+        float confidence = 0.0f;
+        float fluency = 0.0f;
+    };
+
+    SpeakResult speak(std::span<const float> semantic_input = {},
+                      uint32_t text_max_len = 1024) const {
+        SpeakResult r;
+        std::vector<char> buf(text_max_len, '\0');
+        check_status(nimcp_brain_speak(
+            handle_,
+            semantic_input.empty() ? nullptr : semantic_input.data(),
+            static_cast<uint32_t>(semantic_input.size()),
+            buf.data(), text_max_len,
+            &r.confidence, &r.fluency));
+        r.text = buf.data();
+        return r;
+    }
+
+    struct GenerateTextResult {
+        std::string text;
+        float confidence = 0.0f;
+        float perplexity = 0.0f;
+    };
+
+    GenerateTextResult generate_text(std::string_view prompt = "",
+                                     std::span<const float> semantic_input = {},
+                                     uint32_t text_max_len = 1024) const {
+        GenerateTextResult r;
+        std::vector<char> buf(text_max_len, '\0');
+        check_status(nimcp_brain_generate_text(
+            handle_,
+            prompt.empty() ? nullptr : std::string(prompt).c_str(),
+            semantic_input.empty() ? nullptr : semantic_input.data(),
+            static_cast<uint32_t>(semantic_input.size()),
+            buf.data(), text_max_len,
+            &r.confidence, &r.perplexity));
+        r.text = buf.data();
+        return r;
+    }
+
+    struct ComprehendResult {
+        std::vector<float> semantic;
+        float confidence = 0.0f;
+    };
+
+    ComprehendResult comprehend(std::string_view text,
+                                uint32_t semantic_dim = 128) const {
+        ComprehendResult r;
+        r.semantic.resize(semantic_dim);
+        check_status(nimcp_brain_comprehend(
+            handle_, std::string(text).c_str(),
+            r.semantic.data(), semantic_dim, &r.confidence));
+        return r;
+    }
+
+    struct ProduceTextResult {
+        std::string text;
+        float confidence = 0.0f;
+    };
+
+    ProduceTextResult produce_text(std::span<const float> intent,
+                                   uint32_t text_max_len = 1024) const {
+        ProduceTextResult r;
+        std::vector<char> buf(text_max_len, '\0');
+        check_status(nimcp_brain_produce_text(
+            handle_, intent.data(), static_cast<uint32_t>(intent.size()),
+            buf.data(), text_max_len, &r.confidence));
+        r.text = buf.data();
+        return r;
+    }
+
+    std::string creative_blend(std::span<const float> vector_a,
+                               std::span<const float> vector_b,
+                               float blend_ratio,
+                               uint32_t text_max = 1024) {
+        std::vector<char> buf(text_max, '\0');
+        check_status(nimcp_brain_creative_blend(
+            handle_, vector_a.data(), vector_b.data(),
+            static_cast<uint32_t>(vector_a.size()),
+            blend_ratio, buf.data(), text_max));
+        return std::string(buf.data());
+    }
+
+    struct GroundedRespondResult {
+        std::string response;
+        float confidence = 0.0f;
+    };
+
+    GroundedRespondResult grounded_respond(std::string_view input_text,
+                                           uint32_t response_max = 1024) const {
+        GroundedRespondResult r;
+        std::vector<char> buf(response_max, '\0');
+        check_status(nimcp_brain_grounded_respond(
+            handle_, std::string(input_text).c_str(),
+            buf.data(), response_max, &r.confidence));
+        r.response = buf.data();
+        return r;
+    }
+
+    void ground_word(std::string_view word,
+                     std::span<const float> features,
+                     uint32_t modality, float attention) {
+        check_status(nimcp_brain_ground_word(
+            handle_, std::string(word).c_str(),
+            features.data(), static_cast<uint32_t>(features.size()),
+            modality, attention));
+    }
+
+    // --- Cognitive Training ---
+
+    void train_cognitive(std::string_view text, int domain,
+                         std::string_view target_text = "",
+                         float learning_rate = 0.0f,
+                         float* out_loss = nullptr) {
+        check_status(nimcp_brain_train_cognitive(
+            handle_, std::string(text).c_str(), domain,
+            target_text.empty() ? nullptr : std::string(target_text).c_str(),
+            learning_rate, out_loss));
+    }
+
+    void train_language(std::string_view input_text,
+                        std::string_view target_text,
+                        float learning_rate = 0.0f,
+                        float* out_loss = nullptr) {
+        check_status(nimcp_brain_train_language(
+            handle_,
+            std::string(input_text).c_str(),
+            std::string(target_text).c_str(),
+            learning_rate, out_loss));
     }
 
     // --- Training Pipeline ---
@@ -640,6 +905,149 @@ public:
 
     float step_scheduler(float validation_metric = 0.0f) {
         return nimcp_brain_step_scheduler(handle_, validation_metric);
+    }
+
+    // --- Metrics / Stats Getters ---
+
+    float get_accuracy() const {
+        return nimcp_brain_get_accuracy(handle_);
+    }
+
+    float get_last_gradient_norm() const {
+        return nimcp_brain_get_last_gradient_norm(handle_);
+    }
+
+    float get_last_loss() const {
+        return nimcp_brain_get_last_loss(handle_);
+    }
+
+    struct NetworkMetrics {
+        float ema_ann = 0.0f, ema_cnn = 0.0f, ema_snn = 0.0f, ema_lnn = 0.0f;
+        uint64_t ann_steps = 0, cnn_steps = 0, snn_steps = 0, lnn_steps = 0;
+    };
+
+    std::optional<NetworkMetrics> get_network_metrics() const {
+        NetworkMetrics m;
+        bool ok = nimcp_brain_get_network_metrics(
+            handle_, &m.ema_ann, &m.ema_cnn, &m.ema_snn, &m.ema_lnn,
+            &m.ann_steps, &m.cnn_steps, &m.snn_steps, &m.lnn_steps);
+        if (!ok) return std::nullopt;
+        return m;
+    }
+
+    struct CognitiveStats {
+        std::vector<uint32_t> step_counts;
+        std::vector<float> losses;
+        uint32_t module_count = 0;
+    };
+
+    CognitiveStats get_cognitive_stats() const {
+        CognitiveStats s;
+        s.step_counts.resize(13);
+        s.losses.resize(13);
+        check_status(nimcp_brain_get_cognitive_stats(
+            handle_, s.step_counts.data(), s.losses.data(), &s.module_count));
+        s.step_counts.resize(s.module_count);
+        s.losses.resize(s.module_count);
+        return s;
+    }
+
+    nimcp_avatar_state_t get_avatar_state() const {
+        nimcp_avatar_state_t state{};
+        check_status(nimcp_brain_get_avatar_state(handle_, &state));
+        return state;
+    }
+
+    struct TranscriptEntry {
+        std::string summary;
+        float salience = 0.0f;
+        float confidence = 0.0f;
+        std::string module_name;
+    };
+
+    std::vector<TranscriptEntry> get_last_transcript(uint32_t max_entries = 32) const {
+        std::vector<std::array<char, 256>> entries(max_entries);
+        std::vector<float> saliences(max_entries);
+        std::vector<float> confidences(max_entries);
+        std::vector<const char*> modules(max_entries, nullptr);
+        uint32_t count = nimcp_brain_get_last_transcript(
+            handle_,
+            reinterpret_cast<char(*)[256]>(entries.data()),
+            saliences.data(), confidences.data(),
+            modules.data(), max_entries);
+        std::vector<TranscriptEntry> result;
+        result.reserve(count);
+        for (uint32_t i = 0; i < count; ++i) {
+            TranscriptEntry e;
+            e.summary = entries[i].data();
+            e.salience = saliences[i];
+            e.confidence = confidences[i];
+            e.module_name = modules[i] ? modules[i] : "";
+            result.push_back(std::move(e));
+        }
+        return result;
+    }
+
+    struct CortexCnnMetrics {
+        std::vector<int> types;
+        std::vector<float> losses;
+        std::vector<uint64_t> fwd_steps;
+        std::vector<uint64_t> bwd_steps;
+        std::vector<float> embed_norms;
+        uint32_t count = 0;
+    };
+
+    CortexCnnMetrics get_cortex_cnn_metrics() const {
+        CortexCnnMetrics m;
+        m.types.resize(4);
+        m.losses.resize(4);
+        m.fwd_steps.resize(4);
+        m.bwd_steps.resize(4);
+        m.embed_norms.resize(4);
+        check_status(nimcp_brain_get_cortex_cnn_metrics(
+            handle_, m.types.data(), m.losses.data(),
+            m.fwd_steps.data(), m.bwd_steps.data(),
+            m.embed_norms.data(), &m.count));
+        m.types.resize(m.count);
+        m.losses.resize(m.count);
+        m.fwd_steps.resize(m.count);
+        m.bwd_steps.resize(m.count);
+        m.embed_norms.resize(m.count);
+        return m;
+    }
+
+    // --- Experience API ---
+
+    void experience(std::span<const float> input,
+                    std::span<float> output,
+                    float teacher_reward,
+                    brain_experience_result_t* result = nullptr) {
+        check_status(nimcp_brain_experience(
+            handle_, input.data(), static_cast<uint32_t>(input.size()),
+            output.data(), static_cast<uint32_t>(output.size()),
+            teacher_reward, result));
+    }
+
+    void experience_configure(const brain_experience_config_t* config) {
+        check_status(nimcp_brain_experience_configure(handle_, config));
+    }
+
+    float experience_correct(std::span<const float> expected) {
+        return nimcp_brain_experience_correct(
+            handle_, expected.data(), static_cast<uint32_t>(expected.size()));
+    }
+
+    void experience_attend(std::string_view modality, float strength) {
+        check_status(nimcp_brain_experience_attend(
+            handle_, std::string(modality).c_str(), strength));
+    }
+
+    // --- Rubric ---
+
+    nimcp_rubric_t rubric() const {
+        nimcp_rubric_t r{};
+        check_status(nimcp_brain_rubric(handle_, &r));
+        return r;
     }
 
     // --- Callbacks ---
@@ -856,6 +1264,188 @@ public:
 
     float pac_modulation(float theta_freq, float gamma_freq) const {
         return nimcp_get_pac_modulation(handle_, theta_freq, gamma_freq);
+    }
+
+    // --- Freeze / Configuration ---
+
+    void freeze() {
+        check_status(nimcp_brain_freeze(handle_));
+    }
+
+    bool is_frozen() const {
+        return nimcp_brain_is_frozen(handle_);
+    }
+
+    void enable_mixed_precision(bool enable) {
+        check_status(nimcp_brain_enable_mixed_precision(handle_, enable));
+    }
+
+    void enable_gradient_checkpointing(bool enable,
+                                       uint32_t checkpoint_interval = 0) {
+        check_status(nimcp_brain_enable_gradient_checkpointing(
+            handle_, enable, checkpoint_interval));
+    }
+
+    void enable_hemispheric(bool enable) {
+        check_status(nimcp_brain_enable_hemispheric(handle_, enable));
+    }
+
+    void enable_recurrent(bool enable, uint32_t max_iterations = 3,
+                          float confidence_threshold = 0.9f,
+                          float blend_alpha = 0.5f) {
+        check_status(nimcp_brain_enable_recurrent(
+            handle_, enable, max_iterations,
+            confidence_threshold, blend_alpha));
+    }
+
+    void enable_bptt(bool enable, uint32_t window_size = 8,
+                     float discount = 0.95f) {
+        check_status(nimcp_brain_enable_bptt(
+            handle_, enable, window_size, discount));
+    }
+
+    void enable_multi_network() {
+        check_status(nimcp_brain_enable_multi_network(handle_));
+    }
+
+    void enable_biological_plasticity(bool enabled) {
+        check_status(nimcp_brain_enable_biological_plasticity(handle_, enabled));
+    }
+
+    void set_fast_training(bool enabled) {
+        check_status(nimcp_brain_set_fast_training(handle_, enabled));
+    }
+
+    void set_task_type(std::string_view task_type) {
+        check_status(nimcp_brain_set_task_type(
+            handle_, std::string(task_type).c_str()));
+    }
+
+    void set_training_mode(bool active) {
+        nimcp_brain_set_training_mode(handle_, active);
+    }
+
+    void set_network_ablation(int train_cnn, int train_snn, int train_lnn) {
+        nimcp_brain_set_network_ablation(handle_, train_cnn, train_snn, train_lnn);
+    }
+
+    // --- Sensory / Brain Regions ---
+
+    void submit_sensory(std::string_view modality,
+                        std::span<const float> data,
+                        uint32_t width, uint32_t height,
+                        uint32_t channels, uint32_t n_segments) {
+        check_status(nimcp_brain_submit_sensory(
+            handle_, std::string(modality).c_str(),
+            data.data(), static_cast<uint32_t>(data.size()),
+            width, height, channels, n_segments));
+    }
+
+    struct VisualCortexResult {
+        std::vector<float> features;
+        uint32_t feature_count = 0;
+    };
+
+    VisualCortexResult visual_cortex_process(std::span<const float> pixels,
+                                             uint32_t width, uint32_t height,
+                                             uint32_t channels,
+                                             uint32_t max_features = 256) const {
+        VisualCortexResult r;
+        r.features.resize(max_features);
+        check_status(nimcp_brain_visual_cortex_process(
+            handle_, pixels.data(), static_cast<uint32_t>(pixels.size()),
+            width, height, channels,
+            r.features.data(), max_features, &r.feature_count));
+        r.features.resize(r.feature_count);
+        return r;
+    }
+
+    float medulla_get_arousal() const {
+        return nimcp_brain_medulla_get_arousal(handle_);
+    }
+
+    float bg_get_dopamine() const {
+        return nimcp_brain_bg_get_dopamine(handle_);
+    }
+
+    float sleep_get_pressure() const {
+        return nimcp_brain_sleep_get_pressure(handle_);
+    }
+
+    std::string substrate_get_health() const {
+        char buf[64]{};
+        check_status(nimcp_brain_substrate_get_health(handle_, buf, sizeof(buf)));
+        return std::string(buf);
+    }
+
+    // --- Sub-network Management ---
+
+    void lnn_create(uint32_t n_sensory, uint32_t n_inter,
+                    uint32_t n_command, uint32_t n_output) {
+        check_status(nimcp_brain_lnn_create(
+            handle_, n_sensory, n_inter, n_command, n_output));
+    }
+
+    struct LnnStats {
+        uint64_t forward_steps = 0, backward_steps = 0, ode_evals = 0;
+        float avg_tau = 0.0f, state_norm = 0.0f, gradient_norm = 0.0f;
+        uint32_t nan_count = 0, inf_count = 0;
+    };
+
+    LnnStats lnn_get_stats() const {
+        LnnStats s;
+        check_status(nimcp_brain_lnn_get_stats(
+            handle_, &s.forward_steps, &s.backward_steps,
+            &s.ode_evals, &s.avg_tau, &s.state_norm,
+            &s.gradient_norm, &s.nan_count, &s.inf_count));
+        return s;
+    }
+
+    struct SnnStats {
+        uint64_t total_steps = 0, total_spikes = 0;
+        float mean_firing_rate = 0.0f, sparsity = 0.0f, synchrony = 0.0f;
+        uint32_t silent_neurons = 0, hyperactive_neurons = 0;
+        int health = 0;
+        size_t memory_bytes = 0;
+    };
+
+    SnnStats snn_get_stats() const {
+        SnnStats s;
+        check_status(nimcp_brain_snn_get_stats(
+            handle_, &s.total_steps, &s.total_spikes,
+            &s.mean_firing_rate, &s.sparsity, &s.synchrony,
+            &s.silent_neurons, &s.hyperactive_neurons,
+            &s.health, &s.memory_bytes));
+        return s;
+    }
+
+    struct CnnStats {
+        uint32_t num_layers = 0;
+        size_t num_parameters = 0;
+        uint32_t num_labels = 0;
+        bool active = false;
+    };
+
+    CnnStats cnn_get_stats() const {
+        CnnStats s;
+        check_status(nimcp_brain_cnn_get_stats(
+            handle_, &s.num_layers, &s.num_parameters,
+            &s.num_labels, &s.active));
+        return s;
+    }
+
+    // --- Cloud Connectivity ---
+
+    void connect_cloud(Brain& cloud_brain,
+                       float confidence_threshold,
+                       bool enable_distillation) {
+        check_status(nimcp_brain_connect_cloud(
+            handle_, cloud_brain.get(),
+            confidence_threshold, enable_distillation));
+    }
+
+    void disconnect_cloud() {
+        check_status(nimcp_brain_disconnect_cloud(handle_));
     }
 
     // Move constructor/assignment use base class defaults
