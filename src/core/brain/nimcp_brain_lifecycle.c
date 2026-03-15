@@ -754,13 +754,15 @@ void brain_destroy(brain_t brain)
         if (brain->owns_network) {
             adaptive_network_destroy(brain->network);
         } else if (brain->network_refcount && brain->refcount_mutex) {
-            // THREAD SAFETY FIX: Save local copies to avoid use-after-free.
-            // See nimcp_brain.c brain_destroy() for detailed explanation.
+            // THREAD SAFETY FIX: Acquire mutex BEFORE reading shared pointers
+            // to prevent TOCTOU race where another thread destroys the mutex
+            // between our read and lock.
             nimcp_platform_mutex_t* mutex = brain->refcount_mutex;
+            nimcp_platform_mutex_lock(mutex);
+
+            // Safe to read shared state now — we hold the lock
             uint32_t* refcount_ptr = brain->network_refcount;
             adaptive_network_t network = brain->network;
-
-            nimcp_platform_mutex_lock(mutex);
             (*refcount_ptr)--;
             uint32_t remaining_refs = *refcount_ptr;
 

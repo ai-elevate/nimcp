@@ -37,6 +37,7 @@
 #include "utils/math/nimcp_math_helpers.h"
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/neuralnet/nimcp_neuron_synapse_access.h"
@@ -1547,7 +1548,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         target = brain->learn_scratch.target;
         target_from_scratch = true;
     } else {
-        target = nimcp_malloc(brain->config.num_outputs * sizeof(float));
+        target = nimcp_calloc(brain->config.num_outputs, sizeof(float));
     }
     if (!target) {
         set_error("Failed to allocate target vector (%u outputs)", brain->config.num_outputs);
@@ -1819,7 +1820,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
             attended_features = brain->learn_scratch.attended_features;
             attended_from_scratch = true;
         } else {
-            attended_features = nimcp_malloc(num_features * sizeof(float));
+            attended_features = nimcp_calloc(num_features, sizeof(float));
         }
         if (attended_features) {
             bool attn_ok = multihead_attention_forward(
@@ -1926,7 +1927,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
             cue_neurons = brain->learn_scratch.cue_neurons;
             cue_from_scratch = true;
         } else {
-            cue_neurons = nimcp_malloc(num_features * sizeof(uint32_t));
+            cue_neurons = nimcp_calloc(num_features, sizeof(uint32_t));
         }
         if (cue_neurons) {
             // Map features to cue neuron IDs
@@ -2208,7 +2209,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         prediction = brain->learn_scratch.prediction;
         prediction_from_scratch = true;
     } else {
-        prediction = nimcp_malloc(brain->config.num_outputs * sizeof(float));
+        prediction = nimcp_calloc(brain->config.num_outputs, sizeof(float));
     }
     if (prediction) {
         // Forward pass AFTER weight update to measure post-learning accuracy
@@ -2683,8 +2684,8 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     if (brain->engram_system) {
         // Create neuron ID array from feature indices (simplified mapping)
         // In full implementation, would map to actual active neurons in network
-        uint32_t* neuron_ids = nimcp_malloc(num_features * sizeof(uint32_t));
-        float* activations = nimcp_malloc(num_features * sizeof(float));
+        uint32_t* neuron_ids = nimcp_calloc(num_features, sizeof(uint32_t));
+        float* activations = nimcp_calloc(num_features, sizeof(float));
 
         if (neuron_ids && activations) {
             // Map features to engram neurons
@@ -3785,7 +3786,7 @@ nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
     }
 
     // Copy features to heap (worker thread will free)
-    ctx->features = nimcp_malloc(num_features * sizeof(float));
+    ctx->features = nimcp_calloc(num_features, sizeof(float));
     if (!ctx->features) {
         LOG_MODULE_ERROR("core_brain_learning", "Failed to allocate features array (%u floats)", num_features);
         nimcp_free(ctx);

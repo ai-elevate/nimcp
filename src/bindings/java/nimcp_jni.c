@@ -443,10 +443,15 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeRegisterCallback(
 {
     (void)cls;
     // Allocate trampoline data
-    jni_callback_data_t *data = (jni_callback_data_t *)malloc(sizeof(jni_callback_data_t));
+    jni_callback_data_t *data = (jni_callback_data_t *)nimcp_malloc(sizeof(jni_callback_data_t));
     if (!data) return 0;
+    memset(data, 0, sizeof(jni_callback_data_t));
     (*env)->GetJavaVM(env, &data->jvm);
     data->callback_ref = (*env)->NewGlobalRef(env, callback);
+    if (!data->callback_ref) {
+        nimcp_free(data);
+        return 0;
+    }
 
     const char *c_name = name ? (*env)->GetStringUTFChars(env, name, NULL) : NULL;
     uint32_t id = nimcp_brain_register_callback(
@@ -456,7 +461,7 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeRegisterCallback(
 
     if (id == 0) {
         (*env)->DeleteGlobalRef(env, data->callback_ref);
-        free(data);
+        nimcp_free(data);
     }
     return (jint)id;
 }
@@ -572,7 +577,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSnapshotLis
         (nimcp_brain_t)(uintptr_t)h, infos, (uint32_t)maxCount, &count);
 
     if (rc != NIMCP_OK || count == 0) {
-        free(infos);
+        nimcp_free(infos);
         return NULL;
     }
 
@@ -589,7 +594,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSnapshotLis
             (*env)->NewStringUTF(env, buf));
     }
 
-    free(infos);
+    nimcp_free(infos);
     return arr;
 }
 
@@ -720,7 +725,7 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWorkspaceRea
     JNIEnv *env, jclass cls, jlong h, jint maxDim, jintArray outMeta)
 {
     (void)cls;
-    float *buf = (float *)calloc((size_t)maxDim, sizeof(float));
+    float *buf = nimcp_calloc((size_t)maxDim, sizeof(float));
     if (!buf) return NULL;
 
     uint32_t actualDim = 0;
@@ -729,11 +734,11 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWorkspaceRea
         (nimcp_brain_t)(uintptr_t)h,
         buf, (uint32_t)maxDim, &actualDim, &source);
 
-    if (rc != NIMCP_OK) { free(buf); return NULL; }
+    if (rc != NIMCP_OK) { nimcp_free(buf); return NULL; }
 
     jfloatArray out = (*env)->NewFloatArray(env, (jsize)actualDim);
     (*env)->SetFloatArrayRegion(env, out, 0, (jsize)actualDim, buf);
-    free(buf);
+    nimcp_free(buf);
 
     jint meta[2] = { (jint)actualDim, (jint)source };
     (*env)->SetIntArrayRegion(env, outMeta, 0, 2, meta);
@@ -831,7 +836,7 @@ JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetPhaseCoherence
         (*env)->ReleaseIntArrayElements(env, neuronIds, ids, JNI_ABORT);
         return 0.0f;
     }
-    uint32_t *uids = (uint32_t *)malloc((size_t)len * sizeof(uint32_t));
+    uint32_t *uids = nimcp_malloc((size_t)len * sizeof(uint32_t));
     if (!uids) {
         (*env)->ReleaseIntArrayElements(env, neuronIds, ids, JNI_ABORT);
         return 0.0f;
@@ -841,7 +846,7 @@ JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetPhaseCoherence
     float result = nimcp_get_phase_coherence(
         (nimcp_brain_t)(uintptr_t)h, uids, (uint32_t)len);
 
-    free(uids);
+    nimcp_free(uids);
     (*env)->ReleaseIntArrayElements(env, neuronIds, ids, JNI_ABORT);
     return result;
 }
@@ -1054,7 +1059,7 @@ JNIEXPORT jstring JNICALL Java_com_nimcp_NIMCP_00024KnowledgeGraph_nativeQuery(
     (void)cls;
     const char *c_query = (*env)->GetStringUTFChars(env, query, NULL);
     if (!c_query) return NULL; /* OOM — JVM already threw */
-    char *buf = (char *)calloc((size_t)maxLen + 1, 1);
+    char *buf = nimcp_calloc((size_t)maxLen + 1, 1);
     if (!buf) {
         (*env)->ReleaseStringUTFChars(env, query, c_query);
         return NULL;
@@ -1069,6 +1074,6 @@ JNIEXPORT jstring JNICALL Java_com_nimcp_NIMCP_00024KnowledgeGraph_nativeQuery(
     if (rc == NIMCP_OK) {
         result = (*env)->NewStringUTF(env, buf);
     }
-    free(buf);
+    nimcp_free(buf);
     return result;
 }

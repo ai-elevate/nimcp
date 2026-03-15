@@ -2735,10 +2735,13 @@ static PyObject* Brain_connect_cloud(BrainObject* self, PyObject* args, PyObject
         return NULL;
     }
 
-    /* Keep a strong reference to the cloud brain to prevent GC */
-    Py_XDECREF(self->cloud_brain_ref);
+    /* Keep a strong reference to the cloud brain to prevent GC.
+     * INCREF new BEFORE XDECREF old — prevents use-after-free if
+     * cloud_brain_obj IS the old cloud_brain_ref (same object). */
+    PyObject* old_ref = self->cloud_brain_ref;
     Py_INCREF(cloud_brain_obj);
     self->cloud_brain_ref = cloud_brain_obj;
+    Py_XDECREF(old_ref);
 
     Py_RETURN_TRUE;
 }
