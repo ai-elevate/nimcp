@@ -119,10 +119,37 @@ class AvatarBroadcaster:
                     except Exception:
                         pass
 
+                # Get training metrics
+                training = {}
+                try:
+                    nm = self.brain.get_network_metrics()
+                    if nm:
+                        training = {
+                            'steps': nm.get('ann_steps', 0),
+                            'ann_loss': nm.get('ann_loss', 0),
+                            'snn_loss': nm.get('snn_loss', 0),
+                            'lnn_loss': nm.get('lnn_loss', 0),
+                            'cnn_loss': nm.get('cnn_loss', 0),
+                        }
+                except Exception:
+                    pass
+
+                # Get active cognitive modules
+                active_modules = []
+                try:
+                    cs = self.brain.get_cognitive_stats()
+                    if cs:
+                        active_modules = [k for k, v in cs.items()
+                                         if v.get('steps', 0) > 0]
+                except Exception:
+                    pass
+
                 message = {
                     'type': 'avatar_state',
                     'state': avatar,
                     'snn_spikes': snn_spikes,
+                    'training': training,
+                    'active_modules': active_modules,
                     'timestamp': time.time(),
                 }
 
@@ -204,10 +231,42 @@ class AvatarBroadcaster:
         if not response_text:
             response_text = "(no response available)"
 
+        # Try TTS audio generation
+        audio_data = None
+        if response_text and response_text != "(no response available)":
+            try:
+                from athena_tts import AthenaTTS
+                if not hasattr(self, '_tts'):
+                    self._tts = AthenaTTS()
+                if self._tts.available:
+                    result = self._tts.speak(response_text, brain=self.brain)
+                    if result and result.get('audio') is not None:
+                        import numpy as np
+                        import io
+                        import wave
+                        audio = np.array(result['audio'], dtype=np.float32)
+                        audio_int16 = (audio * 32767).astype(np.int16)
+                        buf = io.BytesIO()
+                        with wave.open(buf, 'wb') as wf:
+                            wf.setnchannels(1)
+                            wf.setsampwidth(2)
+                            wf.setframerate(result.get('sample_rate', 24000))
+                            wf.writeframes(audio_int16.tobytes())
+                        audio_data = buf.getvalue()
+            except Exception as e:
+                logger.debug("TTS failed: %s", e)
+
         await websocket.send(json.dumps({
             'type': 'chat_response',
             'text': response_text,
         }))
+
+        # Send audio as binary frame if available
+        if audio_data:
+            try:
+                await websocket.send(audio_data)
+            except Exception as e:
+                logger.debug("Audio send failed: %s", e)
 
 
 async def main(port=8765, fps=30):
