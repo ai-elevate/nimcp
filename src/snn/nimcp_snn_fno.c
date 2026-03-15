@@ -241,6 +241,9 @@ int snn_fno_record_pair(snn_fno_population_t* fno,
 {
     if (!fno || !v_before || !v_after || !spikes || n == 0) return -1;
     if (!fno->buffer) return -1;
+    if (n > fno->n_neurons) {
+        n = fno->n_neurons;  /* Clamp to prevent buffer overflow */
+    }
 
     uint32_t idx = fno->buffer_write_idx % fno->buffer_size;
     snn_fno_state_pair_t* pair = &fno->buffer[idx];

@@ -1134,6 +1134,7 @@ bool hippocampus_pattern_separate(
     /* Apply k-winners-take-all for sparsity */
     uint32_t k = (uint32_t)(sep->sparsity_target * sep->output_size);
     if (k < 1) k = 1;
+    if (k > sep->output_size) k = sep->output_size;  /* Prevent OOB in sorted[k-1] */
 
     /* Find k-th largest activation (simple sort for small k) */
     float* sorted = nimcp_calloc(sep->output_size, sizeof(float));

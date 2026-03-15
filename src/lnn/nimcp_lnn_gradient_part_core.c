@@ -165,9 +165,14 @@ int lnn_gradient_compute_adjoint(
             for (size_t k = 0; k < nn; k++) norm_sq += nd[k] * nd[k];
             float norm = sqrtf(norm_sq);
             float max_adjoint_norm = 100.0f;
+            float min_adjoint_norm = 1e-6f;
             if (norm > max_adjoint_norm) {
                 float scale = max_adjoint_norm / norm;
                 for (size_t k = 0; k < nn; k++) nd[k] *= scale;
+            } else if (norm < min_adjoint_norm && norm > 0.0f) {
+                /* Prevent tiny norms from being amplified to huge values
+                 * in subsequent parameter gradient accumulation */
+                for (size_t k = 0; k < nn; k++) nd[k] = 0.0f;
             }
         }
 
