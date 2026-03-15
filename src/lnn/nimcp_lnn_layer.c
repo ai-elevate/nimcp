@@ -654,6 +654,13 @@ int lnn_layer_forward(
 {
     if (!layer || !input || !output) return LNN_ERROR_NULL_POINTER;
 
+    /* Hamiltonian dynamics dispatch — energy-conserving alternative to LTC */
+    if (layer->use_hamiltonian && layer->H_net) {
+        extern int lnn_layer_forward_hamiltonian(lnn_layer_t*, const nimcp_tensor_t*,
+                                                  nimcp_tensor_t*, float);
+        return lnn_layer_forward_hamiltonian(layer, input, output, dt);
+    }
+
     /* 1. Compute time constants */
     int ret = lnn_layer_compute_tau(layer, input);
     if (ret != LNN_SUCCESS) return ret;

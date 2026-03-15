@@ -59,6 +59,9 @@ struct cortex_cnn_processor {
     uint64_t backward_steps;
     float confidence;                 /* Softmax max from last forward */
     uint32_t num_params;              /* Approximate param count */
+
+    /* FNO audio processor (alternative to CNN trainer for audio modality) */
+    void* fno_audio;                  /* fno_audio_processor_t* (NULL if using CNN) */
 };
 
 /* ========================================================================= */
@@ -621,7 +624,30 @@ const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
                                        const float* mel, uint32_t mel_size) {
     if (!proc || proc->type != CORTEX_CNN_AUDIO || !mel) return NULL;
 
-    /* Pack as [1, 1, 1, mel_size] — single channel, height=1 */
+    /* FNO path — spectral convolution for native frequency-domain processing */
+    if (proc->fno_audio) {
+        #include "training/nimcp_fno_layer.h"
+        fno_audio_processor_t* fno = (fno_audio_processor_t*)proc->fno_audio;
+        if (!proc->embedding) {
+            proc->embedding = nimcp_calloc(proc->embedding_dim, sizeof(float));
+            if (!proc->embedding) return NULL;
+        }
+        int rc = fno_audio_forward(fno, mel, mel_size, proc->embedding);
+        if (rc != 0) {
+            proc->has_fwd_result = false;
+            return NULL;
+        }
+        proc->has_fwd_result = true;
+        proc->forward_steps++;
+        /* Compute confidence from embedding norm */
+        float norm = 0.0f;
+        for (uint32_t i = 0; i < proc->embedding_dim; i++)
+            norm += proc->embedding[i] * proc->embedding[i];
+        proc->confidence = (norm > 0.0f) ? 1.0f / (1.0f + expf(-sqrtf(norm))) : 0.0f;
+        return proc->embedding;
+    }
+
+    /* CNN path — Conv2d layers (original architecture) */
     uint32_t dims[4] = {1, 1, 1, mel_size};
     nimcp_tensor_t* input = nimcp_tensor_create(dims, 4, NIMCP_DTYPE_F32);
     if (!input) return NULL;
