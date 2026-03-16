@@ -213,36 +213,73 @@ float nimcp_brain_learn_vector_batch(
         ib->network, examples, num_examples,
         LEARN_MODE_DISTILLATION, lr);
 
-    nimcp_free(examples);
+    /* Note: examples freed AFTER secondary network dispatch below (labels needed) */
 
     if (loss >= 0.0f) {
         brain->last_loss = loss;
         brain->last_gradient_norm = adaptive_network_get_last_grad_norm(ib->network);
         nimcp_brain_learning_adapt_learning_rate(ib, loss);
         __atomic_fetch_add(&ib->stats.total_learning_steps, num_examples, __ATOMIC_RELAXED);
+    } else {
+        nimcp_free(examples);
+        return loss;
+    }
+
+    // Pre-create cortex CNNs if sensory data is staged (same logic as brain_learn_vector).
+    // Must happen in the public API layer since brain_learn_vector may not see staged data
+    // when called internally from the batch dispatch below.
+    {
+        extern struct cortex_cnn_processor* cortex_cnn_create(int type, uint32_t embed_dim);
+        extern void* fno_audio_create(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+        extern void cortex_cnn_set_fno_audio(struct cortex_cnn_processor*, void*);
+        extern void cortex_cnn_set_fno_visual(struct cortex_cnn_processor*, void*);
+        extern void cortex_cnn_set_fno_speech(struct cortex_cnn_processor*, void*);
+        if (ib->staged_sensory.visual_frame && !ib->cortex_cnns[0]) {
+            ib->cortex_cnns[0] = cortex_cnn_create(0, 0);
+            if (ib->cortex_cnns[0]) {
+                void* fno = fno_audio_create(1024, 64, 16, 32, 2);
+                if (fno) cortex_cnn_set_fno_visual(ib->cortex_cnns[0], fno);
+            }
+        }
+        if (ib->staged_sensory.audio_data && !ib->cortex_cnns[1]) {
+            ib->cortex_cnns[1] = cortex_cnn_create(1, 0);
+            if (ib->cortex_cnns[1]) {
+                void* fno = fno_audio_create(128, 64, 16, 32, 2);
+                if (fno) cortex_cnn_set_fno_audio(ib->cortex_cnns[1], fno);
+            }
+        }
+        if (ib->staged_sensory.speech_data && !ib->cortex_cnns[2]) {
+            ib->cortex_cnns[2] = cortex_cnn_create(2, 0);
+            if (ib->cortex_cnns[2]) {
+                void* fno = fno_audio_create(128, 64, 16, 32, 2);
+                if (fno) cortex_cnn_set_fno_speech(ib->cortex_cnns[2], fno);
+            }
+        }
+        if (ib->staged_sensory.somato_data && !ib->cortex_cnns[3])
+            ib->cortex_cnns[3] = cortex_cnn_create(3, 0);
     }
 
     // Train secondary networks on a SUBSET of the batch (every Nth sample).
-    // This gives LNN/SNN/CNN/cortex CNNs multiple training signals per batch
-    // without the full cost of brain_learn_vector on every sample.
-    // Also runs biological plasticity on the last sample.
     if (loss >= 0.0f && num_examples > 0) {
         uint32_t step = (num_examples > 4) ? num_examples / 4 : 1;
         for (uint32_t i = 0; i < num_examples; i += step) {
+            const char* lbl = (examples[i].label[0]) ? examples[i].label : "batch";
             brain_learn_vector(ib,
                                (float*)features_array[i], num_features,
                                (float*)targets_array[i], target_size,
-                               NULL /* label */, 1.0f /* confidence */);
+                               lbl, 1.0f /* confidence */);
         }
-        // Always include last sample for biological plasticity
         if ((num_examples - 1) % step != 0) {
+            uint32_t last = num_examples - 1;
+            const char* lbl = (examples[last].label[0]) ? examples[last].label : "batch";
             brain_learn_vector(ib,
-                               (float*)features_array[num_examples - 1], num_features,
-                               (float*)targets_array[num_examples - 1], target_size,
-                               NULL /* label */, 1.0f /* confidence */);
+                               (float*)features_array[last], num_features,
+                               (float*)targets_array[last], target_size,
+                               lbl, 1.0f /* confidence */);
         }
     }
 
+    nimcp_free(examples);
     return loss;
 }
 
