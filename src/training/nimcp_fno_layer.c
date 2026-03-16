@@ -570,6 +570,7 @@ int fno_audio_forward(fno_audio_processor_t* proc,
         embedding[j] = sum;
     }
 
+    proc->forward_steps++;
     return 0;
 }
 
@@ -683,6 +684,33 @@ void fno_audio_zero_grad(fno_audio_processor_t* proc) {
     size_t proj_size = (size_t)proc->embed_dim * proc->hidden_channels;
     memset(proc->grad_W_proj, 0, proj_size * sizeof(float));
     memset(proc->grad_b_proj, 0, proc->embed_dim * sizeof(float));
+}
+
+/* Metrics accessors for brain-level reporting */
+float fno_audio_get_last_loss(const void* p) {
+    const fno_audio_processor_t* proc = (const fno_audio_processor_t*)p;
+    return proc ? proc->last_loss : 0.0f;
+}
+
+float fno_audio_get_ema_loss(const void* p) {
+    const fno_audio_processor_t* proc = (const fno_audio_processor_t*)p;
+    return proc ? proc->ema_loss : 0.0f;
+}
+
+uint64_t fno_audio_get_steps(const void* p) {
+    const fno_audio_processor_t* proc = (const fno_audio_processor_t*)p;
+    return proc ? proc->forward_steps : 0;
+}
+
+uint32_t fno_audio_get_param_count(const void* p) {
+    const fno_audio_processor_t* proc = (const fno_audio_processor_t*)p;
+    if (!proc) return 0;
+    uint32_t count = proc->hidden_channels * 2; /* W_lift + b_lift */
+    for (uint32_t b = 0; b < proc->n_blocks; b++) {
+        count += fno_spectral_conv_param_count(proc->blocks[b]);
+    }
+    count += proc->embed_dim * proc->hidden_channels + proc->embed_dim; /* W_proj + b_proj */
+    return count;
 }
 
 uint32_t fno_audio_param_count(const fno_audio_processor_t* proc) {

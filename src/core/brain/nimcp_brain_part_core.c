@@ -1652,7 +1652,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         cross_modal_align_compute_offsets(cma);
     }
 
-    // Consume staged sensory data (single-shot — each decide cycle gets fresh data)
+    // Clear staged sensory data after decide_full processes it.
+    // learn_vector will need fresh data staged before its call.
     brain_clear_sensory(brain);
 
     // ========================================================================

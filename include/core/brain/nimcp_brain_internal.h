@@ -215,6 +215,10 @@ struct brain_struct {
     float* cortex_cnn_fused_embedding;            // Attention-fused embedding from active cortices
     uint32_t cortex_cnn_fused_dim;                // Dimension of fused embedding (0 if none active)
 
+    // === SNN FNO POPULATION DYNAMICS ===
+    void** snn_fno_populations;  // Array of snn_fno_population_t* [snn n_populations]
+    uint32_t snn_fno_count;      // Number of FNO population models
+
     // === PER-NETWORK TRAINING METRICS (ablation tracking) ===
     // NOTE: These are written by the training thread and read by the daemon
     // IPC thread. Reads are best-effort (monitoring only, not control flow).

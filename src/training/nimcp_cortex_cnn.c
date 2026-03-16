@@ -10,6 +10,7 @@
 
 #include "training/nimcp_cortex_cnn.h"
 #include "training/nimcp_cnn_training.h"
+#include "training/nimcp_fno_layer.h"
 #include "training/nimcp_unified_training.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_unified_memory.h"
@@ -60,8 +61,10 @@ struct cortex_cnn_processor {
     float confidence;                 /* Softmax max from last forward */
     uint32_t num_params;              /* Approximate param count */
 
-    /* FNO audio processor (alternative to CNN trainer for audio modality) */
-    void* fno_audio;                  /* fno_audio_processor_t* (NULL if using CNN) */
+    /* FNO spectral processor (alternative/supplement to CNN for any modality) */
+    void* fno_audio;                  /* fno_audio_processor_t* for audio */
+    void* fno_visual;                 /* fno_audio_processor_t* for visual spatial frequencies */
+    void* fno_speech;                 /* fno_audio_processor_t* for speech spectral patterns */
 };
 
 /* ========================================================================= */
@@ -425,8 +428,10 @@ static int build_speech_architecture(cnn_trainer_t* trainer, uint32_t embed_dim)
  * Dense(45->64)->ReLU->Dense(64->embed_dim)
  */
 static int build_somato_architecture(cnn_trainer_t* trainer, uint32_t embed_dim) {
+    /* Input size: 3-level Haar wavelet of 45 segments = 45 + 23 + 12 = 80 dims.
+     * Weber-Fechner scaling + wavelet decomposition happens in cortex_cnn_forward_somato. */
     cnn_dense_config_t dense1 = {
-        .in_features = 45,
+        .in_features = 80,
         .out_features = 64,
         .activation = CNN_ACTIVATION_NONE,
         .use_bias = true,
@@ -618,6 +623,30 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
     proc->has_fwd_result = true;
     proc->forward_steps++;
     extract_embedding(proc);
+
+    /* FNO visual: spectral convolution on grayscale scanline.
+     * Captures spatial frequency patterns (edges, textures) that complement CNN. */
+    if (proc->fno_visual && proc->embedding) {
+        fno_audio_processor_t* fno = (fno_audio_processor_t*)proc->fno_visual;
+        uint32_t fno_in = fno->input_size;
+        float* scanline = (float*)nimcp_calloc(fno_in, sizeof(float));
+        if (scanline) {
+            /* Downsample grayscale to FNO input size */
+            uint32_t scan_total = w * h;
+            for (uint32_t i = 0; i < fno_in; i++) {
+                uint32_t src = (i * scan_total) / fno_in;
+                if (src < total) scanline[i] = (float)pixels[src * ch] / 255.0f;
+            }
+            float fno_emb[64];
+            if (fno_audio_forward(fno, scanline, fno_in, fno_emb) == 0) {
+                uint32_t n = (proc->embedding_dim < 64) ? proc->embedding_dim : 64;
+                for (uint32_t i = 0; i < n; i++)
+                    proc->embedding[i] += 0.2f * fno_emb[i];
+            }
+            nimcp_free(scanline);
+        }
+    }
+
     return proc->embedding;
 }
 
@@ -627,7 +656,6 @@ const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
 
     /* FNO path — spectral convolution for native frequency-domain processing */
     if (proc->fno_audio) {
-        #include "training/nimcp_fno_layer.h"
         fno_audio_processor_t* fno = (fno_audio_processor_t*)proc->fno_audio;
         if (!proc->embedding) {
             proc->embedding = nimcp_calloc(proc->embedding_dim, sizeof(float));
@@ -693,15 +721,131 @@ const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
     proc->has_fwd_result = true;
     proc->forward_steps++;
     extract_embedding(proc);
+
+    /* FNO speech: spectral convolution on phoneme features */
+    if (proc->fno_speech && proc->embedding) {
+        fno_audio_processor_t* fno = (fno_audio_processor_t*)proc->fno_speech;
+        uint32_t fno_in = fno->input_size;
+        float fno_emb[64];
+        if (size == fno_in) {
+            if (fno_audio_forward(fno, phonemes, fno_in, fno_emb) == 0) {
+                uint32_t n = (proc->embedding_dim < 64) ? proc->embedding_dim : 64;
+                for (uint32_t i = 0; i < n; i++)
+                    proc->embedding[i] += 0.2f * fno_emb[i];
+            }
+        } else if (fno_in > 0) {
+            /* Resample to FNO input size */
+            float* resampled = (float*)nimcp_calloc(fno_in, sizeof(float));
+            if (resampled) {
+                for (uint32_t i = 0; i < fno_in; i++) {
+                    uint32_t src = (i * size) / fno_in;
+                    if (src < size) resampled[i] = phonemes[src];
+                }
+                if (fno_audio_forward(fno, resampled, fno_in, fno_emb) == 0) {
+                    uint32_t n = (proc->embedding_dim < 64) ? proc->embedding_dim : 64;
+                    for (uint32_t i = 0; i < n; i++)
+                        proc->embedding[i] += 0.2f * fno_emb[i];
+                }
+                nimcp_free(resampled);
+            }
+        }
+    }
+
     return proc->embedding;
+}
+
+/**
+ * @brief Haar wavelet transform (in-place, 1 level)
+ *
+ * Decomposes signal into approximation (low-freq) and detail (high-freq) coefficients.
+ * Approximation = (a+b)/sqrt(2), Detail = (a-b)/sqrt(2).
+ * First half of output = approximation, second half = detail.
+ */
+static void haar_wavelet_1level(const float* in, float* out, uint32_t n) {
+    uint32_t half = n / 2;
+    float inv_sqrt2 = 0.70710678f;
+    for (uint32_t i = 0; i < half; i++) {
+        float a = in[2 * i];
+        float b = (2 * i + 1 < n) ? in[2 * i + 1] : 0.0f;
+        out[i] = (a + b) * inv_sqrt2;          /* Approximation */
+        out[half + i] = (a - b) * inv_sqrt2;   /* Detail */
+    }
+    /* Handle odd-length signals */
+    if (n & 1) out[half] = in[n - 1] * inv_sqrt2;
 }
 
 const float* cortex_cnn_forward_somato(cortex_cnn_processor_t* proc,
                                         const float* segments, uint32_t n_segments) {
     if (!proc || proc->type != CORTEX_CNN_SOMATO || !segments) return NULL;
+    if (n_segments == 0) return NULL;
 
-    /* Somato uses dense-only architecture, pass as 1D [1, n_segments] */
-    return cortex_forward_1d(proc, segments, n_segments);
+    /* ================================================================
+     * Somatosensory preprocessing pipeline (biologically inspired):
+     *
+     * 1. Weber-Fechner log scaling: perceived = log(1 + k*stimulus)
+     *    Matches biological psychophysics where intensity perception is logarithmic.
+     *
+     * 2. Haar wavelet decomposition (3 levels):
+     *    Level 1: full resolution → body-segment pairs (left/right symmetry)
+     *    Level 2: half resolution → limb-level groupings
+     *    Level 3: quarter resolution → whole-body regions
+     *    Captures BOTH spatial location (where on body) and spatial scale
+     *    (fine fingertip vs coarse back touch).
+     *
+     * 3. Multi-scale pooling: concatenate all wavelet levels into a
+     *    rich multi-resolution representation.
+     *
+     * 4. CNN forward on the enriched multi-scale vector.
+     * ================================================================ */
+
+    /* Step 1: Weber-Fechner log scaling */
+    float* scaled = (float*)nimcp_malloc(n_segments * sizeof(float));
+    if (!scaled) return cortex_forward_1d(proc, segments, n_segments); /* Fallback */
+
+    float k = 10.0f;  /* Sensitivity constant — controls log compression steepness */
+    for (uint32_t i = 0; i < n_segments; i++) {
+        float s = segments[i];
+        if (s < 0.0f) s = 0.0f;
+        scaled[i] = logf(1.0f + k * s) / logf(1.0f + k);  /* Normalize to ~[0,1] */
+    }
+
+    /* Step 2: Haar wavelet decomposition (3 levels) */
+    uint32_t n0 = n_segments;
+    uint32_t n1 = (n0 + 1) / 2;
+    uint32_t n2 = (n1 + 1) / 2;
+    uint32_t total_wavelet = n0 + n1 + n2;  /* All levels concatenated */
+
+    float* wavelet_buf = (float*)nimcp_calloc(total_wavelet, sizeof(float));
+    if (!wavelet_buf) {
+        nimcp_free(scaled);
+        return cortex_forward_1d(proc, segments, n_segments);
+    }
+
+    /* Level 0: original (log-scaled) signal */
+    memcpy(wavelet_buf, scaled, n0 * sizeof(float));
+
+    /* Level 1: wavelet of level 0 */
+    float* level1 = (float*)nimcp_malloc(n0 * sizeof(float));
+    if (level1) {
+        haar_wavelet_1level(scaled, level1, n0);
+        memcpy(wavelet_buf + n0, level1, n1 * sizeof(float));
+
+        /* Level 2: wavelet of level 1 approximation */
+        float* level2 = (float*)nimcp_malloc(n1 * sizeof(float));
+        if (level2) {
+            haar_wavelet_1level(level1, level2, n1);
+            memcpy(wavelet_buf + n0 + n1, level2, n2 * sizeof(float));
+            nimcp_free(level2);
+        }
+        nimcp_free(level1);
+    }
+    nimcp_free(scaled);
+
+    /* Step 3: Forward through CNN with multi-scale wavelet features */
+    const float* result = cortex_forward_1d(proc, wavelet_buf, total_wavelet);
+    nimcp_free(wavelet_buf);
+
+    return result;
 }
 
 /* ========================================================================= */
@@ -825,6 +969,22 @@ uint32_t cortex_cnn_fuse(cortex_cnn_processor_t* procs[], uint32_t count,
 /* ========================================================================= */
 /* Public API: Metrics                                                        */
 /* ========================================================================= */
+
+void cortex_cnn_set_fno_audio(cortex_cnn_processor_t* proc, void* fno) {
+    if (proc) proc->fno_audio = fno;
+}
+
+void* cortex_cnn_get_fno_audio(const cortex_cnn_processor_t* proc) {
+    return proc ? proc->fno_audio : NULL;
+}
+
+void cortex_cnn_set_fno_visual(cortex_cnn_processor_t* proc, void* fno) {
+    if (proc) proc->fno_visual = fno;
+}
+
+void cortex_cnn_set_fno_speech(cortex_cnn_processor_t* proc, void* fno) {
+    if (proc) proc->fno_speech = fno;
+}
 
 int cortex_cnn_get_metrics(const cortex_cnn_processor_t* proc, cortex_cnn_metrics_t* out) {
     if (!proc || !out) return -1;

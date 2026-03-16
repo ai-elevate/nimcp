@@ -114,6 +114,11 @@ typedef struct fno_audio_processor_s {
     float* lifted;              /**< [hidden_ch * input_size] */
     float** block_outputs;      /**< [n_blocks][hidden_ch * input_size] */
     float* pooled;              /**< [hidden_ch] after global avg pool */
+
+    /* Training metrics */
+    float last_loss;            /**< Most recent forward loss */
+    float ema_loss;             /**< EMA of loss (alpha=0.01) */
+    uint64_t forward_steps;     /**< Total forward passes */
 } fno_audio_processor_t;
 
 /** Create FNO audio processor */

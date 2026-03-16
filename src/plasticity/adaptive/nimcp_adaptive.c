@@ -2164,6 +2164,19 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
         // 4. GPU backward pass — weights updated on GPU, then downloaded to CPU.
         // Falls back to CPU backprop if GPU backward fails.
+        // Inject diversity gradient into the error signal by adjusting the
+        // effective target: target_eff = target - div_grad (pushes output away
+        // from recent outputs, preventing mode collapse).
+        float* target_with_diversity = NULL;
+        if (div_grad) {
+            target_with_diversity = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
+            if (target_with_diversity) {
+                for (uint32_t di = 0; di < example->target_size; di++) {
+                    target_with_diversity[di] = example->target[di] - div_grad[di];
+                }
+            }
+        }
+        const float* bp_target = target_with_diversity ? target_with_diversity : example->target;
         {
             float grad_norm = 0.0f;
             backprop_layer_grads_t layer_grads = {0};
@@ -2176,7 +2189,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 gpu_backprop_done = nimcp_gpu_backward_pass(
                     network->gpu_weight_cache,
                     network->base_network,
-                    example->target, output, example->target_size,
+                    bp_target, output, example->target_size,
                     effective_lr,
                     network->config.base_config.min_weight,
                     network->config.base_config.max_weight,
@@ -2220,6 +2233,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 }
             }
         }
+
+        if (target_with_diversity) free_hot_buffer(target_with_diversity);
 
         // 6. Mark weights dirty (learning modified synapse weights on CPU)
         __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);

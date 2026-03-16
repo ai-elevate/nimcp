@@ -18,6 +18,7 @@
  */
 
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
+#include "lnn/nimcp_lnn_hamiltonian.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "lnn/nimcp_lnn.h"
@@ -55,6 +56,9 @@ bool nimcp_brain_factory_init_lnn_subsystem(brain_t brain)
     /* Initialize fields */
     /* lnn_network and lnn_training_ctx are already NULL from brain creation */
 
+    fprintf(stderr, "[LNN-INIT] nimcp_brain_init_lnn called, brain=%p fast=%d lnn=%p\n",
+            (void*)brain, brain->config.fast_training_mode, (void*)brain->lnn_network);
+
     /* Skip if fast training mode — LNN temporal context not needed */
     if (brain->config.fast_training_mode) {
         LOG_INFO(LOG_MODULE, "Skipping LNN init (fast_training_mode=true)");
@@ -86,6 +90,7 @@ bool nimcp_brain_factory_init_lnn_subsystem(brain_t brain)
     uint32_t n_motor    = 64;
 
     brain->lnn_network = lnn_network_create_ncp(n_sensory, n_inter, n_command, n_motor);
+    fprintf(stderr, "[LNN-INIT] brain=%p lnn_network=%p after create\n", (void*)brain, (void*)brain->lnn_network);
     if (!brain->lnn_network) {
         LOG_WARN(LOG_MODULE, "Failed to create LNN network (non-fatal)");
         return true;
@@ -93,6 +98,43 @@ bool nimcp_brain_factory_init_lnn_subsystem(brain_t brain)
 
     /* Initialize weights with deterministic seed for reproducibility */
     lnn_network_init_weights(brain->lnn_network, 42);
+
+    /* TODO: Re-enable HNN after fixing SIGSEGV in Hamiltonian forward path.
+     * The Störmer-Verlet integrator crashes during decide_full when
+     * lnn_layer_forward dispatches to lnn_layer_forward_hamiltonian. */
+    if (0 && brain->lnn_network->n_layers > 0 && brain->lnn_network->layers[0]) {
+        uint32_t state_dim = brain->lnn_network->layers[0]->n_neurons;
+        if (state_dim > 0) {
+            lnn_hamiltonian_config_t hnn_cfg;
+            lnn_hamiltonian_config_default(&hnn_cfg);
+            lnn_hamiltonian_net_t* H_net = lnn_hamiltonian_net_create(state_dim, &hnn_cfg);
+            if (H_net) {
+                lnn_layer_t* layer0 = brain->lnn_network->layers[0];
+                layer0->H_net = H_net;
+                layer0->use_hamiltonian = true;
+                /* Allocate momentum tensor p (conjugate to position q=x) */
+                if (!layer0->p) {
+                    uint32_t p_dims[1] = {state_dim};
+                    layer0->p = nimcp_tensor_create(p_dims, 1, NIMCP_DTYPE_F32);
+                    if (layer0->p) {
+                        /* Initialize momentum to small random values */
+                        float* p_data = (float*)nimcp_tensor_data(layer0->p);
+                        if (p_data) {
+                            for (uint32_t j = 0; j < state_dim; j++) {
+                                p_data[j] = 0.01f * ((float)rand() / (float)RAND_MAX - 0.5f);
+                            }
+                        }
+                    }
+                }
+                LOG_INFO(LOG_MODULE, "HNN: Hamiltonian dynamics enabled on LNN layer 0 (state_dim=%u, p=%s)",
+                         state_dim, layer0->p ? "allocated" : "FAILED");
+                fprintf(stderr, "[HNN] Hamiltonian enabled on layer 0, state_dim=%u, p=%s\n",
+                        state_dim, layer0->p ? "ok" : "FAIL");
+            } else {
+                fprintf(stderr, "[HNN] lnn_hamiltonian_net_create FAILED for state_dim=%u\n", state_dim);
+            }
+        }
+    }
 
     /* Create training context with plasticity integration enabled */
     lnn_training_config_t train_config;

@@ -77,6 +77,8 @@
 #include "training/nimcp_snn_backprop.h"
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_network.h"
+#include "snn/nimcp_snn_fno.h"
+#include "lnn/nimcp_lnn_hamiltonian.h"
 #include "cognitive/vae/nimcp_vae.h"
 #include "cognitive/vae/bridges/nimcp_vae_training_bridge.h"
 #include "cognitive/attention/nimcp_attention_plasticity_bridge.h"
@@ -226,7 +228,11 @@ static void brain_train_cognitive_subsystems(
     }
 
     /* === 6. PREDICTIVE HIERARCHY — hierarchical temporal prediction === */
-    if (brain->pred_hierarchy && brain->pred_hierarchy_enabled) {
+    /* DISABLED: heap-buffer-overflow in forward_unlocked when bottom->dim
+     * doesn't match the allocated state buffer size. ASan confirmed the
+     * overflow corrupts adjacent heap memory causing downstream SIGSEGV.
+     * TODO: fix pc_hierarchy_create to allocate state matching dim. */
+    if (0 && brain->pred_hierarchy && brain->pred_hierarchy_enabled) {
         float pred_loss = 0.0f;
         pred_hier_learn_step((predictive_hierarchy_t*)brain->pred_hierarchy,
                               features, &pred_loss);
@@ -822,9 +828,68 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         return -1.0f;
     }
 
+    /* Pre-create cortex CNNs for any staged sensory data BEFORE heavy ANN training.
+     * This ensures cortex CNN allocation succeeds before GPU buffers consume memory. */
+    if (label && label[0]) {
+        extern struct cortex_cnn_processor* cortex_cnn_create(int type, uint32_t embed_dim);
+        extern void* fno_audio_create(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+        extern void cortex_cnn_set_fno_audio(struct cortex_cnn_processor*, void*);
+        extern void cortex_cnn_set_fno_visual(struct cortex_cnn_processor*, void*);
+        extern void cortex_cnn_set_fno_speech(struct cortex_cnn_processor*, void*);
+
+        if (brain->staged_sensory.visual_frame && !brain->cortex_cnns[0]) {
+            brain->cortex_cnns[0] = cortex_cnn_create(0, 0);
+            if (brain->cortex_cnns[0]) {
+                /* FNO visual: spatial frequency analysis (32x32 grayscale → 1024 samples) */
+                void* fno = fno_audio_create(1024, 64, 16, 32, 2);
+                if (fno) cortex_cnn_set_fno_visual(brain->cortex_cnns[0], fno);
+            }
+        }
+        if (brain->staged_sensory.audio_data && !brain->cortex_cnns[1]) {
+            brain->cortex_cnns[1] = cortex_cnn_create(1, 0);
+            if (brain->cortex_cnns[1]) {
+                /* FNO audio: mel-spectrogram spectral convolution */
+                void* fno = fno_audio_create(128, 64, 16, 32, 2);
+                if (fno) cortex_cnn_set_fno_audio(brain->cortex_cnns[1], fno);
+            }
+        }
+        if (brain->staged_sensory.speech_data && !brain->cortex_cnns[2]) {
+            brain->cortex_cnns[2] = cortex_cnn_create(2, 0);
+            if (brain->cortex_cnns[2]) {
+                /* FNO speech: phoneme spectral patterns */
+                void* fno = fno_audio_create(128, 64, 16, 32, 2);
+                if (fno) cortex_cnn_set_fno_speech(brain->cortex_cnns[2], fno);
+            }
+        }
+        if (brain->staged_sensory.somato_data && !brain->cortex_cnns[3])
+            brain->cortex_cnns[3] = cortex_cnn_create(3, 0);
+        /* Somato doesn't use FNO — touch/pressure data is spatial, not spectral */
+    }
+
+    /* Blend cortex CNN embeddings from PREVIOUS step into current features.
+     * Uses cached fused embedding (set by decide_full or previous learn_vector).
+     * This avoids running cortex CNN forward twice per step (which corrupts
+     * the CNN trainer's forward_result state). */
+    float* blended_features = (float*)features;
+    bool owns_blended = false;
+    if (brain->cortex_cnn_fused_embedding && brain->cortex_cnn_fused_dim > 0) {
+        blended_features = nimcp_malloc(num_features * sizeof(float));
+        if (blended_features) {
+            memcpy(blended_features, features, num_features * sizeof(float));
+            uint32_t inject_n = (brain->cortex_cnn_fused_dim < num_features)
+                              ? brain->cortex_cnn_fused_dim : num_features;
+            for (uint32_t i = 0; i < inject_n; i++) {
+                blended_features[i] += 0.3f * brain->cortex_cnn_fused_embedding[i];
+            }
+            owns_blended = true;
+        } else {
+            blended_features = (float*)features;
+        }
+    }
+
     /* Build training example with dense target directly — no one-hot conversion */
     training_example_t example = {
-        .input = (float*)features,
+        .input = blended_features,
         .input_size = num_features,
         .target = (float*)target,
         .target_size = target_size,
@@ -1062,8 +1127,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                                 (1.0f - a) * brain->network_metrics.ema_lnn_loss + a * nloss;
                         /* Update HNN metrics if Hamiltonian is active on any LNN layer */
                         if (brain->lnn_network) {
-                            extern float lnn_hamiltonian_get_energy(const void*);
-                            extern float lnn_hamiltonian_get_energy_deviation(const void*);
+                            /* lnn_hamiltonian_get_energy/deviation declared in nimcp_lnn_hamiltonian.h */
                             /* Check first layer for Hamiltonian */
                             if (brain->lnn_network->n_layers > 0 &&
                                 brain->lnn_network->layers[0] &&
@@ -1071,9 +1135,9 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                                 brain->lnn_network->layers[0]->H_net) {
                                 brain->network_metrics.hnn_active = true;
                                 brain->network_metrics.hnn_energy =
-                                    lnn_hamiltonian_get_energy(brain->lnn_network->layers[0]->H_net);
+                                    lnn_hamiltonian_get_energy((lnn_hamiltonian_net_t*)brain->lnn_network->layers[0]->H_net);
                                 brain->network_metrics.hnn_energy_deviation =
-                                    lnn_hamiltonian_get_energy_deviation(brain->lnn_network->layers[0]->H_net);
+                                    lnn_hamiltonian_get_energy_deviation((lnn_hamiltonian_net_t*)brain->lnn_network->layers[0]->H_net);
                                 if (brain->network_metrics.hnn_initial_energy == 0.0f)
                                     brain->network_metrics.hnn_initial_energy =
                                         brain->network_metrics.hnn_energy;
@@ -1083,6 +1147,47 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                     default:
                         break;
                 }
+            }
+        }
+
+        /* Update FNO audio metrics from cortex CNN audio processor */
+        if (brain->cortex_cnns[1]) {
+            extern void* cortex_cnn_get_fno_audio(const struct cortex_cnn_processor*);
+            void* fno = cortex_cnn_get_fno_audio(brain->cortex_cnns[1]);
+            if (fno) {
+                extern float fno_audio_get_ema_loss(const void*);
+                extern float fno_audio_get_last_loss(const void*);
+                extern uint64_t fno_audio_get_steps(const void*);
+                extern uint32_t fno_audio_get_param_count(const void*);
+                brain->network_metrics.fno_audio_loss = fno_audio_get_last_loss(fno);
+                brain->network_metrics.fno_audio_ema_loss = fno_audio_get_ema_loss(fno);
+                brain->network_metrics.fno_audio_steps = fno_audio_get_steps(fno);
+                brain->network_metrics.fno_audio_params = fno_audio_get_param_count(fno);
+            }
+        }
+
+        /* Update FNO population metrics from SNN FNO models */
+        if (brain->snn_fno_populations && brain->snn_fno_count > 0) {
+            float total_mse = 0.0f;
+            uint64_t total_steps = 0;
+            uint64_t total_inf = 0;
+            bool any_ready = false;
+            uint32_t active = 0;
+            for (uint32_t p = 0; p < brain->snn_fno_count; p++) {
+                snn_fno_population_t* fp = (snn_fno_population_t*)brain->snn_fno_populations[p];
+                if (!fp) continue;
+                total_mse += fp->train_mse;
+                total_steps += fp->train_steps;
+                total_inf += fp->inference_steps;
+                if (fp->ready_for_inference) any_ready = true;
+                active++;
+            }
+            if (active > 0) {
+                brain->network_metrics.fno_pop_train_mse = total_mse / (float)active;
+                brain->network_metrics.fno_pop_val_mse = 0.0f; /* TODO: aggregate val MSE */
+                brain->network_metrics.fno_pop_ready = any_ready;
+                brain->network_metrics.fno_pop_train_steps = total_steps;
+                brain->network_metrics.fno_pop_inference_steps = total_inf;
             }
         }
     } else {
@@ -1176,6 +1281,21 @@ sequential_training:
                     brain->network_metrics.lnn_steps++;
                     SAFE_EMA_UPDATE2(brain->network_metrics.ema_lnn_loss, lnn_res.loss, a);
                 }
+                /* Update HNN metrics if Hamiltonian is active on any LNN layer */
+                if (brain->lnn_network && brain->lnn_network->n_layers > 0 &&
+                    brain->lnn_network->layers[0] &&
+                    brain->lnn_network->layers[0]->use_hamiltonian &&
+                    brain->lnn_network->layers[0]->H_net) {
+                    /* lnn_hamiltonian_get_energy/deviation declared in nimcp_lnn_hamiltonian.h */
+                    brain->network_metrics.hnn_active = true;
+                    brain->network_metrics.hnn_energy =
+                        lnn_hamiltonian_get_energy((lnn_hamiltonian_net_t*)brain->lnn_network->layers[0]->H_net);
+                    brain->network_metrics.hnn_energy_deviation =
+                        lnn_hamiltonian_get_energy_deviation((lnn_hamiltonian_net_t*)brain->lnn_network->layers[0]->H_net);
+                    if (brain->network_metrics.hnn_initial_energy == 0.0f)
+                        brain->network_metrics.hnn_initial_energy =
+                            brain->network_metrics.hnn_energy;
+                }
             }
 
             #undef SAFE_EMA_UPDATE2
@@ -1210,7 +1330,18 @@ sequential_training:
         }
         if (brain->staged_sensory.audio_data && !brain->cortex_cnns[1]) {
             brain->cortex_cnns[1] = cortex_cnn_create(1 /* AUDIO */, 0);
-            if (brain->cortex_cnns[1]) cortex_newly_created[1] = true;
+            if (brain->cortex_cnns[1]) {
+                cortex_newly_created[1] = true;
+                /* Attach FNO audio processor for spectral convolution path.
+                 * cortex_cnn_processor is opaque here — use extern setter. */
+                extern void* fno_audio_create(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+                extern void cortex_cnn_set_fno_audio(struct cortex_cnn_processor* proc, void* fno);
+                void* fno = fno_audio_create(128, 64, 16, 32, 2);
+                if (fno) {
+                    cortex_cnn_set_fno_audio(brain->cortex_cnns[1], fno);
+                    NIMCP_LOGGING_INFO("FNO audio processor attached to audio cortex CNN");
+                }
+            }
         }
         if (brain->staged_sensory.speech_data && !brain->cortex_cnns[2]) {
             brain->cortex_cnns[2] = cortex_cnn_create(2 /* SPEECH */, 0);
@@ -1423,6 +1554,7 @@ sequential_training:
                                       target, target_size, label, loss);
 
     clear_cache(brain);
+    if (owns_blended) nimcp_free(blended_features);
     return loss;
 }
 
@@ -2961,7 +3093,8 @@ int brain_enable_multi_network_training(brain_t brain)
 
     // Guard: Already in HYBRID mode
     if (brain->active_network_type == NIMCP_NETWORK_HYBRID) {
-        return 0;  // Already enabled, idempotent
+        /* TODO: Re-enable HNN after fixing SIGSEGV in Hamiltonian forward path */
+        return 0;
     }
 
     uint32_t num_inputs = brain->config.num_inputs;
@@ -3012,10 +3145,53 @@ int brain_enable_multi_network_training(brain_t brain)
             lnn_network_set_training(lnn, true);
             brain->lnn_network = lnn;
             brain->owns_specialized_network = true;
+
+            /* TODO: Re-enable HNN after fixing SIGSEGV in Hamiltonian forward path */
+            if (0 && lnn->n_layers > 0 && lnn->layers[0]) {
+                uint32_t sd = lnn->layers[0]->n_neurons;
+                if (sd > 0) {
+                    lnn_hamiltonian_config_t hcfg;
+                    lnn_hamiltonian_config_default(&hcfg);
+                    lnn_hamiltonian_net_t* H = lnn_hamiltonian_net_create(sd, &hcfg);
+                    if (H) {
+                        lnn->layers[0]->H_net = H;
+                        lnn->layers[0]->use_hamiltonian = true;
+                        /* Allocate momentum tensor p */
+                        if (!lnn->layers[0]->p) {
+                            uint32_t pd[1] = {sd};
+                            lnn->layers[0]->p = nimcp_tensor_create(pd, 1, NIMCP_DTYPE_F32);
+                        }
+                        NIMCP_LOGGING_INFO("HNN: Hamiltonian enabled on LNN layer 0 (dim=%u, p=%s)",
+                                           sd, lnn->layers[0]->p ? "ok" : "FAIL");
+                    }
+                }
+            }
         }
     } else if (!brain->lnn_network) {
         NIMCP_LOGGING_INFO("LNN skipped: requires num_inputs >= 8 and num_outputs >= 8 "
                           "(brain has %u inputs, %u outputs)", num_inputs, num_outputs);
+    }
+
+    /* Enable HNN on existing LNN if not already active */
+    if (brain->lnn_network && brain->lnn_network->n_layers > 0 &&
+        brain->lnn_network->layers[0] &&
+        !brain->lnn_network->layers[0]->use_hamiltonian && 0 /* TODO: fix HNN SIGSEGV */) {
+        uint32_t sd = brain->lnn_network->layers[0]->n_neurons;
+        if (sd > 0) {
+            lnn_hamiltonian_config_t hcfg;
+            lnn_hamiltonian_config_default(&hcfg);
+            lnn_hamiltonian_net_t* H = lnn_hamiltonian_net_create(sd, &hcfg);
+            if (H) {
+                brain->lnn_network->layers[0]->H_net = H;
+                brain->lnn_network->layers[0]->use_hamiltonian = true;
+                if (!brain->lnn_network->layers[0]->p) {
+                    uint32_t pd[1] = {sd};
+                    brain->lnn_network->layers[0]->p = nimcp_tensor_create(pd, 1, NIMCP_DTYPE_F32);
+                }
+                NIMCP_LOGGING_INFO("HNN: Hamiltonian enabled on existing LNN layer 0 (dim=%u, p=%s)",
+                                   sd, brain->lnn_network->layers[0]->p ? "ok" : "FAIL");
+            }
+        }
     }
 
     // ========================================================================
@@ -3067,6 +3243,24 @@ int brain_enable_multi_network_training(brain_t brain)
         } else {
             brain->snn_network = snn;
             brain->owns_specialized_network = true;
+
+            /* Create per-population FNO models for spectral dynamics prediction */
+            if (snn->n_populations > 0 && !brain->snn_fno_populations) {
+                brain->snn_fno_populations = nimcp_calloc(snn->n_populations, sizeof(void*));
+                if (brain->snn_fno_populations) {
+                    snn_fno_config_t fno_cfg;
+                    snn_fno_config_default(&fno_cfg);
+                    for (uint32_t p = 0; p < snn->n_populations; p++) {
+                        uint32_t pop_n = snn->populations[p] ?
+                            snn->populations[p]->n_neurons : snn_hidden;
+                        brain->snn_fno_populations[p] =
+                            snn_fno_population_create(p, pop_n, &fno_cfg);
+                    }
+                    brain->snn_fno_count = snn->n_populations;
+                    NIMCP_LOGGING_INFO("SNN FNO: created %u population dynamics models",
+                                       snn->n_populations);
+                }
+            }
         }
     } else if (!brain->snn_network) {
         NIMCP_LOGGING_INFO("SNN skipped: requires num_inputs >= 8 and num_outputs >= 8 "

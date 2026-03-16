@@ -932,8 +932,9 @@ static void forward_snn_task(void* arg)
             float sum = 0.0f;
             uint32_t start = i * stride;
             uint32_t end = (i + 1 < snn_in) ? (i + 1) * stride : ctx->num_features;
+            if (end > ctx->num_features) end = ctx->num_features;
             for (uint32_t j = start; j < end; j++) sum += ctx->features[j];
-            snn_input[i] = sum / (float)(end - start);
+            snn_input[i] = (end > start) ? sum / (float)(end - start) : 0.0f;
             if (snn_input[i] < pool_min) pool_min = snn_input[i];
             if (snn_input[i] > pool_max) pool_max = snn_input[i];
         }
@@ -1319,13 +1320,30 @@ sequential_fallback:
         }
     }
 
+    /* Blend cortex CNN fused embedding into features for perceptual grounding.
+     * Uses thread-local static buffer to avoid malloc (which caused SIGSEGV
+     * in Release builds due to optimizer register spilling). Max 4096 features. */
+    const float* fwd_features = features;
+    uint32_t fwd_num = num_features;
+    static __thread float s_blended[4096];
+    if (brain->cortex_cnn_fused_embedding && brain->cortex_cnn_fused_dim > 0 &&
+        num_features <= 4096) {
+        memcpy(s_blended, features, num_features * sizeof(float));
+        uint32_t inject_n = (brain->cortex_cnn_fused_dim < num_features)
+                          ? brain->cortex_cnn_fused_dim : num_features;
+        for (uint32_t i = 0; i < inject_n; i++) {
+            s_blended[i] += 0.3f * brain->cortex_cnn_fused_embedding[i];
+        }
+        fwd_features = s_blended;
+    }
+
     /* 1. Adaptive network — primary forward pass (always runs) */
     if (brain->can_use_readonly) {
         active_neurons = adaptive_network_forward_readonly(
-            brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
+            brain->network, fwd_features, fwd_num, decision->output_vector, decision->output_size, 0);
     } else {
         active_neurons = adaptive_network_forward(
-            brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
+            brain->network, fwd_features, fwd_num, decision->output_vector, decision->output_size, 0);
     }
 
     /* 2. CNN forward — classification overlay (label from CNN, embedding from adaptive) */
@@ -1371,8 +1389,8 @@ sequential_fallback:
         uint32_t snn_out = brain->snn_network->config.n_outputs;
         float* snn_output = nimcp_calloc(decision->output_size, sizeof(float));
         float* snn_input = NULL;
-        const float* snn_input_ptr = features;
-        uint32_t snn_input_dim = num_features;
+        const float* snn_input_ptr = fwd_features;
+        uint32_t snn_input_dim = fwd_num;
 
         /* Average-pool features to match SNN input dimension, then normalize to [0,1] */
         if (num_features > snn_in) {
@@ -1447,20 +1465,24 @@ lnn_gating:
         if (lnn_input && lnn_output) {
             float* li_data = (float*)nimcp_tensor_data(lnn_input);
             if (li_data) {
-                /* Average-pool features into LNN input size */
-                if (num_features > lnn_in_size) {
-                    uint32_t stride = num_features / lnn_in_size;
+                /* Average-pool features (with cortex blend) into LNN input size */
+                if (fwd_num > lnn_in_size) {
+                    uint32_t stride = fwd_num / lnn_in_size;
                     for (uint32_t i = 0; i < lnn_in_size; i++) {
                         float sum = 0.0f;
                         uint32_t start = i * stride;
-                        uint32_t end = (i + 1 < lnn_in_size) ? (i + 1) * stride : num_features;
+                        uint32_t end = (i + 1 < lnn_in_size) ? (i + 1) * stride : fwd_num;
+                        if (end > fwd_num) end = fwd_num;
                         for (uint32_t j = start; j < end; j++) {
-                            sum += features[j];
+                            sum += fwd_features[j];
                         }
-                        li_data[i] = sum / (float)(end - start);
+                        li_data[i] = (end > start) ? sum / (float)(end - start) : 0.0f;
                     }
                 } else {
-                    memcpy(li_data, features, num_features * sizeof(float));
+                    uint32_t copy_n = (fwd_num < lnn_in_size) ? fwd_num : lnn_in_size;
+                    memcpy(li_data, fwd_features, copy_n * sizeof(float));
+                    if (copy_n < lnn_in_size)
+                        memset(li_data + copy_n, 0, (lnn_in_size - copy_n) * sizeof(float));
                 }
 
                 /* Blend somatosensory data into LNN input — touch sensations

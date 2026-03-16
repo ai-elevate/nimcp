@@ -445,19 +445,22 @@ class BrainService:
         modality = req["modality"]
         data = req["data"]
         with self._lock:
+            # Stage sensory data on brain struct so cortex CNNs get created
+            # and trained during the next learn_vector call.
             if modality == "visual":
-                self.brain.visual_cortex_process(
-                    data, req.get("width", 32), req.get("height", 32),
-                    req.get("channels", 3))
+                self.brain.submit_sensory("visual", data,
+                                          width=req.get("width", 32),
+                                          height=req.get("height", 32),
+                                          channels=req.get("channels", 3))
             elif modality == "audio":
-                self.brain.audio_cortex_process(data)
+                self.brain.submit_sensory("audio", data)
             elif modality == "speech":
-                self.brain.speech_cortex_process(data)
+                self.brain.submit_sensory("speech", data)
             elif modality == "somatosensory" or modality == "somato":
                 self.brain.submit_sensory("somatosensory", data,
                                           n_segments=req.get("n_segments", len(data)))
             else:
-                return {"ok": True}  # unsupported modality, ignore
+                return {"ok": True}
         return {"ok": True}
 
     # -- Arousal control --
@@ -588,8 +591,9 @@ class BrainService:
     # -- Curiosity --
 
     def _cmd_curiosity_detect_gaps(self, req):
+        topic = req.get("topic") or req.get("domain", "general")
         with self._lock:
-            result = self.brain.curiosity_detect_gaps(req.get("domain"))
+            result = self.brain.curiosity_detect_gaps(topic)
         return {"result": result}
 
     # -- UTM EMA --
@@ -602,6 +606,51 @@ class BrainService:
     def _cmd_utm_swap_from_ema(self, _req):
         with self._lock:
             self.brain.utm_swap_from_ema()
+        return {"ok": True}
+
+    # -- Language / Interactive --
+
+    def _cmd_comprehend(self, req):
+        with self._lock:
+            result = self.brain.comprehend(req["text"])
+        return {"result": result}
+
+    def _cmd_generate(self, req):
+        with self._lock:
+            result = self.brain.generate(
+                prompt=req.get("prompt"),
+                semantic_input=req.get("semantic_input"))
+        return {"result": result}
+
+    def _cmd_produce_text(self, req):
+        with self._lock:
+            result = self.brain.produce_text(req["intent"])
+        return {"result": result}
+
+    def _cmd_deliberate(self, req):
+        with self._lock:
+            result = self.brain.deliberate(req["topic"])
+        return {"result": result}
+
+    def _cmd_self_assess(self, req):
+        with self._lock:
+            result = self.brain.self_assess(req["domain"])
+        return {"result": result}
+
+    def _cmd_rubric(self, _req):
+        with self._lock:
+            result = self.brain.rubric()
+        return {"result": result}
+
+    def _cmd_get_last_gradient_norm(self, _req):
+        with self._lock:
+            result = self.brain.get_last_gradient_norm()
+        return {"result": result}
+
+    def _cmd_focus_attention(self, req):
+        with self._lock:
+            self.brain.experience_attend(req.get("modality", "visual"),
+                                          req.get("strength", 1.0))
         return {"ok": True}
 
     # -- Phi-3 Language Cortex --

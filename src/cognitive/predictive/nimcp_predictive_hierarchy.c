@@ -518,6 +518,8 @@ int pred_hier_reset(predictive_hierarchy_t* hier) {
  * @brief Internal forward pass (caller must hold mutex)
  */
 static int forward_unlocked(predictive_hierarchy_t* hier, const float* input) {
+    if (!hier->bottom || !hier->bottom->state || !input || hier->bottom->dim == 0) return -1;
+    if (hier->bottom->dim > 65536) return -1;  /* Sanity: max 64K units */
     memcpy(hier->bottom->state, input, hier->bottom->dim * sizeof(float));
 
     for (uint32_t i = 0; i < hier->num_levels; i++) {

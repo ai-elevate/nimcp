@@ -449,6 +449,48 @@ class BrainProxy:
     def utm_swap_from_ema(self):
         self._send({"cmd": "utm_swap_from_ema"})
 
+    # -- Language / interactive --
+
+    def comprehend(self, text):
+        resp = self._send({"cmd": "comprehend", "text": text})
+        return resp.get("result", {})
+
+    def generate(self, prompt=None, semantic_input=None):
+        req = {"cmd": "generate"}
+        if prompt is not None:
+            req["prompt"] = prompt
+        if semantic_input is not None:
+            req["semantic_input"] = _to_list(semantic_input)
+        resp = self._send(req)
+        return resp.get("result", {})
+
+    def produce_text(self, intent):
+        resp = self._send({"cmd": "produce_text", "intent": _to_list(intent)})
+        return resp.get("result", {})
+
+    def deliberate(self, topic):
+        resp = self._send({"cmd": "deliberate", "topic": topic})
+        return resp.get("result", {})
+
+    def self_assess(self, domain):
+        resp = self._send({"cmd": "self_assess", "domain": domain})
+        return resp.get("result", {})
+
+    def curiosity_detect_gaps(self, topic):
+        resp = self._send({"cmd": "curiosity_detect_gaps", "topic": topic})
+        return resp.get("result", {})
+
+    def rubric(self):
+        resp = self._send({"cmd": "rubric"})
+        return resp.get("result", {})
+
+    def get_last_gradient_norm(self):
+        resp = self._send({"cmd": "get_last_gradient_norm"})
+        return resp.get("result", 0.0)
+
+    def focus_attention(self, modality):
+        self._send({"cmd": "focus_attention", "modality": modality})
+
 
 # ---------------------------------------------------------------------------
 # Helpers

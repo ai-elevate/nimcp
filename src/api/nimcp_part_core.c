@@ -222,27 +222,16 @@ float nimcp_brain_learn_vector_batch(
         __atomic_fetch_add(&ib->stats.total_learning_steps, num_examples, __ATOMIC_RELAXED);
     }
 
-    // Run biological plasticity ONCE for the whole batch (not per-sample).
-    // Uses brain_learn_vector on the last sample to trigger all bio subsystems.
-    // The adaptive network learn is skipped (weights already updated by batch),
-    // but TPB/EDP/plasticity coordinator/reward learning all fire.
-    if (!ib->config.fast_training_mode && loss >= 0.0f && num_examples > 0) {
-        // Temporarily enable bio plasticity and mark network frozen to skip
-        // redundant adaptive_network_learn, then call brain_learn_vector.
-        // Simpler approach: just run reward learning directly (the most impactful).
-        neural_network_t base_net = adaptive_network_get_base_network(ib->network);
-        if (base_net) {
-            if (ib->neuromodulator_system) {
-                neural_network_set_neuromodulator_system(base_net, ib->neuromodulator_system);
-            }
-            float reward = 1.0f - fminf(loss, 1.0f);
-            uint32_t modified = neural_network_apply_reward_learning_active(
-                base_net, reward, REWARD_LEARNING_RATE,
-                nimcp_time_get_us(), REWARD_ACTIVITY_THRESHOLD);
-            if (modified > 0) {
-                adaptive_network_invalidate_gpu_structure(ib->network);
-            }
-        }
+    // Run multi-network training + biological plasticity on the LAST sample.
+    // The ANN weights were already updated by adaptive_network_learn_batch above,
+    // but LNN/SNN/CNN/cortex CNNs only train through brain_learn_vector.
+    // This ensures all network types get a training signal every batch.
+    if (loss >= 0.0f && num_examples > 0) {
+        uint32_t last_idx = num_examples - 1;
+        brain_learn_vector(ib,
+                           (float*)features_array[last_idx], num_features,
+                           (float*)targets_array[last_idx], target_size,
+                           NULL /* label */, 1.0f /* confidence */);
     }
 
     return loss;

@@ -243,6 +243,66 @@ def generate_audio_samples(description, num_samples=512, sample_rate=16000):
     return signal.tolist()
 
 
+def audio_to_mel(samples, n_mels=128, sample_rate=16000):
+    """Convert raw audio samples to a simple mel-like spectral representation.
+
+    Uses a basic FFT → mel filterbank → log compression pipeline.
+    Not a proper librosa mel — just enough to give the audio cortex CNN
+    meaningful frequency-domain features to learn from.
+    """
+    signal = np.array(samples, dtype=np.float32)
+    n_fft = min(512, len(signal))
+    hop = n_fft // 2
+
+    # STFT frames
+    n_frames = max(1, (len(signal) - n_fft) // hop + 1)
+    power_frames = []
+    for fr in range(n_frames):
+        start = fr * hop
+        frame = signal[start:start + n_fft]
+        if len(frame) < n_fft:
+            frame = np.pad(frame, (0, n_fft - len(frame)))
+        windowed = frame * np.hanning(n_fft)
+        spectrum = np.abs(np.fft.rfft(windowed)) ** 2
+        power_frames.append(spectrum)
+
+    if not power_frames:
+        return [0.0] * n_mels
+
+    power = np.mean(power_frames, axis=0)  # Average across frames
+    n_freqs = len(power)
+
+    # Simple mel filterbank (triangular filters, linearly spaced in mel)
+    mel_low = 0.0
+    mel_high = 2595.0 * np.log10(1.0 + (sample_rate / 2.0) / 700.0)
+    mel_points = np.linspace(mel_low, mel_high, n_mels + 2)
+    hz_points = 700.0 * (10.0 ** (mel_points / 2595.0) - 1.0)
+    bin_points = np.floor((n_fft + 1) * hz_points / sample_rate).astype(int)
+    bin_points = np.clip(bin_points, 0, n_freqs - 1)
+
+    mel_spec = np.zeros(n_mels, dtype=np.float32)
+    for m in range(n_mels):
+        lo, mid, hi = bin_points[m], bin_points[m + 1], bin_points[m + 2]
+        if mid == lo:
+            mid = lo + 1
+        if hi == mid:
+            hi = mid + 1
+        for k in range(lo, min(mid, n_freqs)):
+            mel_spec[m] += power[k] * (k - lo) / max(1, mid - lo)
+        for k in range(mid, min(hi, n_freqs)):
+            mel_spec[m] += power[k] * (hi - k) / max(1, hi - mid)
+
+    # Log compression
+    mel_spec = np.log1p(mel_spec * 1000.0)
+
+    # Normalize to [0, 1]
+    peak = mel_spec.max()
+    if peak > 1e-6:
+        mel_spec /= peak
+
+    return mel_spec.tolist()
+
+
 def generate_somatosensory(description, num_segments=32):
     """Generate synthetic somatosensory (touch/proprioception) data.
 
@@ -286,12 +346,16 @@ def submit_multimodal(brain, description):
                        "cat", "rain", "candle", "snow", "bubble", "rainbow", "fire",
                        "tree", "bird", "river", "bridge", "stair", "color", "light",
                        "dark", "shadow", "sun", "moon", "star", "bright", "glow"]
+    _sensory_submitted = []
     if any(w in desc_lower for w in visual_keywords):
         pixels, w, h, ch = generate_visual_frame(description)
         try:
             brain.submit_sensory("visual", pixels, width=w, height=h, channels=ch)
-        except Exception:
-            pass
+            _sensory_submitted.append("V")
+        except Exception as e:
+            if not hasattr(submit_multimodal, '_v_err_logged'):
+                print(f"  [Sensory] visual submit failed: {e}", flush=True)
+                submit_multimodal._v_err_logged = True
 
     # Audio: anything with sound keywords
     audio_keywords = ["singing", "music", "thunder", "crash", "bark", "whisper",
@@ -300,10 +364,35 @@ def submit_multimodal(brain, description):
                       "clock", "bird", "purr"]
     if any(w in desc_lower for w in audio_keywords):
         samples = generate_audio_samples(description)
+        mel = audio_to_mel(samples)  # Convert to mel-spectrogram for audio cortex CNN
         try:
-            brain.submit_sensory("audio", samples)
-        except Exception:
-            pass
+            brain.submit_sensory("audio", mel)
+            _sensory_submitted.append("A")
+        except Exception as e:
+            if not hasattr(submit_multimodal, '_a_err_logged'):
+                print(f"  [Sensory] audio submit failed: {e}", flush=True)
+                submit_multimodal._a_err_logged = True
+
+    # Speech: anything with voice/talking/language keywords
+    speech_keywords = ["voice", "speak", "talk", "say", "word", "call", "cry",
+                       "laugh", "giggle", "babble", "coo", "hum", "sing",
+                       "whisper", "shout", "yell", "murmur", "chatter",
+                       "lullaby", "nursery", "rhyme", "story", "read",
+                       # People/animal vocalizations (Phase 0 — newborn hears these)
+                       "mama", "papa", "grandma", "baby", "child", "person",
+                       "dog", "cat", "bird", "rooster", "cow", "frog",
+                       "crow", "goose", "duck", "owl", "cricket", "bee",
+                       "bark", "meow", "purr", "moo", "croak", "chirp",
+                       "caw", "honk", "quack", "hoot", "buzz", "howl"]
+    if any(w in desc_lower for w in speech_keywords):
+        samples = generate_audio_samples(description)
+        try:
+            brain.submit_sensory("speech", samples)
+            _sensory_submitted.append("Sp")
+        except Exception as e:
+            if not hasattr(submit_multimodal, '_sp_err_logged'):
+                print(f"  [Sensory] speech submit failed: {e}", flush=True)
+                submit_multimodal._sp_err_logged = True
 
     # Somatosensory: encode touch/temperature/texture from description
     try:
@@ -312,8 +401,11 @@ def submit_multimodal(brain, description):
         if somato_vec is not None:
             brain.submit_sensory("somatosensory", somato_vec.tolist(),
                                 n_segments=len(somato_vec))
-    except Exception:
-        pass
+            _sensory_submitted.append("S")
+    except Exception as e:
+        if not hasattr(submit_multimodal, '_s_err_logged'):
+            print(f"  [Sensory] somato submit failed: {e}", flush=True)
+            submit_multimodal._s_err_logged = True
 
     # Cross-modal integration: process through visual cortex (occipital)
     # and focus thalamic attention on the active modalities. This triggers
@@ -348,6 +440,8 @@ def submit_multimodal(brain, description):
             brain.visual_cortex_process(pixels, w, h, ch)
         except Exception:
             pass
+
+    return _sensory_submitted
 
 
 logger = logging.getLogger("immerse_athena")
@@ -687,36 +781,18 @@ class MiniBatchTrainer:
         if not self._buffer:
             return self._last_avg_loss
 
-        pairs = [(f, t) for f, t, _, _, _ in self._buffer]
-        # Use the average LR across samples
-        lrs = [lr for _, _, _, _, lr in self._buffer if lr is not None]
-        avg_lr = sum(lrs) / len(lrs) if lrs else None
-
-        try:
-            lr_kw = {"learning_rate": avg_lr} if avg_lr is not None else {}
-            avg_loss = self.brain.learn_vector_batch(pairs, **lr_kw)
-            if avg_loss is not None and avg_loss >= 0:
-                self._last_avg_loss = avg_loss
-            else:
-                self._last_avg_loss = 0.0
-        except (AttributeError, TypeError):
-            # Fallback: per-sample learning
-            losses = []
-            for f, t, lbl, conf, lr in self._buffer:
-                lr_kw = {"learning_rate": lr} if lr is not None else {}
+        # Per-sample learn_vector so ALL networks train and
+        # anti-collapse diversity gradients flow properly.
+        losses = []
+        for f, t, lbl, conf, lr in self._buffer:
+            lr_kw = {"learning_rate": lr} if lr is not None else {}
+            try:
                 loss = self.brain.learn_vector(f, t, label=lbl,
                                                confidence=conf, **lr_kw)
                 losses.append(loss if loss is not None and loss >= 0 else 0.0)
-            self._last_avg_loss = sum(losses) / len(losses) if losses else 0.0
-        except Exception:
-            # Fallback: per-sample learning
-            losses = []
-            for f, t, lbl, conf, lr in self._buffer:
-                lr_kw = {"learning_rate": lr} if lr is not None else {}
-                loss = self.brain.learn_vector(f, t, label=lbl,
-                                               confidence=conf, **lr_kw)
-                losses.append(loss if loss is not None and loss >= 0 else 0.0)
-            self._last_avg_loss = sum(losses) / len(losses) if losses else 0.0
+            except Exception:
+                losses.append(0.0)
+        self._last_avg_loss = sum(losses) / len(losses) if losses else 0.0
 
         self._buffer.clear()
         return self._last_avg_loss
@@ -3709,7 +3785,13 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         pass
 
     # --- Warmup: break symmetry with high-confidence diverse stimuli ---
-    if start_from == 0:
+    # Skip if brain already has learning steps (e.g. daemon brain persists across restarts)
+    _existing_steps = 0
+    try:
+        _existing_steps = brain.probe().get("total_learning_steps", 0)
+    except Exception:
+        pass
+    if start_from == 0 and _existing_steps < 10:
         print("  [Warmup] Breaking symmetry with diverse stimuli...")
         warmup_texts = [
             "bright red color", "deep blue ocean", "soft green grass",
@@ -3727,19 +3809,11 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             features = composer.compose(text=wtext, modality="text")
             target = make_semantic_target(wtext)
             try:
-                brain.decide_full(features)
-            except RuntimeError:
-                pass  # Decision pipeline may not be fully ready during init
-            # High confidence to establish distinct representations
-            try:
                 brain.learn_vector(features, target, label=wtext[:50], confidence=0.9)
-                # Repeat each warmup stimulus 3x to establish strong initial patterns
-                for _ in range(2):
-                    brain.learn_vector(features, target, label=wtext[:50], confidence=0.85)
             except RuntimeError as e:
                 if wi == 0:
                     print(f"  [Warmup] First stimulus failed ({e}), continuing...")
-        print(f"  [Warmup] {len(warmup_texts)} diverse stimuli x3 — done")
+        print(f"  [Warmup] {len(warmup_texts)} diverse stimuli — done")
 
     losses = []
     prefetcher = ParallelDataLoader(source, composer, num_workers=2, prefetch_batches=4, batch_size=64)
@@ -3785,7 +3859,9 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         narration = parent._pop_content("_narrations")
         if narration:
             print(f"  Parent: {narration}")
-        submit_multimodal(brain, description)
+        sensory_mods = submit_multimodal(brain, description) or []
+        if sensory_mods and i < 5:
+            print(f"  [Sensory] step {i}: {'+'.join(sensory_mods)} for '{description[:60]}'", flush=True)
         result = brain.decide_full(features)
 
         # Held-out check: 20% of items are evaluation-only (no learning)
@@ -3806,32 +3882,18 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         if len(mini_batch_buf) >= adaptive_batch.size or i == num_stimuli - 1:
             # Flush mini-batch with GPU gradient accumulation + scheduled LR
             current_lr = lr_scheduler.get_lr()
-            try:
-                batch_pairs = [(f, t) for f, t, _ in mini_batch_buf]
-                avg_loss = brain.learn_vector_batch(batch_pairs,
-                                                     learning_rate=current_lr)
-                if avg_loss is not None and avg_loss >= 0:
-                    for f, t, desc in mini_batch_buf:
-                        losses.append(avg_loss)
-                        hard_miner.record(avg_loss, desc, f, t)
-                    adaptive_batch.record_loss(avg_loss)
-            except (AttributeError, TypeError):
+            # Use per-sample learn_vector (not batch) so ALL networks train
+            # and anti-collapse diversity gradients are properly applied.
+            for f, t, desc in mini_batch_buf:
                 try:
-                    batch_pairs = [(f, t) for f, t, _ in mini_batch_buf]
-                    avg_loss = brain.learn_vector_batch(batch_pairs)
-                    if avg_loss is not None and avg_loss >= 0:
-                        for f, t, desc in mini_batch_buf:
-                            losses.append(avg_loss)
-                            hard_miner.record(avg_loss, desc, f, t)
-                        adaptive_batch.record_loss(avg_loss)
+                    loss = brain.learn_vector(f, t, label=desc[:50],
+                                               confidence=0.5,
+                                               learning_rate=current_lr)
+                    losses.append(loss)
+                    hard_miner.record(loss, desc, f, t)
+                    adaptive_batch.record_loss(loss)
                 except Exception:
-                    for f, t, desc in mini_batch_buf:
-                        loss = brain.learn_vector(f, t, label=desc[:50],
-                                                   confidence=0.5,
-                                                   learning_rate=current_lr)
-                        losses.append(loss)
-                        hard_miner.record(loss, desc, f, t)
-                        adaptive_batch.record_loss(loss)
+                    losses.append(0.0)
 
             if parent.decoder:
                 for f, t, desc in mini_batch_buf:
@@ -3886,7 +3948,29 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             recent = losses[-50:]
             rl = np.mean(recent) if recent else 0
             nz = sum(1 for x in recent if x > 0.001)
-            print(f"    [{i+1}] loss={rl:.4f} ({nz}/{len(recent)} non-zero)", flush=True)
+            parts = [f"[{i+1}] loss={rl:.4f} ({nz}/{len(recent)} non-zero)"]
+            try:
+                ss = brain.snn_get_stats()
+                if ss:
+                    parts.append(f"SNN:{ss.get('total_spikes',0)}spk/{ss.get('mean_firing_rate',0):.1f}Hz")
+            except Exception:
+                pass
+            try:
+                ls = brain.lnn_get_stats()
+                if ls:
+                    parts.append(f"LNN:{ls.get('forward_steps',0)}fwd/tau={ls.get('avg_tau',0):.2f}")
+            except Exception:
+                pass
+            try:
+                nm = brain.get_network_metrics()
+                if nm:
+                    if nm.get('hnn_active'):
+                        parts.append(f"HNN:E={nm.get('hnn_energy',0):.4f}/dev={nm.get('hnn_energy_deviation',0):.6f}")
+                    if nm.get('fno_audio_steps', 0) > 0:
+                        parts.append(f"FNO:{nm.get('fno_audio_ema_loss',0):.4f}")
+            except Exception:
+                pass
+            print(f"    {' | '.join(parts)}", flush=True)
 
         # Progress report
         if (i + 1) % 500 == 0:
@@ -4020,7 +4104,29 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             recent = losses[-50:]
             rl = np.mean(recent) if recent else 0
             nz = sum(1 for x in recent if x > 0.001)
-            print(f"    [{i+1}] loss={rl:.4f} ({nz}/{len(recent)} non-zero)", flush=True)
+            parts = [f"[{i+1}] loss={rl:.4f} ({nz}/{len(recent)} non-zero)"]
+            try:
+                ss = brain.snn_get_stats()
+                if ss:
+                    parts.append(f"SNN:{ss.get('total_spikes',0)}spk/{ss.get('mean_firing_rate',0):.1f}Hz")
+            except Exception:
+                pass
+            try:
+                ls = brain.lnn_get_stats()
+                if ls:
+                    parts.append(f"LNN:{ls.get('forward_steps',0)}fwd/tau={ls.get('avg_tau',0):.2f}")
+            except Exception:
+                pass
+            try:
+                nm = brain.get_network_metrics()
+                if nm:
+                    if nm.get('hnn_active'):
+                        parts.append(f"HNN:E={nm.get('hnn_energy',0):.4f}/dev={nm.get('hnn_energy_deviation',0):.6f}")
+                    if nm.get('fno_audio_steps', 0) > 0:
+                        parts.append(f"FNO:{nm.get('fno_audio_ema_loss',0):.4f}")
+            except Exception:
+                pass
+            print(f"    {' | '.join(parts)}", flush=True)
 
         # Progress
         if (i + 1) % 500 == 0:
