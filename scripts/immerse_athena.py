@@ -781,18 +781,26 @@ class MiniBatchTrainer:
         if not self._buffer:
             return self._last_avg_loss
 
-        # Per-sample learn_vector so ALL networks train and
-        # anti-collapse diversity gradients flow properly.
-        losses = []
-        for f, t, lbl, conf, lr in self._buffer:
-            lr_kw = {"learning_rate": lr} if lr is not None else {}
-            try:
-                loss = self.brain.learn_vector(f, t, label=lbl,
-                                               confidence=conf, **lr_kw)
-                losses.append(loss if loss is not None and loss >= 0 else 0.0)
-            except Exception:
-                losses.append(0.0)
-        self._last_avg_loss = sum(losses) / len(losses) if losses else 0.0
+        # Batch path: ANN trains on full batch, LNN/SNN/CNN on subset.
+        pairs = [(f, t) for f, t, _, _, _ in self._buffer]
+        lrs = [lr for _, _, _, _, lr in self._buffer if lr is not None]
+        avg_lr = sum(lrs) / len(lrs) if lrs else None
+        try:
+            lr_kw = {"learning_rate": avg_lr} if avg_lr is not None else {}
+            avg_loss = self.brain.learn_vector_batch(pairs, **lr_kw)
+            self._last_avg_loss = avg_loss if avg_loss is not None and avg_loss >= 0 else 0.0
+        except Exception:
+            # Fallback: per-sample
+            losses = []
+            for f, t, lbl, conf, lr in self._buffer:
+                lr_kw = {"learning_rate": lr} if lr is not None else {}
+                try:
+                    loss = self.brain.learn_vector(f, t, label=lbl,
+                                                   confidence=conf, **lr_kw)
+                    losses.append(loss if loss is not None and loss >= 0 else 0.0)
+                except Exception:
+                    losses.append(0.0)
+            self._last_avg_loss = sum(losses) / len(losses) if losses else 0.0
 
         self._buffer.clear()
         return self._last_avg_loss
@@ -3880,20 +3888,31 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                 mini_batch_buf.append((rfeat, rtgt, rdesc))
 
         if len(mini_batch_buf) >= adaptive_batch.size or i == num_stimuli - 1:
-            # Flush mini-batch with GPU gradient accumulation + scheduled LR
+            # Flush mini-batch: GPU batch for ANN + subset dispatch for LNN/SNN/CNN.
+            # learn_vector_batch trains ANN on full batch, then dispatches
+            # brain_learn_vector on every 4th sample for secondary networks.
             current_lr = lr_scheduler.get_lr()
-            # Use per-sample learn_vector (not batch) so ALL networks train
-            # and anti-collapse diversity gradients are properly applied.
-            for f, t, desc in mini_batch_buf:
-                try:
-                    loss = brain.learn_vector(f, t, label=desc[:50],
-                                               confidence=0.5,
-                                               learning_rate=current_lr)
-                    losses.append(loss)
-                    hard_miner.record(loss, desc, f, t)
-                    adaptive_batch.record_loss(loss)
-                except Exception:
-                    losses.append(0.0)
+            try:
+                batch_pairs = [(f, t) for f, t, _ in mini_batch_buf]
+                avg_loss = brain.learn_vector_batch(batch_pairs,
+                                                     learning_rate=current_lr)
+                if avg_loss is not None and avg_loss >= 0:
+                    for f, t, desc in mini_batch_buf:
+                        losses.append(avg_loss)
+                        hard_miner.record(avg_loss, desc, f, t)
+                    adaptive_batch.record_loss(avg_loss)
+            except Exception:
+                # Fallback: per-sample
+                for f, t, desc in mini_batch_buf:
+                    try:
+                        loss = brain.learn_vector(f, t, label=desc[:50],
+                                                   confidence=0.5,
+                                                   learning_rate=current_lr)
+                        losses.append(loss)
+                        hard_miner.record(loss, desc, f, t)
+                        adaptive_batch.record_loss(loss)
+                    except Exception:
+                        losses.append(0.0)
 
             if parent.decoder:
                 for f, t, desc in mini_batch_buf:

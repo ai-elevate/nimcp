@@ -222,16 +222,25 @@ float nimcp_brain_learn_vector_batch(
         __atomic_fetch_add(&ib->stats.total_learning_steps, num_examples, __ATOMIC_RELAXED);
     }
 
-    // Run multi-network training + biological plasticity on the LAST sample.
-    // The ANN weights were already updated by adaptive_network_learn_batch above,
-    // but LNN/SNN/CNN/cortex CNNs only train through brain_learn_vector.
-    // This ensures all network types get a training signal every batch.
+    // Train secondary networks on a SUBSET of the batch (every Nth sample).
+    // This gives LNN/SNN/CNN/cortex CNNs multiple training signals per batch
+    // without the full cost of brain_learn_vector on every sample.
+    // Also runs biological plasticity on the last sample.
     if (loss >= 0.0f && num_examples > 0) {
-        uint32_t last_idx = num_examples - 1;
-        brain_learn_vector(ib,
-                           (float*)features_array[last_idx], num_features,
-                           (float*)targets_array[last_idx], target_size,
-                           NULL /* label */, 1.0f /* confidence */);
+        uint32_t step = (num_examples > 4) ? num_examples / 4 : 1;
+        for (uint32_t i = 0; i < num_examples; i += step) {
+            brain_learn_vector(ib,
+                               (float*)features_array[i], num_features,
+                               (float*)targets_array[i], target_size,
+                               NULL /* label */, 1.0f /* confidence */);
+        }
+        // Always include last sample for biological plasticity
+        if ((num_examples - 1) % step != 0) {
+            brain_learn_vector(ib,
+                               (float*)features_array[num_examples - 1], num_features,
+                               (float*)targets_array[num_examples - 1], target_size,
+                               NULL /* label */, 1.0f /* confidence */);
+        }
     }
 
     return loss;
