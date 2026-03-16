@@ -485,6 +485,7 @@ cortex_cnn_processor_t* cortex_cnn_create(cortex_cnn_type_t type, uint32_t embed
     if (embedding_dim == 0) {
         embedding_dim = default_embed_dim(type);
     }
+    NIMCP_LOGGING_INFO("cortex_cnn_create: type=%d embed_dim=%u", (int)type, embedding_dim);
 
     cortex_cnn_processor_t* proc = (cortex_cnn_processor_t*)nimcp_calloc(
         1, sizeof(cortex_cnn_processor_t));

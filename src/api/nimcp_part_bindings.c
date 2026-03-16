@@ -15,6 +15,59 @@
 #include "training/nimcp_cortex_cnn.h"
 
 // =========================================================================
+// Group 0 — Cortex CNN Initialization
+// =========================================================================
+
+/**
+ * @brief Create all 4 cortex CNN processors with FNO spectral processing.
+ * Call this once after brain creation + enable_multi_network to initialize
+ * perceptual cortices. Does NOT require staged sensory data or learning.
+ */
+nimcp_status_t nimcp_brain_init_cortex_cnns(nimcp_brain_t brain) {
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "NULL internal_brain");
+    brain_t ib = brain->internal_brain;
+
+    extern void* fno_audio_create(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+    extern void cortex_cnn_set_fno_audio(cortex_cnn_processor_t*, void*);
+    extern void cortex_cnn_set_fno_visual(cortex_cnn_processor_t*, void*);
+    extern void cortex_cnn_set_fno_speech(cortex_cnn_processor_t*, void*);
+
+    int created = 0;
+    if (!ib->cortex_cnns[0]) {
+        ib->cortex_cnns[0] = cortex_cnn_create(CORTEX_CNN_VISUAL, 0);
+        if (ib->cortex_cnns[0]) {
+            void* fno = fno_audio_create(1024, 64, 16, 32, 2);
+            if (fno) cortex_cnn_set_fno_visual(ib->cortex_cnns[0], fno);
+            created++;
+        }
+    }
+    if (!ib->cortex_cnns[1]) {
+        ib->cortex_cnns[1] = cortex_cnn_create(CORTEX_CNN_AUDIO, 0);
+        if (ib->cortex_cnns[1]) {
+            void* fno = fno_audio_create(128, 64, 16, 32, 2);
+            if (fno) cortex_cnn_set_fno_audio(ib->cortex_cnns[1], fno);
+            created++;
+        }
+    }
+    if (!ib->cortex_cnns[2]) {
+        ib->cortex_cnns[2] = cortex_cnn_create(CORTEX_CNN_SPEECH, 0);
+        if (ib->cortex_cnns[2]) {
+            void* fno = fno_audio_create(128, 64, 16, 32, 2);
+            if (fno) cortex_cnn_set_fno_speech(ib->cortex_cnns[2], fno);
+            created++;
+        }
+    }
+    if (!ib->cortex_cnns[3]) {
+        ib->cortex_cnns[3] = cortex_cnn_create(CORTEX_CNN_SOMATO, 0);
+        if (ib->cortex_cnns[3]) created++;
+    }
+
+    NIMCP_LOGGING_INFO("nimcp_brain_init_cortex_cnns: created %d cortex CNN processors", created);
+    return NIMCP_OK;
+}
+
+// =========================================================================
 // Group 1 — Sensory / Multimodal
 // =========================================================================
 

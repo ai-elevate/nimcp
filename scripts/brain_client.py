@@ -390,6 +390,9 @@ class BrainProxy:
     def enable_multi_network(self):
         self._send({"cmd": "enable_multi_network"})
 
+    def init_cortex_cnns(self):
+        self._send({"cmd": "init_cortex_cnns"})
+
     def enable_world_model(self, enabled=True):
         self._send({"cmd": "enable_world_model", "enabled": enabled})
 

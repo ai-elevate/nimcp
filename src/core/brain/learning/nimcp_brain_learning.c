@@ -79,6 +79,7 @@
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_fno.h"
 #include "lnn/nimcp_lnn_hamiltonian.h"
+#include "training/nimcp_cortex_cnn.h"
 #include "cognitive/vae/nimcp_vae.h"
 #include "cognitive/vae/bridges/nimcp_vae_training_bridge.h"
 #include "cognitive/attention/nimcp_attention_plasticity_bridge.h"
@@ -790,20 +791,21 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         return -1.0f;
     }
 
-    if (num_features != brain->config.num_inputs) {
-        NIMCP_LOGGING_WARN("brain_learn_vector: feature count mismatch: expected %u, got %u",
-                  brain->config.num_inputs, num_features);
-        set_error("Feature count mismatch: expected %u, got %u",
-                  brain->config.num_inputs, num_features);
-        return -1.0f;
+    /* Allow flexible feature sizes. The adaptive network truncates or pads internally. */
+    if (num_features > brain->config.num_inputs * 2) {
+        NIMCP_LOGGING_WARN("brain_learn_vector: num_features %u >> num_inputs %u, truncating",
+                  num_features, brain->config.num_inputs);
+        num_features = brain->config.num_inputs;
     }
 
-    if (target_size != brain->config.num_outputs) {
-        NIMCP_LOGGING_WARN("brain_learn_vector: target size mismatch: expected %u, got %u",
-                  brain->config.num_outputs, target_size);
-        set_error("Target size mismatch: expected %u, got %u",
-                  brain->config.num_outputs, target_size);
-        return -1.0f;
+    /* Allow target_size <= num_outputs. The adaptive network handles
+     * size mismatch internally (truncation or zero-padding). Previously
+     * this returned -1.0f which silently broke learn_vector on daemon
+     * brains where num_outputs=4096 but training uses 2048-dim targets. */
+    if (target_size > brain->config.num_outputs) {
+        NIMCP_LOGGING_WARN("brain_learn_vector: target_size %u > num_outputs %u, truncating",
+                  target_size, brain->config.num_outputs);
+        target_size = brain->config.num_outputs;
     }
 
     /* Validate features for NaN/Inf */
@@ -824,14 +826,12 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         }
     }
 
-    if (!ensure_writable_network(brain)) {
-        return -1.0f;
-    }
-
-    /* Pre-create cortex CNNs for any staged sensory data BEFORE heavy ANN training.
+    /* Pre-create cortex CNNs for any staged sensory data BEFORE ensure_writable_network.
+     * ensure_writable_network may fail on first calls (COW/GPU warmup) but cortex CNN
+     * creation is independent and should succeed regardless.
      * This ensures cortex CNN allocation succeeds before GPU buffers consume memory. */
     if (label && label[0]) {
-        extern struct cortex_cnn_processor* cortex_cnn_create(int type, uint32_t embed_dim);
+        /* cortex_cnn_create declared in training/nimcp_cortex_cnn.h */
         extern void* fno_audio_create(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
         extern void cortex_cnn_set_fno_audio(struct cortex_cnn_processor*, void*);
         extern void cortex_cnn_set_fno_visual(struct cortex_cnn_processor*, void*);
@@ -864,6 +864,10 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         if (brain->staged_sensory.somato_data && !brain->cortex_cnns[3])
             brain->cortex_cnns[3] = cortex_cnn_create(3, 0);
         /* Somato doesn't use FNO — touch/pressure data is spatial, not spectral */
+    }
+
+    if (!ensure_writable_network(brain)) {
+        return -1.0f;
     }
 
     /* Blend cortex CNN embeddings from PREVIOUS step into current features.
@@ -1306,7 +1310,7 @@ sequential_training:
      * Lazily create cortex CNN processors on first use. Each trains independently
      * using the same label signal but different modality data. */
     if (label && label[0]) {
-        extern struct cortex_cnn_processor* cortex_cnn_create(int type, uint32_t embed_dim);
+        /* cortex_cnn_create declared in training/nimcp_cortex_cnn.h */
         extern float cortex_cnn_backward(struct cortex_cnn_processor* proc,
                                           const char* label, uint32_t num_outputs);
         extern const float* cortex_cnn_forward_visual(struct cortex_cnn_processor* proc,

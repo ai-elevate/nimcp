@@ -5951,7 +5951,18 @@ def main():
                 fn()
             except Exception as e:
                 print(f"  {label}: {e} (non-fatal)")
-        print("  Daemon mode: training config applied")
+
+        # Initialize all 4 cortex CNN processors (visual/audio/speech/somato + FNO).
+        # Direct API call — no sensory data or learning required.
+        try:
+            brain.init_cortex_cnns()
+            ccm = brain.get_cortex_cnn_metrics()
+            active = sorted(ccm.keys()) if ccm else []
+            print(f"  Cortex CNNs: {active if active else 'NONE'}", flush=True)
+        except Exception as e:
+            print(f"  Cortex CNN init: {e} (non-fatal)", flush=True)
+
+        print("  Daemon mode: training config applied", flush=True)
     else:
         # --- CRITICAL: Disable fast training → ALL bio subsystems active ---
         brain.set_fast_training(False)

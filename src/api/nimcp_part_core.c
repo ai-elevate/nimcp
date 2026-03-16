@@ -2,6 +2,8 @@
 // Part of nimcp.c (SRP #include-based split)
 // DO NOT compile separately - #included from nimcp.c
 
+#include "training/nimcp_cortex_cnn.h"
+
 
 //=============================================================================
 // Version Functions
@@ -208,32 +210,13 @@ float nimcp_brain_learn_vector_batch(
         examples[i].label[0] = '\0';
     }
 
-    // GPU gradient accumulation handles the batch internally
-    float loss = adaptive_network_learn_batch(
-        ib->network, examples, num_examples,
-        LEARN_MODE_DISTILLATION, lr);
-
-    /* Note: examples freed AFTER secondary network dispatch below (labels needed) */
-
-    if (loss >= 0.0f) {
-        brain->last_loss = loss;
-        brain->last_gradient_norm = adaptive_network_get_last_grad_norm(ib->network);
-        nimcp_brain_learning_adapt_learning_rate(ib, loss);
-        __atomic_fetch_add(&ib->stats.total_learning_steps, num_examples, __ATOMIC_RELAXED);
-    } else {
-        nimcp_free(examples);
-        return loss;
-    }
-
-    // Pre-create cortex CNNs if sensory data is staged (same logic as brain_learn_vector).
-    // Must happen in the public API layer since brain_learn_vector may not see staged data
-    // when called internally from the batch dispatch below.
+    // Pre-create cortex CNNs BEFORE batch training (needs staged sensory data).
+    // cortex_cnn_create and FNO functions declared via nimcp_cortex_cnn.h in nimcp_part_bindings.c
     {
-        extern struct cortex_cnn_processor* cortex_cnn_create(int type, uint32_t embed_dim);
         extern void* fno_audio_create(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-        extern void cortex_cnn_set_fno_audio(struct cortex_cnn_processor*, void*);
-        extern void cortex_cnn_set_fno_visual(struct cortex_cnn_processor*, void*);
-        extern void cortex_cnn_set_fno_speech(struct cortex_cnn_processor*, void*);
+        extern void cortex_cnn_set_fno_audio(cortex_cnn_processor_t*, void*);
+        extern void cortex_cnn_set_fno_visual(cortex_cnn_processor_t*, void*);
+        extern void cortex_cnn_set_fno_speech(cortex_cnn_processor_t*, void*);
         if (ib->staged_sensory.visual_frame && !ib->cortex_cnns[0]) {
             ib->cortex_cnns[0] = cortex_cnn_create(0, 0);
             if (ib->cortex_cnns[0]) {
@@ -257,6 +240,23 @@ float nimcp_brain_learn_vector_batch(
         }
         if (ib->staged_sensory.somato_data && !ib->cortex_cnns[3])
             ib->cortex_cnns[3] = cortex_cnn_create(3, 0);
+    }
+
+    // GPU gradient accumulation handles the batch internally
+    float loss = adaptive_network_learn_batch(
+        ib->network, examples, num_examples,
+        LEARN_MODE_DISTILLATION, lr);
+
+    /* Note: examples freed AFTER secondary network dispatch below (labels needed) */
+
+    if (loss >= 0.0f) {
+        brain->last_loss = loss;
+        brain->last_gradient_norm = adaptive_network_get_last_grad_norm(ib->network);
+        nimcp_brain_learning_adapt_learning_rate(ib, loss);
+        __atomic_fetch_add(&ib->stats.total_learning_steps, num_examples, __ATOMIC_RELAXED);
+    } else {
+        nimcp_free(examples);
+        return loss;
     }
 
     // Train secondary networks on a SUBSET of the batch (every Nth sample).

@@ -5189,6 +5189,22 @@ static PyObject* Brain_enable_multi_network(BrainObject* self, PyObject* args) {
 }
 
 /**
+ * WHAT: Initialize all 4 cortex CNN processors with FNO spectral processing.
+ * WHY:  Cortex CNNs need explicit init — lazy creation inside learn paths is unreliable
+ *       on 2M neuron brains due to ensure_writable_network failures.
+ */
+static PyObject* Brain_init_cortex_cnns(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    extern nimcp_status_t nimcp_brain_init_cortex_cnns(nimcp_brain_t);
+    nimcp_status_t rc = nimcp_brain_init_cortex_cnns(self->brain);
+    if (rc != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to init cortex CNNs");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/**
  * WHAT: Run full training decision cycle: observe, diagnose, simulate, decide
  * WHY:  Combines Layer 1 (convergent), Layer 2 (causal DAG), Layer 3 (abductive)
  *       into a single call for the training pipeline
@@ -6737,6 +6753,10 @@ static PyMethodDef Brain_methods[] = {
     // Multi-network ensemble training
     {"enable_multi_network", (PyCFunction)Brain_enable_multi_network, METH_NOARGS,
      "Enable LNN + CNN ensemble training alongside adaptive SNN"},
+    {"init_cortex_cnns", (PyCFunction)Brain_init_cortex_cnns, METH_NOARGS,
+     "init_cortex_cnns() -> None\n"
+     "Create all 4 cortex CNN processors (visual/audio/speech/somato) with FNO.\n"
+     "Call once after enable_multi_network(). Does NOT require sensory data."},
 
     // Full brain creation (class method)
     {"create_full", (PyCFunction)Brain_create_full, METH_VARARGS | METH_KEYWORDS | METH_CLASS,

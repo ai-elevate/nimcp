@@ -537,6 +537,11 @@ class BrainService:
             self.brain.enable_multi_network()
         return {"ok": True}
 
+    def _cmd_init_cortex_cnns(self, _req):
+        with self._lock:
+            self.brain.init_cortex_cnns()
+        return {"ok": True}
+
     def _cmd_enable_world_model(self, req):
         with self._lock:
             self.brain.enable_world_model(req.get("enabled", True))
