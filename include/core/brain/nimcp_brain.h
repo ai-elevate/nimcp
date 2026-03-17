@@ -1843,6 +1843,8 @@ typedef struct {
     bool enable_wm_kg_bridge;                     /**< Knowledge Graph wiring integration bridge */
     bool enable_wm_tom_bridge;                    /**< Theory of Mind social world modeling bridge */
     bool enable_wm_plasticity_bridge;             /**< SNN/STDP/Plasticity direct integration bridge */
+    bool enable_wm_thousand_brains_bridge;        /**< Hawkins Thousand Brains cortical column integration bridge */
+    bool enable_thousand_brains_integration;      /**< Enable full Thousand Brains integration hub (ref frames, voting, sequences + all wiring) */
 
     // === FUZZY LOGIC INTEGRATION ===
     bool enable_fuzzy_logic;                      /**< Enable fuzzy logic utility module (default: true) */

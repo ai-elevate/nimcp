@@ -4744,6 +4744,7 @@
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_neuromodulation.dir
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_cortical_dendritic.dir
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_sparse_coding_integration.dir
+/home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test_thousand_brains.dir
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/cortical_columns/CMakeFiles/rebuild_cache.dir

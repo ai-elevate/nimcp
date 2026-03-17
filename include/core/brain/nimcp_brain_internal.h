@@ -1789,6 +1789,13 @@ struct brain_struct {
     struct omni_wm_kg_bridge* wm_kg_bridge;                            // Knowledge Graph wiring integration
     struct omni_wm_tom_bridge* wm_tom_bridge;                          // Theory of Mind social world modeling
     struct omni_wm_plasticity_bridge* wm_plasticity_bridge;            // SNN/STDP/Plasticity direct integration
+    struct wm_thousand_brains_bridge* wm_thousand_brains_bridge;      // Hawkins Thousand Brains integration
+    struct tb_integration_hub* tb_integration_hub;                     // Thousand Brains full-system integration hub
+
+    // Thousand Brains core components (owned by integration hub lifecycle)
+    struct column_ref_frame_manager* tb_ref_frames;                   // Grid cell reference frames
+    struct column_voting_manager* tb_voting;                           // Column voting consensus
+    struct dendritic_sequence_mgr* tb_sequences;                       // Dendritic sequence prediction
 
     // === FUZZY LOGIC INTEGRATION ===
     //

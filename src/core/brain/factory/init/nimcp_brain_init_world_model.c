@@ -43,6 +43,11 @@
 #include "cognitive/omni/bridges/nimcp_omni_wm_kg_bridge.h"
 #include "cognitive/omni/bridges/nimcp_omni_wm_tom_bridge.h"
 #include "cognitive/omni/bridges/nimcp_omni_wm_plasticity_bridge.h"
+#include "cognitive/omni/bridges/nimcp_omni_wm_thousand_brains_bridge.h"
+#include "core/cortical_columns/nimcp_thousand_brains_integration.h"
+#include "core/cortical_columns/nimcp_column_reference_frame.h"
+#include "core/cortical_columns/nimcp_column_voting.h"
+#include "core/cortical_columns/nimcp_dendritic_sequence.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 /* Forward declarations to avoid conflicting type definitions in imagination header */
@@ -238,11 +243,68 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
     /* Mark world model as enabled */
     brain->world_model_enabled = true;
 
+    /* === Thousand Brains Integration === */
+    if (brain->config.enable_thousand_brains_integration) {
+        LOG_INFO(LOG_MODULE, "Initializing Thousand Brains integration...");
+
+        /* Create TB core components */
+        column_ref_frame_config_t rf_config;
+        column_ref_frame_config_default(&rf_config);
+        brain->tb_ref_frames = column_ref_frame_create(&rf_config);
+
+        column_voting_config_t vt_config;
+        column_voting_config_default(&vt_config);
+        brain->tb_voting = column_voting_create(&vt_config);
+
+        dendritic_seq_config_t ds_config;
+        dendritic_seq_config_default(&ds_config);
+        brain->tb_sequences = dendritic_seq_create(&ds_config);
+
+        /* Create integration hub */
+        tb_integration_config_t tb_config;
+        tb_integration_config_default(&tb_config);
+        brain->tb_integration_hub = tb_integration_create(&tb_config);
+
+        if (brain->tb_integration_hub) {
+            /* Connect TB components */
+            tb_integration_connect_tb(brain->tb_integration_hub,
+                                       brain->tb_ref_frames,
+                                       brain->tb_voting,
+                                       brain->tb_sequences);
+
+            /* Wire all available brain systems */
+            int wired = tb_integration_wire_from_brain(brain->tb_integration_hub, brain);
+            LOG_INFO(LOG_MODULE, "  - Thousand Brains: %d systems wired", wired);
+
+            /* Also connect TB to WM bridge if available */
+            if (brain->wm_thousand_brains_bridge && brain->tb_ref_frames) {
+                wm_tb_bridge_connect_ref_frames(brain->wm_thousand_brains_bridge,
+                                                 brain->tb_ref_frames);
+                wm_tb_bridge_connect_voting(brain->wm_thousand_brains_bridge,
+                                             brain->tb_voting);
+                wm_tb_bridge_connect_sequences(brain->wm_thousand_brains_bridge,
+                                                brain->tb_sequences);
+                LOG_DEBUG(LOG_MODULE, "  - WM-TB bridge connected to TB components");
+            }
+
+            /* Connect voting to global workspace */
+            if (brain->tb_voting && brain->global_workspace) {
+                column_voting_connect_workspace(brain->tb_voting,
+                                                 brain->global_workspace);
+                LOG_DEBUG(LOG_MODULE, "  - Voting connected to global workspace");
+            }
+        } else {
+            LOG_WARN(LOG_MODULE, "  - Failed to create TB integration hub");
+        }
+    }
+
     LOG_INFO(LOG_MODULE, "World Model subsystem initialized successfully");
     LOG_DEBUG(LOG_MODULE, "  - Omni World Model: %s",
               brain->omni_world_model ? "enabled" : "disabled");
     LOG_DEBUG(LOG_MODULE, "  - Multimodal World Model: %s",
               brain->multimodal_world_model ? "enabled" : "disabled");
+    LOG_DEBUG(LOG_MODULE, "  - Thousand Brains: %s",
+              brain->tb_integration_hub ? "enabled" : "disabled");
 
     return true;
 }
@@ -264,6 +326,24 @@ void nimcp_brain_factory_destroy_world_model_subsystem(struct brain_struct* brai
     if (brain->multimodal_world_model) {
         wm_destroy(brain->multimodal_world_model);
         brain->multimodal_world_model = NULL;
+    }
+
+    /* Destroy Thousand Brains integration */
+    if (brain->tb_integration_hub) {
+        tb_integration_destroy(brain->tb_integration_hub);
+        brain->tb_integration_hub = NULL;
+    }
+    if (brain->tb_sequences) {
+        dendritic_seq_destroy(brain->tb_sequences);
+        brain->tb_sequences = NULL;
+    }
+    if (brain->tb_voting) {
+        column_voting_destroy(brain->tb_voting);
+        brain->tb_voting = NULL;
+    }
+    if (brain->tb_ref_frames) {
+        column_ref_frame_destroy(brain->tb_ref_frames);
+        brain->tb_ref_frames = NULL;
     }
 
     brain->world_model_enabled = false;
@@ -585,6 +665,26 @@ bool nimcp_brain_factory_wire_world_model_bridges(struct brain_struct* brain) {
         }
     }
 
+    /* 12. Thousand Brains Bridge (0x0E6E) - Hawkins cortical column integration */
+    if (brain->config.enable_wm_thousand_brains_bridge) {
+        wm_tb_bridge_config_t tb_config;
+        wm_tb_bridge_config_default(&tb_config);
+        brain->wm_thousand_brains_bridge = wm_tb_bridge_create(&tb_config);
+        if (brain->wm_thousand_brains_bridge) {
+            if (wm_tb_bridge_connect_world_model(brain->wm_thousand_brains_bridge,
+                                                  brain->omni_world_model) == NIMCP_SUCCESS) {
+                bridges_created++;
+                LOG_DEBUG(LOG_MODULE, "  - Thousand Brains Bridge (0x0E6E) created");
+            } else {
+                LOG_WARN(LOG_MODULE, "  - Thousand Brains Bridge failed to connect");
+                bridges_failed++;
+            }
+        } else {
+            LOG_WARN(LOG_MODULE, "  - Thousand Brains Bridge creation failed");
+            bridges_failed++;
+        }
+    }
+
     LOG_INFO(LOG_MODULE, "World Model bridge wiring complete: %u created, %u failed",
              bridges_created, bridges_failed);
 
@@ -600,6 +700,12 @@ void nimcp_brain_factory_destroy_world_model_bridges(struct brain_struct* brain)
     LOG_DEBUG(LOG_MODULE, "Destroying World Model integration bridges...");
 
     /* Destroy in reverse order of creation */
+
+    /* 12. Thousand Brains Bridge */
+    if (brain->wm_thousand_brains_bridge) {
+        wm_tb_bridge_destroy(brain->wm_thousand_brains_bridge);
+        brain->wm_thousand_brains_bridge = NULL;
+    }
 
     /* 11. Plasticity Bridge */
     if (brain->wm_plasticity_bridge) {

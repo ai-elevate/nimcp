@@ -3008,6 +3008,23 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
+    // STAGE C5.5: THOUSAND BRAINS INTEGRATION (Hawkins Cortical Columns)
+    // ========================================================================
+    // WHAT: Step the TB integration hub during inference — gather spatial state
+    //       from reference frames, update column voting with feature evidence,
+    //       run dendritic sequence predictions, broadcast consensus to workspace.
+    // WHY:  TB provides object recognition via multi-column voting and spatial
+    //       grounding via reference frames. This must run during inference to
+    //       influence the decision through global workspace broadcast.
+    // HOW:  Gated by same cognitive_train_interval to avoid per-inference overhead.
+    if (brain->config.enable_thousand_brains_integration
+        && brain->tb_integration_hub
+        && (brain->cognitive_train_counter % (brain->cognitive_train_interval > 0
+            ? brain->cognitive_train_interval : 5)) == 0) {
+        tb_integration_step(brain->tb_integration_hub);
+    }
+
+    // ========================================================================
     // STAGE C6: INFERENCE-TIME COGNITIVE TRAINING (Online Learning)
     // ========================================================================
     // The brain learns from every experience, not just explicit training.

@@ -481,6 +481,40 @@ set_tests_properties(test_sparse_coding_integration
 )
 
 # ============================================================================
+# Thousand Brains Tests (Hawkins: ref frames, voting, sequences, integration)
+# ============================================================================
+add_executable(test_thousand_brains
+    test_thousand_brains.cpp
+)
+
+target_link_libraries(test_thousand_brains
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(test_thousand_brains PRIVATE cxx_std_17)
+
+target_include_directories(test_thousand_brains
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/core/cortical_columns
+)
+
+add_test(NAME test_thousand_brains
+         COMMAND test_thousand_brains)
+
+set_tests_properties(test_thousand_brains
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;core;cortical_columns;thousand_brains"
+)
+
+# ============================================================================
 # Cortical Substrate Bridge Tests
 # ============================================================================
 add_subdirectory(substrate)

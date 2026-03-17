@@ -135,6 +135,7 @@ bool nimcp_brain_factory_wire_world_model_imagination(struct brain_struct* brain
  * - KG Bridge (0x0E6B): Knowledge graph entity prediction
  * - ToM Bridge (0x0E6C): Theory of Mind, social trajectory prediction
  * - Plasticity Bridge (0x0E6D): STDP↔RSSM encoder sync, PE feedback
+ * - Thousand Brains Bridge (0x0E6E): Hawkins cortical column ref frames, voting, sequences
  *
  * @param brain Brain structure with initialized world model
  * @return true on success, false on failure

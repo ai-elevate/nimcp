@@ -29022,6 +29022,19 @@ test_sparse_coding_integration/fast:
 .PHONY : test_sparse_coding_integration/fast
 
 #=============================================================================
+# Target rules for targets named test_thousand_brains
+
+# Build rule for target.
+test_thousand_brains: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_thousand_brains
+.PHONY : test_thousand_brains
+
+# fast build rule for target.
+test_thousand_brains/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cortical_columns/CMakeFiles/test_thousand_brains.dir/build.make test/unit/core/cortical_columns/CMakeFiles/test_thousand_brains.dir/build
+.PHONY : test_thousand_brains/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_cortical_columns_substrate_bridge
 
 # Build rule for target.
@@ -44187,6 +44200,7 @@ help:
 	@echo "... test_thalamic_e2e_all"
 	@echo "... test_thalamic_pathology_e2e"
 	@echo "... test_thalamocortical_loop_e2e"
+	@echo "... test_thousand_brains"
 	@echo "... test_tier_optimization"
 	@echo "... test_unification_engine"
 	@echo "... test_visual_processing_e2e"

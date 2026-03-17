@@ -67,6 +67,8 @@
 #include "constants/nimcp_buffer_constants.h"
 #include "core/brain/bridges/nimcp_hyperledger_bridge.h"
 #include "training/nimcp_unified_training.h"
+#include "cognitive/omni/bridges/nimcp_omni_wm_thousand_brains_bridge.h"
+#include "core/cortical_columns/nimcp_thousand_brains_integration.h"
 
 // Multi-network training includes (LNN + CNN + dispatch)
 #include "training/nimcp_training_dispatch.h"
@@ -99,6 +101,10 @@
 #include "plasticity/orchestrator/nimcp_neural_plasticity_coordinator.h"
 
 #include "core/brain_regions/nimcp_brain_regions.h"
+
+// Thousand Brains integration (Hawkins cortical columns)
+#include "cognitive/omni/bridges/nimcp_omni_wm_thousand_brains_bridge.h"
+#include "core/cortical_columns/nimcp_thousand_brains_integration.h"
 
 // Cognitive subsystem training includes
 #include "cognitive/knowledge/nimcp_knowledge.h"
@@ -994,6 +1000,27 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 }
             }
         }
+    }
+
+    /* === Thousand Brains Integration (Hawkins) ===
+     * Step the WM-TB bridge: gather spatial state from reference frames,
+     * object consensus from column voting, temporal predictions from dendritic
+     * sequences → push to world model → generate top-down expectations.
+     * Gated to every 10 steps alongside other biological plasticity. */
+    if (brain->config.enable_wm_thousand_brains_bridge
+        && brain->wm_thousand_brains_bridge
+        && (brain->plasticity_step_counter % 10 == 0)) {
+        wm_tb_bridge_step(brain->wm_thousand_brains_bridge);
+    }
+
+    /* Step the full TB integration hub: entorhinal→ref frames, hypercolumns→features,
+     * attention→voting, oscillations→timing, predictive coding↔sequences,
+     * hippocampus sync, voting→global workspace, ToM perspective-taking.
+     * Runs every 10 steps to match biological plasticity cadence. */
+    if (brain->config.enable_thousand_brains_integration
+        && brain->tb_integration_hub
+        && (brain->plasticity_step_counter % 10 == 0)) {
+        tb_integration_step(brain->tb_integration_hub);
     }
 
     /* BPTT: Record current example in temporal buffer and replay history.

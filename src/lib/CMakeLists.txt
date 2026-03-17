@@ -246,6 +246,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_oscillations_integration.c  # Oscillation integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_plasticity_bridge.c  # Plasticity coordinator integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_substrate_bridge.c  # Cortical-neural substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_dendritic_sequence.c         # HTM dendritic sequence prediction (Hawkins)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_column_reference_frame.c     # Grid cell reference frames (Thousand Brains)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_column_voting.c              # Column voting consensus (Thousand Brains)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_thousand_brains_integration.c  # Thousand Brains full-system integration hub
 
     # Broca's region sub-modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_syntax_processor.c
@@ -1097,6 +1101,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_kg_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_tom_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_plasticity_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_thousand_brains_bridge.c  # Hawkins Thousand Brains integration
     # Multimodal World Model (cross-modal prediction and fusion)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/extrapolation/nimcp_world_model_multimodal.c
     # Compositional and Counterfactual modules
