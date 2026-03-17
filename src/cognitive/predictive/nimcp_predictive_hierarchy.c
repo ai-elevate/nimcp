@@ -518,9 +518,12 @@ int pred_hier_reset(predictive_hierarchy_t* hier) {
  * @brief Internal forward pass (caller must hold mutex)
  */
 static int forward_unlocked(predictive_hierarchy_t* hier, const float* input) {
-    if (!hier->bottom || !hier->bottom->state || !input || hier->bottom->dim == 0) return -1;
-    if (hier->bottom->dim > 65536) return -1;  /* Sanity: max 64K units */
-    memcpy(hier->bottom->state, input, hier->bottom->dim * sizeof(float));
+    if (!hier || !hier->bottom || !hier->bottom->state || !input) return -1;
+    if (hier->bottom->dim == 0 || hier->bottom->dim > 65536) return -1;
+    /* Use memmove with validated size — prevents overflow even if dim was corrupted */
+    uint32_t copy_bytes = hier->bottom->dim * sizeof(float);
+    if (copy_bytes > 65536 * sizeof(float)) return -1;  /* Extra guard */
+    memcpy(hier->bottom->state, input, copy_bytes);
 
     for (uint32_t i = 0; i < hier->num_levels; i++) {
         /* Phase 8: Loop progress heartbeat */

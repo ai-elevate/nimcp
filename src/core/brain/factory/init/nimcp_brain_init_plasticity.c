@@ -289,8 +289,11 @@ bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain)
         return false;
     }
 
-    // Set up hierarchical pyramid: each level has half the units of the previous
-    uint32_t base_units = 64;  // Bottom level
+    // Set up hierarchical pyramid: bottom level matches brain input dim
+    // (so features can be directly copied in without size mismatch)
+    uint32_t base_units = brain->config.num_inputs;
+    if (base_units > 4096) base_units = 4096;  // Cap for memory
+    if (base_units < 8) base_units = 8;
     for (uint32_t i = 0; i < num_levels; i++) {
         units[i] = base_units >> i;  // 64, 32, 16, 8, ...
         if (units[i] < 4) units[i] = 4;  // Minimum 4 units per level

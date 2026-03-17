@@ -229,14 +229,15 @@ static void brain_train_cognitive_subsystems(
     }
 
     /* === 6. PREDICTIVE HIERARCHY — hierarchical temporal prediction === */
-    /* DISABLED: heap-buffer-overflow in forward_unlocked when bottom->dim
-     * doesn't match the allocated state buffer size. ASan confirmed the
-     * overflow corrupts adjacent heap memory causing downstream SIGSEGV.
-     * TODO: fix pc_hierarchy_create to allocate state matching dim. */
-    if (0 && brain->pred_hierarchy && brain->pred_hierarchy_enabled) {
+    /* Fixed: bottom level now matches brain->config.num_inputs (was hardcoded 64).
+     * Guard: only call if num_features >= hierarchy bottom dim. */
+    if (brain->pred_hierarchy && brain->pred_hierarchy_enabled) {
+        predictive_hierarchy_t* ph = (predictive_hierarchy_t*)brain->pred_hierarchy;
         float pred_loss = 0.0f;
-        pred_hier_learn_step((predictive_hierarchy_t*)brain->pred_hierarchy,
-                              features, &pred_loss);
+        /* Safe: only feed if features can fill the bottom level */
+        if (ph->bottom && num_features >= ph->bottom->dim) {
+            pred_hier_learn_step(ph, features, &pred_loss);
+        }
         brain->cognitive_stats.pred_hierarchy_steps++;
         brain->cognitive_stats.pred_hierarchy_last_loss = pred_loss;
     }
