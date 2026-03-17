@@ -2796,7 +2796,11 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
                 if (!isfinite(loss) || loss < 0.0f) loss = 0.0f;
             }
 
-            /* Diversity loss (anti-collapse parity with single-example path) */
+            /* Diversity loss with gradient — inject into target for GPU backward.
+             * Same approach as single-sample path: target_eff = target - div_grad
+             * pushes output AWAY from recent outputs, preventing mode collapse. */
+            float* batch_div_grad = (float*)alloc_hot_buffer(ex->target_size * sizeof(float));
+            if (batch_div_grad) memset(batch_div_grad, 0, ex->target_size * sizeof(float));
             {
                 static __thread nimcp_anti_collapse_state_t s_batch_ac;
                 static __thread bool s_batch_ac_inited = false;
@@ -2805,8 +2809,22 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
                     s_batch_ac_inited = true;
                 }
                 float div_loss = nimcp_anti_collapse_diversity_loss(
-                    &s_batch_ac, output, NULL, ex->target_size);
+                    &s_batch_ac, output, batch_div_grad, ex->target_size);
                 loss += div_loss;
+            }
+
+            /* Build diversity-adjusted target: target - div_grad */
+            float* batch_target_eff = ex->target;
+            float* batch_target_alloc = NULL;
+            if (batch_div_grad) {
+                batch_target_alloc = (float*)alloc_hot_buffer(ex->target_size * sizeof(float));
+                if (batch_target_alloc) {
+                    for (uint32_t di = 0; di < ex->target_size; di++) {
+                        batch_target_alloc[di] = ex->target[di] - batch_div_grad[di];
+                    }
+                    batch_target_eff = batch_target_alloc;
+                }
+                free_hot_buffer(batch_div_grad);
             }
 
             /* Gradient-normalized LR for batch accumulation */
@@ -2822,10 +2840,11 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
                 }
             }
 
-            /* Accumulate gradients on GPU (no weight update) */
+            /* Accumulate gradients on GPU with diversity-adjusted target */
             nimcp_gpu_backward_accumulate(network->gpu_weight_cache,
-                                           ex->target, output, ex->target_size,
+                                           batch_target_eff, output, ex->target_size,
                                            batch_eff_lr);
+            if (batch_target_alloc) free_hot_buffer(batch_target_alloc);
 
             if (loss >= 0.0f && isfinite(loss)) {
                 total_loss += loss;

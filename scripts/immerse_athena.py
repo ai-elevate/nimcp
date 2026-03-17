@@ -3892,6 +3892,11 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             # learn_vector_batch trains ANN on full batch, then dispatches
             # brain_learn_vector on every 4th sample for secondary networks.
             current_lr = lr_scheduler.get_lr()
+            # Re-stage sensory data for cortex CNN training (decide_full clears it).
+            # Use last description in batch as representative sensory stimulus.
+            last_desc = mini_batch_buf[-1][2] if mini_batch_buf else ""
+            if last_desc:
+                submit_multimodal(brain, last_desc)
             try:
                 batch_pairs = [(f, t) for f, t, _ in mini_batch_buf]
                 avg_loss = brain.learn_vector_batch(batch_pairs,

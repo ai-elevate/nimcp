@@ -1652,8 +1652,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         cross_modal_align_compute_offsets(cma);
     }
 
-    // Clear staged sensory data after decide_full processes it.
-    // learn_vector will need fresh data staged before its call.
+    /* Clear staged sensory data after processing. Training script must
+     * re-stage sensory data before learn_vector if cortex CNN training is needed. */
     brain_clear_sensory(brain);
 
     // ========================================================================
