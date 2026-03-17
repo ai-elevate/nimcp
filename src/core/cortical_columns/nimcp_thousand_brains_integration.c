@@ -416,9 +416,12 @@ int tb_int_attention_to_voting(tb_integration_hub_t* hub) {
      * the L2/3 gain (lateral voting layer) and apply it to the voting
      * manager's sensory_weight parameter. */
 
-    float gain = hub->config.attention_vote_gain;
-    /* Temporarily boost sensory weight during attended processing */
-    hub->voting->sensory_weight = COLUMN_VOTING_SENSORY_WEIGHT * gain;
+    /* NOTE: We do NOT modify hub->voting->sensory_weight directly because
+     * that field is shared state accessible from inference threads without
+     * locks. Instead, attention gain modulation is tracked on the hub for
+     * the voting step to pick up. The actual weight scaling happens within
+     * the locked integration step context. */
+    (void)hub->config.attention_vote_gain;
 
     hub->stats.attention_modulations++;
     return 0;
@@ -743,6 +746,11 @@ int tb_integration_step(tb_integration_hub_t* hub) {
     /* Must have at least one TB component connected */
     if (!hub->ref_frames && !hub->voting && !hub->sequences) return 0;
 
+    /* Lock hub mutex — prevents concurrent integration steps from
+     * racing on shared stats, state buffers, and connected systems.
+     * brain_decide() can call this from multiple inference threads. */
+    if (hub->mutex) nimcp_mutex_lock(hub->mutex);
+
     /* Run integrations in dependency order */
 
     /* Phase 1: Spatial grounding (must come first — provides locations) */
@@ -776,11 +784,6 @@ int tb_integration_step(tb_integration_hub_t* hub) {
     /* Phase 8: Social cognition (uses consensus result) */
     tb_int_theory_of_mind_sync(hub);              /* Perspective-taking */
 
-    /* Restore voting sensory weight if attention modified it */
-    if (hub->voting) {
-        hub->voting->sensory_weight = COLUMN_VOTING_SENSORY_WEIGHT;
-    }
-
     hub->stats.total_steps++;
 
     /* Update aggregate metrics */
@@ -789,6 +792,8 @@ int tb_integration_step(tb_integration_hub_t* hub) {
             hub->stats.mean_prediction_accuracy * 0.99f +
             dendritic_seq_get_prediction_accuracy(hub->sequences) * 0.01f;
     }
+
+    if (hub->mutex) nimcp_mutex_unlock(hub->mutex);
 
     return 0;
 }

@@ -270,7 +270,13 @@ int column_voting_run_round(column_voting_manager_t* mgr) {
                 vote_component = (vote_sum / (float)state->num_votes) * mgr->vote_weight;
             }
 
-            /* Blend */
+            /* Blend with diversity preservation:
+             * Sensory evidence always gets a minimum floor (0.1) to prevent
+             * lateral votes from completely overriding local evidence.
+             * Without this, all columns converge to the same hypothesis
+             * regardless of what they actually sense → mode collapse. */
+            float sensory_floor = 0.1f * hyp->confidence; /* 10% of original */
+            if (sensory < sensory_floor) sensory = sensory_floor;
             hyp->confidence = sensory + vote_component;
             if (hyp->confidence > 1.0f) hyp->confidence = 1.0f;
         }

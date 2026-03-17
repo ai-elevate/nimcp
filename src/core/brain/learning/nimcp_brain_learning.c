@@ -1010,7 +1010,10 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     if (brain->config.enable_wm_thousand_brains_bridge
         && brain->wm_thousand_brains_bridge
         && (brain->plasticity_step_counter % 10 == 0)) {
-        wm_tb_bridge_step(brain->wm_thousand_brains_bridge);
+        nimcp_error_t tb_rc = wm_tb_bridge_step(brain->wm_thousand_brains_bridge);
+        if (tb_rc != NIMCP_SUCCESS) {
+            NIMCP_LOGGING_WARN("brain_learn_vector: wm_tb_bridge_step failed (rc=%d)", (int)tb_rc);
+        }
     }
 
     /* Step the full TB integration hub: entorhinal→ref frames, hypercolumns→features,
@@ -1020,7 +1023,10 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     if (brain->config.enable_thousand_brains_integration
         && brain->tb_integration_hub
         && (brain->plasticity_step_counter % 10 == 0)) {
-        tb_integration_step(brain->tb_integration_hub);
+        int hub_rc = tb_integration_step(brain->tb_integration_hub);
+        if (hub_rc != 0) {
+            NIMCP_LOGGING_WARN("brain_learn_vector: tb_integration_step failed (rc=%d)", hub_rc);
+        }
     }
 
     /* BPTT: Record current example in temporal buffer and replay history.

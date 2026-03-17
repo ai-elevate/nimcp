@@ -333,17 +333,27 @@ static void gather_object_state(wm_thousand_brains_bridge_t* bridge) {
         }
     }
 
-    /* Create a simple one-hot-ish object embedding from object_id.
-     * In a full system this would be a learned embedding lookup. */
+    /* Create distributed object embedding from object_id using multi-scale
+     * hash spreading. Sparse one-hot would give poor gradient signal to WM;
+     * instead we spread activation across ~25% of dims for smoother gradients
+     * and better WM learning. Similar objects (nearby IDs) will have partially
+     * overlapping embeddings, enabling generalization. */
     if (object->has_consensus && object->object_id > 0) {
-        uint32_t idx = object->object_id % WM_TB_MAX_OBJECT_DIM;
-        object->object_embedding[idx] = object->confidence;
-        /* Add some hash-spread for richer representation */
-        uint32_t h = object->object_id * 2654435761u; /* Knuth multiplicative hash */
-        for (uint32_t i = 0; i < 4; i++) {
-            uint32_t slot = (h >> (i * 8)) % WM_TB_MAX_OBJECT_DIM;
-            object->object_embedding[slot] = object->confidence * 0.5f;
+        uint32_t h = object->object_id;
+        float conf = object->confidence;
+        /* Fill ~8 slots (25% of 32-dim) with decaying activations */
+        for (uint32_t i = 0; i < 8; i++) {
+            h = h * 2654435761u + i * 0x9E3779B9u; /* Knuth + golden ratio hash */
+            uint32_t slot = h % WM_TB_MAX_OBJECT_DIM;
+            float activation = conf * (1.0f - (float)i * 0.1f); /* Decay per slot */
+            if (activation < 0.1f) activation = 0.1f;
+            object->object_embedding[slot] += activation;
+            /* Clamp to prevent unbounded accumulation */
+            if (object->object_embedding[slot] > 1.0f)
+                object->object_embedding[slot] = 1.0f;
         }
+        /* Also encode agreement_ratio as a meta-signal in last dim */
+        object->object_embedding[WM_TB_MAX_OBJECT_DIM - 1] = object->agreement_ratio;
         object->embedding_dim = WM_TB_MAX_OBJECT_DIM;
     }
 
@@ -540,7 +550,18 @@ nimcp_error_t wm_tb_bridge_update_temporal(wm_thousand_brains_bridge_t* bridge) 
 
 nimcp_error_t wm_tb_bridge_push_to_world_model(wm_thousand_brains_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->world_model) return NIMCP_SUCCESS;
+    if (!bridge->world_model) return NIMCP_SUCCESS; /* No WM yet — skip silently */
+
+    /* Guard: don't push empty/zero state to WM — this would collapse WM state.
+     * Require at least one TB component to have produced non-trivial data. */
+    bool has_spatial = bridge->ref_frames && bridge->current_state.spatial.num_active_frames > 0;
+    bool has_object = bridge->voting && bridge->current_state.object.has_consensus;
+    bool has_temporal = bridge->sequences && bridge->current_state.temporal.num_predicted > 0;
+
+    if (!has_spatial && !has_object && !has_temporal) {
+        /* No TB data available — don't zero out WM state */
+        return NIMCP_SUCCESS;
+    }
 
     /* Map TB state → flat WM state vector */
     map_tb_to_wm_state(bridge);
@@ -560,7 +581,9 @@ nimcp_error_t wm_tb_bridge_push_to_world_model(wm_thousand_brains_bridge_t* brid
         omni_wm_update(bridge->world_model, current_wm, null_action, 1, tb_state, 0.0f);
     }
 
-    /* Also set as current state (TB grounds the WM) */
+    /* Also set as current state (TB grounds the WM).
+     * NOTE: omni_wm_set_state() copies the state internally (verified),
+     * so it's safe to destroy tb_state after this call. */
     omni_wm_set_state(bridge->world_model, tb_state);
     omni_wm_state_destroy(tb_state);
 
