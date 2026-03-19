@@ -1248,43 +1248,22 @@ neural_network_t neural_network_create(const network_config_t* config)
     }
 
     /* Phase 4: Allocate residual/skip connection state.
-     * Always allocate for >3 layers — lightweight truncated-identity skip
-     * connections don't need projection matrices, just saved activation buffers. */
+     * Truncated-identity: only need saved activation buffers per layer.
+     * No projection matrices (they caused OOM at 2M neurons — 200K×200K×4 = 160GB). */
     network->enable_residual = (config->num_layers > 3);
     if (config->num_layers > 3) {
-        uint32_t num_pairs = (config->num_layers - 3);  /* L -> L+2, starting from layer 1 */
-        network->num_residual_pairs = num_pairs;
+        network->num_residual_pairs = 0;
         network->residual_saved_states = (float**)nimcp_calloc(config->num_layers, sizeof(float*));
-        network->residual_projections = (float**)nimcp_calloc(num_pairs, sizeof(float*));
-        network->residual_proj_src_dim = (uint32_t*)nimcp_calloc(num_pairs, sizeof(uint32_t));
-        network->residual_proj_dst_dim = (uint32_t*)nimcp_calloc(num_pairs, sizeof(uint32_t));
+        network->residual_projections = NULL;
+        network->residual_proj_src_dim = NULL;
+        network->residual_proj_dst_dim = NULL;
 
         if (network->residual_saved_states) {
             for (uint32_t l = 0; l < config->num_layers; l++) {
                 network->residual_saved_states[l] = (float*)nimcp_calloc(config->layer_sizes[l], sizeof(float));
             }
         }
-        if (network->residual_projections && network->residual_proj_src_dim && network->residual_proj_dst_dim) {
-            for (uint32_t p = 0; p < num_pairs; p++) {
-                uint32_t src_dim = config->layer_sizes[p + 1];   /* Layer L (hidden) */
-                uint32_t dst_dim = config->layer_sizes[p + 3];   /* Layer L+2 */
-                network->residual_proj_src_dim[p] = src_dim;
-                network->residual_proj_dst_dim[p] = dst_dim;
-                if (src_dim != dst_dim) {
-                    /* Allocate projection matrix for dimension mismatch */
-                    network->residual_projections[p] = (float*)nimcp_calloc(dst_dim * src_dim, sizeof(float));
-                    if (network->residual_projections[p]) {
-                        /* Xavier init */
-                        float scale = sqrtf(2.0f / (float)(src_dim + dst_dim));
-                        for (uint32_t i = 0; i < dst_dim * src_dim; i++) {
-                            network->residual_projections[p][i] =
-                                (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * scale;
-                        }
-                    }
-                }
-                /* NULL projection = identity (same dims) */
-            }
-        }
+        /* No projection matrices — truncated identity only */
     }
 
     LOG_MODULE_DEBUG(LOG_MODULE, "neural_network_create complete: %u neurons, %u layers",
