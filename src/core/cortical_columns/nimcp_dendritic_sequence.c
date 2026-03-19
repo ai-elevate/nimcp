@@ -365,6 +365,34 @@ int dendritic_seq_advance_timestep(dendritic_sequence_mgr_t* mgr) {
     mgr->num_prev_winners = mgr->num_cur_winners;
     mgr->num_cur_winners = 0;
 
+    /* Slow permanence decay on ALL segments — prevents old segments from
+     * dominating predictions indefinitely. Segments that are not reinforced
+     * by correct predictions gradually weaken, allowing new sequences to
+     * compete. Decay rate 0.001 per timestep = ~1000 steps to halve.
+     * This is the HTM equivalent of synaptic weight decay / forgetting. */
+    {
+        float decay = 0.001f;
+        for (uint32_t c = 0; c < mgr->num_cells; c++) {
+            cell_predictive_state_t* cell = &mgr->cells[c];
+            for (uint32_t s = 0; s < cell->num_segments; s++) {
+                predictive_segment_t* seg = &cell->segments[s];
+                bool any_alive = false;
+                for (uint32_t p = 0; p < seg->num_synapses; p++) {
+                    seg->permanences[p] -= decay;
+                    if (seg->permanences[p] < 0.0f) seg->permanences[p] = 0.0f;
+                    if (seg->permanences[p] > 0.01f) any_alive = true;
+                }
+                /* Prune dead segments (all permanences near zero) */
+                if (!any_alive && cell->num_segments > 1) {
+                    cell->segments[s] = cell->segments[cell->num_segments - 1];
+                    cell->num_segments--;
+                    mgr->stats.total_segments_destroyed++;
+                    s--; /* Re-check this slot */
+                }
+            }
+        }
+    }
+
     /* Update accuracy EMA */
     uint64_t total = mgr->stats.correct_predictions + mgr->stats.total_bursts;
     if (total > 0) {

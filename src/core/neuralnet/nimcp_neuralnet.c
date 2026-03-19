@@ -305,6 +305,7 @@ static void init_activation_strategies(activation_strategy_table_t* table)
     table->functions[ACTIVATION_RELU] = activate_relu;
     table->functions[ACTIVATION_LEAKY_RELU] = activate_leaky_relu;
     table->functions[ACTIVATION_ADAPTIVE] = activate_adaptive;
+    table->functions[ACTIVATION_LINEAR] = NULL;  /* Identity — handled inline in forward */
 }
 
 //=============================================================================
@@ -1196,12 +1197,13 @@ neural_network_t neural_network_create(const network_config_t* config)
             network->neurons[i].activation_type = ACTIVATION_LEAKY_RELU;
         }
 
-        // Set output layer neurons to tanh [-1,1] — matches sentence-transformer
-        // target range. Sigmoid [0,1] destroys negative target values.
+        // Set output layer to LINEAR (identity) for regression.
+        // Tanh [-1,1] caused gradient vanishing when targets were in a narrow
+        // sub-range. Linear allows the network to learn any output magnitude.
         uint32_t output_layer_start = hidden_end;
         uint32_t output_layer_size = config->layer_sizes[config->num_layers - 1];
         for (uint32_t i = 0; i < output_layer_size && output_layer_start + i < network->num_neurons; i++) {
-            network->neurons[output_layer_start + i].activation_type = ACTIVATION_TANH;
+            network->neurons[output_layer_start + i].activation_type = ACTIVATION_LINEAR;
         }
     }
 
@@ -3737,6 +3739,122 @@ void neural_network_reset(neural_network_t network)
     network->last_maintenance = 0;
 }
 
+/**
+ * @brief Reinitialize all synapse weights using He/Xavier initialization
+ *
+ * WHAT: Randomizes all synapse weights while preserving network topology
+ * WHY:  Breaks mode collapse — when outputs converge to identical values,
+ *       gradient-based anti-collapse can't recover. Re-randomizing weights
+ *       gives the network a fresh starting point while keeping connectivity.
+ * HOW:  For each neuron, compute fan-in from incoming synapse count,
+ *       apply He initialization: w ~ U(-1,1) * sqrt(2/fan_in).
+ *       Also resets neuron state, bias, threshold, and synaptic traces.
+ *
+ * @param network Neural network (non-NULL)
+ */
+void neural_network_reinit_weights(neural_network_t network)
+{
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "neural_network_reinit_weights: network is NULL");
+        return;
+    }
+
+    for (uint32_t i = 0; i < network->num_neurons; i++) {
+        neuron_t* neuron = &network->neurons[i];
+
+        /* Reset neuron state */
+        neuron->state = neuron->rest_potential;
+        neuron->threshold = 0.5F;
+        neuron->adaptation = 0.0F;
+        neuron->bias = 0.0F;
+        neuron->calcium_concentration = 0.0F;
+        neuron->avg_activity = 0.0F;
+        neuron->ema_activity = 0.0f;
+
+        /* Reset spike/activity history */
+        neuron->spike_history_index = 0;
+        neuron->spike_history_count = 0;
+        if (neuron->spike_history)
+            memset(neuron->spike_history, 0,
+                   sizeof(spike_record_t) * neuron->spike_history_capacity);
+        if (neuron->activity_history)
+            memset(neuron->activity_history, 0,
+                   sizeof(float) * neuron->activity_history_capacity);
+
+        /* Reinitialize outgoing synapse weights with He initialization */
+        uint32_t fan_in = NEURON_IN_COUNT(neuron);
+        if (fan_in == 0) fan_in = 128;  /* fallback */
+        float scale = sqrtf(2.0F / (float)fan_in);
+
+        for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, j);
+            if (!h) continue;
+
+            float w = (((float)nimcp_tl_rand() / RAND_MAX) * 2.0F - 1.0F)
+                      * scale;
+            h->weight = w;
+            h->strength = 1.0F;
+
+            synapse_t* syn = NEURON_OUT_META(network, neuron, j);
+            if (syn) {
+                syn->trace = 0.0F;
+                syn->strength = 1.0F;
+                syn->meta_plasticity = 1.0F;
+            }
+        }
+    }
+
+    network->network_time = 0;
+    network->global_activity = 0.0F;
+    network->network_stability = 1.0F;
+    network->last_maintenance = 0;
+
+    /* Fix activation types: hidden=LEAKY_RELU, output=LINEAR.
+     * Checkpoints may have TANH on output layer from older code. */
+    if (network->config.num_layers > 1 && network->config.layer_sizes) {
+        uint32_t offset = 0;
+        for (uint32_t l = 0; l < network->config.num_layers; l++) {
+            uint32_t lsize = network->config.layer_sizes[l];
+            if (l > 0 && l < network->config.num_layers - 1) {
+                /* Hidden layers → leaky ReLU */
+                for (uint32_t i = 0; i < lsize && offset + i < network->num_neurons; i++)
+                    network->neurons[offset + i].activation_type = ACTIVATION_LEAKY_RELU;
+            } else if (l == network->config.num_layers - 1) {
+                /* Output layer → linear (regression) */
+                for (uint32_t i = 0; i < lsize && offset + i < network->num_neurons; i++)
+                    network->neurons[offset + i].activation_type = ACTIVATION_LINEAR;
+            }
+            offset += lsize;
+        }
+    }
+
+    NIMCP_LOGGING_INFO("neural_network_reinit_weights: reinitialized %u neurons",
+                       network->num_neurons);
+}
+
+void neural_network_set_output_activation(neural_network_t network, activation_type_t activation)
+{
+    if (!network || network->config.num_layers < 2 || !network->config.layer_sizes) return;
+
+    uint32_t offset = 0;
+    for (uint32_t l = 0; l < network->config.num_layers - 1; l++)
+        offset += network->config.layer_sizes[l];
+
+    uint32_t out_size = network->config.layer_sizes[network->config.num_layers - 1];
+    uint32_t fixed = 0;
+    for (uint32_t i = 0; i < out_size && offset + i < network->num_neurons; i++) {
+        if (network->neurons[offset + i].activation_type != activation) {
+            network->neurons[offset + i].activation_type = activation;
+            fixed++;
+        }
+    }
+    if (fixed > 0) {
+        NIMCP_LOGGING_INFO("set_output_activation: set %u neurons to type %d",
+                           fixed, (int)activation);
+    }
+}
+
 /*
  * @brief Get neuron state
  */
@@ -4321,6 +4439,9 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                             neuron->state = 0.0F;
                         }
                         break;
+                    case ACTIVATION_LINEAR:
+                        neuron->state = activation;
+                        break;
                     default:
                         neuron->state = tanhf(activation);
                 }
@@ -4331,6 +4452,7 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                 switch (neuron->activation_type) {
                     case ACTIVATION_RELU:
                     case ACTIVATION_LEAKY_RELU:
+                    case ACTIVATION_LINEAR:
                         neuron->state = fmaxf(-100.0F, fminf(100.0F, neuron->state));
                         break;
                     default:
@@ -4366,42 +4488,11 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                 }
             }
 
-            // LAYER NORMALIZATION for hidden layers:
-            // Normalize activations to zero-mean, unit-variance across the layer.
-            // This prevents vanishing/exploding activations through deep networks
-            // (the same insight as BatchNorm/LayerNorm in transformers & ResNets).
-            // Skip the output layer — we want raw output values there.
-            if (layer < network->config.num_layers - 1 && layer_size > 1) {
-                // Welford's online algorithm: single-pass mean+variance (2 passes → 1+normalize)
-                uint32_t count = 0;
-                float mean = 0.0f, M2 = 0.0f;
-                for (uint32_t i = 0; i < layer_size && neuron_offset + i < network->num_neurons; i++) {
-                    float x = network->neurons[neuron_offset + i].state;
-                    count++;
-                    float delta = x - mean;
-                    mean += delta / (float)count;
-                    float delta2 = x - mean;
-                    M2 += delta * delta2;
-                }
-                if (count > 1) {
-                    float variance = M2 / (float)count;
-                    float inv_std = 1.0F / sqrtf(variance + 1e-5F);
-                    uint32_t norm_idx = layer - 1;  /* Hidden layer index (0-based) */
-                    bool has_affine = (network->layer_norm_gamma &&
-                                       norm_idx < network->num_norm_layers &&
-                                       network->layer_norm_gamma[norm_idx] &&
-                                       network->layer_norm_beta[norm_idx]);
-                    for (uint32_t i = 0; i < count; i++) {
-                        float normalized = (network->neurons[neuron_offset + i].state - mean) * inv_std;
-                        if (has_affine) {
-                            /* Phase 3: Learnable affine transform */
-                            normalized = network->layer_norm_gamma[norm_idx][i] * normalized
-                                       + network->layer_norm_beta[norm_idx][i];
-                        }
-                        network->neurons[neuron_offset + i].state = normalized;
-                    }
-                }
-            }
+            // LAYER NORMALIZATION DISABLED:
+            // Backprop does not account for layer norm (no d(LayerNorm)/d(input) in
+            // backward pass), creating a gradient mismatch. GPU forward also skips it.
+            // Residual connections + leaky ReLU prevent vanishing/exploding activations.
+            // Per-neuron activation clamp below provides safety against extreme values.
 
             // Save post-activation state for future residual connections
             if (network->enable_residual && network->residual_saved_states &&

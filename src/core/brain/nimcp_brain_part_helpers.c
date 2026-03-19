@@ -1181,8 +1181,14 @@ uint32_t perform_forward_pass(brain_t brain, const float* features, uint32_t num
     bool has_cnn = (brain->cnn_trainer != NULL);
     bool has_snn = (brain->snn_network != NULL);
 
+    /* Declare before parallel/sequential branch so lnn_gating goto can use them */
+    const float* fwd_features = features;
+    uint32_t fwd_num = num_features;
+
     /* === Parallel path: submit adaptive + CNN + SNN to thread pool === */
-    if (brain->inference_pool && (has_cnn || has_snn)) {
+    /* DISABLED: GPU forward from worker threads fails silently (CUDA context
+     * not propagated). Sequential path calls GPU forward from main thread. */
+    if (0 && brain->inference_pool && (has_cnn || has_snn)) {
         forward_task_ctx_t* ctx = nimcp_calloc(1, sizeof(forward_task_ctx_t));
         if (!ctx) goto sequential_fallback;
 
@@ -1323,8 +1329,7 @@ sequential_fallback:
     /* Blend cortex CNN fused embedding into features for perceptual grounding.
      * Uses thread-local static buffer to avoid malloc (which caused SIGSEGV
      * in Release builds due to optimizer register spilling). Max 4096 features. */
-    const float* fwd_features = features;
-    uint32_t fwd_num = num_features;
+    /* fwd_features/fwd_num already declared at function scope */
     static __thread float s_blended[4096];
     if (brain->cortex_cnn_fused_embedding && brain->cortex_cnn_fused_dim > 0 &&
         num_features <= 4096) {

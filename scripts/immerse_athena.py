@@ -501,11 +501,14 @@ class CollapseDetector:
     _PROBE_SEEDS = [42, 99, 7]  # Fixed seeds for reproducible probe inputs
 
     def __init__(self, threshold=COLLAPSE_THRESHOLD,
-                 consecutive_limit=COLLAPSE_CONSECUTIVE_LIMIT):
+                 consecutive_limit=COLLAPSE_CONSECUTIVE_LIMIT,
+                 brain_ref=None):
         self.threshold = threshold
         self.consecutive_limit = consecutive_limit
         self.consecutive_collapses = 0
         self.last_mean_sim = None
+        self.brain_ref = brain_ref
+        self.total_reinits = 0
 
     def check(self, brain, step, stage):
         """Returns True if training should halt due to mode collapse."""
@@ -544,16 +547,28 @@ class CollapseDetector:
                   f"{self.consecutive_limit}]: mean cosine sim = "
                   f"{self.last_mean_sim:.6f} ***", flush=True)
             if self.consecutive_collapses >= self.consecutive_limit:
-                msg = (f"MODE COLLAPSE DETECTED at stage {stage} step {step}. "
+                msg = (f"MODE COLLAPSE at stage {stage} step {step}. "
                        f"Mean cosine sim = {self.last_mean_sim:.6f} for "
-                       f"{self.consecutive_limit} consecutive checks. "
-                       f"Training halted.")
-                print(f"\n    *** {msg} ***\n", flush=True)
+                       f"{self.consecutive_limit} consecutive checks.")
+                print(f"\n    *** {msg} ***", flush=True)
                 try:
                     with open("TRAINING_ALERT.txt", "a") as f:
                         f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}\n")
                 except OSError:
                     pass
+                # Auto-recovery: reinitialize weights instead of halting
+                if self.brain_ref is not None:
+                    print("    >>> AUTO-RECOVERY: Reinitializing weights...",
+                          flush=True)
+                    try:
+                        self.brain_ref.reinit_weights()
+                        self.consecutive_collapses = 0
+                        self.total_reinits = getattr(self, 'total_reinits', 0) + 1
+                        print(f"    >>> Weights reinitialized "
+                              f"(recovery #{self.total_reinits})", flush=True)
+                        return False  # Continue training
+                    except Exception as e:
+                        print(f"    >>> Reinit failed: {e} — halting", flush=True)
                 return True
         else:
             if self.consecutive_collapses > 0:
@@ -3839,7 +3854,7 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
     diversity = DiversityRegularizer(
         buffer_size=100, interval=100, num_corrections=8,
         strength=0.2, min_variance_ratio=0.1)
-    collapse_detector = CollapseDetector()
+    collapse_detector = CollapseDetector(brain_ref=brain)
     mini_batch_buf = []
     for i in range(start_from, num_stimuli):
         # Mode collapse early detection
@@ -3994,6 +4009,12 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                         parts.append(f"FNO:{nm.get('fno_audio_ema_loss',0):.4f}")
             except Exception:
                 pass
+            try:
+                nm2 = brain.get_network_metrics()
+                if nm2 and nm2.get('cnn_steps', 0) > 0:
+                    parts.append(f"CNN:{nm2.get('cnn_steps',0)}stp/loss={nm2.get('cnn_loss',0):.4f}")
+            except Exception:
+                pass
             print(f"    {' | '.join(parts)}", flush=True)
 
         # Progress report
@@ -4065,7 +4086,7 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
     diversity = DiversityRegularizer(
         buffer_size=100, interval=100, num_corrections=8,
         strength=0.2, min_variance_ratio=0.1)
-    collapse_detector = CollapseDetector()
+    collapse_detector = CollapseDetector(brain_ref=brain)
     for i in range(start_from, num_stimuli):
         # Mode collapse early detection
         if ((i + 1) % COLLAPSE_CHECK_INTERVAL == 0
@@ -4150,6 +4171,12 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                         parts.append(f"FNO:{nm.get('fno_audio_ema_loss',0):.4f}")
             except Exception:
                 pass
+            try:
+                nm2 = brain.get_network_metrics()
+                if nm2 and nm2.get('cnn_steps', 0) > 0:
+                    parts.append(f"CNN:{nm2.get('cnn_steps',0)}stp/loss={nm2.get('cnn_loss',0):.4f}")
+            except Exception:
+                pass
             print(f"    {' | '.join(parts)}", flush=True)
 
         # Progress
@@ -4220,7 +4247,7 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     diversity = DiversityRegularizer(
         buffer_size=100, interval=100, num_corrections=8,
         strength=0.2, min_variance_ratio=0.1)
-    collapse_detector = CollapseDetector()
+    collapse_detector = CollapseDetector(brain_ref=brain)
 
     for i in range(start_from, num_stimuli):
         # Mode collapse early detection

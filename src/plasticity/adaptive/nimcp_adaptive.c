@@ -1219,6 +1219,10 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     // Initialize design pattern components
     initialize_design_patterns(network);
 
+    // NOTE: Residual/skip connections require dense projection matrices between
+    // mismatched layers. At 2M neurons (200K+ per layer), each projection would
+    // need hundreds of GB — infeasible. Left disabled.
+
     // Create base neural network using our deep-copied config
     // WHY: Use network->config not original config, since we deep-copied layer_sizes
     // WHAT: Pass address of our config which has the corrected layer_sizes pointer
@@ -1718,21 +1722,12 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
     if (!network || !input || !output)
         return 0;
 
-    // Phase Inferentia: NeuronCore-accelerated forward pass (highest priority for inference)
-    if (network->neuron_enabled && network->neuron_cache &&
-        nimcp_neuron_is_ready(network->neuron_cache)) {
-        int result = nimcp_neuron_forward_pass(network->neuron_cache,
-                                                input, input_size,
-                                                output, output_size);
-        if (result == 0) {
-            // NeuronCore succeeded — adaptive thresholding + sparsity on CPU
-            uint32_t active_count = process_network_outputs(network, output, output_size);
-            update_running_sparsity(network, active_count, output_size);
-            network->total_inferences++;
-            return active_count;
-        }
-        // NeuronCore failed — fall through to GPU or CPU path
-    }
+    /* Diagnostics removed — NeuronCore was the culprit */
+
+    // Phase Inferentia: DISABLED — NeuronCore stub returns success with
+    // zero output on non-AWS hardware, hijacking inference and producing
+    // all-zero decide_full results. GPU/CPU paths work correctly.
+    // TODO: Re-enable when running on actual AWS Inferentia hardware.
 
     // Phase GPU: GPU-accelerated forward pass
     if (network->gpu_enabled && network->gpu_weight_cache) {
@@ -1742,11 +1737,11 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
                                          network->base_network);
         }
 
-        // C-ADP-4: Use same adaptive threshold as CPU path to prevent
-        // train/test encoding mismatch. Previously used a fixed threshold
-        // which caused inconsistent spike patterns between GPU and CPU paths.
-        float gpu_threshold =
-            adaptive_compute_threshold(input, input_size, network->config.spike_params.k_factor);
+        // Use same fixed threshold as training path (adaptive_network_learn)
+        // to ensure train/test consistency. Adaptive threshold can be higher
+        // than input values, killing all spikes and producing zero output.
+        float gpu_threshold = network->config.spike_params.min_threshold;
+        if (gpu_threshold <= 0.0f) gpu_threshold = 0.1f;
 
         float* spike_input = convert_input_to_spikes(input, input_size, gpu_threshold,
                                                      network->config.spike_params.encoding);
@@ -1758,8 +1753,23 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
 
         free_hot_buffer(spike_input);
 
+        {
+            static int s_gd = 0;
+            if (s_gd++ < 5) {
+                uint32_t nz = 0; float mx = 0;
+                for (uint32_t di = 0; di < output_size && di < 100; di++) {
+                    if (fabsf(output[di]) > 1e-6f) nz++;
+                    if (fabsf(output[di]) > mx) mx = fabsf(output[di]);
+                }
+                fprintf(stderr, "[DIAG-GPU] ok=%d nz(100)=%u max=%.6f dirty=%d layers=%u\n",
+                        gpu_ok, nz, mx,
+                        (int)network->gpu_weight_cache->weights_dirty_on_cpu,
+                        network->gpu_weight_cache->num_layers);
+                fflush(stderr);
+            }
+        }
+
         if (gpu_ok) {
-            // Adaptive thresholding + sparsity tracking on CPU
             uint32_t active_count = process_network_outputs(network, output, output_size);
             update_running_sparsity(network, active_count, output_size);
             network->total_inferences++;
@@ -1768,11 +1778,18 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
         // GPU failed — fall through to CPU path
     }
 
-    // CPU fallback path (original code)
+    // CPU fallback path
+    {
+        static int s_cpu_warn = 0;
+        if (s_cpu_warn++ < 3)
+            fprintf(stderr, "[INF-PATH] CPU fallback: gpu_enabled=%d cache=%p in=%u out=%u\n",
+                    network->gpu_enabled, (void*)network->gpu_weight_cache,
+                    input_size, output_size);
+    }
 
-    // Step 1: Compute adaptive threshold for input
-    float input_threshold =
-        adaptive_compute_threshold(input, input_size, network->config.spike_params.k_factor);
+    // Step 1: Use same fixed threshold as training path for consistency
+    float input_threshold = network->config.spike_params.min_threshold;
+    if (input_threshold <= 0.0f) input_threshold = 0.1f;
 
     // Step 2: Convert input to spikes if needed
     float* spike_input = convert_input_to_spikes(input, input_size, input_threshold,
@@ -1825,19 +1842,7 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
     if (!network || !input || !output)
         return 0;
 
-    // Phase Inferentia: NeuronCore-accelerated forward pass (read-only — no statistics update)
-    if (network->neuron_enabled && network->neuron_cache &&
-        nimcp_neuron_is_ready(network->neuron_cache)) {
-        int result = nimcp_neuron_forward_pass(network->neuron_cache,
-                                                input, input_size,
-                                                output, output_size);
-        if (result == 0) {
-            /* BUG-11 fix: Use readonly=true to avoid mutating state through const */
-            uint32_t active_count = process_network_outputs_impl((adaptive_network_t)network, output, output_size, true);
-            return active_count;
-        }
-        // NeuronCore failed — fall through to GPU or CPU
-    }
+    // Phase Inferentia: DISABLED (see mutable path comment)
 
     // Phase GPU: GPU-accelerated forward pass (read-only — no statistics update)
     // H-1: In readonly path, don't upload weights (that mutates GPU state).
@@ -4290,6 +4295,14 @@ void adaptive_network_mark_gpu_weights_dirty(adaptive_network_t network)
     if (network->gpu_weight_cache) {
         __atomic_store_n(&network->gpu_weight_cache->weights_dirty_on_cpu, true, __ATOMIC_RELEASE);
     }
+}
+
+void adaptive_network_reset_ema(adaptive_network_t network)
+{
+    if (!network) return;
+    /* C11 _Atomic float supports direct assignment with sequential consistency */
+    network->ema_grad_norm = -1.0f;
+    network->ema_loss = -1.0f;
 }
 
 void adaptive_network_invalidate_gpu_structure(adaptive_network_t network)

@@ -786,6 +786,10 @@ static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint3
             act_ok = true;
             break;
         }
+        case ACTIVATION_LINEAR:
+            /* Identity — no activation transform. Output stays as-is. */
+            act_ok = true;
+            break;
         default:
             act_ok = nimcp_gpu_tanh(cache->ctx,
                 cache->activations[l + 1], cache->activations[l + 1]);
@@ -818,36 +822,10 @@ static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint3
         cache->activations[l + 1] = clamped;
     }
 
-    // LAYER NORMALIZATION for hidden layers
-    if (l + 1 < num_transitions) {
-        uint32_t layer_size = cache->layer_sizes[l + 1];
-        if (layer_size > 1) {
-            if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
-                                          cache->host_activation_buf)) {
-                return false;
-            }
-            double sum = 0.0;
-            for (uint32_t ci = 0; ci < layer_size; ci++) {
-                sum += (double)cache->host_activation_buf[ci];
-            }
-            float mean = (float)(sum / layer_size);
-            double var_sum = 0.0;
-            for (uint32_t ci = 0; ci < layer_size; ci++) {
-                float diff = cache->host_activation_buf[ci] - mean;
-                var_sum += (double)(diff * diff);
-            }
-            float inv_std = 1.0f / sqrtf((float)(var_sum / layer_size) + 1e-5f);
-            for (uint32_t ci = 0; ci < layer_size; ci++) {
-                cache->host_activation_buf[ci] = (cache->host_activation_buf[ci] - mean) * inv_std;
-            }
-            size_t a_dims[1] = { layer_size };
-            nimcp_gpu_tensor_t* normed = nimcp_gpu_tensor_from_host(
-                cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
-            if (!normed) return false;
-            nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
-            cache->activations[l + 1] = normed;
-        }
-    }
+    // LAYER NORMALIZATION DISABLED:
+    // Backprop does not compute d(LayerNorm)/d(input), so normalizing here
+    // creates a forward-backward mismatch that corrupts gradient flow.
+    // Leaky ReLU activation clamp [-100,100] prevents explosion without norm.
 
     return true;
 }
@@ -864,8 +842,20 @@ bool nimcp_gpu_forward_pass(
     uint32_t output_size)
 {
     if (!cache || !input || !output) return false;
-    if (input_size != cache->layer_sizes[0]) return false;
-    if (output_size != cache->layer_sizes[cache->num_layers - 1]) return false;
+    if (input_size != cache->layer_sizes[0]) {
+        static int s_in_warn = 0;
+        if (s_in_warn++ < 3)
+            fprintf(stderr, "[GPU-FWD] input_size mismatch: %u vs cache %u\n",
+                    input_size, cache->layer_sizes[0]);
+        return false;
+    }
+    if (output_size != cache->layer_sizes[cache->num_layers - 1]) {
+        static int s_out_warn = 0;
+        if (s_out_warn++ < 3)
+            fprintf(stderr, "[GPU-FWD] output_size mismatch: %u vs cache %u (layers=%u)\n",
+                    output_size, cache->layer_sizes[cache->num_layers - 1], cache->num_layers);
+        return false;
+    }
 
     // Fast path: if ALL sparse weight matrices are NULL (no connections yet),
     // the output is just bias-through-activation ~ zeros. Skip GPU entirely to
@@ -1092,6 +1082,13 @@ bool nimcp_gpu_forward_pass_batch(
                     else if (clamp_buf[i] < -100.0f) clamp_buf[i] = -100.0f;
                 }
                 break;
+            case ACTIVATION_LINEAR:
+                /* Identity — clamp only to prevent float overflow */
+                for (size_t i = 0; i < total_elems; i++) {
+                    if (clamp_buf[i] > 100.0f) clamp_buf[i] = 100.0f;
+                    else if (clamp_buf[i] < -100.0f) clamp_buf[i] = -100.0f;
+                }
+                break;
             default:
                 for (size_t i = 0; i < total_elems; i++) {
                     clamp_buf[i] = tanhf(clamp_buf[i]);
@@ -1141,6 +1138,7 @@ static int* build_act_types(nimcp_gpu_weight_cache_t* cache) {
             case ACTIVATION_LEAKY_RELU: act_types[l] = 1; break;
             case ACTIVATION_TANH:       act_types[l] = 2; break;
             case ACTIVATION_SIGMOID:    act_types[l] = 3; break;
+            case ACTIVATION_LINEAR:     act_types[l] = 4; break;
             default:                    act_types[l] = 1; break;
         }
     }

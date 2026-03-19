@@ -120,7 +120,8 @@ typedef enum {
     ACTIVATION_TANH,       /**< Hyperbolic tangent activation */
     ACTIVATION_RELU,       /**< Rectified Linear Unit */
     ACTIVATION_LEAKY_RELU, /**< Leaky Rectified Linear Unit */
-    ACTIVATION_ADAPTIVE    /**< Adaptive threshold function */
+    ACTIVATION_ADAPTIVE,   /**< Adaptive threshold function */
+    ACTIVATION_LINEAR      /**< Identity/linear — no transform (regression output) */
 } activation_type_t;
 
 /**
@@ -626,6 +627,8 @@ bool neural_network_get_stats(neural_network_t network, network_stats_t* stats);
 void neural_network_maintain(neural_network_t network, uint64_t timestamp);
 void neural_network_maintain_homeostasis(neural_network_t network, uint64_t timestamp);
 void neural_network_reset(neural_network_t network);
+void neural_network_reinit_weights(neural_network_t network);
+void neural_network_set_output_activation(neural_network_t network, activation_type_t activation);
 uint32_t neural_network_prune_synapses(neural_network_t network, float threshold);
 void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id);
 

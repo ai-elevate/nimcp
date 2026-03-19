@@ -282,6 +282,9 @@ class BrainProxy:
     def set_fast_training(self, enabled):
         self._send({"cmd": "set_fast_training", "enabled": enabled})
 
+    def reinit_weights(self):
+        self._send({"cmd": "reinit_weights"})
+
     def enable_biological_plasticity(self, enabled):
         self._send({"cmd": "enable_biological_plasticity", "enabled": enabled})
 

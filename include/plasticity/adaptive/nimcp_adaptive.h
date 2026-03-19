@@ -607,6 +607,16 @@ bool adaptive_network_is_gpu_enabled(adaptive_network_t network);
 void adaptive_network_mark_gpu_weights_dirty(adaptive_network_t network);
 
 /**
+ * @brief Reset EMA tracking (gradient norm + loss) to uninitialized state
+ *
+ * Call after reinit_weights to prevent stale collapsed EMA values from
+ * poisoning gradient-normalized learning rate in the new training run.
+ *
+ * @param network Adaptive network (NULL-safe)
+ */
+void adaptive_network_reset_ema(adaptive_network_t network);
+
+/**
  * @brief Invalidate GPU connected-neuron structure cache after synaptogenesis
  *
  * Frees cached connected_dst arrays so the GPU forward pass rebuilds them

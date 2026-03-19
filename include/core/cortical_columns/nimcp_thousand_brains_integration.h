@@ -58,6 +58,24 @@ extern "C" {
 #endif
 
 /* ============================================================================
+ * Lock Ordering (Thousand Brains subsystem)
+ * ============================================================================
+ *
+ * When multiple TB mutexes must be held simultaneously, acquire in this order
+ * to prevent deadlocks:
+ *
+ *   1. tb_integration_hub->mutex         (outermost — serializes all TB work)
+ *   2. column_ref_frame_manager->mutex   (spatial state)
+ *   3. column_voting_manager->mutex      (voting state)
+ *   4. dendritic_sequence_mgr->mutex     (temporal state)
+ *   5. wm_thousand_brains_bridge->base.mutex  (WM bridge)
+ *
+ * In practice, only the hub mutex is acquired during tb_integration_step().
+ * Individual component mutexes are for future use if components are accessed
+ * independently from non-TB code paths.
+ * ============================================================================ */
+
+/* ============================================================================
  * Forward Declarations — all connected systems (void* to avoid header deps)
  * ============================================================================ */
 

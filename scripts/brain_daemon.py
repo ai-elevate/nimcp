@@ -179,6 +179,8 @@ class BrainService:
         with self._lock:
             loss = self.brain.learn_vector(features, target, **kwargs)
         self._stats["learn_calls"] += 1
+        if hasattr(self, 'checkpointer') and self.checkpointer:
+            self.checkpointer.notify_training_step()
         return {"loss": loss}
 
     def _cmd_learn_vector_batch(self, req):
@@ -192,6 +194,8 @@ class BrainService:
         with self._lock:
             avg_loss = self.brain.learn_vector_batch(pair_tuples, **kwargs)
         self._stats["learn_calls"] += 1
+        if hasattr(self, 'checkpointer') and self.checkpointer:
+            self.checkpointer.notify_training_step()
         return {"avg_loss": avg_loss}
 
     # -- Inference --
@@ -383,6 +387,13 @@ class BrainService:
     def _cmd_set_fast_training(self, req):
         with self._lock:
             self.brain.set_fast_training(req["enabled"])
+        return {"ok": True}
+
+    def _cmd_reinit_weights(self, req):
+        with self._lock:
+            self.brain.reinit_weights()
+            self._step_count = 0  # Reset step counter after reinit
+        logger.info("Weights reinitialized (mode collapse recovery)")
         return {"ok": True}
 
     def _cmd_enable_biological_plasticity(self, req):
@@ -900,36 +911,82 @@ class BrainDaemon:
 # ---------------------------------------------------------------------------
 
 class AutoCheckpointer:
-    """Periodically saves the brain to disk."""
+    """Periodically saves the brain to disk with safety guards.
 
-    def __init__(self, brain, checkpoint_dir, interval_seconds=300):
+    Guards against overwriting a trained checkpoint with a fresh brain:
+    - Won't save until at least `min_steps_before_save` training steps have occurred
+    - Keeps the previous checkpoint as .bak before overwriting
+    - Supports both time-based and step-based save triggers
+    """
+
+    def __init__(self, brain, checkpoint_dir, interval_seconds=300,
+                 min_steps_before_save=10):
         self.brain = brain
         self.checkpoint_dir = checkpoint_dir
         self.interval = interval_seconds
+        self.min_steps = min_steps_before_save
         self._thread = None
         self._running = False
         self._lock = threading.Lock()
+        self._save_count = 0
+        self._loaded_from_checkpoint = False
+
+    def set_loaded_from_checkpoint(self, loaded):
+        """Mark whether this brain was loaded from a checkpoint.
+        If loaded, allow immediate saves (the brain already has trained state).
+        If fresh, require min_steps training before first save."""
+        self._loaded_from_checkpoint = loaded
+        if loaded:
+            self._save_count = 1  # Allow saves immediately
 
     def start(self):
         self._running = True
         self._thread = threading.Thread(target=self._run, daemon=True,
                                          name="auto-checkpoint")
         self._thread.start()
-        logger.info("Auto-checkpoint every %ds to %s",
-                     self.interval, self.checkpoint_dir)
+        logger.info("Auto-checkpoint every %ds to %s (min_steps=%d, loaded=%s)",
+                     self.interval, self.checkpoint_dir,
+                     self.min_steps, self._loaded_from_checkpoint)
 
     def stop(self):
         self._running = False
 
-    def save_now(self):
-        """Force an immediate checkpoint."""
+    def notify_training_step(self):
+        """Called by BrainService after each learn_vector to track progress.
+        Enables step-based checkpoint gating."""
+        self._save_count += 1
+
+    def save_now(self, force=False):
+        """Save checkpoint with safety guards.
+
+        Won't save a fresh untrained brain unless force=True.
+        Rotates previous checkpoint to .bak before overwriting.
+        """
+        if not force and not self._loaded_from_checkpoint:
+            if self._save_count < self.min_steps:
+                logger.debug("Checkpoint skipped: only %d steps (need %d)",
+                             self._save_count, self.min_steps)
+                return
+
         path = os.path.join(self.checkpoint_dir, "athena_daemon.bin")
+        bak_path = path + ".bak"
+
         try:
             with self._lock:
+                # Rotate: current → .bak (so we always have a fallback)
+                if os.path.exists(path):
+                    try:
+                        # Copy instead of rename so .bak is a full independent copy
+                        import shutil
+                        shutil.copy2(path, bak_path)
+                    except Exception as e:
+                        logger.warning("Backup rotation failed: %s", e)
+
                 self.brain.save(path)
-            logger.info("Checkpoint saved: %s", path)
+
+            logger.info("Checkpoint saved: %s (steps=%d)", path, self._save_count)
         except Exception as e:
-            logger.error("Checkpoint failed: %s", e)
+            logger.error("Checkpoint failed: %s — .bak preserved at %s", e, bak_path)
 
     def _run(self):
         while self._running:
@@ -1018,7 +1075,8 @@ def main():
         except OSError:
             pass
 
-    # Write PID file
+    # Write PID file (ensure directory exists)
+    os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
     with open(PID_FILE, "w") as f:
         f.write(str(os.getpid()))
     logger.info("Brain daemon PID %d", os.getpid())
@@ -1042,13 +1100,28 @@ def main():
         if checkpoint_path:
             logger.info("Auto-resume: %s", checkpoint_path)
 
-    # Load or create brain
+    # Load or create brain (with .bak fallback)
     t0 = time.time()
+    brain = None
     if checkpoint_path and os.path.exists(checkpoint_path):
         logger.info("Loading brain from checkpoint: %s", checkpoint_path)
-        brain = nimcp.Brain("athena", checkpoint=checkpoint_path,
-                            init_mode=args.init_mode)
-    else:
+        try:
+            brain = nimcp.Brain("athena", checkpoint=str(checkpoint_path),
+                                init_mode=args.init_mode)
+        except Exception as e:
+            logger.error("Failed to load checkpoint: %s", e)
+            # Try .bak fallback
+            bak_path = checkpoint_path + ".bak"
+            if os.path.exists(bak_path):
+                logger.info("Trying backup checkpoint: %s", bak_path)
+                try:
+                    brain = nimcp.Brain("athena", checkpoint=str(bak_path),
+                                        init_mode=args.init_mode)
+                    checkpoint_path = bak_path  # So loaded_from_ckpt is correct
+                except Exception as e2:
+                    logger.error("Backup checkpoint also failed: %s", e2)
+
+    if brain is None:
         logger.info("Creating new brain: %d neurons, mode=%s",
                      args.neuron_count, args.init_mode)
         brain = nimcp.Brain("athena",
@@ -1059,15 +1132,30 @@ def main():
     elapsed = time.time() - t0
     logger.info("Brain ready in %.1f seconds", elapsed)
 
+    # CRITICAL: Set regression mode — no softmax on outputs.
+    # Without this, classification mode applies softmax to 4096 outputs,
+    # which exponentially suppresses all but ~200 top neurons → mode collapse.
+    brain.set_task_type("regression")
+    logger.info("Task type set to REGRESSION (no softmax)")
+
+    # Fix output layer activation — checkpoints from older code have TANH,
+    # which bounds output to [-1,1] and causes gradient vanishing for regression.
+    brain.fix_output_activation()
+    logger.info("Output layer activation set to LINEAR")
+
     # Create service and daemon
     service = BrainService(brain)
     daemon = BrainDaemon(service, socket_path=args.socket,
                           max_workers=args.workers)
 
-    # Auto-checkpoint
+    # Auto-checkpoint with safety guards
     os.makedirs(args.checkpoint_dir, exist_ok=True)
+    loaded_from_ckpt = (checkpoint_path is not None and os.path.exists(checkpoint_path))
     checkpointer = AutoCheckpointer(brain, args.checkpoint_dir,
-                                      interval_seconds=args.checkpoint_interval)
+                                      interval_seconds=args.checkpoint_interval,
+                                      min_steps_before_save=10)
+    checkpointer.set_loaded_from_checkpoint(loaded_from_ckpt)
+    service.checkpointer = checkpointer  # So learn_vector can notify
 
     # Signal handlers — set a flag, let the main loop handle shutdown gracefully
     shutdown_event = threading.Event()

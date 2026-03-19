@@ -176,7 +176,7 @@ int column_ref_frame_get_location_encoding(const column_ref_frame_manager_t* mgr
  * @param confidence Output: recall confidence
  * @return 0 if found, 1 if no match, -1 on error
  */
-int column_ref_frame_recall_feature_at(const column_ref_frame_manager_t* mgr,
+int column_ref_frame_recall_feature_at(column_ref_frame_manager_t* mgr,
                                         uint32_t frame_idx,
                                         float* recalled_feature, uint32_t feat_dim,
                                         uint32_t* object_id, float* confidence);

@@ -273,7 +273,7 @@ int column_ref_frame_get_location_encoding(const column_ref_frame_manager_t* mgr
     return 0;
 }
 
-int column_ref_frame_recall_feature_at(const column_ref_frame_manager_t* mgr,
+int column_ref_frame_recall_feature_at(column_ref_frame_manager_t* mgr,
                                         uint32_t frame_idx,
                                         float* recalled_feature, uint32_t feat_dim,
                                         uint32_t* object_id, float* confidence) {
@@ -297,9 +297,7 @@ int column_ref_frame_recall_feature_at(const column_ref_frame_manager_t* mgr,
         }
     }
 
-    /* Cast away const for stats update — we treat this as logically const */
-    column_ref_frame_manager_t* mgr_mut = (column_ref_frame_manager_t*)mgr;
-    mgr_mut->stats.total_recalls++;
+    mgr->stats.total_recalls++;
 
     if (best_idx < 0 || best_sim < mgr->recall_threshold) {
         return 1; /* No match */
@@ -314,12 +312,12 @@ int column_ref_frame_recall_feature_at(const column_ref_frame_manager_t* mgr,
     if (object_id) *object_id = pair->object_id;
     if (confidence) *confidence = best_sim;
 
-    mgr_mut->stats.successful_recalls++;
+    mgr->stats.successful_recalls++;
 
     /* Update mean recall confidence (running average) */
-    float n = (float)mgr_mut->stats.successful_recalls;
-    mgr_mut->stats.mean_recall_confidence =
-        mgr_mut->stats.mean_recall_confidence * ((n - 1.0f) / n) + best_sim / n;
+    float n = (float)mgr->stats.successful_recalls;
+    mgr->stats.mean_recall_confidence =
+        mgr->stats.mean_recall_confidence * ((n - 1.0f) / n) + best_sim / n;
 
     return 0;
 }

@@ -55,6 +55,7 @@
 #include "async/nimcp_bio_router.h"
 
 #include "nimcp.h"
+#include "gpu/training/nimcp_training_bridge.h"  /* GPU weight cache struct for fix_output_activation */
 
 /* Socratic active learning: cognitive module + LGSS bindings */
 #include "api/nimcp_api_internal.h"
@@ -5532,6 +5533,95 @@ static PyObject* Brain_set_fast_training(BrainObject* self, PyObject* args) {
     Py_RETURN_TRUE;
 }
 
+/**
+ * WHAT: Reinitialize all synapse weights to break mode collapse
+ * WHY:  When outputs converge to identical values (cosine sim = 1.0),
+ *       gradient-based corrections can't recover. Fresh weights give the
+ *       network a clean slate while preserving topology.
+ * HOW:  Calls neural_network_reinit_weights + marks GPU cache dirty
+ */
+static PyObject* Brain_reinit_weights(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    extern neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
+    extern void neural_network_reinit_weights(neural_network_t network);
+    extern bool neural_network_rebuild_incoming(neural_network_t network);
+    extern void adaptive_network_mark_gpu_weights_dirty(adaptive_network_t network);
+    extern void adaptive_network_invalidate_gpu_structure(adaptive_network_t network);
+    extern void adaptive_network_reset_ema(adaptive_network_t network);
+
+    brain_t ib = self->brain->internal_brain;
+    if (!ib->network) {
+        PyErr_SetString(PyExc_RuntimeError, "No adaptive network");
+        return NULL;
+    }
+
+    neural_network_t base = adaptive_network_get_base_network(ib->network);
+    if (!base) {
+        PyErr_SetString(PyExc_RuntimeError, "No base network");
+        return NULL;
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    neural_network_reinit_weights(base);
+    /* Rebuild incoming synapses from outgoing — the GPU weight cache
+     * uploads use NEURON_IN_COUNT which reads incoming synapses. */
+    neural_network_rebuild_incoming(base);
+    /* Invalidate GPU structure cache (connected_dst lists) + mark dirty */
+    adaptive_network_invalidate_gpu_structure(ib->network);
+    adaptive_network_mark_gpu_weights_dirty(ib->network);
+    adaptive_network_reset_ema(ib->network);
+    Py_END_ALLOW_THREADS
+
+    Py_RETURN_TRUE;
+}
+
+/**
+ * WHAT: Set output layer neurons to LINEAR activation (identity)
+ * WHY:  Checkpoints from older code have TANH on output layer, which
+ *       bounds output to [-1,1] and causes gradient vanishing for regression.
+ *       This must be called after loading a checkpoint.
+ */
+static PyObject* Brain_fix_output_activation(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    extern neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
+    extern void neural_network_set_output_activation(neural_network_t network,
+                                                      activation_type_t activation);
+    extern bool adaptive_network_is_gpu_enabled(adaptive_network_t network);
+
+    brain_t ib = self->brain->internal_brain;
+    if (!ib->network) { Py_RETURN_FALSE; }
+
+    neural_network_t net = adaptive_network_get_base_network(ib->network);
+    if (!net) { Py_RETURN_FALSE; }
+
+    /* Fix neuron activation types */
+    neural_network_set_output_activation(net, ACTIVATION_LINEAR);
+
+    /* Also fix GPU weight cache layer_activations if GPU is active */
+    if (adaptive_network_is_gpu_enabled(ib->network)) {
+        /* Access GPU weight cache through the adaptive network struct */
+        /* The gpu_weight_cache is accessible via the public header */
+        extern struct nimcp_gpu_weight_cache_s*
+            adaptive_network_get_gpu_weight_cache(adaptive_network_t network);
+        struct nimcp_gpu_weight_cache_s* cache =
+            adaptive_network_get_gpu_weight_cache(ib->network);
+        if (cache && cache->layer_activations && cache->num_layers > 1) {
+            cache->layer_activations[cache->num_layers - 1] = ACTIVATION_LINEAR;
+            fprintf(stderr, "[FIX] GPU weight cache output activation → LINEAR\n");
+        }
+    }
+
+    Py_RETURN_TRUE;
+}
+
 // ==========================================================================
 // Task Type / Strategy Python Binding
 // ==========================================================================
@@ -6779,6 +6869,12 @@ static PyMethodDef Brain_methods[] = {
      "Toggle fast training mode: set_fast_training(True/False)\n"
      "When enabled, skips biological subsystems (VAE, attention, engram, emotions, etc.)\n"
      "for 5-10x speedup. Core learning (GPU forward + parallel backprop) still runs."},
+    {"reinit_weights", (PyCFunction)Brain_reinit_weights, METH_NOARGS,
+     "Reinitialize all synapse weights (He init) to break mode collapse.\n"
+     "Preserves topology but randomizes weights. Use when cosine sim = 1.0."},
+    {"fix_output_activation", (PyCFunction)Brain_fix_output_activation, METH_NOARGS,
+     "Set output layer neurons to LINEAR activation (identity).\n"
+     "Required after loading checkpoints from older code that used TANH."},
 
     // Biological plasticity control
     {"enable_biological_plasticity", (PyCFunction)Brain_enable_biological_plasticity, METH_VARARGS,

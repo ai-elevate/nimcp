@@ -594,7 +594,10 @@ __global__ void kernel_compute_deltas_mse(
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= size) return;
-    delta[idx] = target[idx] - output[idx];
+    /* MSE gradient: d/d(output) of (1/N)∑(target-output)² = 2*(output-target)/N
+     * We use (target-output) convention (negative gradient for descent),
+     * scaled by 2/N to match CPU backprop (nimcp_backprop_kernel.c:1137). */
+    delta[idx] = 2.0f * (target[idx] - output[idx]) / (float)size;
 }
 
 __global__ void kernel_activation_derivative(
@@ -608,10 +611,11 @@ __global__ void kernel_activation_derivative(
     float s = activation[idx];
     float deriv;
     switch (act_type) {
-        case 0: deriv = (s > 0.0f) ? 1.0f : 0.0f; break;
-        case 1: deriv = (s > 0.0f) ? 1.0f : 0.01f; break;
-        case 2: deriv = 1.0f - s * s; if (deriv < 0.0f) deriv = 0.0f; break;
-        case 3: deriv = s * (1.0f - s); if (deriv < 0.01f) deriv = 0.01f; break;
+        case 0: deriv = (s > 0.0f) ? 1.0f : 0.0f; break;      /* RELU */
+        case 1: deriv = (s > 0.0f) ? 1.0f : 0.01f; break;     /* LEAKY_RELU */
+        case 2: deriv = 1.0f - s * s; if (deriv < 0.0f) deriv = 0.0f; break; /* TANH */
+        case 3: deriv = s * (1.0f - s); if (deriv < 0.01f) deriv = 0.01f; break; /* SIGMOID */
+        case 4: deriv = 1.0f; break;                           /* LINEAR */
         default: deriv = (s > 0.0f) ? 1.0f : 0.01f; break;
     }
     delta[idx] *= deriv;

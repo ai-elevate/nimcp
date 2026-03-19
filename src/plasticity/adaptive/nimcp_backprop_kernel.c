@@ -974,6 +974,8 @@ after_weight_update:
                     case ACTIVATION_SIGMOID:
                         act_deriv = s * (1.0f - s);
                         if (act_deriv < 0.01f) act_deriv = 0.01f; break;
+                    case ACTIVATION_LINEAR:
+                        act_deriv = 1.0f; break;
                     default:
                         act_deriv = (s > 0.0f) ? 1.0f : 0.01f; break;
                 }
@@ -1277,6 +1279,8 @@ int backprop_sparse_full_regression_wd(
                     case ACTIVATION_SIGMOID:
                         act_deriv = s * (1.0f - s);
                         if (act_deriv < 0.01f) act_deriv = 0.01f; break;
+                    case ACTIVATION_LINEAR:
+                        act_deriv = 1.0f; break;
                     default:
                         act_deriv = (s > 0.0f) ? 1.0f : 0.01f; break;
                 }

@@ -33,14 +33,15 @@ extern "C" {
 /** Maximum number of cross-network bridges */
 #define NIMCP_UTM_MAX_BRIDGES       16
 
-/** Default diversity buffer size */
-#define NIMCP_UTM_DEFAULT_DIVERSITY_BUFFER  16
+/** Default diversity buffer size (larger buffer = more comparisons = stronger signal) */
+#define NIMCP_UTM_DEFAULT_DIVERSITY_BUFFER  32
 
 /** Default gradient target norm (0.0 = sentinel for adaptive mode) */
 #define NIMCP_UTM_DEFAULT_GRADIENT_TARGET   0.0f
 
-/** Default diversity loss weight */
-#define NIMCP_UTM_DEFAULT_DIVERSITY_WEIGHT  0.1f
+/** Default diversity loss weight — must be strong enough to counteract collapse
+ *  at scale. 0.1 was insufficient for 2M neuron / 4096 output networks. */
+#define NIMCP_UTM_DEFAULT_DIVERSITY_WEIGHT  0.5f
 
 //=============================================================================
 // Forward Declarations
