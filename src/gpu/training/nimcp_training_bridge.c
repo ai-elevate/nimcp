@@ -802,7 +802,7 @@ static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint3
     }
 
     // Clamp unbounded activations
-    if (act == ACTIVATION_RELU || act == ACTIVATION_LEAKY_RELU) {
+    if (act == ACTIVATION_RELU || act == ACTIVATION_LEAKY_RELU || act == ACTIVATION_LINEAR) {
         uint32_t layer_size = cache->layer_sizes[l + 1];
         if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
                                       cache->host_activation_buf)) {
@@ -822,10 +822,39 @@ static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint3
         cache->activations[l + 1] = clamped;
     }
 
-    // LAYER NORMALIZATION DISABLED:
-    // Backprop does not compute d(LayerNorm)/d(input), so normalizing here
-    // creates a forward-backward mismatch that corrupts gradient flow.
-    // Leaky ReLU activation clamp [-100,100] prevents explosion without norm.
+    // Layer normalization for hidden layers (backprop now accounts for this).
+    // Skip output layer (last transition → output is raw LINEAR).
+    if (l + 1 < num_transitions) {
+        uint32_t layer_size = cache->layer_sizes[l + 1];
+        if (layer_size > 1) {
+            if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
+                                          cache->host_activation_buf)) {
+                return false;
+            }
+            double sum = 0.0;
+            for (uint32_t ci = 0; ci < layer_size; ci++) {
+                sum += (double)cache->host_activation_buf[ci];
+            }
+            float mean = (float)(sum / layer_size);
+            double var_sum = 0.0;
+            for (uint32_t ci = 0; ci < layer_size; ci++) {
+                float diff = cache->host_activation_buf[ci] - mean;
+                var_sum += (double)(diff * diff);
+            }
+            float inv_std = 1.0f / sqrtf((float)(var_sum / layer_size) + 1e-5f);
+            for (uint32_t ci = 0; ci < layer_size; ci++) {
+                cache->host_activation_buf[ci] =
+                    (cache->host_activation_buf[ci] - mean) * inv_std;
+            }
+            size_t a_dims[1] = { layer_size };
+            nimcp_gpu_tensor_t* normed = nimcp_gpu_tensor_from_host(
+                cache->ctx, cache->host_activation_buf, a_dims, 1,
+                NIMCP_GPU_PRECISION_FP32);
+            if (!normed) return false;
+            nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
+            cache->activations[l + 1] = normed;
+        }
+    }
 
     return true;
 }
@@ -896,9 +925,66 @@ bool nimcp_gpu_forward_pass(
         cache->checkpoint_activations[0] = clone_gpu_tensor(cache->ctx, cache->activations[0]);
     }
 
+    /* Saved activations for residual skip connections (L-2 → L).
+     * Stored on host to avoid GPU memory overhead. Lazily allocated. */
+    float** residual_bufs = NULL;
+    if (cache->num_layers > 3) {
+        residual_bufs = (float**)nimcp_calloc(cache->num_layers, sizeof(float*));
+    }
+
     for (uint32_t l = 0; l < num_transitions; l++) {
         if (!forward_one_layer(cache, l, num_transitions)) {
+            if (residual_bufs) {
+                for (uint32_t r = 0; r < cache->num_layers; r++) nimcp_free(residual_bufs[r]);
+                nimcp_free(residual_bufs);
+            }
             return false;
+        }
+
+        /* Residual skip: add activation from layer (l+1-2) to layer (l+1).
+         * Truncated identity — copy min(src_dim, dst_dim) elements.
+         * Done on host to keep GPU memory usage constant. */
+        uint32_t dst_layer = l + 1;
+        /* Residual skip L-1 → L (every hidden layer, skip output).
+         * Truncated identity: copy min(src, dst) elements. */
+        if (residual_bufs && dst_layer >= 2 && dst_layer < cache->num_layers - 1) {
+            uint32_t src_layer = dst_layer - 1;
+            float* src_buf = residual_bufs[src_layer];
+            if (src_buf) {
+                uint32_t src_dim = cache->layer_sizes[src_layer];
+                uint32_t dst_dim = cache->layer_sizes[dst_layer];
+                uint32_t copy_n = (src_dim < dst_dim) ? src_dim : dst_dim;
+
+                /* Download current activation, add residual, upload back */
+                if (!nimcp_gpu_tensor_to_host(cache->activations[dst_layer],
+                                              cache->host_activation_buf)) {
+                    /* Non-fatal: skip residual on download failure */
+                } else {
+                    for (uint32_t i = 0; i < copy_n; i++) {
+                        cache->host_activation_buf[i] += src_buf[i];
+                    }
+                    size_t dims[1] = { dst_dim };
+                    nimcp_gpu_tensor_t* updated = nimcp_gpu_tensor_from_host(
+                        cache->ctx, cache->host_activation_buf, dims, 1,
+                        NIMCP_GPU_PRECISION_FP32);
+                    if (updated) {
+                        nimcp_gpu_tensor_destroy(cache->activations[dst_layer]);
+                        cache->activations[dst_layer] = updated;
+                    }
+                }
+            }
+        }
+
+        /* Save current layer's post-norm activation for future residual use */
+        if (residual_bufs && dst_layer < cache->num_layers) {
+            uint32_t lsz = cache->layer_sizes[dst_layer];
+            if (!residual_bufs[dst_layer]) {
+                residual_bufs[dst_layer] = (float*)nimcp_malloc(lsz * sizeof(float));
+            }
+            if (residual_bufs[dst_layer]) {
+                nimcp_gpu_tensor_to_host(cache->activations[dst_layer],
+                                         residual_bufs[dst_layer]);
+            }
         }
 
         // Gradient checkpointing: save activation at checkpoint boundaries
@@ -913,6 +999,12 @@ bool nimcp_gpu_forward_pass(
                     clone_gpu_tensor(cache->ctx, cache->activations[out_layer]);
             }
         }
+    }
+
+    /* Free residual buffers */
+    if (residual_bufs) {
+        for (uint32_t r = 0; r < cache->num_layers; r++) nimcp_free(residual_bufs[r]);
+        nimcp_free(residual_bufs);
     }
 
     // Step 3: Download output from last layer activation

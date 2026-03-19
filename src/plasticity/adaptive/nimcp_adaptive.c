@@ -81,8 +81,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adaptive)
 #define SPARSITY_EMA_WEIGHT 0.1f
 // OUTPUT_LR_BOOST is defined in nimcp_backprop_kernel.h (single source of truth)
 #define LATERAL_INHIBITION_STRENGTH 0.3f  /* Strength for output layer lateral inhibition */
-#define ADAPTIVE_WEIGHT_DECAY 1e-4f       /* Decoupled weight decay for AdamW-style regularization */
-#define ADAPTIVE_WEIGHT_DECAY 1e-4f       /* L2 weight decay for backprop paths */
+#define ADAPTIVE_WEIGHT_DECAY 1e-5f       /* L2 weight decay — reduced from 1e-4 to prevent
+                                          * exponential weight vanishing over long training.
+                                          * At 1e-4, weights decay to 4.5% after 100K steps. */
 
 // WHAT: Helper macros for checked file I/O (cert-err33-c compliance)
 // WHY:  fwrite/fread return values must be checked to detect I/O errors
@@ -2234,7 +2235,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 if (network->ema_grad_norm < 0.0f) {
                     network->ema_grad_norm = grad_norm;  // First iteration: seed
                 } else {
-                    network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                    network->ema_grad_norm = 0.9f * network->ema_grad_norm + 0.1f * grad_norm;
                 }
             }
         }
@@ -2303,7 +2304,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             if (network->ema_loss < 0.0f) {
                 network->ema_loss = loss;  // First iteration: seed
             } else {
-                network->ema_loss = 0.99f * network->ema_loss + 0.01f * loss;
+                network->ema_loss = 0.9f * network->ema_loss + 0.1f * loss;
             }
             NIMCP_EMA_GUARD(network->ema_loss, loss);
         }
@@ -2400,7 +2401,7 @@ cpu_learn_path:
                     if (network->ema_grad_norm < 0.0f) {
                         network->ema_grad_norm = grad_norm;
                     } else {
-                        network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                        network->ema_grad_norm = 0.9f * network->ema_grad_norm + 0.1f * grad_norm;
                     }
                     NIMCP_EMA_GUARD(network->ema_grad_norm, grad_norm);
                 }
@@ -2500,7 +2501,7 @@ cpu_learn_path:
                     if (network->ema_grad_norm < 0.0f) {
                         network->ema_grad_norm = grad_norm;  // First iteration: seed
                     } else {
-                        network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                        network->ema_grad_norm = 0.9f * network->ema_grad_norm + 0.1f * grad_norm;
                     }
                     NIMCP_EMA_GUARD(network->ema_grad_norm, grad_norm);
                 }
@@ -2668,7 +2669,7 @@ cpu_learn_path:
                     if (network->ema_grad_norm < 0.0f) {
                         network->ema_grad_norm = grad_norm;  // First iteration: seed
                     } else {
-                        network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                        network->ema_grad_norm = 0.9f * network->ema_grad_norm + 0.1f * grad_norm;
                     }
                     NIMCP_EMA_GUARD(network->ema_grad_norm, grad_norm);
                 }
@@ -2720,7 +2721,7 @@ cpu_learn_path:
         if (network->ema_loss < 0.0f) {
             network->ema_loss = loss;  // First iteration: seed
         } else {
-            network->ema_loss = 0.99f * network->ema_loss + 0.01f * loss;
+            network->ema_loss = 0.9f * network->ema_loss + 0.1f * loss;
         }
     }
 
@@ -2874,7 +2875,7 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
             if (network->ema_grad_norm < 0.0f)
                 network->ema_grad_norm = grad_norm;
             else
-                network->ema_grad_norm = 0.99f * network->ema_grad_norm + 0.01f * grad_norm;
+                network->ema_grad_norm = 0.9f * network->ema_grad_norm + 0.1f * grad_norm;
         }
 
         float avg_loss = (successful > 0) ? (total_loss / successful) : -1.0f;
@@ -2882,7 +2883,7 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
             if (network->ema_loss < 0.0f)
                 network->ema_loss = avg_loss;
             else
-                network->ema_loss = 0.99f * network->ema_loss + 0.01f * avg_loss;
+                network->ema_loss = 0.9f * network->ema_loss + 0.1f * avg_loss;
             NIMCP_EMA_GUARD(network->ema_loss, avg_loss);
         }
 
