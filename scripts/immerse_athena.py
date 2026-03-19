@@ -471,9 +471,9 @@ ZPD_TARGET = 0.65            # Zone of Proximal Development target accuracy
 DIFFICULTY_STEP = 0.1        # How much to adjust difficulty per evaluation
 
 # Adaptive learning rate constants
-BASE_LEARNING_RATE = 0.01    # 10x higher — compensates for adjoint gradient scaling
-MIN_LEARNING_RATE = 0.001    # Floor — prevents stalling
-MAX_LEARNING_RATE = 0.05     # Ceiling — prevents divergence
+BASE_LEARNING_RATE = 0.0001  # Reduced for layer norm architecture — norm handles scale
+MIN_LEARNING_RATE = 0.00001  # Floor — prevents stalling
+MAX_LEARNING_RATE = 0.001    # Ceiling — prevents weight explosion
 LR_SCALE_STRUGGLING = 1.5    # Scale up when mastery < THRESHOLD_LOW
 LR_SCALE_MASTERED = 0.5      # Scale down when mastery > THRESHOLD_HIGH
 LR_EVAL_INTERVAL = 100       # Steps between LR recalculations

@@ -839,7 +839,7 @@ bool nimcp_gpu_sparse_backward_accumulate(
     cudaFree(d_target);
     cudaFree(d_output);
 
-    float output_lr_boost = 10.0f;
+    float output_lr_boost = 2.0f;  /* Reduced from 10x — layer norm handles scale */
 
     for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
         uint32_t cur_size = layer_sizes[layer];
@@ -1074,7 +1074,7 @@ bool nimcp_gpu_sparse_backward_pass(
     cudaFree(d_target);
     cudaFree(d_output);
 
-    float output_lr_boost = 10.0f;
+    float output_lr_boost = 2.0f;  /* Reduced from 10x — layer norm handles scale */
 
     for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
         uint32_t cur_size = layer_sizes[layer];
