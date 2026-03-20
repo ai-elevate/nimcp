@@ -439,6 +439,39 @@ pub struct ExperienceConfig {
 }
 
 // ============================================================================
+// FFI Structs — Memory Store / OOD Stats (for brain-handle wrappers)
+// ============================================================================
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Default)]
+pub struct MemoryStoreStatsRaw {
+    pub total_engrams: u64,
+    pub total_concepts: u64,
+    pub total_relations: u64,
+    pub total_autobio: u64,
+    pub total_writes: u64,
+    pub total_reads: u64,
+    pub cache_hits: u64,
+    pub cache_misses: u64,
+    pub write_buffer_flushes: u64,
+    pub bloom_filter_hits: u64,
+    pub avg_write_latency_ms: f32,
+    pub avg_read_latency_ms: f32,
+    pub db_size_bytes: u64,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Default)]
+pub struct OodStatsRaw {
+    pub total_checks: u64,
+    pub ood_detected: u64,
+    pub in_distribution: u64,
+    pub avg_ood_score: f32,
+    pub max_ood_score: f32,
+    pub ood_rate: f32,
+}
+
+// ============================================================================
 // Opaque Handle Types
 // ============================================================================
 
@@ -992,6 +1025,59 @@ extern "C" {
     fn nimcp_brain_get_gpu_vram_used(brain: *mut NimcpBrainHandle) -> usize;
     fn nimcp_brain_get_memory_rss() -> usize;
 
+    // --- Edge Brain ---
+    fn nimcp_edge_brain_resize(
+        brain: *mut NimcpBrainHandle, config: *const c_void,
+    ) -> c_int;
+    fn nimcp_edge_brain_resize_check(
+        brain: *mut NimcpBrainHandle, config: *const c_void, report: *mut c_void,
+    ) -> c_int;
+    fn nimcp_edge_score_neuron_importance(
+        brain: *mut NimcpBrainHandle, scores: *mut c_float, num_neurons: c_uint,
+    ) -> c_int;
+    fn nimcp_brain_distill(
+        teacher: *mut NimcpBrainHandle, student: *mut *mut NimcpBrainHandle,
+        config: *const c_void, report: *mut c_void,
+    ) -> c_int;
+    fn nimcp_brain_optimize_for_device(
+        master: *mut NimcpBrainHandle, device: *const c_void,
+        child: *mut *mut NimcpBrainHandle, report: *mut c_void,
+    ) -> c_int;
+    fn nimcp_brain_quantize(
+        brain: *mut NimcpBrainHandle, config: *const c_void,
+    ) -> c_int;
+    fn nimcp_resize_config_default() -> [u8; 64];
+    fn nimcp_distill_config_default() -> [u8; 64];
+    fn nimcp_quantize_config_default() -> [u8; 64];
+    fn nimcp_device_profile_default() -> [u8; 64];
+
+    // --- Memory Store / OOD / Audit (brain-handle wrappers) ---
+    fn nimcp_brain_memory_store_stats(
+        brain: *mut NimcpBrainHandle, stats: *mut MemoryStoreStatsRaw,
+    ) -> c_int;
+    fn nimcp_brain_memory_search_text(
+        brain: *mut NimcpBrainHandle, query: *const c_char,
+        max_results: c_uint, out_ids: *mut u64, out_count: *mut c_uint,
+    ) -> c_int;
+    fn nimcp_brain_memory_search_similar(
+        brain: *mut NimcpBrainHandle, embedding: *const c_float,
+        dim: c_uint, top_k: c_uint, out_ids: *mut u64,
+        out_distances: *mut c_float, out_count: *mut c_uint,
+    ) -> c_int;
+    fn nimcp_brain_memory_is_healthy(brain: *mut NimcpBrainHandle) -> bool;
+    fn nimcp_brain_ood_stats(
+        brain: *mut NimcpBrainHandle, stats: *mut OodStatsRaw,
+    ) -> c_int;
+    fn nimcp_brain_audit_log(
+        brain: *mut NimcpBrainHandle, description: *const c_char,
+        severity: c_uint, details: *const c_char,
+    ) -> c_int;
+    fn nimcp_brain_audit_search(
+        brain: *mut NimcpBrainHandle, min_severity: c_uint,
+        max_results: c_uint, out_ids: *mut u64,
+        out_severities: *mut c_float, out_count: *mut c_uint,
+    ) -> c_int;
+
     // --- Network ---
     fn nimcp_network_create(
         num_inputs: c_uint, num_outputs: c_uint,
@@ -1236,6 +1322,44 @@ pub struct CortexCnnMetrics {
 pub struct CognitiveStats {
     pub step_counts: Vec<u32>,
     pub losses: Vec<f32>,
+}
+
+/// Memory store statistics
+#[derive(Debug)]
+pub struct MemoryStoreStats {
+    pub total_engrams: u64,
+    pub total_concepts: u64,
+    pub total_relations: u64,
+    pub total_autobio: u64,
+    pub total_writes: u64,
+    pub total_reads: u64,
+    pub cache_hits: u64,
+    pub cache_misses: u64,
+    pub db_size_bytes: u64,
+}
+
+/// OOD detection statistics
+#[derive(Debug)]
+pub struct OodStatsResult {
+    pub total_checks: u64,
+    pub ood_detected: u64,
+    pub in_distribution: u64,
+    pub avg_ood_score: f32,
+    pub ood_rate: f32,
+}
+
+/// Memory search result (id + distance)
+#[derive(Debug)]
+pub struct MemorySearchHit {
+    pub id: u64,
+    pub distance: f32,
+}
+
+/// Audit search result (id + severity)
+#[derive(Debug)]
+pub struct AuditSearchHit {
+    pub id: u64,
+    pub severity: f32,
 }
 
 // ============================================================================
@@ -2489,6 +2613,215 @@ impl Brain {
 
     pub fn broadcast_probe(&self) -> Result<()> {
         check_status(unsafe { nimcp_brain_broadcast_probe(self.handle) })
+    }
+
+    // --- Edge Brain ---
+
+    /// Score neuron importance (activity, connectivity, weight magnitude).
+    pub fn edge_score_importance(&self, num_neurons: u32) -> Vec<f32> {
+        let mut scores = vec![0.0f32; num_neurons as usize];
+        unsafe {
+            nimcp_edge_score_neuron_importance(
+                self.handle, scores.as_mut_ptr(), num_neurons);
+        }
+        scores
+    }
+
+    /// Resize brain neuron count at runtime.
+    /// mode: 0=contract, 1=expand, 2=rebalance
+    pub fn edge_resize(&mut self, target_neurons: u32, mode: i32,
+                       knowledge_transfer: bool) -> Result<()> {
+        unsafe {
+            let mut config = nimcp_resize_config_default();
+            // Set target_neuron_count at offset 0 (u32)
+            let ptr = config.as_mut_ptr() as *mut u32;
+            *ptr = target_neurons;
+            // Set mode at offset 4 (i32)
+            let mode_ptr = (config.as_mut_ptr() as *mut i32).add(1);
+            *mode_ptr = mode;
+            // Set knowledge_transfer at offset 8 (bool)
+            let kt_ptr = config.as_mut_ptr().add(8) as *mut bool;
+            *kt_ptr = knowledge_transfer;
+            check_status(nimcp_edge_brain_resize(
+                self.handle, config.as_ptr() as *const c_void))
+        }
+    }
+
+    /// Dry-run resize feasibility check.
+    pub fn edge_resize_check(&self, target_neurons: u32) -> Result<(bool, u32, u32, f32)> {
+        unsafe {
+            let mut config = nimcp_resize_config_default();
+            let ptr = config.as_mut_ptr() as *mut u32;
+            *ptr = target_neurons;
+            let mut report = [0u8; 512];
+            check_status(nimcp_edge_brain_resize_check(
+                self.handle, config.as_ptr() as *const c_void,
+                report.as_mut_ptr() as *mut c_void))?;
+            let feasible = *(report.as_ptr() as *const bool);
+            let neurons_before = *((report.as_ptr() as *const u32).add(1));
+            let neurons_after = *((report.as_ptr() as *const u32).add(2));
+            let ram_delta = *((report.as_ptr() as *const f32).add(3));
+            Ok((feasible, neurons_before, neurons_after, ram_delta))
+        }
+    }
+
+    /// Distill brain into a smaller student.
+    pub fn edge_distill(&self, target_neurons: u32, temperature: f32,
+                        steps: u32, include_snn: bool,
+                        include_lnn: bool, include_cnn: bool) -> Result<()> {
+        unsafe {
+            let mut config = nimcp_distill_config_default();
+            let ptr = config.as_mut_ptr();
+            *(ptr as *mut u32) = target_neurons;
+            *((ptr as *mut f32).add(1)) = temperature;
+            *((ptr as *mut u32).add(2)) = steps;
+            *(ptr.add(12) as *mut bool) = include_snn;
+            *(ptr.add(13) as *mut bool) = include_lnn;
+            *(ptr.add(14) as *mut bool) = include_cnn;
+            let mut student: *mut NimcpBrainHandle = ptr::null_mut();
+            let mut report = [0u8; 256];
+            check_status(nimcp_brain_distill(
+                self.handle, &mut student,
+                config.as_ptr() as *const c_void,
+                report.as_mut_ptr() as *mut c_void))
+        }
+    }
+
+    /// Auto-optimize brain for a target device.
+    pub fn edge_optimize_for_device(&mut self, ram_mb: u32, cpu_cores: u32,
+                                     has_camera: bool, has_imu: bool,
+                                     has_motor_control: bool, has_network: bool,
+                                     role: i32) -> Result<()> {
+        unsafe {
+            let mut profile = nimcp_device_profile_default();
+            let ptr = profile.as_mut_ptr();
+            *(ptr as *mut u32) = ram_mb;
+            *((ptr as *mut u32).add(1)) = cpu_cores;
+            *(ptr.add(8) as *mut bool) = has_camera;
+            *(ptr.add(9) as *mut bool) = has_imu;
+            *(ptr.add(10) as *mut bool) = has_motor_control;
+            *(ptr.add(11) as *mut bool) = has_network;
+            *((ptr as *mut i32).add(3)) = role;
+            let mut child: *mut NimcpBrainHandle = ptr::null_mut();
+            let mut report = [0u8; 256];
+            check_status(nimcp_brain_optimize_for_device(
+                self.handle, profile.as_ptr() as *const c_void,
+                &mut child, report.as_mut_ptr() as *mut c_void))
+        }
+    }
+
+    /// Quantize brain weights in-place.
+    pub fn edge_quantize(&mut self, precision: i32,
+                         calibration_samples: u32) -> Result<()> {
+        unsafe {
+            let mut config = nimcp_quantize_config_default();
+            let ptr = config.as_mut_ptr();
+            *(ptr as *mut i32) = precision;
+            *((ptr as *mut u32).add(1)) = calibration_samples;
+            check_status(nimcp_brain_quantize(
+                self.handle, config.as_ptr() as *const c_void))
+        }
+    }
+
+    // --- Memory Store ---
+
+    /// Get memory store statistics.
+    pub fn memory_store_stats(&self) -> Option<MemoryStoreStats> {
+        let mut raw = MemoryStoreStatsRaw::default();
+        let ret = unsafe { nimcp_brain_memory_store_stats(self.handle, &mut raw) };
+        if ret != 0 { return None; }
+        Some(MemoryStoreStats {
+            total_engrams: raw.total_engrams,
+            total_concepts: raw.total_concepts,
+            total_relations: raw.total_relations,
+            total_autobio: raw.total_autobio,
+            total_writes: raw.total_writes,
+            total_reads: raw.total_reads,
+            cache_hits: raw.cache_hits,
+            cache_misses: raw.cache_misses,
+            db_size_bytes: raw.db_size_bytes,
+        })
+    }
+
+    /// Search memory by text (FTS5 on engram labels).
+    pub fn memory_search_text(&self, query: &str, max_results: u32) -> Vec<u64> {
+        let c_query = CString::new(query).unwrap_or_default();
+        let mut ids = vec![0u64; max_results as usize];
+        let mut count = 0u32;
+        unsafe {
+            nimcp_brain_memory_search_text(
+                self.handle, c_query.as_ptr(), max_results,
+                ids.as_mut_ptr(), &mut count);
+        }
+        ids.truncate(count as usize);
+        ids
+    }
+
+    /// Search memory by embedding similarity.
+    pub fn memory_search_similar(&self, embedding: &[f32],
+                                  top_k: u32) -> Vec<MemorySearchHit> {
+        let mut ids = vec![0u64; top_k as usize];
+        let mut distances = vec![0.0f32; top_k as usize];
+        let mut count = 0u32;
+        unsafe {
+            nimcp_brain_memory_search_similar(
+                self.handle, embedding.as_ptr(),
+                embedding.len() as c_uint, top_k,
+                ids.as_mut_ptr(), distances.as_mut_ptr(), &mut count);
+        }
+        (0..count as usize).map(|i| MemorySearchHit {
+            id: ids[i], distance: distances[i]
+        }).collect()
+    }
+
+    /// Check if memory store is healthy.
+    pub fn memory_is_healthy(&self) -> bool {
+        unsafe { nimcp_brain_memory_is_healthy(self.handle) }
+    }
+
+    // --- OOD Detection ---
+
+    /// Get OOD detector statistics.
+    pub fn ood_stats(&self) -> Option<OodStatsResult> {
+        let mut raw = OodStatsRaw::default();
+        let ret = unsafe { nimcp_brain_ood_stats(self.handle, &mut raw) };
+        if ret != 0 { return None; }
+        Some(OodStatsResult {
+            total_checks: raw.total_checks,
+            ood_detected: raw.ood_detected,
+            in_distribution: raw.in_distribution,
+            avg_ood_score: raw.avg_ood_score,
+            ood_rate: raw.ood_rate,
+        })
+    }
+
+    // --- Audit Trail ---
+
+    /// Log an audit event.
+    pub fn audit_log(&self, description: &str, severity: u32,
+                     details: &str) -> i32 {
+        let c_desc = CString::new(description).unwrap_or_default();
+        let c_details = CString::new(details).unwrap_or_default();
+        unsafe {
+            nimcp_brain_audit_log(
+                self.handle, c_desc.as_ptr(), severity, c_details.as_ptr())
+        }
+    }
+
+    /// Search audit trail by minimum severity.
+    pub fn audit_search(&self, min_severity: u32,
+                        max_results: u32) -> Vec<AuditSearchHit> {
+        let mut ids = vec![0u64; max_results as usize];
+        let mut severities = vec![0.0f32; max_results as usize];
+        let mut count = 0u32;
+        unsafe {
+            nimcp_brain_audit_search(
+                self.handle, min_severity, max_results,
+                ids.as_mut_ptr(), severities.as_mut_ptr(), &mut count);
+        }
+        (0..count as usize).map(|i| AuditSearchHit {
+            id: ids[i], severity: severities[i]
+        }).collect()
     }
 }
 

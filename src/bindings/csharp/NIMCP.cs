@@ -699,6 +699,79 @@ namespace NIMCP
         [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
         public static extern int nimcp_brain_enable_multi_network(IntPtr brain);
 
+        // --- Edge Brain ---
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_edge_brain_resize(IntPtr brain, ref NativeResizeConfig config);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_edge_brain_resize_check(
+            IntPtr brain, ref NativeResizeConfig config, ref NativeResizeReport report);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_edge_score_neuron_importance(
+            IntPtr brain, float[] scores, uint numNeurons);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_distill(
+            IntPtr teacher, ref IntPtr student,
+            ref NativeDistillConfig config, ref NativeDistillReport report);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_optimize_for_device(
+            IntPtr master, ref NativeDeviceProfile device,
+            ref IntPtr child, ref NativeOptimizationReport report);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_quantize(IntPtr brain, ref NativeQuantizeConfig config);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern NativeResizeConfig nimcp_resize_config_default();
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern NativeDistillConfig nimcp_distill_config_default();
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern NativeQuantizeConfig nimcp_quantize_config_default();
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern NativeDeviceProfile nimcp_device_profile_default();
+
+        // --- Memory Store / OOD / Audit (via brain handle wrappers) ---
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_memory_store_stats(
+            IntPtr brain, ref NativeMemoryStoreStats stats);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_memory_search_text(
+            IntPtr brain,
+            [MarshalAs(UnmanagedType.LPStr)] string query,
+            uint maxResults, ulong[] outIds, ref uint outCount);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_memory_search_similar(
+            IntPtr brain, float[] embedding, uint dim,
+            uint topK, ulong[] outIds, float[] outDistances, ref uint outCount);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool nimcp_brain_memory_is_healthy(IntPtr brain);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_ood_stats(
+            IntPtr brain, ref NativeOodStats stats);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_audit_log(
+            IntPtr brain,
+            [MarshalAs(UnmanagedType.LPStr)] string description,
+            uint severity,
+            [MarshalAs(UnmanagedType.LPStr)] string details);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int nimcp_brain_audit_search(
+            IntPtr brain, uint minSeverity, uint maxResults,
+            ulong[] outIds, float[] outSeverities, ref uint outCount);
+
         // --- Brain State ---
         [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
         public static extern float nimcp_brain_medulla_get_arousal(IntPtr brain);
@@ -885,6 +958,108 @@ namespace NIMCP
         {
             public float amplitude;
             public float phase;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeResizeConfig
+        {
+            public uint target_neuron_count;
+            public int mode;  /* 0=contract, 1=expand, 2=rebalance */
+            [MarshalAs(UnmanagedType.I1)] public bool enable_knowledge_transfer;
+            public float importance_threshold;
+            public uint maturation_steps;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+        public struct NativeResizeReport
+        {
+            [MarshalAs(UnmanagedType.I1)] public bool feasible;
+            public uint neurons_before;
+            public uint neurons_after;
+            public float estimated_ram_delta_mb;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string reason;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeDistillConfig
+        {
+            public uint target_neurons;
+            public float temperature;
+            public uint distillation_steps;
+            [MarshalAs(UnmanagedType.I1)] public bool include_snn;
+            [MarshalAs(UnmanagedType.I1)] public bool include_lnn;
+            [MarshalAs(UnmanagedType.I1)] public bool include_cnn;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeDistillReport
+        {
+            public float accuracy_retention;
+            public uint neurons_selected;
+            public float compression_ratio;
+            public float teacher_loss;
+            public float student_loss;
+            public uint steps_trained;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeQuantizeConfig
+        {
+            public int weight_precision;  /* enum nimcp_quantization_t */
+            public uint calibration_samples;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeDeviceProfile
+        {
+            public uint ram_mb;
+            public uint cpu_cores;
+            [MarshalAs(UnmanagedType.I1)] public bool has_camera;
+            [MarshalAs(UnmanagedType.I1)] public bool has_imu;
+            [MarshalAs(UnmanagedType.I1)] public bool has_motor_control;
+            [MarshalAs(UnmanagedType.I1)] public bool has_network;
+            public int role;  /* enum nimcp_device_role_t */
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeOptimizationReport
+        {
+            public uint neuron_count;
+            public uint subsystems_enabled;
+            public float estimated_ram_mb;
+            public float estimated_inference_ms;
+            public float accuracy_retention;
+            public uint num_warnings;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeMemoryStoreStats
+        {
+            public ulong total_engrams;
+            public ulong total_concepts;
+            public ulong total_relations;
+            public ulong total_autobio;
+            public ulong total_writes;
+            public ulong total_reads;
+            public ulong cache_hits;
+            public ulong cache_misses;
+            public ulong write_buffer_flushes;
+            public ulong bloom_filter_hits;
+            public float avg_write_latency_ms;
+            public float avg_read_latency_ms;
+            public ulong db_size_bytes;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeOodStats
+        {
+            public ulong total_checks;
+            public ulong ood_detected;
+            public ulong in_distribution;
+            public float avg_ood_score;
+            public float max_ood_score;
+            public float ood_rate;
         }
     }
 
@@ -1897,6 +2072,273 @@ namespace NIMCP
             CheckOpen();
             Helper.CheckStatus(Native.nimcp_brain_focus_attention(
                 handle, modality));
+        }
+
+        // --- Edge Brain ---
+
+        /// <summary>
+        /// Resize brain neuron count at runtime.
+        /// Mode: "contract", "expand", or "rebalance".
+        /// </summary>
+        public Dictionary<string, object> EdgeResize(uint targetNeurons,
+            string mode = "contract", bool knowledgeTransfer = true)
+        {
+            CheckOpen();
+            var config = Native.nimcp_resize_config_default();
+            config.target_neuron_count = targetNeurons;
+            config.enable_knowledge_transfer = knowledgeTransfer;
+            if (mode == "expand") config.mode = 1;
+            else if (mode == "rebalance") config.mode = 2;
+            else config.mode = 0;
+            int ret = Native.nimcp_edge_brain_resize(handle, ref config);
+            return new Dictionary<string, object>
+            {
+                { "status", ret },
+                { "target_neurons", targetNeurons },
+                { "mode", mode }
+            };
+        }
+
+        /// <summary>
+        /// Dry-run resize check: returns feasibility report.
+        /// </summary>
+        public Dictionary<string, object> EdgeResizeCheck(uint targetNeurons)
+        {
+            CheckOpen();
+            var config = Native.nimcp_resize_config_default();
+            config.target_neuron_count = targetNeurons;
+            config.mode = 0;
+            var report = new Native.NativeResizeReport();
+            Native.nimcp_edge_brain_resize_check(handle, ref config, ref report);
+            return new Dictionary<string, object>
+            {
+                { "feasible", report.feasible },
+                { "neurons_before", report.neurons_before },
+                { "neurons_after", report.neurons_after },
+                { "ram_delta_mb", report.estimated_ram_delta_mb },
+                { "reason", report.reason ?? "" }
+            };
+        }
+
+        /// <summary>
+        /// Distill brain into a smaller student brain.
+        /// </summary>
+        public Dictionary<string, object> EdgeDistill(uint targetNeurons,
+            float temperature = 2.0f, uint steps = 5000,
+            bool includeSnn = false, bool includeLnn = false, bool includeCnn = true)
+        {
+            CheckOpen();
+            var config = Native.nimcp_distill_config_default();
+            config.target_neurons = targetNeurons;
+            config.temperature = temperature;
+            config.distillation_steps = steps;
+            config.include_snn = includeSnn;
+            config.include_lnn = includeLnn;
+            config.include_cnn = includeCnn;
+            var report = new Native.NativeDistillReport();
+            IntPtr student = IntPtr.Zero;
+            int ret = Native.nimcp_brain_distill(handle, ref student, ref config, ref report);
+            return new Dictionary<string, object>
+            {
+                { "status", ret },
+                { "accuracy_retention", report.accuracy_retention },
+                { "neurons_selected", report.neurons_selected },
+                { "compression_ratio", report.compression_ratio },
+                { "teacher_loss", report.teacher_loss },
+                { "student_loss", report.student_loss },
+                { "steps_trained", report.steps_trained }
+            };
+        }
+
+        /// <summary>
+        /// Auto-optimize brain for a device profile.
+        /// </summary>
+        public Dictionary<string, object> EdgeOptimizeForDevice(uint ramMb,
+            uint cpuCores = 2, bool hasCamera = false, bool hasImu = false,
+            bool hasMotorControl = false, bool hasNetwork = true,
+            string role = "general")
+        {
+            CheckOpen();
+            var profile = Native.nimcp_device_profile_default();
+            profile.ram_mb = ramMb;
+            profile.cpu_cores = cpuCores;
+            profile.has_camera = hasCamera;
+            profile.has_imu = hasImu;
+            profile.has_motor_control = hasMotorControl;
+            profile.has_network = hasNetwork;
+            if (role == "sensor") profile.role = 1;
+            else if (role == "actuator") profile.role = 2;
+            else if (role == "coordinator") profile.role = 3;
+            else profile.role = 0;
+            var report = new Native.NativeOptimizationReport();
+            IntPtr child = IntPtr.Zero;
+            int ret = Native.nimcp_brain_optimize_for_device(
+                handle, ref profile, ref child, ref report);
+            return new Dictionary<string, object>
+            {
+                { "status", ret },
+                { "neuron_count", report.neuron_count },
+                { "subsystems_enabled", report.subsystems_enabled },
+                { "estimated_ram_mb", report.estimated_ram_mb },
+                { "estimated_inference_ms", report.estimated_inference_ms },
+                { "accuracy_retention", report.accuracy_retention }
+            };
+        }
+
+        /// <summary>
+        /// Quantize brain weights in-place.
+        /// </summary>
+        public Dictionary<string, object> EdgeQuantize(
+            string precision = "int8_symmetric", uint calibrationSamples = 100)
+        {
+            CheckOpen();
+            var config = Native.nimcp_quantize_config_default();
+            config.calibration_samples = calibrationSamples;
+            if (precision == "fp16") config.weight_precision = 1;
+            else if (precision == "int8_affine") config.weight_precision = 2;
+            else if (precision == "int4") config.weight_precision = 3;
+            else if (precision == "ternary") config.weight_precision = 4;
+            else config.weight_precision = 0;
+            int ret = Native.nimcp_brain_quantize(handle, ref config);
+            return new Dictionary<string, object>
+            {
+                { "status", ret },
+                { "precision", precision }
+            };
+        }
+
+        /// <summary>
+        /// Score neuron importance (activity, connectivity, weight magnitude).
+        /// </summary>
+        public float[] EdgeScoreImportance(uint numNeurons = 1000)
+        {
+            CheckOpen();
+            float[] scores = new float[numNeurons];
+            Native.nimcp_edge_score_neuron_importance(handle, scores, numNeurons);
+            return scores;
+        }
+
+        // --- Memory Store ---
+
+        /// <summary>
+        /// Get memory store statistics.
+        /// </summary>
+        public Dictionary<string, object> MemoryStoreStats()
+        {
+            CheckOpen();
+            var stats = new Native.NativeMemoryStoreStats();
+            int ret = Native.nimcp_brain_memory_store_stats(handle, ref stats);
+            if (ret != 0) return null;
+            return new Dictionary<string, object>
+            {
+                { "total_engrams", stats.total_engrams },
+                { "total_concepts", stats.total_concepts },
+                { "total_relations", stats.total_relations },
+                { "total_autobio", stats.total_autobio },
+                { "total_writes", stats.total_writes },
+                { "total_reads", stats.total_reads },
+                { "cache_hits", stats.cache_hits },
+                { "cache_misses", stats.cache_misses },
+                { "db_size_bytes", stats.db_size_bytes }
+            };
+        }
+
+        /// <summary>
+        /// Search memory by text (FTS5 on labels).
+        /// </summary>
+        public ulong[] MemorySearchText(string query, uint maxResults = 10)
+        {
+            CheckOpen();
+            ulong[] ids = new ulong[maxResults];
+            uint count = 0;
+            Native.nimcp_brain_memory_search_text(
+                handle, query, maxResults, ids, ref count);
+            ulong[] result = new ulong[count];
+            Array.Copy(ids, result, count);
+            return result;
+        }
+
+        /// <summary>
+        /// Search memory by embedding similarity.
+        /// Returns array of (id, distance) tuples.
+        /// </summary>
+        public (ulong Id, float Distance)[] MemorySearchSimilar(
+            float[] embedding, uint topK = 5)
+        {
+            CheckOpen();
+            ulong[] ids = new ulong[topK];
+            float[] distances = new float[topK];
+            uint count = 0;
+            Native.nimcp_brain_memory_search_similar(
+                handle, embedding, (uint)embedding.Length,
+                topK, ids, distances, ref count);
+            var result = new (ulong, float)[count];
+            for (uint i = 0; i < count; i++)
+                result[i] = (ids[i], distances[i]);
+            return result;
+        }
+
+        /// <summary>
+        /// Check if memory store is healthy.
+        /// </summary>
+        public bool MemoryIsHealthy()
+        {
+            CheckOpen();
+            return Native.nimcp_brain_memory_is_healthy(handle);
+        }
+
+        // --- OOD Detection ---
+
+        /// <summary>
+        /// Get out-of-distribution detection statistics.
+        /// </summary>
+        public Dictionary<string, object> OodStats()
+        {
+            CheckOpen();
+            var stats = new Native.NativeOodStats();
+            int ret = Native.nimcp_brain_ood_stats(handle, ref stats);
+            if (ret != 0) return null;
+            return new Dictionary<string, object>
+            {
+                { "total_checks", stats.total_checks },
+                { "ood_detected", stats.ood_detected },
+                { "in_distribution", stats.in_distribution },
+                { "avg_ood_score", stats.avg_ood_score },
+                { "ood_rate", stats.ood_rate }
+            };
+        }
+
+        // --- Audit Trail ---
+
+        /// <summary>
+        /// Log an audit event.
+        /// </summary>
+        public int AuditLog(string description, uint severity = 0,
+            string details = "")
+        {
+            CheckOpen();
+            return Native.nimcp_brain_audit_log(
+                handle, description, severity, details);
+        }
+
+        /// <summary>
+        /// Search audit trail by minimum severity.
+        /// Returns array of (id, severity) tuples.
+        /// </summary>
+        public (ulong Id, float Severity)[] AuditSearch(
+            uint minSeverity = 0, uint maxResults = 100)
+        {
+            CheckOpen();
+            ulong[] ids = new ulong[maxResults];
+            float[] severities = new float[maxResults];
+            uint count = 0;
+            Native.nimcp_brain_audit_search(
+                handle, minSeverity, maxResults,
+                ids, severities, ref count);
+            var result = new (ulong, float)[count];
+            for (uint i = 0; i < count; i++)
+                result[i] = (ids[i], severities[i]);
+            return result;
         }
 
         // --- Probe ---

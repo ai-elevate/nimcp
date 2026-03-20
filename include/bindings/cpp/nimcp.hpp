@@ -21,6 +21,27 @@
 #define NIMCP_HPP
 
 #include <nimcp.h>
+#include <edge/nimcp_edge.h>
+#include <memory/nimcp_memory_store.h>
+#include <cognitive/nimcp_ood_detector.h>
+
+// Forward declarations for brain-handle bridge functions
+// (defined in nimcp_part_bindings.c, linked into libnimcp)
+extern "C" {
+int nimcp_brain_memory_store_stats(nimcp_brain_t brain, nimcp_memory_store_stats_t* stats);
+int nimcp_brain_memory_search_text(nimcp_brain_t brain, const char* query,
+    uint32_t max_results, uint64_t* out_ids, uint32_t* out_count);
+int nimcp_brain_memory_search_similar(nimcp_brain_t brain, const float* embedding,
+    uint32_t dim, uint32_t top_k, uint64_t* out_ids, float* out_distances,
+    uint32_t* out_count);
+bool nimcp_brain_memory_is_healthy(nimcp_brain_t brain);
+int nimcp_brain_ood_stats(nimcp_brain_t brain, nimcp_ood_stats_t* stats);
+int nimcp_brain_audit_log(nimcp_brain_t brain, const char* description,
+    uint32_t severity, const char* details);
+int nimcp_brain_audit_search(nimcp_brain_t brain, uint32_t min_severity,
+    uint32_t max_results, uint64_t* out_ids, float* out_severities,
+    uint32_t* out_count);
+}
 
 #include <algorithm>
 #include <cstdint>
@@ -1432,6 +1453,235 @@ public:
             handle_, &s.num_layers, &s.num_parameters,
             &s.num_labels, &s.active));
         return s;
+    }
+
+    // --- Edge Brain ---
+
+    struct EdgeResizeResult {
+        int status = 0;
+        uint32_t target_neurons = 0;
+        std::string mode;
+    };
+
+    EdgeResizeResult edge_resize(uint32_t target_neurons,
+                                  std::string_view mode = "contract",
+                                  bool knowledge_transfer = true) {
+        nimcp_resize_config_t config = nimcp_resize_config_default();
+        config.target_neuron_count = target_neurons;
+        config.enable_knowledge_transfer = knowledge_transfer;
+        if (mode == "expand") config.mode = 1;
+        else if (mode == "rebalance") config.mode = 2;
+        else config.mode = 0;
+        int ret = nimcp_edge_brain_resize(handle_, &config);
+        return {ret, target_neurons, std::string(mode)};
+    }
+
+    struct ResizeCheckReport {
+        bool feasible = false;
+        uint32_t neurons_before = 0;
+        uint32_t neurons_after = 0;
+        float ram_delta_mb = 0.0f;
+        std::string reason;
+    };
+
+    ResizeCheckReport edge_resize_check(uint32_t target_neurons) {
+        nimcp_resize_config_t config = nimcp_resize_config_default();
+        config.target_neuron_count = target_neurons;
+        config.mode = 0;
+        nimcp_resize_report_t report{};
+        nimcp_edge_brain_resize_check(handle_, &config, &report);
+        return {report.feasible, report.neurons_before,
+                report.neurons_after, report.estimated_ram_delta_mb,
+                report.reason};
+    }
+
+    struct DistillReport {
+        int status = 0;
+        float accuracy_retention = 0.0f;
+        uint32_t neurons_selected = 0;
+        float compression_ratio = 0.0f;
+        float teacher_loss = 0.0f;
+        float student_loss = 0.0f;
+        uint32_t steps_trained = 0;
+    };
+
+    DistillReport edge_distill(uint32_t target_neurons,
+                                float temperature = 2.0f,
+                                uint32_t steps = 5000,
+                                bool include_snn = false,
+                                bool include_lnn = false,
+                                bool include_cnn = true) {
+        nimcp_distill_config_t config = nimcp_distill_config_default();
+        config.target_neurons = target_neurons;
+        config.temperature = temperature;
+        config.distillation_steps = steps;
+        config.include_snn = include_snn;
+        config.include_lnn = include_lnn;
+        config.include_cnn = include_cnn;
+        nimcp_distill_report_t report{};
+        nimcp_brain_t student = nullptr;
+        int ret = nimcp_brain_distill(handle_, &student, &config, &report);
+        return {ret, report.accuracy_retention, report.neurons_selected,
+                report.compression_ratio, report.teacher_loss,
+                report.student_loss, report.steps_trained};
+    }
+
+    struct DeviceOptReport {
+        int status = 0;
+        uint32_t neuron_count = 0;
+        uint32_t subsystems_enabled = 0;
+        float estimated_ram_mb = 0.0f;
+        float estimated_inference_ms = 0.0f;
+        float accuracy_retention = 0.0f;
+    };
+
+    DeviceOptReport edge_optimize_for_device(uint32_t ram_mb,
+                                              uint32_t cpu_cores = 2,
+                                              bool has_camera = false,
+                                              bool has_imu = false,
+                                              bool has_motor_control = false,
+                                              bool has_network = true,
+                                              std::string_view role = "general") {
+        nimcp_device_profile_t profile = nimcp_device_profile_default();
+        profile.ram_mb = ram_mb;
+        profile.cpu_cores = cpu_cores;
+        profile.has_camera = has_camera;
+        profile.has_imu = has_imu;
+        profile.has_motor_control = has_motor_control;
+        profile.has_network = has_network;
+        if (role == "sensor") profile.role = 1;
+        else if (role == "actuator") profile.role = 2;
+        else if (role == "coordinator") profile.role = 3;
+        else profile.role = 0;
+        nimcp_optimization_report_t report{};
+        nimcp_brain_t child = nullptr;
+        int ret = nimcp_brain_optimize_for_device(handle_, &profile, &child, &report);
+        return {ret, report.neuron_count, report.subsystems_enabled,
+                report.estimated_ram_mb, report.estimated_inference_ms,
+                report.accuracy_retention};
+    }
+
+    struct QuantizeResult {
+        int status = 0;
+        std::string precision;
+    };
+
+    QuantizeResult edge_quantize(std::string_view precision = "int8_symmetric",
+                                  uint32_t calibration_samples = 100) {
+        nimcp_quantize_config_t config = nimcp_quantize_config_default();
+        config.calibration_samples = calibration_samples;
+        if (precision == "fp16") config.weight_precision = 1;
+        else if (precision == "int8_affine") config.weight_precision = 2;
+        else if (precision == "int4") config.weight_precision = 3;
+        else if (precision == "ternary") config.weight_precision = 4;
+        else config.weight_precision = 0;
+        int ret = nimcp_brain_quantize(handle_, &config);
+        return {ret, std::string(precision)};
+    }
+
+    std::vector<float> edge_score_importance(uint32_t num_neurons = 1000) {
+        std::vector<float> scores(num_neurons, 0.0f);
+        nimcp_edge_score_neuron_importance(handle_, scores.data(), num_neurons);
+        return scores;
+    }
+
+    // --- Memory Store ---
+
+    struct MemoryStoreStats {
+        uint64_t total_engrams = 0, total_concepts = 0;
+        uint64_t total_relations = 0, total_autobio = 0;
+        uint64_t total_writes = 0, total_reads = 0;
+        uint64_t cache_hits = 0, cache_misses = 0;
+        uint64_t db_size_bytes = 0;
+    };
+
+    std::optional<MemoryStoreStats> memory_store_stats() const {
+        nimcp_memory_store_stats_t s{};
+        int ret = nimcp_brain_memory_store_stats(handle_, &s);
+        if (ret != 0) return std::nullopt;
+        return MemoryStoreStats{s.total_engrams, s.total_concepts,
+                                s.total_relations, s.total_autobio,
+                                s.total_writes, s.total_reads,
+                                s.cache_hits, s.cache_misses,
+                                s.db_size_bytes};
+    }
+
+    std::vector<uint64_t> memory_search_text(std::string_view query,
+                                              uint32_t max_results = 10) const {
+        std::vector<uint64_t> ids(max_results);
+        uint32_t count = 0;
+        nimcp_brain_memory_search_text(
+            handle_, std::string(query).c_str(), max_results,
+            ids.data(), &count);
+        ids.resize(count);
+        return ids;
+    }
+
+    struct MemorySearchResult {
+        uint64_t id = 0;
+        float distance = 0.0f;
+    };
+
+    std::vector<MemorySearchResult> memory_search_similar(
+        std::span<const float> embedding, uint32_t top_k = 5) const {
+        std::vector<uint64_t> ids(top_k);
+        std::vector<float> distances(top_k);
+        uint32_t count = 0;
+        nimcp_brain_memory_search_similar(
+            handle_, embedding.data(),
+            static_cast<uint32_t>(embedding.size()),
+            top_k, ids.data(), distances.data(), &count);
+        std::vector<MemorySearchResult> result(count);
+        for (uint32_t i = 0; i < count; ++i)
+            result[i] = {ids[i], distances[i]};
+        return result;
+    }
+
+    bool memory_is_healthy() const {
+        return nimcp_brain_memory_is_healthy(handle_);
+    }
+
+    // --- OOD Detection ---
+
+    struct OodStats {
+        uint64_t total_checks = 0, ood_detected = 0, in_distribution = 0;
+        float avg_ood_score = 0.0f, ood_rate = 0.0f;
+    };
+
+    std::optional<OodStats> ood_stats() const {
+        nimcp_ood_stats_t s{};
+        int ret = nimcp_brain_ood_stats(handle_, &s);
+        if (ret != 0) return std::nullopt;
+        return OodStats{s.total_checks, s.ood_detected,
+                        s.in_distribution, s.avg_ood_score, s.ood_rate};
+    }
+
+    // --- Audit Trail ---
+
+    int audit_log(std::string_view description, uint32_t severity = 0,
+                  std::string_view details = "") {
+        return nimcp_brain_audit_log(
+            handle_, std::string(description).c_str(),
+            severity, std::string(details).c_str());
+    }
+
+    struct AuditResult {
+        uint64_t id = 0;
+        float severity = 0.0f;
+    };
+
+    std::vector<AuditResult> audit_search(uint32_t min_severity = 0,
+                                           uint32_t max_results = 100) const {
+        std::vector<uint64_t> ids(max_results);
+        std::vector<float> severities(max_results);
+        uint32_t count = 0;
+        nimcp_brain_audit_search(
+            handle_, min_severity, max_results,
+            ids.data(), severities.data(), &count);
+        std::vector<AuditResult> result(count);
+        for (uint32_t i = 0; i < count; ++i)
+            result[i] = {ids[i], severities[i]};
+        return result;
     }
 
     // --- Cloud Connectivity ---

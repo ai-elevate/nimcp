@@ -32,6 +32,10 @@
 #include "cognitive/training/nimcp_training_integration.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "edge/nimcp_edge.h"
+#include "memory/nimcp_memory_store.h"
+#include "cognitive/nimcp_ood_detector.h"
+#include "utils/time/nimcp_time.h"
 
 // ============================================================================
 // Helper Functions
@@ -1920,4 +1924,453 @@ JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeFocusAttention(
     nimcp_status_t rc = nimcp_brain_experience_attend(brain, c_mod, 1.0f);
     (*env)->ReleaseStringUTFChars(env, modality, c_mod);
     return (jint)rc;
+}
+
+// ============================================================================
+// Edge Brain API (13 new methods)
+// ============================================================================
+
+// Helper: create a HashMap and return refs to put method
+static jobject jni_create_hashmap(JNIEnv *env, jclass *map_cls, jmethodID *put_mid) {
+    *map_cls = (*env)->FindClass(env, "java/util/HashMap");
+    if (!*map_cls) return NULL;
+    jmethodID init = (*env)->GetMethodID(env, *map_cls, "<init>", "()V");
+    if (!init) return NULL;
+    *put_mid = (*env)->GetMethodID(env, *map_cls, "put",
+        "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
+    if (!*put_mid) return NULL;
+    return (*env)->NewObject(env, *map_cls, init);
+}
+
+static void jni_map_put_int(JNIEnv *env, jobject map, jmethodID put, const char *key, int val) {
+    jstring k = (*env)->NewStringUTF(env, key);
+    jclass int_cls = (*env)->FindClass(env, "java/lang/Integer");
+    jmethodID vof = (*env)->GetStaticMethodID(env, int_cls, "valueOf", "(I)Ljava/lang/Integer;");
+    jobject v = (*env)->CallStaticObjectMethod(env, int_cls, vof, val);
+    (*env)->CallObjectMethod(env, map, put, k, v);
+    (*env)->DeleteLocalRef(env, k);
+    (*env)->DeleteLocalRef(env, v);
+}
+
+static void jni_map_put_long(JNIEnv *env, jobject map, jmethodID put, const char *key, int64_t val) {
+    jstring k = (*env)->NewStringUTF(env, key);
+    jclass cls = (*env)->FindClass(env, "java/lang/Long");
+    jmethodID vof = (*env)->GetStaticMethodID(env, cls, "valueOf", "(J)Ljava/lang/Long;");
+    jobject v = (*env)->CallStaticObjectMethod(env, cls, vof, (jlong)val);
+    (*env)->CallObjectMethod(env, map, put, k, v);
+    (*env)->DeleteLocalRef(env, k);
+    (*env)->DeleteLocalRef(env, v);
+}
+
+static void jni_map_put_float(JNIEnv *env, jobject map, jmethodID put, const char *key, double val) {
+    jstring k = (*env)->NewStringUTF(env, key);
+    jclass cls = (*env)->FindClass(env, "java/lang/Double");
+    jmethodID vof = (*env)->GetStaticMethodID(env, cls, "valueOf", "(D)Ljava/lang/Double;");
+    jobject v = (*env)->CallStaticObjectMethod(env, cls, vof, val);
+    (*env)->CallObjectMethod(env, map, put, k, v);
+    (*env)->DeleteLocalRef(env, k);
+    (*env)->DeleteLocalRef(env, v);
+}
+
+static void jni_map_put_string(JNIEnv *env, jobject map, jmethodID put, const char *key, const char *val) {
+    jstring k = (*env)->NewStringUTF(env, key);
+    jstring v = (*env)->NewStringUTF(env, val ? val : "");
+    (*env)->CallObjectMethod(env, map, put, k, v);
+    (*env)->DeleteLocalRef(env, k);
+    (*env)->DeleteLocalRef(env, v);
+}
+
+static void jni_map_put_bool(JNIEnv *env, jobject map, jmethodID put, const char *key, bool val) {
+    jstring k = (*env)->NewStringUTF(env, key);
+    jclass cls = (*env)->FindClass(env, "java/lang/Boolean");
+    jmethodID vof = (*env)->GetStaticMethodID(env, cls, "valueOf", "(Z)Ljava/lang/Boolean;");
+    jobject v = (*env)->CallStaticObjectMethod(env, cls, vof, (jboolean)val);
+    (*env)->CallObjectMethod(env, map, put, k, v);
+    (*env)->DeleteLocalRef(env, k);
+    (*env)->DeleteLocalRef(env, v);
+}
+
+// 1. edge_resize(target_neurons, mode, knowledge_transfer) -> Map
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEdgeResize(
+    JNIEnv *env, jclass cls, jlong h, jint target, jstring mode, jboolean transfer)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    nimcp_resize_config_t config = nimcp_resize_config_default();
+    config.target_neuron_count = (uint32_t)target;
+    config.enable_knowledge_transfer = (bool)transfer;
+
+    const char *mode_str = (*env)->GetStringUTFChars(env, mode, NULL);
+    if (mode_str) {
+        if (strcmp(mode_str, "expand") == 0) config.mode = NIMCP_RESIZE_EXPAND;
+        else if (strcmp(mode_str, "rebalance") == 0) config.mode = NIMCP_RESIZE_REBALANCE;
+        else config.mode = NIMCP_RESIZE_CONTRACT;
+        (*env)->ReleaseStringUTFChars(env, mode, mode_str);
+    }
+
+    int ret = nimcp_edge_brain_resize(brain, &config);
+
+    jclass map_cls; jmethodID put;
+    jobject map = jni_create_hashmap(env, &map_cls, &put);
+    if (!map) return NULL;
+    jni_map_put_int(env, map, put, "status", ret);
+    jni_map_put_int(env, map, put, "target_neurons", (int)target);
+    return map;
+}
+
+// 2. edge_resize_check(target_neurons) -> Map
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEdgeResizeCheck(
+    JNIEnv *env, jclass cls, jlong h, jint target)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    nimcp_resize_config_t config = nimcp_resize_config_default();
+    config.target_neuron_count = (uint32_t)target;
+    config.mode = NIMCP_RESIZE_CONTRACT;
+    nimcp_resize_report_t report = {0};
+    nimcp_edge_brain_resize_check(brain, &config, &report);
+
+    jclass map_cls; jmethodID put;
+    jobject map = jni_create_hashmap(env, &map_cls, &put);
+    if (!map) return NULL;
+    jni_map_put_bool(env, map, put, "feasible", report.feasible);
+    jni_map_put_int(env, map, put, "neurons_before", (int)report.neurons_before);
+    jni_map_put_int(env, map, put, "neurons_after", (int)report.neurons_after);
+    jni_map_put_float(env, map, put, "ram_delta_mb", report.estimated_ram_delta_mb);
+    jni_map_put_string(env, map, put, "reason", report.reason);
+    return map;
+}
+
+// 3. edge_distill(target, temperature, steps, inc_snn, inc_lnn, inc_cnn) -> Map
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEdgeDistill(
+    JNIEnv *env, jclass cls, jlong h, jint target, jfloat temperature,
+    jint steps, jboolean inc_snn, jboolean inc_lnn, jboolean inc_cnn)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    nimcp_distill_config_t config = nimcp_distill_config_default();
+    config.target_neurons = (uint32_t)target;
+    config.temperature = temperature;
+    config.distillation_steps = (uint32_t)steps;
+    config.include_snn = (bool)inc_snn;
+    config.include_lnn = (bool)inc_lnn;
+    config.include_cnn = (bool)inc_cnn;
+
+    nimcp_distill_report_t report = {0};
+    nimcp_brain_t student = NULL;
+    int ret = nimcp_brain_distill(brain, &student, &config, &report);
+
+    jclass map_cls; jmethodID put;
+    jobject map = jni_create_hashmap(env, &map_cls, &put);
+    if (!map) return NULL;
+    jni_map_put_int(env, map, put, "status", ret);
+    jni_map_put_float(env, map, put, "accuracy_retention", report.accuracy_retention);
+    jni_map_put_int(env, map, put, "neurons_selected", (int)report.neurons_selected);
+    jni_map_put_float(env, map, put, "compression_ratio", report.compression_ratio);
+    jni_map_put_float(env, map, put, "teacher_loss", report.teacher_loss);
+    jni_map_put_float(env, map, put, "student_loss", report.student_loss);
+    jni_map_put_int(env, map, put, "steps_trained", (int)report.steps_trained);
+    return map;
+}
+
+// 4. edge_optimize_for_device(ram_mb, cpu_cores, camera, imu, motor, network, role) -> Map
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEdgeOptimizeForDevice(
+    JNIEnv *env, jclass cls, jlong h, jint ram_mb, jint cpu_cores,
+    jboolean camera, jboolean imu, jboolean motor, jboolean network, jstring role)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    nimcp_device_profile_t profile = nimcp_device_profile_default();
+    profile.ram_mb = (uint32_t)ram_mb;
+    profile.cpu_cores = (uint32_t)cpu_cores;
+    profile.has_camera = (bool)camera;
+    profile.has_imu = (bool)imu;
+    profile.has_motor_control = (bool)motor;
+    profile.has_network = (bool)network;
+
+    const char *role_str = (*env)->GetStringUTFChars(env, role, NULL);
+    if (role_str) {
+        if (strcmp(role_str, "sensor") == 0) profile.role = NIMCP_DEVICE_SENSOR;
+        else if (strcmp(role_str, "actuator") == 0) profile.role = NIMCP_DEVICE_ACTUATOR;
+        else if (strcmp(role_str, "coordinator") == 0) profile.role = NIMCP_DEVICE_COORDINATOR;
+        else profile.role = NIMCP_DEVICE_GENERAL;
+        (*env)->ReleaseStringUTFChars(env, role, role_str);
+    }
+
+    nimcp_optimization_report_t report = {0};
+    nimcp_brain_t child = NULL;
+    int ret = nimcp_brain_optimize_for_device(brain, &profile, &child, &report);
+
+    jclass map_cls; jmethodID put;
+    jobject map = jni_create_hashmap(env, &map_cls, &put);
+    if (!map) return NULL;
+    jni_map_put_int(env, map, put, "status", ret);
+    jni_map_put_int(env, map, put, "neuron_count", (int)report.neuron_count);
+    jni_map_put_int(env, map, put, "subsystems_enabled", (int)report.subsystems_enabled);
+    jni_map_put_float(env, map, put, "estimated_ram_mb", report.estimated_ram_mb);
+    jni_map_put_float(env, map, put, "estimated_inference_ms", report.estimated_inference_ms);
+    jni_map_put_float(env, map, put, "accuracy_retention", report.accuracy_retention);
+    return map;
+}
+
+// 5. edge_quantize(precision, calibration_samples) -> Map
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEdgeQuantize(
+    JNIEnv *env, jclass cls, jlong h, jstring precision, jint cal_samples)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return NULL;
+
+    nimcp_quantize_config_t config = nimcp_quantize_config_default();
+    config.calibration_samples = (uint32_t)cal_samples;
+
+    const char *prec = (*env)->GetStringUTFChars(env, precision, NULL);
+    if (prec) {
+        if (strcmp(prec, "fp16") == 0) config.weight_precision = NIMCP_QUANT_FP16;
+        else if (strcmp(prec, "int8_affine") == 0) config.weight_precision = NIMCP_QUANT_INT8_AFFINE;
+        else if (strcmp(prec, "int4") == 0) config.weight_precision = NIMCP_QUANT_INT4;
+        else if (strcmp(prec, "ternary") == 0) config.weight_precision = NIMCP_QUANT_TERNARY;
+        else config.weight_precision = NIMCP_QUANT_INT8_SYMMETRIC;
+        (*env)->ReleaseStringUTFChars(env, precision, prec);
+    }
+
+    int ret = nimcp_brain_quantize(brain, &config);
+
+    jclass map_cls; jmethodID put;
+    jobject map = jni_create_hashmap(env, &map_cls, &put);
+    if (!map) return NULL;
+    jni_map_put_int(env, map, put, "status", ret);
+    return map;
+}
+
+// 6. edge_score_importance(num_neurons) -> float[]
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEdgeScoreImportance(
+    JNIEnv *env, jclass cls, jlong h, jint num_neurons)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || num_neurons <= 0) return NULL;
+
+    uint32_t n = (uint32_t)num_neurons;
+    float *scores = (float*)calloc(n, sizeof(float));
+    if (!scores) return NULL;
+
+    nimcp_edge_score_neuron_importance(brain, scores, n);
+
+    jfloatArray arr = (*env)->NewFloatArray(env, (jsize)n);
+    if (arr) (*env)->SetFloatArrayRegion(env, arr, 0, (jsize)n, scores);
+    free(scores);
+    return arr;
+}
+
+// 7. memory_store_stats() -> Map
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMemoryStoreStats(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return NULL;
+
+    nimcp_memory_store_stats_t stats = {0};
+    nimcp_memory_store_get_stats(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, &stats);
+
+    jclass map_cls; jmethodID put;
+    jobject map = jni_create_hashmap(env, &map_cls, &put);
+    if (!map) return NULL;
+    jni_map_put_long(env, map, put, "total_engrams", (int64_t)stats.total_engrams);
+    jni_map_put_long(env, map, put, "total_concepts", (int64_t)stats.total_concepts);
+    jni_map_put_long(env, map, put, "total_relations", (int64_t)stats.total_relations);
+    jni_map_put_long(env, map, put, "total_autobio", (int64_t)stats.total_autobio);
+    jni_map_put_long(env, map, put, "total_writes", (int64_t)stats.total_writes);
+    jni_map_put_long(env, map, put, "total_reads", (int64_t)stats.total_reads);
+    jni_map_put_long(env, map, put, "cache_hits", (int64_t)stats.cache_hits);
+    jni_map_put_long(env, map, put, "cache_misses", (int64_t)stats.cache_misses);
+    jni_map_put_long(env, map, put, "db_size_bytes", (int64_t)stats.db_size_bytes);
+    return map;
+}
+
+// 8. memory_search_text(query, max_results) -> long[]
+JNIEXPORT jlongArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMemorySearchText(
+    JNIEnv *env, jclass cls, jlong h, jstring query, jint max_results)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store) {
+        return (*env)->NewLongArray(env, 0);
+    }
+
+    const char *q = (*env)->GetStringUTFChars(env, query, NULL);
+    if (!q) return (*env)->NewLongArray(env, 0);
+
+    nimcp_memory_search_result_t *res = nimcp_memory_store_engram_search_text(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store,
+        q, (uint32_t)max_results);
+    (*env)->ReleaseStringUTFChars(env, query, q);
+
+    if (!res || res->count == 0) {
+        if (res) nimcp_memory_search_result_destroy(res);
+        return (*env)->NewLongArray(env, 0);
+    }
+
+    jlongArray arr = (*env)->NewLongArray(env, (jsize)res->count);
+    if (arr) {
+        jlong *buf = (jlong*)malloc(res->count * sizeof(jlong));
+        if (buf) {
+            for (uint32_t i = 0; i < res->count; i++) buf[i] = (jlong)res->ids[i];
+            (*env)->SetLongArrayRegion(env, arr, 0, (jsize)res->count, buf);
+            free(buf);
+        }
+    }
+    nimcp_memory_search_result_destroy(res);
+    return arr;
+}
+
+// 9. memory_search_similar(embedding, top_k) -> float[][] (pairs of [id, distance])
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMemorySearchSimilar(
+    JNIEnv *env, jclass cls, jlong h, jfloatArray embedding, jint top_k)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+
+    /* Create empty ArrayList for return */
+    jclass list_cls = (*env)->FindClass(env, "java/util/ArrayList");
+    jmethodID list_init = (*env)->GetMethodID(env, list_cls, "<init>", "()V");
+    jmethodID list_add = (*env)->GetMethodID(env, list_cls, "add", "(Ljava/lang/Object;)Z");
+    jobject list = (*env)->NewObject(env, list_cls, list_init);
+
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return list;
+
+    jsize dim = (*env)->GetArrayLength(env, embedding);
+    float *emb = (float*)malloc(dim * sizeof(float));
+    if (!emb) return list;
+    (*env)->GetFloatArrayRegion(env, embedding, 0, dim, emb);
+
+    nimcp_memory_search_result_t *res = nimcp_memory_store_engram_search_similar(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store,
+        emb, (uint32_t)dim, (uint32_t)top_k, 0.0f);
+    free(emb);
+
+    if (res) {
+        for (uint32_t i = 0; i < res->count; i++) {
+            /* Each entry is a HashMap with id + distance */
+            jclass mc; jmethodID mp;
+            jobject entry = jni_create_hashmap(env, &mc, &mp);
+            if (entry) {
+                jni_map_put_long(env, entry, mp, "id", (int64_t)res->ids[i]);
+                jni_map_put_float(env, entry, mp, "distance", res->distances[i]);
+                (*env)->CallBooleanMethod(env, list, list_add, entry);
+                (*env)->DeleteLocalRef(env, entry);
+            }
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    return list;
+}
+
+// 10. memory_is_healthy() -> boolean
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMemoryIsHealthy(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return JNI_TRUE; /* No store = nothing unhealthy */
+    return nimcp_memory_store_is_healthy(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store) ? JNI_TRUE : JNI_FALSE;
+}
+
+// 11. ood_stats() -> Map
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeOodStats(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || !brain->internal_brain || !brain->internal_brain->ood_detector)
+        return NULL;
+
+    nimcp_ood_stats_t stats = {0};
+    nimcp_ood_get_stats(
+        (const nimcp_ood_detector_t*)brain->internal_brain->ood_detector, &stats);
+
+    jclass map_cls; jmethodID put;
+    jobject map = jni_create_hashmap(env, &map_cls, &put);
+    if (!map) return NULL;
+    jni_map_put_long(env, map, put, "total_checks", (int64_t)stats.total_checks);
+    jni_map_put_long(env, map, put, "ood_detected", (int64_t)stats.ood_detected);
+    jni_map_put_long(env, map, put, "in_distribution", (int64_t)stats.in_distribution);
+    jni_map_put_float(env, map, put, "avg_ood_score", stats.avg_ood_score);
+    jni_map_put_float(env, map, put, "ood_rate", stats.ood_rate);
+    return map;
+}
+
+// 12. audit_log(description, severity, details) -> int
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeAuditLog(
+    JNIEnv *env, jclass cls, jlong h, jstring description, jint severity, jstring details)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return -1;
+
+    const char *desc = (*env)->GetStringUTFChars(env, description, NULL);
+    const char *det = details ? (*env)->GetStringUTFChars(env, details, NULL) : "";
+
+    nimcp_memory_audit_event_t event = {0};
+    event.timestamp_us = nimcp_time_get_us();
+    event.event_type = (uint32_t)severity;
+    if (desc) strncpy(event.description, desc, sizeof(event.description) - 1);
+    if (det) strncpy(event.details, det, sizeof(event.details) - 1);
+
+    int rc = nimcp_memory_store_audit_log(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, &event);
+
+    if (desc) (*env)->ReleaseStringUTFChars(env, description, desc);
+    if (details && det) (*env)->ReleaseStringUTFChars(env, details, det);
+    return (jint)rc;
+}
+
+// 13. audit_search(min_severity, max_results) -> List<Map>
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeAuditSearch(
+    JNIEnv *env, jclass cls, jlong h, jint min_severity, jint max_results)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+
+    jclass list_cls = (*env)->FindClass(env, "java/util/ArrayList");
+    jmethodID list_init = (*env)->GetMethodID(env, list_cls, "<init>", "()V");
+    jmethodID list_add = (*env)->GetMethodID(env, list_cls, "add", "(Ljava/lang/Object;)Z");
+    jobject list = (*env)->NewObject(env, list_cls, list_init);
+
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return list;
+
+    nimcp_memory_search_result_t *res = nimcp_memory_store_audit_search(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store,
+        (uint32_t)min_severity, 0, UINT64_MAX, (uint32_t)max_results);
+
+    if (res) {
+        for (uint32_t i = 0; i < res->count; i++) {
+            jclass mc; jmethodID mp;
+            jobject entry = jni_create_hashmap(env, &mc, &mp);
+            if (entry) {
+                jni_map_put_long(env, entry, mp, "id", (int64_t)res->ids[i]);
+                jni_map_put_float(env, entry, mp, "severity", res->distances[i]);
+                (*env)->CallBooleanMethod(env, list, list_add, entry);
+                (*env)->DeleteLocalRef(env, entry);
+            }
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    return list;
 }

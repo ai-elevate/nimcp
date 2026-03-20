@@ -1434,13 +1434,19 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     //       breaking mode collapse where all inputs produce near-identical outputs
     // HOW:  cortical_sparse_enforce_sparsity() keeps top K values, zeros the rest.
     //       Homeostatic thresholds adapt to maintain target sparsity over time.
+    /* K-WTA sparsity enforcement — SKIP for regression tasks.
+     * Regression outputs are dense embeddings (e.g., 4096-dim BGE targets)
+     * where every dimension carries information. K-WTA zeros 95% of dims,
+     * destroying the embedding. Only apply for classification tasks where
+     * sparsity helps differentiate class activations. */
     if (brain->enable_sparse_coding && brain->sparse_coding_system &&
-        decision->output_vector && decision->output_size > 0) {
+        decision->output_vector && decision->output_size > 0 &&
+        brain->config.task != BRAIN_TASK_REGRESSION) {
         cortical_sparse_enforce_sparsity(
             brain->sparse_coding_system,
             decision->output_vector,
             decision->output_size,
-            decision->output_vector);  // In-place: output overwrites input
+            decision->output_vector);
         float pop_sparsity = cortical_sparse_compute_population_sparsity(
             brain->sparse_coding_system,
             decision->output_vector,

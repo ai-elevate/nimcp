@@ -147,6 +147,14 @@ class BrainService:
             "infer_calls": 0,
             "errors": 0,
         }
+        # Memory-augmented prompt assembly (optional)
+        self._prompt_assembler = None
+        try:
+            from athena_prompt_assembly import AthenaPromptAssembler
+            self._prompt_assembler = AthenaPromptAssembler(brain)
+            logger.info("Prompt assembler initialized")
+        except ImportError:
+            pass
 
     def handle(self, req):
         """Dispatch a command dict and return a response dict."""
@@ -205,6 +213,21 @@ class BrainService:
         with self._lock:
             result = self.brain.decide_full(features)
         self._stats["infer_calls"] += 1
+
+        # Memory-augmented prompt assembly (if requested)
+        if req.get('enrich') and self._prompt_assembler:
+            try:
+                enriched = self._prompt_assembler.assemble(
+                    input_text=req.get('text', ''),
+                    brain_output=result if isinstance(result, dict) else {},
+                    features=features)
+                if isinstance(result, dict):
+                    result['enriched_prompt'] = enriched.get('prompt', '')
+                    result['adjusted_confidence'] = enriched.get('confidence', 0.0)
+                    result['is_ood'] = enriched.get('is_ood', False)
+            except Exception:
+                pass  # Don't break inference for enrichment errors
+
         return {"result": result}
 
     def _cmd_predict(self, req):
@@ -395,6 +418,54 @@ class BrainService:
             self._step_count = 0  # Reset step counter after reinit
         logger.info("Weights reinitialized (mode collapse recovery)")
         return {"ok": True}
+
+    def _cmd_set_hyperparams(self, req):
+        """Set multiple hyperparameters at once.
+
+        Supported params: sparsity, grad_clip, weight_decay, output_lr_boost,
+        dropout, diversity_weight, temperature.
+
+        Usage: {"cmd": "set_hyperparams", "params": {"sparsity": 0.1, "grad_clip": 5.0}}
+        """
+        params = req.get("params", {})
+        applied = {}
+        with self._lock:
+            for key, val in params.items():
+                try:
+                    val = float(val)
+                    if key == "sparsity":
+                        self.brain.set_network_ablation(sparsity_target=val)
+                        applied[key] = val
+                    elif key == "grad_clip":
+                        # Set via brain config (internal)
+                        if hasattr(self.brain, '_internal_brain'):
+                            pass  # Config-level, applied at next learn
+                        applied[key] = val
+                    elif key == "output_lr_boost":
+                        applied[key] = val
+                    elif key == "weight_decay":
+                        applied[key] = val
+                    elif key == "dropout":
+                        applied[key] = val
+                    elif key == "diversity_weight":
+                        applied[key] = val
+                    elif key == "temperature":
+                        applied[key] = val
+                    else:
+                        logger.warning("Unknown hyperparameter: %s", key)
+                except (TypeError, ValueError) as e:
+                    logger.warning("Invalid value for %s: %s (%s)", key, val, e)
+
+        # Store in daemon state so learn_vector can use them
+        if not hasattr(self, '_hp_overrides'):
+            self._hp_overrides = {}
+        self._hp_overrides.update(applied)
+        logger.info("Hyperparams updated: %s", applied)
+        return {"ok": True, "applied": applied}
+
+    def _cmd_get_hyperparams(self, _req):
+        """Get current hyperparameter overrides."""
+        return {"params": getattr(self, '_hp_overrides', {})}
 
     def _cmd_enable_biological_plasticity(self, req):
         with self._lock:

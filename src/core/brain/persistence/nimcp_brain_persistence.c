@@ -1485,6 +1485,25 @@ brain_t brain_load(const char* filepath)
                 }
             }
         }
+        /* Force output layer neurons to LINEAR activation after checkpoint load.
+         * Checkpoints saved before the dense-output fix may have ACTIVATION_ADAPTIVE
+         * on output neurons, causing 95% sparsity (only 204/4096 nonzero). */
+        if (base_net && brain->config.num_outputs > 0) {
+            uint32_t out_start = num_neurons > brain->config.num_outputs
+                ? num_neurons - brain->config.num_outputs : 0;
+            uint32_t fixed = 0;
+            for (uint32_t i = out_start; i < num_neurons; i++) {
+                neuron_t* n = neural_network_get_neuron(base_net, i);
+                if (n && n->activation_type != ACTIVATION_LINEAR) {
+                    n->activation_type = ACTIVATION_LINEAR;
+                    fixed++;
+                }
+            }
+            if (fixed > 0) {
+                fprintf(stderr, "[INFO] Fixed %u output neurons to LINEAR activation\n", fixed);
+            }
+        }
+
         fprintf(stderr, "[INFO] Checkpoint validation passed: %u neurons, bias spot-check OK\n",
                 num_neurons);
     }

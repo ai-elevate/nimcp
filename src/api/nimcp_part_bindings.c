@@ -599,3 +599,150 @@ nimcp_status_t nimcp_brain_focus_attention(
     set_error("No error");
     return NIMCP_OK;
 }
+
+// =========================================================================
+// Group 7 — Memory Store / OOD / Audit Bridge (for C#, Rust, Perl, C++)
+// =========================================================================
+
+#include "memory/nimcp_memory_store.h"
+#include "cognitive/nimcp_ood_detector.h"
+
+/**
+ * @brief Get memory store statistics through brain handle.
+ */
+int nimcp_brain_memory_store_stats(
+    nimcp_brain_t brain, nimcp_memory_store_stats_t* stats)
+{
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store || !stats) return -1;
+    return nimcp_memory_store_get_stats(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, stats);
+}
+
+/**
+ * @brief Full-text search on engram labels through brain handle.
+ * @param out_ids Pre-allocated array for result IDs
+ * @param max_results Max entries to return
+ * @param out_count Actual count returned
+ */
+int nimcp_brain_memory_search_text(
+    nimcp_brain_t brain, const char* query, uint32_t max_results,
+    uint64_t* out_ids, uint32_t* out_count)
+{
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store) {
+        if (out_count) *out_count = 0;
+        return 0;
+    }
+    nimcp_memory_search_result_t* res = nimcp_memory_store_engram_search_text(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, query, max_results);
+    uint32_t count = 0;
+    if (res) {
+        count = res->count < max_results ? res->count : max_results;
+        for (uint32_t i = 0; i < count; i++) {
+            if (out_ids) out_ids[i] = res->ids[i];
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    if (out_count) *out_count = count;
+    return 0;
+}
+
+/**
+ * @brief Vector similarity search on engram embeddings through brain handle.
+ * @param out_ids Pre-allocated array for result IDs
+ * @param out_distances Pre-allocated array for distances
+ * @param out_count Actual count returned
+ */
+int nimcp_brain_memory_search_similar(
+    nimcp_brain_t brain, const float* embedding, uint32_t dim,
+    uint32_t top_k, uint64_t* out_ids, float* out_distances, uint32_t* out_count)
+{
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store) {
+        if (out_count) *out_count = 0;
+        return 0;
+    }
+    nimcp_memory_search_result_t* res = nimcp_memory_store_engram_search_similar(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store,
+        embedding, dim, top_k, 0.0f);
+    uint32_t count = 0;
+    if (res) {
+        count = res->count < top_k ? res->count : top_k;
+        for (uint32_t i = 0; i < count; i++) {
+            if (out_ids) out_ids[i] = res->ids[i];
+            if (out_distances) out_distances[i] = res->distances[i];
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    if (out_count) *out_count = count;
+    return 0;
+}
+
+/**
+ * @brief Check if memory store is healthy through brain handle.
+ */
+bool nimcp_brain_memory_is_healthy(nimcp_brain_t brain)
+{
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return true; /* No store = nothing unhealthy */
+    return nimcp_memory_store_is_healthy(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store);
+}
+
+/**
+ * @brief Get OOD detector statistics through brain handle.
+ */
+int nimcp_brain_ood_stats(nimcp_brain_t brain, nimcp_ood_stats_t* stats)
+{
+    if (!brain || !brain->internal_brain || !brain->internal_brain->ood_detector || !stats)
+        return -1;
+    return nimcp_ood_get_stats(
+        (const nimcp_ood_detector_t*)brain->internal_brain->ood_detector, stats);
+}
+
+/**
+ * @brief Log an audit event through brain handle.
+ */
+int nimcp_brain_audit_log(
+    nimcp_brain_t brain, const char* description,
+    uint32_t severity, const char* details)
+{
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return -1;
+    nimcp_memory_audit_event_t event = {0};
+    extern uint64_t nimcp_time_get_us(void);
+    event.timestamp_us = nimcp_time_get_us();
+    event.event_type = severity;
+    if (description) strncpy(event.description, description, sizeof(event.description) - 1);
+    if (details) strncpy(event.details, details, sizeof(event.details) - 1);
+    return nimcp_memory_store_audit_log(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, &event);
+}
+
+/**
+ * @brief Search audit trail through brain handle.
+ * @param out_ids Pre-allocated array for result IDs
+ * @param out_severities Pre-allocated array for severity values
+ * @param out_count Actual count returned
+ */
+int nimcp_brain_audit_search(
+    nimcp_brain_t brain, uint32_t min_severity, uint32_t max_results,
+    uint64_t* out_ids, float* out_severities, uint32_t* out_count)
+{
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store) {
+        if (out_count) *out_count = 0;
+        return 0;
+    }
+    nimcp_memory_search_result_t* res = nimcp_memory_store_audit_search(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store,
+        min_severity, 0, UINT64_MAX, max_results);
+    uint32_t count = 0;
+    if (res) {
+        count = res->count < max_results ? res->count : max_results;
+        for (uint32_t i = 0; i < count; i++) {
+            if (out_ids) out_ids[i] = res->ids[i];
+            if (out_severities) out_severities[i] = res->distances[i];
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    if (out_count) *out_count = count;
+    return 0;
+}

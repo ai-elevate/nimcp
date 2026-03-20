@@ -1630,34 +1630,56 @@ static uint32_t process_network_outputs_impl(adaptive_network_t network, float* 
     uint32_t num_to_process =
         (output_size < network->num_neurons) ? output_size : network->num_neurons;
 
+    /* Output layer neurons should NOT be sparsified.
+     * The output layer produces a dense embedding (e.g., 4096-dim BGE target).
+     * Sparsifying it forces 95% to zero, causing mode collapse.
+     * Only apply sparsity to hidden layer neurons. */
+    uint32_t output_layer_start = 0;
+    if (output_size > network->config.base_config.output_size) {
+        output_layer_start = output_size - network->config.base_config.output_size;
+    }
+    {
+        static int _diag_count = 0;
+        if (_diag_count++ < 3) {
+            fprintf(stderr, "[DIAG-SPARSE] output_size=%u base_output=%u output_layer_start=%u enable_sparsity=%d readonly=%d\n",
+                    output_size, network->config.base_config.output_size,
+                    output_layer_start, network->config.enable_sparsity, readonly);
+        }
+    }
+
     for (uint32_t i = 0; i < num_to_process; i++) {
         adaptive_neuron_state_t* state = &network->neuron_states[i];
+        bool is_output_neuron = (i >= output_layer_start);
 
         if (!readonly) {
             // Update statistics (O(1))
             update_statistics(state, output[i]);
 
-            // Adapt threshold if enabled (O(1))
-            if (params->enable_adaptation) {
+            // Adapt threshold if enabled (O(1)) — skip for output neurons
+            if (params->enable_adaptation && !is_output_neuron) {
                 adapt_neuron_threshold(state, network->running_sparsity, params->sparsity_target,
                                        params->min_threshold, params->max_threshold);
             }
         }
 
         // M-6: In readonly mode, check threshold without mutating spike_count.
-        // process_neuron_output writes spike_count which violates read-only contract.
         if (readonly) {
             bool is_active = (fabsf(output[i]) > state->adaptive_threshold);
-            if (network->config.enable_sparsity && !is_active) {
+            if (network->config.enable_sparsity && !is_active && !is_output_neuron) {
                 output[i] = 0.0F;
-            } else if (is_active) {
+            } else if (is_active || is_output_neuron) {
                 active_count++;
             }
         } else {
-            // Process neuron output (O(1)) — mutates spike_count
-            bool is_active = process_neuron_output(state, &output[i], network->config.enable_sparsity);
-            if (is_active) {
+            if (is_output_neuron) {
+                // Output neurons: always active, no sparsity
                 active_count++;
+            } else {
+                // Hidden neurons: normal sparsity enforcement
+                bool is_active = process_neuron_output(state, &output[i], network->config.enable_sparsity);
+                if (is_active) {
+                    active_count++;
+                }
             }
         }
     }
@@ -1762,8 +1784,12 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
                     if (fabsf(output[di]) > 1e-6f) nz++;
                     if (fabsf(output[di]) > mx) mx = fabsf(output[di]);
                 }
-                fprintf(stderr, "[DIAG-GPU] ok=%d nz(100)=%u max=%.6f dirty=%d layers=%u\n",
-                        gpu_ok, nz, mx,
+                uint32_t nz_all = 0;
+                for (uint32_t di = 0; di < output_size; di++) {
+                    if (fabsf(output[di]) > 1e-6f) nz_all++;
+                }
+                fprintf(stderr, "[DIAG-GPU] ok=%d nz(100)=%u nz(all)=%u/%u max=%.6f dirty=%d layers=%u\n",
+                        gpu_ok, nz, nz_all, output_size, mx,
                         (int)network->gpu_weight_cache->weights_dirty_on_cpu,
                         network->gpu_weight_cache->num_layers);
                 fflush(stderr);

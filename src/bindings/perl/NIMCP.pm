@@ -13,7 +13,7 @@ use warnings;
 our $VERSION = '2.6.4';
 
 use FFI::Platypus 2.00;
-use FFI::Platypus::Memory qw( malloc calloc free );
+use FFI::Platypus::Memory qw( malloc calloc free memcpy );
 use FFI::Platypus::Buffer qw( scalar_to_buffer buffer_to_scalar );
 use FFI::Platypus::Record;
 
@@ -430,6 +430,35 @@ $ffi->attach('nimcp_knowledge_add_fact' =>
     ['opaque', 'string', 'string', 'string'] => 'int');
 $ffi->attach('nimcp_knowledge_query' =>
     ['opaque', 'string', 'opaque', 'uint32'] => 'int');
+
+# Edge Brain
+$ffi->attach('nimcp_edge_brain_resize' => ['opaque', 'opaque'] => 'int');
+$ffi->attach('nimcp_edge_brain_resize_check' =>
+    ['opaque', 'opaque', 'opaque'] => 'int');
+$ffi->attach('nimcp_edge_score_neuron_importance' =>
+    ['opaque', 'opaque', 'uint32'] => 'int');
+$ffi->attach('nimcp_brain_distill' =>
+    ['opaque', 'opaque', 'opaque', 'opaque'] => 'int');
+$ffi->attach('nimcp_brain_optimize_for_device' =>
+    ['opaque', 'opaque', 'opaque', 'opaque'] => 'int');
+$ffi->attach('nimcp_brain_quantize' => ['opaque', 'opaque'] => 'int');
+$ffi->attach('nimcp_resize_config_default' => [] => 'opaque');
+$ffi->attach('nimcp_distill_config_default' => [] => 'opaque');
+$ffi->attach('nimcp_quantize_config_default' => [] => 'opaque');
+$ffi->attach('nimcp_device_profile_default' => [] => 'opaque');
+
+# Memory Store / OOD / Audit (brain-handle wrappers)
+$ffi->attach('nimcp_brain_memory_store_stats' => ['opaque', 'opaque'] => 'int');
+$ffi->attach('nimcp_brain_memory_search_text' =>
+    ['opaque', 'string', 'uint32', 'opaque', 'uint32*'] => 'int');
+$ffi->attach('nimcp_brain_memory_search_similar' =>
+    ['opaque', 'float[]', 'uint32', 'uint32', 'opaque', 'opaque', 'uint32*'] => 'int');
+$ffi->attach('nimcp_brain_memory_is_healthy' => ['opaque'] => 'int');
+$ffi->attach('nimcp_brain_ood_stats' => ['opaque', 'opaque'] => 'int');
+$ffi->attach('nimcp_brain_audit_log' =>
+    ['opaque', 'string', 'uint32', 'string'] => 'int');
+$ffi->attach('nimcp_brain_audit_search' =>
+    ['opaque', 'uint32', 'uint32', 'opaque', 'opaque', 'uint32*'] => 'int');
 
 # ============================================================================
 # Helper functions
@@ -1925,6 +1954,257 @@ sub get_phase_coherence {
 sub get_pac_modulation {
     my ($self, $theta_freq, $gamma_freq) = @_;
     return NIMCP::nimcp_get_pac_modulation($self->{_handle}, $theta_freq, $gamma_freq);
+}
+
+# --- Edge Brain ---
+
+sub edge_resize {
+    my ($self, $target_neurons, %opts) = @_;
+    my $mode_str = $opts{mode} // 'contract';
+    my $transfer = $opts{knowledge_transfer} // 1;
+    # Allocate config struct (use calloc for zero-init, write fields)
+    my $config_sz = 64;  # oversized for safety
+    my $config = FFI::Platypus::Memory::calloc(1, $config_sz);
+    # target_neuron_count at offset 0 (uint32)
+    $ffi->cast('opaque' => 'uint32*', $config)->[0] = $target_neurons;
+    # mode at offset 4 (int32): 0=contract, 1=expand, 2=rebalance
+    my $mode_val = ($mode_str eq 'expand') ? 1 : ($mode_str eq 'rebalance') ? 2 : 0;
+    my $mode_ptr = $config + 4;
+    $ffi->cast('opaque' => 'sint32*', $mode_ptr)->[0] = $mode_val;
+    # enable_knowledge_transfer at offset 8 (bool/byte)
+    my $kt_packed = pack('C', $transfer ? 1 : 0);
+    my ($kt_src, undef) = FFI::Platypus::Buffer::scalar_to_buffer($kt_packed);
+    # Write byte at offset 8
+    FFI::Platypus::Memory::memcpy($config + 8, $kt_src, 1);
+    my $ret = NIMCP::nimcp_edge_brain_resize($self->{_handle}, $config);
+    FFI::Platypus::Memory::free($config);
+    return { status => $ret, target_neurons => $target_neurons, mode => $mode_str };
+}
+
+sub edge_resize_check {
+    my ($self, $target_neurons) = @_;
+    my $config = FFI::Platypus::Memory::calloc(1, 64);
+    $ffi->cast('opaque' => 'uint32*', $config)->[0] = $target_neurons;
+    my $report = FFI::Platypus::Memory::calloc(1, 512);
+    NIMCP::nimcp_edge_brain_resize_check($self->{_handle}, $config, $report);
+    # Parse report: feasible(bool@0), neurons_before(u32@4), neurons_after(u32@8), ram_delta(f32@12)
+    my $report_data = FFI::Platypus::Buffer::buffer_to_scalar($report, 16);
+    my ($feasible_byte, $nb, $na, $ram) = unpack('CxxxLLf', $report_data);
+    FFI::Platypus::Memory::free($config);
+    FFI::Platypus::Memory::free($report);
+    return {
+        feasible => $feasible_byte ? 1 : 0,
+        neurons_before => $nb,
+        neurons_after  => $na,
+        ram_delta_mb   => $ram,
+    };
+}
+
+sub edge_distill {
+    my ($self, $target_neurons, %opts) = @_;
+    my $temp  = $opts{temperature} // 2.0;
+    my $steps = $opts{steps} // 5000;
+    my $inc_snn = $opts{include_snn} // 0;
+    my $inc_lnn = $opts{include_lnn} // 0;
+    my $inc_cnn = $opts{include_cnn} // 1;
+    my $config = FFI::Platypus::Memory::calloc(1, 64);
+    $ffi->cast('opaque' => 'uint32*', $config)->[0] = $target_neurons;
+    my $packed = pack('fL', $temp, $steps);
+    my ($src, undef) = FFI::Platypus::Buffer::scalar_to_buffer($packed);
+    FFI::Platypus::Memory::memcpy($config + 4, $src, 8);
+    my $bools = pack('CCC', $inc_snn ? 1 : 0, $inc_lnn ? 1 : 0, $inc_cnn ? 1 : 0);
+    ($src, undef) = FFI::Platypus::Buffer::scalar_to_buffer($bools);
+    FFI::Platypus::Memory::memcpy($config + 12, $src, 3);
+    my $student_ptr = FFI::Platypus::Memory::calloc(1, 8);
+    my $report = FFI::Platypus::Memory::calloc(1, 256);
+    my $ret = NIMCP::nimcp_brain_distill($self->{_handle}, $student_ptr, $config, $report);
+    # Parse report: accuracy_retention(f32@0), neurons_selected(u32@4), compression_ratio(f32@8)
+    my $rdata = FFI::Platypus::Buffer::buffer_to_scalar($report, 24);
+    my ($acc, $ns, $cr, $tl, $sl, $st) = unpack('fLfffL', $rdata);
+    FFI::Platypus::Memory::free($config);
+    FFI::Platypus::Memory::free($student_ptr);
+    FFI::Platypus::Memory::free($report);
+    return {
+        status => $ret, accuracy_retention => $acc,
+        neurons_selected => $ns, compression_ratio => $cr,
+        teacher_loss => $tl, student_loss => $sl, steps_trained => $st,
+    };
+}
+
+sub edge_optimize_for_device {
+    my ($self, $ram_mb, %opts) = @_;
+    my $cores  = $opts{cpu_cores} // 2;
+    my $camera = $opts{has_camera} // 0;
+    my $imu    = $opts{has_imu} // 0;
+    my $motor  = $opts{has_motor_control} // 0;
+    my $net    = $opts{has_network} // 1;
+    my $role   = $opts{role} // 'general';
+    my $profile = FFI::Platypus::Memory::calloc(1, 64);
+    $ffi->cast('opaque' => 'uint32*', $profile)->[0] = $ram_mb;
+    $ffi->cast('opaque' => 'uint32*', $profile + 4)->[0] = $cores;
+    my $flags = pack('CCCC', $camera ? 1 : 0, $imu ? 1 : 0, $motor ? 1 : 0, $net ? 1 : 0);
+    my ($src, undef) = FFI::Platypus::Buffer::scalar_to_buffer($flags);
+    FFI::Platypus::Memory::memcpy($profile + 8, $src, 4);
+    my $role_val = ($role eq 'sensor') ? 1 : ($role eq 'actuator') ? 2 : ($role eq 'coordinator') ? 3 : 0;
+    $ffi->cast('opaque' => 'sint32*', $profile + 12)->[0] = $role_val;
+    my $child_ptr = FFI::Platypus::Memory::calloc(1, 8);
+    my $report = FFI::Platypus::Memory::calloc(1, 256);
+    my $ret = NIMCP::nimcp_brain_optimize_for_device($self->{_handle}, $profile, $child_ptr, $report);
+    my $rdata = FFI::Platypus::Buffer::buffer_to_scalar($report, 20);
+    my ($nc, $se, $erm, $eim, $ar) = unpack('LLfff', $rdata);
+    FFI::Platypus::Memory::free($profile);
+    FFI::Platypus::Memory::free($child_ptr);
+    FFI::Platypus::Memory::free($report);
+    return {
+        status => $ret, neuron_count => $nc, subsystems_enabled => $se,
+        estimated_ram_mb => $erm, estimated_inference_ms => $eim,
+        accuracy_retention => $ar,
+    };
+}
+
+sub edge_quantize {
+    my ($self, %opts) = @_;
+    my $prec_str = $opts{precision} // 'int8_symmetric';
+    my $cal      = $opts{calibration_samples} // 100;
+    my $config = FFI::Platypus::Memory::calloc(1, 64);
+    my $prec_val = ($prec_str eq 'fp16') ? 1 : ($prec_str eq 'int8_affine') ? 2 :
+                   ($prec_str eq 'int4') ? 3 : ($prec_str eq 'ternary') ? 4 : 0;
+    $ffi->cast('opaque' => 'sint32*', $config)->[0] = $prec_val;
+    $ffi->cast('opaque' => 'uint32*', $config + 4)->[0] = $cal;
+    my $ret = NIMCP::nimcp_brain_quantize($self->{_handle}, $config);
+    FFI::Platypus::Memory::free($config);
+    return { status => $ret, precision => $prec_str };
+}
+
+sub edge_score_importance {
+    my ($self, $num_neurons) = @_;
+    $num_neurons //= 1000;
+    my $buf = FFI::Platypus::Memory::calloc($num_neurons, 4);
+    NIMCP::nimcp_edge_score_neuron_importance($self->{_handle}, $buf, $num_neurons);
+    my $data = FFI::Platypus::Buffer::buffer_to_scalar($buf, $num_neurons * 4);
+    FFI::Platypus::Memory::free($buf);
+    return [unpack("f$num_neurons", $data)];
+}
+
+# --- Memory Store ---
+
+sub memory_store_stats {
+    my ($self) = @_;
+    # nimcp_memory_store_stats_t has 13 fields: 10 x uint64 + 2 x float + 1 x uint64
+    my $stats_sz = 10 * 8 + 2 * 4 + 1 * 8;  # 96 bytes
+    my $stats = FFI::Platypus::Memory::calloc(1, $stats_sz);
+    my $ret = NIMCP::nimcp_brain_memory_store_stats($self->{_handle}, $stats);
+    return undef if $ret != 0;
+    my $data = FFI::Platypus::Buffer::buffer_to_scalar($stats, $stats_sz);
+    my @vals = unpack('Q10f2Q', $data);
+    FFI::Platypus::Memory::free($stats);
+    return {
+        total_engrams => $vals[0], total_concepts => $vals[1],
+        total_relations => $vals[2], total_autobio => $vals[3],
+        total_writes => $vals[4], total_reads => $vals[5],
+        cache_hits => $vals[6], cache_misses => $vals[7],
+        write_buffer_flushes => $vals[8], bloom_filter_hits => $vals[9],
+        avg_write_latency_ms => $vals[10], avg_read_latency_ms => $vals[11],
+        db_size_bytes => $vals[12],
+    };
+}
+
+sub memory_search_text {
+    my ($self, $query, $max_results) = @_;
+    $max_results //= 10;
+    my $ids_buf = FFI::Platypus::Memory::calloc($max_results, 8);
+    my $count = 0;
+    NIMCP::nimcp_brain_memory_search_text(
+        $self->{_handle}, $query, $max_results, $ids_buf, \$count);
+    return [] if $count == 0;
+    my $data = FFI::Platypus::Buffer::buffer_to_scalar($ids_buf, $count * 8);
+    FFI::Platypus::Memory::free($ids_buf);
+    return [unpack("Q$count", $data)];
+}
+
+sub memory_search_similar {
+    my ($self, $embedding, $top_k) = @_;
+    die "embedding must be array ref" unless ref $embedding eq 'ARRAY';
+    $top_k //= 5;
+    my $dim = scalar @$embedding;
+    my $ids_buf = FFI::Platypus::Memory::calloc($top_k, 8);
+    my $dist_buf = FFI::Platypus::Memory::calloc($top_k, 4);
+    my $count = 0;
+    NIMCP::nimcp_brain_memory_search_similar(
+        $self->{_handle}, $embedding, $dim, $top_k,
+        $ids_buf, $dist_buf, \$count);
+    my @results;
+    if ($count > 0) {
+        my $id_data = FFI::Platypus::Buffer::buffer_to_scalar($ids_buf, $count * 8);
+        my $dist_data = FFI::Platypus::Buffer::buffer_to_scalar($dist_buf, $count * 4);
+        my @ids = unpack("Q$count", $id_data);
+        my @dists = unpack("f$count", $dist_data);
+        for my $i (0 .. $count - 1) {
+            push @results, { id => $ids[$i], distance => $dists[$i] };
+        }
+    }
+    FFI::Platypus::Memory::free($ids_buf);
+    FFI::Platypus::Memory::free($dist_buf);
+    return \@results;
+}
+
+sub memory_is_healthy {
+    my ($self) = @_;
+    return NIMCP::nimcp_brain_memory_is_healthy($self->{_handle}) ? 1 : 0;
+}
+
+# --- OOD Detection ---
+
+sub ood_stats {
+    my ($self) = @_;
+    # nimcp_ood_stats_t: 3 x uint64 + 3 x float = 36 bytes
+    my $stats_sz = 3 * 8 + 3 * 4;
+    my $stats = FFI::Platypus::Memory::calloc(1, $stats_sz);
+    my $ret = NIMCP::nimcp_brain_ood_stats($self->{_handle}, $stats);
+    return undef if $ret != 0;
+    my $data = FFI::Platypus::Buffer::buffer_to_scalar($stats, $stats_sz);
+    my @vals = unpack('Q3f3', $data);
+    FFI::Platypus::Memory::free($stats);
+    return {
+        total_checks => $vals[0], ood_detected => $vals[1],
+        in_distribution => $vals[2], avg_ood_score => $vals[3],
+        max_ood_score => $vals[4], ood_rate => $vals[5],
+    };
+}
+
+# --- Audit Trail ---
+
+sub audit_log {
+    my ($self, $description, %opts) = @_;
+    my $severity = $opts{severity} // 0;
+    my $details  = $opts{details} // '';
+    return NIMCP::nimcp_brain_audit_log(
+        $self->{_handle}, $description, $severity, $details);
+}
+
+sub audit_search {
+    my ($self, %opts) = @_;
+    my $min_sev = $opts{min_severity} // 0;
+    my $max_res = $opts{max_results} // 100;
+    my $ids_buf = FFI::Platypus::Memory::calloc($max_res, 8);
+    my $sev_buf = FFI::Platypus::Memory::calloc($max_res, 4);
+    my $count = 0;
+    NIMCP::nimcp_brain_audit_search(
+        $self->{_handle}, $min_sev, $max_res,
+        $ids_buf, $sev_buf, \$count);
+    my @results;
+    if ($count > 0) {
+        my $id_data = FFI::Platypus::Buffer::buffer_to_scalar($ids_buf, $count * 8);
+        my $sev_data = FFI::Platypus::Buffer::buffer_to_scalar($sev_buf, $count * 4);
+        my @ids = unpack("Q$count", $id_data);
+        my @sevs = unpack("f$count", $sev_data);
+        for my $i (0 .. $count - 1) {
+            push @results, { id => $ids[$i], severity => $sevs[$i] };
+        }
+    }
+    FFI::Platypus::Memory::free($ids_buf);
+    FFI::Platypus::Memory::free($sev_buf);
+    return \@results;
 }
 
 sub DESTROY {

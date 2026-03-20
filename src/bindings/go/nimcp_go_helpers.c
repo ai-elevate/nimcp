@@ -334,3 +334,153 @@ bool go_brain_focus_attention(nimcp_brain_t brain, const char* modality) {
     (void)modality;
     return true;
 }
+
+// ============================================================================
+// Memory Store Helpers
+// ============================================================================
+
+#include "memory/nimcp_memory_store.h"
+#include "cognitive/nimcp_ood_detector.h"
+#include "utils/time/nimcp_time.h"
+
+bool go_brain_memory_store_stats(nimcp_brain_t brain, go_memory_store_stats_t* out) {
+    if (!out) return false;
+    memset(out, 0, sizeof(*out));
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return false;
+    nimcp_memory_store_stats_t stats = {0};
+    nimcp_memory_store_get_stats(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, &stats);
+    out->total_engrams = stats.total_engrams;
+    out->total_concepts = stats.total_concepts;
+    out->total_relations = stats.total_relations;
+    out->total_autobio = stats.total_autobio;
+    out->total_writes = stats.total_writes;
+    out->total_reads = stats.total_reads;
+    out->cache_hits = stats.cache_hits;
+    out->cache_misses = stats.cache_misses;
+    out->db_size_bytes = stats.db_size_bytes;
+    out->valid = true;
+    return true;
+}
+
+bool go_brain_memory_is_healthy(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return true; /* No store = nothing unhealthy */
+    return nimcp_memory_store_is_healthy(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store);
+}
+
+go_id_array_t go_brain_memory_search_text(nimcp_brain_t brain, const char* query,
+                                           uint32_t max_results) {
+    go_id_array_t result = {0};
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store || !query)
+        return result;
+    nimcp_memory_search_result_t* res = nimcp_memory_store_engram_search_text(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, query, max_results);
+    if (res && res->count > 0) {
+        result.ids = (uint64_t*)malloc(res->count * sizeof(uint64_t));
+        if (result.ids) {
+            memcpy(result.ids, res->ids, res->count * sizeof(uint64_t));
+            result.count = res->count;
+        }
+    }
+    if (res) nimcp_memory_search_result_destroy(res);
+    return result;
+}
+
+go_similarity_result_t go_brain_memory_search_similar(
+    nimcp_brain_t brain, const float* embedding, uint32_t dim, uint32_t top_k) {
+    go_similarity_result_t result = {0};
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store || !embedding)
+        return result;
+    nimcp_memory_search_result_t* res = nimcp_memory_store_engram_search_similar(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, embedding, dim, top_k, 0.0f);
+    if (res && res->count > 0) {
+        result.ids = (uint64_t*)malloc(res->count * sizeof(uint64_t));
+        result.distances = (float*)malloc(res->count * sizeof(float));
+        if (result.ids && result.distances) {
+            memcpy(result.ids, res->ids, res->count * sizeof(uint64_t));
+            memcpy(result.distances, res->distances, res->count * sizeof(float));
+            result.count = res->count;
+        } else {
+            free(result.ids); free(result.distances);
+            result.ids = NULL; result.distances = NULL; result.count = 0;
+        }
+    }
+    if (res) nimcp_memory_search_result_destroy(res);
+    return result;
+}
+
+// ============================================================================
+// OOD Helpers
+// ============================================================================
+
+bool go_brain_ood_stats(nimcp_brain_t brain, go_ood_stats_t* out) {
+    if (!out) return false;
+    memset(out, 0, sizeof(*out));
+    if (!brain || !brain->internal_brain || !brain->internal_brain->ood_detector)
+        return false;
+    nimcp_ood_stats_t stats = {0};
+    nimcp_ood_get_stats(
+        (const nimcp_ood_detector_t*)brain->internal_brain->ood_detector, &stats);
+    out->total_checks = stats.total_checks;
+    out->ood_detected = stats.ood_detected;
+    out->in_distribution = stats.in_distribution;
+    out->avg_ood_score = stats.avg_ood_score;
+    out->ood_rate = stats.ood_rate;
+    out->valid = true;
+    return true;
+}
+
+// ============================================================================
+// Audit Helpers
+// ============================================================================
+
+int go_brain_audit_log(nimcp_brain_t brain, const char* description,
+                       uint32_t severity, const char* details) {
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return -1;
+    nimcp_memory_audit_event_t event = {0};
+    event.timestamp_us = nimcp_time_get_us();
+    event.event_type = severity;
+    if (description) strncpy(event.description, description, sizeof(event.description) - 1);
+    if (details) strncpy(event.details, details, sizeof(event.details) - 1);
+    return nimcp_memory_store_audit_log(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, &event);
+}
+
+go_similarity_result_t go_brain_audit_search(nimcp_brain_t brain,
+                                              uint32_t min_severity, uint32_t max_results) {
+    go_similarity_result_t result = {0};
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return result;
+    nimcp_memory_search_result_t* res = nimcp_memory_store_audit_search(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store,
+        min_severity, 0, UINT64_MAX, max_results);
+    if (res && res->count > 0) {
+        result.ids = (uint64_t*)malloc(res->count * sizeof(uint64_t));
+        result.distances = (float*)malloc(res->count * sizeof(float));
+        if (result.ids && result.distances) {
+            memcpy(result.ids, res->ids, res->count * sizeof(uint64_t));
+            memcpy(result.distances, res->distances, res->count * sizeof(float));
+            result.count = res->count;
+        } else {
+            free(result.ids); free(result.distances);
+            result.ids = NULL; result.distances = NULL; result.count = 0;
+        }
+    }
+    if (res) nimcp_memory_search_result_destroy(res);
+    return result;
+}
+
+void go_free_id_array(go_id_array_t* arr) {
+    if (arr && arr->ids) { free(arr->ids); arr->ids = NULL; arr->count = 0; }
+}
+
+void go_free_similarity_result(go_similarity_result_t* res) {
+    if (res) {
+        free(res->ids); free(res->distances);
+        res->ids = NULL; res->distances = NULL; res->count = 0;
+    }
+}

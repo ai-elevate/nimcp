@@ -4428,8 +4428,12 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                         neuron->state = (activation > 0.0F) ? activation : (activation * 0.01F);
                         break;
                     case ACTIVATION_ADAPTIVE:
-                        // Use adaptive threshold
-                        if (activation > neuron->threshold) {
+                        // Output layer: force LINEAR (no threshold gate).
+                        // ACTIVATION_ADAPTIVE zeros sub-threshold neurons, causing
+                        // 95% output sparsity. Output layer needs all dims active.
+                        if (layer == network->config.num_layers - 1) {
+                            neuron->state = activation;
+                        } else if (activation > neuron->threshold) {
                             neuron->state = tanhf((activation - neuron->threshold) / 10.0F);
                         } else {
                             neuron->state = 0.0F;

@@ -1545,3 +1545,334 @@ func (b *Brain) FocusAttention(modality string) error {
 	}
 	return nil
 }
+
+// ============================================================================
+// Group 7 — Edge Brain API
+// ============================================================================
+
+// EdgeResizeResult contains the result of an edge resize operation.
+type EdgeResizeResult struct {
+	Status        int
+	TargetNeurons uint32
+	Mode          string
+}
+
+// EdgeResize resizes the brain's neural network at runtime.
+// Mode: "contract" (default), "expand", "rebalance".
+func (b *Brain) EdgeResize(targetNeurons uint32, mode string, knowledgeTransfer bool) (*EdgeResizeResult, error) {
+	config := C.nimcp_resize_config_default()
+	config.target_neuron_count = C.uint32_t(targetNeurons)
+	config.enable_knowledge_transfer = C.bool(knowledgeTransfer)
+
+	switch mode {
+	case "expand":
+		config.mode = C.NIMCP_RESIZE_EXPAND
+	case "rebalance":
+		config.mode = C.NIMCP_RESIZE_REBALANCE
+	default:
+		config.mode = C.NIMCP_RESIZE_CONTRACT
+		mode = "contract"
+	}
+
+	ret := int(C.nimcp_edge_brain_resize(b.handle, &config))
+	return &EdgeResizeResult{Status: ret, TargetNeurons: targetNeurons, Mode: mode}, nil
+}
+
+// EdgeResizeCheckResult contains the dry-run resize feasibility report.
+type EdgeResizeCheckResult struct {
+	Feasible      bool
+	NeuronsBefore uint32
+	NeuronsAfter  uint32
+	RamDeltaMB    float32
+	Reason        string
+}
+
+// EdgeResizeCheck performs a dry-run resize check without executing.
+func (b *Brain) EdgeResizeCheck(targetNeurons uint32) *EdgeResizeCheckResult {
+	config := C.nimcp_resize_config_default()
+	config.target_neuron_count = C.uint32_t(targetNeurons)
+	config.mode = C.NIMCP_RESIZE_CONTRACT
+	var report C.nimcp_resize_report_t
+	C.nimcp_edge_brain_resize_check(b.handle, &config, &report)
+	return &EdgeResizeCheckResult{
+		Feasible:      bool(report.feasible),
+		NeuronsBefore: uint32(report.neurons_before),
+		NeuronsAfter:  uint32(report.neurons_after),
+		RamDeltaMB:    float32(report.estimated_ram_delta_mb),
+		Reason:        C.GoString(&report.reason[0]),
+	}
+}
+
+// EdgeDistillResult contains the result of knowledge distillation.
+type EdgeDistillResult struct {
+	Status            int
+	AccuracyRetention float32
+	NeuronsSelected   uint32
+	CompressionRatio  float32
+	TeacherLoss       float32
+	StudentLoss       float32
+	StepsTrained      uint32
+}
+
+// EdgeDistill distills the brain into a smaller student brain.
+func (b *Brain) EdgeDistill(targetNeurons uint32, temperature float32, steps uint32,
+	includeSNN, includeLNN, includeCNN bool) (*EdgeDistillResult, error) {
+	config := C.nimcp_distill_config_default()
+	config.target_neurons = C.uint32_t(targetNeurons)
+	config.temperature = C.float(temperature)
+	config.distillation_steps = C.uint32_t(steps)
+	config.include_snn = C.bool(includeSNN)
+	config.include_lnn = C.bool(includeLNN)
+	config.include_cnn = C.bool(includeCNN)
+
+	var report C.nimcp_distill_report_t
+	var student C.nimcp_brain_t
+	ret := int(C.nimcp_brain_distill(b.handle, &student, &config, &report))
+	return &EdgeDistillResult{
+		Status:            ret,
+		AccuracyRetention: float32(report.accuracy_retention),
+		NeuronsSelected:   uint32(report.neurons_selected),
+		CompressionRatio:  float32(report.compression_ratio),
+		TeacherLoss:       float32(report.teacher_loss),
+		StudentLoss:       float32(report.student_loss),
+		StepsTrained:      uint32(report.steps_trained),
+	}, nil
+}
+
+// EdgeOptimizeResult contains the result of device optimization.
+type EdgeOptimizeResult struct {
+	Status              int
+	NeuronCount         uint32
+	SubsystemsEnabled   uint32
+	EstimatedRamMB      float32
+	EstimatedInferenceMs float32
+	AccuracyRetention   float32
+}
+
+// EdgeOptimizeForDevice auto-optimizes the brain for a target device profile.
+func (b *Brain) EdgeOptimizeForDevice(ramMB, cpuCores uint32,
+	hasCamera, hasIMU, hasMotorControl, hasNetwork bool, role string) (*EdgeOptimizeResult, error) {
+	profile := C.nimcp_device_profile_default()
+	profile.ram_mb = C.uint32_t(ramMB)
+	profile.cpu_cores = C.uint32_t(cpuCores)
+	profile.has_camera = C.bool(hasCamera)
+	profile.has_imu = C.bool(hasIMU)
+	profile.has_motor_control = C.bool(hasMotorControl)
+	profile.has_network = C.bool(hasNetwork)
+
+	switch role {
+	case "sensor":
+		profile.role = C.NIMCP_DEVICE_SENSOR
+	case "actuator":
+		profile.role = C.NIMCP_DEVICE_ACTUATOR
+	case "coordinator":
+		profile.role = C.NIMCP_DEVICE_COORDINATOR
+	default:
+		profile.role = C.NIMCP_DEVICE_GENERAL
+	}
+
+	var report C.nimcp_optimization_report_t
+	var child C.nimcp_brain_t
+	ret := int(C.nimcp_brain_optimize_for_device(b.handle, &profile, &child, &report))
+	return &EdgeOptimizeResult{
+		Status:              ret,
+		NeuronCount:         uint32(report.neuron_count),
+		SubsystemsEnabled:   uint32(report.subsystems_enabled),
+		EstimatedRamMB:      float32(report.estimated_ram_mb),
+		EstimatedInferenceMs: float32(report.estimated_inference_ms),
+		AccuracyRetention:   float32(report.accuracy_retention),
+	}, nil
+}
+
+// EdgeQuantizeResult contains the result of weight quantization.
+type EdgeQuantizeResult struct {
+	Status    int
+	Precision string
+}
+
+// EdgeQuantize quantizes the brain's weights in-place.
+func (b *Brain) EdgeQuantize(precision string, calibrationSamples uint32) (*EdgeQuantizeResult, error) {
+	config := C.nimcp_quantize_config_default()
+	config.calibration_samples = C.uint32_t(calibrationSamples)
+
+	switch precision {
+	case "fp16":
+		config.weight_precision = C.NIMCP_QUANT_FP16
+	case "int8_affine":
+		config.weight_precision = C.NIMCP_QUANT_INT8_AFFINE
+	case "int4":
+		config.weight_precision = C.NIMCP_QUANT_INT4
+	case "ternary":
+		config.weight_precision = C.NIMCP_QUANT_TERNARY
+	default:
+		config.weight_precision = C.NIMCP_QUANT_INT8_SYMMETRIC
+		precision = "int8_symmetric"
+	}
+
+	ret := int(C.nimcp_brain_quantize(b.handle, &config))
+	return &EdgeQuantizeResult{Status: ret, Precision: precision}, nil
+}
+
+// EdgeScoreImportance scores neuron importance (activity, connectivity, weight magnitude).
+func (b *Brain) EdgeScoreImportance(numNeurons uint32) []float32 {
+	if numNeurons == 0 {
+		numNeurons = 1000
+	}
+	scores := make([]float32, numNeurons)
+	C.nimcp_edge_score_neuron_importance(b.handle,
+		(*C.float)(unsafe.Pointer(&scores[0])), C.uint32_t(numNeurons))
+	return scores
+}
+
+// ============================================================================
+// Group 8 — Memory Store API
+// ============================================================================
+
+// MemoryStoreStats contains memory store statistics.
+type MemoryStoreStats struct {
+	TotalEngrams  uint64
+	TotalConcepts uint64
+	TotalRelations uint64
+	TotalAutobio  uint64
+	TotalWrites   uint64
+	TotalReads    uint64
+	CacheHits     uint64
+	CacheMisses   uint64
+	DBSizeBytes   uint64
+}
+
+// MemoryStoreStats returns statistics from the persistent memory store.
+// Returns nil if no memory store is active.
+func (b *Brain) MemoryStoreStats() *MemoryStoreStats {
+	var out C.go_memory_store_stats_t
+	if !bool(C.go_brain_memory_store_stats(b.handle, &out)) {
+		return nil
+	}
+	return &MemoryStoreStats{
+		TotalEngrams:  uint64(out.total_engrams),
+		TotalConcepts: uint64(out.total_concepts),
+		TotalRelations: uint64(out.total_relations),
+		TotalAutobio:  uint64(out.total_autobio),
+		TotalWrites:   uint64(out.total_writes),
+		TotalReads:    uint64(out.total_reads),
+		CacheHits:     uint64(out.cache_hits),
+		CacheMisses:   uint64(out.cache_misses),
+		DBSizeBytes:   uint64(out.db_size_bytes),
+	}
+}
+
+// MemorySearchText searches memory by text query (FTS5 full-text search).
+// Returns a list of matching engram IDs.
+func (b *Brain) MemorySearchText(query string, maxResults uint32) []uint64 {
+	cQuery := C.CString(query)
+	defer C.free(unsafe.Pointer(cQuery))
+	result := C.go_brain_memory_search_text(b.handle, cQuery, C.uint32_t(maxResults))
+	defer C.go_free_id_array(&result)
+	if result.count == 0 || result.ids == nil {
+		return nil
+	}
+	ids := make([]uint64, result.count)
+	cIDs := unsafe.Slice((*uint64)(unsafe.Pointer(result.ids)), result.count)
+	copy(ids, cIDs)
+	return ids
+}
+
+// SimilarityResult represents a single similarity search result.
+type SimilarityResult struct {
+	ID       uint64
+	Distance float32
+}
+
+// MemorySearchSimilar searches memory by embedding similarity.
+// Returns a list of (id, distance) pairs.
+func (b *Brain) MemorySearchSimilar(embedding []float32, topK uint32) []SimilarityResult {
+	if len(embedding) == 0 {
+		return nil
+	}
+	result := C.go_brain_memory_search_similar(
+		b.handle,
+		(*C.float)(unsafe.Pointer(&embedding[0])),
+		C.uint32_t(len(embedding)),
+		C.uint32_t(topK))
+	defer C.go_free_similarity_result(&result)
+	if result.count == 0 || result.ids == nil {
+		return nil
+	}
+	out := make([]SimilarityResult, result.count)
+	cIDs := unsafe.Slice((*uint64)(unsafe.Pointer(result.ids)), result.count)
+	cDists := unsafe.Slice((*float32)(unsafe.Pointer(result.distances)), result.count)
+	for i := uint32(0); i < uint32(result.count); i++ {
+		out[i] = SimilarityResult{ID: cIDs[i], Distance: cDists[i]}
+	}
+	return out
+}
+
+// MemoryIsHealthy returns true if the memory store has no unrecoverable flush errors.
+func (b *Brain) MemoryIsHealthy() bool {
+	return bool(C.go_brain_memory_is_healthy(b.handle))
+}
+
+// ============================================================================
+// Group 9 — OOD Detection API
+// ============================================================================
+
+// OODStats contains out-of-distribution detection statistics.
+type OODStats struct {
+	TotalChecks    uint64
+	OODDetected    uint64
+	InDistribution uint64
+	AvgOODScore    float32
+	OODRate        float32
+}
+
+// OODStats returns out-of-distribution detection statistics.
+// Returns nil if no OOD detector is active.
+func (b *Brain) OODStats() *OODStats {
+	var out C.go_ood_stats_t
+	if !bool(C.go_brain_ood_stats(b.handle, &out)) {
+		return nil
+	}
+	return &OODStats{
+		TotalChecks:    uint64(out.total_checks),
+		OODDetected:    uint64(out.ood_detected),
+		InDistribution: uint64(out.in_distribution),
+		AvgOODScore:    float32(out.avg_ood_score),
+		OODRate:        float32(out.ood_rate),
+	}
+}
+
+// ============================================================================
+// Group 10 — Security Audit API
+// ============================================================================
+
+// AuditLog logs a security audit event to the memory store.
+// Returns 0 on success, -1 on failure.
+func (b *Brain) AuditLog(description string, severity uint32, details string) int {
+	cDesc := C.CString(description)
+	defer C.free(unsafe.Pointer(cDesc))
+	cDetails := C.CString(details)
+	defer C.free(unsafe.Pointer(cDetails))
+	return int(C.go_brain_audit_log(b.handle, cDesc, C.uint32_t(severity), cDetails))
+}
+
+// AuditEntry represents a single audit search result.
+type AuditEntry struct {
+	ID       uint64
+	Severity float32
+}
+
+// AuditSearch searches the security audit trail.
+func (b *Brain) AuditSearch(minSeverity, maxResults uint32) []AuditEntry {
+	result := C.go_brain_audit_search(b.handle, C.uint32_t(minSeverity), C.uint32_t(maxResults))
+	defer C.go_free_similarity_result(&result)
+	if result.count == 0 || result.ids == nil {
+		return nil
+	}
+	out := make([]AuditEntry, result.count)
+	cIDs := unsafe.Slice((*uint64)(unsafe.Pointer(result.ids)), result.count)
+	cDists := unsafe.Slice((*float32)(unsafe.Pointer(result.distances)), result.count)
+	for i := uint32(0); i < uint32(result.count); i++ {
+		out[i] = AuditEntry{ID: cIDs[i], Severity: cDists[i]}
+	}
+	return out
+}

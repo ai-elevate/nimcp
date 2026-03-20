@@ -230,6 +230,14 @@ nimcp_gpu_weight_cache_t* nimcp_gpu_weight_cache_create(
             cache->layer_activations[l] = ACTIVATION_TANH;  // safe default
         }
     }
+    /* Force output layer to LINEAR activation.
+     * The output layer produces a dense embedding (regression target).
+     * ADAPTIVE activation zeros outputs below threshold, causing 95% sparsity
+     * in the output vector — which prevents the network from using all 4096 dims.
+     * LINEAR lets all values through unchanged. */
+    if (num_layers > 1) {
+        cache->layer_activations[num_layers - 1] = ACTIVATION_LINEAR;
+    }
 
     // Allocate per-transition arrays (num_layers - 1 transitions)
     uint32_t num_transitions = num_layers - 1;
@@ -737,7 +745,11 @@ static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint3
     }
 
     // Apply activation function based on per-layer type
+    // Force output layer to LINEAR (no threshold gate) regardless of stored type
     activation_type_t act = cache->layer_activations[l + 1];
+    if (l + 1 == cache->num_layers - 1) {
+        act = ACTIVATION_LINEAR;
+    }
     bool act_ok = false;
     switch (act) {
         case ACTIVATION_SIGMOID:

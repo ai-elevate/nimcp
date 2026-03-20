@@ -2932,7 +2932,490 @@ static napi_value BrainFocusAttention(napi_env env, napi_callback_info info) {
 }
 
 /* =========================================================================
- * 22. Module Init - Export all functions + constants
+ * 22. Edge Brain + Memory Store + OOD + Audit API
+ * ========================================================================= */
+
+#include "edge/nimcp_edge.h"
+#include "memory/nimcp_memory_store.h"
+#include "cognitive/nimcp_ood_detector.h"
+#include "utils/time/nimcp_time.h"
+
+// 1. edgeResize(brain, targetNeurons, mode, knowledgeTransfer)
+static napi_value EdgeResize(napi_env env, napi_callback_info info) {
+    size_t argc = 4;
+    napi_value args[4], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 2) { napi_throw_error(env, NULL, "edgeResize: 2-4 args"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+
+    uint32_t target;
+    napi_get_value_uint32(env, args[1], &target);
+
+    nimcp_resize_config_t config = nimcp_resize_config_default();
+    config.target_neuron_count = target;
+    config.mode = NIMCP_RESIZE_CONTRACT;
+    config.enable_knowledge_transfer = true;
+
+    if (argc > 2) {
+        char* mode = get_string(env, args[2]);
+        if (mode) {
+            if (strcmp(mode, "expand") == 0) config.mode = NIMCP_RESIZE_EXPAND;
+            else if (strcmp(mode, "rebalance") == 0) config.mode = NIMCP_RESIZE_REBALANCE;
+            free(mode);
+        }
+    }
+    if (argc > 3) {
+        bool transfer;
+        napi_get_value_bool(env, args[3], &transfer);
+        config.enable_knowledge_transfer = transfer;
+    }
+
+    int ret = nimcp_edge_brain_resize(brain, &config);
+
+    napi_value obj, v;
+    napi_create_object(env, &obj);
+    napi_create_int32(env, ret, &v);
+    napi_set_named_property(env, obj, "status", v);
+    napi_create_uint32(env, target, &v);
+    napi_set_named_property(env, obj, "targetNeurons", v);
+    return obj;
+}
+
+// 2. edgeResizeCheck(brain, targetNeurons)
+static napi_value EdgeResizeCheck(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 2) { napi_throw_error(env, NULL, "edgeResizeCheck: 2 args"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+
+    uint32_t target;
+    napi_get_value_uint32(env, args[1], &target);
+
+    nimcp_resize_config_t config = nimcp_resize_config_default();
+    config.target_neuron_count = target;
+    config.mode = NIMCP_RESIZE_CONTRACT;
+    nimcp_resize_report_t report = {0};
+    nimcp_edge_brain_resize_check(brain, &config, &report);
+
+    napi_value obj, v;
+    napi_create_object(env, &obj);
+    napi_get_boolean(env, report.feasible, &v);
+    napi_set_named_property(env, obj, "feasible", v);
+    napi_create_uint32(env, report.neurons_before, &v);
+    napi_set_named_property(env, obj, "neuronsBefore", v);
+    napi_create_uint32(env, report.neurons_after, &v);
+    napi_set_named_property(env, obj, "neuronsAfter", v);
+    napi_create_double(env, report.estimated_ram_delta_mb, &v);
+    napi_set_named_property(env, obj, "ramDeltaMb", v);
+    napi_create_string_utf8(env, report.reason, NAPI_AUTO_LENGTH, &v);
+    napi_set_named_property(env, obj, "reason", v);
+    return obj;
+}
+
+// 3. edgeDistill(brain, target, temperature, steps, incSnn, incLnn, incCnn)
+static napi_value EdgeDistill(napi_env env, napi_callback_info info) {
+    size_t argc = 7;
+    napi_value args[7], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 2) { napi_throw_error(env, NULL, "edgeDistill: 2-7 args"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+
+    nimcp_distill_config_t config = nimcp_distill_config_default();
+    napi_get_value_uint32(env, args[1], &config.target_neurons);
+
+    if (argc > 2) { double t; napi_get_value_double(env, args[2], &t); config.temperature = (float)t; }
+    if (argc > 3) { napi_get_value_uint32(env, args[3], &config.distillation_steps); }
+    if (argc > 4) { napi_get_value_bool(env, args[4], &config.include_snn); }
+    if (argc > 5) { napi_get_value_bool(env, args[5], &config.include_lnn); }
+    if (argc > 6) { napi_get_value_bool(env, args[6], &config.include_cnn); }
+
+    nimcp_distill_report_t report = {0};
+    nimcp_brain_t student = NULL;
+    int ret = nimcp_brain_distill(brain, &student, &config, &report);
+
+    napi_value obj, v;
+    napi_create_object(env, &obj);
+    napi_create_int32(env, ret, &v);
+    napi_set_named_property(env, obj, "status", v);
+    napi_create_double(env, report.accuracy_retention, &v);
+    napi_set_named_property(env, obj, "accuracyRetention", v);
+    napi_create_uint32(env, report.neurons_selected, &v);
+    napi_set_named_property(env, obj, "neuronsSelected", v);
+    napi_create_double(env, report.compression_ratio, &v);
+    napi_set_named_property(env, obj, "compressionRatio", v);
+    napi_create_double(env, report.teacher_loss, &v);
+    napi_set_named_property(env, obj, "teacherLoss", v);
+    napi_create_double(env, report.student_loss, &v);
+    napi_set_named_property(env, obj, "studentLoss", v);
+    napi_create_uint32(env, report.steps_trained, &v);
+    napi_set_named_property(env, obj, "stepsTrained", v);
+    return obj;
+}
+
+// 4. edgeOptimizeForDevice(brain, ramMb, cpuCores, camera, imu, motor, network, role)
+static napi_value EdgeOptimizeForDevice(napi_env env, napi_callback_info info) {
+    size_t argc = 8;
+    napi_value args[8], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 2) { napi_throw_error(env, NULL, "edgeOptimizeForDevice: 2-8 args"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+
+    nimcp_device_profile_t profile = nimcp_device_profile_default();
+    napi_get_value_uint32(env, args[1], &profile.ram_mb);
+    if (argc > 2) napi_get_value_uint32(env, args[2], &profile.cpu_cores);
+    if (argc > 3) napi_get_value_bool(env, args[3], &profile.has_camera);
+    if (argc > 4) napi_get_value_bool(env, args[4], &profile.has_imu);
+    if (argc > 5) napi_get_value_bool(env, args[5], &profile.has_motor_control);
+    if (argc > 6) napi_get_value_bool(env, args[6], &profile.has_network);
+    if (argc > 7) {
+        char* role = get_string(env, args[7]);
+        if (role) {
+            if (strcmp(role, "sensor") == 0) profile.role = NIMCP_DEVICE_SENSOR;
+            else if (strcmp(role, "actuator") == 0) profile.role = NIMCP_DEVICE_ACTUATOR;
+            else if (strcmp(role, "coordinator") == 0) profile.role = NIMCP_DEVICE_COORDINATOR;
+            else profile.role = NIMCP_DEVICE_GENERAL;
+            free(role);
+        }
+    }
+
+    nimcp_optimization_report_t report = {0};
+    nimcp_brain_t child = NULL;
+    int ret = nimcp_brain_optimize_for_device(brain, &profile, &child, &report);
+
+    napi_value obj, v;
+    napi_create_object(env, &obj);
+    napi_create_int32(env, ret, &v);
+    napi_set_named_property(env, obj, "status", v);
+    napi_create_uint32(env, report.neuron_count, &v);
+    napi_set_named_property(env, obj, "neuronCount", v);
+    napi_create_uint32(env, report.subsystems_enabled, &v);
+    napi_set_named_property(env, obj, "subsystemsEnabled", v);
+    napi_create_double(env, report.estimated_ram_mb, &v);
+    napi_set_named_property(env, obj, "estimatedRamMb", v);
+    napi_create_double(env, report.estimated_inference_ms, &v);
+    napi_set_named_property(env, obj, "estimatedInferenceMs", v);
+    napi_create_double(env, report.accuracy_retention, &v);
+    napi_set_named_property(env, obj, "accuracyRetention", v);
+    return obj;
+}
+
+// 5. edgeQuantize(brain, precision, calibrationSamples)
+static napi_value EdgeQuantize(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "edgeQuantize: 1-3 args"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+
+    nimcp_quantize_config_t config = nimcp_quantize_config_default();
+    if (argc > 1) {
+        char* prec = get_string(env, args[1]);
+        if (prec) {
+            if (strcmp(prec, "fp16") == 0) config.weight_precision = NIMCP_QUANT_FP16;
+            else if (strcmp(prec, "int8_affine") == 0) config.weight_precision = NIMCP_QUANT_INT8_AFFINE;
+            else if (strcmp(prec, "int4") == 0) config.weight_precision = NIMCP_QUANT_INT4;
+            else if (strcmp(prec, "ternary") == 0) config.weight_precision = NIMCP_QUANT_TERNARY;
+            else config.weight_precision = NIMCP_QUANT_INT8_SYMMETRIC;
+            free(prec);
+        }
+    }
+    if (argc > 2) napi_get_value_uint32(env, args[2], &config.calibration_samples);
+
+    int ret = nimcp_brain_quantize(brain, &config);
+
+    napi_value obj, v;
+    napi_create_object(env, &obj);
+    napi_create_int32(env, ret, &v);
+    napi_set_named_property(env, obj, "status", v);
+    return obj;
+}
+
+// 6. edgeScoreImportance(brain, numNeurons)
+static napi_value EdgeScoreImportance(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "edgeScoreImportance: 1-2 args"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+
+    uint32_t n = 1000;
+    if (argc > 1) napi_get_value_uint32(env, args[1], &n);
+    if (n == 0) n = 1000;
+
+    float* scores = (float*)calloc(n, sizeof(float));
+    if (!scores) { napi_throw_error(env, NULL, "malloc failed"); return NULL; }
+
+    nimcp_edge_score_neuron_importance(brain, scores, n);
+
+    napi_value arr = create_float_array(env, scores, n);
+    free(scores);
+    return arr;
+}
+
+// 7. memoryStoreStats(brain)
+static napi_value MemoryStoreStats(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "memoryStoreStats: 1 arg"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store) {
+        napi_value undef;
+        napi_get_undefined(env, &undef);
+        return undef;
+    }
+
+    nimcp_memory_store_stats_t stats = {0};
+    nimcp_memory_store_get_stats(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, &stats);
+
+    napi_value obj, v;
+    napi_create_object(env, &obj);
+
+    napi_create_int64(env, (int64_t)stats.total_engrams, &v);
+    napi_set_named_property(env, obj, "totalEngrams", v);
+    napi_create_int64(env, (int64_t)stats.total_concepts, &v);
+    napi_set_named_property(env, obj, "totalConcepts", v);
+    napi_create_int64(env, (int64_t)stats.total_relations, &v);
+    napi_set_named_property(env, obj, "totalRelations", v);
+    napi_create_int64(env, (int64_t)stats.total_autobio, &v);
+    napi_set_named_property(env, obj, "totalAutobio", v);
+    napi_create_int64(env, (int64_t)stats.total_writes, &v);
+    napi_set_named_property(env, obj, "totalWrites", v);
+    napi_create_int64(env, (int64_t)stats.total_reads, &v);
+    napi_set_named_property(env, obj, "totalReads", v);
+    napi_create_int64(env, (int64_t)stats.cache_hits, &v);
+    napi_set_named_property(env, obj, "cacheHits", v);
+    napi_create_int64(env, (int64_t)stats.cache_misses, &v);
+    napi_set_named_property(env, obj, "cacheMisses", v);
+    napi_create_int64(env, (int64_t)stats.db_size_bytes, &v);
+    napi_set_named_property(env, obj, "dbSizeBytes", v);
+    return obj;
+}
+
+// 8. memorySearchText(brain, query, maxResults)
+static napi_value MemorySearchText(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 2) { napi_throw_error(env, NULL, "memorySearchText: 2-3 args"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    napi_value empty_arr;
+    napi_create_array(env, &empty_arr);
+
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return empty_arr;
+
+    char* query = get_string(env, args[1]);
+    if (!query) return empty_arr;
+
+    uint32_t max_results = 10;
+    if (argc > 2) napi_get_value_uint32(env, args[2], &max_results);
+
+    nimcp_memory_search_result_t* res = nimcp_memory_store_engram_search_text(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, query, max_results);
+    free(query);
+
+    napi_value arr;
+    napi_create_array(env, &arr);
+    if (res) {
+        for (uint32_t i = 0; i < res->count; i++) {
+            napi_value v;
+            napi_create_int64(env, (int64_t)res->ids[i], &v);
+            napi_set_element(env, arr, i, v);
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    return arr;
+}
+
+// 9. memorySearchSimilar(brain, embedding, topK)
+static napi_value MemorySearchSimilar(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 2) { napi_throw_error(env, NULL, "memorySearchSimilar: 2-3 args"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    napi_value empty_arr;
+    napi_create_array(env, &empty_arr);
+
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return empty_arr;
+
+    uint32_t dim;
+    float* emb = get_float_array(env, args[1], &dim);
+    if (!emb) return empty_arr;
+
+    uint32_t top_k = 5;
+    if (argc > 2) napi_get_value_uint32(env, args[2], &top_k);
+
+    nimcp_memory_search_result_t* res = nimcp_memory_store_engram_search_similar(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, emb, dim, top_k, 0.0f);
+    free(emb);
+
+    napi_value arr;
+    napi_create_array(env, &arr);
+    if (res) {
+        for (uint32_t i = 0; i < res->count; i++) {
+            napi_value pair, id_val, dist_val;
+            napi_create_object(env, &pair);
+            napi_create_int64(env, (int64_t)res->ids[i], &id_val);
+            napi_set_named_property(env, pair, "id", id_val);
+            napi_create_double(env, res->distances[i], &dist_val);
+            napi_set_named_property(env, pair, "distance", dist_val);
+            napi_set_element(env, arr, i, pair);
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    return arr;
+}
+
+// 10. memoryIsHealthy(brain)
+static napi_value MemoryIsHealthy(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "memoryIsHealthy: 1 arg"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    bool healthy = true;
+    if (brain && brain->internal_brain && brain->internal_brain->memory_store) {
+        healthy = nimcp_memory_store_is_healthy(
+            (nimcp_memory_store_t*)brain->internal_brain->memory_store);
+    }
+    napi_value result;
+    napi_get_boolean(env, healthy, &result);
+    return result;
+}
+
+// 11. oodStats(brain)
+static napi_value OodStats(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "oodStats: 1 arg"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain || !brain->internal_brain || !brain->internal_brain->ood_detector) {
+        napi_value undef;
+        napi_get_undefined(env, &undef);
+        return undef;
+    }
+
+    nimcp_ood_stats_t stats = {0};
+    nimcp_ood_get_stats(
+        (const nimcp_ood_detector_t*)brain->internal_brain->ood_detector, &stats);
+
+    napi_value obj, v;
+    napi_create_object(env, &obj);
+    napi_create_int64(env, (int64_t)stats.total_checks, &v);
+    napi_set_named_property(env, obj, "totalChecks", v);
+    napi_create_int64(env, (int64_t)stats.ood_detected, &v);
+    napi_set_named_property(env, obj, "oodDetected", v);
+    napi_create_int64(env, (int64_t)stats.in_distribution, &v);
+    napi_set_named_property(env, obj, "inDistribution", v);
+    napi_create_double(env, stats.avg_ood_score, &v);
+    napi_set_named_property(env, obj, "avgOodScore", v);
+    napi_create_double(env, stats.ood_rate, &v);
+    napi_set_named_property(env, obj, "oodRate", v);
+    return obj;
+}
+
+// 12. auditLog(brain, description, severity, details)
+static napi_value AuditLog(napi_env env, napi_callback_info info) {
+    size_t argc = 4;
+    napi_value args[4], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 2) { napi_throw_error(env, NULL, "auditLog: 2-4 args"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store) {
+        napi_value r;
+        napi_create_int32(env, -1, &r);
+        return r;
+    }
+
+    char* desc = get_string(env, args[1]);
+    if (!desc) { napi_value r; napi_create_int32(env, -1, &r); return r; }
+
+    uint32_t severity = 0;
+    if (argc > 2) napi_get_value_uint32(env, args[2], &severity);
+
+    char* details = NULL;
+    if (argc > 3) details = get_string(env, args[3]);
+
+    nimcp_memory_audit_event_t event = {0};
+    event.timestamp_us = nimcp_time_get_us();
+    event.event_type = severity;
+    strncpy(event.description, desc, sizeof(event.description) - 1);
+    if (details) strncpy(event.details, details, sizeof(event.details) - 1);
+
+    int rc = nimcp_memory_store_audit_log(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store, &event);
+
+    free(desc);
+    if (details) free(details);
+
+    napi_value result;
+    napi_create_int32(env, rc, &result);
+    return result;
+}
+
+// 13. auditSearch(brain, minSeverity, maxResults)
+static napi_value AuditSearch(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "auditSearch: 1-3 args"); return NULL; }
+
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    napi_value arr;
+    napi_create_array(env, &arr);
+
+    if (!brain || !brain->internal_brain || !brain->internal_brain->memory_store)
+        return arr;
+
+    uint32_t min_sev = 0, max_res = 100;
+    if (argc > 1) napi_get_value_uint32(env, args[1], &min_sev);
+    if (argc > 2) napi_get_value_uint32(env, args[2], &max_res);
+
+    nimcp_memory_search_result_t* res = nimcp_memory_store_audit_search(
+        (nimcp_memory_store_t*)brain->internal_brain->memory_store,
+        min_sev, 0, UINT64_MAX, max_res);
+
+    if (res) {
+        for (uint32_t i = 0; i < res->count; i++) {
+            napi_value entry, v;
+            napi_create_object(env, &entry);
+            napi_create_int64(env, (int64_t)res->ids[i], &v);
+            napi_set_named_property(env, entry, "id", v);
+            napi_create_double(env, res->distances[i], &v);
+            napi_set_named_property(env, entry, "severity", v);
+            napi_set_element(env, arr, i, entry);
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    return arr;
+}
+
+/* =========================================================================
+ * 23. Module Init - Export all functions + constants
  * ========================================================================= */
 
 #define EXPORT_FN(env, exports, name, fn)                             \
@@ -3075,6 +3558,25 @@ static napi_value Init(napi_env env, napi_value exports) {
     EXPORT_FN(env, exports, "bgGetDopamine", BrainBgGetDopamine);
     EXPORT_FN(env, exports, "substrateGetHealth", BrainSubstrateGetHealth);
     EXPORT_FN(env, exports, "focusAttention", BrainFocusAttention);
+
+    /* --- Edge Brain API --- */
+    EXPORT_FN(env, exports, "edgeResize", EdgeResize);
+    EXPORT_FN(env, exports, "edgeResizeCheck", EdgeResizeCheck);
+    EXPORT_FN(env, exports, "edgeDistill", EdgeDistill);
+    EXPORT_FN(env, exports, "edgeOptimizeForDevice", EdgeOptimizeForDevice);
+    EXPORT_FN(env, exports, "edgeQuantize", EdgeQuantize);
+    EXPORT_FN(env, exports, "edgeScoreImportance", EdgeScoreImportance);
+
+    /* --- Memory Store API --- */
+    EXPORT_FN(env, exports, "memoryStoreStats", MemoryStoreStats);
+    EXPORT_FN(env, exports, "memorySearchText", MemorySearchText);
+    EXPORT_FN(env, exports, "memorySearchSimilar", MemorySearchSimilar);
+    EXPORT_FN(env, exports, "memoryIsHealthy", MemoryIsHealthy);
+
+    /* --- OOD + Audit API --- */
+    EXPORT_FN(env, exports, "oodStats", OodStats);
+    EXPORT_FN(env, exports, "auditLog", AuditLog);
+    EXPORT_FN(env, exports, "auditSearch", AuditSearch);
 
     /* === Enum Constants === */
 

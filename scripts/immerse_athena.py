@@ -610,6 +610,100 @@ class CosineAnnealingLR:
 
 LR_TRIGGER_FILE = "/tmp/athena_lr"
 
+# === Hyperparameter override files (written by auto-tuner, read here) ===
+HP_OVERRIDE_FILES = {
+    'lr':              '/tmp/athena_lr',
+    'sparsity':        '/tmp/athena_sparsity',
+    'diversity_weight': '/tmp/athena_diversity_weight',
+    'grad_clip':       '/tmp/athena_grad_clip',
+    'weight_decay':    '/tmp/athena_weight_decay',
+    'output_lr_boost': '/tmp/athena_output_lr_boost',
+    'dropout':         '/tmp/athena_dropout',
+    'temperature':     '/tmp/athena_temperature',
+}
+
+# Current HP state (mutable, applied each step)
+_hp_state = {
+    'sparsity': 0.05,
+    'diversity_weight': 0.1,
+    'grad_clip': 100.0,
+    'weight_decay': 1e-5,
+    'output_lr_boost': 10.0,
+    'dropout': 0.0,
+    'temperature': 1.0,
+}
+
+
+def _check_hp_overrides(brain, lr_scheduler, step):
+    """Check all hyperparameter override files and apply changes.
+
+    Called every step from the training loop. Reads /tmp/athena_* files
+    written by the hyperparameter auto-tuner and applies them to the brain.
+    """
+    global _hp_state
+
+    for param, path in HP_OVERRIDE_FILES.items():
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path) as f:
+                new_val = float(f.read().strip())
+            os.remove(path)
+        except (ValueError, OSError):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            continue
+
+        if param == 'lr':
+            new_val = max(MIN_LEARNING_RATE, min(MAX_LEARNING_RATE, new_val))
+            lr_scheduler.lr_max = new_val
+            lr_scheduler.lr_min = new_val * 0.1
+            print(f"    [HP] lr → {new_val:.6f}")
+
+        elif param == 'sparsity':
+            _hp_state['sparsity'] = max(0.02, min(0.30, new_val))
+            try:
+                brain.set_network_ablation(sparsity_target=_hp_state['sparsity'])
+            except Exception:
+                pass
+            print(f"    [HP] sparsity → {_hp_state['sparsity']:.3f}")
+
+        elif param == 'diversity_weight':
+            _hp_state['diversity_weight'] = max(0.0, min(1.0, new_val))
+            # Applied via learn_vector kwargs if supported, or brain config
+            try:
+                brain.utm_set_per_network_lr(0, lr_scheduler.get_lr())  # Trigger config refresh
+            except Exception:
+                pass
+            print(f"    [HP] diversity_weight → {_hp_state['diversity_weight']:.3f}")
+
+        elif param == 'grad_clip':
+            _hp_state['grad_clip'] = max(0.1, min(100.0, new_val))
+            print(f"    [HP] grad_clip → {_hp_state['grad_clip']:.1f}")
+
+        elif param == 'weight_decay':
+            _hp_state['weight_decay'] = max(0.0, min(1e-3, new_val))
+            print(f"    [HP] weight_decay → {_hp_state['weight_decay']:.6f}")
+
+        elif param == 'output_lr_boost':
+            _hp_state['output_lr_boost'] = max(1.0, min(50.0, new_val))
+            print(f"    [HP] output_lr_boost → {_hp_state['output_lr_boost']:.1f}")
+
+        elif param == 'dropout':
+            _hp_state['dropout'] = max(0.0, min(0.5, new_val))
+            print(f"    [HP] dropout → {_hp_state['dropout']:.3f}")
+
+        elif param == 'temperature':
+            _hp_state['temperature'] = max(0.1, min(5.0, new_val))
+            print(f"    [HP] temperature → {_hp_state['temperature']:.2f}")
+
+
+def get_hp_state():
+    """Get current hyperparameter state for use in training loop."""
+    return _hp_state.copy()
+
 
 class AdaptiveLRController:
     """Auto-adjusts learning rate based on loss trends + manual override.
@@ -4126,18 +4220,8 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             except Exception:
                 pass
 
-        # Check for manual LR override
-        if os.path.exists(LR_TRIGGER_FILE):
-            try:
-                with open(LR_TRIGGER_FILE) as f:
-                    new_lr = float(f.read().strip())
-                os.remove(LR_TRIGGER_FILE)
-                new_lr = max(MIN_LEARNING_RATE, min(MAX_LEARNING_RATE, new_lr))
-                lr_scheduler.lr_max = new_lr
-                lr_scheduler.lr_min = new_lr * 0.1
-                print(f"    [LR] Manual override: lr_max → {new_lr:.6f}")
-            except (ValueError, OSError):
-                pass
+        # Check for hyperparameter overrides (auto-tuner or manual)
+        _check_hp_overrides(brain, lr_scheduler, i + 1)
 
         # Quick feedback every 50 steps
         if (i + 1) % 50 == 0:

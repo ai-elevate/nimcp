@@ -106,6 +106,57 @@ bool go_brain_get_cortex_cnn_metrics(nimcp_brain_t brain, int ci,
 // ---- Focus Attention ----
 bool go_brain_focus_attention(nimcp_brain_t brain, const char* modality);
 
+// ---- Memory Store ----
+typedef struct {
+    uint64_t total_engrams;
+    uint64_t total_concepts;
+    uint64_t total_relations;
+    uint64_t total_autobio;
+    uint64_t total_writes;
+    uint64_t total_reads;
+    uint64_t cache_hits;
+    uint64_t cache_misses;
+    uint64_t db_size_bytes;
+    bool     valid;
+} go_memory_store_stats_t;
+bool go_brain_memory_store_stats(nimcp_brain_t brain, go_memory_store_stats_t* out);
+bool go_brain_memory_is_healthy(nimcp_brain_t brain);
+
+typedef struct {
+    uint64_t* ids;
+    uint32_t  count;
+} go_id_array_t;
+go_id_array_t go_brain_memory_search_text(nimcp_brain_t brain, const char* query, uint32_t max_results);
+
+typedef struct {
+    uint64_t* ids;
+    float*    distances;
+    uint32_t  count;
+} go_similarity_result_t;
+go_similarity_result_t go_brain_memory_search_similar(
+    nimcp_brain_t brain, const float* embedding, uint32_t dim, uint32_t top_k);
+
+// ---- OOD ----
+typedef struct {
+    uint64_t total_checks;
+    uint64_t ood_detected;
+    uint64_t in_distribution;
+    float    avg_ood_score;
+    float    ood_rate;
+    bool     valid;
+} go_ood_stats_t;
+bool go_brain_ood_stats(nimcp_brain_t brain, go_ood_stats_t* out);
+
+// ---- Audit ----
+int go_brain_audit_log(nimcp_brain_t brain, const char* description,
+                       uint32_t severity, const char* details);
+go_similarity_result_t go_brain_audit_search(nimcp_brain_t brain,
+                                              uint32_t min_severity, uint32_t max_results);
+
+// ---- Free helpers ----
+void go_free_id_array(go_id_array_t* arr);
+void go_free_similarity_result(go_similarity_result_t* res);
+
 #ifdef __cplusplus
 }
 #endif
