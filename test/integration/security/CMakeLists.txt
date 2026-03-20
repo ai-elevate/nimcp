@@ -1034,3 +1034,70 @@ set_tests_properties(integration_security_test_bbb_refcount PROPERTIES
     LABELS "integration;security;bbb;refcount;quarantine"
     TIMEOUT 120
 )
+
+# ============================================================================
+# Security Edge Integration Tests
+# ============================================================================
+add_executable(integration_security_test_security_edge_integration
+    test_security_edge_integration.cpp
+)
+target_link_libraries(integration_security_test_security_edge_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_security_edge_integration
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(integration_security_test_security_edge_integration PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_security_edge_integration
+         COMMAND integration_security_test_security_edge_integration)
+set_tests_properties(integration_security_test_security_edge_integration PROPERTIES
+    LABELS "integration;security;edge"
+    TIMEOUT 120
+)
+
+# ============================================================================
+# Immune + Bio-Async Integration Tests
+# ============================================================================
+# WHAT: Integration tests for immune + bio-async working together
+# WHY:  Verify cross-system threat detection, response, and recovery
+# HOW:  Create BBB + immune + bio-router, test end-to-end workflows
+# ============================================================================
+
+add_executable(integration_security_test_immune_bio_async
+    test_immune_bio_async_integration.cpp
+)
+target_link_libraries(integration_security_test_immune_bio_async
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_immune_bio_async
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/async
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_immune_bio_async PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_immune_bio_async
+         COMMAND integration_security_test_immune_bio_async)
+set_tests_properties(integration_security_test_immune_bio_async PROPERTIES
+    LABELS "integration;security;immune;bio-async;coverage"
+    TIMEOUT 300
+)

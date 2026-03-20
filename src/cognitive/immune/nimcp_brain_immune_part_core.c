@@ -694,6 +694,38 @@ int brain_immune_present_antigen(
     antigen->processed = false;
     antigen->neutralized = false;
 
+    /* G6 SECURITY: Immune tolerance — attenuate response for repeated antigens
+     * WHAT: Count how many times the same epitope has been seen; reduce severity
+     *       if the same antigen hash appears more than 10 times.
+     * WHY:  Biological immune systems develop tolerance to frequently-encountered
+     *       benign antigens. Without this, repeated exceptions (e.g., from a noisy
+     *       sensor) can overwhelm the immune system and starve real threats.
+     * HOW:  Scan existing antigens for matching epitope. If count > 10, halve
+     *       the severity and confidence — simulating peripheral tolerance. */
+    {
+        uint32_t same_epitope_count = 0;
+        for (size_t j = 0; j < system->antigen_count; j++) {
+            if (&system->antigens[j] == antigen) continue; /* Skip self (just added) */
+            if (system->antigens[j].epitope_len == antigen->epitope_len &&
+                memcmp(system->antigens[j].epitope, antigen->epitope,
+                       antigen->epitope_len) == 0) {
+                same_epitope_count++;
+            }
+        }
+        if (same_epitope_count > 10) {
+            /* Tolerance: reduce response strength by 50% */
+            antigen->severity = (antigen->severity + 1) / 2;  /* Integer halving, min 1 */
+            antigen->confidence *= 0.5f;
+            antigen->danger_signal *= 0.5f;
+            if (system->config.enable_logging) {
+                LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+                    "Immune tolerance: epitope seen %u times — attenuating response "
+                    "(severity=%u, confidence=%.2f)",
+                    same_epitope_count, antigen->severity, antigen->confidence);
+            }
+        }
+    }
+
     uint32_t new_antigen_id = antigen->id;
     if (antigen_id) *antigen_id = new_antigen_id;
     system->antigen_count++;
@@ -870,6 +902,29 @@ int brain_immune_present_swarm_threat(
 
     if (result == 0) {
         system->stats.swarm_alerts_processed++;
+
+        /* Wire consensus: refine severity via swarm consensus if available.
+         * WHAT: Use multi-agent BFT consensus to agree on threat severity
+         * WHY:  Single-node severity mapping may be inaccurate; consensus
+         *       leverages collective intelligence for better threat assessment
+         * HOW:  Call consensus after antigen is presented; log if severity changes */
+        if (antigen_id && *antigen_id != 0 && system->swarm_immune) {
+            float agreed_severity = 0.0f;
+            int consensus_ok = brain_immune_consensus_threat_severity(
+                system, *antigen_id, &agreed_severity);
+            if (consensus_ok == 0 && agreed_severity > 0.0f) {
+                /* Update antigen severity with consensus value */
+                brain_antigen_t* ag = find_antigen_by_id(system, *antigen_id);
+                if (ag && (uint32_t)agreed_severity != severity) {
+                    ag->severity = (uint32_t)agreed_severity;
+                    if (system->config.enable_logging) {
+                        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+                            "Swarm consensus adjusted threat %u severity: %u -> %u",
+                            *antigen_id, severity, (uint32_t)agreed_severity);
+                    }
+                }
+            }
+        }
     }
 
     return result;

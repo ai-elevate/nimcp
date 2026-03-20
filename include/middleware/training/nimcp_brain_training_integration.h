@@ -413,6 +413,15 @@ nimcp_optimizer_context_t* nimcp_brain_training_get_optimizer(
 );
 
 /**
+ * @brief Get the number of active optimizer contexts
+ * @param ctx Brain-training context
+ * @return Number of active optimizers (0 if ctx is NULL or no optimizers)
+ */
+uint32_t nimcp_brain_training_get_optimizer_count(
+    nimcp_brain_training_ctx_t* ctx
+);
+
+/**
  * @brief Destroy an optimizer context
  * @param ctx Brain-training context
  * @param optimizer_id Optimizer ID

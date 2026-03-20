@@ -341,3 +341,77 @@ set_tests_properties(e2e_security_test_bbb_quarantine PROPERTIES
 )
 
 message(STATUS "  - e2e_security_test_bbb_quarantine (BBB Quarantine Lifecycle)")
+
+# ============================================================================
+# Security Edge E2E Tests
+# ============================================================================
+add_executable(e2e_test_security_edge
+    test_security_edge_e2e.cpp
+)
+target_link_libraries(e2e_test_security_edge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+target_include_directories(e2e_test_security_edge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(e2e_test_security_edge PRIVATE cxx_std_17)
+target_compile_definitions(e2e_test_security_edge PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+add_test(NAME e2e_test_security_edge
+         COMMAND e2e_test_security_edge)
+set_tests_properties(e2e_test_security_edge PROPERTIES
+    LABELS "e2e;security;edge"
+    TIMEOUT 120
+    RUN_SERIAL TRUE
+)
+message(STATUS "  - e2e_test_security_edge (Security Edge E2E Pipeline)")
+
+# ============================================================================
+# Immune + Bio-Async E2E Tests
+# ============================================================================
+# WHAT: End-to-end tests for full immune + bio-async security pipeline
+# WHY:  Verify complete security stack under realistic conditions
+# HOW:  Run multi-step scenarios with threats, tolerance, and recovery
+# ============================================================================
+
+add_executable(e2e_security_test_immune_bio_async
+    test_immune_bio_async_e2e.cpp
+)
+target_link_libraries(e2e_security_test_immune_bio_async
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+target_include_directories(e2e_security_test_immune_bio_async
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/async
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(e2e_security_test_immune_bio_async PRIVATE cxx_std_17)
+add_test(NAME e2e_security_test_immune_bio_async
+         COMMAND e2e_security_test_immune_bio_async)
+set_tests_properties(e2e_security_test_immune_bio_async PROPERTIES
+    LABELS "e2e;security;immune;bio-async;coverage"
+    TIMEOUT 600
+)
+
+message(STATUS "  - e2e_security_test_immune_bio_async (Immune+Bio-Async E2E Pipeline)")

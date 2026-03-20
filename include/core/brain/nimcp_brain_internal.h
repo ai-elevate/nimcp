@@ -264,6 +264,13 @@ struct brain_struct {
     // Statistics
     brain_stats_t stats;  // Performance metrics
 
+    // === INFERENCE WATCHDOG TIMER ===
+    // Detects hung inference by tracking entry time and deadline.
+    // Set inference_start_us at brain_decide() entry; checked periodically.
+    uint64_t inference_start_us;        /* Set at brain_decide entry, checked periodically */
+    uint64_t inference_timeout_us;      /* Default: 5000000 (5 seconds) */
+    bool inference_timed_out;           /* Set true if deadline exceeded */
+
     // Decision caching for optimization
     float* last_input;                  // Cached input vector
     brain_decision_t* cached_decision;  // Cached decision
@@ -395,6 +402,9 @@ struct brain_struct {
 
     // Phase M1: Memory Engrams (distributed memory traces)
     engram_system_t* engram_system;              // Memory engram encoding, consolidation, and recall
+    struct nimcp_memory_store* memory_store;     // Persistent memory backend (SQLite)
+    struct nimcp_oodb* memory_oodb;              // OODB in-memory cache over SQLite store
+    struct nimcp_ood_detector* ood_detector;     // Out-of-distribution detection (persistent, not per-call)
 
     // Phase M2: Systems Consolidation (hippocampus → cortex transfer)
     systems_consolidation_system_t* systems_consolidation; // Sleep-dependent memory transfer and semantic abstraction

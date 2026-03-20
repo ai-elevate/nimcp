@@ -15,6 +15,26 @@ nimcp_error_t bio_router_register_handler(bio_module_context_t ctx,
                       NIMCP_ERROR_INVALID_STATE,
                       "bio_router_register_handler: invalid module entry");
 
+    /* G5 SECURITY: Access control on handler registration
+     * WHAT: Validate module ID and handler are legitimate before registration
+     * WHY:  Prevent unauthorized modules from registering handlers for
+     *       message types they should not intercept. Without this, any code
+     *       with a bio_module_context could hijack another module's messages.
+     * HOW:  Basic validation: module_id must be non-zero, handler must not be NULL,
+     *       and module must be in the global router table.
+     * TODO: Full RBAC — maintain per-module capability bitmask for allowed msg types. */
+    if (entry->module_id == 0) {
+        LOG_WARN("bio_router: rejecting handler registration from module_id=0 (uninitialized)");
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_PERMISSION_DENIED,
+                          "bio_router_register_handler: module_id 0 is reserved — registration denied");
+    }
+    if (msg_type == 0) {
+        LOG_WARN("bio_router: rejecting handler registration for msg_type=0 (reserved) by module %s",
+                 entry->module_name);
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
+                          "bio_router_register_handler: msg_type 0 is reserved — registration denied");
+    }
+
     nimcp_platform_mutex_lock(&entry->handler_mutex);
 
     if (entry->handler_count >= MAX_HANDLERS_PER_MODULE) {
@@ -265,12 +285,32 @@ uint32_t bio_router_process_inbox(bio_module_context_t ctx, uint32_t max_message
         bio_message_handler_t handler = bio_router_find_handler(entry, header->type);
 
         if (handler) {
+            /* DEADLOCK PREVENTION: Check for re-entrant message delivery.
+             * If this module is already processing a handler (in_handler=true),
+             * a synchronous send from the current handler's source back to this
+             * module would deadlock. Log a warning but still process (message
+             * was already dequeued). */
+            if (atomic_load(&entry->in_handler)) {
+                LOG_WARN("bio_router: re-entrant message to module %u (%s) while handler "
+                         "active (current source=%u, new msg_type=0x%04X) — potential deadlock",
+                         entry->module_id, entry->module_name,
+                         entry->in_handler_source, header->type);
+            }
+
+            // Set re-entrancy guard
+            atomic_store(&entry->in_handler, true);
+            entry->in_handler_source = header->source_module;
+
             // Invoke handler
             __atomic_fetch_add(&entry->handler_invocations, 1, __ATOMIC_RELAXED);
 
             nimcp_error_t handler_result = handler(msg_data, msg_size,
                                                     response_promise,
                                                     entry->user_data);
+
+            // Clear re-entrancy guard
+            atomic_store(&entry->in_handler, false);
+            entry->in_handler_source = 0;
 
             if (handler_result != NIMCP_SUCCESS) {
                 __atomic_fetch_add(&entry->handler_errors, 1, __ATOMIC_RELAXED);

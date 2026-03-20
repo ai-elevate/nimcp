@@ -215,7 +215,40 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
     uint32_t target_id = header->target_module;
 
+    /* MESSAGE ORDERING: Assign monotonically increasing sequence number.
+     * The sequence_id field in bio_message_header_t enables causal ordering
+     * at receivers. If the sender already set a non-zero sequence_id, we
+     * respect it (application-level ordering). Otherwise, we auto-assign
+     * from the router's global atomic counter. */
+    if (header->sequence_id == 0) {
+        /* Cast away const for sequence_id assignment — the message buffer
+         * is caller-owned but we stamp it before routing, analogous to how
+         * a postal service stamps a tracking number. */
+        ((bio_message_header_t*)msg)->sequence_id =
+            (uint32_t)atomic_fetch_add(&g_router->next_sequence_id, 1) + 1;
+    }
+
     uint64_t start_time = nimcp_platform_time_monotonic_us();
+
+    /* G4 SECURITY: Message integrity validation
+     * WHAT: Verify basic structural integrity of bio-messages before routing
+     * WHY:  Detect corrupted or tampered messages before they affect modules.
+     *       Full encryption (TLS) is deferred; this provides lightweight defense.
+     * HOW:  Validate header fields are within expected ranges. A proper CRC32/HMAC
+     *       would require adding integrity fields to bio_message_header_t (future work).
+     * TODO: Add msg_integrity_crc32 field to bio_message_header_t for full integrity.
+     *       Add HMAC-based authentication for cross-process bio-messages. */
+    if (msg_size < sizeof(bio_message_header_t)) {
+        LOG_WARN("bio_router_send: message too small (%zu < %zu header) — possible corruption",
+                 msg_size, sizeof(bio_message_header_t));
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
+                          "bio_router_send: message smaller than header — integrity check failed");
+    }
+    if (header->source_module == 0 && header->target_module == 0 && header->type == 0) {
+        LOG_WARN("bio_router_send: all-zero header fields — possible uninitialized message");
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
+                          "bio_router_send: zeroed header — integrity check failed");
+    }
 
     LOG_TRACE("Routing message type=0x%04X from=%u to=%u size=%zu",
               header->type, header->source_module, target_id, msg_size);
@@ -231,10 +264,41 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             LOG_WARN("BBB validation failed for message type=0x%04X from=%u: threat=%d severity=%d",
                      header->type, header->source_module, bbb_result.threat, bbb_result.severity);
 
-            // Update dropped message stats
+            /* Dead-letter tracking: record dropped message type */
             nimcp_platform_mutex_lock(&g_router->stats_mutex);
             g_router->stats.messages_dropped++;
+            g_router->dead_letter_types[g_router->dead_letter_idx] = header->type;
+            g_router->dead_letter_idx = (g_router->dead_letter_idx + 1) % 16;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+
+            /* Send BIO_MSG_SECURITY_THREAT_DETECTED so immune/security modules
+             * are notified of the BBB rejection.  We build a small alert message
+             * and broadcast it through the router.  Guard against re-entrance:
+             * only send if the rejected message is NOT itself a security threat
+             * message (avoids infinite recursion). */
+            if (header->type != BIO_MSG_SECURITY_THREAT_DETECTED &&
+                header->type != BIO_MSG_SECURITY_ALERT) {
+                struct {
+                    bio_message_header_t hdr;
+                    uint32_t rejected_msg_type;
+                    uint32_t source_module;
+                    int      threat_type;
+                    int      severity;
+                } threat_alert = {0};
+                threat_alert.hdr.type          = BIO_MSG_SECURITY_THREAT_DETECTED;
+                threat_alert.hdr.source_module  = BIO_MODULE_SECURITY_BBB_FEP;
+                threat_alert.hdr.target_module  = 0; /* broadcast */
+                threat_alert.hdr.timestamp_us   = nimcp_platform_time_monotonic_us();
+                threat_alert.hdr.payload_size   = sizeof(threat_alert) - sizeof(bio_message_header_t);
+                threat_alert.hdr.flags          = BIO_MSG_FLAG_URGENT | BIO_MSG_FLAG_BROADCAST;
+                threat_alert.rejected_msg_type  = (uint32_t)header->type;
+                threat_alert.source_module      = header->source_module;
+                threat_alert.threat_type        = bbb_result.threat;
+                threat_alert.severity           = bbb_result.severity;
+                /* Best-effort broadcast — ignore failure to avoid masking the
+                 * original BBB rejection error.  Use ctx (the sender's context). */
+                (void)bio_router_broadcast(ctx, &threat_alert, sizeof(threat_alert));
+            }
 
             NIMCP_CHECK_THROW(false, NIMCP_ERROR_PERMISSION_DENIED,
                               "bio_router_send: BBB validation failed");
@@ -286,6 +350,8 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             LOG_ERROR("Mesh routing requested but mesh integration not available");
             nimcp_platform_mutex_lock(&g_router->stats_mutex);
             g_router->stats.messages_dropped++;
+            g_router->dead_letter_types[g_router->dead_letter_idx] = header->type;
+            g_router->dead_letter_idx = (g_router->dead_letter_idx + 1) % 16;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
             NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED,
                         "bio_router_send: mesh routing requested but not available");
@@ -299,6 +365,8 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             LOG_ERROR("Mesh routing failed for type=0x%04X: %d", header->type, result);
             nimcp_platform_mutex_lock(&g_router->stats_mutex);
             g_router->stats.messages_dropped++;
+            g_router->dead_letter_types[g_router->dead_letter_idx] = header->type;
+            g_router->dead_letter_idx = (g_router->dead_letter_idx + 1) % 16;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
             return result;
         }
@@ -318,6 +386,8 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             LOG_WARN("KG dispatch requested but brain_kg not set");
             nimcp_platform_mutex_lock(&g_router->stats_mutex);
             g_router->stats.messages_dropped++;
+            g_router->dead_letter_types[g_router->dead_letter_idx] = header->type;
+            g_router->dead_letter_idx = (g_router->dead_letter_idx + 1) % 16;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
             NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_INITIALIZED,
                               "KG dispatch requested but brain_kg not set");
@@ -325,8 +395,12 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
 
         int dispatched = bio_router_kg_dispatch_internal(msg, msg_size, timeout_ms);
         if (dispatched < 0) {
+            LOG_WARN("Bio-router: KG dispatch failed for msg type=0x%04X — message dropped",
+                     header->type);
             nimcp_platform_mutex_lock(&g_router->stats_mutex);
             g_router->stats.messages_dropped++;
+            g_router->dead_letter_types[g_router->dead_letter_idx] = header->type;
+            g_router->dead_letter_idx = (g_router->dead_letter_idx + 1) % 16;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
             NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED,
                               "bio_router_send: KG dispatch failed");
@@ -343,23 +417,43 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
          * (a) bio_router_broadcast() always passes timeout_ms=0, making enqueue
          *     non-blocking (try-grow-or-fail, never waits on condition var).
          * (b) We need the lock to safely iterate the modules array.
-         * For blocking sends (timeout_ms > 0), use bio_router_send_with_promise. */
+         * For blocking sends (timeout_ms > 0), use bio_router_send_with_promise.
+         *
+         * BROADCAST RELIABILITY: One handler failure does NOT stop broadcast.
+         * We continue delivering to all remaining modules, count failures,
+         * and log a summary. This is forward-error-correction style resilience. */
+        uint32_t broadcast_failures = 0;
+        uint32_t broadcast_total = 0;
         for (uint32_t i = 0; i < g_router->module_count; i++) {
             bio_module_entry_t* entry = &g_router->modules[i];
             if (entry->magic == BIO_MODULE_MAGIC &&
                 entry->module_id != header->source_module) {
 
+                broadcast_total++;
                 nimcp_error_t enq_result = bio_msg_queue_enqueue(&entry->inbox,
                                                                   msg, msg_size,
                                                                   NULL, timeout_ms);
                 if (enq_result == NIMCP_SUCCESS) {
                     atomic_fetch_add(&entry->messages_received, 1);
                 } else {
-                    result = NIMCP_ERROR_OUT_OF_RANGE;
-                    // Queue overflow expected during high-load scenarios (stress tests)
-                    LOG_DEBUG("Failed to enqueue broadcast to module %u (queue full)", entry->module_id);
+                    broadcast_failures++;
+                    /* Message loss reporting: broadcast queue full — continue to next */
+                    LOG_WARN("bio_router: broadcast handler %u (%s) failed for msg_type=0x%04X (err=%d)",
+                             entry->module_id, entry->module_name, header->type, enq_result);
+
+                    /* Dead-letter tracking: record dropped message type */
+                    nimcp_platform_mutex_lock(&g_router->stats_mutex);
+                    g_router->stats.messages_dropped++;
+                    g_router->dead_letter_types[g_router->dead_letter_idx] = header->type;
+                    g_router->dead_letter_idx = (g_router->dead_letter_idx + 1) % 16;
+                    nimcp_platform_mutex_unlock(&g_router->stats_mutex);
                 }
             }
+        }
+        if (broadcast_failures > 0) {
+            LOG_WARN("bio_router: broadcast had %u/%u handler failures for msg_type=0x%04X",
+                     broadcast_failures, broadcast_total, header->type);
+            result = NIMCP_ERROR_OUT_OF_RANGE;
         }
 
         // Update broadcast stats
@@ -376,8 +470,11 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             nimcp_platform_mutex_unlock(&g_router->modules_mutex);
             LOG_ERROR("Target module %u not found", target_id);
 
+            /* Dead-letter tracking: record dropped message type */
             nimcp_platform_mutex_lock(&g_router->stats_mutex);
             g_router->stats.messages_dropped++;
+            g_router->dead_letter_types[g_router->dead_letter_idx] = header->type;
+            g_router->dead_letter_idx = (g_router->dead_letter_idx + 1) % 16;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
 
             NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND,
@@ -392,10 +489,13 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
         if (result == NIMCP_SUCCESS) {
             atomic_fetch_add(&target->messages_received, 1);
         } else {
-            LOG_WARN("Failed to enqueue to module %u inbox", target_id);
+            LOG_WARN("Failed to enqueue to module %u inbox (type=0x%04X)", target_id, header->type);
 
+            /* Dead-letter tracking: record dropped message type */
             nimcp_platform_mutex_lock(&g_router->stats_mutex);
             g_router->stats.messages_dropped++;
+            g_router->dead_letter_types[g_router->dead_letter_idx] = header->type;
+            g_router->dead_letter_idx = (g_router->dead_letter_idx + 1) % 16;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
         }
         goto skip_unlock_send;
@@ -528,7 +628,14 @@ nimcp_error_t bio_router_request(bio_module_context_t ctx,
     nimcp_bio_promise_destroy(promise);
 
     if (wait_result != NIMCP_SUCCESS) {
-        LOG_DEBUG("Request timed out or failed");
+        const bio_message_header_t* req_header = (const bio_message_header_t*)request;
+
+        /* TIMEOUT ESCALATION: Log message type, target module, and timeout value.
+         * Repeated timeouts to the same module indicate a sick/overloaded module.
+         * The immune system can monitor stats.timeouts for escalation. */
+        LOG_WARN("bio_router: message type 0x%04X to module %u timed out after %u ms",
+                 req_header->type, req_header->target_module,
+                 timeout_ms > 0 ? timeout_ms : (uint32_t)DEFAULT_TIMEOUT_MS);
 
         // Update timeout statistics
         nimcp_platform_mutex_lock(&g_router->stats_mutex);

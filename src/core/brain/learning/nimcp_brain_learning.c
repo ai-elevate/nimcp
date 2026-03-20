@@ -32,6 +32,7 @@
 #include "core/brain/nimcp_brain_lazy_init.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "memory/nimcp_memory_store.h"
 #include <math.h>
 #include <string.h>
 #include "utils/math/nimcp_math_helpers.h"
@@ -68,6 +69,7 @@
 #include "core/brain/bridges/nimcp_hyperledger_bridge.h"
 #include "training/nimcp_unified_training.h"
 #include "cognitive/omni/bridges/nimcp_omni_wm_thousand_brains_bridge.h"
+#include "cognitive/omni/nimcp_omni_world_model.h"
 #include "core/cortical_columns/nimcp_thousand_brains_integration.h"
 
 // Multi-network training includes (LNN + CNN + dispatch)
@@ -918,11 +920,40 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         hl_tx_id = hyperledger_eov_begin(brain->hyperledger_bridge, 0.0f);
     }
 
+    /* === MEMORY-INFORMED LEARNING ===
+     * Recall similar past experiences before learning.
+     * If familiar (high recall confidence): reduce learning rate slightly.
+     * If truly novel (no recall): boost learning rate slightly. */
+    float lr_memory_factor = 1.0f;
+    if (brain->engram_system && brain->engram_system->active_count > 10) {
+        /* Use feature indices as cue pattern */
+        uint32_t cue_count = num_features < 64 ? num_features : 64;
+        uint32_t cue_ids[64];
+        for (uint32_t ci = 0; ci < cue_count; ci++) {
+            cue_ids[ci] = ci;
+        }
+        float recall_conf = 0.0f;
+        uint32_t recall_out[256];
+        float recall_act[256];
+        uint64_t recalled = engram_recall(
+            brain->engram_system, cue_ids, cue_count,
+            recall_out, recall_act, 256, &recall_conf);
+
+        if (recalled > 0 && recall_conf > 0.6f) {
+            /* Familiar input: reduce LR to avoid overwriting */
+            lr_memory_factor = 0.7f;
+        } else if (recalled == 0) {
+            /* Truly novel: boost LR for faster acquisition */
+            lr_memory_factor = 1.3f;
+        }
+    }
+
     /* Step 1: Adaptive learns FIRST (primary network, GPU-accelerated)
      * Must complete before SNN training since SNN may share neural_network_t weights */
+    float effective_lr = brain->config.learning_rate * lr_memory_factor;
     float loss = adaptive_network_learn(brain->network, &example,
                                          LEARN_MODE_DISTILLATION,
-                                         brain->config.learning_rate);
+                                         effective_lr);
 
     if (loss < 0.0f) {
         NIMCP_LOGGING_WARN("adaptive_network_learn returned %.2f: network=%p, input_size=%u, target_size=%u, lr=%.6f",
@@ -1590,6 +1621,315 @@ sequential_training:
      * Gated to run every N steps (default: 5) to amortize cost. */
     brain_train_cognitive_subsystems(brain, features, num_features,
                                       target, target_size, label, loss);
+
+    /* Co-occurrence tracking for semantic relation auto-creation */
+    static uint64_t recent_concepts[8] = {0};
+    static uint32_t recent_concept_idx = 0;
+    static uint64_t recent_concept_steps[8] = {0};
+
+    /* === ENGRAM ENCODING ===
+     * Encode novel experiences as memory engrams for later recall.
+     * Novelty filter: only encode when loss is significantly above EMA
+     * (input surprised the brain → worth remembering).
+     * Uses active neuron IDs from the forward pass as the engram pattern. */
+    if (brain->engram_system && loss > 0.0f) {
+        float ema = adaptive_network_get_ema_loss(brain->network);
+
+        /* === WORLD MODEL PREDICTION ERROR ===
+         * If the world model exists, its prediction error is a stronger
+         * novelty signal than loss alone. High prediction error = "this
+         * violated my expectations" = worth remembering. */
+        float world_model_surprise = 0.0f;
+        if (brain->omni_world_model) {
+            omni_wm_stats_t wm_stats = {0};
+            if (omni_wm_get_stats((const omni_world_model_t*)brain->omni_world_model,
+                                   &wm_stats) == NIMCP_OK) {
+                world_model_surprise = wm_stats.mean_prediction_error;
+            }
+        } else if (brain->predictive_network) {
+            /* Fallback: use hierarchical predictive coding network */
+            predictive_stats_t pred_stats = {0};
+            if (predictive_get_statistics(brain->predictive_network, &pred_stats)) {
+                world_model_surprise = pred_stats.max_prediction_error;
+            }
+        }
+
+        float novelty = (ema > 0.0f) ? (loss / ema) : 1.0f;
+        /* Boost novelty with world model surprise (if available) */
+        if (world_model_surprise > 0.0f) {
+            novelty += world_model_surprise * 2.0f;
+        }
+
+        /* Encode if loss > 3× EMA (highly novel) or every 100th step (background sampling) */
+        bool should_encode = (novelty > 3.0f) ||
+                              (brain->stats.total_learning_steps % 100 == 0);
+
+        /* Hoist eid to outer scope so semantic block can cross-reference */
+        uint64_t eid = 0;
+        uint64_t cid = 0;
+        emotional_tag_t emotion = {0};
+
+        if (should_encode) {
+            neural_network_t base_net = adaptive_network_get_base_network(brain->network);
+            if (base_net) {
+                uint32_t num_active = 0;
+                uint32_t* active_ids = NULL;
+
+                /* Access active neuron set from last forward pass */
+                extern uint32_t neural_network_get_active_count(neural_network_t);
+                extern const uint32_t* neural_network_get_active_ids(neural_network_t);
+                num_active = neural_network_get_active_count(base_net);
+                active_ids = (uint32_t*)neural_network_get_active_ids(base_net);
+
+                if (active_ids && num_active > 0) {
+                    /* Cap to engram capacity */
+                    if (num_active > ENGRAM_MAX_NEURONS) {
+                        num_active = ENGRAM_MAX_NEURONS;
+                    }
+
+                    /* Build activation array from neuron states */
+                    float activations[ENGRAM_MAX_NEURONS];
+                    for (uint32_t i = 0; i < num_active; i++) {
+                        neuron_t* n = neural_network_get_neuron(base_net, active_ids[i]);
+                        activations[i] = n ? fabsf(n->state) : 0.0f;
+                    }
+
+                    /* Create emotional tag from current loss/novelty */
+                    emotion.valence = (loss < ema) ? 0.3f : -0.2f; /* Low loss = positive */
+                    emotion.arousal = fminf(novelty * 0.3f, 1.0f);  /* High novelty = excited */
+                    emotion.intensity = fminf(novelty * 0.2f, 1.0f);
+                    emotion.category = emotional_tag_classify(&emotion);
+                    emotion.timestamp_ms = nimcp_time_get_us() / 1000;
+
+                    eid = engram_encode(
+                        brain->engram_system,
+                        active_ids, activations, num_active,
+                        MEMORY_TYPE_EPISODIC, emotion);
+
+                    if (eid > 0 && novelty > 5.0f) {
+                        NIMCP_LOGGING_DEBUG("Engram encoded: id=%lu, neurons=%u, "
+                                           "novelty=%.1fx, loss=%.4f",
+                                           (unsigned long)eid, num_active, novelty, loss);
+                    }
+
+                    /* Enhancement 3: Emotional memory enhancement
+                     * High-arousal memories consolidate faster.
+                     * Lower decay = longer retention.
+                     * High emotion (0.5-1.0) → decay rate reduced to 20-50% of base. */
+                    if (eid > 0 && emotion.intensity > 0.5f) {
+                        memory_engram_t* eng = NULL;
+                        for (uint32_t ei = 0; ei < brain->engram_system->active_count; ei++) {
+                            if (brain->engram_system->engrams[ei].engram_id == eid) {
+                                eng = &brain->engram_system->engrams[ei];
+                                break;
+                            }
+                        }
+                        if (eng) {
+                            float emotion_factor = 1.0f - (emotion.intensity * 0.8f);
+                            eng->decay_rate *= emotion_factor;
+                            eng->vividness = fminf(emotion.intensity + 0.3f, 1.0f);
+                        }
+                    }
+                }
+            }
+
+            /* === SEMANTIC MEMORY: Create concept from labeled experience ===
+             * Novel stimuli with labels become semantic concepts.
+             * The feature vector is the input embedding; the label is the concept name.
+             * Only for highly novel inputs (novelty > 3x) to avoid flooding. */
+            if (brain->semantic_memory && label && label[0] && novelty > 3.0f) {
+                /* Check if concept already exists by similarity search */
+                semantic_query_result_t* existing = semantic_memory_find_similar(
+                    brain->semantic_memory, features,
+                    num_features < 32 ? num_features : 32,
+                    1, 0.9f); /* threshold 0.9 = very similar */
+
+                if (!existing || existing->count == 0) {
+                    /* New concept — create it */
+                    cid = semantic_memory_create_concept(
+                        brain->semantic_memory,
+                        features,
+                        num_features < 32 ? num_features : 32,
+                        label,
+                        CONCEPT_OBJECT); /* Default category; could infer from label */
+
+                    if (cid > 0) {
+                        NIMCP_LOGGING_DEBUG("Semantic concept created: id=%lu, label='%s'",
+                                           (unsigned long)cid, label);
+                    }
+                }
+                if (existing) {
+                    semantic_memory_free_result(existing);
+                }
+            }
+
+            /* Enhancement 1: Cross-reference engram ↔ semantic concept */
+            if (eid > 0 && cid > 0) {
+                /* Store engram ID in concept's source_memory_ids.
+                 * semantic_memory_get_concept returns const, but we need to
+                 * mutate source_memory_ids. Cast is safe since we own the memory system. */
+                semantic_concept_t* concept = (semantic_concept_t*)semantic_memory_get_concept(
+                    brain->semantic_memory, cid);
+                if (concept && concept->source_count < 8) {
+                    ((semantic_concept_t*)concept)->source_memory_ids[concept->source_count] = eid;
+                    ((semantic_concept_t*)concept)->source_count++;
+                }
+            }
+
+            /* Enhancement 2: Auto-create ASSOCIATED relations with recently created concepts */
+            if (cid > 0 && brain->semantic_memory) {
+                for (uint32_t rc = 0; rc < 8; rc++) {
+                    if (recent_concepts[rc] > 0 && recent_concepts[rc] != cid) {
+                        /* Only link if within 50 steps of each other */
+                        uint64_t step_delta = brain->stats.total_learning_steps - recent_concept_steps[rc];
+                        if (step_delta < 50) {
+                            semantic_memory_create_relation(
+                                brain->semantic_memory,
+                                recent_concepts[rc], cid,
+                                RELATION_ASSOCIATED, 0.3f);
+                        }
+                    }
+                }
+                /* Add to recent ring buffer */
+                recent_concepts[recent_concept_idx] = cid;
+                recent_concept_steps[recent_concept_idx] = brain->stats.total_learning_steps;
+                recent_concept_idx = (recent_concept_idx + 1) % 8;
+            }
+
+            /* === AUTOBIOGRAPHICAL MEMORY: Record significant experiences ===
+             * Highly novel experiences (novelty > 5x) become episodic life events.
+             * These form Athena's personal history and self-narrative. */
+            if (brain->autobio && novelty > 5.0f && label && label[0]) {
+                autobiographical_memory_entry_t mem = {0};
+                mem.timestamp_ms = nimcp_time_get_us() / 1000;
+                mem.type = AUTOBIO_LEARNING;
+
+                snprintf(mem.what_happened, sizeof(mem.what_happened),
+                         "Experienced '%s' — it felt novel and surprising (loss=%.1f, %.0fx normal)",
+                         label, loss, novelty);
+                snprintf(mem.why_it_happened, sizeof(mem.why_it_happened),
+                         "Sensory training step %lu",
+                         (unsigned long)brain->stats.total_learning_steps);
+                snprintf(mem.outcome, sizeof(mem.outcome),
+                         "Encoded as new memory trace");
+
+                mem.valence = (loss < ema) ? VALENCE_POSITIVE : VALENCE_NEGATIVE;
+                mem.emotional_intensity = fminf(novelty * 0.2f, 1.0f);
+                mem.arousal = fminf(novelty * 0.3f, 1.0f);
+                mem.importance = fminf(novelty * 0.1f, 1.0f);
+                mem.self_relevance = 0.5f;
+                mem.identity_defining = (novelty > 10.0f);
+                mem.memory_strength = 1.0f;
+                mem.certainty = 1.0f;
+
+                autobio_store(brain->autobio, &mem);
+            }
+
+            /* Enhancement 4: Auto-record training milestones as identity-defining events */
+            if (brain->autobio) {
+                uint64_t steps = brain->stats.total_learning_steps;
+                bool is_milestone = (steps == 100 || steps == 500 || steps == 1000 ||
+                                     steps == 5000 || steps == 10000 || steps == 50000 ||
+                                     steps == 100000 || steps == 500000 || steps == 1000000);
+                if (is_milestone) {
+                    autobiographical_memory_entry_t milestone = {0};
+                    milestone.timestamp_ms = nimcp_time_get_us() / 1000;
+                    milestone.type = AUTOBIO_LEARNING;
+                    snprintf(milestone.what_happened, sizeof(milestone.what_happened),
+                             "Reached training milestone: %lu steps completed",
+                             (unsigned long)steps);
+                    snprintf(milestone.why_it_happened, sizeof(milestone.why_it_happened),
+                             "Continuous learning and growth");
+                    snprintf(milestone.outcome, sizeof(milestone.outcome),
+                             "My neural pathways are stronger and more refined");
+                    milestone.valence = VALENCE_POSITIVE;
+                    milestone.emotional_intensity = 0.7f;
+                    milestone.arousal = 0.5f;
+                    milestone.importance = 0.8f;
+                    milestone.self_relevance = 0.9f;
+                    milestone.identity_defining = true;
+                    milestone.memory_strength = 1.0f;
+                    milestone.certainty = 1.0f;
+                    milestone.is_core_memory = true;
+                    autobio_store(brain->autobio, &milestone);
+                    NIMCP_LOGGING_INFO("Training milestone recorded: %lu steps", (unsigned long)steps);
+                }
+            }
+
+            /* Enhancement 6: Semantic memory — decay unused concepts over time */
+            if (brain->semantic_memory && (brain->stats.total_learning_steps % 1000 == 0)) {
+                /* Every 1000 steps, decay concepts that haven't been accessed */
+                for (uint32_t ci = 0; ci < brain->semantic_memory->concept_count; ci++) {
+                    if (brain->semantic_memory->concepts[ci]) {
+                        semantic_concept_t* c = brain->semantic_memory->concepts[ci];
+                        /* Decay base_activation if not accessed recently */
+                        if (c->access_count == 0) {
+                            c->base_activation *= 0.99f; /* 1% decay per 1000 steps */
+                        } else {
+                            c->access_count = 0; /* Reset access counter for next period */
+                        }
+                    }
+                }
+            }
+
+            /* TODO Enhancement 7: Inference memory feedback
+             * After brain_decide recalls an engram, store the recalled_engram_id on brain_t.
+             * On the next brain_learn_vector, if loss is high for the same input,
+             * trigger reconsolidation update on the recalled engram (weaken/modify).
+             * This enables error-driven memory updating. */
+
+            /* === PR MEMORY: Store feature vector for resonance retrieval ===
+             * Every encoded engram also stores its input features in PR memory
+             * for content-addressable retrieval via quaternion resonance. */
+            if (brain->pr_memory_enabled) {
+                /* PR memory encode is handled via the STDP-PR bridge
+                 * (plasticity coordinator routes engrams to PR automatically).
+                 * No manual encoding needed here — the bridge monitors
+                 * engram_encode events and routes to Z-ladder. */
+            }
+
+            /* === PERSISTENT MEMORY STORE: Write-through ===
+             * If a persistent store is attached AND healthy, replicate memory
+             * entries to SQLite for long-term storage.  If the store is unhealthy
+             * (SQLite flush error), skip writes to prevent cascading failures
+             * that could crash training. */
+            if (brain->memory_store && eid > 0 &&
+                nimcp_memory_store_is_healthy(
+                    (const nimcp_memory_store_t*)brain->memory_store)) {
+                nimcp_engram_record_t store_record = {0};
+                store_record.engram_id = eid;
+                store_record.timestamp_us = nimcp_time_get_us();
+                store_record.memory_type = (uint32_t)MEMORY_TYPE_EPISODIC;
+                store_record.state = 0; /* ENCODING */
+                store_record.embedding = (float*)features;
+                store_record.embedding_dim = num_features < 1024 ? num_features : 1024;
+                store_record.valence = emotion.valence;
+                store_record.arousal = emotion.arousal;
+                store_record.intensity = emotion.intensity;
+                store_record.importance = fminf(novelty * 0.1f, 1.0f);
+                store_record.vividness = fminf(novelty * 0.2f, 1.0f);
+                store_record.decay_rate = ENGRAM_BASE_DECAY_RATE;
+                if (label) strncpy(store_record.label, label, sizeof(store_record.label) - 1);
+
+                nimcp_memory_store_engram_put(brain->memory_store, &store_record);
+
+                /* Also write semantic concept to store */
+                if (cid > 0) {
+                    nimcp_concept_record_t store_concept = {0};
+                    store_concept.concept_id = cid;
+                    store_concept.timestamp_us = nimcp_time_get_us();
+                    if (label) strncpy(store_concept.label, label, sizeof(store_concept.label) - 1);
+                    store_concept.category = (uint32_t)CONCEPT_OBJECT;
+                    store_concept.embedding = (float*)features;
+                    store_concept.embedding_dim = num_features < 32 ? num_features : 32;
+                    store_concept.base_activation = 0.5f;
+                    store_concept.source_engram_id = eid;
+
+                    nimcp_memory_store_concept_put(brain->memory_store, &store_concept);
+                }
+            }
+        }
+    }
 
     clear_cache(brain);
     if (owns_blended) nimcp_free(blended_features);

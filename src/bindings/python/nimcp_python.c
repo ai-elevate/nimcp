@@ -5549,9 +5549,15 @@ static PyObject* Brain_reinit_weights(BrainObject* self, PyObject* Py_UNUSED(arg
     extern neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
     extern void neural_network_reinit_weights(neural_network_t network);
     extern bool neural_network_rebuild_incoming(neural_network_t network);
-    extern void adaptive_network_mark_gpu_weights_dirty(adaptive_network_t network);
-    extern void adaptive_network_invalidate_gpu_structure(adaptive_network_t network);
     extern void adaptive_network_reset_ema(adaptive_network_t network);
+
+    /* GPU cache lifecycle */
+    extern bool adaptive_network_is_gpu_enabled(adaptive_network_t network);
+    extern void adaptive_network_set_gpu_enabled(adaptive_network_t network, bool enabled);
+    extern void adaptive_network_set_gpu_context(adaptive_network_t network, struct nimcp_gpu_context_s* ctx);
+    extern void adaptive_network_set_gpu_weight_cache(adaptive_network_t network, struct nimcp_gpu_weight_cache_s* cache);
+    extern struct nimcp_gpu_context_s* adaptive_network_get_gpu_context(adaptive_network_t network);
+    extern struct nimcp_gpu_weight_cache_s* adaptive_network_get_gpu_weight_cache(adaptive_network_t network);
 
     brain_t ib = self->brain->internal_brain;
     if (!ib->network) {
@@ -5570,9 +5576,16 @@ static PyObject* Brain_reinit_weights(BrainObject* self, PyObject* Py_UNUSED(arg
     /* Rebuild incoming synapses from outgoing — the GPU weight cache
      * uploads use NEURON_IN_COUNT which reads incoming synapses. */
     neural_network_rebuild_incoming(base);
-    /* Invalidate GPU structure cache (connected_dst lists) + mark dirty */
-    adaptive_network_invalidate_gpu_structure(ib->network);
-    adaptive_network_mark_gpu_weights_dirty(ib->network);
+
+    /* Destroy and recreate GPU weight cache from scratch.
+     * Just marking dirty isn't enough — the cache's sparse matrices
+     * may have been built from a broken checkpoint with zero incoming
+     * synapses, and the upload can't fix structural issues. */
+    {
+        extern void adaptive_network_rebuild_gpu_cache(adaptive_network_t network);
+        adaptive_network_rebuild_gpu_cache(ib->network);
+    }
+
     adaptive_network_reset_ema(ib->network);
     Py_END_ALLOW_THREADS
 
@@ -6779,6 +6792,334 @@ static PyObject* Brain_utm_set_natural_gradient(BrainObject* self, PyObject* arg
     Py_RETURN_NONE;
 }
 
+/* ============================================================================
+ * Edge Brain Python Bindings
+ * ============================================================================ */
+
+#include "edge/nimcp_edge.h"
+
+static PyObject* Brain_edge_resize(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"target_neurons", "mode", "knowledge_transfer", NULL};
+    uint32_t target = 0;
+    const char* mode_str = "contract";
+    int transfer = 1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "I|sp", kwlist,
+                                      &target, &mode_str, &transfer)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+
+    nimcp_resize_config_t config = nimcp_resize_config_default();
+    config.target_neuron_count = target;
+    config.enable_knowledge_transfer = (bool)transfer;
+    if (strcmp(mode_str, "expand") == 0) config.mode = NIMCP_RESIZE_EXPAND;
+    else if (strcmp(mode_str, "rebalance") == 0) config.mode = NIMCP_RESIZE_REBALANCE;
+    else config.mode = NIMCP_RESIZE_CONTRACT;
+
+    int ret = nimcp_edge_brain_resize(self->brain, &config);
+
+    PyObject* result = PyDict_New();
+    if (!result) { PyErr_NoMemory(); return NULL; }
+    PyDict_SetItemString(result, "status", PyLong_FromLong(ret));
+    PyDict_SetItemString(result, "target_neurons", PyLong_FromUnsignedLong(target));
+    PyDict_SetItemString(result, "mode", PyUnicode_FromString(mode_str));
+    return result;
+}
+
+static PyObject* Brain_edge_resize_check(BrainObject* self, PyObject* args) {
+    uint32_t target = 0;
+    if (!PyArg_ParseTuple(args, "I", &target)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+
+    nimcp_resize_config_t config = nimcp_resize_config_default();
+    config.target_neuron_count = target;
+    config.mode = NIMCP_RESIZE_CONTRACT;
+    nimcp_resize_report_t report = {0};
+    nimcp_edge_brain_resize_check(self->brain, &config, &report);
+
+    PyObject* result = PyDict_New();
+    if (!result) { PyErr_NoMemory(); return NULL; }
+    PyDict_SetItemString(result, "feasible", PyBool_FromLong(report.feasible));
+    PyDict_SetItemString(result, "neurons_before", PyLong_FromUnsignedLong(report.neurons_before));
+    PyDict_SetItemString(result, "neurons_after", PyLong_FromUnsignedLong(report.neurons_after));
+    PyDict_SetItemString(result, "ram_delta_mb", PyFloat_FromDouble(report.estimated_ram_delta_mb));
+    PyDict_SetItemString(result, "reason", PyUnicode_FromString(report.reason));
+    return result;
+}
+
+static PyObject* Brain_edge_distill(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"target_neurons", "temperature", "steps", "include_snn",
+                              "include_lnn", "include_cnn", NULL};
+    uint32_t target = 50000;
+    float temperature = 2.0f;
+    uint32_t steps = 5000;
+    int inc_snn = 0, inc_lnn = 0, inc_cnn = 1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "I|fIppp", kwlist,
+                                      &target, &temperature, &steps,
+                                      &inc_snn, &inc_lnn, &inc_cnn)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+
+    nimcp_distill_config_t config = nimcp_distill_config_default();
+    config.target_neurons = target;
+    config.temperature = temperature;
+    config.distillation_steps = steps;
+    config.include_snn = (bool)inc_snn;
+    config.include_lnn = (bool)inc_lnn;
+    config.include_cnn = (bool)inc_cnn;
+
+    nimcp_distill_report_t report = {0};
+    nimcp_brain_t student = NULL;
+    int ret = nimcp_brain_distill(self->brain, &student, &config, &report);
+
+    PyObject* result = PyDict_New();
+    if (!result) { PyErr_NoMemory(); return NULL; }
+    PyDict_SetItemString(result, "status", PyLong_FromLong(ret));
+    PyDict_SetItemString(result, "accuracy_retention", PyFloat_FromDouble(report.accuracy_retention));
+    PyDict_SetItemString(result, "neurons_selected", PyLong_FromUnsignedLong(report.neurons_selected));
+    PyDict_SetItemString(result, "compression_ratio", PyFloat_FromDouble(report.compression_ratio));
+    PyDict_SetItemString(result, "teacher_loss", PyFloat_FromDouble(report.teacher_loss));
+    PyDict_SetItemString(result, "student_loss", PyFloat_FromDouble(report.student_loss));
+    PyDict_SetItemString(result, "steps_trained", PyLong_FromUnsignedLong(report.steps_trained));
+    return result;
+}
+
+static PyObject* Brain_edge_optimize_for_device(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"ram_mb", "cpu_cores", "has_camera", "has_imu",
+                              "has_motor_control", "has_network", "role", NULL};
+    uint32_t ram_mb = 512;
+    uint32_t cpu_cores = 2;
+    int camera = 0, imu = 0, motor = 0, network = 1;
+    const char* role_str = "general";
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "I|Ippps", kwlist,
+                                      &ram_mb, &cpu_cores, &camera, &imu,
+                                      &motor, &network, &role_str)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+
+    nimcp_device_profile_t profile = nimcp_device_profile_default();
+    profile.ram_mb = ram_mb;
+    profile.cpu_cores = cpu_cores;
+    profile.has_camera = (bool)camera;
+    profile.has_imu = (bool)imu;
+    profile.has_motor_control = (bool)motor;
+    profile.has_network = (bool)network;
+    if (strcmp(role_str, "sensor") == 0) profile.role = NIMCP_DEVICE_SENSOR;
+    else if (strcmp(role_str, "actuator") == 0) profile.role = NIMCP_DEVICE_ACTUATOR;
+    else if (strcmp(role_str, "coordinator") == 0) profile.role = NIMCP_DEVICE_COORDINATOR;
+    else profile.role = NIMCP_DEVICE_GENERAL;
+
+    nimcp_optimization_report_t report = {0};
+    nimcp_brain_t child = NULL;
+    int ret = nimcp_brain_optimize_for_device(self->brain, &profile, &child, &report);
+
+    PyObject* result = PyDict_New();
+    if (!result) { PyErr_NoMemory(); return NULL; }
+    PyDict_SetItemString(result, "status", PyLong_FromLong(ret));
+    PyDict_SetItemString(result, "neuron_count", PyLong_FromUnsignedLong(report.neuron_count));
+    PyDict_SetItemString(result, "subsystems_enabled", PyLong_FromUnsignedLong(report.subsystems_enabled));
+    PyDict_SetItemString(result, "estimated_ram_mb", PyFloat_FromDouble(report.estimated_ram_mb));
+    PyDict_SetItemString(result, "estimated_inference_ms", PyFloat_FromDouble(report.estimated_inference_ms));
+    PyDict_SetItemString(result, "accuracy_retention", PyFloat_FromDouble(report.accuracy_retention));
+
+    PyObject* warnings = PyList_New(0);
+    for (uint32_t i = 0; i < report.num_warnings && i < 16; i++) {
+        PyObject* s = PyUnicode_FromString(report.warnings[i]);
+        if (s) { PyList_Append(warnings, s); Py_DECREF(s); }
+    }
+    PyDict_SetItemString(result, "warnings", warnings);
+    Py_DECREF(warnings);
+    return result;
+}
+
+static PyObject* Brain_edge_quantize(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"precision", "calibration_samples", NULL};
+    const char* prec_str = "int8_symmetric";
+    uint32_t cal_samples = 100;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|sI", kwlist,
+                                      &prec_str, &cal_samples)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+
+    nimcp_quantize_config_t config = nimcp_quantize_config_default();
+    config.calibration_samples = cal_samples;
+    if (strcmp(prec_str, "fp16") == 0) config.weight_precision = NIMCP_QUANT_FP16;
+    else if (strcmp(prec_str, "int8_affine") == 0) config.weight_precision = NIMCP_QUANT_INT8_AFFINE;
+    else if (strcmp(prec_str, "int4") == 0) config.weight_precision = NIMCP_QUANT_INT4;
+    else if (strcmp(prec_str, "ternary") == 0) config.weight_precision = NIMCP_QUANT_TERNARY;
+    else config.weight_precision = NIMCP_QUANT_INT8_SYMMETRIC;
+
+    int ret = nimcp_brain_quantize(self->brain, &config);
+
+    PyObject* result = PyDict_New();
+    if (!result) { PyErr_NoMemory(); return NULL; }
+    PyDict_SetItemString(result, "status", PyLong_FromLong(ret));
+    PyDict_SetItemString(result, "precision", PyUnicode_FromString(prec_str));
+    return result;
+}
+
+static PyObject* Brain_edge_score_importance(BrainObject* self, PyObject* args) {
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+
+    uint32_t n = 1000; /* default score count */
+    if (!PyArg_ParseTuple(args, "|I", &n)) return NULL;
+    if (n == 0) n = 1000;
+    float* scores = (float*)nimcp_calloc(n, sizeof(float));
+    if (!scores) { PyErr_NoMemory(); return NULL; }
+
+    nimcp_edge_score_neuron_importance(self->brain, scores, n);
+
+    PyObject* list = PyList_New(n);
+    for (uint32_t i = 0; i < n; i++) {
+        PyList_SET_ITEM(list, i, PyFloat_FromDouble(scores[i]));
+    }
+    nimcp_free(scores);
+    return list;
+}
+
+/* ============================================================================
+ * Memory Store + OOD + Audit Python Bindings
+ * ============================================================================ */
+
+#include "memory/nimcp_memory_store.h"
+#include "cognitive/nimcp_ood_detector.h"
+
+static PyObject* Brain_memory_store_stats(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain || !self->brain->internal_brain || !self->brain->internal_brain->memory_store) {
+        Py_RETURN_NONE;
+    }
+    nimcp_memory_store_stats_t stats = {0};
+    nimcp_memory_store_get_stats((nimcp_memory_store_t*)self->brain->internal_brain->memory_store, &stats);
+    PyObject* d = PyDict_New();
+    if (!d) { PyErr_NoMemory(); return NULL; }
+    PyDict_SetItemString(d, "total_engrams", PyLong_FromUnsignedLongLong(stats.total_engrams));
+    PyDict_SetItemString(d, "total_concepts", PyLong_FromUnsignedLongLong(stats.total_concepts));
+    PyDict_SetItemString(d, "total_relations", PyLong_FromUnsignedLongLong(stats.total_relations));
+    PyDict_SetItemString(d, "total_autobio", PyLong_FromUnsignedLongLong(stats.total_autobio));
+    PyDict_SetItemString(d, "total_writes", PyLong_FromUnsignedLongLong(stats.total_writes));
+    PyDict_SetItemString(d, "total_reads", PyLong_FromUnsignedLongLong(stats.total_reads));
+    PyDict_SetItemString(d, "cache_hits", PyLong_FromUnsignedLongLong(stats.cache_hits));
+    PyDict_SetItemString(d, "cache_misses", PyLong_FromUnsignedLongLong(stats.cache_misses));
+    PyDict_SetItemString(d, "db_size_bytes", PyLong_FromUnsignedLongLong(stats.db_size_bytes));
+    return d;
+}
+
+static PyObject* Brain_memory_search_text(BrainObject* self, PyObject* args) {
+    const char* query = NULL;
+    uint32_t max_results = 10;
+    if (!PyArg_ParseTuple(args, "s|I", &query, &max_results)) return NULL;
+    if (!self->brain || !self->brain->internal_brain || !self->brain->internal_brain->memory_store) {
+        return PyList_New(0);
+    }
+    nimcp_memory_search_result_t* res = nimcp_memory_store_engram_search_text(
+        (nimcp_memory_store_t*)self->brain->internal_brain->memory_store, query, max_results);
+    PyObject* list = PyList_New(0);
+    if (res) {
+        for (uint32_t i = 0; i < res->count; i++) {
+            PyList_Append(list, PyLong_FromUnsignedLongLong(res->ids[i]));
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    return list;
+}
+
+static PyObject* Brain_memory_search_similar(BrainObject* self, PyObject* args) {
+    PyObject* emb_list = NULL;
+    uint32_t top_k = 5;
+    if (!PyArg_ParseTuple(args, "O|I", &emb_list, &top_k)) return NULL;
+    if (!PyList_Check(emb_list)) {
+        PyErr_SetString(PyExc_TypeError, "embedding must be a list of floats");
+        return NULL;
+    }
+    if (!self->brain || !self->brain->internal_brain || !self->brain->internal_brain->memory_store) {
+        return PyList_New(0);
+    }
+    uint32_t dim = (uint32_t)PyList_Size(emb_list);
+    float* emb = (float*)nimcp_calloc(dim, sizeof(float));
+    if (!emb) { PyErr_NoMemory(); return NULL; }
+    for (uint32_t i = 0; i < dim; i++) {
+        emb[i] = (float)PyFloat_AsDouble(PyList_GetItem(emb_list, i));
+    }
+    nimcp_memory_search_result_t* res = nimcp_memory_store_engram_search_similar(
+        (nimcp_memory_store_t*)self->brain->internal_brain->memory_store, emb, dim, top_k, 0.0f);
+    nimcp_free(emb);
+    PyObject* list = PyList_New(0);
+    if (res) {
+        for (uint32_t i = 0; i < res->count; i++) {
+            PyObject* pair = PyTuple_New(2);
+            PyTuple_SetItem(pair, 0, PyLong_FromUnsignedLongLong(res->ids[i]));
+            PyTuple_SetItem(pair, 1, PyFloat_FromDouble(res->distances[i]));
+            PyList_Append(list, pair);
+            Py_DECREF(pair);
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    return list;
+}
+
+static PyObject* Brain_ood_stats(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain || !self->brain->internal_brain || !self->brain->internal_brain->ood_detector) {
+        Py_RETURN_NONE;
+    }
+    nimcp_ood_stats_t stats = {0};
+    nimcp_ood_get_stats((const nimcp_ood_detector_t*)self->brain->internal_brain->ood_detector, &stats);
+    PyObject* d = PyDict_New();
+    if (!d) { PyErr_NoMemory(); return NULL; }
+    PyDict_SetItemString(d, "total_checks", PyLong_FromUnsignedLongLong(stats.total_checks));
+    PyDict_SetItemString(d, "ood_detected", PyLong_FromUnsignedLongLong(stats.ood_detected));
+    PyDict_SetItemString(d, "in_distribution", PyLong_FromUnsignedLongLong(stats.in_distribution));
+    PyDict_SetItemString(d, "avg_ood_score", PyFloat_FromDouble(stats.avg_ood_score));
+    PyDict_SetItemString(d, "ood_rate", PyFloat_FromDouble(stats.ood_rate));
+    return d;
+}
+
+static PyObject* Brain_audit_log(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"description", "severity", "details", NULL};
+    const char* desc = "";
+    uint32_t severity = 0;
+    const char* details = "";
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|Is", kwlist, &desc, &severity, &details)) return NULL;
+    if (!self->brain || !self->brain->internal_brain || !self->brain->internal_brain->memory_store) {
+        return PyLong_FromLong(-1);
+    }
+    nimcp_memory_audit_event_t event = {0};
+    event.timestamp_us = nimcp_time_get_us();
+    event.event_type = severity;
+    strncpy(event.description, desc, sizeof(event.description) - 1);
+    strncpy(event.details, details, sizeof(event.details) - 1);
+    int rc = nimcp_memory_store_audit_log(
+        (nimcp_memory_store_t*)self->brain->internal_brain->memory_store, &event);
+    return PyLong_FromLong(rc);
+}
+
+static PyObject* Brain_audit_search(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"min_severity", "max_results", NULL};
+    uint32_t min_sev = 0, max_res = 100;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|II", kwlist, &min_sev, &max_res)) return NULL;
+    if (!self->brain || !self->brain->internal_brain || !self->brain->internal_brain->memory_store) {
+        return PyList_New(0);
+    }
+    nimcp_memory_search_result_t* res = nimcp_memory_store_audit_search(
+        (nimcp_memory_store_t*)self->brain->internal_brain->memory_store,
+        min_sev, 0, UINT64_MAX, max_res);
+    PyObject* list = PyList_New(0);
+    if (res) {
+        for (uint32_t i = 0; i < res->count; i++) {
+            PyObject* d = PyDict_New();
+            PyDict_SetItemString(d, "id", PyLong_FromUnsignedLongLong(res->ids[i]));
+            PyDict_SetItemString(d, "severity", PyFloat_FromDouble(res->distances[i]));
+            PyList_Append(list, d);
+            Py_DECREF(d);
+        }
+        nimcp_memory_search_result_destroy(res);
+    }
+    return list;
+}
+
+static PyObject* Brain_memory_is_healthy(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain || !self->brain->internal_brain || !self->brain->internal_brain->memory_store) {
+        Py_RETURN_TRUE; /* No store = nothing unhealthy */
+    }
+    bool healthy = nimcp_memory_store_is_healthy(
+        (nimcp_memory_store_t*)self->brain->internal_brain->memory_store);
+    return PyBool_FromLong(healthy);
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
      "Learn from example: learn(features, label, lr=0.0, confidence=1.0) -> float (loss value)\n"
@@ -7216,6 +7557,36 @@ static PyMethodDef Brain_methods[] = {
      "Set fractal LR scaling for network: utm_set_fractal_lr(net_idx, scale)"},
     {"utm_set_natural_gradient", (PyCFunction)Brain_utm_set_natural_gradient, METH_VARARGS,
      "Enable/disable natural gradient for network: utm_set_natural_gradient(net_idx, True/False)"},
+
+    /* Edge Brain API */
+    {"edge_resize", (PyCFunction)Brain_edge_resize, METH_VARARGS | METH_KEYWORDS,
+     "Resize brain: edge_resize(target_neurons, mode='contract', knowledge_transfer=True) -> dict"},
+    {"edge_resize_check", (PyCFunction)Brain_edge_resize_check, METH_VARARGS,
+     "Dry-run resize check: edge_resize_check(target_neurons) -> dict{feasible, ram_delta_mb, ...}"},
+    {"edge_distill", (PyCFunction)Brain_edge_distill, METH_VARARGS | METH_KEYWORDS,
+     "Distill to smaller brain: edge_distill(target_neurons, temperature=2.0, steps=5000) -> dict"},
+    {"edge_optimize_for_device", (PyCFunction)Brain_edge_optimize_for_device, METH_VARARGS | METH_KEYWORDS,
+     "Auto-optimize for device: edge_optimize_for_device(ram_mb, cpu_cores, ...) -> dict"},
+    {"edge_quantize", (PyCFunction)Brain_edge_quantize, METH_VARARGS | METH_KEYWORDS,
+     "Quantize weights: edge_quantize(precision='int8_symmetric') -> dict"},
+    {"edge_score_importance", (PyCFunction)Brain_edge_score_importance, METH_VARARGS,
+     "Score neuron importance: edge_score_importance(num_neurons=1000) -> [float, ...]"},
+
+    /* Memory Store + OOD + Audit Python Bindings */
+    {"memory_store_stats", (PyCFunction)Brain_memory_store_stats, METH_NOARGS,
+     "Get memory store stats: -> dict{total_engrams, total_concepts, ...}"},
+    {"memory_search_text", (PyCFunction)Brain_memory_search_text, METH_VARARGS,
+     "Search memory by text: memory_search_text(query, max_results=10) -> [int, ...]"},
+    {"memory_search_similar", (PyCFunction)Brain_memory_search_similar, METH_VARARGS,
+     "Search memory by embedding: memory_search_similar(embedding, top_k=5) -> [(id, distance), ...]"},
+    {"ood_stats", (PyCFunction)Brain_ood_stats, METH_NOARGS,
+     "Get OOD detector stats: -> dict{total_checks, ood_detected, ood_rate, ...}"},
+    {"audit_log", (PyCFunction)Brain_audit_log, METH_VARARGS | METH_KEYWORDS,
+     "Log audit event: audit_log(description, severity=0, details='') -> int"},
+    {"audit_search", (PyCFunction)Brain_audit_search, METH_VARARGS | METH_KEYWORDS,
+     "Search audit trail: audit_search(min_severity=0, max_results=100) -> [dict, ...]"},
+    {"memory_is_healthy", (PyCFunction)Brain_memory_is_healthy, METH_NOARGS,
+     "Check memory store health: -> bool"},
 
     {NULL}
 };

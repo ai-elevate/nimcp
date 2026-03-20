@@ -25,6 +25,9 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "memory/nimcp_memory_store.h"
+#include "memory/nimcp_memory_oodb.h"
+#include "cognitive/nimcp_ood_detector.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/error/nimcp_error_codes.h"
 
@@ -366,6 +369,45 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
         set_error("Failed to create engram system");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->engram_system is NULL");
         goto cleanup_sleep;
+    }
+
+    /**
+     * PHASE M1b: PERSISTENT MEMORY STORE + OODB + OOD DETECTOR
+     *
+     * WHAT: Create SQLite-backed persistent memory, OODB cache, and OOD detector
+     * WHY:  Enable cross-session memory persistence, fast in-memory object graph,
+     *       and out-of-distribution detection during inference
+     * HOW:  Create store with brain's checkpoint path, wrap with OODB, create OOD
+     */
+    {
+        nimcp_memory_store_config_t ms_config = nimcp_memory_store_config_default();
+        /* Use checkpoint directory for the memory DB if available */
+        char db_path[512];
+        snprintf(db_path, sizeof(db_path), "%s/athena_memory.db",
+                 brain->config.task_name[0] ? "checkpoints/athena" : "/tmp");
+        ms_config.db_path = db_path;
+        ms_config.enable_questdb_sync = false; /* Enable later when QuestDB is confirmed running */
+
+        brain->memory_store = (struct nimcp_memory_store*)nimcp_memory_store_create(&ms_config);
+        if (brain->memory_store) {
+            NIMCP_LOGGING_INFO("Persistent memory store created: %s", db_path);
+
+            /* OODB cache wrapping the store */
+            nimcp_oodb_config_t oodb_config = nimcp_oodb_config_default();
+            brain->memory_oodb = (struct nimcp_oodb*)nimcp_oodb_create(
+                &oodb_config, (nimcp_memory_store_t*)brain->memory_store);
+            if (brain->memory_oodb) {
+                NIMCP_LOGGING_INFO("OODB memory cache created (max=%u objects)",
+                                   oodb_config.max_cached_objects);
+            }
+        }
+
+        /* OOD detector (persistent, reused across inferences) */
+        nimcp_ood_config_t ood_config = nimcp_ood_config_default();
+        brain->ood_detector = (struct nimcp_ood_detector*)nimcp_ood_detector_create(&ood_config);
+        if (brain->ood_detector) {
+            NIMCP_LOGGING_INFO("OOD detector created (threshold=%.2f)", ood_config.ood_threshold);
+        }
     }
 
     /**

@@ -292,9 +292,38 @@ int brain_immune_handle_bft_trust_recovery(
         &cytokine_id
     );
 
+    /* G2 SECURITY: Present recovery pattern as benign antigen for immune memory.
+     * WHAT: Record the recovery signature so the immune system remembers this pattern.
+     * WHY:  Future encounters with the same recovery pattern should trigger a faster,
+     *       attenuated response (secondary immune response) instead of full alarm.
+     * HOW:  Present a low-severity antigen with recovery metadata so memory B cells
+     *       can match it on subsequent BFT events from this node. */
+    {
+        uint8_t recovery_epitope[32];
+        memset(recovery_epitope, 0, sizeof(recovery_epitope));
+        /* Encode node_id and trust delta into recovery signature */
+        memcpy(recovery_epitope, &node_id, sizeof(node_id));
+        float trust_delta = new_trust - old_trust;
+        memcpy(recovery_epitope + sizeof(node_id), &trust_delta, sizeof(trust_delta));
+        /* Tag as recovery pattern (0xRE prefix) */
+        recovery_epitope[8] = 0xAE;  /* Recovery marker byte 1 */
+        recovery_epitope[9] = 0xC0;  /* Recovery marker byte 2 */
+
+        uint32_t recovery_antigen_id = 0;
+        brain_immune_present_antigen(
+            system,
+            ANTIGEN_SOURCE_BFT,
+            recovery_epitope,
+            sizeof(recovery_epitope),
+            1,  /* Low severity — this is a recovery, not a threat */
+            node_id,
+            &recovery_antigen_id
+        );
+    }
+
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
-            "BFT trust recovery: node %u (%.1f%% -> %.1f%%) -> memory formation + IL-10 release",
+            "BFT trust recovery: node %u (%.1f%% -> %.1f%%) -> memory formation + IL-10 + recovery pattern recorded",
             node_id, old_trust, new_trust);
     }
 

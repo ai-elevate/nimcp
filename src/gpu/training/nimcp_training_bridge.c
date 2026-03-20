@@ -894,6 +894,12 @@ bool nimcp_gpu_forward_pass(
         if (cache->sparse_weights[l]) { any_weights = true; break; }
     }
     if (!any_weights) {
+        static int s_nw = 0;
+        if (s_nw++ < 3) {
+            fprintf(stderr, "[GPU-FWD] ALL sparse_weights NULL (%u layers) — returning zeros\n",
+                    cache->num_layers);
+            fflush(stderr);
+        }
         memset(output, 0, output_size * sizeof(float));
         return true;
     }
@@ -1012,6 +1018,8 @@ bool nimcp_gpu_forward_pass(
     if (!nimcp_gpu_tensor_to_host(cache->activations[last_layer], output)) {
         return false;
     }
+
+
 
     return true;
 }

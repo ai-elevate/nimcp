@@ -1757,6 +1757,30 @@ nimcp_error_t nimcp_pattern_db_match(
 
     pthread_rwlock_unlock(&db->write_lock);
 
+    /* Send BIO_MSG_SECURITY_EVENT when pattern match produces a high threat
+     * score.  This notifies the immune system and other security modules that
+     * suspicious input was detected by the pattern database. */
+    if (result->matched && result->threat_score >= 0.5f &&
+        db->bio_async_enabled && db->bio_ctx) {
+        struct {
+            bio_message_header_t hdr;
+            uint32_t pattern_id;
+            uint32_t category;
+            uint32_t match_count;
+            float    threat_score;
+        } sec_msg = {0};
+        sec_msg.hdr.type          = BIO_MSG_SECURITY_EVENT;
+        sec_msg.hdr.source_module = db->config.module_id;
+        sec_msg.hdr.target_module = 0;
+        sec_msg.hdr.payload_size  = sizeof(sec_msg) - sizeof(bio_message_header_t);
+        sec_msg.hdr.flags         = BIO_MSG_FLAG_BROADCAST;
+        sec_msg.pattern_id        = result->pattern_id;
+        sec_msg.category          = (uint32_t)result->category;
+        sec_msg.match_count       = result->match_count;
+        sec_msg.threat_score      = result->threat_score;
+        (void)bio_router_broadcast(db->bio_ctx, &sec_msg, sizeof(sec_msg));
+    }
+
     return NIMCP_SUCCESS;
 }
 

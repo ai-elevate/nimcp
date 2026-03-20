@@ -377,10 +377,36 @@ static nimcp_error_t bio_router_send_with_promise(bio_module_context_t ctx,
             LOG_WARN("BBB validation failed for async message type=0x%04X from=%u: threat=%d severity=%d",
                      header->type, header->source_module, bbb_result.threat, bbb_result.severity);
 
-            // Update dropped message stats
+            /* Dead-letter tracking: record dropped message type */
             nimcp_platform_mutex_lock(&g_router->stats_mutex);
             g_router->stats.messages_dropped++;
+            g_router->dead_letter_types[g_router->dead_letter_idx] = header->type;
+            g_router->dead_letter_idx = (g_router->dead_letter_idx + 1) % 16;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+
+            /* Broadcast BIO_MSG_SECURITY_THREAT_DETECTED on BBB rejection
+             * (same logic as bio_router_send — see that function for comments). */
+            if (header->type != BIO_MSG_SECURITY_THREAT_DETECTED &&
+                header->type != BIO_MSG_SECURITY_ALERT) {
+                struct {
+                    bio_message_header_t hdr;
+                    uint32_t rejected_msg_type;
+                    uint32_t source_module;
+                    int      threat_type;
+                    int      severity;
+                } threat_alert = {0};
+                threat_alert.hdr.type          = BIO_MSG_SECURITY_THREAT_DETECTED;
+                threat_alert.hdr.source_module  = BIO_MODULE_SECURITY_BBB_FEP;
+                threat_alert.hdr.target_module  = 0;
+                threat_alert.hdr.timestamp_us   = nimcp_platform_time_monotonic_us();
+                threat_alert.hdr.payload_size   = sizeof(threat_alert) - sizeof(bio_message_header_t);
+                threat_alert.hdr.flags          = BIO_MSG_FLAG_URGENT | BIO_MSG_FLAG_BROADCAST;
+                threat_alert.rejected_msg_type  = (uint32_t)header->type;
+                threat_alert.source_module      = header->source_module;
+                threat_alert.threat_type        = bbb_result.threat;
+                threat_alert.severity           = bbb_result.severity;
+                (void)bio_router_broadcast(ctx, &threat_alert, sizeof(threat_alert));
+            }
 
             NIMCP_CHECK_THROW(false, NIMCP_ERROR_PERMISSION_DENIED,
                               "bio_router_send_with_promise: BBB validation failed");
@@ -413,7 +439,14 @@ static nimcp_error_t bio_router_send_with_promise(bio_module_context_t ctx,
     if (result == NIMCP_SUCCESS) {
         atomic_fetch_add(&target->messages_received, 1);
     } else {
-        LOG_WARN("Failed to enqueue to module %u inbox", target_id);
+        LOG_WARN("Failed to enqueue to module %u inbox (type=0x%04X)", target_id, header->type);
+
+        /* Dead-letter tracking: record dropped message type */
+        nimcp_platform_mutex_lock(&g_router->stats_mutex);
+        g_router->stats.messages_dropped++;
+        g_router->dead_letter_types[g_router->dead_letter_idx] = header->type;
+        g_router->dead_letter_idx = (g_router->dead_letter_idx + 1) % 16;
+        nimcp_platform_mutex_unlock(&g_router->stats_mutex);
     }
 
     if (result == NIMCP_SUCCESS) {

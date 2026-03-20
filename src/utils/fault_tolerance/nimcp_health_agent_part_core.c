@@ -5411,3 +5411,82 @@ int nimcp_health_agent_check_imagination_now(
     nimcp_log(LOG_LEVEL_DEBUG, "Imagination health check complete: score=%.2f", score);
     return 0;
 }
+
+
+/* ============================================================================
+ * Memory Store Health Check
+ *
+ * WHAT: Verify the persistent memory store (SQLite) is healthy.
+ * WHY:  Silent write failures can corrupt long-term memory without warning.
+ * HOW:  Query store stats and flag if flushes succeed but writes are zero.
+ * ============================================================================ */
+
+void health_agent_check_memory_store(nimcp_health_agent_t* agent) {
+    if (!validate_agent(agent) || !agent->brain) return;
+
+    struct nimcp_memory_store* store = brain_get_memory_store(agent->brain);
+    if (!store) return;
+
+    nimcp_memory_store_stats_t stats;
+    if (nimcp_memory_store_get_stats(
+            (nimcp_memory_store_t*)store, &stats) != 0) {
+        nimcp_log(LOG_LEVEL_WARN,
+                  "Health: memory store stats query failed — store may be corrupted");
+        return;
+    }
+
+    /* Detect silent write failures: flushes happening but no writes committed */
+    if (stats.write_buffer_flushes > 5 && stats.total_writes == 0) {
+        nimcp_log(LOG_LEVEL_WARN,
+                  "Health: memory store has %lu flushes but 0 writes — "
+                  "SQLite writes may be silently failing",
+                  (unsigned long)stats.write_buffer_flushes);
+    }
+
+    /* Detect high cache miss ratio indicating possible data loss */
+    uint64_t total_cache = stats.cache_hits + stats.cache_misses;
+    if (total_cache > 100 && stats.cache_misses > total_cache * 3 / 4) {
+        nimcp_log(LOG_LEVEL_WARN,
+                  "Health: memory store cache miss ratio %.0f%% — "
+                  "consider increasing hot_cache_size",
+                  100.0 * (double)stats.cache_misses / (double)total_cache);
+    }
+}
+
+
+/* ============================================================================
+ * OOD Detector Health Check
+ *
+ * WHAT: Monitor out-of-distribution detection rate.
+ * WHY:  High OOD rate means training data does not match inference inputs.
+ * HOW:  Query OOD stats and warn if more than 50% of inputs are OOD.
+ * ============================================================================ */
+
+void health_agent_check_ood_detector(nimcp_health_agent_t* agent) {
+    if (!validate_agent(agent) || !agent->brain) return;
+
+    struct nimcp_ood_detector* ood = brain_get_ood_detector(agent->brain);
+    if (!ood) return;
+
+    nimcp_ood_stats_t ood_stats;
+    if (nimcp_ood_get_stats(
+            (const nimcp_ood_detector_t*)ood, &ood_stats) != 0) {
+        return;
+    }
+
+    /* Only report after enough samples to be meaningful */
+    if (ood_stats.total_checks < 20) return;
+
+    if (ood_stats.ood_rate > 0.5f) {
+        nimcp_log(LOG_LEVEL_WARN,
+                  "Health: %.0f%% of inputs are OOD (avg_score=%.3f, max=%.3f) "
+                  "— training data mismatch?",
+                  100.0 * (double)ood_stats.ood_rate,
+                  (double)ood_stats.avg_ood_score,
+                  (double)ood_stats.max_ood_score);
+    } else if (ood_stats.ood_rate > 0.3f) {
+        nimcp_log(LOG_LEVEL_INFO,
+                  "Health: OOD rate %.0f%% — elevated but not critical",
+                  100.0 * (double)ood_stats.ood_rate);
+    }
+}

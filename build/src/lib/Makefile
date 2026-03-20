@@ -11732,6 +11732,30 @@ __/cognitive/nimcp_meta_learning_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_meta_learning_fep_bridge.c.s
 .PHONY : __/cognitive/nimcp_meta_learning_fep_bridge.c.s
 
+__/cognitive/nimcp_ood_detector.o: __/cognitive/nimcp_ood_detector.c.o
+.PHONY : __/cognitive/nimcp_ood_detector.o
+
+# target to build an object file
+__/cognitive/nimcp_ood_detector.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_ood_detector.c.o
+.PHONY : __/cognitive/nimcp_ood_detector.c.o
+
+__/cognitive/nimcp_ood_detector.i: __/cognitive/nimcp_ood_detector.c.i
+.PHONY : __/cognitive/nimcp_ood_detector.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_ood_detector.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_ood_detector.c.i
+.PHONY : __/cognitive/nimcp_ood_detector.c.i
+
+__/cognitive/nimcp_ood_detector.s: __/cognitive/nimcp_ood_detector.c.s
+.PHONY : __/cognitive/nimcp_ood_detector.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_ood_detector.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_ood_detector.c.s
+.PHONY : __/cognitive/nimcp_ood_detector.c.s
+
 __/cognitive/nimcp_personality_fep_bridge.o: __/cognitive/nimcp_personality_fep_bridge.c.o
 .PHONY : __/cognitive/nimcp_personality_fep_bridge.o
 
@@ -30980,6 +31004,438 @@ __/dragonfly/nimcp_dragonfly_workspace_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/dragonfly/nimcp_dragonfly_workspace_bridge.c.s
 .PHONY : __/dragonfly/nimcp_dragonfly_workspace_bridge.c.s
 
+__/edge/nimcp_delta.o: __/edge/nimcp_delta.c.o
+.PHONY : __/edge/nimcp_delta.o
+
+# target to build an object file
+__/edge/nimcp_delta.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_delta.c.o
+.PHONY : __/edge/nimcp_delta.c.o
+
+__/edge/nimcp_delta.i: __/edge/nimcp_delta.c.i
+.PHONY : __/edge/nimcp_delta.i
+
+# target to preprocess a source file
+__/edge/nimcp_delta.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_delta.c.i
+.PHONY : __/edge/nimcp_delta.c.i
+
+__/edge/nimcp_delta.s: __/edge/nimcp_delta.c.s
+.PHONY : __/edge/nimcp_delta.s
+
+# target to generate assembly for a file
+__/edge/nimcp_delta.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_delta.c.s
+.PHONY : __/edge/nimcp_delta.c.s
+
+__/edge/nimcp_distillation.o: __/edge/nimcp_distillation.c.o
+.PHONY : __/edge/nimcp_distillation.o
+
+# target to build an object file
+__/edge/nimcp_distillation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_distillation.c.o
+.PHONY : __/edge/nimcp_distillation.c.o
+
+__/edge/nimcp_distillation.i: __/edge/nimcp_distillation.c.i
+.PHONY : __/edge/nimcp_distillation.i
+
+# target to preprocess a source file
+__/edge/nimcp_distillation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_distillation.c.i
+.PHONY : __/edge/nimcp_distillation.c.i
+
+__/edge/nimcp_distillation.s: __/edge/nimcp_distillation.c.s
+.PHONY : __/edge/nimcp_distillation.s
+
+# target to generate assembly for a file
+__/edge/nimcp_distillation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_distillation.c.s
+.PHONY : __/edge/nimcp_distillation.c.s
+
+__/edge/nimcp_early_exit.o: __/edge/nimcp_early_exit.c.o
+.PHONY : __/edge/nimcp_early_exit.o
+
+# target to build an object file
+__/edge/nimcp_early_exit.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_early_exit.c.o
+.PHONY : __/edge/nimcp_early_exit.c.o
+
+__/edge/nimcp_early_exit.i: __/edge/nimcp_early_exit.c.i
+.PHONY : __/edge/nimcp_early_exit.i
+
+# target to preprocess a source file
+__/edge/nimcp_early_exit.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_early_exit.c.i
+.PHONY : __/edge/nimcp_early_exit.c.i
+
+__/edge/nimcp_early_exit.s: __/edge/nimcp_early_exit.c.s
+.PHONY : __/edge/nimcp_early_exit.s
+
+# target to generate assembly for a file
+__/edge/nimcp_early_exit.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_early_exit.c.s
+.PHONY : __/edge/nimcp_early_exit.c.s
+
+__/edge/nimcp_edge_config.o: __/edge/nimcp_edge_config.c.o
+.PHONY : __/edge/nimcp_edge_config.o
+
+# target to build an object file
+__/edge/nimcp_edge_config.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_edge_config.c.o
+.PHONY : __/edge/nimcp_edge_config.c.o
+
+__/edge/nimcp_edge_config.i: __/edge/nimcp_edge_config.c.i
+.PHONY : __/edge/nimcp_edge_config.i
+
+# target to preprocess a source file
+__/edge/nimcp_edge_config.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_edge_config.c.i
+.PHONY : __/edge/nimcp_edge_config.c.i
+
+__/edge/nimcp_edge_config.s: __/edge/nimcp_edge_config.c.s
+.PHONY : __/edge/nimcp_edge_config.s
+
+# target to generate assembly for a file
+__/edge/nimcp_edge_config.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_edge_config.c.s
+.PHONY : __/edge/nimcp_edge_config.c.s
+
+__/edge/nimcp_edge_ctx.o: __/edge/nimcp_edge_ctx.c.o
+.PHONY : __/edge/nimcp_edge_ctx.o
+
+# target to build an object file
+__/edge/nimcp_edge_ctx.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_edge_ctx.c.o
+.PHONY : __/edge/nimcp_edge_ctx.c.o
+
+__/edge/nimcp_edge_ctx.i: __/edge/nimcp_edge_ctx.c.i
+.PHONY : __/edge/nimcp_edge_ctx.i
+
+# target to preprocess a source file
+__/edge/nimcp_edge_ctx.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_edge_ctx.c.i
+.PHONY : __/edge/nimcp_edge_ctx.c.i
+
+__/edge/nimcp_edge_ctx.s: __/edge/nimcp_edge_ctx.c.s
+.PHONY : __/edge/nimcp_edge_ctx.s
+
+# target to generate assembly for a file
+__/edge/nimcp_edge_ctx.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_edge_ctx.c.s
+.PHONY : __/edge/nimcp_edge_ctx.c.s
+
+__/edge/nimcp_ewc.o: __/edge/nimcp_ewc.c.o
+.PHONY : __/edge/nimcp_ewc.o
+
+# target to build an object file
+__/edge/nimcp_ewc.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_ewc.c.o
+.PHONY : __/edge/nimcp_ewc.c.o
+
+__/edge/nimcp_ewc.i: __/edge/nimcp_ewc.c.i
+.PHONY : __/edge/nimcp_ewc.i
+
+# target to preprocess a source file
+__/edge/nimcp_ewc.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_ewc.c.i
+.PHONY : __/edge/nimcp_ewc.c.i
+
+__/edge/nimcp_ewc.s: __/edge/nimcp_ewc.c.s
+.PHONY : __/edge/nimcp_ewc.s
+
+# target to generate assembly for a file
+__/edge/nimcp_ewc.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_ewc.c.s
+.PHONY : __/edge/nimcp_ewc.c.s
+
+__/edge/nimcp_federated.o: __/edge/nimcp_federated.c.o
+.PHONY : __/edge/nimcp_federated.o
+
+# target to build an object file
+__/edge/nimcp_federated.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_federated.c.o
+.PHONY : __/edge/nimcp_federated.c.o
+
+__/edge/nimcp_federated.i: __/edge/nimcp_federated.c.i
+.PHONY : __/edge/nimcp_federated.i
+
+# target to preprocess a source file
+__/edge/nimcp_federated.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_federated.c.i
+.PHONY : __/edge/nimcp_federated.c.i
+
+__/edge/nimcp_federated.s: __/edge/nimcp_federated.c.s
+.PHONY : __/edge/nimcp_federated.s
+
+# target to generate assembly for a file
+__/edge/nimcp_federated.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_federated.c.s
+.PHONY : __/edge/nimcp_federated.c.s
+
+__/edge/nimcp_gossip.o: __/edge/nimcp_gossip.c.o
+.PHONY : __/edge/nimcp_gossip.o
+
+# target to build an object file
+__/edge/nimcp_gossip.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_gossip.c.o
+.PHONY : __/edge/nimcp_gossip.c.o
+
+__/edge/nimcp_gossip.i: __/edge/nimcp_gossip.c.i
+.PHONY : __/edge/nimcp_gossip.i
+
+# target to preprocess a source file
+__/edge/nimcp_gossip.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_gossip.c.i
+.PHONY : __/edge/nimcp_gossip.c.i
+
+__/edge/nimcp_gossip.s: __/edge/nimcp_gossip.c.s
+.PHONY : __/edge/nimcp_gossip.s
+
+# target to generate assembly for a file
+__/edge/nimcp_gossip.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_gossip.c.s
+.PHONY : __/edge/nimcp_gossip.c.s
+
+__/edge/nimcp_offline.o: __/edge/nimcp_offline.c.o
+.PHONY : __/edge/nimcp_offline.o
+
+# target to build an object file
+__/edge/nimcp_offline.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_offline.c.o
+.PHONY : __/edge/nimcp_offline.c.o
+
+__/edge/nimcp_offline.i: __/edge/nimcp_offline.c.i
+.PHONY : __/edge/nimcp_offline.i
+
+# target to preprocess a source file
+__/edge/nimcp_offline.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_offline.c.i
+.PHONY : __/edge/nimcp_offline.c.i
+
+__/edge/nimcp_offline.s: __/edge/nimcp_offline.c.s
+.PHONY : __/edge/nimcp_offline.s
+
+# target to generate assembly for a file
+__/edge/nimcp_offline.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_offline.c.s
+.PHONY : __/edge/nimcp_offline.c.s
+
+__/edge/nimcp_ota.o: __/edge/nimcp_ota.c.o
+.PHONY : __/edge/nimcp_ota.o
+
+# target to build an object file
+__/edge/nimcp_ota.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_ota.c.o
+.PHONY : __/edge/nimcp_ota.c.o
+
+__/edge/nimcp_ota.i: __/edge/nimcp_ota.c.i
+.PHONY : __/edge/nimcp_ota.i
+
+# target to preprocess a source file
+__/edge/nimcp_ota.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_ota.c.i
+.PHONY : __/edge/nimcp_ota.c.i
+
+__/edge/nimcp_ota.s: __/edge/nimcp_ota.c.s
+.PHONY : __/edge/nimcp_ota.s
+
+# target to generate assembly for a file
+__/edge/nimcp_ota.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_ota.c.s
+.PHONY : __/edge/nimcp_ota.c.s
+
+__/edge/nimcp_power.o: __/edge/nimcp_power.c.o
+.PHONY : __/edge/nimcp_power.o
+
+# target to build an object file
+__/edge/nimcp_power.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_power.c.o
+.PHONY : __/edge/nimcp_power.c.o
+
+__/edge/nimcp_power.i: __/edge/nimcp_power.c.i
+.PHONY : __/edge/nimcp_power.i
+
+# target to preprocess a source file
+__/edge/nimcp_power.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_power.c.i
+.PHONY : __/edge/nimcp_power.c.i
+
+__/edge/nimcp_power.s: __/edge/nimcp_power.c.s
+.PHONY : __/edge/nimcp_power.s
+
+# target to generate assembly for a file
+__/edge/nimcp_power.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_power.c.s
+.PHONY : __/edge/nimcp_power.c.s
+
+__/edge/nimcp_privacy.o: __/edge/nimcp_privacy.c.o
+.PHONY : __/edge/nimcp_privacy.o
+
+# target to build an object file
+__/edge/nimcp_privacy.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_privacy.c.o
+.PHONY : __/edge/nimcp_privacy.c.o
+
+__/edge/nimcp_privacy.i: __/edge/nimcp_privacy.c.i
+.PHONY : __/edge/nimcp_privacy.i
+
+# target to preprocess a source file
+__/edge/nimcp_privacy.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_privacy.c.i
+.PHONY : __/edge/nimcp_privacy.c.i
+
+__/edge/nimcp_privacy.s: __/edge/nimcp_privacy.c.s
+.PHONY : __/edge/nimcp_privacy.s
+
+# target to generate assembly for a file
+__/edge/nimcp_privacy.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_privacy.c.s
+.PHONY : __/edge/nimcp_privacy.c.s
+
+__/edge/nimcp_quantization.o: __/edge/nimcp_quantization.c.o
+.PHONY : __/edge/nimcp_quantization.o
+
+# target to build an object file
+__/edge/nimcp_quantization.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_quantization.c.o
+.PHONY : __/edge/nimcp_quantization.c.o
+
+__/edge/nimcp_quantization.i: __/edge/nimcp_quantization.c.i
+.PHONY : __/edge/nimcp_quantization.i
+
+# target to preprocess a source file
+__/edge/nimcp_quantization.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_quantization.c.i
+.PHONY : __/edge/nimcp_quantization.c.i
+
+__/edge/nimcp_quantization.s: __/edge/nimcp_quantization.c.s
+.PHONY : __/edge/nimcp_quantization.s
+
+# target to generate assembly for a file
+__/edge/nimcp_quantization.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_quantization.c.s
+.PHONY : __/edge/nimcp_quantization.c.s
+
+__/edge/nimcp_resize.o: __/edge/nimcp_resize.c.o
+.PHONY : __/edge/nimcp_resize.o
+
+# target to build an object file
+__/edge/nimcp_resize.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_resize.c.o
+.PHONY : __/edge/nimcp_resize.c.o
+
+__/edge/nimcp_resize.i: __/edge/nimcp_resize.c.i
+.PHONY : __/edge/nimcp_resize.i
+
+# target to preprocess a source file
+__/edge/nimcp_resize.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_resize.c.i
+.PHONY : __/edge/nimcp_resize.c.i
+
+__/edge/nimcp_resize.s: __/edge/nimcp_resize.c.s
+.PHONY : __/edge/nimcp_resize.s
+
+# target to generate assembly for a file
+__/edge/nimcp_resize.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_resize.c.s
+.PHONY : __/edge/nimcp_resize.c.s
+
+__/edge/nimcp_rollback.o: __/edge/nimcp_rollback.c.o
+.PHONY : __/edge/nimcp_rollback.o
+
+# target to build an object file
+__/edge/nimcp_rollback.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_rollback.c.o
+.PHONY : __/edge/nimcp_rollback.c.o
+
+__/edge/nimcp_rollback.i: __/edge/nimcp_rollback.c.i
+.PHONY : __/edge/nimcp_rollback.i
+
+# target to preprocess a source file
+__/edge/nimcp_rollback.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_rollback.c.i
+.PHONY : __/edge/nimcp_rollback.c.i
+
+__/edge/nimcp_rollback.s: __/edge/nimcp_rollback.c.s
+.PHONY : __/edge/nimcp_rollback.s
+
+# target to generate assembly for a file
+__/edge/nimcp_rollback.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_rollback.c.s
+.PHONY : __/edge/nimcp_rollback.c.s
+
+__/edge/nimcp_swarm_comm.o: __/edge/nimcp_swarm_comm.c.o
+.PHONY : __/edge/nimcp_swarm_comm.o
+
+# target to build an object file
+__/edge/nimcp_swarm_comm.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_comm.c.o
+.PHONY : __/edge/nimcp_swarm_comm.c.o
+
+__/edge/nimcp_swarm_comm.i: __/edge/nimcp_swarm_comm.c.i
+.PHONY : __/edge/nimcp_swarm_comm.i
+
+# target to preprocess a source file
+__/edge/nimcp_swarm_comm.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_comm.c.i
+.PHONY : __/edge/nimcp_swarm_comm.c.i
+
+__/edge/nimcp_swarm_comm.s: __/edge/nimcp_swarm_comm.c.s
+.PHONY : __/edge/nimcp_swarm_comm.s
+
+# target to generate assembly for a file
+__/edge/nimcp_swarm_comm.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_comm.c.s
+.PHONY : __/edge/nimcp_swarm_comm.c.s
+
+__/edge/nimcp_telemetry.o: __/edge/nimcp_telemetry.c.o
+.PHONY : __/edge/nimcp_telemetry.o
+
+# target to build an object file
+__/edge/nimcp_telemetry.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_telemetry.c.o
+.PHONY : __/edge/nimcp_telemetry.c.o
+
+__/edge/nimcp_telemetry.i: __/edge/nimcp_telemetry.c.i
+.PHONY : __/edge/nimcp_telemetry.i
+
+# target to preprocess a source file
+__/edge/nimcp_telemetry.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_telemetry.c.i
+.PHONY : __/edge/nimcp_telemetry.c.i
+
+__/edge/nimcp_telemetry.s: __/edge/nimcp_telemetry.c.s
+.PHONY : __/edge/nimcp_telemetry.s
+
+# target to generate assembly for a file
+__/edge/nimcp_telemetry.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_telemetry.c.s
+.PHONY : __/edge/nimcp_telemetry.c.s
+
+__/edge/nimcp_versioning.o: __/edge/nimcp_versioning.c.o
+.PHONY : __/edge/nimcp_versioning.o
+
+# target to build an object file
+__/edge/nimcp_versioning.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_versioning.c.o
+.PHONY : __/edge/nimcp_versioning.c.o
+
+__/edge/nimcp_versioning.i: __/edge/nimcp_versioning.c.i
+.PHONY : __/edge/nimcp_versioning.i
+
+# target to preprocess a source file
+__/edge/nimcp_versioning.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_versioning.c.i
+.PHONY : __/edge/nimcp_versioning.c.i
+
+__/edge/nimcp_versioning.s: __/edge/nimcp_versioning.c.s
+.PHONY : __/edge/nimcp_versioning.s
+
+# target to generate assembly for a file
+__/edge/nimcp_versioning.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_versioning.c.s
+.PHONY : __/edge/nimcp_versioning.c.s
+
 __/embodiment/nimcp_affordance_processing.o: __/embodiment/nimcp_affordance_processing.c.o
 .PHONY : __/embodiment/nimcp_affordance_processing.o
 
@@ -36091,6 +36547,54 @@ __/lnn/nimcp_lnn_wiring.s: __/lnn/nimcp_lnn_wiring.c.s
 __/lnn/nimcp_lnn_wiring.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/lnn/nimcp_lnn_wiring.c.s
 .PHONY : __/lnn/nimcp_lnn_wiring.c.s
+
+__/memory/nimcp_memory_oodb.o: __/memory/nimcp_memory_oodb.c.o
+.PHONY : __/memory/nimcp_memory_oodb.o
+
+# target to build an object file
+__/memory/nimcp_memory_oodb.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/memory/nimcp_memory_oodb.c.o
+.PHONY : __/memory/nimcp_memory_oodb.c.o
+
+__/memory/nimcp_memory_oodb.i: __/memory/nimcp_memory_oodb.c.i
+.PHONY : __/memory/nimcp_memory_oodb.i
+
+# target to preprocess a source file
+__/memory/nimcp_memory_oodb.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/memory/nimcp_memory_oodb.c.i
+.PHONY : __/memory/nimcp_memory_oodb.c.i
+
+__/memory/nimcp_memory_oodb.s: __/memory/nimcp_memory_oodb.c.s
+.PHONY : __/memory/nimcp_memory_oodb.s
+
+# target to generate assembly for a file
+__/memory/nimcp_memory_oodb.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/memory/nimcp_memory_oodb.c.s
+.PHONY : __/memory/nimcp_memory_oodb.c.s
+
+__/memory/nimcp_memory_store.o: __/memory/nimcp_memory_store.c.o
+.PHONY : __/memory/nimcp_memory_store.o
+
+# target to build an object file
+__/memory/nimcp_memory_store.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/memory/nimcp_memory_store.c.o
+.PHONY : __/memory/nimcp_memory_store.c.o
+
+__/memory/nimcp_memory_store.i: __/memory/nimcp_memory_store.c.i
+.PHONY : __/memory/nimcp_memory_store.i
+
+# target to preprocess a source file
+__/memory/nimcp_memory_store.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/memory/nimcp_memory_store.c.i
+.PHONY : __/memory/nimcp_memory_store.c.i
+
+__/memory/nimcp_memory_store.s: __/memory/nimcp_memory_store.c.s
+.PHONY : __/memory/nimcp_memory_store.s
+
+# target to generate assembly for a file
+__/memory/nimcp_memory_store.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/memory/nimcp_memory_store.c.s
+.PHONY : __/memory/nimcp_memory_store.c.s
 
 __/mesh/nimcp_mesh_adapter.o: __/mesh/nimcp_mesh_adapter.c.o
 .PHONY : __/mesh/nimcp_mesh_adapter.o
@@ -54085,6 +54589,9 @@ help:
 	@echo "... __/cognitive/nimcp_meta_learning_fep_bridge.o"
 	@echo "... __/cognitive/nimcp_meta_learning_fep_bridge.i"
 	@echo "... __/cognitive/nimcp_meta_learning_fep_bridge.s"
+	@echo "... __/cognitive/nimcp_ood_detector.o"
+	@echo "... __/cognitive/nimcp_ood_detector.i"
+	@echo "... __/cognitive/nimcp_ood_detector.s"
 	@echo "... __/cognitive/nimcp_personality_fep_bridge.o"
 	@echo "... __/cognitive/nimcp_personality_fep_bridge.i"
 	@echo "... __/cognitive/nimcp_personality_fep_bridge.s"
@@ -56491,6 +56998,60 @@ help:
 	@echo "... __/dragonfly/nimcp_dragonfly_workspace_bridge.o"
 	@echo "... __/dragonfly/nimcp_dragonfly_workspace_bridge.i"
 	@echo "... __/dragonfly/nimcp_dragonfly_workspace_bridge.s"
+	@echo "... __/edge/nimcp_delta.o"
+	@echo "... __/edge/nimcp_delta.i"
+	@echo "... __/edge/nimcp_delta.s"
+	@echo "... __/edge/nimcp_distillation.o"
+	@echo "... __/edge/nimcp_distillation.i"
+	@echo "... __/edge/nimcp_distillation.s"
+	@echo "... __/edge/nimcp_early_exit.o"
+	@echo "... __/edge/nimcp_early_exit.i"
+	@echo "... __/edge/nimcp_early_exit.s"
+	@echo "... __/edge/nimcp_edge_config.o"
+	@echo "... __/edge/nimcp_edge_config.i"
+	@echo "... __/edge/nimcp_edge_config.s"
+	@echo "... __/edge/nimcp_edge_ctx.o"
+	@echo "... __/edge/nimcp_edge_ctx.i"
+	@echo "... __/edge/nimcp_edge_ctx.s"
+	@echo "... __/edge/nimcp_ewc.o"
+	@echo "... __/edge/nimcp_ewc.i"
+	@echo "... __/edge/nimcp_ewc.s"
+	@echo "... __/edge/nimcp_federated.o"
+	@echo "... __/edge/nimcp_federated.i"
+	@echo "... __/edge/nimcp_federated.s"
+	@echo "... __/edge/nimcp_gossip.o"
+	@echo "... __/edge/nimcp_gossip.i"
+	@echo "... __/edge/nimcp_gossip.s"
+	@echo "... __/edge/nimcp_offline.o"
+	@echo "... __/edge/nimcp_offline.i"
+	@echo "... __/edge/nimcp_offline.s"
+	@echo "... __/edge/nimcp_ota.o"
+	@echo "... __/edge/nimcp_ota.i"
+	@echo "... __/edge/nimcp_ota.s"
+	@echo "... __/edge/nimcp_power.o"
+	@echo "... __/edge/nimcp_power.i"
+	@echo "... __/edge/nimcp_power.s"
+	@echo "... __/edge/nimcp_privacy.o"
+	@echo "... __/edge/nimcp_privacy.i"
+	@echo "... __/edge/nimcp_privacy.s"
+	@echo "... __/edge/nimcp_quantization.o"
+	@echo "... __/edge/nimcp_quantization.i"
+	@echo "... __/edge/nimcp_quantization.s"
+	@echo "... __/edge/nimcp_resize.o"
+	@echo "... __/edge/nimcp_resize.i"
+	@echo "... __/edge/nimcp_resize.s"
+	@echo "... __/edge/nimcp_rollback.o"
+	@echo "... __/edge/nimcp_rollback.i"
+	@echo "... __/edge/nimcp_rollback.s"
+	@echo "... __/edge/nimcp_swarm_comm.o"
+	@echo "... __/edge/nimcp_swarm_comm.i"
+	@echo "... __/edge/nimcp_swarm_comm.s"
+	@echo "... __/edge/nimcp_telemetry.o"
+	@echo "... __/edge/nimcp_telemetry.i"
+	@echo "... __/edge/nimcp_telemetry.s"
+	@echo "... __/edge/nimcp_versioning.o"
+	@echo "... __/edge/nimcp_versioning.i"
+	@echo "... __/edge/nimcp_versioning.s"
 	@echo "... __/embodiment/nimcp_affordance_processing.o"
 	@echo "... __/embodiment/nimcp_affordance_processing.i"
 	@echo "... __/embodiment/nimcp_affordance_processing.s"
@@ -57130,6 +57691,12 @@ help:
 	@echo "... __/lnn/nimcp_lnn_wiring.o"
 	@echo "... __/lnn/nimcp_lnn_wiring.i"
 	@echo "... __/lnn/nimcp_lnn_wiring.s"
+	@echo "... __/memory/nimcp_memory_oodb.o"
+	@echo "... __/memory/nimcp_memory_oodb.i"
+	@echo "... __/memory/nimcp_memory_oodb.s"
+	@echo "... __/memory/nimcp_memory_store.o"
+	@echo "... __/memory/nimcp_memory_store.i"
+	@echo "... __/memory/nimcp_memory_store.s"
 	@echo "... __/mesh/nimcp_mesh_adapter.o"
 	@echo "... __/mesh/nimcp_mesh_adapter.i"
 	@echo "... __/mesh/nimcp_mesh_adapter.s"

@@ -795,6 +795,8 @@ void health_agent_check_hippocampus(nimcp_health_agent_t* agent);
 void health_agent_check_mammillary(nimcp_health_agent_t* agent);
 void health_agent_check_engram(nimcp_health_agent_t* agent);
 void health_agent_check_memory_consolidation(nimcp_health_agent_t* agent);
+void health_agent_check_memory_store(nimcp_health_agent_t* agent);
+void health_agent_check_ood_detector(nimcp_health_agent_t* agent);
 
 /* ============================================================================
  * Swarm Module Functions

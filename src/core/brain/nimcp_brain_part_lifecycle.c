@@ -19,6 +19,9 @@
 #include "snn/bridges/nimcp_snn_visual_bridge.h"
 #include "snn/bridges/nimcp_snn_somatosensory_bridge.h"
 #include "snn/bridges/nimcp_snn_cross_modal_align.h"
+#include "memory/nimcp_memory_store.h"
+#include "memory/nimcp_memory_oodb.h"
+#include "cognitive/nimcp_ood_detector.h"
 
 //=============================================================================
 // Bio-Async Message Handlers and Integration
@@ -640,6 +643,22 @@ void brain_destroy(brain_t brain)
     // Phase M1: Cleanup engram system
     if (brain->engram_system) {
         engram_system_destroy(brain->engram_system);
+    }
+
+    // Phase M1b: Cleanup persistent memory systems (OODB before store — OODB flushes to store)
+    if (brain->ood_detector) {
+        nimcp_ood_detector_destroy((nimcp_ood_detector_t*)brain->ood_detector);
+        brain->ood_detector = NULL;
+    }
+    if (brain->memory_oodb) {
+        nimcp_oodb_flush((nimcp_oodb_t*)brain->memory_oodb);
+        nimcp_oodb_destroy((nimcp_oodb_t*)brain->memory_oodb);
+        brain->memory_oodb = NULL;
+    }
+    if (brain->memory_store) {
+        nimcp_memory_store_checkpoint((nimcp_memory_store_t*)brain->memory_store);
+        nimcp_memory_store_destroy((nimcp_memory_store_t*)brain->memory_store);
+        brain->memory_store = NULL;
     }
 
     // Phase M2: Cleanup systems consolidation

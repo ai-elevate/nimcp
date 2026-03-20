@@ -3909,6 +3909,17 @@ bool neural_network_rebuild_incoming(neural_network_t network)
         return false;
     }
 
+    /* Count total outgoing synapses to ensure pool has enough capacity
+     * for the incoming handles we're about to create. */
+    uint64_t total_outgoing = 0;
+    for (uint32_t i = 0; i < network->num_neurons; i++) {
+        total_outgoing += NEURON_OUT_COUNT(&network->neurons[i]);
+    }
+
+    /* Most neurons have ≤320 incoming connections (embedded capacity).
+     * Overflow beyond 320 uses the handle pool; if pool is exhausted,
+     * sparse_synapse_add returns -1 without THROW (safe to continue). */
+
     // Clear all incoming storage
     for (uint32_t i = 0; i < network->num_neurons; i++) {
         neuron_t* n = &network->neurons[i];
@@ -3917,6 +3928,7 @@ bool neural_network_rebuild_incoming(neural_network_t network)
     }
 
     // Rebuild from outgoing data
+    uint32_t added = 0, failed = 0;
     for (uint32_t i = 0; i < network->num_neurons; i++) {
         neuron_t* src = &network->neurons[i];
         uint32_t out_count = NEURON_OUT_COUNT(src);
@@ -3932,7 +3944,8 @@ bool neural_network_rebuild_incoming(neural_network_t network)
                 network->synapse_handle_pool, &tgt->incoming,
                 i,  // source neuron id stored in target_neuron_id field
                 out_h->weight);
-            if (rc != 0) continue;
+            if (rc != 0) { failed++; continue; }
+            added++;
             {
                 uint32_t in_idx = NEURON_IN_COUNT(tgt) - 1;
                 synapse_handle_t* in_h = NEURON_IN_HANDLE(tgt, in_idx);
@@ -3946,6 +3959,8 @@ bool neural_network_rebuild_incoming(neural_network_t network)
             }
         }
     }
+    NIMCP_LOGGING_INFO("rebuild_incoming: %u added, %u failed (total outgoing: %llu)",
+                       added, failed, (unsigned long long)total_outgoing);
     return true;
 }
 

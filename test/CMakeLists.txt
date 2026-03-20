@@ -3017,4 +3017,28 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/synapse_compute/test_synapse_co
             TIMEOUT 120)
 endif()
 
+# ============================================================================
+# Memory Store Tests (SQLite + FTS5 + vector search)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/memory")
+    message(STATUS "Adding memory store unit tests...")
+    add_subdirectory(unit/memory)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/memory")
+    message(STATUS "Adding memory store integration tests...")
+    add_subdirectory(integration/memory)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/memory")
+    message(STATUS "Adding memory store regression tests...")
+    add_subdirectory(regression/memory)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/memory")
+    message(STATUS "Adding memory store e2e tests...")
+    add_subdirectory(e2e/memory)
+endif()
+
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)

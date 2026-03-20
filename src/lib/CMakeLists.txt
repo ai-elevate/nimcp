@@ -3006,6 +3006,33 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../generation/nimcp_tokenizer.c                                 # Word-level tokenizer with BPE subword fallback
     ${CMAKE_CURRENT_SOURCE_DIR}/../generation/nimcp_embedding.c                                 # Learned embedding layer (Xavier init, gradient updates)
     ${CMAKE_CURRENT_SOURCE_DIR}/../generation/nimcp_language_generator.c                        # LNN-based autoregressive language generator
+
+    # Edge Brain (distillation, quantization, power management, rollback, early exit, offline, versioning)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_edge_config.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_quantization.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_versioning.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_rollback.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_early_exit.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_offline.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_power.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_ewc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_federated.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_gossip.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_privacy.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_delta.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_ota.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_resize.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_distillation.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_comm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_telemetry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_edge_ctx.c
+
+    # OOD Detection (Out-of-Distribution)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_ood_detector.c
+
+    # Persistent Memory Store (SQLite + FTS5 + vector search)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../memory/nimcp_memory_store.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../memory/nimcp_memory_oodb.c
 )
 
 # Core library
@@ -3069,6 +3096,7 @@ target_link_libraries(nimcp
         jansson
         cjson
         atomic
+        sqlite3
 )
 
 # Add LAPACK/BLAS libraries if available

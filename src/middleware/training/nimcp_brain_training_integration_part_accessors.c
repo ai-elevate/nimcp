@@ -160,6 +160,16 @@ nimcp_loss_context_t* nimcp_brain_training_get_loss(
 }
 
 
+uint32_t nimcp_brain_training_get_optimizer_count(
+    nimcp_brain_training_ctx_t* ctx)
+{
+    if (!ctx) {
+        return 0;
+    }
+    return ctx->optimizer_count;
+}
+
+
 nimcp_optimizer_context_t* nimcp_brain_training_get_optimizer(
     nimcp_brain_training_ctx_t* ctx,
     uint32_t optimizer_id)

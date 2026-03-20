@@ -983,42 +983,11 @@ after_weight_update:
             }
 
 after_act_deriv:
-            // Layer norm backward for hidden layers (matches forward pass).
-            // Forward: y = (x - mean) / std
-            // Backward: dx = (1/std) * (dy - mean(dy) - y * mean(dy * y))
-            // where y = normalized activation (stored in neuron state after forward).
-            if (layer > 1 && prev_size > 1) {
-                float dy_mean = 0.0f, dy_y_mean = 0.0f;
-                for (uint32_t ai = 0; ai < nsparse_prev; ai++) {
-                    uint32_t i = sparse_prev[ai];
-                    neuron_t* n = neural_network_get_neuron(net, prev_offset + i);
-                    if (!n) continue;
-                    dy_mean += delta_prev[i];
-                    dy_y_mean += delta_prev[i] * n->state; /* state = normalized y */
-                }
-                dy_mean /= (float)prev_size;
-                dy_y_mean /= (float)prev_size;
-                /* Apply correction — inv_std is implicit (already in the delta scale) */
-                for (uint32_t ai = 0; ai < nsparse_prev; ai++) {
-                    uint32_t i = sparse_prev[ai];
-                    neuron_t* n = neural_network_get_neuron(net, prev_offset + i);
-                    if (!n) continue;
-                    delta_prev[i] -= dy_mean + n->state * dy_y_mean;
-                }
-            }
-
-            // Residual backward: identity skip from L-1→L means gradient at L
-            // also flows directly to L-1. Add delta_cur (layer L's gradient)
-            // to delta_prev (layer L-1's gradient), truncated to min dims.
-            // Skip for output layer and first hidden layer.
-            if (layer >= 2 && layer < (int32_t)num_layers - 1) {
-                uint32_t cur_size_res = layer_sizes[layer];
-                uint32_t prev_size_res = prev_size;
-                uint32_t copy_n = (cur_size_res < prev_size_res) ? cur_size_res : prev_size_res;
-                for (uint32_t i = 0; i < copy_n; i++) {
-                    delta_prev[i] += delta_cur[i];
-                }
-            }
+            /* Layer norm backward + residual backward DISABLED:
+             * See nimcp_backprop_kernels.cu for rationale. The backward loop
+             * structure applies these to delta_prev after weight propagation,
+             * but correct backward requires transforming delta_cur before
+             * weight update. Forward norm + residual still stabilize activations. */
 
             // Targeted cleanup: zero delta_cur at active indices before swap
             for (uint32_t z = 0; z < nsparse_cur; z++) {
@@ -1324,36 +1293,8 @@ int backprop_sparse_full_regression_wd(
                 delta_prev[i] *= act_deriv;
             }
 
-            // Layer norm backward — skip input layer (layer 1→0) since
-            // forward only normalizes hidden layers, not input.
-            if (layer > 1 && prev_size > 1) {
-                float dy_mean = 0.0f, dy_y_mean = 0.0f;
-                for (uint32_t ai = 0; ai < nsparse_prev; ai++) {
-                    uint32_t i = sparse_prev[ai];
-                    neuron_t* n = neural_network_get_neuron(net, prev_offset + i);
-                    if (!n) continue;
-                    dy_mean += delta_prev[i];
-                    dy_y_mean += delta_prev[i] * n->state;
-                }
-                dy_mean /= (float)prev_size;
-                dy_y_mean /= (float)prev_size;
-                for (uint32_t ai = 0; ai < nsparse_prev; ai++) {
-                    uint32_t i = sparse_prev[ai];
-                    neuron_t* n = neural_network_get_neuron(net, prev_offset + i);
-                    if (!n) continue;
-                    delta_prev[i] -= dy_mean + n->state * dy_y_mean;
-                }
-            }
-
-            // Residual backward (same as classification path)
-            if (layer >= 2 && layer < (int32_t)num_layers - 1) {
-                uint32_t cur_size_res = layer_sizes[layer];
-                uint32_t prev_size_res = prev_size;
-                uint32_t copy_n = (cur_size_res < prev_size_res) ? cur_size_res : prev_size_res;
-                for (uint32_t i = 0; i < copy_n; i++) {
-                    delta_prev[i] += delta_cur[i];
-                }
-            }
+            /* Layer norm backward + residual backward DISABLED:
+             * See classification path comment above. */
 
             for (uint32_t z = 0; z < nsparse_cur; z++) {
                 delta_cur[sparse_cur[z]] = 0.0f;

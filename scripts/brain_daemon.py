@@ -840,14 +840,45 @@ class BrainDaemon:
                                  daemon=True)
             t.start()
 
+    # Heartbeat constants
+    HEARTBEAT_WARN_SECONDS = 60
+    HEARTBEAT_DEAD_SECONDS = 300
+
     def _handle_conn(self, conn):
-        """Handle a single client connection (may have multiple requests)."""
+        """Handle a single client connection (may have multiple requests).
+
+        Tracks last_message_time for heartbeat detection:
+        - 60s without a message: log a warning (client may be stalled)
+        - 300s without a message: consider client dead, close connection
+        """
+        client_id = id(conn)
+        last_message_time = time.monotonic()
+        warned = False
         try:
-            conn.settimeout(60.0)
+            conn.settimeout(self.HEARTBEAT_WARN_SECONDS)
             while self._running:
-                req = recv_msg(conn)
+                try:
+                    req = recv_msg(conn)
+                except socket.timeout:
+                    # No message received within timeout window
+                    idle = time.monotonic() - last_message_time
+                    if idle >= self.HEARTBEAT_DEAD_SECONDS:
+                        logger.warning(
+                            "Client %d: no message for %.0fs — "
+                            "considering dead, closing connection", client_id, idle)
+                        break
+                    if not warned and idle >= self.HEARTBEAT_WARN_SECONDS:
+                        logger.warning(
+                            "Client %d: no message for %.0fs — "
+                            "possible stall", client_id, idle)
+                        warned = True
+                    continue
+
                 if req is None:
                     break
+
+                last_message_time = time.monotonic()
+                warned = False
                 resp = self.service.handle(req)
                 send_msg(conn, resp)
 

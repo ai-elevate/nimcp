@@ -496,24 +496,33 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     if (brain->training_ctx) {
         uint32_t opt_magic = 0x4F505453; /* "OPTS" */
         fwrite(&opt_magic, sizeof(uint32_t), 1, meta_file);
-        /* Probe active optimizers via public API (IDs 0..15) */
-        uint32_t active_ids[16];
-        nimcp_optimizer_context_t* active_ctxs[16];
-        uint32_t opt_count = 0;
-        for (uint32_t id = 0; id < 16; id++) {
-            nimcp_optimizer_context_t* opt = nimcp_brain_training_get_optimizer(
-                brain->training_ctx, id);
-            if (opt) {
-                active_ids[opt_count] = id;
-                active_ctxs[opt_count] = opt;
-                opt_count++;
+        /* Query active optimizer count — if none, write 0 and skip.
+         * Use nimcp_brain_training_get_optimizer_count() to avoid
+         * throwing exceptions when probing non-existent IDs. */
+        uint32_t total_optimizers = nimcp_brain_training_get_optimizer_count(
+            brain->training_ctx);
+        if (total_optimizers == 0) {
+            uint32_t zero = 0;
+            fwrite(&zero, sizeof(uint32_t), 1, meta_file);
+        } else {
+            uint32_t active_ids[NIMCP_TRAINING_MAX_OPTIMIZER_CONTEXTS];
+            nimcp_optimizer_context_t* active_ctxs[NIMCP_TRAINING_MAX_OPTIMIZER_CONTEXTS];
+            uint32_t opt_count = 0;
+            for (uint32_t id = 0; id < NIMCP_TRAINING_MAX_OPTIMIZER_CONTEXTS && opt_count < total_optimizers; id++) {
+                nimcp_optimizer_context_t* opt = nimcp_brain_training_get_optimizer(
+                    brain->training_ctx, id);
+                if (opt) {
+                    active_ids[opt_count] = id;
+                    active_ctxs[opt_count] = opt;
+                    opt_count++;
+                }
             }
-        }
-        fwrite(&opt_count, sizeof(uint32_t), 1, meta_file);
-        for (uint32_t i = 0; i < opt_count; i++) {
-            fwrite(&active_ids[i], sizeof(uint32_t), 1, meta_file);
-            if (nimcp_optimizer_save(active_ctxs[i], meta_file) != 0) {
-                NIMCP_LOGGING_WARN("Failed to save optimizer state for id %u", active_ids[i]);
+            fwrite(&opt_count, sizeof(uint32_t), 1, meta_file);
+            for (uint32_t i = 0; i < opt_count; i++) {
+                fwrite(&active_ids[i], sizeof(uint32_t), 1, meta_file);
+                if (nimcp_optimizer_save(active_ctxs[i], meta_file) != 0) {
+                    NIMCP_LOGGING_WARN("Failed to save optimizer state for id %u", active_ids[i]);
+                }
             }
         }
     }
@@ -1125,9 +1134,40 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                         NIMCP_LOGGING_WARN("Truncated optimizer state at slot %u", i);
                         break;
                     }
-                    /* Find matching optimizer slot by ID */
+                    /* Try to find existing optimizer slot */
                     nimcp_optimizer_context_t* opt_ctx =
                         nimcp_brain_training_get_optimizer(brain->training_ctx, slot_id);
+                    if (!opt_ctx) {
+                        /* Optimizer slot doesn't exist yet — peek at the saved
+                         * type from the optimizer_save header (magic + type)
+                         * and create a fresh optimizer before restoring state. */
+                        long peek_pos = ftell(meta_file);
+                        uint32_t peek_magic = 0, peek_type = 0;
+                        bool peeked = (fread(&peek_magic, sizeof(uint32_t), 1, meta_file) == 1 &&
+                                       peek_magic == 0x4F505453 &&
+                                       fread(&peek_type, sizeof(uint32_t), 1, meta_file) == 1);
+                        /* Seek back to where we were before peeking */
+                        if (peek_pos >= 0) {
+                            fseek(meta_file, peek_pos, SEEK_SET);
+                        }
+
+                        if (peeked) {
+                            nimcp_optimizer_config_t opt_config =
+                                nimcp_optimizer_default_config((nimcp_optimizer_type_t)peek_type);
+                            uint32_t new_id = 0;
+                            nimcp_result_t res = nimcp_brain_training_create_optimizer(
+                                brain->training_ctx, &opt_config, &new_id);
+                            if (res == NIMCP_SUCCESS) {
+                                opt_ctx = nimcp_brain_training_get_optimizer(
+                                    brain->training_ctx, new_id);
+                                fprintf(stderr, "[INFO] Created optimizer slot %u (type=%u) "
+                                        "for checkpoint restore\n", new_id, peek_type);
+                            } else {
+                                NIMCP_LOGGING_WARN("Failed to create optimizer for slot %u "
+                                                   "(type=%u)", slot_id, peek_type);
+                            }
+                        }
+                    }
                     if (opt_ctx) {
                         if (nimcp_optimizer_load(opt_ctx, meta_file) == 0) {
                             restored++;
@@ -1136,14 +1176,16 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                             break; /* Stream position uncertain, stop reading */
                         }
                     } else {
-                        /* Optimizer not yet created — skip its data.
-                         * We can't skip without knowing the size, so stop here. */
-                        NIMCP_LOGGING_WARN("Optimizer slot %u not found, skipping remaining", slot_id);
+                        /* Cannot create or find optimizer — stream position
+                         * is uncertain since we can't skip variable-size data. */
+                        NIMCP_LOGGING_WARN("Optimizer slot %u not found and could not be "
+                                           "created, skipping remaining", slot_id);
                         break;
                     }
                 }
                 if (restored > 0) {
-                    fprintf(stderr, "[INFO] Restored %u optimizer state(s)\n", restored);
+                    fprintf(stderr, "[INFO] Restored %u/%u optimizer state(s)\n",
+                            restored, opt_count);
                 }
             }
         }
@@ -1413,6 +1455,38 @@ brain_t brain_load(const char* filepath)
                 }
             }
         }
+    }
+
+    /* === CHECKPOINT CONTENT VALIDATION (A5: Security hardening) ===
+     * Validate checkpoint content integrity beyond just file size.
+     * Catches corrupted checkpoints with invalid neuron counts or NaN weights. */
+    if (brain->network) {
+        uint32_t num_neurons = neural_network_get_num_neurons(
+            adaptive_network_get_base_network(brain->network));
+        if (num_neurons == 0 || num_neurons > 10000000) {  /* MAX_NEURONS = 10M sanity cap */
+            LOG_ERROR("Checkpoint validation failed: invalid neuron count %u", num_neurons);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "brain_load: checkpoint validation failed — invalid neuron count");
+            brain_destroy(brain);
+            return NULL;
+        }
+
+        /* Spot-check a few neuron weights for NaN/Inf */
+        neural_network_t base_net = adaptive_network_get_base_network(brain->network);
+        if (base_net) {
+            for (uint32_t i = 0; i < 10 && i < num_neurons; i++) {
+                neuron_t* n = neural_network_get_neuron(base_net, i);
+                if (n && (isnan(n->bias) || isinf(n->bias))) {
+                    LOG_ERROR("Checkpoint validation failed: NaN/Inf in neuron %u bias", i);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                        "brain_load: checkpoint validation failed — NaN/Inf in neuron bias");
+                    brain_destroy(brain);
+                    return NULL;
+                }
+            }
+        }
+        fprintf(stderr, "[INFO] Checkpoint validation passed: %u neurons, bias spot-check OK\n",
+                num_neurons);
     }
 
     brain_clear_error();

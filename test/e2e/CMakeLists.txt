@@ -3171,6 +3171,34 @@ set_tests_properties(e2e_test_athena_training_pipeline PROPERTIES
     RESOURCE_LOCK "brain_heavy"
 )
 
+# Edge Brain E2E tests
+add_e2e_test(e2e_test_edge_brain
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/edge/test_edge_e2e.cpp
+)
+
+# Memory Pipeline E2E tests (engram + semantic + autobio integration)
+add_e2e_test(e2e_test_memory_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/edge/test_memory_e2e.cpp
+)
+
+# Memory Pipeline Integration tests (enhancement verification)
+add_e2e_test(e2e_test_memory_pipeline_integration
+    ${CMAKE_SOURCE_DIR}/test/integration/edge/test_memory_pipeline_integration.cpp
+)
+
+# Memory Regression tests (edge cases for memory enhancements)
+add_e2e_test(e2e_test_memory_regression
+    ${CMAKE_SOURCE_DIR}/test/regression/edge/test_memory_regression.cpp
+)
+
+# Full Memory E2E tests (store + OODB + OOD + metadata)
+add_e2e_test(e2e_test_full_memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/memory/test_full_memory_e2e.cpp
+)
+
 # Include Utils E2E test subdirectory (Memory + Health Agent)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/utils/CMakeLists.txt)
     message(STATUS "Adding Utils E2E tests...")

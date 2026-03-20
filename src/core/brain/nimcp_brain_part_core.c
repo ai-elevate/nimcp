@@ -937,6 +937,16 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
+    // G3 SECURITY: Inference deadline — prevent runaway inference
+    // ========================================================================
+    // WHAT: Set a 5-second wall-clock deadline for inference
+    // WHY:  Complex inputs or pathological brain states could cause brain_decide
+    //       to run indefinitely, starving other subsystems. A hard deadline
+    //       ensures bounded latency even in worst-case scenarios.
+    // HOW:  Check elapsed time at key stages; return partial result if exceeded.
+    const uint64_t inference_deadline_us = nimcp_time_get_us() + 5000000ULL; /* 5 seconds */
+
+    // ========================================================================
     // DEFENSIVE COPY: Protect against input pointer invalidation
     // ========================================================================
     // WHAT: Make a local copy of the input features
@@ -1142,6 +1152,13 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
     } // end serial fallback for STAGE 0
 
+    // G3: Inference timeout check — after pre-forward stages
+    if (nimcp_time_get_us() > inference_deadline_us) {
+        LOG_MODULE_WARN("BRAIN", "brain_decide: inference timeout after pre-forward stages");
+        nimcp_free(local_features);
+        goto inference_timeout;
+    }
+
     // Phase 3: Only trigger COW if not using read-only inference
     if (!brain->can_use_readonly) {
         if (!ensure_writable_network(brain)) {
@@ -1174,11 +1191,52 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 brain->engram_system, cue_neurons, num_features,
                 recalled_neurons, recalled_activations, MAX_RECALL_NEURONS,
                 &engram_confidence);
+
+            /* Persistent store fallback: if in-memory recall misses,
+             * search the SQLite store for similar embeddings. This enables
+             * recall of memories that were evicted from the hot cache. */
+            if (recalled_engram_id == 0 && brain->memory_store) {
+                nimcp_memory_search_result_t* store_result =
+                    nimcp_memory_store_engram_search_similar(
+                        brain->memory_store,
+                        features, num_features < 1024 ? num_features : 1024,
+                        1, 0.3f); /* top-1, threshold 0.3 */
+
+                if (store_result && store_result->count > 0) {
+                    recalled_engram_id = store_result->ids[0];
+                    engram_confidence = 1.0f - store_result->distances[0];
+                    if (engram_confidence < 0.0f) engram_confidence = 0.0f;
+                    if (engram_confidence > 1.0f) engram_confidence = 1.0f;
+                }
+                if (store_result) {
+                    nimcp_memory_search_result_destroy(store_result);
+                }
+            }
+
             if (recalled_engram_id != 0 && engram_confidence > 0.4F) {
                 engram_trigger_reconsolidation(brain->engram_system, recalled_engram_id);
             }
             nimcp_free(cue_neurons);
         }
+    }
+
+    /* === OOD DETECTION (pre-forward) ===
+     * Check if input is out-of-distribution before trusting the output.
+     * Uses the persistent OOD detector on brain_t (created during brain init).
+     * Pre-forward: memory distance only. Post-forward: add energy/disagreement. */
+    nimcp_ood_result_t ood_result = {0};
+    bool ood_checked = false;
+    if (brain->ood_detector && brain->memory_store) {
+        nimcp_ood_detect(
+            (nimcp_ood_detector_t*)brain->ood_detector,
+            features, num_features,
+            NULL, 0,   /* No output logits yet (pre-forward) */
+            NULL, 0,   /* No secondary output */
+            NULL, 0,   /* No reconstruction */
+            brain->memory_store, &ood_result);
+        nimcp_ood_update_stats(
+            (nimcp_ood_detector_t*)brain->ood_detector, &ood_result);
+        ood_checked = true;
     }
 
     // SERIAL FALLBACK: Sleep/wake (STAGE 0.5) if not parallelized
@@ -1355,6 +1413,17 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     /* Swap EMA parameters back to live weights after forward pass */
     if (ema_swapped) {
         nimcp_utm_swap_from_ema(brain->unified_training);
+    }
+
+    // G3: Inference timeout check — after forward pass
+    if (nimcp_time_get_us() > inference_deadline_us) {
+        LOG_MODULE_WARN("BRAIN", "brain_decide: inference timeout after forward pass");
+        /* Return partial result — decision has output_vector from forward pass */
+        decision->confidence = 0.1f;  /* Low confidence for timeout */
+        determine_output_label(brain, decision);
+        update_inference_stats(brain, decision);
+        nimcp_free(local_features);
+        return decision;
     }
 
     // ========================================================================
@@ -1745,6 +1814,12 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // WHY:  Sleep/drowsiness impairs cognitive performance
     // HOW:  Multiply confidence by sleep_confidence_multiplier
     decision->confidence *= sleep_confidence_multiplier;
+
+    /* === OOD DETECTION (post-forward) ===
+     * Reduce confidence for out-of-distribution inputs. */
+    if (ood_checked && ood_result.is_ood) {
+        decision->confidence *= ood_result.confidence_adjustment;
+    }
 
     // ========================================================================
     // STAGE 4.2: Trigger Memory Consolidation (Deep Sleep) - Phase 11 ACTIVE
@@ -3430,6 +3505,20 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
     brain_clear_error();
     return decision;
+
+inference_timeout:
+    /* G3: Inference deadline exceeded — return minimal decision with low confidence */
+    {
+        brain_decision_t* timeout_decision = allocate_decision(brain->config.num_outputs);
+        if (timeout_decision) {
+            timeout_decision->confidence = 0.05f;
+            timeout_decision->output_size = brain->config.num_outputs;
+            /* output_vector is zeroed by allocate_decision */
+            determine_output_label(brain, timeout_decision);
+            update_inference_stats(brain, timeout_decision);
+        }
+        return timeout_decision;
+    }
 }
 
 

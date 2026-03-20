@@ -1101,3 +1101,31 @@ set_tests_properties(regression_security_pass3_fixes PROPERTIES
     LABELS "regression;security;p1;p2;p3;pass3"
     TIMEOUT 120
 )
+
+# ============================================================================
+# Security Edge Regression Tests
+# ============================================================================
+add_executable(regression_security_test_security_edge_regression
+    test_security_edge_regression.cpp
+)
+target_link_libraries(regression_security_test_security_edge_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_test_security_edge_regression
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+target_compile_features(regression_security_test_security_edge_regression PRIVATE cxx_std_17)
+add_test(NAME regression_security_test_security_edge_regression
+         COMMAND regression_security_test_security_edge_regression)
+set_tests_properties(regression_security_test_security_edge_regression PROPERTIES
+    LABELS "regression;security;edge"
+    TIMEOUT 120
+)

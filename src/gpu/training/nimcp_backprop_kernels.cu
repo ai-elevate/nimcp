@@ -839,7 +839,7 @@ bool nimcp_gpu_sparse_backward_accumulate(
     cudaFree(d_target);
     cudaFree(d_output);
 
-    float output_lr_boost = 2.0f;  /* Reduced from 10x — layer norm handles scale */
+    float output_lr_boost = 10.0f;
 
     for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
         uint32_t cur_size = layer_sizes[layer];
@@ -889,41 +889,13 @@ bool nimcp_gpu_sparse_backward_accumulate(
                 d_delta_prev, (const float*)activations[layer - 1]->data,
                 prev_size, act_type);
 
-            /* Layer norm backward: compute mean(dy) and mean(dy*y) on host,
-             * then apply correction kernel on GPU. Skip layer 1 (input). */
-            if (layer > 1 && prev_size > 1) {
-                cudaStreamSynchronize(stream);
-                float* h_delta = (float*)nimcp_malloc(prev_size * sizeof(float));
-                float* h_act = (float*)nimcp_malloc(prev_size * sizeof(float));
-                if (h_delta && h_act) {
-                    cudaMemcpy(h_delta, d_delta_prev, prev_size * sizeof(float),
-                               cudaMemcpyDeviceToHost);
-                    cudaMemcpy(h_act, activations[layer - 1]->data,
-                               prev_size * sizeof(float), cudaMemcpyDeviceToHost);
-                    float dy_mean = 0.0f, dy_y_mean = 0.0f;
-                    for (int i = 0; i < prev_size; i++) {
-                        dy_mean += h_delta[i];
-                        dy_y_mean += h_delta[i] * h_act[i];
-                    }
-                    dy_mean /= (float)prev_size;
-                    dy_y_mean /= (float)prev_size;
-                    kernel_layernorm_backward<<<GRID_SIZE(prev_size), BLOCK_SIZE, 0, stream>>>(
-                        d_delta_prev, (const float*)activations[layer - 1]->data,
-                        prev_size, dy_mean, dy_y_mean);
-                }
-                nimcp_free(h_delta);
-                nimcp_free(h_act);
-            }
-
-            /* Residual backward: identity skip L-1→L means gradient at L
-             * flows directly to L-1. Skip output and first hidden layer. */
-            if (layer >= 2 && layer < (int32_t)num_layers - 1) {
-                uint32_t cur_sz = layer_sizes[layer];
-                uint32_t prv_sz = prev_size;
-                uint32_t copy_n = (cur_sz < prv_sz) ? cur_sz : prv_sz;
-                kernel_residual_backward<<<GRID_SIZE(copy_n), BLOCK_SIZE, 0, stream>>>(
-                    d_delta_prev, d_delta_cur, copy_n);
-            }
+            /* Layer norm backward + residual backward DISABLED:
+             * The backward loop applies these to delta_prev AFTER weight
+             * propagation, but correct backward requires transforming
+             * delta_cur BEFORE weight update (d_r_L → norm_bwd → act' →
+             * d_z_L). This needs pre-norm activation storage + loop
+             * restructuring. Until then, omit to prevent gradient corruption.
+             * Forward norm + residual still provide activation stability. */
 
             float* tmp = d_delta_cur;
             d_delta_cur = d_delta_prev;
@@ -1074,7 +1046,7 @@ bool nimcp_gpu_sparse_backward_pass(
     cudaFree(d_target);
     cudaFree(d_output);
 
-    float output_lr_boost = 2.0f;  /* Reduced from 10x — layer norm handles scale */
+    float output_lr_boost = 10.0f;
 
     for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
         uint32_t cur_size = layer_sizes[layer];
@@ -1122,39 +1094,8 @@ bool nimcp_gpu_sparse_backward_pass(
                 d_delta_prev, (const float*)activations[layer - 1]->data,
                 prev_size, act_type);
 
-            /* Layer norm backward */
-            if (layer > 1 && prev_size > 1) {
-                cudaStreamSynchronize(stream);
-                float* h_delta = (float*)nimcp_malloc(prev_size * sizeof(float));
-                float* h_act = (float*)nimcp_malloc(prev_size * sizeof(float));
-                if (h_delta && h_act) {
-                    cudaMemcpy(h_delta, d_delta_prev, prev_size * sizeof(float),
-                               cudaMemcpyDeviceToHost);
-                    cudaMemcpy(h_act, activations[layer - 1]->data,
-                               prev_size * sizeof(float), cudaMemcpyDeviceToHost);
-                    float dy_mean = 0.0f, dy_y_mean = 0.0f;
-                    for (int i = 0; i < prev_size; i++) {
-                        dy_mean += h_delta[i];
-                        dy_y_mean += h_delta[i] * h_act[i];
-                    }
-                    dy_mean /= (float)prev_size;
-                    dy_y_mean /= (float)prev_size;
-                    kernel_layernorm_backward<<<GRID_SIZE(prev_size), BLOCK_SIZE, 0, stream>>>(
-                        d_delta_prev, (const float*)activations[layer - 1]->data,
-                        prev_size, dy_mean, dy_y_mean);
-                }
-                nimcp_free(h_delta);
-                nimcp_free(h_act);
-            }
-
-            /* Residual backward (same as non-accumulate path) */
-            if (layer >= 2 && layer < (int32_t)num_layers - 1) {
-                uint32_t cur_sz = layer_sizes[layer];
-                uint32_t prv_sz = prev_size;
-                uint32_t copy_n = (cur_sz < prv_sz) ? cur_sz : prv_sz;
-                kernel_residual_backward<<<GRID_SIZE(copy_n), BLOCK_SIZE, 0, stream>>>(
-                    d_delta_prev, d_delta_cur, copy_n);
-            }
+            /* Layer norm backward + residual backward DISABLED:
+             * See comment in nimcp_gpu_sparse_backward_accumulate. */
 
             float* tmp = d_delta_cur;
             d_delta_cur = d_delta_prev;

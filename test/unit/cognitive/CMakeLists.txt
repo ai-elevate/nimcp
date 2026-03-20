@@ -2634,3 +2634,33 @@ gtest_discover_tests(unit_cognitive_test_training_integration_unified
         LABELS "unit;cognitive;training-integration-unified"
         TIMEOUT 90
 )
+
+# OOD Detector tests
+add_executable(unit_cognitive_test_ood_detector
+    test_ood_detector.cpp
+)
+
+target_link_libraries(unit_cognitive_test_ood_detector
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_ood_detector
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_ood_detector PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_ood_detector
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;ood-detector"
+        TIMEOUT 90
+)

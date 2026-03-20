@@ -129,6 +129,10 @@ typedef struct {
     uint64_t messages_sent;
     uint64_t handler_invocations;
     uint64_t handler_errors;
+
+    // Deadlock prevention: re-entrancy detection flag
+    atomic_bool in_handler;           /**< true while handler is executing */
+    uint32_t in_handler_source;       /**< source module of message being handled */
 } bio_module_entry_t;
 
 /**
@@ -161,6 +165,13 @@ struct bio_router_struct {
     // Brain immune integration
     void* brain_immune_system;         /**< Brain immune system handle */
     bio_module_context_t immune_ctx;   /**< Immune module context */
+
+    // Dead-letter queue: ring buffer of last 16 dropped message types for diagnostics
+    uint32_t dead_letter_types[16];    /**< Ring buffer of dropped message types */
+    uint32_t dead_letter_idx;          /**< Write index into dead_letter_types */
+
+    // Message ordering: global sequence counter for causal ordering
+    atomic_uint_fast32_t next_sequence_id; /**< Monotonically increasing sequence number */
 
     unified_mem_manager_t mem_mgr;
     bool initialized;

@@ -317,6 +317,31 @@ static void apply_penalty(nimcp_rate_limiter_t limiter,
     // Update statistics atomically to avoid deadlock (we may be holding bucket lock)
     atomic_fetch_add_explicit(&limiter->atomic_penalties_applied, 1, memory_order_relaxed);
 
+    /* Send BIO_MSG_SECURITY_RATE_LIMIT so other security modules are notified.
+     * Must use deferred pattern since we're inside bucket lock — we only build
+     * the message here; caller is responsible for actually sending after
+     * releasing locks.  However, bio_router_broadcast is safe to call while
+     * holding a different lock (no nested router lock), so we send directly
+     * for blocking actions which are security-critical. */
+    if (limiter->bio_context && limiter->bio_registered &&
+        (action == PENALTY_BLOCK_TEMPORARY || action == PENALTY_BLOCK_PERMANENT)) {
+        struct {
+            bio_message_header_t hdr;
+            char     client_id[NIMCP_RATE_LIMIT_MAX_CLIENT_ID];
+            uint32_t violations;
+            uint32_t penalty_action;
+        } rate_msg = {0};
+        rate_msg.hdr.type          = BIO_MSG_SECURITY_RATE_LIMIT;
+        rate_msg.hdr.source_module = BIO_MODULE_SECURITY;
+        rate_msg.hdr.target_module = 0;
+        rate_msg.hdr.payload_size  = sizeof(rate_msg) - sizeof(bio_message_header_t);
+        rate_msg.hdr.flags         = BIO_MSG_FLAG_BROADCAST;
+        strncpy(rate_msg.client_id, bucket->client_id, sizeof(rate_msg.client_id) - 1);
+        rate_msg.violations        = bucket->violations;
+        rate_msg.penalty_action    = (uint32_t)action;
+        (void)bio_router_broadcast(limiter->bio_context, &rate_msg, sizeof(rate_msg));
+    }
+
     // Store callback info for deferred invocation (outside critical section)
     if (deferred_info && limiter->violation_callback) {
         deferred_info->should_invoke = true;

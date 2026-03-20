@@ -1535,6 +1535,66 @@ int brain_immune_tick(brain_immune_system_t* immune, uint64_t delta_ms) {
         did_work = true;
     }
 
+    /* 4. Periodic immune memory check — enable secondary immune responses
+     * WHAT: Scan active antigens against memory B cells every 10 ticks
+     * WHY:  Antigens presented between ticks may not have triggered memory check
+     *       if check_memory was not called at presentation time. This catches
+     *       any that slipped through and enables faster secondary responses.
+     * HOW:  Every 10 ticks, iterate active unprocessed antigens and check for
+     *       memory B cell matches. If found, trigger secondary response. */
+    if (state->stats.ticks_executed % 10 == 0) {
+        nimcp_mutex_lock(immune->mutex);
+        for (size_t i = 0; i < immune->antigen_count; i++) {
+            brain_antigen_t* ag = &immune->antigens[i];
+            if (ag->processed || ag->neutralized) continue;
+
+            uint32_t memory_b_cell_id = 0;
+            /* Unlock before check_memory (it acquires its own lock internally) */
+            nimcp_mutex_unlock(immune->mutex);
+
+            if (brain_immune_check_memory(immune, ag->id, &memory_b_cell_id) == 0) {
+                if (immune->config.enable_logging) {
+                    LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+                        "Scheduled memory check: antigen %u matches memory B cell %u",
+                        ag->id, memory_b_cell_id);
+                }
+                brain_immune_secondary_response(immune, ag->id, memory_b_cell_id);
+                did_work = true;
+            }
+
+            nimcp_mutex_lock(immune->mutex);
+            /* Re-validate index after re-acquiring lock — array may have changed */
+            if (i >= immune->antigen_count) break;
+        }
+        nimcp_mutex_unlock(immune->mutex);
+    }
+
+    /* 5. Decay old immune memory B cells (biological: ~10-year half-life, simulated: 100K ticks)
+     * WHAT: Periodically reduce affinity of MEMORY B cells based on age
+     * WHY:  Prevents unbounded memory cell accumulation; mirrors biological decay
+     * HOW:  Every 100 ticks, scan memory B cells and halve affinity if old enough;
+     *       remove cells with negligible affinity */
+    #define IMMUNE_MEMORY_HALF_LIFE_US  (100000ULL * 1000000ULL) /* 100K seconds ~ simulated half-life */
+    if (state->stats.ticks_executed % 100 == 0) {
+        uint64_t now_us = get_timestamp_us();
+        nimcp_mutex_lock(immune->mutex);
+        for (size_t i = 0; i < immune->b_cell_count; i++) {
+            if (immune->b_cells[i].state != B_CELL_MEMORY) continue;
+            uint64_t age_us = now_us - (immune->b_cells[i].activation_time * 1000); /* activation_time is ms */
+            if (age_us > IMMUNE_MEMORY_HALF_LIFE_US) {
+                immune->b_cells[i].affinity *= 0.5f;
+                if (immune->b_cells[i].affinity < 0.01f) {
+                    /* Remove expired memory cell by swapping with last */
+                    immune->b_cells[i] = immune->b_cells[--immune->b_cell_count];
+                    i--; /* Re-check swapped element */
+                    did_work = true;
+                }
+            }
+        }
+        nimcp_mutex_unlock(immune->mutex);
+    }
+    #undef IMMUNE_MEMORY_HALF_LIFE_US
+
     /* Update statistics */
     uint64_t tick_duration = get_timestamp_us() - tick_start;
     state->total_tick_time_us += tick_duration;

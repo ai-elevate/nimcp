@@ -1032,3 +1032,65 @@ set_tests_properties(unit_security_test_bbb_quarantine_refcount PROPERTIES
     LABELS "unit;security;bbb;quarantine;refcount;p0;p1"
     TIMEOUT 60
 )
+
+# Session security tests: BBB edge validation, gradient validation, audit trail
+foreach(TEST_NAME bbb_edge_validation gradient_validation audit_trail)
+    add_executable(unit_security_test_${TEST_NAME}
+        test_${TEST_NAME}.cpp
+    )
+    target_link_libraries(unit_security_test_${TEST_NAME}
+        PRIVATE GTest::GTest GTest::Main nimcp nimcp_lnn
+                Python3::Python
+    )
+    target_include_directories(unit_security_test_${TEST_NAME}
+        PRIVATE ${CMAKE_SOURCE_DIR}/include
+                ${CMAKE_SOURCE_DIR}/src
+                ${CMAKE_SOURCE_DIR}/test
+    )
+    target_compile_features(unit_security_test_${TEST_NAME} PRIVATE cxx_std_20)
+    target_compile_definitions(unit_security_test_${TEST_NAME} PRIVATE NIMCP_TESTING)
+    target_sources(unit_security_test_${TEST_NAME} PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c
+    )
+    add_test(NAME unit_security_test_${TEST_NAME}
+             COMMAND unit_security_test_${TEST_NAME})
+    set_tests_properties(unit_security_test_${TEST_NAME} PROPERTIES
+        LABELS "unit;security;session" TIMEOUT 60)
+endforeach()
+
+# ============================================================================
+# Immune System Coverage Unit Tests
+# ============================================================================
+# WHAT: Unit tests for immune system coverage improvements
+# WHY:  Verify tolerance, memory decay, secondary response, NULL handling, stats
+# HOW:  Test standalone immune system functions directly
+# ============================================================================
+
+add_executable(unit_security_test_immune_coverage
+    test_immune_coverage.cpp
+)
+target_link_libraries(unit_security_test_immune_coverage
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(unit_security_test_immune_coverage
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(unit_security_test_immune_coverage PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_immune_coverage
+         COMMAND unit_security_test_immune_coverage)
+set_tests_properties(unit_security_test_immune_coverage PROPERTIES
+    LABELS "unit;security;immune;coverage"
+    TIMEOUT 120
+)

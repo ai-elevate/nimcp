@@ -483,6 +483,30 @@ nimcp_result_t nimcp_swarm_immune_detect_threat(
         LOG_WARN("Threat detected: type=%s, confidence=%.2f, source=%u",
                        THREAT_TYPE_NAMES[threat->type], best_match, source_drone_id);
 
+        /* Send BIO_MSG_SWARM_IMMUNE_ALERT on new threat detection */
+        if (system->bio_ctx && *system->bio_ctx) {
+            struct {
+                bio_message_header_t hdr;
+                uint32_t threat_id;
+                uint32_t threat_type;
+                uint32_t severity;
+                uint32_t source_drone_id;
+                float    confidence;
+            } alert_msg = {0};
+            alert_msg.hdr.type          = BIO_MSG_SWARM_IMMUNE_ALERT;
+            alert_msg.hdr.source_module = BIO_MODULE_IMMUNE_BRAIN;
+            alert_msg.hdr.target_module = 0;
+            alert_msg.hdr.payload_size  = sizeof(alert_msg) - sizeof(bio_message_header_t);
+            alert_msg.hdr.flags         = BIO_MSG_FLAG_URGENT | BIO_MSG_FLAG_BROADCAST;
+            alert_msg.threat_id         = threat->id;
+            alert_msg.threat_type       = (uint32_t)threat->type;
+            alert_msg.severity          = (uint32_t)threat->severity;
+            alert_msg.source_drone_id   = source_drone_id;
+            alert_msg.confidence        = best_match;
+            (void)bio_router_broadcast(
+                *system->bio_ctx, &alert_msg, sizeof(alert_msg));
+        }
+
         nimcp_platform_mutex_unlock(system->mutex);
         return NIMCP_SUCCESS;
     }
@@ -1753,19 +1777,41 @@ nimcp_result_t immune_send_bbb_threat_alert(
         return NIMCP_INVALID_PARAM;
     }
 
-    /* Send via BBB (stubbed - requires full BBB integration) */
-    LOG_INFO("BBB Threat Alert: id=%u, type=%s, priority=%d (stubbed)",
+    LOG_INFO("BBB Threat Alert: id=%u, type=%s, priority=%d",
              threat_id,
              THREAT_TYPE_NAMES[threat->type],
              priority);
 
-    /* In full implementation, would use bio_router to send message */
-    /* bio_message_header_t msg;
-     * msg.type = BBB_MSG_THREAT;
-     * msg.priority = priority;
-     * ... populate threat data ...
-     * bio_router_send(immune->bio_ctx, &msg);
-     */
+    /* Send BIO_MSG_SWARM_IMMUNE_ALERT via bio-async router so that the
+     * brain immune system and security modules receive the swarm threat.
+     * bio_ctx is bio_module_context_t* (pointer-to-pointer since
+     * bio_module_context_t is already a pointer typedef). */
+    if (immune->bio_ctx && *immune->bio_ctx) {
+        struct {
+            bio_message_header_t hdr;
+            uint32_t threat_id;
+            uint32_t threat_type;
+            uint32_t severity;
+            uint32_t source_drone_id;
+            float    confidence;
+        } alert_msg = {0};
+        alert_msg.hdr.type          = BIO_MSG_SWARM_IMMUNE_ALERT;
+        alert_msg.hdr.source_module = BIO_MODULE_IMMUNE_BRAIN;
+        alert_msg.hdr.target_module = 0; /* broadcast */
+        alert_msg.hdr.payload_size  = sizeof(alert_msg) - sizeof(bio_message_header_t);
+        alert_msg.hdr.flags         = BIO_MSG_FLAG_URGENT | BIO_MSG_FLAG_BROADCAST;
+        alert_msg.threat_id         = threat->id;
+        alert_msg.threat_type       = (uint32_t)threat->type;
+        alert_msg.severity          = (uint32_t)priority;
+        alert_msg.source_drone_id   = threat->source_drone_id;
+        alert_msg.confidence        = threat->confidence;
+
+        nimcp_error_t send_err = bio_router_broadcast(
+            *immune->bio_ctx, &alert_msg, sizeof(alert_msg));
+        if (send_err != NIMCP_SUCCESS) {
+            LOG_WARN("Failed to broadcast swarm immune alert: %d", send_err);
+        }
+    }
 
     nimcp_platform_mutex_unlock(immune->mutex);
     return NIMCP_SUCCESS;

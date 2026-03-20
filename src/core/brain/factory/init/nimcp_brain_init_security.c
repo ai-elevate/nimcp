@@ -435,6 +435,18 @@ bool nimcp_brain_factory_init_immune_subsystem(brain_t brain)
     brain->immune_system = immune;
     brain->immune_enabled = true;
 
+    // V1 Security Fix: Wire BBB → Immune bidirectional connection
+    // brain_immune_connect_bbb() (above) connects immune→BBB for threat presentation.
+    // bbb_connect_immune() connects BBB→immune so BBB can report detected threats
+    // back to the immune system for adaptive response and memory formation.
+    if (brain->bbb_system && brain->bbb_enabled) {
+        if (bbb_connect_immune(brain->bbb_system, immune)) {
+            LOG_DEBUG("BBB→Immune bidirectional link established");
+        } else {
+            LOG_WARNING("Failed to connect BBB→Immune (non-fatal, unidirectional only)");
+        }
+    }
+
     LOG_INFO("Brain immune system initialized: antigens=%u, b_cells=%u, t_cells=%u, antibodies=%u, "
              "bbb=%s, bft=%s, swarm=%s, bio_async=%s",
              immune_config.max_antigens,

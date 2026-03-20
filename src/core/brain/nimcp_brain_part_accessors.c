@@ -438,3 +438,17 @@ size_t brain_get_memory_usage(brain_t brain)
 
     return size;
 }
+
+
+struct nimcp_memory_store* brain_get_memory_store(brain_t brain)
+{
+    if (!brain) return NULL;
+    return brain->memory_store;
+}
+
+
+struct nimcp_ood_detector* brain_get_ood_detector(brain_t brain)
+{
+    if (!brain) return NULL;
+    return brain->ood_detector;
+}

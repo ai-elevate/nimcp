@@ -748,7 +748,8 @@ int sparse_synapse_add(
         uint32_t actual_capacity = 0;
         storage->overflow = allocate_overflow(pool, SIZE_CLASS_MIN_HANDLES, &actual_capacity);
         if (storage->overflow == NULL) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add: validation failed");
+            /* Pool exhausted — embedded capacity still works, skip overflow.
+             * Don't THROW — rebuild_incoming calls this millions of times. */
             return -1;
         }
         storage->overflow_capacity = actual_capacity;
@@ -756,7 +757,6 @@ int sparse_synapse_add(
     } else if (storage->overflow_count >= storage->overflow_capacity) {
         // Need to grow overflow
         if (grow_overflow(pool, storage) != 0) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add: validation failed");
             return -1;
         }
     }

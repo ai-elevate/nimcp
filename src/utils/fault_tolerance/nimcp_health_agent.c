@@ -82,6 +82,10 @@
 #include "constants/nimcp_timing_constants.h"
 #include "constants/nimcp_learning_constants.h"
 
+/* Memory Store + OOD Detector health monitoring */
+#include "memory/nimcp_memory_store.h"
+#include "cognitive/nimcp_ood_detector.h"
+
 /* Phase 5: Cognitive module integration for real API calls
  * Note: Cannot include full headers due to type conflicts (metric_type_t, cognitive_state_t)
  * Forward-declare the specific functions we need from the cognitive modules */

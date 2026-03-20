@@ -4471,6 +4471,18 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain);
  */
 NIMCP_EXPORT bool brain_validate_topology(brain_t brain);
 
+/**
+ * @brief Get opaque pointer to the brain's persistent memory store.
+ * @return nimcp_memory_store_t* or NULL if not initialized.
+ */
+NIMCP_EXPORT struct nimcp_memory_store* brain_get_memory_store(brain_t brain);
+
+/**
+ * @brief Get opaque pointer to the brain's OOD detector.
+ * @return nimcp_ood_detector_t* or NULL if not initialized.
+ */
+NIMCP_EXPORT struct nimcp_ood_detector* brain_get_ood_detector(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

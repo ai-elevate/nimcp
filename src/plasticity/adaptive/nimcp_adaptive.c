@@ -4306,6 +4306,34 @@ void adaptive_network_reset_ema(adaptive_network_t network)
     network->ema_loss = -1.0f;
 }
 
+void adaptive_network_rebuild_gpu_cache(adaptive_network_t network)
+{
+    if (!network || !network->gpu_enabled) return;
+
+    /* Destroy old cache */
+    if (network->gpu_weight_cache) {
+        nimcp_gpu_weight_cache_destroy(network->gpu_weight_cache);
+        network->gpu_weight_cache = NULL;
+    }
+
+    /* Recreate from scratch using current network state */
+    if (network->gpu_ctx &&
+        network->config.base_config.num_layers >= 2 &&
+        network->config.base_config.layer_sizes &&
+        network->base_network) {
+        network->gpu_weight_cache = nimcp_gpu_weight_cache_create(
+            network->gpu_ctx,
+            network->base_network,
+            network->config.base_config.layer_sizes,
+            network->config.base_config.num_layers);
+        if (network->gpu_weight_cache) {
+            nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
+                                         network->base_network);
+            fprintf(stderr, "[REINIT] GPU weight cache rebuilt\n");
+        }
+    }
+}
+
 void adaptive_network_invalidate_gpu_structure(adaptive_network_t network)
 {
     if (!network || !network->gpu_weight_cache) return;

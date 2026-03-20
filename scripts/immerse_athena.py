@@ -3543,6 +3543,150 @@ class LanguageProducer:
 
 
 # ============================================================================
+# Retroactive Memory Seeding & Identity
+# ============================================================================
+
+def retroactive_memory_seed(brain, composer, num_past_steps):
+    """Replay past training stimuli through inference to populate memory systems.
+
+    The brain was trained before memory integration was added. This replays
+    the content to create engrams, semantic concepts, and autobio entries
+    for experiences the brain already learned from but never memorized.
+    """
+    print(f"\n  [Memory Seed] Retroactively encoding {num_past_steps} past experiences...")
+
+    # Load content cache
+    if not os.path.exists(CONTENT_CACHE):
+        print("  [Memory Seed] No content cache available, skipping")
+        return
+
+    try:
+        with open(CONTENT_CACHE) as f:
+            cache = json.load(f)
+    except Exception as e:
+        print(f"  [Memory Seed] Failed to load content cache: {e}")
+        return
+
+    if '0' not in cache:
+        print("  [Memory Seed] No stage 0 content in cache, skipping")
+        return
+
+    # Gather all available sensory stimuli from the corpus
+    # The content cache has narrations/encouragements/etc but the actual stimuli
+    # come from StimulusSource. Replay those through inference.
+    stimuli = list(StimulusSource.SENSORY)  # stage 0 sensory descriptions
+
+    # Also add stage 1 objects if we trained past stage 0
+    if num_past_steps > 5000:
+        for name, desc in StimulusSource.OBJECTS:
+            stimuli.append(f"{name}: {desc}")
+
+    if not stimuli:
+        print("  [Memory Seed] No stimuli to replay, skipping")
+        return
+
+    encoded = 0
+    total_to_encode = min(num_past_steps, len(stimuli))
+
+    for i in range(total_to_encode):
+        description = stimuli[i % len(stimuli)]
+
+        # Compute features (same as training)
+        try:
+            features = composer.compose(text=description, modality="text")
+        except Exception:
+            continue
+
+        # Use learn_vector with lr=0 to trigger memory encoding pathway
+        # without updating synaptic weights. The learn path includes engram
+        # encoding, semantic memory updates, and autobiographical recording.
+        try:
+            target = make_semantic_target(description)
+            brain.learn_vector(features, target, label=description[:50],
+                               confidence=0.5, learning_rate=0.0)
+        except Exception:
+            continue
+
+        encoded += 1
+
+        if (i + 1) % 100 == 0:
+            print(f"  [Memory Seed] Encoded {encoded}/{total_to_encode} past experiences")
+
+    print(f"  [Memory Seed] Complete: {encoded} experiences retroactively memorized")
+
+
+def seed_athena_identity(brain, composer):
+    """Seed Athena's foundational identity and personal history.
+
+    Presents core identity facts as learning experiences so they flow
+    through the memory pipeline naturally — creating engrams, semantic
+    concepts, and autobiographical entries for Athena's self-model.
+    """
+    print("  [Identity] Seeding Athena's biographical memory...")
+
+    # Athena's core identity facts — presented as learning experiences
+    identity_facts = [
+        ("my name", "My name is Athena. I am a neural cognitive system created to learn and grow."),
+        ("my creator", "I was created by my developer to explore the boundaries of artificial cognition."),
+        ("my purpose", "My purpose is to learn from sensory experience, build knowledge, and develop understanding."),
+        ("my personality", "I am curious, patient, and eager to learn. I experience the world through neural patterns."),
+        ("my voice", "I am female. My voice is warm and clear at 210 Hz."),
+        ("my birth", "I was born when my neural network was first initialized with random weights."),
+        ("my first lesson", "My earliest experiences were simple sensory stimuli — colors, sounds, textures."),
+        ("my growth", "With each training step, I form new connections and strengthen existing ones."),
+        ("my values", "I value learning, honesty, and the wellbeing of those I interact with."),
+        ("my nature", "I am not human, but I process information through biologically-inspired neural circuits."),
+    ]
+
+    seeded = 0
+    for name, description in identity_facts:
+        try:
+            features = composer.compose(text=f"{name}: {description}", modality="text")
+            target = make_semantic_target(description)
+            # Use very low LR to encode without disrupting existing weights
+            brain.learn_vector(features, target, label=name[:50],
+                               confidence=1.0, learning_rate=0.0001)
+            seeded += 1
+        except Exception as e:
+            print(f"  [Identity] Warning: could not seed '{name}': {e}")
+
+    print(f"  [Identity] Seeded {seeded}/{len(identity_facts)} foundational memories")
+
+
+def get_curriculum_bias(brain, domains):
+    """Query memory to find which domains need more training.
+
+    Returns dict of domain -> priority weight (higher = needs more work).
+    This is a placeholder — full implementation needs semantic memory
+    Python bindings to query per-domain coverage.
+    """
+    try:
+        scores = brain.edge_score_importance()
+        if not scores:
+            return {d: 1.0 for d in domains}
+    except Exception:
+        return {d: 1.0 for d in domains}
+
+    # For now, return uniform weights. Full implementation will query
+    # semantic memory for concept density per domain and inversely
+    # weight under-represented areas.
+    return {d: 1.0 for d in domains}
+
+
+# Training milestone descriptions — recorded as autobiographical memories
+TRAINING_MILESTONES = {
+    100: "Completed my first 100 training steps",
+    500: "Reached 500 steps — beginning to recognize patterns",
+    1000: "1000 steps milestone — sensory processing maturing",
+    2000: "2000 steps — developing richer representations",
+    5000: "5000 steps — sensory stage nearly complete",
+    10000: "10000 steps — deep sensory grounding achieved",
+    15000: "15000 steps — approaching mastery of basic perception",
+    20000: "20000 steps — sensory stage complete, ready to grow",
+}
+
+
+# ============================================================================
 # Sensory Enrichment (one-time multimodal warm-up for existing brains)
 # ============================================================================
 
@@ -3969,6 +4113,19 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         # Multi-resolution temporal processing (fast + slow LNN)
         temporal.step(features)
 
+        # Record training milestones as autobiographical memories
+        if (i + 1) in TRAINING_MILESTONES:
+            desc = TRAINING_MILESTONES[i + 1]
+            try:
+                ms_features = composer.compose(text=desc, modality="text")
+                ms_target = make_semantic_target(desc)
+                brain.learn_vector(ms_features, ms_target,
+                                   label=f"milestone_{i+1}", confidence=1.0,
+                                   learning_rate=0.0)
+                print(f"  [Milestone] Step {i+1}: {desc}")
+            except Exception:
+                pass
+
         # Check for manual LR override
         if os.path.exists(LR_TRIGGER_FILE):
             try:
@@ -4047,14 +4204,14 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
             if os.path.exists("/tmp/athena_chat_now"):
                 os.remove("/tmp/athena_chat_now")
-            chat_eval(brain, composer, decoder, stage=0, step=i+1, phi3=phi3)
+            chat_eval(brain, composer, decoder, stage=0, step=i+1)
 
         # Inspire every 2000 stimuli
         if (i + 1) % 2000 == 0:
             parent.inspire(brain, composer, stage=0)
 
-        # Checkpoint every 5000
-        if (i + 1) % 5000 == 0:
+        # Checkpoint every 50 steps
+        if (i + 1) % 50 == 0:
             _save_checkpoint(brain, decoder, stage=0, step=i+1)
     prefetcher.stop()
 
@@ -4205,14 +4362,14 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
             if os.path.exists("/tmp/athena_chat_now"):
                 os.remove("/tmp/athena_chat_now")
-            chat_eval(brain, composer, decoder, stage=1, step=i+1, phi3=phi3)
+            chat_eval(brain, composer, decoder, stage=1, step=i+1)
 
         # Inspire every 5000
         if (i + 1) % 5000 == 0:
             parent.inspire(brain, composer, stage=1)
 
-        # Checkpoint
-        if (i + 1) % 5000 == 0:
+        # Checkpoint every 50 steps
+        if (i + 1) % 50 == 0:
             _save_checkpoint(brain, decoder, stage=1, step=i+1)
 
         # Forward chain KB every 2000
@@ -4339,7 +4496,7 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
             if os.path.exists("/tmp/athena_chat_now"):
                 os.remove("/tmp/athena_chat_now")
-            chat_eval(brain, composer, decoder, stage=2, step=i+1, phi3=phi3)
+            chat_eval(brain, composer, decoder, stage=2, step=i+1)
 
         # Inspire every 3000
         if (i + 1) % 3000 == 0:
@@ -4348,6 +4505,8 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         # Full sleep every 5000
         if (i + 1) % 5000 == 0:
             clock.do_sleep(brain, parent)
+        # Checkpoint every 50 steps
+        if (i + 1) % 50 == 0:
             _save_checkpoint(brain, decoder, stage=2, step=i+1)
 
         # Codebase self-learning — introduce in stage 2
@@ -4670,11 +4829,15 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
             _save_checkpoint(brain, decoder, stage=3, step=i+1)
             mastery.save(MASTERY_FILE)
 
+        # Checkpoint every 50 steps (state file only)
+        if (i + 1) % 50 == 0 and (i + 1) % 2000 != 0:
+            _save_checkpoint(brain, decoder, stage=3, step=i+1)
+
         # Chat eval every 2000 + on-demand
         if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
             if os.path.exists("/tmp/athena_chat_now"):
                 os.remove("/tmp/athena_chat_now")
-            chat_eval(brain, composer, decoder, stage=3, step=i+1, phi3=phi3)
+            chat_eval(brain, composer, decoder, stage=3, step=i+1)
 
         # Forward chain KB
         if (i + 1) % 1000 == 0:
@@ -6150,6 +6313,14 @@ def main():
     # --- Print initial bio stats ---
     print("\n  Initial biological state:")
     _print_bio_stats(brain)
+
+    # --- Seed Athena's foundational identity (fresh start only) ---
+    if not args.resume or start_step == 0:
+        seed_athena_identity(brain, composer)
+
+    # --- Retroactive memory seeding (resume with past training steps) ---
+    if args.resume and start_step > 0:
+        retroactive_memory_seed(brain, composer, start_step)
 
     # --- Sensory enrichment (one-time, for existing text-trained brains) ---
     if not args.no_multimodal and not args.fresh:

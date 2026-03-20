@@ -482,3 +482,35 @@ gtest_discover_tests(unit_async_bio_router_thread_safety
 # Async Exception Macros Unit Tests - DISABLED (API issues)
 # Tests moved to existing exception test suite
 # ============================================================================
+
+# ============================================================================
+# Bio-Async Coverage Unit Tests
+# ============================================================================
+# WHAT: Unit tests for bio-async coverage improvements
+# WHY:  Verify broadcast error handling, stats, NULL guards, message validation
+# HOW:  Initialize router, register modules, test error paths directly
+# ============================================================================
+
+add_executable(unit_async_test_bio_async_coverage
+    test_bio_async_coverage.cpp
+)
+target_link_libraries(unit_async_test_bio_async_coverage
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(unit_async_test_bio_async_coverage
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_async_test_bio_async_coverage PRIVATE cxx_std_17)
+gtest_discover_tests(unit_async_test_bio_async_coverage
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;async;coverage"
+        TIMEOUT 120
+)
