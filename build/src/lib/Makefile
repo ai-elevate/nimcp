@@ -45236,6 +45236,30 @@ __/security/lgss/nimcp_lgss_action_interceptor.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/nimcp_lgss_action_interceptor.c.s
 .PHONY : __/security/lgss/nimcp_lgss_action_interceptor.c.s
 
+__/security/lgss/nimcp_lgss_enhanced.o: __/security/lgss/nimcp_lgss_enhanced.c.o
+.PHONY : __/security/lgss/nimcp_lgss_enhanced.o
+
+# target to build an object file
+__/security/lgss/nimcp_lgss_enhanced.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/nimcp_lgss_enhanced.c.o
+.PHONY : __/security/lgss/nimcp_lgss_enhanced.c.o
+
+__/security/lgss/nimcp_lgss_enhanced.i: __/security/lgss/nimcp_lgss_enhanced.c.i
+.PHONY : __/security/lgss/nimcp_lgss_enhanced.i
+
+# target to preprocess a source file
+__/security/lgss/nimcp_lgss_enhanced.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/nimcp_lgss_enhanced.c.i
+.PHONY : __/security/lgss/nimcp_lgss_enhanced.c.i
+
+__/security/lgss/nimcp_lgss_enhanced.s: __/security/lgss/nimcp_lgss_enhanced.c.s
+.PHONY : __/security/lgss/nimcp_lgss_enhanced.s
+
+# target to generate assembly for a file
+__/security/lgss/nimcp_lgss_enhanced.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/nimcp_lgss_enhanced.c.s
+.PHONY : __/security/lgss/nimcp_lgss_enhanced.c.s
+
 __/security/lgss/nimcp_lgss_override_controller.o: __/security/lgss/nimcp_lgss_override_controller.c.o
 .PHONY : __/security/lgss/nimcp_lgss_override_controller.o
 
@@ -59617,6 +59641,9 @@ help:
 	@echo "... __/security/lgss/nimcp_lgss_action_interceptor.o"
 	@echo "... __/security/lgss/nimcp_lgss_action_interceptor.i"
 	@echo "... __/security/lgss/nimcp_lgss_action_interceptor.s"
+	@echo "... __/security/lgss/nimcp_lgss_enhanced.o"
+	@echo "... __/security/lgss/nimcp_lgss_enhanced.i"
+	@echo "... __/security/lgss/nimcp_lgss_enhanced.s"
 	@echo "... __/security/lgss/nimcp_lgss_override_controller.o"
 	@echo "... __/security/lgss/nimcp_lgss_override_controller.i"
 	@echo "... __/security/lgss/nimcp_lgss_override_controller.s"

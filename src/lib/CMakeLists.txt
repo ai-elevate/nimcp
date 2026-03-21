@@ -1788,6 +1788,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss.c                                              # LGSS unified context
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss_action_interceptor.c                           # Action interceptor
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss_override_controller.c                          # Override controller
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss_enhanced.c                                     # LGSS Enhanced (8 governance improvements)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss_telemetry.c                                    # Hash-chained telemetry
     # LGSS Bridges (A3-A6)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/bridges/nimcp_lgss_ethics_bridge.c                        # Ethics-LGSS integration
