@@ -56,7 +56,12 @@
 
 /* Sensor feature offsets within the flattened sensor buffer.
  * Each sensor type gets a fixed-size slot so subscriptions can be toggled
- * independently without shifting offsets. */
+ * independently without shifting offsets.
+ *
+ * All sensor callbacks validate that OFFSET + SIZE <= sensor_feature_count
+ * before writing, preventing buffer overflows even if the sensor provides
+ * more data than the slot allocation. Local arrays are stack-allocated
+ * at exactly SLOT_SIZE to match the memcpy length. */
 #define SENSOR_SLOT_LIDAR_OFFSET        0
 #define SENSOR_SLOT_LIDAR_SIZE          360   /* 1-degree resolution */
 #define SENSOR_SLOT_IMU_OFFSET          360

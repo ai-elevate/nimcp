@@ -48,6 +48,9 @@ struct nimcp_multiscale_memory {
     uint32_t       recent_count;
     uint32_t       recent_head;      /**< Next write position */
     uint32_t       recent_dim;       /**< Compressed dim = immediate_dim / compression_ratio */
+
+    /* Compression quality monitoring */
+    float          last_compression_mse; /**< MSE of last spill compression (for quality tracking) */
 };
 
 /* ============================================================================
@@ -144,6 +147,20 @@ static void spill_to_recent(nimcp_multiscale_memory_t* handle, uint32_t imm_idx)
 
     compress_embedding(imm->embedding, imm->embed_dim, compressed, cdim,
                        handle->config.compression_ratio);
+
+    /* Compute compression loss (MSE between original and reconstructed) */
+    {
+        float mse = 0.0f;
+        uint32_t ratio = handle->config.compression_ratio;
+        for (uint32_t i = 0; i < imm->embed_dim; i++) {
+            float reconstructed = compressed[i / ratio]; /* Nearest-neighbor upscale */
+            float diff = imm->embedding[i] - reconstructed;
+            mse += diff * diff;
+        }
+        mse /= (float)(imm->embed_dim > 0 ? imm->embed_dim : 1);
+        handle->last_compression_mse = mse;
+        /* MSE > 0.1 means significant information loss — consider higher resolution */
+    }
 
     /* Write into recent ring buffer */
     uint32_t slot_idx = handle->recent_head;

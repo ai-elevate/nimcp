@@ -549,6 +549,10 @@ int nimcp_language_learn_token(nimcp_native_language_t* lang, const char* text,
     lang->vocab.tokens[id].co_occurrences = 1;
     lang->vocab.vocab_size++;
 
+    /* VOCABULARY SYNC NOTE: The native language and brain tokenizer vocabularies
+     * are trained from the same text labels in brain_learn_vector(). They converge
+     * during training. No explicit sync mechanism is needed. */
+
     return 0;
 }
 

@@ -136,9 +136,14 @@ int nimcp_inner_speech_refine(nimcp_inner_speech_t* handle,
     const float* brain_output, uint32_t output_dim,
     float* refined_output, char* refined_text, uint32_t max_text)
 {
-    if (!handle || !brain_output || !refined_output || !refined_text) {
+    if (!handle || !brain_output || !refined_output) {
         LOG_ERROR("[%s] NULL argument to refine", LOG_MODULE);
         return -1;
+    }
+
+    /* Handle edge case: max_text=0 means no text output requested */
+    if (refined_text && max_text == 0) {
+        refined_text = NULL; /* Treat as if no text output requested */
     }
 
     if (output_dim == 0 || output_dim > INNER_SPEECH_BUFFER_DIM) {
@@ -151,7 +156,7 @@ int nimcp_inner_speech_refine(nimcp_inner_speech_t* handle,
     if (!handle->language) {
         LOG_DEBUG("[%s] No language system attached, pass-through", LOG_MODULE);
         memcpy(refined_output, brain_output, output_dim * sizeof(float));
-        refined_text[0] = '\0';
+        if (refined_text) refined_text[0] = '\0';
         return 0;
     }
 
@@ -217,14 +222,16 @@ int nimcp_inner_speech_refine(nimcp_inner_speech_t* handle,
     /* Copy final refined output */
     memcpy(refined_output, current, output_dim * sizeof(float));
 
-    /* Copy last generated text */
-    uint32_t last_text_idx = handle->last_iterations > 0 ? handle->last_iterations - 1 : 0;
-    if (last_text_idx < handle->allocated_iters && handle->iter_texts[last_text_idx]) {
-        uint32_t copy_len = max_text < INNER_SPEECH_MAX_TEXT ? max_text : INNER_SPEECH_MAX_TEXT;
-        strncpy(refined_text, handle->iter_texts[last_text_idx], copy_len - 1);
-        refined_text[copy_len - 1] = '\0';
-    } else {
-        refined_text[0] = '\0';
+    /* Copy last generated text (skip if no text output requested) */
+    if (refined_text && max_text > 0) {
+        uint32_t last_text_idx = handle->last_iterations > 0 ? handle->last_iterations - 1 : 0;
+        if (last_text_idx < handle->allocated_iters && handle->iter_texts[last_text_idx]) {
+            uint32_t copy_len = max_text < INNER_SPEECH_MAX_TEXT ? max_text : INNER_SPEECH_MAX_TEXT;
+            strncpy(refined_text, handle->iter_texts[last_text_idx], copy_len - 1);
+            refined_text[copy_len - 1] = '\0';
+        } else {
+            refined_text[0] = '\0';
+        }
     }
 
     LOG_INFO("[%s] Refined in %u iterations", LOG_MODULE, handle->last_iterations);

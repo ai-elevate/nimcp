@@ -3641,6 +3641,16 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             decision->output_vector, NULL, 0);
     }
 
+    /* Record refined output to episodic replay for consolidation during sleep */
+    if (brain->episodic_replay && decision && decision->output_vector) {
+        extern void nimcp_episodic_replay_record(void*, const float*, uint32_t,
+            const float*, uint32_t, const char*, float, float);
+        nimcp_episodic_replay_record(brain->episodic_replay,
+            features, num_features,
+            decision->output_vector, decision->output_size,
+            "inference_refined", decision->confidence, 0.0f);
+    }
+
     // Cache decision for future reuse (thread-safe with mutex protection)
     // W7-8 (C-INF-M3): Log warning on mutex lock failure instead of silently
     // skipping cache update. A failed lock indicates contention or corruption

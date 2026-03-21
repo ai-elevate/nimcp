@@ -270,6 +270,11 @@ int nimcp_peer_registry_remove(nimcp_peer_registry_t* registry, uint32_t device_
     return 0;
 }
 
+/**
+ * NOTE: Returns a direct pointer into the registry array. Caller MUST
+ * either hold registry->lock OR use the pointer within the same locked
+ * section. For thread-safe access, use nimcp_peer_registry_copy_entry().
+ */
 nimcp_peer_entry_t* nimcp_peer_registry_find(nimcp_peer_registry_t* registry,
                                               uint32_t device_id)
 {
@@ -283,6 +288,32 @@ nimcp_peer_entry_t* nimcp_peer_registry_find(nimcp_peer_registry_t* registry,
     }
 
     return &registry->peers[idx];
+}
+
+/**
+ * @brief Thread-safe copy of a peer entry by device_id.
+ *
+ * Locks the registry, copies the entry to the caller's output buffer,
+ * and unlocks. The caller owns the copy and can use it freely.
+ *
+ * @param registry  Peer registry.
+ * @param device_id Device ID to look up.
+ * @param out       Output buffer (caller-allocated).
+ * @return 0 on success, -1 if not found or invalid args.
+ */
+int nimcp_peer_registry_copy_entry(nimcp_peer_registry_t* registry,
+    uint32_t device_id, nimcp_peer_entry_t* out)
+{
+    if (!registry || !out) return -1;
+    nimcp_mutex_lock(registry->lock);
+    int idx = peer_find_index(registry, device_id);
+    if (idx < 0) {
+        nimcp_mutex_unlock(registry->lock);
+        return -1;
+    }
+    memcpy(out, &registry->peers[idx], sizeof(nimcp_peer_entry_t));
+    nimcp_mutex_unlock(registry->lock);
+    return 0;
 }
 
 /* ============================================================================
