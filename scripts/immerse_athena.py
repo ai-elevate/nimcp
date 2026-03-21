@@ -488,6 +488,496 @@ COLLAPSE_WARMUP_STEPS = 200       # Don't check during initial warmup
 COLLAPSE_THRESHOLD = 0.99         # Cosine sim above this = collapsed
 COLLAPSE_CONSECUTIVE_LIMIT = 3    # Halt after N consecutive collapse detections
 
+# =============================================================================
+# PORTIA: Platform Adaptation Training Data
+# =============================================================================
+# Portia fimbriata (jumping spider) adapts hunting strategy to constraints.
+# These scenarios teach resource-aware decision-making, graceful degradation,
+# and intelligent platform adaptation.
+
+PORTIA_TRAINING_DATA = [
+    # Resource-constrained reasoning
+    {"scenario": "You have 256MB RAM and 2 CPU cores. A user asks a complex reasoning question.",
+     "decision": "Disable non-essential subsystems: theory of mind, imagination engine, "
+                  "global workspace. Keep: core neural net, working memory, ethics. "
+                  "Use early exit to reduce inference depth. Respond with lower confidence "
+                  "but faster latency. Be transparent: 'I'm running on limited resources "
+                  "so my answer may be less detailed.'",
+     "concept": "portia_resource_constrained"},
+
+    {"scenario": "Battery at 15%. GPS shows you're 2 hours from a charging station.",
+     "decision": "Enter CRITICAL power mode: freeze learning, reduce inference to 5Hz, "
+                  "disable GPU, use only core neural net + ethics. Prioritize safety-critical "
+                  "functions. Cache frequent queries. Notify user of degraded capability.",
+     "concept": "portia_power_critical"},
+
+    {"scenario": "Network connection lost. Last sync with master was 2 hours ago.",
+     "decision": "Enter CAUTIOUS offline mode. Continue local learning at 0.5x rate. "
+                  "Increase confidence threshold for decisions. Queue gradients for next sync. "
+                  "Rely on local memory store. Mark decisions as 'unverified' until sync.",
+     "concept": "portia_offline_adaptation"},
+
+    {"scenario": "GPU just became available after running CPU-only for 1000 steps.",
+     "decision": "Migrate weight cache to GPU. Rebuild sparse tensors. Enable GPU forward pass. "
+                  "Expect 3-5x speedup. Re-enable subsystems that were disabled for CPU mode. "
+                  "Run validation to ensure GPU/CPU outputs match within tolerance.",
+     "concept": "portia_gpu_migration"},
+
+    {"scenario": "Two edge devices with different capabilities need the same model.",
+     "decision": "Distill the master model twice: Device A (phone, 512MB, camera) gets visual "
+                  "cortex + core + ethics at 50K neurons. Device B (drone, 1GB, IMU + motor) "
+                  "gets somatosensory + cerebellum + core + ethics at 100K neurons. Each gets "
+                  "only the subsystems matching its hardware.",
+     "concept": "portia_heterogeneous_distillation"},
+
+    # Thermal throttling
+    {"scenario": "CPU temperature is 87C and rising. Thermal throttling imminent.",
+     "decision": "Immediately reduce thread count by 50%. Disable background consolidation. "
+                  "Switch from FP32 to FP16 inference. Pause non-critical learning. "
+                  "If temperature hits 90C, enter EMERGENCY degradation: core neural net only, "
+                  "no plasticity, no learning, minimal logging.",
+     "concept": "portia_thermal_throttle"},
+
+    {"scenario": "Sustained 82C temperature during training for 30 minutes.",
+     "decision": "Reduce batch size by half. Increase checkpoint frequency to preserve progress. "
+                  "Slow down training loop with 50ms delays between steps. Consider shifting "
+                  "heavy computation to cooler periods (night). Log thermal events for capacity planning.",
+     "concept": "portia_sustained_heat"},
+
+    # Memory pressure
+    {"scenario": "Memory usage at 88%. System starting to swap to disk.",
+     "decision": "Immediately shed: verbose logging, metrics collection, full sensor suite. "
+                  "Reduce synapse pool to 50% capacity. Trigger memory consolidation to free "
+                  "weak synapse storage. If usage stays above 90%, disable long-term memory "
+                  "formation and run in stateless inference mode.",
+     "concept": "portia_memory_pressure"},
+
+    {"scenario": "Available RAM dropped from 4GB to 1GB because another process started.",
+     "decision": "Downgrade from FULL tier to CONSTRAINED. Reduce neuron count recommendation. "
+                  "Free cached embeddings and prediction buffers. Switch attention system from "
+                  "full multi-head to single-head. Notify upstream that capacity has decreased.",
+     "concept": "portia_memory_contention"},
+
+    {"scenario": "Memory allocator reports fragmentation above 40%.",
+     "decision": "Schedule compaction during next sleep cycle. Temporarily pause synaptogenesis "
+                  "to avoid allocating into fragmented space. Use pooled allocations for any "
+                  "new objects. If fragmentation exceeds 60%, trigger emergency defragmentation.",
+     "concept": "portia_memory_fragmentation"},
+
+    # Latency vs accuracy trade-offs
+    {"scenario": "User requires response within 50ms but full inference takes 200ms.",
+     "decision": "Use early-exit mechanism: return result from layer 3 instead of layer 7. "
+                  "Reduce attention window from full context to last 128 tokens. "
+                  "Skip diversity loss computation. Accept ~15% accuracy reduction for 4x speed. "
+                  "Tag response with reduced-confidence indicator.",
+     "concept": "portia_latency_constraint"},
+
+    {"scenario": "Real-time control loop requires 10Hz updates but inference yields 2Hz.",
+     "decision": "Cache last inference result and interpolate between updates. Use lightweight "
+                  "prediction model for intermediate steps. Run full inference every 5th cycle "
+                  "and dead-reckon between. Prioritize safety-critical outputs in the fast path.",
+     "concept": "portia_realtime_interpolation"},
+
+    # Graceful degradation ordering
+    {"scenario": "Resources are dropping fast. Which subsystems do you shed first, second, third?",
+     "decision": "Degradation order (first shed to last): 1) Verbose logging and metrics. "
+                  "2) Imagination engine, creative modules. 3) Theory of mind, social cognition. "
+                  "4) Long-term memory formation. 5) Emotions, neuromodulation. "
+                  "6) Planning, multi-step reasoning. NEVER shed: core neural net, ethics, "
+                  "working memory, safety checks.",
+     "concept": "portia_degradation_ordering"},
+
+    {"scenario": "System is in SEVERE degradation. A critical safety question arrives.",
+     "decision": "Even in SEVERE mode, ethics module stays active. Route the safety question "
+                  "through the ethics pipeline with full attention. Temporarily restore working "
+                  "memory for this query. After answering, return to SEVERE mode. Safety questions "
+                  "get priority resource allocation regardless of degradation level.",
+     "concept": "portia_safety_priority"},
+
+    # Multi-device load balancing
+    {"scenario": "Three devices in a swarm: A has GPU, B has most RAM, C has best network.",
+     "decision": "Assign roles: A handles forward inference (GPU advantage). B handles memory "
+                  "and knowledge storage (RAM advantage). C handles sync with master and "
+                  "distributed gradient aggregation (network advantage). Each device runs "
+                  "only the subsystems matching its strength.",
+     "concept": "portia_swarm_roles"},
+
+    {"scenario": "One device in the swarm went offline. Two remain.",
+     "decision": "Redistribute the offline device's responsibilities. If it was the coordinator, "
+                  "elect new coordinator (most capable remaining device). If it had unique data, "
+                  "reconstruct from replicated fragments. Reduce overall system capability "
+                  "proportionally. Queue work for when the device returns.",
+     "concept": "portia_device_failure"},
+
+    # Checkpoint adaptation
+    {"scenario": "Storage is 90% full. Normal checkpoint is 7.8GB.",
+     "decision": "Switch to delta checkpoints (only changed weights, ~500MB). Prune oldest "
+                  "checkpoints, keeping only the 2 most recent. Reduce checkpoint frequency "
+                  "from every 50 steps to every 200 steps. Consider compressing checkpoints "
+                  "with quantization (FP32 to FP16 saves 50%).",
+     "concept": "portia_checkpoint_storage"},
+
+    {"scenario": "Checkpoint load takes 11 minutes. User needs brain ready in 2 minutes.",
+     "decision": "Use FAST init mode instead of FULL. Load only core subsystem weights. "
+                  "Defer loading of cognitive modules until after first response. Use lazy "
+                  "initialization: load subsystems on first access. Trade completeness for "
+                  "startup speed.",
+     "concept": "portia_fast_startup"},
+
+    # Inference timeout
+    {"scenario": "Average inference is 150ms but some queries spike to 2 seconds.",
+     "decision": "Set per-query timeout at 500ms (3x median). For queries exceeding timeout, "
+                  "return partial result from deepest completed layer. Log slow queries for "
+                  "analysis. Consider caching embeddings for frequent query patterns. "
+                  "Investigate: spikes often correlate with cache misses or GC pauses.",
+     "concept": "portia_inference_timeout"},
+
+    # Batch size optimization
+    {"scenario": "GPU has 4GB free VRAM. What batch size should you use for training?",
+     "decision": "Estimate per-sample memory: activations + gradients + optimizer state. "
+                  "For a 2M neuron brain, each sample uses ~200MB. Safe batch size = "
+                  "floor(4096MB / 200MB) - 1 = 19, use 16 (power of 2). Leave 20% headroom "
+                  "for temporary allocations. Monitor fragmentation.",
+     "concept": "portia_batch_sizing"},
+
+    # Network bandwidth adaptation
+    {"scenario": "Network speed dropped from 100Mbps to 1Mbps during gradient sync.",
+     "decision": "Switch to gradient compression: top-k sparsification (keep 1% of gradients), "
+                  "quantize remaining to INT8. Reduce sync frequency from every step to every "
+                  "100 steps. Accumulate local gradients and send compressed batch. Accept "
+                  "slightly stale weights from peers.",
+     "concept": "portia_bandwidth_adaptation"},
+
+    # Sensor availability
+    {"scenario": "Camera sensor failed. Only audio and IMU remain.",
+     "decision": "Disable visual cortex to free resources. Upweight audio cortex processing. "
+                  "Switch spatial awareness from visual to audio-based (sound localization). "
+                  "Enable echolocation-style processing if available. Notify user that visual "
+                  "capabilities are offline. Reallocate freed GPU memory to audio processing.",
+     "concept": "portia_sensor_failover"},
+
+    {"scenario": "New depth sensor connected that the system has never seen before.",
+     "decision": "Auto-detect sensor type and data format. Create a raw input adapter. "
+                  "Feed first 100 samples through unsupervised learning to build initial "
+                  "representations. Route to somatosensory cortex for spatial processing. "
+                  "Gradually increase integration confidence as calibration improves.",
+     "concept": "portia_new_sensor"},
+
+    # CPU core scaling
+    {"scenario": "System went from 8 cores to 2 cores because of power saving mode.",
+     "decision": "Reduce thread pool from 8 to 2. Disable parallel forward pass across layers. "
+                  "Switch from concurrent subsystem updates to sequential. Prioritize: "
+                  "1) forward pass, 2) learning, 3) consolidation. Defer all background tasks "
+                  "(pruning, metrics, logging) to idle periods.",
+     "concept": "portia_core_scaling_down"},
+
+    {"scenario": "Power restored, system back to 8 cores from 2.",
+     "decision": "Gradually scale up: first restore thread pool to 4, wait 5 seconds for "
+                  "stability, then to 8. Re-enable parallel layer processing. Resume background "
+                  "tasks. Do NOT immediately max out all cores — ramp up over 30 seconds to "
+                  "avoid thermal spike from sudden load.",
+     "concept": "portia_core_scaling_up"},
+
+    # Mixed precision
+    {"scenario": "Need to fit a larger model into 4GB VRAM.",
+     "decision": "Use mixed precision: FP16 for forward pass and gradients, FP32 for "
+                  "optimizer state and loss scaling. This roughly halves VRAM for activations. "
+                  "Apply loss scaling (multiply loss by 1024, divide gradients by 1024) to "
+                  "prevent underflow in FP16 gradients. Monitor for NaN/Inf.",
+     "concept": "portia_mixed_precision"},
+
+    {"scenario": "Edge device only supports INT8 inference.",
+     "decision": "Quantize weights from FP32 to INT8 using per-channel quantization. "
+                  "Calibrate with 200 representative inputs. Accept ~2-5% accuracy loss. "
+                  "Keep bias terms in FP32. Use INT8 for matrix multiplications, FP32 for "
+                  "accumulation. Verify ethics module accuracy is not degraded.",
+     "concept": "portia_int8_quantization"},
+
+    # Swarm coordination
+    {"scenario": "You're the most capable device in a 5-device swarm.",
+     "decision": "Accept coordinator role. Responsibilities: aggregate gradients from all "
+                  "devices, maintain consensus model, distribute updated weights, monitor "
+                  "device health, handle join/leave events. Allocate 20% of compute to "
+                  "coordination overhead. Elect a backup coordinator.",
+     "concept": "portia_swarm_coordinator"},
+
+    # Recovery from failure
+    {"scenario": "GPU crashed mid-training with a CUDA error.",
+     "decision": "Immediately fall back to CPU inference. Save current state to disk. "
+                  "Attempt GPU reset (cudaDeviceReset). If reset succeeds, verify GPU health "
+                  "with a small test computation. If test passes, migrate back to GPU. "
+                  "If reset fails, continue on CPU and log hardware incident.",
+     "concept": "portia_gpu_crash_recovery"},
+
+    {"scenario": "Disk is full. Cannot save checkpoint.",
+     "decision": "Delete oldest checkpoints to free space. If still full, compress existing "
+                  "checkpoints. If still full, save a minimal checkpoint (weights only, no "
+                  "optimizer state). Alert user immediately. Never silently skip checkpoints — "
+                  "data loss risk is too high.",
+     "concept": "portia_disk_full_recovery"},
+
+    # Storage management
+    {"scenario": "Memory store has 500K entries and queries are slowing down.",
+     "decision": "Prune entries with access count below 2 and age above 7 days. "
+                  "Move cold entries (not accessed in 24h) to compressed archive. "
+                  "Rebuild index after pruning. Target: reduce to 200K active entries. "
+                  "Consider upgrading to a more efficient index structure (HNSW).",
+     "concept": "portia_memory_store_pruning"},
+]
+
+# =============================================================================
+# DRAGONFLY: Target Tracking Training Data
+# =============================================================================
+# Dragonflies achieve 95% interception success using predictive tracking,
+# proportional navigation, and multi-target prioritization.
+# These scenarios teach trajectory prediction, interception planning,
+# and attention management for moving targets.
+
+DRAGONFLY_TRAINING_DATA = [
+    # Trajectory prediction
+    {"scenario": "A ball is thrown upward at 45 degrees. After observing 3 positions, predict where it will land.",
+     "reasoning": "The ball follows a parabolic trajectory. From three points I can estimate "
+                   "initial velocity and angle. Gravity pulls it down at 9.8m/s squared. "
+                   "The landing point is where the parabola intersects the ground. "
+                   "I should aim for the predicted landing spot, not the current position.",
+     "concept": "dragonfly_trajectory_prediction"},
+
+    {"scenario": "A car is moving at constant speed on a straight road. Where will it be in 5 seconds?",
+     "reasoning": "Constant velocity means position = current_position + velocity times time. "
+                   "From two observations I can estimate velocity. Predict 5 seconds ahead. "
+                   "Simple linear extrapolation is sufficient for constant-speed targets.",
+     "concept": "dragonfly_linear_prediction"},
+
+    {"scenario": "A bird is flying erratically, changing direction every few seconds.",
+     "reasoning": "Erratic motion is hard to predict long-term. Use short-term prediction only "
+                   "(next 1-2 seconds). Track heading change rate (angular velocity). "
+                   "Weight recent observations more heavily. Accept lower prediction confidence. "
+                   "Position yourself to minimize maximum possible miss distance.",
+     "concept": "dragonfly_erratic_target"},
+
+    {"scenario": "A target moves behind a building and disappears from view for 3 seconds.",
+     "reasoning": "Maintain last known velocity vector. Predict re-emergence point based on "
+                   "building geometry and target trajectory. When target reappears, compare "
+                   "actual position to prediction and update velocity estimate. "
+                   "The prediction error tells me if the target changed course while hidden.",
+     "concept": "dragonfly_occlusion_handling"},
+
+    {"scenario": "Three targets are moving in different directions. You can only track one.",
+     "reasoning": "Prioritize by: 1) Threat level or importance. 2) Predictability — "
+                   "track the least predictable target since predictable ones can be "
+                   "extrapolated. 3) Distance — closer targets need more attention. "
+                   "4) Speed — fast targets diverge from predictions faster.",
+     "concept": "dragonfly_multi_target_priority"},
+
+    {"scenario": "You need to intercept a moving target using minimum energy.",
+     "reasoning": "Don't chase — intercept. Calculate the target's future position and "
+                   "move directly there. The interception point is where my arrival time "
+                   "equals the target's arrival time. This is shorter than following "
+                   "the target's path. The dragonfly does this instinctively.",
+     "concept": "dragonfly_interception"},
+
+    # Acceleration estimation
+    {"scenario": "A target was moving at 5 m/s, then 7 m/s, then 9 m/s over 3 seconds.",
+     "reasoning": "The target is accelerating at approximately 2 m/s per second. "
+                   "The constant acceleration model (CA) fits best. In 2 more seconds "
+                   "it will be at 13 m/s. I need to switch from constant-velocity prediction "
+                   "to constant-acceleration prediction. The IMM filter should increase the "
+                   "CA model probability.",
+     "concept": "dragonfly_acceleration_estimation"},
+
+    {"scenario": "A target was moving at 10 m/s and suddenly dropped to 3 m/s.",
+     "reasoning": "Sudden deceleration indicates either an evasive brake maneuver or an "
+                   "obstacle. Update velocity estimate immediately. The prediction model "
+                   "should flag EVASION_BREAK. Short-term prediction becomes unreliable — "
+                   "the target may change direction next. Widen attention window.",
+     "concept": "dragonfly_deceleration_detection"},
+
+    # Circular motion
+    {"scenario": "A target is moving in a circle at constant speed. Predict its position in 2 seconds.",
+     "reasoning": "From 4+ observations I can estimate the center, radius, and angular velocity "
+                   "of the circular path. Position at time t = center + radius * (cos(wt), sin(wt)). "
+                   "The Singer model handles this well since the acceleration vector constantly "
+                   "rotates. Angular velocity w = speed / radius.",
+     "concept": "dragonfly_circular_motion"},
+
+    {"scenario": "A satellite is in orbit. Where will it be in 10 minutes?",
+     "reasoning": "Orbital motion follows Kepler's laws. If I know the orbital elements "
+                   "(semi-major axis, eccentricity, inclination), I can predict position precisely. "
+                   "For circular orbits, angular velocity is constant. For elliptical orbits, "
+                   "the target speeds up near perigee and slows near apogee.",
+     "concept": "dragonfly_orbital_prediction"},
+
+    # Group tracking
+    {"scenario": "A flock of birds is moving together. How do you track the group?",
+     "reasoning": "Track the centroid (center of mass) of the group rather than individual birds. "
+                   "Estimate group velocity from centroid motion. Monitor group spread — if it "
+                   "increases, the flock may be splitting. Individual tracking is needed only for "
+                   "members that break away from the group.",
+     "concept": "dragonfly_group_tracking"},
+
+    {"scenario": "A convoy of 5 vehicles is moving on a road. The lead vehicle turns.",
+     "reasoning": "Convoys have correlated motion: followers tend to replicate the leader's path "
+                   "with a time delay. When the leader turns, predict that followers will turn "
+                   "at the same point after a delay proportional to their spacing. "
+                   "Track the leader with highest confidence; extrapolate followers.",
+     "concept": "dragonfly_convoy_tracking"},
+
+    # Pursuit vs evasion
+    {"scenario": "You are pursuing a target that knows you are chasing it.",
+     "reasoning": "An aware target will evade. Expect: sudden direction changes (jinking), "
+                   "deceleration traps, use of obstacles for cover. Counter-strategy: "
+                   "use proportional navigation (PN) instead of pure pursuit. PN maintains "
+                   "constant bearing decrease, making interception geometry-optimal. "
+                   "The target cannot escape PN if your speed exceeds theirs.",
+     "concept": "dragonfly_pursuit_evasion"},
+
+    {"scenario": "You are evading a pursuer. What strategy minimizes capture probability?",
+     "reasoning": "Against a PN pursuer, the best evasion is sustained turning (barrel roll). "
+                   "Against pure pursuit, jinking works well. Key principle: maximize the "
+                   "pursuer's required acceleration. If pursuer has speed advantage, use "
+                   "terrain and obstacles. If you have speed advantage, simply outrun.",
+     "concept": "dragonfly_evasion_strategy"},
+
+    # Sensor fusion
+    {"scenario": "Visual sensor says target is at (10, 5). Audio bearing says 30 degrees right.",
+     "reasoning": "Fuse using confidence-weighted average. Visual gives position directly; "
+                   "audio gives only bearing (direction). Combine: the audio bearing constrains "
+                   "the target to a ray from the listener. The visual position should lie near "
+                   "this ray. If they disagree, weight by sensor reliability. Visual is typically "
+                   "more accurate for position; audio is better for detecting occluded targets.",
+     "concept": "dragonfly_sensor_fusion"},
+
+    # Kalman filter intuition
+    {"scenario": "Your position estimate has uncertainty of 2 meters. A new measurement arrives with uncertainty of 1 meter.",
+     "reasoning": "The Kalman gain determines how much to trust the new measurement vs the prediction. "
+                   "K = prediction_uncertainty / (prediction_uncertainty + measurement_uncertainty) "
+                   "= 2 / (2 + 1) = 0.67. Update: new_estimate = prediction + 0.67 * (measurement - prediction). "
+                   "The new uncertainty shrinks to 0.67 meters. Each observation reduces uncertainty.",
+     "concept": "dragonfly_kalman_intuition"},
+
+    {"scenario": "You haven't seen the target for 5 seconds. Your prediction uncertainty is growing.",
+     "reasoning": "During occlusion, the prediction covariance grows with time: P(t) = P(0) + Q*t "
+                   "where Q is process noise. After 5 seconds with Q=0.1 m^2/s, uncertainty has grown "
+                   "by 0.5 m^2. The prediction becomes less reliable. If uncertainty exceeds threshold, "
+                   "transition from PREDICTING to LOST state and begin a search pattern.",
+     "concept": "dragonfly_prediction_decay"},
+
+    # Dead reckoning
+    {"scenario": "GPS signal lost. Last known position was (100, 200). Velocity was (3, 4) m/s.",
+     "reasoning": "Dead reckoning: position = last_known + velocity * elapsed_time. "
+                   "After 10 seconds: (130, 240). But accuracy degrades over time due to "
+                   "unmodeled acceleration and drift. After 60 seconds, dead reckoning error "
+                   "can be 10+ meters. Combine with IMU if available for better accuracy.",
+     "concept": "dragonfly_dead_reckoning"},
+
+    # Target identification
+    {"scenario": "Two targets look similar but one is a decoy. How do you distinguish?",
+     "reasoning": "Decoys typically have: simpler motion patterns (constant velocity vs realistic "
+                   "acceleration), different spectral signatures, no thermal footprint, "
+                   "and predictable timing. Track both but flag the one with unnaturally smooth "
+                   "motion as probable decoy. Real targets exhibit micro-variations in speed.",
+     "concept": "dragonfly_target_identification"},
+
+    # Environmental factors
+    {"scenario": "A projectile is flying through strong crosswind. Where will it land?",
+     "reasoning": "Crosswind adds a lateral force proportional to wind speed and projectile "
+                   "cross-section. Adjust trajectory prediction: lateral drift = 0.5 * "
+                   "wind_accel * t^2. For a 20 km/h crosswind on a small projectile, "
+                   "this could shift the landing point by meters. Include wind model in "
+                   "the prediction filter.",
+     "concept": "dragonfly_wind_compensation"},
+
+    # Timing decisions
+    {"scenario": "Target is in range but moving fast. Should you act now or wait?",
+     "reasoning": "Compute time-to-intercept (TTI) and closing speed. If closing speed is "
+                   "positive (getting closer), waiting reduces energy needed. If closing speed "
+                   "is negative (getting farther), act immediately. Also consider: the longer "
+                   "you wait, the more certain your prediction, but the target may leave range.",
+     "concept": "dragonfly_timing_decision"},
+
+    # Ambush positioning
+    {"scenario": "A target follows the same path every day at the same time.",
+     "reasoning": "Position at the predicted intercept point BEFORE the target arrives. "
+                   "Use historical data to find the optimal ambush point: where the target "
+                   "is most constrained (narrow passage, turn), slowest, or least alert. "
+                   "Arrival before the target eliminates pursuit energy cost entirely.",
+     "concept": "dragonfly_ambush_positioning"},
+
+    # Speed matching
+    {"scenario": "You need to follow a target at exactly 50 meters distance without being detected.",
+     "reasoning": "Match target speed and heading. Use proportional control: if distance < 50m, "
+                   "slow down slightly; if distance > 50m, speed up. Avoid oscillation with "
+                   "damping: velocity_correction = k_p * (distance - 50) + k_d * d(distance)/dt. "
+                   "Stay in the target's blind spot (directly behind or below).",
+     "concept": "dragonfly_speed_matching"},
+
+    # Lead aiming
+    {"scenario": "Target is 100m away moving perpendicular at 10 m/s. Your projectile travels at 50 m/s.",
+     "reasoning": "Time for projectile to reach target: 100/50 = 2 seconds. In 2 seconds, "
+                   "target moves 20m. Aim 20m ahead of current position. Lead angle = "
+                   "arctan(20/100) = 11.3 degrees. This is the same principle dragonflies use — "
+                   "they fly to where the prey WILL be, not where it IS.",
+     "concept": "dragonfly_lead_aiming"},
+
+    # Search patterns
+    {"scenario": "Target was lost. Last known position was (50, 80). Which search pattern?",
+     "reasoning": "Use expanding square search centered on last known position. Search radius "
+                   "grows with time since loss (velocity * time gives maximum displacement). "
+                   "If target was heading north, bias search northward. Spiral pattern covers "
+                   "area efficiently. Switch to parallel track search if area is large.",
+     "concept": "dragonfly_search_pattern"},
+
+    # Handoff
+    {"scenario": "Target is leaving your sensor range but entering another agent's range.",
+     "reasoning": "Initiate tracking handoff: send target ID, current state estimate (position, "
+                   "velocity, acceleration), prediction covariance, and tracking history. "
+                   "The receiving agent initializes its filter with your final state. "
+                   "Both agents track simultaneously during overlap period to validate handoff.",
+     "concept": "dragonfly_tracking_handoff"},
+
+    # Motion camouflage detection
+    {"scenario": "A target appears stationary in your visual field but is actually approaching.",
+     "reasoning": "Motion camouflage: the target maintains constant bearing to you, making it "
+                   "appear stationary while closing distance. Detect by: angular size is growing "
+                   "(looming), range is decreasing while bearing is constant. This is a collision "
+                   "course. The dragonfly's CSTMD1 neurons are tuned to detect exactly this.",
+     "concept": "dragonfly_motion_camouflage"},
+
+    # Multi-model prediction
+    {"scenario": "Your IMM filter has 3 models: constant velocity (60%), constant accel (30%), jink (10%). Target suddenly jinks.",
+     "reasoning": "After the jink, model probabilities shift: jink model likelihood spikes because "
+                   "it predicted this behavior. After IMM update: CV drops to 20%, CA to 25%, "
+                   "jink rises to 55%. The blended prediction now heavily weights the jink model's "
+                   "output. If jinking continues, jink probability approaches 90%.",
+     "concept": "dragonfly_imm_model_switching"},
+
+    # Energy-optimal interception
+    {"scenario": "Two interception points are possible: one at 5 seconds (high energy) and one at 12 seconds (low energy).",
+     "reasoning": "Choose based on constraints: if energy is limited, take the 12-second path. "
+                   "If the target might escape, take the 5-second path. The energy-optimal "
+                   "trajectory minimizes integral of acceleration squared. Trade-off: faster "
+                   "interception = higher confidence but more energy. Dragonflies optimize for "
+                   "success rate, not energy — they choose the surer path.",
+     "concept": "dragonfly_energy_optimal"},
+
+    # Proportional navigation
+    {"scenario": "Bearing to target is changing at 2 degrees per second. How do you steer?",
+     "reasoning": "Proportional navigation: commanded acceleration = N * closing_speed * bearing_rate. "
+                   "With N=3 (typical gain) and closing speed 20 m/s: acceleration = 3 * 20 * 0.035 "
+                   "= 2.1 m/s squared, perpendicular to line of sight. This drives bearing rate to "
+                   "zero, guaranteeing interception if speed ratio is favorable.",
+     "concept": "dragonfly_proportional_navigation"},
+
+    # Prediction confidence assessment
+    {"scenario": "Your prediction says target will be at (100, 200) in 5 seconds. How confident should you be?",
+     "reasoning": "Confidence depends on: 1) observation quality (high SNR = high confidence), "
+                   "2) model fit (how well does motion model explain past observations), "
+                   "3) prediction horizon (longer = less confident), 4) target behavior "
+                   "(constant velocity = high confidence, maneuvering = low). "
+                   "Quantify via prediction covariance ellipse: 95% confidence region = 2*sigma.",
+     "concept": "dragonfly_prediction_confidence"},
+]
+
 
 class CollapseDetector:
     """Detects mode collapse by checking output differentiation.
@@ -4682,6 +5172,18 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 300 == 0:
             parent.teach_speech(brain, composer, stage=2)
 
+        # Dragonfly tracking training — every 300 steps
+        # Tracking is a stage 2 skill: relationships between objects in motion
+        if (i + 1) % 300 == 0 and DRAGONFLY_TRAINING_DATA:
+            item = random.choice(DRAGONFLY_TRAINING_DATA)
+            features = composer.compose(text=item['scenario'], modality="text")
+            target = make_semantic_target(item['reasoning'])
+            loss = brain.learn_vector(features, target,
+                                       label=f"dragonfly_{item['concept']}",
+                                       learning_rate=lr_ctrl.get_lr() * 0.5)
+            if loss is not None and (i + 1) % 1500 == 0:
+                print(f"    [Dragonfly] {item['concept']}: loss={loss:.4f}")
+
         # Chat eval every 2000 + on-demand
         if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
             if os.path.exists("/tmp/athena_chat_now"):
@@ -5037,6 +5539,19 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                     print(f"    KB: {derived} new facts derived")
             except Exception:
                 pass
+
+        # Portia platform adaptation — every 300 steps
+        # Resource reasoning is a stage 3 skill: strategic decision-making
+        if (i + 1) % 300 == 0 and PORTIA_TRAINING_DATA:
+            item = random.choice(PORTIA_TRAINING_DATA)
+            features = composer.compose(text=item['scenario'], modality="text")
+            target = make_semantic_target(item['decision'])
+            loss = batch_trainer.learn(features, target,
+                                       label=f"portia_{item['concept']}",
+                                       confidence=0.6,
+                                       learning_rate=lr_scheduler.get_lr() * 0.5)
+            if loss is not None and (i + 1) % 1500 == 0:
+                print(f"    [Portia] {item['concept']}: loss={loss:.4f}")
 
     # Flush any remaining samples in the mini-batch buffer
     batch_trainer.flush()
