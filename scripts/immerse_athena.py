@@ -1138,8 +1138,40 @@ def _check_hp_overrides(brain, lr_scheduler, step):
 
     Called every step from the training loop. Reads /tmp/athena_* files
     written by the hyperparameter auto-tuner and applies them to the brain.
+    Also checks for hot-reload triggers (sensory data injection).
     """
     global _hp_state
+
+    # Hot-reload sensory data from JSON trigger file
+    _sensory_trigger = "/tmp/athena_reload_sensory.json"
+    if step % 10 == 0 and os.path.exists(_sensory_trigger):
+        try:
+            with open(_sensory_trigger) as f:
+                new_data = json.load(f)
+            new_sensory = new_data.get("sensory", [])
+            new_objects = new_data.get("objects", [])
+            if new_sensory:
+                before = len(StimulusSource.SENSORY)
+                # Deduplicate against existing
+                existing = set(StimulusSource.SENSORY)
+                added = [s for s in new_sensory if s not in existing]
+                StimulusSource.SENSORY.extend(added)
+                print(f"    [HOT RELOAD] Sensory data: {before} → {len(StimulusSource.SENSORY)} "
+                      f"(+{len(added)} new items)")
+            if new_objects:
+                before = len(StimulusSource.OBJECTS)
+                existing_names = {n for n, _ in StimulusSource.OBJECTS}
+                added = [(n, d) for n, d in new_objects if n not in existing_names]
+                StimulusSource.OBJECTS.extend(added)
+                print(f"    [HOT RELOAD] Objects: {before} → {len(StimulusSource.OBJECTS)} "
+                      f"(+{len(added)} new items)")
+            os.remove(_sensory_trigger)
+        except Exception as e:
+            print(f"    [HOT RELOAD] Error: {e}")
+            try:
+                os.remove(_sensory_trigger)
+            except OSError:
+                pass
 
     for param, path in HP_OVERRIDE_FILES.items():
         if not os.path.exists(path):

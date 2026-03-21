@@ -213,6 +213,552 @@ SPEECH_DESCRIPTIONS = {
 }
 
 
+# ============================================================================
+# ImageNet-1K class labels (representative subset — 250 diverse classes)
+# ============================================================================
+
+IMAGENET_CLASSES = [
+    # Fish & aquatic
+    "tench", "goldfish", "great white shark", "tiger shark", "hammerhead shark",
+    "electric ray", "stingray", "sturgeon", "pufferfish", "lionfish",
+    # Birds
+    "rooster", "hen", "ostrich", "flamingo", "pelican",
+    "albatross", "king penguin", "hummingbird", "toucan", "eagle",
+    "owl", "parrot", "peacock", "magpie", "jay",
+    "robin", "goldfinch", "vulture", "crane", "swan",
+    # Reptiles & amphibians
+    "green sea turtle", "box turtle", "iguana", "chameleon", "komodo dragon",
+    "alligator", "king cobra", "boa constrictor", "tree frog", "salamander",
+    # Mammals — diverse (skip near-duplicate dog breeds)
+    "timber wolf", "red fox", "arctic fox", "grizzly bear", "polar bear",
+    "giant panda", "cheetah", "snow leopard", "lion", "tiger",
+    "gorilla", "chimpanzee", "orangutan", "baboon", "gibbon",
+    "African elephant", "Indian rhinoceros", "hippopotamus", "zebra", "giraffe",
+    "bison", "ram", "ibex", "gazelle", "impala",
+    "camel", "llama", "otter", "sea lion", "walrus",
+    "humpback whale", "dolphin", "beaver", "porcupine", "hedgehog",
+    "armadillo", "sloth", "koala", "wombat", "kangaroo",
+    "platypus", "bat", "meerkat", "red panda", "raccoon",
+    "skunk", "badger", "squirrel", "chipmunk", "hamster",
+    # Insects & arachnids
+    "monarch butterfly", "dragonfly", "ladybug", "grasshopper", "praying mantis",
+    "cockroach", "honeybee", "ant", "scorpion", "tarantula",
+    "garden spider", "tick", "centipede", "beetle", "firefly",
+    # Marine invertebrates
+    "jellyfish", "starfish", "sea urchin", "sea cucumber", "coral",
+    "octopus", "squid", "lobster", "hermit crab", "snail",
+    # Plants & fungi
+    "mushroom", "agaric", "ear of corn", "acorn", "hip rose",
+    "daisy", "sunflower", "lotus", "orchid", "dandelion",
+    # Food
+    "pizza", "cheeseburger", "pretzel", "bagel", "ice cream",
+    "chocolate cake", "guacamole", "sushi", "espresso", "pomegranate",
+    "banana", "pineapple", "strawberry", "lemon", "fig",
+    "broccoli", "bell pepper", "artichoke", "cucumber", "cauliflower",
+    # Vehicles & transport
+    "sports car", "school bus", "fire truck", "ambulance", "pickup truck",
+    "tank", "freight train", "steam locomotive", "speedboat", "canoe",
+    "sailboat", "aircraft carrier", "space shuttle", "hot air balloon", "hang glider",
+    "bicycle", "motorcycle", "scooter", "tractor", "forklift",
+    # Buildings & structures
+    "castle", "church", "mosque", "pagoda", "lighthouse",
+    "barn", "greenhouse", "dam", "suspension bridge", "triumphal arch",
+    "palace", "monastery", "skyscraper", "log cabin", "yurt",
+    # Tools & instruments
+    "hammer", "screwdriver", "chainsaw", "power drill", "hatchet",
+    "acoustic guitar", "electric guitar", "grand piano", "violin", "cello",
+    "drums", "harmonica", "flute", "saxophone", "French horn",
+    # Household & everyday
+    "desk", "rocking chair", "bookcase", "bathtub", "toilet",
+    "television", "laptop", "desktop computer", "cellular phone", "typewriter",
+    "refrigerator", "washing machine", "iron", "toaster", "microwave",
+    "hourglass", "sundial", "combination lock", "padlock", "safe",
+    # Clothing & accessories
+    "sombrero", "cowboy hat", "crown", "graduation cap", "ski mask",
+    "sunglasses", "running shoe", "sandal", "bow tie", "kimono",
+    # Sports & recreation
+    "basketball", "soccer ball", "tennis ball", "golf ball", "volleyball",
+    "baseball bat", "tennis racket", "surfboard", "snowboard", "parachute",
+    # Science & medical
+    "microscope", "telescope", "stethoscope", "syringe", "magnetic compass",
+    "barometer", "abacus", "hourglass", "globe", "solar panel",
+]
+
+# Auto-generate descriptions for ImageNet classes
+IMAGENET_DESCRIPTIONS = {}
+for _cls in IMAGENET_CLASSES:
+    IMAGENET_DESCRIPTIONS[_cls] = f"A {_cls} — a real-world object or creature"
+
+
+# ============================================================================
+# Places365 scene categories (~200 diverse scenes)
+# ============================================================================
+
+PLACES_SCENES = [
+    "airport terminal", "art gallery", "bakery", "bamboo forest", "barn",
+    "baseball field", "bathroom", "beach", "bedroom", "bookstore",
+    "bowling alley", "bridge", "bus interior", "campsite", "canyon",
+    "castle", "cathedral", "cemetery", "classroom", "cliff",
+    "closet", "coast", "coffee shop", "construction site", "coral reef",
+    "corridor", "courtyard", "creek", "dam", "desert",
+    "dining room", "dock", "elevator", "farm", "fire station",
+    "forest", "fountain", "garage", "garden", "glacier",
+    "golf course", "greenhouse", "gymnasium", "harbor", "highway",
+    "hospital", "hotel room", "ice rink", "igloo", "island",
+    "jail cell", "jungle", "kitchen", "lake", "laundromat",
+    "library", "lighthouse", "living room", "marsh", "monastery",
+    "mountain", "museum", "nursery", "ocean", "office",
+    "opera house", "orchard", "palace", "parking lot", "patio",
+    "pier", "playground", "plaza", "pond", "prison",
+    "pub", "quarry", "racecourse", "railroad track", "rainforest",
+    "restaurant", "river", "roof garden", "ruin", "runway",
+    "sauna", "schoolhouse", "ship deck", "ski slope", "skyscraper",
+    "slum", "snowfield", "stadium", "stage", "staircase",
+    "stream", "subway station", "supermarket", "swamp", "swimming pool",
+    "temple", "theater", "tower", "train station", "tree house",
+    "trench", "tundra", "underwater", "valley", "volcano",
+    "waterfall", "wheat field", "wind farm", "yard", "zen garden",
+    "amusement park", "aquarium", "arcade", "attic", "balcony",
+    "bazaar", "boardwalk", "botanical garden", "bowling green", "brewery",
+    "bus stop", "cabin", "cafeteria", "casino", "cave",
+    "chapel", "chicken coop", "church interior", "cityscape", "clearing",
+    "coal mine", "cockpit", "conference room", "conservatory", "corn field",
+    "covered bridge", "crosswalk", "dentist office", "diner", "dorm room",
+    "driveway", "drugstore", "embassy", "engine room", "entrance hall",
+    "escalator", "factory", "fairground", "flea market", "flower shop",
+    "food court", "gas station", "gift shop", "golf driving range", "gorge",
+    "grotto", "guest room", "gymnasium", "hangar", "helipad",
+    "herb garden", "hot spring", "hunting lodge", "industrial area", "inn",
+    "junkyard", "kasbah", "kennel", "lagoon", "landing deck",
+    "laundry room", "lawn", "loading dock", "loft", "lookout point",
+    "lumber yard", "mausoleum", "meadow", "mine shaft", "moat",
+    "movie theater", "oasis", "observatory", "oil rig", "open market",
+    "outhouse", "overlook", "pantry", "parkland", "pasture",
+    "pavilion", "pharmacy", "phone booth", "picnic area", "planetarium",
+    "porch", "pottery studio", "power plant", "pulpit", "putting green",
+    "raft", "reception area", "recreation room", "riding arena", "rock arch",
+    "rope bridge", "sand dune", "sawmill", "sculpture garden", "server room",
+    "shed", "shelter", "shoe shop", "shopfront", "ski resort",
+    "smoke stack", "solarium", "stable", "storage room", "tea room",
+    "toll plaza", "topiary garden", "track field", "tree farm", "treetop",
+    "utility room", "veranda", "vineyard", "waiting room", "warehouse",
+    "water tower", "wetland", "wharf", "windmill", "wine cellar",
+    "woodshop", "wrestling ring",
+]
+
+
+# ============================================================================
+# Kinetics action classes (~200 human actions)
+# ============================================================================
+
+KINETICS_ACTIONS = [
+    "climbing a tree", "playing guitar", "swimming", "riding a bicycle",
+    "cooking", "painting", "dancing", "reading a book", "running",
+    "jumping rope", "throwing a ball", "catching a fish", "building a sandcastle",
+    "flying a kite", "rowing a boat", "skiing", "skateboarding",
+    "playing drums", "singing", "writing", "typing on keyboard",
+    "washing hands", "brushing teeth", "eating", "drinking water",
+    "hugging", "shaking hands", "waving", "pointing", "laughing",
+    "crying", "yawning", "sneezing", "stretching", "bending",
+    "lifting weights", "doing yoga", "meditating", "gardening",
+    "feeding animals", "petting a dog", "walking a dog",
+    "riding a horse", "milking a cow", "shearing a sheep",
+    "planting a seed", "watering plants", "pruning branches",
+    "chopping wood", "building a fire", "roasting marshmallows",
+    "blowing out candles", "wrapping a gift", "opening a present",
+    "sewing", "knitting", "weaving", "spinning clay on a potter's wheel",
+    "carving wood", "folding origami", "assembling a puzzle",
+    "playing chess", "juggling", "doing a magic trick",
+    "arm wrestling", "fencing", "boxing", "wrestling",
+    "playing basketball", "playing soccer", "playing tennis",
+    "playing baseball", "playing volleyball", "playing table tennis",
+    "doing gymnastics", "doing a backflip", "doing a cartwheel",
+    "hula hooping", "skipping", "crawling", "somersaulting",
+    "rock climbing", "rappelling", "bungee jumping", "parachuting",
+    "surfing", "windsurfing", "kayaking", "canoeing",
+    "scuba diving", "snorkeling", "water skiing", "cliff diving",
+    "ice skating", "figure skating", "playing hockey", "curling",
+    "snowboarding", "sledding", "making a snowman", "throwing snowballs",
+    "archery", "shooting a bow", "throwing a javelin", "throwing a discus",
+    "pole vaulting", "high jumping", "long jumping", "triple jumping",
+    "hurdling", "sprinting", "jogging", "walking slowly",
+    "marching", "tiptoeing", "stomping", "shuffling cards",
+    "dealing cards", "rolling dice", "spinning a top", "blowing bubbles",
+    "flying a drone", "sailing a boat", "steering a ship",
+    "driving a car", "parallel parking", "changing a tire",
+    "pumping gas", "washing a car", "polishing shoes",
+    "ironing clothes", "folding laundry", "hanging clothes on a line",
+    "vacuuming", "sweeping the floor", "mopping", "scrubbing a pan",
+    "dicing vegetables", "kneading dough", "flipping a pancake",
+    "grilling meat", "stirring a pot", "frosting a cake",
+    "pouring a drink", "setting the table", "clearing the table",
+    "making a bed", "arranging flowers", "lighting a candle",
+    "feeding a baby", "rocking a baby", "pushing a stroller",
+    "tying shoelaces", "buttoning a shirt", "zipping a jacket",
+    "putting on a hat", "applying sunscreen", "brushing hair",
+    "braiding hair", "shaving", "putting on makeup",
+    "taking a photograph", "filming a video", "editing on a computer",
+    "drawing a sketch", "sculpting with clay", "spray painting",
+    "playing the piano", "playing the violin", "playing the flute",
+    "playing the trumpet", "conducting an orchestra",
+    "performing on stage", "telling a joke", "giving a speech",
+    "leading a meeting", "teaching a class", "taking notes",
+    "raising a hand", "applauding", "bowing",
+    "saluting", "praying", "crossing arms",
+    "scratching head", "rubbing eyes", "cracking knuckles",
+    "whistling", "humming a tune", "snapping fingers",
+    "clapping rhythmically", "tapping foot", "nodding head",
+    "shaking head", "shrugging shoulders", "blinking rapidly",
+    "winking", "sticking out tongue", "making a face",
+    "smiling broadly", "frowning deeply", "gasping in surprise",
+]
+
+
+# ============================================================================
+# AudioSet sound classes (expanded beyond ESC-50 — ~200 unique sounds)
+# ============================================================================
+
+AUDIOSET_SOUNDS = [
+    # Weather & nature
+    "thunderstorm", "rain on leaves", "hailstorm", "wind howling",
+    "ocean waves crashing", "stream bubbling", "waterfall roaring",
+    "fire crackling", "avalanche rumbling", "earthquake shaking",
+    "tornado siren", "ice cracking on a lake",
+    # Explosions & impacts
+    "explosion", "gunshot", "cannon firing", "fireworks bursting",
+    "car crash", "tree falling", "rock slide", "balloon popping",
+    "whip crack", "slap",
+    # Vehicles & machines
+    "car engine starting", "motorcycle revving", "airplane overhead",
+    "helicopter", "train horn", "ship horn", "bicycle bell",
+    "subway arriving", "jet engine roaring", "propeller airplane",
+    "race car speeding", "truck reversing beep", "boat motor",
+    "snowmobile", "lawn mower running", "leaf blower",
+    # Household
+    "door creaking", "door slamming", "glass breaking",
+    "typing on keyboard", "phone ringing", "alarm clock",
+    "microwave beeping", "blender running", "vacuum cleaner",
+    "washing machine spinning", "dishwasher running", "toilet flushing",
+    "shower running", "faucet dripping", "kettle whistling",
+    "toaster popping", "oven timer dinging", "garbage disposal",
+    "air conditioner humming", "ceiling fan whirring",
+    # Human sounds
+    "baby crying", "baby laughing", "child playing",
+    "crowd cheering", "applause", "booing",
+    "coughing", "snoring", "heartbeat",
+    "stomach growling", "hiccup", "burp",
+    "gargling", "whistling a tune", "humming",
+    "whispering", "shouting", "screaming",
+    "sighing deeply", "gasping for breath", "yawning loudly",
+    # Footsteps
+    "footsteps on gravel", "footsteps on wood", "footsteps in snow",
+    "footsteps on marble", "footsteps in mud", "footsteps on metal",
+    "high heels clicking", "boots stomping", "bare feet on tile",
+    # Musical instruments
+    "piano playing", "violin playing", "trumpet playing",
+    "drums playing", "guitar strumming", "flute playing",
+    "cello bowing", "harp plucking", "accordion playing",
+    "bagpipes droning", "banjo picking", "didgeridoo humming",
+    "xylophone tinkling", "tambourine shaking", "triangle ringing",
+    "organ playing in a cathedral", "synthesizer buzzing",
+    "steel drum in the tropics", "sitar twanging", "ukulele strumming",
+    # Animals
+    "bird singing", "bird chirping", "owl hooting",
+    "dog barking", "cat meowing", "horse neighing",
+    "cow mooing", "sheep bleating", "rooster crowing",
+    "frog croaking", "cricket chirping", "bee buzzing",
+    "mosquito buzzing", "fly buzzing", "cicada droning",
+    "whale singing underwater", "dolphin clicking",
+    "wolf howling", "coyote yipping", "monkey chattering",
+    "elephant trumpeting", "lion roaring", "parrot squawking",
+    "snake hissing", "rattlesnake rattling", "crow cawing",
+    "seagull calling", "duck quacking", "goose honking",
+    # Tools & construction
+    "chainsaw", "hammer hitting nail", "saw cutting wood",
+    "drill", "sanding", "welding arc",
+    "rivet gun", "jackhammer", "bulldozer engine",
+    "cement mixer turning", "nail gun firing", "wrench tightening",
+    "sandblaster", "grinder spinning", "chisel on stone",
+    # Urban & environment
+    "traffic noise", "car alarm", "police siren",
+    "ambulance siren", "fire truck siren", "church bell tolling",
+    "clock tower chiming", "factory machinery", "construction site",
+    "market crowd", "playground children", "fountain splashing",
+    "flag flapping in wind", "skateboard on pavement", "shopping cart rolling",
+    # Electronic & digital
+    "computer startup sound", "notification ping", "dial-up modem",
+    "printer printing", "scanner scanning", "hard drive clicking",
+    "static white noise", "radio tuning between stations",
+    "video game sound effects", "cash register beeping",
+]
+
+
+# ============================================================================
+# Emotional/social scenarios (100 items)
+# ============================================================================
+
+EMOTIONAL_SCENARIOS = [
+    # Joy & happiness
+    "A child's face lighting up when they see a birthday cake with candles",
+    "Two old friends recognizing each other after years apart",
+    "A dog waiting patiently by the door, then leaping with joy when its owner arrives",
+    "The quiet satisfaction of finishing a difficult puzzle",
+    "The nervous excitement before opening a wrapped gift",
+    "A parent holding their newborn baby for the first time",
+    "A crowd erupting in cheers after a game-winning goal",
+    "A student opening an acceptance letter to their dream school",
+    "Children laughing together while splashing in puddles after rain",
+    "A grandmother smiling as she teaches her grandchild to bake cookies",
+    "The delight of discovering the first flower blooming in spring",
+    "A musician's joy when the audience gives a standing ovation",
+    "The thrill of riding a bicycle without training wheels for the first time",
+    # Sadness & loss
+    "The loneliness of an empty playground on a rainy day",
+    "An elderly person sitting alone on a park bench watching families play",
+    "A child waving goodbye as their best friend moves to another city",
+    "The last leaf falling from a tree at the end of autumn",
+    "A dog lying by the door of an owner who will not return",
+    "Rain streaking down a window while someone stares out in silence",
+    "An abandoned teddy bear left on a park bench",
+    "The quiet emptiness of a house after everyone has moved away",
+    "A wilted flower in a forgotten vase on a dusty windowsill",
+    "The fading echo of laughter in an empty school hallway",
+    # Fear & anxiety
+    "A child hearing a strange noise in a dark room at night",
+    "The tension of walking alone down an unfamiliar alley at dusk",
+    "A cat arching its back and hissing at something unseen",
+    "The moment of vertigo when looking down from a great height",
+    "A deer frozen in headlights, eyes wide with alarm",
+    "Thunder crashing close by while lights flicker during a storm",
+    "The nervousness of standing backstage before a big performance",
+    "A person's hands trembling before giving their first speech",
+    "The unsettling feeling of being watched in an empty room",
+    "A ship rocking violently in a sudden ocean storm",
+    # Surprise & wonder
+    "A person discovering a hidden waterfall deep in the forest",
+    "A child seeing the ocean for the very first time, mouth agape",
+    "Opening a door to find a room full of friends shouting surprise",
+    "Watching a shooting star streak across a clear night sky",
+    "A butterfly landing gently on someone's outstretched hand",
+    "The awe of standing inside a massive cathedral with light streaming through stained glass",
+    "Discovering a fossil embedded in a rock while hiking",
+    "A baby seeing snow falling for the first time, reaching out to catch flakes",
+    "Finding a four-leaf clover in a field of ordinary ones",
+    "An astronaut seeing Earth from space through a tiny window",
+    # Anger & frustration
+    "A child stomping their feet when told they cannot have a toy",
+    "A driver gripping the steering wheel in bumper-to-bumper traffic",
+    "Two siblings arguing over who gets the last slice of cake",
+    "A person crumpling up a failed drawing and starting over",
+    "The frustration of a key that will not fit into a stubborn lock",
+    "A chess player realizing they are about to lose the match",
+    "Someone discovering their carefully built sandcastle washed away by a wave",
+    "A hiker finding the trail blocked by a fallen tree",
+    "The exasperation of untangling a knotted pair of earphones",
+    "A painter accidentally knocking over an open jar of paint",
+    # Disgust & discomfort
+    "Stepping barefoot on something cold and slimy in the dark",
+    "The grimace of tasting extremely sour or bitter food",
+    "Finding a spider web stretched across a doorway at face height",
+    "The recoil from the smell of spoiled milk",
+    "A child's disgusted face when asked to eat vegetables they dislike",
+    # Trust & safety
+    "A small child reaching up to hold a parent's hand while crossing the street",
+    "A dog sleeping peacefully curled up against its owner's feet",
+    "A firefighter carrying a child to safety through smoke",
+    "A teacher patiently explaining a concept until a student understands",
+    "Two strangers helping each other carry a heavy box up stairs",
+    "A lifeguard watching over swimmers from a tall chair",
+    "A night light glowing softly in a child's bedroom",
+    "A mother bird shielding her chicks under her wings during rain",
+    # Anticipation & hope
+    "Seeds planted in spring soil, waiting for the first green sprout",
+    "A family setting up chairs and watching for fireworks to begin",
+    "A pregnant woman feeling the baby kick for the first time",
+    "Students counting down the final seconds before summer vacation",
+    "A traveler checking the departure board at an airport",
+    "An artist stepping back to look at a half-finished painting with fresh eyes",
+    "A fisherman watching the bobber, waiting for a bite",
+    "The smell of dinner cooking as children set the table",
+    # Empathy & compassion
+    "A child sharing their umbrella with a classmate in the rain",
+    "A stranger stopping to help someone who dropped their groceries",
+    "A nurse holding the hand of a nervous patient before surgery",
+    "Neighbors bringing food to a family going through a hard time",
+    "A person gently returning a baby bird to its nest",
+    # Pride & accomplishment
+    "The pride in a child's eyes when they ride a bicycle without training wheels",
+    "An athlete standing on the podium receiving a gold medal",
+    "A gardener admiring a garden they built from bare soil",
+    "A student presenting a science project they worked on for months",
+    "An elderly person finishing a marathon, crossing the line with arms raised",
+    # Nostalgia & bittersweet
+    "Finding a childhood photo tucked inside an old book",
+    "The scent of a grandparent's perfume bringing back memories",
+    "Walking through the halls of the school you graduated from years ago",
+    "Hearing a song on the radio that was playing during an important moment in your life",
+    "Looking at crayon drawings your children made when they were small",
+    # Gratitude & contentment
+    "Sitting by a campfire under the stars after a long day of hiking",
+    "The warmth of a cup of tea on a cold morning",
+    "A cat purring loudly in a sunbeam on a lazy afternoon",
+    "The feeling of clean sheets and a soft pillow at the end of a tiring day",
+    "Watching the sunset from a quiet hilltop with no one else around",
+]
+
+
+# ============================================================================
+# Abstract concepts (80 items — physics, math, logic, relationships)
+# ============================================================================
+
+ABSTRACT_CONCEPTS = [
+    # Physics & forces
+    "The passage of time shown by a melting candle",
+    "Gravity pulling a leaf from a tree to the ground",
+    "A pendulum swinging back and forth with decreasing amplitude",
+    "Light bending through a glass prism into a rainbow of colors",
+    "Sound waves rippling outward from a ringing bell",
+    "Heat rising from a hot road creating shimmering mirages",
+    "Magnetism pulling iron filings into curved patterns",
+    "Static electricity making hair stand on end",
+    "Friction stopping a sliding hockey puck on rough ice",
+    "Momentum carrying a rolling ball up a small hill",
+    "Centrifugal force pushing water to the edges of a spinning bucket",
+    "Buoyancy keeping a heavy ship floating on water",
+    "Pressure squeezing a balloon until it pops",
+    "Inertia keeping a passenger moving forward when a car stops suddenly",
+    "Resonance causing a bridge to vibrate when soldiers march in step",
+    # Symmetry & patterns
+    "Symmetry in a butterfly's wings — each side a mirror of the other",
+    "The spiral pattern of seeds in a sunflower following the Fibonacci sequence",
+    "Concentric ripples spreading outward from a stone dropped in still water",
+    "The fractal pattern of a fern where each frond copies the whole shape",
+    "Tessellation — hexagonal tiles fitting together with no gaps like a honeycomb",
+    "The branching pattern of lightning mirroring the branching of tree roots",
+    "Rotational symmetry in a snowflake with six identical arms",
+    "The golden ratio in the proportions of a nautilus shell",
+    # Cause & effect
+    "Cause and effect: a ball hits dominoes and they fall in sequence",
+    "A spark igniting a chain of firecrackers one after another",
+    "Rain filling a stream that feeds a river that reaches the ocean",
+    "A seed absorbing water and cracking open its shell to sprout",
+    "Wind pushing clouds together until they release rain",
+    "Erosion slowly carving a canyon over millions of years",
+    "A small crack in a dam growing until water breaks through",
+    "One person's smile making another person smile in return",
+    # Scale & proportion
+    "Scale: an ant next to an elephant, showing vast size difference",
+    "A grain of sand compared to the entire beach it sits on",
+    "The Earth as a tiny blue dot seen from the edge of the solar system",
+    "A single cell under a microscope compared to the whole organism",
+    "A second compared to a century — both are time, vastly different",
+    "A whisper compared to a thunderclap — both are sound, vastly different",
+    # Transparency & visibility
+    "Transparency: seeing fish through clear water",
+    "A glass window letting light through while blocking wind",
+    "Fog making distant objects fade into white nothingness",
+    "An X-ray revealing bones hidden beneath skin and muscle",
+    "Infrared vision showing heat signatures invisible to the naked eye",
+    # Reflection & light
+    "Reflection: a mountain mirrored in a still lake",
+    "A candle flame reflected in a dark window at night",
+    "A funhouse mirror distorting a person's reflection into strange shapes",
+    "The moon reflecting sunlight to illuminate the night",
+    "A kaleidoscope creating infinite reflections from a few colored pieces",
+    # Shadow & darkness
+    "Shadow: a tree's dark shape stretching across grass in evening light",
+    "A sundial using shadow to tell time as the sun moves",
+    "Shadows growing longer as the sun sets toward the horizon",
+    "Eclipse: the moon's shadow falling across the face of the Earth",
+    # Transformation & change
+    "A caterpillar transforming into a butterfly inside a chrysalis",
+    "Water changing from ice to liquid to steam with increasing heat",
+    "A piece of iron slowly turning to rust when exposed to rain",
+    "Wood becoming charcoal after burning in a low-oxygen fire",
+    "Dough rising as yeast produces gas inside it",
+    "A tadpole growing legs and losing its tail to become a frog",
+    "Day slowly transitioning to night through the colors of sunset",
+    # Logic & relationships
+    "Part and whole: a single brick within a massive wall",
+    "Sequence: the numbers 1, 1, 2, 3, 5, 8 — each is the sum of the previous two",
+    "Negation: an empty glass versus a full glass",
+    "Containment: a box inside a box inside a bigger box",
+    "Hierarchy: a single soldier, a squad leader, a general, a commander",
+    "Network: roads connecting villages that connect to cities that connect to countries",
+    "Balance: a seesaw with equal weights on both sides staying level",
+    "Entropy: a neat stack of blocks compared to the same blocks scattered randomly",
+    "Feedback loop: a microphone picking up its own speaker output, creating a screech",
+    # Abstract math
+    "Infinity: a hallway of mirrors reflecting into mirrors forever",
+    "Zero: an empty bowl that once held fruit",
+    "Probability: a coin spinning in the air before it lands heads or tails",
+    "Exponential growth: one grain of rice, then two, four, eight, filling a chessboard",
+    "Convergence: many streams merging into a single river",
+    "Divergence: a single path splitting into many trails in a forest",
+    "Periodicity: the regular rise and fall of ocean tides",
+    "Randomness: leaves falling from a tree, each taking a different unpredictable path",
+]
+
+
+# ============================================================================
+# Compositional scene generator
+# ============================================================================
+
+def generate_compositional_scenes(n=2000):
+    """Generate diverse scenes by combining elements. Deterministic (seed=42)."""
+    adjectives = [
+        "bright", "dark", "warm", "cold", "wet", "dry", "soft", "hard",
+        "rough", "smooth", "heavy", "light", "old", "new", "broken", "whole",
+        "quiet", "loud", "fast", "slow", "tall", "short", "wide", "narrow",
+        "shiny", "dusty", "frozen", "burning", "faded", "vivid", "tiny", "enormous",
+    ]
+
+    subjects = [
+        "cat", "dog", "bird", "child", "tree", "flower", "rock", "cloud",
+        "river", "mountain", "house", "car", "boat", "fish", "butterfly",
+        "spider", "ant", "leaf", "feather", "shell", "crystal", "flame",
+        "snail", "turtle", "rabbit", "fox", "owl", "frog", "mushroom", "lantern",
+        "kite", "balloon", "shadow", "raindrop", "snowflake", "candle", "key",
+    ]
+
+    actions = [
+        "resting on", "moving across", "floating above", "hiding behind",
+        "sitting next to", "falling from", "growing through", "reflecting in",
+        "leaning against", "hanging from", "swimming in", "flying over",
+        "crawling under", "climbing up", "sliding down", "rolling along",
+        "balanced on", "trapped inside", "emerging from", "circling around",
+        "drifting past", "perched atop", "buried beneath", "tangled with",
+    ]
+
+    locations = [
+        "a sunlit meadow", "a dark forest", "a sandy beach", "a snowy field",
+        "a dusty road", "a calm pond", "a rocky cliff", "a quiet room",
+        "a busy street", "a misty morning", "a starlit night", "a rainy afternoon",
+        "an open desert", "a mossy cave", "a frozen lake", "a blooming garden",
+        "a crumbling ruin", "a moonlit path", "a windswept hill", "a shady orchard",
+        "a steaming jungle", "a crystal-clear stream", "a cobblestone alley",
+        "a vast wheat field",
+    ]
+
+    rng = random.Random(42)
+    scenes = set()
+    attempts = 0
+    max_attempts = n * 10
+    while len(scenes) < n and attempts < max_attempts:
+        adj = rng.choice(adjectives)
+        subj = rng.choice(subjects)
+        act = rng.choice(actions)
+        loc = rng.choice(locations)
+        scene = f"A {adj} {subj} {act} {loc}"
+        scenes.add(scene)
+        attempts += 1
+    return list(sorted(scenes))
+
+
+# Pre-generate compositional scenes at module load time (deterministic)
+COMPOSITIONAL_SCENES = generate_compositional_scenes(2000)
+
+
 class MultimodalDataLoader:
     """Lazy-loading multimodal dataset manager.
 
@@ -228,6 +774,7 @@ class MultimodalDataLoader:
         self._cifar100 = None       # {label: [image_bytes, ...]}
         self._esc50 = None          # {label: [audio_float_array, ...]}
         self._speech_cmds = None    # {label: [audio_float_array, ...]}
+        self._expanded_pool = None  # [(description, modality), ...]
 
         # Track what's been loaded
         self._cifar100_ready = False
@@ -690,6 +1237,17 @@ class MultimodalDataLoader:
         else:
             lines.append("  Speech:     not loaded")
 
+        # Expanded text-description sources (always available, no download)
+        lines.append(f"  ImageNet:   {len(IMAGENET_CLASSES)} class labels (text only)")
+        lines.append(f"  Places365:  {len(PLACES_SCENES)} scene categories (text only)")
+        lines.append(f"  Kinetics:   {len(KINETICS_ACTIONS)} action classes (text only)")
+        lines.append(f"  AudioSet:   {len(AUDIOSET_SOUNDS)} sound classes (text only)")
+        lines.append(f"  Emotional:  {len(EMOTIONAL_SCENARIOS)} scenarios (text only)")
+        lines.append(f"  Abstract:   {len(ABSTRACT_CONCEPTS)} concepts (text only)")
+        lines.append(f"  Composite:  {len(COMPOSITIONAL_SCENES)} generated scenes (text)")
+        if self._expanded_pool is not None:
+            lines.append(f"  TOTAL expanded pool: {len(self._expanded_pool)} descriptions")
+
         return "\n".join(lines)
 
     def ensure_downloaded(self):
@@ -699,3 +1257,71 @@ class MultimodalDataLoader:
         self._load_esc50()
         self._load_speech_commands()
         print(f"  [Multimodal] {self.summary()}")
+
+    # ------------------------------------------------------------------
+    # Expanded text-description datasets (no downloads needed)
+    # ------------------------------------------------------------------
+
+    def _build_expanded_pool(self):
+        """Build the expanded stimulus pool from all text-description sources."""
+        if self._expanded_pool is not None:
+            return
+        pool = []
+
+        # ImageNet-1K labels
+        for cls, desc in IMAGENET_DESCRIPTIONS.items():
+            pool.append((desc, "visual"))
+
+        # Places365 scenes
+        for scene in PLACES_SCENES:
+            pool.append((f"The scene of {scene}", "spatial"))
+
+        # Kinetics actions
+        for action in KINETICS_ACTIONS:
+            pool.append((f"Someone {action}", "action"))
+
+        # AudioSet expanded sounds
+        for sound in AUDIOSET_SOUNDS:
+            pool.append((f"The sound of {sound}", "auditory"))
+
+        # Emotional/social scenarios
+        for scenario in EMOTIONAL_SCENARIOS:
+            pool.append((scenario, "emotional"))
+
+        # Abstract concepts
+        for concept in ABSTRACT_CONCEPTS:
+            pool.append((concept, "abstract"))
+
+        # Compositional scenes
+        for scene in COMPOSITIONAL_SCENES:
+            pool.append((scene, "compositional"))
+
+        # Also include original CIFAR-100 and ESC-50 descriptions
+        for label, desc in CIFAR100_DESCRIPTIONS.items():
+            pool.append((desc, "visual"))
+
+        for label, desc in ESC50_DESCRIPTIONS.items():
+            pool.append((desc, "auditory"))
+
+        for label, desc in SPEECH_DESCRIPTIONS.items():
+            pool.append((desc, "speech"))
+
+        self._expanded_pool = pool
+
+    def get_expanded_stimulus(self):
+        """Get a stimulus from the expanded dataset (10x larger than original).
+
+        Returns:
+            (description_text, modality_str) — e.g. ("A tench — ...", "visual")
+        """
+        self._build_expanded_pool()
+        return random.choice(self._expanded_pool)
+
+    def get_all_descriptions(self):
+        """Get all text descriptions from every source (for counting/embedding).
+
+        Returns:
+            list of (description, modality) tuples
+        """
+        self._build_expanded_pool()
+        return list(self._expanded_pool)
