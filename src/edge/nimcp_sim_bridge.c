@@ -45,10 +45,11 @@
 /** Default sensor noise level */
 #define STUB_DEFAULT_NOISE      0.01f
 
-/** Cart-pole angle threshold for "done" (radians) */
+/* Collision thresholds (hardcoded for cart-pole stub physics):
+ * - angle > PI/2 (90 degrees) = fallen over
+ * - cart position > 2.0m = off-track
+ * For real sim backends, these would come from the sim config. */
 #define STUB_ANGLE_THRESHOLD    (M_PI / 2.0f)
-
-/** Cart position threshold for collision */
 #define STUB_CART_THRESHOLD     2.0f
 
 /** Reward angle threshold (radians) — reward=1.0 if |angle| < this */

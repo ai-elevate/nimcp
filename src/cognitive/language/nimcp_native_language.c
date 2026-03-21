@@ -398,15 +398,20 @@ int nimcp_language_encode(nimcp_native_language_t* lang,
             buf[len++] = (char)tolower((unsigned char)*p++);
         buf[len] = '\0';
 
-        /* Look up token */
+        /* Look up token — O(n) linear scan.
+         * TODO: Replace with hash table for O(1) lookup when vocab
+         * grows large enough to impact encode() performance. */
+        uint32_t token_id = UINT32_MAX;
         for (uint32_t t = 0; t < lang->vocab.vocab_size; t++) {
-            if (strcmp(lang->vocab.tokens[t].text, buf) == 0 &&
-                lang->vocab.tokens[t].embedding) {
-                for (uint32_t i = 0; i < ed; i++)
-                    avg[i] += lang->vocab.tokens[t].embedding[i];
-                count++;
+            if (strcmp(lang->vocab.tokens[t].text, buf) == 0) {
+                token_id = t;
                 break;
             }
+        }
+        if (token_id != UINT32_MAX && lang->vocab.tokens[token_id].embedding) {
+            for (uint32_t i = 0; i < ed; i++)
+                avg[i] += lang->vocab.tokens[token_id].embedding[i];
+            count++;
         }
     }
 

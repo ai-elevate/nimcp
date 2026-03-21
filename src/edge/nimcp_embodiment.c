@@ -18,8 +18,20 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define LOG_MODULE "EMBODIMENT"
+
+/**
+ * @brief Safe float conversion from string, replacing atof().
+ * Returns 0.0f if conversion fails.
+ */
+static float _safe_strtof(const char* str) {
+    char* endptr;
+    float val = strtof(str, &endptr);
+    if (endptr == str) val = 0.0f; /* Conversion failed */
+    return val;
+}
 
 /* ============================================================================
  * Internal Structure
@@ -184,7 +196,7 @@ static int _parse_links(nimcp_embodiment_t* em, const char* xml) {
         if (mass_tag && mass_tag < link_end) {
             char mass_str[32] = {0};
             if (_extract_attr(mass_tag, link_end, "value", mass_str, sizeof(mass_str))) {
-                link->mass = (float)atof(mass_str);
+                link->mass = _safe_strtof(mass_str);
                 em->total_mass += link->mass;
             }
         }
@@ -205,10 +217,21 @@ static int _parse_links(nimcp_embodiment_t* em, const char* xml) {
         const char* inertia_tag = strstr(link_start, "<inertia");
         if (inertia_tag && inertia_tag < link_end) {
             char val[32];
-            const char* attrs[] = {"ixx", "ixy", "ixz", "ixy", "iyy", "iyz", "ixz", "iyz", "izz"};
-            for (int k = 0; k < 9; k++) {
-                if (_extract_attr(inertia_tag, link_end, attrs[k], val, sizeof(val))) {
-                    link->inertia[k] = (float)atof(val);
+            /* 3x3 symmetric inertia matrix (row-major):
+             * [0]=ixx [1]=ixy [2]=ixz
+             * [3]=ixy [4]=iyy [5]=iyz
+             * [6]=ixz [7]=iyz [8]=izz
+             * Map 6 unique URDF attrs to correct matrix indices */
+            const char* inertia_attrs[] = {"ixx", "ixy", "ixz", "iyy", "iyz", "izz"};
+            const int inertia_indices[] = {0, 1, 2, 4, 5, 8};
+            for (int k = 0; k < 6; k++) {
+                if (_extract_attr(inertia_tag, link_end, inertia_attrs[k], val, sizeof(val))) {
+                    float fval = _safe_strtof(val);
+                    link->inertia[inertia_indices[k]] = fval;
+                    /* Mirror symmetric entries */
+                    if (k == 1) link->inertia[3] = fval;  /* ixy → [1] and [3] */
+                    if (k == 2) link->inertia[6] = fval;  /* ixz → [2] and [6] */
+                    if (k == 4) link->inertia[7] = fval;  /* iyz → [5] and [7] */
                 }
             }
         }
@@ -286,13 +309,13 @@ static int _parse_joints(nimcp_embodiment_t* em, const char* xml) {
         if (limit_tag && limit_tag < joint_end) {
             char val[32];
             if (_extract_attr(limit_tag, joint_end, "lower", val, sizeof(val)))
-                jt->lower = (float)atof(val);
+                jt->lower = _safe_strtof(val);
             if (_extract_attr(limit_tag, joint_end, "upper", val, sizeof(val)))
-                jt->upper = (float)atof(val);
+                jt->upper = _safe_strtof(val);
             if (_extract_attr(limit_tag, joint_end, "velocity", val, sizeof(val)))
-                jt->max_velocity = (float)atof(val);
+                jt->max_velocity = _safe_strtof(val);
             if (_extract_attr(limit_tag, joint_end, "effort", val, sizeof(val)))
-                jt->max_effort = (float)atof(val);
+                jt->max_effort = _safe_strtof(val);
         }
 
         /* Dynamics */
@@ -300,9 +323,9 @@ static int _parse_joints(nimcp_embodiment_t* em, const char* xml) {
         if (dynamics && dynamics < joint_end) {
             char val[32];
             if (_extract_attr(dynamics, joint_end, "damping", val, sizeof(val)))
-                jt->damping = (float)atof(val);
+                jt->damping = _safe_strtof(val);
             if (_extract_attr(dynamics, joint_end, "friction", val, sizeof(val)))
-                jt->friction = (float)atof(val);
+                jt->friction = _safe_strtof(val);
         }
 
         /* Count actuated joints */

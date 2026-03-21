@@ -147,6 +147,14 @@ int nimcp_inner_speech_refine(nimcp_inner_speech_t* handle,
         return -1;
     }
 
+    /* Early exit if no language system — pass through unchanged */
+    if (!handle->language) {
+        LOG_DEBUG("[%s] No language system attached, pass-through", LOG_MODULE);
+        memcpy(refined_output, brain_output, output_dim * sizeof(float));
+        refined_text[0] = '\0';
+        return 0;
+    }
+
     /* Seed iteration 0 with original brain output */
     memcpy(handle->iter_buffers[0], brain_output, output_dim * sizeof(float));
     handle->last_iterations = 0;
@@ -160,19 +168,11 @@ int nimcp_inner_speech_refine(nimcp_inner_speech_t* handle,
         char* text_buf = handle->iter_texts[iter];
 
         /* Step 1: Generate text from current embedding */
-        if (handle->language) {
-            int gen_ret = nimcp_language_generate(handle->language,
-                current, output_dim, text_buf, INNER_SPEECH_MAX_TEXT);
-            if (gen_ret != 0) {
-                LOG_WARN("[%s] Generate failed at iter %u, using previous", LOG_MODULE, iter);
-                break;
-            }
-        } else {
-            /* No language system — cannot do inner speech, just pass through */
-            LOG_DEBUG("[%s] No language system attached, pass-through", LOG_MODULE);
-            memcpy(refined_output, brain_output, output_dim * sizeof(float));
-            refined_text[0] = '\0';
-            return 0;
+        int gen_ret = nimcp_language_generate(handle->language,
+            current, output_dim, text_buf, INNER_SPEECH_MAX_TEXT);
+        if (gen_ret != 0) {
+            LOG_WARN("[%s] Generate failed at iter %u, using previous", LOG_MODULE, iter);
+            break;
         }
 
         /* Step 2: Encode text back to embedding */

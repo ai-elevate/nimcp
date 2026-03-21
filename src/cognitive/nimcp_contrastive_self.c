@@ -109,6 +109,12 @@ int nimcp_contrastive_self_generate_negatives(nimcp_contrastive_self_t* cs,
             /* Check input similarity (want similar inputs with different outputs) */
             float input_sim = _cosine_sim(anchor->input, candidate->input,
                                            fd < anchor->input_dim ? fd : anchor->input_dim);
+
+            /* Verify outputs are actually different (not just different labels) */
+            float output_sim = _cosine_sim(anchor->output, candidate->output,
+                                            td < anchor->output_dim ? td : anchor->output_dim);
+            if (output_sim > 0.95f) continue; /* Too similar — not a useful negative */
+
             if (input_sim > 0.5f) {
                 /* Hard negative found — inputs are similar but labels differ */
                 uint32_t offset_f = generated * fd;

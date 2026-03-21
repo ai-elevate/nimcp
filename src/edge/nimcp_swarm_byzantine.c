@@ -78,9 +78,12 @@ int nimcp_byzantine_check_gradient(nimcp_peer_entry_t* peer,
 
     float norm = sqrtf(sum_sq);
 
-    /* First submission — initialize EMA, no deviation check */
-    if (peer->gradient_norm_ema == 0.0f && peer->total_syncs == 0) {
+    /* First submission — initialize EMA, no deviation check.
+     * Use total_syncs alone; checking gradient_norm_ema == 0.0f fails
+     * if the first gradient legitimately has norm 0. */
+    if (peer->total_syncs == 0) {
         peer->gradient_norm_ema = norm;
+        peer->total_syncs = 1;
         return 0;
     }
 

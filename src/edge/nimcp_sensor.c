@@ -94,7 +94,11 @@ static int slot_copy_reading(sensor_slot_t* slot,
         slot->data_buffers[back] = new_buf;
         /* Also grow the other buffer to match so future swaps are safe */
         float* other_buf = (float*)nimcp_calloc(reading->data_count, sizeof(float));
-        if (other_buf) {
+        if (!other_buf) {
+            LOG_WARN(SENSOR_HUB_LOG_PREFIX "Buffer allocation failed, "
+                     "preserving existing active buffer data");
+            /* Don't free the old buffer — keep working with what we have */
+        } else {
             /* Preserve existing data in active buffer */
             nimcp_sensor_reading_t* active = &slot->readings[slot->active_idx];
             if (slot->data_buffers[slot->active_idx] && active->data_count > 0) {
@@ -492,6 +496,9 @@ int nimcp_sensor_compose_feature_vector(nimcp_sensor_hub_t* hub,
 
         /* Check remaining space */
         if (offset + r->data_count > max_features) {
+            LOG_WARN(SENSOR_HUB_LOG_PREFIX "Feature vector truncated at sensor %u "
+                     "(offset=%u, need=%u, max=%u)",
+                     slot->descriptor.sensor_id, offset, r->data_count, max_features);
             break;
         }
 

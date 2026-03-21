@@ -146,6 +146,10 @@ static int   _discover_master(nimcp_swarm_edge_runtime_t* rt);
  *
  * Wire format: type(4) + sender_id(4) + payload_size(4) + payload(N)
  *
+ * NOTE: Wire format assumes little-endian byte order.
+ * This is correct for x86/x64 and ARM (default LE mode).
+ * Big-endian platforms would need htonl/ntohl conversion.
+ *
  * @return 0 on success, -1 on error or disconnect.
  */
 static int _read_message(int fd,
@@ -194,6 +198,10 @@ static int _read_message(int fd,
 
 /**
  * @brief Send a framed message to the master via TCP.
+ *
+ * NOTE: Wire format assumes little-endian byte order.
+ * This is correct for x86/x64 and ARM (default LE mode).
+ * Big-endian platforms would need htonl/ntohl conversion.
  */
 static int _send_message(int fd, nimcp_swarm_msg_type_t type,
                           uint32_t sender_id,
@@ -659,7 +667,7 @@ int nimcp_swarm_edge_start(nimcp_swarm_edge_runtime_t* rt)
 
     /* Wait for thread to signal started */
     while (!rt->started && rt->running) {
-        /* Spin briefly */
+        usleep(1000); /* 1ms — avoid busy-wait */
     }
 
     LOG_INFO("[SWARM_EDGE_RUNTIME] Edge runtime started (connected=%s)",

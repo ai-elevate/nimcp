@@ -323,7 +323,7 @@ int nimcp_self_curriculum_generate(
 
             /* Imagination: blend output with noise over several steps */
             for (uint32_t step = 0; step < handle->config.imagination_steps; step++) {
-                float noise_scale = 0.1f / (float)(step + 1);  /* decreasing noise */
+                float noise_scale = 0.1f * expf(-(float)step);  /* exponential noise decay */
                 uint32_t step_seed = seed ^ ((step + 1) * 0xDEADBEEFu);
                 for (uint32_t f = 0; f < NIMCP_SC_TARGET_DIM; f++) {
                     float noise = (pseudo_rand(step_seed + f) * 2.0f - 1.0f) * noise_scale;

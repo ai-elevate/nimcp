@@ -425,7 +425,10 @@ int nimcp_swarm_discovery_listen(nimcp_discovered_peer_t* peers, uint32_t max_pe
     memset(&mreq, 0, sizeof(mreq));
     inet_pton(AF_INET, multicast_group, &mreq.imr_multiaddr);
     mreq.imr_interface.s_addr = INADDR_ANY;
-    setsockopt(fd, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq));
+    if (setsockopt(fd, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq)) != 0) {
+        LOG_WARN("[edge/discovery] Failed to leave multicast group: %s",
+                 strerror(errno));
+    }
     close(fd);
 
     *out_count = peer_count;

@@ -418,7 +418,7 @@ int nimcp_swarm_master_start(nimcp_swarm_master_t* master)
 
     /* Wait for thread to signal started */
     while (!master->started && master->running) {
-        /* Spin briefly — thread sets started=true almost immediately */
+        usleep(1000); /* 1ms — avoid busy-wait */
     }
 
     LOG_INFO("[SWARM_MASTER] Master started: listening on port %u",
@@ -598,6 +598,10 @@ static int _read_peer_message(int fd,
  *
  * Uses the same wire format as nimcp_swarm_comm.c:
  *   type(4) + sender_id(4) + payload_size(4) + payload(N)
+ *
+ * NOTE: Wire format assumes little-endian byte order.
+ * This is correct for x86/x64 and ARM (default LE mode).
+ * Big-endian platforms would need htonl/ntohl conversion.
  */
 static int _send_to_peer(int fd, nimcp_swarm_msg_type_t type,
                           uint32_t sender_id,
@@ -701,9 +705,11 @@ static void _handle_peer_message(nimcp_swarm_master_t* master,
                 }
             }
 
-            /* Store latest telemetry on peer entry */
-            memcpy(&peer->last_telemetry, &telemetry,
-                   sizeof(nimcp_device_telemetry_t));
+            /* Store latest telemetry only if not anomalous */
+            if (!anomalous) {
+                memcpy(&peer->last_telemetry, &telemetry,
+                       sizeof(nimcp_device_telemetry_t));
+            }
         }
         break;
 
@@ -822,7 +828,9 @@ static void _complete_sync_round(nimcp_swarm_master_t* master)
     uint32_t push_size = sizeof(uint32_t) + num_params * sizeof(float);
     uint8_t* push_buf = (uint8_t*)nimcp_malloc(push_size);
 
-    if (push_buf) {
+    if (!push_buf) {
+        LOG_ERROR("[SWARM_MASTER] Failed to allocate sync push buffer (%u bytes)", push_size);
+    } else {
         memcpy(push_buf, &num_params, sizeof(uint32_t));
         memcpy(push_buf + sizeof(uint32_t),
                master->current_round->aggregated_gradients,
@@ -1028,6 +1036,16 @@ static void* _master_event_loop(void* arg)
             nimcp_peer_registry_sweep(master->registry,
                                        master->config.heartbeat_timeout_ms,
                                        master->config.dead_timeout_ms);
+
+            /* Remove dead peers after sweep */
+            for (uint32_t i = 0; i < master->registry->count; ) {
+                if (master->registry->peers[i].state == NIMCP_PEER_DEAD) {
+                    nimcp_peer_registry_remove(master->registry,
+                        master->registry->peers[i].device_id);
+                } else {
+                    i++;
+                }
+            }
         }
 
         /* Discovery announcement */
