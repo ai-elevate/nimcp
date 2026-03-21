@@ -3603,6 +3603,44 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+    /* === COGNITIVE ENHANCEMENTS: Post-inference processing === */
+
+    /* Output attention: reweight output based on task context */
+    if (brain->output_attention && decision && decision->output_vector) {
+        extern int nimcp_oa_attend(void*, const float*, uint32_t, const char*, float*);
+        /* Use cached label from last training step as task context */
+        nimcp_oa_attend(brain->output_attention,
+            decision->output_vector, decision->output_size,
+            "inference", decision->output_vector);
+    }
+
+    /* Analogical transfer: blend with similar past solutions */
+    if (brain->analogical_transfer && decision && decision->output_vector && features) {
+        extern int nimcp_analogical_apply_transfer(void*, const float*, uint32_t,
+            const float*, uint32_t, float*);
+        nimcp_analogical_apply_transfer(brain->analogical_transfer,
+            features, num_features,
+            decision->output_vector, decision->output_size,
+            decision->output_vector);
+    }
+
+    /* Multi-timescale memory: push current inference to immediate buffer */
+    if (brain->multiscale_memory && decision && decision->output_vector) {
+        extern void nimcp_multiscale_push(void*, const float*, uint32_t, const char*, float);
+        nimcp_multiscale_push(brain->multiscale_memory,
+            decision->output_vector, decision->output_size,
+            "inference", decision->confidence);
+    }
+
+    /* Inner speech: refine output through self-talk loop */
+    if (brain->inner_speech && brain->native_language_enabled &&
+        decision && decision->output_vector && decision->output_size > 0) {
+        extern int nimcp_inner_speech_refine(void*, float*, uint32_t, float*, char*, uint32_t);
+        nimcp_inner_speech_refine(brain->inner_speech,
+            decision->output_vector, decision->output_size,
+            decision->output_vector, NULL, 0);
+    }
+
     // Cache decision for future reuse (thread-safe with mutex protection)
     // W7-8 (C-INF-M3): Log warning on mutex lock failure instead of silently
     // skipping cache update. A failed lock indicates contention or corruption

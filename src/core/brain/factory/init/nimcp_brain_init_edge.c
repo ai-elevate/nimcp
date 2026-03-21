@@ -153,6 +153,17 @@ bool nimcp_brain_factory_init_edge_subsystem(brain_t brain) {
     brain->brain_tokenizer = NULL;
     brain->native_language_enabled = false;
     brain->brain_tokenizer_enabled = false;
+    brain->inner_speech = NULL;
+    brain->episodic_replay = NULL;
+    brain->world_model_trainer = NULL;
+    brain->output_attention = NULL;
+    brain->wm_scratchpad = NULL;
+    brain->analogical_transfer = NULL;
+    brain->multiscale_memory = NULL;
+    brain->emotional_learning = NULL;
+    brain->contrastive_self = NULL;
+    brain->self_curriculum = NULL;
+    brain->dynamic_arch = NULL;
 
     /* === SENSOR HUB: Unified sensor interface === */
     if (brain->config.enable_sensor_hub) {
@@ -287,6 +298,45 @@ bool nimcp_brain_factory_init_edge_subsystem(brain_t brain) {
             LOG_MODULE_INFO(LOG_MODULE, "Tokenizer created (initial vocab=%u)",
                             nimcp_tokenizer_get_vocab_size(brain->brain_tokenizer));
         }
+    }
+
+    /* === COGNITIVE ENHANCEMENTS (always created, lightweight) === */
+    {
+        extern void* nimcp_episodic_replay_create(const void*);
+        extern void* nimcp_emotional_learning_create(const void*);
+        extern void* nimcp_contrastive_self_create(const void*);
+        extern void* nimcp_self_curriculum_create(const void*);
+        extern void* nimcp_dynamic_arch_create(const void*);
+        extern void* nimcp_wmt_create(const void*);
+        extern void* nimcp_oa_create(const void*);
+        extern void* nimcp_wms_create(const void*);
+        extern void* nimcp_analogical_create(const void*);
+        extern void* nimcp_multiscale_create(const void*);
+
+        brain->episodic_replay = nimcp_episodic_replay_create(NULL);
+        brain->emotional_learning = nimcp_emotional_learning_create(NULL);
+        brain->contrastive_self = nimcp_contrastive_self_create(NULL);
+        brain->self_curriculum = nimcp_self_curriculum_create(NULL);
+        brain->dynamic_arch = nimcp_dynamic_arch_create(NULL);
+        brain->world_model_trainer = nimcp_wmt_create(NULL);
+        brain->output_attention = nimcp_oa_create(NULL);
+        brain->wm_scratchpad = nimcp_wms_create(NULL);
+        brain->analogical_transfer = nimcp_analogical_create(NULL);
+        brain->multiscale_memory = nimcp_multiscale_create(NULL);
+
+        /* Inner speech requires native language — create only if language enabled */
+        if (brain->native_language_enabled && brain->native_language) {
+            extern void* nimcp_inner_speech_create(const void*);
+            brain->inner_speech = nimcp_inner_speech_create(NULL);
+        }
+
+        int created = (brain->episodic_replay ? 1 : 0) + (brain->emotional_learning ? 1 : 0) +
+                      (brain->contrastive_self ? 1 : 0) + (brain->self_curriculum ? 1 : 0) +
+                      (brain->dynamic_arch ? 1 : 0) + (brain->world_model_trainer ? 1 : 0) +
+                      (brain->output_attention ? 1 : 0) + (brain->wm_scratchpad ? 1 : 0) +
+                      (brain->analogical_transfer ? 1 : 0) + (brain->multiscale_memory ? 1 : 0) +
+                      (brain->inner_speech ? 1 : 0);
+        LOG_MODULE_INFO(LOG_MODULE, "Cognitive enhancements: %d/11 created", created);
     }
 
     return true;  /* Non-fatal — individual subsystem failures don't prevent brain creation */

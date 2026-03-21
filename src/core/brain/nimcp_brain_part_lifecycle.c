@@ -942,6 +942,31 @@ void brain_destroy(brain_t brain)
             brain->brain_tokenizer = NULL;
             brain->brain_tokenizer_enabled = false;
         }
+        /* Cognitive enhancements */
+        {
+            extern void nimcp_inner_speech_destroy(void*);
+            extern void nimcp_episodic_replay_destroy(void*);
+            extern void nimcp_wmt_destroy(void*);
+            extern void nimcp_oa_destroy(void*);
+            extern void nimcp_wms_destroy(void*);
+            extern void nimcp_analogical_destroy(void*);
+            extern void nimcp_multiscale_destroy(void*);
+            extern void nimcp_emotional_learning_destroy(void*);
+            extern void nimcp_contrastive_self_destroy(void*);
+            extern void nimcp_self_curriculum_destroy(void*);
+            extern void nimcp_dynamic_arch_destroy(void*);
+            if (brain->inner_speech) { nimcp_inner_speech_destroy(brain->inner_speech); brain->inner_speech = NULL; }
+            if (brain->episodic_replay) { nimcp_episodic_replay_destroy(brain->episodic_replay); brain->episodic_replay = NULL; }
+            if (brain->world_model_trainer) { nimcp_wmt_destroy(brain->world_model_trainer); brain->world_model_trainer = NULL; }
+            if (brain->output_attention) { nimcp_oa_destroy(brain->output_attention); brain->output_attention = NULL; }
+            if (brain->wm_scratchpad) { nimcp_wms_destroy(brain->wm_scratchpad); brain->wm_scratchpad = NULL; }
+            if (brain->analogical_transfer) { nimcp_analogical_destroy(brain->analogical_transfer); brain->analogical_transfer = NULL; }
+            if (brain->multiscale_memory) { nimcp_multiscale_destroy(brain->multiscale_memory); brain->multiscale_memory = NULL; }
+            if (brain->emotional_learning) { nimcp_emotional_learning_destroy(brain->emotional_learning); brain->emotional_learning = NULL; }
+            if (brain->contrastive_self) { nimcp_contrastive_self_destroy(brain->contrastive_self); brain->contrastive_self = NULL; }
+            if (brain->self_curriculum) { nimcp_self_curriculum_destroy(brain->self_curriculum); brain->self_curriculum = NULL; }
+            if (brain->dynamic_arch) { nimcp_dynamic_arch_destroy(brain->dynamic_arch); brain->dynamic_arch = NULL; }
+        }
     }
 
     LOG_MODULE_DEBUG("BRAIN", "Destroy phase 4 (higher cognitive) done");

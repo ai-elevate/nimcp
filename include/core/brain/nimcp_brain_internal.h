@@ -2209,6 +2209,19 @@ struct brain_struct {
     void* brain_tokenizer;                       // nimcp_tokenizer_t* (brain-native, distinct from generation tokenizer)
     bool native_language_enabled;
     bool brain_tokenizer_enabled;
+
+    // === COGNITIVE ENHANCEMENTS ===
+    void* inner_speech;                          // nimcp_inner_speech_t*
+    void* episodic_replay;                       // nimcp_episodic_replay_t*
+    void* world_model_trainer;                   // nimcp_wmt_t*
+    void* output_attention;                      // nimcp_oa_t*
+    void* wm_scratchpad;                         // nimcp_wms_t*
+    void* analogical_transfer;                   // nimcp_analogical_t*
+    void* multiscale_memory;                     // nimcp_multiscale_t*
+    void* emotional_learning;                    // nimcp_emotional_learning_t*
+    void* contrastive_self;                      // nimcp_contrastive_self_t*
+    void* self_curriculum;                       // nimcp_self_curriculum_t*
+    void* dynamic_arch;                          // nimcp_dynamic_arch_t*
 };
 
 //=============================================================================

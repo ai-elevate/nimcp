@@ -2172,6 +2172,43 @@ sequential_training:
                                           features, num_features);
     }
 
+    /* === COGNITIVE ENHANCEMENTS: Per-step training hooks === */
+
+    /* Episodic replay: record experience for later consolidation */
+    if (brain->episodic_replay) {
+        extern void nimcp_episodic_replay_record(void*, const float*, uint32_t,
+            const float*, uint32_t, const char*, float, float);
+        nimcp_episodic_replay_record(brain->episodic_replay,
+            features, num_features, target, target_size, label, loss, 0.0f);
+    }
+
+    /* Emotional learning: modulate effective LR for next step */
+    if (brain->emotional_learning) {
+        extern void nimcp_emotional_learning_record(void*, float, float);
+        nimcp_emotional_learning_record(brain->emotional_learning, loss, 0.0f);
+    }
+
+    /* Self-curriculum: track uncertainty per domain */
+    if (brain->self_curriculum && label) {
+        extern void nimcp_self_curriculum_update_uncertainty(void*, const char*, float);
+        nimcp_self_curriculum_update_uncertainty(brain->self_curriculum, label, loss);
+    }
+
+    /* Multi-timescale memory: push to immediate buffer */
+    if (brain->multiscale_memory && features && num_features > 0) {
+        extern void nimcp_multiscale_push(void*, const float*, uint32_t, const char*, float);
+        nimcp_multiscale_push(brain->multiscale_memory, features, num_features,
+                              label ? label : "", loss);
+    }
+
+    /* Output attention: train task-specific attention weights */
+    if (brain->output_attention && label) {
+        extern int nimcp_oa_train_attention(void*, const float*, uint32_t,
+                                             const char*, const float*, uint32_t, float);
+        nimcp_oa_train_attention(brain->output_attention,
+            features, num_features, label, target, target_size, 0.001f);
+    }
+
     clear_cache(brain);
     if (owns_blended) nimcp_free(blended_features);
     return loss;
