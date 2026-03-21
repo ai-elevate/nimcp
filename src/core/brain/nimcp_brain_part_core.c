@@ -3586,6 +3586,23 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+    /* === NATIVE LANGUAGE: Generate text from brain output ===
+     * If native language is enabled, produce a text representation of the
+     * brain's neural response. This is the brain speaking in its own words. */
+    if (brain->native_language_enabled && brain->native_language && decision &&
+        decision->output_vector && decision->output_size > 0) {
+        extern int nimcp_language_generate(void*, const float*, uint32_t,
+                                            char*, uint32_t);
+        char native_text[512];
+        int text_len = nimcp_language_generate(brain->native_language,
+            decision->output_vector, decision->output_size,
+            native_text, sizeof(native_text));
+        if (text_len > 0) {
+            /* Store in decision metadata if field exists, otherwise log */
+            (void)native_text; /* Available for caller via future API */
+        }
+    }
+
     // Cache decision for future reuse (thread-safe with mutex protection)
     // W7-8 (C-INF-M3): Log warning on mutex lock failure instead of silently
     // skipping cache update. A failed lock indicates contention or corruption

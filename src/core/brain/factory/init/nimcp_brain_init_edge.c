@@ -34,6 +34,8 @@
 #include "edge/nimcp_dji_bridge.h"
 #include "edge/nimcp_msp_bridge.h"
 #include "edge/nimcp_parrot_bridge.h"
+#include "cognitive/language/nimcp_native_language.h"
+#include "cognitive/language/nimcp_tokenizer.h"
 #include "portia/nimcp_portia_swarm_bridge.h"
 #include "swarm/nimcp_swarm_dragonfly_bridge.h"
 #include "portia/nimcp_portia.h"
@@ -146,6 +148,11 @@ bool nimcp_brain_factory_init_edge_subsystem(brain_t brain) {
     brain->dji_bridge = NULL;
     brain->msp_bridge = NULL;
     brain->parrot_bridge = NULL;
+    brain->sensorimotor = NULL;
+    brain->native_language = NULL;
+    brain->brain_tokenizer = NULL;
+    brain->native_language_enabled = false;
+    brain->brain_tokenizer_enabled = false;
 
     /* === SENSOR HUB: Unified sensor interface === */
     if (brain->config.enable_sensor_hub) {
@@ -257,6 +264,28 @@ bool nimcp_brain_factory_init_edge_subsystem(brain_t brain) {
             LOG_MODULE_INFO(LOG_MODULE, "Parrot bridge created");
             if (brain->sensor_hub_enabled)
                 _register_drone_sensors(brain->sensor_hub, "parrot");
+        }
+    }
+
+    /* === NATIVE LANGUAGE: Brain-native text generation === */
+    if (brain->config.enable_native_language) {
+        nimcp_language_config_t lang_cfg = nimcp_language_config_default();
+        brain->native_language = nimcp_native_language_create(&lang_cfg);
+        brain->native_language_enabled = (brain->native_language != NULL);
+        if (brain->native_language_enabled) {
+            LOG_MODULE_INFO(LOG_MODULE, "Native language system created (vocab seed=%u)",
+                            nimcp_language_get_vocab_size(brain->native_language));
+        }
+    }
+
+    /* === TOKENIZER: Brain-native vocabulary === */
+    if (brain->config.enable_brain_tokenizer) {
+        nimcp_tokenizer_config_t tok_cfg = nimcp_tokenizer_config_default();
+        brain->brain_tokenizer = nimcp_tokenizer_create(&tok_cfg);
+        brain->brain_tokenizer_enabled = (brain->brain_tokenizer != NULL);
+        if (brain->brain_tokenizer_enabled) {
+            LOG_MODULE_INFO(LOG_MODULE, "Tokenizer created (initial vocab=%u)",
+                            nimcp_tokenizer_get_vocab_size(brain->brain_tokenizer));
         }
     }
 

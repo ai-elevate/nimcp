@@ -2,8 +2,8 @@
  * @file nimcp_tokenizer.h
  * @brief Brain-native tokenizer — learns vocabulary from neural activation patterns
  */
-#ifndef NIMCP_TOKENIZER_H
-#define NIMCP_TOKENIZER_H
+#ifndef NIMCP_BRAIN_TOKENIZER_H
+#define NIMCP_BRAIN_TOKENIZER_H
 
 #include <stdint.h>
 #include <stdbool.h>

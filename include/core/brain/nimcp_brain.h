@@ -1931,6 +1931,8 @@ typedef struct {
     bool enable_dji_bridge;                       /**< Enable DJI OSDK bridge for DJI Matrice FC (default: false) */
     bool enable_msp_bridge;                       /**< Enable MSP bridge for Betaflight/iNav FC (default: false) */
     bool enable_parrot_bridge;                    /**< Enable Parrot Olympe bridge for ANAFI drone (default: false) */
+    bool enable_native_language;                  /**< Enable brain-native language production (default: false) */
+    bool enable_brain_tokenizer;                   /**< Enable brain-native tokenizer (default: false) */
 } brain_config_t;
 
 /**

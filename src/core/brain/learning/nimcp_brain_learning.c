@@ -2156,6 +2156,22 @@ sequential_training:
         }
     }
 
+    /* === NATIVE LANGUAGE: Train language mapping every step === */
+    if (brain->native_language_enabled && brain->native_language && label) {
+        extern int nimcp_language_train_step(void*, const float*, uint32_t,
+                                              const char*, float);
+        nimcp_language_train_step(brain->native_language,
+                                  features, num_features, label, 0.0001f);
+    }
+
+    /* === TOKENIZER: Learn vocabulary from training labels === */
+    if (brain->brain_tokenizer_enabled && brain->brain_tokenizer && label) {
+        extern int nimcp_tokenizer_learn_from_brain(void*, const char*,
+                                                      const float*, uint32_t);
+        nimcp_tokenizer_learn_from_brain(brain->brain_tokenizer, label,
+                                          features, num_features);
+    }
+
     clear_cache(brain);
     if (owns_blended) nimcp_free(blended_features);
     return loss;

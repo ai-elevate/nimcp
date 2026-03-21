@@ -924,6 +924,24 @@ void brain_destroy(brain_t brain)
             nimcp_parrot_bridge_destroy(brain->parrot_bridge);
             brain->parrot_bridge = NULL;
         }
+        /* Sensorimotor + Language */
+        if (brain->sensorimotor) {
+            extern void nimcp_sensorimotor_destroy(void*);
+            nimcp_sensorimotor_destroy(brain->sensorimotor);
+            brain->sensorimotor = NULL;
+        }
+        if (brain->native_language) {
+            extern void nimcp_native_language_destroy(void*);
+            nimcp_native_language_destroy(brain->native_language);
+            brain->native_language = NULL;
+            brain->native_language_enabled = false;
+        }
+        if (brain->brain_tokenizer) {
+            extern void nimcp_tokenizer_destroy(void*);
+            nimcp_tokenizer_destroy(brain->brain_tokenizer);
+            brain->brain_tokenizer = NULL;
+            brain->brain_tokenizer_enabled = false;
+        }
     }
 
     LOG_MODULE_DEBUG("BRAIN", "Destroy phase 4 (higher cognitive) done");

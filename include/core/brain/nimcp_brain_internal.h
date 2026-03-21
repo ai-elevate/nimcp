@@ -2202,6 +2202,13 @@ struct brain_struct {
     void* dji_bridge;                            // nimcp_dji_bridge_t*
     void* msp_bridge;                            // nimcp_msp_bridge_t*
     void* parrot_bridge;                         // nimcp_parrot_bridge_t*
+
+    // === SENSORIMOTOR + LANGUAGE ===
+    void* sensorimotor;                          // nimcp_sensorimotor_t*
+    void* native_language;                       // nimcp_native_language_t*
+    void* brain_tokenizer;                       // nimcp_tokenizer_t* (brain-native, distinct from generation tokenizer)
+    bool native_language_enabled;
+    bool brain_tokenizer_enabled;
 };
 
 //=============================================================================
