@@ -8564,6 +8564,54 @@ __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c.s
 .PHONY : __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c.s
 
+__/cognitive/language/nimcp_native_language.o: __/cognitive/language/nimcp_native_language.c.o
+.PHONY : __/cognitive/language/nimcp_native_language.o
+
+# target to build an object file
+__/cognitive/language/nimcp_native_language.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_native_language.c.o
+.PHONY : __/cognitive/language/nimcp_native_language.c.o
+
+__/cognitive/language/nimcp_native_language.i: __/cognitive/language/nimcp_native_language.c.i
+.PHONY : __/cognitive/language/nimcp_native_language.i
+
+# target to preprocess a source file
+__/cognitive/language/nimcp_native_language.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_native_language.c.i
+.PHONY : __/cognitive/language/nimcp_native_language.c.i
+
+__/cognitive/language/nimcp_native_language.s: __/cognitive/language/nimcp_native_language.c.s
+.PHONY : __/cognitive/language/nimcp_native_language.s
+
+# target to generate assembly for a file
+__/cognitive/language/nimcp_native_language.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_native_language.c.s
+.PHONY : __/cognitive/language/nimcp_native_language.c.s
+
+__/cognitive/language/nimcp_tokenizer.o: __/cognitive/language/nimcp_tokenizer.c.o
+.PHONY : __/cognitive/language/nimcp_tokenizer.o
+
+# target to build an object file
+__/cognitive/language/nimcp_tokenizer.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_tokenizer.c.o
+.PHONY : __/cognitive/language/nimcp_tokenizer.c.o
+
+__/cognitive/language/nimcp_tokenizer.i: __/cognitive/language/nimcp_tokenizer.c.i
+.PHONY : __/cognitive/language/nimcp_tokenizer.i
+
+# target to preprocess a source file
+__/cognitive/language/nimcp_tokenizer.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_tokenizer.c.i
+.PHONY : __/cognitive/language/nimcp_tokenizer.c.i
+
+__/cognitive/language/nimcp_tokenizer.s: __/cognitive/language/nimcp_tokenizer.c.s
+.PHONY : __/cognitive/language/nimcp_tokenizer.s
+
+# target to generate assembly for a file
+__/cognitive/language/nimcp_tokenizer.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_tokenizer.c.s
+.PHONY : __/cognitive/language/nimcp_tokenizer.c.s
+
 __/cognitive/logic/nimcp_audio_logic_bridge.o: __/cognitive/logic/nimcp_audio_logic_bridge.c.o
 .PHONY : __/cognitive/logic/nimcp_audio_logic_bridge.o
 
@@ -31604,6 +31652,30 @@ __/edge/nimcp_sensor.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_sensor.c.s
 .PHONY : __/edge/nimcp_sensor.c.s
 
+__/edge/nimcp_sensorimotor.o: __/edge/nimcp_sensorimotor.c.o
+.PHONY : __/edge/nimcp_sensorimotor.o
+
+# target to build an object file
+__/edge/nimcp_sensorimotor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_sensorimotor.c.o
+.PHONY : __/edge/nimcp_sensorimotor.c.o
+
+__/edge/nimcp_sensorimotor.i: __/edge/nimcp_sensorimotor.c.i
+.PHONY : __/edge/nimcp_sensorimotor.i
+
+# target to preprocess a source file
+__/edge/nimcp_sensorimotor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_sensorimotor.c.i
+.PHONY : __/edge/nimcp_sensorimotor.c.i
+
+__/edge/nimcp_sensorimotor.s: __/edge/nimcp_sensorimotor.c.s
+.PHONY : __/edge/nimcp_sensorimotor.s
+
+# target to generate assembly for a file
+__/edge/nimcp_sensorimotor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_sensorimotor.c.s
+.PHONY : __/edge/nimcp_sensorimotor.c.s
+
 __/edge/nimcp_sim_bridge.o: __/edge/nimcp_sim_bridge.c.o
 .PHONY : __/edge/nimcp_sim_bridge.o
 
@@ -54601,6 +54673,12 @@ help:
 	@echo "... __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.o"
 	@echo "... __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.i"
 	@echo "... __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.s"
+	@echo "... __/cognitive/language/nimcp_native_language.o"
+	@echo "... __/cognitive/language/nimcp_native_language.i"
+	@echo "... __/cognitive/language/nimcp_native_language.s"
+	@echo "... __/cognitive/language/nimcp_tokenizer.o"
+	@echo "... __/cognitive/language/nimcp_tokenizer.i"
+	@echo "... __/cognitive/language/nimcp_tokenizer.s"
 	@echo "... __/cognitive/logic/nimcp_audio_logic_bridge.o"
 	@echo "... __/cognitive/logic/nimcp_audio_logic_bridge.i"
 	@echo "... __/cognitive/logic/nimcp_audio_logic_bridge.s"
@@ -57481,6 +57559,9 @@ help:
 	@echo "... __/edge/nimcp_sensor.o"
 	@echo "... __/edge/nimcp_sensor.i"
 	@echo "... __/edge/nimcp_sensor.s"
+	@echo "... __/edge/nimcp_sensorimotor.o"
+	@echo "... __/edge/nimcp_sensorimotor.i"
+	@echo "... __/edge/nimcp_sensorimotor.s"
 	@echo "... __/edge/nimcp_sim_bridge.o"
 	@echo "... __/edge/nimcp_sim_bridge.i"
 	@echo "... __/edge/nimcp_sim_bridge.s"

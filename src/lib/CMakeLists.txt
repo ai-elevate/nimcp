@@ -3043,6 +3043,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_sim_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_motor_output.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_embodiment.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_sensorimotor.c
+
+    # Brain-Native Language (replaces Phi-3 dependency)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/language/nimcp_native_language.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/language/nimcp_tokenizer.c
 
     # OOD Detection (Out-of-Distribution)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_ood_detector.c
