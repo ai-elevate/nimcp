@@ -1901,6 +1901,8 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_enhancements.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_native_language.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_tokenizer.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_social_interaction.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_emergent.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/rebuild_cache.dir
@@ -4961,6 +4963,8 @@
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_gradient_validation.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_audit_trail.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_immune_coverage.dir
+/home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_lgss_enhanced.dir
+/home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_audit_log.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/rebuild_cache.dir

@@ -378,7 +378,7 @@ int nimcp_lgss_propose_tightening(void* lgss, uint32_t rule_id,
         rule->current_value = proposed_value;
         rule->tightest_value = proposed_value;
         rule->locked = true;
-        rule->last_tightened_ts = nimcp_time_us();
+        rule->last_tightened_ts = nimcp_time_get_us();
         if (reason) {
             snprintf(rule->reason, sizeof(rule->reason), "%s", reason);
         }
@@ -412,7 +412,7 @@ int nimcp_lgss_propose_tightening(void* lgss, uint32_t rule_id,
     if (proposed_value < rule->tightest_value) {
         rule->tightest_value = proposed_value;
     }
-    rule->last_tightened_ts = nimcp_time_us();
+    rule->last_tightened_ts = nimcp_time_get_us();
     if (reason) {
         snprintf(rule->reason, sizeof(rule->reason), "%s", reason);
     }
@@ -775,7 +775,7 @@ int nimcp_lgss_record_violation(void* lgss, uint32_t rule_id) {
     }
 
     nimcp_escalation_state_t* esc = &enh->escalations[idx];
-    uint64_t now = nimcp_time_us();
+    uint64_t now = nimcp_time_get_us();
 
     /* Apply time-based decay to violation count */
     if (esc->last_violation_ts > 0 && esc->violation_count > 0) {

@@ -1094,3 +1094,21 @@ set_tests_properties(unit_security_test_immune_coverage PROPERTIES
     LABELS "unit;security;immune;coverage"
     TIMEOUT 120
 )
+
+# ============================================================================
+# LGSS Enhanced Tests
+# ============================================================================
+add_executable(unit_security_test_lgss_enhanced test_lgss_enhanced.cpp)
+target_link_libraries(unit_security_test_lgss_enhanced PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+target_include_directories(unit_security_test_lgss_enhanced PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+target_compile_features(unit_security_test_lgss_enhanced PRIVATE cxx_std_17)
+gtest_discover_tests(unit_security_test_lgss_enhanced WORKING_DIRECTORY ${CMAKE_BINARY_DIR} PROPERTIES LABELS "unit;security;lgss" TIMEOUT 60)
+
+# ============================================================================
+# Audit Log Tests
+# ============================================================================
+add_executable(unit_security_test_audit_log test_audit_log.cpp)
+target_link_libraries(unit_security_test_audit_log PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+target_include_directories(unit_security_test_audit_log PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+target_compile_features(unit_security_test_audit_log PRIVATE cxx_std_17)
+gtest_discover_tests(unit_security_test_audit_log WORKING_DIRECTORY ${CMAKE_BINARY_DIR} PROPERTIES LABELS "unit;security;audit" TIMEOUT 60)

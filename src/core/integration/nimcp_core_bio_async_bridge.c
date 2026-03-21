@@ -295,7 +295,7 @@ int core_bio_async_connect(
     }
 
     bridge->connected = true;
-    bridge->last_state_broadcast_us = nimcp_time_us();
+    bridge->last_state_broadcast_us = nimcp_time_get_us();
 
     NIMCP_LOGGING_INFO("Core bio-async bridge connected to router");
     return 0;
@@ -364,7 +364,7 @@ int core_bio_async_register_module(
     entry->name = name ? name : g_core_module_type_names[type];
     entry->module_ptr = module_ptr;
     entry->active = true;
-    entry->registration_time = nimcp_time_us();
+    entry->registration_time = nimcp_time_get_us();
     entry->messages_sent = 0;
     entry->messages_received = 0;
 
@@ -537,7 +537,7 @@ int core_bio_async_update(
         return -1;
     }
 
-    uint64_t now_us = nimcp_time_us();
+    uint64_t now_us = nimcp_time_get_us();
 
     /* Process pending spikes */
     if (bridge->config.enable_spike_routing && bridge->pending_spike_count > 0) {
@@ -586,7 +586,7 @@ int core_bio_async_broadcast_brain_state(
     msg.header.type = BIO_MSG_BRAIN_STATE_RESPONSE;
     msg.header.source_module = BIO_MODULE_BRAIN;
     msg.header.target_module = 0;  /* Broadcast */
-    msg.header.timestamp_us = nimcp_time_us();
+    msg.header.timestamp_us = nimcp_time_get_us();
     msg.header.channel = bridge->config.state_channel;
     msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
     msg.header.flags = BIO_MSG_FLAG_BROADCAST;
@@ -631,7 +631,7 @@ int core_bio_async_broadcast_medulla_state(
     msg.header.type = BIO_MSG_MEDULLA_STATE;
     msg.header.source_module = BIO_MODULE_BRAIN;
     msg.header.target_module = 0;  /* Broadcast */
-    msg.header.timestamp_us = nimcp_time_us();
+    msg.header.timestamp_us = nimcp_time_get_us();
     msg.header.channel = bridge->config.state_channel;
     msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
     msg.header.flags = BIO_MSG_FLAG_BROADCAST;
@@ -676,7 +676,7 @@ int core_bio_async_broadcast_topology_update(
     msg.header.type = BIO_MSG_NETWORK_TOPOLOGY_RESPONSE;
     msg.header.source_module = BIO_MODULE_TOPOLOGY;
     msg.header.target_module = 0;  /* Broadcast */
-    msg.header.timestamp_us = nimcp_time_us();
+    msg.header.timestamp_us = nimcp_time_get_us();
     msg.header.channel = bridge->config.state_channel;
     msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
     msg.header.flags = BIO_MSG_FLAG_BROADCAST;
@@ -727,7 +727,7 @@ int core_bio_async_route_spike(
     msg.header.type = BIO_MSG_NEURON_ACTIVATION_REQUEST;
     msg.header.source_module = BIO_MODULE_BRAIN;
     msg.header.target_module = 0;  /* Broadcast to all neurons */
-    msg.header.timestamp_us = nimcp_time_us();
+    msg.header.timestamp_us = nimcp_time_get_us();
     msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
 
     /* Use priority channel for inhibitory neurons */
@@ -748,12 +748,12 @@ int core_bio_async_route_spike(
 
     /* Broadcast spike */
     if (bridge->base.bio_ctx) {
-        uint64_t start_us = nimcp_time_us();
+        uint64_t start_us = nimcp_time_get_us();
         nimcp_error_t err = bio_router_broadcast(
             bridge->base.bio_ctx, &msg, sizeof(msg));
 
         if (err == NIMCP_SUCCESS) {
-            uint64_t latency_us = nimcp_time_us() - start_us;
+            uint64_t latency_us = nimcp_time_get_us() - start_us;
             bridge->stats.spikes_routed++;
             bridge->stats.messages_sent++;
 
@@ -796,7 +796,7 @@ int core_bio_async_route_spike_batch(
     msg.header.type = BIO_MSG_NEURON_ACTIVATION_REQUEST;
     msg.header.source_module = BIO_MODULE_BRAIN;
     msg.header.target_module = 0;  /* Broadcast */
-    msg.header.timestamp_us = nimcp_time_us();
+    msg.header.timestamp_us = nimcp_time_get_us();
     msg.header.channel = bridge->config.spike_channel;
     msg.header.flags = BIO_MSG_FLAG_BROADCAST;
 
@@ -867,7 +867,7 @@ int core_bio_async_queue_spike(
     pending_spike_t* spike = &bridge->pending_spikes[bridge->pending_spike_count];
     spike->neuron_id = neuron_id;
     spike->amplitude = amplitude;
-    spike->timestamp_us = nimcp_time_us();
+    spike->timestamp_us = nimcp_time_get_us();
     spike->is_inhibitory = false;  /* Default, can be enhanced */
 
     bridge->pending_spike_count++;
@@ -1098,7 +1098,7 @@ static nimcp_error_t core_bio_handle_brain_state_query(
 
     response.header.type = BIO_MSG_BRAIN_STATE_RESPONSE;
     response.header.source_module = BIO_MODULE_BRAIN;
-    response.header.timestamp_us = nimcp_time_us();
+    response.header.timestamp_us = nimcp_time_get_us();
     response.header.payload_size = sizeof(response) - sizeof(bio_message_header_t);
     response.timestamp_us = response.header.timestamp_us;
 
@@ -1160,7 +1160,7 @@ static nimcp_error_t core_bio_handle_health_check(
 
     response.header.type = BIO_MSG_HEALTH_RESPONSE;
     response.header.source_module = BIO_MODULE_BRAIN;
-    response.header.timestamp_us = nimcp_time_us();
+    response.header.timestamp_us = nimcp_time_get_us();
     response.header.payload_size = sizeof(response) - sizeof(bio_message_header_t);
 
     response.module_type = CORE_MODULE_BRAIN;

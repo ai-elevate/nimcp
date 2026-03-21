@@ -5832,3 +5832,9 @@ Fri Mar 20 04:58:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-03-21 13:15:01] [WARN] Checkpoint stale: athena_s0_step9950.bin is 221m old
 [2026-03-21 13:20:01] [WARN] Checkpoint stale: athena_s0_step9950.bin is 226m old
 [2026-03-21 13:25:01] [WARN] Checkpoint stale: athena_s0_step9950.bin is 231m old
+[2026-03-21 13:35:01] [WARN] Checkpoint stale: athena_s0_step9950.bin is 241m old
+[2026-03-21 13:40:01] [WARN] Checkpoint stale: athena_s0_step9950.bin is 246m old
+[2026-03-21 13:45:01] [WARN] Checkpoint stale: athena_s0_step9950.bin is 251m old
+[2026-03-21 13:50:01] [WARN] Checkpoint stale: athena_s0_step9950.bin is 256m old
+[2026-03-21 13:55:01] [WARN] Checkpoint stale: athena_s0_step9950.bin is 261m old
+[2026-03-21 14:00:01] [WARN] Checkpoint stale: athena_s0_step9950.bin is 266m old

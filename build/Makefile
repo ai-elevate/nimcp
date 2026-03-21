@@ -15814,6 +15814,32 @@ unit_cognitive_test_tokenizer/fast:
 .PHONY : unit_cognitive_test_tokenizer/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_social_interaction
+
+# Build rule for target.
+unit_cognitive_test_social_interaction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_social_interaction
+.PHONY : unit_cognitive_test_social_interaction
+
+# fast build rule for target.
+unit_cognitive_test_social_interaction/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_social_interaction.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_social_interaction.dir/build
+.PHONY : unit_cognitive_test_social_interaction/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_emergent
+
+# Build rule for target.
+unit_cognitive_test_emergent: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_emergent
+.PHONY : unit_cognitive_test_emergent
+
+# fast build rule for target.
+unit_cognitive_test_emergent/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_emergent.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_emergent.dir/build
+.PHONY : unit_cognitive_test_emergent/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
 
 # Build rule for target.
@@ -30385,6 +30411,32 @@ unit_security_test_immune_coverage: cmake_check_build_system
 unit_security_test_immune_coverage/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_immune_coverage.dir/build.make test/unit/security/CMakeFiles/unit_security_test_immune_coverage.dir/build
 .PHONY : unit_security_test_immune_coverage/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_lgss_enhanced
+
+# Build rule for target.
+unit_security_test_lgss_enhanced: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_lgss_enhanced
+.PHONY : unit_security_test_lgss_enhanced
+
+# fast build rule for target.
+unit_security_test_lgss_enhanced/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_lgss_enhanced.dir/build.make test/unit/security/CMakeFiles/unit_security_test_lgss_enhanced.dir/build
+.PHONY : unit_security_test_lgss_enhanced/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_audit_log
+
+# Build rule for target.
+unit_security_test_audit_log: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_audit_log
+.PHONY : unit_security_test_audit_log
+
+# fast build rule for target.
+unit_security_test_audit_log/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_audit_log.dir/build.make test/unit/security/CMakeFiles/unit_security_test_audit_log.dir/build
+.PHONY : unit_security_test_audit_log/fast
 
 #=============================================================================
 # Target rules for targets named unit_security_immune_pattern_db
@@ -45134,6 +45186,7 @@ help:
 	@echo "... unit_cognitive_test_curiosity_plasticity_bridge"
 	@echo "... unit_cognitive_test_curiosity_reasoning_bridge"
 	@echo "... unit_cognitive_test_curiosity_snn_bridge"
+	@echo "... unit_cognitive_test_emergent"
 	@echo "... unit_cognitive_test_emotion_executive_bridge"
 	@echo "... unit_cognitive_test_emotion_memory_bridge"
 	@echo "... unit_cognitive_test_emotion_tensor"
@@ -45211,6 +45264,7 @@ help:
 	@echo "... unit_cognitive_test_shadow_emotions"
 	@echo "... unit_cognitive_test_shared_intentionality"
 	@echo "... unit_cognitive_test_social"
+	@echo "... unit_cognitive_test_social_interaction"
 	@echo "... unit_cognitive_test_symbolic_logic_integration"
 	@echo "... unit_cognitive_test_temporal_replay"
 	@echo "... unit_cognitive_test_tokenizer"
@@ -46014,6 +46068,7 @@ help:
 	@echo "... unit_security_test_alignment_monitor"
 	@echo "... unit_security_test_anomaly_detector"
 	@echo "... unit_security_test_artifact_verify"
+	@echo "... unit_security_test_audit_log"
 	@echo "... unit_security_test_audit_trail"
 	@echo "... unit_security_test_bayesian_network"
 	@echo "... unit_security_test_bbb_api_validation"
@@ -46035,6 +46090,7 @@ help:
 	@echo "... unit_security_test_immune_coverage"
 	@echo "... unit_security_test_interpretability"
 	@echo "... unit_security_test_key_derivation"
+	@echo "... unit_security_test_lgss_enhanced"
 	@echo "... unit_security_test_nan_inf_validation"
 	@echo "... unit_security_test_path_traversal"
 	@echo "... unit_security_test_pattern_compiler"
