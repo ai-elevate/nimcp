@@ -276,28 +276,36 @@ class HyperparameterTuner:
         if not output_stats:
             return None
 
-        sparsity = output_stats['sparsity']
+        # output_stats['sparsity'] is actually density (nonzero/total)
+        # 1.0 = fully dense (all neurons active), 0.05 = 5% active
+        density = output_stats['sparsity']
 
-        # Too sparse (<8%): network can't differentiate — increase
-        if sparsity < 0.08:
+        # For regression tasks with dense output (>90% active), sparsity
+        # adjustment is not applicable — the output SHOULD be dense.
+        if density > 0.90:
+            return None  # Dense output is correct for regression
+
+        # Too sparse (<8% active): network can't differentiate — increase
+        if density < 0.08:
             current = self._read_param('sparsity') or 0.05
             new_val = min(current * 1.5, 0.20)
-            if new_val > current * 1.1:  # Only if meaningful change
+            if new_val > current * 1.1:
                 return {
                     'param': 'sparsity', 'value': new_val,
                     'state': 'too_sparse',
-                    'reason': f'Output sparsity {sparsity:.1%} too low → '
+                    'reason': f'Output density {density:.1%} too low → '
                               f'target {current:.2f} → {new_val:.2f}'
                 }
 
-        # Too dense (>25%): losing sparsity benefit — decrease
-        if sparsity > 0.25:
+        # Moderately sparse (8-25%): acceptable range for classification
+        # Too dense (>25%) for classification — decrease
+        if density > 0.25 and density < 0.90:
             current = self._read_param('sparsity') or 0.05
             new_val = max(current * 0.7, 0.05)
             return {
                 'param': 'sparsity', 'value': new_val,
                 'state': 'too_dense',
-                'reason': f'Output sparsity {sparsity:.1%} too high → '
+                'reason': f'Output density {density:.1%} too high for classification → '
                           f'target {current:.2f} → {new_val:.2f}'
             }
 
@@ -374,7 +382,8 @@ class HyperparameterTuner:
         relative_range = (max(recent) - min(recent)) / max(sum(recent) / len(recent), 1e-10)
         sparsity = output_stats['sparsity']
 
-        if relative_range < 0.05 and sparsity < 0.08:
+        density = output_stats['sparsity']  # Actually density (nonzero/total)
+        if relative_range < 0.05 and density < 0.08:
             current = self._read_param('output_lr_boost') or 10.0
             new_val = min(current * 1.5, 50.0)
             if new_val > current * 1.1:

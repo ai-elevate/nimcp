@@ -3709,6 +3709,112 @@ def retroactive_memory_seed(brain, composer, num_past_steps):
     print(f"  [Memory Seed] Complete: {encoded} experiences retroactively memorized")
 
 
+def retroactive_tom_seed(brain, composer, num_past_steps):
+    """Replay past training content through ToM pipeline to bootstrap
+    theory of mind, mirror neurons, and perspective-taking.
+
+    Uses learn_vector with lr=0 and tom_-prefixed labels to trigger
+    the ToM wiring in brain_learn_vector without modifying weights.
+    """
+    print(f"\n  [ToM Seed] Bootstrapping theory of mind from {num_past_steps} past steps...")
+
+    # Perspective-taking scenarios derived from sensory content
+    # Each takes a sensory description and reframes it from another's perspective
+    tom_perspectives = [
+        # What the observed entity experiences
+        ("tom_perspective_bird", "The bird sees you watching it from the window — "
+         "to the bird, you are a large still creature behind glass"),
+        ("tom_perspective_cat", "The cat watches the string moving and thinks it is alive — "
+         "it crouches, ready to pounce on what it believes is prey"),
+        ("tom_perspective_dog", "The dog brings you its leash because it has learned "
+         "that this action makes the big human open the door"),
+        ("tom_perspective_baby", "The baby drops the spoon again — not to annoy you, "
+         "but because it is fascinated that things fall when released"),
+        ("tom_perspective_parent", "Your parent smiles even though they are tired — "
+         "they want you to feel safe and loved, hiding their own exhaustion"),
+
+        # False belief scenarios
+        ("tom_false_belief", "The teddy bear is in the box. You leave. Someone moves "
+         "the teddy to the shelf. You come back thinking it is still in the box"),
+        ("tom_false_belief", "The cookie jar was full this morning. While you slept, "
+         "someone ate them all. You still believe there are cookies inside"),
+        ("tom_false_belief", "Your friend thinks the park is open today because the sign "
+         "said so yesterday. But the sign was changed this morning to say closed"),
+
+        # Intention attribution
+        ("tom_intention", "The squirrel buries a nut not because it is playing but "
+         "because it knows winter is coming and it will need food later"),
+        ("tom_intention", "The child gives you a drawing — they want you to feel happy "
+         "and to know they were thinking about you"),
+        ("tom_intention", "The bee visits the flower not for beauty but because "
+         "it needs nectar to feed its colony"),
+
+        # Emotional perspective
+        ("tom_emotion_other", "The kitten mews at the closed door — it feels confused "
+         "and lonely, wondering why it cannot reach the warm room"),
+        ("tom_emotion_other", "The old dog rests its head on your lap — it feels safe "
+         "and content, trusting you completely"),
+        ("tom_emotion_other", "The child who dropped their ice cream feels the sharp "
+         "sting of loss — something wonderful was there and now it is gone"),
+
+        # Deception understanding
+        ("tom_deception", "The chameleon changes color not to be beautiful but to hide — "
+         "it wants predators to believe it is a leaf, not a lizard"),
+        ("tom_deception", "The possum plays dead because it knows that predators "
+         "lose interest in things that do not move"),
+
+        # Knowledge tracking
+        ("tom_knowledge", "The bird knows where it hid its seeds but the squirrel "
+         "does not — each animal has its own private map of the world"),
+        ("tom_knowledge", "You know what your birthday present is because you peeked "
+         "but your parents think it is still a surprise"),
+
+        # Desire attribution
+        ("tom_desire", "The plant turns toward the window because it needs light — "
+         "it does not think but it still reaches for what it requires"),
+        ("tom_desire", "The baby reaches for the bright object not understanding "
+         "what it is but driven by pure curiosity to touch and explore"),
+    ]
+
+    encoded = 0
+    for label, description in tom_perspectives:
+        try:
+            features = composer.encode(description)
+            target = composer.encode(description)  # Self-supervised
+            brain.learn_vector(features, target, label=label,
+                               confidence=0.8, learning_rate=0.0)
+            encoded += 1
+        except Exception:
+            continue
+
+    # Also replay a subset of existing sensory content with perspective framing
+    try:
+        with open(CONTENT_CACHE) as f:
+            cache = json.load(f)
+        narrations = cache.get('0', {}).get('narrations', [])
+        # Take every 20th narration and frame it as perspective-taking
+        for i in range(0, min(len(narrations), num_past_steps), 20):
+            narr = narrations[i] if isinstance(narrations[i], str) else str(narrations[i])
+            # Add perspective prefix
+            perspective_desc = f"From Athena's perspective: {narr[:200]}"
+            try:
+                features = composer.encode(perspective_desc)
+                target = composer.encode(perspective_desc)
+                brain.learn_vector(features, target, label="tom_self_perspective",
+                                   confidence=0.7, learning_rate=0.0)
+                encoded += 1
+            except Exception:
+                continue
+
+            if encoded % 50 == 0 and encoded > 0:
+                print(f"  [ToM Seed] Encoded {encoded} perspective experiences")
+
+    except Exception:
+        pass
+
+    print(f"  [ToM Seed] Complete: {encoded} ToM experiences seeded")
+
+
 def seed_athena_identity(brain, composer):
     """Seed Athena's foundational identity and personal history.
 
@@ -6405,6 +6511,7 @@ def main():
     # --- Retroactive memory seeding (resume with past training steps) ---
     if args.resume and start_step > 0:
         retroactive_memory_seed(brain, composer, start_step)
+        retroactive_tom_seed(brain, composer, start_step)
 
     # --- Sensory enrichment (one-time, for existing text-trained brains) ---
     if not args.no_multimodal and not args.fresh:

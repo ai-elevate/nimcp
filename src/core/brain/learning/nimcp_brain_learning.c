@@ -1931,6 +1931,48 @@ sequential_training:
         }
     }
 
+    /* === THEORY OF MIND: Update self-model during training ===
+     * Train the ToM module by recording our own learning decisions.
+     * This builds the self-model that's necessary for inferring
+     * others' mental states (you must understand yourself first).
+     *
+     * Also simulate "observing another agent" when training data
+     * contains perspective-labeled content (label starts with "tom_").
+     * This exercises the ToM inference pathway during training. */
+    if (brain->theory_of_mind && brain->config.enable_theory_of_mind) {
+        /* Step 1: Update self-model with this learning step */
+        const char* learn_label = label ? label : "learn";
+        float learn_confidence = (loss < 1.0f) ? 0.9f : (loss < 100.0f) ? 0.5f : 0.1f;
+        tom_update_self_model(brain->theory_of_mind,
+                               features, num_features,
+                               learn_label, learn_confidence);
+
+        /* Step 2: If this is a ToM training example, observe it as an "other agent" */
+        if (label && (strncmp(label, "tom_", 4) == 0 ||
+                      strstr(label, "perspective") ||
+                      strstr(label, "belief") ||
+                      strstr(label, "intention"))) {
+            tom_observation_t obs = {0};
+            obs.action_vector = features;
+            obs.action_dim = num_features < 256 ? num_features : 256;
+            obs.verbal_context = label;
+            obs.observed_emotion = (loss < 100.0f) ? TOM_EMOTION_JOY : TOM_EMOTION_SURPRISE;
+            obs.situational_context = target;
+            obs.context_dim = target_size < 64 ? target_size : 64;
+
+            tom_observe(brain->theory_of_mind, &obs);
+        }
+
+        /* Step 3: Mirror neurons — simulate action observation.
+         * Every 50 training steps, feed current features to mirror neurons
+         * so they learn observation-based representations. */
+        if (brain->mirror_neurons && brain->config.enable_mirror_neurons
+            && (brain->stats.total_learning_steps % 50 == 0)) {
+            brain_observe_action(brain, features, num_features,
+                                  0 /* agent_id: self */);
+        }
+    }
+
     clear_cache(brain);
     if (owns_blended) nimcp_free(blended_features);
     return loss;
