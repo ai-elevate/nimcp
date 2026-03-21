@@ -31,8 +31,9 @@ struct nimcp_output_attention {
     float* attention_weights;
     uint32_t total_dim;          /* num_heads * head_dim */
 
-    /* Task label -> task index mapping (simple hash table) */
+    /* Task label -> task index mapping (hash + label for collision detection) */
     uint32_t task_hashes[NIMCP_OA_MAX_TASKS];
+    char     task_labels[NIMCP_OA_MAX_TASKS][64];
     uint32_t num_tasks;
 };
 
@@ -67,9 +68,10 @@ static int get_task_index(nimcp_output_attention_t* oa, const char* task_label)
 {
     uint32_t h = hash_label(task_label);
 
-    /* Search existing */
+    /* Search existing — compare both hash AND label string for collision safety */
     for (uint32_t i = 0; i < oa->num_tasks; i++) {
-        if (oa->task_hashes[i] == h) {
+        if (oa->task_hashes[i] == h &&
+            strncmp(oa->task_labels[i], task_label, 63) == 0) {
             return (int)i;
         }
     }
@@ -83,6 +85,8 @@ static int get_task_index(nimcp_output_attention_t* oa, const char* task_label)
 
     uint32_t idx = oa->num_tasks;
     oa->task_hashes[idx] = h;
+    strncpy(oa->task_labels[idx], task_label, 63);
+    oa->task_labels[idx][63] = '\0';
     oa->num_tasks++;
 
     /* Initialize weights for new task to small random-ish values.
@@ -151,6 +155,7 @@ nimcp_output_attention_t* nimcp_oa_create(const nimcp_oa_config_t* config)
 
     oa->num_tasks = 0;
     memset(oa->task_hashes, 0, sizeof(oa->task_hashes));
+    memset(oa->task_labels, 0, sizeof(oa->task_labels));
 
     LOG_INFO("Created output attention (heads=%u, head_dim=%u, total_dim=%u)",
              oa->config.num_heads, oa->config.head_dim, oa->total_dim);

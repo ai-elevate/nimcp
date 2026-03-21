@@ -42,6 +42,8 @@ nimcp_emotional_learning_t* nimcp_emotional_learning_create(
     if (!el) return NULL;
     el->config = config ? *config : nimcp_emotional_learning_config_default();
     el->arousal = 0.5f;
+    el->loss_ema = 100.0f;            /* Assume moderate initial loss to avoid NaN/div-by-zero */
+    el->loss_variance_ema = 100.0f;   /* Assume moderate variance */
     return el;
 }
 

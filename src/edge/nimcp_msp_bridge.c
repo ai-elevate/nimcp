@@ -696,14 +696,15 @@ static int _msp_read_response(nimcp_msp_bridge_t* bridge,
     uint8_t buf[MSP_RECV_BUF_SIZE];
     uint64_t start = nimcp_time_now_us();
     int pos = 0;
+    uint32_t resets = 0;
 
-    /* Read header: $M> */
-    while (pos < 5 && (nimcp_time_now_us() - start) < MSP_RESPONSE_TIMEOUT_US) {
+    /* Read header: $M> — limit resets to prevent infinite retries */
+    while (pos < 5 && resets < 10 && (nimcp_time_now_us() - start) < MSP_RESPONSE_TIMEOUT_US) {
         ssize_t n = read(bridge->fd, buf + pos, 1);
         if (n == 1) {
             if (pos == 0 && buf[0] != '$') continue;
-            if (pos == 1 && buf[1] != 'M') { pos = 0; continue; }
-            if (pos == 2 && buf[2] != '>') { pos = 0; continue; }
+            if (pos == 1 && buf[1] != 'M') { pos = 0; resets++; continue; }
+            if (pos == 2 && buf[2] != '>') { pos = 0; resets++; continue; }
             pos++;
         } else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
             return -1;

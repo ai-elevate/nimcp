@@ -125,8 +125,8 @@ static int slot_copy_reading(sensor_slot_t* slot,
     }
     dest->data = slot->data_buffers[back];
 
-    /* Swap active index (atomic on most platforms for int) */
-    slot->active_idx = back;
+    /* Swap active index atomically for reader safety */
+    __atomic_store_n(&slot->active_idx, back, __ATOMIC_RELEASE);
     slot->has_reading = true;
 
     return 0;

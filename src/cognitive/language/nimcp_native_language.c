@@ -232,17 +232,25 @@ int nimcp_language_generate(nimcp_native_language_t* lang,
     char* output_text, uint32_t max_text_length)
 {
     if (!lang || !brain_embedding || !output_text || max_text_length == 0) return -1;
+
+    /* Thread safety: lock for duration of generation */
+    if (lang->lock) nimcp_mutex_lock(lang->lock);
+
     output_text[0] = '\0';
 
     uint32_t ed = lang->config.embed_dim;
     uint32_t vs = lang->vocab.vocab_size;
-    if (vs < 4) return -1; /* Need at least special tokens */
+    if (vs < 4) { /* Need at least special tokens */
+        if (lang->lock) nimcp_mutex_unlock(lang->lock);
+        return -1;
+    }
 
     /* 1. Project brain embedding to token space */
     float* query = nimcp_calloc(ed, sizeof(float));
     float* original_query = nimcp_calloc(ed, sizeof(float));
     if (!query || !original_query) {
         nimcp_free(query); nimcp_free(original_query);
+        if (lang->lock) nimcp_mutex_unlock(lang->lock);
         return -1;
     }
 
@@ -259,7 +267,9 @@ int nimcp_language_generate(nimcp_native_language_t* lang,
 
     /* 2. Autoregressive loop */
     for (uint32_t step = 0; step < lang->config.max_seq_length; step++) {
-        /* Add positional encoding to query for this step */
+        /* Reset query = original projection + positional encoding for this step.
+         * Without this reset, positional encodings accumulate across steps. */
+        memcpy(query, original_query, ed * sizeof(float));
         if (lang->pos_encoder && lang->pos_buffer) {
             if (nimcp_pos_encode_position(lang->pos_encoder, step,
                                            lang->pos_buffer) == NIMCP_POS_SUCCESS) {
@@ -291,6 +301,10 @@ int nimcp_language_generate(nimcp_native_language_t* lang,
         }
 
         /* b. Temperature + softmax */
+        /* Zero out special token slots to avoid uninitialized reads */
+        for (uint32_t t = 0; t < 4 && t < vs; t++)
+            lang->softmax_buf[t] = 0.0f;
+
         float sum_exp = 0.0f;
         for (uint32_t t = 4; t < vs; t++) {
             float s = (lang->attention_scores[t] - max_score) / lang->config.temperature;
@@ -302,15 +316,18 @@ int nimcp_language_generate(nimcp_native_language_t* lang,
         for (uint32_t t = 4; t < vs; t++)
             lang->softmax_buf[t] /= sum_exp;
 
-        /* c. Top-p (nucleus) sampling */
-        /* Simple approach: find tokens above threshold, sample from them */
+        /* c. Nucleus (top-p) sampling:
+         *    1. Random value r in [0, 1]
+         *    2. Walk through softmax in order, accumulating probability
+         *    3. Select the token where cumulative probability exceeds r
+         *    This naturally samples from the full distribution weighted by probability */
+        float r = _randf(&lang->rng_state);
         float cum = 0.0f;
-        float threshold = _randf(&lang->rng_state) * lang->config.top_p;
-        uint32_t sampled = lang->vocab.unk_id;
+        uint32_t sampled = lang->vocab.eos_id;
 
         for (uint32_t t = 4; t < vs; t++) {
             cum += lang->softmax_buf[t];
-            if (cum >= threshold) {
+            if (cum >= r) {
                 sampled = t;
                 break;
             }
@@ -330,11 +347,13 @@ int nimcp_language_generate(nimcp_native_language_t* lang,
         text_pos += tok_len;
         output_text[text_pos] = '\0';
 
-        /* f. Update query (context drift) */
+        /* f. Update original_query with context drift.
+         * query is reset from original_query at the start of each step,
+         * so we drift original_query to incorporate generated context. */
         if (lang->vocab.tokens[sampled].embedding) {
             for (uint32_t i = 0; i < ed; i++)
-                query[i] = 0.7f * original_query[i] +
-                           0.3f * lang->vocab.tokens[sampled].embedding[i];
+                original_query[i] = 0.7f * original_query[i] +
+                                    0.3f * lang->vocab.tokens[sampled].embedding[i];
         }
 
         /* g. Track recent */
@@ -349,6 +368,8 @@ int nimcp_language_generate(nimcp_native_language_t* lang,
 
     nimcp_free(query);
     nimcp_free(original_query);
+
+    if (lang->lock) nimcp_mutex_unlock(lang->lock);
     return (int)text_pos;
 }
 

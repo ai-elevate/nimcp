@@ -231,8 +231,8 @@ nimcp_multiscale_memory_t* nimcp_multiscale_create(const nimcp_multiscale_config
         return NULL;
     }
     if (cfg.compression_ratio == 0) {
-        LOG_ERROR("compression_ratio must be > 0");
-        return NULL;
+        LOG_WARN("compression_ratio was 0, defaulting to 4");
+        cfg.compression_ratio = 4;
     }
 
     nimcp_multiscale_memory_t* handle = nimcp_calloc(1, sizeof(*handle));

@@ -68,6 +68,8 @@ static float cosine_similarity(const float* a, uint32_t a_dim,
  */
 static uint32_t find_worst_pattern(const nimcp_analogical_transfer_t* handle)
 {
+    if (handle->buffer_count == 0) return 0;
+
     uint32_t worst = 0;
     float worst_score = handle->patterns[0].success_score;
 

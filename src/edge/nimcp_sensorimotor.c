@@ -27,11 +27,35 @@ extern int nimcp_sim_bridge_reset(void* sim, void* state);
 extern int nimcp_sim_bridge_compose_sensors(const void* sim, const void* state,
                                              float* features, uint32_t max);
 extern int nimcp_sim_bridge_randomize(void* sim);
-extern int nimcp_motor_output_translate(void* motor, const float* brain_out,
-                                         uint32_t n_out, float* cmd, uint32_t max);
-extern uint32_t nimcp_motor_output_get_num_channels(const void* motor);
+extern int nimcp_motor_translate(void* motor, const float* brain_out,
+                                  uint32_t n_out, float* cmd, uint32_t max);
+extern uint32_t nimcp_motor_get_num_channels(const void* motor);
 extern void nimcp_watchdog_heartbeat(void* wd);
 extern int nimcp_watchdog_validate_output(void* wd, float* out, uint32_t n);
+
+/* Weak stubs for brain API — overridden by real brain when linked.
+ * This allows sensorimotor to compile and link independently. */
+__attribute__((weak))
+int nimcp_brain_infer(void* brain, const float* features,
+                       uint32_t num_features, float* outputs,
+                       uint32_t num_outputs) {
+    (void)brain; (void)features; (void)num_features; (void)outputs; (void)num_outputs;
+    return -1;
+}
+__attribute__((weak))
+int nimcp_brain_learn(void* brain, const float* features,
+                       uint32_t n_feat, const float* target,
+                       uint32_t n_tgt, const char* label,
+                       float confidence, float lr) {
+    (void)brain; (void)features; (void)n_feat; (void)target; (void)n_tgt;
+    (void)label; (void)confidence; (void)lr;
+    return -1;
+}
+__attribute__((weak))
+int nimcp_brain_update_reward(void* brain, float reward, float confidence) {
+    (void)brain; (void)reward; (void)confidence;
+    return -1;
+}
 
 /* Sim state accessors */
 typedef struct {
@@ -140,7 +164,7 @@ nimcp_sensorimotor_t* nimcp_sensorimotor_create(
     }
 
     sm->obs_dim = OBS_DIM;
-    sm->action_dim = nimcp_motor_output_get_num_channels(motor_output);
+    sm->action_dim = nimcp_motor_get_num_channels(motor_output);
     if (sm->action_dim == 0 || sm->action_dim > MAX_ACTIONS)
         sm->action_dim = 4;
 
@@ -194,10 +218,6 @@ int nimcp_sensorimotor_step(nimcp_sensorimotor_t* sm, float* reward_out, bool* d
     if (n_obs <= 0) n_obs = sm->obs_dim;
 
     /* 2. Brain inference */
-    /* Use extern to call brain's infer function */
-    extern int nimcp_brain_infer(void* brain, const float* features,
-                                  uint32_t num_features, float* outputs,
-                                  uint32_t num_outputs);
     nimcp_brain_infer(sm->brain, sm->observation, (uint32_t)n_obs,
                       sm->brain_output, BRAIN_OUT_DIM);
 
@@ -210,7 +230,7 @@ int nimcp_sensorimotor_step(nimcp_sensorimotor_t* sm, float* reward_out, bool* d
     }
 
     /* 4. Motor translate: brain output → motor commands */
-    nimcp_motor_output_translate(sm->motor, sm->brain_output, BRAIN_OUT_DIM,
+    nimcp_motor_translate(sm->motor, sm->brain_output, BRAIN_OUT_DIM,
                                  sm->action, sm->action_dim);
 
     /* 5. Safety watchdog validates motor commands */
@@ -245,15 +265,10 @@ int nimcp_sensorimotor_step(nimcp_sensorimotor_t* sm, float* reward_out, bool* d
 
     /* 8. Learning */
     if (sm->config.mode == NIMCP_SM_MODE_LEARNING) {
-        extern int nimcp_brain_learn(void* brain, const float* features,
-                                      uint32_t n_feat, const float* target,
-                                      uint32_t n_tgt, const char* label,
-                                      float confidence, float lr);
         nimcp_brain_learn(sm->brain, sm->observation, (uint32_t)n_obs,
                           new_obs, (uint32_t)n_obs, "sensorimotor",
                           0.5f, sm->config.learning_rate);
     } else if (sm->config.mode == NIMCP_SM_MODE_REINFORCEMENT) {
-        extern int nimcp_brain_update_reward(void* brain, float reward, float confidence);
         nimcp_brain_update_reward(sm->brain, total_reward,
                                   total_reward > 0.5f ? 0.8f : 0.3f);
     }

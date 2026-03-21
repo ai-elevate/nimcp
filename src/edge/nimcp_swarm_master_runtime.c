@@ -232,8 +232,15 @@ nimcp_swarm_master_t* nimcp_swarm_master_create(
     master->started      = false;
     master->next_round_id = 1;
 
+    /* Validate max_devices against poll limit */
+    if (master->config.max_devices > 64) {
+        LOG_WARN("[SWARM_MASTER] max_devices %u exceeds poll limit 64, clamping",
+                 master->config.max_devices);
+        master->config.max_devices = 64;
+    }
+
     /* Create peer registry */
-    master->registry = nimcp_peer_registry_create(config->max_devices);
+    master->registry = nimcp_peer_registry_create(master->config.max_devices);
     if (!master->registry) {
         LOG_ERROR("[SWARM_MASTER] Failed to create peer registry");
         nimcp_free(master);
@@ -470,10 +477,11 @@ static void _accept_new_connection(nimcp_swarm_master_t* master)
     inet_ntop(AF_INET, &peer_addr.sin_addr, addr_str, sizeof(addr_str));
     uint16_t peer_port = ntohs(peer_addr.sin_port);
 
-    /* Generate a provisional device_id from the connection.
+    /* Generate a provisional device_id from a monotonic counter.
      * The real device_id will arrive in the JOIN_REQUEST message.
-     * For now, use source port as a temporary id. */
-    uint32_t provisional_id = (uint32_t)peer_port;
+     * High bit set = provisional (avoids collision with real device IDs). */
+    static uint32_t _next_provisional_id = 0x80000000;  /* High bit set = provisional */
+    uint32_t provisional_id = __sync_fetch_and_add(&_next_provisional_id, 1);
 
     int ret = nimcp_peer_registry_add(master->registry, provisional_id,
                                        addr_str, peer_port, NULL);
@@ -650,6 +658,17 @@ static void _handle_peer_message(nimcp_swarm_master_t* master,
             uint32_t expected_size = sizeof(uint32_t) + num_params * sizeof(float);
             if (payload_size >= expected_size && num_params > 0) {
                 const float* gradients = (const float*)(payload + sizeof(uint32_t));
+
+                /* Byzantine check BEFORE aggregation */
+                extern int nimcp_byzantine_check_gradient(nimcp_peer_entry_t* peer,
+                                                          const float* gradients,
+                                                          uint32_t num_params);
+                if (nimcp_byzantine_check_gradient(peer, gradients, num_params) == 1) {
+                    LOG_WARN("[SWARM_MASTER] Byzantine gradient detected from device %u — rejected",
+                             peer->device_id);
+                    break;  /* Don't submit poisoned gradients */
+                }
+
                 nimcp_sync_round_submit_gradient(master->current_round,
                                                   peer->device_id,
                                                   gradients, num_params);
@@ -874,24 +893,27 @@ static void* _master_event_loop(void* arg)
         peer_poll_map_t peer_map[MASTER_MAX_POLLFDS];
         int peer_count = 0;
 
-        /* NOTE: We access the registry without holding the lock for poll setup.
-         * This is a benign race — worst case we miss a peer for one poll cycle. */
-        if (master->registry && master->registry->peers) {
-            for (uint32_t i = 0; i < master->registry->count &&
-                                   nfds < MASTER_MAX_POLLFDS; i++) {
-                nimcp_peer_entry_t* entry = &master->registry->peers[i];
-                if (entry->socket_fd >= 0 &&
-                    entry->state != NIMCP_PEER_DEAD) {
-                    peer_map[peer_count].device_id = entry->device_id;
-                    peer_map[peer_count].poll_idx  = nfds;
-                    peer_count++;
+        /* Snapshot peer fds under lock to avoid TOCTOU races */
+        if (master->registry) {
+            nimcp_mutex_lock(master->registry->lock);
+            if (master->registry->peers) {
+                for (uint32_t i = 0; i < master->registry->count &&
+                                       nfds < MASTER_MAX_POLLFDS; i++) {
+                    nimcp_peer_entry_t* entry = &master->registry->peers[i];
+                    if (entry->socket_fd >= 0 &&
+                        entry->state != NIMCP_PEER_DEAD) {
+                        peer_map[peer_count].device_id = entry->device_id;
+                        peer_map[peer_count].poll_idx  = nfds;
+                        peer_count++;
 
-                    fds[nfds].fd = entry->socket_fd;
-                    fds[nfds].events = POLLIN;
-                    fds[nfds].revents = 0;
-                    nfds++;
+                        fds[nfds].fd = entry->socket_fd;
+                        fds[nfds].events = POLLIN;
+                        fds[nfds].revents = 0;
+                        nfds++;
+                    }
                 }
             }
+            nimcp_mutex_unlock(master->registry->lock);
         }
 
         /* Poll with timeout */

@@ -434,15 +434,22 @@ int nimcp_parrot_goto_position(nimcp_parrot_bridge_t* bridge,
                                 double lat, double lon, float alt, float heading) {
     if (!bridge || !bridge->connected) { return -1; }
 
-    /* Safety: check geofence before sending */
-    if (bridge->config.enable_geofence && bridge->home_set) {
-        double dist = _haversine_distance_m(bridge->home_lat, bridge->home_lon,
-                                             lat, lon);
-        if (dist > bridge->config.geofence_radius_m) {
-            LOG_ERROR("[%s] Goto target (%.6f, %.6f) is %.0fm from home, "
-                      "exceeds geofence %.0fm — command rejected",
-                      LOG_MODULE, lat, lon, dist, bridge->config.geofence_radius_m);
-            return -1;
+    /* Safety: check geofence before sending (read home under lock) */
+    if (bridge->config.enable_geofence) {
+        nimcp_mutex_lock(bridge->telemetry_lock);
+        bool has_home = bridge->home_set;
+        double hlat = bridge->home_lat;
+        double hlon = bridge->home_lon;
+        nimcp_mutex_unlock(bridge->telemetry_lock);
+
+        if (has_home) {
+            double dist = _haversine_distance_m(hlat, hlon, lat, lon);
+            if (dist > bridge->config.geofence_radius_m) {
+                LOG_ERROR("[%s] Goto target (%.6f, %.6f) is %.0fm from home, "
+                          "exceeds geofence %.0fm — command rejected",
+                          LOG_MODULE, lat, lon, dist, bridge->config.geofence_radius_m);
+                return -1;
+            }
         }
     }
 

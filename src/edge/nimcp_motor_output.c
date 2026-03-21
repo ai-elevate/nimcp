@@ -146,8 +146,9 @@ int nimcp_motor_translate(nimcp_motor_output_t* motor,
             raw = 0.0f;
         }
 
-        /* Deadzone */
+        /* Deadzone — clamp to < 1.0 to prevent division by zero */
         if (motor->config.enable_deadzone && ch->deadzone > 0.0f) {
+            if (ch->deadzone >= 1.0f) ch->deadzone = 0.999f;
             if (fabsf(raw) < ch->deadzone) {
                 raw = 0.0f;
             } else {
