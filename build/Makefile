@@ -15788,6 +15788,32 @@ unit_cognitive_test_enhancements/fast:
 .PHONY : unit_cognitive_test_enhancements/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_native_language
+
+# Build rule for target.
+unit_cognitive_test_native_language: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_native_language
+.PHONY : unit_cognitive_test_native_language
+
+# fast build rule for target.
+unit_cognitive_test_native_language/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_native_language.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_native_language.dir/build
+.PHONY : unit_cognitive_test_native_language/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_tokenizer
+
+# Build rule for target.
+unit_cognitive_test_tokenizer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_tokenizer
+.PHONY : unit_cognitive_test_tokenizer
+
+# fast build rule for target.
+unit_cognitive_test_tokenizer/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_tokenizer.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_tokenizer.dir/build
+.PHONY : unit_cognitive_test_tokenizer/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
 
 # Build rule for target.
@@ -26485,6 +26511,19 @@ integration_cognitive_pipeline: cmake_check_build_system
 integration_cognitive_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/CMakeFiles/integration_cognitive_pipeline.dir/build.make test/integration/cognitive/CMakeFiles/integration_cognitive_pipeline.dir/build
 .PHONY : integration_cognitive_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_language_pipeline
+
+# Build rule for target.
+integration_cognitive_language_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_language_pipeline
+.PHONY : integration_cognitive_language_pipeline
+
+# fast build rule for target.
+integration_cognitive_language_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/CMakeFiles/integration_cognitive_language_pipeline.dir/build.make test/integration/cognitive/CMakeFiles/integration_cognitive_language_pipeline.dir/build
+.PHONY : integration_cognitive_language_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named integration_fep_enhanced
@@ -42555,6 +42594,19 @@ unit_edge_test_embodiment/fast:
 .PHONY : unit_edge_test_embodiment/fast
 
 #=============================================================================
+# Target rules for targets named unit_edge_test_sensorimotor
+
+# Build rule for target.
+unit_edge_test_sensorimotor: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_sensorimotor
+.PHONY : unit_edge_test_sensorimotor
+
+# fast build rule for target.
+unit_edge_test_sensorimotor/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/edge/CMakeFiles/unit_edge_test_sensorimotor.dir/build.make test/unit/edge/CMakeFiles/unit_edge_test_sensorimotor.dir/build
+.PHONY : unit_edge_test_sensorimotor/fast
+
+#=============================================================================
 # Target rules for targets named simple_demo
 
 # Build rule for target.
@@ -43447,6 +43499,7 @@ help:
 	@echo "... integration_cognitive_introspection_snn_plasticity"
 	@echo "... integration_cognitive_introspection_temporal_patterns"
 	@echo "... integration_cognitive_joy_test_joy_euphoria_integration"
+	@echo "... integration_cognitive_language_pipeline"
 	@echo "... integration_cognitive_memory_engram"
 	@echo "... integration_cognitive_memory_pr_exception"
 	@echo "... integration_cognitive_memory_semantic"
@@ -45127,6 +45180,7 @@ help:
 	@echo "... unit_cognitive_test_mirror_empathy_bridge"
 	@echo "... unit_cognitive_test_mirror_empathy_fep_bridge"
 	@echo "... unit_cognitive_test_modules_wiring"
+	@echo "... unit_cognitive_test_native_language"
 	@echo "... unit_cognitive_test_ood_detector"
 	@echo "... unit_cognitive_test_phase7_bridges"
 	@echo "... unit_cognitive_test_predictive_attention_bridge"
@@ -45159,6 +45213,7 @@ help:
 	@echo "... unit_cognitive_test_social"
 	@echo "... unit_cognitive_test_symbolic_logic_integration"
 	@echo "... unit_cognitive_test_temporal_replay"
+	@echo "... unit_cognitive_test_tokenizer"
 	@echo "... unit_cognitive_test_tom_social_bridge"
 	@echo "... unit_cognitive_test_training_data"
 	@echo "... unit_cognitive_test_training_integration"
@@ -45437,6 +45492,7 @@ help:
 	@echo "... unit_edge_test_motor_output"
 	@echo "... unit_edge_test_safety_watchdog"
 	@echo "... unit_edge_test_sensor_hub"
+	@echo "... unit_edge_test_sensorimotor"
 	@echo "... unit_edge_test_sim_bridge"
 	@echo "... unit_edge_test_swarm_byzantine"
 	@echo "... unit_edge_test_swarm_lifecycle"

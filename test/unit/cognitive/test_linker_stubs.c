@@ -12,9 +12,10 @@
 int nimcp_brain_learn(void* brain, const float* features,
                       uint32_t n_features, const float* target,
                       uint32_t target_size, const char* label,
-                      float lr) {
+                      float confidence, float lr) {
     (void)brain; (void)features; (void)n_features;
-    (void)target; (void)target_size; (void)label; (void)lr;
+    (void)target; (void)target_size; (void)label;
+    (void)confidence; (void)lr;
     return 0;
 }
 
@@ -28,6 +29,14 @@ int nimcp_motor_output_translate(void* motor, const float* brain_out,
                                   uint32_t max_commands) {
     (void)motor; (void)brain_out; (void)brain_dim;
     (void)commands_out; (void)max_commands;
+    return 0;
+}
+
+int nimcp_brain_infer(void* brain, const float* features,
+                      uint32_t num_features, float* outputs,
+                      uint32_t num_outputs) {
+    (void)brain; (void)features; (void)num_features;
+    (void)outputs; (void)num_outputs;
     return 0;
 }
 

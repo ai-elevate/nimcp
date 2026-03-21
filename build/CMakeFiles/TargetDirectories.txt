@@ -1899,6 +1899,8 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_training_data.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_modules_wiring.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_enhancements.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_native_language.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_tokenizer.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/rebuild_cache.dir
@@ -4010,6 +4012,7 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/CMakeFiles/integration_cognitive_curiosity_snn_plasticity.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/CMakeFiles/integration_cognitive_community_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/CMakeFiles/integration_cognitive_pipeline.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/CMakeFiles/integration_cognitive_language_pipeline.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/CMakeFiles/rebuild_cache.dir
@@ -7507,6 +7510,7 @@
 /home/bbrelin/nimcp/build/test/unit/edge/CMakeFiles/unit_edge_test_motor_output.dir
 /home/bbrelin/nimcp/build/test/unit/edge/CMakeFiles/unit_edge_test_sim_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/edge/CMakeFiles/unit_edge_test_embodiment.dir
+/home/bbrelin/nimcp/build/test/unit/edge/CMakeFiles/unit_edge_test_sensorimotor.dir
 /home/bbrelin/nimcp/build/test/unit/edge/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/edge/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/edge/CMakeFiles/rebuild_cache.dir

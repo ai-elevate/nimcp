@@ -343,3 +343,11 @@ gtest_discover_tests(integration_cognitive_pipeline
         LABELS "integration;cognitive;pipeline"
         TIMEOUT 120
 )
+
+# Language Pipeline Integration
+add_executable(integration_cognitive_language_pipeline test_language_pipeline_integration.cpp test_linker_stubs.c)
+target_link_libraries(integration_cognitive_language_pipeline PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+target_include_directories(integration_cognitive_language_pipeline PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+target_compile_features(integration_cognitive_language_pipeline PRIVATE cxx_std_17)
+gtest_discover_tests(integration_cognitive_language_pipeline WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES LABELS "integration;cognitive;language" TIMEOUT 120)

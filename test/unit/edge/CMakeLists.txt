@@ -71,3 +71,11 @@ target_include_directories(unit_edge_test_embodiment PRIVATE ${PROJECT_SOURCE_DI
 target_compile_features(unit_edge_test_embodiment PRIVATE cxx_std_17)
 gtest_discover_tests(unit_edge_test_embodiment WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     PROPERTIES LABELS "unit;edge;embodiment" TIMEOUT 60)
+
+# Sensorimotor Loop
+add_executable(unit_edge_test_sensorimotor test_sensorimotor.cpp test_linker_stubs.c)
+target_link_libraries(unit_edge_test_sensorimotor PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+target_include_directories(unit_edge_test_sensorimotor PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+target_compile_features(unit_edge_test_sensorimotor PRIVATE cxx_std_17)
+gtest_discover_tests(unit_edge_test_sensorimotor WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES LABELS "unit;edge;sensorimotor" TIMEOUT 60)

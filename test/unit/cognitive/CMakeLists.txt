@@ -2718,3 +2718,19 @@ target_include_directories(unit_cognitive_test_enhancements PRIVATE ${PROJECT_SO
 target_compile_features(unit_cognitive_test_enhancements PRIVATE cxx_std_17)
 gtest_discover_tests(unit_cognitive_test_enhancements WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     PROPERTIES LABELS "unit;cognitive;enhancements" TIMEOUT 60)
+
+# Native Language
+add_executable(unit_cognitive_test_native_language test_native_language.cpp test_linker_stubs.c)
+target_link_libraries(unit_cognitive_test_native_language PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+target_include_directories(unit_cognitive_test_native_language PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+target_compile_features(unit_cognitive_test_native_language PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_test_native_language WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES LABELS "unit;cognitive;language" TIMEOUT 60)
+
+# Tokenizer
+add_executable(unit_cognitive_test_tokenizer test_tokenizer.cpp test_linker_stubs.c)
+target_link_libraries(unit_cognitive_test_tokenizer PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+target_include_directories(unit_cognitive_test_tokenizer PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+target_compile_features(unit_cognitive_test_tokenizer PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_test_tokenizer WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES LABELS "unit;cognitive;language" TIMEOUT 60)
