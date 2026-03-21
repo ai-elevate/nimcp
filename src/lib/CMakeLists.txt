@@ -705,6 +705,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_cognitive_bio_async_bridge.c  # Cognitive-BioAsync integration bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning.c  # Phase 10.8: Meta-Learning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_analogical_transfer.c  # Analogical Transfer Engine
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_multiscale_memory.c    # Multi-Timescale Memory Buffer
 
     # Cognitive Reasoning & Logic Integration (Phase 10.x: Logical Reasoning)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_symbolic_logic_attachment.c  # Symbolic logic attachment
@@ -3048,9 +3050,28 @@ set(NIMCP_CORE_SOURCES
     # Brain-Native Language (replaces Phi-3 dependency)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/language/nimcp_native_language.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/language/nimcp_tokenizer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/language/nimcp_inner_speech.c       # Inner speech loop (iterative self-refinement)
+
+    # Episodic Replay (sleep consolidation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_episodic_replay.c     # Episodic replay during sleep/consolidation
+
+    # Cognitive Enhancements
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_emotional_learning.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_contrastive_self.c
 
     # OOD Detection (Out-of-Distribution)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_ood_detector.c
+
+    # Cognitive Enhancement Modules (World Model, Output Attention, WM Scratchpad)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_world_model_trainer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_output_attention.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_wm_scratchpad.c
+
+    # Self-Generated Curriculum (curiosity-driven training)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_self_curriculum.c
+
+    # Dynamic Neural Architecture Search (region utilisation monitoring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_dynamic_arch.c
 
     # Persistent Memory Store (SQLite + FTS5 + vector search)
     ${CMAKE_CURRENT_SOURCE_DIR}/../memory/nimcp_memory_store.c

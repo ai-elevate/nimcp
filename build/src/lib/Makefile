@@ -8564,6 +8564,30 @@ __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c.s
 .PHONY : __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c.s
 
+__/cognitive/language/nimcp_inner_speech.o: __/cognitive/language/nimcp_inner_speech.c.o
+.PHONY : __/cognitive/language/nimcp_inner_speech.o
+
+# target to build an object file
+__/cognitive/language/nimcp_inner_speech.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_inner_speech.c.o
+.PHONY : __/cognitive/language/nimcp_inner_speech.c.o
+
+__/cognitive/language/nimcp_inner_speech.i: __/cognitive/language/nimcp_inner_speech.c.i
+.PHONY : __/cognitive/language/nimcp_inner_speech.i
+
+# target to preprocess a source file
+__/cognitive/language/nimcp_inner_speech.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_inner_speech.c.i
+.PHONY : __/cognitive/language/nimcp_inner_speech.c.i
+
+__/cognitive/language/nimcp_inner_speech.s: __/cognitive/language/nimcp_inner_speech.c.s
+.PHONY : __/cognitive/language/nimcp_inner_speech.s
+
+# target to generate assembly for a file
+__/cognitive/language/nimcp_inner_speech.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_inner_speech.c.s
+.PHONY : __/cognitive/language/nimcp_inner_speech.c.s
+
 __/cognitive/language/nimcp_native_language.o: __/cognitive/language/nimcp_native_language.c.o
 .PHONY : __/cognitive/language/nimcp_native_language.o
 
@@ -10124,6 +10148,30 @@ __/cognitive/memory/nimcp_engram.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_engram.c.s
 .PHONY : __/cognitive/memory/nimcp_engram.c.s
 
+__/cognitive/memory/nimcp_episodic_replay.o: __/cognitive/memory/nimcp_episodic_replay.c.o
+.PHONY : __/cognitive/memory/nimcp_episodic_replay.o
+
+# target to build an object file
+__/cognitive/memory/nimcp_episodic_replay.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_episodic_replay.c.o
+.PHONY : __/cognitive/memory/nimcp_episodic_replay.c.o
+
+__/cognitive/memory/nimcp_episodic_replay.i: __/cognitive/memory/nimcp_episodic_replay.c.i
+.PHONY : __/cognitive/memory/nimcp_episodic_replay.i
+
+# target to preprocess a source file
+__/cognitive/memory/nimcp_episodic_replay.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_episodic_replay.c.i
+.PHONY : __/cognitive/memory/nimcp_episodic_replay.c.i
+
+__/cognitive/memory/nimcp_episodic_replay.s: __/cognitive/memory/nimcp_episodic_replay.c.s
+.PHONY : __/cognitive/memory/nimcp_episodic_replay.s
+
+# target to generate assembly for a file
+__/cognitive/memory/nimcp_episodic_replay.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_episodic_replay.c.s
+.PHONY : __/cognitive/memory/nimcp_episodic_replay.c.s
+
 __/cognitive/memory/nimcp_hopfield_memory.o: __/cognitive/memory/nimcp_hopfield_memory.c.o
 .PHONY : __/cognitive/memory/nimcp_hopfield_memory.o
 
@@ -11636,6 +11684,30 @@ __/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.s
 .PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.s
 
+__/cognitive/nimcp_analogical_transfer.o: __/cognitive/nimcp_analogical_transfer.c.o
+.PHONY : __/cognitive/nimcp_analogical_transfer.o
+
+# target to build an object file
+__/cognitive/nimcp_analogical_transfer.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_analogical_transfer.c.o
+.PHONY : __/cognitive/nimcp_analogical_transfer.c.o
+
+__/cognitive/nimcp_analogical_transfer.i: __/cognitive/nimcp_analogical_transfer.c.i
+.PHONY : __/cognitive/nimcp_analogical_transfer.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_analogical_transfer.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_analogical_transfer.c.i
+.PHONY : __/cognitive/nimcp_analogical_transfer.c.i
+
+__/cognitive/nimcp_analogical_transfer.s: __/cognitive/nimcp_analogical_transfer.c.s
+.PHONY : __/cognitive/nimcp_analogical_transfer.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_analogical_transfer.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_analogical_transfer.c.s
+.PHONY : __/cognitive/nimcp_analogical_transfer.c.s
+
 __/cognitive/nimcp_cognitive_meta_controller.o: __/cognitive/nimcp_cognitive_meta_controller.c.o
 .PHONY : __/cognitive/nimcp_cognitive_meta_controller.o
 
@@ -11659,6 +11731,78 @@ __/cognitive/nimcp_cognitive_meta_controller.s: __/cognitive/nimcp_cognitive_met
 __/cognitive/nimcp_cognitive_meta_controller.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_cognitive_meta_controller.c.s
 .PHONY : __/cognitive/nimcp_cognitive_meta_controller.c.s
+
+__/cognitive/nimcp_contrastive_self.o: __/cognitive/nimcp_contrastive_self.c.o
+.PHONY : __/cognitive/nimcp_contrastive_self.o
+
+# target to build an object file
+__/cognitive/nimcp_contrastive_self.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_contrastive_self.c.o
+.PHONY : __/cognitive/nimcp_contrastive_self.c.o
+
+__/cognitive/nimcp_contrastive_self.i: __/cognitive/nimcp_contrastive_self.c.i
+.PHONY : __/cognitive/nimcp_contrastive_self.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_contrastive_self.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_contrastive_self.c.i
+.PHONY : __/cognitive/nimcp_contrastive_self.c.i
+
+__/cognitive/nimcp_contrastive_self.s: __/cognitive/nimcp_contrastive_self.c.s
+.PHONY : __/cognitive/nimcp_contrastive_self.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_contrastive_self.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_contrastive_self.c.s
+.PHONY : __/cognitive/nimcp_contrastive_self.c.s
+
+__/cognitive/nimcp_dynamic_arch.o: __/cognitive/nimcp_dynamic_arch.c.o
+.PHONY : __/cognitive/nimcp_dynamic_arch.o
+
+# target to build an object file
+__/cognitive/nimcp_dynamic_arch.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_dynamic_arch.c.o
+.PHONY : __/cognitive/nimcp_dynamic_arch.c.o
+
+__/cognitive/nimcp_dynamic_arch.i: __/cognitive/nimcp_dynamic_arch.c.i
+.PHONY : __/cognitive/nimcp_dynamic_arch.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_dynamic_arch.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_dynamic_arch.c.i
+.PHONY : __/cognitive/nimcp_dynamic_arch.c.i
+
+__/cognitive/nimcp_dynamic_arch.s: __/cognitive/nimcp_dynamic_arch.c.s
+.PHONY : __/cognitive/nimcp_dynamic_arch.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_dynamic_arch.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_dynamic_arch.c.s
+.PHONY : __/cognitive/nimcp_dynamic_arch.c.s
+
+__/cognitive/nimcp_emotional_learning.o: __/cognitive/nimcp_emotional_learning.c.o
+.PHONY : __/cognitive/nimcp_emotional_learning.o
+
+# target to build an object file
+__/cognitive/nimcp_emotional_learning.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_emotional_learning.c.o
+.PHONY : __/cognitive/nimcp_emotional_learning.c.o
+
+__/cognitive/nimcp_emotional_learning.i: __/cognitive/nimcp_emotional_learning.c.i
+.PHONY : __/cognitive/nimcp_emotional_learning.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_emotional_learning.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_emotional_learning.c.i
+.PHONY : __/cognitive/nimcp_emotional_learning.c.i
+
+__/cognitive/nimcp_emotional_learning.s: __/cognitive/nimcp_emotional_learning.c.s
+.PHONY : __/cognitive/nimcp_emotional_learning.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_emotional_learning.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_emotional_learning.c.s
+.PHONY : __/cognitive/nimcp_emotional_learning.c.s
 
 __/cognitive/nimcp_emotional_system_fep_bridge.o: __/cognitive/nimcp_emotional_system_fep_bridge.c.o
 .PHONY : __/cognitive/nimcp_emotional_system_fep_bridge.o
@@ -11780,6 +11924,30 @@ __/cognitive/nimcp_meta_learning_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_meta_learning_fep_bridge.c.s
 .PHONY : __/cognitive/nimcp_meta_learning_fep_bridge.c.s
 
+__/cognitive/nimcp_multiscale_memory.o: __/cognitive/nimcp_multiscale_memory.c.o
+.PHONY : __/cognitive/nimcp_multiscale_memory.o
+
+# target to build an object file
+__/cognitive/nimcp_multiscale_memory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_multiscale_memory.c.o
+.PHONY : __/cognitive/nimcp_multiscale_memory.c.o
+
+__/cognitive/nimcp_multiscale_memory.i: __/cognitive/nimcp_multiscale_memory.c.i
+.PHONY : __/cognitive/nimcp_multiscale_memory.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_multiscale_memory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_multiscale_memory.c.i
+.PHONY : __/cognitive/nimcp_multiscale_memory.c.i
+
+__/cognitive/nimcp_multiscale_memory.s: __/cognitive/nimcp_multiscale_memory.c.s
+.PHONY : __/cognitive/nimcp_multiscale_memory.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_multiscale_memory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_multiscale_memory.c.s
+.PHONY : __/cognitive/nimcp_multiscale_memory.c.s
+
 __/cognitive/nimcp_ood_detector.o: __/cognitive/nimcp_ood_detector.c.o
 .PHONY : __/cognitive/nimcp_ood_detector.o
 
@@ -11803,6 +11971,30 @@ __/cognitive/nimcp_ood_detector.s: __/cognitive/nimcp_ood_detector.c.s
 __/cognitive/nimcp_ood_detector.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_ood_detector.c.s
 .PHONY : __/cognitive/nimcp_ood_detector.c.s
+
+__/cognitive/nimcp_output_attention.o: __/cognitive/nimcp_output_attention.c.o
+.PHONY : __/cognitive/nimcp_output_attention.o
+
+# target to build an object file
+__/cognitive/nimcp_output_attention.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_output_attention.c.o
+.PHONY : __/cognitive/nimcp_output_attention.c.o
+
+__/cognitive/nimcp_output_attention.i: __/cognitive/nimcp_output_attention.c.i
+.PHONY : __/cognitive/nimcp_output_attention.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_output_attention.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_output_attention.c.i
+.PHONY : __/cognitive/nimcp_output_attention.c.i
+
+__/cognitive/nimcp_output_attention.s: __/cognitive/nimcp_output_attention.c.s
+.PHONY : __/cognitive/nimcp_output_attention.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_output_attention.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_output_attention.c.s
+.PHONY : __/cognitive/nimcp_output_attention.c.s
 
 __/cognitive/nimcp_personality_fep_bridge.o: __/cognitive/nimcp_personality_fep_bridge.c.o
 .PHONY : __/cognitive/nimcp_personality_fep_bridge.o
@@ -11875,6 +12067,78 @@ __/cognitive/nimcp_self_awareness_feedback.s: __/cognitive/nimcp_self_awareness_
 __/cognitive/nimcp_self_awareness_feedback.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_self_awareness_feedback.c.s
 .PHONY : __/cognitive/nimcp_self_awareness_feedback.c.s
+
+__/cognitive/nimcp_self_curriculum.o: __/cognitive/nimcp_self_curriculum.c.o
+.PHONY : __/cognitive/nimcp_self_curriculum.o
+
+# target to build an object file
+__/cognitive/nimcp_self_curriculum.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_self_curriculum.c.o
+.PHONY : __/cognitive/nimcp_self_curriculum.c.o
+
+__/cognitive/nimcp_self_curriculum.i: __/cognitive/nimcp_self_curriculum.c.i
+.PHONY : __/cognitive/nimcp_self_curriculum.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_self_curriculum.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_self_curriculum.c.i
+.PHONY : __/cognitive/nimcp_self_curriculum.c.i
+
+__/cognitive/nimcp_self_curriculum.s: __/cognitive/nimcp_self_curriculum.c.s
+.PHONY : __/cognitive/nimcp_self_curriculum.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_self_curriculum.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_self_curriculum.c.s
+.PHONY : __/cognitive/nimcp_self_curriculum.c.s
+
+__/cognitive/nimcp_wm_scratchpad.o: __/cognitive/nimcp_wm_scratchpad.c.o
+.PHONY : __/cognitive/nimcp_wm_scratchpad.o
+
+# target to build an object file
+__/cognitive/nimcp_wm_scratchpad.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_wm_scratchpad.c.o
+.PHONY : __/cognitive/nimcp_wm_scratchpad.c.o
+
+__/cognitive/nimcp_wm_scratchpad.i: __/cognitive/nimcp_wm_scratchpad.c.i
+.PHONY : __/cognitive/nimcp_wm_scratchpad.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_wm_scratchpad.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_wm_scratchpad.c.i
+.PHONY : __/cognitive/nimcp_wm_scratchpad.c.i
+
+__/cognitive/nimcp_wm_scratchpad.s: __/cognitive/nimcp_wm_scratchpad.c.s
+.PHONY : __/cognitive/nimcp_wm_scratchpad.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_wm_scratchpad.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_wm_scratchpad.c.s
+.PHONY : __/cognitive/nimcp_wm_scratchpad.c.s
+
+__/cognitive/nimcp_world_model_trainer.o: __/cognitive/nimcp_world_model_trainer.c.o
+.PHONY : __/cognitive/nimcp_world_model_trainer.o
+
+# target to build an object file
+__/cognitive/nimcp_world_model_trainer.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_world_model_trainer.c.o
+.PHONY : __/cognitive/nimcp_world_model_trainer.c.o
+
+__/cognitive/nimcp_world_model_trainer.i: __/cognitive/nimcp_world_model_trainer.c.i
+.PHONY : __/cognitive/nimcp_world_model_trainer.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_world_model_trainer.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_world_model_trainer.c.i
+.PHONY : __/cognitive/nimcp_world_model_trainer.c.i
+
+__/cognitive/nimcp_world_model_trainer.s: __/cognitive/nimcp_world_model_trainer.c.s
+.PHONY : __/cognitive/nimcp_world_model_trainer.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_world_model_trainer.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_world_model_trainer.c.s
+.PHONY : __/cognitive/nimcp_world_model_trainer.c.s
 
 __/cognitive/omni/bridges/nimcp_omni_wm_cognitive_bridge.o: __/cognitive/omni/bridges/nimcp_omni_wm_cognitive_bridge.c.o
 .PHONY : __/cognitive/omni/bridges/nimcp_omni_wm_cognitive_bridge.o
@@ -54673,6 +54937,9 @@ help:
 	@echo "... __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.o"
 	@echo "... __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.i"
 	@echo "... __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.s"
+	@echo "... __/cognitive/language/nimcp_inner_speech.o"
+	@echo "... __/cognitive/language/nimcp_inner_speech.i"
+	@echo "... __/cognitive/language/nimcp_inner_speech.s"
 	@echo "... __/cognitive/language/nimcp_native_language.o"
 	@echo "... __/cognitive/language/nimcp_native_language.i"
 	@echo "... __/cognitive/language/nimcp_native_language.s"
@@ -54868,6 +55135,9 @@ help:
 	@echo "... __/cognitive/memory/nimcp_engram.o"
 	@echo "... __/cognitive/memory/nimcp_engram.i"
 	@echo "... __/cognitive/memory/nimcp_engram.s"
+	@echo "... __/cognitive/memory/nimcp_episodic_replay.o"
+	@echo "... __/cognitive/memory/nimcp_episodic_replay.i"
+	@echo "... __/cognitive/memory/nimcp_episodic_replay.s"
 	@echo "... __/cognitive/memory/nimcp_hopfield_memory.o"
 	@echo "... __/cognitive/memory/nimcp_hopfield_memory.i"
 	@echo "... __/cognitive/memory/nimcp_hopfield_memory.s"
@@ -55057,9 +55327,21 @@ help:
 	@echo "... __/cognitive/neuro_symbolic/nimcp_quantum_mcts.o"
 	@echo "... __/cognitive/neuro_symbolic/nimcp_quantum_mcts.i"
 	@echo "... __/cognitive/neuro_symbolic/nimcp_quantum_mcts.s"
+	@echo "... __/cognitive/nimcp_analogical_transfer.o"
+	@echo "... __/cognitive/nimcp_analogical_transfer.i"
+	@echo "... __/cognitive/nimcp_analogical_transfer.s"
 	@echo "... __/cognitive/nimcp_cognitive_meta_controller.o"
 	@echo "... __/cognitive/nimcp_cognitive_meta_controller.i"
 	@echo "... __/cognitive/nimcp_cognitive_meta_controller.s"
+	@echo "... __/cognitive/nimcp_contrastive_self.o"
+	@echo "... __/cognitive/nimcp_contrastive_self.i"
+	@echo "... __/cognitive/nimcp_contrastive_self.s"
+	@echo "... __/cognitive/nimcp_dynamic_arch.o"
+	@echo "... __/cognitive/nimcp_dynamic_arch.i"
+	@echo "... __/cognitive/nimcp_dynamic_arch.s"
+	@echo "... __/cognitive/nimcp_emotional_learning.o"
+	@echo "... __/cognitive/nimcp_emotional_learning.i"
+	@echo "... __/cognitive/nimcp_emotional_learning.s"
 	@echo "... __/cognitive/nimcp_emotional_system_fep_bridge.o"
 	@echo "... __/cognitive/nimcp_emotional_system_fep_bridge.i"
 	@echo "... __/cognitive/nimcp_emotional_system_fep_bridge.s"
@@ -55075,9 +55357,15 @@ help:
 	@echo "... __/cognitive/nimcp_meta_learning_fep_bridge.o"
 	@echo "... __/cognitive/nimcp_meta_learning_fep_bridge.i"
 	@echo "... __/cognitive/nimcp_meta_learning_fep_bridge.s"
+	@echo "... __/cognitive/nimcp_multiscale_memory.o"
+	@echo "... __/cognitive/nimcp_multiscale_memory.i"
+	@echo "... __/cognitive/nimcp_multiscale_memory.s"
 	@echo "... __/cognitive/nimcp_ood_detector.o"
 	@echo "... __/cognitive/nimcp_ood_detector.i"
 	@echo "... __/cognitive/nimcp_ood_detector.s"
+	@echo "... __/cognitive/nimcp_output_attention.o"
+	@echo "... __/cognitive/nimcp_output_attention.i"
+	@echo "... __/cognitive/nimcp_output_attention.s"
 	@echo "... __/cognitive/nimcp_personality_fep_bridge.o"
 	@echo "... __/cognitive/nimcp_personality_fep_bridge.i"
 	@echo "... __/cognitive/nimcp_personality_fep_bridge.s"
@@ -55087,6 +55375,15 @@ help:
 	@echo "... __/cognitive/nimcp_self_awareness_feedback.o"
 	@echo "... __/cognitive/nimcp_self_awareness_feedback.i"
 	@echo "... __/cognitive/nimcp_self_awareness_feedback.s"
+	@echo "... __/cognitive/nimcp_self_curriculum.o"
+	@echo "... __/cognitive/nimcp_self_curriculum.i"
+	@echo "... __/cognitive/nimcp_self_curriculum.s"
+	@echo "... __/cognitive/nimcp_wm_scratchpad.o"
+	@echo "... __/cognitive/nimcp_wm_scratchpad.i"
+	@echo "... __/cognitive/nimcp_wm_scratchpad.s"
+	@echo "... __/cognitive/nimcp_world_model_trainer.o"
+	@echo "... __/cognitive/nimcp_world_model_trainer.i"
+	@echo "... __/cognitive/nimcp_world_model_trainer.s"
 	@echo "... __/cognitive/omni/bridges/nimcp_omni_wm_cognitive_bridge.o"
 	@echo "... __/cognitive/omni/bridges/nimcp_omni_wm_cognitive_bridge.i"
 	@echo "... __/cognitive/omni/bridges/nimcp_omni_wm_cognitive_bridge.s"
