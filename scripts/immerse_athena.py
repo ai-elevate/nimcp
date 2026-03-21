@@ -82,6 +82,11 @@ try:
     from spectral_kfold import SpectralKFoldSplitter
 except ImportError:
     SpectralKFoldSplitter = None
+try:
+    from expanded_sensory_data import get_all_sensory, get_expanded_objects
+    _EXPANDED_SENSORY_AVAILABLE = True
+except ImportError:
+    _EXPANDED_SENSORY_AVAILABLE = False
 
 
 def generate_sensory_exposure():
@@ -3316,6 +3321,12 @@ class StimulusSource:
             domain = random.choice(list(self.ADVANCED_TOPICS.keys()))
             items = self.ADVANCED_TOPICS[domain]
         return random.choice(items), domain
+
+
+# Extend sensory data with expanded corpus (1000+ items)
+if _EXPANDED_SENSORY_AVAILABLE:
+    StimulusSource.SENSORY = StimulusSource.SENSORY + get_all_sensory()
+    StimulusSource.OBJECTS = StimulusSource.OBJECTS + get_expanded_objects()
 
 
 # ============================================================================
