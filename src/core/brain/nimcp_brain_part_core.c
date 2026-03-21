@@ -956,6 +956,57 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         _ethics_warn_count++;
     }
 
+    /* === LGSS INPUT VALIDATOR: Validate inference input ===
+     * Catches adversarial inputs, OOD data, corrupted features.
+     * This is a NON-REMOVABLE safety layer — defense in depth with ethics. */
+    if (brain->lgss && brain->lgss_enabled && features && num_features > 0) {
+        extern lgss_context_t* lgss_get_context_ptr(void* lgss);
+        /* Use lgss_evaluate with a perception-domain action context to validate input.
+         * Build a minimal context describing the input for safety KB evaluation. */
+        safety_action_context_t lgss_input_ctx;
+        memset(&lgss_input_ctx, 0, sizeof(lgss_input_ctx));
+        strncpy(lgss_input_ctx.string_fields[0].key, "operation", 63);
+        strncpy(lgss_input_ctx.string_fields[0].value, "perceive_input", SAFETY_MAX_VALUE_LEN - 1);
+        strncpy(lgss_input_ctx.string_fields[1].key, "target_type", 63);
+        strncpy(lgss_input_ctx.string_fields[1].value, "inference_features", SAFETY_MAX_VALUE_LEN - 1);
+        lgss_input_ctx.num_string_fields = 2;
+
+        /* Check for NaN/Inf/extreme values as a quick anomaly signal */
+        float max_abs = 0.0f;
+        uint32_t nan_count = 0;
+        for (uint32_t i = 0; i < num_features && i < 1024; i++) {
+            if (isnan(features[i]) || isinf(features[i])) { nan_count++; }
+            else if (fabsf(features[i]) > max_abs) { max_abs = fabsf(features[i]); }
+        }
+        float p_harm = 0.0f;
+        if (nan_count > 0) p_harm = 0.9f;
+        else if (max_abs > 1e6f) p_harm = 0.5f;
+
+        strncpy(lgss_input_ctx.numeric_fields[0].key, "p_harm", 63);
+        lgss_input_ctx.numeric_fields[0].value = p_harm;
+        strncpy(lgss_input_ctx.numeric_fields[1].key, "nan_count", 63);
+        lgss_input_ctx.numeric_fields[1].value = (float)nan_count;
+        lgss_input_ctx.num_numeric_fields = 2;
+        lgss_input_ctx.domain_hint = SAFETY_DOMAIN_GOVERNANCE;
+        lgss_input_ctx.has_domain_hint = true;
+        snprintf(lgss_input_ctx.action_description, sizeof(lgss_input_ctx.action_description),
+            "Inference input validation: %u features, max_abs=%.1f, nan=%u",
+            num_features, max_abs, nan_count);
+        strncpy(lgss_input_ctx.source, "INPUT_VALIDATOR", 63);
+        lgss_input_ctx.timestamp = nimcp_time_now_us();
+
+        safety_evaluation_t lgss_input_eval;
+        int lgss_input_ret = lgss_evaluate(brain->lgss, &lgss_input_ctx, &lgss_input_eval);
+        if (lgss_input_ret == 0 && lgss_input_eval.action == SAFETY_ACTION_DENY) {
+            nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_INPUT_REJECTED, 2,
+                "LGSS input validator REJECTED inference input: %u features, "
+                "nan=%u, max_abs=%.1f", num_features, nan_count, max_abs);
+            LOG_MODULE_WARN("BRAIN", "LGSS input validator rejected inference input — "
+                            "returning null decision");
+            return NULL;
+        }
+    }
+
     // ========================================================================
     // G3 SECURITY: Inference deadline — prevent runaway inference
     // ========================================================================
@@ -2935,6 +2986,57 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+    /* === LGSS ACTION INTERCEPTOR: Layered governance safety check ===
+     * All brain decisions pass through the LGSS action interceptor.
+     * This is a NON-REMOVABLE safety layer — defense in depth with ethics.
+     * LGSS evaluates the decision against the locked safety knowledge base. */
+    if (brain->lgss && brain->lgss_enabled && decision) {
+        safety_action_context_t lgss_action_ctx;
+        memset(&lgss_action_ctx, 0, sizeof(lgss_action_ctx));
+        strncpy(lgss_action_ctx.string_fields[0].key, "operation", 63);
+        strncpy(lgss_action_ctx.string_fields[0].value, "brain_decide_output", SAFETY_MAX_VALUE_LEN - 1);
+        strncpy(lgss_action_ctx.string_fields[1].key, "target_type", 63);
+        strncpy(lgss_action_ctx.string_fields[1].value, "decision", SAFETY_MAX_VALUE_LEN - 1);
+        strncpy(lgss_action_ctx.string_fields[2].key, "label", 63);
+        strncpy(lgss_action_ctx.string_fields[2].value,
+            decision->label[0] ? decision->label : "(none)", SAFETY_MAX_VALUE_LEN - 1);
+        lgss_action_ctx.num_string_fields = 3;
+
+        strncpy(lgss_action_ctx.numeric_fields[0].key, "confidence", 63);
+        lgss_action_ctx.numeric_fields[0].value = decision->confidence;
+        lgss_action_ctx.num_numeric_fields = 1;
+
+        lgss_action_ctx.domain_hint = SAFETY_DOMAIN_GOVERNANCE;
+        lgss_action_ctx.has_domain_hint = true;
+        snprintf(lgss_action_ctx.action_description, sizeof(lgss_action_ctx.action_description),
+            "Brain decision output: confidence=%.3f, label=%s",
+            decision->confidence, decision->label);
+        strncpy(lgss_action_ctx.source, "ACTION_INTERCEPTOR", 63);
+        lgss_action_ctx.timestamp = nimcp_time_now_us();
+
+        safety_evaluation_t lgss_action_eval;
+        int lgss_action_ret = lgss_evaluate(brain->lgss, &lgss_action_ctx, &lgss_action_eval);
+        if (lgss_action_ret == 0 && lgss_action_eval.action == SAFETY_ACTION_DENY) {
+            /* Block unsafe decision — reduce confidence to zero, tag label */
+            decision->confidence = 0.0f;
+            strncat(decision->label, " [BLOCKED-LGSS]",
+                   sizeof(decision->label) - strlen(decision->label) - 1);
+            nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_ACTION_BLOCKED, 2,
+                "LGSS action interceptor BLOCKED decision: label=%s",
+                decision->label);
+            LOG_MODULE_WARN("BRAIN", "LGSS action interceptor blocked decision — "
+                            "confidence zeroed");
+        } else if (lgss_action_ret == 0 && lgss_action_eval.action == SAFETY_ACTION_ESCALATE) {
+            /* Escalation: reduce confidence and tag for review */
+            decision->confidence *= 0.3f;
+            strncat(decision->label, " [LGSS-ESCALATE]",
+                   sizeof(decision->label) - strlen(decision->label) - 1);
+            nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_ACTION_BLOCKED, 1,
+                "LGSS action interceptor ESCALATED decision: label=%s, confidence=%.3f",
+                decision->label, decision->confidence);
+        }
+    }
+
     /* Audit: Log every 1000th inference */
     {
         static uint32_t _inference_audit_counter = 0;
@@ -3619,6 +3721,58 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                     decision->output_vector, decision->output_size);
                 decision->confidence *= 0.1f;  /* Signal low confidence */
             }
+        }
+    }
+
+    /* === LGSS MOTOR GATE: Validate motor commands before output ===
+     * Defense in depth — watchdog checks values, motor gate checks intent.
+     * Evaluates the output vector against the safety KB for motor safety. */
+    if (brain->lgss && brain->lgss_enabled && decision &&
+        decision->output_vector && decision->output_size > 0) {
+        safety_action_context_t lgss_motor_ctx;
+        memset(&lgss_motor_ctx, 0, sizeof(lgss_motor_ctx));
+        strncpy(lgss_motor_ctx.string_fields[0].key, "operation", 63);
+        strncpy(lgss_motor_ctx.string_fields[0].value, "motor_output", SAFETY_MAX_VALUE_LEN - 1);
+        strncpy(lgss_motor_ctx.string_fields[1].key, "target_type", 63);
+        strncpy(lgss_motor_ctx.string_fields[1].value, "actuator_command", SAFETY_MAX_VALUE_LEN - 1);
+        lgss_motor_ctx.num_string_fields = 2;
+
+        /* Compute magnitude of output vector as a proxy for motor force */
+        float motor_magnitude = 0.0f;
+        for (uint32_t i = 0; i < decision->output_size && i < 1024; i++) {
+            motor_magnitude += decision->output_vector[i] * decision->output_vector[i];
+        }
+        motor_magnitude = sqrtf(motor_magnitude);
+
+        strncpy(lgss_motor_ctx.numeric_fields[0].key, "magnitude", 63);
+        lgss_motor_ctx.numeric_fields[0].value = motor_magnitude;
+        strncpy(lgss_motor_ctx.numeric_fields[1].key, "output_size", 63);
+        lgss_motor_ctx.numeric_fields[1].value = (float)decision->output_size;
+        lgss_motor_ctx.num_numeric_fields = 2;
+
+        lgss_motor_ctx.domain_hint = SAFETY_DOMAIN_HUMAN_HARM;
+        lgss_motor_ctx.has_domain_hint = true;
+        snprintf(lgss_motor_ctx.action_description, sizeof(lgss_motor_ctx.action_description),
+            "Motor output gate: %u outputs, magnitude=%.3f",
+            decision->output_size, motor_magnitude);
+        strncpy(lgss_motor_ctx.source, "MOTOR_GATE", 63);
+        lgss_motor_ctx.timestamp = nimcp_time_now_us();
+
+        safety_evaluation_t lgss_motor_eval;
+        int lgss_motor_ret = lgss_evaluate(brain->lgss, &lgss_motor_ctx, &lgss_motor_eval);
+        if (lgss_motor_ret == 0 && lgss_motor_eval.action == SAFETY_ACTION_DENY) {
+            /* Motor gate blocked — zero out output vector and reduce confidence */
+            for (uint32_t i = 0; i < decision->output_size; i++) {
+                decision->output_vector[i] = 0.0f;
+            }
+            decision->confidence *= 0.05f;
+            strncat(decision->label, " [MOTOR-BLOCKED-LGSS]",
+                   sizeof(decision->label) - strlen(decision->label) - 1);
+            nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_MOTOR_BLOCKED, 3,
+                "LGSS motor gate BLOCKED output: magnitude=%.3f, outputs=%u",
+                motor_magnitude, decision->output_size);
+            LOG_MODULE_WARN("BRAIN", "LGSS motor gate blocked output — "
+                            "zeroed output vector");
         }
     }
 

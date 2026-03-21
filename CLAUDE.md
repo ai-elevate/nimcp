@@ -101,15 +101,31 @@ The `nimcp_safety_audit_*` API (`include/security/nimcp_audit_log.h`) provides a
 - Events logged: inference (every 1000th), learning (every 1000th), ethics violations (all), watchdog triggers (all), swarm events, checkpoint operations
 - Use `nimcp_safety_audit_verify_integrity()` to detect tampering
 
+### LGSS (Layered Governance Safety System) — Non-Removable
+LGSS is **always created** during brain initialization, regardless of `enable_lgss` configuration. The `enable_lgss` flag controls rule strictness, not existence. LGSS is wired into **all** brain pipelines:
+
+| Pipeline Point | Location | What It Does |
+|----------------|----------|--------------|
+| **Input Validation** | `brain_decide()` top | Checks for NaN/Inf/adversarial features; blocks with null decision |
+| **Action Interceptor** | `brain_decide()` after ethics | Evaluates decision against safety KB; blocks or escalates |
+| **Motor Gate** | `brain_decide()` after watchdog | Validates output vector magnitude/intent; zeros unsafe outputs |
+| **Training Guard** | `brain_learn_vector()` after ethics | Validates training data; skips poisoned learning steps |
+| **Reward Alignment** | `brain_apply_reward_learning()` | Validates reward signals; blocks reward hacking attempts |
+
+**LGSS Audit Events**: `LGSS_ACTION_BLOCKED`, `LGSS_INPUT_REJECTED`, `LGSS_TRAINING_BLOCKED`, `LGSS_MOTOR_BLOCKED`, `LGSS_REWARD_BLOCKED` — all logged to the tamper-resistant safety audit log.
+
+**Key API**: `lgss_evaluate(brain->lgss, &context, &result)` — uses `safety_action_context_t` with string/numeric fields and `SAFETY_DOMAIN_*` hints. Result `SAFETY_ACTION_DENY` triggers blocking.
+
 ### Files Modified for Safety Hardening
 | File | Change |
 |------|--------|
-| `src/core/brain/nimcp_brain_part_core.c` | Mandatory ethics gate + audit logging in `brain_decide()` |
-| `src/core/brain/learning/nimcp_brain_learning.c` | Mandatory ethics gate + audit logging in `brain_learn_vector()` |
+| `src/core/brain/nimcp_brain_part_core.c` | Mandatory ethics gate + LGSS input/action/motor gates + audit logging in `brain_decide()` |
+| `src/core/brain/learning/nimcp_brain_learning.c` | Mandatory ethics gate + LGSS training guard + reward alignment + audit logging |
+| `src/core/brain/factory/init/nimcp_brain_init_safety_verify.c` | LGSS non-removable: always created regardless of `enable_lgss` |
 | `src/core/brain/cognitive/nimcp_brain_cognitive.c` | Ethics init no longer gated by `enable_ethics` |
 | `src/core/brain/factory/init/nimcp_brain_init_monitoring.c` | Ethics init no longer gated by `enable_ethics` |
-| `include/security/nimcp_audit_log.h` | New: safety audit API |
-| `src/security/nimcp_audit_log.c` | New: safety audit implementation |
+| `include/security/nimcp_audit_log.h` | Safety audit API + LGSS event types |
+| `src/security/nimcp_audit_log.c` | Safety audit implementation |
 | `src/api/nimcp_part_lifecycle.c` | Audit log init in `nimcp_init_internal()` |
 
 ---

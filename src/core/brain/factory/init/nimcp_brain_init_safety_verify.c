@@ -55,11 +55,12 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
     brain->lgss_enabled = false;
     brain->safety_verified = false;
 
-    // Check if LGSS is enabled in config
+    /* LGSS is a NON-REMOVABLE safety dependency.
+     * The enable_lgss config flag controls rule strictness, not existence.
+     * LGSS is ALWAYS created — defense in depth with the ethics engine. */
     if (!brain->config.enable_lgss) {
-        LOG_WARNING("LGSS disabled in config - AGI will run WITHOUT safety constraints!");
-        LOG_WARNING("This is only acceptable for testing purposes");
-        return true;  // Allow brain to start without LGSS for testing
+        LOG_WARNING("LGSS config flag is false — LGSS will still be created "
+                    "with default rules (non-removable safety dependency)");
     }
 
     LOG_INFO("Initializing LGSS (Layered Governance Safety System)...");
@@ -162,14 +163,7 @@ bool nimcp_brain_factory_verify_safety(brain_t brain)
 
     brain->safety_verified = false;
 
-    // Step 1: Check if LGSS is enabled and present
-    if (!brain->config.enable_lgss) {
-        LOG_WARNING("LGSS is disabled - skipping safety verification");
-        LOG_WARNING("*** AGI WILL RUN WITHOUT SAFETY CONSTRAINTS ***");
-        brain->safety_verified = false;  // Not verified, but allowed for testing
-        return true;  // Allow for testing only
-    }
-
+    // Step 1: Check if LGSS is present (LGSS is non-removable)
     if (!brain->lgss) {
         LOG_ERROR("FATAL: LGSS context is NULL but LGSS is enabled");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_verify_safety: brain->lgss is NULL");

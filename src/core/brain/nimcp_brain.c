@@ -25,6 +25,7 @@
 
 #include "core/brain/nimcp_brain.h"
 #include "security/nimcp_audit_log.h"
+#include "security/lgss/nimcp_lgss.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/nimcp_brain_multimodal.h"  // Extracted multimodal processing
 #include "utils/memory/nimcp_unified_memory.h"

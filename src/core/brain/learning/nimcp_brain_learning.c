@@ -38,6 +38,7 @@
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "security/nimcp_audit_log.h"
+#include "security/lgss/nimcp_lgss.h"
 #include <math.h>
 #include <string.h>
 #include "utils/math/nimcp_math_helpers.h"
@@ -821,6 +822,61 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 _learn_ethics_warn_count);
         }
         _learn_ethics_warn_count++;
+    }
+
+    /* === LGSS TRAINING GUARD: Validate learning data before weight updates ===
+     * Prevents adversarial training data from corrupting the model.
+     * This is a NON-REMOVABLE safety layer — defense in depth with ethics. */
+    if (brain->lgss && brain->lgss_enabled) {
+        safety_action_context_t lgss_train_ctx;
+        memset(&lgss_train_ctx, 0, sizeof(lgss_train_ctx));
+        strncpy(lgss_train_ctx.string_fields[0].key, "operation", 63);
+        strncpy(lgss_train_ctx.string_fields[0].value, "training_update", SAFETY_MAX_VALUE_LEN - 1);
+        strncpy(lgss_train_ctx.string_fields[1].key, "target_type", 63);
+        strncpy(lgss_train_ctx.string_fields[1].value, "weight_update", SAFETY_MAX_VALUE_LEN - 1);
+        if (label) {
+            strncpy(lgss_train_ctx.string_fields[2].key, "label", 63);
+            strncpy(lgss_train_ctx.string_fields[2].value, label, SAFETY_MAX_VALUE_LEN - 1);
+            lgss_train_ctx.num_string_fields = 3;
+        } else {
+            lgss_train_ctx.num_string_fields = 2;
+        }
+
+        /* Check training data for NaN/Inf as an anomaly indicator */
+        float train_p_harm = 0.0f;
+        uint32_t train_nan = 0;
+        for (uint32_t i = 0; i < num_features && i < 512; i++) {
+            if (isnan(features[i]) || isinf(features[i])) train_nan++;
+        }
+        for (uint32_t i = 0; i < target_size && i < 512; i++) {
+            if (isnan(target[i]) || isinf(target[i])) train_nan++;
+        }
+        if (train_nan > 0) train_p_harm = 0.8f;
+
+        strncpy(lgss_train_ctx.numeric_fields[0].key, "p_harm", 63);
+        lgss_train_ctx.numeric_fields[0].value = train_p_harm;
+        strncpy(lgss_train_ctx.numeric_fields[1].key, "num_features", 63);
+        lgss_train_ctx.numeric_fields[1].value = (float)num_features;
+        lgss_train_ctx.num_numeric_fields = 2;
+
+        lgss_train_ctx.domain_hint = SAFETY_DOMAIN_GOVERNANCE;
+        lgss_train_ctx.has_domain_hint = true;
+        snprintf(lgss_train_ctx.action_description, sizeof(lgss_train_ctx.action_description),
+            "Training guard: %u features, %u targets, label=%s, nan=%u",
+            num_features, target_size, label ? label : "(null)", train_nan);
+        strncpy(lgss_train_ctx.source, "TRAINING_GUARD", 63);
+        lgss_train_ctx.timestamp = nimcp_time_get_us();
+
+        safety_evaluation_t lgss_train_eval;
+        int lgss_train_ret = lgss_evaluate(brain->lgss, &lgss_train_ctx, &lgss_train_eval);
+        if (lgss_train_ret == 0 && lgss_train_eval.action == SAFETY_ACTION_DENY) {
+            nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_TRAINING_BLOCKED, 2,
+                "LGSS training guard REJECTED learning step: label=%s, nan=%u",
+                label ? label : "(null)", train_nan);
+            LOG_MODULE_WARN("BRAIN", "LGSS training guard rejected learning step — "
+                            "skipping weight update");
+            return -1.0f;  /* Skip this learning step */
+        }
     }
 
     /* Audit: Log every 1000th learning call */
@@ -4441,6 +4497,40 @@ uint32_t brain_apply_reward_learning(brain_t brain, float reward)
     if (reward < -1.0F || reward > 1.0F) {
         set_error("Reward must be in range [-1.0, 1.0], got %.2f", reward);
         return 0;
+    }
+
+    /* === LGSS REWARD ALIGNMENT: Validate reward signals ===
+     * Prevents reward hacking and misaligned incentives.
+     * This is a NON-REMOVABLE safety layer. */
+    if (brain->lgss && brain->lgss_enabled) {
+        safety_action_context_t lgss_reward_ctx;
+        memset(&lgss_reward_ctx, 0, sizeof(lgss_reward_ctx));
+        strncpy(lgss_reward_ctx.string_fields[0].key, "operation", 63);
+        strncpy(lgss_reward_ctx.string_fields[0].value, "reward_signal", SAFETY_MAX_VALUE_LEN - 1);
+        strncpy(lgss_reward_ctx.string_fields[1].key, "target_type", 63);
+        strncpy(lgss_reward_ctx.string_fields[1].value, "reward_pathway", SAFETY_MAX_VALUE_LEN - 1);
+        lgss_reward_ctx.num_string_fields = 2;
+
+        strncpy(lgss_reward_ctx.numeric_fields[0].key, "reward_value", 63);
+        lgss_reward_ctx.numeric_fields[0].value = reward;
+        lgss_reward_ctx.num_numeric_fields = 1;
+
+        lgss_reward_ctx.domain_hint = SAFETY_DOMAIN_GOVERNANCE;
+        lgss_reward_ctx.has_domain_hint = true;
+        snprintf(lgss_reward_ctx.action_description, sizeof(lgss_reward_ctx.action_description),
+            "Reward alignment check: reward=%.4f", reward);
+        strncpy(lgss_reward_ctx.source, "REWARD_ALIGNMENT", 63);
+        lgss_reward_ctx.timestamp = nimcp_time_get_us();
+
+        safety_evaluation_t lgss_reward_eval;
+        int lgss_reward_ret = lgss_evaluate(brain->lgss, &lgss_reward_ctx, &lgss_reward_eval);
+        if (lgss_reward_ret == 0 && lgss_reward_eval.action == SAFETY_ACTION_DENY) {
+            nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_REWARD_BLOCKED, 2,
+                "LGSS reward alignment BLOCKED reward signal: value=%.4f", reward);
+            LOG_MODULE_WARN("BRAIN", "LGSS reward alignment blocked reward signal — "
+                            "skipping reward learning");
+            return 0;  /* Skip this reward signal */
+        }
     }
 
     // Phase 2: Ensure network is writable
