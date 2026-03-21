@@ -2664,3 +2664,49 @@ gtest_discover_tests(unit_cognitive_test_ood_detector
         LABELS "unit;cognitive;ood-detector"
         TIMEOUT 90
 )
+
+# ============================================================================
+# Cognitive Training Data Validation Tests
+# ============================================================================
+
+add_executable(unit_cognitive_test_training_data
+    test_cognitive_training_data.cpp
+)
+target_link_libraries(unit_cognitive_test_training_data
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_cognitive_test_training_data
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_cognitive_test_training_data PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_test_training_data
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;training-data"
+        TIMEOUT 60
+)
+
+# ============================================================================
+# Cognitive Modules Wiring Tests
+# ============================================================================
+
+add_executable(unit_cognitive_test_modules_wiring
+    test_cognitive_modules_wiring.cpp
+)
+target_link_libraries(unit_cognitive_test_modules_wiring
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_cognitive_test_modules_wiring
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_cognitive_test_modules_wiring PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_test_modules_wiring
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;wiring"
+        TIMEOUT 60
+)

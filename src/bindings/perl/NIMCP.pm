@@ -447,6 +447,70 @@ $ffi->attach('nimcp_distill_config_default' => [] => 'opaque');
 $ffi->attach('nimcp_quantize_config_default' => [] => 'opaque');
 $ffi->attach('nimcp_device_profile_default' => [] => 'opaque');
 
+# Swarm Runtime
+$ffi->attach('nimcp_swarm_master_create' => ['opaque', 'opaque'] => 'opaque');
+$ffi->attach('nimcp_swarm_master_destroy' => ['opaque'] => 'void');
+$ffi->attach('nimcp_swarm_master_start' => ['opaque'] => 'int');
+$ffi->attach('nimcp_swarm_master_stop' => ['opaque'] => 'int');
+$ffi->attach('nimcp_swarm_master_kick' => ['opaque', 'uint32'] => 'int');
+$ffi->attach('nimcp_swarm_master_force_sync' => ['opaque'] => 'int');
+$ffi->attach('nimcp_swarm_master_get_peer_count' => ['opaque'] => 'uint32');
+$ffi->attach('nimcp_swarm_master_config_default' => [] => 'opaque');
+$ffi->attach('nimcp_swarm_edge_create' => ['opaque', 'opaque'] => 'opaque');
+$ffi->attach('nimcp_swarm_edge_destroy' => ['opaque'] => 'void');
+$ffi->attach('nimcp_swarm_edge_start' => ['opaque'] => 'int');
+$ffi->attach('nimcp_swarm_edge_stop' => ['opaque'] => 'int');
+$ffi->attach('nimcp_swarm_edge_is_connected' => ['opaque'] => 'int');
+$ffi->attach('nimcp_swarm_edge_submit_gradients' => ['opaque', 'opaque', 'uint32'] => 'int');
+$ffi->attach('nimcp_swarm_edge_config_default' => [] => 'opaque');
+
+# Sensor Hub
+$ffi->attach('nimcp_sensor_hub_create' => ['uint32'] => 'opaque');
+$ffi->attach('nimcp_sensor_hub_destroy' => ['opaque'] => 'void');
+$ffi->attach('nimcp_sensor_register' => ['opaque', 'opaque'] => 'int');
+$ffi->attach('nimcp_sensor_submit_reading' => ['opaque', 'opaque'] => 'int');
+$ffi->attach('nimcp_sensor_compose_feature_vector' => ['opaque', 'opaque', 'uint32'] => 'int');
+$ffi->attach('nimcp_sensor_get_count' => ['opaque'] => 'uint32');
+
+# Safety Watchdog
+$ffi->attach('nimcp_watchdog_create' => ['opaque'] => 'opaque');
+$ffi->attach('nimcp_watchdog_destroy' => ['opaque'] => 'void');
+$ffi->attach('nimcp_watchdog_arm' => ['opaque'] => 'int');
+$ffi->attach('nimcp_watchdog_disarm' => ['opaque'] => 'int');
+$ffi->attach('nimcp_watchdog_heartbeat' => ['opaque'] => 'void');
+$ffi->attach('nimcp_watchdog_validate_output' => ['opaque', 'opaque', 'uint32'] => 'int');
+$ffi->attach('nimcp_watchdog_get_safe_output' => ['opaque', 'opaque', 'uint32'] => 'int');
+$ffi->attach('nimcp_watchdog_estop' => ['opaque'] => 'void');
+$ffi->attach('nimcp_watchdog_reset' => ['opaque'] => 'int');
+$ffi->attach('nimcp_watchdog_get_state' => ['opaque'] => 'int');
+$ffi->attach('nimcp_watchdog_state_name' => ['int'] => 'string');
+$ffi->attach('nimcp_watchdog_config_default' => [] => 'opaque');
+
+# ROS 2 Bridge
+$ffi->attach('nimcp_ros2_bridge_create' => ['opaque', 'opaque'] => 'opaque');
+$ffi->attach('nimcp_ros2_bridge_destroy' => ['opaque'] => 'void');
+$ffi->attach('nimcp_ros2_bridge_start' => ['opaque'] => 'int');
+$ffi->attach('nimcp_ros2_bridge_stop' => ['opaque'] => 'int');
+$ffi->attach('nimcp_ros2_bridge_inject_sensor' => ['opaque', 'string', 'opaque', 'uint32'] => 'int');
+$ffi->attach('nimcp_ros2_bridge_get_last_cmd' => ['opaque', 'opaque', 'uint32'] => 'int');
+$ffi->attach('nimcp_ros2_config_default' => [] => 'opaque');
+
+# MAVLink Bridge
+$ffi->attach('nimcp_mavlink_bridge_create' => ['opaque'] => 'opaque');
+$ffi->attach('nimcp_mavlink_bridge_destroy' => ['opaque'] => 'void');
+$ffi->attach('nimcp_mavlink_bridge_connect' => ['opaque'] => 'int');
+$ffi->attach('nimcp_mavlink_bridge_disconnect' => ['opaque'] => 'int');
+$ffi->attach('nimcp_mavlink_bridge_start' => ['opaque'] => 'int');
+$ffi->attach('nimcp_mavlink_bridge_stop' => ['opaque'] => 'int');
+$ffi->attach('nimcp_mavlink_set_velocity' => ['opaque', 'float', 'float', 'float', 'float'] => 'int');
+$ffi->attach('nimcp_mavlink_arm' => ['opaque', 'int'] => 'int');
+$ffi->attach('nimcp_mavlink_takeoff' => ['opaque', 'float'] => 'int');
+$ffi->attach('nimcp_mavlink_land' => ['opaque'] => 'int');
+$ffi->attach('nimcp_mavlink_goto' => ['opaque', 'double', 'double', 'float'] => 'int');
+$ffi->attach('nimcp_mavlink_rtl' => ['opaque'] => 'int');
+$ffi->attach('nimcp_mavlink_compose_features' => ['opaque', 'opaque', 'uint32'] => 'int');
+$ffi->attach('nimcp_mavlink_config_default' => [] => 'opaque');
+
 # Memory Store / OOD / Audit (brain-handle wrappers)
 $ffi->attach('nimcp_brain_memory_store_stats' => ['opaque', 'opaque'] => 'int');
 $ffi->attach('nimcp_brain_memory_search_text' =>
@@ -2085,6 +2149,70 @@ sub edge_score_importance {
     FFI::Platypus::Memory::free($buf);
     return [unpack("f$num_neurons", $data)];
 }
+
+# --- Swarm Master ---
+
+sub swarm_master_create { my ($self, %opts) = @_; my $cfg = NIMCP::nimcp_swarm_master_config_default(); $self->{_swarm_master} = NIMCP::nimcp_swarm_master_create($self->{_handle}, $cfg); return $self->{_swarm_master} ? 1 : 0; }
+sub swarm_master_destroy { my ($self) = @_; if ($self->{_swarm_master}) { NIMCP::nimcp_swarm_master_destroy($self->{_swarm_master}); $self->{_swarm_master} = undef; } }
+sub swarm_master_start { my ($self) = @_; return -1 unless $self->{_swarm_master}; return NIMCP::nimcp_swarm_master_start($self->{_swarm_master}); }
+sub swarm_master_stop { my ($self) = @_; return -1 unless $self->{_swarm_master}; return NIMCP::nimcp_swarm_master_stop($self->{_swarm_master}); }
+sub swarm_master_kick { my ($self, $device_id) = @_; return -1 unless $self->{_swarm_master}; return NIMCP::nimcp_swarm_master_kick($self->{_swarm_master}, $device_id); }
+sub swarm_master_force_sync { my ($self) = @_; return -1 unless $self->{_swarm_master}; return NIMCP::nimcp_swarm_master_force_sync($self->{_swarm_master}); }
+sub swarm_master_get_peer_count { my ($self) = @_; return 0 unless $self->{_swarm_master}; return NIMCP::nimcp_swarm_master_get_peer_count($self->{_swarm_master}); }
+
+# --- Swarm Edge ---
+
+sub swarm_edge_create { my ($self, %opts) = @_; my $cfg = NIMCP::nimcp_swarm_edge_config_default(); $self->{_swarm_edge} = NIMCP::nimcp_swarm_edge_create($self->{_handle}, $cfg); return $self->{_swarm_edge} ? 1 : 0; }
+sub swarm_edge_destroy { my ($self) = @_; if ($self->{_swarm_edge}) { NIMCP::nimcp_swarm_edge_destroy($self->{_swarm_edge}); $self->{_swarm_edge} = undef; } }
+sub swarm_edge_start { my ($self) = @_; return -1 unless $self->{_swarm_edge}; return NIMCP::nimcp_swarm_edge_start($self->{_swarm_edge}); }
+sub swarm_edge_stop { my ($self) = @_; return -1 unless $self->{_swarm_edge}; return NIMCP::nimcp_swarm_edge_stop($self->{_swarm_edge}); }
+sub swarm_edge_is_connected { my ($self) = @_; return 0 unless $self->{_swarm_edge}; return NIMCP::nimcp_swarm_edge_is_connected($self->{_swarm_edge}) ? 1 : 0; }
+sub swarm_edge_submit_gradients { my ($self, $gradients) = @_; return -1 unless $self->{_swarm_edge}; die "gradients must be array ref" unless ref $gradients eq 'ARRAY'; my $n = scalar @$gradients; my $buf = FFI::Platypus::Memory::calloc($n, 4); my $packed = pack("f$n", @$gradients); my ($src, undef) = FFI::Platypus::Buffer::scalar_to_buffer($packed); FFI::Platypus::Memory::memcpy($buf, $src, $n * 4); my $ret = NIMCP::nimcp_swarm_edge_submit_gradients($self->{_swarm_edge}, $buf, $n); FFI::Platypus::Memory::free($buf); return $ret; }
+
+# --- Sensor Hub ---
+
+sub sensor_hub_create { my ($self, $max_sensors) = @_; $max_sensors //= 32; $self->{_sensor_hub} = NIMCP::nimcp_sensor_hub_create($max_sensors); return $self->{_sensor_hub} ? 1 : 0; }
+sub sensor_hub_destroy { my ($self) = @_; if ($self->{_sensor_hub}) { NIMCP::nimcp_sensor_hub_destroy($self->{_sensor_hub}); $self->{_sensor_hub} = undef; } }
+sub sensor_get_count { my ($self) = @_; return 0 unless $self->{_sensor_hub}; return NIMCP::nimcp_sensor_get_count($self->{_sensor_hub}); }
+sub sensor_compose_features { my ($self, $max_features) = @_; $max_features //= 1024; return [] unless $self->{_sensor_hub}; my $buf = FFI::Platypus::Memory::calloc($max_features, 4); my $count = NIMCP::nimcp_sensor_compose_feature_vector($self->{_sensor_hub}, $buf, $max_features); if ($count < 0) { FFI::Platypus::Memory::free($buf); return []; } my $data = FFI::Platypus::Buffer::buffer_to_scalar($buf, $count * 4); FFI::Platypus::Memory::free($buf); return [unpack("f$count", $data)]; }
+
+# --- Safety Watchdog ---
+
+sub watchdog_create { my ($self, %opts) = @_; my $cfg = NIMCP::nimcp_watchdog_config_default(); $self->{_watchdog} = NIMCP::nimcp_watchdog_create($cfg); return $self->{_watchdog} ? 1 : 0; }
+sub watchdog_destroy { my ($self) = @_; if ($self->{_watchdog}) { NIMCP::nimcp_watchdog_destroy($self->{_watchdog}); $self->{_watchdog} = undef; } }
+sub watchdog_arm { my ($self) = @_; return -1 unless $self->{_watchdog}; return NIMCP::nimcp_watchdog_arm($self->{_watchdog}); }
+sub watchdog_disarm { my ($self) = @_; return -1 unless $self->{_watchdog}; return NIMCP::nimcp_watchdog_disarm($self->{_watchdog}); }
+sub watchdog_heartbeat { my ($self) = @_; NIMCP::nimcp_watchdog_heartbeat($self->{_watchdog}) if $self->{_watchdog}; }
+sub watchdog_estop { my ($self) = @_; NIMCP::nimcp_watchdog_estop($self->{_watchdog}) if $self->{_watchdog}; }
+sub watchdog_reset { my ($self) = @_; return -1 unless $self->{_watchdog}; return NIMCP::nimcp_watchdog_reset($self->{_watchdog}); }
+sub watchdog_get_state { my ($self) = @_; return 'NONE' unless $self->{_watchdog}; my $state = NIMCP::nimcp_watchdog_get_state($self->{_watchdog}); return NIMCP::nimcp_watchdog_state_name($state); }
+sub watchdog_validate_output { my ($self, $output) = @_; return 0 unless $self->{_watchdog}; die "output must be array ref" unless ref $output eq 'ARRAY'; my $n = scalar @$output; my $buf = FFI::Platypus::Memory::calloc($n, 4); my $packed = pack("f$n", @$output); my ($src, undef) = FFI::Platypus::Buffer::scalar_to_buffer($packed); FFI::Platypus::Memory::memcpy($buf, $src, $n * 4); my $ret = NIMCP::nimcp_watchdog_validate_output($self->{_watchdog}, $buf, $n); FFI::Platypus::Memory::free($buf); return $ret == 0 ? 1 : 0; }
+sub watchdog_get_safe_output { my ($self, $num_outputs) = @_; $num_outputs //= 32; return [] unless $self->{_watchdog}; my $buf = FFI::Platypus::Memory::calloc($num_outputs, 4); NIMCP::nimcp_watchdog_get_safe_output($self->{_watchdog}, $buf, $num_outputs); my $data = FFI::Platypus::Buffer::buffer_to_scalar($buf, $num_outputs * 4); FFI::Platypus::Memory::free($buf); return [unpack("f$num_outputs", $data)]; }
+
+# --- ROS 2 Bridge ---
+
+sub ros2_bridge_create { my ($self, %opts) = @_; my $cfg = NIMCP::nimcp_ros2_config_default(); $self->{_ros2_bridge} = NIMCP::nimcp_ros2_bridge_create($self->{_handle}, $cfg); return $self->{_ros2_bridge} ? 1 : 0; }
+sub ros2_bridge_destroy { my ($self) = @_; if ($self->{_ros2_bridge}) { NIMCP::nimcp_ros2_bridge_destroy($self->{_ros2_bridge}); $self->{_ros2_bridge} = undef; } }
+sub ros2_bridge_start { my ($self) = @_; return -1 unless $self->{_ros2_bridge}; return NIMCP::nimcp_ros2_bridge_start($self->{_ros2_bridge}); }
+sub ros2_bridge_stop { my ($self) = @_; return -1 unless $self->{_ros2_bridge}; return NIMCP::nimcp_ros2_bridge_stop($self->{_ros2_bridge}); }
+sub ros2_bridge_inject_sensor { my ($self, $topic, $data) = @_; return -1 unless $self->{_ros2_bridge}; die "data must be array ref" unless ref $data eq 'ARRAY'; my $n = scalar @$data; my $buf = FFI::Platypus::Memory::calloc($n, 4); my $packed = pack("f$n", @$data); my ($src, undef) = FFI::Platypus::Buffer::scalar_to_buffer($packed); FFI::Platypus::Memory::memcpy($buf, $src, $n * 4); my $ret = NIMCP::nimcp_ros2_bridge_inject_sensor($self->{_ros2_bridge}, $topic, $buf, $n); FFI::Platypus::Memory::free($buf); return $ret; }
+sub ros2_bridge_get_last_cmd { my ($self, $max_count) = @_; $max_count //= 32; return [] unless $self->{_ros2_bridge}; my $buf = FFI::Platypus::Memory::calloc($max_count, 4); my $got = NIMCP::nimcp_ros2_bridge_get_last_cmd($self->{_ros2_bridge}, $buf, $max_count); if ($got < 0) { FFI::Platypus::Memory::free($buf); return []; } my $data = FFI::Platypus::Buffer::buffer_to_scalar($buf, $got * 4); FFI::Platypus::Memory::free($buf); return [unpack("f$got", $data)]; }
+
+# --- MAVLink Bridge ---
+
+sub mavlink_create { my ($self, %opts) = @_; my $cfg = NIMCP::nimcp_mavlink_config_default(); $self->{_mavlink_bridge} = NIMCP::nimcp_mavlink_bridge_create($cfg); return $self->{_mavlink_bridge} ? 1 : 0; }
+sub mavlink_destroy { my ($self) = @_; if ($self->{_mavlink_bridge}) { NIMCP::nimcp_mavlink_bridge_destroy($self->{_mavlink_bridge}); $self->{_mavlink_bridge} = undef; } }
+sub mavlink_connect { my ($self) = @_; return -1 unless $self->{_mavlink_bridge}; return NIMCP::nimcp_mavlink_bridge_connect($self->{_mavlink_bridge}); }
+sub mavlink_disconnect { my ($self) = @_; return -1 unless $self->{_mavlink_bridge}; return NIMCP::nimcp_mavlink_bridge_disconnect($self->{_mavlink_bridge}); }
+sub mavlink_start { my ($self) = @_; return -1 unless $self->{_mavlink_bridge}; return NIMCP::nimcp_mavlink_bridge_start($self->{_mavlink_bridge}); }
+sub mavlink_stop { my ($self) = @_; return -1 unless $self->{_mavlink_bridge}; return NIMCP::nimcp_mavlink_bridge_stop($self->{_mavlink_bridge}); }
+sub mavlink_set_velocity { my ($self, $vx, $vy, $vz, $yr) = @_; return -1 unless $self->{_mavlink_bridge}; return NIMCP::nimcp_mavlink_set_velocity($self->{_mavlink_bridge}, $vx, $vy, $vz, $yr); }
+sub mavlink_arm { my ($self, $arm) = @_; $arm //= 1; return -1 unless $self->{_mavlink_bridge}; return NIMCP::nimcp_mavlink_arm($self->{_mavlink_bridge}, $arm ? 1 : 0); }
+sub mavlink_takeoff { my ($self, $alt) = @_; $alt //= 5.0; return -1 unless $self->{_mavlink_bridge}; return NIMCP::nimcp_mavlink_takeoff($self->{_mavlink_bridge}, $alt); }
+sub mavlink_land { my ($self) = @_; return -1 unless $self->{_mavlink_bridge}; return NIMCP::nimcp_mavlink_land($self->{_mavlink_bridge}); }
+sub mavlink_goto { my ($self, $lat, $lon, $alt) = @_; $alt //= 10.0; return -1 unless $self->{_mavlink_bridge}; return NIMCP::nimcp_mavlink_goto($self->{_mavlink_bridge}, $lat, $lon, $alt); }
+sub mavlink_rtl { my ($self) = @_; return -1 unless $self->{_mavlink_bridge}; return NIMCP::nimcp_mavlink_rtl($self->{_mavlink_bridge}); }
+sub mavlink_compose_features { my ($self) = @_; return [] unless $self->{_mavlink_bridge}; my $buf = FFI::Platypus::Memory::calloc(14, 4); my $count = NIMCP::nimcp_mavlink_compose_features($self->{_mavlink_bridge}, $buf, 14); if ($count < 0) { FFI::Platypus::Memory::free($buf); return []; } my $data = FFI::Platypus::Buffer::buffer_to_scalar($buf, $count * 4); FFI::Platypus::Memory::free($buf); return [unpack("f$count", $data)]; }
 
 # --- Memory Store ---
 

@@ -6797,6 +6797,19 @@ static PyObject* Brain_utm_set_natural_gradient(BrainObject* self, PyObject* arg
  * ============================================================================ */
 
 #include "edge/nimcp_edge.h"
+#include "edge/nimcp_swarm_runtime.h"
+#include "edge/nimcp_sensor.h"
+#include "edge/nimcp_safety_watchdog.h"
+#include "edge/nimcp_ros2_bridge.h"
+#include "edge/nimcp_mavlink_bridge.h"
+
+/* Module-level static handles for standalone edge subsystems */
+static nimcp_swarm_master_t*       g_swarm_master   = NULL;
+static nimcp_swarm_edge_runtime_t* g_swarm_edge     = NULL;
+static nimcp_sensor_hub_t*         g_sensor_hub     = NULL;
+static nimcp_safety_watchdog_t*    g_safety_watchdog = NULL;
+static nimcp_ros2_bridge_t*        g_ros2_bridge    = NULL;
+static nimcp_mavlink_bridge_t*     g_mavlink_bridge = NULL;
 
 static PyObject* Brain_edge_resize(BrainObject* self, PyObject* args, PyObject* kwargs) {
     static char* kwlist[] = {"target_neurons", "mode", "knowledge_transfer", NULL};
@@ -6969,6 +6982,725 @@ static PyObject* Brain_edge_score_importance(BrainObject* self, PyObject* args) 
         PyList_SET_ITEM(list, i, PyFloat_FromDouble(scores[i]));
     }
     nimcp_free(scores);
+    return list;
+}
+
+/* ============================================================================
+ * Swarm Master Runtime Python Bindings
+ * ============================================================================ */
+
+static PyObject* Brain_swarm_master_create(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"device_id", "listen_port", "sync_interval_ms",
+                              "heartbeat_timeout_ms", "min_devices", NULL};
+    uint32_t device_id = 1, listen_port = 9200, sync_interval = 5000;
+    uint32_t hb_timeout = 10000, min_devices = 2;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|IIIII", kwlist,
+                                      &device_id, &listen_port, &sync_interval,
+                                      &hb_timeout, &min_devices)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    if (g_swarm_master) { PyErr_SetString(PyExc_RuntimeError, "Swarm master already exists"); return NULL; }
+
+    nimcp_master_config_t cfg = nimcp_swarm_master_config_default();
+    cfg.device_id = device_id;
+    cfg.listen_port = (uint16_t)listen_port;
+    cfg.sync_interval_ms = sync_interval;
+    cfg.heartbeat_timeout_ms = hb_timeout;
+    cfg.min_devices_for_sync = min_devices;
+
+    g_swarm_master = nimcp_swarm_master_create(self->brain, &cfg);
+    if (!g_swarm_master) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create swarm master");
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_swarm_master_destroy(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (g_swarm_master) {
+        nimcp_swarm_master_destroy(g_swarm_master);
+        g_swarm_master = NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_swarm_master_start(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_swarm_master) { PyErr_SetString(PyExc_RuntimeError, "Swarm master not created"); return NULL; }
+    int ret = nimcp_swarm_master_start(g_swarm_master);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to start swarm master"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_swarm_master_stop(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_swarm_master) { PyErr_SetString(PyExc_RuntimeError, "Swarm master not created"); return NULL; }
+    int ret = nimcp_swarm_master_stop(g_swarm_master);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to stop swarm master"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_swarm_master_kick(BrainObject* self, PyObject* args) {
+    uint32_t device_id = 0;
+    if (!PyArg_ParseTuple(args, "I", &device_id)) return NULL;
+    if (!g_swarm_master) { PyErr_SetString(PyExc_RuntimeError, "Swarm master not created"); return NULL; }
+    int ret = nimcp_swarm_master_kick(g_swarm_master, device_id);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Device not found"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_swarm_master_force_sync(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_swarm_master) { PyErr_SetString(PyExc_RuntimeError, "Swarm master not created"); return NULL; }
+    int ret = nimcp_swarm_master_force_sync(g_swarm_master);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to force sync"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_swarm_master_get_peer_count(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_swarm_master) { PyErr_SetString(PyExc_RuntimeError, "Swarm master not created"); return NULL; }
+    uint32_t count = nimcp_swarm_master_get_peer_count(g_swarm_master);
+    return PyLong_FromUnsignedLong(count);
+}
+
+static PyObject* Brain_swarm_master_get_peer_info(BrainObject* self, PyObject* args) {
+    uint32_t device_id = 0;
+    if (!PyArg_ParseTuple(args, "I", &device_id)) return NULL;
+    if (!g_swarm_master) { PyErr_SetString(PyExc_RuntimeError, "Swarm master not created"); return NULL; }
+
+    nimcp_peer_entry_t entry = {0};
+    int ret = nimcp_swarm_master_get_peer_info(g_swarm_master, device_id, &entry);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Peer not found"); return NULL; }
+
+    PyObject* d = PyDict_New();
+    if (!d) return PyErr_NoMemory();
+    PyDict_SetItemString(d, "device_id", PyLong_FromUnsignedLong(entry.device_id));
+    PyDict_SetItemString(d, "state", PyLong_FromLong(entry.state));
+    PyDict_SetItemString(d, "address", PyUnicode_FromString(entry.address));
+    PyDict_SetItemString(d, "port", PyLong_FromUnsignedLong(entry.port));
+    PyDict_SetItemString(d, "missed_heartbeats", PyLong_FromUnsignedLong(entry.missed_heartbeats));
+    PyDict_SetItemString(d, "anomaly_count", PyLong_FromUnsignedLong(entry.anomaly_count));
+    PyDict_SetItemString(d, "total_syncs", PyLong_FromUnsignedLongLong(entry.total_syncs));
+    PyDict_SetItemString(d, "quarantined", PyBool_FromLong(entry.quarantined));
+    PyDict_SetItemString(d, "gradient_norm_ema", PyFloat_FromDouble(entry.gradient_norm_ema));
+    return d;
+}
+
+/* ============================================================================
+ * Swarm Edge Runtime Python Bindings
+ * ============================================================================ */
+
+static PyObject* Brain_swarm_edge_create(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"device_id", "heartbeat_interval_ms",
+                              "reconnect_delay_ms", "enable_local_learning", NULL};
+    uint32_t device_id = 2, hb_interval = 2000, reconnect = 5000;
+    int local_learn = 1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|IIIp", kwlist,
+                                      &device_id, &hb_interval, &reconnect,
+                                      &local_learn)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    if (g_swarm_edge) { PyErr_SetString(PyExc_RuntimeError, "Swarm edge already exists"); return NULL; }
+
+    nimcp_edge_runtime_config_t cfg = nimcp_swarm_edge_config_default();
+    cfg.device_id = device_id;
+    cfg.heartbeat_interval_ms = hb_interval;
+    cfg.reconnect_delay_ms = reconnect;
+    cfg.enable_local_learning = (bool)local_learn;
+
+    g_swarm_edge = nimcp_swarm_edge_create(self->brain, &cfg);
+    if (!g_swarm_edge) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create swarm edge runtime");
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_swarm_edge_destroy(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (g_swarm_edge) {
+        nimcp_swarm_edge_destroy(g_swarm_edge);
+        g_swarm_edge = NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_swarm_edge_start(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_swarm_edge) { PyErr_SetString(PyExc_RuntimeError, "Swarm edge not created"); return NULL; }
+    int ret = nimcp_swarm_edge_start(g_swarm_edge);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to start swarm edge"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_swarm_edge_stop(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_swarm_edge) { PyErr_SetString(PyExc_RuntimeError, "Swarm edge not created"); return NULL; }
+    int ret = nimcp_swarm_edge_stop(g_swarm_edge);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to stop swarm edge"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_swarm_edge_is_connected(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_swarm_edge) { Py_RETURN_FALSE; }
+    if (nimcp_swarm_edge_is_connected(g_swarm_edge)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+
+static PyObject* Brain_swarm_edge_submit_gradients(BrainObject* self, PyObject* args) {
+    PyObject* grad_list = NULL;
+    if (!PyArg_ParseTuple(args, "O", &grad_list)) return NULL;
+    if (!g_swarm_edge) { PyErr_SetString(PyExc_RuntimeError, "Swarm edge not created"); return NULL; }
+
+    Py_ssize_t num_params = 0;
+    float* gradients = py_list_to_float_array(grad_list, &num_params);
+    if (!gradients) return NULL;
+
+    int ret = nimcp_swarm_edge_submit_gradients(g_swarm_edge, gradients, (uint32_t)num_params);
+    nimcp_free(gradients);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to submit gradients"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+/* ============================================================================
+ * Sensor Hub Python Bindings
+ * ============================================================================ */
+
+static PyObject* Brain_sensor_hub_create(BrainObject* self, PyObject* args) {
+    uint32_t max_sensors = 32;
+    if (!PyArg_ParseTuple(args, "|I", &max_sensors)) return NULL;
+    if (g_sensor_hub) { PyErr_SetString(PyExc_RuntimeError, "Sensor hub already exists"); return NULL; }
+
+    g_sensor_hub = nimcp_sensor_hub_create(max_sensors);
+    if (!g_sensor_hub) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create sensor hub");
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_sensor_hub_destroy(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (g_sensor_hub) {
+        nimcp_sensor_hub_destroy(g_sensor_hub);
+        g_sensor_hub = NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_sensor_register(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"sensor_id", "type", "format", "name",
+                              "sample_rate_hz", "max_data_count", NULL};
+    uint32_t sensor_id = 0, type = 0, format = 0, max_data = 64;
+    const char* name = "sensor";
+    float sample_rate = 30.0f;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "I|IIsfI", kwlist,
+                                      &sensor_id, &type, &format, &name,
+                                      &sample_rate, &max_data)) return NULL;
+    if (!g_sensor_hub) { PyErr_SetString(PyExc_RuntimeError, "Sensor hub not created"); return NULL; }
+
+    nimcp_sensor_descriptor_t desc = {0};
+    desc.sensor_id = sensor_id;
+    desc.type = (nimcp_sensor_type_t)type;
+    desc.format = (nimcp_sensor_format_t)format;
+    strncpy(desc.name, name, sizeof(desc.name) - 1);
+    desc.sample_rate_hz = sample_rate;
+    desc.max_data_count = max_data;
+
+    int ret = nimcp_sensor_register(g_sensor_hub, &desc);
+    if (ret < 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to register sensor"); return NULL; }
+    return PyLong_FromLong(ret);
+}
+
+static PyObject* Brain_sensor_submit_reading(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"sensor_id", "data", "confidence", NULL};
+    uint32_t sensor_id = 0;
+    PyObject* data_list = NULL;
+    float confidence = 1.0f;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "IO|f", kwlist,
+                                      &sensor_id, &data_list, &confidence)) return NULL;
+    if (!g_sensor_hub) { PyErr_SetString(PyExc_RuntimeError, "Sensor hub not created"); return NULL; }
+
+    Py_ssize_t data_count = 0;
+    float* data = py_list_to_float_array(data_list, &data_count);
+    if (!data) return NULL;
+
+    nimcp_sensor_reading_t reading = {0};
+    reading.sensor_id = sensor_id;
+    reading.data = data;
+    reading.data_count = (uint32_t)data_count;
+    reading.confidence = confidence;
+    reading.valid = true;
+
+    int ret = nimcp_sensor_submit_reading(g_sensor_hub, &reading);
+    nimcp_free(data);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to submit sensor reading"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_sensor_get_latest(BrainObject* self, PyObject* args) {
+    uint32_t sensor_id = 0;
+    if (!PyArg_ParseTuple(args, "I", &sensor_id)) return NULL;
+    if (!g_sensor_hub) { PyErr_SetString(PyExc_RuntimeError, "Sensor hub not created"); return NULL; }
+
+    nimcp_sensor_reading_t reading = {0};
+    int ret = nimcp_sensor_get_latest(g_sensor_hub, sensor_id, &reading);
+    if (ret != 0) { Py_RETURN_NONE; }
+
+    PyObject* d = PyDict_New();
+    if (!d) return PyErr_NoMemory();
+    PyDict_SetItemString(d, "sensor_id", PyLong_FromUnsignedLong(reading.sensor_id));
+    PyDict_SetItemString(d, "type", PyLong_FromLong(reading.type));
+    PyDict_SetItemString(d, "confidence", PyFloat_FromDouble(reading.confidence));
+    PyDict_SetItemString(d, "valid", PyBool_FromLong(reading.valid));
+    PyDict_SetItemString(d, "timestamp_us", PyLong_FromUnsignedLongLong(reading.timestamp_us));
+
+    PyObject* data_list = PyList_New(reading.data_count);
+    if (data_list && reading.data) {
+        for (uint32_t i = 0; i < reading.data_count; i++) {
+            PyList_SET_ITEM(data_list, i, PyFloat_FromDouble(reading.data[i]));
+        }
+    }
+    PyDict_SetItemString(d, "data", data_list ? data_list : PyList_New(0));
+    if (data_list) Py_DECREF(data_list);
+    return d;
+}
+
+static PyObject* Brain_sensor_get_all_latest(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_sensor_hub) { PyErr_SetString(PyExc_RuntimeError, "Sensor hub not created"); return NULL; }
+
+    uint32_t count = nimcp_sensor_get_count(g_sensor_hub);
+    if (count == 0) return PyList_New(0);
+
+    nimcp_sensor_reading_t* readings = (nimcp_sensor_reading_t*)nimcp_calloc(count, sizeof(nimcp_sensor_reading_t));
+    if (!readings) return PyErr_NoMemory();
+
+    int got = nimcp_sensor_get_all_latest(g_sensor_hub, readings, count);
+    if (got < 0) { nimcp_free(readings); return PyList_New(0); }
+
+    PyObject* list = PyList_New(got);
+    for (int i = 0; i < got; i++) {
+        PyObject* d = PyDict_New();
+        if (!d) { nimcp_free(readings); Py_DECREF(list); return PyErr_NoMemory(); }
+        PyDict_SetItemString(d, "sensor_id", PyLong_FromUnsignedLong(readings[i].sensor_id));
+        PyDict_SetItemString(d, "type", PyLong_FromLong(readings[i].type));
+        PyDict_SetItemString(d, "confidence", PyFloat_FromDouble(readings[i].confidence));
+        PyDict_SetItemString(d, "valid", PyBool_FromLong(readings[i].valid));
+
+        PyObject* data_sub = PyList_New(readings[i].data_count);
+        if (data_sub && readings[i].data) {
+            for (uint32_t j = 0; j < readings[i].data_count; j++) {
+                PyList_SET_ITEM(data_sub, j, PyFloat_FromDouble(readings[i].data[j]));
+            }
+        }
+        PyDict_SetItemString(d, "data", data_sub ? data_sub : PyList_New(0));
+        if (data_sub) Py_DECREF(data_sub);
+        PyList_SET_ITEM(list, i, d);
+    }
+    nimcp_free(readings);
+    return list;
+}
+
+static PyObject* Brain_sensor_compose_features(BrainObject* self, PyObject* args) {
+    uint32_t max_features = 1024;
+    if (!PyArg_ParseTuple(args, "|I", &max_features)) return NULL;
+    if (!g_sensor_hub) { PyErr_SetString(PyExc_RuntimeError, "Sensor hub not created"); return NULL; }
+
+    float* features = (float*)nimcp_calloc(max_features, sizeof(float));
+    if (!features) return PyErr_NoMemory();
+
+    int count = nimcp_sensor_compose_feature_vector(g_sensor_hub, features, max_features);
+    if (count < 0) { nimcp_free(features); return PyList_New(0); }
+
+    PyObject* list = PyList_New(count);
+    for (int i = 0; i < count; i++) {
+        PyList_SET_ITEM(list, i, PyFloat_FromDouble(features[i]));
+    }
+    nimcp_free(features);
+    return list;
+}
+
+static PyObject* Brain_sensor_get_count(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_sensor_hub) return PyLong_FromLong(0);
+    return PyLong_FromUnsignedLong(nimcp_sensor_get_count(g_sensor_hub));
+}
+
+/* ============================================================================
+ * Safety Watchdog Python Bindings
+ * ============================================================================ */
+
+static PyObject* Brain_watchdog_create(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"timeout_ms", "action", "max_magnitude",
+                              "max_outputs", NULL};
+    uint32_t timeout = 500, max_outputs = 32;
+    int action = 0;
+    float max_mag = 1.0f;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|IifI", kwlist,
+                                      &timeout, &action, &max_mag,
+                                      &max_outputs)) return NULL;
+    if (g_safety_watchdog) { PyErr_SetString(PyExc_RuntimeError, "Watchdog already exists"); return NULL; }
+
+    nimcp_watchdog_config_t cfg = nimcp_watchdog_config_default();
+    cfg.timeout_ms = timeout;
+    cfg.action = (nimcp_safe_action_t)action;
+    cfg.validation.max_output_magnitude = max_mag;
+    cfg.max_outputs = max_outputs;
+
+    g_safety_watchdog = nimcp_watchdog_create(&cfg);
+    if (!g_safety_watchdog) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create watchdog");
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_watchdog_destroy(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (g_safety_watchdog) {
+        nimcp_watchdog_destroy(g_safety_watchdog);
+        g_safety_watchdog = NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_watchdog_arm(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_safety_watchdog) { PyErr_SetString(PyExc_RuntimeError, "Watchdog not created"); return NULL; }
+    int ret = nimcp_watchdog_arm(g_safety_watchdog);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to arm watchdog"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_watchdog_disarm(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_safety_watchdog) { PyErr_SetString(PyExc_RuntimeError, "Watchdog not created"); return NULL; }
+    int ret = nimcp_watchdog_disarm(g_safety_watchdog);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to disarm watchdog"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_watchdog_heartbeat(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_safety_watchdog) { PyErr_SetString(PyExc_RuntimeError, "Watchdog not created"); return NULL; }
+    nimcp_watchdog_heartbeat(g_safety_watchdog);
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_watchdog_validate_output(BrainObject* self, PyObject* args) {
+    PyObject* output_list = NULL;
+    if (!PyArg_ParseTuple(args, "O", &output_list)) return NULL;
+    if (!g_safety_watchdog) { PyErr_SetString(PyExc_RuntimeError, "Watchdog not created"); return NULL; }
+
+    Py_ssize_t num_outputs = 0;
+    float* output = py_list_to_float_array(output_list, &num_outputs);
+    if (!output) return NULL;
+
+    int ret = nimcp_watchdog_validate_output(g_safety_watchdog, output, (uint32_t)num_outputs);
+    nimcp_free(output);
+    if (ret == 0) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+
+static PyObject* Brain_watchdog_get_safe_output(BrainObject* self, PyObject* args) {
+    uint32_t num_outputs = 32;
+    if (!PyArg_ParseTuple(args, "|I", &num_outputs)) return NULL;
+    if (!g_safety_watchdog) { PyErr_SetString(PyExc_RuntimeError, "Watchdog not created"); return NULL; }
+
+    float* output = (float*)nimcp_calloc(num_outputs, sizeof(float));
+    if (!output) return PyErr_NoMemory();
+
+    int ret = nimcp_watchdog_get_safe_output(g_safety_watchdog, output, num_outputs);
+    if (ret != 0) { nimcp_free(output); return PyList_New(0); }
+
+    PyObject* list = PyList_New(num_outputs);
+    for (uint32_t i = 0; i < num_outputs; i++) {
+        PyList_SET_ITEM(list, i, PyFloat_FromDouble(output[i]));
+    }
+    nimcp_free(output);
+    return list;
+}
+
+static PyObject* Brain_watchdog_estop(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_safety_watchdog) { PyErr_SetString(PyExc_RuntimeError, "Watchdog not created"); return NULL; }
+    nimcp_watchdog_estop(g_safety_watchdog);
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_watchdog_reset(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_safety_watchdog) { PyErr_SetString(PyExc_RuntimeError, "Watchdog not created"); return NULL; }
+    int ret = nimcp_watchdog_reset(g_safety_watchdog);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to reset watchdog"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_watchdog_get_state(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_safety_watchdog) { return PyUnicode_FromString("NONE"); }
+    nimcp_watchdog_state_t state = nimcp_watchdog_get_state(g_safety_watchdog);
+    return PyUnicode_FromString(nimcp_watchdog_state_name(state));
+}
+
+/* ============================================================================
+ * ROS 2 Bridge Python Bindings
+ * ============================================================================ */
+
+static PyObject* Brain_ros2_bridge_create(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"node_name", "cmd_rate_hz", "inference_rate_hz",
+                              "brain_input_dim", "subscribe_imu", "subscribe_odom", NULL};
+    const char* node_name = "nimcp_brain";
+    float cmd_rate = 20.0f, inf_rate = 30.0f;
+    uint32_t input_dim = 1024;
+    int sub_imu = 1, sub_odom = 1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|sffIpp", kwlist,
+                                      &node_name, &cmd_rate, &inf_rate,
+                                      &input_dim, &sub_imu, &sub_odom)) return NULL;
+    if (!self->brain) { PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; }
+    if (g_ros2_bridge) { PyErr_SetString(PyExc_RuntimeError, "ROS2 bridge already exists"); return NULL; }
+
+    nimcp_ros2_config_t cfg = nimcp_ros2_config_default();
+    cfg.node_name = node_name;
+    cfg.cmd_rate_hz = cmd_rate;
+    cfg.inference_rate_hz = inf_rate;
+    cfg.brain_input_dim = input_dim;
+    cfg.subscribe_imu = (bool)sub_imu;
+    cfg.subscribe_odom = (bool)sub_odom;
+
+    g_ros2_bridge = nimcp_ros2_bridge_create(self->brain, &cfg);
+    if (!g_ros2_bridge) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create ROS2 bridge");
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_ros2_bridge_destroy(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (g_ros2_bridge) {
+        nimcp_ros2_bridge_destroy(g_ros2_bridge);
+        g_ros2_bridge = NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_ros2_bridge_start(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_ros2_bridge) { PyErr_SetString(PyExc_RuntimeError, "ROS2 bridge not created"); return NULL; }
+    int ret = nimcp_ros2_bridge_start(g_ros2_bridge);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to start ROS2 bridge"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_ros2_bridge_stop(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_ros2_bridge) { PyErr_SetString(PyExc_RuntimeError, "ROS2 bridge not created"); return NULL; }
+    int ret = nimcp_ros2_bridge_stop(g_ros2_bridge);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to stop ROS2 bridge"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_ros2_bridge_inject_sensor(BrainObject* self, PyObject* args) {
+    const char* topic = NULL;
+    PyObject* data_list = NULL;
+    if (!PyArg_ParseTuple(args, "sO", &topic, &data_list)) return NULL;
+    if (!g_ros2_bridge) { PyErr_SetString(PyExc_RuntimeError, "ROS2 bridge not created"); return NULL; }
+
+    Py_ssize_t count = 0;
+    float* data = py_list_to_float_array(data_list, &count);
+    if (!data) return NULL;
+
+    int ret = nimcp_ros2_bridge_inject_sensor(g_ros2_bridge, topic, data, (uint32_t)count);
+    nimcp_free(data);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to inject sensor data"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_ros2_bridge_get_last_cmd(BrainObject* self, PyObject* args) {
+    uint32_t max_count = 32;
+    if (!PyArg_ParseTuple(args, "|I", &max_count)) return NULL;
+    if (!g_ros2_bridge) { PyErr_SetString(PyExc_RuntimeError, "ROS2 bridge not created"); return NULL; }
+
+    float* data = (float*)nimcp_calloc(max_count, sizeof(float));
+    if (!data) return PyErr_NoMemory();
+
+    int got = nimcp_ros2_bridge_get_last_cmd(g_ros2_bridge, data, max_count);
+    if (got < 0) { nimcp_free(data); return PyList_New(0); }
+
+    PyObject* list = PyList_New(got);
+    for (int i = 0; i < got; i++) {
+        PyList_SET_ITEM(list, i, PyFloat_FromDouble(data[i]));
+    }
+    nimcp_free(data);
+    return list;
+}
+
+/* ============================================================================
+ * MAVLink Bridge Python Bindings
+ * ============================================================================ */
+
+static PyObject* Brain_mavlink_create(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"connection_string", "conn_type", "baud_rate",
+                              "system_id", "geofence_radius", NULL};
+    const char* conn_str = "udp:14550";
+    int conn_type = NIMCP_MAVLINK_UDP;
+    uint32_t baud = 921600;
+    uint32_t sys_id = 1;
+    float geofence = 100.0f;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|siIIf", kwlist,
+                                      &conn_str, &conn_type, &baud,
+                                      &sys_id, &geofence)) return NULL;
+    if (g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge already exists"); return NULL; }
+
+    nimcp_mavlink_config_t cfg = nimcp_mavlink_config_default();
+    strncpy(cfg.connection_string, conn_str, sizeof(cfg.connection_string) - 1);
+    cfg.conn_type = (nimcp_mavlink_conn_type_t)conn_type;
+    cfg.baud_rate = baud;
+    cfg.system_id = (uint8_t)sys_id;
+    cfg.geofence_radius_m = geofence;
+
+    g_mavlink_bridge = nimcp_mavlink_bridge_create(&cfg);
+    if (!g_mavlink_bridge) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create MAVLink bridge");
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_destroy(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (g_mavlink_bridge) {
+        nimcp_mavlink_bridge_destroy(g_mavlink_bridge);
+        g_mavlink_bridge = NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_mavlink_connect(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    int ret = nimcp_mavlink_bridge_connect(g_mavlink_bridge);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to connect MAVLink"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_disconnect(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    int ret = nimcp_mavlink_bridge_disconnect(g_mavlink_bridge);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to disconnect MAVLink"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_start(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    int ret = nimcp_mavlink_bridge_start(g_mavlink_bridge);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to start MAVLink recv"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_stop(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    int ret = nimcp_mavlink_bridge_stop(g_mavlink_bridge);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to stop MAVLink recv"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_get_attitude(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    nimcp_mavlink_attitude_t att = {0};
+    int ret = nimcp_mavlink_get_attitude(g_mavlink_bridge, &att);
+    if (ret != 0) { Py_RETURN_NONE; }
+
+    PyObject* d = PyDict_New();
+    if (!d) return PyErr_NoMemory();
+    PyDict_SetItemString(d, "roll", PyFloat_FromDouble(att.roll));
+    PyDict_SetItemString(d, "pitch", PyFloat_FromDouble(att.pitch));
+    PyDict_SetItemString(d, "yaw", PyFloat_FromDouble(att.yaw));
+    PyDict_SetItemString(d, "rollspeed", PyFloat_FromDouble(att.rollspeed));
+    PyDict_SetItemString(d, "pitchspeed", PyFloat_FromDouble(att.pitchspeed));
+    PyDict_SetItemString(d, "yawspeed", PyFloat_FromDouble(att.yawspeed));
+    PyDict_SetItemString(d, "timestamp_us", PyLong_FromUnsignedLongLong(att.timestamp_us));
+    return d;
+}
+
+static PyObject* Brain_mavlink_get_position(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    nimcp_mavlink_position_t pos = {0};
+    int ret = nimcp_mavlink_get_position(g_mavlink_bridge, &pos);
+    if (ret != 0) { Py_RETURN_NONE; }
+
+    PyObject* d = PyDict_New();
+    if (!d) return PyErr_NoMemory();
+    PyDict_SetItemString(d, "latitude", PyFloat_FromDouble(pos.latitude));
+    PyDict_SetItemString(d, "longitude", PyFloat_FromDouble(pos.longitude));
+    PyDict_SetItemString(d, "altitude_msl", PyFloat_FromDouble(pos.altitude_msl));
+    PyDict_SetItemString(d, "altitude_rel", PyFloat_FromDouble(pos.altitude_rel));
+    PyDict_SetItemString(d, "vx", PyFloat_FromDouble(pos.vx));
+    PyDict_SetItemString(d, "vy", PyFloat_FromDouble(pos.vy));
+    PyDict_SetItemString(d, "vz", PyFloat_FromDouble(pos.vz));
+    PyDict_SetItemString(d, "heading", PyFloat_FromDouble(pos.heading));
+    PyDict_SetItemString(d, "fix_type", PyLong_FromLong(pos.fix_type));
+    PyDict_SetItemString(d, "satellites", PyLong_FromLong(pos.satellites));
+    PyDict_SetItemString(d, "timestamp_us", PyLong_FromUnsignedLongLong(pos.timestamp_us));
+    return d;
+}
+
+static PyObject* Brain_mavlink_get_battery(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    nimcp_mavlink_battery_t bat = {0};
+    int ret = nimcp_mavlink_get_battery(g_mavlink_bridge, &bat);
+    if (ret != 0) { Py_RETURN_NONE; }
+
+    PyObject* d = PyDict_New();
+    if (!d) return PyErr_NoMemory();
+    PyDict_SetItemString(d, "voltage", PyFloat_FromDouble(bat.voltage));
+    PyDict_SetItemString(d, "current", PyFloat_FromDouble(bat.current));
+    PyDict_SetItemString(d, "remaining_pct", PyFloat_FromDouble(bat.remaining_pct));
+    PyDict_SetItemString(d, "consumed_mah", PyLong_FromLong(bat.consumed_mah));
+    PyDict_SetItemString(d, "timestamp_us", PyLong_FromUnsignedLongLong(bat.timestamp_us));
+    return d;
+}
+
+static PyObject* Brain_mavlink_set_velocity(BrainObject* self, PyObject* args) {
+    float vx = 0, vy = 0, vz = 0, yaw_rate = 0;
+    if (!PyArg_ParseTuple(args, "ffff", &vx, &vy, &vz, &yaw_rate)) return NULL;
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    int ret = nimcp_mavlink_set_velocity(g_mavlink_bridge, vx, vy, vz, yaw_rate);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to set velocity"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_arm(BrainObject* self, PyObject* args) {
+    int arm = 1;
+    if (!PyArg_ParseTuple(args, "|p", &arm)) return NULL;
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    int ret = nimcp_mavlink_arm(g_mavlink_bridge, (bool)arm);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to arm/disarm"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_takeoff(BrainObject* self, PyObject* args) {
+    float altitude = 5.0f;
+    if (!PyArg_ParseTuple(args, "|f", &altitude)) return NULL;
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    int ret = nimcp_mavlink_takeoff(g_mavlink_bridge, altitude);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to takeoff"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_land(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    int ret = nimcp_mavlink_land(g_mavlink_bridge);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to land"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_goto(BrainObject* self, PyObject* args) {
+    double lat = 0, lon = 0;
+    float alt = 10.0f;
+    if (!PyArg_ParseTuple(args, "dd|f", &lat, &lon, &alt)) return NULL;
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    int ret = nimcp_mavlink_goto(g_mavlink_bridge, lat, lon, alt);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to goto position"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_rtl(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    int ret = nimcp_mavlink_rtl(g_mavlink_bridge);
+    if (ret != 0) { PyErr_SetString(PyExc_RuntimeError, "Failed to RTL"); return NULL; }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_mavlink_compose_features(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!g_mavlink_bridge) { PyErr_SetString(PyExc_RuntimeError, "MAVLink bridge not created"); return NULL; }
+    float features[NIMCP_MAVLINK_FEATURE_COUNT] = {0};
+    int count = nimcp_mavlink_compose_features(g_mavlink_bridge, features, NIMCP_MAVLINK_FEATURE_COUNT);
+    if (count < 0) return PyList_New(0);
+
+    PyObject* list = PyList_New(count);
+    for (int i = 0; i < count; i++) {
+        PyList_SET_ITEM(list, i, PyFloat_FromDouble(features[i]));
+    }
     return list;
 }
 
@@ -7587,6 +8319,126 @@ static PyMethodDef Brain_methods[] = {
      "Search audit trail: audit_search(min_severity=0, max_results=100) -> [dict, ...]"},
     {"memory_is_healthy", (PyCFunction)Brain_memory_is_healthy, METH_NOARGS,
      "Check memory store health: -> bool"},
+
+    /* Swarm Master Runtime */
+    {"swarm_master_create", (PyCFunction)Brain_swarm_master_create, METH_VARARGS | METH_KEYWORDS,
+     "Create swarm master: swarm_master_create(device_id=1, listen_port=9200, ...) -> True"},
+    {"swarm_master_destroy", (PyCFunction)Brain_swarm_master_destroy, METH_NOARGS,
+     "Destroy swarm master: swarm_master_destroy() -> None"},
+    {"swarm_master_start", (PyCFunction)Brain_swarm_master_start, METH_NOARGS,
+     "Start swarm master event loop: swarm_master_start() -> True"},
+    {"swarm_master_stop", (PyCFunction)Brain_swarm_master_stop, METH_NOARGS,
+     "Stop swarm master: swarm_master_stop() -> True"},
+    {"swarm_master_kick", (PyCFunction)Brain_swarm_master_kick, METH_VARARGS,
+     "Kick peer from swarm: swarm_master_kick(device_id) -> True"},
+    {"swarm_master_force_sync", (PyCFunction)Brain_swarm_master_force_sync, METH_NOARGS,
+     "Trigger immediate sync round: swarm_master_force_sync() -> True"},
+    {"swarm_master_get_peer_count", (PyCFunction)Brain_swarm_master_get_peer_count, METH_NOARGS,
+     "Get active peer count: swarm_master_get_peer_count() -> int"},
+    {"swarm_master_get_peer_info", (PyCFunction)Brain_swarm_master_get_peer_info, METH_VARARGS,
+     "Get peer info: swarm_master_get_peer_info(device_id) -> dict"},
+
+    /* Swarm Edge Runtime */
+    {"swarm_edge_create", (PyCFunction)Brain_swarm_edge_create, METH_VARARGS | METH_KEYWORDS,
+     "Create swarm edge: swarm_edge_create(device_id=2, heartbeat_interval_ms=2000, ...) -> True"},
+    {"swarm_edge_destroy", (PyCFunction)Brain_swarm_edge_destroy, METH_NOARGS,
+     "Destroy swarm edge: swarm_edge_destroy() -> None"},
+    {"swarm_edge_start", (PyCFunction)Brain_swarm_edge_start, METH_NOARGS,
+     "Start swarm edge: swarm_edge_start() -> True"},
+    {"swarm_edge_stop", (PyCFunction)Brain_swarm_edge_stop, METH_NOARGS,
+     "Stop swarm edge: swarm_edge_stop() -> True"},
+    {"swarm_edge_is_connected", (PyCFunction)Brain_swarm_edge_is_connected, METH_NOARGS,
+     "Check edge connection: swarm_edge_is_connected() -> bool"},
+    {"swarm_edge_submit_gradients", (PyCFunction)Brain_swarm_edge_submit_gradients, METH_VARARGS,
+     "Submit gradients to master: swarm_edge_submit_gradients(gradients_list) -> True"},
+
+    /* Sensor Hub */
+    {"sensor_hub_create", (PyCFunction)Brain_sensor_hub_create, METH_VARARGS,
+     "Create sensor hub: sensor_hub_create(max_sensors=32) -> True"},
+    {"sensor_hub_destroy", (PyCFunction)Brain_sensor_hub_destroy, METH_NOARGS,
+     "Destroy sensor hub: sensor_hub_destroy() -> None"},
+    {"sensor_register", (PyCFunction)Brain_sensor_register, METH_VARARGS | METH_KEYWORDS,
+     "Register sensor: sensor_register(sensor_id, type=0, format=0, name='sensor', ...) -> int"},
+    {"sensor_submit_reading", (PyCFunction)Brain_sensor_submit_reading, METH_VARARGS | METH_KEYWORDS,
+     "Submit reading: sensor_submit_reading(sensor_id, data, confidence=1.0) -> True"},
+    {"sensor_get_latest", (PyCFunction)Brain_sensor_get_latest, METH_VARARGS,
+     "Get latest reading: sensor_get_latest(sensor_id) -> dict or None"},
+    {"sensor_get_all_latest", (PyCFunction)Brain_sensor_get_all_latest, METH_NOARGS,
+     "Get all latest readings: sensor_get_all_latest() -> [dict, ...]"},
+    {"sensor_compose_features", (PyCFunction)Brain_sensor_compose_features, METH_VARARGS,
+     "Compose feature vector: sensor_compose_features(max_features=1024) -> [float, ...]"},
+    {"sensor_get_count", (PyCFunction)Brain_sensor_get_count, METH_NOARGS,
+     "Get registered sensor count: sensor_get_count() -> int"},
+
+    /* Safety Watchdog */
+    {"watchdog_create", (PyCFunction)Brain_watchdog_create, METH_VARARGS | METH_KEYWORDS,
+     "Create watchdog: watchdog_create(timeout_ms=500, action=0, max_magnitude=1.0, ...) -> True"},
+    {"watchdog_destroy", (PyCFunction)Brain_watchdog_destroy, METH_NOARGS,
+     "Destroy watchdog: watchdog_destroy() -> None"},
+    {"watchdog_arm", (PyCFunction)Brain_watchdog_arm, METH_NOARGS,
+     "Arm watchdog: watchdog_arm() -> True"},
+    {"watchdog_disarm", (PyCFunction)Brain_watchdog_disarm, METH_NOARGS,
+     "Disarm watchdog: watchdog_disarm() -> True"},
+    {"watchdog_heartbeat", (PyCFunction)Brain_watchdog_heartbeat, METH_NOARGS,
+     "Signal heartbeat: watchdog_heartbeat() -> None"},
+    {"watchdog_validate_output", (PyCFunction)Brain_watchdog_validate_output, METH_VARARGS,
+     "Validate output: watchdog_validate_output(output_list) -> bool"},
+    {"watchdog_get_safe_output", (PyCFunction)Brain_watchdog_get_safe_output, METH_VARARGS,
+     "Get safe output: watchdog_get_safe_output(num_outputs=32) -> [float, ...]"},
+    {"watchdog_estop", (PyCFunction)Brain_watchdog_estop, METH_NOARGS,
+     "Emergency stop: watchdog_estop() -> True"},
+    {"watchdog_reset", (PyCFunction)Brain_watchdog_reset, METH_NOARGS,
+     "Reset watchdog: watchdog_reset() -> True"},
+    {"watchdog_get_state", (PyCFunction)Brain_watchdog_get_state, METH_NOARGS,
+     "Get watchdog state: watchdog_get_state() -> str"},
+
+    /* ROS 2 Bridge */
+    {"ros2_bridge_create", (PyCFunction)Brain_ros2_bridge_create, METH_VARARGS | METH_KEYWORDS,
+     "Create ROS2 bridge: ros2_bridge_create(node_name='nimcp_brain', ...) -> True"},
+    {"ros2_bridge_destroy", (PyCFunction)Brain_ros2_bridge_destroy, METH_NOARGS,
+     "Destroy ROS2 bridge: ros2_bridge_destroy() -> None"},
+    {"ros2_bridge_start", (PyCFunction)Brain_ros2_bridge_start, METH_NOARGS,
+     "Start ROS2 bridge: ros2_bridge_start() -> True"},
+    {"ros2_bridge_stop", (PyCFunction)Brain_ros2_bridge_stop, METH_NOARGS,
+     "Stop ROS2 bridge: ros2_bridge_stop() -> True"},
+    {"ros2_bridge_inject_sensor", (PyCFunction)Brain_ros2_bridge_inject_sensor, METH_VARARGS,
+     "Inject sensor data: ros2_bridge_inject_sensor(topic, data_list) -> True"},
+    {"ros2_bridge_get_last_cmd", (PyCFunction)Brain_ros2_bridge_get_last_cmd, METH_VARARGS,
+     "Get last motor command: ros2_bridge_get_last_cmd(max_count=32) -> [float, ...]"},
+
+    /* MAVLink Bridge */
+    {"mavlink_create", (PyCFunction)Brain_mavlink_create, METH_VARARGS | METH_KEYWORDS,
+     "Create MAVLink bridge: mavlink_create(connection_string='udp:14550', ...) -> True"},
+    {"mavlink_destroy", (PyCFunction)Brain_mavlink_destroy, METH_NOARGS,
+     "Destroy MAVLink bridge: mavlink_destroy() -> None"},
+    {"mavlink_connect", (PyCFunction)Brain_mavlink_connect, METH_NOARGS,
+     "Connect MAVLink: mavlink_connect() -> True"},
+    {"mavlink_disconnect", (PyCFunction)Brain_mavlink_disconnect, METH_NOARGS,
+     "Disconnect MAVLink: mavlink_disconnect() -> True"},
+    {"mavlink_start", (PyCFunction)Brain_mavlink_start, METH_NOARGS,
+     "Start MAVLink recv thread: mavlink_start() -> True"},
+    {"mavlink_stop", (PyCFunction)Brain_mavlink_stop, METH_NOARGS,
+     "Stop MAVLink recv thread: mavlink_stop() -> True"},
+    {"mavlink_get_attitude", (PyCFunction)Brain_mavlink_get_attitude, METH_NOARGS,
+     "Get attitude: mavlink_get_attitude() -> dict or None"},
+    {"mavlink_get_position", (PyCFunction)Brain_mavlink_get_position, METH_NOARGS,
+     "Get position: mavlink_get_position() -> dict or None"},
+    {"mavlink_get_battery", (PyCFunction)Brain_mavlink_get_battery, METH_NOARGS,
+     "Get battery: mavlink_get_battery() -> dict or None"},
+    {"mavlink_set_velocity", (PyCFunction)Brain_mavlink_set_velocity, METH_VARARGS,
+     "Set velocity: mavlink_set_velocity(vx, vy, vz, yaw_rate) -> True"},
+    {"mavlink_arm", (PyCFunction)Brain_mavlink_arm, METH_VARARGS,
+     "Arm/disarm: mavlink_arm(arm=True) -> True"},
+    {"mavlink_takeoff", (PyCFunction)Brain_mavlink_takeoff, METH_VARARGS,
+     "Takeoff: mavlink_takeoff(altitude=5.0) -> True"},
+    {"mavlink_land", (PyCFunction)Brain_mavlink_land, METH_NOARGS,
+     "Land: mavlink_land() -> True"},
+    {"mavlink_goto", (PyCFunction)Brain_mavlink_goto, METH_VARARGS,
+     "Go to position: mavlink_goto(lat, lon, alt=10.0) -> True"},
+    {"mavlink_rtl", (PyCFunction)Brain_mavlink_rtl, METH_NOARGS,
+     "Return to launch: mavlink_rtl() -> True"},
+    {"mavlink_compose_features", (PyCFunction)Brain_mavlink_compose_features, METH_NOARGS,
+     "Compose feature vector from telemetry: mavlink_compose_features() -> [float, ...]"},
 
     {NULL}
 };

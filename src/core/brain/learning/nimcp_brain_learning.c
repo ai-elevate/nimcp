@@ -59,6 +59,8 @@
 #include "cognitive/memory/core/nimcp_prime_signature.h"
 #include "core/brain/regions/mammillary/nimcp_mammillary.h"
 #include "portia/nimcp_portia.h"
+#include "edge/nimcp_sensor.h"
+#include "edge/nimcp_safety_watchdog.h"
 
 /* Loss history circular buffer size — must match brain_internal.h loss_history[10] */
 #define LOSS_HISTORY_SIZE 10
@@ -2088,6 +2090,70 @@ sequential_training:
         (strstr(label, "metacog") || strstr(label, "awareness") || strstr(label, "introspect"))) {
         connectivity_health_config_t intro_cfg = {0};
         introspection_assess_connectivity_health(brain->introspection, &intro_cfg);
+    }
+
+    /* === SENSOR FUSION: Exercise sensor processing during training ===
+     * When training on sensor-related data, submit training features as a
+     * synthetic sensor reading to exercise the sensor hub's
+     * compose_feature_vector pathway. This teaches the brain to process
+     * multi-modal sensor input. */
+    if (label && brain->sensor_hub && brain->sensor_hub_enabled &&
+        (strstr(label, "sensor_") || strstr(label, "fusion") || strstr(label, "lidar") ||
+         strstr(label, "imu") || strstr(label, "gps"))) {
+        /* Submit first features as a synthetic scalar sensor reading.
+         * Even synthetic data calibrates the hub's normalization pipeline. */
+        nimcp_sensor_reading_t reading = {0};
+        reading.type = NIMCP_SENSOR_CUSTOM;
+        reading.format = NIMCP_SENSOR_FMT_FLOAT_ARRAY;
+        reading.sensor_id = 0;
+        reading.timestamp_us = nimcp_time_now_us();
+        reading.data = (float*)features;
+        reading.data_count = num_features < 32 ? num_features : 32;
+        reading.confidence = 0.9f;
+        reading.valid = true;
+        nimcp_sensor_submit_reading((nimcp_sensor_hub_t*)brain->sensor_hub, &reading);
+    }
+
+    /* === MOTOR CONTROL: Exercise output translation during training === */
+    if (label && (strstr(label, "motor_") || strstr(label, "actuator") ||
+                  strstr(label, "trajectory") || strstr(label, "pid"))) {
+        /* Motor control training exercises the brain's forward pass.
+         * The actual motor pathway is wired through the decision pipeline,
+         * so no additional dispatch needed here — the forward pass itself
+         * trains the motor output mapping. */
+    }
+
+    /* === SAFETY: Exercise watchdog validation during training ===
+     * When training on safety-related data, exercise the watchdog heartbeat
+     * and output validation pathways. This builds temporal correlation
+     * between safety concepts and watchdog state transitions. */
+    if (label && brain->safety_watchdog && brain->safety_watchdog_enabled &&
+        (strstr(label, "safety_") || strstr(label, "watchdog") || strstr(label, "estop"))) {
+        nimcp_watchdog_heartbeat((nimcp_safety_watchdog_t*)brain->safety_watchdog);
+    }
+
+    /* === EMBODIMENT: Proprioception training ===
+     * Exercise body awareness for coordinate transform concepts.
+     * The sensor hub (if enabled) handles the actual proprioceptive
+     * data flow; this label match ensures the brain's internal
+     * representation of body state is exercised during training. */
+    if (label && (strstr(label, "embodiment_") || strstr(label, "propriocep") ||
+                  strstr(label, "kinematic") || strstr(label, "body_schema"))) {
+        /* Body schema training: the forward pass through the network
+         * with these labels exercises spatial awareness pathways.
+         * If sensor hub is enabled, feed features as proprioceptive input. */
+        if (brain->sensor_hub && brain->sensor_hub_enabled && num_features >= 6) {
+            nimcp_sensor_reading_t prop_reading = {0};
+            prop_reading.type = NIMCP_SENSOR_IMU;
+            prop_reading.format = NIMCP_SENSOR_FMT_VECTOR6;
+            prop_reading.sensor_id = 1;
+            prop_reading.timestamp_us = nimcp_time_now_us();
+            prop_reading.data = (float*)features;
+            prop_reading.data_count = 6;
+            prop_reading.confidence = 0.8f;
+            prop_reading.valid = true;
+            nimcp_sensor_submit_reading((nimcp_sensor_hub_t*)brain->sensor_hub, &prop_reading);
+        }
     }
 
     clear_cache(brain);

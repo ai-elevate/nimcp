@@ -14,6 +14,11 @@ package nimcp
 #cgo LDFLAGS: -L${SRCDIR}/../../../build/lib -lnimcp -Wl,-rpath,${SRCDIR}/../../../build/lib
 #include "nimcp.h"
 #include "nimcp_go_helpers.h"
+#include "edge/nimcp_swarm_runtime.h"
+#include "edge/nimcp_sensor.h"
+#include "edge/nimcp_safety_watchdog.h"
+#include "edge/nimcp_ros2_bridge.h"
+#include "edge/nimcp_mavlink_bridge.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -507,8 +512,14 @@ func GetError() string {
 
 // Brain represents a NIMCP brain instance.
 type Brain struct {
-	handle       C.nimcp_brain_t
-	callbackKeys []uint64 // track registered callback keys for cleanup
+	handle        C.nimcp_brain_t
+	callbackKeys  []uint64 // track registered callback keys for cleanup
+	swarmMaster   *C.nimcp_swarm_master_t
+	swarmEdge     *C.nimcp_swarm_edge_runtime_t
+	sensorHub     *C.nimcp_sensor_hub_t
+	watchdog      *C.nimcp_safety_watchdog_t
+	ros2Bridge    *C.nimcp_ros2_bridge_t
+	mavlinkBridge *C.nimcp_mavlink_bridge_t
 }
 
 // NewBrain creates a new brain with preset configuration.
@@ -1725,7 +1736,319 @@ func (b *Brain) EdgeScoreImportance(numNeurons uint32) []float32 {
 }
 
 // ============================================================================
-// Group 8 — Memory Store API
+// Group 8 — Swarm / Sensor / Watchdog / ROS2 / MAVLink API
+// ============================================================================
+
+// SwarmMasterCreate creates a swarm master runtime.
+func (b *Brain) SwarmMasterCreate(deviceID, listenPort, syncIntervalMs, heartbeatTimeoutMs, minDevices uint32) error {
+	cfg := C.nimcp_swarm_master_config_default()
+	cfg.device_id = C.uint32_t(deviceID)
+	cfg.listen_port = C.uint16_t(listenPort)
+	cfg.sync_interval_ms = C.uint32_t(syncIntervalMs)
+	cfg.heartbeat_timeout_ms = C.uint32_t(heartbeatTimeoutMs)
+	cfg.min_devices_for_sync = C.uint32_t(minDevices)
+	master := C.nimcp_swarm_master_create(b.handle, &cfg)
+	if master == nil {
+		return &NimcpError{Code: ErrGeneric, Message: "failed to create swarm master"}
+	}
+	b.swarmMaster = master
+	return nil
+}
+
+// SwarmMasterDestroy destroys the swarm master.
+func (b *Brain) SwarmMasterDestroy() {
+	if b.swarmMaster != nil {
+		C.nimcp_swarm_master_destroy(b.swarmMaster)
+		b.swarmMaster = nil
+	}
+}
+
+// SwarmMasterStart starts the swarm master event loop.
+func (b *Brain) SwarmMasterStart() int { if b.swarmMaster == nil { return -1 }; return int(C.nimcp_swarm_master_start(b.swarmMaster)) }
+
+// SwarmMasterStop stops the swarm master.
+func (b *Brain) SwarmMasterStop() int { if b.swarmMaster == nil { return -1 }; return int(C.nimcp_swarm_master_stop(b.swarmMaster)) }
+
+// SwarmMasterKick removes a peer from the swarm.
+func (b *Brain) SwarmMasterKick(deviceID uint32) int { if b.swarmMaster == nil { return -1 }; return int(C.nimcp_swarm_master_kick(b.swarmMaster, C.uint32_t(deviceID))) }
+
+// SwarmMasterForceSync triggers an immediate sync round.
+func (b *Brain) SwarmMasterForceSync() int { if b.swarmMaster == nil { return -1 }; return int(C.nimcp_swarm_master_force_sync(b.swarmMaster)) }
+
+// SwarmMasterGetPeerCount returns the number of active peers.
+func (b *Brain) SwarmMasterGetPeerCount() uint32 { if b.swarmMaster == nil { return 0 }; return uint32(C.nimcp_swarm_master_get_peer_count(b.swarmMaster)) }
+
+// SwarmMasterGetPeerInfo returns peer info for a device.
+func (b *Brain) SwarmMasterGetPeerInfo(deviceID uint32) (map[string]interface{}, error) {
+	if b.swarmMaster == nil { return nil, &NimcpError{Code: ErrGeneric, Message: "swarm master not created"} }
+	var entry C.nimcp_peer_entry_t
+	ret := C.nimcp_swarm_master_get_peer_info(b.swarmMaster, C.uint32_t(deviceID), &entry)
+	if ret != 0 { return nil, &NimcpError{Code: ErrGeneric, Message: "peer not found"} }
+	return map[string]interface{}{
+		"device_id": uint32(entry.device_id), "state": int(entry.state),
+		"address": C.GoString(&entry.address[0]), "port": uint32(entry.port),
+		"missed_heartbeats": uint32(entry.missed_heartbeats),
+		"anomaly_count": uint32(entry.anomaly_count),
+		"quarantined": bool(entry.quarantined),
+		"gradient_norm_ema": float32(entry.gradient_norm_ema),
+	}, nil
+}
+
+// SwarmEdgeCreate creates a swarm edge runtime.
+func (b *Brain) SwarmEdgeCreate(deviceID, heartbeatIntervalMs, reconnectDelayMs uint32, enableLocalLearning bool) error {
+	cfg := C.nimcp_swarm_edge_config_default()
+	cfg.device_id = C.uint32_t(deviceID)
+	cfg.heartbeat_interval_ms = C.uint32_t(heartbeatIntervalMs)
+	cfg.reconnect_delay_ms = C.uint32_t(reconnectDelayMs)
+	cfg.enable_local_learning = C.bool(enableLocalLearning)
+	edge := C.nimcp_swarm_edge_create(b.handle, &cfg)
+	if edge == nil { return &NimcpError{Code: ErrGeneric, Message: "failed to create swarm edge"} }
+	b.swarmEdge = edge
+	return nil
+}
+
+// SwarmEdgeDestroy destroys the swarm edge.
+func (b *Brain) SwarmEdgeDestroy() { if b.swarmEdge != nil { C.nimcp_swarm_edge_destroy(b.swarmEdge); b.swarmEdge = nil } }
+
+// SwarmEdgeStart starts the swarm edge.
+func (b *Brain) SwarmEdgeStart() int { if b.swarmEdge == nil { return -1 }; return int(C.nimcp_swarm_edge_start(b.swarmEdge)) }
+
+// SwarmEdgeStop stops the swarm edge.
+func (b *Brain) SwarmEdgeStop() int { if b.swarmEdge == nil { return -1 }; return int(C.nimcp_swarm_edge_stop(b.swarmEdge)) }
+
+// SwarmEdgeIsConnected checks if the edge is connected.
+func (b *Brain) SwarmEdgeIsConnected() bool { if b.swarmEdge == nil { return false }; return bool(C.nimcp_swarm_edge_is_connected(b.swarmEdge)) }
+
+// SwarmEdgeSubmitGradients submits local gradients to the master.
+func (b *Brain) SwarmEdgeSubmitGradients(gradients []float32) int {
+	if b.swarmEdge == nil || len(gradients) == 0 { return -1 }
+	return int(C.nimcp_swarm_edge_submit_gradients(b.swarmEdge, (*C.float)(unsafe.Pointer(&gradients[0])), C.uint32_t(len(gradients))))
+}
+
+// SensorHubCreate creates a sensor hub. Returns non-nil on error.
+func (b *Brain) SensorHubCreate(maxSensors uint32) error {
+	hub := C.nimcp_sensor_hub_create(C.uint32_t(maxSensors))
+	if hub == nil { return &NimcpError{Code: ErrGeneric, Message: "failed to create sensor hub"} }
+	b.sensorHub = hub
+	return nil
+}
+
+// SensorHubDestroy destroys the sensor hub.
+func (b *Brain) SensorHubDestroy() { if b.sensorHub != nil { C.nimcp_sensor_hub_destroy(b.sensorHub); b.sensorHub = nil } }
+
+// SensorRegister registers a sensor with the hub.
+func (b *Brain) SensorRegister(sensorID, sensorType, format uint32, name string, sampleRate float32, maxData uint32) int {
+	if b.sensorHub == nil { return -1 }
+	var desc C.nimcp_sensor_descriptor_t
+	desc.sensor_id = C.uint32_t(sensorID)
+	desc._type = C.nimcp_sensor_type_t(sensorType)
+	desc.format = C.nimcp_sensor_format_t(format)
+	cName := C.CString(name); defer C.free(unsafe.Pointer(cName))
+	C.strncpy(&desc.name[0], cName, 63)
+	desc.sample_rate_hz = C.float(sampleRate)
+	desc.max_data_count = C.uint32_t(maxData)
+	return int(C.nimcp_sensor_register(b.sensorHub, &desc))
+}
+
+// SensorSubmitReading submits a sensor reading.
+func (b *Brain) SensorSubmitReading(sensorID uint32, data []float32, confidence float32) int {
+	if b.sensorHub == nil || len(data) == 0 { return -1 }
+	var reading C.nimcp_sensor_reading_t
+	reading.sensor_id = C.uint32_t(sensorID)
+	reading.data = (*C.float)(unsafe.Pointer(&data[0]))
+	reading.data_count = C.uint32_t(len(data))
+	reading.confidence = C.float(confidence)
+	reading.valid = C.bool(true)
+	return int(C.nimcp_sensor_submit_reading(b.sensorHub, &reading))
+}
+
+// SensorGetCount returns the number of registered sensors.
+func (b *Brain) SensorGetCount() uint32 { if b.sensorHub == nil { return 0 }; return uint32(C.nimcp_sensor_get_count(b.sensorHub)) }
+
+// SensorComposeFeatures composes a feature vector from all sensors.
+func (b *Brain) SensorComposeFeatures(maxFeatures uint32) []float32 {
+	if b.sensorHub == nil { return nil }
+	features := make([]float32, maxFeatures)
+	count := int(C.nimcp_sensor_compose_feature_vector(b.sensorHub, (*C.float)(unsafe.Pointer(&features[0])), C.uint32_t(maxFeatures)))
+	if count < 0 { return nil }
+	return features[:count]
+}
+
+// WatchdogCreate creates a safety watchdog.
+func (b *Brain) WatchdogCreate(timeoutMs uint32, action int, maxMagnitude float32, maxOutputs uint32) error {
+	cfg := C.nimcp_watchdog_config_default()
+	cfg.timeout_ms = C.uint32_t(timeoutMs)
+	cfg.action = C.nimcp_safe_action_t(action)
+	cfg.validation.max_output_magnitude = C.float(maxMagnitude)
+	cfg.max_outputs = C.uint32_t(maxOutputs)
+	wd := C.nimcp_watchdog_create(&cfg)
+	if wd == nil { return &NimcpError{Code: ErrGeneric, Message: "failed to create watchdog"} }
+	b.watchdog = wd
+	return nil
+}
+
+// WatchdogDestroy destroys the watchdog.
+func (b *Brain) WatchdogDestroy() { if b.watchdog != nil { C.nimcp_watchdog_destroy(b.watchdog); b.watchdog = nil } }
+
+// WatchdogArm arms the watchdog.
+func (b *Brain) WatchdogArm() int { if b.watchdog == nil { return -1 }; return int(C.nimcp_watchdog_arm(b.watchdog)) }
+
+// WatchdogDisarm disarms the watchdog.
+func (b *Brain) WatchdogDisarm() int { if b.watchdog == nil { return -1 }; return int(C.nimcp_watchdog_disarm(b.watchdog)) }
+
+// WatchdogHeartbeat sends a heartbeat.
+func (b *Brain) WatchdogHeartbeat() { if b.watchdog != nil { C.nimcp_watchdog_heartbeat(b.watchdog) } }
+
+// WatchdogValidateOutput validates brain output. Returns true if valid.
+func (b *Brain) WatchdogValidateOutput(output []float32) bool {
+	if b.watchdog == nil || len(output) == 0 { return false }
+	return C.nimcp_watchdog_validate_output(b.watchdog, (*C.float)(unsafe.Pointer(&output[0])), C.uint32_t(len(output))) == 0
+}
+
+// WatchdogGetSafeOutput returns safe output values.
+func (b *Brain) WatchdogGetSafeOutput(numOutputs uint32) []float32 {
+	if b.watchdog == nil { return nil }
+	out := make([]float32, numOutputs)
+	C.nimcp_watchdog_get_safe_output(b.watchdog, (*C.float)(unsafe.Pointer(&out[0])), C.uint32_t(numOutputs))
+	return out
+}
+
+// WatchdogEstop triggers an emergency stop.
+func (b *Brain) WatchdogEstop() { if b.watchdog != nil { C.nimcp_watchdog_estop(b.watchdog) } }
+
+// WatchdogReset resets the watchdog.
+func (b *Brain) WatchdogReset() int { if b.watchdog == nil { return -1 }; return int(C.nimcp_watchdog_reset(b.watchdog)) }
+
+// WatchdogGetState returns the current watchdog state name.
+func (b *Brain) WatchdogGetState() string {
+	if b.watchdog == nil { return "NONE" }
+	return C.GoString(C.nimcp_watchdog_state_name(C.nimcp_watchdog_get_state(b.watchdog)))
+}
+
+// Ros2BridgeCreate creates a ROS 2 bridge.
+func (b *Brain) Ros2BridgeCreate(nodeName string, cmdRate, infRate float32, inputDim uint32, subIMU, subOdom bool) error {
+	cfg := C.nimcp_ros2_config_default()
+	cName := C.CString(nodeName); defer C.free(unsafe.Pointer(cName))
+	cfg.node_name = cName
+	cfg.cmd_rate_hz = C.float(cmdRate)
+	cfg.inference_rate_hz = C.float(infRate)
+	cfg.brain_input_dim = C.uint32_t(inputDim)
+	cfg.subscribe_imu = C.bool(subIMU)
+	cfg.subscribe_odom = C.bool(subOdom)
+	bridge := C.nimcp_ros2_bridge_create(b.handle, &cfg)
+	if bridge == nil { return &NimcpError{Code: ErrGeneric, Message: "failed to create ROS2 bridge"} }
+	b.ros2Bridge = bridge
+	return nil
+}
+
+// Ros2BridgeDestroy destroys the ROS 2 bridge.
+func (b *Brain) Ros2BridgeDestroy() { if b.ros2Bridge != nil { C.nimcp_ros2_bridge_destroy(b.ros2Bridge); b.ros2Bridge = nil } }
+
+// Ros2BridgeStart starts the ROS 2 bridge.
+func (b *Brain) Ros2BridgeStart() int { if b.ros2Bridge == nil { return -1 }; return int(C.nimcp_ros2_bridge_start(b.ros2Bridge)) }
+
+// Ros2BridgeStop stops the ROS 2 bridge.
+func (b *Brain) Ros2BridgeStop() int { if b.ros2Bridge == nil { return -1 }; return int(C.nimcp_ros2_bridge_stop(b.ros2Bridge)) }
+
+// Ros2BridgeInjectSensor injects sensor data.
+func (b *Brain) Ros2BridgeInjectSensor(topic string, data []float32) int {
+	if b.ros2Bridge == nil || len(data) == 0 { return -1 }
+	cTopic := C.CString(topic); defer C.free(unsafe.Pointer(cTopic))
+	return int(C.nimcp_ros2_bridge_inject_sensor(b.ros2Bridge, cTopic, (*C.float)(unsafe.Pointer(&data[0])), C.uint32_t(len(data))))
+}
+
+// Ros2BridgeGetLastCmd returns the last motor command.
+func (b *Brain) Ros2BridgeGetLastCmd(maxCount uint32) []float32 {
+	if b.ros2Bridge == nil { return nil }
+	data := make([]float32, maxCount)
+	got := int(C.nimcp_ros2_bridge_get_last_cmd(b.ros2Bridge, (*C.float)(unsafe.Pointer(&data[0])), C.uint32_t(maxCount)))
+	if got < 0 { return nil }
+	return data[:got]
+}
+
+// MavlinkCreate creates a MAVLink bridge.
+func (b *Brain) MavlinkCreate(connString string, connType int, baudRate, sysID uint32, geofence float32) error {
+	cfg := C.nimcp_mavlink_config_default()
+	cStr := C.CString(connString); defer C.free(unsafe.Pointer(cStr))
+	C.strncpy(&cfg.connection_string[0], cStr, 255)
+	cfg.conn_type = C.nimcp_mavlink_conn_type_t(connType)
+	cfg.baud_rate = C.uint32_t(baudRate)
+	cfg.system_id = C.uint8_t(sysID)
+	cfg.geofence_radius_m = C.float(geofence)
+	bridge := C.nimcp_mavlink_bridge_create(&cfg)
+	if bridge == nil { return &NimcpError{Code: ErrGeneric, Message: "failed to create MAVLink bridge"} }
+	b.mavlinkBridge = bridge
+	return nil
+}
+
+// MavlinkDestroy destroys the MAVLink bridge.
+func (b *Brain) MavlinkDestroy() { if b.mavlinkBridge != nil { C.nimcp_mavlink_bridge_destroy(b.mavlinkBridge); b.mavlinkBridge = nil } }
+
+// MavlinkConnect opens the connection.
+func (b *Brain) MavlinkConnect() int { if b.mavlinkBridge == nil { return -1 }; return int(C.nimcp_mavlink_bridge_connect(b.mavlinkBridge)) }
+
+// MavlinkDisconnect closes the connection.
+func (b *Brain) MavlinkDisconnect() int { if b.mavlinkBridge == nil { return -1 }; return int(C.nimcp_mavlink_bridge_disconnect(b.mavlinkBridge)) }
+
+// MavlinkStart starts the receive thread.
+func (b *Brain) MavlinkStart() int { if b.mavlinkBridge == nil { return -1 }; return int(C.nimcp_mavlink_bridge_start(b.mavlinkBridge)) }
+
+// MavlinkStop stops the receive thread.
+func (b *Brain) MavlinkStop() int { if b.mavlinkBridge == nil { return -1 }; return int(C.nimcp_mavlink_bridge_stop(b.mavlinkBridge)) }
+
+// MavlinkGetAttitude returns the latest attitude data.
+func (b *Brain) MavlinkGetAttitude() map[string]float64 {
+	if b.mavlinkBridge == nil { return nil }
+	var att C.nimcp_mavlink_attitude_t
+	if C.nimcp_mavlink_get_attitude(b.mavlinkBridge, &att) != 0 { return nil }
+	return map[string]float64{"roll": float64(att.roll), "pitch": float64(att.pitch), "yaw": float64(att.yaw), "rollspeed": float64(att.rollspeed), "pitchspeed": float64(att.pitchspeed), "yawspeed": float64(att.yawspeed)}
+}
+
+// MavlinkGetPosition returns the latest position data.
+func (b *Brain) MavlinkGetPosition() map[string]float64 {
+	if b.mavlinkBridge == nil { return nil }
+	var pos C.nimcp_mavlink_position_t
+	if C.nimcp_mavlink_get_position(b.mavlinkBridge, &pos) != 0 { return nil }
+	return map[string]float64{"latitude": float64(pos.latitude), "longitude": float64(pos.longitude), "altitude_msl": float64(pos.altitude_msl), "altitude_rel": float64(pos.altitude_rel), "vx": float64(pos.vx), "vy": float64(pos.vy), "vz": float64(pos.vz), "heading": float64(pos.heading)}
+}
+
+// MavlinkGetBattery returns the latest battery data.
+func (b *Brain) MavlinkGetBattery() map[string]float64 {
+	if b.mavlinkBridge == nil { return nil }
+	var bat C.nimcp_mavlink_battery_t
+	if C.nimcp_mavlink_get_battery(b.mavlinkBridge, &bat) != 0 { return nil }
+	return map[string]float64{"voltage": float64(bat.voltage), "current": float64(bat.current), "remaining_pct": float64(bat.remaining_pct), "consumed_mah": float64(bat.consumed_mah)}
+}
+
+// MavlinkSetVelocity sets velocity.
+func (b *Brain) MavlinkSetVelocity(vx, vy, vz, yawRate float32) int { if b.mavlinkBridge == nil { return -1 }; return int(C.nimcp_mavlink_set_velocity(b.mavlinkBridge, C.float(vx), C.float(vy), C.float(vz), C.float(yawRate))) }
+
+// MavlinkArm arms or disarms the vehicle.
+func (b *Brain) MavlinkArm(arm bool) int { if b.mavlinkBridge == nil { return -1 }; return int(C.nimcp_mavlink_arm(b.mavlinkBridge, C.bool(arm))) }
+
+// MavlinkTakeoff commands takeoff.
+func (b *Brain) MavlinkTakeoff(altitude float32) int { if b.mavlinkBridge == nil { return -1 }; return int(C.nimcp_mavlink_takeoff(b.mavlinkBridge, C.float(altitude))) }
+
+// MavlinkLand commands landing.
+func (b *Brain) MavlinkLand() int { if b.mavlinkBridge == nil { return -1 }; return int(C.nimcp_mavlink_land(b.mavlinkBridge)) }
+
+// MavlinkGoto commands go-to position.
+func (b *Brain) MavlinkGoto(lat, lon float64, alt float32) int { if b.mavlinkBridge == nil { return -1 }; return int(C.nimcp_mavlink_goto(b.mavlinkBridge, C.double(lat), C.double(lon), C.float(alt))) }
+
+// MavlinkRtl commands return to launch.
+func (b *Brain) MavlinkRtl() int { if b.mavlinkBridge == nil { return -1 }; return int(C.nimcp_mavlink_rtl(b.mavlinkBridge)) }
+
+// MavlinkComposeFeatures composes a brain-input feature vector from telemetry.
+func (b *Brain) MavlinkComposeFeatures() []float32 {
+	if b.mavlinkBridge == nil { return nil }
+	features := make([]float32, C.NIMCP_MAVLINK_FEATURE_COUNT)
+	count := int(C.nimcp_mavlink_compose_features(b.mavlinkBridge, (*C.float)(unsafe.Pointer(&features[0])), C.NIMCP_MAVLINK_FEATURE_COUNT))
+	if count < 0 { return nil }
+	return features[:count]
+}
+
+// ============================================================================
+// Group 9 — Memory Store API
 // ============================================================================
 
 // MemoryStoreStats contains memory store statistics.

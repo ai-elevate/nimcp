@@ -1051,6 +1051,74 @@ extern "C" {
     fn nimcp_quantize_config_default() -> [u8; 64];
     fn nimcp_device_profile_default() -> [u8; 64];
 
+    // --- Swarm Runtime ---
+    fn nimcp_swarm_master_create(brain: *mut NimcpBrainHandle, config: *const c_void) -> *mut c_void;
+    fn nimcp_swarm_master_destroy(master: *mut c_void);
+    fn nimcp_swarm_master_start(master: *mut c_void) -> c_int;
+    fn nimcp_swarm_master_stop(master: *mut c_void) -> c_int;
+    fn nimcp_swarm_master_kick(master: *mut c_void, device_id: c_uint) -> c_int;
+    fn nimcp_swarm_master_force_sync(master: *mut c_void) -> c_int;
+    fn nimcp_swarm_master_get_peer_count(master: *const c_void) -> c_uint;
+    fn nimcp_swarm_master_config_default() -> [u8; 64];
+    fn nimcp_swarm_edge_create(brain: *mut NimcpBrainHandle, config: *const c_void) -> *mut c_void;
+    fn nimcp_swarm_edge_destroy(rt: *mut c_void);
+    fn nimcp_swarm_edge_start(rt: *mut c_void) -> c_int;
+    fn nimcp_swarm_edge_stop(rt: *mut c_void) -> c_int;
+    fn nimcp_swarm_edge_is_connected(rt: *const c_void) -> bool;
+    fn nimcp_swarm_edge_submit_gradients(rt: *mut c_void, grads: *const c_float, n: c_uint) -> c_int;
+    fn nimcp_swarm_edge_config_default() -> [u8; 64];
+
+    // --- Sensor Hub ---
+    fn nimcp_sensor_hub_create(max_sensors: c_uint) -> *mut c_void;
+    fn nimcp_sensor_hub_destroy(hub: *mut c_void);
+    fn nimcp_sensor_register(hub: *mut c_void, desc: *const c_void) -> c_int;
+    fn nimcp_sensor_submit_reading(hub: *mut c_void, reading: *const c_void) -> c_int;
+    fn nimcp_sensor_get_latest(hub: *mut c_void, sensor_id: c_uint, out: *mut c_void) -> c_int;
+    fn nimcp_sensor_compose_feature_vector(hub: *mut c_void, features: *mut c_float, max: c_uint) -> c_int;
+    fn nimcp_sensor_get_count(hub: *const c_void) -> c_uint;
+
+    // --- Safety Watchdog ---
+    fn nimcp_watchdog_create(config: *const c_void) -> *mut c_void;
+    fn nimcp_watchdog_destroy(wd: *mut c_void);
+    fn nimcp_watchdog_arm(wd: *mut c_void) -> c_int;
+    fn nimcp_watchdog_disarm(wd: *mut c_void) -> c_int;
+    fn nimcp_watchdog_heartbeat(wd: *mut c_void);
+    fn nimcp_watchdog_validate_output(wd: *mut c_void, output: *mut c_float, n: c_uint) -> c_int;
+    fn nimcp_watchdog_get_safe_output(wd: *mut c_void, output: *mut c_float, n: c_uint) -> c_int;
+    fn nimcp_watchdog_estop(wd: *mut c_void);
+    fn nimcp_watchdog_reset(wd: *mut c_void) -> c_int;
+    fn nimcp_watchdog_get_state(wd: *mut c_void) -> c_int;
+    fn nimcp_watchdog_state_name(state: c_int) -> *const c_char;
+    fn nimcp_watchdog_config_default() -> [u8; 128];
+
+    // --- ROS 2 Bridge ---
+    fn nimcp_ros2_bridge_create(brain: *mut NimcpBrainHandle, config: *const c_void) -> *mut c_void;
+    fn nimcp_ros2_bridge_destroy(bridge: *mut c_void);
+    fn nimcp_ros2_bridge_start(bridge: *mut c_void) -> c_int;
+    fn nimcp_ros2_bridge_stop(bridge: *mut c_void) -> c_int;
+    fn nimcp_ros2_bridge_inject_sensor(bridge: *mut c_void, topic: *const c_char, data: *const c_float, count: c_uint) -> c_int;
+    fn nimcp_ros2_bridge_get_last_cmd(bridge: *const c_void, data: *mut c_float, max: c_uint) -> c_int;
+    fn nimcp_ros2_config_default() -> [u8; 256];
+
+    // --- MAVLink Bridge ---
+    fn nimcp_mavlink_bridge_create(config: *const c_void) -> *mut c_void;
+    fn nimcp_mavlink_bridge_destroy(bridge: *mut c_void);
+    fn nimcp_mavlink_bridge_connect(bridge: *mut c_void) -> c_int;
+    fn nimcp_mavlink_bridge_disconnect(bridge: *mut c_void) -> c_int;
+    fn nimcp_mavlink_bridge_start(bridge: *mut c_void) -> c_int;
+    fn nimcp_mavlink_bridge_stop(bridge: *mut c_void) -> c_int;
+    fn nimcp_mavlink_get_attitude(bridge: *const c_void, att: *mut [f32; 7]) -> c_int;
+    fn nimcp_mavlink_get_position(bridge: *const c_void, pos: *mut [u8; 128]) -> c_int;
+    fn nimcp_mavlink_get_battery(bridge: *const c_void, bat: *mut [f32; 5]) -> c_int;
+    fn nimcp_mavlink_set_velocity(bridge: *mut c_void, vx: c_float, vy: c_float, vz: c_float, yr: c_float) -> c_int;
+    fn nimcp_mavlink_arm(bridge: *mut c_void, arm: bool) -> c_int;
+    fn nimcp_mavlink_takeoff(bridge: *mut c_void, alt: c_float) -> c_int;
+    fn nimcp_mavlink_land(bridge: *mut c_void) -> c_int;
+    fn nimcp_mavlink_goto(bridge: *mut c_void, lat: f64, lon: f64, alt: c_float) -> c_int;
+    fn nimcp_mavlink_rtl(bridge: *mut c_void) -> c_int;
+    fn nimcp_mavlink_compose_features(bridge: *const c_void, features: *mut c_float, max: c_uint) -> c_int;
+    fn nimcp_mavlink_config_default() -> [u8; 512];
+
     // --- Memory Store / OOD / Audit (brain-handle wrappers) ---
     fn nimcp_brain_memory_store_stats(
         brain: *mut NimcpBrainHandle, stats: *mut MemoryStoreStatsRaw,
@@ -1372,6 +1440,12 @@ type CallbackBoxPtr =
 pub struct Brain {
     handle: *mut NimcpBrainHandle,
     _callback_ptrs: Vec<CallbackBoxPtr>,
+    _swarm_master: *mut c_void,
+    _swarm_edge: *mut c_void,
+    _sensor_hub: *mut c_void,
+    _watchdog: *mut c_void,
+    _ros2_bridge: *mut c_void,
+    _mavlink_bridge: *mut c_void,
 }
 
 impl Brain {
@@ -1388,7 +1462,7 @@ impl Brain {
             if handle.is_null() {
                 Err(NimcpError::Generic(get_error_string()))
             } else {
-                Ok(Brain { handle, _callback_ptrs: Vec::new() })
+                Ok(Brain { handle, _callback_ptrs: Vec::new(), _swarm_master: ptr::null_mut(), _swarm_edge: ptr::null_mut(), _sensor_hub: ptr::null_mut(), _watchdog: ptr::null_mut(), _ros2_bridge: ptr::null_mut(), _mavlink_bridge: ptr::null_mut() })
             }
         }
     }
@@ -1406,7 +1480,7 @@ impl Brain {
             if handle.is_null() {
                 Err(NimcpError::Generic(get_error_string()))
             } else {
-                Ok(Brain { handle, _callback_ptrs: Vec::new() })
+                Ok(Brain { handle, _callback_ptrs: Vec::new(), _swarm_master: ptr::null_mut(), _swarm_edge: ptr::null_mut(), _sensor_hub: ptr::null_mut(), _watchdog: ptr::null_mut(), _ros2_bridge: ptr::null_mut(), _mavlink_bridge: ptr::null_mut() })
             }
         }
     }
@@ -1424,7 +1498,7 @@ impl Brain {
             if handle.is_null() {
                 Err(NimcpError::Generic(get_error_string()))
             } else {
-                Ok(Brain { handle, _callback_ptrs: Vec::new() })
+                Ok(Brain { handle, _callback_ptrs: Vec::new(), _swarm_master: ptr::null_mut(), _swarm_edge: ptr::null_mut(), _sensor_hub: ptr::null_mut(), _watchdog: ptr::null_mut(), _ros2_bridge: ptr::null_mut(), _mavlink_bridge: ptr::null_mut() })
             }
         }
     }
@@ -1436,7 +1510,7 @@ impl Brain {
             if handle.is_null() {
                 Err(NimcpError::Io(format!("Failed to load: {}", filepath)))
             } else {
-                Ok(Brain { handle, _callback_ptrs: Vec::new() })
+                Ok(Brain { handle, _callback_ptrs: Vec::new(), _swarm_master: ptr::null_mut(), _swarm_edge: ptr::null_mut(), _sensor_hub: ptr::null_mut(), _watchdog: ptr::null_mut(), _ros2_bridge: ptr::null_mut(), _mavlink_bridge: ptr::null_mut() })
             }
         }
     }
@@ -1448,7 +1522,7 @@ impl Brain {
             if handle.is_null() {
                 Err(NimcpError::Generic(get_error_string()))
             } else {
-                Ok(Brain { handle, _callback_ptrs: Vec::new() })
+                Ok(Brain { handle, _callback_ptrs: Vec::new(), _swarm_master: ptr::null_mut(), _swarm_edge: ptr::null_mut(), _sensor_hub: ptr::null_mut(), _watchdog: ptr::null_mut(), _ros2_bridge: ptr::null_mut(), _mavlink_bridge: ptr::null_mut() })
             }
         }
     }
@@ -2437,7 +2511,7 @@ impl Brain {
             if h.is_null() {
                 Err(NimcpError::Generic("Failed to restore snapshot".into()))
             } else {
-                Ok(Brain { handle: h, _callback_ptrs: Vec::new() })
+                Ok(Brain { handle: h, _callback_ptrs: Vec::new(), _swarm_master: ptr::null_mut(), _swarm_edge: ptr::null_mut(), _sensor_hub: ptr::null_mut(), _watchdog: ptr::null_mut(), _ros2_bridge: ptr::null_mut(), _mavlink_bridge: ptr::null_mut() })
             }
         }
     }
@@ -2455,7 +2529,7 @@ impl Brain {
             if h.is_null() {
                 Err(NimcpError::Generic("Failed to clone brain".into()))
             } else {
-                Ok(Brain { handle: h, _callback_ptrs: Vec::new() })
+                Ok(Brain { handle: h, _callback_ptrs: Vec::new(), _swarm_master: ptr::null_mut(), _swarm_edge: ptr::null_mut(), _sensor_hub: ptr::null_mut(), _watchdog: ptr::null_mut(), _ros2_bridge: ptr::null_mut(), _mavlink_bridge: ptr::null_mut() })
             }
         }
     }
@@ -2722,6 +2796,95 @@ impl Brain {
                 self.handle, config.as_ptr() as *const c_void))
         }
     }
+
+    // --- Swarm / Sensor / Watchdog / ROS2 / MAVLink ---
+
+    /// Create a swarm master. Returns opaque handle stored internally.
+    pub fn swarm_master_create(&mut self, device_id: u32, listen_port: u16) -> Result<()> {
+        unsafe {
+            let mut cfg = nimcp_swarm_master_config_default();
+            *(cfg.as_mut_ptr() as *mut u32) = device_id;
+            *((cfg.as_mut_ptr() as *mut u16).add(2)) = listen_port;
+            let master = nimcp_swarm_master_create(self.handle, cfg.as_ptr() as *const c_void);
+            if master.is_null() { return Err(NimcpError::Generic("failed to create swarm master".into())); }
+            self._swarm_master = master;
+            Ok(())
+        }
+    }
+    pub fn swarm_master_destroy(&mut self) { unsafe { if !self._swarm_master.is_null() { nimcp_swarm_master_destroy(self._swarm_master); self._swarm_master = ptr::null_mut(); } } }
+    pub fn swarm_master_start(&self) -> i32 { if self._swarm_master.is_null() { return -1; } unsafe { nimcp_swarm_master_start(self._swarm_master) } }
+    pub fn swarm_master_stop(&self) -> i32 { if self._swarm_master.is_null() { return -1; } unsafe { nimcp_swarm_master_stop(self._swarm_master) } }
+    pub fn swarm_master_kick(&self, device_id: u32) -> i32 { if self._swarm_master.is_null() { return -1; } unsafe { nimcp_swarm_master_kick(self._swarm_master, device_id) } }
+    pub fn swarm_master_force_sync(&self) -> i32 { if self._swarm_master.is_null() { return -1; } unsafe { nimcp_swarm_master_force_sync(self._swarm_master) } }
+    pub fn swarm_master_get_peer_count(&self) -> u32 { if self._swarm_master.is_null() { return 0; } unsafe { nimcp_swarm_master_get_peer_count(self._swarm_master) } }
+
+    pub fn swarm_edge_create(&mut self, device_id: u32) -> Result<()> {
+        unsafe {
+            let mut cfg = nimcp_swarm_edge_config_default();
+            *(cfg.as_mut_ptr() as *mut u32) = device_id;
+            let edge = nimcp_swarm_edge_create(self.handle, cfg.as_ptr() as *const c_void);
+            if edge.is_null() { return Err(NimcpError::Generic("failed to create swarm edge".into())); }
+            self._swarm_edge = edge;
+            Ok(())
+        }
+    }
+    pub fn swarm_edge_destroy(&mut self) { unsafe { if !self._swarm_edge.is_null() { nimcp_swarm_edge_destroy(self._swarm_edge); self._swarm_edge = ptr::null_mut(); } } }
+    pub fn swarm_edge_start(&self) -> i32 { if self._swarm_edge.is_null() { return -1; } unsafe { nimcp_swarm_edge_start(self._swarm_edge) } }
+    pub fn swarm_edge_stop(&self) -> i32 { if self._swarm_edge.is_null() { return -1; } unsafe { nimcp_swarm_edge_stop(self._swarm_edge) } }
+    pub fn swarm_edge_is_connected(&self) -> bool { if self._swarm_edge.is_null() { return false; } unsafe { nimcp_swarm_edge_is_connected(self._swarm_edge) } }
+    pub fn swarm_edge_submit_gradients(&self, gradients: &[f32]) -> i32 { if self._swarm_edge.is_null() { return -1; } unsafe { nimcp_swarm_edge_submit_gradients(self._swarm_edge, gradients.as_ptr(), gradients.len() as c_uint) } }
+
+    pub fn sensor_hub_create(&mut self, max_sensors: u32) -> Result<()> {
+        unsafe { let hub = nimcp_sensor_hub_create(max_sensors); if hub.is_null() { return Err(NimcpError::Generic("failed to create sensor hub".into())); } self._sensor_hub = hub; Ok(()) }
+    }
+    pub fn sensor_hub_destroy(&mut self) { unsafe { if !self._sensor_hub.is_null() { nimcp_sensor_hub_destroy(self._sensor_hub); self._sensor_hub = ptr::null_mut(); } } }
+    pub fn sensor_get_count(&self) -> u32 { if self._sensor_hub.is_null() { return 0; } unsafe { nimcp_sensor_get_count(self._sensor_hub) } }
+    pub fn sensor_compose_features(&self, max_features: u32) -> Vec<f32> {
+        if self._sensor_hub.is_null() { return vec![]; }
+        let mut features = vec![0.0f32; max_features as usize];
+        let count = unsafe { nimcp_sensor_compose_feature_vector(self._sensor_hub, features.as_mut_ptr(), max_features) };
+        if count < 0 { return vec![]; }
+        features.truncate(count as usize);
+        features
+    }
+
+    pub fn watchdog_create(&mut self) -> Result<()> {
+        unsafe { let cfg = nimcp_watchdog_config_default(); let wd = nimcp_watchdog_create(cfg.as_ptr() as *const c_void); if wd.is_null() { return Err(NimcpError::Generic("failed to create watchdog".into())); } self._watchdog = wd; Ok(()) }
+    }
+    pub fn watchdog_destroy(&mut self) { unsafe { if !self._watchdog.is_null() { nimcp_watchdog_destroy(self._watchdog); self._watchdog = ptr::null_mut(); } } }
+    pub fn watchdog_arm(&self) -> i32 { if self._watchdog.is_null() { return -1; } unsafe { nimcp_watchdog_arm(self._watchdog) } }
+    pub fn watchdog_disarm(&self) -> i32 { if self._watchdog.is_null() { return -1; } unsafe { nimcp_watchdog_disarm(self._watchdog) } }
+    pub fn watchdog_heartbeat(&self) { if !self._watchdog.is_null() { unsafe { nimcp_watchdog_heartbeat(self._watchdog) } } }
+    pub fn watchdog_validate_output(&self, output: &mut [f32]) -> bool { if self._watchdog.is_null() { return false; } unsafe { nimcp_watchdog_validate_output(self._watchdog, output.as_mut_ptr(), output.len() as c_uint) == 0 } }
+    pub fn watchdog_get_safe_output(&self, num: u32) -> Vec<f32> { if self._watchdog.is_null() { return vec![]; } let mut out = vec![0.0f32; num as usize]; unsafe { nimcp_watchdog_get_safe_output(self._watchdog, out.as_mut_ptr(), num); } out }
+    pub fn watchdog_estop(&self) { if !self._watchdog.is_null() { unsafe { nimcp_watchdog_estop(self._watchdog) } } }
+    pub fn watchdog_reset(&self) -> i32 { if self._watchdog.is_null() { return -1; } unsafe { nimcp_watchdog_reset(self._watchdog) } }
+    pub fn watchdog_get_state(&self) -> String { if self._watchdog.is_null() { return "NONE".into(); } unsafe { let s = nimcp_watchdog_get_state(self._watchdog); CStr::from_ptr(nimcp_watchdog_state_name(s)).to_string_lossy().into_owned() } }
+
+    pub fn ros2_bridge_create(&mut self) -> Result<()> {
+        unsafe { let cfg = nimcp_ros2_config_default(); let br = nimcp_ros2_bridge_create(self.handle, cfg.as_ptr() as *const c_void); if br.is_null() { return Err(NimcpError::Generic("failed to create ROS2 bridge".into())); } self._ros2_bridge = br; Ok(()) }
+    }
+    pub fn ros2_bridge_destroy(&mut self) { unsafe { if !self._ros2_bridge.is_null() { nimcp_ros2_bridge_destroy(self._ros2_bridge); self._ros2_bridge = ptr::null_mut(); } } }
+    pub fn ros2_bridge_start(&self) -> i32 { if self._ros2_bridge.is_null() { return -1; } unsafe { nimcp_ros2_bridge_start(self._ros2_bridge) } }
+    pub fn ros2_bridge_stop(&self) -> i32 { if self._ros2_bridge.is_null() { return -1; } unsafe { nimcp_ros2_bridge_stop(self._ros2_bridge) } }
+    pub fn ros2_bridge_inject_sensor(&self, topic: &str, data: &[f32]) -> i32 { if self._ros2_bridge.is_null() { return -1; } let ct = CString::new(topic).unwrap_or_default(); unsafe { nimcp_ros2_bridge_inject_sensor(self._ros2_bridge, ct.as_ptr(), data.as_ptr(), data.len() as c_uint) } }
+    pub fn ros2_bridge_get_last_cmd(&self, max: u32) -> Vec<f32> { if self._ros2_bridge.is_null() { return vec![]; } let mut data = vec![0.0f32; max as usize]; let got = unsafe { nimcp_ros2_bridge_get_last_cmd(self._ros2_bridge, data.as_mut_ptr(), max) }; if got < 0 { return vec![]; } data.truncate(got as usize); data }
+
+    pub fn mavlink_create(&mut self) -> Result<()> {
+        unsafe { let cfg = nimcp_mavlink_config_default(); let br = nimcp_mavlink_bridge_create(cfg.as_ptr() as *const c_void); if br.is_null() { return Err(NimcpError::Generic("failed to create MAVLink bridge".into())); } self._mavlink_bridge = br; Ok(()) }
+    }
+    pub fn mavlink_destroy(&mut self) { unsafe { if !self._mavlink_bridge.is_null() { nimcp_mavlink_bridge_destroy(self._mavlink_bridge); self._mavlink_bridge = ptr::null_mut(); } } }
+    pub fn mavlink_connect(&self) -> i32 { if self._mavlink_bridge.is_null() { return -1; } unsafe { nimcp_mavlink_bridge_connect(self._mavlink_bridge) } }
+    pub fn mavlink_disconnect(&self) -> i32 { if self._mavlink_bridge.is_null() { return -1; } unsafe { nimcp_mavlink_bridge_disconnect(self._mavlink_bridge) } }
+    pub fn mavlink_start(&self) -> i32 { if self._mavlink_bridge.is_null() { return -1; } unsafe { nimcp_mavlink_bridge_start(self._mavlink_bridge) } }
+    pub fn mavlink_stop(&self) -> i32 { if self._mavlink_bridge.is_null() { return -1; } unsafe { nimcp_mavlink_bridge_stop(self._mavlink_bridge) } }
+    pub fn mavlink_set_velocity(&self, vx: f32, vy: f32, vz: f32, yaw_rate: f32) -> i32 { if self._mavlink_bridge.is_null() { return -1; } unsafe { nimcp_mavlink_set_velocity(self._mavlink_bridge, vx, vy, vz, yaw_rate) } }
+    pub fn mavlink_arm(&self, arm: bool) -> i32 { if self._mavlink_bridge.is_null() { return -1; } unsafe { nimcp_mavlink_arm(self._mavlink_bridge, arm) } }
+    pub fn mavlink_takeoff(&self, alt: f32) -> i32 { if self._mavlink_bridge.is_null() { return -1; } unsafe { nimcp_mavlink_takeoff(self._mavlink_bridge, alt) } }
+    pub fn mavlink_land(&self) -> i32 { if self._mavlink_bridge.is_null() { return -1; } unsafe { nimcp_mavlink_land(self._mavlink_bridge) } }
+    pub fn mavlink_goto(&self, lat: f64, lon: f64, alt: f32) -> i32 { if self._mavlink_bridge.is_null() { return -1; } unsafe { nimcp_mavlink_goto(self._mavlink_bridge, lat, lon, alt) } }
+    pub fn mavlink_rtl(&self) -> i32 { if self._mavlink_bridge.is_null() { return -1; } unsafe { nimcp_mavlink_rtl(self._mavlink_bridge) } }
+    pub fn mavlink_compose_features(&self) -> Vec<f32> { if self._mavlink_bridge.is_null() { return vec![]; } let mut features = vec![0.0f32; 14]; let count = unsafe { nimcp_mavlink_compose_features(self._mavlink_bridge, features.as_mut_ptr(), 14) }; if count < 0 { return vec![]; } features.truncate(count as usize); features }
 
     // --- Memory Store ---
 

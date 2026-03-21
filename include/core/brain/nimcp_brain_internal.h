@@ -2164,6 +2164,44 @@ struct brain_struct {
     bool enable_fusion;                          // Weighted ensemble of network outputs
     float fusion_weights[4];                     // [adaptive, CNN, SNN, LNN] (softmax-normalized)
     float* fusion_scratch_lnn;                   // Scratch buffer for LNN output [num_outputs]
+
+    // === EDGE/ROBOT INTEGRATION ===
+    //
+    // Sensor hub, safety watchdog, and ROS 2 bridge for embodied deployment.
+    // Uses void* to avoid header dependency — cast in .c files that use them.
+    //
+    // - Sensor Hub: Aggregates heterogeneous sensor readings (LIDAR, IMU, etc.)
+    //   into composed feature vectors for brain inference.
+    // - Safety Watchdog: Monitors brain output for NaN/Inf/magnitude violations
+    //   and enforces heartbeat-based deadman switch for actuator safety.
+    // - ROS 2 Bridge: Connects brain to Robot Operating System 2 for real
+    //   robot platforms (stub mode when ROS 2 not available).
+    //
+    void* sensor_hub;                            // nimcp_sensor_hub_t* — unified sensor interface
+    void* safety_watchdog;                       // nimcp_safety_watchdog_t* — actuator safety
+    void* ros2_bridge;                           // nimcp_ros2_bridge_t* — ROS 2 integration
+    bool sensor_hub_enabled;
+    bool safety_watchdog_enabled;
+    bool ros2_bridge_enabled;
+
+    // === SWARM BRIDGE INTEGRATION ===
+    //
+    // Bridges connecting swarm coordination with individual subsystems:
+    // - Portia-Swarm: Resource-adaptive intelligence ↔ collective decisions
+    // - Dragonfly-Swarm: Target tracking ↔ multi-drone pursuit coordination
+    //
+    void* portia_swarm_bridge;                   // portia_swarm_bridge_t*
+    bool portia_swarm_bridge_enabled;
+    void* swarm_dragonfly_bridge;                // swarm_dragonfly_bridge_t*
+    bool swarm_dragonfly_bridge_enabled;
+
+    // === FLIGHT CONTROLLER BRIDGES ===
+    // Standalone companion-computer modules. Created by edge init when
+    // config flags are set. Feed telemetry into sensor_hub for brain input.
+    void* mavlink_bridge;                        // nimcp_mavlink_bridge_t*
+    void* dji_bridge;                            // nimcp_dji_bridge_t*
+    void* msp_bridge;                            // nimcp_msp_bridge_t*
+    void* parrot_bridge;                         // nimcp_parrot_bridge_t*
 };
 
 //=============================================================================

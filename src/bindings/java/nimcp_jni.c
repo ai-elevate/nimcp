@@ -33,6 +33,11 @@
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "edge/nimcp_edge.h"
+#include "edge/nimcp_swarm_runtime.h"
+#include "edge/nimcp_sensor.h"
+#include "edge/nimcp_safety_watchdog.h"
+#include "edge/nimcp_ros2_bridge.h"
+#include "edge/nimcp_mavlink_bridge.h"
 #include "memory/nimcp_memory_store.h"
 #include "cognitive/nimcp_ood_detector.h"
 #include "utils/time/nimcp_time.h"
@@ -2168,6 +2173,590 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeEdgeScoreImp
     jfloatArray arr = (*env)->NewFloatArray(env, (jsize)n);
     if (arr) (*env)->SetFloatArrayRegion(env, arr, 0, (jsize)n, scores);
     free(scores);
+    return arr;
+}
+
+// ============================================================================
+// Swarm / Sensor / Watchdog / ROS2 / MAVLink (module-level handles)
+// ============================================================================
+
+static nimcp_swarm_master_t*       g_jni_swarm_master   = NULL;
+static nimcp_swarm_edge_runtime_t* g_jni_swarm_edge     = NULL;
+static nimcp_sensor_hub_t*         g_jni_sensor_hub     = NULL;
+static nimcp_safety_watchdog_t*    g_jni_safety_watchdog = NULL;
+static nimcp_ros2_bridge_t*        g_jni_ros2_bridge    = NULL;
+static nimcp_mavlink_bridge_t*     g_jni_mavlink_bridge = NULL;
+
+// --- Swarm Master ---
+
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmMasterCreate(
+    JNIEnv *env, jclass cls, jlong h, jint device_id, jint listen_port,
+    jint sync_interval_ms, jint heartbeat_timeout_ms, jint min_devices)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || g_jni_swarm_master) return JNI_FALSE;
+    nimcp_master_config_t cfg = nimcp_swarm_master_config_default();
+    cfg.device_id = (uint32_t)device_id;
+    cfg.listen_port = (uint16_t)listen_port;
+    cfg.sync_interval_ms = (uint32_t)sync_interval_ms;
+    cfg.heartbeat_timeout_ms = (uint32_t)heartbeat_timeout_ms;
+    cfg.min_devices_for_sync = (uint32_t)min_devices;
+    g_jni_swarm_master = nimcp_swarm_master_create(brain, &cfg);
+    return g_jni_swarm_master ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmMasterDestroy(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (g_jni_swarm_master) { nimcp_swarm_master_destroy(g_jni_swarm_master); g_jni_swarm_master = NULL; }
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmMasterStart(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_swarm_master) return -1;
+    return (jint)nimcp_swarm_master_start(g_jni_swarm_master);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmMasterStop(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_swarm_master) return -1;
+    return (jint)nimcp_swarm_master_stop(g_jni_swarm_master);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmMasterKick(
+    JNIEnv *env, jclass cls, jint device_id)
+{
+    (void)env; (void)cls;
+    if (!g_jni_swarm_master) return -1;
+    return (jint)nimcp_swarm_master_kick(g_jni_swarm_master, (uint32_t)device_id);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmMasterForceSync(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_swarm_master) return -1;
+    return (jint)nimcp_swarm_master_force_sync(g_jni_swarm_master);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmMasterGetPeerCount(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_swarm_master) return 0;
+    return (jint)nimcp_swarm_master_get_peer_count(g_jni_swarm_master);
+}
+
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmMasterGetPeerInfo(
+    JNIEnv *env, jclass cls, jint device_id)
+{
+    (void)cls;
+    if (!g_jni_swarm_master) return NULL;
+    nimcp_peer_entry_t entry = {0};
+    int ret = nimcp_swarm_master_get_peer_info(g_jni_swarm_master, (uint32_t)device_id, &entry);
+    if (ret != 0) return NULL;
+    jclass map_cls; jmethodID put;
+    jobject map = jni_create_hashmap(env, &map_cls, &put);
+    if (!map) return NULL;
+    jni_map_put_int(env, map, put, "device_id", (int)entry.device_id);
+    jni_map_put_int(env, map, put, "state", (int)entry.state);
+    jni_map_put_string(env, map, put, "address", entry.address);
+    jni_map_put_int(env, map, put, "port", (int)entry.port);
+    jni_map_put_int(env, map, put, "missed_heartbeats", (int)entry.missed_heartbeats);
+    jni_map_put_int(env, map, put, "anomaly_count", (int)entry.anomaly_count);
+    jni_map_put_long(env, map, put, "total_syncs", (int64_t)entry.total_syncs);
+    jni_map_put_bool(env, map, put, "quarantined", entry.quarantined);
+    jni_map_put_float(env, map, put, "gradient_norm_ema", entry.gradient_norm_ema);
+    return map;
+}
+
+// --- Swarm Edge ---
+
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmEdgeCreate(
+    JNIEnv *env, jclass cls, jlong h, jint device_id, jint hb_interval,
+    jint reconnect_delay, jboolean local_learn)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || g_jni_swarm_edge) return JNI_FALSE;
+    nimcp_edge_runtime_config_t cfg = nimcp_swarm_edge_config_default();
+    cfg.device_id = (uint32_t)device_id;
+    cfg.heartbeat_interval_ms = (uint32_t)hb_interval;
+    cfg.reconnect_delay_ms = (uint32_t)reconnect_delay;
+    cfg.enable_local_learning = (bool)local_learn;
+    g_jni_swarm_edge = nimcp_swarm_edge_create(brain, &cfg);
+    return g_jni_swarm_edge ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmEdgeDestroy(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (g_jni_swarm_edge) { nimcp_swarm_edge_destroy(g_jni_swarm_edge); g_jni_swarm_edge = NULL; }
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmEdgeStart(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_swarm_edge) return -1;
+    return (jint)nimcp_swarm_edge_start(g_jni_swarm_edge);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmEdgeStop(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_swarm_edge) return -1;
+    return (jint)nimcp_swarm_edge_stop(g_jni_swarm_edge);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmEdgeIsConnected(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_swarm_edge) return JNI_FALSE;
+    return nimcp_swarm_edge_is_connected(g_jni_swarm_edge) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSwarmEdgeSubmitGradients(
+    JNIEnv *env, jclass cls, jfloatArray gradients)
+{
+    (void)cls;
+    if (!g_jni_swarm_edge) return -1;
+    jsize n = (*env)->GetArrayLength(env, gradients);
+    float *data = (*env)->GetFloatArrayElements(env, gradients, NULL);
+    if (!data) return -1;
+    int ret = nimcp_swarm_edge_submit_gradients(g_jni_swarm_edge, data, (uint32_t)n);
+    (*env)->ReleaseFloatArrayElements(env, gradients, data, JNI_ABORT);
+    return (jint)ret;
+}
+
+// --- Sensor Hub ---
+
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSensorHubCreate(
+    JNIEnv *env, jclass cls, jint max_sensors)
+{
+    (void)env; (void)cls;
+    if (g_jni_sensor_hub) return JNI_FALSE;
+    g_jni_sensor_hub = nimcp_sensor_hub_create((uint32_t)max_sensors);
+    return g_jni_sensor_hub ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSensorHubDestroy(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (g_jni_sensor_hub) { nimcp_sensor_hub_destroy(g_jni_sensor_hub); g_jni_sensor_hub = NULL; }
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSensorRegister(
+    JNIEnv *env, jclass cls, jint sensor_id, jint type, jint format,
+    jstring name, jfloat sample_rate, jint max_data)
+{
+    (void)cls;
+    if (!g_jni_sensor_hub) return -1;
+    nimcp_sensor_descriptor_t desc = {0};
+    desc.sensor_id = (uint32_t)sensor_id;
+    desc.type = (nimcp_sensor_type_t)type;
+    desc.format = (nimcp_sensor_format_t)format;
+    const char *cname = (*env)->GetStringUTFChars(env, name, NULL);
+    if (cname) { strncpy(desc.name, cname, sizeof(desc.name) - 1); (*env)->ReleaseStringUTFChars(env, name, cname); }
+    desc.sample_rate_hz = (float)sample_rate;
+    desc.max_data_count = (uint32_t)max_data;
+    return (jint)nimcp_sensor_register(g_jni_sensor_hub, &desc);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSensorSubmitReading(
+    JNIEnv *env, jclass cls, jint sensor_id, jfloatArray data, jfloat confidence)
+{
+    (void)cls;
+    if (!g_jni_sensor_hub) return -1;
+    jsize n = (*env)->GetArrayLength(env, data);
+    float *cdata = (*env)->GetFloatArrayElements(env, data, NULL);
+    if (!cdata) return -1;
+    nimcp_sensor_reading_t reading = {0};
+    reading.sensor_id = (uint32_t)sensor_id;
+    reading.data = cdata;
+    reading.data_count = (uint32_t)n;
+    reading.confidence = (float)confidence;
+    reading.valid = true;
+    int ret = nimcp_sensor_submit_reading(g_jni_sensor_hub, &reading);
+    (*env)->ReleaseFloatArrayElements(env, data, cdata, JNI_ABORT);
+    return (jint)ret;
+}
+
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSensorGetLatest(
+    JNIEnv *env, jclass cls, jint sensor_id)
+{
+    (void)cls;
+    if (!g_jni_sensor_hub) return NULL;
+    nimcp_sensor_reading_t reading = {0};
+    int ret = nimcp_sensor_get_latest(g_jni_sensor_hub, (uint32_t)sensor_id, &reading);
+    if (ret != 0) return NULL;
+    jclass map_cls; jmethodID put;
+    jobject map = jni_create_hashmap(env, &map_cls, &put);
+    if (!map) return NULL;
+    jni_map_put_int(env, map, put, "sensor_id", (int)reading.sensor_id);
+    jni_map_put_int(env, map, put, "type", (int)reading.type);
+    jni_map_put_float(env, map, put, "confidence", reading.confidence);
+    jni_map_put_bool(env, map, put, "valid", reading.valid);
+    return map;
+}
+
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSensorGetAllLatest(
+    JNIEnv *env, jclass cls)
+{
+    (void)cls;
+    jclass list_cls = (*env)->FindClass(env, "java/util/ArrayList");
+    jmethodID list_init = (*env)->GetMethodID(env, list_cls, "<init>", "()V");
+    jmethodID list_add = (*env)->GetMethodID(env, list_cls, "add", "(Ljava/lang/Object;)Z");
+    jobject list = (*env)->NewObject(env, list_cls, list_init);
+    if (!g_jni_sensor_hub) return list;
+    uint32_t count = nimcp_sensor_get_count(g_jni_sensor_hub);
+    if (count == 0) return list;
+    nimcp_sensor_reading_t *readings = (nimcp_sensor_reading_t*)calloc(count, sizeof(nimcp_sensor_reading_t));
+    if (!readings) return list;
+    int got = nimcp_sensor_get_all_latest(g_jni_sensor_hub, readings, count);
+    for (int i = 0; i < got; i++) {
+        jclass mc; jmethodID mp;
+        jobject entry = jni_create_hashmap(env, &mc, &mp);
+        if (entry) {
+            jni_map_put_int(env, entry, mp, "sensor_id", (int)readings[i].sensor_id);
+            jni_map_put_int(env, entry, mp, "type", (int)readings[i].type);
+            jni_map_put_float(env, entry, mp, "confidence", readings[i].confidence);
+            jni_map_put_bool(env, entry, mp, "valid", readings[i].valid);
+            (*env)->CallBooleanMethod(env, list, list_add, entry);
+            (*env)->DeleteLocalRef(env, entry);
+        }
+    }
+    free(readings);
+    return list;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSensorComposeFeatures(
+    JNIEnv *env, jclass cls, jint max_features)
+{
+    (void)cls;
+    if (!g_jni_sensor_hub) return (*env)->NewFloatArray(env, 0);
+    float *features = (float*)calloc((uint32_t)max_features, sizeof(float));
+    if (!features) return (*env)->NewFloatArray(env, 0);
+    int count = nimcp_sensor_compose_feature_vector(g_jni_sensor_hub, features, (uint32_t)max_features);
+    if (count < 0) count = 0;
+    jfloatArray arr = (*env)->NewFloatArray(env, (jsize)count);
+    if (arr && count > 0) (*env)->SetFloatArrayRegion(env, arr, 0, (jsize)count, features);
+    free(features);
+    return arr;
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSensorGetCount(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_sensor_hub) return 0;
+    return (jint)nimcp_sensor_get_count(g_jni_sensor_hub);
+}
+
+// --- Safety Watchdog ---
+
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWatchdogCreate(
+    JNIEnv *env, jclass cls, jint timeout_ms, jint action, jfloat max_magnitude, jint max_outputs)
+{
+    (void)env; (void)cls;
+    if (g_jni_safety_watchdog) return JNI_FALSE;
+    nimcp_watchdog_config_t cfg = nimcp_watchdog_config_default();
+    cfg.timeout_ms = (uint32_t)timeout_ms;
+    cfg.action = (nimcp_safe_action_t)action;
+    cfg.validation.max_output_magnitude = (float)max_magnitude;
+    cfg.max_outputs = (uint32_t)max_outputs;
+    g_jni_safety_watchdog = nimcp_watchdog_create(&cfg);
+    return g_jni_safety_watchdog ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWatchdogDestroy(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (g_jni_safety_watchdog) { nimcp_watchdog_destroy(g_jni_safety_watchdog); g_jni_safety_watchdog = NULL; }
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWatchdogArm(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_safety_watchdog) return -1;
+    return (jint)nimcp_watchdog_arm(g_jni_safety_watchdog);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWatchdogDisarm(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_safety_watchdog) return -1;
+    return (jint)nimcp_watchdog_disarm(g_jni_safety_watchdog);
+}
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWatchdogHeartbeat(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (g_jni_safety_watchdog) nimcp_watchdog_heartbeat(g_jni_safety_watchdog);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWatchdogValidateOutput(
+    JNIEnv *env, jclass cls, jfloatArray output)
+{
+    (void)cls;
+    if (!g_jni_safety_watchdog) return JNI_FALSE;
+    jsize n = (*env)->GetArrayLength(env, output);
+    float *data = (*env)->GetFloatArrayElements(env, output, NULL);
+    if (!data) return JNI_FALSE;
+    int ret = nimcp_watchdog_validate_output(g_jni_safety_watchdog, data, (uint32_t)n);
+    (*env)->ReleaseFloatArrayElements(env, output, data, 0);
+    return (ret == 0) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWatchdogGetSafeOutput(
+    JNIEnv *env, jclass cls, jint num_outputs)
+{
+    (void)cls;
+    if (!g_jni_safety_watchdog || num_outputs <= 0) return (*env)->NewFloatArray(env, 0);
+    float *out = (float*)calloc((uint32_t)num_outputs, sizeof(float));
+    if (!out) return (*env)->NewFloatArray(env, 0);
+    nimcp_watchdog_get_safe_output(g_jni_safety_watchdog, out, (uint32_t)num_outputs);
+    jfloatArray arr = (*env)->NewFloatArray(env, (jsize)num_outputs);
+    if (arr) (*env)->SetFloatArrayRegion(env, arr, 0, (jsize)num_outputs, out);
+    free(out);
+    return arr;
+}
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWatchdogEstop(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (g_jni_safety_watchdog) nimcp_watchdog_estop(g_jni_safety_watchdog);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWatchdogReset(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_safety_watchdog) return -1;
+    return (jint)nimcp_watchdog_reset(g_jni_safety_watchdog);
+}
+
+JNIEXPORT jstring JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeWatchdogGetState(
+    JNIEnv *env, jclass cls)
+{
+    (void)cls;
+    if (!g_jni_safety_watchdog) return (*env)->NewStringUTF(env, "NONE");
+    nimcp_watchdog_state_t state = nimcp_watchdog_get_state(g_jni_safety_watchdog);
+    return (*env)->NewStringUTF(env, nimcp_watchdog_state_name(state));
+}
+
+// --- ROS 2 Bridge ---
+
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeRos2BridgeCreate(
+    JNIEnv *env, jclass cls, jlong h, jstring node_name, jfloat cmd_rate,
+    jfloat inf_rate, jint input_dim, jboolean sub_imu, jboolean sub_odom)
+{
+    (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain || g_jni_ros2_bridge) return JNI_FALSE;
+    nimcp_ros2_config_t cfg = nimcp_ros2_config_default();
+    const char *name = (*env)->GetStringUTFChars(env, node_name, NULL);
+    if (name) { cfg.node_name = name; }
+    cfg.cmd_rate_hz = (float)cmd_rate;
+    cfg.inference_rate_hz = (float)inf_rate;
+    cfg.brain_input_dim = (uint32_t)input_dim;
+    cfg.subscribe_imu = (bool)sub_imu;
+    cfg.subscribe_odom = (bool)sub_odom;
+    g_jni_ros2_bridge = nimcp_ros2_bridge_create(brain, &cfg);
+    if (name) (*env)->ReleaseStringUTFChars(env, node_name, name);
+    return g_jni_ros2_bridge ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeRos2BridgeDestroy(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (g_jni_ros2_bridge) { nimcp_ros2_bridge_destroy(g_jni_ros2_bridge); g_jni_ros2_bridge = NULL; }
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeRos2BridgeStart(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_ros2_bridge) return -1;
+    return (jint)nimcp_ros2_bridge_start(g_jni_ros2_bridge);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeRos2BridgeStop(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (!g_jni_ros2_bridge) return -1;
+    return (jint)nimcp_ros2_bridge_stop(g_jni_ros2_bridge);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeRos2BridgeInjectSensor(
+    JNIEnv *env, jclass cls, jstring topic, jfloatArray data)
+{
+    (void)cls;
+    if (!g_jni_ros2_bridge) return -1;
+    const char *ctopic = (*env)->GetStringUTFChars(env, topic, NULL);
+    if (!ctopic) return -1;
+    jsize n = (*env)->GetArrayLength(env, data);
+    float *cdata = (*env)->GetFloatArrayElements(env, data, NULL);
+    if (!cdata) { (*env)->ReleaseStringUTFChars(env, topic, ctopic); return -1; }
+    int ret = nimcp_ros2_bridge_inject_sensor(g_jni_ros2_bridge, ctopic, cdata, (uint32_t)n);
+    (*env)->ReleaseFloatArrayElements(env, data, cdata, JNI_ABORT);
+    (*env)->ReleaseStringUTFChars(env, topic, ctopic);
+    return (jint)ret;
+}
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeRos2BridgeGetLastCmd(
+    JNIEnv *env, jclass cls, jint max_count)
+{
+    (void)cls;
+    if (!g_jni_ros2_bridge || max_count <= 0) return (*env)->NewFloatArray(env, 0);
+    float *data = (float*)calloc((uint32_t)max_count, sizeof(float));
+    if (!data) return (*env)->NewFloatArray(env, 0);
+    int got = nimcp_ros2_bridge_get_last_cmd(g_jni_ros2_bridge, data, (uint32_t)max_count);
+    if (got < 0) got = 0;
+    jfloatArray arr = (*env)->NewFloatArray(env, (jsize)got);
+    if (arr && got > 0) (*env)->SetFloatArrayRegion(env, arr, 0, (jsize)got, data);
+    free(data);
+    return arr;
+}
+
+// --- MAVLink Bridge ---
+
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkCreate(
+    JNIEnv *env, jclass cls, jstring conn_str, jint conn_type, jint baud,
+    jint sys_id, jfloat geofence)
+{
+    (void)cls;
+    if (g_jni_mavlink_bridge) return JNI_FALSE;
+    nimcp_mavlink_config_t cfg = nimcp_mavlink_config_default();
+    const char *cs = (*env)->GetStringUTFChars(env, conn_str, NULL);
+    if (cs) { strncpy(cfg.connection_string, cs, sizeof(cfg.connection_string) - 1); (*env)->ReleaseStringUTFChars(env, conn_str, cs); }
+    cfg.conn_type = (nimcp_mavlink_conn_type_t)conn_type;
+    cfg.baud_rate = (uint32_t)baud;
+    cfg.system_id = (uint8_t)sys_id;
+    cfg.geofence_radius_m = (float)geofence;
+    g_jni_mavlink_bridge = nimcp_mavlink_bridge_create(&cfg);
+    return g_jni_mavlink_bridge ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkDestroy(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    if (g_jni_mavlink_bridge) { nimcp_mavlink_bridge_destroy(g_jni_mavlink_bridge); g_jni_mavlink_bridge = NULL; }
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkConnect(JNIEnv *env, jclass cls) { (void)env; (void)cls; if (!g_jni_mavlink_bridge) return -1; return (jint)nimcp_mavlink_bridge_connect(g_jni_mavlink_bridge); }
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkDisconnect(JNIEnv *env, jclass cls) { (void)env; (void)cls; if (!g_jni_mavlink_bridge) return -1; return (jint)nimcp_mavlink_bridge_disconnect(g_jni_mavlink_bridge); }
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkStart(JNIEnv *env, jclass cls) { (void)env; (void)cls; if (!g_jni_mavlink_bridge) return -1; return (jint)nimcp_mavlink_bridge_start(g_jni_mavlink_bridge); }
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkStop(JNIEnv *env, jclass cls) { (void)env; (void)cls; if (!g_jni_mavlink_bridge) return -1; return (jint)nimcp_mavlink_bridge_stop(g_jni_mavlink_bridge); }
+
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkGetAttitude(
+    JNIEnv *env, jclass cls)
+{
+    (void)cls;
+    if (!g_jni_mavlink_bridge) return NULL;
+    nimcp_mavlink_attitude_t att = {0};
+    if (nimcp_mavlink_get_attitude(g_jni_mavlink_bridge, &att) != 0) return NULL;
+    jclass mc; jmethodID mp;
+    jobject map = jni_create_hashmap(env, &mc, &mp);
+    if (!map) return NULL;
+    jni_map_put_float(env, map, mp, "roll", att.roll);
+    jni_map_put_float(env, map, mp, "pitch", att.pitch);
+    jni_map_put_float(env, map, mp, "yaw", att.yaw);
+    jni_map_put_float(env, map, mp, "rollspeed", att.rollspeed);
+    jni_map_put_float(env, map, mp, "pitchspeed", att.pitchspeed);
+    jni_map_put_float(env, map, mp, "yawspeed", att.yawspeed);
+    return map;
+}
+
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkGetPosition(
+    JNIEnv *env, jclass cls)
+{
+    (void)cls;
+    if (!g_jni_mavlink_bridge) return NULL;
+    nimcp_mavlink_position_t pos = {0};
+    if (nimcp_mavlink_get_position(g_jni_mavlink_bridge, &pos) != 0) return NULL;
+    jclass mc; jmethodID mp;
+    jobject map = jni_create_hashmap(env, &mc, &mp);
+    if (!map) return NULL;
+    jni_map_put_float(env, map, mp, "latitude", pos.latitude);
+    jni_map_put_float(env, map, mp, "longitude", pos.longitude);
+    jni_map_put_float(env, map, mp, "altitude_msl", pos.altitude_msl);
+    jni_map_put_float(env, map, mp, "altitude_rel", pos.altitude_rel);
+    jni_map_put_float(env, map, mp, "vx", pos.vx);
+    jni_map_put_float(env, map, mp, "vy", pos.vy);
+    jni_map_put_float(env, map, mp, "vz", pos.vz);
+    jni_map_put_float(env, map, mp, "heading", pos.heading);
+    jni_map_put_int(env, map, mp, "fix_type", pos.fix_type);
+    jni_map_put_int(env, map, mp, "satellites", pos.satellites);
+    return map;
+}
+
+JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkGetBattery(
+    JNIEnv *env, jclass cls)
+{
+    (void)cls;
+    if (!g_jni_mavlink_bridge) return NULL;
+    nimcp_mavlink_battery_t bat = {0};
+    if (nimcp_mavlink_get_battery(g_jni_mavlink_bridge, &bat) != 0) return NULL;
+    jclass mc; jmethodID mp;
+    jobject map = jni_create_hashmap(env, &mc, &mp);
+    if (!map) return NULL;
+    jni_map_put_float(env, map, mp, "voltage", bat.voltage);
+    jni_map_put_float(env, map, mp, "current", bat.current);
+    jni_map_put_float(env, map, mp, "remaining_pct", bat.remaining_pct);
+    jni_map_put_int(env, map, mp, "consumed_mah", bat.consumed_mah);
+    return map;
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkSetVelocity(
+    JNIEnv *env, jclass cls, jfloat vx, jfloat vy, jfloat vz, jfloat yaw_rate)
+{
+    (void)env; (void)cls;
+    if (!g_jni_mavlink_bridge) return -1;
+    return (jint)nimcp_mavlink_set_velocity(g_jni_mavlink_bridge, vx, vy, vz, yaw_rate);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkArm(
+    JNIEnv *env, jclass cls, jboolean arm)
+{
+    (void)env; (void)cls;
+    if (!g_jni_mavlink_bridge) return -1;
+    return (jint)nimcp_mavlink_arm(g_jni_mavlink_bridge, (bool)arm);
+}
+
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkTakeoff(JNIEnv *env, jclass cls, jfloat alt) { (void)env; (void)cls; if (!g_jni_mavlink_bridge) return -1; return (jint)nimcp_mavlink_takeoff(g_jni_mavlink_bridge, alt); }
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkLand(JNIEnv *env, jclass cls) { (void)env; (void)cls; if (!g_jni_mavlink_bridge) return -1; return (jint)nimcp_mavlink_land(g_jni_mavlink_bridge); }
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkGoto(JNIEnv *env, jclass cls, jdouble lat, jdouble lon, jfloat alt) { (void)env; (void)cls; if (!g_jni_mavlink_bridge) return -1; return (jint)nimcp_mavlink_goto(g_jni_mavlink_bridge, lat, lon, alt); }
+JNIEXPORT jint JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkRtl(JNIEnv *env, jclass cls) { (void)env; (void)cls; if (!g_jni_mavlink_bridge) return -1; return (jint)nimcp_mavlink_rtl(g_jni_mavlink_bridge); }
+
+JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeMavlinkComposeFeatures(
+    JNIEnv *env, jclass cls)
+{
+    (void)cls;
+    if (!g_jni_mavlink_bridge) return (*env)->NewFloatArray(env, 0);
+    float features[NIMCP_MAVLINK_FEATURE_COUNT] = {0};
+    int count = nimcp_mavlink_compose_features(g_jni_mavlink_bridge, features, NIMCP_MAVLINK_FEATURE_COUNT);
+    if (count < 0) count = 0;
+    jfloatArray arr = (*env)->NewFloatArray(env, (jsize)count);
+    if (arr && count > 0) (*env)->SetFloatArrayRegion(env, arr, 0, (jsize)count, features);
     return arr;
 }
 

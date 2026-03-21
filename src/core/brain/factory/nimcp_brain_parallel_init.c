@@ -193,6 +193,9 @@ extern bool nimcp_brain_factory_init_collective_cognition_subsystem(brain_t brai
 // Wave 28: Cognitive training subsystems (JEPA, predictive hierarchy, self-heal)
 extern bool nimcp_brain_factory_init_cognitive_training_subsystem(brain_t brain);
 
+// Wave 29: Edge/robot integration (sensor hub, safety watchdog, swarm bridges)
+extern bool nimcp_brain_factory_init_edge_subsystem(brain_t brain);
+
 // Emotional + spike analysis + Shannon headers pulled in via nimcp_brain_internal.h
 // Additional headers for inline init functions
 #include "information/nimcp_shannon.h"
@@ -938,8 +941,15 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     ok = run_serial(&ctx, nimcp_brain_factory_init_cognitive_training_subsystem, "cognitive_training");
     if (!ok) goto cleanup;
 
-    LOG_MODULE_DEBUG(LOG_MODULE, "Full init complete (29 waves)");
-    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (29 waves)");
+    // ========================================================================
+    // WAVE 29: Edge/robot integration (sensor hub, safety, swarm bridges)
+    // DEPENDS ON: Dragonfly (wave 20), Swarm (wave 26), Portia (global)
+    // ========================================================================
+    ok = run_serial(&ctx, nimcp_brain_factory_init_edge_subsystem, "edge");
+    if (!ok) goto cleanup;
+
+    LOG_MODULE_DEBUG(LOG_MODULE, "Full init complete (30 waves)");
+    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (30 waves)");
 
 cleanup:
     nimcp_pool_destroy(pool);

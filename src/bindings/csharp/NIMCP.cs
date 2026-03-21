@@ -736,6 +736,76 @@ namespace NIMCP
         [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
         public static extern NativeDeviceProfile nimcp_device_profile_default();
 
+        // --- Swarm Runtime ---
+        [DllImport(Lib)] public static extern IntPtr nimcp_swarm_master_create(IntPtr brain, IntPtr config);
+        [DllImport(Lib)] public static extern void nimcp_swarm_master_destroy(IntPtr master);
+        [DllImport(Lib)] public static extern int nimcp_swarm_master_start(IntPtr master);
+        [DllImport(Lib)] public static extern int nimcp_swarm_master_stop(IntPtr master);
+        [DllImport(Lib)] public static extern int nimcp_swarm_master_kick(IntPtr master, uint deviceId);
+        [DllImport(Lib)] public static extern int nimcp_swarm_master_force_sync(IntPtr master);
+        [DllImport(Lib)] public static extern uint nimcp_swarm_master_get_peer_count(IntPtr master);
+        [DllImport(Lib)] public static extern int nimcp_swarm_master_get_peer_info(IntPtr master, uint deviceId, IntPtr entryOut);
+        [DllImport(Lib)] public static extern IntPtr nimcp_swarm_master_config_default();
+        [DllImport(Lib)] public static extern IntPtr nimcp_swarm_edge_create(IntPtr brain, IntPtr config);
+        [DllImport(Lib)] public static extern void nimcp_swarm_edge_destroy(IntPtr rt);
+        [DllImport(Lib)] public static extern int nimcp_swarm_edge_start(IntPtr rt);
+        [DllImport(Lib)] public static extern int nimcp_swarm_edge_stop(IntPtr rt);
+        [DllImport(Lib)] [return: MarshalAs(UnmanagedType.I1)] public static extern bool nimcp_swarm_edge_is_connected(IntPtr rt);
+        [DllImport(Lib)] public static extern int nimcp_swarm_edge_submit_gradients(IntPtr rt, float[] gradients, uint numParams);
+        [DllImport(Lib)] public static extern IntPtr nimcp_swarm_edge_config_default();
+
+        // --- Sensor Hub ---
+        [DllImport(Lib)] public static extern IntPtr nimcp_sensor_hub_create(uint maxSensors);
+        [DllImport(Lib)] public static extern void nimcp_sensor_hub_destroy(IntPtr hub);
+        [DllImport(Lib)] public static extern int nimcp_sensor_register(IntPtr hub, IntPtr descriptor);
+        [DllImport(Lib)] public static extern int nimcp_sensor_submit_reading(IntPtr hub, IntPtr reading);
+        [DllImport(Lib)] public static extern int nimcp_sensor_get_latest(IntPtr hub, uint sensorId, IntPtr readingOut);
+        [DllImport(Lib)] public static extern int nimcp_sensor_get_all_latest(IntPtr hub, IntPtr readingsOut, uint maxCount);
+        [DllImport(Lib)] public static extern int nimcp_sensor_compose_feature_vector(IntPtr hub, float[] features, uint maxFeatures);
+        [DllImport(Lib)] public static extern uint nimcp_sensor_get_count(IntPtr hub);
+
+        // --- Safety Watchdog ---
+        [DllImport(Lib)] public static extern IntPtr nimcp_watchdog_create(IntPtr config);
+        [DllImport(Lib)] public static extern void nimcp_watchdog_destroy(IntPtr watchdog);
+        [DllImport(Lib)] public static extern int nimcp_watchdog_arm(IntPtr watchdog);
+        [DllImport(Lib)] public static extern int nimcp_watchdog_disarm(IntPtr watchdog);
+        [DllImport(Lib)] public static extern void nimcp_watchdog_heartbeat(IntPtr watchdog);
+        [DllImport(Lib)] public static extern int nimcp_watchdog_validate_output(IntPtr watchdog, float[] output, uint numOutputs);
+        [DllImport(Lib)] public static extern int nimcp_watchdog_get_safe_output(IntPtr watchdog, float[] output, uint numOutputs);
+        [DllImport(Lib)] public static extern void nimcp_watchdog_estop(IntPtr watchdog);
+        [DllImport(Lib)] public static extern int nimcp_watchdog_reset(IntPtr watchdog);
+        [DllImport(Lib)] public static extern int nimcp_watchdog_get_state(IntPtr watchdog);
+        [DllImport(Lib)] public static extern IntPtr nimcp_watchdog_state_name(int state);
+        [DllImport(Lib)] public static extern IntPtr nimcp_watchdog_config_default();
+
+        // --- ROS 2 Bridge ---
+        [DllImport(Lib)] public static extern IntPtr nimcp_ros2_bridge_create(IntPtr brain, IntPtr config);
+        [DllImport(Lib)] public static extern void nimcp_ros2_bridge_destroy(IntPtr bridge);
+        [DllImport(Lib)] public static extern int nimcp_ros2_bridge_start(IntPtr bridge);
+        [DllImport(Lib)] public static extern int nimcp_ros2_bridge_stop(IntPtr bridge);
+        [DllImport(Lib)] public static extern int nimcp_ros2_bridge_inject_sensor(IntPtr bridge, [MarshalAs(UnmanagedType.LPStr)] string topic, float[] data, uint count);
+        [DllImport(Lib)] public static extern int nimcp_ros2_bridge_get_last_cmd(IntPtr bridge, float[] data, uint maxCount);
+        [DllImport(Lib)] public static extern IntPtr nimcp_ros2_config_default();
+
+        // --- MAVLink Bridge ---
+        [DllImport(Lib)] public static extern IntPtr nimcp_mavlink_bridge_create(IntPtr config);
+        [DllImport(Lib)] public static extern void nimcp_mavlink_bridge_destroy(IntPtr bridge);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_bridge_connect(IntPtr bridge);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_bridge_disconnect(IntPtr bridge);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_bridge_start(IntPtr bridge);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_bridge_stop(IntPtr bridge);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_get_attitude(IntPtr bridge, IntPtr att);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_get_position(IntPtr bridge, IntPtr pos);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_get_battery(IntPtr bridge, IntPtr bat);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_set_velocity(IntPtr bridge, float vx, float vy, float vz, float yawRate);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_arm(IntPtr bridge, [MarshalAs(UnmanagedType.I1)] bool arm);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_takeoff(IntPtr bridge, float altitude);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_land(IntPtr bridge);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_goto(IntPtr bridge, double lat, double lon, float alt);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_rtl(IntPtr bridge);
+        [DllImport(Lib)] public static extern int nimcp_mavlink_compose_features(IntPtr bridge, float[] features, uint maxFeatures);
+        [DllImport(Lib)] public static extern IntPtr nimcp_mavlink_config_default();
+
         // --- Memory Store / OOD / Audit (via brain handle wrappers) ---
         [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
         public static extern int nimcp_brain_memory_store_stats(
@@ -2216,6 +2286,91 @@ namespace NIMCP
             float[] scores = new float[numNeurons];
             Native.nimcp_edge_score_neuron_importance(handle, scores, numNeurons);
             return scores;
+        }
+
+        // --- Swarm / Sensor / Watchdog / ROS2 / MAVLink ---
+        // Note: These use opaque config structs via IntPtr. For full config support,
+        // use the C API defaults and pass IntPtr.Zero for default config.
+
+        private IntPtr swarmMaster, swarmEdge, sensorHub, safetyWatchdog, ros2Bridge, mavlinkBridge;
+
+        public bool SwarmMasterCreate(uint deviceId = 1, uint listenPort = 9200) { CheckOpen(); var cfg = Native.nimcp_swarm_master_config_default(); swarmMaster = Native.nimcp_swarm_master_create(handle, cfg); return swarmMaster != IntPtr.Zero; }
+        public void SwarmMasterDestroy() { if (swarmMaster != IntPtr.Zero) { Native.nimcp_swarm_master_destroy(swarmMaster); swarmMaster = IntPtr.Zero; } }
+        public int SwarmMasterStart() { return swarmMaster == IntPtr.Zero ? -1 : Native.nimcp_swarm_master_start(swarmMaster); }
+        public int SwarmMasterStop() { return swarmMaster == IntPtr.Zero ? -1 : Native.nimcp_swarm_master_stop(swarmMaster); }
+        public int SwarmMasterKick(uint deviceId) { return swarmMaster == IntPtr.Zero ? -1 : Native.nimcp_swarm_master_kick(swarmMaster, deviceId); }
+        public int SwarmMasterForceSync() { return swarmMaster == IntPtr.Zero ? -1 : Native.nimcp_swarm_master_force_sync(swarmMaster); }
+        public uint SwarmMasterGetPeerCount() { return swarmMaster == IntPtr.Zero ? 0 : Native.nimcp_swarm_master_get_peer_count(swarmMaster); }
+
+        public bool SwarmEdgeCreate(uint deviceId = 2) { CheckOpen(); var cfg = Native.nimcp_swarm_edge_config_default(); swarmEdge = Native.nimcp_swarm_edge_create(handle, cfg); return swarmEdge != IntPtr.Zero; }
+        public void SwarmEdgeDestroy() { if (swarmEdge != IntPtr.Zero) { Native.nimcp_swarm_edge_destroy(swarmEdge); swarmEdge = IntPtr.Zero; } }
+        public int SwarmEdgeStart() { return swarmEdge == IntPtr.Zero ? -1 : Native.nimcp_swarm_edge_start(swarmEdge); }
+        public int SwarmEdgeStop() { return swarmEdge == IntPtr.Zero ? -1 : Native.nimcp_swarm_edge_stop(swarmEdge); }
+        public bool SwarmEdgeIsConnected() { return swarmEdge != IntPtr.Zero && Native.nimcp_swarm_edge_is_connected(swarmEdge); }
+        public int SwarmEdgeSubmitGradients(float[] gradients) { return swarmEdge == IntPtr.Zero ? -1 : Native.nimcp_swarm_edge_submit_gradients(swarmEdge, gradients, (uint)gradients.Length); }
+
+        public bool SensorHubCreate(uint maxSensors = 32) { sensorHub = Native.nimcp_sensor_hub_create(maxSensors); return sensorHub != IntPtr.Zero; }
+        public void SensorHubDestroy() { if (sensorHub != IntPtr.Zero) { Native.nimcp_sensor_hub_destroy(sensorHub); sensorHub = IntPtr.Zero; } }
+        public uint SensorGetCount() { return sensorHub == IntPtr.Zero ? 0 : Native.nimcp_sensor_get_count(sensorHub); }
+        public float[] SensorComposeFeatures(uint maxFeatures = 1024) {
+            if (sensorHub == IntPtr.Zero) return new float[0];
+            float[] features = new float[maxFeatures];
+            int count = Native.nimcp_sensor_compose_feature_vector(sensorHub, features, maxFeatures);
+            if (count < 0) return new float[0];
+            float[] result = new float[count]; Array.Copy(features, result, count); return result;
+        }
+
+        public bool WatchdogCreate(uint timeoutMs = 500, float maxMagnitude = 1.0f) { var cfg = Native.nimcp_watchdog_config_default(); safetyWatchdog = Native.nimcp_watchdog_create(cfg); return safetyWatchdog != IntPtr.Zero; }
+        public void WatchdogDestroy() { if (safetyWatchdog != IntPtr.Zero) { Native.nimcp_watchdog_destroy(safetyWatchdog); safetyWatchdog = IntPtr.Zero; } }
+        public int WatchdogArm() { return safetyWatchdog == IntPtr.Zero ? -1 : Native.nimcp_watchdog_arm(safetyWatchdog); }
+        public int WatchdogDisarm() { return safetyWatchdog == IntPtr.Zero ? -1 : Native.nimcp_watchdog_disarm(safetyWatchdog); }
+        public void WatchdogHeartbeat() { if (safetyWatchdog != IntPtr.Zero) Native.nimcp_watchdog_heartbeat(safetyWatchdog); }
+        public bool WatchdogValidateOutput(float[] output) { return safetyWatchdog != IntPtr.Zero && Native.nimcp_watchdog_validate_output(safetyWatchdog, output, (uint)output.Length) == 0; }
+        public float[] WatchdogGetSafeOutput(uint numOutputs = 32) {
+            if (safetyWatchdog == IntPtr.Zero) return new float[0];
+            float[] output = new float[numOutputs];
+            Native.nimcp_watchdog_get_safe_output(safetyWatchdog, output, numOutputs); return output;
+        }
+        public void WatchdogEstop() { if (safetyWatchdog != IntPtr.Zero) Native.nimcp_watchdog_estop(safetyWatchdog); }
+        public int WatchdogReset() { return safetyWatchdog == IntPtr.Zero ? -1 : Native.nimcp_watchdog_reset(safetyWatchdog); }
+        public string WatchdogGetState() {
+            if (safetyWatchdog == IntPtr.Zero) return "NONE";
+            int state = Native.nimcp_watchdog_get_state(safetyWatchdog);
+            IntPtr namePtr = Native.nimcp_watchdog_state_name(state);
+            return namePtr == IntPtr.Zero ? "UNKNOWN" : Marshal.PtrToStringAnsi(namePtr);
+        }
+
+        public bool Ros2BridgeCreate() { CheckOpen(); var cfg = Native.nimcp_ros2_config_default(); ros2Bridge = Native.nimcp_ros2_bridge_create(handle, cfg); return ros2Bridge != IntPtr.Zero; }
+        public void Ros2BridgeDestroy() { if (ros2Bridge != IntPtr.Zero) { Native.nimcp_ros2_bridge_destroy(ros2Bridge); ros2Bridge = IntPtr.Zero; } }
+        public int Ros2BridgeStart() { return ros2Bridge == IntPtr.Zero ? -1 : Native.nimcp_ros2_bridge_start(ros2Bridge); }
+        public int Ros2BridgeStop() { return ros2Bridge == IntPtr.Zero ? -1 : Native.nimcp_ros2_bridge_stop(ros2Bridge); }
+        public int Ros2BridgeInjectSensor(string topic, float[] data) { return ros2Bridge == IntPtr.Zero ? -1 : Native.nimcp_ros2_bridge_inject_sensor(ros2Bridge, topic, data, (uint)data.Length); }
+        public float[] Ros2BridgeGetLastCmd(uint maxCount = 32) {
+            if (ros2Bridge == IntPtr.Zero) return new float[0];
+            float[] data = new float[maxCount];
+            int got = Native.nimcp_ros2_bridge_get_last_cmd(ros2Bridge, data, maxCount);
+            if (got < 0) return new float[0];
+            float[] result = new float[got]; Array.Copy(data, result, got); return result;
+        }
+
+        public bool MavlinkCreate(string connString = "udp:14550") { var cfg = Native.nimcp_mavlink_config_default(); mavlinkBridge = Native.nimcp_mavlink_bridge_create(cfg); return mavlinkBridge != IntPtr.Zero; }
+        public void MavlinkDestroy() { if (mavlinkBridge != IntPtr.Zero) { Native.nimcp_mavlink_bridge_destroy(mavlinkBridge); mavlinkBridge = IntPtr.Zero; } }
+        public int MavlinkConnect() { return mavlinkBridge == IntPtr.Zero ? -1 : Native.nimcp_mavlink_bridge_connect(mavlinkBridge); }
+        public int MavlinkDisconnect() { return mavlinkBridge == IntPtr.Zero ? -1 : Native.nimcp_mavlink_bridge_disconnect(mavlinkBridge); }
+        public int MavlinkStart() { return mavlinkBridge == IntPtr.Zero ? -1 : Native.nimcp_mavlink_bridge_start(mavlinkBridge); }
+        public int MavlinkStop() { return mavlinkBridge == IntPtr.Zero ? -1 : Native.nimcp_mavlink_bridge_stop(mavlinkBridge); }
+        public int MavlinkSetVelocity(float vx, float vy, float vz, float yawRate) { return mavlinkBridge == IntPtr.Zero ? -1 : Native.nimcp_mavlink_set_velocity(mavlinkBridge, vx, vy, vz, yawRate); }
+        public int MavlinkArm(bool arm = true) { return mavlinkBridge == IntPtr.Zero ? -1 : Native.nimcp_mavlink_arm(mavlinkBridge, arm); }
+        public int MavlinkTakeoff(float altitude = 5.0f) { return mavlinkBridge == IntPtr.Zero ? -1 : Native.nimcp_mavlink_takeoff(mavlinkBridge, altitude); }
+        public int MavlinkLand() { return mavlinkBridge == IntPtr.Zero ? -1 : Native.nimcp_mavlink_land(mavlinkBridge); }
+        public int MavlinkGoto(double lat, double lon, float alt = 10.0f) { return mavlinkBridge == IntPtr.Zero ? -1 : Native.nimcp_mavlink_goto(mavlinkBridge, lat, lon, alt); }
+        public int MavlinkRtl() { return mavlinkBridge == IntPtr.Zero ? -1 : Native.nimcp_mavlink_rtl(mavlinkBridge); }
+        public float[] MavlinkComposeFeatures() {
+            if (mavlinkBridge == IntPtr.Zero) return new float[0];
+            float[] features = new float[14]; // NIMCP_MAVLINK_FEATURE_COUNT
+            int count = Native.nimcp_mavlink_compose_features(mavlinkBridge, features, 14);
+            if (count < 0) return new float[0];
+            float[] result = new float[count]; Array.Copy(features, result, count); return result;
         }
 
         // --- Memory Store ---

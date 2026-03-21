@@ -408,3 +408,26 @@ gtest_discover_tests(regression_cognitive_community_cache
         LABELS "regression;cognitive;consolidation;community_cache"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Cognitive Pipeline Regression Tests
+# ============================================================================
+
+add_executable(regression_cognitive_pipeline
+    test_cognitive_regression.cpp
+)
+target_link_libraries(regression_cognitive_pipeline
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(regression_cognitive_pipeline
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(regression_cognitive_pipeline PRIVATE cxx_std_17)
+gtest_discover_tests(regression_cognitive_pipeline
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;pipeline"
+        TIMEOUT 120
+)

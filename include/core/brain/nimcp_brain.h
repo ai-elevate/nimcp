@@ -1917,6 +1917,20 @@ typedef struct {
     float dialogue_confidence_max;                /**< Max confidence to trigger inner dialogue (default: 0.85) */
     float imagination_confidence_min;             /**< Min confidence to trigger imagination (default: 0.3) */
     float rcog_confidence_max;                    /**< Max confidence to trigger recursive cognition (default: 0.5) */
+
+    // ========================================================================
+    // EDGE/ROBOT INTEGRATION
+    // ========================================================================
+    // Enable sensor hub, safety watchdog, and ROS 2 bridge for embodied
+    // deployment on robots, drones, and edge devices.
+    // All default to false — these are opt-in for edge deployments.
+    bool enable_sensor_hub;                       /**< Enable sensor hub for heterogeneous sensor fusion (default: false) */
+    bool enable_safety_watchdog;                  /**< Enable safety watchdog for actuator output validation (default: false) */
+    bool enable_ros2_bridge;                      /**< Enable ROS 2 bridge for robot platform integration (default: false) */
+    bool enable_mavlink_bridge;                   /**< Enable MAVLink bridge for PX4/ArduPilot FC (default: false) */
+    bool enable_dji_bridge;                       /**< Enable DJI OSDK bridge for DJI Matrice FC (default: false) */
+    bool enable_msp_bridge;                       /**< Enable MSP bridge for Betaflight/iNav FC (default: false) */
+    bool enable_parrot_bridge;                    /**< Enable Parrot Olympe bridge for ANAFI drone (default: false) */
 } brain_config_t;
 
 /**

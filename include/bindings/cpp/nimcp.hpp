@@ -22,6 +22,11 @@
 
 #include <nimcp.h>
 #include <edge/nimcp_edge.h>
+#include <edge/nimcp_swarm_runtime.h>
+#include <edge/nimcp_sensor.h>
+#include <edge/nimcp_safety_watchdog.h>
+#include <edge/nimcp_ros2_bridge.h>
+#include <edge/nimcp_mavlink_bridge.h>
 #include <memory/nimcp_memory_store.h>
 #include <cognitive/nimcp_ood_detector.h>
 
@@ -1585,6 +1590,121 @@ public:
         return scores;
     }
 
+    // --- Swarm Master ---
+
+    bool swarm_master_create(uint32_t device_id = 1, uint16_t listen_port = 9200) {
+        nimcp_master_config_t cfg = nimcp_swarm_master_config_default();
+        cfg.device_id = device_id; cfg.listen_port = listen_port;
+        swarm_master_ = nimcp_swarm_master_create(handle_, &cfg);
+        return swarm_master_ != nullptr;
+    }
+    void swarm_master_destroy() { if (swarm_master_) { nimcp_swarm_master_destroy(swarm_master_); swarm_master_ = nullptr; } }
+    int swarm_master_start() { return swarm_master_ ? nimcp_swarm_master_start(swarm_master_) : -1; }
+    int swarm_master_stop() { return swarm_master_ ? nimcp_swarm_master_stop(swarm_master_) : -1; }
+    int swarm_master_kick(uint32_t device_id) { return swarm_master_ ? nimcp_swarm_master_kick(swarm_master_, device_id) : -1; }
+    int swarm_master_force_sync() { return swarm_master_ ? nimcp_swarm_master_force_sync(swarm_master_) : -1; }
+    uint32_t swarm_master_get_peer_count() const { return swarm_master_ ? nimcp_swarm_master_get_peer_count(swarm_master_) : 0; }
+
+    // --- Swarm Edge ---
+
+    bool swarm_edge_create(uint32_t device_id = 2) {
+        nimcp_edge_runtime_config_t cfg = nimcp_swarm_edge_config_default();
+        cfg.device_id = device_id;
+        swarm_edge_ = nimcp_swarm_edge_create(handle_, &cfg);
+        return swarm_edge_ != nullptr;
+    }
+    void swarm_edge_destroy() { if (swarm_edge_) { nimcp_swarm_edge_destroy(swarm_edge_); swarm_edge_ = nullptr; } }
+    int swarm_edge_start() { return swarm_edge_ ? nimcp_swarm_edge_start(swarm_edge_) : -1; }
+    int swarm_edge_stop() { return swarm_edge_ ? nimcp_swarm_edge_stop(swarm_edge_) : -1; }
+    bool swarm_edge_is_connected() const { return swarm_edge_ && nimcp_swarm_edge_is_connected(swarm_edge_); }
+    int swarm_edge_submit_gradients(std::span<const float> grads) { return swarm_edge_ ? nimcp_swarm_edge_submit_gradients(swarm_edge_, grads.data(), static_cast<uint32_t>(grads.size())) : -1; }
+
+    // --- Sensor Hub ---
+
+    bool sensor_hub_create(uint32_t max_sensors = 32) { sensor_hub_ = nimcp_sensor_hub_create(max_sensors); return sensor_hub_ != nullptr; }
+    void sensor_hub_destroy() { if (sensor_hub_) { nimcp_sensor_hub_destroy(sensor_hub_); sensor_hub_ = nullptr; } }
+    uint32_t sensor_get_count() const { return sensor_hub_ ? nimcp_sensor_get_count(sensor_hub_) : 0; }
+    std::vector<float> sensor_compose_features(uint32_t max_features = 1024) {
+        if (!sensor_hub_) return {};
+        std::vector<float> features(max_features, 0.0f);
+        int count = nimcp_sensor_compose_feature_vector(sensor_hub_, features.data(), max_features);
+        if (count < 0) return {};
+        features.resize(static_cast<size_t>(count));
+        return features;
+    }
+
+    // --- Safety Watchdog ---
+
+    bool watchdog_create(uint32_t timeout_ms = 500, float max_magnitude = 1.0f) {
+        nimcp_watchdog_config_t cfg = nimcp_watchdog_config_default();
+        cfg.timeout_ms = timeout_ms; cfg.validation.max_output_magnitude = max_magnitude;
+        watchdog_ = nimcp_watchdog_create(&cfg);
+        return watchdog_ != nullptr;
+    }
+    void watchdog_destroy() { if (watchdog_) { nimcp_watchdog_destroy(watchdog_); watchdog_ = nullptr; } }
+    int watchdog_arm() { return watchdog_ ? nimcp_watchdog_arm(watchdog_) : -1; }
+    int watchdog_disarm() { return watchdog_ ? nimcp_watchdog_disarm(watchdog_) : -1; }
+    void watchdog_heartbeat() { if (watchdog_) nimcp_watchdog_heartbeat(watchdog_); }
+    bool watchdog_validate_output(std::span<float> output) { return watchdog_ && nimcp_watchdog_validate_output(watchdog_, output.data(), static_cast<uint32_t>(output.size())) == 0; }
+    std::vector<float> watchdog_get_safe_output(uint32_t num_outputs = 32) {
+        if (!watchdog_) return {};
+        std::vector<float> out(num_outputs, 0.0f);
+        nimcp_watchdog_get_safe_output(watchdog_, out.data(), num_outputs);
+        return out;
+    }
+    void watchdog_estop() { if (watchdog_) nimcp_watchdog_estop(watchdog_); }
+    int watchdog_reset() { return watchdog_ ? nimcp_watchdog_reset(watchdog_) : -1; }
+    std::string watchdog_get_state() const { if (!watchdog_) return "NONE"; return nimcp_watchdog_state_name(nimcp_watchdog_get_state(watchdog_)); }
+
+    // --- ROS 2 Bridge ---
+
+    bool ros2_bridge_create(std::string_view node_name = "nimcp_brain") {
+        nimcp_ros2_config_t cfg = nimcp_ros2_config_default();
+        cfg.node_name = std::string(node_name).c_str();
+        ros2_bridge_ = nimcp_ros2_bridge_create(handle_, &cfg);
+        return ros2_bridge_ != nullptr;
+    }
+    void ros2_bridge_destroy() { if (ros2_bridge_) { nimcp_ros2_bridge_destroy(ros2_bridge_); ros2_bridge_ = nullptr; } }
+    int ros2_bridge_start() { return ros2_bridge_ ? nimcp_ros2_bridge_start(ros2_bridge_) : -1; }
+    int ros2_bridge_stop() { return ros2_bridge_ ? nimcp_ros2_bridge_stop(ros2_bridge_) : -1; }
+    int ros2_bridge_inject_sensor(std::string_view topic, std::span<const float> data) { return ros2_bridge_ ? nimcp_ros2_bridge_inject_sensor(ros2_bridge_, std::string(topic).c_str(), data.data(), static_cast<uint32_t>(data.size())) : -1; }
+    std::vector<float> ros2_bridge_get_last_cmd(uint32_t max_count = 32) {
+        if (!ros2_bridge_) return {};
+        std::vector<float> data(max_count, 0.0f);
+        int got = nimcp_ros2_bridge_get_last_cmd(ros2_bridge_, data.data(), max_count);
+        if (got < 0) return {};
+        data.resize(static_cast<size_t>(got));
+        return data;
+    }
+
+    // --- MAVLink Bridge ---
+
+    bool mavlink_create(std::string_view conn_string = "udp:14550") {
+        nimcp_mavlink_config_t cfg = nimcp_mavlink_config_default();
+        std::strncpy(cfg.connection_string, std::string(conn_string).c_str(), sizeof(cfg.connection_string) - 1);
+        mavlink_bridge_ = nimcp_mavlink_bridge_create(&cfg);
+        return mavlink_bridge_ != nullptr;
+    }
+    void mavlink_destroy() { if (mavlink_bridge_) { nimcp_mavlink_bridge_destroy(mavlink_bridge_); mavlink_bridge_ = nullptr; } }
+    int mavlink_connect() { return mavlink_bridge_ ? nimcp_mavlink_bridge_connect(mavlink_bridge_) : -1; }
+    int mavlink_disconnect() { return mavlink_bridge_ ? nimcp_mavlink_bridge_disconnect(mavlink_bridge_) : -1; }
+    int mavlink_start() { return mavlink_bridge_ ? nimcp_mavlink_bridge_start(mavlink_bridge_) : -1; }
+    int mavlink_stop() { return mavlink_bridge_ ? nimcp_mavlink_bridge_stop(mavlink_bridge_) : -1; }
+    int mavlink_set_velocity(float vx, float vy, float vz, float yaw_rate) { return mavlink_bridge_ ? nimcp_mavlink_set_velocity(mavlink_bridge_, vx, vy, vz, yaw_rate) : -1; }
+    int mavlink_arm(bool arm = true) { return mavlink_bridge_ ? nimcp_mavlink_arm(mavlink_bridge_, arm) : -1; }
+    int mavlink_takeoff(float altitude = 5.0f) { return mavlink_bridge_ ? nimcp_mavlink_takeoff(mavlink_bridge_, altitude) : -1; }
+    int mavlink_land() { return mavlink_bridge_ ? nimcp_mavlink_land(mavlink_bridge_) : -1; }
+    int mavlink_goto(double lat, double lon, float alt = 10.0f) { return mavlink_bridge_ ? nimcp_mavlink_goto(mavlink_bridge_, lat, lon, alt) : -1; }
+    int mavlink_rtl() { return mavlink_bridge_ ? nimcp_mavlink_rtl(mavlink_bridge_) : -1; }
+    std::vector<float> mavlink_compose_features() {
+        if (!mavlink_bridge_) return {};
+        std::vector<float> features(NIMCP_MAVLINK_FEATURE_COUNT, 0.0f);
+        int count = nimcp_mavlink_compose_features(mavlink_bridge_, features.data(), NIMCP_MAVLINK_FEATURE_COUNT);
+        if (count < 0) return {};
+        features.resize(static_cast<size_t>(count));
+        return features;
+    }
+
     // --- Memory Store ---
 
     struct MemoryStoreStats {
@@ -1709,6 +1829,12 @@ public:
 private:
     explicit Brain(nimcp_brain_t h) noexcept : Base(h) {}
     std::vector<detail::CppCallbackFn*> owned_callbacks_;
+    nimcp_swarm_master_t* swarm_master_ = nullptr;
+    nimcp_swarm_edge_runtime_t* swarm_edge_ = nullptr;
+    nimcp_sensor_hub_t* sensor_hub_ = nullptr;
+    nimcp_safety_watchdog_t* watchdog_ = nullptr;
+    nimcp_ros2_bridge_t* ros2_bridge_ = nullptr;
+    nimcp_mavlink_bridge_t* mavlink_bridge_ = nullptr;
 
     friend class BrainSnapshot;
 };

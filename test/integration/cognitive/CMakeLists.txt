@@ -320,3 +320,26 @@ gtest_discover_tests(integration_cognitive_community_cache
         LABELS "integration;cognitive;consolidation;community_cache"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Cognitive Pipeline Integration Tests
+# ============================================================================
+
+add_executable(integration_cognitive_pipeline
+    test_cognitive_pipeline_integration.cpp
+)
+target_link_libraries(integration_cognitive_pipeline
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(integration_cognitive_pipeline
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(integration_cognitive_pipeline PRIVATE cxx_std_17)
+gtest_discover_tests(integration_cognitive_pipeline
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;pipeline"
+        TIMEOUT 120
+)

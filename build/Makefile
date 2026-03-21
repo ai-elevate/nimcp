@@ -2320,253 +2320,6 @@ unit_core_topology_topology_tests/fast:
 .PHONY : unit_core_topology_topology_tests/fast
 
 #=============================================================================
-# Target rules for targets named unit_edge_test_autobio_integration
-
-# Build rule for target.
-unit_edge_test_autobio_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_autobio_integration
-.PHONY : unit_edge_test_autobio_integration
-
-# fast build rule for target.
-unit_edge_test_autobio_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_autobio_integration.dir/build.make test/CMakeFiles/unit_edge_test_autobio_integration.dir/build
-.PHONY : unit_edge_test_autobio_integration/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_config
-
-# Build rule for target.
-unit_edge_test_config: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_config
-.PHONY : unit_edge_test_config
-
-# fast build rule for target.
-unit_edge_test_config/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_config.dir/build.make test/CMakeFiles/unit_edge_test_config.dir/build
-.PHONY : unit_edge_test_config/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_delta
-
-# Build rule for target.
-unit_edge_test_delta: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_delta
-.PHONY : unit_edge_test_delta
-
-# fast build rule for target.
-unit_edge_test_delta/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_delta.dir/build.make test/CMakeFiles/unit_edge_test_delta.dir/build
-.PHONY : unit_edge_test_delta/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_early_exit
-
-# Build rule for target.
-unit_edge_test_early_exit: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_early_exit
-.PHONY : unit_edge_test_early_exit
-
-# fast build rule for target.
-unit_edge_test_early_exit/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_early_exit.dir/build.make test/CMakeFiles/unit_edge_test_early_exit.dir/build
-.PHONY : unit_edge_test_early_exit/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_engram_integration
-
-# Build rule for target.
-unit_edge_test_engram_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_engram_integration
-.PHONY : unit_edge_test_engram_integration
-
-# fast build rule for target.
-unit_edge_test_engram_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_engram_integration.dir/build.make test/CMakeFiles/unit_edge_test_engram_integration.dir/build
-.PHONY : unit_edge_test_engram_integration/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_ewc
-
-# Build rule for target.
-unit_edge_test_ewc: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_ewc
-.PHONY : unit_edge_test_ewc
-
-# fast build rule for target.
-unit_edge_test_ewc/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_ewc.dir/build.make test/CMakeFiles/unit_edge_test_ewc.dir/build
-.PHONY : unit_edge_test_ewc/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_federated
-
-# Build rule for target.
-unit_edge_test_federated: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_federated
-.PHONY : unit_edge_test_federated
-
-# fast build rule for target.
-unit_edge_test_federated/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_federated.dir/build.make test/CMakeFiles/unit_edge_test_federated.dir/build
-.PHONY : unit_edge_test_federated/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_gossip
-
-# Build rule for target.
-unit_edge_test_gossip: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_gossip
-.PHONY : unit_edge_test_gossip
-
-# fast build rule for target.
-unit_edge_test_gossip/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_gossip.dir/build.make test/CMakeFiles/unit_edge_test_gossip.dir/build
-.PHONY : unit_edge_test_gossip/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_offline
-
-# Build rule for target.
-unit_edge_test_offline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_offline
-.PHONY : unit_edge_test_offline
-
-# fast build rule for target.
-unit_edge_test_offline/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_offline.dir/build.make test/CMakeFiles/unit_edge_test_offline.dir/build
-.PHONY : unit_edge_test_offline/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_ota
-
-# Build rule for target.
-unit_edge_test_ota: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_ota
-.PHONY : unit_edge_test_ota
-
-# fast build rule for target.
-unit_edge_test_ota/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_ota.dir/build.make test/CMakeFiles/unit_edge_test_ota.dir/build
-.PHONY : unit_edge_test_ota/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_power
-
-# Build rule for target.
-unit_edge_test_power: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_power
-.PHONY : unit_edge_test_power
-
-# fast build rule for target.
-unit_edge_test_power/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_power.dir/build.make test/CMakeFiles/unit_edge_test_power.dir/build
-.PHONY : unit_edge_test_power/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_privacy
-
-# Build rule for target.
-unit_edge_test_privacy: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_privacy
-.PHONY : unit_edge_test_privacy
-
-# fast build rule for target.
-unit_edge_test_privacy/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_privacy.dir/build.make test/CMakeFiles/unit_edge_test_privacy.dir/build
-.PHONY : unit_edge_test_privacy/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_quantization
-
-# Build rule for target.
-unit_edge_test_quantization: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_quantization
-.PHONY : unit_edge_test_quantization
-
-# fast build rule for target.
-unit_edge_test_quantization/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_quantization.dir/build.make test/CMakeFiles/unit_edge_test_quantization.dir/build
-.PHONY : unit_edge_test_quantization/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_resize
-
-# Build rule for target.
-unit_edge_test_resize: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_resize
-.PHONY : unit_edge_test_resize
-
-# fast build rule for target.
-unit_edge_test_resize/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_resize.dir/build.make test/CMakeFiles/unit_edge_test_resize.dir/build
-.PHONY : unit_edge_test_resize/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_rollback
-
-# Build rule for target.
-unit_edge_test_rollback: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_rollback
-.PHONY : unit_edge_test_rollback
-
-# fast build rule for target.
-unit_edge_test_rollback/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_rollback.dir/build.make test/CMakeFiles/unit_edge_test_rollback.dir/build
-.PHONY : unit_edge_test_rollback/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_semantic_memory_integration
-
-# Build rule for target.
-unit_edge_test_semantic_memory_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_semantic_memory_integration
-.PHONY : unit_edge_test_semantic_memory_integration
-
-# fast build rule for target.
-unit_edge_test_semantic_memory_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_semantic_memory_integration.dir/build.make test/CMakeFiles/unit_edge_test_semantic_memory_integration.dir/build
-.PHONY : unit_edge_test_semantic_memory_integration/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_swarm
-
-# Build rule for target.
-unit_edge_test_swarm: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_swarm
-.PHONY : unit_edge_test_swarm
-
-# fast build rule for target.
-unit_edge_test_swarm/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_swarm.dir/build.make test/CMakeFiles/unit_edge_test_swarm.dir/build
-.PHONY : unit_edge_test_swarm/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_telemetry
-
-# Build rule for target.
-unit_edge_test_telemetry: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_telemetry
-.PHONY : unit_edge_test_telemetry
-
-# fast build rule for target.
-unit_edge_test_telemetry/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_telemetry.dir/build.make test/CMakeFiles/unit_edge_test_telemetry.dir/build
-.PHONY : unit_edge_test_telemetry/fast
-
-#=============================================================================
-# Target rules for targets named unit_edge_test_versioning
-
-# Build rule for target.
-unit_edge_test_versioning: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_versioning
-.PHONY : unit_edge_test_versioning
-
-# fast build rule for target.
-unit_edge_test_versioning/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_edge_test_versioning.dir/build.make test/CMakeFiles/unit_edge_test_versioning.dir/build
-.PHONY : unit_edge_test_versioning/fast
-
-#=============================================================================
 # Target rules for targets named unit_glial_astrocytes_test_astrocyte_calcium
 
 # Build rule for target.
@@ -4933,6 +4686,19 @@ integration_edge_test_edge_integration/fast:
 .PHONY : integration_edge_test_edge_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_edge_test_edge_pipeline_integration
+
+# Build rule for target.
+integration_edge_test_edge_pipeline_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_edge_test_edge_pipeline_integration
+.PHONY : integration_edge_test_edge_pipeline_integration
+
+# fast build rule for target.
+integration_edge_test_edge_pipeline_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_edge_test_edge_pipeline_integration.dir/build.make test/CMakeFiles/integration_edge_test_edge_pipeline_integration.dir/build
+.PHONY : integration_edge_test_edge_pipeline_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_edge_test_memory_pipeline_integration
 
 # Build rule for target.
@@ -5776,6 +5542,19 @@ regression_core_topology_test_fractal_topology_backward_compat: cmake_check_buil
 regression_core_topology_test_fractal_topology_backward_compat/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_topology_test_fractal_topology_backward_compat.dir/build.make test/CMakeFiles/regression_core_topology_test_fractal_topology_backward_compat.dir/build
 .PHONY : regression_core_topology_test_fractal_topology_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_edge_test_edge_new_regression
+
+# Build rule for target.
+regression_edge_test_edge_new_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_edge_test_edge_new_regression
+.PHONY : regression_edge_test_edge_new_regression
+
+# fast build rule for target.
+regression_edge_test_edge_new_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_edge_test_edge_new_regression.dir/build.make test/CMakeFiles/regression_edge_test_edge_new_regression.dir/build
+.PHONY : regression_edge_test_edge_new_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_edge_test_edge_regression
@@ -10315,6 +10094,19 @@ e2e_cognitive_e2e_test_information_forager_pipeline/fast:
 .PHONY : e2e_cognitive_e2e_test_information_forager_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_cognitive_test_cognitive_e2e
+
+# Build rule for target.
+e2e_cognitive_test_cognitive_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_test_cognitive_e2e
+.PHONY : e2e_cognitive_test_cognitive_e2e
+
+# fast build rule for target.
+e2e_cognitive_test_cognitive_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_cognitive_e2e.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_cognitive_e2e.dir/build
+.PHONY : e2e_cognitive_test_cognitive_e2e/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_test_community_cache_e2e
 
 # Build rule for target.
@@ -10456,6 +10248,19 @@ e2e_cognitive_community_cache: cmake_check_build_system
 e2e_cognitive_community_cache/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_community_cache.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_community_cache.dir/build
 .PHONY : e2e_cognitive_community_cache/fast
+
+#=============================================================================
+# Target rules for targets named e2e_cognitive_pipeline
+
+# Build rule for target.
+e2e_cognitive_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_pipeline
+.PHONY : e2e_cognitive_pipeline
+
+# fast build rule for target.
+e2e_cognitive_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_pipeline.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_pipeline.dir/build
+.PHONY : e2e_cognitive_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_attention_exception
@@ -15942,6 +15747,32 @@ unit_cognitive_test_ood_detector: cmake_check_build_system
 unit_cognitive_test_ood_detector/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_ood_detector.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_ood_detector.dir/build
 .PHONY : unit_cognitive_test_ood_detector/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_training_data
+
+# Build rule for target.
+unit_cognitive_test_training_data: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_training_data
+.PHONY : unit_cognitive_test_training_data
+
+# fast build rule for target.
+unit_cognitive_test_training_data/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_training_data.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_training_data.dir/build
+.PHONY : unit_cognitive_test_training_data/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_modules_wiring
+
+# Build rule for target.
+unit_cognitive_test_modules_wiring: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_modules_wiring
+.PHONY : unit_cognitive_test_modules_wiring
+
+# fast build rule for target.
+unit_cognitive_test_modules_wiring/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_modules_wiring.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_modules_wiring.dir/build
+.PHONY : unit_cognitive_test_modules_wiring/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
@@ -26630,6 +26461,19 @@ integration_cognitive_community_cache/fast:
 .PHONY : integration_cognitive_community_cache/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_pipeline
+
+# Build rule for target.
+integration_cognitive_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_pipeline
+.PHONY : integration_cognitive_pipeline
+
+# fast build rule for target.
+integration_cognitive_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/CMakeFiles/integration_cognitive_pipeline.dir/build.make test/integration/cognitive/CMakeFiles/integration_cognitive_pipeline.dir/build
+.PHONY : integration_cognitive_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named integration_fep_enhanced
 
 # Build rule for target.
@@ -27941,6 +27785,19 @@ regression_cognitive_community_cache: cmake_check_build_system
 regression_cognitive_community_cache/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_community_cache.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_community_cache.dir/build
 .PHONY : regression_cognitive_community_cache/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_pipeline
+
+# Build rule for target.
+regression_cognitive_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_pipeline
+.PHONY : regression_cognitive_pipeline
+
+# fast build rule for target.
+regression_cognitive_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_pipeline.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_pipeline.dir/build
+.PHONY : regression_cognitive_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named test_rcog_regression
@@ -42568,6 +42425,123 @@ e2e_memory_test_memory_store/fast:
 .PHONY : e2e_memory_test_memory_store/fast
 
 #=============================================================================
+# Target rules for targets named unit_edge_test_sensor_hub
+
+# Build rule for target.
+unit_edge_test_sensor_hub: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_sensor_hub
+.PHONY : unit_edge_test_sensor_hub
+
+# fast build rule for target.
+unit_edge_test_sensor_hub/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/edge/CMakeFiles/unit_edge_test_sensor_hub.dir/build.make test/unit/edge/CMakeFiles/unit_edge_test_sensor_hub.dir/build
+.PHONY : unit_edge_test_sensor_hub/fast
+
+#=============================================================================
+# Target rules for targets named unit_edge_test_safety_watchdog
+
+# Build rule for target.
+unit_edge_test_safety_watchdog: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_safety_watchdog
+.PHONY : unit_edge_test_safety_watchdog
+
+# fast build rule for target.
+unit_edge_test_safety_watchdog/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/edge/CMakeFiles/unit_edge_test_safety_watchdog.dir/build.make test/unit/edge/CMakeFiles/unit_edge_test_safety_watchdog.dir/build
+.PHONY : unit_edge_test_safety_watchdog/fast
+
+#=============================================================================
+# Target rules for targets named unit_edge_test_swarm_lifecycle
+
+# Build rule for target.
+unit_edge_test_swarm_lifecycle: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_swarm_lifecycle
+.PHONY : unit_edge_test_swarm_lifecycle
+
+# fast build rule for target.
+unit_edge_test_swarm_lifecycle/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/edge/CMakeFiles/unit_edge_test_swarm_lifecycle.dir/build.make test/unit/edge/CMakeFiles/unit_edge_test_swarm_lifecycle.dir/build
+.PHONY : unit_edge_test_swarm_lifecycle/fast
+
+#=============================================================================
+# Target rules for targets named unit_edge_test_swarm_sync
+
+# Build rule for target.
+unit_edge_test_swarm_sync: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_swarm_sync
+.PHONY : unit_edge_test_swarm_sync
+
+# fast build rule for target.
+unit_edge_test_swarm_sync/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/edge/CMakeFiles/unit_edge_test_swarm_sync.dir/build.make test/unit/edge/CMakeFiles/unit_edge_test_swarm_sync.dir/build
+.PHONY : unit_edge_test_swarm_sync/fast
+
+#=============================================================================
+# Target rules for targets named unit_edge_test_swarm_byzantine
+
+# Build rule for target.
+unit_edge_test_swarm_byzantine: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_swarm_byzantine
+.PHONY : unit_edge_test_swarm_byzantine
+
+# fast build rule for target.
+unit_edge_test_swarm_byzantine/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/edge/CMakeFiles/unit_edge_test_swarm_byzantine.dir/build.make test/unit/edge/CMakeFiles/unit_edge_test_swarm_byzantine.dir/build
+.PHONY : unit_edge_test_swarm_byzantine/fast
+
+#=============================================================================
+# Target rules for targets named unit_edge_test_drone_bridges
+
+# Build rule for target.
+unit_edge_test_drone_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_drone_bridges
+.PHONY : unit_edge_test_drone_bridges
+
+# fast build rule for target.
+unit_edge_test_drone_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/edge/CMakeFiles/unit_edge_test_drone_bridges.dir/build.make test/unit/edge/CMakeFiles/unit_edge_test_drone_bridges.dir/build
+.PHONY : unit_edge_test_drone_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_edge_test_motor_output
+
+# Build rule for target.
+unit_edge_test_motor_output: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_motor_output
+.PHONY : unit_edge_test_motor_output
+
+# fast build rule for target.
+unit_edge_test_motor_output/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/edge/CMakeFiles/unit_edge_test_motor_output.dir/build.make test/unit/edge/CMakeFiles/unit_edge_test_motor_output.dir/build
+.PHONY : unit_edge_test_motor_output/fast
+
+#=============================================================================
+# Target rules for targets named unit_edge_test_sim_bridge
+
+# Build rule for target.
+unit_edge_test_sim_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_sim_bridge
+.PHONY : unit_edge_test_sim_bridge
+
+# fast build rule for target.
+unit_edge_test_sim_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/edge/CMakeFiles/unit_edge_test_sim_bridge.dir/build.make test/unit/edge/CMakeFiles/unit_edge_test_sim_bridge.dir/build
+.PHONY : unit_edge_test_sim_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_edge_test_embodiment
+
+# Build rule for target.
+unit_edge_test_embodiment: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_edge_test_embodiment
+.PHONY : unit_edge_test_embodiment
+
+# fast build rule for target.
+unit_edge_test_embodiment/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/edge/CMakeFiles/unit_edge_test_embodiment.dir/build.make test/unit/edge/CMakeFiles/unit_edge_test_embodiment.dir/build
+.PHONY : unit_edge_test_embodiment/fast
+
+#=============================================================================
 # Target rules for targets named simple_demo
 
 # Build rule for target.
@@ -43024,6 +42998,8 @@ help:
 	@echo "... e2e_cognitive_immune_tick_enhanced"
 	@echo "... e2e_cognitive_inner_dialogue"
 	@echo "... e2e_cognitive_memory_pr_exception"
+	@echo "... e2e_cognitive_pipeline"
+	@echo "... e2e_cognitive_test_cognitive_e2e"
 	@echo "... e2e_cognitive_test_community_cache_e2e"
 	@echo "... e2e_cognitive_test_creative_e2e"
 	@echo "... e2e_cognitive_test_predictive_bridge_exception_e2e"
@@ -43469,6 +43445,7 @@ help:
 	@echo "... integration_cognitive_mirror_neurons_substrate"
 	@echo "... integration_cognitive_parietal"
 	@echo "... integration_cognitive_parietal_linguistics_test_linguistics_fuzzy_stats_integration"
+	@echo "... integration_cognitive_pipeline"
 	@echo "... integration_cognitive_predictive_test_predictive_bridge_exception_integration"
 	@echo "... integration_cognitive_reasoning_snn_plasticity"
 	@echo "... integration_cognitive_salience_snn_plasticity"
@@ -43612,6 +43589,7 @@ help:
 	@echo "... integration_dragonfly_sensory"
 	@echo "... integration_ecb_stdp"
 	@echo "... integration_edge_test_edge_integration"
+	@echo "... integration_edge_test_edge_pipeline_integration"
 	@echo "... integration_edge_test_memory_pipeline_integration"
 	@echo "... integration_eidetic_memory"
 	@echo "... integration_embodiment_test_embodiment_integration"
@@ -44086,6 +44064,7 @@ help:
 	@echo "... regression_cognitive_mirror_neurons_substrate"
 	@echo "... regression_cognitive_modules_api_test"
 	@echo "... regression_cognitive_pass3_fixes"
+	@echo "... regression_cognitive_pipeline"
 	@echo "... regression_cognitive_predictive_test_predictive_bridge_exception_regression"
 	@echo "... regression_cognitive_reasoning_abduction"
 	@echo "... regression_cognitive_reasoning_affective"
@@ -44176,6 +44155,7 @@ help:
 	@echo "... regression_dragonfly_numerical"
 	@echo "... regression_dragonfly_parameters"
 	@echo "... regression_dragonfly_performance"
+	@echo "... regression_edge_test_edge_new_regression"
 	@echo "... regression_edge_test_edge_regression"
 	@echo "... regression_edge_test_memory_regression"
 	@echo "... regression_eidetic_memory"
@@ -45132,6 +45112,7 @@ help:
 	@echo "... unit_cognitive_test_meta_health"
 	@echo "... unit_cognitive_test_mirror_empathy_bridge"
 	@echo "... unit_cognitive_test_mirror_empathy_fep_bridge"
+	@echo "... unit_cognitive_test_modules_wiring"
 	@echo "... unit_cognitive_test_ood_detector"
 	@echo "... unit_cognitive_test_phase7_bridges"
 	@echo "... unit_cognitive_test_predictive_attention_bridge"
@@ -45165,6 +45146,7 @@ help:
 	@echo "... unit_cognitive_test_symbolic_logic_integration"
 	@echo "... unit_cognitive_test_temporal_replay"
 	@echo "... unit_cognitive_test_tom_social_bridge"
+	@echo "... unit_cognitive_test_training_data"
 	@echo "... unit_cognitive_test_training_integration"
 	@echo "... unit_cognitive_test_training_integration_unified"
 	@echo "... unit_cognitive_test_working_memory_immune"
@@ -45436,25 +45418,15 @@ help:
 	@echo "... unit_dragonfly_test_tsdn"
 	@echo "... unit_dragonfly_test_visual_bridge"
 	@echo "... unit_dragonfly_test_workspace_bridge"
-	@echo "... unit_edge_test_autobio_integration"
-	@echo "... unit_edge_test_config"
-	@echo "... unit_edge_test_delta"
-	@echo "... unit_edge_test_early_exit"
-	@echo "... unit_edge_test_engram_integration"
-	@echo "... unit_edge_test_ewc"
-	@echo "... unit_edge_test_federated"
-	@echo "... unit_edge_test_gossip"
-	@echo "... unit_edge_test_offline"
-	@echo "... unit_edge_test_ota"
-	@echo "... unit_edge_test_power"
-	@echo "... unit_edge_test_privacy"
-	@echo "... unit_edge_test_quantization"
-	@echo "... unit_edge_test_resize"
-	@echo "... unit_edge_test_rollback"
-	@echo "... unit_edge_test_semantic_memory_integration"
-	@echo "... unit_edge_test_swarm"
-	@echo "... unit_edge_test_telemetry"
-	@echo "... unit_edge_test_versioning"
+	@echo "... unit_edge_test_drone_bridges"
+	@echo "... unit_edge_test_embodiment"
+	@echo "... unit_edge_test_motor_output"
+	@echo "... unit_edge_test_safety_watchdog"
+	@echo "... unit_edge_test_sensor_hub"
+	@echo "... unit_edge_test_sim_bridge"
+	@echo "... unit_edge_test_swarm_byzantine"
+	@echo "... unit_edge_test_swarm_lifecycle"
+	@echo "... unit_edge_test_swarm_sync"
 	@echo "... unit_eidetic_memory"
 	@echo "... unit_embodiment_test_embodiment"
 	@echo "... unit_exception_test_macro_behavior"

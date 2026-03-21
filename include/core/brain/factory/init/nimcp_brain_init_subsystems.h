@@ -202,6 +202,11 @@ bool nimcp_brain_factory_init_fuzzy_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_spinal_cord_subsystem(brain_t brain);
 void nimcp_brain_factory_destroy_spinal_cord_subsystem(brain_t brain);
 
+// === EDGE SUBSYSTEM (Sensor Hub + Safety Watchdog + Swarm Bridges) ===
+// Sensor hub, safety watchdog, Portia-Swarm bridge, Dragonfly-Swarm bridge
+// Provides embodied deployment on robots, drones, and edge devices
+bool nimcp_brain_factory_init_edge_subsystem(brain_t brain);
+
 // Health agent accessor functions
 struct nimcp_health_agent* brain_get_health_agent(brain_t brain);
 bool brain_start_health_agent(brain_t brain);

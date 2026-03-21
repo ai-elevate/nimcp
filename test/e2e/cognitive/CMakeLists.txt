@@ -159,3 +159,26 @@ add_subdirectory(immune)
 add_subdirectory(parietal)
 add_subdirectory(fault_tolerance)
 add_subdirectory(inner_dialogue)
+
+# ============================================================================
+# Cognitive E2E Pipeline Tests
+# ============================================================================
+
+add_executable(e2e_cognitive_pipeline
+    test_cognitive_e2e.cpp
+)
+target_link_libraries(e2e_cognitive_pipeline
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(e2e_cognitive_pipeline
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(e2e_cognitive_pipeline PRIVATE cxx_std_17)
+gtest_discover_tests(e2e_cognitive_pipeline
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "e2e;cognitive;pipeline"
+        TIMEOUT 180
+)

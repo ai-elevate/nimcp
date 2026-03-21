@@ -239,6 +239,9 @@ extern void set_error(const char* format, ...);
 // Dragonfly subsystem macro (bio-inspired target tracking)
 #define init_dragonfly_subsystem                    nimcp_brain_factory_init_dragonfly_subsystem
 
+// Edge subsystem macro (sensor hub, safety watchdog, swarm bridges)
+#define init_edge_subsystem                         nimcp_brain_factory_init_edge_subsystem
+
 // Knowledge Graph Reader subsystem macro (self-awareness)
 #define init_kg_reader_subsystem                    nimcp_brain_factory_init_kg_reader_subsystem
 
@@ -1414,6 +1417,17 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // 6. Swarm Module Registry (depends on all above, swarm_brain)
     if (!init_swarm_module_registry_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // EDGE/ROBOT INTEGRATION (Sensor Hub + Safety + Swarm Bridges)
+    // ========================================================================
+    // Initialize edge deployment subsystems:
+    // - Sensor Hub: Unified interface for heterogeneous sensors
+    // - Safety Watchdog: Heartbeat-based deadman switch + output validation
+    // - Portia-Swarm Bridge: Resource-adaptive collective intelligence
+    // - Dragonfly-Swarm Bridge: Coordinated multi-drone pursuit
+    // DEPENDS ON: Dragonfly (for swarm bridge), Portia (global singleton)
+    if (!init_edge_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // POST-INITIALIZATION

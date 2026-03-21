@@ -18788,6 +18788,30 @@ __/core/brain/factory/init/nimcp_brain_init_dragonfly.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_dragonfly.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_dragonfly.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_edge.o: __/core/brain/factory/init/nimcp_brain_init_edge.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_edge.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_edge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_edge.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_edge.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_edge.i: __/core/brain/factory/init/nimcp_brain_init_edge.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_edge.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_edge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_edge.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_edge.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_edge.s: __/core/brain/factory/init/nimcp_brain_init_edge.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_edge.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_edge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_edge.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_edge.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_endocannabinoid.o: __/core/brain/factory/init/nimcp_brain_init_endocannabinoid.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_endocannabinoid.o
 
@@ -31052,6 +31076,30 @@ __/edge/nimcp_distillation.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_distillation.c.s
 .PHONY : __/edge/nimcp_distillation.c.s
 
+__/edge/nimcp_dji_bridge.o: __/edge/nimcp_dji_bridge.c.o
+.PHONY : __/edge/nimcp_dji_bridge.o
+
+# target to build an object file
+__/edge/nimcp_dji_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_dji_bridge.c.o
+.PHONY : __/edge/nimcp_dji_bridge.c.o
+
+__/edge/nimcp_dji_bridge.i: __/edge/nimcp_dji_bridge.c.i
+.PHONY : __/edge/nimcp_dji_bridge.i
+
+# target to preprocess a source file
+__/edge/nimcp_dji_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_dji_bridge.c.i
+.PHONY : __/edge/nimcp_dji_bridge.c.i
+
+__/edge/nimcp_dji_bridge.s: __/edge/nimcp_dji_bridge.c.s
+.PHONY : __/edge/nimcp_dji_bridge.s
+
+# target to generate assembly for a file
+__/edge/nimcp_dji_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_dji_bridge.c.s
+.PHONY : __/edge/nimcp_dji_bridge.c.s
+
 __/edge/nimcp_early_exit.o: __/edge/nimcp_early_exit.c.o
 .PHONY : __/edge/nimcp_early_exit.o
 
@@ -31123,6 +31171,30 @@ __/edge/nimcp_edge_ctx.s: __/edge/nimcp_edge_ctx.c.s
 __/edge/nimcp_edge_ctx.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_edge_ctx.c.s
 .PHONY : __/edge/nimcp_edge_ctx.c.s
+
+__/edge/nimcp_embodiment.o: __/edge/nimcp_embodiment.c.o
+.PHONY : __/edge/nimcp_embodiment.o
+
+# target to build an object file
+__/edge/nimcp_embodiment.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_embodiment.c.o
+.PHONY : __/edge/nimcp_embodiment.c.o
+
+__/edge/nimcp_embodiment.i: __/edge/nimcp_embodiment.c.i
+.PHONY : __/edge/nimcp_embodiment.i
+
+# target to preprocess a source file
+__/edge/nimcp_embodiment.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_embodiment.c.i
+.PHONY : __/edge/nimcp_embodiment.c.i
+
+__/edge/nimcp_embodiment.s: __/edge/nimcp_embodiment.c.s
+.PHONY : __/edge/nimcp_embodiment.s
+
+# target to generate assembly for a file
+__/edge/nimcp_embodiment.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_embodiment.c.s
+.PHONY : __/edge/nimcp_embodiment.c.s
 
 __/edge/nimcp_ewc.o: __/edge/nimcp_ewc.c.o
 .PHONY : __/edge/nimcp_ewc.o
@@ -31196,6 +31268,78 @@ __/edge/nimcp_gossip.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_gossip.c.s
 .PHONY : __/edge/nimcp_gossip.c.s
 
+__/edge/nimcp_mavlink_bridge.o: __/edge/nimcp_mavlink_bridge.c.o
+.PHONY : __/edge/nimcp_mavlink_bridge.o
+
+# target to build an object file
+__/edge/nimcp_mavlink_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_mavlink_bridge.c.o
+.PHONY : __/edge/nimcp_mavlink_bridge.c.o
+
+__/edge/nimcp_mavlink_bridge.i: __/edge/nimcp_mavlink_bridge.c.i
+.PHONY : __/edge/nimcp_mavlink_bridge.i
+
+# target to preprocess a source file
+__/edge/nimcp_mavlink_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_mavlink_bridge.c.i
+.PHONY : __/edge/nimcp_mavlink_bridge.c.i
+
+__/edge/nimcp_mavlink_bridge.s: __/edge/nimcp_mavlink_bridge.c.s
+.PHONY : __/edge/nimcp_mavlink_bridge.s
+
+# target to generate assembly for a file
+__/edge/nimcp_mavlink_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_mavlink_bridge.c.s
+.PHONY : __/edge/nimcp_mavlink_bridge.c.s
+
+__/edge/nimcp_motor_output.o: __/edge/nimcp_motor_output.c.o
+.PHONY : __/edge/nimcp_motor_output.o
+
+# target to build an object file
+__/edge/nimcp_motor_output.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_motor_output.c.o
+.PHONY : __/edge/nimcp_motor_output.c.o
+
+__/edge/nimcp_motor_output.i: __/edge/nimcp_motor_output.c.i
+.PHONY : __/edge/nimcp_motor_output.i
+
+# target to preprocess a source file
+__/edge/nimcp_motor_output.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_motor_output.c.i
+.PHONY : __/edge/nimcp_motor_output.c.i
+
+__/edge/nimcp_motor_output.s: __/edge/nimcp_motor_output.c.s
+.PHONY : __/edge/nimcp_motor_output.s
+
+# target to generate assembly for a file
+__/edge/nimcp_motor_output.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_motor_output.c.s
+.PHONY : __/edge/nimcp_motor_output.c.s
+
+__/edge/nimcp_msp_bridge.o: __/edge/nimcp_msp_bridge.c.o
+.PHONY : __/edge/nimcp_msp_bridge.o
+
+# target to build an object file
+__/edge/nimcp_msp_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_msp_bridge.c.o
+.PHONY : __/edge/nimcp_msp_bridge.c.o
+
+__/edge/nimcp_msp_bridge.i: __/edge/nimcp_msp_bridge.c.i
+.PHONY : __/edge/nimcp_msp_bridge.i
+
+# target to preprocess a source file
+__/edge/nimcp_msp_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_msp_bridge.c.i
+.PHONY : __/edge/nimcp_msp_bridge.c.i
+
+__/edge/nimcp_msp_bridge.s: __/edge/nimcp_msp_bridge.c.s
+.PHONY : __/edge/nimcp_msp_bridge.s
+
+# target to generate assembly for a file
+__/edge/nimcp_msp_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_msp_bridge.c.s
+.PHONY : __/edge/nimcp_msp_bridge.c.s
+
 __/edge/nimcp_offline.o: __/edge/nimcp_offline.c.o
 .PHONY : __/edge/nimcp_offline.o
 
@@ -31243,6 +31387,30 @@ __/edge/nimcp_ota.s: __/edge/nimcp_ota.c.s
 __/edge/nimcp_ota.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_ota.c.s
 .PHONY : __/edge/nimcp_ota.c.s
+
+__/edge/nimcp_parrot_bridge.o: __/edge/nimcp_parrot_bridge.c.o
+.PHONY : __/edge/nimcp_parrot_bridge.o
+
+# target to build an object file
+__/edge/nimcp_parrot_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_parrot_bridge.c.o
+.PHONY : __/edge/nimcp_parrot_bridge.c.o
+
+__/edge/nimcp_parrot_bridge.i: __/edge/nimcp_parrot_bridge.c.i
+.PHONY : __/edge/nimcp_parrot_bridge.i
+
+# target to preprocess a source file
+__/edge/nimcp_parrot_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_parrot_bridge.c.i
+.PHONY : __/edge/nimcp_parrot_bridge.c.i
+
+__/edge/nimcp_parrot_bridge.s: __/edge/nimcp_parrot_bridge.c.s
+.PHONY : __/edge/nimcp_parrot_bridge.s
+
+# target to generate assembly for a file
+__/edge/nimcp_parrot_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_parrot_bridge.c.s
+.PHONY : __/edge/nimcp_parrot_bridge.c.s
 
 __/edge/nimcp_power.o: __/edge/nimcp_power.c.o
 .PHONY : __/edge/nimcp_power.o
@@ -31364,6 +31532,126 @@ __/edge/nimcp_rollback.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_rollback.c.s
 .PHONY : __/edge/nimcp_rollback.c.s
 
+__/edge/nimcp_ros2_bridge.o: __/edge/nimcp_ros2_bridge.c.o
+.PHONY : __/edge/nimcp_ros2_bridge.o
+
+# target to build an object file
+__/edge/nimcp_ros2_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_ros2_bridge.c.o
+.PHONY : __/edge/nimcp_ros2_bridge.c.o
+
+__/edge/nimcp_ros2_bridge.i: __/edge/nimcp_ros2_bridge.c.i
+.PHONY : __/edge/nimcp_ros2_bridge.i
+
+# target to preprocess a source file
+__/edge/nimcp_ros2_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_ros2_bridge.c.i
+.PHONY : __/edge/nimcp_ros2_bridge.c.i
+
+__/edge/nimcp_ros2_bridge.s: __/edge/nimcp_ros2_bridge.c.s
+.PHONY : __/edge/nimcp_ros2_bridge.s
+
+# target to generate assembly for a file
+__/edge/nimcp_ros2_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_ros2_bridge.c.s
+.PHONY : __/edge/nimcp_ros2_bridge.c.s
+
+__/edge/nimcp_safety_watchdog.o: __/edge/nimcp_safety_watchdog.c.o
+.PHONY : __/edge/nimcp_safety_watchdog.o
+
+# target to build an object file
+__/edge/nimcp_safety_watchdog.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_safety_watchdog.c.o
+.PHONY : __/edge/nimcp_safety_watchdog.c.o
+
+__/edge/nimcp_safety_watchdog.i: __/edge/nimcp_safety_watchdog.c.i
+.PHONY : __/edge/nimcp_safety_watchdog.i
+
+# target to preprocess a source file
+__/edge/nimcp_safety_watchdog.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_safety_watchdog.c.i
+.PHONY : __/edge/nimcp_safety_watchdog.c.i
+
+__/edge/nimcp_safety_watchdog.s: __/edge/nimcp_safety_watchdog.c.s
+.PHONY : __/edge/nimcp_safety_watchdog.s
+
+# target to generate assembly for a file
+__/edge/nimcp_safety_watchdog.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_safety_watchdog.c.s
+.PHONY : __/edge/nimcp_safety_watchdog.c.s
+
+__/edge/nimcp_sensor.o: __/edge/nimcp_sensor.c.o
+.PHONY : __/edge/nimcp_sensor.o
+
+# target to build an object file
+__/edge/nimcp_sensor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_sensor.c.o
+.PHONY : __/edge/nimcp_sensor.c.o
+
+__/edge/nimcp_sensor.i: __/edge/nimcp_sensor.c.i
+.PHONY : __/edge/nimcp_sensor.i
+
+# target to preprocess a source file
+__/edge/nimcp_sensor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_sensor.c.i
+.PHONY : __/edge/nimcp_sensor.c.i
+
+__/edge/nimcp_sensor.s: __/edge/nimcp_sensor.c.s
+.PHONY : __/edge/nimcp_sensor.s
+
+# target to generate assembly for a file
+__/edge/nimcp_sensor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_sensor.c.s
+.PHONY : __/edge/nimcp_sensor.c.s
+
+__/edge/nimcp_sim_bridge.o: __/edge/nimcp_sim_bridge.c.o
+.PHONY : __/edge/nimcp_sim_bridge.o
+
+# target to build an object file
+__/edge/nimcp_sim_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_sim_bridge.c.o
+.PHONY : __/edge/nimcp_sim_bridge.c.o
+
+__/edge/nimcp_sim_bridge.i: __/edge/nimcp_sim_bridge.c.i
+.PHONY : __/edge/nimcp_sim_bridge.i
+
+# target to preprocess a source file
+__/edge/nimcp_sim_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_sim_bridge.c.i
+.PHONY : __/edge/nimcp_sim_bridge.c.i
+
+__/edge/nimcp_sim_bridge.s: __/edge/nimcp_sim_bridge.c.s
+.PHONY : __/edge/nimcp_sim_bridge.s
+
+# target to generate assembly for a file
+__/edge/nimcp_sim_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_sim_bridge.c.s
+.PHONY : __/edge/nimcp_sim_bridge.c.s
+
+__/edge/nimcp_swarm_byzantine.o: __/edge/nimcp_swarm_byzantine.c.o
+.PHONY : __/edge/nimcp_swarm_byzantine.o
+
+# target to build an object file
+__/edge/nimcp_swarm_byzantine.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_byzantine.c.o
+.PHONY : __/edge/nimcp_swarm_byzantine.c.o
+
+__/edge/nimcp_swarm_byzantine.i: __/edge/nimcp_swarm_byzantine.c.i
+.PHONY : __/edge/nimcp_swarm_byzantine.i
+
+# target to preprocess a source file
+__/edge/nimcp_swarm_byzantine.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_byzantine.c.i
+.PHONY : __/edge/nimcp_swarm_byzantine.c.i
+
+__/edge/nimcp_swarm_byzantine.s: __/edge/nimcp_swarm_byzantine.c.s
+.PHONY : __/edge/nimcp_swarm_byzantine.s
+
+# target to generate assembly for a file
+__/edge/nimcp_swarm_byzantine.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_byzantine.c.s
+.PHONY : __/edge/nimcp_swarm_byzantine.c.s
+
 __/edge/nimcp_swarm_comm.o: __/edge/nimcp_swarm_comm.c.o
 .PHONY : __/edge/nimcp_swarm_comm.o
 
@@ -31387,6 +31675,126 @@ __/edge/nimcp_swarm_comm.s: __/edge/nimcp_swarm_comm.c.s
 __/edge/nimcp_swarm_comm.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_comm.c.s
 .PHONY : __/edge/nimcp_swarm_comm.c.s
+
+__/edge/nimcp_swarm_discovery.o: __/edge/nimcp_swarm_discovery.c.o
+.PHONY : __/edge/nimcp_swarm_discovery.o
+
+# target to build an object file
+__/edge/nimcp_swarm_discovery.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_discovery.c.o
+.PHONY : __/edge/nimcp_swarm_discovery.c.o
+
+__/edge/nimcp_swarm_discovery.i: __/edge/nimcp_swarm_discovery.c.i
+.PHONY : __/edge/nimcp_swarm_discovery.i
+
+# target to preprocess a source file
+__/edge/nimcp_swarm_discovery.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_discovery.c.i
+.PHONY : __/edge/nimcp_swarm_discovery.c.i
+
+__/edge/nimcp_swarm_discovery.s: __/edge/nimcp_swarm_discovery.c.s
+.PHONY : __/edge/nimcp_swarm_discovery.s
+
+# target to generate assembly for a file
+__/edge/nimcp_swarm_discovery.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_discovery.c.s
+.PHONY : __/edge/nimcp_swarm_discovery.c.s
+
+__/edge/nimcp_swarm_edge_runtime.o: __/edge/nimcp_swarm_edge_runtime.c.o
+.PHONY : __/edge/nimcp_swarm_edge_runtime.o
+
+# target to build an object file
+__/edge/nimcp_swarm_edge_runtime.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_edge_runtime.c.o
+.PHONY : __/edge/nimcp_swarm_edge_runtime.c.o
+
+__/edge/nimcp_swarm_edge_runtime.i: __/edge/nimcp_swarm_edge_runtime.c.i
+.PHONY : __/edge/nimcp_swarm_edge_runtime.i
+
+# target to preprocess a source file
+__/edge/nimcp_swarm_edge_runtime.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_edge_runtime.c.i
+.PHONY : __/edge/nimcp_swarm_edge_runtime.c.i
+
+__/edge/nimcp_swarm_edge_runtime.s: __/edge/nimcp_swarm_edge_runtime.c.s
+.PHONY : __/edge/nimcp_swarm_edge_runtime.s
+
+# target to generate assembly for a file
+__/edge/nimcp_swarm_edge_runtime.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_edge_runtime.c.s
+.PHONY : __/edge/nimcp_swarm_edge_runtime.c.s
+
+__/edge/nimcp_swarm_lifecycle.o: __/edge/nimcp_swarm_lifecycle.c.o
+.PHONY : __/edge/nimcp_swarm_lifecycle.o
+
+# target to build an object file
+__/edge/nimcp_swarm_lifecycle.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_lifecycle.c.o
+.PHONY : __/edge/nimcp_swarm_lifecycle.c.o
+
+__/edge/nimcp_swarm_lifecycle.i: __/edge/nimcp_swarm_lifecycle.c.i
+.PHONY : __/edge/nimcp_swarm_lifecycle.i
+
+# target to preprocess a source file
+__/edge/nimcp_swarm_lifecycle.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_lifecycle.c.i
+.PHONY : __/edge/nimcp_swarm_lifecycle.c.i
+
+__/edge/nimcp_swarm_lifecycle.s: __/edge/nimcp_swarm_lifecycle.c.s
+.PHONY : __/edge/nimcp_swarm_lifecycle.s
+
+# target to generate assembly for a file
+__/edge/nimcp_swarm_lifecycle.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_lifecycle.c.s
+.PHONY : __/edge/nimcp_swarm_lifecycle.c.s
+
+__/edge/nimcp_swarm_master_runtime.o: __/edge/nimcp_swarm_master_runtime.c.o
+.PHONY : __/edge/nimcp_swarm_master_runtime.o
+
+# target to build an object file
+__/edge/nimcp_swarm_master_runtime.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_master_runtime.c.o
+.PHONY : __/edge/nimcp_swarm_master_runtime.c.o
+
+__/edge/nimcp_swarm_master_runtime.i: __/edge/nimcp_swarm_master_runtime.c.i
+.PHONY : __/edge/nimcp_swarm_master_runtime.i
+
+# target to preprocess a source file
+__/edge/nimcp_swarm_master_runtime.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_master_runtime.c.i
+.PHONY : __/edge/nimcp_swarm_master_runtime.c.i
+
+__/edge/nimcp_swarm_master_runtime.s: __/edge/nimcp_swarm_master_runtime.c.s
+.PHONY : __/edge/nimcp_swarm_master_runtime.s
+
+# target to generate assembly for a file
+__/edge/nimcp_swarm_master_runtime.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_master_runtime.c.s
+.PHONY : __/edge/nimcp_swarm_master_runtime.c.s
+
+__/edge/nimcp_swarm_sync.o: __/edge/nimcp_swarm_sync.c.o
+.PHONY : __/edge/nimcp_swarm_sync.o
+
+# target to build an object file
+__/edge/nimcp_swarm_sync.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_sync.c.o
+.PHONY : __/edge/nimcp_swarm_sync.c.o
+
+__/edge/nimcp_swarm_sync.i: __/edge/nimcp_swarm_sync.c.i
+.PHONY : __/edge/nimcp_swarm_sync.i
+
+# target to preprocess a source file
+__/edge/nimcp_swarm_sync.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_sync.c.i
+.PHONY : __/edge/nimcp_swarm_sync.c.i
+
+__/edge/nimcp_swarm_sync.s: __/edge/nimcp_swarm_sync.c.s
+.PHONY : __/edge/nimcp_swarm_sync.s
+
+# target to generate assembly for a file
+__/edge/nimcp_swarm_sync.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_sync.c.s
+.PHONY : __/edge/nimcp_swarm_sync.c.s
 
 __/edge/nimcp_telemetry.o: __/edge/nimcp_telemetry.c.o
 .PHONY : __/edge/nimcp_telemetry.o
@@ -55471,6 +55879,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_dragonfly.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_dragonfly.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_dragonfly.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_edge.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_edge.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_edge.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_endocannabinoid.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_endocannabinoid.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_endocannabinoid.s"
@@ -57004,6 +57415,9 @@ help:
 	@echo "... __/edge/nimcp_distillation.o"
 	@echo "... __/edge/nimcp_distillation.i"
 	@echo "... __/edge/nimcp_distillation.s"
+	@echo "... __/edge/nimcp_dji_bridge.o"
+	@echo "... __/edge/nimcp_dji_bridge.i"
+	@echo "... __/edge/nimcp_dji_bridge.s"
 	@echo "... __/edge/nimcp_early_exit.o"
 	@echo "... __/edge/nimcp_early_exit.i"
 	@echo "... __/edge/nimcp_early_exit.s"
@@ -57013,6 +57427,9 @@ help:
 	@echo "... __/edge/nimcp_edge_ctx.o"
 	@echo "... __/edge/nimcp_edge_ctx.i"
 	@echo "... __/edge/nimcp_edge_ctx.s"
+	@echo "... __/edge/nimcp_embodiment.o"
+	@echo "... __/edge/nimcp_embodiment.i"
+	@echo "... __/edge/nimcp_embodiment.s"
 	@echo "... __/edge/nimcp_ewc.o"
 	@echo "... __/edge/nimcp_ewc.i"
 	@echo "... __/edge/nimcp_ewc.s"
@@ -57022,12 +57439,24 @@ help:
 	@echo "... __/edge/nimcp_gossip.o"
 	@echo "... __/edge/nimcp_gossip.i"
 	@echo "... __/edge/nimcp_gossip.s"
+	@echo "... __/edge/nimcp_mavlink_bridge.o"
+	@echo "... __/edge/nimcp_mavlink_bridge.i"
+	@echo "... __/edge/nimcp_mavlink_bridge.s"
+	@echo "... __/edge/nimcp_motor_output.o"
+	@echo "... __/edge/nimcp_motor_output.i"
+	@echo "... __/edge/nimcp_motor_output.s"
+	@echo "... __/edge/nimcp_msp_bridge.o"
+	@echo "... __/edge/nimcp_msp_bridge.i"
+	@echo "... __/edge/nimcp_msp_bridge.s"
 	@echo "... __/edge/nimcp_offline.o"
 	@echo "... __/edge/nimcp_offline.i"
 	@echo "... __/edge/nimcp_offline.s"
 	@echo "... __/edge/nimcp_ota.o"
 	@echo "... __/edge/nimcp_ota.i"
 	@echo "... __/edge/nimcp_ota.s"
+	@echo "... __/edge/nimcp_parrot_bridge.o"
+	@echo "... __/edge/nimcp_parrot_bridge.i"
+	@echo "... __/edge/nimcp_parrot_bridge.s"
 	@echo "... __/edge/nimcp_power.o"
 	@echo "... __/edge/nimcp_power.i"
 	@echo "... __/edge/nimcp_power.s"
@@ -57043,9 +57472,39 @@ help:
 	@echo "... __/edge/nimcp_rollback.o"
 	@echo "... __/edge/nimcp_rollback.i"
 	@echo "... __/edge/nimcp_rollback.s"
+	@echo "... __/edge/nimcp_ros2_bridge.o"
+	@echo "... __/edge/nimcp_ros2_bridge.i"
+	@echo "... __/edge/nimcp_ros2_bridge.s"
+	@echo "... __/edge/nimcp_safety_watchdog.o"
+	@echo "... __/edge/nimcp_safety_watchdog.i"
+	@echo "... __/edge/nimcp_safety_watchdog.s"
+	@echo "... __/edge/nimcp_sensor.o"
+	@echo "... __/edge/nimcp_sensor.i"
+	@echo "... __/edge/nimcp_sensor.s"
+	@echo "... __/edge/nimcp_sim_bridge.o"
+	@echo "... __/edge/nimcp_sim_bridge.i"
+	@echo "... __/edge/nimcp_sim_bridge.s"
+	@echo "... __/edge/nimcp_swarm_byzantine.o"
+	@echo "... __/edge/nimcp_swarm_byzantine.i"
+	@echo "... __/edge/nimcp_swarm_byzantine.s"
 	@echo "... __/edge/nimcp_swarm_comm.o"
 	@echo "... __/edge/nimcp_swarm_comm.i"
 	@echo "... __/edge/nimcp_swarm_comm.s"
+	@echo "... __/edge/nimcp_swarm_discovery.o"
+	@echo "... __/edge/nimcp_swarm_discovery.i"
+	@echo "... __/edge/nimcp_swarm_discovery.s"
+	@echo "... __/edge/nimcp_swarm_edge_runtime.o"
+	@echo "... __/edge/nimcp_swarm_edge_runtime.i"
+	@echo "... __/edge/nimcp_swarm_edge_runtime.s"
+	@echo "... __/edge/nimcp_swarm_lifecycle.o"
+	@echo "... __/edge/nimcp_swarm_lifecycle.i"
+	@echo "... __/edge/nimcp_swarm_lifecycle.s"
+	@echo "... __/edge/nimcp_swarm_master_runtime.o"
+	@echo "... __/edge/nimcp_swarm_master_runtime.i"
+	@echo "... __/edge/nimcp_swarm_master_runtime.s"
+	@echo "... __/edge/nimcp_swarm_sync.o"
+	@echo "... __/edge/nimcp_swarm_sync.i"
+	@echo "... __/edge/nimcp_swarm_sync.s"
 	@echo "... __/edge/nimcp_telemetry.o"
 	@echo "... __/edge/nimcp_telemetry.i"
 	@echo "... __/edge/nimcp_telemetry.s"

@@ -2936,6 +2936,11 @@ static napi_value BrainFocusAttention(napi_env env, napi_callback_info info) {
  * ========================================================================= */
 
 #include "edge/nimcp_edge.h"
+#include "edge/nimcp_swarm_runtime.h"
+#include "edge/nimcp_sensor.h"
+#include "edge/nimcp_safety_watchdog.h"
+#include "edge/nimcp_ros2_bridge.h"
+#include "edge/nimcp_mavlink_bridge.h"
 #include "memory/nimcp_memory_store.h"
 #include "cognitive/nimcp_ood_detector.h"
 #include "utils/time/nimcp_time.h"
@@ -3415,7 +3420,447 @@ static napi_value AuditSearch(napi_env env, napi_callback_info info) {
 }
 
 /* =========================================================================
- * 23. Module Init - Export all functions + constants
+ * 24. Swarm / Sensor / Watchdog / ROS2 / MAVLink API
+ * ========================================================================= */
+
+static nimcp_swarm_master_t*       g_napi_swarm_master   = NULL;
+static nimcp_swarm_edge_runtime_t* g_napi_swarm_edge     = NULL;
+static nimcp_sensor_hub_t*         g_napi_sensor_hub     = NULL;
+static nimcp_safety_watchdog_t*    g_napi_safety_watchdog = NULL;
+static nimcp_ros2_bridge_t*        g_napi_ros2_bridge    = NULL;
+static nimcp_mavlink_bridge_t*     g_napi_mavlink_bridge = NULL;
+
+// --- Swarm Master ---
+static napi_value SwarmMasterCreate(napi_env env, napi_callback_info info) {
+    size_t argc = 6; napi_value args[6], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "swarmMasterCreate: brain required"); return NULL; }
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+    if (g_napi_swarm_master) { napi_throw_error(env, NULL, "Swarm master already exists"); return NULL; }
+    nimcp_master_config_t cfg = nimcp_swarm_master_config_default();
+    if (argc > 1) napi_get_value_uint32(env, args[1], &cfg.device_id);
+    if (argc > 2) { uint32_t p; napi_get_value_uint32(env, args[2], &p); cfg.listen_port = (uint16_t)p; }
+    if (argc > 3) napi_get_value_uint32(env, args[3], &cfg.sync_interval_ms);
+    if (argc > 4) napi_get_value_uint32(env, args[4], &cfg.heartbeat_timeout_ms);
+    if (argc > 5) napi_get_value_uint32(env, args[5], &cfg.min_devices_for_sync);
+    g_napi_swarm_master = nimcp_swarm_master_create(brain, &cfg);
+    napi_value result; napi_get_boolean(env, g_napi_swarm_master != NULL, &result); return result;
+}
+static napi_value SwarmMasterDestroy(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (g_napi_swarm_master) { nimcp_swarm_master_destroy(g_napi_swarm_master); g_napi_swarm_master = NULL; }
+    napi_value undef; napi_get_undefined(env, &undef); return undef;
+}
+static napi_value SwarmMasterStart(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (!g_napi_swarm_master) { napi_throw_error(env, NULL, "Swarm master not created"); return NULL; }
+    int ret = nimcp_swarm_master_start(g_napi_swarm_master);
+    napi_value v; napi_create_int32(env, ret, &v); return v;
+}
+static napi_value SwarmMasterStop(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (!g_napi_swarm_master) { napi_throw_error(env, NULL, "Swarm master not created"); return NULL; }
+    int ret = nimcp_swarm_master_stop(g_napi_swarm_master);
+    napi_value v; napi_create_int32(env, ret, &v); return v;
+}
+static napi_value SwarmMasterKick(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_swarm_master) { napi_throw_error(env, NULL, "Swarm master not created"); return NULL; }
+    uint32_t device_id = 0; napi_get_value_uint32(env, args[0], &device_id);
+    int ret = nimcp_swarm_master_kick(g_napi_swarm_master, device_id);
+    napi_value v; napi_create_int32(env, ret, &v); return v;
+}
+static napi_value SwarmMasterForceSync(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (!g_napi_swarm_master) { napi_throw_error(env, NULL, "Swarm master not created"); return NULL; }
+    int ret = nimcp_swarm_master_force_sync(g_napi_swarm_master);
+    napi_value v; napi_create_int32(env, ret, &v); return v;
+}
+static napi_value SwarmMasterGetPeerCount(napi_env env, napi_callback_info info) {
+    (void)info;
+    uint32_t count = g_napi_swarm_master ? nimcp_swarm_master_get_peer_count(g_napi_swarm_master) : 0;
+    napi_value v; napi_create_uint32(env, count, &v); return v;
+}
+static napi_value SwarmMasterGetPeerInfo(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_swarm_master) { napi_throw_error(env, NULL, "Swarm master not created"); return NULL; }
+    uint32_t device_id = 0; napi_get_value_uint32(env, args[0], &device_id);
+    nimcp_peer_entry_t entry = {0};
+    if (nimcp_swarm_master_get_peer_info(g_napi_swarm_master, device_id, &entry) != 0) {
+        napi_value undef; napi_get_undefined(env, &undef); return undef;
+    }
+    napi_value obj, v;
+    napi_create_object(env, &obj);
+    napi_create_uint32(env, entry.device_id, &v); napi_set_named_property(env, obj, "deviceId", v);
+    napi_create_int32(env, entry.state, &v); napi_set_named_property(env, obj, "state", v);
+    napi_create_string_utf8(env, entry.address, NAPI_AUTO_LENGTH, &v); napi_set_named_property(env, obj, "address", v);
+    napi_create_uint32(env, entry.port, &v); napi_set_named_property(env, obj, "port", v);
+    napi_create_uint32(env, entry.missed_heartbeats, &v); napi_set_named_property(env, obj, "missedHeartbeats", v);
+    napi_create_uint32(env, entry.anomaly_count, &v); napi_set_named_property(env, obj, "anomalyCount", v);
+    napi_get_boolean(env, entry.quarantined, &v); napi_set_named_property(env, obj, "quarantined", v);
+    napi_create_double(env, entry.gradient_norm_ema, &v); napi_set_named_property(env, obj, "gradientNormEma", v);
+    return obj;
+}
+
+// --- Swarm Edge ---
+static napi_value SwarmEdgeCreate(napi_env env, napi_callback_info info) {
+    size_t argc = 5; napi_value args[5], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "swarmEdgeCreate: brain required"); return NULL; }
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+    if (g_napi_swarm_edge) { napi_throw_error(env, NULL, "Swarm edge already exists"); return NULL; }
+    nimcp_edge_runtime_config_t cfg = nimcp_swarm_edge_config_default();
+    if (argc > 1) napi_get_value_uint32(env, args[1], &cfg.device_id);
+    if (argc > 2) napi_get_value_uint32(env, args[2], &cfg.heartbeat_interval_ms);
+    if (argc > 3) napi_get_value_uint32(env, args[3], &cfg.reconnect_delay_ms);
+    if (argc > 4) { bool ll; napi_get_value_bool(env, args[4], &ll); cfg.enable_local_learning = ll; }
+    g_napi_swarm_edge = nimcp_swarm_edge_create(brain, &cfg);
+    napi_value result; napi_get_boolean(env, g_napi_swarm_edge != NULL, &result); return result;
+}
+static napi_value SwarmEdgeDestroy(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (g_napi_swarm_edge) { nimcp_swarm_edge_destroy(g_napi_swarm_edge); g_napi_swarm_edge = NULL; }
+    napi_value undef; napi_get_undefined(env, &undef); return undef;
+}
+static napi_value SwarmEdgeStart(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (!g_napi_swarm_edge) { napi_throw_error(env, NULL, "Swarm edge not created"); return NULL; }
+    napi_value v; napi_create_int32(env, nimcp_swarm_edge_start(g_napi_swarm_edge), &v); return v;
+}
+static napi_value SwarmEdgeStop(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (!g_napi_swarm_edge) { napi_throw_error(env, NULL, "Swarm edge not created"); return NULL; }
+    napi_value v; napi_create_int32(env, nimcp_swarm_edge_stop(g_napi_swarm_edge), &v); return v;
+}
+static napi_value SwarmEdgeIsConnected(napi_env env, napi_callback_info info) {
+    (void)info;
+    bool connected = g_napi_swarm_edge ? nimcp_swarm_edge_is_connected(g_napi_swarm_edge) : false;
+    napi_value v; napi_get_boolean(env, connected, &v); return v;
+}
+static napi_value SwarmEdgeSubmitGradients(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_swarm_edge) { napi_throw_error(env, NULL, "Swarm edge not created"); return NULL; }
+    uint32_t count; float *grads = get_float_array(env, args[0], &count);
+    if (!grads) return NULL;
+    int ret = nimcp_swarm_edge_submit_gradients(g_napi_swarm_edge, grads, count);
+    free(grads);
+    napi_value v; napi_create_int32(env, ret, &v); return v;
+}
+
+// --- Sensor Hub ---
+static napi_value SensorHubCreate(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (g_napi_sensor_hub) { napi_throw_error(env, NULL, "Sensor hub already exists"); return NULL; }
+    uint32_t max_sensors = 32;
+    if (argc > 0) napi_get_value_uint32(env, args[0], &max_sensors);
+    g_napi_sensor_hub = nimcp_sensor_hub_create(max_sensors);
+    napi_value v; napi_get_boolean(env, g_napi_sensor_hub != NULL, &v); return v;
+}
+static napi_value SensorHubDestroy(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (g_napi_sensor_hub) { nimcp_sensor_hub_destroy(g_napi_sensor_hub); g_napi_sensor_hub = NULL; }
+    napi_value undef; napi_get_undefined(env, &undef); return undef;
+}
+static napi_value SensorRegister(napi_env env, napi_callback_info info) {
+    size_t argc = 6; napi_value args[6], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_sensor_hub || argc < 1) { napi_throw_error(env, NULL, "sensorRegister: sensor_id required"); return NULL; }
+    nimcp_sensor_descriptor_t desc = {0};
+    napi_get_value_uint32(env, args[0], &desc.sensor_id);
+    if (argc > 1) { uint32_t t; napi_get_value_uint32(env, args[1], &t); desc.type = (nimcp_sensor_type_t)t; }
+    if (argc > 2) { uint32_t f; napi_get_value_uint32(env, args[2], &f); desc.format = (nimcp_sensor_format_t)f; }
+    if (argc > 3) { char *n = get_string(env, args[3]); if (n) { strncpy(desc.name, n, sizeof(desc.name)-1); free(n); } }
+    if (argc > 4) { double sr; napi_get_value_double(env, args[4], &sr); desc.sample_rate_hz = (float)sr; }
+    if (argc > 5) napi_get_value_uint32(env, args[5], &desc.max_data_count);
+    napi_value v; napi_create_int32(env, nimcp_sensor_register(g_napi_sensor_hub, &desc), &v); return v;
+}
+static napi_value SensorSubmitReading(napi_env env, napi_callback_info info) {
+    size_t argc = 3; napi_value args[3], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_sensor_hub || argc < 2) { napi_throw_error(env, NULL, "sensorSubmitReading: sensor_id, data required"); return NULL; }
+    uint32_t sensor_id; napi_get_value_uint32(env, args[0], &sensor_id);
+    uint32_t count; float *data = get_float_array(env, args[1], &count);
+    if (!data) return NULL;
+    float confidence = 1.0f;
+    if (argc > 2) { double c; napi_get_value_double(env, args[2], &c); confidence = (float)c; }
+    nimcp_sensor_reading_t reading = {0};
+    reading.sensor_id = sensor_id; reading.data = data; reading.data_count = count;
+    reading.confidence = confidence; reading.valid = true;
+    int ret = nimcp_sensor_submit_reading(g_napi_sensor_hub, &reading);
+    free(data);
+    napi_value v; napi_create_int32(env, ret, &v); return v;
+}
+static napi_value SensorGetLatest(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_sensor_hub) { napi_value undef; napi_get_undefined(env, &undef); return undef; }
+    uint32_t sensor_id; napi_get_value_uint32(env, args[0], &sensor_id);
+    nimcp_sensor_reading_t reading = {0};
+    if (nimcp_sensor_get_latest(g_napi_sensor_hub, sensor_id, &reading) != 0) {
+        napi_value undef; napi_get_undefined(env, &undef); return undef;
+    }
+    napi_value obj, v;
+    napi_create_object(env, &obj);
+    napi_create_uint32(env, reading.sensor_id, &v); napi_set_named_property(env, obj, "sensorId", v);
+    napi_create_int32(env, (int)reading.type, &v); napi_set_named_property(env, obj, "type", v);
+    napi_create_double(env, reading.confidence, &v); napi_set_named_property(env, obj, "confidence", v);
+    napi_get_boolean(env, reading.valid, &v); napi_set_named_property(env, obj, "valid", v);
+    if (reading.data && reading.data_count > 0) {
+        napi_value arr = create_float_array(env, reading.data, reading.data_count);
+        napi_set_named_property(env, obj, "data", arr);
+    }
+    return obj;
+}
+static napi_value SensorGetAllLatest(napi_env env, napi_callback_info info) {
+    (void)info;
+    napi_value arr; napi_create_array(env, &arr);
+    if (!g_napi_sensor_hub) return arr;
+    uint32_t count = nimcp_sensor_get_count(g_napi_sensor_hub);
+    if (count == 0) return arr;
+    nimcp_sensor_reading_t *readings = (nimcp_sensor_reading_t*)calloc(count, sizeof(nimcp_sensor_reading_t));
+    if (!readings) return arr;
+    int got = nimcp_sensor_get_all_latest(g_napi_sensor_hub, readings, count);
+    for (int i = 0; i < got; i++) {
+        napi_value obj, v;
+        napi_create_object(env, &obj);
+        napi_create_uint32(env, readings[i].sensor_id, &v); napi_set_named_property(env, obj, "sensorId", v);
+        napi_create_int32(env, (int)readings[i].type, &v); napi_set_named_property(env, obj, "type", v);
+        napi_create_double(env, readings[i].confidence, &v); napi_set_named_property(env, obj, "confidence", v);
+        napi_get_boolean(env, readings[i].valid, &v); napi_set_named_property(env, obj, "valid", v);
+        napi_set_element(env, arr, (uint32_t)i, obj);
+    }
+    free(readings);
+    return arr;
+}
+static napi_value SensorComposeFeatures(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_sensor_hub) { napi_value arr; napi_create_array(env, &arr); return arr; }
+    uint32_t max_features = 1024;
+    if (argc > 0) napi_get_value_uint32(env, args[0], &max_features);
+    float *features = (float*)calloc(max_features, sizeof(float));
+    if (!features) { napi_value arr; napi_create_array(env, &arr); return arr; }
+    int count = nimcp_sensor_compose_feature_vector(g_napi_sensor_hub, features, max_features);
+    if (count < 0) count = 0;
+    napi_value arr = create_float_array(env, features, (uint32_t)count);
+    free(features);
+    return arr;
+}
+static napi_value SensorGetCount(napi_env env, napi_callback_info info) {
+    (void)info;
+    uint32_t count = g_napi_sensor_hub ? nimcp_sensor_get_count(g_napi_sensor_hub) : 0;
+    napi_value v; napi_create_uint32(env, count, &v); return v;
+}
+
+// --- Safety Watchdog ---
+static napi_value WatchdogCreate(napi_env env, napi_callback_info info) {
+    size_t argc = 4; napi_value args[4], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (g_napi_safety_watchdog) { napi_throw_error(env, NULL, "Watchdog already exists"); return NULL; }
+    nimcp_watchdog_config_t cfg = nimcp_watchdog_config_default();
+    if (argc > 0) napi_get_value_uint32(env, args[0], &cfg.timeout_ms);
+    if (argc > 1) { int32_t a; napi_get_value_int32(env, args[1], &a); cfg.action = (nimcp_safe_action_t)a; }
+    if (argc > 2) { double m; napi_get_value_double(env, args[2], &m); cfg.validation.max_output_magnitude = (float)m; }
+    if (argc > 3) napi_get_value_uint32(env, args[3], &cfg.max_outputs);
+    g_napi_safety_watchdog = nimcp_watchdog_create(&cfg);
+    napi_value v; napi_get_boolean(env, g_napi_safety_watchdog != NULL, &v); return v;
+}
+static napi_value WatchdogDestroy(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (g_napi_safety_watchdog) { nimcp_watchdog_destroy(g_napi_safety_watchdog); g_napi_safety_watchdog = NULL; }
+    napi_value undef; napi_get_undefined(env, &undef); return undef;
+}
+static napi_value WatchdogArm(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_safety_watchdog) { napi_throw_error(env, NULL, "Watchdog not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_watchdog_arm(g_napi_safety_watchdog), &v); return v; }
+static napi_value WatchdogDisarm(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_safety_watchdog) { napi_throw_error(env, NULL, "Watchdog not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_watchdog_disarm(g_napi_safety_watchdog), &v); return v; }
+static napi_value WatchdogHeartbeat(napi_env env, napi_callback_info info) { (void)info; if (g_napi_safety_watchdog) nimcp_watchdog_heartbeat(g_napi_safety_watchdog); napi_value undef; napi_get_undefined(env, &undef); return undef; }
+static napi_value WatchdogValidateOutput(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_safety_watchdog) { napi_throw_error(env, NULL, "Watchdog not created"); return NULL; }
+    uint32_t count; float *output = get_float_array(env, args[0], &count);
+    if (!output) return NULL;
+    int ret = nimcp_watchdog_validate_output(g_napi_safety_watchdog, output, count);
+    free(output);
+    napi_value v; napi_get_boolean(env, ret == 0, &v); return v;
+}
+static napi_value WatchdogGetSafeOutput(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_safety_watchdog) { napi_value arr; napi_create_array(env, &arr); return arr; }
+    uint32_t n = 32; if (argc > 0) napi_get_value_uint32(env, args[0], &n);
+    float *out = (float*)calloc(n, sizeof(float));
+    if (!out) { napi_value arr; napi_create_array(env, &arr); return arr; }
+    nimcp_watchdog_get_safe_output(g_napi_safety_watchdog, out, n);
+    napi_value arr = create_float_array(env, out, n);
+    free(out); return arr;
+}
+static napi_value WatchdogEstop(napi_env env, napi_callback_info info) { (void)info; if (g_napi_safety_watchdog) nimcp_watchdog_estop(g_napi_safety_watchdog); napi_value v; napi_get_boolean(env, true, &v); return v; }
+static napi_value WatchdogReset(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_safety_watchdog) { napi_throw_error(env, NULL, "Watchdog not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_watchdog_reset(g_napi_safety_watchdog), &v); return v; }
+static napi_value WatchdogGetState(napi_env env, napi_callback_info info) {
+    (void)info;
+    const char *name = "NONE";
+    if (g_napi_safety_watchdog) name = nimcp_watchdog_state_name(nimcp_watchdog_get_state(g_napi_safety_watchdog));
+    napi_value v; napi_create_string_utf8(env, name, NAPI_AUTO_LENGTH, &v); return v;
+}
+
+// --- ROS 2 Bridge ---
+static napi_value Ros2BridgeCreate(napi_env env, napi_callback_info info) {
+    size_t argc = 7; napi_value args[7], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "ros2BridgeCreate: brain required"); return NULL; }
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+    if (g_napi_ros2_bridge) { napi_throw_error(env, NULL, "ROS2 bridge already exists"); return NULL; }
+    nimcp_ros2_config_t cfg = nimcp_ros2_config_default();
+    if (argc > 1) { char *n = get_string(env, args[1]); if (n) { cfg.node_name = n; } }
+    if (argc > 2) { double r; napi_get_value_double(env, args[2], &r); cfg.cmd_rate_hz = (float)r; }
+    if (argc > 3) { double r; napi_get_value_double(env, args[3], &r); cfg.inference_rate_hz = (float)r; }
+    if (argc > 4) napi_get_value_uint32(env, args[4], &cfg.brain_input_dim);
+    if (argc > 5) napi_get_value_bool(env, args[5], &cfg.subscribe_imu);
+    if (argc > 6) napi_get_value_bool(env, args[6], &cfg.subscribe_odom);
+    g_napi_ros2_bridge = nimcp_ros2_bridge_create(brain, &cfg);
+    napi_value v; napi_get_boolean(env, g_napi_ros2_bridge != NULL, &v); return v;
+}
+static napi_value Ros2BridgeDestroy(napi_env env, napi_callback_info info) { (void)info; if (g_napi_ros2_bridge) { nimcp_ros2_bridge_destroy(g_napi_ros2_bridge); g_napi_ros2_bridge = NULL; } napi_value undef; napi_get_undefined(env, &undef); return undef; }
+static napi_value Ros2BridgeStart(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_ros2_bridge) { napi_throw_error(env, NULL, "ROS2 bridge not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_ros2_bridge_start(g_napi_ros2_bridge), &v); return v; }
+static napi_value Ros2BridgeStop(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_ros2_bridge) { napi_throw_error(env, NULL, "ROS2 bridge not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_ros2_bridge_stop(g_napi_ros2_bridge), &v); return v; }
+static napi_value Ros2BridgeInjectSensor(napi_env env, napi_callback_info info) {
+    size_t argc = 2; napi_value args[2], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_ros2_bridge || argc < 2) { napi_throw_error(env, NULL, "ros2BridgeInjectSensor: topic, data required"); return NULL; }
+    char *topic = get_string(env, args[0]); if (!topic) return NULL;
+    uint32_t count; float *data = get_float_array(env, args[1], &count);
+    if (!data) { free(topic); return NULL; }
+    int ret = nimcp_ros2_bridge_inject_sensor(g_napi_ros2_bridge, topic, data, count);
+    free(topic); free(data);
+    napi_value v; napi_create_int32(env, ret, &v); return v;
+}
+static napi_value Ros2BridgeGetLastCmd(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_ros2_bridge) { napi_value arr; napi_create_array(env, &arr); return arr; }
+    uint32_t max_count = 32; if (argc > 0) napi_get_value_uint32(env, args[0], &max_count);
+    float *data = (float*)calloc(max_count, sizeof(float));
+    if (!data) { napi_value arr; napi_create_array(env, &arr); return arr; }
+    int got = nimcp_ros2_bridge_get_last_cmd(g_napi_ros2_bridge, data, max_count);
+    if (got < 0) got = 0;
+    napi_value arr = create_float_array(env, data, (uint32_t)got);
+    free(data); return arr;
+}
+
+// --- MAVLink Bridge ---
+static napi_value MavlinkCreate(napi_env env, napi_callback_info info) {
+    size_t argc = 5; napi_value args[5], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (g_napi_mavlink_bridge) { napi_throw_error(env, NULL, "MAVLink bridge already exists"); return NULL; }
+    nimcp_mavlink_config_t cfg = nimcp_mavlink_config_default();
+    if (argc > 0) { char *cs = get_string(env, args[0]); if (cs) { strncpy(cfg.connection_string, cs, sizeof(cfg.connection_string)-1); free(cs); } }
+    if (argc > 1) { int32_t ct; napi_get_value_int32(env, args[1], &ct); cfg.conn_type = (nimcp_mavlink_conn_type_t)ct; }
+    if (argc > 2) napi_get_value_uint32(env, args[2], &cfg.baud_rate);
+    if (argc > 3) { uint32_t sid; napi_get_value_uint32(env, args[3], &sid); cfg.system_id = (uint8_t)sid; }
+    if (argc > 4) { double g; napi_get_value_double(env, args[4], &g); cfg.geofence_radius_m = (float)g; }
+    g_napi_mavlink_bridge = nimcp_mavlink_bridge_create(&cfg);
+    napi_value v; napi_get_boolean(env, g_napi_mavlink_bridge != NULL, &v); return v;
+}
+static napi_value MavlinkDestroy(napi_env env, napi_callback_info info) { (void)info; if (g_napi_mavlink_bridge) { nimcp_mavlink_bridge_destroy(g_napi_mavlink_bridge); g_napi_mavlink_bridge = NULL; } napi_value undef; napi_get_undefined(env, &undef); return undef; }
+static napi_value MavlinkConnect(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_mavlink_bridge) { napi_throw_error(env, NULL, "MAVLink not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_mavlink_bridge_connect(g_napi_mavlink_bridge), &v); return v; }
+static napi_value MavlinkDisconnect(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_mavlink_bridge) { napi_throw_error(env, NULL, "MAVLink not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_mavlink_bridge_disconnect(g_napi_mavlink_bridge), &v); return v; }
+static napi_value MavlinkStart(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_mavlink_bridge) { napi_throw_error(env, NULL, "MAVLink not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_mavlink_bridge_start(g_napi_mavlink_bridge), &v); return v; }
+static napi_value MavlinkStop(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_mavlink_bridge) { napi_throw_error(env, NULL, "MAVLink not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_mavlink_bridge_stop(g_napi_mavlink_bridge), &v); return v; }
+static napi_value MavlinkGetAttitude(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (!g_napi_mavlink_bridge) { napi_value undef; napi_get_undefined(env, &undef); return undef; }
+    nimcp_mavlink_attitude_t att = {0};
+    if (nimcp_mavlink_get_attitude(g_napi_mavlink_bridge, &att) != 0) { napi_value undef; napi_get_undefined(env, &undef); return undef; }
+    napi_value obj, v; napi_create_object(env, &obj);
+    napi_create_double(env, att.roll, &v); napi_set_named_property(env, obj, "roll", v);
+    napi_create_double(env, att.pitch, &v); napi_set_named_property(env, obj, "pitch", v);
+    napi_create_double(env, att.yaw, &v); napi_set_named_property(env, obj, "yaw", v);
+    napi_create_double(env, att.rollspeed, &v); napi_set_named_property(env, obj, "rollspeed", v);
+    napi_create_double(env, att.pitchspeed, &v); napi_set_named_property(env, obj, "pitchspeed", v);
+    napi_create_double(env, att.yawspeed, &v); napi_set_named_property(env, obj, "yawspeed", v);
+    return obj;
+}
+static napi_value MavlinkGetPosition(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (!g_napi_mavlink_bridge) { napi_value undef; napi_get_undefined(env, &undef); return undef; }
+    nimcp_mavlink_position_t pos = {0};
+    if (nimcp_mavlink_get_position(g_napi_mavlink_bridge, &pos) != 0) { napi_value undef; napi_get_undefined(env, &undef); return undef; }
+    napi_value obj, v; napi_create_object(env, &obj);
+    napi_create_double(env, pos.latitude, &v); napi_set_named_property(env, obj, "latitude", v);
+    napi_create_double(env, pos.longitude, &v); napi_set_named_property(env, obj, "longitude", v);
+    napi_create_double(env, pos.altitude_msl, &v); napi_set_named_property(env, obj, "altitudeMsl", v);
+    napi_create_double(env, pos.altitude_rel, &v); napi_set_named_property(env, obj, "altitudeRel", v);
+    napi_create_double(env, pos.vx, &v); napi_set_named_property(env, obj, "vx", v);
+    napi_create_double(env, pos.vy, &v); napi_set_named_property(env, obj, "vy", v);
+    napi_create_double(env, pos.vz, &v); napi_set_named_property(env, obj, "vz", v);
+    napi_create_double(env, pos.heading, &v); napi_set_named_property(env, obj, "heading", v);
+    napi_create_int32(env, pos.fix_type, &v); napi_set_named_property(env, obj, "fixType", v);
+    napi_create_int32(env, pos.satellites, &v); napi_set_named_property(env, obj, "satellites", v);
+    return obj;
+}
+static napi_value MavlinkGetBattery(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (!g_napi_mavlink_bridge) { napi_value undef; napi_get_undefined(env, &undef); return undef; }
+    nimcp_mavlink_battery_t bat = {0};
+    if (nimcp_mavlink_get_battery(g_napi_mavlink_bridge, &bat) != 0) { napi_value undef; napi_get_undefined(env, &undef); return undef; }
+    napi_value obj, v; napi_create_object(env, &obj);
+    napi_create_double(env, bat.voltage, &v); napi_set_named_property(env, obj, "voltage", v);
+    napi_create_double(env, bat.current, &v); napi_set_named_property(env, obj, "current", v);
+    napi_create_double(env, bat.remaining_pct, &v); napi_set_named_property(env, obj, "remainingPct", v);
+    napi_create_int32(env, bat.consumed_mah, &v); napi_set_named_property(env, obj, "consumedMah", v);
+    return obj;
+}
+static napi_value MavlinkSetVelocity(napi_env env, napi_callback_info info) {
+    size_t argc = 4; napi_value args[4], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_mavlink_bridge || argc < 4) { napi_throw_error(env, NULL, "mavlinkSetVelocity: 4 args"); return NULL; }
+    double vx, vy, vz, yr;
+    napi_get_value_double(env, args[0], &vx); napi_get_value_double(env, args[1], &vy);
+    napi_get_value_double(env, args[2], &vz); napi_get_value_double(env, args[3], &yr);
+    napi_value v; napi_create_int32(env, nimcp_mavlink_set_velocity(g_napi_mavlink_bridge, (float)vx, (float)vy, (float)vz, (float)yr), &v); return v;
+}
+static napi_value MavlinkArm(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    bool arm = true; if (argc > 0) napi_get_value_bool(env, args[0], &arm);
+    if (!g_napi_mavlink_bridge) { napi_throw_error(env, NULL, "MAVLink not created"); return NULL; }
+    napi_value v; napi_create_int32(env, nimcp_mavlink_arm(g_napi_mavlink_bridge, arm), &v); return v;
+}
+static napi_value MavlinkTakeoff(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    double alt = 5.0; if (argc > 0) napi_get_value_double(env, args[0], &alt);
+    if (!g_napi_mavlink_bridge) { napi_throw_error(env, NULL, "MAVLink not created"); return NULL; }
+    napi_value v; napi_create_int32(env, nimcp_mavlink_takeoff(g_napi_mavlink_bridge, (float)alt), &v); return v;
+}
+static napi_value MavlinkLand(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_mavlink_bridge) { napi_throw_error(env, NULL, "MAVLink not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_mavlink_land(g_napi_mavlink_bridge), &v); return v; }
+static napi_value MavlinkGoto(napi_env env, napi_callback_info info) {
+    size_t argc = 3; napi_value args[3], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (!g_napi_mavlink_bridge || argc < 2) { napi_throw_error(env, NULL, "mavlinkGoto: lat, lon required"); return NULL; }
+    double lat, lon; napi_get_value_double(env, args[0], &lat); napi_get_value_double(env, args[1], &lon);
+    double alt = 10.0; if (argc > 2) napi_get_value_double(env, args[2], &alt);
+    napi_value v; napi_create_int32(env, nimcp_mavlink_goto(g_napi_mavlink_bridge, lat, lon, (float)alt), &v); return v;
+}
+static napi_value MavlinkRtl(napi_env env, napi_callback_info info) { (void)info; if (!g_napi_mavlink_bridge) { napi_throw_error(env, NULL, "MAVLink not created"); return NULL; } napi_value v; napi_create_int32(env, nimcp_mavlink_rtl(g_napi_mavlink_bridge), &v); return v; }
+static napi_value MavlinkComposeFeatures(napi_env env, napi_callback_info info) {
+    (void)info;
+    if (!g_napi_mavlink_bridge) { napi_value arr; napi_create_array(env, &arr); return arr; }
+    float features[NIMCP_MAVLINK_FEATURE_COUNT] = {0};
+    int count = nimcp_mavlink_compose_features(g_napi_mavlink_bridge, features, NIMCP_MAVLINK_FEATURE_COUNT);
+    if (count < 0) count = 0;
+    return create_float_array(env, features, (uint32_t)count);
+}
+
+/* =========================================================================
+ * 25. Module Init - Export all functions + constants
  * ========================================================================= */
 
 #define EXPORT_FN(env, exports, name, fn)                             \
@@ -3566,6 +4011,72 @@ static napi_value Init(napi_env env, napi_value exports) {
     EXPORT_FN(env, exports, "edgeOptimizeForDevice", EdgeOptimizeForDevice);
     EXPORT_FN(env, exports, "edgeQuantize", EdgeQuantize);
     EXPORT_FN(env, exports, "edgeScoreImportance", EdgeScoreImportance);
+
+    /* --- Swarm Master API --- */
+    EXPORT_FN(env, exports, "swarmMasterCreate", SwarmMasterCreate);
+    EXPORT_FN(env, exports, "swarmMasterDestroy", SwarmMasterDestroy);
+    EXPORT_FN(env, exports, "swarmMasterStart", SwarmMasterStart);
+    EXPORT_FN(env, exports, "swarmMasterStop", SwarmMasterStop);
+    EXPORT_FN(env, exports, "swarmMasterKick", SwarmMasterKick);
+    EXPORT_FN(env, exports, "swarmMasterForceSync", SwarmMasterForceSync);
+    EXPORT_FN(env, exports, "swarmMasterGetPeerCount", SwarmMasterGetPeerCount);
+    EXPORT_FN(env, exports, "swarmMasterGetPeerInfo", SwarmMasterGetPeerInfo);
+
+    /* --- Swarm Edge API --- */
+    EXPORT_FN(env, exports, "swarmEdgeCreate", SwarmEdgeCreate);
+    EXPORT_FN(env, exports, "swarmEdgeDestroy", SwarmEdgeDestroy);
+    EXPORT_FN(env, exports, "swarmEdgeStart", SwarmEdgeStart);
+    EXPORT_FN(env, exports, "swarmEdgeStop", SwarmEdgeStop);
+    EXPORT_FN(env, exports, "swarmEdgeIsConnected", SwarmEdgeIsConnected);
+    EXPORT_FN(env, exports, "swarmEdgeSubmitGradients", SwarmEdgeSubmitGradients);
+
+    /* --- Sensor Hub API --- */
+    EXPORT_FN(env, exports, "sensorHubCreate", SensorHubCreate);
+    EXPORT_FN(env, exports, "sensorHubDestroy", SensorHubDestroy);
+    EXPORT_FN(env, exports, "sensorRegister", SensorRegister);
+    EXPORT_FN(env, exports, "sensorSubmitReading", SensorSubmitReading);
+    EXPORT_FN(env, exports, "sensorGetLatest", SensorGetLatest);
+    EXPORT_FN(env, exports, "sensorGetAllLatest", SensorGetAllLatest);
+    EXPORT_FN(env, exports, "sensorComposeFeatures", SensorComposeFeatures);
+    EXPORT_FN(env, exports, "sensorGetCount", SensorGetCount);
+
+    /* --- Safety Watchdog API --- */
+    EXPORT_FN(env, exports, "watchdogCreate", WatchdogCreate);
+    EXPORT_FN(env, exports, "watchdogDestroy", WatchdogDestroy);
+    EXPORT_FN(env, exports, "watchdogArm", WatchdogArm);
+    EXPORT_FN(env, exports, "watchdogDisarm", WatchdogDisarm);
+    EXPORT_FN(env, exports, "watchdogHeartbeat", WatchdogHeartbeat);
+    EXPORT_FN(env, exports, "watchdogValidateOutput", WatchdogValidateOutput);
+    EXPORT_FN(env, exports, "watchdogGetSafeOutput", WatchdogGetSafeOutput);
+    EXPORT_FN(env, exports, "watchdogEstop", WatchdogEstop);
+    EXPORT_FN(env, exports, "watchdogReset", WatchdogReset);
+    EXPORT_FN(env, exports, "watchdogGetState", WatchdogGetState);
+
+    /* --- ROS 2 Bridge API --- */
+    EXPORT_FN(env, exports, "ros2BridgeCreate", Ros2BridgeCreate);
+    EXPORT_FN(env, exports, "ros2BridgeDestroy", Ros2BridgeDestroy);
+    EXPORT_FN(env, exports, "ros2BridgeStart", Ros2BridgeStart);
+    EXPORT_FN(env, exports, "ros2BridgeStop", Ros2BridgeStop);
+    EXPORT_FN(env, exports, "ros2BridgeInjectSensor", Ros2BridgeInjectSensor);
+    EXPORT_FN(env, exports, "ros2BridgeGetLastCmd", Ros2BridgeGetLastCmd);
+
+    /* --- MAVLink Bridge API --- */
+    EXPORT_FN(env, exports, "mavlinkCreate", MavlinkCreate);
+    EXPORT_FN(env, exports, "mavlinkDestroy", MavlinkDestroy);
+    EXPORT_FN(env, exports, "mavlinkConnect", MavlinkConnect);
+    EXPORT_FN(env, exports, "mavlinkDisconnect", MavlinkDisconnect);
+    EXPORT_FN(env, exports, "mavlinkStart", MavlinkStart);
+    EXPORT_FN(env, exports, "mavlinkStop", MavlinkStop);
+    EXPORT_FN(env, exports, "mavlinkGetAttitude", MavlinkGetAttitude);
+    EXPORT_FN(env, exports, "mavlinkGetPosition", MavlinkGetPosition);
+    EXPORT_FN(env, exports, "mavlinkGetBattery", MavlinkGetBattery);
+    EXPORT_FN(env, exports, "mavlinkSetVelocity", MavlinkSetVelocity);
+    EXPORT_FN(env, exports, "mavlinkArm", MavlinkArm);
+    EXPORT_FN(env, exports, "mavlinkTakeoff", MavlinkTakeoff);
+    EXPORT_FN(env, exports, "mavlinkLand", MavlinkLand);
+    EXPORT_FN(env, exports, "mavlinkGoto", MavlinkGoto);
+    EXPORT_FN(env, exports, "mavlinkRtl", MavlinkRtl);
+    EXPORT_FN(env, exports, "mavlinkComposeFeatures", MavlinkComposeFeatures);
 
     /* --- Memory Store API --- */
     EXPORT_FN(env, exports, "memoryStoreStats", MemoryStoreStats);

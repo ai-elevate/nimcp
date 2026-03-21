@@ -165,6 +165,12 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: /hom
   /home/bbrelin/nimcp/include/dragonfly/nimcp_dragonfly_tsdn.h \
   /home/bbrelin/nimcp/include/edge/nimcp_edge.h \
   /home/bbrelin/nimcp/include/edge/nimcp_edge_types.h \
+  /home/bbrelin/nimcp/include/edge/nimcp_mavlink_bridge.h \
+  /home/bbrelin/nimcp/include/edge/nimcp_ros2_bridge.h \
+  /home/bbrelin/nimcp/include/edge/nimcp_safety_watchdog.h \
+  /home/bbrelin/nimcp/include/edge/nimcp_sensor.h \
+  /home/bbrelin/nimcp/include/edge/nimcp_swarm_runtime.h \
+  /home/bbrelin/nimcp/include/edge/nimcp_swarm_runtime_types.h \
   /home/bbrelin/nimcp/include/generation/nimcp_tokenizer.h \
   /home/bbrelin/nimcp/include/glial/astrocyte_types/nimcp_astrocyte_types.h \
   /home/bbrelin/nimcp/include/glial/astrocytes/nimcp_astrocytes.h \
@@ -1000,8 +1006,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
 
-/usr/include/x86_64-linux-gnu/bits/wordsize.h:
-
 /usr/include/x86_64-linux-gnu/bits/wchar2.h:
 
 /usr/include/x86_64-linux-gnu/bits/wchar.h:
@@ -1096,7 +1100,9 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/x86_64-linux-gnu/bits/signum-arch.h:
 
-/home/bbrelin/nimcp/include/security/nimcp_security.h:
+/usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
+
+/usr/include/x86_64-linux-gnu/bits/sigevent-consts.h:
 
 /usr/include/x86_64-linux-gnu/python3.12/pyconfig.h:
 
@@ -1222,7 +1228,19 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /home/bbrelin/nimcp/include/generation/nimcp_tokenizer.h:
 
+/home/bbrelin/nimcp/include/edge/nimcp_swarm_runtime.h:
+
 /home/bbrelin/nimcp/include/middleware/training/nimcp_training_module.h:
+
+/home/bbrelin/nimcp/include/edge/nimcp_swarm_runtime_types.h:
+
+/home/bbrelin/nimcp/include/utils/ternary/nimcp_ternary_types.h:
+
+/usr/include/python3.12/cpython/dictobject.h:
+
+/home/bbrelin/nimcp/include/core/brain/subcortical/nimcp_bg_model_based.h:
+
+/home/bbrelin/nimcp/include/edge/nimcp_ros2_bridge.h:
 
 /home/bbrelin/nimcp/include/middleware/training/nimcp_learning_signal_adapter.h:
 
@@ -1234,11 +1252,11 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /home/bbrelin/nimcp/include/dragonfly/nimcp_dragonfly_tsdn.h:
 
+/usr/include/x86_64-linux-gnu/bits/sigaction.h:
+
+/home/bbrelin/nimcp/include/dragonfly/nimcp_dragonfly_prediction.h:
+
 /home/bbrelin/nimcp/include/core/topology/nimcp_fractal_topology.h:
-
-/home/bbrelin/nimcp/include/security/nimcp_bbb_helpers.h:
-
-/usr/include/cusparse.h:
 
 /home/bbrelin/nimcp/include/gpu/nimcp_execution_mode.h:
 
@@ -1297,6 +1315,10 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/python3.12/cpython/pythread.h:
 
 /usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
+
+/usr/include/x86_64-linux-gnu/bits/sigcontext.h:
+
+/home/bbrelin/nimcp/include/cognitive/memory/nimcp_semantic_memory.h:
 
 /home/bbrelin/nimcp/include/utils/tensor/nimcp_tensor.h:
 
@@ -1450,6 +1472,10 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /home/bbrelin/nimcp/include/cognitive/nimcp_fractal_cognitive.h:
 
+/usr/include/asm-generic/int-ll64.h:
+
+/usr/include/python3.12/cpython/pyfpe.h:
+
 /usr/include/x86_64-linux-gnu/bits/posix_opt.h:
 
 /home/bbrelin/nimcp/include/cognitive/inner_dialogue/nimcp_inner_dialogue.h:
@@ -1507,8 +1533,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/python3.12/Python.h:
 
 /usr/include/python3.12/dictobject.h:
-
-/home/bbrelin/nimcp/include/security/nimcp_blood_brain_barrier.h:
 
 /home/bbrelin/nimcp/include/core/cortical_columns/nimcp_orientation_columns.h:
 
@@ -1590,6 +1614,10 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /home/bbrelin/nimcp/include/middleware/normalization/nimcp_min_max_normalizer.h:
 
+/usr/include/x86_64-linux-gnu/bits/wordsize.h:
+
+/home/bbrelin/nimcp/include/edge/nimcp_mavlink_bridge.h:
+
 /home/bbrelin/nimcp/include/cognitive/training/nimcp_training_integration.h:
 
 /home/bbrelin/nimcp/include/snn/nimcp_snn_encoding.h:
@@ -1604,6 +1632,8 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /home/bbrelin/nimcp/include/middleware/features/nimcp_feature_extractor.h:
 
+/home/bbrelin/nimcp/include/edge/nimcp_safety_watchdog.h:
+
 /usr/include/x86_64-linux-gnu/bits/confname.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
@@ -1615,8 +1645,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /home/bbrelin/nimcp/include/cognitive/parietal/nimcp_biology.h:
 
 /usr/include/cublas_api.h:
-
-/home/bbrelin/nimcp/include/core/brain/subcortical/nimcp_bg_model_based.h:
 
 /home/bbrelin/nimcp/include/information/nimcp_shannon.h:
 
@@ -1648,11 +1676,9 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /home/bbrelin/nimcp/include/cognitive/parietal/nimcp_number_sense.h:
 
+/home/bbrelin/nimcp/include/edge/nimcp_sensor.h:
+
 /home/bbrelin/nimcp/include/training/nimcp_cortex_cnn.h:
-
-/home/bbrelin/nimcp/include/cognitive/memory/nimcp_semantic_memory.h:
-
-/usr/include/x86_64-linux-gnu/bits/sigcontext.h:
 
 /usr/include/python3.12/modsupport.h:
 
@@ -1742,8 +1768,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/cuComplex.h:
 
-/home/bbrelin/nimcp/include/security/lgss/perception/nimcp_lgss_input_validator.h:
-
 /home/bbrelin/nimcp/include/core/brain/hemispheric/nimcp_corpus_callosum.h:
 
 /home/bbrelin/nimcp/include/core/cortical_columns/nimcp_cortical_sparse_coding.h:
@@ -1783,6 +1807,16 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
 
 /usr/include/features-time64.h:
+
+/home/bbrelin/nimcp/include/security/lgss/perception/nimcp_lgss_input_validator.h:
+
+/home/bbrelin/nimcp/include/security/nimcp_bbb_helpers.h:
+
+/usr/include/cusparse.h:
+
+/home/bbrelin/nimcp/include/security/nimcp_blood_brain_barrier.h:
+
+/home/bbrelin/nimcp/include/security/nimcp_security.h:
 
 /home/bbrelin/nimcp/include/cognitive/memory/nimcp_engram.h:
 
@@ -1867,12 +1901,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /home/bbrelin/nimcp/include/utils/spectral/nimcp_fft.h:
 
 /home/bbrelin/nimcp/include/utils/ternary/nimcp_ternary_tensor.h:
-
-/home/bbrelin/nimcp/include/utils/ternary/nimcp_ternary_types.h:
-
-/usr/include/python3.12/cpython/pyfpe.h:
-
-/usr/include/asm-generic/int-ll64.h:
 
 /home/bbrelin/nimcp/include/utils/time/nimcp_time.h:
 
@@ -2033,8 +2061,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/python3.12/cpython/complexobject.h:
 
 /usr/include/python3.12/cpython/context.h:
-
-/usr/include/python3.12/cpython/dictobject.h:
 
 /usr/include/python3.12/cpython/fileobject.h:
 
@@ -2263,11 +2289,3 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/x86_64-linux-gnu/bits/sched.h:
 
 /usr/include/x86_64-linux-gnu/bits/select2.h:
-
-/home/bbrelin/nimcp/include/dragonfly/nimcp_dragonfly_prediction.h:
-
-/usr/include/x86_64-linux-gnu/bits/sigaction.h:
-
-/usr/include/x86_64-linux-gnu/bits/sigevent-consts.h:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:

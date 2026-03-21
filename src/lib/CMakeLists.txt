@@ -82,6 +82,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_creative.c            # Creative/artistic system
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_parietal.c            # Parietal lobe subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_dragonfly.c           # Dragonfly target tracking subsystem
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_edge.c               # Edge/robot integration (sensor hub, safety, swarm bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_kg_reader.c           # KG reader for self-awareness
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_internal_kg.c        # Internal runtime KG with CRUD
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_mental_health_guardian.c  # Mental Health Guardian (independent monitor)
@@ -3024,8 +3025,24 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_resize.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_distillation.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_comm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_discovery.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_lifecycle.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_sync.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_byzantine.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_master_runtime.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_edge_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_telemetry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_edge_ctx.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_sensor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_safety_watchdog.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_ros2_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_mavlink_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_dji_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_msp_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_parrot_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_sim_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_motor_output.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_embodiment.c
 
     # OOD Detection (Out-of-Distribution)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_ood_detector.c

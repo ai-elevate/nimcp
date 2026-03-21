@@ -3041,4 +3041,10 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/memory")
     add_subdirectory(e2e/memory)
 endif()
 
+# Edge module tests (swarm runtime, sensor hub, watchdog, drone bridges)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/edge")
+    message(STATUS "Adding edge module unit tests...")
+    add_subdirectory(unit/edge)
+endif()
+
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)

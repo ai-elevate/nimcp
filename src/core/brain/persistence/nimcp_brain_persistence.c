@@ -838,11 +838,20 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
         fprintf(stderr, "[INFO] Loading brain metadata (legacy format, no version header)\n");
     }
 
-    if (fread(&brain->config, sizeof(brain_config_t), 1, meta_file) != 1) {
-        fprintf(stderr, "ERROR: Short read loading brain config\n");
+    /* Zero-fill config first so any new fields added since the checkpoint
+     * was saved default to 0/false. Then read as many bytes as available.
+     * This handles struct growth across versions without breaking checkpoints. */
+    memset(&brain->config, 0, sizeof(brain_config_t));
+    size_t config_bytes = fread(&brain->config, 1, sizeof(brain_config_t), meta_file);
+    if (config_bytes == 0) {
+        fprintf(stderr, "ERROR: Failed to read brain config (0 bytes)\n");
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "nimcp_brain_load_metadata: short read on brain config");
         return false;
+    }
+    if (config_bytes < sizeof(brain_config_t)) {
+        fprintf(stderr, "[INFO] Loaded %zu/%zu config bytes (older checkpoint format, "
+                "new fields defaulted to zero)\n", config_bytes, sizeof(brain_config_t));
     }
 
     // Validate brain->config fields after reading

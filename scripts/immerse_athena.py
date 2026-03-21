@@ -77,6 +77,11 @@ from claude_teacher import ClaudeTeacher, encode_text, batch_encode_texts
 from talk_to_athena import extract_embedding_from_output
 from neural_decoder import NeuralDecoder
 from multimodal_data import MultimodalDataLoader
+from cognitive_training_data import get_all_cognitive_data, get_random_cognitive_item
+try:
+    from spectral_kfold import SpectralKFoldSplitter
+except ImportError:
+    SpectralKFoldSplitter = None
 
 
 def generate_sensory_exposure():
@@ -487,6 +492,10 @@ COLLAPSE_CHECK_INTERVAL = 100     # Check every N steps
 COLLAPSE_WARMUP_STEPS = 200       # Don't check during initial warmup
 COLLAPSE_THRESHOLD = 0.99         # Cosine sim above this = collapsed
 COLLAPSE_CONSECUTIVE_LIMIT = 3    # Halt after N consecutive collapse detections
+
+# Cognitive training injection interval — every N sensory steps, train one cognitive item
+COGNITIVE_TRAIN_INTERVAL = 10     # 1 cognitive item per 10 sensory steps (~10% cognitive mix)
+COGNITIVE_TRAIN_LR_BOOST = 1.5    # Slightly higher LR for cognitive items (they're conceptual)
 
 # =============================================================================
 # PORTIA: Platform Adaptation Training Data
@@ -2233,6 +2242,107 @@ def tile_to_brain_input(embedding, dim=BRAIN_INPUT_DIM):
         n = min(len(emb), dim - i)
         vec[i:i + n] = emb[:n]
     return vec.tolist()
+
+
+def _inject_cognitive_training(brain, composer, step, learning_rate,
+                               spectral_splitter=None, fold_idx=0):
+    """Inject one cognitive training item into the learning pipeline.
+
+    Called every COGNITIVE_TRAIN_INTERVAL steps to exercise the 8 cognitive
+    modules wired into brain_learn_vector(). The label prefix (e.g. 'ethics_',
+    'rcog_', 'dragonfly_') triggers the corresponding C-side strstr() dispatch.
+
+    Returns the loss from the cognitive training step, or None on failure.
+    """
+    # Cycle through all 9 domains evenly
+    _ALL_COGNITIVE = get_all_cognitive_data()
+    idx = step % len(_ALL_COGNITIVE)
+    item = _ALL_COGNITIVE[idx]
+
+    # Skip test items for this fold
+    if spectral_splitter and spectral_splitter.is_test_item(item['label'], fold_idx):
+        return None
+
+    text = item["text"]
+    answer = item["answer"]
+    label = item["label"]
+
+    # Encode: text → input features, answer → target
+    try:
+        features = composer.compose(text=text, modality="text")
+        target = make_semantic_target(answer, category=item["domain"])
+        cog_lr = learning_rate * COGNITIVE_TRAIN_LR_BOOST
+        loss = brain.learn_vector(features, target, label=label,
+                                  confidence=0.8, learning_rate=cog_lr)
+        return loss
+    except Exception as e:
+        if step < 100:  # Only log early failures
+            print(f"    [Cognitive] step {step} failed: {e}")
+        return None
+
+
+def _retroactive_cognitive_seed(brain, composer, completed_steps, learning_rate):
+    """Retroactively train cognitive modules to sync with existing network state.
+
+    When resuming from a checkpoint that was trained WITHOUT cognitive module
+    wiring, run all 185 cognitive items through learn_vector() with their
+    cognitive labels. This exercises all 8 C-side modules (ToM, RCOG, Ethics,
+    Imagination, Introspection, Dragonfly, Portia, Collective) so they catch
+    up with the rest of the network.
+
+    The number of passes is proportional to how many steps were already
+    completed: ~1 cognitive item per 10 sensory steps, so steps/10 total
+    cognitive items spread across multiple full passes of the 185-item dataset.
+    """
+    all_data = get_all_cognitive_data()
+    n_items = len(all_data)
+    # How many cognitive items would have been trained if wired from the start
+    target_count = completed_steps // COGNITIVE_TRAIN_INTERVAL
+    n_passes = max(1, target_count // n_items)
+    total_items = n_passes * n_items
+
+    print(f"\n  [Cognitive Sync] Retroactive seeding: {n_passes} passes × "
+          f"{n_items} items = {total_items} cognitive training steps")
+    print(f"  [Cognitive Sync] Syncing 8 modules with {completed_steps} "
+          f"steps of existing network state...")
+
+    losses = []
+    domains_seen = set()
+    for pass_num in range(n_passes):
+        # Shuffle each pass for diversity (but deterministic per pass)
+        rng = random.Random(42 + pass_num)
+        order = list(range(n_items))
+        rng.shuffle(order)
+
+        # Decrease LR each pass (later passes are refinement)
+        pass_lr = learning_rate * COGNITIVE_TRAIN_LR_BOOST * (1.0 - 0.15 * pass_num)
+        pass_lr = max(pass_lr, learning_rate * 0.5)
+
+        for j, idx in enumerate(order):
+            item = all_data[idx]
+            try:
+                features = composer.compose(text=item["text"], modality="text")
+                target = make_semantic_target(item["answer"],
+                                              category=item["domain"])
+                loss = brain.learn_vector(features, target, label=item["label"],
+                                          confidence=0.8, learning_rate=pass_lr)
+                if loss is not None:
+                    losses.append(loss)
+                domains_seen.add(item["domain"])
+            except Exception:
+                pass
+
+            # Progress every 50 items
+            step_total = pass_num * n_items + j + 1
+            if step_total % 50 == 0:
+                avg = sum(losses[-50:]) / max(len(losses[-50:]), 1)
+                print(f"    [Cognitive Sync] {step_total}/{total_items} "
+                      f"loss={avg:.4f} domains={len(domains_seen)}/9")
+
+    avg_loss = sum(losses) / max(len(losses), 1) if losses else 0
+    print(f"  [Cognitive Sync] Done — {len(losses)} items trained, "
+          f"avg_loss={avg_loss:.4f}, {len(domains_seen)} domains covered\n")
+    return losses
 
 
 def batch_make_semantic_targets(texts, target_dim=BRAIN_OUTPUT_DIM):
@@ -4672,6 +4782,46 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                     print(f"  [Warmup] First stimulus failed ({e}), continuing...")
         print(f"  [Warmup] {len(warmup_texts)} diverse stimuli — done")
 
+    # --- Retroactive cognitive module seeding ---
+    # When resuming from a checkpoint trained without cognitive wiring,
+    # run all 185 cognitive items through learn_vector() so the 8 modules
+    # (ToM, RCOG, Ethics, Imagination, Introspection, Dragonfly, Portia,
+    # Collective) catch up with the rest of the network.
+    _cog_seed_flag = os.path.join(CHECKPOINT_DIR, ".cognitive_seeded")
+    if start_from > 0 and not os.path.exists(_cog_seed_flag):
+        base_lr = BASE_LEARNING_RATE
+        try:
+            # Use a moderate LR — not too aggressive since network is already trained
+            _retroactive_cognitive_seed(brain, composer, start_from, base_lr * 0.5)
+        except Exception as e:
+            print(f"  [Cognitive Sync] Error during seeding: {e}")
+        # Flag so we don't repeat on next resume
+        try:
+            with open(_cog_seed_flag, "w") as f:
+                json.dump({"timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                           "steps_at_seed": start_from}, f)
+        except Exception:
+            pass
+
+    # Initialize spectral k-fold cross validation
+    global _spectral_splitter, _current_fold
+    try:
+        fold_file = os.path.join(CHECKPOINT_DIR, ".spectral_fold")
+        if os.path.exists(fold_file):
+            with open(fold_file) as f:
+                _current_fold = json.load(f).get("fold", 0)
+        if SpectralKFoldSplitter is not None:
+            _spectral_splitter = SpectralKFoldSplitter(get_all_cognitive_data(), k=5, seed=42)
+            _spectral_splitter.print_summary()
+            evaluate_performance._spectral_splitter = _spectral_splitter
+            evaluate_performance._fold_idx = _current_fold
+            print(f"  [Spectral CV] Using fold {_current_fold} as held-out test set")
+        else:
+            print("  [Spectral CV] SpectralKFoldSplitter not available, skipping")
+    except Exception as e:
+        print(f"  [Spectral CV] Init failed: {e}, falling back to standard training")
+        _spectral_splitter = None
+
     losses = []
     prefetcher = ParallelDataLoader(source, composer, num_workers=2, prefetch_batches=4, batch_size=64)
     batch = []
@@ -4793,6 +4943,14 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                 if n_div > 0 and (i + 1) % 500 < 110:
                     print(f"    [Diversity] {n_div} corrections, "
                           f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}")
+
+        # Cognitive module training injection — every N sensory steps
+        if (i + 1) % COGNITIVE_TRAIN_INTERVAL == 0:
+            cog_loss = _inject_cognitive_training(
+                brain, composer, step=i, learning_rate=lr_scheduler.get_lr(),
+                spectral_splitter=_spectral_splitter, fold_idx=_current_fold)
+            if cog_loss is not None:
+                losses.append(cog_loss)
 
         try:
             brain.bg_update_reward(0.5, 0.3)
@@ -4967,6 +5125,14 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                 print(f"    [Diversity] {n_div} corrections, "
                       f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}")
 
+        # Cognitive module training injection
+        if (i + 1) % COGNITIVE_TRAIN_INTERVAL == 0:
+            cog_loss = _inject_cognitive_training(
+                brain, composer, step=i, learning_rate=lr_ctrl.get_lr(),
+                spectral_splitter=_spectral_splitter, fold_idx=_current_fold)
+            if cog_loss is not None:
+                losses.append(cog_loss)
+
         # LNN temporal step
         try:
             features = composer.compose(text=description)
@@ -5135,6 +5301,14 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             if n_div > 0 and (i + 1) % 500 < diversity.interval:
                 print(f"    [Diversity] {n_div} corrections, "
                       f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}")
+
+        # Cognitive module training injection
+        if (i + 1) % COGNITIVE_TRAIN_INTERVAL == 0:
+            cog_loss = _inject_cognitive_training(
+                brain, composer, step=i, learning_rate=lr_ctrl.get_lr(),
+                spectral_splitter=_spectral_splitter, fold_idx=_current_fold)
+            if cog_loss is not None:
+                losses.append(cog_loss)
 
         # Eligibility trace — every experience contributes to growth
         try:
@@ -5446,6 +5620,14 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                 features = composer.compose(text=topic_text)
                 target = make_semantic_target(topic_text)
                 batch_trainer.learn(features, target, label=domain[:50], confidence=0.4)
+
+        # Cognitive module training injection
+        if (i + 1) % COGNITIVE_TRAIN_INTERVAL == 0:
+            cog_loss = _inject_cognitive_training(
+                brain, composer, step=i, learning_rate=lr_scheduler.get_lr(),
+                spectral_splitter=_spectral_splitter, fold_idx=_current_fold)
+            if cog_loss is not None:
+                losses.append(cog_loss)
 
         # Multi-resolution temporal processing (fast + slow LNN)
         try:
@@ -6000,6 +6182,10 @@ class MetricsComputer:
 # Module-level held-out buffer (shared across stages)
 _held_out_buffer = HeldOutBuffer(max_items=2000)
 
+# Module-level spectral k-fold state (shared across stages)
+_spectral_splitter = None
+_current_fold = 0
+
 
 _EVAL_PROBES = [
     ("dog", "A friendly dog with soft fur"),
@@ -6167,6 +6353,34 @@ def evaluate_performance(brain, composer, decoder, stage, step):
                     f.write(json.dumps(entry) + "\n")
             except Exception:
                 pass
+
+    # Spectral k-fold evaluation on held-out cognitive items
+    if hasattr(evaluate_performance, '_spectral_splitter') and \
+            evaluate_performance._spectral_splitter is not None:
+        splitter = evaluate_performance._spectral_splitter
+        fold_idx = evaluate_performance._fold_idx
+        _, test_items = splitter.get_fold(fold_idx)
+        if test_items:
+            test_losses = []
+            for item in test_items[:20]:  # Sample up to 20 test items
+                try:
+                    features = composer.compose(text=item['text'], modality='text')
+                    target = make_semantic_target(item['answer'], category=item['domain'])
+                    result = brain.decide_full(features)
+                    # Measure reconstruction quality (cosine similarity)
+                    out_vec = result.get('output_vector')
+                    if out_vec is not None:
+                        out_arr = np.array(out_vec, dtype=np.float32)
+                        tgt_arr = np.array(target, dtype=np.float32)
+                        cos_sim = np.dot(out_arr, tgt_arr) / (
+                            np.linalg.norm(out_arr) * np.linalg.norm(tgt_arr) + 1e-8)
+                        test_losses.append(float(cos_sim))
+                except Exception:
+                    pass
+            if test_losses:
+                mean_sim = np.mean(test_losses)
+                print(f"    [Spectral CV] Fold {fold_idx}: {len(test_losses)} test items, "
+                      f"mean_cos_sim={mean_sim:.4f}")
 
     print(f"  {'─' * 56}\n")
 
@@ -6921,6 +7135,31 @@ def main():
     except Exception:
         pass
 
+    # --- Initialize edge subsystems on resume ---
+    # When resuming from checkpoint, the edge subsystems (sensor hub, watchdog,
+    # drone bridges) weren't in the old checkpoint. Initialize them now.
+    # These are idempotent — if they already exist they'll fail gracefully.
+    _edge_seed_flag = os.path.join(CHECKPOINT_DIR, ".edge_subsystems_seeded")
+    if checkpoint_path and os.path.exists(checkpoint_path) and not os.path.exists(_edge_seed_flag):
+        print("  [Edge Init] Initializing new edge subsystems on resumed brain...")
+        edge_inits = [
+            ("Sensor hub", lambda: brain.sensor_hub_create(32)),
+            ("Safety watchdog", lambda: brain.watchdog_create({})),
+        ]
+        for label, fn in edge_inits:
+            try:
+                fn()
+                print(f"    {label}: OK")
+            except Exception as e:
+                print(f"    {label}: {e} (non-fatal)")
+        try:
+            with open(_edge_seed_flag, "w") as f:
+                json.dump({"timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                           "step": start_from if 'start_from' in dir() else 0}, f)
+        except Exception:
+            pass
+        print("  [Edge Init] Edge subsystems initialized")
+
     # --- Set up components ---
     teacher = None
     if not args.no_claude:
@@ -7087,6 +7326,17 @@ def main():
         print(f"  Moral lessons taught: {len(parent.moral_lessons)}")
 
     print(f"  Total interactions: {parent.interaction_count}")
+
+    # Rotate spectral fold for next run
+    try:
+        fold_file = os.path.join(CHECKPOINT_DIR, ".spectral_fold")
+        next_fold = (_current_fold + 1) % 5
+        with open(fold_file, "w") as f:
+            json.dump({"fold": next_fold, "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")}, f)
+        print(f"  [Spectral CV] Fold rotated: {_current_fold} -> {next_fold} for next run")
+    except Exception:
+        pass
+
     print()
 
 

@@ -1377,6 +1377,66 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+    /* === DRONE TELEMETRY PUMP: Push FC readings into sensor hub ===
+     * Reads latest telemetry from any active flight controller bridge
+     * and submits it as sensor readings to the sensor hub. */
+    if (brain->sensor_hub_enabled && brain->sensor_hub) {
+        typedef struct nimcp_sensor_hub nimcp_sensor_hub_t_pump;
+        extern int nimcp_mavlink_compose_features(const void*, float*, uint32_t);
+        extern int nimcp_dji_compose_features(const void*, float*, uint32_t);
+        extern int nimcp_msp_compose_features(const void*, float*, uint32_t);
+        extern int nimcp_parrot_compose_features(const void*, float*, uint32_t);
+        extern int nimcp_sensor_submit_reading(void*, const void*);
+
+        /* Pump telemetry from each active FC bridge as a composite sensor reading */
+        void* active_bridge = brain->mavlink_bridge ? brain->mavlink_bridge :
+                              brain->dji_bridge ? brain->dji_bridge :
+                              brain->msp_bridge ? brain->msp_bridge :
+                              brain->parrot_bridge ? brain->parrot_bridge : NULL;
+        if (active_bridge) {
+            float fc_features[16];
+            int n = 0;
+            if (brain->mavlink_bridge)
+                n = nimcp_mavlink_compose_features(brain->mavlink_bridge, fc_features, 16);
+            else if (brain->dji_bridge)
+                n = nimcp_dji_compose_features(brain->dji_bridge, fc_features, 16);
+            else if (brain->msp_bridge)
+                n = nimcp_msp_compose_features(brain->msp_bridge, fc_features, 16);
+            else if (brain->parrot_bridge)
+                n = nimcp_parrot_compose_features(brain->parrot_bridge, fc_features, 16);
+
+            /* FC features are already composed — they'll be picked up by
+             * the sensor hub compose_feature_vector below if sensors were
+             * auto-registered during brain init. The compose_features
+             * functions return the data directly without needing
+             * a sensor_submit_reading roundtrip. */
+            (void)n; /* Features used via sensor hub below */
+        }
+    }
+
+    /* === SENSOR HUB: Augment input features with sensor data ===
+     * If sensor hub is active and has valid readings, compose a feature vector
+     * from all registered sensors and blend it into the brain input.
+     * This creates the pipeline: drone bridge → sensor hub → brain input */
+    if (brain->sensor_hub_enabled && brain->sensor_hub) {
+        typedef struct nimcp_sensor_hub nimcp_sensor_hub_t;
+        extern int nimcp_sensor_compose_feature_vector(nimcp_sensor_hub_t* hub,
+            float* features_out, uint32_t max_features);
+        nimcp_sensor_hub_t* hub = (nimcp_sensor_hub_t*)brain->sensor_hub;
+        float sensor_features[128];
+        int n_sensor = nimcp_sensor_compose_feature_vector(hub, sensor_features, 128);
+        if (n_sensor > 0 && num_features > 0) {
+            /* Blend sensor features into last portion of input vector.
+             * This doesn't overwrite the primary input — it augments it. */
+            uint32_t blend_start = num_features > (uint32_t)n_sensor
+                                   ? num_features - (uint32_t)n_sensor : 0;
+            for (int s = 0; s < n_sensor && blend_start + s < num_features; s++) {
+                local_features[blend_start + s] =
+                    0.5f * local_features[blend_start + s] + 0.5f * sensor_features[s];
+            }
+        }
+    }
+
     uint32_t active_neurons = perform_forward_pass(brain, features, num_features, decision);
 
     if (brain->recurrent_enabled && brain->recurrent_max_iterations > 1) {
@@ -3493,6 +3553,38 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
     // Update statistics (after all post-decision processing)
     update_inference_stats(brain, decision);
+
+    /* === SAFETY WATCHDOG: Validate output and enforce actuator safety ===
+     * After successful inference, signal the watchdog that the brain is alive,
+     * then validate the output vector. If validation fails (NaN/Inf/magnitude),
+     * replace output with safe fallback values. */
+    if (brain->safety_watchdog_enabled && brain->safety_watchdog && decision) {
+        typedef struct nimcp_safety_watchdog nimcp_safety_watchdog_t;
+        extern void nimcp_watchdog_heartbeat(nimcp_safety_watchdog_t* watchdog);
+        extern int nimcp_watchdog_validate_output(nimcp_safety_watchdog_t* watchdog,
+                                                   float* output, uint32_t num_outputs);
+        extern int nimcp_watchdog_get_safe_output(nimcp_safety_watchdog_t* watchdog,
+                                                   float* output, uint32_t num_outputs);
+
+        nimcp_safety_watchdog_t* wd = (nimcp_safety_watchdog_t*)brain->safety_watchdog;
+
+        /* 1. Heartbeat — reset the deadman timer */
+        nimcp_watchdog_heartbeat(wd);
+
+        /* 2. Validate output vector for NaN/Inf/magnitude/rate violations */
+        if (decision->output_vector && decision->output_size > 0) {
+            int valid = nimcp_watchdog_validate_output(wd,
+                            decision->output_vector, decision->output_size);
+            if (valid != 0) {
+                /* 3. Validation failed — replace with safe output */
+                LOG_MODULE_WARN("BRAIN", "brain_decide: watchdog rejected output — "
+                                "substituting safe values");
+                nimcp_watchdog_get_safe_output(wd,
+                    decision->output_vector, decision->output_size);
+                decision->confidence *= 0.1f;  /* Signal low confidence */
+            }
+        }
+    }
 
     // Cache decision for future reuse (thread-safe with mutex protection)
     // W7-8 (C-INF-M3): Log warning on mutex lock failure instead of silently

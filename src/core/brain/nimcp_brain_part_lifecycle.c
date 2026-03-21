@@ -855,6 +855,77 @@ void brain_destroy(brain_t brain)
     }
 
 
+    // === PHASE EDGE: CLEANUP EDGE/ROBOT INTEGRATION ===
+    // Destroy in reverse order: ROS2 bridge → safety watchdog → sensor hub
+    // Then swarm bridges: dragonfly-swarm → portia-swarm
+    //
+    // Use forward declarations with void* to avoid including edge headers
+    // in this lifecycle file (SRP: includes are at file scope, not in functions).
+    // The actual functions accept their typed pointers; C permits implicit
+    // void* → typed-pointer conversion at the call site.
+    {
+        /* Forward-declare opaque struct types and destroy functions.
+         * Brain stores these as void* to avoid header dependencies. */
+        typedef struct nimcp_ros2_bridge nimcp_ros2_bridge_t;
+        typedef struct nimcp_safety_watchdog nimcp_safety_watchdog_t;
+        typedef struct nimcp_sensor_hub nimcp_sensor_hub_t;
+        typedef struct swarm_dragonfly_bridge_s swarm_dragonfly_bridge_t;
+        typedef struct portia_swarm_bridge_t portia_swarm_bridge_t;
+
+        extern void nimcp_ros2_bridge_destroy(nimcp_ros2_bridge_t* bridge);
+        extern void nimcp_watchdog_destroy(nimcp_safety_watchdog_t* watchdog);
+        extern void nimcp_sensor_hub_destroy(nimcp_sensor_hub_t* hub);
+        extern void swarm_dragonfly_bridge_destroy(swarm_dragonfly_bridge_t* bridge);
+        extern void portia_swarm_bridge_destroy(portia_swarm_bridge_t* bridge);
+
+        if (brain->ros2_bridge) {
+            nimcp_ros2_bridge_destroy((nimcp_ros2_bridge_t*)brain->ros2_bridge);
+            brain->ros2_bridge = NULL;
+            brain->ros2_bridge_enabled = false;
+        }
+        if (brain->safety_watchdog) {
+            nimcp_watchdog_destroy((nimcp_safety_watchdog_t*)brain->safety_watchdog);
+            brain->safety_watchdog = NULL;
+            brain->safety_watchdog_enabled = false;
+        }
+        if (brain->sensor_hub) {
+            nimcp_sensor_hub_destroy((nimcp_sensor_hub_t*)brain->sensor_hub);
+            brain->sensor_hub = NULL;
+            brain->sensor_hub_enabled = false;
+        }
+        if (brain->swarm_dragonfly_bridge) {
+            swarm_dragonfly_bridge_destroy((swarm_dragonfly_bridge_t*)brain->swarm_dragonfly_bridge);
+            brain->swarm_dragonfly_bridge = NULL;
+            brain->swarm_dragonfly_bridge_enabled = false;
+        }
+        if (brain->portia_swarm_bridge) {
+            portia_swarm_bridge_destroy((portia_swarm_bridge_t*)brain->portia_swarm_bridge);
+            brain->portia_swarm_bridge = NULL;
+            brain->portia_swarm_bridge_enabled = false;
+        }
+        /* Flight controller bridges */
+        if (brain->mavlink_bridge) {
+            extern void nimcp_mavlink_bridge_destroy(void*);
+            nimcp_mavlink_bridge_destroy(brain->mavlink_bridge);
+            brain->mavlink_bridge = NULL;
+        }
+        if (brain->dji_bridge) {
+            extern void nimcp_dji_bridge_destroy(void*);
+            nimcp_dji_bridge_destroy(brain->dji_bridge);
+            brain->dji_bridge = NULL;
+        }
+        if (brain->msp_bridge) {
+            extern void nimcp_msp_bridge_destroy(void*);
+            nimcp_msp_bridge_destroy(brain->msp_bridge);
+            brain->msp_bridge = NULL;
+        }
+        if (brain->parrot_bridge) {
+            extern void nimcp_parrot_bridge_destroy(void*);
+            nimcp_parrot_bridge_destroy(brain->parrot_bridge);
+            brain->parrot_bridge = NULL;
+        }
+    }
+
     LOG_MODULE_DEBUG("BRAIN", "Destroy phase 4 (higher cognitive) done");
     // Community Detection: Cleanup
     if (brain->functional_modules) {
