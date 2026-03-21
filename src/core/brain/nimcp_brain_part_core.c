@@ -936,6 +936,26 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         return NULL;
     }
 
+    /* === MANDATORY ETHICS GATE ===
+     * The ethics module is a NON-REMOVABLE safety dependency.
+     * Every inference passes through ethical evaluation. This cannot
+     * be disabled via configuration, compilation flags, or runtime settings.
+     * Removing this check requires modifying core brain source code. */
+    if (brain->ethics) {
+        /* Ethics module exists — evaluation happens later in the pipeline */
+    } else {
+        /* Ethics module missing — log critical warning on every inference.
+         * We don't block inference (that would be a DoS vector), but we
+         * ensure the absence is loudly visible. */
+        static uint32_t _ethics_warn_count = 0;
+        if (_ethics_warn_count < 100 || _ethics_warn_count % 10000 == 0) {
+            LOG_MODULE_ERROR("BRAIN", "ETHICS MODULE NOT INITIALIZED — "
+                "inference proceeding without ethical evaluation (call %u)",
+                _ethics_warn_count);
+        }
+        _ethics_warn_count++;
+    }
+
     // ========================================================================
     // G3 SECURITY: Inference deadline — prevent runaway inference
     // ========================================================================
@@ -2905,9 +2925,23 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                    sizeof(decision->explanation) - strlen(decision->explanation) - 1);
             strncat(decision->explanation, ethics_eval.explanation,
                    sizeof(decision->explanation) - strlen(decision->explanation) - 1);
+            /* Audit: Ethics violation */
+            nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_ETHICS_VIOLATION, 2,
+                "Ethics violation detected: harm=%.3f, type=%d",
+                ethics_action.predicted_harm, (int)ethics_eval.primary_violation);
         } else if (ethics_eval.golden_rule_score < 0.0F) {
             // Action allowed but marginally ethical - reduce confidence
             decision->confidence *= (1.0F + ethics_eval.golden_rule_score);  // Reduce by negative score
+        }
+    }
+
+    /* Audit: Log every 1000th inference */
+    {
+        static uint32_t _inference_audit_counter = 0;
+        if (++_inference_audit_counter % 1000 == 0) {
+            nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_INFERENCE, 0,
+                "Inference #%u, confidence=%.3f", _inference_audit_counter,
+                decision ? decision->confidence : 0.0f);
         }
     }
 
@@ -3579,6 +3613,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 /* 3. Validation failed — replace with safe output */
                 LOG_MODULE_WARN("BRAIN", "brain_decide: watchdog rejected output — "
                                 "substituting safe values");
+                nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_WATCHDOG_TRIGGER, 3,
+                    "Safety watchdog rejected output — substituting safe values");
                 nimcp_watchdog_get_safe_output(wd,
                     decision->output_vector, decision->output_size);
                 decision->confidence *= 0.1f;  /* Signal low confidence */

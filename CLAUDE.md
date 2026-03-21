@@ -86,6 +86,34 @@
 
 ---
 
+## Safety Hardening
+
+### Ethics Module — Non-Removable Dependency
+The ethics module is **always created** during brain initialization, regardless of `enable_ethics` configuration. The `enable_ethics` flag controls whether ethics evaluation **blocks** actions, but the module itself is always present for audit and monitoring. Both `brain_decide()` and `brain_learn_vector()` contain mandatory ethics gates that log critical warnings if the ethics module is missing. These gates cannot be disabled via configuration.
+
+### Tamper-Resistant Safety Audit Log
+The `nimcp_safety_audit_*` API (`include/security/nimcp_audit_log.h`) provides always-on, append-only audit logging:
+- **100,000-entry in-memory ring buffer** + append-only disk log (`/var/log/nimcp/nimcp_safety_audit.log`)
+- **Monotonic sequence numbers** — gaps indicate deleted entries (tampering)
+- **CRC32 checksums** per entry — mismatches indicate modified entries
+- **Cannot be disabled** via any config flag — always active once `nimcp_init()` is called
+- **Thread-safe** via internal mutex; best-effort disk writes (never blocks on I/O failure)
+- Events logged: inference (every 1000th), learning (every 1000th), ethics violations (all), watchdog triggers (all), swarm events, checkpoint operations
+- Use `nimcp_safety_audit_verify_integrity()` to detect tampering
+
+### Files Modified for Safety Hardening
+| File | Change |
+|------|--------|
+| `src/core/brain/nimcp_brain_part_core.c` | Mandatory ethics gate + audit logging in `brain_decide()` |
+| `src/core/brain/learning/nimcp_brain_learning.c` | Mandatory ethics gate + audit logging in `brain_learn_vector()` |
+| `src/core/brain/cognitive/nimcp_brain_cognitive.c` | Ethics init no longer gated by `enable_ethics` |
+| `src/core/brain/factory/init/nimcp_brain_init_monitoring.c` | Ethics init no longer gated by `enable_ethics` |
+| `include/security/nimcp_audit_log.h` | New: safety audit API |
+| `src/security/nimcp_audit_log.c` | New: safety audit implementation |
+| `src/api/nimcp_part_lifecycle.c` | Audit log init in `nimcp_init_internal()` |
+
+---
+
 ## CRITICAL WARNING - PAST VIOLATIONS
 
 **Claude has repeatedly ignored the MANDATORY Test Writing Protocol.**

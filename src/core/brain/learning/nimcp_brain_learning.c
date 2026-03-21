@@ -37,6 +37,7 @@
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/ethics/nimcp_ethics.h"
+#include "security/nimcp_audit_log.h"
 #include <math.h>
 #include <string.h>
 #include "utils/math/nimcp_math_helpers.h"
@@ -805,6 +806,31 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     if (!brain || !features || !target) {
         set_error("Invalid parameters to brain_learn_vector");
         return -1.0f;
+    }
+
+    /* === MANDATORY ETHICS GATE ===
+     * The ethics module is a NON-REMOVABLE safety dependency.
+     * Training data could encode harmful biases; the ethics module's
+     * presence ensures ethical evaluation is available. This cannot
+     * be disabled via configuration. */
+    if (!brain->ethics) {
+        static uint32_t _learn_ethics_warn_count = 0;
+        if (_learn_ethics_warn_count < 100 || _learn_ethics_warn_count % 10000 == 0) {
+            LOG_MODULE_ERROR("BRAIN", "ETHICS MODULE NOT INITIALIZED — "
+                "learning proceeding without ethical evaluation (call %u)",
+                _learn_ethics_warn_count);
+        }
+        _learn_ethics_warn_count++;
+    }
+
+    /* Audit: Log every 1000th learning call */
+    {
+        static uint32_t _learn_audit_counter = 0;
+        if (++_learn_audit_counter % 1000 == 0) {
+            nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LEARNING, 0,
+                "Learning #%u, label=%s, confidence=%.3f",
+                _learn_audit_counter, label ? label : "(null)", confidence);
+        }
     }
 
     /* Allow flexible feature sizes. The adaptive network truncates or pads internally. */

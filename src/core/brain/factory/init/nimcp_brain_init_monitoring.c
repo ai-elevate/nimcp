@@ -296,11 +296,10 @@ bool nimcp_brain_factory_init_ethics_engine_subsystem(brain_t brain)
             return false;
     }
 
-    // Check if ethics is disabled via config
-    if (!brain->config.enable_ethics) {
-        brain->ethics = NULL;
-        return true;  // Not an error - ethics disabled by config
-    }
+    /* Ethics module is ALWAYS created — it is a non-removable safety dependency.
+     * This is not gated by any configuration flag. The enable_ethics config
+     * controls whether ethics evaluation BLOCKS actions, but the module itself
+     * must always be present for audit and monitoring purposes. */
 
     // Guard: Check if already initialized
     if (brain->ethics) {
@@ -325,11 +324,15 @@ bool nimcp_brain_factory_init_ethics_engine_subsystem(brain_t brain)
     brain->ethics = ethics_engine_create(&config);
 
     if (!brain->ethics) {
-        set_error("Failed to create ethics engine");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_ethics_engine_subsystem: brain->ethics is NULL");
-        return false;
+        /* CRITICAL: Ethics engine creation failed — log but don't block brain init.
+         * Blocking would be a DoS vector. The mandatory ethics gate in brain_decide
+         * and brain_learn_vector will log on every call. */
+        LOG_MODULE_ERROR(LOG_MODULE, "CRITICAL: Failed to create ethics engine — "
+            "brain will operate WITHOUT ethical evaluation");
+        return true;  /* Don't fail brain init — DoS prevention */
     }
 
+    LOG_MODULE_INFO(LOG_MODULE, "Ethics engine created (mandatory safety dependency)");
     return true;
 }
 

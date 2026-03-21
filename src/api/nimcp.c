@@ -25,6 +25,7 @@ static void api_set_error(const char* fmt, ...);
 #include "utils/exception/nimcp_exception.h"  /* For exception system shutdown */
 
 #include "nimcp.h"
+#include "security/nimcp_audit_log.h"
 #include "api/nimcp_api_internal.h"  /* Canonical handle struct definitions */
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_cognitive_transcript.h"

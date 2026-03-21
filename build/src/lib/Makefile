@@ -45620,6 +45620,30 @@ __/security/nimcp_artifact_verify.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_artifact_verify.c.s
 .PHONY : __/security/nimcp_artifact_verify.c.s
 
+__/security/nimcp_audit_log.o: __/security/nimcp_audit_log.c.o
+.PHONY : __/security/nimcp_audit_log.o
+
+# target to build an object file
+__/security/nimcp_audit_log.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_audit_log.c.o
+.PHONY : __/security/nimcp_audit_log.c.o
+
+__/security/nimcp_audit_log.i: __/security/nimcp_audit_log.c.i
+.PHONY : __/security/nimcp_audit_log.i
+
+# target to preprocess a source file
+__/security/nimcp_audit_log.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_audit_log.c.i
+.PHONY : __/security/nimcp_audit_log.c.i
+
+__/security/nimcp_audit_log.s: __/security/nimcp_audit_log.c.s
+.PHONY : __/security/nimcp_audit_log.s
+
+# target to generate assembly for a file
+__/security/nimcp_audit_log.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_audit_log.c.s
+.PHONY : __/security/nimcp_audit_log.c.s
+
 __/security/nimcp_bayesian_network.o: __/security/nimcp_bayesian_network.c.o
 .PHONY : __/security/nimcp_bayesian_network.o
 
@@ -59641,6 +59665,9 @@ help:
 	@echo "... __/security/nimcp_artifact_verify.o"
 	@echo "... __/security/nimcp_artifact_verify.i"
 	@echo "... __/security/nimcp_artifact_verify.s"
+	@echo "... __/security/nimcp_audit_log.o"
+	@echo "... __/security/nimcp_audit_log.i"
+	@echo "... __/security/nimcp_audit_log.s"
 	@echo "... __/security/nimcp_bayesian_network.o"
 	@echo "... __/security/nimcp_bayesian_network.i"
 	@echo "... __/security/nimcp_bayesian_network.s"

@@ -51,6 +51,11 @@ static nimcp_status_t nimcp_init_internal(void) {
     LOG_DEBUG("Initializing COW cache system");
     nimcp_cache_init();
 
+    // Initialize tamper-resistant audit logging (always-on safety subsystem)
+    // This is NOT gated by any config flag — audit logging is mandatory.
+    LOG_DEBUG("Initializing tamper-resistant audit log");
+    nimcp_safety_audit_init("/var/log/nimcp");
+
     set_error("No error");
     LOG_INFO("NIMCP library initialized successfully");
     return NIMCP_OK;

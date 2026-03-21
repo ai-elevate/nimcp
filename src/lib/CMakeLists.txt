@@ -1702,6 +1702,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_pattern_db.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_pattern_compiler.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_encrypted_audit.c
+    # Tamper-Resistant Audit Logging (always-on safety subsystem)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_audit_log.c
     # Security Level Management + Distributed Consensus
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_level.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_consensus_protocol.c
