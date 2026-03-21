@@ -171,6 +171,8 @@ static int _read_message(int fd,
 
     if (payload_size > 1024 * 1024) {
         LOG_WARN("[SWARM_EDGE_RUNTIME] Payload too large: %u bytes", payload_size);
+        *out_payload = NULL;
+        *out_payload_size = 0;
         return -1;
     }
 

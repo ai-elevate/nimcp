@@ -89,10 +89,14 @@ static void _add_token(nimcp_tokenizer_t* tok, const char* text, nimcp_token_typ
         slot = (slot + 1) % tok->hash_capacity;
         attempts++;
     }
-    if (attempts < tok->hash_capacity)
+    if (attempts < tok->hash_capacity) {
         tok->hash_ids[slot] = id;
-
-    tok->vocab_size++;
+        tok->vocab_size++;
+    } else {
+        /* Hash table full — token not added. This shouldn't happen with
+         * capacity = 3 × max_vocab_size, but log if it does. */
+        LOG_WARN("[%s] Hash table full, token '%s' not added", LOG_MODULE, text);
+    }
 }
 
 nimcp_tokenizer_t* nimcp_tokenizer_create(const nimcp_tokenizer_config_t* config) {

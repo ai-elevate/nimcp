@@ -60,10 +60,8 @@ static void free_experience(episodic_experience_t* exp) {
     if (!exp) return;
     if (exp->features) nimcp_free(exp->features);
     if (exp->target) nimcp_free(exp->target);
-    exp->features = NULL;
-    exp->target = NULL;
-    exp->num_features = 0;
-    exp->target_size = 0;
+    /* Zero-fill entire struct to clear stale data (labels, loss, reward) */
+    memset(exp, 0, sizeof(episodic_experience_t));
 }
 
 static float compute_importance(const episodic_experience_t* exp,

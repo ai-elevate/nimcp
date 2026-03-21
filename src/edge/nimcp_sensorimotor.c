@@ -215,7 +215,8 @@ int nimcp_sensorimotor_step(nimcp_sensorimotor_t* sm, float* reward_out, bool* d
     /* 1. Compose observation from current sim state */
     int n_obs = nimcp_sim_bridge_compose_sensors(sm->sim, sm->current_state,
                                                   sm->observation, sm->obs_dim);
-    if (n_obs <= 0) n_obs = sm->obs_dim;
+    if (n_obs <= 0) n_obs = (int)sm->obs_dim;
+    if ((uint32_t)n_obs > sm->obs_dim) n_obs = (int)sm->obs_dim; /* Clamp to buffer size */
 
     /* 2. Brain inference */
     nimcp_brain_infer(sm->brain, sm->observation, (uint32_t)n_obs,
