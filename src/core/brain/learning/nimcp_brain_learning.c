@@ -2062,24 +2062,32 @@ sequential_training:
         ethics_engine_evaluate_action(brain->ethics, &action);
     }
 
-    /* === IMAGINATION: Counterfactual simulation during training === */
+    /* === IMAGINATION: Counterfactual simulation during training ===
+     * Use extern declarations to avoid header type conflicts. */
     if (label && brain->imagination &&
         (strstr(label, "counterfactual") || strstr(label, "imagination"))) {
-        /* imagination_begin_scenario header conflicts with other types
-         * when included from this translation unit. The imagination engine
-         * IS exercised during inference (brain_decide stage 4.2b).
-         * During training, the label-gated path ensures the adaptive
-         * network learns counterfactual representations that the
-         * imagination engine can later simulate. */
+        extern void* imagination_begin_scenario(void*, int, const void*);
+        extern int imagination_step_scenario(void*, void*);
+
+        /* Lightweight goal: just mode + priority, no tensor constraints */
+        struct { int mode; void* t1; void* t2; void* t3; float p; uint64_t d; void* c; } goal = {0};
+        goal.mode = 2; /* IMAGINATION_MODE_COUNTERFACTUAL */
+        goal.p = (loss < 100.0f) ? 0.8f : 0.4f;
+        goal.d = 100;
+
+        void* scenario = imagination_begin_scenario(brain->imagination, 2, &goal);
+        if (scenario) {
+            for (int sim = 0; sim < 3; sim++) {
+                imagination_step_scenario(brain->imagination, scenario);
+            }
+        }
     }
 
     /* === INTROSPECTION: Self-monitoring during metacognition training === */
     if (label && brain->introspection &&
         (strstr(label, "metacog") || strstr(label, "awareness") || strstr(label, "introspect"))) {
-        /* introspection_assess_connectivity_health requires additional
-         * parameters (neural_network_t, layer info). The introspection module
-         * IS exercised during inference. During training, metacognition-labeled
-         * data trains the adaptive network's self-monitoring representations. */
+        connectivity_health_config_t intro_cfg = {0};
+        introspection_assess_connectivity_health(brain->introspection, &intro_cfg);
     }
 
     clear_cache(brain);
