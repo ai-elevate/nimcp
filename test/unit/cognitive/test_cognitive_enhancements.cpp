@@ -179,10 +179,10 @@ TEST(InnerSpeech, CreateDestroy) {
     nimcp_inner_speech_destroy(is);
 }
 
-TEST(InnerSpeech, CreateWithNullConfig) {
+TEST(InnerSpeech, CreateWithNullConfigReturnsNull) {
+    // Inner speech create requires a non-NULL config
     nimcp_inner_speech_t* is = nimcp_inner_speech_create(NULL);
-    ASSERT_NE(is, nullptr);
-    nimcp_inner_speech_destroy(is);
+    EXPECT_EQ(is, nullptr) << "NULL config should return NULL for inner speech";
 }
 
 TEST(InnerSpeech, ConfigDefaults) {
@@ -196,7 +196,8 @@ TEST(InnerSpeech, ConfigDefaults) {
 }
 
 TEST(InnerSpeech, GetIterationsBeforeRefine) {
-    nimcp_inner_speech_t* is = nimcp_inner_speech_create(NULL);
+    nimcp_inner_speech_config_t cfg = nimcp_inner_speech_config_default();
+    nimcp_inner_speech_t* is = nimcp_inner_speech_create(&cfg);
     ASSERT_NE(is, nullptr);
     uint32_t iters = nimcp_inner_speech_get_iterations(is);
     EXPECT_EQ(iters, 0u) << "Iterations should be 0 before any refinement";
@@ -226,10 +227,10 @@ TEST(EpisodicReplay, CreateDestroy) {
     nimcp_episodic_replay_destroy(er);
 }
 
-TEST(EpisodicReplay, CreateWithNullConfig) {
+TEST(EpisodicReplay, CreateWithNullConfigReturnsNull) {
+    // Episodic replay create requires a non-NULL config
     nimcp_episodic_replay_t* er = nimcp_episodic_replay_create(NULL);
-    ASSERT_NE(er, nullptr);
-    nimcp_episodic_replay_destroy(er);
+    EXPECT_EQ(er, nullptr) << "NULL config should return NULL for episodic replay";
 }
 
 TEST(EpisodicReplay, ConfigDefaults) {
@@ -242,7 +243,8 @@ TEST(EpisodicReplay, ConfigDefaults) {
 }
 
 TEST(EpisodicReplay, RecordAndCheckBufferSize) {
-    nimcp_episodic_replay_t* er = nimcp_episodic_replay_create(NULL);
+    nimcp_episodic_replay_config_t cfg = nimcp_episodic_replay_config_default();
+    nimcp_episodic_replay_t* er = nimcp_episodic_replay_create(&cfg);
     ASSERT_NE(er, nullptr);
 
     EXPECT_EQ(nimcp_episodic_replay_get_buffer_size(er), 0u);
@@ -257,7 +259,8 @@ TEST(EpisodicReplay, RecordAndCheckBufferSize) {
 }
 
 TEST(EpisodicReplay, RecordMultipleExperiences) {
-    nimcp_episodic_replay_t* er = nimcp_episodic_replay_create(NULL);
+    nimcp_episodic_replay_config_t cfg = nimcp_episodic_replay_config_default();
+    nimcp_episodic_replay_t* er = nimcp_episodic_replay_create(&cfg);
     ASSERT_NE(er, nullptr);
 
     for (int i = 0; i < 5; i++) {
