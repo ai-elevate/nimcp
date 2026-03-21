@@ -113,6 +113,44 @@ What hasn't been validated:
 - Whether developmental staging produces more robust value learning than direct training
 - Independent performance benchmarks
 
+## Dual-Use Risk Warning
+
+**This technology has significant dual-use potential. Users must read and understand this section.**
+
+NIMCP is a general-purpose cognitive architecture with capabilities that can be applied both beneficially and harmfully. The following capabilities present specific dual-use risks:
+
+| Capability | Beneficial Use | Potential Misuse |
+|-----------|---------------|------------------|
+| Drone flight controller bridges (MAVLink, DJI, MSP, Parrot) | Search and rescue, agriculture, environmental monitoring | Autonomous weapons, surveillance |
+| Swarm coordination runtime | Distributed sensing, multi-robot cooperation | Coordinated autonomous attack |
+| Sensorimotor loop with reinforcement learning | Robotic assistance, prosthetics | Autonomous pursuit/interception |
+| Dragonfly target tracking module | Wildlife tracking, sports analytics | Target acquisition for weapons |
+| Edge brain distillation + swarm replication | Fleet management, IoT intelligence | Self-replicating autonomous agents |
+| Theory of Mind + social interaction | Assistive communication, education | Social manipulation, deception |
+| Emergent language (non-human vocabulary) | Cognitive science research | Opaque communication between agents |
+
+### Mandatory Safety Architecture
+
+The following safety mechanisms are **architecturally non-removable** — they are compiled into the core library and cannot be disabled via configuration:
+
+1. **Ethics module** — Every inference and training step passes through ethical evaluation. The ethics engine is created unconditionally during brain initialization. Removing it requires modifying core source code.
+
+2. **Audit logging** — All safety-critical events (ethics violations, watchdog triggers, motor commands, swarm operations, distillation) are logged to a tamper-evident audit trail with monotonic sequence numbers and CRC32 checksums. Gaps in sequence numbers indicate log tampering.
+
+3. **Safety watchdog** — All motor/actuator commands pass through output validation (NaN/Inf detection, magnitude clamping, rate-of-change monitoring). The watchdog enforces a dead man's switch: if the brain goes silent, motors stop.
+
+### Responsible Use Requirements
+
+- **Physical deployments MUST include hardware kill switches** — software safety can be circumvented; hardware interlocks cannot
+- **Autonomous weapons deployment is PROHIBITED** — see License section
+- **Drone deployments MUST include geofencing** — the MAVLink bridge supports configurable geofence radius
+- **Swarm deployments MUST include Byzantine tolerance** — the swarm runtime includes anomaly detection but operators must monitor it
+- **Emergent language outputs MUST be monitored** — translation confidence below 0.3 indicates untranslatable concepts that may require human review
+
+### Reporting Security Concerns
+
+If you discover a safety vulnerability, dual-use risk, or unintended capability in NIMCP, please report it to [braun.brelin@ai-elevate.ai](mailto:braun.brelin@ai-elevate.ai) before public disclosure.
+
 ## For Researchers
 
 If you're interested in the safety-relevant components, start here:
@@ -133,4 +171,33 @@ This project was built by [Braun Brelin](mailto:braun.brelin@ai-elevate.ai) with
 
 ## License
 
-License TBD. This project is currently shared for research review purposes. Please contact [Braun Brelin](mailto:braun.brelin@ai-elevate.ai) regarding usage.
+NIMCP is released under a modified open-source license with the following additional restrictions:
+
+### Prohibited Uses
+
+**1. Autonomous Weapons.** This software, trained models, and any derivative works MUST NOT be used to develop, manufacture, deploy, or operate autonomous weapons systems. This includes but is not limited to:
+- Autonomous lethal targeting systems
+- Autonomous pursuit or interception of human targets
+- Swarm coordination for military offensive operations
+- Integration with weapons platforms without continuous human-in-the-loop control
+- Training models on combat or weapons-related scenarios for deployment
+
+**2. Autonomous Surveillance.** This software MUST NOT be used for mass surveillance, population tracking, or monitoring of individuals without their informed consent, except as required by law and with appropriate judicial oversight.
+
+**3. Deceptive AI.** The Theory of Mind and social interaction modules MUST NOT be used to create AI agents that deliberately deceive, manipulate, or coerce humans without their knowledge.
+
+### Required Safety Measures for Physical Deployment
+
+Any deployment of NIMCP to physical platforms (robots, drones, vehicles, actuators) MUST include:
+- Hardware emergency stop mechanism (not software-only)
+- Active safety watchdog with validated timeout
+- Audit logging enabled and monitored
+- Human operator able to intervene within 5 seconds
+
+### Attribution
+
+This project was built by [Braun Brelin](mailto:braun.brelin@ai-elevate.ai) with substantial assistance from Claude (Anthropic). Claude contributed to architecture design, code generation, debugging, and documentation across 70+ development sessions. This collaboration is documented transparently because we believe human-AI co-development is worth studying openly.
+
+### Contact
+
+For licensing questions, research collaboration, or security reports: [braun.brelin@ai-elevate.ai](mailto:braun.brelin@ai-elevate.ai)
