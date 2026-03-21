@@ -21,7 +21,21 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 // SNN training includes
+#include <math.h>
 #include "snn/nimcp_snn_training.h"
+
+/* Public API: Set SNN input scaling factor at runtime.
+ * Called from Python or C to adjust how aggressively SNN inputs are amplified.
+ * Higher values = more spiking; lower = less spiking. Default = 70.0. */
+static float _snn_global_input_scale = 70.0f;
+void nimcp_snn_set_input_scale(float scale) {
+    if (scale > 0.0f && scale < 10000.0f) {
+        _snn_global_input_scale = scale;
+    }
+}
+float nimcp_snn_get_input_scale(void) {
+    return _snn_global_input_scale;
+}
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_types.h"
 #include "core/neuralnet/nimcp_sparse_synapse.h"
@@ -283,7 +297,26 @@ int training_dispatch_snn_step(
         }
     }
 
-    snn_network_set_inputs(snn, input_ptr, input_dim);
+    /* Apply SNN input scaling — boost weak inputs above firing threshold.
+     * Without scaling, Stage 1's show_and_name features may be sub-threshold. */
+    float _snn_input_scale = _snn_global_input_scale;
+    if (input_ptr && input_dim > 0) {
+        float* scaled = nimcp_calloc(input_dim, sizeof(float));
+        if (scaled) {
+            /* Normalize to unit magnitude, then scale */
+            float mag = 0.0f;
+            for (uint32_t i = 0; i < input_dim; i++) mag += input_ptr[i] * input_ptr[i];
+            mag = sqrtf(mag + 1e-8f);
+            for (uint32_t i = 0; i < input_dim; i++)
+                scaled[i] = (input_ptr[i] / mag) * _snn_input_scale;
+            snn_network_set_inputs(snn, scaled, input_dim);
+            nimcp_free(scaled);
+        } else {
+            snn_network_set_inputs(snn, input_ptr, input_dim);
+        }
+    } else {
+        snn_network_set_inputs(snn, input_ptr, input_dim);
+    }
     nimcp_free(pooled_input);
 
     // Use SNN's configured timestep (from snn_config or simulation), default 1.0ms

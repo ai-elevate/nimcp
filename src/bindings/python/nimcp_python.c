@@ -6050,6 +6050,28 @@ static PyObject* Brain_snn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args
 }
 
 /**
+ * snn_set_input_scale(scale) -> None
+ * Set SNN input amplification factor. Higher = more spiking. Default 70.0.
+ */
+static PyObject* Brain_snn_set_input_scale(BrainObject* self, PyObject* args) {
+    (void)self;
+    float scale;
+    if (!PyArg_ParseTuple(args, "f", &scale)) return NULL;
+    extern void nimcp_snn_set_input_scale(float);
+    nimcp_snn_set_input_scale(scale);
+    Py_RETURN_NONE;
+}
+
+/**
+ * snn_get_input_scale() -> float
+ */
+static PyObject* Brain_snn_get_input_scale(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    (void)self;
+    extern float nimcp_snn_get_input_scale(void);
+    return PyFloat_FromDouble((double)nimcp_snn_get_input_scale());
+}
+
+/**
  * cnn_get_stats() -> dict
  * Get CNN trainer statistics: layer count, parameter count, label count.
  */
@@ -7982,6 +8004,12 @@ static PyMethodDef Brain_methods[] = {
     {"snn_get_stats", (PyCFunction)Brain_snn_get_stats, METH_NOARGS,
      "snn_get_stats() -> dict\n"
      "Get SNN statistics: firing rates, spikes, health."},
+    {"snn_set_input_scale", (PyCFunction)Brain_snn_set_input_scale, METH_VARARGS,
+     "snn_set_input_scale(scale) -> None\n"
+     "Set SNN input amplification. Higher = more spiking. Default 70.0."},
+    {"snn_get_input_scale", (PyCFunction)Brain_snn_get_input_scale, METH_NOARGS,
+     "snn_get_input_scale() -> float\n"
+     "Get current SNN input scale factor."},
     {"cnn_get_stats", (PyCFunction)Brain_cnn_get_stats, METH_NOARGS,
      "cnn_get_stats() -> dict\n"
      "Get CNN statistics: layers, parameters, labels."},
