@@ -729,7 +729,12 @@ static void _handle_weight_push(nimcp_swarm_edge_runtime_t* rt,
     uint32_t num_params;
     memcpy(&num_params, payload, sizeof(uint32_t));
 
-    uint32_t expected_size = sizeof(uint32_t) + num_params * sizeof(float);
+    /* Integer overflow guard */
+    if (num_params > (UINT32_MAX - sizeof(uint32_t)) / sizeof(float)) {
+        LOG_WARN("[SWARM_EDGE_RUNTIME] Weight push num_params overflow: %u", num_params);
+        return;
+    }
+    uint32_t expected_size = (uint32_t)(sizeof(uint32_t) + num_params * sizeof(float));
     if (size < expected_size || num_params == 0) {
         LOG_WARN("[SWARM_EDGE_RUNTIME] Weight push size mismatch: "
                  "got %u, expected %u", size, expected_size);

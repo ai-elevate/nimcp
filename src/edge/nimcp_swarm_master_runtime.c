@@ -480,8 +480,8 @@ static void _accept_new_connection(nimcp_swarm_master_t* master)
     /* Generate a provisional device_id from a monotonic counter.
      * The real device_id will arrive in the JOIN_REQUEST message.
      * High bit set = provisional (avoids collision with real device IDs). */
-    static uint32_t _next_provisional_id = 0x80000000;  /* High bit set = provisional */
-    uint32_t provisional_id = __sync_fetch_and_add(&_next_provisional_id, 1);
+    static volatile uint32_t _next_provisional_id = 0x80000000;  /* High bit set = provisional */
+    uint32_t provisional_id = __atomic_fetch_add(&_next_provisional_id, 1, __ATOMIC_RELAXED);
 
     int ret = nimcp_peer_registry_add(master->registry, provisional_id,
                                        addr_str, peer_port, NULL);
@@ -659,7 +659,12 @@ static void _handle_peer_message(nimcp_swarm_master_t* master,
             uint32_t num_params;
             memcpy(&num_params, payload, sizeof(uint32_t));
 
-            uint32_t expected_size = sizeof(uint32_t) + num_params * sizeof(float);
+            /* Integer overflow guard: num_params * sizeof(float) must not wrap */
+            if (num_params > (UINT32_MAX - sizeof(uint32_t)) / sizeof(float)) {
+                LOG_WARN("[SWARM_MASTER] Gradient num_params overflow: %u", num_params);
+                break;
+            }
+            uint32_t expected_size = (uint32_t)(sizeof(uint32_t) + num_params * sizeof(float));
             if (payload_size >= expected_size && num_params > 0) {
                 const float* gradients = (const float*)(payload + sizeof(uint32_t));
 
