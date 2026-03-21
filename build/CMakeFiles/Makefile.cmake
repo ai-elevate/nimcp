@@ -2495,6 +2495,7 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/unit/cognitive/CMakeFiles/unit_cognitive_test_ood_detector.dir/DependInfo.cmake"
   "test/unit/cognitive/CMakeFiles/unit_cognitive_test_training_data.dir/DependInfo.cmake"
   "test/unit/cognitive/CMakeFiles/unit_cognitive_test_modules_wiring.dir/DependInfo.cmake"
+  "test/unit/cognitive/CMakeFiles/unit_cognitive_test_enhancements.dir/DependInfo.cmake"
   "test/unit/cognitive/working_memory/CMakeFiles/unit_cognitive_working_memory_test_working_memory_pe.dir/DependInfo.cmake"
   "test/unit/cognitive/working_memory/substrate/CMakeFiles/unit_cognitive_working_memory_substrate_bridge.dir/DependInfo.cmake"
   "test/unit/cognitive/wellbeing/CMakeFiles/unit_cognitive_wellbeing_basic.dir/DependInfo.cmake"

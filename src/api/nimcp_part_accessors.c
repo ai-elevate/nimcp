@@ -609,3 +609,19 @@ nimcp_status_t nimcp_brain_get_callback_stats(
     set_error("No error");
     return NIMCP_OK;
 }
+
+/* ============================================================================
+ * nimcp_brain_get_theory_of_mind — accessor for swarm ToM bridge
+ *
+ * Returns the brain's theory_of_mind pointer as void*, so edge code
+ * can call ToM functions without including brain_internal.h.
+ * ============================================================================ */
+
+void* nimcp_brain_get_theory_of_mind(void* internal_brain)
+{
+    if (!internal_brain) {
+        return NULL;
+    }
+    brain_t brain = (brain_t)internal_brain;
+    return (void*)brain->theory_of_mind;
+}

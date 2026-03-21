@@ -1513,6 +1513,82 @@ class HardExampleMiner:
 
 
 # ============================================================================
+# Curriculum Escalator: progressive difficulty unlock
+# ============================================================================
+
+class CurriculumEscalator:
+    """Progressive difficulty curriculum — unlock harder content when basics are mastered.
+
+    Divides cognitive training into 3 tiers:
+    - Tier 1 (steps 0-3000): Basic domains only (ethics, causal, analogy)
+    - Tier 2 (steps 3000-7000): + counterfactual, metacognition, rcog, collective
+    - Tier 3 (steps 7000+): + sensor, motor, safety, embodiment, portia, dragonfly
+
+    Within each tier, items are ordered by estimated difficulty.
+    A tier unlocks when avg loss on current tier drops below threshold.
+    """
+
+    def __init__(self, unlock_threshold=500.0):
+        self.unlock_threshold = unlock_threshold
+        self.current_tier = 1
+        self.tier_losses = {1: [], 2: [], 3: []}
+        self.tier_domains = {
+            1: ['ethics', 'causal', 'analogy', 'metacognition'],
+            2: ['counterfactual', 'rcog', 'collective'],
+            3: ['sensor_fusion', 'motor_control', 'safety', 'embodiment', 'portia', 'dragonfly']
+        }
+        self.all_data = None  # lazy init
+
+    def get_available_domains(self):
+        """Return domains available at current tier."""
+        domains = []
+        for tier in range(1, self.current_tier + 1):
+            domains.extend(self.tier_domains.get(tier, []))
+        return domains
+
+    def filter_item(self, item):
+        """Returns True if this item is available at current tier."""
+        return item.get('domain', '') in self.get_available_domains()
+
+    def record_loss(self, loss, domain):
+        """Record a loss for tier tracking."""
+        for tier, domains in self.tier_domains.items():
+            if domain in domains:
+                self.tier_losses[tier].append(loss)
+                # Keep only last 100
+                if len(self.tier_losses[tier]) > 100:
+                    self.tier_losses[tier] = self.tier_losses[tier][-100:]
+                break
+
+    def check_escalation(self):
+        """Check if we should unlock the next tier."""
+        if self.current_tier >= 3:
+            return False
+
+        current_losses = self.tier_losses[self.current_tier]
+        if len(current_losses) < 20:
+            return False  # Not enough data
+
+        avg_loss = sum(current_losses[-50:]) / min(len(current_losses), 50)
+        if avg_loss < self.unlock_threshold:
+            self.current_tier += 1
+            print(f"    [Curriculum] Tier {self.current_tier} unlocked! "
+                  f"(avg_loss={avg_loss:.2f} < {self.unlock_threshold})")
+            return True
+        return False
+
+    def get_status(self):
+        """Return status string."""
+        avgs = {}
+        for tier, losses in self.tier_losses.items():
+            if losses:
+                avgs[tier] = sum(losses[-50:]) / min(len(losses), 50)
+        return (f"tier={self.current_tier}/3, "
+                f"domains={len(self.get_available_domains())}/13, "
+                f"tier_losses={avgs}")
+
+
+# ============================================================================
 # Embedding Adapter: lightweight projection to domain-adapted space
 # ============================================================================
 
@@ -2245,7 +2321,8 @@ def tile_to_brain_input(embedding, dim=BRAIN_INPUT_DIM):
 
 
 def _inject_cognitive_training(brain, composer, step, learning_rate,
-                               spectral_splitter=None, fold_idx=0):
+                               spectral_splitter=None, fold_idx=0,
+                               curriculum=None):
     """Inject one cognitive training item into the learning pipeline.
 
     Called every COGNITIVE_TRAIN_INTERVAL steps to exercise the 8 cognitive
@@ -2263,6 +2340,10 @@ def _inject_cognitive_training(brain, composer, step, learning_rate,
     if spectral_splitter and spectral_splitter.is_test_item(item['label'], fold_idx):
         return None
 
+    # Curriculum filtering — skip items from locked tiers
+    if curriculum and not curriculum.filter_item(item):
+        return None
+
     text = item["text"]
     answer = item["answer"]
     label = item["label"]
@@ -2274,6 +2355,9 @@ def _inject_cognitive_training(brain, composer, step, learning_rate,
         cog_lr = learning_rate * COGNITIVE_TRAIN_LR_BOOST
         loss = brain.learn_vector(features, target, label=label,
                                   confidence=0.8, learning_rate=cog_lr)
+        if curriculum:
+            curriculum.record_loss(loss if loss else 0, item.get('domain', ''))
+            curriculum.check_escalation()
         return loss
     except Exception as e:
         if step < 100:  # Only log early failures
@@ -4839,6 +4923,7 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         buffer_size=100, interval=100, num_corrections=8,
         strength=0.2, min_variance_ratio=0.1)
     collapse_detector = CollapseDetector(brain_ref=brain)
+    curriculum = CurriculumEscalator(unlock_threshold=500.0)
     mini_batch_buf = []
     for i in range(start_from, num_stimuli):
         # Mode collapse early detection
@@ -4948,7 +5033,8 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         if (i + 1) % COGNITIVE_TRAIN_INTERVAL == 0:
             cog_loss = _inject_cognitive_training(
                 brain, composer, step=i, learning_rate=lr_scheduler.get_lr(),
-                spectral_splitter=_spectral_splitter, fold_idx=_current_fold)
+                spectral_splitter=_spectral_splitter, fold_idx=_current_fold,
+                curriculum=curriculum)
             if cog_loss is not None:
                 losses.append(cog_loss)
 
@@ -5021,6 +5107,8 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             print(f"    {contrastive.stats_str()} | {diversity.stats_str()}")
             _print_utm_health(brain)
             _print_bio_stats(brain)
+            if curriculum:
+                print(f"    [Curriculum] {curriculum.get_status()}")
             losses_to_report = losses[-500:]
             if len(losses_to_report) > 100:
                 early = np.mean(losses_to_report[:50])

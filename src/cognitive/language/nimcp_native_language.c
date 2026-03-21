@@ -12,6 +12,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/encoding/nimcp_positional_encoding.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -42,6 +43,10 @@ struct nimcp_native_language {
     float ema_loss;
     nimcp_mutex_t* lock;
     uint32_t rng_state;
+
+    /* Positional encoding for sequence position awareness */
+    nimcp_pos_encoder_t* pos_encoder;
+    float* pos_buffer;             /* [embed_dim] temp buffer for positional encoding */
 };
 
 /* ======================================================================== */
@@ -181,6 +186,22 @@ nimcp_native_language_t* nimcp_native_language_create(const nimcp_language_confi
 
     lang->lock = nimcp_mutex_create(NULL);
 
+    /* Positional encoding — sinusoidal, no training needed */
+    nimcp_pos_config_t pos_cfg;
+    memset(&pos_cfg, 0, sizeof(pos_cfg));
+    pos_cfg.type = NIMCP_POS_SINUSOIDAL;
+    pos_cfg.config.sinusoidal.base.embedding_dim = ed;
+    pos_cfg.config.sinusoidal.base.max_seq_length = lang->config.max_seq_length;
+    pos_cfg.config.sinusoidal.base.cache_enabled = true;
+    pos_cfg.config.sinusoidal.frequency_base = 10000.0f;
+    pos_cfg.config.sinusoidal.frequency_scale = 1.0f;
+    lang->pos_encoder = nimcp_pos_encoder_create(&pos_cfg);
+    lang->pos_buffer = nimcp_calloc(ed, sizeof(float));
+    if (lang->pos_encoder) {
+        nimcp_pos_cache_precompute(lang->pos_encoder,
+                                    lang->config.max_seq_length);
+    }
+
     LOG_INFO("[%s] Created (vocab=%u seed tokens, embed_dim=%u)",
              LOG_MODULE, lang->vocab.vocab_size, ed);
     return lang;
@@ -196,6 +217,8 @@ void nimcp_native_language_destroy(nimcp_native_language_t* lang) {
     nimcp_free(lang->attention_scores);
     nimcp_free(lang->softmax_buf);
     nimcp_phonological_loop_destroy(lang->phono_loop);
+    if (lang->pos_encoder) nimcp_pos_encoder_destroy(lang->pos_encoder);
+    nimcp_free(lang->pos_buffer);
     if (lang->lock) nimcp_mutex_free(lang->lock);
     nimcp_free(lang);
 }
@@ -236,6 +259,15 @@ int nimcp_language_generate(nimcp_native_language_t* lang,
 
     /* 2. Autoregressive loop */
     for (uint32_t step = 0; step < lang->config.max_seq_length; step++) {
+        /* Add positional encoding to query for this step */
+        if (lang->pos_encoder && lang->pos_buffer) {
+            if (nimcp_pos_encode_position(lang->pos_encoder, step,
+                                           lang->pos_buffer) == NIMCP_POS_SUCCESS) {
+                for (uint32_t i = 0; i < ed; i++)
+                    query[i] += lang->pos_buffer[i];
+            }
+        }
+
         /* a. Score each token */
         float max_score = -1e9f;
         for (uint32_t t = 4; t < vs; t++) { /* Skip special tokens */

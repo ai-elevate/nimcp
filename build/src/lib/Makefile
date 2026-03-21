@@ -32132,6 +32132,30 @@ __/edge/nimcp_swarm_sync.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_sync.c.s
 .PHONY : __/edge/nimcp_swarm_sync.c.s
 
+__/edge/nimcp_swarm_tom_bridge.o: __/edge/nimcp_swarm_tom_bridge.c.o
+.PHONY : __/edge/nimcp_swarm_tom_bridge.o
+
+# target to build an object file
+__/edge/nimcp_swarm_tom_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_tom_bridge.c.o
+.PHONY : __/edge/nimcp_swarm_tom_bridge.c.o
+
+__/edge/nimcp_swarm_tom_bridge.i: __/edge/nimcp_swarm_tom_bridge.c.i
+.PHONY : __/edge/nimcp_swarm_tom_bridge.i
+
+# target to preprocess a source file
+__/edge/nimcp_swarm_tom_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_tom_bridge.c.i
+.PHONY : __/edge/nimcp_swarm_tom_bridge.c.i
+
+__/edge/nimcp_swarm_tom_bridge.s: __/edge/nimcp_swarm_tom_bridge.c.s
+.PHONY : __/edge/nimcp_swarm_tom_bridge.s
+
+# target to generate assembly for a file
+__/edge/nimcp_swarm_tom_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/edge/nimcp_swarm_tom_bridge.c.s
+.PHONY : __/edge/nimcp_swarm_tom_bridge.c.s
+
 __/edge/nimcp_telemetry.o: __/edge/nimcp_telemetry.c.o
 .PHONY : __/edge/nimcp_telemetry.o
 
@@ -57883,6 +57907,9 @@ help:
 	@echo "... __/edge/nimcp_swarm_sync.o"
 	@echo "... __/edge/nimcp_swarm_sync.i"
 	@echo "... __/edge/nimcp_swarm_sync.s"
+	@echo "... __/edge/nimcp_swarm_tom_bridge.o"
+	@echo "... __/edge/nimcp_swarm_tom_bridge.i"
+	@echo "... __/edge/nimcp_swarm_tom_bridge.s"
 	@echo "... __/edge/nimcp_telemetry.o"
 	@echo "... __/edge/nimcp_telemetry.i"
 	@echo "... __/edge/nimcp_telemetry.s"

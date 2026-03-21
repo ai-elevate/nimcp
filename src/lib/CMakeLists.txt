@@ -3033,6 +3033,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_byzantine.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_master_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_edge_runtime.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_swarm_tom_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_telemetry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_edge_ctx.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../edge/nimcp_sensor.c

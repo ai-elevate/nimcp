@@ -15775,6 +15775,19 @@ unit_cognitive_test_modules_wiring/fast:
 .PHONY : unit_cognitive_test_modules_wiring/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_enhancements
+
+# Build rule for target.
+unit_cognitive_test_enhancements: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_enhancements
+.PHONY : unit_cognitive_test_enhancements
+
+# fast build rule for target.
+unit_cognitive_test_enhancements/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_enhancements.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_enhancements.dir/build
+.PHONY : unit_cognitive_test_enhancements/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
 
 # Build rule for target.
@@ -45072,6 +45085,7 @@ help:
 	@echo "... unit_cognitive_test_emotion_memory_bridge"
 	@echo "... unit_cognitive_test_emotion_tensor"
 	@echo "... unit_cognitive_test_empathetic_response"
+	@echo "... unit_cognitive_test_enhancements"
 	@echo "... unit_cognitive_test_ethics_executive_bridge"
 	@echo "... unit_cognitive_test_extended_mind"
 	@echo "... unit_cognitive_test_fault_tolerance"

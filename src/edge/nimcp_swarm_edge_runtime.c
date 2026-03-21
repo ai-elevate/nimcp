@@ -47,6 +47,16 @@ int nimcp_swarm_discovery_announce(uint32_t device_id, bool is_master,
 /* Forward declaration for self-referential call in destroy */
 int nimcp_swarm_edge_stop(nimcp_swarm_edge_runtime_t* rt);
 
+/* nimcp_swarm_tom_bridge.c — Theory of Mind integration for swarm comms */
+extern int nimcp_swarm_tom_observe_peer(nimcp_brain_t brain_handle,
+                                        uint32_t peer_device_id,
+                                        const uint8_t* data,
+                                        uint32_t data_size);
+extern int nimcp_swarm_tom_observe_collective(nimcp_brain_t brain_handle,
+                                              const uint8_t* aggregated_data,
+                                              uint32_t data_size,
+                                              uint32_t num_peers);
+
 /* Stub: apply aggregated weight deltas to a brain.
  * TODO: Wire to real brain weight-update API when gradient-sync is fully plumbed. */
 int nimcp_brain_apply_weight_delta(void* brain,
@@ -116,6 +126,7 @@ struct nimcp_swarm_edge_runtime {
 static void* _edge_event_loop(void* arg);
 static void  _handle_master_message(nimcp_swarm_edge_runtime_t* rt,
                                     nimcp_swarm_msg_type_t msg_type,
+                                    uint32_t sender_id,
                                     const uint8_t* payload,
                                     uint32_t payload_size);
 static void  _handle_weight_push(nimcp_swarm_edge_runtime_t* rt,
@@ -747,6 +758,13 @@ static void _handle_weight_push(nimcp_swarm_edge_runtime_t* rt,
          * (e.g., immerse_athena.py or a C-level training loop).
          * We signal readiness by setting a flag the app can check. */
     }
+
+    /* ToM: The master's aggregated weights reflect collective knowledge.
+     * Record this as "observing the group's learning state" so the ToM
+     * module builds awareness of what the swarm collectively knows. */
+    if (rt->brain && payload && size > sizeof(uint32_t)) {
+        nimcp_swarm_tom_observe_collective(rt->brain, payload, size, 0);
+    }
 }
 
 /* ============================================================================
@@ -798,6 +816,7 @@ static void _handle_collect_directive(nimcp_swarm_edge_runtime_t* rt)
 
 static void _handle_master_message(nimcp_swarm_edge_runtime_t* rt,
                                    nimcp_swarm_msg_type_t msg_type,
+                                   uint32_t sender_id,
                                    const uint8_t* payload,
                                    uint32_t payload_size)
 {
@@ -829,6 +848,15 @@ static void _handle_master_message(nimcp_swarm_edge_runtime_t* rt,
              * nimcp_gossip_apply_update() */
             LOG_INFO("[SWARM_EDGE_RUNTIME] Received gossip update "
                      "(%u bytes)", payload_size);
+        }
+
+        /* === ToM: Model other agent's state from gossip data ===
+         * When we receive gradient/weight info from another peer,
+         * use it to build a theory of mind about that peer's learning state.
+         * This exercises the ToM module with real multi-agent interaction. */
+        if (rt->brain && payload && payload_size > 0) {
+            nimcp_swarm_tom_observe_peer(rt->brain, sender_id,
+                                         payload, payload_size);
         }
         break;
 
@@ -865,6 +893,15 @@ static void _handle_gossip_data(nimcp_swarm_edge_runtime_t* rt)
     /* TODO: Deserialize gossip update from wire format and apply
      * via nimcp_gossip_apply_update(). For now, just log. */
     LOG_INFO("[SWARM_EDGE_RUNTIME] Gossip data received (%zd bytes)", n);
+
+    /* ToM: Model the UDP gossip sender's state.
+     * Use the source IP's low 16 bits as a pseudo device-id since
+     * the full wire format is not yet deserialized. */
+    if (rt->brain && n > 0) {
+        uint32_t pseudo_peer_id = ntohl(src_addr.sin_addr.s_addr) & 0xFFFF;
+        nimcp_swarm_tom_observe_peer(rt->brain, pseudo_peer_id,
+                                     buf, (uint32_t)n);
+    }
 }
 
 /* ============================================================================
@@ -951,7 +988,8 @@ static void* _edge_event_loop(void* arg)
                     rt->master_fd  = -1;
                     rt->connected  = false;
                 } else {
-                    _handle_master_message(rt, msg_type, payload, payload_size);
+                    _handle_master_message(rt, msg_type, sender_id,
+                                           payload, payload_size);
 
                     if (payload) {
                         nimcp_free(payload);

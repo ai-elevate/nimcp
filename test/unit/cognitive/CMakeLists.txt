@@ -2710,3 +2710,11 @@ gtest_discover_tests(unit_cognitive_test_modules_wiring
         LABELS "unit;cognitive;wiring"
         TIMEOUT 60
 )
+
+# Cognitive enhancement modules tests
+add_executable(unit_cognitive_test_enhancements test_cognitive_enhancements.cpp test_linker_stubs.c)
+target_link_libraries(unit_cognitive_test_enhancements PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+target_include_directories(unit_cognitive_test_enhancements PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+target_compile_features(unit_cognitive_test_enhancements PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_test_enhancements WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES LABELS "unit;cognitive;enhancements" TIMEOUT 60)
