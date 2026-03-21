@@ -668,6 +668,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/joy/nimcp_joy_euphoria.c  # Phase E2: Joy, Euphoria, and Value-Aligned Success
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/remorse/nimcp_remorse_regret.c  # Phase E3: Remorse, Regret, and Evaluative Emotions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_love_loyalty_friendship.c  # Phase E4: Love, Loyalty, and Friendship
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_interaction.c  # Multi-agent social interaction framework (single brain, multiple personas)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow/nimcp_shadow_emotions.c  # Phase E5: Shadow Emotions (Jealousy, Envy, Obsession, Hubris, Greed, Narcissism)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bias/nimcp_bias_detection.c  # Phase E6: Bias Detection (Racial, LGBTQ+, Gender, Misogyny, Age, Disability, Religious, Socioeconomic)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_extended.c  # Phase 12: Advanced Self-Awareness (metacognition, agency, safety)
@@ -3052,6 +3053,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/language/nimcp_native_language.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/language/nimcp_tokenizer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/language/nimcp_inner_speech.c       # Inner speech loop (iterative self-refinement)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/language/nimcp_emergent_language.c  # Emergent language (vocabulary from neural patterns)
 
     # Episodic Replay (sleep consolidation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_episodic_replay.c     # Episodic replay during sleep/consolidation

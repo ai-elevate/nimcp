@@ -8564,6 +8564,30 @@ __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c.s
 .PHONY : __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c.s
 
+__/cognitive/language/nimcp_emergent_language.o: __/cognitive/language/nimcp_emergent_language.c.o
+.PHONY : __/cognitive/language/nimcp_emergent_language.o
+
+# target to build an object file
+__/cognitive/language/nimcp_emergent_language.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_emergent_language.c.o
+.PHONY : __/cognitive/language/nimcp_emergent_language.c.o
+
+__/cognitive/language/nimcp_emergent_language.i: __/cognitive/language/nimcp_emergent_language.c.i
+.PHONY : __/cognitive/language/nimcp_emergent_language.i
+
+# target to preprocess a source file
+__/cognitive/language/nimcp_emergent_language.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_emergent_language.c.i
+.PHONY : __/cognitive/language/nimcp_emergent_language.c.i
+
+__/cognitive/language/nimcp_emergent_language.s: __/cognitive/language/nimcp_emergent_language.c.s
+.PHONY : __/cognitive/language/nimcp_emergent_language.s
+
+# target to generate assembly for a file
+__/cognitive/language/nimcp_emergent_language.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/language/nimcp_emergent_language.c.s
+.PHONY : __/cognitive/language/nimcp_emergent_language.c.s
+
 __/cognitive/language/nimcp_inner_speech.o: __/cognitive/language/nimcp_inner_speech.c.o
 .PHONY : __/cognitive/language/nimcp_inner_speech.o
 
@@ -17011,6 +17035,30 @@ __/cognitive/social/nimcp_social_fep_bridge.s: __/cognitive/social/nimcp_social_
 __/cognitive/social/nimcp_social_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_social_fep_bridge.c.s
 .PHONY : __/cognitive/social/nimcp_social_fep_bridge.c.s
+
+__/cognitive/social/nimcp_social_interaction.o: __/cognitive/social/nimcp_social_interaction.c.o
+.PHONY : __/cognitive/social/nimcp_social_interaction.o
+
+# target to build an object file
+__/cognitive/social/nimcp_social_interaction.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_social_interaction.c.o
+.PHONY : __/cognitive/social/nimcp_social_interaction.c.o
+
+__/cognitive/social/nimcp_social_interaction.i: __/cognitive/social/nimcp_social_interaction.c.i
+.PHONY : __/cognitive/social/nimcp_social_interaction.i
+
+# target to preprocess a source file
+__/cognitive/social/nimcp_social_interaction.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_social_interaction.c.i
+.PHONY : __/cognitive/social/nimcp_social_interaction.c.i
+
+__/cognitive/social/nimcp_social_interaction.s: __/cognitive/social/nimcp_social_interaction.c.s
+.PHONY : __/cognitive/social/nimcp_social_interaction.s
+
+# target to generate assembly for a file
+__/cognitive/social/nimcp_social_interaction.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_social_interaction.c.s
+.PHONY : __/cognitive/social/nimcp_social_interaction.c.s
 
 __/cognitive/social/nimcp_social_plasticity_bridge.o: __/cognitive/social/nimcp_social_plasticity_bridge.c.o
 .PHONY : __/cognitive/social/nimcp_social_plasticity_bridge.o
@@ -54961,6 +55009,9 @@ help:
 	@echo "... __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.o"
 	@echo "... __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.i"
 	@echo "... __/cognitive/knowledge/nimcp_knowledge_thalamic_bridge.s"
+	@echo "... __/cognitive/language/nimcp_emergent_language.o"
+	@echo "... __/cognitive/language/nimcp_emergent_language.i"
+	@echo "... __/cognitive/language/nimcp_emergent_language.s"
 	@echo "... __/cognitive/language/nimcp_inner_speech.o"
 	@echo "... __/cognitive/language/nimcp_inner_speech.i"
 	@echo "... __/cognitive/language/nimcp_inner_speech.s"
@@ -56017,6 +56068,9 @@ help:
 	@echo "... __/cognitive/social/nimcp_social_fep_bridge.o"
 	@echo "... __/cognitive/social/nimcp_social_fep_bridge.i"
 	@echo "... __/cognitive/social/nimcp_social_fep_bridge.s"
+	@echo "... __/cognitive/social/nimcp_social_interaction.o"
+	@echo "... __/cognitive/social/nimcp_social_interaction.i"
+	@echo "... __/cognitive/social/nimcp_social_interaction.s"
 	@echo "... __/cognitive/social/nimcp_social_plasticity_bridge.o"
 	@echo "... __/cognitive/social/nimcp_social_plasticity_bridge.i"
 	@echo "... __/cognitive/social/nimcp_social_plasticity_bridge.s"
