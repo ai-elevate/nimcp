@@ -15840,6 +15840,19 @@ unit_cognitive_test_emergent/fast:
 .PHONY : unit_cognitive_test_emergent/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_memory_features
+
+# Build rule for target.
+unit_cognitive_test_memory_features: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_memory_features
+.PHONY : unit_cognitive_test_memory_features
+
+# fast build rule for target.
+unit_cognitive_test_memory_features/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_memory_features.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_memory_features.dir/build
+.PHONY : unit_cognitive_test_memory_features/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
 
 # Build rule for target.
@@ -45228,6 +45241,7 @@ help:
 	@echo "... unit_cognitive_test_jepa_context"
 	@echo "... unit_cognitive_test_jepa_fep_bridge"
 	@echo "... unit_cognitive_test_jepa_predictor"
+	@echo "... unit_cognitive_test_memory_features"
 	@echo "... unit_cognitive_test_meta_controller"
 	@echo "... unit_cognitive_test_meta_health"
 	@echo "... unit_cognitive_test_mirror_empathy_bridge"
