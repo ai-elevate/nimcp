@@ -1681,6 +1681,22 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSnnGetStats(
     return out;
 }
 
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSnnSetInputScale(
+    JNIEnv *env, jclass cls, jfloat scale)
+{
+    (void)env; (void)cls;
+    extern void nimcp_snn_set_input_scale(float);
+    nimcp_snn_set_input_scale((float)scale);
+}
+
+JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSnnGetInputScale(
+    JNIEnv *env, jclass cls)
+{
+    (void)env; (void)cls;
+    extern float nimcp_snn_get_input_scale(void);
+    return (jfloat)nimcp_snn_get_input_scale();
+}
+
 JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeCnnGetStats(
     JNIEnv *env, jclass cls, jlong h)
 {

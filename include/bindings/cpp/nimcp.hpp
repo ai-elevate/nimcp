@@ -1445,6 +1445,13 @@ public:
         return s;
     }
 
+    static void snn_set_input_scale(float scale) {
+        nimcp_snn_set_input_scale(scale);
+    }
+    static float snn_get_input_scale() {
+        return nimcp_snn_get_input_scale();
+    }
+
     struct CnnStats {
         uint32_t num_layers = 0;
         size_t num_parameters = 0;

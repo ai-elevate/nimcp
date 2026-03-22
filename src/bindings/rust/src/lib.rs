@@ -924,6 +924,8 @@ extern "C" {
         out_hyperactive_neurons: *mut c_uint, out_health: *mut c_int,
         out_memory_bytes: *mut usize,
     ) -> c_int;
+    fn nimcp_snn_set_input_scale(scale: c_float);
+    fn nimcp_snn_get_input_scale() -> c_float;
     fn nimcp_brain_cnn_get_stats(
         brain: *mut NimcpBrainHandle,
         out_num_layers: *mut c_uint, out_num_parameters: *mut usize,
@@ -2163,6 +2165,13 @@ impl Brain {
             silent_neurons: silent, hyperactive_neurons: hyper,
             health, memory_bytes: mem,
         })
+    }
+
+    pub fn snn_set_input_scale(&self, scale: f32) {
+        unsafe { nimcp_snn_set_input_scale(scale) }
+    }
+    pub fn snn_get_input_scale(&self) -> f32 {
+        unsafe { nimcp_snn_get_input_scale() }
     }
 
     pub fn cnn_get_stats(&self) -> Result<CnnStats> {

@@ -1,7 +1,7 @@
 # NIMCP Project Reference
 
 **Version**: 2.6.4
-**Last Updated**: 2026-03-15
+**Last Updated**: 2026-03-22
 **Path**: `/home/bbrelin/nimcp`
 
 > **Documentation is modularized.** See `docs/claude/` for detailed documentation.
@@ -27,13 +27,17 @@
 
 - **2M neuron brain** with multi-layer diamond architecture (3/5/7 layers by size)
 - **6 network types**: Main neural net, LNN (liquid/temporal + Hamiltonian), SNN (spiking + FNO population), CNN (visual/audio), FNO (Fourier spectral), HNN (energy-conserving)
-- **60+ cognitive modules**: introspection, ethics, theory of mind, imagination, reasoning, emotions, etc.
+- **60+ cognitive modules**: introspection, ethics, theory of mind, imagination, reasoning, emotions, etc. + 13 cognitive enhancements (inner speech, episodic replay, world model, attention, working memory, analogical transfer, multi-timescale memory, emotional learning, contrastive self-learning, self-curriculum, dynamic arch search, social interaction, emergent language)
 - **33+ brain regions**: prefrontal, occipital, parietal, hippocampus, cerebellum, basal ganglia, etc.
 - **Full biological plasticity**: STDP, BCM, eligibility traces, dendritic, homeostatic, 6 neuromodulators
 - **Multimodal perception**: visual cortex, audio cortex, speech cortex, somatosensory
+- **Edge/Robot platform**: sensor hub (12 types), safety watchdog, motor output, 4 drone bridges (MAVLink/DJI/MSP/Parrot), ROS 2 bridge, sim-to-real bridge, URDF embodiment, sensorimotor loop
 - **GPU-accelerated** (CUDA kernels for forward/backward/plasticity), ~15-16.5 GB VRAM for 2M neurons
-- **150+ Python API methods**, immersive developmental training curriculum
-- **2,552 source files**, 2,456 headers, 800+ fields on brain_struct
+- **240 Python API methods**, 8 language bindings synced, immersive developmental training curriculum
+- **~2,600 source files**, 2,456 headers, 800+ fields on brain_struct
+- **Swarm runtime**: master/edge federation, UDP discovery, Byzantine tolerance, gossip learning
+- **Brain-native language**: learned vocabulary, autoregressive decoding, emergent alien language mode
+- **9-layer safety**: LGSS governance, non-removable ethics, tamper-resistant audit, formal verification hooks
 
 ## Trigger-Action Rules
 
@@ -83,6 +87,8 @@
 | Lock Ordering | [modules/lock-ordering.md](docs/claude/modules/lock-ordering.md) |
 | Hamiltonian Neural Networks | [modules/hnn.md](docs/claude/modules/hnn.md) |
 | Fourier Neural Operators | [modules/fno.md](docs/claude/modules/fno.md) |
+| Swarm Runtime | [modules/swarm-runtime.md](docs/claude/modules/swarm-runtime.md) |
+| Edge Platform | [modules/edge-platform.md](docs/claude/modules/edge-platform.md) |
 
 ---
 

@@ -24,9 +24,10 @@ This is exploratory research, not a solved problem. We don't claim biological fi
 ## What This Is
 
 - A research platform exploring neuromorphic approaches to AI safety
-- ~2,500 C source files, 83 CUDA kernels, Python bindings
-- Multi-layer diamond architecture (up to 1.5M neurons on a single GPU)
-- 30+ cognitive modules inspired by neuroscience literature
+- ~2,600 C source files, 500K+ LOC, 83 CUDA kernels, Python bindings
+- Multi-layer diamond architecture (up to 2M neurons on a single GPU)
+- 60+ cognitive modules inspired by neuroscience literature
+- 240 Python API methods, 8 language bindings (Python, Java, Node.js, Go, C#, Rust, C++, Perl)
 - Actively under development — built primarily by one developer with significant Claude assistance
 
 ## What This Is Not
@@ -53,7 +54,7 @@ NIMCP implements a spiking neural network with biologically-inspired cognitive m
 nimcp/
 ├── src/
 │   ├── core/              # Neural network engine, brain API
-│   ├── cognitive/         # 30+ cognitive modules
+│   ├── cognitive/         # 60+ cognitive modules
 │   │   ├── ethics/        # Ethical reasoning constraints
 │   │   ├── immune/        # Anomaly detection system
 │   │   ├── introspection/ # IIT Phi self-monitoring
@@ -93,15 +94,24 @@ For detailed usage, see:
 
 ## Current Status
 
-**Version 2.6.3** (March 2026)
+**Version 2.6.4** (March 2026)
 
 What works:
 - Brain creation, training, and inference through C and Python APIs
 - GPU-accelerated forward and backward passes
 - Multi-layer diamond architecture with automatic depth scaling
-- FAST initialization mode (14s for 1.5M neurons, down from 10+ minutes)
+- FAST initialization mode (14s for 2M neurons, down from 10+ minutes)
 - Developmental training pipeline with curriculum-based learning
 - Immune system anomaly detection active during inference
+- Swarm runtime (multi-device coordination with master/edge federation)
+- 4 drone platform bridges (MAVLink, DJI, MSP, Parrot)
+- Sensor hub (12 types) + safety watchdog + motor output
+- Brain-native language with learned vocabulary + emergent language mode
+- 13 cognitive enhancements (inner speech, episodic replay, world model, attention, working memory, analogical transfer, multi-timescale memory, emotional learning, contrastive self-learning, self-curriculum, dynamic arch search, social interaction, emergent language)
+- 9-layer safety architecture (LGSS governance, non-removable ethics, tamper-resistant audit, formal verification hooks)
+- ROS 2 bridge, sim-to-real bridge, URDF embodiment
+- Spectral k-fold cross validation
+- 480+ tests passing
 
 What's in progress:
 - Training accuracy on benchmark datasets (currently 23-35% across domains, targeting 95%)

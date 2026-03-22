@@ -1465,6 +1465,16 @@ func (b *Brain) SNNGetStats() (map[string]interface{}, error) {
 	}, nil
 }
 
+// SNNSetInputScale sets the SNN input amplification factor.
+func SNNSetInputScale(scale float32) {
+	C.nimcp_snn_set_input_scale(C.float(scale))
+}
+
+// SNNGetInputScale returns the current SNN input scale factor.
+func SNNGetInputScale() float32 {
+	return float32(C.nimcp_snn_get_input_scale())
+}
+
 // CNNGetStats returns CNN trainer statistics.
 func (b *Brain) CNNGetStats() (map[string]interface{}, error) {
 	var stats C.go_cnn_stats_t

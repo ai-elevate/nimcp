@@ -676,6 +676,12 @@ namespace NIMCP
             ref ulong outMemoryBytes);
 
         [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void nimcp_snn_set_input_scale(float scale);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern float nimcp_snn_get_input_scale();
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
         public static extern int nimcp_brain_cnn_get_stats(
             IntPtr brain,
             ref uint outNumLayers, ref ulong outNumParameters,
@@ -2023,6 +2029,12 @@ namespace NIMCP
                 { "memory_usage_bytes", memoryBytes }
             };
         }
+
+        /// <summary>Set SNN input amplification scale.</summary>
+        public static void SnnSetInputScale(float scale) => Native.nimcp_snn_set_input_scale(scale);
+
+        /// <summary>Get current SNN input scale factor.</summary>
+        public static float SnnGetInputScale() => Native.nimcp_snn_get_input_scale();
 
         /// <summary>
         /// Get CNN trainer statistics.

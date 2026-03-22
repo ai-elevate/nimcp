@@ -23,6 +23,21 @@ cp /home/bbrelin/nimcp/build/lib/python/nimcp.so ~/.local/lib/python3.12/site-pa
 
 ## Test Execution
 
+**480+ tests passing** across unit, integration, and cognitive test suites.
+
+### Test directories
+
+- `test/unit/lnn/` — LNN/Hamiltonian tests
+- `test/unit/snn/` — SNN spiking network tests
+- `test/unit/cnn/` — CNN visual/audio tests
+- `test/unit/cognitive/` — Cognitive module tests (enhancements, native language, tokenizer, social interaction, emergent language)
+- `test/unit/edge/` — Edge platform tests (sensor hub, safety watchdog, swarm, drones, motor, sim, embodiment, sensorimotor)
+- `test/unit/security/` — Security tests (LGSS enhanced, audit log)
+- `test/unit/core/` — Core brain tests
+- `test/unit/tensor/` — Tensor operation tests
+
+### Core test commands
+
 ```bash
 # Run specific test by name
 cd /home/bbrelin/nimcp/build && ctest -R test_name
@@ -32,6 +47,30 @@ cd /home/bbrelin/nimcp/build && ctest --output-on-failure
 
 # Run a specific test binary directly with gtest
 ./test/unit/lnn/unit_lnn_test_lnn_config --gtest_brief=1
+```
+
+### Edge module tests (sensor, watchdog, swarm, drones, motor, sim, embodiment, sensorimotor)
+
+```bash
+make unit_edge_test_sensor_hub unit_edge_test_safety_watchdog unit_edge_test_swarm_lifecycle unit_edge_test_swarm_sync unit_edge_test_swarm_byzantine unit_edge_test_drone_bridges unit_edge_test_motor_output unit_edge_test_sim_bridge unit_edge_test_embodiment unit_edge_test_sensorimotor -j4
+```
+
+### Cognitive enhancement tests
+
+```bash
+make unit_cognitive_test_enhancements unit_cognitive_test_native_language unit_cognitive_test_tokenizer -j4
+```
+
+### Security tests (LGSS + audit)
+
+```bash
+make unit_security_test_lgss_enhanced unit_security_test_audit_log -j4
+```
+
+### Social + emergent language tests
+
+```bash
+make unit_cognitive_test_social_interaction unit_cognitive_test_emergent -j4
 ```
 
 ## Training

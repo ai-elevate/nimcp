@@ -2586,6 +2586,24 @@ static napi_value BrainSnnGetStats(napi_env env, napi_callback_info info) {
     return obj;
 }
 
+static napi_value BrainSnnSetInputScale(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
+    double scale = 70.0;
+    if (argc >= 1) napi_get_value_double(env, argv[0], &scale);
+    extern void nimcp_snn_set_input_scale(float);
+    nimcp_snn_set_input_scale((float)scale);
+    napi_value result; napi_get_undefined(env, &result); return result;
+}
+
+static napi_value BrainSnnGetInputScale(napi_env env, napi_callback_info info) {
+    (void)info;
+    extern float nimcp_snn_get_input_scale(void);
+    napi_value result;
+    napi_create_double(env, (double)nimcp_snn_get_input_scale(), &result);
+    return result;
+}
+
 /**
  * WHAT: Get CNN trainer statistics
  * WHY:  Monitor CNN training progress
@@ -3988,6 +4006,8 @@ static napi_value Init(napi_env env, napi_value exports) {
     EXPORT_FN(env, exports, "lnnCreate", BrainLnnCreate);
     EXPORT_FN(env, exports, "lnnGetStats", BrainLnnGetStats);
     EXPORT_FN(env, exports, "snnGetStats", BrainSnnGetStats);
+    EXPORT_FN(env, exports, "snnSetInputScale", BrainSnnSetInputScale);
+    EXPORT_FN(env, exports, "snnGetInputScale", BrainSnnGetInputScale);
     EXPORT_FN(env, exports, "cnnGetStats", BrainCnnGetStats);
 
     /* --- Configuration API --- */

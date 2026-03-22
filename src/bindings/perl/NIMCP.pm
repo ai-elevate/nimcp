@@ -335,6 +335,8 @@ $ffi->attach('nimcp_brain_lnn_get_stats' =>
 $ffi->attach('nimcp_brain_snn_get_stats' =>
     ['opaque', 'uint64*', 'uint64*', 'float*', 'float*',
      'float*', 'uint32*', 'uint32*', 'opaque', 'opaque'] => 'int');
+$ffi->attach('nimcp_snn_set_input_scale' => ['float'] => 'void');
+$ffi->attach('nimcp_snn_get_input_scale' => [] => 'float');
 $ffi->attach('nimcp_brain_cnn_get_stats' =>
     ['opaque', 'uint32*', 'opaque', 'uint32*', 'opaque'] => 'int');
 
