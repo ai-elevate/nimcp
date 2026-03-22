@@ -3208,8 +3208,87 @@ class StimulusSource:
     def get_sensory(self):
         return random.choice(self.SENSORY)
 
+    # Compositional generators for unlimited training variety
+    _ADJECTIVES = ["red", "blue", "green", "yellow", "big", "small", "soft", "hard",
+                   "warm", "cold", "wet", "dry", "old", "new", "shiny", "dull",
+                   "round", "flat", "tall", "short", "heavy", "light", "smooth", "rough",
+                   "bright", "dark", "striped", "spotted", "fuzzy", "spiky"]
+    _LOCATIONS = ["on the table", "next to the chair", "under the tree", "in the basket",
+                  "near the window", "beside the door", "on the grass", "in the water",
+                  "against the wall", "on the shelf", "in the garden", "by the fireplace",
+                  "on the bed", "under the blanket", "in the box", "at the edge"]
+    _ACTIONS = ["running", "sleeping", "eating", "playing", "hiding", "jumping",
+                "swimming", "flying", "sitting", "standing", "rolling", "spinning",
+                "falling", "growing", "melting", "shining", "dripping", "floating",
+                "bouncing", "swinging", "crawling", "stretching", "dancing", "singing"]
+    _RELATIONS = ["next to", "above", "below", "behind", "in front of", "inside",
+                  "on top of", "beside", "between", "under", "near", "far from"]
+    _NUMBERS = ["one", "two", "three", "four", "five"]
+
     def get_object(self):
-        return random.choice(self.OBJECTS)
+        """Get an object for naming — mixes static objects with generated compositions.
+
+        40% static objects (from OBJECTS list)
+        15% adjective + object (property variation)
+        15% object + location (spatial)
+        10% object + action (dynamic)
+        10% object + relation + object (relationships)
+        5% number + objects (counting)
+        5% negation (contrast)
+        """
+        r = random.random()
+
+        if r < 0.40:
+            # Static object
+            return random.choice(self.OBJECTS)
+
+        # Get two random base objects for compositions
+        obj1_name, obj1_desc = random.choice(self.OBJECTS)
+        obj2_name, obj2_desc = random.choice(self.OBJECTS)
+        while obj2_name == obj1_name:
+            obj2_name, obj2_desc = random.choice(self.OBJECTS)
+
+        if r < 0.55:
+            # Adjective + object
+            adj = random.choice(self._ADJECTIVES)
+            name = f"{adj} {obj1_name}"
+            desc = f"A {adj} {obj1_name}. {obj1_desc.rstrip('.')}. This one is {adj}."
+            return (name, desc)
+
+        if r < 0.70:
+            # Object + location
+            loc = random.choice(self._LOCATIONS)
+            name = f"{obj1_name} {loc}"
+            desc = f"{obj1_desc.rstrip('.')} — this one is {loc}."
+            return (name, desc)
+
+        if r < 0.80:
+            # Object + action
+            act = random.choice(self._ACTIONS)
+            name = f"{obj1_name} {act}"
+            desc = f"{obj1_desc.rstrip('.')} — and look, it is {act}!"
+            return (name, desc)
+
+        if r < 0.90:
+            # Relationship: object1 + relation + object2
+            rel = random.choice(self._RELATIONS)
+            name = f"{obj1_name} {rel} {obj2_name}"
+            desc = (f"Look! The {obj1_name} is {rel} the {obj2_name}. "
+                    f"{obj1_desc.rstrip('.')} and {obj2_desc.rstrip('.').lower()}.")
+            return (name, desc)
+
+        if r < 0.95:
+            # Counting
+            num = random.choice(self._NUMBERS)
+            name = f"{num} {obj1_name}s"
+            desc = f"Can you count? There are {num} {obj1_name}s! {obj1_desc}"
+            return (name, desc)
+
+        # Negation (contrast)
+        name = f"not {obj2_name} but {obj1_name}"
+        desc = (f"This is NOT a {obj2_name} — look carefully! "
+                f"It is a {obj1_name}. {obj1_desc}")
+        return (name, desc)
 
     def get_fact(self):
         return random.choice(self.FACTS)
