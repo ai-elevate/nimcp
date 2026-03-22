@@ -5227,58 +5227,12 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         elif action == "consolidate":
             clock.do_consolidate(brain)
 
-        # Get an object to name — batch accumulate for speed
+        # Get an object to name
         name, description = source.get_object()
 
-        # Batch learning: accumulate (features, target) pairs and flush every 8 steps
-        if not hasattr(run_stage_1, '_mini_batch'):
-            run_stage_1._mini_batch = []
-            run_stage_1._batch_size = 8
-
-        features = composer.compose(text=f"{name}: {description}", modality="text")
-        target = make_semantic_target(f"{name} {description}")
-        run_stage_1._mini_batch.append((features, target, name, description))
-
-        loss = None
-        result = {}
-        if len(run_stage_1._mini_batch) >= run_stage_1._batch_size or i == num_stimuli - 1:
-            # Flush batch via learn_vector_batch (GPU-accelerated)
-            batch_pairs = [(f, t) for f, t, _, _ in run_stage_1._mini_batch]
-            current_lr = lr_ctrl.get_lr()
-            try:
-                avg_loss = brain.learn_vector_batch(batch_pairs, learning_rate=current_lr)
-                if avg_loss is not None and avg_loss >= 0:
-                    for f, t, n, d in run_stage_1._mini_batch:
-                        losses.append(avg_loss)
-                    loss = avg_loss
-            except Exception:
-                # Fallback: per-sample
-                for f, t, n, d in run_stage_1._mini_batch:
-                    try:
-                        l = brain.learn_vector(f, t, label=f"{n}: {d}"[:50],
-                                               confidence=0.7, learning_rate=current_lr)
-                        losses.append(l if l is not None else 0)
-                        loss = l
-                    except Exception:
-                        losses.append(0.0)
-
-            # Get result from last item for contrastive/diversity
-            try:
-                last_f = run_stage_1._mini_batch[-1][0]
-                result = brain.decide_full(last_f) or {}
-            except Exception:
-                result = {}
-
-            # Narration for last item in batch
-            last_name = run_stage_1._mini_batch[-1][2]
-            last_desc = run_stage_1._mini_batch[-1][3]
-            narration = parent._pop_content("_narrations")
-            if narration:
-                print(f"  Parent: {narration}")
-
-            run_stage_1._mini_batch = []
-        else:
-            losses.append(0.0)
+        loss, result = parent.show_and_name(brain, composer, name, description,
+                                            learning_rate=lr_ctrl.get_lr())
+        losses.append(loss if loss is not None else 0)
 
         # Record for contrastive + diversity regularization
         output_vec = result.get("output_vector") if result else None
