@@ -5210,8 +5210,8 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         buffer_size=200, interval=20, batch_size=32,
         similarity_threshold=0.80, min_input_distance=0.3, strength=0.6)
     diversity = DiversityRegularizer(
-        buffer_size=100, interval=100, num_corrections=8,
-        strength=0.2, min_variance_ratio=0.1)
+        buffer_size=100, interval=50, num_corrections=16,
+        strength=0.5, min_variance_ratio=0.3)  # Tighter for batch learning
     collapse_detector = CollapseDetector(brain_ref=brain)
     for i in range(start_from, num_stimuli):
         # Mode collapse early detection
