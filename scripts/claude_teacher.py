@@ -32,12 +32,24 @@ def _get_embed_model():
     return _embed_model
 
 
+_encode_cache = {}
+_ENCODE_CACHE_MAX = 10000
+
 def encode_text(text: str):
-    """Encode text to 1024-dim embedding using sentence-transformers (BAAI/bge-large-en-v1.5)."""
+    """Encode text to 1024-dim embedding using sentence-transformers (BAAI/bge-large-en-v1.5).
+
+    Caches results — same text returns cached embedding instantly (~0.001ms vs ~50ms).
+    Cache holds up to 10,000 entries (covers full training vocabulary).
+    """
     import numpy as np
+    if text in _encode_cache:
+        return _encode_cache[text].copy()  # Return copy to prevent mutation
     model = _get_embed_model()
     emb = model.encode(text, convert_to_numpy=True)
-    return np.asarray(emb, dtype=np.float32).ravel()
+    result = np.asarray(emb, dtype=np.float32).ravel()
+    if len(_encode_cache) < _ENCODE_CACHE_MAX:
+        _encode_cache[text] = result.copy()
+    return result
 
 
 def batch_encode_texts(texts):
