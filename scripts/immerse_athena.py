@@ -5227,11 +5227,67 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         elif action == "consolidate":
             clock.do_consolidate(brain)
 
-        # Get an object to name
-        name, description = source.get_object()
+        # Get an object to name — with prefetched features for speed
+        # Pre-compose features in advance so sentence transformer encoding
+        # overlaps with the previous step's brain training
+        if not hasattr(run_stage_1, '_prefetch'):
+            from concurrent.futures import ThreadPoolExecutor
+            run_stage_1._prefetch = ThreadPoolExecutor(max_workers=2)
+            run_stage_1._next_item = None
 
-        loss, result = parent.show_and_name(brain, composer, name, description,
-                                            learning_rate=lr_ctrl.get_lr())
+        if run_stage_1._next_item is not None:
+            name, description, pre_features, pre_target = run_stage_1._next_item
+        else:
+            name, description = source.get_object()
+            pre_features = None
+            pre_target = None
+
+        # Start prefetching NEXT item while this one trains
+        def _prefetch_item():
+            n, d = source.get_object()
+            f = composer.compose(text=d, modality="text")
+            t = make_semantic_target(n + " " + d)
+            return (n, d, f, t)
+        future = run_stage_1._prefetch.submit(_prefetch_item)
+
+        # Train current item — pass pre-composed features if available
+        if pre_features is not None and pre_target is not None:
+            # Fast path: features already composed
+            submit_multimodal(brain, description)
+            result = brain.decide_full(pre_features)
+            try:
+                brain.bg_update_reward(0.6, 0.4)
+            except Exception:
+                pass
+            narration = parent._pop_content("_narrations")
+            if narration:
+                print(f"  Parent: {narration}")
+            if _held_out_buffer.is_held_out(pre_features):
+                _held_out_buffer.add(pre_features, pre_target, domain="stage1_naming")
+                loss = 0.0
+            else:
+                lr_kwargs = {"learning_rate": lr_ctrl.get_lr()}
+                loss = brain.learn_vector(pre_features, pre_target,
+                                          label=name[:50], confidence=0.65,
+                                          **lr_kwargs)
+                parent._train_cognitive(brain, name + ". " + description, domain=0)
+                if parent.decoder:
+                    output_vec = result.get("output_vector")
+                    if output_vec is not None:
+                        target_emb = encode_text(name + " " + description)
+                        parent.decoder.record_pair(output_vec, target_emb,
+                                                    name + " " + description)
+        else:
+            # Slow path: first iteration, no prefetch yet
+            loss, result = parent.show_and_name(brain, composer, name, description,
+                                                learning_rate=lr_ctrl.get_lr())
+
+        # Collect prefetched next item (blocks only if prefetch slower than training)
+        try:
+            run_stage_1._next_item = future.result(timeout=5.0)
+        except Exception:
+            run_stage_1._next_item = None
+
         losses.append(loss if loss is not None else 0)
 
         # Record for contrastive + diversity regularization
