@@ -12116,6 +12116,30 @@ __/cognitive/nimcp_self_curriculum.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_self_curriculum.c.s
 .PHONY : __/cognitive/nimcp_self_curriculum.c.s
 
+__/cognitive/nimcp_trauma_resilience.o: __/cognitive/nimcp_trauma_resilience.c.o
+.PHONY : __/cognitive/nimcp_trauma_resilience.o
+
+# target to build an object file
+__/cognitive/nimcp_trauma_resilience.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_trauma_resilience.c.o
+.PHONY : __/cognitive/nimcp_trauma_resilience.c.o
+
+__/cognitive/nimcp_trauma_resilience.i: __/cognitive/nimcp_trauma_resilience.c.i
+.PHONY : __/cognitive/nimcp_trauma_resilience.i
+
+# target to preprocess a source file
+__/cognitive/nimcp_trauma_resilience.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_trauma_resilience.c.i
+.PHONY : __/cognitive/nimcp_trauma_resilience.c.i
+
+__/cognitive/nimcp_trauma_resilience.s: __/cognitive/nimcp_trauma_resilience.c.s
+.PHONY : __/cognitive/nimcp_trauma_resilience.s
+
+# target to generate assembly for a file
+__/cognitive/nimcp_trauma_resilience.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_trauma_resilience.c.s
+.PHONY : __/cognitive/nimcp_trauma_resilience.c.s
+
 __/cognitive/nimcp_wm_scratchpad.o: __/cognitive/nimcp_wm_scratchpad.c.o
 .PHONY : __/cognitive/nimcp_wm_scratchpad.o
 
@@ -55501,6 +55525,9 @@ help:
 	@echo "... __/cognitive/nimcp_self_curriculum.o"
 	@echo "... __/cognitive/nimcp_self_curriculum.i"
 	@echo "... __/cognitive/nimcp_self_curriculum.s"
+	@echo "... __/cognitive/nimcp_trauma_resilience.o"
+	@echo "... __/cognitive/nimcp_trauma_resilience.i"
+	@echo "... __/cognitive/nimcp_trauma_resilience.s"
 	@echo "... __/cognitive/nimcp_wm_scratchpad.o"
 	@echo "... __/cognitive/nimcp_wm_scratchpad.i"
 	@echo "... __/cognitive/nimcp_wm_scratchpad.s"

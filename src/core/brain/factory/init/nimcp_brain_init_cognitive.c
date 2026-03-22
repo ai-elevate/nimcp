@@ -740,6 +740,43 @@ bool nimcp_brain_factory_init_mental_health_subsystem(brain_t brain)
 
 
 /**
+ * @brief Initialize Trauma Resilience subsystem
+ *
+ * WHAT: Create recall dampening + arousal homeostasis system
+ * WHY:  Prevent PTSD-like feedback loops from involuntary recall
+ * HOW:  Per-engram frequency tracking, habituation, arousal regulation
+ *
+ * COMPLEXITY: O(1)
+ * MEMORY: ~5KB (tracking buffers + config)
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+bool nimcp_brain_factory_init_trauma_resilience(brain_t brain)
+{
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_trauma_resilience: brain is NULL");
+        return false;
+    }
+
+    if (brain->trauma_resilience) {
+        return true;  /* Already initialized */
+    }
+
+    extern void* nimcp_trauma_resilience_create(const void*);
+    brain->trauma_resilience = nimcp_trauma_resilience_create(NULL);
+    if (!brain->trauma_resilience) {
+        LOG_WARN(LOG_MODULE, "Failed to create trauma resilience system (non-fatal)");
+        return true;  /* Non-fatal — brain can operate without it */
+    }
+
+    LOG_INFO(LOG_MODULE, "Trauma resilience system initialized");
+    return true;
+}
+
+
+/**
  * @brief Initialize Predictive Processing subsystem (Phase 10.9)
  *
  * WHAT: Create hierarchical predictive coding network

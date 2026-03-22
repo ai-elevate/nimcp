@@ -653,6 +653,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_snn_bridge.c  # Executive-SNN integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_plasticity_bridge.c  # Executive-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake.c  # Phase 10.4: Sleep/Wake Cycle
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_trauma_resilience.c  # Trauma Resilience: recall dampening + arousal homeostasis
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health.c  # Phase 10.5: Mental Health Monitoring
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_guardian.c  # Phase 10.5.1: Mental Health Guardian (independent monitor)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c  # Phase 11: Part I.1: Emotion Recognition (Simple)

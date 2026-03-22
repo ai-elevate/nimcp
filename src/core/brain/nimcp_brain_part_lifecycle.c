@@ -692,6 +692,13 @@ void brain_destroy(brain_t brain)
         mental_health_destroy(brain->mental_health_monitor);
     }
 
+    // Trauma Resilience: recall dampening + arousal homeostasis
+    if (brain->trauma_resilience) {
+        extern void nimcp_trauma_resilience_destroy(void*);
+        nimcp_trauma_resilience_destroy(brain->trauma_resilience);
+        brain->trauma_resilience = NULL;
+    }
+
     // Phase 10.9: Cleanup Predictive Processing
     if (brain->predictive_network) {
         predictive_destroy(brain->predictive_network);

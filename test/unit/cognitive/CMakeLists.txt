@@ -2762,3 +2762,13 @@ target_include_directories(unit_cognitive_test_memory_features PRIVATE ${PROJECT
 target_compile_features(unit_cognitive_test_memory_features PRIVATE cxx_std_17)
 gtest_discover_tests(unit_cognitive_test_memory_features WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     PROPERTIES LABELS "unit;cognitive;memory" TIMEOUT 60)
+
+# ============================================================================
+# Trauma Resilience Unit Tests
+# ============================================================================
+add_executable(unit_cognitive_test_trauma_resilience test_trauma_resilience.cpp)
+target_link_libraries(unit_cognitive_test_trauma_resilience PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+target_include_directories(unit_cognitive_test_trauma_resilience PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+target_compile_features(unit_cognitive_test_trauma_resilience PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_test_trauma_resilience WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES LABELS "unit;cognitive;trauma_resilience" TIMEOUT 60)

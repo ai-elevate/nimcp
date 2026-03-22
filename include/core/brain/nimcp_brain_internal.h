@@ -421,6 +421,9 @@ struct brain_struct {
     // Phase 10.5.1: Mental Health Guardian (independent monitoring agent)
     struct mental_health_guardian* mental_health_guardian; // Background monitoring agent
 
+    // Trauma Resilience: recall dampening + arousal homeostasis (prevents PTSD loops)
+    void* trauma_resilience;  // nimcp_trauma_resilience_t*
+
     // Phase 11: Part I - Emotional Intelligence & Accessibility
     empathy_network_t empathy_network;           // Mirror neuron empathy system for perspective-taking
     void* empathetic_response_engine;            // Non-reactive empathetic response system (opaque pointer)

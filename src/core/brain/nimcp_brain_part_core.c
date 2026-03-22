@@ -1434,12 +1434,34 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
         if (found > 0 && recall_result.similarity > 0.8f && recall_result.embedding) {
             /* Strong match — blend recalled memory into current input.
-             * 85% current + 15% recalled = current dominates but past influences */
+             * Mental health modulates recall intensity — prevents trauma loops.
+             * Without dampening: 85% current + 15% recalled.
+             * With dampening: blend ratio reduced for repeated/traumatic recalls. */
+            float blend = 0.15f;
+            if (brain->trauma_resilience) {
+                extern float nimcp_trauma_resilience_modulate_recall(void*, uint64_t, float, float);
+                extern void nimcp_trauma_resilience_record_recall(void*, uint64_t, float);
+                extern float nimcp_emotional_learning_get_arousal(const void*);
+                float arousal = brain->emotional_learning
+                    ? nimcp_emotional_learning_get_arousal(brain->emotional_learning) : 0.5f;
+                /* Generate unique recall ID from label hash (FNV-1a) so
+                 * per-engram tracking works correctly */
+                uint64_t recall_id = 2166136261u;
+                for (const char* lp = recall_result.label; *lp; lp++) {
+                    recall_id ^= (uint8_t)*lp;
+                    recall_id *= 16777619u;
+                }
+                if (recall_id == 0) recall_id = 1; /* Avoid zero-ID collision */
+                blend = nimcp_trauma_resilience_modulate_recall(brain->trauma_resilience,
+                    recall_id, recall_result.similarity, arousal);
+                nimcp_trauma_resilience_record_recall(brain->trauma_resilience,
+                    recall_id, recall_result.importance);
+            }
             uint32_t blend_dim = recall_result.embed_dim < num_features
                                  ? recall_result.embed_dim : num_features;
             for (uint32_t i = 0; i < blend_dim; i++) {
-                local_features[i] = 0.85f * local_features[i] +
-                                    0.15f * recall_result.embedding[i];
+                local_features[i] = (1.0f - blend) * local_features[i] +
+                                    blend * recall_result.embedding[i];
             }
         }
     }

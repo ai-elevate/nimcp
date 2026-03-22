@@ -100,6 +100,7 @@ extern bool nimcp_brain_factory_init_meta_learning_subsystem(brain_t brain);
 
 // Wave 8: Independent cognitive
 extern bool nimcp_brain_factory_init_mental_health_subsystem(brain_t brain);
+extern bool nimcp_brain_factory_init_trauma_resilience(brain_t brain);
 extern bool nimcp_brain_factory_init_predictive_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_mirror_neurons(brain_t brain);
 extern bool nimcp_brain_factory_init_curiosity_subsystem(brain_t brain);
@@ -758,6 +759,7 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     // ========================================================================
     n = 0;
     tasks[n++] = TASK(nimcp_brain_factory_init_mental_health_subsystem, "mental_health");
+    tasks[n++] = TASK(nimcp_brain_factory_init_trauma_resilience, "trauma_resilience");
     tasks[n++] = TASK(nimcp_brain_factory_init_predictive_subsystem, "predictive");
     tasks[n++] = TASK(init_mirror_if_needed, "mirror_neurons");
     tasks[n++] = TASK(init_curiosity_if_needed, "curiosity");

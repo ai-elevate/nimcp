@@ -170,6 +170,7 @@ extern void set_error(const char* format, ...);
 #define init_natural_explanations_subsystem         nimcp_brain_factory_init_natural_explanations_subsystem
 #define init_meta_learning_subsystem                nimcp_brain_factory_init_meta_learning_subsystem
 #define init_mental_health_subsystem                nimcp_brain_factory_init_mental_health_subsystem
+#define init_trauma_resilience                      nimcp_brain_factory_init_trauma_resilience
 #define init_predictive_subsystem                   nimcp_brain_factory_init_predictive_subsystem
 #define init_mirror_neurons                         nimcp_brain_factory_init_mirror_neurons
 #define init_consolidation_subsystem                nimcp_brain_factory_init_consolidation_subsystem
@@ -903,6 +904,9 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // Phase 10.5: Mental Health Monitoring
     if (!init_mental_health_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // Trauma Resilience: recall dampening + arousal homeostasis
+    if (!init_trauma_resilience(brain)) { brain_destroy(brain); return NULL; }
 
     // Phase 10.9: Predictive Processing
     if (!init_predictive_subsystem(brain)) { brain_destroy(brain); return NULL; }
