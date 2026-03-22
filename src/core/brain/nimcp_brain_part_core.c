@@ -1412,6 +1412,38 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+    /* === INVOLUNTARY RECALL: Sensory input triggers past memories ===
+     * Search multi-timescale memory for experiences similar to current input.
+     * If a strong match is found (similarity > 0.8), blend the old memory's
+     * embedding into the current input. This is how "this reminds me of..."
+     * works — past experiences automatically color current perception.
+     *
+     * Biological basis: hippocampal pattern completion. A partial cue
+     * reactivates the full stored pattern, which then modulates cortical
+     * processing of the current input. */
+    if (brain->multiscale_memory && num_features > 0) {
+        extern int nimcp_multiscale_query_all(void*, const float*, uint32_t, void*, uint32_t);
+
+        /* Query result struct — matches nimcp_memory_query_result_t layout */
+        struct { float* embedding; uint32_t embed_dim; char label[64];
+                 float similarity; float importance; } recall_result;
+        memset(&recall_result, 0, sizeof(recall_result));
+
+        int found = nimcp_multiscale_query_all(brain->multiscale_memory,
+            local_features, num_features, &recall_result, 1);
+
+        if (found > 0 && recall_result.similarity > 0.8f && recall_result.embedding) {
+            /* Strong match — blend recalled memory into current input.
+             * 85% current + 15% recalled = current dominates but past influences */
+            uint32_t blend_dim = recall_result.embed_dim < num_features
+                                 ? recall_result.embed_dim : num_features;
+            for (uint32_t i = 0; i < blend_dim; i++) {
+                local_features[i] = 0.85f * local_features[i] +
+                                    0.15f * recall_result.embedding[i];
+            }
+        }
+    }
+
     // ========================================================================
     // EMBEDDING RELEVANCE: Recompute synapse relevance for current context
     // ========================================================================

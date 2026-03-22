@@ -359,7 +359,34 @@ int nimcp_multiscale_push(nimcp_multiscale_memory_t* handle,
     s->importance = importance;
     s->occupied   = true;
 
-    handle->immediate_head = (handle->immediate_head + 1) % handle->config.immediate_capacity;
+    /* Advance head — but skip over high-importance memories (emotional protection).
+     * Memories with importance > 0.7 resist eviction, like flashbulb memories.
+     * If all slots are high-importance, evict the least important one. */
+    uint32_t next = (handle->immediate_head + 1) % handle->config.immediate_capacity;
+    if (handle->immediate_count >= handle->config.immediate_capacity) {
+        /* Buffer full — find a slot to evict */
+        uint32_t evict_slot = next;
+        float min_importance = 2.0f;
+        uint32_t attempts = 0;
+        while (handle->immediate[evict_slot].occupied &&
+               handle->immediate[evict_slot].importance > 0.7f &&
+               attempts < handle->config.immediate_capacity) {
+            /* This slot is emotionally protected — try next */
+            evict_slot = (evict_slot + 1) % handle->config.immediate_capacity;
+            attempts++;
+        }
+        if (attempts >= handle->config.immediate_capacity) {
+            /* All slots are high-importance — evict lowest */
+            for (uint32_t j = 0; j < handle->config.immediate_capacity; j++) {
+                if (handle->immediate[j].importance < min_importance) {
+                    min_importance = handle->immediate[j].importance;
+                    evict_slot = j;
+                }
+            }
+        }
+        next = evict_slot;
+    }
+    handle->immediate_head = next;
     if (handle->immediate_count < handle->config.immediate_capacity) {
         handle->immediate_count++;
     }
