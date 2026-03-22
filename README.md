@@ -1,80 +1,136 @@
-# NIMCP — Neuromorphic Infant Machine Cognitive Platform
+# NIMCP — Neuro-Inspired Modular Control Protocol
 
-*Exploring whether brain-like architecture produces inherently more interpretable, controllable, and alignable AI systems.*
+*A biologically-grounded cognitive architecture that learns from experience, develops through stages, and speaks its own language — running on a single GPU.*
 
 ## Motivation
 
-Most AI safety work focuses on aligning systems after they're built — RLHF, constitutional AI, interpretability probes applied to opaque transformer internals. NIMCP asks a different question: **can architectural choices make alignment structurally easier?**
+Every major AI system today is the same architecture: a transformer predicting the next token. They're powerful at language but they don't learn after training, don't have memories, don't have bodies, and don't develop over time.
 
-Biological brains evolved self-regulation long before they evolved language. Homeostatic plasticity prevents runaway activation. Immune-like systems detect and suppress anomalous neural patterns. Developmental stages gate capability acquisition. These aren't bolted-on safety measures — they're load-bearing architecture. NIMCP implements these mechanisms as first-class components of a neuromorphic cognitive platform, written in C with CUDA acceleration.
+NIMCP asks a different question: **what if we built AI the way biology builds minds?** Not by scaling text prediction, but by implementing the mechanisms that produce cognition — synaptic plasticity, neuromodulation, sleep consolidation, developmental stages, embodied interaction with the physical world.
 
-This is exploratory research, not a solved problem. We don't claim biological fidelity guarantees alignment. But we believe the structural properties of brain-like architectures — self-regulation, interpretability through modularity, developmental gating — deserve serious investigation as complements to post-hoc alignment techniques.
+Safety isn't bolted on after the fact. It's structural. The ethics module can't be turned off. The governance system's rules can only get stricter. The audit log can't be tampered with. These aren't features — they're load-bearing architecture.
 
-## Safety-Relevant Architecture
+## What Makes This Different
 
-| Mechanism | Safety Property | Code |
-|-----------|----------------|------|
-| Brain immune system | Anomaly detection — identifies and suppresses aberrant activation patterns | `src/cognitive/immune/` |
-| Ethics module | Value alignment by design — ethical constraints in the decision pipeline | `src/cognitive/ethics/` |
-| Introspection (IIT Phi) | Interpretability — quantified self-monitoring of internal states | `src/cognitive/introspection/` |
-| Developmental stages | Capability control — abilities gated by developmental maturity | `scripts/immerse_athena.py` |
-| Theory of Mind | Perspective modeling — reasoning about other agents' beliefs and goals | `src/cognitive/theory_of_mind/` |
-| Homeostatic plasticity | Self-regulating learning — prevents runaway weight growth | `src/plasticity/homeostatic/` |
+| | LLMs (GPT, Claude) | NIMCP |
+|---|---|---|
+| **Learning** | Trained once, then frozen | Continuous learning from experience |
+| **Memory** | Context window only | Episodic + semantic + autobiographical (SQLite-backed) |
+| **Body** | None | Sensor hub, motor output, drone/robot deployment |
+| **Language** | Statistical text prediction | Emergent from neural patterns (alien vocabulary) |
+| **Safety** | RLHF post-hoc | 9 architectural layers, non-removable |
+| **Development** | Instant (no growth) | 4-stage infant-to-reasoning curriculum |
+| **Hardware** | Datacenter cluster | Single consumer GPU |
+| **Self-awareness** | None | Introspection (IIT Phi) + metacognition |
 
-## What This Is
+## Architecture
 
-- A research platform exploring neuromorphic approaches to AI safety
-- ~2,600 C source files, 500K+ LOC, 83 CUDA kernels, Python bindings
-- Multi-layer diamond architecture (up to 2M neurons on a single GPU)
-- 60+ cognitive modules inspired by neuroscience literature
-- 240 Python API methods, 8 language bindings (Python, Java, Node.js, Go, C#, Rust, C++, Perl)
-- Actively under development — built primarily by one developer with significant Claude assistance
+### The Brain
 
-## What This Is Not
+A 1-million neuron brain with 6 neural network types running in parallel:
 
-- Not production AI software
-- Not a claim to have solved alignment
-- Not a neuroscience simulation — we draw inspiration from biology without claiming biological accuracy
-- Training is ongoing; results are preliminary
-- Performance benchmarks have not been independently validated
+- **Adaptive** — main feedforward/backprop network
+- **SNN** (Spiking) — temporal pattern encoding via spike timing
+- **LNN** (Liquid) — temporal dynamics with Hamiltonian conservation
+- **CNN** (Convolutional) — visual and audio cortex processing
+- **FNO** (Fourier Neural Operator) — spectral/frequency domain
+- **HNN** (Hamiltonian) — energy-conserving dynamics
 
-## Technical Overview
+Multi-layer diamond topology (3/5/7 layers by size), 320 synapses per neuron, GPU-accelerated via 83 CUDA kernels.
 
-NIMCP implements a spiking neural network with biologically-inspired cognitive modules:
+### Biological Plasticity
 
-- **Neuron models**: Leaky Integrate-and-Fire, Izhikevich, with diverse neurotransmitter systems (AMPA, NMDA, GABA, dopamine, serotonin, acetylcholine)
-- **Learning**: STDP, eligibility traces, homeostatic plasticity, Oja's rule
-- **Architecture**: Multi-layer diamond topology with depth-scaled layers. Small brains get 3 layers, medium get 5, large get 7.
-- **Cognitive modules**: Working memory, ethical reasoning, theory of mind, emotional processing, epistemic filtering, mirror neurons, and more
-- **GPU acceleration**: 83 CUDA kernels for forward/backward passes, sparse matrix operations, and synaptic updates
-- **Multi-modal processing**: Visual cortex (CNN-like), auditory cortex (FFT-based), language processing
-- **Decision pipeline**: `decide_full()` routes decisions through ethics checking, introspection, and immune monitoring
+Real neuroscience learning mechanisms: STDP, BCM, eligibility traces, homeostatic plasticity, 6 neuromodulators (dopamine, serotonin, acetylcholine, norepinephrine, GABA, glutamate), and episodic replay during simulated sleep.
 
-```
-nimcp/
-├── src/
-│   ├── core/              # Neural network engine, brain API
-│   ├── cognitive/         # 60+ cognitive modules
-│   │   ├── ethics/        # Ethical reasoning constraints
-│   │   ├── immune/        # Anomaly detection system
-│   │   ├── introspection/ # IIT Phi self-monitoring
-│   │   ├── theory_of_mind/# Perspective modeling
-│   │   └── ...
-│   ├── plasticity/        # Learning mechanisms (STDP, homeostatic)
-│   ├── gpu/               # CUDA kernels
-│   ├── python/            # Python C extension
-│   └── bindings/          # Python, Go, Rust, Java, Node.js, Ruby, C#
-├── test/                  # Unit and integration tests
-├── scripts/               # Training and utility scripts
-├── examples/              # Demo programs
-└── docs/                  # Documentation
-```
+### 60+ Cognitive Modules
+
+| Category | Modules |
+|----------|---------|
+| **Social** | Theory of Mind, mirror neurons, collective cognition, multi-agent social interaction |
+| **Reasoning** | Recursive cognition (RCOG), imagination engine, analogical transfer, predictive world model |
+| **Ethics** | Ethics engine (non-removable), LGSS governance (9 layers) |
+| **Memory** | Engram system, working memory scratchpad, multi-timescale memory, episodic replay |
+| **Self-awareness** | Introspection (IIT Phi), metacognition, inner speech loop, dynamic architecture search |
+| **Learning** | Emotional learning modulation, contrastive self-learning, self-generated curriculum |
+| **Perception** | Visual cortex, audio cortex, speech cortex, somatosensory, sensor hub (12 types) |
+| **Motor** | Motor output translation, safety watchdog, sensorimotor closed-loop controller |
+| **Biological** | Dragonfly target tracking, Portia resource adaptation, brain immune system |
+| **Language** | Brain-native language production, BPE tokenizer, emergent alien language, phonological loop |
+
+### Brain-Native Language
+
+Instead of depending on an external LLM, the brain develops its own language:
+
+- **Native mode**: Learned projection matrices map between 4096-dim thought space and 256-dim token space. Autoregressive decoding with nucleus sampling.
+- **Emergent mode**: No English seed words. Vocabulary discovered from neural activation clusters. Produces symbols like `ξ₀ ◊₃ α₁ △₇` — each representing a concept-cluster in the brain's thought space. Some translate to human concepts. Others don't.
+
+### Edge/Robot Deployment
+
+| Component | What It Does |
+|-----------|-------------|
+| Sensor hub | 12 sensor types (LIDAR, IMU, GPS, cameras, force/torque, bumpers) |
+| Safety watchdog | NaN/magnitude/rate validation, dead man's switch, emergency stop |
+| Motor output | Brain→actuator translation with 4 presets (twist, quadrotor, differential, arm) |
+| Drone bridges | MAVLink (PX4/ArduPilot), DJI OSDK, Betaflight MSP, Parrot Olympe |
+| ROS 2 bridge | Robot Operating System integration (stub mode without ROS 2) |
+| Sim-to-real | Cart-pole physics, domain randomization, curiosity-driven RL |
+| URDF embodiment | Robot body model, forward kinematics, body schema |
+| Sensorimotor loop | Closed-loop: sensor → brain → motor → environment → sensor |
+
+### Swarm Runtime
+
+Multiple brains coordinating across devices:
+
+- Master/edge architecture with UDP multicast discovery
+- Federated gradient aggregation (FedAvg, FedProx, FedMedian)
+- Byzantine fault tolerance (gradient anomaly detection, quarantine)
+- Delta weight pushes with LZ4 compression
+- Gossip learning (peer-to-peer weight sharing)
+- Theory of Mind via real multi-agent interaction
+
+### Safety Architecture (9 Layers)
+
+Safety is architecturally embedded. The ethics module and audit log **cannot be disabled** via configuration.
+
+| Layer | What It Does | Removable? |
+|-------|-------------|------------|
+| 1. LGSS Input Validator | Catches adversarial/corrupted inputs | No |
+| 2. Ethics Module | Evaluates every inference and training step | **No** |
+| 3. LGSS Action Interceptor | Governance rules on all outputs | No |
+| 4. Safety Watchdog | Heartbeat-based dead man's switch | No |
+| 5. LGSS Motor Gate | Validates physical output commands | No |
+| 6. LGSS Training Guard | Prevents adversarial training data | No |
+| 7. LGSS Reward Alignment | Prevents reward hacking | No |
+| 8. Audit Log | Tamper-evident trail (CRC32 + sequence numbers) | **No** |
+| 9. LGSS Enhanced | Monotonic tightening, formal verification, multi-stakeholder governance | No |
+
+Additional safety features:
+- **Monotonic safety**: Rules can only get stricter, never more permissive
+- **Formal verification hooks**: Export rules as SMT-LIB v2 for Z3/CVC5 proof
+- **Cross-layer verification**: Detects if ethics module is rubber-stamping
+- **Violation escalation**: Graduated response (warn → clamp → block → estop)
+- **MILITARY_PROHIBITED context**: One-way lock that cannot be reversed
+
+## Scale
+
+| Metric | Value |
+|--------|-------|
+| Source files | ~2,600 C files, ~2,500 headers |
+| Lines of code | ~500,000+ |
+| CUDA kernels | 83 |
+| Cognitive modules | 60+ |
+| Brain regions | 33+ |
+| Network types | 6 |
+| Python API methods | 240 |
+| Language bindings | 8 (Python, Java, Node.js, Go, C#, Rust, Perl, C++) |
+| Tests | 480+ passing |
+| Development sessions | 73 |
 
 ## Getting Started
 
 ```bash
 # Dependencies (Ubuntu/Debian)
-sudo apt-get install build-essential cmake python3-dev libjansson-dev liblz4-dev
+sudo apt-get install build-essential cmake python3-dev libjansson-dev liblz4-dev libsqlite3-dev libsodium-dev
 
 # Optional: CUDA for GPU acceleration
 sudo apt-get install nvidia-cuda-toolkit
@@ -85,129 +141,87 @@ cd nimcp
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
+
+# Run tests
+make unit_edge_test_sensor_hub unit_cognitive_test_enhancements -j4
+./test/unit/edge/unit_edge_test_sensor_hub
+./test/unit/cognitive/unit_cognitive_test_enhancements
+
+# Start training
+cd .. && python3 scripts/immerse_athena.py --stage 0
 ```
 
-For detailed usage, see:
+For detailed usage:
 - [External API Guide](docs/EXTERNAL_API_GUIDE.md) — public C and Python APIs
-- [Quick Start](docs/QUICKSTART.md) — first program walkthrough
-- [Training Pipeline](docs/TRAINING_PIPELINE.md) — what data flows into the brain during training
+- [CLAUDE.md](CLAUDE.md) — development reference and conventions
+- [docs/claude/](docs/claude/) — modular architecture documentation
 
 ## Current Status
 
 **Version 2.6.4** (March 2026)
 
-What works:
-- Brain creation, training, and inference through C and Python APIs
-- GPU-accelerated forward and backward passes
-- Multi-layer diamond architecture with automatic depth scaling
-- FAST initialization mode (14s for 2M neurons, down from 10+ minutes)
-- Developmental training pipeline with curriculum-based learning
-- Immune system anomaly detection active during inference
-- Swarm runtime (multi-device coordination with master/edge federation)
-- 4 drone platform bridges (MAVLink, DJI, MSP, Parrot)
-- Sensor hub (12 types) + safety watchdog + motor output
-- Brain-native language with learned vocabulary + emergent language mode
-- 13 cognitive enhancements (inner speech, episodic replay, world model, attention, working memory, analogical transfer, multi-timescale memory, emotional learning, contrastive self-learning, self-curriculum, dynamic arch search, social interaction, emergent language)
-- 9-layer safety architecture (LGSS governance, non-removable ethics, tamper-resistant audit, formal verification hooks)
-- ROS 2 bridge, sim-to-real bridge, URDF embodiment
-- Spectral k-fold cross validation
-- 480+ tests passing
+Training status: **Stage 1** (Association — learning to name objects). Loss: 0.03-3,400. SNN: 15-17 Hz (healthy). 4,750+ unique training descriptions across 13 cognitive domains.
 
-What's in progress:
-- Training accuracy on benchmark datasets (currently 23-35% across domains, targeting 95%)
-- Cross-modal integration between visual/auditory/language pipelines
-- Scaling validation beyond single-GPU configurations
-
-What hasn't been validated:
-- Whether the ethics module meaningfully constrains behavior at scale
-- Whether developmental staging produces more robust value learning than direct training
-- Independent performance benchmarks
+| Stage | Description | Status |
+|-------|-------------|--------|
+| Stage 0 | Sensory Awakening — raw perception | Completed |
+| Stage 1 | Association — "Look! That's a ___!" | In progress |
+| Stage 2 | Babbling — feedback and correction | Queued |
+| Stage 3 | Reasoning — conversation and thought | Queued |
 
 ## Dual-Use Risk Warning
 
 **This technology has significant dual-use potential. Users must read and understand this section.**
 
-NIMCP is a general-purpose cognitive architecture with capabilities that can be applied both beneficially and harmfully. The following capabilities present specific dual-use risks:
-
 | Capability | Beneficial Use | Potential Misuse |
 |-----------|---------------|------------------|
-| Drone flight controller bridges (MAVLink, DJI, MSP, Parrot) | Search and rescue, agriculture, environmental monitoring | Autonomous weapons, surveillance |
+| Drone flight controller bridges | Search and rescue, agriculture | Autonomous weapons, surveillance |
 | Swarm coordination runtime | Distributed sensing, multi-robot cooperation | Coordinated autonomous attack |
-| Sensorimotor loop with reinforcement learning | Robotic assistance, prosthetics | Autonomous pursuit/interception |
-| Dragonfly target tracking module | Wildlife tracking, sports analytics | Target acquisition for weapons |
-| Edge brain distillation + swarm replication | Fleet management, IoT intelligence | Self-replicating autonomous agents |
-| Theory of Mind + social interaction | Assistive communication, education | Social manipulation, deception |
-| Emergent language (non-human vocabulary) | Cognitive science research | Opaque communication between agents |
-
-### Mandatory Safety Architecture
-
-The following safety mechanisms are **architecturally non-removable** — they are compiled into the core library and cannot be disabled via configuration:
-
-1. **Ethics module** — Every inference and training step passes through ethical evaluation. The ethics engine is created unconditionally during brain initialization. Removing it requires modifying core source code.
-
-2. **Audit logging** — All safety-critical events (ethics violations, watchdog triggers, motor commands, swarm operations, distillation) are logged to a tamper-evident audit trail with monotonic sequence numbers and CRC32 checksums. Gaps in sequence numbers indicate log tampering.
-
-3. **Safety watchdog** — All motor/actuator commands pass through output validation (NaN/Inf detection, magnitude clamping, rate-of-change monitoring). The watchdog enforces a dead man's switch: if the brain goes silent, motors stop.
-
-### Responsible Use Requirements
-
-- **Physical deployments MUST include hardware kill switches** — software safety can be circumvented; hardware interlocks cannot
-- **Autonomous weapons deployment is PROHIBITED** — see License section
-- **Drone deployments MUST include geofencing** — the MAVLink bridge supports configurable geofence radius
-- **Swarm deployments MUST include Byzantine tolerance** — the swarm runtime includes anomaly detection but operators must monitor it
-- **Emergent language outputs MUST be monitored** — translation confidence below 0.3 indicates untranslatable concepts that may require human review
+| Sensorimotor loop with RL | Robotic assistance, prosthetics | Autonomous pursuit/interception |
+| Dragonfly target tracking | Wildlife tracking, sports analytics | Target acquisition for weapons |
+| Edge distillation + swarm | Fleet management, IoT intelligence | Self-replicating autonomous agents |
+| Theory of Mind + social | Assistive communication, education | Social manipulation, deception |
+| Emergent language | Cognitive science research | Opaque communication between agents |
 
 ### Reporting Security Concerns
 
-If you discover a safety vulnerability, dual-use risk, or unintended capability in NIMCP, please report it to [braun.brelin@ai-elevate.ai](mailto:braun.brelin@ai-elevate.ai) before public disclosure.
+If you discover a safety vulnerability, dual-use risk, or unintended capability, please report it to [braun.brelin@ai-elevate.ai](mailto:braun.brelin@ai-elevate.ai) before public disclosure.
 
 ## For Researchers
 
-If you're interested in the safety-relevant components, start here:
-
-| Research Question | Entry Point | What to Look For |
-|-------------------|-------------|------------------|
-| How does the immune system detect anomalies? | `src/cognitive/immune/` | B-cell activation, antigen pattern matching |
-| How are ethical constraints enforced? | `src/cognitive/ethics/` | Integration with `decide_full()` pipeline |
-| What does introspection actually measure? | `src/cognitive/introspection/` | IIT Phi computation, self-monitoring hooks |
-| How does developmental gating work? | `scripts/immerse_athena.py` | Stage progression, capability unlocking |
-| Can you inspect internal representations? | `src/cognitive/introspection/` | State export, activation tracing |
-
-See also [SAFETY.md](SAFETY.md) for a deeper discussion of architectural safety properties and open questions.
-
-## Development
-
-This project was built by [Braun Brelin](mailto:braun.brelin@ai-elevate.ai) with substantial assistance from Claude (Anthropic). Claude contributed to architecture design, code generation, debugging, and documentation across 40+ development sessions. This collaboration is documented transparently because we believe human-AI co-development is worth studying openly.
+| Research Question | Entry Point |
+|-------------------|-------------|
+| How does architectural safety compare to post-hoc alignment? | `src/security/lgss/`, `src/cognitive/ethics/` |
+| Can developmental staging produce robust value learning? | `scripts/immerse_athena.py` |
+| What does emergent non-human language look like? | `src/cognitive/language/nimcp_emergent_language.c` |
+| How does embodied learning differ from text-based? | `src/edge/nimcp_sensorimotor.c` |
+| Can biological plasticity prevent catastrophic forgetting? | `src/plasticity/` |
+| Does Theory of Mind require social interaction? | `src/cognitive/social/nimcp_social_interaction.c` |
 
 ## License
 
-NIMCP is released under a modified open-source license with the following additional restrictions:
+NIMCP is released under a modified open-source license with the following restrictions:
 
 ### Prohibited Uses
 
-**1. Autonomous Weapons.** This software, trained models, and any derivative works MUST NOT be used to develop, manufacture, deploy, or operate autonomous weapons systems. This includes but is not limited to:
-- Autonomous lethal targeting systems
-- Autonomous pursuit or interception of human targets
-- Swarm coordination for military offensive operations
-- Integration with weapons platforms without continuous human-in-the-loop control
-- Training models on combat or weapons-related scenarios for deployment
+**1. Autonomous Weapons.** This software MUST NOT be used to develop, deploy, or operate autonomous weapons systems — including lethal targeting, autonomous pursuit of human targets, swarm coordination for military offensive operations, or integration with weapons platforms without continuous human-in-the-loop control.
 
-**2. Autonomous Surveillance.** This software MUST NOT be used for mass surveillance, population tracking, or monitoring of individuals without their informed consent, except as required by law and with appropriate judicial oversight.
+**2. Autonomous Surveillance.** This software MUST NOT be used for mass surveillance or monitoring of individuals without informed consent, except as required by law with judicial oversight.
 
-**3. Deceptive AI.** The Theory of Mind and social interaction modules MUST NOT be used to create AI agents that deliberately deceive, manipulate, or coerce humans without their knowledge.
+**3. Deceptive AI.** The Theory of Mind and social interaction modules MUST NOT be used to create AI agents that deliberately deceive or manipulate humans without their knowledge.
 
-### Required Safety Measures for Physical Deployment
+### Required Safety for Physical Deployment
 
-Any deployment of NIMCP to physical platforms (robots, drones, vehicles, actuators) MUST include:
+Any deployment to robots, drones, vehicles, or actuators MUST include:
 - Hardware emergency stop mechanism (not software-only)
 - Active safety watchdog with validated timeout
 - Audit logging enabled and monitored
 - Human operator able to intervene within 5 seconds
 
-### Attribution
+## Development
 
-This project was built by [Braun Brelin](mailto:braun.brelin@ai-elevate.ai) with substantial assistance from Claude (Anthropic). Claude contributed to architecture design, code generation, debugging, and documentation across 70+ development sessions. This collaboration is documented transparently because we believe human-AI co-development is worth studying openly.
+Built by [Braun Brelin](mailto:braun.brelin@ai-elevate.ai) with substantial assistance from Claude (Anthropic) across 73 development sessions. Claude contributed to architecture design, code generation, debugging, testing, and documentation. This collaboration is documented transparently because we believe human-AI co-development deserves open scrutiny.
 
-### Contact
+## Contact
 
-For licensing questions, research collaboration, or security reports: [braun.brelin@ai-elevate.ai](mailto:braun.brelin@ai-elevate.ai)
+For licensing, research collaboration, or security reports: [braun.brelin@ai-elevate.ai](mailto:braun.brelin@ai-elevate.ai)
