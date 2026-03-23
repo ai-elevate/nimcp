@@ -55,11 +55,13 @@ $$\frac{dq}{dt} = \frac{\partial H}{\partial p}, \qquad \frac{dp}{dt} = -\frac{\
 NIMCP supports two forms:
 
 **Separable Hamiltonian:**
+
 $$H(q, p) = T(p) + V(q)$$
 
 where $T$ is kinetic energy (parameterized by an MLP over $p$) and $V$ is potential energy (MLP over $q$), enabling cheaper gradient computation.
 
 **General Hamiltonian:**
+
 $$H(q, p) = \text{MLP}([q; p])$$
 
 with a multi-layer network of configurable depth (`n_hidden_layers`, default 2) and width (`hidden_dim`, default $2n$).
@@ -139,14 +141,17 @@ This implements the three-factor rule: Hebbian timing $\times$ eligibility $\tim
 Three mechanisms maintain neural stability:
 
 **Synaptic Scaling (Turrigiano 1998):**
+
 $$w_{\text{scaled}} = w \times \left(\frac{r_{\text{target}}}{r_{\text{actual}}}\right)^\alpha$$
 
 where $\alpha \in [0.5, 2.0]$ is the scaling exponent, $r_{\text{target}} = 5.0$ Hz (default).
 
 **Intrinsic Plasticity (threshold adaptation):**
+
 $$\frac{d\theta}{dt} = \frac{r_{\text{actual}} - r_{\text{target}}}{\tau_{\text{IP}}}$$
 
 **Metaplasticity (BCM threshold sliding):**
+
 $$\theta_m = \langle r^2 \rangle$$
 
 The sliding threshold based on squared activity history.
@@ -271,14 +276,17 @@ Training uses a ring buffer of 256 state pairs, with online fine-tuning in valid
 Optimization via simulated quantum tunneling through energy barriers:
 
 **Classical acceptance (Metropolis):**
+
 $$P_{\text{classical}} = \exp(-\Delta E / T)$$
 
 **Quantum tunneling probability:**
+
 $$P_{\text{tunnel}} = \Gamma \cdot \exp(-B / T^\alpha)$$
 
 where $\Gamma$ is quantum strength (default 0.5), $B$ is the barrier height, and $T^\alpha$ the effective tunneling temperature.
 
 **Combined acceptance:**
+
 $$P_{\text{accept}} = \min\bigl(1, P_{\text{classical}} + P_{\text{tunnel}}\bigr)$$
 
 **Cooling schedules:**
@@ -312,6 +320,7 @@ where $d_i$ is the degree of node $i$.
 **Measurement (Born rule):** $P(i) = |\alpha_i|^2$
 
 **Hybrid quantum-classical mixing:**
+
 $$\alpha_{\text{final}} = (1 - \lambda) \cdot \alpha_{\text{quantum}} + \lambda \cdot \alpha_{\text{classical}}$$
 
 **Decoherence** models environmental noise, gradually collapsing quantum superposition toward classical probabilities at rate $\gamma_{\text{decohere}} \in [0, 1]$.
@@ -327,6 +336,7 @@ $$\hat{P} = \frac{1}{N} \sum_{i=1}^{N} \frac{|\psi(x_i)|^2}{q(x_i)}, \qquad x_i 
 **Finite-shot measurement** simulates realistic quantum hardware by sampling from the multinomial distribution $\text{Multi}(N_{\text{shots}}; p_0, p_1, \ldots)$ where $p_i = |\alpha_i|^2$.
 
 **Partition function estimation:**
+
 $$Z = \sum_i \exp(-E_i / T), \qquad F = -T \ln Z, \qquad C = \text{Var}(E) / T^2$$
 
 using MCMC with burn-in, thinning, and thermodynamic integration.
@@ -348,9 +358,11 @@ Estimated via MC sampling with stratified variance reduction.
 The quantum-Shannon system combines quantum walk propagation with Shannon information monitoring:
 
 **Channel capacity:**
+
 $$C = B \cdot \log_2(1 + \text{SNR}) \quad \text{bits/second}$$
 
 **Propagation efficiency:**
+
 $$\eta = \frac{I(\text{source}; \text{targets})}{H(\text{source})}$$
 
 Bottleneck synapses are identified when capacity utilization falls below threshold. The system adaptively routes around bottlenecks by biasing the quantum coin operator toward high-capacity neighbors.
@@ -383,6 +395,7 @@ Computed with safe logarithm: $\ln(\max(x, 10^{-10}))$ to prevent $-\infty$. Use
 $$I(X; Y) = H(X) - H(X|Y) = \sum_{x,y} p(x,y) \ln \frac{p(x,y)}{p(x)p(y)}$$
 
 **KL Divergence:**
+
 $$D_{\text{KL}}(P \| Q) = \sum_i p_i \ln \frac{p_i}{q_i}$$
 
 Used for loss functions, distribution comparison, and bottleneck detection.
@@ -420,6 +433,7 @@ The empirical Fisher is estimated from gradient samples. Regularized inversion: 
 The parameter space of neural network weights forms a Riemannian manifold with the Fisher information matrix as its metric tensor.
 
 **Natural gradient:**
+
 $$\tilde{\nabla} L = F^{-1} \nabla L$$
 
 converges 2--10x faster than standard SGD by accounting for the geometry of the parameter space. Gradient clipping at norm 10.0, with optional momentum and warmup scheduling.
@@ -574,6 +588,7 @@ The intrinsic dimensionality of neural activity is estimated from samples on the
 **Safe exponential:** Input clamped to $[-88, 88]$ before $\exp$ to prevent overflow ($e^{89} = \infty$ in single precision).
 
 **Softmax with temperature:**
+
 $$p_i = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}$$
 
 *Source: `include/utils/math/nimcp_math_helpers.h`*
