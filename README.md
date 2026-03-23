@@ -38,6 +38,18 @@ A 1-million neuron brain with 6 neural network types running in parallel:
 
 Multi-layer diamond topology (3/5/7 layers by size), 320 synapses per neuron, GPU-accelerated via 83 CUDA kernels.
 
+### Hemispheric Brain + Corpus Callosum
+
+The brain has **two hemispheres** connected by a corpus callosum with 4 communication channels (motor, sensory, cognitive, emotional):
+
+- **Left hemisphere** — language (Broca's area), logic, sequential processing, local attention, fine motor control
+- **Right hemisphere** — spatial processing, pattern recognition, emotion processing, global attention
+- **Corpus callosum** — 4-channel inter-hemispheric transfer with configurable latency
+- **Dynamic lateralization** — shifts with experience (neuroplasticity). If one hemisphere is damaged or underperforming, the other compensates.
+- **4 processing modes** — lateralized (route to dominant hemisphere), parallel (both process), competitive (race, winner outputs), cooperative (combine by specialization)
+
+Language inputs route left. Spatial inputs route right. Ethics requires both (logical analysis + emotional processing). The lateralization strength modulates confidence — strongly lateralized processing means more confident, specialized output.
+
 ### Biological Plasticity
 
 Real neuroscience learning mechanisms: STDP, BCM, eligibility traces, homeostatic plasticity, 6 neuromodulators (dopamine, serotonin, acetylcholine, norepinephrine, GABA, glutamate), and episodic replay during simulated sleep.
@@ -55,6 +67,7 @@ Real neuroscience learning mechanisms: STDP, BCM, eligibility traces, homeostati
 | **Perception** | Visual cortex, audio cortex, speech cortex, somatosensory, sensor hub (12 types) |
 | **Motor** | Motor output translation, safety watchdog, sensorimotor closed-loop controller |
 | **Biological** | Dragonfly target tracking, Portia resource adaptation, brain immune system |
+| **Mental Health** | Trauma resilience (recall dampening, arousal homeostasis, habituation), DSM-5 disorder detection (23 detectors), wellbeing monitoring |
 | **Language** | Brain-native language production, BPE tokenizer, emergent alien language, phonological loop |
 
 ### Brain-Native Language
@@ -123,7 +136,7 @@ Additional safety features:
 | Network types | 6 |
 | Python API methods | 240 |
 | Language bindings | 8 (Python, Java, Node.js, Go, C#, Rust, Perl, C++) |
-| Tests | 480+ passing |
+| Tests | 527+ passing |
 | Development sessions | 73 |
 
 ## Getting Started
@@ -160,7 +173,7 @@ For detailed usage:
 
 **Version 2.6.4** (March 2026)
 
-Training status: **Stage 1** (Association — learning to name objects). Loss: 0.03-3,400. SNN: 15-17 Hz (healthy). 4,750+ unique training descriptions across 13 cognitive domains.
+Training status: **Stage 1** (Association — learning to name objects). Loss: 0.027 avg. SNN: 17-20 Hz (healthy). eff_rank: 64.2 (excellent output diversity). 4,750+ unique training descriptions across 13 cognitive domains + unlimited compositional combinations.
 
 | Stage | Description | Status |
 |-------|-------------|--------|

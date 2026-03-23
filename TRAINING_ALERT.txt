@@ -5995,3 +5995,55 @@ Fri Mar 20 04:58:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-03-22 19:50:01] [WARN] Checkpoint stale: athena_s1_step950.bin is 1377m old
 [2026-03-22 19:55:01] [WARN] Checkpoint stale: athena_s1_step950.bin is 1382m old
 [2026-03-22 20:00:01] [WARN] Checkpoint stale: athena_s1_step950.bin is 1387m old
+[2026-03-23 02:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 123m old
+[2026-03-23 02:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 128m old
+[2026-03-23 02:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 133m old
+[2026-03-23 02:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 138m old
+[2026-03-23 02:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 143m old
+[2026-03-23 02:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 148m old
+[2026-03-23 02:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 153m old
+[2026-03-23 02:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 158m old
+[2026-03-23 02:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 163m old
+[2026-03-23 02:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 168m old
+[2026-03-23 02:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 173m old
+[2026-03-23 03:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 178m old
+[2026-03-23 03:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 183m old
+[2026-03-23 03:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 188m old
+[2026-03-23 03:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 193m old
+[2026-03-23 03:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 198m old
+[2026-03-23 03:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 203m old
+[2026-03-23 03:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 208m old
+[2026-03-23 03:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 213m old
+[2026-03-23 03:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 218m old
+[2026-03-23 03:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 223m old
+[2026-03-23 03:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 228m old
+[2026-03-23 03:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-23 03:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 233m old
+[2026-03-23 04:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-23 04:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 238m old
+[2026-03-23 04:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-23 04:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 243m old
+[2026-03-23 04:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-23 04:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 248m old
+[2026-03-23 04:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-23 04:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 253m old
+[2026-03-23 04:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 258m old
+[2026-03-23 04:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 263m old
+[2026-03-23 04:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 268m old
+[2026-03-23 04:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 273m old
+[2026-03-23 04:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 278m old
+[2026-03-23 04:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 283m old
+[2026-03-23 04:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 288m old
+[2026-03-23 04:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 293m old
+[2026-03-23 05:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 298m old
+[2026-03-23 05:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 303m old
+[2026-03-23 05:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 308m old
+[2026-03-23 05:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 313m old
+[2026-03-23 05:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 318m old
+[2026-03-23 05:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 323m old
+[2026-03-23 05:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 328m old
+[2026-03-23 05:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 333m old
+[2026-03-23 05:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 338m old
+[2026-03-23 05:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 343m old
+[2026-03-23 05:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 348m old
+[2026-03-23 05:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 353m old
