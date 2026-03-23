@@ -18,7 +18,11 @@ This paper presents the complete mathematical framework underlying the Neuro-Ins
 
 The membrane potential of neuron $i$ evolves according to:
 
-$$\tau_m \frac{dV_i}{dt} = -(V_i - V_{\text{rest}}) + R_m I_i(t)$$
+
+```math
+\tau_m \frac{dV_i}{dt} = -(V_i - V_{\text{rest}}) + R_m I_i(t)
+```
+
 
 where $\tau_m$ is the membrane time constant, $V_{\text{rest}}$ the resting potential, $R_m$ the membrane resistance, and $I_i(t)$ the total synaptic input current. A spike is emitted when $V_i \geq V_{\text{thresh}}$, after which $V_i \leftarrow V_{\text{reset}}$ and the neuron enters a refractory period $t_{\text{ref}}$.
 
@@ -30,7 +34,11 @@ The SNN populations in NIMCP use this model with per-neuron state vectors tracki
 
 Synaptic current into neuron $i$ from population $p$ is:
 
-$$I_i^{\text{syn}}(t) = \sum_{j \in \text{pre}(i)} w_{ji} \sum_{k} \alpha(t - t_j^k)$$
+
+```math
+I_i^{\text{syn}}(t) = \sum_{j \in \text{pre}(i)} w_{ji} \sum_{k} \alpha(t - t_j^k)
+```
+
 
 where $w_{ji}$ is the synaptic weight, $t_j^k$ the $k$-th spike time of presynaptic neuron $j$, and $\alpha(t)$ is a synaptic kernel (exponential or alpha function). Spike trains are stored in ring buffers with fields `total_spikes` and per-population spike counts, indexed by `n_populations`.
 
@@ -40,7 +48,11 @@ where $w_{ji}$ is the synaptic weight, $t_j^k$ the $k$-th spike time of presynap
 
 The LNN implements continuous-time recurrent dynamics via an ODE:
 
-$$\frac{dx_i}{dt} = -\frac{x_i}{\tau_i} + f\bigl(W_{\text{rec}} \, x + W_{\text{in}} \, I(t) + b\bigr)_i$$
+
+```math
+\frac{dx_i}{dt} = -\frac{x_i}{\tau_i} + f\bigl(W_{\text{rec}} \, x + W_{\text{in}} \, I(t) + b\bigr)_i
+```
+
 
 where $x_i$ is the hidden state, $\tau_i$ a learned time constant (clamped to $\tau_{\text{safe}} \geq 0.01$ to prevent $1/\tau^2$ explosion), $W_{\text{rec}}$ the recurrent weight matrix, $W_{\text{in}}$ the input projection, and $f$ a nonlinearity (typically $\tanh$). Gradients are computed via the adjoint method (Section 2.6) with per-layer tensors `grad_W_rec`, `grad_tau_base`, and `grad_b_in` serving as the authoritative gradient storage.
 
@@ -50,29 +62,45 @@ where $x_i$ is the hidden state, $\tau_i$ a learned time constant (clamped to $\
 
 Energy-conserving dynamics are achieved by learning a Hamiltonian function $H: \mathbb{R}^{2n} \to \mathbb{R}$ and deriving dynamics from Hamilton's equations:
 
-$$\frac{dq}{dt} = \frac{\partial H}{\partial p}, \qquad \frac{dp}{dt} = -\frac{\partial H}{\partial q}$$
+
+```math
+\frac{dq}{dt} = \frac{\partial H}{\partial p}, \qquad \frac{dp}{dt} = -\frac{\partial H}{\partial q}
+```
+
 
 NIMCP supports two forms:
 
 **Separable Hamiltonian:**
 
-$$H(q, p) = T(p) + V(q)$$
+
+```math
+H(q, p) = T(p) + V(q)
+```
+
 
 where $T$ is kinetic energy (parameterized by an MLP over $p$) and $V$ is potential energy (MLP over $q$), enabling cheaper gradient computation.
 
 **General Hamiltonian:**
 
-$$H(q, p) = \text{MLP}([q; p])$$
+
+```math
+H(q, p) = \text{MLP}([q; p])
+```
+
 
 with a multi-layer network of configurable depth (`n_hidden_layers`, default 2) and width (`hidden_dim`, default $2n$).
 
 Energy conservation $dH/dt = 0$ is enforced by the **Stormer-Verlet symplectic integrator**:
 
-$$\begin{aligned}
+
+```math
+\begin{aligned}
 p_{1/2} &= p_n - \frac{\Delta t}{2} \frac{\partial H}{\partial q}\bigg|_{q_n, p_n} \\
 q_{n+1} &= q_n + \Delta t \, \frac{\partial H}{\partial p}\bigg|_{q_n, p_{1/2}} \\
 p_{n+1} &= p_{1/2} - \frac{\Delta t}{2} \frac{\partial H}{\partial q}\bigg|_{q_{n+1}, p_{1/2}}
-\end{aligned}$$
+\end{aligned}
+```
+
 
 External input drives momentum via a coupling parameter: $p \leftarrow p + \gamma \cdot I_{\text{ext}}$, where $\gamma$ is `input_coupling`. Energy deviation is monitored as $|H(t) - H(0)| / |H(0)|$ with a regularization penalty weighted by `energy_penalty_weight`.
 
@@ -88,22 +116,34 @@ The connection to the Free Energy Principle is: $H \equiv F$ (variational free e
 
 The weight change follows the classic Bi & Poo (1998) exponential window:
 
-$$\Delta w = \begin{cases} A_+ \exp\!\left(-\frac{\Delta t}{\tau_+}\right) & \text{if } \Delta t > 0 \text{ (pre before post, LTP)} \\ -A_- \exp\!\left(\frac{\Delta t}{\tau_-}\right) & \text{if } \Delta t < 0 \text{ (post before pre, LTD)} \end{cases}$$
+
+```math
+\Delta w = \begin{cases} A_+ \exp\!\left(-\frac{\Delta t}{\tau_+}\right) & \text{if } \Delta t > 0 \text{ (pre before post, LTP)} \\ -A_- \exp\!\left(\frac{\Delta t}{\tau_-}\right) & \text{if } \Delta t < 0 \text{ (post before pre, LTD)} \end{cases}
+```
+
 
 Default parameters: $A_+ = 0.005$, $A_- = 0.00525$, $\tau_+ = \tau_- = 20$ ms, $w \in [0, w_{\max}]$ with $w_{\max} = 1.0$.
 
 **Trace-based implementation:** Instead of storing all spike times, exponentially decaying traces are maintained:
 
-$$\begin{aligned}
+
+```math
+\begin{aligned}
 \text{pre\_trace}(t + \Delta t) &= \text{pre\_trace}(t) \cdot \exp(-\Delta t / \tau_+) \\
 \text{post\_trace}(t + \Delta t) &= \text{post\_trace}(t) \cdot \exp(-\Delta t / \tau_-)
-\end{aligned}$$
+\end{aligned}
+```
+
 
 Traces below `NIMCP_DENORMAL_THRESHOLD` ($10^{-10}$) are flushed to zero for performance.
 
 **Three-factor learning with dopamine modulation:** The effective learning rate is:
 
-$$\eta_{\text{eff}} = \eta_{\text{base}} \times (1 + g_{\text{DA}} \cdot [\text{DA}]) \times m_{\text{burst}}$$
+
+```math
+\eta_{\text{eff}} = \eta_{\text{base}} \times (1 + g_{\text{DA}} \cdot [\text{DA}]) \times m_{\text{burst}}
+```
+
 
 where $g_{\text{DA}} = 100.0$ (default), $[\text{DA}]$ is dopamine concentration, and $m_{\text{burst}} = 3.0$ during phasic dopamine bursts.
 
@@ -113,10 +153,14 @@ where $g_{\text{DA}} = 100.0$ (default), $[\text{DA}]$ is dopamine concentration
 
 The BCM sliding threshold rule for cortical learning:
 
-$$\begin{aligned}
+
+```math
+\begin{aligned}
 \Delta w &= \eta \cdot y \cdot (y - \theta) \cdot x \\
 \frac{d\theta}{dt} &= \frac{y^2 - \theta}{\tau_\theta}
-\end{aligned}$$
+\end{aligned}
+```
+
 
 where $y$ is postsynaptic activity, $x$ is presynaptic activity, $\theta$ is the sliding modification threshold, and $\tau_\theta$ is the threshold time constant. When $y > \theta$, the synapse potentiates; when $y < \theta$, it depresses. The threshold tracks the mean squared activity $\langle y^2 \rangle$, making the rule self-stabilizing without explicit normalization.
 
@@ -126,11 +170,19 @@ where $y$ is postsynaptic activity, $x$ is presynaptic activity, $\theta$ is the
 
 Eligibility traces bridge the temporal credit assignment gap between Hebbian coincidence and delayed reward:
 
-$$e_{ij}(t+\Delta t) = e_{ij}(t) \cdot \exp(-\Delta t / \tau_e) + \text{STDP}_{ij}(t)$$
+
+```math
+e_{ij}(t+\Delta t) = e_{ij}(t) \cdot \exp(-\Delta t / \tau_e) + \text{STDP}_{ij}(t)
+```
+
 
 Weight updates occur only when a reward signal $r(t)$ arrives:
 
-$$\Delta w_{ij} = \eta \cdot r(t) \cdot e_{ij}(t)$$
+
+```math
+\Delta w_{ij} = \eta \cdot r(t) \cdot e_{ij}(t)
+```
+
 
 This implements the three-factor rule: Hebbian timing $\times$ eligibility $\times$ neuromodulatory reward.
 
@@ -142,17 +194,29 @@ Three mechanisms maintain neural stability:
 
 **Synaptic Scaling (Turrigiano 1998):**
 
-$$w_{\text{scaled}} = w \times \left(\frac{r_{\text{target}}}{r_{\text{actual}}}\right)^\alpha$$
+
+```math
+w_{\text{scaled}} = w \times \left(\frac{r_{\text{target}}}{r_{\text{actual}}}\right)^\alpha
+```
+
 
 where $\alpha \in [0.5, 2.0]$ is the scaling exponent, $r_{\text{target}} = 5.0$ Hz (default).
 
 **Intrinsic Plasticity (threshold adaptation):**
 
-$$\frac{d\theta}{dt} = \frac{r_{\text{actual}} - r_{\text{target}}}{\tau_{\text{IP}}}$$
+
+```math
+\frac{d\theta}{dt} = \frac{r_{\text{actual}} - r_{\text{target}}}{\tau_{\text{IP}}}
+```
+
 
 **Metaplasticity (BCM threshold sliding):**
 
-$$\theta_m = \langle r^2 \rangle$$
+
+```math
+\theta_m = \langle r^2 \rangle
+```
+
 
 The sliding threshold based on squared activity history.
 
@@ -162,7 +226,11 @@ The sliding threshold based on squared activity history.
 
 SNN training uses BPTT with surrogate gradients. The non-differentiable Heaviside spike function $\Theta(V - V_{\text{thresh}})$ is replaced by a smooth surrogate:
 
-$$\sigma'(V) = \frac{1}{\pi} \cdot \frac{1}{1 + (\pi \cdot \beta \cdot (V - V_{\text{thresh}}))^2}$$
+
+```math
+\sigma'(V) = \frac{1}{\pi} \cdot \frac{1}{1 + (\pi \cdot \beta \cdot (V - V_{\text{thresh}}))^2}
+```
+
 
 The backward pass unrolls through time, computing temporal gradients of the loss with respect to synapse weights and firing thresholds.
 
@@ -172,11 +240,19 @@ The backward pass unrolls through time, computing temporal gradients of the loss
 
 For the LNN ODE $\dot{x} = f(x, \theta, t)$, the adjoint state $a(t) = \partial L / \partial x(t)$ evolves backward:
 
-$$\frac{da}{dt} = -a^\top \frac{\partial f}{\partial x}$$
+
+```math
+\frac{da}{dt} = -a^\top \frac{\partial f}{\partial x}
+```
+
 
 Parameter gradients are accumulated during the backward sweep:
 
-$$\frac{dL}{d\theta} = -\int_{t_1}^{t_0} a(t)^\top \frac{\partial f}{\partial \theta} \, dt$$
+
+```math
+\frac{dL}{d\theta} = -\int_{t_1}^{t_0} a(t)^\top \frac{\partial f}{\partial \theta} \, dt
+```
+
 
 Adjoint truncation is capped at 50 backward steps. Gradients are normalized (not clipped) to target norm 1.0 when `use_gradient_normalization=true`, preventing the 100,000x reduction that caused mode collapse in earlier versions.
 
@@ -186,12 +262,16 @@ Adjoint truncation is capped at 50 backward steps. Gradients are normalized (not
 
 Parameter updates with decoupled weight decay:
 
-$$\begin{aligned}
+
+```math
+\begin{aligned}
 m_t &= \beta_1 m_{t-1} + (1-\beta_1) g_t \\
 v_t &= \beta_2 v_{t-1} + (1-\beta_2) g_t^2 \\
 \hat{m}_t &= m_t / (1 - \beta_1^t), \quad \hat{v}_t = v_t / (1 - \beta_2^t) \\
 \theta_t &= \theta_{t-1} - \eta \left( \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon} + \lambda \theta_{t-1} \right)
-\end{aligned}$$
+\end{aligned}
+```
+
 
 where $\lambda$ is the weight decay coefficient, decoupled from the adaptive learning rate.
 
@@ -205,13 +285,21 @@ where $\lambda$ is the weight decay coefficient, decoupled from the adaptive lea
 
 The core FNO operation learns a kernel in Fourier space:
 
-$$(\mathcal{K}(\phi)v)(x) = \mathcal{F}^{-1}\bigl(R_\phi \cdot \mathcal{F}(v)\bigr)(x) + W_{\text{bypass}} \cdot v(x)$$
+
+```math
+(\mathcal{K}(\phi)v)(x) = \mathcal{F}^{-1}\bigl(R_\phi \cdot \mathcal{F}(v)\bigr)(x) + W_{\text{bypass}} \cdot v(x)
+```
+
 
 where $R_\phi \in \mathbb{C}^{c_{\text{out}} \times c_{\text{in}} \times k}$ are learned complex spectral weights truncated to $k$ Fourier modes, $\mathcal{F}$ denotes the FFT, and $W_{\text{bypass}}$ is a $1\times 1$ convolution residual path.
 
 The spectral convolution is applied per-channel:
 
-$$\hat{y}_{\text{out}}[j][m] = \sum_{i=0}^{c_{\text{in}}-1} (W_{\text{real}}[j,i,m] + i\,W_{\text{imag}}[j,i,m]) \cdot \hat{v}_{\text{in}}[i][m]$$
+
+```math
+\hat{y}_{\text{out}}[j][m] = \sum_{i=0}^{c_{\text{in}}-1} (W_{\text{real}}[j,i,m] + i\,W_{\text{imag}}[j,i,m]) \cdot \hat{v}_{\text{in}}[i][m]
+```
+
 
 for modes $m = 0, \ldots, k-1$, followed by IFFT and GELU activation.
 
@@ -221,11 +309,19 @@ for modes $m = 0, \ldots, k-1$, followed by IFFT and GELU activation.
 
 NIMCP implements the Cooley-Tukey radix-2 FFT with $O(N \log N)$ complexity:
 
-$$X[k] = \sum_{n=0}^{N-1} x[n] \cdot e^{-2\pi i \, kn/N}, \qquad k = 0, \ldots, N-1$$
+
+```math
+X[k] = \sum_{n=0}^{N-1} x[n] \cdot e^{-2\pi i \, kn/N}, \qquad k = 0, \ldots, N-1
+```
+
 
 The inverse transform:
 
-$$x[n] = \frac{1}{N} \sum_{k=0}^{N-1} X[k] \cdot e^{2\pi i \, kn/N}$$
+
+```math
+x[n] = \frac{1}{N} \sum_{k=0}^{N-1} X[k] \cdot e^{2\pi i \, kn/N}
+```
+
 
 Pre-computed twiddle factors $W_N^k = e^{-2\pi ik/N}$ and bit-reversal permutation tables are stored in the plan structure. Window functions reduce spectral leakage:
 
@@ -277,17 +373,29 @@ Optimization via simulated quantum tunneling through energy barriers:
 
 **Classical acceptance (Metropolis):**
 
-$$P_{\text{classical}} = \exp(-\Delta E / T)$$
+
+```math
+P_{\text{classical}} = \exp(-\Delta E / T)
+```
+
 
 **Quantum tunneling probability:**
 
-$$P_{\text{tunnel}} = \Gamma \cdot \exp(-B / T^\alpha)$$
+
+```math
+P_{\text{tunnel}} = \Gamma \cdot \exp(-B / T^\alpha)
+```
+
 
 where $\Gamma$ is quantum strength (default 0.5), $B$ is the barrier height, and $T^\alpha$ the effective tunneling temperature.
 
 **Combined acceptance:**
 
-$$P_{\text{accept}} = \min\bigl(1, P_{\text{classical}} + P_{\text{tunnel}}\bigr)$$
+
+```math
+P_{\text{accept}} = \min\bigl(1, P_{\text{classical}} + P_{\text{tunnel}}\bigr)
+```
+
 
 **Cooling schedules:**
 
@@ -306,14 +414,22 @@ The adaptive variant uses Metropolis-Hastings with learned proposal covariance, 
 
 A discrete-time quantum walk on the neural network graph provides $O(\sqrt{N})$ speedup for neuromodulator diffusion. The quantum state is:
 
-$$|\psi\rangle = \sum_i \alpha_i |i\rangle, \qquad \sum_i |\alpha_i|^2 = 1$$
+
+```math
+|\psi\rangle = \sum_i \alpha_i |i\rangle, \qquad \sum_i |\alpha_i|^2 = 1
+```
+
 
 **Evolution operator:** $U = S \cdot C$ where:
 
 - **Coin operator** $C$: Creates superposition at each node (Hadamard, Grover, or Fourier coin)
 - **Shift operator** $S$: Propagates amplitude along edges
 
-$$\alpha_j'' = \sum_{i \in \mathcal{N}(j)} \frac{\alpha_i'}{\sqrt{d_i}}$$
+
+```math
+\alpha_j'' = \sum_{i \in \mathcal{N}(j)} \frac{\alpha_i'}{\sqrt{d_i}}
+```
+
 
 where $d_i$ is the degree of node $i$.
 
@@ -321,7 +437,11 @@ where $d_i$ is the degree of node $i$.
 
 **Hybrid quantum-classical mixing:**
 
-$$\alpha_{\text{final}} = (1 - \lambda) \cdot \alpha_{\text{quantum}} + \lambda \cdot \alpha_{\text{classical}}$$
+
+```math
+\alpha_{\text{final}} = (1 - \lambda) \cdot \alpha_{\text{quantum}} + \lambda \cdot \alpha_{\text{classical}}
+```
+
 
 **Decoherence** models environmental noise, gradually collapsing quantum superposition toward classical probabilities at rate $\gamma_{\text{decohere}} \in [0, 1]$.
 
@@ -331,23 +451,35 @@ $$\alpha_{\text{final}} = (1 - \lambda) \cdot \alpha_{\text{quantum}} + \lambda 
 
 **Amplitude estimation** via importance sampling: Estimate $|\langle \phi | \psi \rangle|^2$ using proposal distribution $q$:
 
-$$\hat{P} = \frac{1}{N} \sum_{i=1}^{N} \frac{|\psi(x_i)|^2}{q(x_i)}, \qquad x_i \sim q$$
+
+```math
+\hat{P} = \frac{1}{N} \sum_{i=1}^{N} \frac{|\psi(x_i)|^2}{q(x_i)}, \qquad x_i \sim q
+```
+
 
 **Finite-shot measurement** simulates realistic quantum hardware by sampling from the multinomial distribution $\text{Multi}(N_{\text{shots}}; p_0, p_1, \ldots)$ where $p_i = |\alpha_i|^2$.
 
 **Partition function estimation:**
 
-$$Z = \sum_i \exp(-E_i / T), \qquad F = -T \ln Z, \qquad C = \text{Var}(E) / T^2$$
+
+```math
+Z = \sum_i \exp(-E_i / T), \qquad F = -T \ln Z, \qquad C = \text{Var}(E) / T^2
+```
+
 
 using MCMC with burn-in, thinning, and thermodynamic integration.
 
 **Entropy estimation (Renyi family):**
 
-$$\begin{aligned}
+
+```math
+\begin{aligned}
 H_{\text{Shannon}} &= -\sum_i p_i \ln p_i \\
 H_2 &= -\ln\!\left(\sum_i p_i^2\right) \\
 H_\infty &= -\ln\!\left(\max_i p_i\right)
-\end{aligned}$$
+\end{aligned}
+```
+
 
 Estimated via MC sampling with stratified variance reduction.
 
@@ -359,11 +491,19 @@ The quantum-Shannon system combines quantum walk propagation with Shannon inform
 
 **Channel capacity:**
 
-$$C = B \cdot \log_2(1 + \text{SNR}) \quad \text{bits/second}$$
+
+```math
+C = B \cdot \log_2(1 + \text{SNR}) \quad \text{bits/second}
+```
+
 
 **Propagation efficiency:**
 
-$$\eta = \frac{I(\text{source}; \text{targets})}{H(\text{source})}$$
+
+```math
+\eta = \frac{I(\text{source}; \text{targets})}{H(\text{source})}
+```
+
 
 Bottleneck synapses are identified when capacity utilization falls below threshold. The system adaptively routes around bottlenecks by biasing the quantum coin operator toward high-capacity neighbors.
 
@@ -384,7 +524,11 @@ Quantum algorithm results feed into neural updates via:
 
 ### 5.1 Shannon Entropy
 
-$$H(X) = -\sum_{i} p_i \ln p_i$$
+
+```math
+H(X) = -\sum_{i} p_i \ln p_i
+```
+
 
 Computed with safe logarithm: $\ln(\max(x, 10^{-10}))$ to prevent $-\infty$. Used for monitoring neural activity diversity, attention entropy, and network health.
 
@@ -392,11 +536,19 @@ Computed with safe logarithm: $\ln(\max(x, 10^{-10}))$ to prevent $-\infty$. Use
 
 ### 5.2 Mutual Information and KL Divergence
 
-$$I(X; Y) = H(X) - H(X|Y) = \sum_{x,y} p(x,y) \ln \frac{p(x,y)}{p(x)p(y)}$$
+
+```math
+I(X; Y) = H(X) - H(X|Y) = \sum_{x,y} p(x,y) \ln \frac{p(x,y)}{p(x)p(y)}
+```
+
 
 **KL Divergence:**
 
-$$D_{\text{KL}}(P \| Q) = \sum_i p_i \ln \frac{p_i}{q_i}$$
+
+```math
+D_{\text{KL}}(P \| Q) = \sum_i p_i \ln \frac{p_i}{q_i}
+```
+
 
 Used for loss functions, distribution comparison, and bottleneck detection.
 
@@ -404,7 +556,11 @@ Used for loss functions, distribution comparison, and bottleneck detection.
 
 ### 5.3 Integrated Information (IIT Phi)
 
-$$\Phi = \min_{\text{partitions}} \bigl[ I(\text{whole}) - \sum I(\text{parts}) \bigr]$$
+
+```math
+\Phi = \min_{\text{partitions}} \bigl[ I(\text{whole}) - \sum I(\text{parts}) \bigr]
+```
+
 
 Measures irreducible causal structure. Exponential in system size; approximations used for large networks.
 
@@ -414,7 +570,11 @@ Measures irreducible causal structure. Exponential in system size; approximation
 
 For two sources $S_1, S_2$ predicting target $T$:
 
-$$I(S_1, S_2 ; T) = U_1 + U_2 + R + S$$
+
+```math
+I(S_1, S_2 ; T) = U_1 + U_2 + R + S
+```
+
 
 where $U_i$ is unique information from source $i$, $R$ is redundancy, and $S$ is synergy. Multiple decomposition methods are supported: BROJA, CCS, MMI, DEP, and iterative BROJA.
 
@@ -422,7 +582,11 @@ where $U_i$ is unique information from source $i$, $R$ is redundancy, and $S$ is
 
 ### 5.5 Fisher Information Matrix
 
-$$F_{ij}(\theta) = \mathbb{E}\!\left[\frac{\partial \ln p(x|\theta)}{\partial \theta_i} \cdot \frac{\partial \ln p(x|\theta)}{\partial \theta_j}\right]$$
+
+```math
+F_{ij}(\theta) = \mathbb{E}\!\left[\frac{\partial \ln p(x|\theta)}{\partial \theta_i} \cdot \frac{\partial \ln p(x|\theta)}{\partial \theta_j}\right]
+```
+
 
 The empirical Fisher is estimated from gradient samples. Regularized inversion: $\tilde{F} = F + \lambda I$ with $\lambda = 10^{-6}$.
 
@@ -434,13 +598,21 @@ The parameter space of neural network weights forms a Riemannian manifold with t
 
 **Natural gradient:**
 
-$$\tilde{\nabla} L = F^{-1} \nabla L$$
+
+```math
+\tilde{\nabla} L = F^{-1} \nabla L
+```
+
 
 converges 2--10x faster than standard SGD by accounting for the geometry of the parameter space. Gradient clipping at norm 10.0, with optional momentum and warmup scheduling.
 
 **Geodesic distance** between parameter configurations $\theta_a, \theta_b$ is computed on the Fisher manifold:
 
-$$d(\theta_a, \theta_b) = \inf_\gamma \int_0^1 \sqrt{\dot\gamma(t)^\top F(\gamma(t)) \, \dot\gamma(t)} \, dt$$
+
+```math
+d(\theta_a, \theta_b) = \inf_\gamma \int_0^1 \sqrt{\dot\gamma(t)^\top F(\gamma(t)) \, \dot\gamma(t)} \, dt
+```
+
 
 **Ricci curvature** measures how volume changes along geodesics, informing adaptive learning rate schedules.
 
@@ -452,10 +624,14 @@ $$d(\theta_a, \theta_b) = \inf_\gamma \int_0^1 \sqrt{\dot\gamma(t)^\top F(\gamma
 
 ### 6.1 Sinusoidal Encoding (Vaswani 2017)
 
-$$\begin{aligned}
+
+```math
+\begin{aligned}
 \text{PE}(\text{pos}, 2i) &= \sin\!\left(\frac{\text{pos}}{b^{2i/d}}\right) \\
 \text{PE}(\text{pos}, 2i+1) &= \cos\!\left(\frac{\text{pos}}{b^{2i/d}}\right)
-\end{aligned}$$
+\end{aligned}
+```
+
 
 where $b = 10000$ (configurable via `frequency_base`), $d$ is the embedding dimension, and $i$ indexes the dimension pair. Fixed, requires no training, and extrapolates to unseen positions.
 
@@ -463,7 +639,11 @@ where $b = 10000$ (configurable via `frequency_base`), $d$ is the embedding dime
 
 Encodes relative position via 2D rotation applied to query-key pairs:
 
-$$\begin{pmatrix} q'_{2i} \\ q'_{2i+1} \end{pmatrix} = \begin{pmatrix} \cos(m\theta_i) & -\sin(m\theta_i) \\ \sin(m\theta_i) & \cos(m\theta_i) \end{pmatrix} \begin{pmatrix} q_{2i} \\ q_{2i+1} \end{pmatrix}$$
+
+```math
+\begin{pmatrix} q'_{2i} \\ q'_{2i+1} \end{pmatrix} = \begin{pmatrix} \cos(m\theta_i) & -\sin(m\theta_i) \\ \sin(m\theta_i) & \cos(m\theta_i) \end{pmatrix} \begin{pmatrix} q_{2i} \\ q_{2i+1} \end{pmatrix}
+```
+
 
 where $m$ is position, $\theta_i = b^{-2i/d}$, and $b = 10000$ (default `rope_base`). The dot product $\langle q'_m, k'_n \rangle$ depends only on relative position $m - n$. NTK-aware scaling extends context length by adjusting the base: $b' = b \cdot s^{d/(d-2)}$.
 
@@ -471,11 +651,19 @@ where $m$ is position, $\theta_i = b^{-2i/d}$, and $b = 10000$ (default `rope_ba
 
 No explicit positional encoding. Instead, a linear bias is added to attention scores:
 
-$$\text{bias}[h][i][j] = -m_h \cdot |i - j|$$
+
+```math
+\text{bias}[h][i][j] = -m_h \cdot |i - j|
+```
+
 
 Slopes follow a geometric sequence:
 
-$$m_h = 2^{-8(h+1)/H}$$
+
+```math
+m_h = 2^{-8(h+1)/H}
+```
+
 
 where $H$ is the number of attention heads. This provides the simplest and most efficient long-sequence support.
 
@@ -515,7 +703,11 @@ NIMCP implements per-network learning rates, layer-wise LR scaling (tau paramete
 
 ### 8.2 Natural Gradient
 
-$$\theta_{t+1} = \theta_t - \eta \, F^{-1}(\theta_t) \, \nabla L(\theta_t)$$
+
+```math
+\theta_{t+1} = \theta_t - \eta \, F^{-1}(\theta_t) \, \nabla L(\theta_t)
+```
+
 
 See Section 5.6 for the Fisher information matrix computation. Adaptive damping adjusts the regularization parameter based on the ratio of actual to predicted loss reduction.
 
@@ -527,13 +719,21 @@ Periodically invoked during plasticity (every $K$ learning steps) to escape loca
 
 ### 8.4 Elastic Weight Consolidation
 
-$$\mathcal{L}(\theta) = \mathcal{L}_B(\theta) + \sum_i \frac{\lambda}{2} F_i \left(\theta_i - \theta_{A,i}^*\right)^2$$
+
+```math
+\mathcal{L}(\theta) = \mathcal{L}_B(\theta) + \sum_i \frac{\lambda}{2} F_i \left(\theta_i - \theta_{A,i}^*\right)^2
+```
+
 
 where $F_i$ is the diagonal of the Fisher information matrix computed on task $A$, $\theta_{A,i}^*$ are the optimal parameters for task $A$, and $\lambda$ controls the consolidation strength. Prevents catastrophic forgetting by penalizing changes to parameters that were important for previous tasks.
 
 ### 8.5 Federated Averaging (Swarm Learning)
 
-$$w_{t+1} = \sum_{k=1}^{K} \frac{n_k}{n} w_{t+1}^k$$
+
+```math
+w_{t+1} = \sum_{k=1}^{K} \frac{n_k}{n} w_{t+1}^k
+```
+
 
 where $n_k$ is the number of samples on edge node $k$ and $n = \sum_k n_k$. Used in NIMCP's swarm runtime for gossip-based model aggregation with Byzantine fault tolerance.
 
@@ -547,7 +747,11 @@ where $n_k$ is the number of samples on edge node $k$ and $n = \sum_k n_k$. Used
 
 The metric tensor on a 2D surface manifold:
 
-$$\gamma_{ab} = \frac{\partial X}{\partial \sigma^a} \cdot \frac{\partial X}{\partial \sigma^b}$$
+
+```math
+\gamma_{ab} = \frac{\partial X}{\partial \sigma^a} \cdot \frac{\partial X}{\partial \sigma^b}
+```
+
 
 where $\sigma = (\sigma^0, \sigma^1)$ are local coordinates (longitudinal and azimuthal).
 
@@ -557,7 +761,11 @@ For a cylinder of radius $r$: $\gamma = \begin{pmatrix} 1 & 0 \\ 0 & r^2 \end{pm
 
 The total surface area of the manifold $M(G)$ assigned to graph $G$:
 
-$$S_{M}(G) = \sum_i \int \sqrt{\det(\gamma_i)} \, d\sigma^0 \, d\sigma^1$$
+
+```math
+S_{M}(G) = \sum_i \int \sqrt{\det(\gamma_i)} \, d\sigma^0 \, d\sigma^1
+```
+
 
 This is formally identical to the Nambu-Goto action from string theory (with string tension $T = 1$). Computed via Gaussian quadrature with 8--64 points, adaptively chosen based on local curvature.
 
@@ -565,7 +773,11 @@ This is formally identical to the Nambu-Goto action from string theory (with str
 
 ### 9.3 Geometric Parameters
 
-$$\chi = w/r \quad \text{(aspect ratio)}, \qquad \rho = w'/w \quad \text{(branching ratio)}, \qquad \lambda = l/w \quad \text{(length ratio)}$$
+
+```math
+\chi = w/r \quad \text{(aspect ratio)}, \qquad \rho = w'/w \quad \text{(branching ratio)}, \qquad \lambda = l/w \quad \text{(length ratio)}
+```
+
 
 Branch point topology is mapped to Feynman diagram vertices via pants decomposition.
 
@@ -589,13 +801,21 @@ The intrinsic dimensionality of neural activity is estimated from samples on the
 
 **Softmax with temperature:**
 
-$$p_i = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}$$
+
+```math
+p_i = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}
+```
+
 
 *Source: `include/utils/math/nimcp_math_helpers.h`*
 
 ### 10.2 Exponential Moving Average
 
-$$\text{EMA}_t = \alpha \cdot x_t + (1 - \alpha) \cdot \text{EMA}_{t-1}$$
+
+```math
+\text{EMA}_t = \alpha \cdot x_t + (1 - \alpha) \cdot \text{EMA}_{t-1}
+```
+
 
 EMA values are guarded against NaN/Inf corruption: `NIMCP_EMA_GUARD(ema_var, fallback)` resets to fallback value if non-finite.
 
@@ -605,13 +825,21 @@ EMA values are guarded against NaN/Inf corruption: `NIMCP_EMA_GUARD(ema_var, fal
 
 Anti-mode-collapse uses a ring buffer of 16 recent outputs. The diversity penalty:
 
-$$\mathcal{L}_{\text{div}} = \frac{w_{\text{div}}}{|B|(|B|-1)} \sum_{i \neq j} \frac{y_i \cdot y_j}{\|y_i\| \|y_j\|}$$
+
+```math
+\mathcal{L}_{\text{div}} = \frac{w_{\text{div}}}{|B|(|B|-1)} \sum_{i \neq j} \frac{y_i \cdot y_j}{\|y_i\| \|y_j\|}
+```
+
 
 with $w_{\text{div}} = 0.1$, penalizing high cosine similarity between outputs.
 
 ### 10.4 Quantum State Fidelity
 
-$$F(|\psi_1\rangle, |\psi_2\rangle) = |\langle \psi_1 | \psi_2 \rangle|^2 = \left(\sum_i a_i^{(1)} a_i^{(2)}\right)^2$$
+
+```math
+F(|\psi_1\rangle, |\psi_2\rangle) = |\langle \psi_1 | \psi_2 \rangle|^2 = \left(\sum_i a_i^{(1)} a_i^{(2)}\right)^2
+```
+
 
 for real amplitude vectors.
 
@@ -623,7 +851,11 @@ for real amplitude vectors.
 
 ### 11.1 Dopamine Reward Prediction Error
 
-$$\delta_{\text{DA}} = r(t) - \hat{V}(s_t)$$
+
+```math
+\delta_{\text{DA}} = r(t) - \hat{V}(s_t)
+```
+
 
 Phasic bursts ($\delta > 0$) amplify STDP learning by factor $m_{\text{burst}} = 3.0$. Tonic dopamine sets baseline learning rate. Diffusion modeled via quantum walk (Section 4.2).
 
@@ -645,7 +877,11 @@ Pattern completion via associative recall. An engram $e$ is a stored activation 
 
 Importance-weighted sampling selects experiences for replay:
 
-$$P(\text{replay}_i) \propto |\delta_i|^\alpha + \epsilon$$
+
+```math
+P(\text{replay}_i) \propto |\delta_i|^\alpha + \epsilon
+```
+
 
 where $\delta_i$ is the TD error at encoding time, $\alpha$ controls prioritization.
 
@@ -653,13 +889,21 @@ where $\delta_i$ is the TD error at encoding time, $\alpha$ controls prioritizat
 
 Synaptic weight decay during consolidation:
 
-$$w(t) = w_0 \cdot \exp(-t / \tau_{\text{decay}}) + w_{\text{consolidated}} \cdot (1 - \exp(-t / \tau_{\text{consolidate}}))$$
+
+```math
+w(t) = w_0 \cdot \exp(-t / \tau_{\text{decay}}) + w_{\text{consolidated}} \cdot (1 - \exp(-t / \tau_{\text{consolidate}}))
+```
+
 
 ### 12.4 Habituation
 
 Repeated stimulus exposure produces exponential dampening:
 
-$$h(t) = h_0 \cdot \exp(-n_{\text{exposures}} / \tau_h)$$
+
+```math
+h(t) = h_0 \cdot \exp(-n_{\text{exposures}} / \tau_h)
+```
+
 
 ---
 
@@ -675,7 +919,11 @@ Each audit log entry carries a CRC32 checksum computed over its payload. Mismatc
 
 In swarm learning, gradients from edge nodes are validated using EMA-tracked statistics:
 
-$$z_k = \frac{\|g_k\| - \mu_{\text{EMA}}}{\sigma_{\text{EMA}}}$$
+
+```math
+z_k = \frac{\|g_k\| - \mu_{\text{EMA}}}{\sigma_{\text{EMA}}}
+```
+
 
 Nodes with $|z_k| > z_{\text{thresh}}$ are flagged as potentially Byzantine and excluded from federated averaging.
 
@@ -685,7 +933,11 @@ Nodes with $|z_k| > z_{\text{thresh}}$ are flagged as potentially Byzantine and 
 
 The Layered Governance Safety System evaluates actions against a partial order of safety levels. An action at level $\ell$ requires clearance $\geq \ell$:
 
-$$\text{allow}(a) \iff \text{clearance}(a) \geq \text{level}(a) \quad \forall \text{ safety domains}$$
+
+```math
+\text{allow}(a) \iff \text{clearance}(a) \geq \text{level}(a) \quad \forall \text{ safety domains}
+```
+
 
 Five pipeline points (input validation, action interception, motor gate, training guard, reward alignment) form a monotonic safety chain: blocking at any point propagates to all downstream stages.
 
