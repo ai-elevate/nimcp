@@ -192,8 +192,9 @@ def main():
         descriptions = list(ESC50_CLASSES.values())
     print(f"  {len(descriptions)} audio descriptions available")
 
-    # Audio stream rate — match training but offset by half-step
-    audio_hz = 2.0  # 2 audio submissions per second
+    # Audio stream rate — throttled to avoid overloading daemon socket.
+    # The training script uses the same socket at ~3 steps/sec.
+    audio_hz = 0.2  # 1 audio frame every 5 seconds (safe for socket backlog)
     step_interval = 1.0 / audio_hz
 
     step = 0
