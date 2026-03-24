@@ -7542,9 +7542,19 @@ def main():
         seed_athena_identity(brain, composer)
 
     # --- Retroactive memory seeding (resume with past training steps) ---
-    if args.resume and start_step > 0:
+    # Only run once — skip if already seeded (flag file persists across restarts)
+    _memory_seed_flag = os.path.join(CHECKPOINT_DIR, ".memory_seeded")
+    if args.resume and start_step > 0 and not os.path.exists(_memory_seed_flag):
         retroactive_memory_seed(brain, composer, start_step)
         retroactive_tom_seed(brain, composer, start_step)
+        try:
+            with open(_memory_seed_flag, "w") as f:
+                json.dump({"timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                           "step": start_step}, f)
+        except Exception:
+            pass
+    elif os.path.exists(_memory_seed_flag):
+        print("  [Memory Seed] Already completed — skipping")
 
     # --- Sensory enrichment (one-time, for existing text-trained brains) ---
     if not args.no_multimodal and not args.fresh:
