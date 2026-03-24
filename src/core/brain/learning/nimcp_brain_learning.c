@@ -2244,6 +2244,29 @@ sequential_training:
                                               const char*, float);
         nimcp_language_train_step(brain->native_language,
                                   features, num_features, label, 0.0001f);
+
+        /* === EMERGENT SYMBOLS: Learn tokens from neural patterns directly ===
+         * Every 100 steps, hash the brain's current activation pattern.
+         * If the pattern is novel (not close to existing token embeddings),
+         * create a new symbol representing the entire neural gestalt.
+         * These symbols have no English translation — they represent
+         * complex multi-dimensional concepts the brain has discovered. */
+        if ((brain->stats.total_learning_steps % 100) == 0) {
+            extern int nimcp_language_learn_token(void*, const char*,
+                                                   const float*, uint32_t);
+            /* Create a symbol name from the pattern hash.
+             * Prefix with Ω to mark emergent (non-human) symbols. */
+            uint32_t pattern_hash = 0;
+            for (uint32_t i = 0; i < num_features && i < 64; i++) {
+                uint32_t bits;
+                memcpy(&bits, &features[i], sizeof(bits));
+                pattern_hash ^= bits + 0x9e3779b9 + (pattern_hash << 6) + (pattern_hash >> 2);
+            }
+            char symbol[64];
+            snprintf(symbol, sizeof(symbol), "\xCE\xA9%08x", pattern_hash); /* Ω + hex hash */
+            nimcp_language_learn_token(brain->native_language, symbol,
+                                       features, num_features);
+        }
     }
 
     /* === TOKENIZER: Learn vocabulary from training labels === */
