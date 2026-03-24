@@ -339,8 +339,9 @@ def main():
     rate_hz = 0.2
     step_interval = 1.0 / rate_hz
 
-    # Anti-overfitting: LR decays over time so early items have more impact
-    base_lr = 0.00005  # Very conservative — 50x lower than main training
+    # Anti-overfitting: LR must be LOWER than main training (currently 0.000010).
+    # Streaming data augments, it doesn't drive learning.
+    base_lr = 0.000002  # 5x lower than main training LR
     lr_decay = 0.9999  # Decay per step
 
     # Track seen items to avoid repeating
