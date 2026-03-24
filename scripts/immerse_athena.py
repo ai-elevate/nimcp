@@ -5292,6 +5292,9 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         buffer_size=100, interval=50, num_corrections=16,
         strength=0.5, min_variance_ratio=0.3)  # Tighter for batch learning
     collapse_detector = CollapseDetector(brain_ref=brain)
+    # Stage 1 curriculum: start with tier 2 unlocked (basics already learned in Stage 0)
+    _stage1_curriculum = CurriculumEscalator(unlock_threshold=200.0)
+    _stage1_curriculum.current_tier = 2  # Start with reasoning tier unlocked
     for i in range(start_from, num_stimuli):
         # Mode collapse early detection
         if ((i + 1) % COLLAPSE_CHECK_INTERVAL == 0
@@ -5391,11 +5394,12 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                 print(f"    [Diversity] {n_div} corrections, "
                       f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}")
 
-        # Cognitive module training injection
+        # Cognitive module training injection (with curriculum for Stage 1)
         if (i + 1) % COGNITIVE_TRAIN_INTERVAL == 0:
             cog_loss = _inject_cognitive_training(
                 brain, composer, step=i, learning_rate=lr_ctrl.get_lr(),
-                spectral_splitter=_spectral_splitter, fold_idx=_current_fold)
+                spectral_splitter=_spectral_splitter, fold_idx=_current_fold,
+                curriculum=_stage1_curriculum)
             if cog_loss is not None:
                 losses.append(cog_loss)
 
@@ -5517,6 +5521,9 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         buffer_size=100, interval=100, num_corrections=8,
         strength=0.2, min_variance_ratio=0.1)
     collapse_detector = CollapseDetector(brain_ref=brain)
+    # Stage 2 curriculum: all tiers unlocked (Stages 0+1 covered basics+reasoning)
+    _stage2_curriculum = CurriculumEscalator(unlock_threshold=100.0)
+    _stage2_curriculum.current_tier = 3  # All domains available
 
     for i in range(start_from, num_stimuli):
         # Mode collapse early detection
@@ -5568,11 +5575,12 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
                 print(f"    [Diversity] {n_div} corrections, "
                       f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}")
 
-        # Cognitive module training injection
+        # Cognitive module training injection (with curriculum for Stage 2)
         if (i + 1) % COGNITIVE_TRAIN_INTERVAL == 0:
             cog_loss = _inject_cognitive_training(
                 brain, composer, step=i, learning_rate=lr_ctrl.get_lr(),
-                spectral_splitter=_spectral_splitter, fold_idx=_current_fold)
+                spectral_splitter=_spectral_splitter, fold_idx=_current_fold,
+                curriculum=_stage2_curriculum)
             if cog_loss is not None:
                 losses.append(cog_loss)
 
@@ -5692,6 +5700,10 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
     # Adaptive mastery tracker
     mastery = MasteryTracker()
     mastery.load(MASTERY_FILE)
+
+    # Stage 3 curriculum: all tiers unlocked, low threshold for domain mastery
+    _stage3_curriculum = CurriculumEscalator(unlock_threshold=50.0)
+    _stage3_curriculum.current_tier = 3  # All 13 domains available
 
     # Progressive domain schedule — unlock more domains as training progresses
     all_domains = list(source.ADVANCED_TOPICS.keys())
@@ -5887,11 +5899,12 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                 target = make_semantic_target(topic_text)
                 batch_trainer.learn(features, target, label=domain[:50], confidence=0.4)
 
-        # Cognitive module training injection
+        # Cognitive module training injection (with curriculum for Stage 3)
         if (i + 1) % COGNITIVE_TRAIN_INTERVAL == 0:
             cog_loss = _inject_cognitive_training(
                 brain, composer, step=i, learning_rate=lr_scheduler.get_lr(),
-                spectral_splitter=_spectral_splitter, fold_idx=_current_fold)
+                spectral_splitter=_spectral_splitter, fold_idx=_current_fold,
+                curriculum=_stage3_curriculum)
             if cog_loss is not None:
                 losses.append(cog_loss)
 
