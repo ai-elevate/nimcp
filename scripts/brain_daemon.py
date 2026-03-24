@@ -1142,8 +1142,23 @@ def main():
         handlers=log_handlers,
     )
 
-    # Kill stale daemon processes before starting
+    # Kill stale daemon processes before starting.
+    # First check PID file, then pgrep as fallback.
+    # Wait up to 10 seconds for graceful shutdown (checkpoint may be in progress).
     my_pid = os.getpid()
+    stale_pids = set()
+
+    # Check PID file first (most reliable)
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE) as f:
+                old_pid = int(f.read().strip())
+            if old_pid != my_pid:
+                stale_pids.add(old_pid)
+        except (ValueError, OSError):
+            pass
+
+    # Also check pgrep (catches processes without PID file)
     try:
         import subprocess
         result = subprocess.run(
@@ -1152,22 +1167,46 @@ def main():
         for line in result.stdout.strip().split('\n'):
             if not line:
                 continue
-            pid = int(line.strip())
-            if pid != my_pid:
-                logger.info("Killing stale brain_daemon process (PID %d)", pid)
+            try:
+                pid = int(line.strip())
+                if pid != my_pid:
+                    stale_pids.add(pid)
+            except ValueError:
+                continue
+    except Exception:
+        pass
+
+    # Kill all stale processes with patience (they may be saving checkpoints)
+    for pid in stale_pids:
+        logger.info("Killing stale brain_daemon process (PID %d)", pid)
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+
+    if stale_pids:
+        import time as _time
+        # Wait up to 10 seconds for graceful shutdown
+        for wait in range(10):
+            _time.sleep(1)
+            still_alive = []
+            for pid in stale_pids:
                 try:
-                    os.kill(pid, signal.SIGTERM)
-                    import time as _time
-                    _time.sleep(1)
-                    # Force kill if still alive
+                    os.kill(pid, 0)  # Check if alive
+                    still_alive.append(pid)
+                except ProcessLookupError:
+                    pass
+            if not still_alive:
+                break
+            if wait == 9:
+                # Force kill after 10 seconds
+                for pid in still_alive:
+                    logger.warning("Force-killing unresponsive daemon PID %d", pid)
                     try:
                         os.kill(pid, signal.SIGKILL)
                     except ProcessLookupError:
                         pass
-                except ProcessLookupError:
-                    pass
-    except Exception as e:
-        logger.debug("Stale process cleanup: %s", e)
+                _time.sleep(1)  # Let kernel clean up
 
     # Clean stale socket
     if os.path.exists(args.socket):
