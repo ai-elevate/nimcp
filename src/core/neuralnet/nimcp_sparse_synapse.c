@@ -1867,20 +1867,15 @@ int sparse_synapse_add_with_metadata(
         return -1;
     }
 
-    // Allocate metadata slot first
+    // Allocate metadata slot — pool exhaustion is OK, synapse will be handle-only
     uint32_t metadata_index = synapse_metadata_pool_allocate(metadata_pool);
-    if (metadata_index == SPARSE_SYNAPSE_NO_METADATA) {
-        /* Pool exhaustion is normal at scale (1.5M neurons) — not an error.
-         * Synapse still works without metadata (plasticity/STDP disabled).
-         * Logging handled by pool_allocate with rate limiting. */
-        return -1;
-    }
 
     // Add handle with basic sparse_synapse_add
-    // But we need to set the metadata_index manually after
     if (sparse_synapse_add(handle_pool, storage, target_neuron_id, weight) != 0) {
-        // Rollback metadata allocation
-        synapse_metadata_pool_free(metadata_pool, metadata_index);
+        // Rollback metadata allocation if we got one
+        if (metadata_index != SPARSE_SYNAPSE_NO_METADATA) {
+            synapse_metadata_pool_free(metadata_pool, metadata_index);
+        }
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add_with_metadata: validation failed");
         return -1;
     }
@@ -1890,12 +1885,14 @@ int sparse_synapse_add_with_metadata(
     synapse_handle_t* handle = sparse_synapse_get(storage, handle_index);
     if (handle == NULL) {
         LOG_ERROR("Failed to get handle after add");
-        synapse_metadata_pool_free(metadata_pool, metadata_index);
+        if (metadata_index != SPARSE_SYNAPSE_NO_METADATA) {
+            synapse_metadata_pool_free(metadata_pool, metadata_index);
+        }
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add_with_metadata: validation failed");
         return -1;
     }
 
-    // Link handle to metadata
+    // Link handle to metadata (may be NO_METADATA if pool exhausted)
     handle->metadata_index = metadata_index;
 
     // Initialize the hot synapse_t fields

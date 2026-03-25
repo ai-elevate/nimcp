@@ -143,8 +143,10 @@ static const float* cortex_forward_1d(cortex_cnn_processor_t* proc,
                                        const float* data, uint32_t size) {
     if (!proc || !proc->trainer || !data || size == 0) return NULL;
 
-    uint32_t dims[2] = {1, size};
-    nimcp_tensor_t* input = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
+    /* Conv2d expects (batch, channels, height, width) — reshape 1D data
+     * to [1, 1, 1, size] so the conv kernel slides along the width axis */
+    uint32_t dims[4] = {1, 1, 1, size};
+    nimcp_tensor_t* input = nimcp_tensor_create(dims, 4, NIMCP_DTYPE_F32);
     if (!input) return NULL;
 
     memcpy(nimcp_tensor_data(input), data, size * sizeof(float));
@@ -876,7 +878,22 @@ float cortex_cnn_backward(cortex_cnn_processor_t* proc,
     nimcp_error_t err = cnn_trainer_backward(proc->trainer, target, &proc->last_fwd);
     nimcp_tensor_destroy(target);
 
-    if (err != NIMCP_SUCCESS) return -1.0f;
+    if (err != NIMCP_SUCCESS) {
+        static uint32_t _bwd_fail_count[4] = {0};
+        uint32_t idx = (proc->type < 4) ? proc->type : 0;
+        _bwd_fail_count[idx]++;
+        if ((_bwd_fail_count[idx] & (_bwd_fail_count[idx] - 1)) == 0) {  /* log at powers of 2 */
+            static const char* names[] = {"Visual", "Audio", "Speech", "Somato"};
+            NIMCP_LOGGING_WARN("cortex_cnn_backward(%s): cnn_trainer_backward failed "
+                               "(err=%d, fwd_output=%p, fwd_activations=%p, target_dim=%u, "
+                               "label='%s', fails=%u)",
+                               names[idx], err,
+                               proc->last_fwd.output, proc->last_fwd.activations,
+                               target_dim, label ? label : "(null)",
+                               _bwd_fail_count[idx]);
+        }
+        return -1.0f;
+    }
 
     cnn_trainer_step(proc->trainer);
     proc->backward_steps++;

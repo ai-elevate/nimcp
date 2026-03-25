@@ -167,11 +167,14 @@ static semantic_concept_t* find_concept_by_id(
         return NULL;
     }
 
-    for (uint32_t i = 0; i < system->concept_count; i++) {
+    // Snapshot count for safe iteration (caller may or may not hold lock)
+    uint32_t snapshot_count = system->concept_count;
+
+    for (uint32_t i = 0; i < snapshot_count; i++) {
         /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && system->concept_count > 256) {
+        if ((i & 0xFF) == 0 && snapshot_count > 256) {
             semantic_memory_heartbeat("semantic_mem_loop",
-                             (float)(i + 1) / (float)system->concept_count);
+                             (float)(i + 1) / (float)snapshot_count);
         }
 
         if (system->concepts[i] && system->concepts[i]->id == id) {
@@ -690,12 +693,12 @@ uint64_t semantic_memory_create_concept(
     concept->creation_time_ms = nimcp_platform_time_monotonic_ms();
     concept->access_count = 0;
 
-    // Add to pool
+    // Add to pool (thread-safe: lock before modifying shared array)
+    if (system->mutex) nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->concepts[system->concept_count++] = concept;
-
-    // Update stats
     system->stats.concept_count++;
     system->stats.total_concepts_formed++;
+    if (system->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     return concept->id;
 }
@@ -717,12 +720,16 @@ const semantic_concept_t* semantic_memory_get_concept(
     /* Phase 8: Heartbeat at operation start */
     semantic_memory_heartbeat("semantic_mem_get_concept", 0.0f);
 
+    // Snapshot count under lock for safe iteration
+    if (system->mutex) nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
+    uint32_t snapshot_count = system->concept_count;
+    if (system->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
-    for (uint32_t i = 0; i < system->concept_count; i++) {
+    for (uint32_t i = 0; i < snapshot_count; i++) {
         /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && system->concept_count > 256) {
+        if ((i & 0xFF) == 0 && snapshot_count > 256) {
             semantic_memory_heartbeat("semantic_mem_loop",
-                             (float)(i + 1) / (float)system->concept_count);
+                             (float)(i + 1) / (float)snapshot_count);
         }
 
         if (system->concepts[i] && system->concepts[i]->id == concept_id) {
@@ -783,12 +790,17 @@ semantic_query_result_t* semantic_memory_find_similar(
 
     }
 
+    // Snapshot concept_count under lock to prevent race with create_concept
+    if (system->mutex) nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
+    uint32_t snapshot_count = system->concept_count;
+    if (system->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
+
     // Allocate arrays for all concepts
     uint64_t* temp_ids = (uint64_t*)nimcp_malloc(
-        system->concept_count * sizeof(uint64_t)
+        snapshot_count * sizeof(uint64_t)
     );
     float* temp_sims = (float*)nimcp_malloc(
-        system->concept_count * sizeof(float)
+        snapshot_count * sizeof(float)
     );
 
     if (!temp_ids || !temp_sims) {
@@ -802,17 +814,18 @@ semantic_query_result_t* semantic_memory_find_similar(
         return NULL;
     }
 
-    // Compute similarities
+    // Compute similarities — iterate up to snapshot_count (safe: new concepts
+    // added after snapshot are at indices >= snapshot_count, old pointers stable)
     uint32_t match_count = 0;
-    for (uint32_t i = 0; i < system->concept_count; i++) {
+    for (uint32_t i = 0; i < snapshot_count; i++) {
         /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && system->concept_count > 256) {
+        if ((i & 0xFF) == 0 && snapshot_count > 256) {
             semantic_memory_heartbeat("semantic_mem_loop",
-                             (float)(i + 1) / (float)system->concept_count);
+                             (float)(i + 1) / (float)snapshot_count);
         }
 
         semantic_concept_t* concept = system->concepts[i];
-        if (!concept) continue;
+        if (!concept || !concept->features) continue;
 
         float sim = compute_similarity(features, concept->features, feature_dim);
 
@@ -897,12 +910,12 @@ uint64_t semantic_memory_create_relation(
     relation->co_occurrence_count = 1;
     relation->creation_time_ms = nimcp_platform_time_monotonic_ms();
 
-    // Add to pool
+    // Add to pool (thread-safe: lock before modifying shared array)
+    if (system->mutex) nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->relations[system->relation_count++] = relation;
-
-    // Update stats
     system->stats.relation_count++;
     system->stats.total_relations_formed++;
+    if (system->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     return relation->id;
 }

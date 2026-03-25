@@ -45,14 +45,26 @@ class BrainProxy:
     """Drop-in replacement for nimcp.Brain that proxies to the daemon.
 
     All methods match the nimcp.Brain API. The daemon handles thread safety.
+    Includes automatic retry with backoff for transient socket failures.
     """
+
+    # Retry config
+    MAX_RETRIES = 5
+    INITIAL_BACKOFF = 1.0       # seconds
+    MAX_BACKOFF = 30.0          # seconds
+    DAEMON_WAIT_TIMEOUT = 300   # max seconds to wait for daemon restart
+
+    # Transient errors worth retrying
+    _TRANSIENT = (ConnectionError, BrokenPipeError,
+                  FileNotFoundError, socket.timeout, OSError)
 
     def __init__(self, socket_path=SOCKET_PATH, timeout=DEFAULT_TIMEOUT):
         self.socket_path = socket_path
         self.timeout = timeout
+        self._consecutive_failures = 0
 
-    def _send(self, req):
-        """Send a command and return the response."""
+    def _send_once(self, req):
+        """Single send attempt — no retries."""
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.settimeout(self.timeout)
         try:
@@ -80,6 +92,65 @@ class BrainProxy:
             return resp
         finally:
             sock.close()
+
+    def _send(self, req):
+        """Send with automatic retry and exponential backoff.
+
+        Retries on transient socket errors (connection refused, reset, timeout,
+        file not found). If the daemon socket disappears entirely, waits for
+        it to come back (systemd auto-restarts the daemon).
+        """
+        last_exc = None
+        backoff = self.INITIAL_BACKOFF
+
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                resp = self._send_once(req)
+                # Success — reset failure counter
+                if self._consecutive_failures > 0:
+                    print(f"  [BrainProxy] Reconnected after "
+                          f"{self._consecutive_failures} failures",
+                          flush=True)
+                self._consecutive_failures = 0
+                return resp
+            except self._TRANSIENT as e:
+                last_exc = e
+                self._consecutive_failures += 1
+                cmd = req.get("cmd", "?")
+
+                if attempt < self.MAX_RETRIES:
+                    # Socket gone — daemon may be restarting
+                    if isinstance(e, FileNotFoundError):
+                        print(f"  [BrainProxy] Socket gone — waiting for "
+                              f"daemon restart (attempt {attempt}/"
+                              f"{self.MAX_RETRIES})...", flush=True)
+                        self._wait_for_daemon()
+                        backoff = self.INITIAL_BACKOFF  # reset after wait
+                    else:
+                        print(f"  [BrainProxy] {type(e).__name__} on "
+                              f"'{cmd}' — retry {attempt}/{self.MAX_RETRIES} "
+                              f"in {backoff:.1f}s", flush=True)
+                        time.sleep(backoff)
+                        backoff = min(backoff * 2, self.MAX_BACKOFF)
+
+        # All retries exhausted
+        raise last_exc
+
+    def _wait_for_daemon(self):
+        """Block until the daemon socket reappears and responds to ping."""
+        deadline = time.monotonic() + self.DAEMON_WAIT_TIMEOUT
+        wait = 2.0
+        while time.monotonic() < deadline:
+            time.sleep(wait)
+            if os.path.exists(self.socket_path):
+                try:
+                    self._send_once({"cmd": "ping"})
+                    return  # Daemon is back
+                except Exception:
+                    pass  # Socket exists but not ready yet
+            wait = min(wait * 1.5, 15.0)
+        raise ConnectionError(
+            f"Daemon did not restart within {self.DAEMON_WAIT_TIMEOUT}s")
 
     # -- Core learning --
 

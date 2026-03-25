@@ -1773,6 +1773,24 @@ static PyObject* Brain_get_neuron_count(BrainObject* self, PyObject* args) {
 }
 
 /**
+ * WHAT: Retrofit synapse metadata for connections that lack plasticity data
+ * WHY:  After pool exhaustion, some synapses have no STDP/STP capability
+ * HOW:  Walk all neurons, allocate metadata for bare handles
+ */
+static PyObject* Brain_retrofit_synapse_metadata(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    extern uint32_t nimcp_brain_retrofit_synapse_metadata(void*);
+    uint32_t count;
+    Py_BEGIN_ALLOW_THREADS
+    count = nimcp_brain_retrofit_synapse_metadata(self->brain);
+    Py_END_ALLOW_THREADS
+    return PyLong_FromUnsignedLong(count);
+}
+
+/**
  * WHAT: Get brain utilization metrics
  * WHY:  Monitor capacity and decide when to resize
  * HOW:  Call brain_get_utilization_metrics on internal brain
@@ -7924,6 +7942,8 @@ static PyMethodDef Brain_methods[] = {
      "Auto-resize based on utilization: auto_resize() -> True if resized, False otherwise"},
     {"get_neuron_count", (PyCFunction)Brain_get_neuron_count, METH_NOARGS,
      "Get current neuron count: get_neuron_count() -> int"},
+    {"retrofit_synapse_metadata", (PyCFunction)Brain_retrofit_synapse_metadata, METH_NOARGS,
+     "Retrofit metadata onto synapses that lack plasticity data: retrofit_synapse_metadata() -> count"},
     {"get_utilization_metrics", (PyCFunction)Brain_get_utilization_metrics, METH_NOARGS,
      "Get utilization metrics: get_utilization_metrics() -> (utilization, saturation)"},
 

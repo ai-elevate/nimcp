@@ -308,6 +308,11 @@ class BrainService:
         with self._lock:
             return {"neuron_count": self.brain.get_neuron_count()}
 
+    def _cmd_retrofit_synapse_metadata(self, _req):
+        with self._lock:
+            count = self.brain.retrofit_synapse_metadata()
+            return {"retrofitted": count}
+
     def _cmd_get_transcript(self, _req):
         with self._lock:
             return {"transcript": self.brain.get_transcript()}
@@ -1321,6 +1326,19 @@ def main():
     # Start
     daemon.start()
     checkpointer.start()
+
+    # Retrofit synapse metadata — restores plasticity for ALL synapses created
+    # without metadata (pool exhaustion, backbone repair, sub-network init).
+    # Runs AFTER all init is complete so it catches every handle-only synapse.
+    try:
+        retrofitted = brain.retrofit_synapse_metadata()
+        if retrofitted > 0:
+            logger.info("Retrofitted metadata onto %d synapses (plasticity restored)",
+                        retrofitted)
+        else:
+            logger.info("All synapses already have metadata — no retrofit needed")
+    except Exception as e:
+        logger.warning("Metadata retrofit failed: %s", e)
 
     logger.info("Brain daemon ready — accepting connections on %s", args.socket)
     print(f"Brain daemon ready on {args.socket} (PID {os.getpid()})",

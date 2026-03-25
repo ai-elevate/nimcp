@@ -571,8 +571,14 @@ static bool validate_network_config(const network_config_t* config)
     }
 
     // Guard: Check neuron count
-    if (config->num_neurons == 0 || config->num_neurons > MAX_NEURONS) {
+    if (config->num_neurons == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: config->num_neurons is zero");
+        return false;
+    }
+    if (config->num_neurons > MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "validate_network_config: config->num_neurons (%u) exceeds MAX_NEURONS (%u)",
+            config->num_neurons, MAX_NEURONS);
         return false;
     }
 
@@ -909,6 +915,7 @@ neural_network_t neural_network_create(const network_config_t* config)
             }
         }
         if (meta_initial < 100000) meta_initial = 100000;
+        if (meta_initial > SPARSE_SYNAPSE_MAX_POOL_SIZE) meta_initial = SPARSE_SYNAPSE_MAX_POOL_SIZE;
         mpool_cfg.pool_size = meta_initial;
         mpool_cfg.enable_statistics = true;
         mpool_cfg.thread_safe = true;
@@ -3406,7 +3413,9 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
         syn->cold_index = SYNAPSE_COLD_NONE;
 
         // Initialize cold data only if STP/BCM/eligibility are needed
-        bool need_cold = true;  // STP always enabled for now
+        // For large networks (>100K), defer cold allocation to plasticity time
+        // to avoid multi-GB cold pool during backbone wiring
+        bool need_cold = (network->num_neurons <= 100000);
         if (need_cold) {
             synapse_cold_t* cold = SYNAPSE_ENSURE_COLD(network, syn);
             if (cold) {
@@ -3962,6 +3971,84 @@ bool neural_network_rebuild_incoming(neural_network_t network)
     NIMCP_LOGGING_INFO("rebuild_incoming: %u added, %u failed (total outgoing: %llu)",
                        added, failed, (unsigned long long)total_outgoing);
     return true;
+}
+
+/**
+ * @brief Retrofit metadata onto synapses that lack it
+ * WHAT: Walk all neurons, allocate metadata for handle-only synapses
+ * WHY:  Synapses created during pool exhaustion have no plasticity data.
+ *       This restores STDP/STP/eligibility capability after pool expansion.
+ * HOW:  Iterate all outgoing synapses; if metadata_index == NO_METADATA,
+ *       allocate from pool and initialize hot fields from the handle.
+ * RETURNS: Number of synapses retrofitted
+ */
+uint32_t neural_network_retrofit_metadata(neural_network_t network)
+{
+    if (!network) return 0;
+    if (!network->synapse_metadata_pool) return 0;
+
+    uint32_t retrofitted = 0;
+    uint32_t skipped = 0;
+    uint32_t already_have = 0;
+
+    for (uint32_t n = 0; n < network->num_neurons; n++) {
+        neuron_t* neuron = &network->neurons[n];
+        uint32_t out_count = NEURON_OUT_COUNT(neuron);
+
+        for (uint32_t s = 0; s < out_count; s++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
+            if (!h) continue;
+
+            if (h->metadata_index != SPARSE_SYNAPSE_NO_METADATA) {
+                already_have++;
+                continue;
+            }
+
+            // Allocate metadata slot
+            uint32_t meta_idx = synapse_metadata_pool_allocate(
+                network->synapse_metadata_pool);
+            if (meta_idx == SPARSE_SYNAPSE_NO_METADATA) {
+                skipped++;
+                continue;  // Pool still full — skip this one
+            }
+
+            h->metadata_index = meta_idx;
+            synapse_t* syn = synapse_metadata_pool_get(
+                network->synapse_metadata_pool, meta_idx);
+            if (!syn) {
+                h->metadata_index = SPARSE_SYNAPSE_NO_METADATA;
+                skipped++;
+                continue;
+            }
+
+            // Initialize hot metadata from handle data
+            memset(syn, 0, sizeof(synapse_t));
+            syn->target_id = h->target_neuron_id;
+            syn->weight = h->weight;
+            syn->plasticity = 1.0F;
+            syn->last_active = network->network_time;
+            syn->strength = h->strength > 0 ? h->strength : 1.0F;
+            syn->meta_plasticity = 1.0F;
+            syn->source_neuron_id = n;
+            syn->cold_index = SYNAPSE_COLD_NONE;
+
+            retrofitted++;
+        }
+
+        // Progress logging every 100K neurons
+        if (n > 0 && (n % 100000) == 0) {
+            LOG_INFO(LOG_MODULE, "Metadata retrofit: %u/%u neurons, "
+                     "%u retrofitted, %u skipped, %u already had metadata",
+                     n, network->num_neurons, retrofitted, skipped, already_have);
+        }
+    }
+
+    LOG_INFO(LOG_MODULE, "Metadata retrofit complete: %u retrofitted, "
+             "%u skipped (pool full), %u already had metadata (total synapses scanned: %u)",
+             retrofitted, skipped, already_have,
+             retrofitted + skipped + already_have);
+
+    return retrofitted;
 }
 
 /**

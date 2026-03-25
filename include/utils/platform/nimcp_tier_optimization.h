@@ -190,7 +190,7 @@ extern "C" {
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM_VALUE
     #define NIMCP_BIO_INBOX_CAPACITY 16
 #else
-    #define NIMCP_BIO_INBOX_CAPACITY 32
+    #define NIMCP_BIO_INBOX_CAPACITY 256
 #endif
 
 /**

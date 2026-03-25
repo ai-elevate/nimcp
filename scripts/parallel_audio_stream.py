@@ -303,6 +303,306 @@ def generate_synthetic_audio(description, sample_rate=16000, duration=1.0, varia
     return audio.tolist()
 
 
+# ========================================================================
+# PARENTESE (Infant-Directed Speech) — synthetic speech with exaggerated
+# pitch contours, slower tempo, wider pitch range, and repetitive patterns
+# that mirror how parents naturally speak to infants.
+#
+# Key acoustic features of parentese:
+#   - Higher base pitch (~300 Hz vs ~200 Hz adult-directed)
+#   - Wider pitch excursions (swooping contours, up to 2× range)
+#   - Slower tempo (50-70% of adult rate)
+#   - Longer vowel durations (hyper-articulation)
+#   - More repetition and simpler vocabulary
+#   - Exaggerated emotional prosody (happy, soothing, warning)
+# ========================================================================
+
+PARENTESE_UTTERANCES = [
+    # Greetings & attention (high rising contour)
+    {"text": "Hiii baby!", "emotion": "happy", "contour": "rise",
+     "vowels": [(0.0, "i", 0.3), (0.4, "ei", 0.2), (0.7, "i", 0.3)]},
+    {"text": "Hello there, sweetheart!", "emotion": "happy", "contour": "rise-fall",
+     "vowels": [(0.0, "eh", 0.15), (0.15, "oh", 0.2), (0.5, "ee", 0.15), (0.7, "ah", 0.2)]},
+    {"text": "Look at you!", "emotion": "happy", "contour": "rise",
+     "vowels": [(0.0, "oo", 0.2), (0.3, "ah", 0.15), (0.6, "oo", 0.3)]},
+    {"text": "Good morning, little one!", "emotion": "happy", "contour": "sing-song",
+     "vowels": [(0.0, "oo", 0.15), (0.2, "or", 0.2), (0.5, "ih", 0.1), (0.7, "uh", 0.2)]},
+    {"text": "There you are!", "emotion": "happy", "contour": "rise-fall",
+     "vowels": [(0.0, "eh", 0.15), (0.3, "oo", 0.2), (0.6, "ah", 0.25)]},
+
+    # Naming objects (slow, clear, repeated)
+    {"text": "That's a ball! Ball! See the ball?", "emotion": "teaching", "contour": "rise",
+     "vowels": [(0.0, "ah", 0.2), (0.2, "aw", 0.25), (0.5, "aw", 0.2), (0.75, "aw", 0.2)]},
+    {"text": "Look, a doggy! Doggy!", "emotion": "happy", "contour": "rise-fall",
+     "vowels": [(0.0, "oo", 0.15), (0.2, "aw", 0.2), (0.45, "ee", 0.15), (0.7, "aw", 0.15), (0.85, "ee", 0.15)]},
+    {"text": "Where's the kitty? There's the kitty!", "emotion": "happy", "contour": "question-answer",
+     "vowels": [(0.0, "eh", 0.1), (0.15, "ih", 0.2), (0.45, "eh", 0.1), (0.6, "ih", 0.2), (0.85, "ee", 0.15)]},
+    {"text": "That's your nose! Nose! Boop!", "emotion": "playful", "contour": "rise",
+     "vowels": [(0.0, "ah", 0.15), (0.2, "oh", 0.25), (0.5, "oh", 0.2), (0.75, "oo", 0.2)]},
+    {"text": "See the flower? Pretty flower!", "emotion": "teaching", "contour": "rise-fall",
+     "vowels": [(0.0, "ee", 0.15), (0.2, "ow", 0.2), (0.45, "er", 0.15), (0.65, "ih", 0.1), (0.8, "ow", 0.15)]},
+
+    # Encouragement (warm, sustained, melodic)
+    {"text": "Good job! You did it!", "emotion": "praise", "contour": "rise-fall",
+     "vowels": [(0.0, "oo", 0.2), (0.25, "ah", 0.15), (0.5, "oo", 0.15), (0.7, "ih", 0.2)]},
+    {"text": "Yaaay! So clever!", "emotion": "praise", "contour": "rise",
+     "vowels": [(0.0, "ei", 0.35), (0.5, "oh", 0.15), (0.7, "eh", 0.15), (0.85, "er", 0.15)]},
+    {"text": "That's wonderful!", "emotion": "praise", "contour": "rise-fall",
+     "vowels": [(0.0, "ah", 0.15), (0.2, "uh", 0.2), (0.5, "er", 0.15), (0.7, "oo", 0.2)]},
+    {"text": "You're so strong!", "emotion": "praise", "contour": "rise",
+     "vowels": [(0.0, "oo", 0.2), (0.3, "oh", 0.2), (0.6, "aw", 0.25)]},
+    {"text": "Very good! Very good!", "emotion": "praise", "contour": "sing-song",
+     "vowels": [(0.0, "eh", 0.15), (0.2, "ee", 0.1), (0.35, "oo", 0.2), (0.6, "eh", 0.1), (0.75, "oo", 0.2)]},
+
+    # Soothing / comfort (low, slow, falling contour)
+    {"text": "Shhhh, it's okay", "emotion": "soothe", "contour": "fall",
+     "vowels": [(0.0, "sh", 0.35), (0.4, "ih", 0.15), (0.6, "oh", 0.2), (0.8, "ei", 0.2)]},
+    {"text": "There there, everything's alright", "emotion": "soothe", "contour": "fall",
+     "vowels": [(0.0, "eh", 0.2), (0.25, "eh", 0.2), (0.5, "ee", 0.1), (0.65, "aw", 0.2), (0.85, "ai", 0.15)]},
+    {"text": "Mama's here, don't worry", "emotion": "soothe", "contour": "fall",
+     "vowels": [(0.0, "ah", 0.2), (0.25, "ah", 0.2), (0.5, "ee", 0.15), (0.7, "oh", 0.15), (0.85, "ee", 0.15)]},
+    {"text": "You're safe, little one", "emotion": "soothe", "contour": "fall",
+     "vowels": [(0.0, "oo", 0.15), (0.2, "ei", 0.2), (0.5, "ih", 0.15), (0.7, "uh", 0.2)]},
+    {"text": "Rock-a-bye, sleepy baby", "emotion": "soothe", "contour": "sing-song",
+     "vowels": [(0.0, "ah", 0.15), (0.15, "ah", 0.1), (0.3, "ai", 0.2), (0.55, "ee", 0.15), (0.75, "ei", 0.15), (0.9, "ee", 0.1)]},
+
+    # Warning / prohibition (sharp, short, falling)
+    {"text": "No no no!", "emotion": "warning", "contour": "sharp-fall",
+     "vowels": [(0.0, "oh", 0.15), (0.2, "oh", 0.15), (0.4, "oh", 0.2)]},
+    {"text": "Careful!", "emotion": "warning", "contour": "sharp-fall",
+     "vowels": [(0.0, "eh", 0.15), (0.2, "oo", 0.2)]},
+    {"text": "Hot! Don't touch!", "emotion": "warning", "contour": "sharp-fall",
+     "vowels": [(0.0, "ah", 0.15), (0.2, "oh", 0.15), (0.4, "uh", 0.2)]},
+    {"text": "Uh oh! Be gentle!", "emotion": "warning", "contour": "fall",
+     "vowels": [(0.0, "uh", 0.15), (0.15, "oh", 0.15), (0.35, "ee", 0.15), (0.55, "eh", 0.15), (0.75, "uh", 0.15)]},
+    {"text": "Stop! Wait!", "emotion": "warning", "contour": "sharp-fall",
+     "vowels": [(0.0, "ah", 0.2), (0.3, "ei", 0.2)]},
+
+    # Questions (exaggerated rising intonation)
+    {"text": "What's that? Hmm?", "emotion": "curious", "contour": "rise",
+     "vowels": [(0.0, "uh", 0.15), (0.2, "ah", 0.2), (0.5, "mm", 0.25)]},
+    {"text": "Do you want milk?", "emotion": "curious", "contour": "rise",
+     "vowels": [(0.0, "oo", 0.15), (0.2, "oo", 0.15), (0.4, "ah", 0.15), (0.6, "ih", 0.2)]},
+    {"text": "Are you hungry?", "emotion": "curious", "contour": "rise",
+     "vowels": [(0.0, "ah", 0.15), (0.2, "oo", 0.15), (0.4, "uh", 0.2), (0.65, "ee", 0.2)]},
+    {"text": "Where did it go?", "emotion": "curious", "contour": "rise",
+     "vowels": [(0.0, "eh", 0.15), (0.2, "ih", 0.1), (0.35, "ih", 0.1), (0.5, "oh", 0.25)]},
+    {"text": "Who's a good baby?", "emotion": "playful", "contour": "rise",
+     "vowels": [(0.0, "oo", 0.2), (0.25, "ah", 0.15), (0.45, "oo", 0.15), (0.65, "ei", 0.15), (0.85, "ee", 0.15)]},
+
+    # Narration / describing (melodic, varied)
+    {"text": "The birdie is singing! Tweet tweet!", "emotion": "teaching", "contour": "sing-song",
+     "vowels": [(0.0, "uh", 0.1), (0.15, "er", 0.15), (0.35, "ee", 0.1), (0.5, "ih", 0.15), (0.7, "ee", 0.15), (0.85, "ee", 0.15)]},
+    {"text": "Splash! Water goes splash!", "emotion": "playful", "contour": "rise-fall",
+     "vowels": [(0.0, "ah", 0.2), (0.3, "aw", 0.15), (0.5, "er", 0.1), (0.65, "oh", 0.1), (0.8, "ah", 0.2)]},
+    {"text": "Up up up you go!", "emotion": "playful", "contour": "rise",
+     "vowels": [(0.0, "uh", 0.15), (0.2, "uh", 0.15), (0.4, "uh", 0.15), (0.6, "oo", 0.15), (0.8, "oh", 0.2)]},
+    {"text": "Round and round we go!", "emotion": "playful", "contour": "sing-song",
+     "vowels": [(0.0, "ow", 0.2), (0.25, "ah", 0.1), (0.4, "ow", 0.2), (0.65, "ee", 0.1), (0.8, "oh", 0.2)]},
+    {"text": "One, two, three!", "emotion": "teaching", "contour": "rise",
+     "vowels": [(0.0, "uh", 0.2), (0.3, "oo", 0.2), (0.6, "ee", 0.3)]},
+
+    # Emotional mirroring (exaggerated affect)
+    {"text": "Aww, so cuuute!", "emotion": "happy", "contour": "rise-fall",
+     "vowels": [(0.0, "aw", 0.25), (0.35, "oh", 0.1), (0.5, "oo", 0.3), (0.85, "oo", 0.15)]},
+    {"text": "Ohhh, how beautiful!", "emotion": "happy", "contour": "rise-fall",
+     "vowels": [(0.0, "oh", 0.3), (0.4, "ow", 0.15), (0.6, "oo", 0.2), (0.85, "oo", 0.15)]},
+    {"text": "Wow! Amazing!", "emotion": "praise", "contour": "rise",
+     "vowels": [(0.0, "ow", 0.25), (0.35, "ah", 0.15), (0.55, "ei", 0.2), (0.8, "ih", 0.15)]},
+    {"text": "Uh oh, did you fall down?", "emotion": "soothe", "contour": "fall-rise",
+     "vowels": [(0.0, "uh", 0.15), (0.15, "oh", 0.15), (0.35, "ih", 0.1), (0.5, "oo", 0.1), (0.65, "aw", 0.15), (0.85, "ow", 0.15)]},
+    {"text": "Peek-a-boo! I see you!", "emotion": "playful", "contour": "rise-fall",
+     "vowels": [(0.0, "ee", 0.15), (0.15, "ah", 0.1), (0.3, "oo", 0.2), (0.55, "ai", 0.1), (0.7, "ee", 0.1), (0.85, "oo", 0.15)]},
+
+    # Feeding time
+    {"text": "Mmm, yummy! Open wide!", "emotion": "happy", "contour": "rise-fall",
+     "vowels": [(0.0, "mm", 0.2), (0.25, "uh", 0.15), (0.45, "ee", 0.15), (0.65, "oh", 0.15), (0.8, "ai", 0.2)]},
+    {"text": "Here comes the spoon! Aaahh!", "emotion": "playful", "contour": "rise",
+     "vowels": [(0.0, "ee", 0.15), (0.2, "uh", 0.1), (0.35, "uh", 0.15), (0.55, "oo", 0.2), (0.8, "ah", 0.2)]},
+    {"text": "All done! Good eating!", "emotion": "praise", "contour": "fall",
+     "vowels": [(0.0, "aw", 0.15), (0.2, "uh", 0.15), (0.4, "oo", 0.15), (0.6, "ee", 0.15), (0.8, "ih", 0.15)]},
+
+    # Bedtime
+    {"text": "Time for sleepy bye-bye", "emotion": "soothe", "contour": "fall",
+     "vowels": [(0.0, "ai", 0.15), (0.2, "or", 0.1), (0.35, "ee", 0.2), (0.6, "ee", 0.1), (0.75, "ai", 0.15), (0.9, "ai", 0.1)]},
+    {"text": "Close your eyes, sweet dreams", "emotion": "soothe", "contour": "fall",
+     "vowels": [(0.0, "oh", 0.15), (0.2, "or", 0.1), (0.35, "ai", 0.2), (0.6, "ee", 0.15), (0.8, "ee", 0.2)]},
+    {"text": "Twinkle twinkle little star", "emotion": "soothe", "contour": "sing-song",
+     "vowels": [(0.0, "ih", 0.15), (0.15, "uh", 0.1), (0.3, "ih", 0.15), (0.45, "uh", 0.1), (0.6, "ih", 0.15), (0.8, "ah", 0.2)]},
+]
+
+# Vowel formant table — F1/F2/F3 frequencies (Hz) for synthesizing vowels
+# These approximate average female (parent) vocal tract resonances
+VOWEL_FORMANTS = {
+    "ah": (850, 1200, 2800),   # as in "father"
+    "eh": (550, 1800, 2600),   # as in "bed"
+    "ee": (300, 2300, 3000),   # as in "see"
+    "ih": (400, 2000, 2600),   # as in "sit"
+    "oh": (500, 900, 2600),    # as in "go"
+    "oo": (350, 800, 2500),    # as in "moon"
+    "uh": (600, 1200, 2600),   # as in "but"
+    "aw": (600, 1000, 2600),   # as in "saw"
+    "ai": (700, 1200, 2800),   # as in "eye" (diphthong start)
+    "ei": (500, 1900, 2700),   # as in "say"
+    "ow": (650, 1100, 2700),   # as in "now"
+    "or": (500, 1000, 2600),   # as in "more"
+    "er": (500, 1400, 2500),   # as in "her"
+    "mm": (250, 1000, 2500),   # nasal hum
+    "sh": (0, 0, 0),           # noise-based (sibilant)
+}
+
+
+def generate_parentese_audio(utterance, sample_rate=16000, duration=1.5, variation=0):
+    """Synthesize infant-directed speech (parentese) with formant synthesis.
+
+    Parentese characteristics:
+      - Base pitch ~280-350 Hz (higher than normal adult ~180-220 Hz)
+      - Wide pitch excursions (±100 Hz, vs ±30 Hz in adult-directed)
+      - Slower vowel transitions, elongated vowels
+      - Exaggerated amplitude envelope (louder on stressed syllables)
+      - More harmonic richness (breathier quality)
+    """
+    rng = np.random.RandomState(abs(hash(utterance["text"]) + variation) % (2**32 - 1))
+    t = np.linspace(0, duration, int(sample_rate * duration), dtype=np.float32)
+    audio = np.zeros_like(t)
+
+    # Base pitch depends on emotion
+    emotion = utterance.get("emotion", "happy")
+    if emotion == "soothe":
+        base_f0 = 250 + rng.uniform(-20, 20)  # Lower, calmer
+    elif emotion == "warning":
+        base_f0 = 320 + rng.uniform(-10, 10)  # Sharp, attention-grabbing
+    elif emotion == "praise":
+        base_f0 = 340 + rng.uniform(-15, 15)  # High, excited
+    elif emotion == "curious":
+        base_f0 = 300 + rng.uniform(-10, 10)  # Mid-high
+    elif emotion == "playful":
+        base_f0 = 330 + rng.uniform(-15, 15)  # Bouncy
+    else:  # happy, teaching
+        base_f0 = 310 + rng.uniform(-20, 20)
+
+    # Per-instance variation
+    base_f0 *= (1.0 + rng.uniform(-0.08, 0.08))
+
+    # Build pitch contour (the "melody" of parentese)
+    contour = utterance.get("contour", "rise-fall")
+    f0_contour = np.full_like(t, base_f0)
+
+    if contour == "rise":
+        # Steadily rising — questions, excitement
+        f0_contour += np.linspace(0, 120, len(t)) + 30 * np.sin(2 * np.pi * 3 * t / duration)
+    elif contour == "fall":
+        # Falling — soothing, statements
+        f0_contour += np.linspace(40, -80, len(t)) + 20 * np.sin(2 * np.pi * 2 * t / duration)
+    elif contour == "rise-fall":
+        # Arch shape — most common parentese contour
+        peak = 0.4 + rng.uniform(-0.1, 0.1)
+        f0_contour += 120 * np.sin(np.pi * t / duration) + 25 * np.sin(2 * np.pi * 4 * t / duration)
+    elif contour == "sharp-fall":
+        # Quick drop — warnings
+        f0_contour += 80 * np.exp(-4 * t / duration)
+    elif contour == "sing-song":
+        # Oscillating — nursery rhyme style
+        f0_contour += 80 * np.sin(2 * np.pi * 2.5 * t / duration) + 30 * np.sin(2 * np.pi * 5 * t / duration)
+    elif contour == "question-answer":
+        # Rise in first half, fall in second
+        mid = len(t) // 2
+        f0_contour[:mid] += np.linspace(0, 100, mid)
+        f0_contour[mid:] += np.linspace(100, -20, len(t) - mid)
+    elif contour == "fall-rise":
+        f0_contour += -60 * np.cos(np.pi * t / duration) + 30
+
+    # Add micro-jitter (natural voice quality)
+    f0_contour += rng.randn(len(t)).astype(np.float32) * 3.0
+
+    # Ensure no negative frequencies
+    f0_contour = np.clip(f0_contour, 80, 600)
+
+    # Synthesize vowel segments using formant synthesis
+    vowels = utterance.get("vowels", [])
+    amplitude_env = np.zeros_like(t)
+
+    for start_frac, vowel, dur_frac in vowels:
+        start_idx = int(start_frac * len(t))
+        dur_samples = int(dur_frac * len(t))
+        end_idx = min(start_idx + dur_samples, len(t))
+        if start_idx >= len(t):
+            continue
+
+        # Get formants for this vowel
+        f1, f2, f3 = VOWEL_FORMANTS.get(vowel, (500, 1500, 2500))
+
+        seg_t = t[start_idx:end_idx]
+        seg_f0 = f0_contour[start_idx:end_idx]
+
+        if vowel == "sh":
+            # Sibilant noise
+            seg_audio = rng.randn(end_idx - start_idx).astype(np.float32) * 0.15
+            # High-pass character
+            for i in range(1, len(seg_audio)):
+                seg_audio[i] = 0.95 * seg_audio[i] - 0.85 * (seg_audio[i-1] if i > 0 else 0)
+        elif vowel == "mm":
+            # Nasal hum — just fundamental + gentle harmonics
+            phase = np.cumsum(seg_f0 / sample_rate) * 2 * np.pi
+            seg_audio = 0.6 * np.sin(phase) + 0.2 * np.sin(2 * phase) + 0.1 * np.sin(3 * phase)
+        else:
+            # Voiced vowel — glottal source + formant filtering
+            phase = np.cumsum(seg_f0 / sample_rate) * 2 * np.pi
+
+            # Glottal pulse train (source)
+            source = np.zeros(end_idx - start_idx, dtype=np.float32)
+            for h in range(1, 8):  # 7 harmonics
+                amp = 1.0 / (h * h)  # -12 dB/octave rolloff
+                source += amp * np.sin(h * phase).astype(np.float32)
+
+            # Add breathiness (aspiration noise modulated by F0)
+            breath = rng.randn(end_idx - start_idx).astype(np.float32) * 0.08
+            source += breath
+
+            # Simple formant resonance via additive synthesis
+            # (True formant filtering would use IIR filters, but additive
+            # approximation works well for training audio features)
+            seg_audio = np.zeros(end_idx - start_idx, dtype=np.float32)
+            for formant_freq, bandwidth, gain in [
+                (f1, 80, 1.0), (f2, 100, 0.7), (f3, 120, 0.3)
+            ]:
+                if formant_freq > 0:
+                    formant_phase = 2 * np.pi * formant_freq * seg_t
+                    resonance = gain * np.sin(formant_phase).astype(np.float32)
+                    # Modulate by source
+                    seg_audio += resonance * np.abs(source)
+
+        # Amplitude envelope: smooth onset/offset
+        env = np.ones(end_idx - start_idx, dtype=np.float32)
+        attack = min(int(0.02 * sample_rate), len(env) // 4)
+        release = min(int(0.03 * sample_rate), len(env) // 4)
+        if attack > 0:
+            env[:attack] = np.linspace(0, 1, attack)
+        if release > 0:
+            env[-release:] = np.linspace(1, 0, release)
+
+        # Emotion-based amplitude
+        if emotion == "praise":
+            env *= 1.2
+        elif emotion == "soothe":
+            env *= 0.6
+        elif emotion == "warning":
+            env *= 1.4
+
+        audio[start_idx:end_idx] += seg_audio * env
+        amplitude_env[start_idx:end_idx] = env
+
+    # Add subtle background warmth (room tone)
+    audio += rng.randn(len(t)).astype(np.float32) * 0.005
+
+    # Normalize
+    peak = np.max(np.abs(audio))
+    if peak > 0:
+        audio = audio / peak * 0.7
+
+    return audio.tolist()
+
+
 def audio_to_mel_features(audio_samples, n_mels=64, n_fft=512):
     """Convert audio samples to mel-spectrogram features for the audio cortex."""
     audio = np.array(audio_samples, dtype=np.float32)
@@ -402,39 +702,86 @@ def main():
     audio_hz = 0.2  # 1 audio frame every 5 seconds (safe for socket backlog)
     step_interval = 1.0 / audio_hz
 
+    print(f"  {len(PARENTESE_UTTERANCES)} parentese utterances available")
+    print(f"  Alternating: environmental sounds ↔ parentese speech")
+
     step = 0
+    parentese_step = 0
+    env_step = 0
     while True:
-        # Pick a description (cycle through)
-        desc = descriptions[step % len(descriptions)]
+        # Alternate between environmental sounds and parentese speech
+        # Pattern: 2 environmental, 1 parentese (2:1 ratio)
+        use_parentese = (step % 3 == 2)
 
-        # Generate audio with per-step variation (never the same twice)
-        audio_samples = generate_synthetic_audio(desc, variation=step)
-        mel_features = audio_to_mel_features(audio_samples)
+        if use_parentese:
+            # --- Parentese (infant-directed speech) ---
+            utterance = PARENTESE_UTTERANCES[parentese_step % len(PARENTESE_UTTERANCES)]
+            audio_samples = generate_parentese_audio(utterance, variation=step)
+            mel_features = audio_to_mel_features(audio_samples)
 
-        # Submit to brain's audio cortex
-        try:
-            brain.submit_sensory("audio", mel_features)
-        except Exception as e:
-            if step < 5:
-                print(f"  [Audio] Submit failed: {e}")
+            # Submit to speech cortex (primary pathway for parentese)
+            try:
+                brain.submit_sensory("speech", audio_samples[:4000])
+            except Exception as e:
+                if step < 5:
+                    print(f"  [Parentese] Speech submit failed: {e}")
 
-        # Also submit as speech (different cortex pathway)
-        try:
-            brain.submit_sensory("speech", audio_samples[:4000])
-        except Exception:
-            pass
+            # Also submit to audio cortex (learns voice patterns)
+            try:
+                brain.submit_sensory("audio", mel_features)
+            except Exception:
+                pass
+
+            # Submit the text as a learning target (pairs audio with meaning)
+            try:
+                text_features = [0.0] * 1024
+                # Simple text hash encoding for grounding
+                text = utterance["text"]
+                for i, ch in enumerate(text[:512]):
+                    text_features[i * 2] = ord(ch) / 127.0 - 0.5
+                    text_features[i * 2 + 1] = (ord(ch) * 7 + i) % 256 / 255.0 - 0.5
+                brain.learn(text_features, text_features,
+                           label=f"parentese:{utterance['emotion']}",
+                           confidence=0.8, learning_rate=0.0002)
+            except Exception:
+                pass
+
+            parentese_step += 1
+
+            if parentese_step % 20 == 0:
+                print(f"  [Parentese] Step {parentese_step}: "
+                      f"'{utterance['text'][:50]}' "
+                      f"[{utterance['emotion']}/{utterance['contour']}]",
+                      flush=True)
+        else:
+            # --- Environmental sounds ---
+            desc = descriptions[env_step % len(descriptions)]
+            audio_samples = generate_synthetic_audio(desc, variation=step)
+            mel_features = audio_to_mel_features(audio_samples)
+
+            # Submit to brain's audio cortex
+            try:
+                brain.submit_sensory("audio", mel_features)
+            except Exception as e:
+                if step < 5:
+                    print(f"  [Audio] Submit failed: {e}")
+
+            # Also submit as speech (different cortex pathway)
+            try:
+                brain.submit_sensory("speech", audio_samples[:4000])
+            except Exception:
+                pass
+
+            env_step += 1
+
+            if env_step % 50 == 0:
+                class_idx = (env_step - 1) % len(descriptions)
+                print(f"  [Audio] Step {env_step}: class {class_idx}/{len(descriptions)} "
+                      f"'{descriptions[class_idx][:50]}' "
+                      f"({len(audio_samples)} samples, {len(mel_features)} mel features)",
+                      flush=True)
 
         step += 1
-
-        if step % 50 == 0:
-            # Report with actual current description, not the one from this step
-            # Also show which class index we're on
-            class_idx = (step - 1) % len(descriptions)
-            print(f"  [Audio] Step {step}: class {class_idx}/{len(descriptions)} "
-                  f"'{descriptions[class_idx][:50]}' "
-                  f"({len(audio_samples)} samples, {len(mel_features)} mel features)",
-                  flush=True)
-
         time.sleep(step_interval)
 
 

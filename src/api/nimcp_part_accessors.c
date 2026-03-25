@@ -215,6 +215,14 @@ uint32_t nimcp_brain_get_neuron_count(nimcp_brain_t brain) {
 }
 
 
+uint32_t nimcp_brain_retrofit_synapse_metadata(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return 0;
+    brain_t b = brain->internal_brain;
+    if (!b->network) return 0;
+    extern uint32_t neural_network_retrofit_metadata(void*);
+    return neural_network_retrofit_metadata(b->network);
+}
+
 bool nimcp_brain_get_utilization_metrics(nimcp_brain_t brain, float* utilization, float* saturation) {
     if (!brain) {
         set_error("Brain handle is NULL");

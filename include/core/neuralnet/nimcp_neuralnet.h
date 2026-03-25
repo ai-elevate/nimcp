@@ -86,7 +86,7 @@ extern "C" {
  * WHY: Support BRAIN_SIZE_LARGE (100K neurons) while preventing unbounded allocation
  * HOW: Neurons array is dynamically allocated up to MAX_NEURONS
  */
-#define MAX_NEURONS 2000000  // Support up to 2M neurons after spike history optimization
+#define MAX_NEURONS 3000000  // Support up to 3M neurons (2.5M target + headroom)
 #define MAX_SYNAPSES_PER_NEURON 256
 #define SPIKE_HISTORY_LENGTH 1000
 #define SPIKE_HISTORY_DEFAULT_CAPACITY 128

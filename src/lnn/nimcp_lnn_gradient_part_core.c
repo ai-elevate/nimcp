@@ -154,24 +154,22 @@ int lnn_gradient_compute_adjoint(
             NIMCP_LOGGING_WARN("Failed to accumulate gradients at step %d", step);
         }
 
-        // Clamp adjoint NORM per step to prevent gradient explosion.
-        // Per-element clamping (±1e6) allows norm up to 8e6 for 64 neurons;
-        // with parameter gradient accumulation this produces norms of 60K-770K.
-        // Instead, rescale the adjoint vector to a max norm of 100.
+        // Normalize adjoint per step to target norm (preserves direction, controls magnitude).
+        // Hard clipping to 100.0 crushed gradient variance — optimizer saw constant signal.
+        // Normalization to 10.0 keeps gradient information while preventing explosion.
         {
             float* nd = (float*)nimcp_tensor_data(adjoint_next);
             size_t nn = nimcp_tensor_numel(adjoint_next);
             float norm_sq = 0.0f;
             for (size_t k = 0; k < nn; k++) norm_sq += nd[k] * nd[k];
             float norm = sqrtf(norm_sq);
-            float max_adjoint_norm = 100.0f;
+            float target_adjoint_norm = 10.0f;
             float min_adjoint_norm = 1e-6f;
-            if (norm > max_adjoint_norm) {
-                float scale = max_adjoint_norm / norm;
+            if (norm > min_adjoint_norm) {
+                float scale = target_adjoint_norm / norm;
                 for (size_t k = 0; k < nn; k++) nd[k] *= scale;
-            } else if (norm < min_adjoint_norm && norm > 0.0f) {
-                /* Prevent tiny norms from being amplified to huge values
-                 * in subsequent parameter gradient accumulation */
+            } else if (norm > 0.0f) {
+                /* Tiny norm — zero out to prevent noise amplification */
                 for (size_t k = 0; k < nn; k++) nd[k] = 0.0f;
             }
         }
@@ -202,14 +200,16 @@ int lnn_gradient_compute_adjoint(
     }
     ctx->last_input_grad = adjoint_current;  /* Transfer ownership */
 
-    // Clamp accumulated parameter gradient norm to prevent explosion.
-    // Even with per-step adjoint norm clamping (100), the parameter Jacobians
-    // ∂f/∂θ can be large, producing accumulated norms of 60K+.
+    // Normalize accumulated parameter gradients to target norm.
+    // This preserves gradient direction (which encodes WHAT to update) while
+    // controlling magnitude (which the optimizer's LR handles).
+    // The downstream training loop applies its own gradient_target_norm (1.0).
     ctx->gradient_norm = lnn_gradient_norm(ctx);
-    if (ctx->gradient_norm > 100.0f) {
-        float scale = 100.0f / ctx->gradient_norm;
+    float post_target = 10.0f;  // Match per-step target
+    if (ctx->gradient_norm > 1e-6f) {
+        float scale = post_target / ctx->gradient_norm;
         lnn_gradient_scale(ctx, scale);
-        ctx->gradient_norm = 100.0f;
+        ctx->gradient_norm = post_target;
     }
     ctx->max_gradient = fmaxf(ctx->max_gradient, ctx->gradient_norm);
 
