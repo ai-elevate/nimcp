@@ -415,8 +415,9 @@ static void backprop_worker(void* arg)
             }
 
             // Decoupled weight decay: w *= (1 - lr * wd) BEFORE gradient step
+            // LR-independent weight decay (same as serial path)
             if (w->weight_decay > 0.0f) {
-                in_syn->weight *= (1.0f - w->layer_lr * w->weight_decay);
+                in_syn->weight *= (1.0f - w->weight_decay);
             }
             in_syn->weight += weight_delta;
             if (in_syn->weight < w->min_weight) in_syn->weight = w->min_weight;
@@ -878,9 +879,11 @@ serial_path:
                     }
                 }
 
-                // Decoupled weight decay: w *= (1 - lr * wd) BEFORE gradient step
+                // LR-independent weight decay: w *= (1 - wd) BEFORE gradient step.
+                // NOT multiplied by LR — at LR=0.00001 the coupled form gives
+                // 0.000001% decay/step (useless). Independent gives 0.1%/step.
                 if (weight_decay > 0.0f) {
-                    in_syn->weight *= (1.0f - layer_lr * weight_decay);
+                    in_syn->weight *= (1.0f - weight_decay);
                 }
                 in_syn->weight += weight_delta;
                 if (in_syn->weight < min_weight) in_syn->weight = min_weight;
@@ -1248,9 +1251,11 @@ int backprop_sparse_full_regression_wd(
                     }
                 }
 
-                // Decoupled weight decay: w *= (1 - lr * wd) BEFORE gradient step
+                // LR-independent weight decay: w *= (1 - wd) BEFORE gradient step.
+                // NOT multiplied by LR — at LR=0.00001 the coupled form gives
+                // 0.000001% decay/step (useless). Independent gives 0.1%/step.
                 if (weight_decay > 0.0f) {
-                    in_syn->weight *= (1.0f - layer_lr * weight_decay);
+                    in_syn->weight *= (1.0f - weight_decay);
                 }
                 in_syn->weight += weight_delta;
                 if (in_syn->weight < min_weight) in_syn->weight = min_weight;
