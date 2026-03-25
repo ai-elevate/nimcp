@@ -813,18 +813,19 @@ static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint3
         return false;
     }
 
-    // Clamp unbounded activations
+    // Clamp unbounded activations — all use ±100 (weights trained with this regime)
     if (act == ACTIVATION_RELU || act == ACTIVATION_LEAKY_RELU || act == ACTIVATION_LINEAR) {
+        float clamp_val = 100.0f;
         uint32_t layer_size = cache->layer_sizes[l + 1];
         if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
                                       cache->host_activation_buf)) {
             return false;
         }
         for (uint32_t ci = 0; ci < layer_size; ci++) {
-            if (cache->host_activation_buf[ci] > 100.0f)
-                cache->host_activation_buf[ci] = 100.0f;
-            else if (cache->host_activation_buf[ci] < -100.0f)
-                cache->host_activation_buf[ci] = -100.0f;
+            if (cache->host_activation_buf[ci] > clamp_val)
+                cache->host_activation_buf[ci] = clamp_val;
+            else if (cache->host_activation_buf[ci] < -clamp_val)
+                cache->host_activation_buf[ci] = -clamp_val;
         }
         size_t a_dims[1] = { layer_size };
         nimcp_gpu_tensor_t* clamped = nimcp_gpu_tensor_from_host(
@@ -1195,7 +1196,7 @@ bool nimcp_gpu_forward_pass_batch(
                 }
                 break;
             case ACTIVATION_LINEAR:
-                /* Identity — clamp only to prevent float overflow */
+                /* Keep ±100 clamp — weights trained with this. Weight decay handles the rest. */
                 for (size_t i = 0; i < total_elems; i++) {
                     if (clamp_buf[i] > 100.0f) clamp_buf[i] = 100.0f;
                     else if (clamp_buf[i] < -100.0f) clamp_buf[i] = -100.0f;

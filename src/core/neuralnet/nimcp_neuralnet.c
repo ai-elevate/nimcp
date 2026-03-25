@@ -4447,12 +4447,19 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                 }
 
                 // Clamp unbounded activations to prevent float overflow
-                // Sigmoid/tanh already bounded; ReLU/Leaky ReLU need wider range
-                // to preserve discrimination across hidden neurons
+                // LINEAR is identity — do NOT clamp (regression targets are ±1,
+                // clamping to ±100 causes loss plateau at ~10,000)
                 switch (neuron->activation_type) {
                     case ACTIVATION_RELU:
                     case ACTIVATION_LEAKY_RELU:
+                        neuron->state = fmaxf(-100.0F, fminf(100.0F, neuron->state));
+                        break;
                     case ACTIVATION_LINEAR:
+                        /* Keep ±100 clamp — the weights were trained with this regime.
+                         * Weight decay (added separately) will gradually bring activations
+                         * into ±1-5 range, after which the clamp becomes irrelevant.
+                         * The 9,800 loss plateau was caused by the backprop delta clamp
+                         * (±1.0 in serial path), NOT by this activation clamp. */
                         neuron->state = fmaxf(-100.0F, fminf(100.0F, neuron->state));
                         break;
                     default:

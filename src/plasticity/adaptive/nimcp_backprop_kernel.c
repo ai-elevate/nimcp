@@ -374,8 +374,12 @@ static void backprop_worker(void* arg)
             continue;
 
         float dj = w->delta_cur[j];
-        if (dj > 5.0f) dj = 5.0f;
-        if (dj < -5.0f) dj = -5.0f;
+        /* Layer-aware delta clamp: output layer gets wider range for regression.
+         * Hidden layers use ±1.0 to prevent gradient explosion.
+         * Output uses ±5.0 to work with OUTPUT_LR_BOOST (10x). */
+        float max_delta = (w->is_output_layer && w->target_size > 0) ? 5.0f : 1.0f;
+        if (dj > max_delta) dj = max_delta;
+        if (dj < -max_delta) dj = -max_delta;
 
         neuron_t* cur_n = neural_network_get_neuron(w->net, w->cur_offset + j);
         if (!cur_n) continue;
@@ -832,8 +836,12 @@ serial_path:
                 continue;
 
             float dj = delta_cur[j];
-            if (dj > 1.0f) dj = 1.0f;
-            if (dj < -1.0f) dj = -1.0f;
+            /* Layer-aware delta clamp: match parallel path behavior.
+             * Output layer: ±5.0 (regression needs larger gradients).
+             * Hidden layers: ±1.0 (prevent explosion). */
+            float ser_max_delta = (is_output && target_size > 0) ? 5.0f : 1.0f;
+            if (dj > ser_max_delta) dj = ser_max_delta;
+            if (dj < -ser_max_delta) dj = -ser_max_delta;
 
             neuron_t* cur_n = neural_network_get_neuron(net, cur_offset + j);
             if (!cur_n) continue;
@@ -1202,8 +1210,12 @@ int backprop_sparse_full_regression_wd(
             if (is_output && j >= target_size) continue;
 
             float dj = delta_cur[j];
-            if (dj > 1.0f) dj = 1.0f;
-            if (dj < -1.0f) dj = -1.0f;
+            /* Layer-aware delta clamp: match parallel path behavior.
+             * Output layer: ±5.0 (regression needs larger gradients).
+             * Hidden layers: ±1.0 (prevent explosion). */
+            float ser_max_delta = (is_output && target_size > 0) ? 5.0f : 1.0f;
+            if (dj > ser_max_delta) dj = ser_max_delta;
+            if (dj < -ser_max_delta) dj = -ser_max_delta;
 
             neuron_t* cur_n = neural_network_get_neuron(net, cur_offset + j);
             if (!cur_n) continue;
