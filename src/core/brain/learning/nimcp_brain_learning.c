@@ -88,6 +88,7 @@
 #include "lnn/nimcp_lnn_training.h"
 #include "training/nimcp_cnn_training.h"
 #include "training/nimcp_snn_backprop.h"
+#include "snn/nimcp_snn_fno.h"
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_fno.h"
@@ -346,6 +347,19 @@ static void brain_train_cognitive_subsystems(
         brain->fep_orchestrator->fep_metrics.prediction_error = loss;
         brain->fep_orchestrator->fep_metrics.surprise = -logf(fmaxf(1.0f - loss, 1e-7f));
         brain->cognitive_stats.fep_orchestrator_steps++;
+    }
+
+    /* === 12. FNO — Fourier Neural Operator spectral training === */
+    /* Train FNO populations to learn spectral representations.
+     * Each SNN population can have an associated FNO model. */
+    if (brain->snn_fno_populations && brain->snn_fno_count > 0) {
+        for (uint32_t fi = 0; fi < brain->snn_fno_count; fi++) {
+            snn_fno_population_t* fno_pop =
+                (snn_fno_population_t*)brain->snn_fno_populations[fi];
+            if (fno_pop) {
+                snn_fno_train(fno_pop, 1);  /* 1 epoch per training step */
+            }
+        }
     }
 }
 extern void brain_clear_error(void);
