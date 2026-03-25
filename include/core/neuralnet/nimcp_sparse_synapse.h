@@ -125,19 +125,21 @@ extern "C" {
  * TUNING NOTES:
  * - Smaller (32): Lower per-neuron memory, more overflow allocations
  * - Larger (256): Higher per-neuron memory, fewer overflow allocations
- * - 256: Good balance for 1.5M neuron networks (~6KB/neuron inline)
+ * - 64: Phase 1 of dynamic synapse architecture — reduced from 256 to 64
+ *   Memory savings: ~4.6 KB/neuron × 2M neurons = ~9.2 GB saved
+ *   Overflow pool increased to compensate (500K handles)
  * - Original (64): Conservative for smaller networks
  */
-#define SPARSE_SYNAPSE_EMBEDDED_CAPACITY 256
+#define SPARSE_SYNAPSE_EMBEDDED_CAPACITY 64
 
 /**
  * @brief Default pool capacity
  *
  * WHAT: Number of overflow handles pre-allocated in shared pool
- * WHY:  10% of neurons exceed embedded capacity (power-law tail)
- * HOW:  10,000 neurons × 10% × 36 overflow synapses ≈ 36,000 handles
+ * WHY:  With embedded capacity reduced to 64, more neurons overflow
+ * HOW:  500K handles to accommodate increased overflow from smaller inline arrays
  */
-#define SPARSE_SYNAPSE_DEFAULT_POOL_SIZE 100000
+#define SPARSE_SYNAPSE_DEFAULT_POOL_SIZE 500000
 
 /**
  * @brief Maximum allowed pool size

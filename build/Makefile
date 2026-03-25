@@ -29698,6 +29698,19 @@ test_synapse_hot_cold/fast:
 .PHONY : test_synapse_hot_cold/fast
 
 #=============================================================================
+# Target rules for targets named test_synapse_lifecycle
+
+# Build rule for target.
+test_synapse_lifecycle: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_synapse_lifecycle
+.PHONY : test_synapse_lifecycle
+
+# fast build rule for target.
+test_synapse_lifecycle/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/neuralnet/CMakeFiles/test_synapse_lifecycle.dir/build.make test/unit/core/neuralnet/CMakeFiles/test_synapse_lifecycle.dir/build
+.PHONY : test_synapse_lifecycle/fast
+
+#=============================================================================
 # Target rules for targets named integration_core_neuralnet_homeostasis_immune
 
 # Build rule for target.
@@ -44959,6 +44972,7 @@ help:
 	@echo "... test_symbolic_logic_attachment"
 	@echo "... test_symbolic_logic_real"
 	@echo "... test_synapse_hot_cold"
+	@echo "... test_synapse_lifecycle"
 	@echo "... test_ternary_accuracy_regression"
 	@echo "... test_ternary_backward_compat_regression"
 	@echo "... test_ternary_conversion_regression"

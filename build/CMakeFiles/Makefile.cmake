@@ -3566,6 +3566,7 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/unit/core/neuralnet/CMakeFiles/test_learning_sparse_synapse.dir/DependInfo.cmake"
   "test/unit/core/neuralnet/CMakeFiles/test_struct_consistency.dir/DependInfo.cmake"
   "test/unit/core/neuralnet/CMakeFiles/test_synapse_hot_cold.dir/DependInfo.cmake"
+  "test/unit/core/neuralnet/CMakeFiles/test_synapse_lifecycle.dir/DependInfo.cmake"
   "test/integration/core/neuralnet/CMakeFiles/integration_core_neuralnet_homeostasis_immune.dir/DependInfo.cmake"
   "test/integration/core/neuralnet/CMakeFiles/integration_core_neuralnet_spike_ring_buffer.dir/DependInfo.cmake"
   "test/unit/core/dendrite/CMakeFiles/unit_core_dendrite_test_dendrite.dir/DependInfo.cmake"

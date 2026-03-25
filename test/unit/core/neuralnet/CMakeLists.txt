@@ -50,3 +50,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_synapse_hot_cold.cpp
     unit
 )
+
+# Test 8: Synapse Lifecycle Manager (pruning/growth/GC)
+add_test_binary(
+    test_synapse_lifecycle
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_synapse_lifecycle.cpp
+    unit
+)

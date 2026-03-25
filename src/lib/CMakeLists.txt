@@ -211,6 +211,7 @@ set(NIMCP_CORE_SOURCES
     # Neural Network - Refactored into SRP modules (Phase 12.9: Large File Refactoring)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet.c           # Core lifecycle and neuron updates
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_sparse_synapse.c      # Sparse synapse storage and operations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_synapse_lifecycle.c   # Synapse lifecycle: pruning, growth, metadata GC
     # DISABLED: Agent-created files with duplicate functions (originals not cleaned up)
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_activation.c  # Activation functions (Strategy pattern)
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_learning.c   # STDP, Oja's rule, weight updates

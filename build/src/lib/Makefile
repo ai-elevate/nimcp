@@ -29972,6 +29972,30 @@ __/core/neuralnet/nimcp_synapse_embeddings.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_synapse_embeddings.c.s
 .PHONY : __/core/neuralnet/nimcp_synapse_embeddings.c.s
 
+__/core/neuralnet/nimcp_synapse_lifecycle.o: __/core/neuralnet/nimcp_synapse_lifecycle.c.o
+.PHONY : __/core/neuralnet/nimcp_synapse_lifecycle.o
+
+# target to build an object file
+__/core/neuralnet/nimcp_synapse_lifecycle.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_synapse_lifecycle.c.o
+.PHONY : __/core/neuralnet/nimcp_synapse_lifecycle.c.o
+
+__/core/neuralnet/nimcp_synapse_lifecycle.i: __/core/neuralnet/nimcp_synapse_lifecycle.c.i
+.PHONY : __/core/neuralnet/nimcp_synapse_lifecycle.i
+
+# target to preprocess a source file
+__/core/neuralnet/nimcp_synapse_lifecycle.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_synapse_lifecycle.c.i
+.PHONY : __/core/neuralnet/nimcp_synapse_lifecycle.c.i
+
+__/core/neuralnet/nimcp_synapse_lifecycle.s: __/core/neuralnet/nimcp_synapse_lifecycle.c.s
+.PHONY : __/core/neuralnet/nimcp_synapse_lifecycle.s
+
+# target to generate assembly for a file
+__/core/neuralnet/nimcp_synapse_lifecycle.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_synapse_lifecycle.c.s
+.PHONY : __/core/neuralnet/nimcp_synapse_lifecycle.c.s
+
 __/core/neuron_models/nimcp_izhikevich.o: __/core/neuron_models/nimcp_izhikevich.c.o
 .PHONY : __/core/neuron_models/nimcp_izhikevich.o
 
@@ -57757,6 +57781,9 @@ help:
 	@echo "... __/core/neuralnet/nimcp_synapse_embeddings.o"
 	@echo "... __/core/neuralnet/nimcp_synapse_embeddings.i"
 	@echo "... __/core/neuralnet/nimcp_synapse_embeddings.s"
+	@echo "... __/core/neuralnet/nimcp_synapse_lifecycle.o"
+	@echo "... __/core/neuralnet/nimcp_synapse_lifecycle.i"
+	@echo "... __/core/neuralnet/nimcp_synapse_lifecycle.s"
 	@echo "... __/core/neuron_models/nimcp_izhikevich.o"
 	@echo "... __/core/neuron_models/nimcp_izhikevich.i"
 	@echo "... __/core/neuron_models/nimcp_izhikevich.s"

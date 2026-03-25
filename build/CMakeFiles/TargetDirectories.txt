@@ -4838,6 +4838,7 @@
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/test_learning_sparse_synapse.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/test_struct_consistency.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/test_synapse_hot_cold.dir
+/home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/test_synapse_lifecycle.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/rebuild_cache.dir
