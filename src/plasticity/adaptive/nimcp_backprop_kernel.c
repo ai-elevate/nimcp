@@ -374,12 +374,8 @@ static void backprop_worker(void* arg)
             continue;
 
         float dj = w->delta_cur[j];
-        /* Layer-aware delta clamp: output layer gets wider range for regression.
-         * Hidden layers use ±1.0 to prevent gradient explosion.
-         * Output uses ±5.0 to work with OUTPUT_LR_BOOST (10x). */
-        float max_delta = (w->is_output_layer && w->target_size > 0) ? 5.0f : 1.0f;
-        if (dj > max_delta) dj = max_delta;
-        if (dj < -max_delta) dj = -max_delta;
+        if (dj > 5.0f) dj = 5.0f;
+        if (dj < -5.0f) dj = -5.0f;
 
         neuron_t* cur_n = neural_network_get_neuron(w->net, w->cur_offset + j);
         if (!cur_n) continue;
@@ -415,9 +411,9 @@ static void backprop_worker(void* arg)
             }
 
             // Decoupled weight decay: w *= (1 - lr * wd) BEFORE gradient step
-            // LR-independent weight decay (same as serial path)
+            // Decoupled weight decay: w *= (1 - lr * wd) BEFORE gradient step
             if (w->weight_decay > 0.0f) {
-                in_syn->weight *= (1.0f - w->weight_decay);
+                in_syn->weight *= (1.0f - w->layer_lr * w->weight_decay);
             }
             in_syn->weight += weight_delta;
             if (in_syn->weight < w->min_weight) in_syn->weight = w->min_weight;
@@ -840,9 +836,8 @@ serial_path:
             /* Layer-aware delta clamp: match parallel path behavior.
              * Output layer: ±5.0 (regression needs larger gradients).
              * Hidden layers: ±1.0 (prevent explosion). */
-            float ser_max_delta = (is_output && target_size > 0) ? 5.0f : 1.0f;
-            if (dj > ser_max_delta) dj = ser_max_delta;
-            if (dj < -ser_max_delta) dj = -ser_max_delta;
+            if (dj > 1.0f) dj = 1.0f;
+            if (dj < -1.0f) dj = -1.0f;
 
             neuron_t* cur_n = neural_network_get_neuron(net, cur_offset + j);
             if (!cur_n) continue;
@@ -879,11 +874,9 @@ serial_path:
                     }
                 }
 
-                // LR-independent weight decay: w *= (1 - wd) BEFORE gradient step.
-                // NOT multiplied by LR — at LR=0.00001 the coupled form gives
-                // 0.000001% decay/step (useless). Independent gives 0.1%/step.
+                // Decoupled weight decay: w *= (1 - lr * wd) BEFORE gradient step
                 if (weight_decay > 0.0f) {
-                    in_syn->weight *= (1.0f - weight_decay);
+                    in_syn->weight *= (1.0f - layer_lr * weight_decay);
                 }
                 in_syn->weight += weight_delta;
                 if (in_syn->weight < min_weight) in_syn->weight = min_weight;
@@ -1216,9 +1209,8 @@ int backprop_sparse_full_regression_wd(
             /* Layer-aware delta clamp: match parallel path behavior.
              * Output layer: ±5.0 (regression needs larger gradients).
              * Hidden layers: ±1.0 (prevent explosion). */
-            float ser_max_delta = (is_output && target_size > 0) ? 5.0f : 1.0f;
-            if (dj > ser_max_delta) dj = ser_max_delta;
-            if (dj < -ser_max_delta) dj = -ser_max_delta;
+            if (dj > 1.0f) dj = 1.0f;
+            if (dj < -1.0f) dj = -1.0f;
 
             neuron_t* cur_n = neural_network_get_neuron(net, cur_offset + j);
             if (!cur_n) continue;
@@ -1251,11 +1243,9 @@ int backprop_sparse_full_regression_wd(
                     }
                 }
 
-                // LR-independent weight decay: w *= (1 - wd) BEFORE gradient step.
-                // NOT multiplied by LR — at LR=0.00001 the coupled form gives
-                // 0.000001% decay/step (useless). Independent gives 0.1%/step.
+                // Decoupled weight decay: w *= (1 - lr * wd) BEFORE gradient step
                 if (weight_decay > 0.0f) {
-                    in_syn->weight *= (1.0f - weight_decay);
+                    in_syn->weight *= (1.0f - layer_lr * weight_decay);
                 }
                 in_syn->weight += weight_delta;
                 if (in_syn->weight < min_weight) in_syn->weight = min_weight;

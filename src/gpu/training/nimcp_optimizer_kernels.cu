@@ -60,7 +60,7 @@ nimcp_optim_state_t* nimcp_optim_state_create(
     state->beta1 = 0.9f;
     state->beta2 = 0.999f;
     state->eps = 1e-8f;
-    state->weight_decay = 0.01f;  /* Enable L2 regularization — prevents weight/activation explosion */
+    state->weight_decay = 0.0f;
     state->momentum = 0.9f;
     state->nesterov = false;
 

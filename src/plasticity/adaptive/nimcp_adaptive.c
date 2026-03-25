@@ -81,11 +81,10 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adaptive)
 #define SPARSITY_EMA_WEIGHT 0.1f
 // OUTPUT_LR_BOOST is defined in nimcp_backprop_kernel.h (single source of truth)
 #define LATERAL_INHIBITION_STRENGTH 0.3f  /* Strength for output layer lateral inhibition */
-#define ADAPTIVE_WEIGHT_DECAY 1e-3f       /* L2 weight decay — increased from 1e-5 to prevent
-                                            * weight/activation explosion. At 1e-5 weights grew
-                                            * unboundedly → ±100 output → 9,800 loss plateau.
-                                            * 1e-3 gives effective decay of 0.999 per step at LR=0.001.
-                                            * Original was 1e-4, reduced to 1e-5 to "prevent
+#define ADAPTIVE_WEIGHT_DECAY 1e-5f       /* L2 weight decay — reverted to original value.
+                                            * Training succeeded at 1e-5 (loss 9800 → 0.03).
+                                            * Changes to 1e-3 broke training. Original was 1e-4,
+                                            * reduced to 1e-5 to "prevent
                                           * exponential weight vanishing over long training.
                                           * At 1e-4, weights decay to 4.5% after 100K steps. */
 
