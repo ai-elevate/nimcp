@@ -130,7 +130,7 @@ extern "C" {
  *   Overflow pool increased to compensate (500K handles)
  * - Original (64): Conservative for smaller networks
  */
-#define SPARSE_SYNAPSE_EMBEDDED_CAPACITY 64
+#define SPARSE_SYNAPSE_EMBEDDED_CAPACITY 256  /* Keep at 256 for checkpoint compat — dynamic pruning handles memory instead */
 
 /**
  * @brief Default pool capacity
