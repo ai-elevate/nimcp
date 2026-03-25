@@ -3693,27 +3693,41 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                         if (fread(&stp_data, sizeof(stp_state_t), 1, file) != 1) { load_error = true; break; }
                     }
 
-                    // Add synapse with metadata to sparse storage
+                    // Add synapse WITHOUT metadata — lazy allocation during training.
+                    // This prevents the metadata pool from exploding during load
+                    // (was allocating 100M+ slots → 13GB OOM).
+                    // Metadata is allocated on-demand when plasticity needs it.
                     total_synapses_read++;
-                    if (sparse_synapse_add_with_metadata(h_pool, m_pool,
-                            &neuron->outgoing, target_id, weight, 0) == 0) {
+                    bool needs_metadata = (plasticity != 0.0f || trace != 0.0f ||
+                                           meta_plasticity != 0.0f || enable_stp);
+                    int add_rc;
+                    if (needs_metadata) {
+                        add_rc = sparse_synapse_add_with_metadata(h_pool, m_pool,
+                                    &neuron->outgoing, target_id, weight, 0);
+                    } else {
+                        add_rc = sparse_synapse_add(h_pool,
+                                    &neuron->outgoing, target_id, weight);
+                    }
+                    if (add_rc == 0) {
                         total_synapses_added++;
                         uint32_t idx = NEURON_OUT_COUNT(neuron) - 1;
                         synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, idx);
                         if (h) h->strength = strength;
-                        synapse_t* syn = h ? sparse_synapse_get_metadata(m_pool, h) : NULL;
-                        if (syn) {
-                            syn->plasticity = plasticity;
-                            syn->trace = trace;
-                            syn->strength = strength;
-                            syn->meta_plasticity = meta_plasticity;
-                            syn->last_change = last_change;
-                            syn->last_active = last_active;
-                            if (enable_stp) {
-                                synapse_cold_t* load_cold = SYNAPSE_ENSURE_COLD(network->base_network, syn);
-                                if (load_cold) {
-                                    load_cold->enable_stp = enable_stp;
-                                    load_cold->stp = stp_data;
+                        if (needs_metadata) {
+                            synapse_t* syn = h ? sparse_synapse_get_metadata(m_pool, h) : NULL;
+                            if (syn) {
+                                syn->plasticity = plasticity;
+                                syn->trace = trace;
+                                syn->strength = strength;
+                                syn->meta_plasticity = meta_plasticity;
+                                syn->last_change = last_change;
+                                syn->last_active = last_active;
+                                if (enable_stp) {
+                                    synapse_cold_t* load_cold = SYNAPSE_ENSURE_COLD(network->base_network, syn);
+                                    if (load_cold) {
+                                        load_cold->enable_stp = enable_stp;
+                                        load_cold->stp = stp_data;
+                                    }
                                 }
                             }
                         }
