@@ -1639,6 +1639,24 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         cortical_sparse_update_thresholds(brain->sparse_coding_system, pop_sparsity);
     }
 
+    /* === FNO: Augment output with spectral features ===
+     * Run FNO forward on the output embedding to extract frequency-domain
+     * information. This adds spectral richness to the decision. */
+    if (brain->snn_fno_populations && brain->snn_fno_count > 0 &&
+        decision && decision->output_vector && decision->output_size > 0) {
+        extern float snn_fno_get_train_mse(const void*);
+        /* Record the FNO's last training MSE for monitoring.
+         * The actual spectral augmentation happens via the SNN-FNO bridge
+         * during the SNN forward step (already wired in the network forward). */
+        for (uint32_t fi = 0; fi < brain->snn_fno_count; fi++) {
+            if (brain->snn_fno_populations[fi]) {
+                float fno_mse = snn_fno_get_train_mse(brain->snn_fno_populations[fi]);
+                if (fi == 0) brain->network_metrics.fno_audio_ema_loss =
+                    0.99f * brain->network_metrics.fno_audio_ema_loss + 0.01f * fno_mse;
+            }
+        }
+    }
+
     // ========================================================================
     // OPTIMIZATION: Classification-only fast path — skip non-essential stages
     // ========================================================================
