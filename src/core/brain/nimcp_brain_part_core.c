@@ -3913,6 +3913,41 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             "inference_refined", decision->confidence, 0.0f);
     }
 
+    /* === WORKING MEMORY: Read scratchpad context into inference === */
+    if (brain->wm_scratchpad && decision && decision->output_vector) {
+        extern int nimcp_wms_read_all(void*, float*, uint32_t);
+        float wm_context[512];
+        int wm_n = nimcp_wms_read_all(brain->wm_scratchpad, wm_context, 512);
+        if (wm_n > 0) {
+            /* Blend working memory context into output (subtle influence) */
+            uint32_t blend_n = (uint32_t)wm_n < decision->output_size
+                               ? (uint32_t)wm_n : decision->output_size;
+            for (uint32_t i = 0; i < blend_n; i++) {
+                decision->output_vector[i] =
+                    0.95f * decision->output_vector[i] + 0.05f * wm_context[i];
+            }
+        }
+    }
+
+    /* === WORLD MODEL: Predict and compare for surprise detection === */
+    if (brain->world_model_trainer && decision) {
+        extern float nimcp_wmt_get_prediction_error(const void*);
+        float pred_error = nimcp_wmt_get_prediction_error(brain->world_model_trainer);
+        /* High prediction error = surprising input = boost confidence
+         * (the brain should pay attention to novel situations) */
+        if (pred_error > 0.5f && decision->confidence < 0.9f) {
+            decision->confidence *= 1.0f + 0.1f * pred_error;
+            if (decision->confidence > 1.0f) decision->confidence = 1.0f;
+        }
+    }
+
+    /* === DYNAMIC ARCHITECTURE: Record inference activation === */
+    if (brain->dynamic_arch && decision) {
+        extern int nimcp_dynamic_arch_record_activation(void*, const char*, uint32_t, float);
+        nimcp_dynamic_arch_record_activation(brain->dynamic_arch,
+            "inference", 0, decision->confidence);
+    }
+
     // Cache decision for future reuse (thread-safe with mutex protection)
     // W7-8 (C-INF-M3): Log warning on mutex lock failure instead of silently
     // skipping cache update. A failed lock indicates contention or corruption

@@ -2328,6 +2328,80 @@ sequential_training:
             features, num_features, label, target, target_size, 0.001f);
     }
 
+    /* === WORLD MODEL: Train state-transition predictor === */
+    if (brain->world_model_trainer) {
+        extern int nimcp_wmt_record_transition(void*, const float*, uint32_t,
+                                                const float*, uint32_t, const float*);
+        /* Record (features → target) as a state transition.
+         * The world model learns to predict next state from current state. */
+        nimcp_wmt_record_transition(brain->world_model_trainer,
+            features, num_features, NULL, 0, target);
+        /* Train every 10 steps (amortize cost) */
+        if ((brain->stats.total_learning_steps % 10) == 0) {
+            extern int nimcp_wmt_train_predictor(void*, void*);
+            nimcp_wmt_train_predictor(brain->world_model_trainer, NULL);
+        }
+    }
+
+    /* === CONTRASTIVE SELF-LEARNING: Record + generate hard negatives === */
+    if (brain->contrastive_self && features && target) {
+        extern void nimcp_contrastive_self_record(void*, const float*, uint32_t,
+                                                   const float*, uint32_t, const char*);
+        nimcp_contrastive_self_record(brain->contrastive_self,
+            features, num_features, target, target_size, label ? label : "");
+    }
+
+    /* === WORKING MEMORY SCRATCHPAD: Cache current learning context === */
+    if (brain->wm_scratchpad && features && num_features > 0) {
+        extern int nimcp_wms_write(void*, uint32_t, const float*, uint32_t, const char*);
+        extern void nimcp_wms_decay(void*);
+        /* Write current features to slot (rotating through 8 slots) */
+        uint32_t slot = brain->stats.total_learning_steps % 8;
+        nimcp_wms_write(brain->wm_scratchpad, slot, features, num_features,
+                        label ? label : "train");
+        /* Decay all slots (contents fade over time) */
+        if ((brain->stats.total_learning_steps % 50) == 0) {
+            nimcp_wms_decay(brain->wm_scratchpad);
+        }
+    }
+
+    /* === DYNAMIC ARCHITECTURE: Record activation for utilization tracking === */
+    if (brain->dynamic_arch) {
+        extern int nimcp_dynamic_arch_record_activation(void*, const char*, uint32_t, float);
+        /* Record the loss as proxy for region activation.
+         * Lower loss = more effective = higher utilization. */
+        nimcp_dynamic_arch_record_activation(brain->dynamic_arch,
+            "adaptive", 0, (loss < 1.0f) ? 1.0f : 1.0f / (loss + 1e-8f));
+        /* Analyze every 1000 steps */
+        if ((brain->stats.total_learning_steps % 1000) == 0) {
+            extern int nimcp_dynamic_arch_analyze(void*);
+            nimcp_dynamic_arch_analyze(brain->dynamic_arch);
+        }
+    }
+
+    /* === ANALOGICAL TRANSFER: Store successful patterns for future use === */
+    if (brain->analogical_transfer && loss < 1.0f && features && target) {
+        extern int nimcp_analogical_store_pattern(void*, const float*, uint32_t,
+                                                   const float*, uint32_t, const char*, float);
+        /* Only store low-loss patterns — they represent successful solutions */
+        nimcp_analogical_store_pattern(brain->analogical_transfer,
+            features, num_features, target, target_size,
+            label ? label : "", 1.0f - loss);
+    }
+
+    /* === INNER SPEECH: Train language-thought mapping === */
+    if (brain->inner_speech && brain->native_language_enabled && label) {
+        extern int nimcp_inner_speech_refine(void*, float*, uint32_t, float*, char*, uint32_t);
+        /* Exercise inner speech on current features to strengthen
+         * the generate→encode→refine loop */
+        if ((brain->stats.total_learning_steps % 50) == 0) {
+            float refined[128];
+            nimcp_inner_speech_refine(brain->inner_speech,
+                (float*)features, num_features < 128 ? num_features : 128,
+                refined, NULL, 0);
+        }
+    }
+
     clear_cache(brain);
     if (owns_blended) nimcp_free(blended_features);
     return loss;
