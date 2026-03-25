@@ -204,8 +204,8 @@ network_config_t nimcp_brain_factory_build_base_network_config(uint32_t num_inpu
         config.layer_sizes[3] = hidden_budget - config.layer_sizes[1] - config.layer_sizes[2]; // ~17%
         config.layer_sizes[4] = num_outputs;
 
-    } else {
-        // Large (100K+): 7 layers — deep diamond
+    } else if (hidden_budget <= 2000000) {
+        // Large (100K-2M): 7 layers — deep diamond
         // Distribution: expand to peak then contract
         // Ratios: 2%, 12%, 36%, 36%, 12%, 2%
         config.num_layers = 7;
@@ -216,33 +216,63 @@ network_config_t nimcp_brain_factory_build_base_network_config(uint32_t num_inpu
             return config;
         }
 
-        // Layer distribution for deep diamond:
-        // L1: entry projection (2%)
-        // L2: feature extraction (12%)
-        // L3: lower representation (36%)
-        // L4: upper representation (36%)
-        // L5: compression (12%)
-        // L6: exit projection (2%)  — but this is num_outputs, so redistribute
         uint32_t l1 = hidden_budget * 2 / 100;
         if (l1 < 256) l1 = 256;
-        uint32_t l5 = l1;   // Symmetric
+        uint32_t l5 = l1;
         uint32_t l2 = hidden_budget * 12 / 100;
-        uint32_t l4 = l2;   // Symmetric
-        uint32_t l3 = hidden_budget - l1 - l2 - l4 - l5;  // Remainder (~72%)
-        // Split l3 into two roughly equal layers for the wide middle
+        uint32_t l4 = l2;
+        uint32_t l3 = hidden_budget - l1 - l2 - l4 - l5;
         uint32_t l3a = l3 / 2;
         uint32_t l3b = l3 - l3a;
 
         config.layer_sizes[0] = num_inputs;
         config.layer_sizes[1] = l1;
         config.layer_sizes[2] = l2;
-        config.layer_sizes[3] = l3a;   // Peak layer
-        config.layer_sizes[4] = l3b;   // Second peak
-        config.layer_sizes[5] = l4;    // Compression mirrors l2
-        // Note: l5 would be here but we need output layer at the end
-        // Merge l5 into l4 to keep 7 layers total
-        config.layer_sizes[5] += l5;
+        config.layer_sizes[3] = l3a;
+        config.layer_sizes[4] = l3b;
+        config.layer_sizes[5] = l4 + l5;
         config.layer_sizes[6] = num_outputs;
+
+    } else {
+        // Massive (2M+): 9 layers — deep diamond with finer hierarchy
+        // Maps to biological cortical layers (6 layers per column × ~1.5)
+        //
+        // L1: feature extraction     (1%)  — edge/texture detection
+        // L2: low-level patterns     (5%)  — simple shapes, phonemes
+        // L3: mid-level features     (15%) — objects, words
+        // L4: peak abstraction       (28%) — concepts, relationships
+        // L5: peak integration       (28%) — binding, reasoning
+        // L6: high-level output      (15%) — plans, responses
+        // L7: output preparation     (5%)  — motor planning, articulation
+        // L8: exit projection        (3%)  — final output mapping
+        config.num_layers = 9;
+        config.layer_sizes = nimcp_calloc(9, sizeof(uint32_t));
+        if (!config.layer_sizes) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "nimcp_brain_factory_build_base_network_config: failed to allocate layer_sizes");
+            return config;
+        }
+
+        uint32_t l1 = hidden_budget * 1 / 100;
+        if (l1 < 1024) l1 = 1024;
+        uint32_t l2 = hidden_budget * 5 / 100;
+        uint32_t l3 = hidden_budget * 15 / 100;
+        uint32_t l4 = hidden_budget * 28 / 100;
+        uint32_t l5 = hidden_budget * 28 / 100;
+        uint32_t l6 = hidden_budget * 15 / 100;
+        uint32_t l7 = hidden_budget * 5 / 100;
+        /* l8 gets the remainder to ensure total == hidden_budget */
+        uint32_t l8 = hidden_budget - l1 - l2 - l3 - l4 - l5 - l6 - l7;
+
+        config.layer_sizes[0] = num_inputs;
+        config.layer_sizes[1] = l1;     /* 1%  — feature extraction */
+        config.layer_sizes[2] = l2;     /* 5%  — low-level patterns */
+        config.layer_sizes[3] = l3;     /* 15% — mid-level features */
+        config.layer_sizes[4] = l4;     /* 28% — peak abstraction */
+        config.layer_sizes[5] = l5;     /* 28% — peak integration */
+        config.layer_sizes[6] = l6;     /* 15% — high-level output */
+        config.layer_sizes[7] = l7 + l8; /* ~8% — output preparation */
+        config.layer_sizes[8] = num_outputs;
     }
 
     // Log the architecture

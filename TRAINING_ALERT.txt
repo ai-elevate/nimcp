@@ -6443,3 +6443,12 @@ Wed Mar 25 12:13:08 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-03-25 12:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3603m old
 [2026-03-25 12:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3608m old
 [2026-03-25 12:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3613m old
+[2026-03-25 13:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 13:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3658m old
+[2026-03-25 13:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3663m old
+[2026-03-25 13:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 13:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3668m old
+[2026-03-25 13:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 13:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3673m old
+[2026-03-25 13:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 13:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3678m old
