@@ -379,6 +379,33 @@ def generate_somatosensory(description, num_segments=32):
     return result
 
 
+# Module-level frozensets for O(1) keyword lookup (avoid list recreation per call)
+_VISUAL_KW = frozenset(["ball", "sky", "cloud", "leaf", "water", "flower", "block",
+                         "cat", "rain", "candle", "snow", "bubble", "rainbow", "fire",
+                         "tree", "bird", "river", "bridge", "stair", "color", "light",
+                         "dark", "shadow", "sun", "moon", "star", "bright", "glow"])
+_AUDIO_KW = frozenset(["singing", "music", "thunder", "crash", "bark", "whisper",
+                        "rain", "wave", "wind", "tick", "tap", "crunch", "howl",
+                        "song", "melody", "loud", "quiet", "sound", "noise",
+                        "clock", "bird", "purr"])
+_SPEECH_KW = frozenset(["voice", "speak", "talk", "say", "word", "call", "cry",
+                         "laugh", "giggle", "babble", "coo", "hum", "sing",
+                         "whisper", "shout", "yell", "murmur", "chatter",
+                         "lullaby", "nursery", "rhyme", "story", "read",
+                         "mama", "papa", "grandma", "baby", "child", "person",
+                         "dog", "cat", "bird", "rooster", "cow", "frog",
+                         "crow", "goose", "duck", "owl", "cricket", "bee",
+                         "bark", "meow", "purr", "moo", "croak", "chirp",
+                         "caw", "honk", "quack", "hoot", "buzz", "howl"])
+_SOMATO_KW = frozenset(["touch", "feel", "rough", "smooth", "soft", "hard",
+                         "warm", "cold", "hot", "wet", "dry", "sticky",
+                         "fuzzy", "prickly", "bumpy", "silky", "scratchy",
+                         "heavy", "light", "pressure", "squeeze", "tickle",
+                         "fur", "wool", "sand", "grass", "stone", "clay",
+                         "silk", "velvet", "leather", "wood", "metal",
+                         "ice", "water", "mud", "fabric", "cotton", "wicker"])
+
+
 def submit_multimodal(brain, description):
     """Submit synthetic sensory data for a description to the brain.
 
@@ -388,12 +415,10 @@ def submit_multimodal(brain, description):
     desc_lower = description.lower()
 
     # Visual: anything with spatial/visual keywords
-    visual_keywords = ["ball", "sky", "cloud", "leaf", "water", "flower", "block",
-                       "cat", "rain", "candle", "snow", "bubble", "rainbow", "fire",
-                       "tree", "bird", "river", "bridge", "stair", "color", "light",
-                       "dark", "shadow", "sun", "moon", "star", "bright", "glow"]
     _sensory_submitted = []
-    if any(w in desc_lower for w in visual_keywords):
+    # Split once, intersect with frozensets — O(n_words) not O(n_words × n_keywords)
+    desc_words = set(desc_lower.split())
+    if desc_words & _VISUAL_KW:
         pixels, w, h, ch = generate_visual_frame(description)
         try:
             brain.submit_sensory("visual", pixels, width=w, height=h, channels=ch)
@@ -405,12 +430,7 @@ def submit_multimodal(brain, description):
             if submit_multimodal._v_err_count <= 3:
                 print(f"  [Sensory] visual submit failed: {e}", flush=True)
 
-    # Audio: anything with sound keywords
-    audio_keywords = ["singing", "music", "thunder", "crash", "bark", "whisper",
-                      "rain", "wave", "wind", "tick", "tap", "crunch", "howl",
-                      "song", "melody", "loud", "quiet", "sound", "noise",
-                      "clock", "bird", "purr"]
-    if any(w in desc_lower for w in audio_keywords):
+    if desc_words & _AUDIO_KW:
         samples = generate_audio_samples(description)
         mel = audio_to_mel(samples)  # Convert to mel-spectrogram for audio cortex CNN
         try:
@@ -423,18 +443,7 @@ def submit_multimodal(brain, description):
             if submit_multimodal._a_err_count <= 3:
                 print(f"  [Sensory] audio submit failed: {e}", flush=True)
 
-    # Speech: anything with voice/talking/language keywords
-    speech_keywords = ["voice", "speak", "talk", "say", "word", "call", "cry",
-                       "laugh", "giggle", "babble", "coo", "hum", "sing",
-                       "whisper", "shout", "yell", "murmur", "chatter",
-                       "lullaby", "nursery", "rhyme", "story", "read",
-                       # People/animal vocalizations (Phase 0 — newborn hears these)
-                       "mama", "papa", "grandma", "baby", "child", "person",
-                       "dog", "cat", "bird", "rooster", "cow", "frog",
-                       "crow", "goose", "duck", "owl", "cricket", "bee",
-                       "bark", "meow", "purr", "moo", "croak", "chirp",
-                       "caw", "honk", "quack", "hoot", "buzz", "howl"]
-    if any(w in desc_lower for w in speech_keywords):
+    if desc_words & _SPEECH_KW:
         samples = generate_audio_samples(description)
         try:
             brain.submit_sensory("speech", samples)
@@ -446,32 +455,24 @@ def submit_multimodal(brain, description):
             if submit_multimodal._sp_err_count <= 3:
                 print(f"  [Sensory] speech submit failed: {e}", flush=True)
 
-    # Somatosensory: encode touch/temperature/texture from description
-    somato_keywords = ["touch", "feel", "rough", "smooth", "soft", "hard",
-                       "warm", "cold", "hot", "wet", "dry", "sticky",
-                       "fuzzy", "prickly", "bumpy", "silky", "scratchy",
-                       "heavy", "light", "pressure", "squeeze", "tickle",
-                       "fur", "wool", "sand", "grass", "stone", "clay",
-                       "silk", "velvet", "leather", "wood", "metal",
-                       "ice", "water", "mud", "fabric", "cotton", "wicker"]
-    if any(w in desc_lower for w in somato_keywords):
+    if desc_words & _SOMATO_KW:
         try:
             # Inline sensory encoding: map description to texture/temperature/pressure vector
             seed = hash(description) & 0xFFFFFFFF
             rng = np.random.RandomState(seed)
             somato_vec = np.zeros(64, dtype=np.float32)
-            # Texture features (0-15): roughness, softness, etc.
-            somato_vec[0] = 0.8 if any(w in desc_lower for w in ["rough", "bumpy", "prickly", "scratchy", "wicker"]) else 0.2
-            somato_vec[1] = 0.8 if any(w in desc_lower for w in ["smooth", "silky", "soft", "velvet", "silk"]) else 0.2
-            somato_vec[2] = 0.8 if any(w in desc_lower for w in ["hard", "stone", "metal", "wood"]) else 0.2
-            somato_vec[3] = 0.8 if any(w in desc_lower for w in ["fuzzy", "fur", "wool", "cotton"]) else 0.2
+            # Texture features (0-15): use desc_words set intersection
+            somato_vec[0] = 0.8 if desc_words & {"rough", "bumpy", "prickly", "scratchy", "wicker"} else 0.2
+            somato_vec[1] = 0.8 if desc_words & {"smooth", "silky", "soft", "velvet", "silk"} else 0.2
+            somato_vec[2] = 0.8 if desc_words & {"hard", "stone", "metal", "wood"} else 0.2
+            somato_vec[3] = 0.8 if desc_words & {"fuzzy", "fur", "wool", "cotton"} else 0.2
             # Temperature features (16-23)
-            somato_vec[16] = 0.9 if any(w in desc_lower for w in ["hot", "warm", "fire"]) else 0.3
-            somato_vec[17] = 0.9 if any(w in desc_lower for w in ["cold", "ice", "cool"]) else 0.3
-            somato_vec[18] = 0.5 if any(w in desc_lower for w in ["wet", "water", "mud"]) else 0.1
+            somato_vec[16] = 0.9 if desc_words & {"hot", "warm", "fire"} else 0.3
+            somato_vec[17] = 0.9 if desc_words & {"cold", "ice", "cool"} else 0.3
+            somato_vec[18] = 0.5 if desc_words & {"wet", "water", "mud"} else 0.1
             # Pressure features (24-31)
-            somato_vec[24] = 0.7 if any(w in desc_lower for w in ["heavy", "pressure", "squeeze"]) else 0.2
-            somato_vec[25] = 0.7 if any(w in desc_lower for w in ["light", "tickle", "gentle"]) else 0.2
+            somato_vec[24] = 0.7 if desc_words & {"heavy", "pressure", "squeeze"} else 0.2
+            somato_vec[25] = 0.7 if desc_words & {"light", "tickle", "gentle"} else 0.2
             # Add per-description noise for variation
             somato_vec += rng.randn(64).astype(np.float32) * 0.05
             somato_vec = np.clip(somato_vec, 0.0, 1.0)
@@ -2110,6 +2111,10 @@ class SensoryComposer:
 
     def __init__(self, brain):
         self.brain = brain
+        self._bio_cache = None
+        self._bio_cache_time = 0.0
+        self._ctx_cache = None
+        self._ctx_cache_time = 0.0
 
     def compose(self, text=None, modality="text", primary_features=None,
                 text_embedding=None):
@@ -2130,7 +2135,7 @@ class SensoryComposer:
         # per training step (~100ms apart). Cache for 5 seconds.
         import time as _time
         now = _time.monotonic()
-        if not hasattr(self, '_bio_cache') or now - self._bio_cache_time > 5.0:
+        if self._bio_cache is None or now - self._bio_cache_time > 5.0:
             arousal, sleep_st, circadian, health_val = 0.5, 0.0, 1.0, 1.0
             try:
                 arousal = self.brain.medulla_get_arousal()
@@ -2188,7 +2193,7 @@ class SensoryComposer:
                 return default
 
         # Biological context — cached (same 5s TTL as tag brain state)
-        if not hasattr(self, '_ctx_cache') or now - self._ctx_cache_time > 5.0:
+        if self._ctx_cache is None or now - self._ctx_cache_time > 5.0:
             ctx_vals = [0.5, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0]
             try:
                 ctx_vals[0] = _safe(self.brain.medulla_get_arousal(), 0.5)
@@ -2211,8 +2216,7 @@ class SensoryComposer:
                 pass
             self._ctx_cache = ctx_vals
             self._ctx_cache_time = now
-        for i, v in enumerate(self._ctx_cache):
-            vec[ctx_start + i] = v
+        vec[ctx_start:ctx_start + 9] = self._ctx_cache
         # LNN state (32 dims) at context_start + 16..48
         try:
             lnn_state = self.brain.lnn_get_state()
@@ -2350,16 +2354,22 @@ class TargetDiversifier:
         self._mean_buffer_size = mean_buffer_size
         self._running_mean = np.zeros(embedding_dim, dtype=np.float32)
 
+    _cat_cache = {}
+
     def _detect_category(self, text):
-        """Detect category from text via keyword matching."""
-        text_lower = text.lower()
+        """Detect category from text via keyword matching. Cached."""
+        if text in self._cat_cache:
+            return self._cat_cache[text]
+        text_words = set(text.lower().split())
         best_cat = "unknown"
         best_count = 0
         for cat, keywords in self._CATEGORY_KEYWORDS.items():
-            count = sum(1 for kw in keywords if kw in text_lower)
+            count = len(text_words & set(keywords))
             if count > best_count:
                 best_count = count
                 best_cat = cat
+        if len(self._cat_cache) < 10000:
+            self._cat_cache[text] = best_cat
         return best_cat
 
     def diversify(self, embedding, text, category=None):
@@ -2424,21 +2434,18 @@ def make_semantic_target(text, target_dim=BRAIN_OUTPUT_DIM, category=None):
     emb = encode_text(text)  # 1024-dim
     emb = _target_diversifier.diversify(emb, text, category=category)
 
-    target = np.zeros(target_dim, dtype=np.float32)
-    for i in range(0, target_dim, len(emb)):
-        n = min(len(emb), target_dim - i)
-        target[i:i + n] = emb[:n]
+    emb_len = len(emb)
+    reps = (target_dim + emb_len - 1) // emb_len
+    target = np.tile(emb, reps)[:target_dim].astype(np.float32)
     return target.tolist()
 
 
 def tile_to_brain_input(embedding, dim=BRAIN_INPUT_DIM):
     """Tile a shorter embedding to brain input dimension."""
-    vec = np.zeros(dim, dtype=np.float32)
-    emb = np.array(embedding, dtype=np.float32)
-    for i in range(0, dim, len(emb)):
-        n = min(len(emb), dim - i)
-        vec[i:i + n] = emb[:n]
-    return vec.tolist()
+    emb = np.asarray(embedding, dtype=np.float32)
+    emb_len = len(emb)
+    reps = (dim + emb_len - 1) // emb_len
+    return np.tile(emb, reps)[:dim].tolist()
 
 
 def _inject_cognitive_training(brain, composer, step, learning_rate,
