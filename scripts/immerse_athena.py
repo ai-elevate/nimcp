@@ -140,19 +140,18 @@ def generate_sensory_exposure():
 # Synthetic Sensory Data Generators (for multimodal SNN bridge training)
 # ============================================================================
 
-_visual_frame_cache = {}
+from functools import lru_cache
 
+
+@lru_cache(maxsize=4096)
 def generate_visual_frame(description, width=32, height=32, channels=3):
     """Generate a simple synthetic visual frame from a text description.
 
     Creates a deterministic color/pattern image seeded by the description hash.
     Not photorealistic — just enough to give the visual SNN bridge meaningful
     spatial patterns to encode (edges, gradients, color regions).
-    Memoized — same description always produces same frame.
+    Memoized via lru_cache — C-speed hash lookup.
     """
-    cache_key = (description, width, height, channels)
-    if cache_key in _visual_frame_cache:
-        return _visual_frame_cache[cache_key]
     seed = hash(description) & 0xFFFFFFFF
     rng = np.random.RandomState(seed)
 
@@ -197,24 +196,17 @@ def generate_visual_frame(description, width=32, height=32, channels=3):
         noise = rng.randint(0, 40, (height, width, channels), dtype=np.uint8)
         frame = np.clip(frame.astype(np.int16) + noise, 0, 255).astype(np.uint8)
 
-    result = (frame.tobytes(), width, height, channels)
-    if len(_visual_frame_cache) < 5000:
-        _visual_frame_cache[cache_key] = result
-    return result
+    return (frame.tobytes(), width, height, channels)
 
 
-_audio_samples_cache = {}
-
+@lru_cache(maxsize=4096)
 def generate_audio_samples(description, num_samples=512, sample_rate=16000):
     """Generate synthetic audio waveform from a text description.
-    Memoized — same description produces same audio.
+    Memoized via lru_cache.
 
     Creates simple tones, noise patterns, or silence based on keywords.
     Returns float array in [-1, 1] range for SNN audio bridge encoding.
     """
-    cache_key = (description, num_samples)
-    if cache_key in _audio_samples_cache:
-        return _audio_samples_cache[cache_key]
     seed = hash(description) & 0xFFFFFFFF
     rng = np.random.RandomState(seed)
     t = np.linspace(0, num_samples / sample_rate, num_samples, dtype=np.float32)
@@ -265,10 +257,7 @@ def generate_audio_samples(description, num_samples=512, sample_rate=16000):
     if peak > 1e-6:
         signal = signal / peak * 0.9
 
-    result = signal.tolist()
-    if len(_audio_samples_cache) < 5000:
-        _audio_samples_cache[cache_key] = result
-    return result
+    return signal.tolist()
 
 
 _mel_cache = {}
@@ -341,16 +330,13 @@ def audio_to_mel(samples, n_mels=128, sample_rate=16000):
     return result
 
 
-_somato_cache = {}
-
+@lru_cache(maxsize=4096)
 def generate_somatosensory(description, num_segments=32):
     """Generate synthetic somatosensory (touch/proprioception) data.
-    Memoized — same description produces same output.
+    Memoized via lru_cache.
 
     Returns float array of joint-angle/pressure values in [0, 1].
     """
-    if description in _somato_cache:
-        return _somato_cache[description]
     seed = hash(description) & 0xFFFFFFFF
     rng = np.random.RandomState(seed)
     data = np.zeros(num_segments, dtype=np.float32)
@@ -373,10 +359,7 @@ def generate_somatosensory(description, num_segments=32):
     else:
         data[:] = 0.3 + rng.random(num_segments).astype(np.float32) * 0.2
 
-    result = data.tolist()
-    if len(_somato_cache) < 5000:
-        _somato_cache[description] = result
-    return result
+    return data.tolist()
 
 
 # Module-level frozensets for O(1) keyword lookup (avoid list recreation per call)
@@ -2354,12 +2337,9 @@ class TargetDiversifier:
         self._mean_buffer_size = mean_buffer_size
         self._running_mean = np.zeros(embedding_dim, dtype=np.float32)
 
-    _cat_cache = {}
-
+    @lru_cache(maxsize=8192)
     def _detect_category(self, text):
-        """Detect category from text via keyword matching. Cached."""
-        if text in self._cat_cache:
-            return self._cat_cache[text]
+        """Detect category from text via keyword matching. Cached via lru_cache."""
         text_words = set(text.lower().split())
         best_cat = "unknown"
         best_count = 0
@@ -2368,8 +2348,6 @@ class TargetDiversifier:
             if count > best_count:
                 best_count = count
                 best_cat = cat
-        if len(self._cat_cache) < 10000:
-            self._cat_cache[text] = best_cat
         return best_cat
 
     def diversify(self, embedding, text, category=None):
