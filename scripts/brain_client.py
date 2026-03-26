@@ -156,9 +156,18 @@ class BrainProxy:
 
     def learn_vector(self, features, target, label=None, confidence=None,
                      learning_rate=None):
-        req = {"cmd": "learn_vector",
-               "features": _to_list(features),
-               "target": _to_list(target)}
+        # Fast path: encode float arrays as base64 binary within JSON.
+        # JSON float list: 4096 floats → ~50KB text (12 bytes/float as string).
+        # Base64 f32:     4096 floats → ~22KB text (4 bytes/float × 4/3 base64).
+        # Saves ~3ms serialization + ~2ms network per call.
+        import numpy as np
+        from base64 import b64encode
+        f_arr = np.asarray(features, dtype=np.float32)
+        t_arr = np.asarray(target, dtype=np.float32)
+        req = {"cmd": "learn_vector_bin",
+               "f_b64": b64encode(f_arr.tobytes()).decode("ascii"),
+               "t_b64": b64encode(t_arr.tobytes()).decode("ascii"),
+               "f_len": len(f_arr), "t_len": len(t_arr)}
         if label is not None:
             req["label"] = label
         if confidence is not None:

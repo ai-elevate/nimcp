@@ -191,6 +191,26 @@ class BrainService:
             self.checkpointer.notify_training_step()
         return {"loss": loss}
 
+    def _cmd_learn_vector_bin(self, req):
+        """Fast binary learn_vector — float arrays as base64 instead of JSON lists."""
+        import numpy as np
+        from base64 import b64decode
+        features = np.frombuffer(b64decode(req["f_b64"]), dtype=np.float32).tolist()
+        target = np.frombuffer(b64decode(req["t_b64"]), dtype=np.float32).tolist()
+        kwargs = {}
+        if "label" in req:
+            kwargs["label"] = req["label"]
+        if "confidence" in req:
+            kwargs["confidence"] = req["confidence"]
+        if "learning_rate" in req:
+            kwargs["learning_rate"] = req["learning_rate"]
+        with self._lock:
+            loss = self.brain.learn_vector(features, target, **kwargs)
+        self._stats["learn_calls"] += 1
+        if hasattr(self, 'checkpointer') and self.checkpointer:
+            self.checkpointer.notify_training_step()
+        return {"loss": loss}
+
     def _cmd_learn_vector_batch(self, req):
         pairs = req["pairs"]
         kwargs = {}
