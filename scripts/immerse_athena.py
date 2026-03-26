@@ -5303,10 +5303,10 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                       f"for {early_stop.patience} evals")
                 break
 
-        # Chat eval every 2000 stimuli + on-demand via trigger file
-        if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
-            if os.path.exists("/tmp/athena_chat_now"):
-                os.remove("/tmp/athena_chat_now")
+        # Chat eval disabled for Stage 0 — OOM risk with 2.5M neurons.
+        # Enable manually via: touch /tmp/athena_chat_now
+        if os.path.exists("/tmp/athena_chat_now"):
+            os.remove("/tmp/athena_chat_now")
             chat_eval(brain, composer, decoder, stage=0, step=i+1)
 
         # Inspire every 2000 stimuli
@@ -5529,10 +5529,11 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 500 == 0:
             parent.teach_speech(brain, composer, stage=1)
 
-        # Chat eval every 2000 + on-demand
-        if (i + 1) % 2000 == 0 or os.path.exists("/tmp/athena_chat_now"):
-            if os.path.exists("/tmp/athena_chat_now"):
-                os.remove("/tmp/athena_chat_now")
+        # Chat eval disabled for Stage 1 — OOM risk with 2.5M neurons + 77K vocab decoder.
+        # Loss metrics from every step are sufficient for monitoring.
+        # Enable manually via: touch /tmp/athena_chat_now
+        if os.path.exists("/tmp/athena_chat_now"):
+            os.remove("/tmp/athena_chat_now")
             chat_eval(brain, composer, decoder, stage=1, step=i+1)
 
         # Inspire every 5000
