@@ -1419,6 +1419,25 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 if (emb) cortex_cnn_backward(brain->cortex_cnns[3], label, num_out);
             }
         }
+
+        /* SNN step: run spiking network with current input features.
+         * The UTM adapter may or may not step the SNN (depends on registration timing).
+         * Call directly here to guarantee the SNN gets stepped every learn_vector. */
+        if (brain->snn_network && brain->snn_training_ctx) {
+            training_dispatch_result_t snn_res = {0};
+            training_dispatch_snn_step(brain, features, num_features,
+                                       target, target_size, &snn_res);
+            if (snn_res.loss >= 0.0f && isfinite(snn_res.loss)) {
+                const float a = 0.01f;
+                brain->network_metrics.last_snn_loss = snn_res.loss;
+                brain->network_metrics.snn_steps++;
+                if (!isfinite(brain->network_metrics.ema_snn_loss))
+                    brain->network_metrics.ema_snn_loss = snn_res.loss;
+                else
+                    brain->network_metrics.ema_snn_loss =
+                        (1.0f - a) * brain->network_metrics.ema_snn_loss + a * snn_res.loss;
+            }
+        }
     } else {
         /* Legacy path: secondary networks learn IN PARALLEL (after adaptive completes) */
         bool has_cnn = (label && label[0]) && brain->config.train_cnn;
