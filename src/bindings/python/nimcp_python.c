@@ -1764,28 +1764,37 @@ static PyObject* Brain_get_snn_stats(BrainObject* self, PyObject* args) {
     brain_t ib = self->brain->internal_brain;
     if (!ib->snn_network) Py_RETURN_NONE;
 
-    /* Use a byte buffer matching snn_stats_t layout */
+    /* Match snn_stats_t exactly: starts with uint64_t, NOT uint32_t */
     struct {
-        uint32_t n_populations, total_neurons;
-        uint64_t total_steps, total_spikes;
-        double total_compute_time_ms, avg_step_time_ms;
-        float mean_firing_rate, max_firing_rate, sparsity, synchrony;
-        float spikes_per_sample, energy_per_spike;
+        uint64_t total_steps;
+        uint64_t total_spikes;
+        double total_compute_time_ms;
+        double avg_step_time_ms;
+        float mean_firing_rate;
+        float max_firing_rate;
+        float sparsity;
+        float synchrony;
+        float spikes_per_sample;
+        float energy_per_spike;
         int health;
-        uint32_t silent_neurons, hyperactive_neurons;
+        uint32_t silent_neurons;
+        uint32_t hyperactive_neurons;
         size_t memory_usage_bytes;
     } st;
     memset(&st, 0, sizeof(st));
-    /* Call via function pointer to avoid header conflict */
     int (*fn)(void*, void*) = (int(*)(void*,void*))snn_network_get_stats;
     fn(ib->snn_network, &st);
+
+    /* Get n_populations from network struct (offset: magic(4)+id(4)+name(64)+neural_net(8)+populations(8) = 88) */
+    typedef struct { uint32_t magic; uint32_t id; char name[64]; void* nn; void* pops; uint32_t n_pops; } snn_hdr_t;
+    uint32_t n_pops = ((snn_hdr_t*)ib->snn_network)->n_pops;
 
     PyObject* d = PyDict_New();
     if (!d) return NULL;
     PyObject* tmp;
 #define S(k,v) tmp=PyLong_FromUnsignedLongLong(v);PyDict_SetItemString(d,k,tmp);Py_DECREF(tmp);
 #define F(k,v) tmp=PyFloat_FromDouble(v);PyDict_SetItemString(d,k,tmp);Py_DECREF(tmp);
-    S("n_populations", st.n_populations); S("total_neurons", st.total_neurons);
+    S("n_populations", n_pops);
     S("total_steps", st.total_steps); S("total_spikes", st.total_spikes);
     F("mean_firing_rate_hz", st.mean_firing_rate); F("max_firing_rate_hz", st.max_firing_rate);
     F("sparsity", st.sparsity); F("synchrony", st.synchrony);
