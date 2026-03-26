@@ -916,6 +916,9 @@ neural_network_t neural_network_create(const network_config_t* config)
         }
         if (meta_initial < 100000) meta_initial = 100000;
         if (meta_initial > SPARSE_SYNAPSE_MAX_POOL_SIZE) meta_initial = SPARSE_SYNAPSE_MAX_POOL_SIZE;
+        // Cap initial allocation to 5M slots (~260 MB) — pool grows on demand.
+        // Pre-allocating 50M+ slots wastes 2.6+ GB upfront and causes swap thrashing.
+        if (meta_initial > 5000000) meta_initial = 5000000;
         mpool_cfg.pool_size = meta_initial;
         mpool_cfg.enable_statistics = true;
         mpool_cfg.thread_safe = true;
