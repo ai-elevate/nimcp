@@ -814,16 +814,12 @@ semantic_query_result_t* semantic_memory_find_similar(
         return NULL;
     }
 
-    // Compute similarities — iterate up to snapshot_count (safe: new concepts
-    // added after snapshot are at indices >= snapshot_count, old pointers stable)
+    // Compute similarities under lock — prevents CoW refcount decrement from
+    // freeing concept->features while we're reading them.
+    // Hold mutex for full iteration (concepts ≤ 2048, each similarity is O(32 floats) = fast).
+    if (system->mutex) nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     uint32_t match_count = 0;
     for (uint32_t i = 0; i < snapshot_count; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && snapshot_count > 256) {
-            semantic_memory_heartbeat("semantic_mem_loop",
-                             (float)(i + 1) / (float)snapshot_count);
-        }
-
         semantic_concept_t* concept = system->concepts[i];
         if (!concept || !concept->features) continue;
 
@@ -835,6 +831,7 @@ semantic_query_result_t* semantic_memory_find_similar(
             match_count++;
         }
     }
+    if (system->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     // Return top N results
     uint32_t return_count = (match_count < max_results) ?
