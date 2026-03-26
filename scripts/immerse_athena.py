@@ -363,9 +363,11 @@ def submit_multimodal(brain, description):
             brain.submit_sensory("visual", pixels, width=w, height=h, channels=ch)
             _sensory_submitted.append("V")
         except Exception as e:
-            if not hasattr(submit_multimodal, '_v_err_logged'):
+            if not hasattr(submit_multimodal, '_v_err_count'):
+                submit_multimodal._v_err_count = 0
+            submit_multimodal._v_err_count += 1
+            if submit_multimodal._v_err_count <= 3:
                 print(f"  [Sensory] visual submit failed: {e}", flush=True)
-                submit_multimodal._v_err_logged = True
 
     # Audio: anything with sound keywords
     audio_keywords = ["singing", "music", "thunder", "crash", "bark", "whisper",
@@ -379,9 +381,11 @@ def submit_multimodal(brain, description):
             brain.submit_sensory("audio", mel)
             _sensory_submitted.append("A")
         except Exception as e:
-            if not hasattr(submit_multimodal, '_a_err_logged'):
+            if not hasattr(submit_multimodal, '_a_err_count'):
+                submit_multimodal._a_err_count = 0
+            submit_multimodal._a_err_count += 1
+            if submit_multimodal._a_err_count <= 3:
                 print(f"  [Sensory] audio submit failed: {e}", flush=True)
-                submit_multimodal._a_err_logged = True
 
     # Speech: anything with voice/talking/language keywords
     speech_keywords = ["voice", "speak", "talk", "say", "word", "call", "cry",
@@ -400,22 +404,50 @@ def submit_multimodal(brain, description):
             brain.submit_sensory("speech", samples)
             _sensory_submitted.append("Sp")
         except Exception as e:
-            if not hasattr(submit_multimodal, '_sp_err_logged'):
+            if not hasattr(submit_multimodal, '_sp_err_count'):
+                submit_multimodal._sp_err_count = 0
+            submit_multimodal._sp_err_count += 1
+            if submit_multimodal._sp_err_count <= 3:
                 print(f"  [Sensory] speech submit failed: {e}", flush=True)
-                submit_multimodal._sp_err_logged = True
 
     # Somatosensory: encode touch/temperature/texture from description
-    try:
-        from sensory_encoder import encode_sensory
-        somato_vec = encode_sensory(description)
-        if somato_vec is not None:
+    somato_keywords = ["touch", "feel", "rough", "smooth", "soft", "hard",
+                       "warm", "cold", "hot", "wet", "dry", "sticky",
+                       "fuzzy", "prickly", "bumpy", "silky", "scratchy",
+                       "heavy", "light", "pressure", "squeeze", "tickle",
+                       "fur", "wool", "sand", "grass", "stone", "clay",
+                       "silk", "velvet", "leather", "wood", "metal",
+                       "ice", "water", "mud", "fabric", "cotton", "wicker"]
+    if any(w in desc_lower for w in somato_keywords):
+        try:
+            # Inline sensory encoding: map description to texture/temperature/pressure vector
+            seed = hash(description) & 0xFFFFFFFF
+            rng = np.random.RandomState(seed)
+            somato_vec = np.zeros(64, dtype=np.float32)
+            # Texture features (0-15): roughness, softness, etc.
+            somato_vec[0] = 0.8 if any(w in desc_lower for w in ["rough", "bumpy", "prickly", "scratchy", "wicker"]) else 0.2
+            somato_vec[1] = 0.8 if any(w in desc_lower for w in ["smooth", "silky", "soft", "velvet", "silk"]) else 0.2
+            somato_vec[2] = 0.8 if any(w in desc_lower for w in ["hard", "stone", "metal", "wood"]) else 0.2
+            somato_vec[3] = 0.8 if any(w in desc_lower for w in ["fuzzy", "fur", "wool", "cotton"]) else 0.2
+            # Temperature features (16-23)
+            somato_vec[16] = 0.9 if any(w in desc_lower for w in ["hot", "warm", "fire"]) else 0.3
+            somato_vec[17] = 0.9 if any(w in desc_lower for w in ["cold", "ice", "cool"]) else 0.3
+            somato_vec[18] = 0.5 if any(w in desc_lower for w in ["wet", "water", "mud"]) else 0.1
+            # Pressure features (24-31)
+            somato_vec[24] = 0.7 if any(w in desc_lower for w in ["heavy", "pressure", "squeeze"]) else 0.2
+            somato_vec[25] = 0.7 if any(w in desc_lower for w in ["light", "tickle", "gentle"]) else 0.2
+            # Add per-description noise for variation
+            somato_vec += rng.randn(64).astype(np.float32) * 0.05
+            somato_vec = np.clip(somato_vec, 0.0, 1.0)
             brain.submit_sensory("somatosensory", somato_vec.tolist(),
                                 n_segments=len(somato_vec))
             _sensory_submitted.append("S")
-    except Exception as e:
-        if not hasattr(submit_multimodal, '_s_err_logged'):
-            print(f"  [Sensory] somato submit failed: {e}", flush=True)
-            submit_multimodal._s_err_logged = True
+        except Exception as e:
+            if not hasattr(submit_multimodal, '_s_err_count'):
+                submit_multimodal._s_err_count = 0
+            submit_multimodal._s_err_count += 1
+            if submit_multimodal._s_err_count <= 3:
+                print(f"  [Sensory] somato submit failed: {e}", flush=True)
 
     # Cross-modal integration: process through visual cortex (occipital)
     # and focus thalamic attention on the active modalities. This triggers

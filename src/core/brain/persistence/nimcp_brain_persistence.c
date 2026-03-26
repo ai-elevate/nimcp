@@ -1322,6 +1322,20 @@ brain_t brain_load(const char* filepath)
                  * to [0,1]. Scale 70 maps input 0.3 → 21mV (suprathreshold). */
                 snn->config.input_current_scale = 70.0f;
                 fprintf(stderr, "[INFO] Restored SNN network from %s (input_scale=70)\n", sec_path);
+
+                /* Wire inter-population connections if missing (checkpoint load
+                 * recreates populations but doesn't wire them — BPTT needs synapses) */
+                extern int snn_network_connect_populations(
+                    struct snn_network_s*, uint32_t, uint32_t,
+                    float, float, float, int);
+                if (snn->n_populations >= 2) {
+                    for (uint32_t p = 0; p < snn->n_populations - 1; p++) {
+                        snn_network_connect_populations(snn, p, p + 1,
+                            0.5f, 0.1f, 0.5f, 0);  /* mean=0.5, std=0.1, prob=50% */
+                    }
+                    fprintf(stderr, "[INFO] SNN population wiring: %u sequential connections\n",
+                            snn->n_populations - 1);
+                }
             }
         }
 
