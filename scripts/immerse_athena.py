@@ -140,13 +140,19 @@ def generate_sensory_exposure():
 # Synthetic Sensory Data Generators (for multimodal SNN bridge training)
 # ============================================================================
 
+_visual_frame_cache = {}
+
 def generate_visual_frame(description, width=32, height=32, channels=3):
     """Generate a simple synthetic visual frame from a text description.
 
     Creates a deterministic color/pattern image seeded by the description hash.
     Not photorealistic — just enough to give the visual SNN bridge meaningful
     spatial patterns to encode (edges, gradients, color regions).
+    Memoized — same description always produces same frame.
     """
+    cache_key = (description, width, height, channels)
+    if cache_key in _visual_frame_cache:
+        return _visual_frame_cache[cache_key]
     seed = hash(description) & 0xFFFFFFFF
     rng = np.random.RandomState(seed)
 
@@ -191,15 +197,24 @@ def generate_visual_frame(description, width=32, height=32, channels=3):
         noise = rng.randint(0, 40, (height, width, channels), dtype=np.uint8)
         frame = np.clip(frame.astype(np.int16) + noise, 0, 255).astype(np.uint8)
 
-    return frame.tobytes(), width, height, channels
+    result = (frame.tobytes(), width, height, channels)
+    if len(_visual_frame_cache) < 5000:
+        _visual_frame_cache[cache_key] = result
+    return result
 
+
+_audio_samples_cache = {}
 
 def generate_audio_samples(description, num_samples=512, sample_rate=16000):
     """Generate synthetic audio waveform from a text description.
+    Memoized — same description produces same audio.
 
     Creates simple tones, noise patterns, or silence based on keywords.
     Returns float array in [-1, 1] range for SNN audio bridge encoding.
     """
+    cache_key = (description, num_samples)
+    if cache_key in _audio_samples_cache:
+        return _audio_samples_cache[cache_key]
     seed = hash(description) & 0xFFFFFFFF
     rng = np.random.RandomState(seed)
     t = np.linspace(0, num_samples / sample_rate, num_samples, dtype=np.float32)
@@ -250,16 +265,26 @@ def generate_audio_samples(description, num_samples=512, sample_rate=16000):
     if peak > 1e-6:
         signal = signal / peak * 0.9
 
-    return signal.tolist()
+    result = signal.tolist()
+    if len(_audio_samples_cache) < 5000:
+        _audio_samples_cache[cache_key] = result
+    return result
 
+
+_mel_cache = {}
 
 def audio_to_mel(samples, n_mels=128, sample_rate=16000):
     """Convert raw audio samples to a simple mel-like spectral representation.
+    Memoized by sample content hash.
 
     Uses a basic FFT → mel filterbank → log compression pipeline.
     Not a proper librosa mel — just enough to give the audio cortex CNN
     meaningful frequency-domain features to learn from.
     """
+    # Cache by tuple of first/last 4 samples + length (fast hash proxy)
+    cache_key = (len(samples), tuple(samples[:4]), tuple(samples[-4:])) if len(samples) >= 8 else tuple(samples)
+    if cache_key in _mel_cache:
+        return _mel_cache[cache_key]
     signal = np.array(samples, dtype=np.float32)
     n_fft = min(512, len(signal))
     hop = n_fft // 2
@@ -310,14 +335,22 @@ def audio_to_mel(samples, n_mels=128, sample_rate=16000):
     if peak > 1e-6:
         mel_spec /= peak
 
-    return mel_spec.tolist()
+    result = mel_spec.tolist()
+    if len(_mel_cache) < 5000:
+        _mel_cache[cache_key] = result
+    return result
 
+
+_somato_cache = {}
 
 def generate_somatosensory(description, num_segments=32):
     """Generate synthetic somatosensory (touch/proprioception) data.
+    Memoized — same description produces same output.
 
     Returns float array of joint-angle/pressure values in [0, 1].
     """
+    if description in _somato_cache:
+        return _somato_cache[description]
     seed = hash(description) & 0xFFFFFFFF
     rng = np.random.RandomState(seed)
     data = np.zeros(num_segments, dtype=np.float32)
@@ -340,7 +373,10 @@ def generate_somatosensory(description, num_segments=32):
     else:
         data[:] = 0.3 + rng.random(num_segments).astype(np.float32) * 0.2
 
-    return data.tolist()
+    result = data.tolist()
+    if len(_somato_cache) < 5000:
+        _somato_cache[description] = result
+    return result
 
 
 def submit_multimodal(brain, description):
