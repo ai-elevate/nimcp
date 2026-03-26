@@ -1366,8 +1366,10 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         /* Cortex CNN modality-specific training — runs AFTER UTM step.
          * UTM adapter uses cortex_forward_1d (flat 1D input) which doesn't match
          * visual (3-channel 2D) or somato (segment encoding) architectures.
-         * Run proper modality-specific forward+backward here for all cortexes. */
+         * Run proper modality-specific forward+backward here for all cortexes.
+         * Also handles lazy creation since the legacy else-branch doesn't run. */
         if (label && label[0]) {
+            extern struct cortex_cnn_processor* cortex_cnn_create(uint32_t type, uint32_t embed_dim);
             extern float cortex_cnn_backward(struct cortex_cnn_processor* proc,
                                               const char* label, uint32_t num_outputs);
             extern const float* cortex_cnn_forward_visual(struct cortex_cnn_processor* proc,
@@ -1379,6 +1381,16 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             extern const float* cortex_cnn_forward_somato(struct cortex_cnn_processor* proc,
                 const float* segments, uint32_t n_segments);
             uint32_t num_out = brain->config.num_outputs;
+
+            /* Lazy creation: create cortex CNN when sensory data first arrives */
+            if (brain->staged_sensory.visual_frame && !brain->cortex_cnns[0])
+                brain->cortex_cnns[0] = cortex_cnn_create(0, 0);
+            if (brain->staged_sensory.audio_data && !brain->cortex_cnns[1])
+                brain->cortex_cnns[1] = cortex_cnn_create(1, 0);
+            if (brain->staged_sensory.speech_data && !brain->cortex_cnns[2])
+                brain->cortex_cnns[2] = cortex_cnn_create(2, 0);
+            if (brain->staged_sensory.somato_data && !brain->cortex_cnns[3])
+                brain->cortex_cnns[3] = cortex_cnn_create(3, 0);
 
             if (brain->cortex_cnns[0] && brain->staged_sensory.visual_frame) {
                 const float* emb = cortex_cnn_forward_visual(brain->cortex_cnns[0],

@@ -521,13 +521,27 @@ int snn_network_step(snn_network_t* network, float dt) {
                 continue;
             }
 
-            /* Get synaptic input from underlying neural network */
+            /* Get synaptic input: external current + weighted sum of presynaptic spikes */
             float I_syn = 0.0f;
             if (network->neural_net && n < pop->n_neurons) {
                 neuron_t* neuron = neural_network_get_neuron(
                     network->neural_net, pop->neuron_ids[n]);
                 if (neuron) {
                     I_syn = neuron->external_current;
+                    /* Sum incoming synaptic currents from neurons that spiked last step.
+                     * Each incoming synapse contributes weight * presynaptic_spike. */
+                    uint32_t in_count = neuron->incoming.embedded_count
+                                      + neuron->incoming.overflow_count;
+                    for (uint32_t s = 0; s < in_count; s++) {
+                        synapse_handle_t* h = sparse_synapse_get(&neuron->incoming, s);
+                        if (!h) continue;
+                        /* Check if presynaptic neuron spiked (look up its spike output) */
+                        uint32_t pre_id = h->target_neuron_id; /* incoming: target = source */
+                        neuron_t* pre = neural_network_get_neuron(network->neural_net, pre_id);
+                        if (pre && pre->state > 0.5f) {
+                            I_syn += h->weight;
+                        }
+                    }
                 }
             }
 
@@ -541,10 +555,24 @@ int snn_network_step(snn_network_t* network, float dt) {
                 v_data[n] = v_reset;
                 ref_data[n] = network->config.t_ref;
 
-                /* Record spike */
+                /* Record spike + propagate to neural_net for synaptic current summation */
                 record_spike(&pop->spike_trains[n], network->sim->current_time_us);
                 total_spikes++;
                 pop->total_spikes++;
+
+                /* Set activation=1 on underlying neuron so downstream neurons detect the spike */
+                if (network->neural_net) {
+                    neuron_t* spiked = neural_network_get_neuron(
+                        network->neural_net, pop->neuron_ids[n]);
+                    if (spiked) spiked->state = 1.0f;
+                }
+            } else {
+                /* No spike: clear activation for this step */
+                if (network->neural_net) {
+                    neuron_t* quiet = neural_network_get_neuron(
+                        network->neural_net, pop->neuron_ids[n]);
+                    if (quiet) quiet->state = 0.0f;
+                }
             }
         }
     }
