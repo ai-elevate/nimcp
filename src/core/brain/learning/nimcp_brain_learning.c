@@ -1608,31 +1608,34 @@ sequential_training:
         /* Forward + backward for each cortex with available data */
         uint32_t num_out = brain->config.num_outputs;
 
+        /* Cortex CNN training: forward with modality-specific input, then backward.
+         * Check forward return value directly — has_fwd_result can be clobbered by
+         * the UTM adapter calling cortex_forward_1d between our forward and backward. */
         if (brain->cortex_cnns[0] && brain->staged_sensory.visual_frame) {
-            cortex_cnn_forward_visual(brain->cortex_cnns[0],
+            const float* emb = cortex_cnn_forward_visual(brain->cortex_cnns[0],
                 brain->staged_sensory.visual_frame,
                 brain->staged_sensory.visual_width,
                 brain->staged_sensory.visual_height,
                 brain->staged_sensory.visual_channels);
-            cortex_cnn_backward(brain->cortex_cnns[0], label, num_out);
+            if (emb) cortex_cnn_backward(brain->cortex_cnns[0], label, num_out);
         }
         if (brain->cortex_cnns[1] && brain->staged_sensory.audio_data) {
-            cortex_cnn_forward_audio(brain->cortex_cnns[1],
+            const float* emb = cortex_cnn_forward_audio(brain->cortex_cnns[1],
                 brain->staged_sensory.audio_data,
                 brain->staged_sensory.audio_size);
-            cortex_cnn_backward(brain->cortex_cnns[1], label, num_out);
+            if (emb) cortex_cnn_backward(brain->cortex_cnns[1], label, num_out);
         }
         if (brain->cortex_cnns[2] && brain->staged_sensory.speech_data) {
-            cortex_cnn_forward_speech(brain->cortex_cnns[2],
+            const float* emb = cortex_cnn_forward_speech(brain->cortex_cnns[2],
                 brain->staged_sensory.speech_data,
                 brain->staged_sensory.speech_size);
-            cortex_cnn_backward(brain->cortex_cnns[2], label, num_out);
+            if (emb) cortex_cnn_backward(brain->cortex_cnns[2], label, num_out);
         }
         if (brain->cortex_cnns[3] && brain->staged_sensory.somato_data) {
-            cortex_cnn_forward_somato(brain->cortex_cnns[3],
+            const float* emb = cortex_cnn_forward_somato(brain->cortex_cnns[3],
                 brain->staged_sensory.somato_data,
                 brain->staged_sensory.somato_segments);
-            cortex_cnn_backward(brain->cortex_cnns[3], label, num_out);
+            if (emb) cortex_cnn_backward(brain->cortex_cnns[3], label, num_out);
         }
     }
 
