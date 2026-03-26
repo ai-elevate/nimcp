@@ -2089,26 +2089,35 @@ class SensoryComposer:
         mod_idx = modality_map.get(modality, 0)
         vec[mod_idx] = 1.0
 
-        # Brain state in tags
-        try:
-            vec[8] = self.brain.medulla_get_arousal()
-        except Exception:
-            vec[8] = 0.5
-        try:
-            vec[9] = float(self.brain.sleep_get_state()) / 4.0
-        except Exception:
-            vec[9] = 0.0
-        try:
-            vec[10] = self.brain.medulla_get_circadian_efficiency()
-        except Exception:
-            vec[10] = 1.0
-        try:
-            health = self.brain.substrate_get_health()
-            health_map = {"OPTIMAL": 1.0, "STRESSED": 0.7,
-                          "COMPROMISED": 0.4, "CRITICAL": 0.1}
-            vec[11] = health_map.get(health, 0.5)
-        except Exception:
-            vec[11] = 1.0
+        # Brain state in tags — cached to avoid 4 daemon round-trips per compose.
+        # Brain state changes slowly (seconds); compose is called multiple times
+        # per training step (~100ms apart). Cache for 5 seconds.
+        import time as _time
+        now = _time.monotonic()
+        if not hasattr(self, '_bio_cache') or now - self._bio_cache_time > 5.0:
+            arousal, sleep_st, circadian, health_val = 0.5, 0.0, 1.0, 1.0
+            try:
+                arousal = self.brain.medulla_get_arousal()
+            except Exception:
+                pass
+            try:
+                sleep_st = float(self.brain.sleep_get_state()) / 4.0
+            except Exception:
+                pass
+            try:
+                circadian = self.brain.medulla_get_circadian_efficiency()
+            except Exception:
+                pass
+            try:
+                health = self.brain.substrate_get_health()
+                health_map = {"OPTIMAL": 1.0, "STRESSED": 0.7,
+                              "COMPROMISED": 0.4, "CRITICAL": 0.1}
+                health_val = health_map.get(health, 0.5)
+            except Exception:
+                pass
+            self._bio_cache = (arousal, sleep_st, circadian, health_val)
+            self._bio_cache_time = now
+        vec[8], vec[9], vec[10], vec[11] = self._bio_cache
 
         # --- Primary features [16:656] ---
         if primary_features is not None:
@@ -2142,25 +2151,32 @@ class SensoryComposer:
             except (TypeError, ValueError):
                 return default
 
-        try:
-            vec[ctx_start] = _safe(self.brain.medulla_get_arousal(), 0.5)
-            vec[ctx_start + 1] = _safe(self.brain.sleep_get_pressure())
-            vec[ctx_start + 2] = _safe(self.brain.medulla_get_circadian_efficiency(), 1.0)
-        except Exception:
-            pass
-        try:
-            vec[ctx_start + 3] = _safe(self.brain.bg_get_dopamine())
-            vec[ctx_start + 4] = _safe(self.brain.bg_get_rpe())
-            vec[ctx_start + 5] = _safe(self.brain.bg_get_conflict())
-            vec[ctx_start + 6] = _safe(self.brain.bg_get_mode())
-        except Exception:
-            pass
-        try:
-            met = self.brain.substrate_get_metabolic()
-            vec[ctx_start + 7] = _safe(met.get("atp", 1.0), 1.0)
-            vec[ctx_start + 8] = _safe(met.get("capacity", 1.0), 1.0)
-        except Exception:
-            pass
+        # Biological context — cached (same 5s TTL as tag brain state)
+        if not hasattr(self, '_ctx_cache') or now - self._ctx_cache_time > 5.0:
+            ctx_vals = [0.5, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0]
+            try:
+                ctx_vals[0] = _safe(self.brain.medulla_get_arousal(), 0.5)
+                ctx_vals[1] = _safe(self.brain.sleep_get_pressure())
+                ctx_vals[2] = _safe(self.brain.medulla_get_circadian_efficiency(), 1.0)
+            except Exception:
+                pass
+            try:
+                ctx_vals[3] = _safe(self.brain.bg_get_dopamine())
+                ctx_vals[4] = _safe(self.brain.bg_get_rpe())
+                ctx_vals[5] = _safe(self.brain.bg_get_conflict())
+                ctx_vals[6] = _safe(self.brain.bg_get_mode())
+            except Exception:
+                pass
+            try:
+                met = self.brain.substrate_get_metabolic()
+                ctx_vals[7] = _safe(met.get("atp", 1.0), 1.0)
+                ctx_vals[8] = _safe(met.get("capacity", 1.0), 1.0)
+            except Exception:
+                pass
+            self._ctx_cache = ctx_vals
+            self._ctx_cache_time = now
+        for i, v in enumerate(self._ctx_cache):
+            vec[ctx_start + i] = v
         # LNN state (32 dims) at context_start + 16..48
         try:
             lnn_state = self.brain.lnn_get_state()
