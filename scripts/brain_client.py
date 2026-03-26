@@ -152,6 +152,45 @@ class BrainProxy:
         raise ConnectionError(
             f"Daemon did not restart within {self.DAEMON_WAIT_TIMEOUT}s")
 
+    # -- Batched commands --
+
+    def batch(self, commands):
+        """Send multiple commands in a single round-trip.
+
+        Args:
+            commands: list of request dicts, e.g. [{"cmd": "ping"}, {"cmd": "status"}]
+        Returns:
+            list of response dicts, one per command
+        """
+        resp = self._send({"cmd": "batch", "commands": commands})
+        return resp.get("results", [])
+
+    def submit_sensory_batch(self, modalities):
+        """Submit multiple sensory modalities in one round-trip.
+
+        Args:
+            modalities: dict of modality → data, e.g.
+                {"visual": (pixels, w, h, ch), "audio": mel, "speech": samples}
+        """
+        commands = []
+        for modality, data in modalities.items():
+            req = {"cmd": "submit_sensory", "modality": modality}
+            if modality == "visual" and isinstance(data, tuple):
+                pixels, w, h, ch = data
+                req["data"] = _to_list(pixels)
+                req["width"] = w
+                req["height"] = h
+                req["channels"] = ch
+            elif modality in ("somatosensory", "somato") and isinstance(data, tuple):
+                vec, n_seg = data
+                req["data"] = _to_list(vec)
+                req["n_segments"] = n_seg
+            else:
+                req["data"] = _to_list(data)
+            commands.append(req)
+        if commands:
+            self._send({"cmd": "batch", "commands": commands})
+
     # -- Core learning --
 
     def learn_vector(self, features, target, label=None, confidence=None,

@@ -173,6 +173,21 @@ class BrainService:
 
     # -- Core learning --
 
+    def _cmd_batch(self, req):
+        """Execute multiple commands in a single round-trip."""
+        commands = req.get("commands", [])
+        results = []
+        for cmd_req in commands:
+            try:
+                handler = getattr(self, f"_cmd_{cmd_req.get('cmd', '')}", None)
+                if handler:
+                    results.append(handler(cmd_req))
+                else:
+                    results.append({"error": f"Unknown command: {cmd_req.get('cmd')}"})
+            except Exception as e:
+                results.append({"error": str(e)})
+        return {"results": results}
+
     def _cmd_learn_vector(self, req):
         features = req["features"]
         target = req["target"]
