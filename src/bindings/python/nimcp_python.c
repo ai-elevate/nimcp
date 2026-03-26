@@ -1759,6 +1759,44 @@ static PyObject* Brain_auto_resize(BrainObject* self, PyObject* args) {
  *
  * @return Integer neuron count
  */
+static PyObject* Brain_get_snn_stats(BrainObject* self, PyObject* args) {
+    if (!self->brain || !self->brain->internal_brain) Py_RETURN_NONE;
+    brain_t ib = self->brain->internal_brain;
+    if (!ib->snn_network) Py_RETURN_NONE;
+
+    /* Use a byte buffer matching snn_stats_t layout */
+    struct {
+        uint32_t n_populations, total_neurons;
+        uint64_t total_steps, total_spikes;
+        double total_compute_time_ms, avg_step_time_ms;
+        float mean_firing_rate, max_firing_rate, sparsity, synchrony;
+        float spikes_per_sample, energy_per_spike;
+        int health;
+        uint32_t silent_neurons, hyperactive_neurons;
+        size_t memory_usage_bytes;
+    } st;
+    memset(&st, 0, sizeof(st));
+    /* Call via function pointer to avoid header conflict */
+    int (*fn)(void*, void*) = (int(*)(void*,void*))snn_network_get_stats;
+    fn(ib->snn_network, &st);
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyObject* tmp;
+#define S(k,v) tmp=PyLong_FromUnsignedLongLong(v);PyDict_SetItemString(d,k,tmp);Py_DECREF(tmp);
+#define F(k,v) tmp=PyFloat_FromDouble(v);PyDict_SetItemString(d,k,tmp);Py_DECREF(tmp);
+    S("n_populations", st.n_populations); S("total_neurons", st.total_neurons);
+    S("total_steps", st.total_steps); S("total_spikes", st.total_spikes);
+    F("mean_firing_rate_hz", st.mean_firing_rate); F("max_firing_rate_hz", st.max_firing_rate);
+    F("sparsity", st.sparsity); F("synchrony", st.synchrony);
+    F("spikes_per_sample", st.spikes_per_sample);
+    S("silent_neurons", st.silent_neurons); S("hyperactive_neurons", st.hyperactive_neurons);
+    S("health", st.health);
+#undef S
+#undef F
+    return d;
+}
+
 static PyObject* Brain_get_neuron_count(BrainObject* self, PyObject* args) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -7942,6 +7980,8 @@ static PyMethodDef Brain_methods[] = {
      "Auto-resize based on utilization: auto_resize() -> True if resized, False otherwise"},
     {"get_neuron_count", (PyCFunction)Brain_get_neuron_count, METH_NOARGS,
      "Get current neuron count: get_neuron_count() -> int"},
+    {"get_snn_stats", (PyCFunction)Brain_get_snn_stats, METH_NOARGS,
+     "Get SNN stats: get_snn_stats() -> dict with spikes, firing_rate, sparsity etc."},
     {"retrofit_synapse_metadata", (PyCFunction)Brain_retrofit_synapse_metadata, METH_NOARGS,
      "Retrofit metadata onto synapses that lack plasticity data: retrofit_synapse_metadata() -> count"},
     {"get_utilization_metrics", (PyCFunction)Brain_get_utilization_metrics, METH_NOARGS,

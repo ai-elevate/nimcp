@@ -313,6 +313,11 @@ class BrainService:
             count = self.brain.retrofit_synapse_metadata()
             return {"retrofitted": count}
 
+    def _cmd_get_snn_stats(self, _req):
+        with self._lock:
+            stats = self.brain.get_snn_stats()
+            return {"snn": stats if stats else {}}
+
     def _cmd_get_transcript(self, _req):
         with self._lock:
             return {"transcript": self.brain.get_transcript()}
