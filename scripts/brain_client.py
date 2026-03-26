@@ -217,8 +217,19 @@ class BrainProxy:
         return resp.get("loss", 0.0)
 
     def learn_vector_batch(self, pairs, learning_rate=None):
-        req = {"cmd": "learn_vector_batch",
-               "pairs": [[_to_list(f), _to_list(t)] for f, t in pairs]}
+        import numpy as np
+        from base64 import b64encode
+        # Pack all feature/target pairs as concatenated base64 binary
+        f_arrays = [np.asarray(f, dtype=np.float32) for f, t in pairs]
+        t_arrays = [np.asarray(t, dtype=np.float32) for f, t in pairs]
+        f_concat = np.concatenate(f_arrays)
+        t_concat = np.concatenate(t_arrays)
+        req = {"cmd": "learn_vector_batch_bin",
+               "n_pairs": len(pairs),
+               "f_dim": len(f_arrays[0]) if f_arrays else 0,
+               "t_dim": len(t_arrays[0]) if t_arrays else 0,
+               "f_b64": b64encode(f_concat.tobytes()).decode("ascii"),
+               "t_b64": b64encode(t_concat.tobytes()).decode("ascii")}
         if learning_rate is not None:
             req["learning_rate"] = float(learning_rate)
         resp = self._send(req)

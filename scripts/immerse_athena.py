@@ -2494,19 +2494,43 @@ def _retroactive_cognitive_seed(brain, composer, completed_steps, learning_rate)
         pass_lr = learning_rate * COGNITIVE_TRAIN_LR_BOOST * (1.0 - 0.15 * pass_num)
         pass_lr = max(pass_lr, learning_rate * 0.5)
 
+        # Batch learn_vector calls — prepare all features/targets locally,
+        # then send in chunks of 8 to reduce socket round-trips.
+        BATCH_SIZE = 8
+        batch_pairs = []
+        batch_labels = []
         for j, idx in enumerate(order):
             item = all_data[idx]
             try:
                 features = composer.compose(text=item["text"], modality="text")
                 target = make_semantic_target(item["answer"],
                                               category=item["domain"])
-                loss = brain.learn_vector(features, target, label=item["label"],
-                                          confidence=0.8, learning_rate=pass_lr)
-                if loss is not None:
-                    losses.append(loss)
+                batch_pairs.append((features, target))
+                batch_labels.append(item["label"])
                 domains_seen.add(item["domain"])
             except Exception:
                 pass
+
+            # Flush batch when full or at end
+            if len(batch_pairs) >= BATCH_SIZE or j == len(order) - 1:
+                if batch_pairs:
+                    try:
+                        avg_loss = brain.learn_vector_batch(
+                            batch_pairs, learning_rate=pass_lr)
+                        if avg_loss is not None:
+                            losses.append(avg_loss)
+                    except Exception:
+                        # Fallback: individual calls
+                        for f, t in batch_pairs:
+                            try:
+                                loss = brain.learn_vector(f, t, confidence=0.8,
+                                                         learning_rate=pass_lr)
+                                if loss is not None:
+                                    losses.append(loss)
+                            except Exception:
+                                pass
+                    batch_pairs = []
+                    batch_labels = []
 
             # Progress every 50 items
             step_total = pass_num * n_items + j + 1

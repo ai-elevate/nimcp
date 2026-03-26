@@ -241,6 +241,30 @@ class BrainService:
             self.checkpointer.notify_training_step()
         return {"avg_loss": avg_loss}
 
+    def _cmd_learn_vector_batch_bin(self, req):
+        """Binary batch learn — base64-encoded concatenated float arrays."""
+        import numpy as np
+        from base64 import b64decode
+        n_pairs = req["n_pairs"]
+        f_dim = req["f_dim"]
+        t_dim = req["t_dim"]
+        f_all = np.frombuffer(b64decode(req["f_b64"]), dtype=np.float32)
+        t_all = np.frombuffer(b64decode(req["t_b64"]), dtype=np.float32)
+        pairs = []
+        for i in range(n_pairs):
+            f = f_all[i * f_dim:(i + 1) * f_dim].tolist()
+            t = t_all[i * t_dim:(i + 1) * t_dim].tolist()
+            pairs.append((f, t))
+        kwargs = {}
+        if "learning_rate" in req:
+            kwargs["learning_rate"] = req["learning_rate"]
+        with self._lock:
+            avg_loss = self.brain.learn_vector_batch(pairs, **kwargs)
+        self._stats["learn_calls"] += n_pairs
+        if hasattr(self, 'checkpointer') and self.checkpointer:
+            self.checkpointer.notify_training_step()
+        return {"avg_loss": avg_loss}
+
     # -- Inference --
 
     def _cmd_decide_full(self, req):
