@@ -319,13 +319,59 @@ int training_dispatch_snn_step(
     }
     nimcp_free(pooled_input);
 
-    // Use SNN's configured timestep (from snn_config or simulation), default 1.0ms
+    // Use BPTT forward if backprop context is available — runs multiple timesteps
+    // internally (recording activations for gradient computation), then backward
+    // computes surrogate gradients through the temporal unrolling.
+    // Single snn_network_step only produces ~1mV/step with tau_mem=20ms, needing
+    // ~20+ steps to reach the 20mV threshold gap. BPTT runs the full simulation.
     float dt = (snn->sim && snn->sim->dt_ms > 0.0f) ? snn->sim->dt_ms : 1.0F;
-    int rc = snn_network_step(snn, dt);
-    if (rc < 0) {
-        NIMCP_LOGGING_ERROR("SNN network step failed: %d", rc);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_snn_step: SNN network step failed");
-        return -1;
+    int rc = 0;
+
+    if (brain->snn_backprop_ctx) {
+        /* BPTT path: forward runs n_steps of simulation, backward computes gradients */
+        extern int snn_backprop_forward(void* ctx, const float* inputs,
+                                         uint32_t batch_size, float duration_ms,
+                                         float* outputs);
+        extern int snn_backprop_backward(void* ctx, const float* dl_doutput,
+                                          uint32_t batch_size);
+        extern void snn_backprop_step(void* ctx, float learning_rate);
+
+        uint32_t snn_out = snn->config.n_outputs;
+        float* outputs = nimcp_calloc(snn_out, sizeof(float));
+        if (outputs) {
+            float duration = 100.0f;  /* 100ms simulation */
+            rc = snn_backprop_forward(brain->snn_backprop_ctx, input_ptr,
+                                       1, duration, outputs);
+            if (rc == 0 && targets && num_targets > 0) {
+                /* Compute output gradient: predictions - targets */
+                uint32_t grad_dim = (num_targets < snn_out) ? num_targets : snn_out;
+                float* grad = nimcp_calloc(grad_dim, sizeof(float));
+                if (grad) {
+                    float loss_val = 0.0f;
+                    for (uint32_t i = 0; i < grad_dim; i++) {
+                        grad[i] = outputs[i] - targets[i];
+                        loss_val += grad[i] * grad[i];
+                    }
+                    loss_val /= (float)grad_dim;
+
+                    snn_backprop_backward(brain->snn_backprop_ctx, grad, 1);
+                    snn_backprop_step(brain->snn_backprop_ctx, 0.0f);
+
+                    if (result) result->loss = loss_val;
+                    nimcp_free(grad);
+                }
+            }
+            nimcp_free(outputs);
+        }
+    } else {
+        /* Fallback: single step + plasticity rule */
+        rc = snn_network_step(snn, dt);
+        if (rc < 0) {
+            NIMCP_LOGGING_ERROR("SNN network step failed: %d", rc);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "training_dispatch_snn_step: SNN network step failed");
+            return -1;
+        }
     }
 
     // Apply training based on method (STDP, R-STDP, eProp, surrogate)
