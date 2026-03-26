@@ -1362,6 +1362,51 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 brain->network_metrics.fno_pop_inference_steps = total_inf;
             }
         }
+
+        /* Cortex CNN modality-specific training — runs AFTER UTM step.
+         * UTM adapter uses cortex_forward_1d (flat 1D input) which doesn't match
+         * visual (3-channel 2D) or somato (segment encoding) architectures.
+         * Run proper modality-specific forward+backward here for all cortexes. */
+        if (label && label[0]) {
+            extern float cortex_cnn_backward(struct cortex_cnn_processor* proc,
+                                              const char* label, uint32_t num_outputs);
+            extern const float* cortex_cnn_forward_visual(struct cortex_cnn_processor* proc,
+                const uint8_t* pixels, uint32_t w, uint32_t h, uint32_t ch);
+            extern const float* cortex_cnn_forward_audio(struct cortex_cnn_processor* proc,
+                const float* mel, uint32_t mel_size);
+            extern const float* cortex_cnn_forward_speech(struct cortex_cnn_processor* proc,
+                const float* phonemes, uint32_t size);
+            extern const float* cortex_cnn_forward_somato(struct cortex_cnn_processor* proc,
+                const float* segments, uint32_t n_segments);
+            uint32_t num_out = brain->config.num_outputs;
+
+            if (brain->cortex_cnns[0] && brain->staged_sensory.visual_frame) {
+                const float* emb = cortex_cnn_forward_visual(brain->cortex_cnns[0],
+                    brain->staged_sensory.visual_frame,
+                    brain->staged_sensory.visual_width,
+                    brain->staged_sensory.visual_height,
+                    brain->staged_sensory.visual_channels);
+                if (emb) cortex_cnn_backward(brain->cortex_cnns[0], label, num_out);
+            }
+            if (brain->cortex_cnns[1] && brain->staged_sensory.audio_data) {
+                const float* emb = cortex_cnn_forward_audio(brain->cortex_cnns[1],
+                    brain->staged_sensory.audio_data,
+                    brain->staged_sensory.audio_size);
+                if (emb) cortex_cnn_backward(brain->cortex_cnns[1], label, num_out);
+            }
+            if (brain->cortex_cnns[2] && brain->staged_sensory.speech_data) {
+                const float* emb = cortex_cnn_forward_speech(brain->cortex_cnns[2],
+                    brain->staged_sensory.speech_data,
+                    brain->staged_sensory.speech_size);
+                if (emb) cortex_cnn_backward(brain->cortex_cnns[2], label, num_out);
+            }
+            if (brain->cortex_cnns[3] && brain->staged_sensory.somato_data) {
+                const float* emb = cortex_cnn_forward_somato(brain->cortex_cnns[3],
+                    brain->staged_sensory.somato_data,
+                    brain->staged_sensory.somato_segments);
+                if (emb) cortex_cnn_backward(brain->cortex_cnns[3], label, num_out);
+            }
+        }
     } else {
         /* Legacy path: secondary networks learn IN PARALLEL (after adaptive completes) */
         bool has_cnn = (label && label[0]) && brain->config.train_cnn;
@@ -1617,7 +1662,16 @@ sequential_training:
                 brain->staged_sensory.visual_width,
                 brain->staged_sensory.visual_height,
                 brain->staged_sensory.visual_channels);
-            if (emb) cortex_cnn_backward(brain->cortex_cnns[0], label, num_out);
+            if (emb) {
+                float bwd_loss = cortex_cnn_backward(brain->cortex_cnns[0], label, num_out);
+                (void)bwd_loss;
+            } else {
+                static uint32_t _vis_fwd_fail = 0;
+                if ((++_vis_fwd_fail & (_vis_fwd_fail - 1)) == 0)
+                    LOG_WARN(LOG_MODULE, "Visual cortex forward_visual returned NULL (%u times, w=%u h=%u ch=%u)",
+                             _vis_fwd_fail, brain->staged_sensory.visual_width,
+                             brain->staged_sensory.visual_height, brain->staged_sensory.visual_channels);
+            }
         }
         if (brain->cortex_cnns[1] && brain->staged_sensory.audio_data) {
             const float* emb = cortex_cnn_forward_audio(brain->cortex_cnns[1],
@@ -1635,7 +1689,15 @@ sequential_training:
             const float* emb = cortex_cnn_forward_somato(brain->cortex_cnns[3],
                 brain->staged_sensory.somato_data,
                 brain->staged_sensory.somato_segments);
-            if (emb) cortex_cnn_backward(brain->cortex_cnns[3], label, num_out);
+            if (emb) {
+                float bwd_loss = cortex_cnn_backward(brain->cortex_cnns[3], label, num_out);
+                (void)bwd_loss;
+            } else {
+                static uint32_t _som_fwd_fail = 0;
+                if ((++_som_fwd_fail & (_som_fwd_fail - 1)) == 0)
+                    LOG_WARN(LOG_MODULE, "Somato cortex forward_somato returned NULL (%u times, segments=%u)",
+                             _som_fwd_fail, brain->staged_sensory.somato_segments);
+            }
         }
     }
 
