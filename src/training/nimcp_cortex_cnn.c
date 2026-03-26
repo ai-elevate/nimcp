@@ -1061,7 +1061,27 @@ static int cortex_adapter_forward(void* ctx, const float* input, uint32_t input_
     cortex_cnn_adapter_ctx_t* a = (cortex_cnn_adapter_ctx_t*)ctx;
     if (!a || !a->proc || !input || !output) return -1;
 
-    /* Use the generic 1D forward — works for all modalities when data is
+    /* Skip UTM flat-1D forward for Visual and Somato — their CNN architectures
+     * require specific input formats (3-channel 2D for visual, wavelet segments
+     * for somato). Running flat 1D input through them corrupts batch normalization
+     * running stats, causing subsequent modality-specific forwards to produce NaN.
+     * These cortexes are trained via modality-specific forward+backward in the
+     * UTM block of brain_learn_vector instead. */
+    if (a->proc->type == CORTEX_CNN_VISUAL || a->proc->type == CORTEX_CNN_SOMATO) {
+        /* Return last embedding if available, else zeros */
+        if (a->proc->embedding && a->proc->has_fwd_result) {
+            uint32_t copy_dim = (output_dim < a->proc->embedding_dim) ?
+                                 output_dim : a->proc->embedding_dim;
+            memcpy(output, a->proc->embedding, copy_dim * sizeof(float));
+            if (output_dim > copy_dim)
+                memset(output + copy_dim, 0, (output_dim - copy_dim) * sizeof(float));
+        } else {
+            memset(output, 0, output_dim * sizeof(float));
+        }
+        return 0;
+    }
+
+    /* Use the generic 1D forward — works for audio/speech when data is
      * already pre-processed to flat float representation */
     const float* emb = cortex_forward_1d(a->proc, input, input_dim);
     if (!emb) return -1;
