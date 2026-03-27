@@ -1,0 +1,49 @@
+FOR IMMEDIATE RELEASE
+
+AI Elevate Announces NIMCP: A 2.5-Million Neuron Artificial Brain With Biological Plasticity and Structural Safety
+
+Open-source project trains six neural network types simultaneously on a single consumer GPU, producing biologically realistic spiking dynamics without explicit design constraints
+
+TORONTO — March 28, 2026 — AI Elevate today announced the public release of NIMCP (Neuro-Inspired Modular Control Protocol), an open-source artificial brain architecture that trains 2.5 million neurons across six heterogeneous neural network types simultaneously, using biological plasticity mechanisms and a developmental learning curriculum inspired by human cognitive development.
+
+Unlike transformer-based AI systems that scale a single architecture with more data and parameters, NIMCP trains spiking neural networks, liquid state machines, convolutional processors, Fourier neural operators, Hamiltonian dynamics networks, and an adaptive backbone in parallel, with learned gradient bridges enabling knowledge transfer between fundamentally different computational paradigms. The system runs on a single NVIDIA RTX 4000 GPU with 20 GB of video memory.
+
+"The AI industry has been asking one question: can we approximate intelligence with enough data?" said Braun Brelin, founder of AI Elevate and creator of NIMCP. "We're asking a different question: can we grow it? The brain doesn't predict the next token. It runs spiking neurons, modulates learning through neurochemistry, and develops capabilities in stages. NIMCP implements that approach, and the early results are genuinely surprising."
+
+Key findings from the ongoing training run include:
+
+- The spiking neural network developed a mean firing rate of 26 Hz with 67% sparsity, values that fall within the range observed in mammalian sensory cortex, without any regularization or design constraint targeting these values. The dynamics emerged naturally from multi-network co-training.
+
+- A nine-layer safety governance system provides structural safety guarantees that behavioral approaches like RLHF and Constitutional AI cannot match. The ethics module is a mandatory function call in the code path — it cannot be disabled by configuration, fine-tuning, or prompt injection. Safety rules can only become stricter, never looser.
+
+- The brain learns through intrinsic curiosity rather than hand-designed reward functions. Prediction error drives dopamine release, which gates synaptic plasticity at the individual synapse level. The system naturally transitions from exploration to exploitation as its internal world model improves.
+
+- A personality system based on the Big Five psychological model directly modulates the brain's neuromodulatory baselines, meaning personality traits affect how the brain learns, not just how it presents itself. Two instances with different personality configurations would develop measurably different neural circuits from identical training data.
+
+The brain, named Athena, is currently in Stage 2 of a four-stage developmental curriculum progressing from sensory awakening through cross-modal naming, feedback learning, and abstract reasoning across 13 cognitive domains including ethics, causal reasoning, and Theory of Mind. Live training metrics update every 60 seconds at https://nimcp.ai-elevate.ai.
+
+NIMCP includes a complete embodied robotics platform with 12 sensor types, a safety watchdog for motor output validation, four drone flight controller interfaces (MAVLink, DJI, Betaflight, Parrot), a ROS 2 bridge for direct robot deployment, and a swarm runtime for multi-agent coordination with Byzantine fault tolerance.
+
+Eight technical papers accompany the release, covering mathematical foundations, training methodology, structural safety design, emergent spiking dynamics, cross-network gradient flow, sensorimotor curiosity, embodied identity, and socioeconomic impact analysis. All papers are available on the project website.
+
+The complete system comprises approximately 2,600 source files, 240 Python API methods, and 8 programming language bindings. It is released under an open-source license.
+
+Availability
+
+NIMCP is available immediately at:
+- Project website with live training metrics: https://nimcp.ai-elevate.ai
+- Source code: https://github.com/redmage123/nimcp
+- Technical papers: linked from the project website
+
+About AI Elevate
+
+AI Elevate is an artificial intelligence research company focused on biologically-inspired cognitive architectures. Founded by Braun Brelin, the company develops neural systems that learn through developmental curricula and biological plasticity rather than pure statistical optimization.
+
+Contact
+
+Braun Brelin
+Founder, AI Elevate
+braun.brelin@ai-elevate.ai
+https://ai-elevate.ai
+
+###
