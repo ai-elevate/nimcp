@@ -12,55 +12,71 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
 METRICS_FILE = os.path.join(os.path.dirname(__file__), 'metrics.json')
-INTERVAL = 10  # seconds
+INTERVAL = 15  # seconds (allow time for slow daemon queries)
+
+
+def _safe_query(b, cmd, timeout=10):
+    """Query daemon with per-call timeout, return None on failure."""
+    import socket
+    old_timeout = b.timeout
+    b.timeout = timeout
+    try:
+        return b._send_once({'cmd': cmd})
+    except Exception:
+        return None
+    finally:
+        b.timeout = old_timeout
 
 
 def collect_metrics():
-    """Query brain daemon and return metrics dict."""
+    """Query brain daemon and return metrics dict.
+
+    Each query is independent — a slow or failed query doesn't block others.
+    Uses _send_once (no retry) to avoid blocking for minutes on a dead daemon.
+    """
     from brain_client import BrainProxy
     b = BrainProxy(timeout=10)
     metrics = {'timestamp': time.time(), 'ok': False}
 
-    try:
-        r = b._send({'cmd': 'status'})
+    # Status — fast, tests connectivity
+    r = _safe_query(b, 'status', timeout=5)
+    if r and not r.get('error'):
         metrics['uptime'] = r.get('uptime', 0)
         metrics['learn_calls'] = r.get('learn_calls', 0)
         metrics['infer_calls'] = r.get('infer_calls', 0)
         metrics['errors'] = r.get('errors', 0)
         metrics['ok'] = True
-    except Exception:
-        return metrics
+    else:
+        return metrics  # Daemon down — return partial
 
-    try:
-        r = b._send({'cmd': 'get_neuron_count'})
+    # Neuron count — fast
+    r = _safe_query(b, 'get_neuron_count', timeout=5)
+    if r:
         metrics['neuron_count'] = r.get('neuron_count', 0)
-    except Exception:
-        pass
 
-    try:
-        r = b._send({'cmd': 'get_network_metrics'})
+    # Network metrics — can be slow (4-5s)
+    r = _safe_query(b, 'get_network_metrics', timeout=10)
+    if r:
         m = r.get('metrics', r)
         metrics['ann_loss'] = m.get('ann_loss', 0)
         metrics['cnn_loss'] = m.get('cnn_loss', 0)
         metrics['snn_loss'] = m.get('snn_loss', 0)
         metrics['lnn_loss'] = m.get('lnn_loss', 0)
         metrics['ann_steps'] = m.get('ann_steps', 0)
-    except Exception:
-        pass
 
-    try:
-        r = b._send({'cmd': 'get_snn_stats'})
+    # SNN stats — fast
+    r = _safe_query(b, 'get_snn_stats', timeout=5)
+    if r:
         s = r.get('snn', r)
         metrics['snn_spikes'] = s.get('total_spikes', 0)
         metrics['snn_rate_hz'] = s.get('mean_firing_rate_hz', 0)
         metrics['snn_sparsity'] = s.get('sparsity', 0)
         metrics['snn_silent'] = s.get('silent_neurons', 0)
         metrics['snn_populations'] = s.get('n_populations', 0)
-    except Exception:
-        pass
 
-    try:
-        r = b._send({'cmd': 'get_cortex_cnn_metrics'})
+    # Cortex CNN — can be slow (4-5s)
+    r = _safe_query(b, 'get_cortex_cnn_metrics', timeout=10)
+    if r:
         m = r.get('metrics', r)
         cortex = {}
         for name in ['visual', 'audio', 'speech', 'somato']:
@@ -73,17 +89,19 @@ def collect_metrics():
                     'bwd': c.get('backward_steps', 0),
                 }
         metrics['cortex'] = cortex
-    except Exception:
-        pass
 
-    # Read latest step from training log
+    # Training log — local file, always fast
     try:
         log_path = os.path.join(os.path.dirname(__file__), '..', 'training.log')
         if os.path.exists(log_path):
             import re
-            with open(log_path) as f:
-                lines = f.readlines()
-            for line in reversed(lines):
+            # Read last 10KB only (avoid reading entire log)
+            with open(log_path, 'rb') as f:
+                f.seek(0, 2)
+                size = f.tell()
+                f.seek(max(0, size - 10240))
+                tail = f.read().decode('utf-8', errors='replace')
+            for line in reversed(tail.splitlines()):
                 m = re.match(r'.*\[(\d{4,})\]\s+loss=([0-9.]+)', line)
                 if m:
                     metrics['current_step'] = int(m.group(1))
@@ -98,7 +116,9 @@ def collect_metrics():
 def main():
     print(f"Metrics exporter starting — writing to {METRICS_FILE} every {INTERVAL}s",
           flush=True)
+    consecutive_failures = 0
     while True:
+        t0 = time.time()
         try:
             metrics = collect_metrics()
             # Atomic write: write to temp then rename
@@ -106,9 +126,19 @@ def main():
             with open(tmp, 'w') as f:
                 json.dump(metrics, f)
             os.rename(tmp, METRICS_FILE)
+            elapsed = time.time() - t0
+            if consecutive_failures > 0:
+                print(f"Recovered after {consecutive_failures} failures "
+                      f"(cycle took {elapsed:.1f}s)", flush=True)
+            consecutive_failures = 0
         except Exception as e:
-            print(f"Export error: {e}", flush=True)
-        time.sleep(INTERVAL)
+            consecutive_failures += 1
+            if consecutive_failures <= 3 or consecutive_failures % 10 == 0:
+                print(f"Export error ({consecutive_failures}): {e}", flush=True)
+        # Sleep remaining time (account for query duration)
+        elapsed = time.time() - t0
+        sleep_time = max(1, INTERVAL - elapsed)
+        time.sleep(sleep_time)
 
 
 if __name__ == '__main__':
