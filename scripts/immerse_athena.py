@@ -407,11 +407,12 @@ def submit_multimodal(brain, description):
         batch_modalities["visual"] = generate_visual_frame(description)
         _sensory_submitted.append("V")
 
-    if desc_words & _AUDIO_KW:
-        samples = generate_audio_samples(description)
-        mel = audio_to_mel(samples)
-        batch_modalities["audio"] = mel
-        _sensory_submitted.append("A")
+    # Always submit audio — every description can be synthesized as sound.
+    # Audio cortex needs continuous data to train (0 backward without this).
+    samples = generate_audio_samples(description)
+    mel = audio_to_mel(samples)
+    batch_modalities["audio"] = mel
+    _sensory_submitted.append("A")
 
     if desc_words & _SPEECH_KW:
         samples = generate_audio_samples(description)
