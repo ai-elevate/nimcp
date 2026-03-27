@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NIMCP — Neuro-Inspired Modular Control Protocol</title>
+    <meta name="description" content="A 2.5-million neuron artificial brain with six network types, biological plasticity, and developmental learning. Open source.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0e17;
+            --bg-card: #111827;
+            --bg-card-hover: #1a2332;
+            --border: #1e293b;
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+            --text-bright: #f8fafc;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --green: #22c55e;
+            --orange: #f59e0b;
+            --purple: #a78bfa;
+            --red: #ef4444;
+            --cyan: #06b6d4;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Neural background animation */
+        .bg-pattern {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(167, 139, 250, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+        /* Navigation */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            padding: 0 24px;
+        }
+        nav .nav-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 64px;
+        }
+        nav .logo {
+            font-weight: 700; font-size: 1.25rem; color: var(--text-bright);
+            text-decoration: none; letter-spacing: -0.02em;
+        }
+        nav .logo span { color: var(--accent); }
+        nav ul { list-style: none; display: flex; gap: 32px; }
+        nav a { color: var(--text-dim); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.2s; }
+        nav a:hover { color: var(--text-bright); }
+
+        /* Hero */
+        .hero {
+            padding: 160px 0 100px;
+            text-align: center;
+        }
+        .hero-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            background: var(--accent-glow);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-weight: 500;
+            margin-bottom: 24px;
+            letter-spacing: 0.05em;
+        }
+        .hero h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 700;
+            color: var(--text-bright);
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            margin-bottom: 20px;
+        }
+        .hero h1 .gradient {
+            background: linear-gradient(135deg, var(--accent), var(--purple), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-dim);
+            max-width: 640px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+        .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: var(--bg-card-hover); border-color: var(--accent); }
+
+        /* Stats bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1px;
+            background: var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 80px 0;
+        }
+        .stat {
+            background: var(--bg-card);
+            padding: 28px 20px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-bright);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        /* Section */
+        section { padding: 80px 0; }
+        .section-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        section h2 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text-bright);
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+        section > .container > p {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            max-width: 640px;
+            margin-bottom: 48px;
+        }
+
+        /* Cards grid */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            transition: all 0.2s;
+        }
+        .card:hover { border-color: rgba(59, 130, 246, 0.3); background: var(--bg-card-hover); }
+        .card-icon {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+        }
+        .card h3 { font-size: 1.15rem; font-weight: 600; color: var(--text-bright); margin-bottom: 8px; }
+        .card p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
+
+        /* Network types */
+        .network-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .network-chip {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+        .network-chip .name { font-weight: 600; font-size: 0.95rem; color: var(--text-bright); }
+        .network-chip .desc { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+        .network-chip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+        /* Papers section */
+        .paper-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            transition: all 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+        .paper-card:hover { border-color: var(--accent); background: var(--bg-card-hover); }
+        .paper-icon {
+            width: 48px; height: 48px; min-width: 48px;
+            background: var(--accent-glow);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+        }
+        .paper-card h3 { font-size: 1.1rem; font-weight: 600; color: var(--text-bright); margin-bottom: 6px; }
+        .paper-card p { font-size: 0.88rem; color: var(--text-dim); }
+        .paper-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--green);
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        /* Training status */
+        .training-status {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+        }
+        .training-status h3 { color: var(--text-bright); margin-bottom: 16px; }
+        .training-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .training-metric {
+            padding: 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+        .training-metric .label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+        .training-metric .value { font-size: 1.3rem; font-weight: 600; color: var(--text-bright); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+        .live-dot { display: inline-block; width: 8px; height: 8px; background: var(--green); border-radius: 50%; margin-right: 6px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* Footer */
+        footer {
+            padding: 60px 0 40px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        footer p { color: var(--text-dim); font-size: 0.85rem; }
+        footer a { color: var(--accent); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Code block */
+        .code-block {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: #c9d1d9;
+            overflow-x: auto;
+            margin: 24px 0;
+        }
+        .code-block .comment { color: #8b949e; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav ul { gap: 16px; }
+            .hero { padding: 120px 0 60px; }
+            .cards { grid-template-columns: 1fr; }
+            .network-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+
+    <nav>
+        <div class="nav-inner">
+            <a href="/" class="logo"><span>NIMCP</span></a>
+            <ul>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#papers">Papers</a></li>
+                <li><a href="#training">Training</a></li>
+                <li><a href="https://github.com/redmage123/nimcp" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <header class="hero">
+        <div class="container">
+            <div class="hero-badge">ACTIVELY TRAINING &mdash; STAGE 1 OF 4</div>
+            <h1>A <span class="gradient">2.5 Million Neuron</span><br>Artificial Brain</h1>
+            <p>Six neural network types. Biological plasticity. Developmental learning. Non-removable safety. Running on a single GPU.</p>
+            <div class="hero-buttons">
+                <a href="https://github.com/redmage123/nimcp" class="btn btn-primary" target="_blank">
+                    View Source Code
+                </a>
+                <a href="#papers" class="btn btn-secondary">
+                    Read the Papers
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats -->
+    <div class="container">
+        <div class="stats-bar">
+            <div class="stat">
+                <div class="stat-value">2.5M</div>
+                <div class="stat-label">Neurons</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">6</div>
+                <div class="stat-label">Network Types</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">60+</div>
+                <div class="stat-label">Cognitive Modules</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">2,600</div>
+                <div class="stat-label">Source Files</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">9</div>
+                <div class="stat-label">Safety Layers</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">8</div>
+                <div class="stat-label">Language Bindings</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Architecture -->
+    <section id="architecture">
+        <div class="container">
+            <div class="section-label">Architecture</div>
+            <h2>Six Networks, One Brain</h2>
+            <p>NIMCP doesn't train a single monolithic model. It trains six heterogeneous neural networks simultaneously, with gradient flow across network boundaries.</p>
+
+            <div class="network-grid" style="margin-bottom: 48px;">
+                <div class="network-chip">
+                    <div class="name"><span class="dot" style="background: var(--accent);"></span>Adaptive</div>
+                    <div class="desc">9-layer diamond, GPU-accelerated backprop</div>
+                </div>
+                <div class="network-chip">
+                    <div class="name"><span class="dot" style="background: var(--green);"></span>Spiking (SNN)</div>
+                    <div class="desc">768 LIF neurons, BPTT surrogate gradients</div>
+                </div>
+                <div class="network-chip">
+                    <div class="name"><span class="dot" style="background: var(--purple);"></span>Liquid (LNN)</div>
+                    <div class="desc">Continuous-time ODE, adjoint gradients</div>
+                </div>
+                <div class="network-chip">
+                    <div class="name"><span class="dot" style="background: var(--orange);"></span>Convolutional</div>
+                    <div class="desc">4 cortex processors: visual, audio, speech, somato</div>
+                </div>
+                <div class="network-chip">
+                    <div class="name"><span class="dot" style="background: var(--cyan);"></span>Fourier (FNO)</div>
+                    <div class="desc">Spectral convolution, frequency-domain learning</div>
+                </div>
+                <div class="network-chip">
+                    <div class="name"><span class="dot" style="background: var(--red);"></span>Hamiltonian</div>
+                    <div class="desc">Energy-conserving, physics-informed dynamics</div>
+                </div>
+            </div>
+
+            <div class="cards">
+                <div class="card">
+                    <div class="card-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--accent);">&#x1F9E0;</div>
+                    <h3>Biological Plasticity</h3>
+                    <p>Five learning rules at five timescales: STDP (10ms), BCM (50ms), eligibility traces (1s), structural plasticity (10s), homeostatic scaling (60s). Four neuromodulators (dopamine, acetylcholine, norepinephrine, serotonin) modulate learning based on reward and novelty signals derived from training loss.</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon" style="background: rgba(34, 197, 94, 0.1); color: var(--green);">&#x1F476;</div>
+                    <h3>Developmental Curriculum</h3>
+                    <p>Four stages mirroring human cognitive development: sensory awakening, cross-modal naming, feedback learning, abstract reasoning. Each stage builds on representations formed in the previous one. The brain literally grows its cognitive capabilities over time.</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon" style="background: rgba(167, 139, 250, 0.1); color: var(--purple);">&#x1F6E1;</div>
+                    <h3>Safety by Design</h3>
+                    <p>Ethics module is always created regardless of configuration. LGSS governance evaluates every inference and weight update. Tamper-resistant audit log with CRC32 checksums and monotonic sequence numbers. Safety rules can only get stricter, never looser.</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--cyan);">&#x1F916;</div>
+                    <h3>Edge &amp; Robot Platform</h3>
+                    <p>12 sensor types, safety watchdog, motor output. Four drone flight controller interfaces (MAVLink, DJI, Betaflight, Parrot). ROS 2 bridge publishes cmd_vel, subscribes to /imu, /odom, /joint_states. Sim-to-real transfer with domain randomization.</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--orange);">&#x1F310;</div>
+                    <h3>Swarm Intelligence</h3>
+                    <p>Multi-device federation with UDP discovery, Byzantine fault tolerance, and gossip-based gradient aggregation. Each edge brain adapts collective knowledge to its local environment. Theory of Mind emerges from observing other agents' behavior.</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon" style="background: rgba(239, 68, 68, 0.1); color: var(--red);">&#x1F4AC;</div>
+                    <h3>Brain-Native Language</h3>
+                    <p>Learned vocabulary from neural activation patterns, not an external LLM. Autoregressive decoding with nucleus sampling. Emergent symbols (omega-tokens) represent concepts the brain discovers that don't map to human language. Inner speech loop refines outputs through self-talk iterations.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Papers -->
+    <section id="papers">
+        <div class="container">
+            <div class="section-label">Research</div>
+            <h2>Technical Papers</h2>
+            <p>Detailed documentation of the mathematics, training methodology, and broader implications of NIMCP.</p>
+
+            <a href="https://github.com/redmage123/nimcp/blob/master/docs/MATHEMATICAL_FOUNDATIONS.md" class="paper-card" target="_blank">
+                <div class="paper-icon">&#x2211;</div>
+                <div>
+                    <h3>Mathematical Foundations of NIMCP</h3>
+                    <p>Complete mathematical framework: LIF dynamics, LNN ODEs, adjoint gradients, STDP/BCM learning rules, Fourier spectral methods, Hamiltonian mechanics, information geometry, and safety mathematics. Every equation corresponds to implemented code with source file references.</p>
+                    <span class="paper-tag">699 LINES &bull; EQUATIONS + CODE REFS</span>
+                </div>
+            </a>
+
+            <a href="https://github.com/redmage123/nimcp/blob/master/docs/TRAINING_METHODOLOGY.md" class="paper-card" target="_blank">
+                <div class="paper-icon">&#x1F4CA;</div>
+                <div>
+                    <h3>Developmental Multi-Network Training</h3>
+                    <p>How NIMCP trains six networks simultaneously through a four-stage developmental curriculum. Systematic comparison with conventional deep learning and transformer training across 12 dimensions including data efficiency, continual learning, and safety integration.</p>
+                    <span class="paper-tag">446 LINES &bull; COMPARATIVE ANALYSIS</span>
+                </div>
+            </a>
+
+            <a href="https://github.com/redmage123/nimcp/blob/master/docs/SOCIOECONOMIC_IMPACT.md" class="paper-card" target="_blank">
+                <div class="paper-icon">&#x1F30D;</div>
+                <div>
+                    <h3>Socioeconomic Impact Analysis</h3>
+                    <p>Analysis of ubiquitous NIMCP deployment across healthcare, education, manufacturing, agriculture, environmental monitoring, disaster response, and governance. Addresses workforce displacement, equity, and governance challenges.</p>
+                    <span class="paper-tag">366 LINES &bull; IMPACT ASSESSMENT</span>
+                </div>
+            </a>
+        </div>
+    </section>
+
+    <!-- Live Training -->
+    <section id="training">
+        <div class="container">
+            <div class="section-label">Live Training</div>
+            <h2>Athena is Learning Right Now</h2>
+            <p>A 2.5-million neuron brain named Athena is currently in Stage 1 of developmental training on a single NVIDIA RTX 4000 SFF Ada (20 GB VRAM).</p>
+
+            <div class="training-status">
+                <h3><span class="live-dot"></span>Training Status</h3>
+                <div class="training-grid">
+                    <div class="training-metric">
+                        <div class="label">Stage</div>
+                        <div class="value">1 / 4</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">Step</div>
+                        <div class="value">~6,000 / 20,000</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">ANN Loss</div>
+                        <div class="value">0.190</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">SNN Firing Rate</div>
+                        <div class="value">26.0 Hz</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">SNN Sparsity</div>
+                        <div class="value">67%</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">CNN Loss</div>
+                        <div class="value">0.001</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">Architecture</div>
+                        <div class="value">9-Layer Diamond</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">Uptime</div>
+                        <div class="value">Stable</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px; text-align: center;">
+                <p style="color: var(--text-dim); font-size: 0.9rem;">Training metrics are updated manually. Full training logs available on GitHub.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section id="quickstart">
+        <div class="container">
+            <div class="section-label">Get Started</div>
+            <h2>Build in 20 Minutes</h2>
+            <p>NIMCP compiles on any Linux system with a CUDA-capable GPU.</p>
+
+            <div class="code-block">
+<span class="comment"># Clone and build</span>
+git clone https://github.com/redmage123/nimcp.git
+cd nimcp/build && cmake .. && make nimcp -j4
+
+<span class="comment"># Build Python bindings</span>
+make nimcp_python -j4
+cp build/lib/python/nimcp.so ~/.local/lib/python3.12/site-packages/
+
+<span class="comment"># Create a brain and start learning</span>
+python3 -c <span class="string">"
+import nimcp
+brain = nimcp.Brain('my_brain', neuron_count=100000)
+brain.learn_vector(features, target, label='hello world')
+"</span>
+            </div>
+
+            <div style="margin-top: 24px;">
+                <a href="https://github.com/redmage123/nimcp/blob/master/docs/QUICKSTART.md" class="btn btn-secondary" target="_blank">Full Quickstart Guide</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p style="margin-bottom: 12px;">
+                <strong style="color: var(--text-bright);">NIMCP</strong> &mdash; Neuro-Inspired Modular Control Protocol v2.6.4
+            </p>
+            <p>
+                Created by <a href="https://www.linkedin.com/in/braunbrelin/" target="_blank">Braun Brelin</a>
+                &bull; <a href="https://ai-elevate.ai" target="_blank">AI Elevate</a>
+                &bull; <a href="mailto:braun.brelin@ai-elevate.ai">braun.brelin@ai-elevate.ai</a>
+            </p>
+            <p style="margin-top: 8px;">
+                <a href="https://github.com/redmage123/nimcp" target="_blank">GitHub</a>
+                &bull; Open Source &bull; ~2,600 source files &bull; 240 Python API methods
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
