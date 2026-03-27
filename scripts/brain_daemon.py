@@ -1353,6 +1353,14 @@ def main():
     brain.fix_output_activation()
     logger.info("Output layer activation set to LINEAR")
 
+    # Eagerly create all 4 cortex CNNs — lazy creation was unreliable because
+    # staged sensory data gets consumed between submit and learn calls.
+    try:
+        brain.init_cortex_cnns()
+        logger.info("All 4 cortex CNNs initialized (visual/audio/speech/somato)")
+    except Exception as e:
+        logger.warning("Cortex CNN init failed (will create lazily): %s", e)
+
     # Create service and daemon
     service = BrainService(brain)
     daemon = BrainDaemon(service, socket_path=args.socket,
