@@ -126,6 +126,16 @@
 - [36. Spatial Indexing (KD-Tree)](#36-spatial-indexing-kd-tree)
 - [37. Streaming Statistics](#37-streaming-statistics)
 - [38. Survival Analysis](#38-survival-analysis)
+- [39. Current Training Observations](#39-current-training-observations)
+  - [39.1 System Configuration](#391-system-configuration)
+  - [39.2 Current Metrics](#392-current-metrics-stage-1-step-6200-of-20000)
+  - [39.3 Biological Dynamics](#393-biological-dynamics)
+  - [39.4 Stability](#394-stability)
+- [40. Projected Training Outcomes](#40-projected-training-outcomes)
+  - [40.1 End of Stage 1](#401-end-of-stage-1-step-20000-cross-modal-association)
+  - [40.2 End of Stage 2](#402-end-of-stage-2-step-40000-feedback-learning)
+  - [40.3 End of Stage 3](#403-end-of-stage-3-step-50000-abstract-reasoning)
+  - [40.4 Uncertainty and Caveats](#404-uncertainty-and-caveats)
 - [Glossary](#glossary)
 - [References](#references)
 
@@ -2015,6 +2025,207 @@ The Kaplan-Meier estimator for the survival function:
 where $d_i$ is the number of synapses pruned at time $t_i$ and $n_i$ is the number still alive. A synapse with $\hat{S}(t) < 0.1$ has a 90% chance of being pruned by time $t$ — these are candidates for early removal to free pool capacity.
 
 *Source: `include/utils/statistics/nimcp_survival.h`*
+
+---
+
+## 39. Current Training Observations
+
+This section documents the empirical behavior of the NIMCP brain "Athena" during active training as of March 2026. These are measurements from a running system, not theoretical predictions.
+
+### 39.1 System Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Neurons | 2,500,000 |
+| Architecture | 9-layer diamond (1%/5%/15%/28%/28%/15%/5%/3%) |
+| SNN populations | 3 (256 input / 256 hidden / 256 output) |
+| SNN synapses (BPTT) | 131,072 |
+| LNN neurons | 64, continuous-time ODE |
+| Cortex CNNs | 4 (visual 30K params, audio 8K, speech 4K, somato 4K) |
+| GPU | NVIDIA RTX 4000 SFF Ada (20 GB VRAM) |
+| RAM | 62 GB (50 GB used by brain + daemon) |
+| Training rate | ~2.6 steps/min (23 seconds/step) |
+
+### 39.2 Current Metrics (Stage 1, Step ~6,200 of 20,000)
+
+**Network Losses (running average):**
+
+| Network | Loss | Trend | Interpretation |
+|---------|------|-------|----------------|
+| ANN | 0.81 | Decreasing from 1.2 | Primary network learning; elevated due to cognitive training items |
+| CNN | 0.001 | Converged | Classification head has learned label→output mapping |
+| SNN | 0.022 | Steadily decreasing | Spiking network learning temporal representations via BPTT |
+| LNN | 1.11 | Stable, not decreasing | Liquid network not yet converging — adjoint gradients normalized but may need LR tuning |
+
+**Per-Step Loss Trajectory (last 10 reports):**
+
+| Step | Loss | Non-zero outputs | SNN spikes | SNN Hz | CNN loss |
+|------|------|-----------------|------------|--------|----------|
+| 5700 | 0.341 | 39/50 | 2,020 | 26.2 | 0.004 |
+| 5750 | 0.287 | 42/50 | 6 | 0.0 | 0.003 |
+| 5800 | 0.213 | 41/50 | 1,983 | 25.7 | 0.003 |
+| 5850 | 0.198 | 41/50 | 0 | 0.0 | 0.001 |
+| 5900 | 0.190 | 40/50 | 2,003 | 26.0 | 0.001 |
+| 5950 | 0.184 | 40/50 | 0 | 0.0 | 0.001 |
+| 6000 | 0.190 | 42/50 | 0 | 0.0 | 0.002 |
+| 6050 | 0.223 | 42/50 | 0 | 0.0 | 0.001 |
+| 6100 | 0.186 | 42/50 | 0 | 0.0 | 0.001 |
+| 6200 | 0.174 | 39/50 | 1,970 | 25.4 | 0.001 |
+
+**Observations:**
+
+1. **Per-step loss is decreasing**: 0.341 → 0.174 over 500 steps. The trajectory is not monotonic — cognitive training items (ethics, causal reasoning) produce occasional spikes to 10+ — but the trend is clear.
+
+2. **SNN spikes occur in bursts**: Steps with ~2,000 spikes at 25-26 Hz alternate with steps showing 0 spikes. This pattern occurs because the SNN BPTT runs 100ms of simulation, and only certain input patterns produce enough current to drive the 3-population cascade (input → hidden → output). The SNN is selective, not silent — it fires for stimuli that match its learned temporal patterns.
+
+3. **CNN loss has converged**: At 0.001, the convolutional classification head has effectively learned the label→output mapping. Further CNN improvements are unlikely without architectural changes.
+
+4. **LNN loss is not decreasing**: At 1.11 across 4,000+ steps, the liquid network is not converging. The adjoint gradient normalization (Section 2.6) ensures gradients flow, but the LNN's 64 neurons may lack capacity for the 4096-dim target space. Alternatively, the LNN time constants ($\tau$) may need a wider initial range to capture the timescales present in the training data.
+
+5. **Output differentiation is low**: The last chat evaluation (step 5500) showed mean cross-similarity of 0.949 between response vectors for different concepts. The brain produces non-degenerate outputs (loss < 0.2) but has not yet learned to differentiate between categories. This is expected at 31% of Stage 1 — differentiation is the core skill this stage trains.
+
+### 39.3 Biological Dynamics
+
+**SNN firing characteristics:**
+
+| Metric | Value | Biological range | Assessment |
+|--------|-------|-----------------|------------|
+| Mean firing rate | 25-26 Hz | 1-40 Hz (cortex) | Within range |
+| Sparsity | 67% | 50-90% | Within range |
+| Max firing rate | 130 Hz | 100-200 Hz | Within range |
+| Active neurons | 251/768 (33%) | 10-50% per stimulus | Within range |
+
+These values emerged without explicit regularization — they are a natural consequence of the BPTT optimization under cross-network gradient pressure (Section 17).
+
+**Cortex CNN performance:**
+
+| Cortex | Backward ratio | EMA loss | Status |
+|--------|---------------|----------|--------|
+| Speech | 79-96% | 0.020 | Converging well |
+| Audio | 87% | 0.0 | Learning |
+| Visual | 50-67% | 0.305 | Learning slowly (BN stats recovering) |
+| Somato | In progress | — | Recently created, accumulating data |
+
+**Neuromodulatory dynamics:**
+- Dopamine responds to loss: low loss → high DA → STDP strengthening
+- Acetylcholine responds to novelty: unfamiliar inputs → high ACh → faster encoding
+- The effective learning rate varies 0.7×–1.3× depending on input familiarity
+
+### 39.4 Stability
+
+The brain has trained continuously with zero crashes since the semantic memory mutex fix (Section 14 of the Safety paper). Previous crash causes and their resolutions:
+
+| Crash | Root cause | Fix | Section |
+|-------|-----------|-----|---------|
+| SIGSEGV in semantic_memory_find_similar | CoW refcount race: features freed while iterating | Hold mutex for full iteration | §13 |
+| SNN silent (0 spikes, 768 silent) | Single timestep per training step; insufficient for LIF dynamics | BPTT 100ms multi-step forward | §2.5 |
+| Cortex backward 0% | Modality training in dead else-branch; BN stats corrupted by UTM flat-1D forward | Moved to UTM block; skip flat forward for visual/somato | §16, §17 |
+| LNN gradient crushing | Hardcoded 100.0 clip on adjoint norms | Normalize to target 10.0 | §2.6 |
+| Metadata pool exhaustion | 50M cap exceeded; synapses not created at all | Graceful fallback to handle-only + pool increase | §19 |
+
+---
+
+## 40. Projected Training Outcomes
+
+Based on current training dynamics, architectural capabilities, and the developmental curriculum design, we project the following outcomes at each stage completion. These are estimates, not guarantees — they depend on training stability, hyperparameter tuning, and potential failure modes not yet encountered.
+
+### 40.1 End of Stage 1 (Step 20,000): Cross-Modal Association
+
+**What Stage 1 trains:** Binding sensory percepts to labels. The brain learns that "dog" maps to a specific output pattern, "cat" to a different pattern, and so on across ~2,400 curriculum items.
+
+**Expected outcomes:**
+
+| Metric | Current (step 6,200) | Projected (step 20,000) | Basis |
+|--------|---------------------|------------------------|-------|
+| Per-step loss | 0.174 | 0.01–0.05 | Loss trajectory extrapolation; diminishing returns after step 15K |
+| Cross-similarity | 0.949 | 0.30–0.50 | Differentiation is the core Stage 1 objective; contrastive loss drives separation |
+| SNN firing rate | 26 Hz | 20–35 Hz | May increase slightly as more input patterns trigger spikes |
+| SNN sparsity | 67% | 50–70% | Should remain in biological range |
+| CNN loss | 0.001 | 0.001 | Already converged |
+| LNN loss | 1.11 | 0.50–0.80 | May improve with more data; may need LR adjustment |
+| Semantic concepts | ~500 | ~2,000 | Approaches pool capacity (2,048) |
+| Active cortex CNNs | 2 training well | 4 training | Visual and somato will accumulate more data |
+
+**What the brain CAN do after Stage 1:**
+- Produce distinct output vectors for different object categories
+- Process multimodal sensory input (visual, audio, speech, somatosensory)
+- Fire biologically realistic spike patterns in response to specific stimuli
+- Recall similar concepts from semantic memory
+
+**What it CANNOT do:**
+- Respond to feedback (Stage 2)
+- Reason about relationships between concepts (Stage 3)
+- Generate coherent language (Stage 3)
+- Evaluate ethics of actions (Stage 3)
+
+### 40.2 End of Stage 2 (Step 40,000): Feedback Learning
+
+**What Stage 2 trains:** Response generation and error correction. The brain produces an output (its "guess"), receives a corrective signal, and learns from the error. This activates the eligibility trace pathway (Section 2.3) and cerebellar error correction.
+
+**Expected outcomes:**
+
+| Metric | Projected (step 40,000) | Basis |
+|--------|------------------------|-------|
+| Per-step loss | 0.005–0.02 | Feedback loop provides richer learning signal |
+| Cross-similarity | 0.10–0.30 | Correction signal directly penalizes similar outputs |
+| SNN sparsity | 40–60% | More neurons recruited for richer representations |
+| LNN loss | 0.20–0.50 | Temporal patterns from feedback loop suit LNN dynamics |
+| Cognitive modules active | 5–8 of 13 | Tier 3 curriculum unlocks more domains |
+| Vocabulary (brain-native) | 500–1,000 tokens | Autoregressive decoder begins producing coherent sequences |
+
+**New capabilities:**
+- Learn from correction (error → weight update via eligibility traces)
+- Plasticity transitions from ACQUISITION to CONSOLIDATION mode
+- Cerebellar error correction provides fast output-layer adjustment
+- Begin producing semi-coherent brain-native language tokens
+
+**Key risk:** The transition from acquisition to consolidation plasticity may cause temporary performance regression as the learning rules shift emphasis from encoding new patterns to stabilizing existing ones.
+
+### 40.3 End of Stage 3 (Step 50,000): Abstract Reasoning
+
+**What Stage 3 trains:** Multi-turn dialogue, domain-specific expertise across 13 cognitive domains, and independent thought. Domains are progressively unlocked based on mastery metrics.
+
+**Expected outcomes:**
+
+| Metric | Projected (step 50,000) | Basis |
+|--------|------------------------|-------|
+| Per-step loss | 0.001–0.01 on familiar domains; 0.05–0.20 on novel | Mastery-tracked adaptive difficulty |
+| Cross-similarity | 0.05–0.15 | Highly differentiated outputs per concept |
+| SNN firing rate | 15–40 Hz | Broader range as different domains activate different temporal patterns |
+| Cognitive domains mastered | 10–13 of 13 | Progressive unlocking with adaptive LR |
+| Ethics evaluation | Active and blocking | Non-removable ethics module evaluating every decision |
+| Theory of Mind | Basic belief-desire-intention models | From observing training data patterns about agents |
+| Causal reasoning | Counterfactual evaluation on trained scenarios | From counterfactual training items |
+| Brain-native vocabulary | 2,000–5,000 tokens | Vocabulary growth rate ~100 tokens per 1,000 steps |
+
+**New capabilities:**
+- Multi-turn reasoning across cognitive domains
+- Ethical evaluation of proposed actions
+- Counterfactual reasoning ("what would happen if...")
+- Analogical transfer (apply solutions from one domain to another)
+- Theory of Mind (model other agents' beliefs and intentions)
+- Self-generated curriculum (identify knowledge gaps and generate training data)
+
+**Key risks:**
+- Knowledge distillation from Claude-generated lessons may bias the brain toward transformer-style reasoning rather than its own emergent patterns
+- The 13-domain curriculum may not provide sufficient coverage for robust generalization
+- The brain-native language may not develop sufficient structure for meaningful communication
+
+### 40.4 Uncertainty and Caveats
+
+These projections are extrapolations from 6,200 steps of observation. Several factors could invalidate them:
+
+1. **Loss plateau:** If the ANN loss plateaus above 0.05, the contrastive and diversity losses may be insufficient to drive further differentiation. Solution: adjust $\lambda_{\text{contra}}$ and $\lambda_{\text{div}}$ weights.
+
+2. **LNN non-convergence:** If the LNN loss remains at 1.1 through Stage 1, the liquid network is not contributing useful temporal features. Solution: increase LNN neuron count from 64 to 256, or reduce $\tau_{\text{safe}}$ to allow shorter time constants.
+
+3. **SNN overfitting:** If the SNN develops stereotyped spike patterns (same 251 neurons always active regardless of input), it has overfit to common training features. Solution: increase connection probability from 50% to 80% and add dropout to the SNN hidden population.
+
+4. **Memory pressure:** At Stage 2 (step 40,000), the semantic memory pool (2,048 concepts) will be full. New concepts cannot be stored without evicting old ones. Solution: implement importance-based eviction (remove lowest-access-count concepts) or increase pool capacity.
+
+5. **Daemon crashes:** Any crash during Stage 3 loses optimizer state (Adam momentum and variance), causing temporary loss regression on restart. The structural stability fixes implemented during this session (mutex, graceful fallback, stack limits) have eliminated all known crash causes, but unknown failure modes may exist at later stages.
+
+The honest answer: we will know the actual outcomes when we get there. The projections above are based on the architecture's theoretical capabilities and the trajectory observed so far. The developmental curriculum is designed to build capabilities progressively — but whether a 2.5-million neuron brain with biological plasticity can actually develop abstract reasoning through 50,000 training steps on consumer hardware is an empirical question that has never been tested before.
 
 ---
 
