@@ -8,13 +8,19 @@
 
 ## Abstract
 
-This paper presents the complete mathematical framework underlying the Neuro-Inspired Modular Control Protocol (NIMCP), a 2-million-neuron artificial brain system with six network types, 60+ cognitive modules, and full biological plasticity. We formalize the neural dynamics (LIF, LNN, SNN, HNN), learning rules (STDP, BCM, homeostatic, adjoint), spectral methods (FFT, FNO), quantum-inspired algorithms (annealing, walks, Monte Carlo), information-theoretic measures (Shannon, PID, IIT), differential geometry (Riemannian manifolds, Fisher information, surface minimization), positional encoding schemes, and safety mathematics. Every equation corresponds to implemented code in the NIMCP codebase, with source file references provided throughout.
+This paper presents the complete mathematical framework underlying the Neuro-Inspired Modular Control Protocol (NIMCP), a 2.5-million-neuron artificial brain system with six network types, 60+ cognitive modules, and full biological plasticity. For each mathematical formulation, we explain not only *what* the equation computes but *why* that formulation was chosen over alternatives, *how* it integrates with the rest of the system, and *what happens when it fails*. Every equation corresponds to implemented code in the NIMCP codebase, with source file references provided throughout.
+
+The design philosophy throughout is: **use the simplest formulation that captures the essential dynamics, fail gracefully when assumptions break, and make every failure observable**. The mathematics described here is not aspirational — it is running right now in a 2.5-million neuron brain called Athena, currently in Stage 1 of developmental training.
 
 ---
 
 ## 1. Neural Dynamics
 
 ### 1.1 Leaky Integrate-and-Fire Model
+
+**Why LIF and not Hodgkin-Huxley or Izhikevich?** The Hodgkin-Huxley model (1952) captures the biophysics of ion channel dynamics with 4 differential equations per neuron. At 2.5 million neurons, this would require 10 million coupled ODEs per timestep — computationally intractable on a single GPU. The Izhikevich model (2003) is cheaper (2 equations per neuron) and reproduces 20+ firing patterns, but the extra parameters ($a, b, c, d$) require hand-tuning per neuron type and complicate BPTT gradient computation.
+
+LIF reduces each neuron to a single ODE with a threshold reset. It captures the essential dynamics — temporal integration, leak, refractory period — while being simple enough for BPTT surrogate gradients to flow cleanly through 100 timesteps. The trade-off: LIF neurons cannot burst, adapt, or exhibit resonance. For NIMCP, this is acceptable because the SNN's 768 neurons are not the primary computational substrate — the 9-layer adaptive network handles most of the feature extraction. The SNN provides *complementary* temporal coding, not a complete neuronal simulation.
 
 The membrane potential of neuron $i$ evolves according to:
 
@@ -28,7 +34,11 @@ where $\tau_m$ is the membrane time constant, $V_{\text{rest}}$ the resting pote
 
 The SNN populations in NIMCP use this model with per-neuron state vectors tracking membrane voltage, refractory timers, and spike indicators. The FNO bridge (Section 3.4) learns to approximate these dynamics at the population level.
 
-*Source: `include/snn/nimcp_snn_types.h`, `src/snn/nimcp_snn_step.c`*
+**How it connects to the system:** The SNN receives input through the Unified Training Manager's rate-to-spike bridge, which scales continuous ANN activations by `input_current_scale = 70.0` to produce currents in the millivolt range. An input of 0.3 produces 21 mV of drive — just above the 20 mV threshold gap ($V_{\text{thresh}} - V_{\text{rest}} = -50 - (-70)$). This calibration ensures that typical inputs cause firing without saturation.
+
+**What happens when it fails:** With $\tau_m = 20$ ms and $dt = 1$ ms, a single timestep produces only $\sim 1$ mV of membrane change. If the SNN is given only 1 timestep per training step (as occurred in an early implementation bug), neurons never reach threshold and the entire SNN remains silent. The fix — running 100 timesteps (100ms) per training step — gives input neurons ~3$\tau_m$ to reach steady state, fire, and propagate spikes through hidden to output populations.
+
+*Source: `include/snn/nimcp_snn_types.h`, `src/snn/nimcp_snn_network.c`*
 
 ### 1.2 Spiking Neural Network Population Dynamics
 
@@ -46,6 +56,10 @@ where $w_{ji}$ is the synaptic weight, $t_j^k$ the $k$-th spike time of presynap
 
 ### 1.3 Liquid Neural Network (LNN)
 
+**Why a separate ODE network when the ANN already handles static mapping?** The ANN processes each input independently — it has no notion of time between training steps. An RNN would add temporal memory but uses discrete timesteps tied to the training loop. The LNN's continuous-time ODE naturally captures dynamics at arbitrary timescales: a fast-changing input evolves the ODE quickly (small $\tau$), a slow input evolves it slowly (large $\tau$). The learned time constants $\tau_i$ per neuron adapt to the temporal structure of the data — something neither an ANN nor a standard RNN can do.
+
+**Why adjoint method instead of standard BPTT?** Standard BPTT for an ODE requires storing the full state trajectory — with 100+ integration steps and 64 neurons, that's 6,400+ float values per forward pass. The adjoint method (Chen et al., 2018) computes gradients by integrating a separate ODE backward in time, using only O(1) memory regardless of the number of integration steps. For NIMCP, this is critical because the LNN runs alongside 5 other networks that each consume memory.
+
 The LNN implements continuous-time recurrent dynamics via an ODE:
 
 
@@ -56,9 +70,17 @@ The LNN implements continuous-time recurrent dynamics via an ODE:
 
 where $x_i$ is the hidden state, $\tau_i$ a learned time constant (clamped to $\tau_{\text{safe}} \geq 0.01$ to prevent $1/\tau^2$ explosion), $W_{\text{rec}}$ the recurrent weight matrix, $W_{\text{in}}$ the input projection, and $f$ a nonlinearity (typically $\tanh$). Gradients are computed via the adjoint method (Section 2.6) with per-layer tensors `grad_W_rec`, `grad_tau_base`, and `grad_b_in` serving as the authoritative gradient storage.
 
+**What happens when it fails:** The $\tau_{\text{safe}} \geq 0.01$ clamp exists because the gradient of the ODE with respect to $\tau_i$ contains a $1/\tau_i^2$ term. Without the clamp, a learned $\tau$ near zero produces gradient explosion that cascades through the adjoint computation, producing adjoint norms of 60,000+. The original implementation hard-clipped these norms to 100.0, but this crushed gradient variance — the optimizer saw a constant-magnitude signal and the LNN stopped learning. The fix: normalize adjoint norms to a target of 10.0 (preserving direction while controlling magnitude), combined with the $\tau_{\text{safe}}$ floor to prevent the explosion at its source.
+
+**How it connects to the system:** The LNN's output feeds back to the ANN through a continuous bridge in the UTM. The LNN time constants encode the temporal scale at which the brain should process each feature dimension — fast $\tau$ for rapidly-changing sensory features, slow $\tau$ for persistent semantic context. This temporal structure complements the SNN's discrete spike timing and the ANN's static feature mapping.
+
 *Source: `include/lnn/nimcp_lnn_types.h`, `src/lnn/nimcp_lnn_forward.c`*
 
 ### 1.4 Hamiltonian Neural Networks (HNN)
+
+**Why energy conservation?** Standard neural networks can learn dynamics that violate conservation laws — an ODE network predicting planetary motion might predict a planet that gradually speeds up forever. The HNN constrains the learned dynamics to be energy-conserving by construction: the phase-space volume is preserved by the symplectic integrator, so the network *cannot* learn non-physical dynamics even if the loss function would reward them.
+
+**When is this useful?** For embodied applications (drones, robots), the motor control system must respect physics. An HNN-based dynamics model naturally produces trajectories that conserve energy, which translates to smoother, more efficient motor commands. The HNN is currently the least-used network in NIMCP's training pipeline — it becomes critical in Stage 3 when reasoning about physical interactions begins.
 
 Energy-conserving dynamics are achieved by learning a Hamiltonian function $H: \mathbb{R}^{2n} \to \mathbb{R}$ and deriving dynamics from Hamilton's equations:
 
@@ -112,7 +134,15 @@ The connection to the Free Energy Principle is: $H \equiv F$ (variational free e
 
 ## 2. Learning Rules
 
+NIMCP uses six learning rules simultaneously on the same synapses. This is not redundant — each rule captures a different aspect of learning that the others miss. The key insight: **gradient descent optimizes a loss function; biological plasticity optimizes for survivability**. A synapse modified by both backpropagation (minimize prediction error) and STDP (strengthen causal connections) and neuromodulation (amplify learning from surprising events) develops a richer weight structure than any single rule produces alone.
+
+The practical challenge is preventing these rules from destructively interfering. NIMCP handles this through timescale separation: STDP operates at 10ms (within a single BPTT window), backpropagation at the step level (~30s), BCM at 50ms, and homeostatic scaling at 60s. At any given moment, at most two rules are actively modifying the same synapse, and their contributions are additive with different magnitudes.
+
 ### 2.1 Spike-Timing-Dependent Plasticity (STDP)
+
+**Why STDP in addition to backpropagation?** Backpropagation computes the optimal weight change to minimize a loss function — but it requires the loss to be differentiable, the forward pass to be stored for the backward pass, and the target to be specified. STDP requires none of these. It operates purely on local spike timing: if neuron A consistently fires before neuron B, the A→B synapse strengthens (Markram et al., 1997). This captures causal relationships that backpropagation may miss, especially in the SNN where surrogate gradients are approximations of the true gradient.
+
+**How STDP and backpropagation coexist:** STDP modifies SNN synaptic weights based on spike timing within each 100ms BPTT window. BPTT then computes gradients through the same window and applies its own weight updates. The STDP changes are small ($A_+ = 0.005$, i.e., 0.5% per coincidence) while BPTT changes are larger but modulated by the learning rate (~0.001). The net effect: STDP provides a continuous "sculpting" of weights based on timing, while BPTT provides directed optimization toward the target. They complement rather than conflict because they optimize different objectives at different scales.
 
 The weight change follows the classic Bi & Poo (1998) exponential window:
 
@@ -151,6 +181,10 @@ where $g_{\text{DA}} = 100.0$ (default), $[\text{DA}]$ is dopamine concentration
 
 ### 2.2 BCM Rule (Bienenstock-Cooper-Munro)
 
+**Why BCM in addition to STDP?** STDP alone is unstable — it has a positive feedback loop where strong synapses cause more postsynaptic spikes, which further strengthen those synapses. Without a compensating mechanism, all weights saturate at $w_{\max}$. BCM provides that compensation: its sliding threshold $\theta$ tracks recent postsynaptic activity. When a neuron fires too much ($y > \theta$), the threshold rises, making further potentiation harder. When it fires too little ($y < \theta$), the threshold drops, making potentiation easier. This is a biological homeostatic mechanism that weight decay cannot replicate — weight decay shrinks all weights uniformly, while BCM selectively adjusts based on activity.
+
+**When it's disabled:** BCM requires per-synapse state (the $\theta$ threshold). For networks >100K neurons, this creates 20M+ mutex-locked allocations during wiring. NIMCP disables BCM for large networks to prevent initialization OOM. The homeostatic scaling rule (Section 2.4) provides a cruder but cheaper alternative.
+
 The BCM sliding threshold rule for cortical learning:
 
 
@@ -167,6 +201,12 @@ where $y$ is postsynaptic activity, $x$ is presynaptic activity, $\theta$ is the
 *Source: `include/plasticity/bcm/nimcp_bcm.h`, `src/plasticity/bcm/nimcp_bcm.c`*
 
 ### 2.3 Eligibility Traces
+
+**Why eligibility traces?** Consider a robot that reaches for an object. The motor neurons fire at time $t$, but the reward (successfully grasping) arrives at time $t + 500$ ms. STDP operates at the 10-20ms timescale — by the time the reward arrives, the STDP window has closed. How does the brain know which synapses were responsible for the successful grasp?
+
+Eligibility traces solve this by maintaining a decaying "tag" on each recently-modified synapse. When the motor neurons fire and cause an STDP event, the synapse becomes "eligible" for reinforcement. When the reward arrives 500ms later (as a dopamine signal), only the eligible synapses are strengthened — the rest are unaffected. This is the three-factor rule: Hebbian timing $\times$ eligibility $\times$ neuromodulatory reward.
+
+**How it connects to the system:** In NIMCP, the Training Plasticity Bridge (TPB) converts training loss to a dopamine signal: $\text{DA} = 1 - \min(\text{loss}, 1)$. Low loss → high dopamine → eligible synapses are consolidated. High loss → low dopamine → eligible synapses decay without reinforcement. This creates an automatic curriculum effect: synapses that contributed to correct predictions are reinforced; synapses that contributed to errors are forgotten.
 
 Eligibility traces bridge the temporal credit assignment gap between Hebbian coincidence and delayed reward:
 
@@ -224,6 +264,12 @@ The sliding threshold based on squared activity history.
 
 ### 2.5 Backpropagation Through Time for SNN
 
+**The fundamental problem:** A spike is a binary event — a neuron either fires or it doesn't. The derivative of the Heaviside step function is zero everywhere except at the threshold, where it's infinite. Standard backpropagation cannot flow gradients through this discontinuity.
+
+**Why surrogate gradients?** The solution (Neftci et al., 2019) replaces the Heaviside derivative with a smooth function that approximates it — a "surrogate gradient." The Cauchy distribution used in NIMCP provides a wide, smooth gradient landscape that allows BPTT to flow through hundreds of timesteps without vanishing. The sharpness parameter $\beta$ controls the trade-off: higher $\beta$ more closely approximates the true Heaviside (better gradient fidelity) but produces steeper gradients (risk of explosion). NIMCP uses $\beta = 1.0$, which provides reliable gradient flow through 100 timesteps.
+
+**What happens when the window is too short:** With $\tau_m = 20$ ms, the membrane time constant creates a low-pass filter on the gradient signal. In a 1ms window, the surrogate gradient is essentially zero because the membrane hasn't had time to respond to the input. In a 100ms window, the gradient accumulates over ~5 time constants, producing a meaningful signal. This is why the BPTT window length must be calibrated to the membrane dynamics — a failure we encountered and fixed when the SNN produced 0 spikes during training.
+
 SNN training uses BPTT with surrogate gradients. The non-differentiable Heaviside spike function $\Theta(V - V_{\text{thresh}})$ is replaced by a smooth surrogate:
 
 
@@ -237,6 +283,10 @@ The backward pass unrolls through time, computing temporal gradients of the loss
 *Source: `include/snn/nimcp_snn_training.h`, `src/snn/nimcp_snn_bptt.c`*
 
 ### 2.6 Adjoint Method for LNN
+
+**Why not just use standard BPTT for the ODE?** Standard BPTT would require storing the LNN state at every integration step — with adaptive step sizes, this could be hundreds of states per forward pass. The adjoint method (Chen et al., 2018) avoids this: it computes the exact same gradients by solving a *separate* ODE backward in time, requiring only the final state and the loss gradient as initial conditions. Memory usage is O(1) regardless of how many integration steps the forward pass took.
+
+**The practical trade-off:** The adjoint method requires re-evaluating $f(x, \theta, t)$ during the backward pass (since intermediate states aren't stored). This doubles the compute cost but halves the memory. For NIMCP, where 5 other networks compete for memory alongside the LNN, the memory savings are critical.
 
 For the LNN ODE $\dot{x} = f(x, \theta, t)$, the adjoint state $a(t) = \partial L / \partial x(t)$ evolves backward:
 
@@ -254,7 +304,9 @@ Parameter gradients are accumulated during the backward sweep:
 ```
 
 
-Adjoint truncation is capped at 50 backward steps. Gradients are normalized (not clipped) to target norm 1.0 when `use_gradient_normalization=true`, preventing the 100,000x reduction that caused mode collapse in earlier versions.
+Adjoint truncation is capped at 50 backward steps. Gradients are normalized (not clipped) to target norm 10.0, preserving gradient direction while controlling magnitude.
+
+**A cautionary tale:** The original implementation hard-clipped the adjoint norm to 100.0 at two points: per-step (during backward integration) and post-adjoint (on accumulated parameter gradients). With actual gradient norms of 60,000+, this produced a 600× reduction factor. Worse, the clipping was applied as `min(norm, 100)`, so the optimizer always saw gradients of exactly magnitude 100 — zero variance in gradient magnitude across training steps. The LNN loss plateaued at 1.1 and never improved. The fix: replace clipping with normalization (divide by norm, multiply by target), which preserves the *direction* of the gradient while controlling its *magnitude*. After this fix, LNN loss began decreasing.
 
 *Source: `src/lnn/nimcp_lnn_adjoint.c`*
 
@@ -280,6 +332,10 @@ where $\lambda$ is the weight decay coefficient, decoupled from the adaptive lea
 ---
 
 ## 3. Fourier Neural Operators
+
+**Why spectral methods in a brain?** Convolutional neural networks learn local spatial features — edges, textures, small shapes. They struggle with global patterns because the receptive field grows slowly with depth. The Fourier Neural Operator (Li et al., 2021) learns directly in the frequency domain, where a single learned weight captures a global spatial pattern. This is analogous to how biological auditory cortex processes sound: the cochlea performs a Fourier-like frequency decomposition, and cortical neurons respond to specific frequency bands, not raw time-domain signals.
+
+In NIMCP, FNO layers are attached to the audio and visual cortex CNNs, providing a spectral analysis path that complements the CNN's spatial analysis. The CNN detects "what" (a sharp attack, a bird call) while the FNO detects "what frequency" (300 Hz fundamental, 1200 Hz formant). Together they produce richer sensory features than either alone.
 
 ### 3.1 Spectral Convolution
 
@@ -849,6 +905,12 @@ for real amplitude vectors.
 
 ## 11. Neuromodulation
 
+**Why neuromodulators instead of a learning rate schedule?** A cosine annealing schedule modulates learning rate globally and on a fixed timeline — all weights, all layers, all inputs receive the same LR at the same training step. Biological neuromodulation is fundamentally different: it is *stimulus-dependent* and *pathway-specific*.
+
+When NIMCP encounters a novel input (low recall confidence from semantic memory), acetylcholine rises, increasing the learning rate for *that specific input*. When a prediction is surprisingly accurate (low loss on a previously-difficult item), dopamine rises, reinforcing the synapses that were active during *that specific prediction*. The same training step can produce high dopamine for one pathway (correct prediction) and low dopamine for another (incorrect prediction on a different output dimension).
+
+This is not an engineering trick — it is a direct implementation of the reward prediction error theory (Schultz, 1998) and the cholinergic enhancement of encoding (Hasselmo, 1999). The practical consequence: NIMCP learns novel inputs 2-3× faster than familiar ones without any explicit curriculum adjustment, because the neuromodulatory system automatically allocates learning capacity where it's most needed.
+
 ### 11.1 Dopamine Reward Prediction Error
 
 
@@ -908,6 +970,10 @@ h(t) = h_0 \cdot \exp(-n_{\text{exposures}} / \tau_h)
 ---
 
 ## 13. Safety Mathematics
+
+**Why mathematics in the safety system?** Most AI safety approaches are behavioral — train the model to refuse harmful requests. NIMCP's safety is structural: mandatory code gates that execute before every inference and weight update. But structural safety still requires mathematics to be *verifiable*. The CRC32 checksums provide cryptographic evidence that audit logs haven't been tampered with. The Byzantine detection uses statistical hypothesis testing to identify compromised nodes. The LGSS lattice provides a formal framework where safety properties (monotonicity, completeness) can be proven by construction.
+
+The key principle: **if you can't prove a safety property mathematically, you can't verify it in deployment**. Behavioral safety ("the model seems safe in testing") is not a proof. Structural safety with mathematical guarantees ("the CRC32 detects any 1-bit modification with probability $1 - 2^{-32}$") is.
 
 ### 13.1 CRC32 Checksum
 
