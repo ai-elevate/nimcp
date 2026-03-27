@@ -1847,16 +1847,29 @@ snn_network_t* snn_network_load(const char* path) {
                 n->threshold = threshold;
                 n->bias = bias;
                 if (weights && target_ids) {
-                    /* v2: match by target neuron ID for correct restoration */
+                    /* v2: restore connections with weights and target IDs.
+                     * If the network has no connections yet (fresh from snn_network_create),
+                     * CREATE them from the checkpoint data. This preserves BPTT-trained
+                     * weights across daemon restarts. */
                     uint32_t cur_syn = sparse_synapse_count(&n->outgoing);
-                    for (uint32_t s = 0; s < n_synapses; s++) {
-                        /* Find matching synapse in current network by target ID */
-                        for (uint32_t cs = 0; cs < cur_syn; cs++) {
-                            synapse_handle_t* h = sparse_synapse_get(&n->outgoing, cs);
-                            if (h && h->target_neuron_id == target_ids[s]) {
-                                h->weight = weights[s];
-                                break;
+                    if (cur_syn > 0) {
+                        /* Network already has connections — match by target ID */
+                        for (uint32_t s = 0; s < n_synapses; s++) {
+                            for (uint32_t cs = 0; cs < cur_syn; cs++) {
+                                synapse_handle_t* h = sparse_synapse_get(&n->outgoing, cs);
+                                if (h && h->target_neuron_id == target_ids[s]) {
+                                    h->weight = weights[s];
+                                    break;
+                                }
                             }
+                        }
+                    } else {
+                        /* No connections — create from checkpoint data.
+                         * Uses neural_network_add_connection to properly wire
+                         * both outgoing and incoming synapse handles. */
+                        for (uint32_t s = 0; s < n_synapses; s++) {
+                            neural_network_add_connection(
+                                net->neural_net, i, target_ids[s], weights[s]);
                         }
                     }
                 } else if (weights) {

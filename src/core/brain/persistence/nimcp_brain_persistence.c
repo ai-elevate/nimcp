@@ -1323,26 +1323,30 @@ brain_t brain_load(const char* filepath)
                 snn->config.input_current_scale = 70.0f;
                 fprintf(stderr, "[INFO] Restored SNN network from %s (input_scale=70)\n", sec_path);
 
-                /* Wire inter-population connections if the checkpoint didn't restore any.
-                 * The checkpoint saves per-neuron synapse weights, but snn_network_load
-                 * calls snn_network_create which creates populations with 0 connections.
-                 * The restore loop then finds cur_syn=0 for every neuron and skips.
-                 * So we ALWAYS need to wire, then let BPTT train the weights from scratch.
-                 *
-                 * NOTE: This means SNN weights are NOT preserved across daemon restarts.
-                 * The BPTT retrains them within ~500 steps. Fixing proper checkpoint
-                 * save/load for SNN inter-population connections is a future task. */
+                /* Wire inter-population connections ONLY if the checkpoint didn't restore them.
+                 * With the snn_network_load fix, v2 checkpoints now create connections from
+                 * saved data (preserving BPTT-trained weights). Only fall back to random
+                 * wiring if the network still has 0 connections after checkpoint load. */
                 extern int snn_network_connect_populations(
                     struct snn_network_s*, uint32_t, uint32_t,
                     float, float, float, int);
-                if (snn->n_populations >= 2) {
+                /* Check if checkpoint restored any connections by sampling first neuron */
+                bool has_connections = false;
+                if (snn->neural_net) {
+                    neuron_t* n0 = neural_network_get_neuron(snn->neural_net, 0);
+                    if (n0 && sparse_synapse_count(&n0->outgoing) > 0)
+                        has_connections = true;
+                }
+                if (!has_connections && snn->n_populations >= 2) {
                     int total_conns = 0;
                     for (uint32_t p = 0; p < snn->n_populations - 1; p++) {
                         total_conns += snn_network_connect_populations(snn, p, p + 1,
                             0.5f, 0.1f, 0.5f, 0);
                     }
-                    fprintf(stderr, "[INFO] SNN population wiring: %d connections across %u transitions\n",
-                            total_conns, snn->n_populations - 1);
+                    fprintf(stderr, "[INFO] SNN population wiring: %d random connections (checkpoint had none)\n",
+                            total_conns);
+                } else if (has_connections) {
+                    fprintf(stderr, "[INFO] SNN connections restored from checkpoint (BPTT weights preserved)\n");
                 }
             }
         }
