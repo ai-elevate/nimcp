@@ -732,17 +732,11 @@ def main():
             except Exception:
                 pass
 
-            # Submit the text as a learning target (pairs audio with meaning)
+            # Labeled learn call — pairs audio with meaning for cortex CNN backward training
             try:
-                text_features = [0.0] * 1024
-                # Simple text hash encoding for grounding
-                text = utterance["text"]
-                for i, ch in enumerate(text[:512]):
-                    text_features[i * 2] = ord(ch) / 127.0 - 0.5
-                    text_features[i * 2 + 1] = (ord(ch) * 7 + i) % 256 / 255.0 - 0.5
-                brain.learn(text_features, text_features,
-                           label=f"parentese:{utterance['emotion']}",
-                           confidence=0.8, learning_rate=0.0002)
+                brain.learn_vector(mel_features, mel_features,
+                                   label=f"parentese:{utterance['text'][:30]}",
+                                   confidence=0.8, learning_rate=0.0002)
             except Exception:
                 pass
 
@@ -769,6 +763,16 @@ def main():
             # Also submit as speech (different cortex pathway)
             try:
                 brain.submit_sensory("speech", audio_samples[:4000])
+            except Exception:
+                pass
+
+            # Labeled learn call — gives the audio cortex CNN a backward training signal.
+            # Without this, the audio cortex only gets forward passes (feature extraction)
+            # but never updates its weights (0 backward steps).
+            try:
+                brain.learn_vector(mel_features, mel_features,
+                                   label=f"audio:{desc[:40]}",
+                                   confidence=0.6, learning_rate=0.0002)
             except Exception:
                 pass
 
