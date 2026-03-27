@@ -566,45 +566,83 @@
             <p>A 2.5-million neuron brain named Athena is currently in Stage 2 of developmental training on a single NVIDIA RTX 4000 SFF Ada (20 GB VRAM).</p>
 
             <div class="training-status">
-                <h3><span class="live-dot"></span>Training Status</h3>
+                <h3><span class="live-dot" id="liveDot"></span><span id="statusLabel">Training Status</span></h3>
                 <div class="training-grid">
                     <div class="training-metric">
-                        <div class="label">Stage</div>
-                        <div class="value">2 / 4</div>
-                    </div>
-                    <div class="training-metric">
-                        <div class="label">Step</div>
-                        <div class="value">~6,000 / 20,000</div>
+                        <div class="label">Stage / Step</div>
+                        <div class="value" id="m-stage">2 / 4</div>
+                        <div class="label" style="margin-top:4px" id="m-step">Step ~6,000 / 20,000</div>
                     </div>
                     <div class="training-metric">
                         <div class="label">ANN Loss</div>
-                        <div class="value">0.190</div>
-                    </div>
-                    <div class="training-metric">
-                        <div class="label">SNN Firing Rate</div>
-                        <div class="value">26.0 Hz</div>
-                    </div>
-                    <div class="training-metric">
-                        <div class="label">SNN Sparsity</div>
-                        <div class="value">67%</div>
+                        <div class="value" id="m-ann">—</div>
                     </div>
                     <div class="training-metric">
                         <div class="label">CNN Loss</div>
-                        <div class="value">0.001</div>
+                        <div class="value" id="m-cnn">—</div>
                     </div>
                     <div class="training-metric">
-                        <div class="label">Architecture</div>
-                        <div class="value">9-Layer Diamond</div>
+                        <div class="label">SNN Loss</div>
+                        <div class="value" id="m-snn-loss">—</div>
                     </div>
                     <div class="training-metric">
-                        <div class="label">Uptime</div>
-                        <div class="value">Stable</div>
+                        <div class="label">LNN Loss</div>
+                        <div class="value" id="m-lnn">—</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">SNN Firing Rate</div>
+                        <div class="value" id="m-snn-rate">—</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">SNN Sparsity</div>
+                        <div class="value" id="m-snn-sparsity">—</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">SNN Spikes</div>
+                        <div class="value" id="m-snn-spikes">—</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">Per-Step Loss</div>
+                        <div class="value" id="m-step-loss">—</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">Training Steps</div>
+                        <div class="value" id="m-steps">—</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">Learn Calls</div>
+                        <div class="value" id="m-learns">—</div>
+                    </div>
+                    <div class="training-metric">
+                        <div class="label">Daemon Uptime</div>
+                        <div class="value" id="m-uptime">—</div>
+                    </div>
+                </div>
+
+                <!-- Cortex CNN section -->
+                <h3 style="margin-top: 24px; font-size: 1rem;">Cortex CNN Performance</h3>
+                <div class="training-grid" style="margin-top: 12px;" id="cortex-grid">
+                    <div class="training-metric" id="cortex-speech" style="display:none">
+                        <div class="label">Speech Cortex</div>
+                        <div class="value" id="m-cx-speech">—</div>
+                    </div>
+                    <div class="training-metric" id="cortex-audio" style="display:none">
+                        <div class="label">Audio Cortex</div>
+                        <div class="value" id="m-cx-audio">—</div>
+                    </div>
+                    <div class="training-metric" id="cortex-visual" style="display:none">
+                        <div class="label">Visual Cortex</div>
+                        <div class="value" id="m-cx-visual">—</div>
+                    </div>
+                    <div class="training-metric" id="cortex-somato" style="display:none">
+                        <div class="label">Somato Cortex</div>
+                        <div class="value" id="m-cx-somato">—</div>
                     </div>
                 </div>
             </div>
 
             <div style="margin-top: 24px; text-align: center;">
-                <p style="color: var(--text-dim); font-size: 0.9rem;">Training metrics are updated manually. Full training logs available on GitHub.</p>
+                <p style="color: var(--text-dim); font-size: 0.9rem;" id="update-label">Connecting to metrics feed...</p>
             </div>
         </div>
     </section>
@@ -785,6 +823,85 @@ brain.learn_vector(features, target, label='hello world')
     }
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    // Live metrics polling
+    const METRICS_URL = '/metrics.json';
+    const POLL_INTERVAL = 10000; // 10 seconds
+
+    function fmt(v, decimals=4) {
+        if (v === undefined || v === null) return '—';
+        return typeof v === 'number' ? v.toFixed(decimals) : String(v);
+    }
+
+    function fmtTime(seconds) {
+        if (!seconds) return '—';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        if (h > 0) return h + 'h ' + m + 'm';
+        return m + 'm';
+    }
+
+    function updateMetrics(d) {
+        const el = id => document.getElementById(id);
+
+        if (d.current_step) {
+            el('m-step').textContent = 'Step ' + d.current_step.toLocaleString() + ' / 20,000';
+        }
+        if (d.ann_loss !== undefined) el('m-ann').textContent = fmt(d.ann_loss);
+        if (d.cnn_loss !== undefined) el('m-cnn').textContent = fmt(d.cnn_loss);
+        if (d.snn_loss !== undefined) el('m-snn-loss').textContent = fmt(d.snn_loss);
+        if (d.lnn_loss !== undefined) el('m-lnn').textContent = fmt(d.lnn_loss);
+        if (d.snn_rate_hz !== undefined) el('m-snn-rate').textContent = fmt(d.snn_rate_hz, 1) + ' Hz';
+        if (d.snn_sparsity !== undefined) el('m-snn-sparsity').textContent = (d.snn_sparsity * 100).toFixed(0) + '%';
+        if (d.snn_spikes !== undefined) el('m-snn-spikes').textContent = d.snn_spikes.toLocaleString();
+        if (d.step_loss !== undefined) el('m-step-loss').textContent = fmt(d.step_loss);
+        if (d.ann_steps !== undefined) el('m-steps').textContent = d.ann_steps.toLocaleString();
+        if (d.learn_calls !== undefined) el('m-learns').textContent = d.learn_calls.toLocaleString();
+        if (d.uptime !== undefined) el('m-uptime').textContent = fmtTime(d.uptime);
+
+        // Cortex CNNs
+        if (d.cortex) {
+            for (const [name, c] of Object.entries(d.cortex)) {
+                const wrapper = el('cortex-' + name);
+                const val = el('m-cx-' + name);
+                if (wrapper && val) {
+                    wrapper.style.display = '';
+                    const ratio = c.fwd > 0 ? Math.round(100 * c.bwd / c.fwd) : 0;
+                    val.textContent = fmt(c.ema_loss) + ' (' + ratio + '% bwd)';
+                }
+            }
+        }
+
+        // Status indicator
+        const dot = el('liveDot');
+        const label = el('update-label');
+        if (d.ok) {
+            dot.style.background = 'var(--green)';
+            const age = Math.round((Date.now() / 1000) - d.timestamp);
+            label.textContent = 'Live metrics — updated ' + (age < 60 ? age + 's ago' : Math.round(age/60) + 'm ago');
+        } else {
+            dot.style.background = 'var(--orange)';
+            label.textContent = 'Brain daemon offline — last data from cache';
+        }
+    }
+
+    async function pollMetrics() {
+        try {
+            const resp = await fetch(METRICS_URL + '?t=' + Date.now());
+            if (resp.ok) {
+                const data = await resp.json();
+                updateMetrics(data);
+            }
+        } catch (e) {
+            // Metrics file not available — show static values
+            document.getElementById('update-label').textContent =
+                'Metrics feed unavailable — showing cached values';
+        }
+    }
+
+    // Poll immediately, then every 10 seconds
+    pollMetrics();
+    setInterval(pollMetrics, POLL_INTERVAL);
     </script>
 </body>
 </html>
