@@ -857,7 +857,12 @@ brain.learn_vector(features, target, label='hello world')
         if (d.snn_sparsity !== undefined) el('m-snn-sparsity').textContent = (d.snn_sparsity * 100).toFixed(0) + '%';
         if (d.snn_spikes !== undefined) el('m-snn-spikes').textContent = d.snn_spikes.toLocaleString();
         if (d.step_loss !== undefined) el('m-step-loss').textContent = fmt(d.step_loss);
-        if (d.ann_steps !== undefined) el('m-steps').textContent = d.ann_steps.toLocaleString();
+        // Show cumulative step from training log (not per-session daemon counter)
+        if (d.current_step) {
+            el('m-steps').textContent = d.current_step.toLocaleString() + ' (cumulative)';
+        } else if (d.ann_steps !== undefined) {
+            el('m-steps').textContent = d.ann_steps.toLocaleString() + ' (session)';
+        }
         if (d.learn_calls !== undefined) el('m-learns').textContent = d.learn_calls.toLocaleString();
         if (d.uptime !== undefined) el('m-uptime').textContent = fmtTime(d.uptime);
 

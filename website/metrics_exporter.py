@@ -107,24 +107,39 @@ def collect_metrics():
         metrics['cortex'] = cortex
 
     # Training log — local file, always fast
+    # Extracts: current step, per-step loss, SNN spikes from step reports
     try:
         log_path = os.path.join(os.path.dirname(__file__), '..', 'training.log')
         if os.path.exists(log_path):
             import re
-            # Read last 10KB only (avoid reading entire log)
+            # Read last 20KB to find recent step reports
             with open(log_path, 'rb') as f:
                 f.seek(0, 2)
                 size = f.tell()
-                f.seek(max(0, size - 10240))
+                f.seek(max(0, size - 20480))
                 tail = f.read().decode('utf-8', errors='replace')
             for line in reversed(tail.splitlines()):
-                m = re.match(r'.*\[(\d{4,})\]\s+loss=([0-9.]+)', line)
+                m = re.match(r'.*\[(\d{4,})\]\s+loss=([0-9.]+).*SNN:(\d+)spk/([0-9.]+)Hz', line)
                 if m:
                     metrics['current_step'] = int(m.group(1))
                     metrics['step_loss'] = float(m.group(2))
+                    # SNN from step report (more accurate than daemon stats)
+                    metrics['snn_step_spikes'] = int(m.group(3))
+                    metrics['snn_step_rate'] = float(m.group(4))
+                    break
+                # Fallback: step report without SNN
+                m2 = re.match(r'.*\[(\d{4,})\]\s+loss=([0-9.]+)', line)
+                if m2:
+                    metrics['current_step'] = int(m2.group(1))
+                    metrics['step_loss'] = float(m2.group(2))
                     break
     except Exception:
         pass
+
+    # Use step-report SNN data if daemon stats show 0 (struct mismatch)
+    if metrics.get('snn_spikes', 0) == 0 and metrics.get('snn_step_spikes', 0) > 0:
+        metrics['snn_spikes'] = metrics['snn_step_spikes']
+        metrics['snn_rate_hz'] = metrics['snn_step_rate']
 
     return metrics
 
