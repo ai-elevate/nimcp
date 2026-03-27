@@ -6456,3 +6456,1614 @@ Wed Mar 25 12:13:08 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-03-25 13:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3683m old
 [2026-03-25 13:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-03-25 13:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3688m old
+[2026-03-25 13:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 13:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3693m old
+[2026-03-25 13:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 13:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3698m old
+[2026-03-25 13:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 13:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3703m old
+[2026-03-25 13:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 13:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3708m old
+[2026-03-25 13:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 13:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3713m old
+[2026-03-25 14:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3718m old
+[2026-03-25 14:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3723m old
+[2026-03-25 14:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3728m old
+[2026-03-25 14:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 14:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3733m old
+[2026-03-25 14:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3738m old
+[2026-03-25 14:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3743m old
+[2026-03-25 14:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3748m old
+[2026-03-25 14:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 14:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3753m old
+[2026-03-25 14:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 14:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3758m old
+[2026-03-25 14:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 14:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3763m old
+[2026-03-25 14:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 14:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3768m old
+[2026-03-25 14:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 14:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3773m old
+[2026-03-25 15:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3778m old
+[2026-03-25 15:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3783m old
+[2026-03-25 15:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3788m old
+[2026-03-25 15:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3793m old
+[2026-03-25 15:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3798m old
+[2026-03-25 15:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3803m old
+[2026-03-25 15:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3808m old
+[2026-03-25 15:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3813m old
+[2026-03-25 15:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3818m old
+[2026-03-25 15:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3823m old
+[2026-03-25 15:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3828m old
+[2026-03-25 15:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 15:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3833m old
+[2026-03-25 16:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3838m old
+[2026-03-25 16:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3843m old
+[2026-03-25 16:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3848m old
+[2026-03-25 16:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3853m old
+[2026-03-25 16:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3858m old
+[2026-03-25 16:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3863m old
+[2026-03-25 16:30:02] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:30:02] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3868m old
+[2026-03-25 16:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3873m old
+[2026-03-25 16:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3878m old
+[2026-03-25 16:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3883m old
+[2026-03-25 16:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3888m old
+[2026-03-25 16:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 16:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3893m old
+[2026-03-25 17:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3898m old
+[2026-03-25 17:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3903m old
+[2026-03-25 17:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3908m old
+[2026-03-25 17:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3913m old
+[2026-03-25 17:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3918m old
+[2026-03-25 17:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3923m old
+[2026-03-25 17:30:02] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:30:02] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3928m old
+[2026-03-25 17:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3933m old
+[2026-03-25 17:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3938m old
+[2026-03-25 17:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3943m old
+[2026-03-25 17:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3948m old
+[2026-03-25 17:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 17:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3953m old
+[2026-03-25 18:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3958m old
+[2026-03-25 18:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3963m old
+[2026-03-25 18:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3968m old
+[2026-03-25 18:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3973m old
+[2026-03-25 18:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3978m old
+[2026-03-25 18:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3983m old
+[2026-03-25 18:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3988m old
+[2026-03-25 18:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3993m old
+[2026-03-25 18:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 3998m old
+[2026-03-25 18:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4003m old
+[2026-03-25 18:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 18:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4008m old
+[2026-03-25 18:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4013m old
+[2026-03-25 19:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4018m old
+[2026-03-25 19:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4023m old
+Wed Mar 25 07:07:15 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:07:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:07:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:07:15 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:07:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:07:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:07:15 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:07:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:07:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:09:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:09:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:09:26 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:09:26 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:09:26 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:09:26 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:09:26 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:09:26 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 19:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4028m old
+Wed Mar 25 07:10:53 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:10:53 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:10:53 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:10:53 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:10:53 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:10:53 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:12:19 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:12:19 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:12:19 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:12:19 PM CET 2026 MODE COLLAPSE: [128stp] nonzero=0/4096 (0.0%) std=0.000000 ann=42.0756 cnn=0.0042
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:12:19 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:12:19 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:14:17 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:14:17 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:14:30 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:14:30 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:14:30 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:14:30 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 19:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4033m old
+Wed Mar 25 07:15:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:15:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:15:56 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:15:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:15:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:15:56 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:15:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:15:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:17:21 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:17:21 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:17:21 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:17:21 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:17:21 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:17:21 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:17:21 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:18:50 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:18:50 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:19:02 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:19:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:19:02 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:19:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 19:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4038m old
+Wed Mar 25 07:20:29 PM CET 2026 MODE COLLAPSE: [167stp] nonzero=0/4096 (0.0%) std=0.000000 ann=55.5189 cnn=0.0053
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:20:29 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:20:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:20:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:20:29 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:20:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:20:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:21:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:21:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:21:56 PM CET 2026 MODE COLLAPSE: [174stp] nonzero=0/4096 (0.0%) std=0.000000 ann=57.4219 cnn=0.0053
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:21:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:21:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:23:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:23:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:23:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:23:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:23:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:23:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:24:01 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:24:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:24:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:24:01 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:24:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:24:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:24:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:24:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:25:01 PM CET 2026 MODE COLLAPSE: [328stp] nonzero=0/4096 (0.0%) std=0.000000 ann=13.3198 cnn=0.0012
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:25:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:25:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:25:01 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:25:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:25:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:26:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:26:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:26:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:26:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:26:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:26:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:27:02 PM CET 2026 MODE COLLAPSE: [528stp] nonzero=0/4096 (0.0%) std=0.000000 ann=1.7847 cnn=0.0002
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:27:02 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:27:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:27:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:27:02 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:27:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:27:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:28:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:28:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:28:04 PM CET 2026 MODE COLLAPSE: [601stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.8571 cnn=0.0001
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:28:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:28:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:29:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:29:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:29:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:29:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:29:04 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:29:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:29:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 19:30:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 19:30:01] [WARN] UTM triggered early stopping
+[2026-03-25 19:30:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 07:30:05 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:30:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:30:05 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:30:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:30:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:30:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:30:05 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:30:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:30:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:31:05 PM CET 2026 MODE COLLAPSE: [772stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.1539 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:31:05 PM CET 2026 MODE COLLAPSE: [772stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.1539 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:31:05 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:31:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:32:05 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:32:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:32:05 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:32:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:32:05 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:32:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:32:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:33:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:33:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:33:06 PM CET 2026 MODE COLLAPSE: [977stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0198 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:33:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:33:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:34:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:34:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:34:08 PM CET 2026 MODE COLLAPSE: [1042stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0104 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:34:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:34:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 19:35:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 19:35:01] [WARN] UTM triggered early stopping
+[2026-03-25 19:35:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 07:35:10 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:35:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:35:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:35:10 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:35:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:35:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:35:10 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:35:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:35:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:36:13 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:36:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:36:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:36:13 PM CET 2026 MODE COLLAPSE: [1281stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0011 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:36:13 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:36:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:37:13 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:37:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:37:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:37:13 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:37:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:37:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:37:13 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:37:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:37:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:38:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:38:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:38:14 PM CET 2026 MODE COLLAPSE: [1610stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0002 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:38:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:38:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:39:14 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:39:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:39:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:39:14 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:39:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:39:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:39:14 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:39:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:39:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 19:40:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 19:40:01] [WARN] UTM triggered early stopping
+[2026-03-25 19:40:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 19:40:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 07:40:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:40:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:40:15 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:40:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:40:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:40:15 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:40:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:40:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:41:16 PM CET 2026 MODE COLLAPSE: [1847stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0003 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:41:16 PM CET 2026 MODE COLLAPSE: [1847stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0003 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:41:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:41:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:42:16 PM CET 2026 MODE COLLAPSE: [1972stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0002 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:42:16 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:42:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:42:16 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:42:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:42:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:42:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:43:16 PM CET 2026 MODE COLLAPSE: [2011stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0002 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:43:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:43:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:43:16 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:43:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:43:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:44:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:44:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:44:16 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:44:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:44:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:44:16 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:44:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:44:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 19:45:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 19:45:01] [WARN] UTM triggered early stopping
+[2026-03-25 19:45:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 19:45:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 07:45:17 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:45:17 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:45:17 PM CET 2026 MODE COLLAPSE: [2356stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0001 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:45:17 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:45:17 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:46:19 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:46:19 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:46:19 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:46:19 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:46:19 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:46:19 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:46:19 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:47:21 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:47:21 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:47:21 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:47:21 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:47:21 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:47:21 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:47:21 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:48:23 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:48:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:48:23 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:48:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:48:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:48:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:48:23 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:48:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:48:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:49:23 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:49:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:49:23 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:49:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:49:23 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:49:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 19:50:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 19:50:01] [WARN] UTM triggered early stopping
+[2026-03-25 19:50:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 19:50:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 07:50:23 PM CET 2026 MODE COLLAPSE: [2777stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0002 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:50:23 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:50:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:50:26 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:50:26 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:51:24 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:51:24 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:51:24 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:51:24 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:51:24 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:51:24 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:51:27 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:51:27 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:52:25 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:52:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:52:25 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:52:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:52:27 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:52:27 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:53:25 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:53:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:53:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:53:25 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:53:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:53:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:53:27 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:53:27 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:54:27 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:54:27 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:54:27 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:54:27 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:54:27 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:54:28 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:54:28 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 19:55:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 19:55:01] [WARN] UTM triggered early stopping
+[2026-03-25 19:55:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 19:55:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 07:55:27 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:55:27 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:55:27 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:55:27 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:55:27 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:55:31 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:55:31 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:56:28 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:56:28 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:56:28 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:56:28 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:56:34 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:56:34 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:57:28 PM CET 2026 MODE COLLAPSE: [3424stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0003 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:57:28 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:57:28 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:57:34 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:57:34 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:58:28 PM CET 2026 MODE COLLAPSE: [3450stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0003 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:58:28 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:58:28 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:58:35 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:58:35 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:59:29 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:59:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:59:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:59:29 PM CET 2026 MODE COLLAPSE: Wed Mar 25 07:59:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:59:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 07:59:36 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 07:59:36 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:00:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:00:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:00:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:00:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:00:29 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:00:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:00:29 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:00:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:00:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:00:36 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:00:36 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:01:30 PM CET 2026 MODE COLLAPSE: [3720stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0002 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:01:30 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:01:30 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:01:37 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:01:37 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:02:31 PM CET 2026 MODE COLLAPSE: [3856stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0001 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:02:31 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:02:31 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:02:39 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:02:39 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:03:32 PM CET 2026 MODE COLLAPSE: [3937stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0002 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:03:32 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:03:32 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:03:41 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:03:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:04:32 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:04:32 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:04:32 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:04:32 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:04:41 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:04:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:05:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:05:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:05:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:05:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:05:33 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:05:32 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:05:33 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:05:33 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:05:41 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:05:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:06:33 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:06:33 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:06:34 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:06:34 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:06:44 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:06:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:07:34 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:07:34 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:07:34 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:07:34 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:07:44 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:07:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:08:37 PM CET 2026 MODE COLLAPSE: [4403stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0001 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:08:37 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:08:37 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:08:45 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:08:45 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:09:38 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:09:38 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:09:38 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:09:38 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:09:38 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:09:46 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:09:46 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:10:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:10:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:10:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:10:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:10:38 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:10:38 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:10:38 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:10:38 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:10:38 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:10:38 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:10:46 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:10:46 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:11:39 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:11:39 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:11:39 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:11:39 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:11:47 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:11:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:12:39 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:12:39 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:12:39 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:12:39 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:12:39 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:12:47 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:12:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:13:40 PM CET 2026 MODE COLLAPSE: [4772stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0003 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:13:40 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:13:40 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:13:47 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:13:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:14:40 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:14:40 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:14:40 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:14:40 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:14:40 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:14:40 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:14:48 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:14:48 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:15:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:15:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:15:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:15:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:15:41 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:15:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:15:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:15:41 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:15:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:15:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:15:48 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:15:48 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:16:41 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:16:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:16:41 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:16:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:16:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:16:49 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:16:49 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:17:41 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:17:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:17:41 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:17:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:17:49 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:17:49 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:18:41 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:18:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:18:41 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:18:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:18:51 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:18:51 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:19:44 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:19:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:19:44 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:19:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:19:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:19:51 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:19:51 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:20:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:20:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:20:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:20:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:20:44 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:20:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:20:45 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:20:45 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:20:51 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:20:51 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:21:45 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:21:45 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:21:45 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:21:45 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:21:52 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:21:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:22:45 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:22:45 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:22:45 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:22:45 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:22:52 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:22:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:23:48 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:23:48 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:23:48 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:23:48 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:23:54 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:23:54 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:24:52 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:24:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:24:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:24:52 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:24:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:24:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:24:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:24:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:25:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:25:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:25:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:25:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:25:52 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:25:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:25:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:25:52 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:25:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:25:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:25:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:25:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:26:53 PM CET 2026 MODE COLLAPSE: [5929stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0002 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:26:53 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:26:53 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:26:57 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:26:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:27:53 PM CET 2026 MODE COLLAPSE: [5988stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.0002 cnn=0.0000
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:27:53 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:27:53 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:27:57 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:27:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:28:53 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:28:53 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:28:53 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:28:53 PM CET 2026 MODE COLLAPSE: Wed Mar 25 08:28:53 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:28:53 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:28:57 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:28:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:29:53 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:29:53 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:29:54 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:29:54 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:29:57 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:29:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:30:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:30:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:30:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:30:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:30:54 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:30:54 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:30:54 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:30:54 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:30:58 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:30:58 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:31:54 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:31:54 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:31:55 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:31:55 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:31:58 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:31:58 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:32:54 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:32:54 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:32:55 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:32:55 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:32:58 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:32:58 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:33:54 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:33:54 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:33:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:33:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:33:59 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:33:59 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:34:55 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:34:55 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:34:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:34:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:34:59 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:34:59 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:35:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:35:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:35:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:35:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:35:55 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:35:55 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:35:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:35:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:35:59 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:35:59 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:36:55 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:36:55 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:36:57 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:36:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:36:59 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:36:59 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:37:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:37:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:37:57 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:37:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:38:00 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:38:00 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:38:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:38:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:38:57 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:38:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:39:00 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:39:00 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:39:56 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:39:56 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:39:57 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:39:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:40:00 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:40:00 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:40:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:40:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:40:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:40:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:40:57 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:40:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:40:58 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:40:58 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:41:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:41:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:41:57 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:41:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:41:58 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:41:58 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:42:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:42:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:42:58 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:42:58 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:42:59 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:42:59 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:43:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:43:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:43:58 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:43:58 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:43:59 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:43:59 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:44:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:44:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:44:58 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:44:58 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:44:59 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:44:59 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:45:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:45:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:45:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:45:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:45:02 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:45:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:45:58 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:45:58 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:46:00 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:46:00 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:46:02 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:46:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:46:59 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:46:59 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:47:00 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:47:00 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:47:02 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:47:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:47:59 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:47:59 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:48:00 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:48:00 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:48:03 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:48:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:49:00 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:49:00 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:49:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:49:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:49:03 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:49:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:50:00 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:50:00 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:50:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:50:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:50:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:50:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:50:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:50:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:50:03 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:50:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:51:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:51:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:51:02 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:51:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:51:03 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:51:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:52:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:52:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:52:03 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:52:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:52:03 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:52:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:53:01 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:53:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:53:03 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:53:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:53:05 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:53:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:54:02 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:54:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:54:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:54:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:54:05 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:54:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 20:55:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 20:55:01] [WARN] UTM triggered early stopping
+[2026-03-25 20:55:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 20:55:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 08:55:02 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:55:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:55:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:55:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:55:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:55:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:56:02 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:56:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:56:05 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:56:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:56:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:56:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:57:03 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:57:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:57:05 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:57:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:57:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:57:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:58:03 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:58:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:58:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:58:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:58:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:58:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:59:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:59:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:59:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:59:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 08:59:07 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 08:59:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 21:00:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:00:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:00:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:00:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 09:00:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:00:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:00:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:00:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:00:07 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:00:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:01:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:01:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:01:07 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:01:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:01:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:01:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:02:05 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:02:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:02:07 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:02:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:02:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:02:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:03:05 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:03:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:03:07 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:03:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:03:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:03:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:04:05 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:04:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:04:07 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:04:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:04:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:04:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 21:05:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:05:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:05:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:05:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 09:05:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:05:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:05:07 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:05:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:05:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:05:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:06:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:06:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:06:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:06:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:06:09 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:06:09 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:07:06 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:07:06 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:07:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:07:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:07:09 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:07:09 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:08:07 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:08:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:08:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:08:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:08:09 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:08:09 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:09:07 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:09:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:09:09 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:09:09 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:09:09 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:09:09 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 21:10:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:10:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:10:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:10:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 09:10:07 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:10:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:10:09 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:10:09 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:10:10 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:10:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:11:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:11:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:11:09 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:11:09 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:11:10 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:11:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:12:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:12:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:12:09 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:12:09 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:12:10 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:12:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:13:08 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:13:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:13:10 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:13:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:13:11 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:13:11 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:14:09 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:14:09 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:14:10 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:14:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:14:11 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:14:11 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 21:15:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:15:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:15:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:15:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 09:15:10 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:15:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:15:11 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:15:11 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:15:11 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:15:11 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:16:10 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:16:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:16:11 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:16:11 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:16:12 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:16:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:17:10 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:17:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:17:11 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:17:11 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:17:12 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:17:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:18:10 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:18:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:18:12 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:18:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:18:13 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:18:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:19:11 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:19:11 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:19:12 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:19:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:19:13 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:19:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 21:20:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:20:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:20:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:20:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 09:20:11 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:20:11 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:20:12 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:20:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:20:13 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:20:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:21:12 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:21:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:21:12 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:21:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:21:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:21:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:22:12 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:22:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:22:13 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:22:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:22:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:22:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:23:12 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:23:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:23:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:23:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:23:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:23:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:24:13 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:24:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:24:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:24:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:24:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:24:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 21:25:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:25:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:25:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:25:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 09:25:13 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:25:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:25:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:25:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:25:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:25:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:26:13 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:26:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:26:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:26:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:26:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:26:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:27:13 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:27:13 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:27:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:27:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:27:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:27:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:28:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:28:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:28:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:28:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:28:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:28:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:29:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:29:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:29:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:29:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:29:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:29:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 21:30:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:30:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:30:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:30:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 09:30:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:30:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:30:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:30:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:30:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:30:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:31:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:31:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:31:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:31:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:31:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:31:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:32:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:32:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:32:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:32:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:32:17 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:32:17 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:33:15 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:33:15 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:33:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:33:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:33:17 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:33:17 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:34:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:34:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:34:16 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:34:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:34:18 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:34:18 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 21:35:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:35:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:35:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:35:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 09:35:16 PM CET 2026 MODE COLLAPSE: Wed Mar 25 09:35:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:35:16 PM CET 2026 MODE COLLAPSE: Wed Mar 25 09:35:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:35:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:35:16 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:35:18 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:35:18 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:36:17 PM CET 2026 MODE COLLAPSE: Wed Mar 25 09:36:17 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:36:17 PM CET 2026 MODE COLLAPSE: Wed Mar 25 09:36:17 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:36:17 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:36:17 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 09:36:20 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 09:36:20 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 21:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 21:40:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:40:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:40:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:40:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 21:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 21:45:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:45:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:45:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:45:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 21:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 21:50:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:50:01] [WARN] UTM triggered early stopping
+[2026-03-25 21:50:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:50:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 21:55:02] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 21:55:02] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 21:55:02] [WARN] UTM triggered early stopping
+[2026-03-25 21:55:02] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 21:55:02] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 22:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 22:00:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 22:00:01] [WARN] UTM triggered early stopping
+[2026-03-25 22:00:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 22:00:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 22:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 22:05:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 22:05:01] [WARN] UTM triggered early stopping
+[2026-03-25 22:05:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 22:05:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 22:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 22:10:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 22:10:01] [WARN] UTM triggered early stopping
+[2026-03-25 22:10:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 22:10:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 22:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 22:15:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 22:15:01] [WARN] UTM triggered early stopping
+[2026-03-25 22:15:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 22:15:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 22:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 22:20:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 22:20:01] [WARN] UTM triggered early stopping
+[2026-03-25 22:20:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 22:20:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 22:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 22:25:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 22:25:01] [WARN] UTM triggered early stopping
+[2026-03-25 22:25:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 22:25:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 22:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 22:30:01] [WARN] UTM health: NOISY (DFA α=0.51) — excessive randomness
+[2026-03-25 22:30:01] [WARN] UTM triggered early stopping
+[2026-03-25 22:30:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 22:30:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 10:34:23 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:34:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:34:24 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:34:24 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:34:25 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:34:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:35:25 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:35:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:35:25 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:35:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:35:25 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:35:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:35:25 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:36:33 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:36:33 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:36:33 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:36:33 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:36:33 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:36:33 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:36:33 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:37:47 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:37:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:37:47 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:37:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:37:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:37:47 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:37:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:37:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:39:02 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:39:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:39:02 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:39:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:39:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:39:02 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:39:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:39:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 22:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4238m old
+Wed Mar 25 10:40:14 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:40:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:40:14 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:40:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:40:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:40:14 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:40:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:40:14 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:41:29 PM CET 2026 MODE COLLAPSE: [350stp] nonzero=0/4096 (0.0%) std=0.000000 ann=21.2879 cnn=0.0090
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:41:29 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:41:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:41:29 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:41:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:41:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:41:29 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:42:43 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:42:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:42:43 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:42:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:42:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:42:43 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:42:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:42:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 22:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4243m old
+Wed Mar 25 10:45:42 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Mar 25 10:45:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:45:42 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Mar 25 10:45:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:45:42 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:45:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:45:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:46:42 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:46:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:46:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:46:42 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:46:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:46:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:46:42 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:46:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:47:42 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:47:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:47:42 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:47:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:47:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:47:42 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:47:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:47:42 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:48:43 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:48:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:48:43 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:48:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:48:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:48:43 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:48:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:49:43 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:49:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:49:43 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:49:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:49:43 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:49:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:49:43 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 22:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4248m old
+Wed Mar 25 10:50:44 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:50:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:50:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:50:44 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:50:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:50:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:50:44 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:50:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:50:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:51:44 PM CET 2026 MODE COLLAPSE: [792stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.1680 cnn=0.0020
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:51:45 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 10:51:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:51:45 PM CET 2026 MODE COLLAPSE: Wed Mar 25 10:51:44 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:51:45 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 10:53:41 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Mar 25 10:53:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 22:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 22:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4253m old
+[2026-03-25 23:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 23:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4258m old
+[2026-03-25 23:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 23:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4263m old
+[2026-03-25 23:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 23:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4268m old
+[2026-03-25 23:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 23:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4273m old
+[2026-03-25 23:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4278m old
+Wed Mar 25 11:21:02 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Mar 25 11:21:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:21:02 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:21:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:21:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:21:02 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Mar 25 11:21:02 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:23:03 PM CET 2026 MODE COLLAPSE: [246stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.1778 cnn=0.0051
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 11:23:03 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:23:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:23:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:23:03 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:23:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:23:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:24:03 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:24:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:24:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:24:03 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:24:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:24:03 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:24:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 11:24:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 23:25:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 23:25:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+Wed Mar 25 11:25:04 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:25:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:25:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:25:04 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:25:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:25:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:25:04 PM CET 2026 MODE COLLAPSE: ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 11:25:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:26:04 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:26:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:26:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:26:04 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:26:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:26:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:26:04 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:26:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:26:04 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:27:05 PM CET 2026 MODE COLLAPSE: [791stp] nonzero=0/4096 (0.0%) std=0.000000 ann=0.1663 cnn=0.0039
+ALERT: MODE COLLAPSE — <10% nonzero outputs!
+Wed Mar 25 11:27:05 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:27:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:27:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:27:05 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:27:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:27:05 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:29:47 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:29:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:29:47 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:29:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:29:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:29:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 23:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 23:30:01] [CRITICAL] Mode collapse risk! output_sim=1.000 (threshold: 0.95)
+[2026-03-25 23:30:01] [WARN] Poor output differentiation! eff_rank=0.0 (threshold: 10)
+[2026-03-25 23:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4293m old
+Wed Mar 25 11:36:57 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Mar 25 11:36:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:37:07 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:37:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:37:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:37:07 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:37:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:37:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:38:49 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:38:49 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:38:49 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:38:49 PM CET 2026 MODE COLLAPSE: Wed Mar 25 11:38:49 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Mar 25 11:38:49 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-25 23:40:02] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 23:40:02] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4298m old
+[2026-03-25 23:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 23:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4303m old
+[2026-03-25 23:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 23:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4308m old
+[2026-03-25 23:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-25 23:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4313m old
+[2026-03-26 00:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4318m old
+Thu Mar 26 12:01:22 AM CET 2026 MODE COLLAPSE: Thu Mar 26 12:01:22 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 12:01:22 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 12:01:22 AM CET 2026 MODE COLLAPSE: Thu Mar 26 12:01:22 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 12:01:22 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 12:01:26 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 12:01:26 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 00:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4323m old
+[2026-03-26 00:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 00:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4328m old
+[2026-03-26 00:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4333m old
+[2026-03-26 00:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4338m old
+[2026-03-26 00:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4343m old
+[2026-03-26 00:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4348m old
+[2026-03-26 00:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4353m old
+Thu Mar 26 12:49:25 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 12:49:25 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 00:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 00:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4373m old
+[2026-03-26 01:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4378m old
+[2026-03-26 01:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4383m old
+Thu Mar 26 01:07:42 AM CET 2026 MODE COLLAPSE: Thu Mar 26 01:07:42 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:07:42 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:07:42 AM CET 2026 MODE COLLAPSE: Thu Mar 26 01:07:42 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:07:42 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:07:42 AM CET 2026 MODE COLLAPSE: Thu Mar 26 01:07:42 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:07:42 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:09:40 AM CET 2026 MODE COLLAPSE: Thu Mar 26 01:09:40 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:09:40 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:09:40 AM CET 2026 MODE COLLAPSE: Thu Mar 26 01:09:40 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:09:40 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 01:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 01:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4388m old
+[2026-03-26 01:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 01:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4393m old
+[2026-03-26 01:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4398m old
+[2026-03-26 01:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4403m old
+[2026-03-26 01:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4408m old
+Thu Mar 26 01:32:20 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 01:32:20 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:32:20 AM CET 2026 MODE COLLAPSE: Thu Mar 26 01:32:20 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:32:20 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:32:20 AM CET 2026 MODE COLLAPSE: Thu Mar 26 01:32:20 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 01:32:20 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 01:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 02:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 02:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 02:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4448m old
+[2026-03-26 02:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4453m old
+[2026-03-26 02:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4458m old
+[2026-03-26 02:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+Thu Mar 26 02:30:48 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 02:30:48 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 02:30:49 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 02:30:49 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 02:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4473m old
+[2026-03-26 02:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4478m old
+[2026-03-26 02:45:02] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4483m old
+[2026-03-26 02:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4488m old
+[2026-03-26 02:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4493m old
+Thu Mar 26 03:03:59 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:03:59 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:03:59 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:03:59 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:03:59 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:03:59 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:03:59 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:03:59 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:03:59 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:08:41 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:08:41 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:08:41 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:08:41 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:08:41 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:08:41 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:08:41 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:08:41 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:08:41 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 03:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 03:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4523m old
+[2026-03-26 03:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4528m old
+[2026-03-26 03:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4533m old
+[2026-03-26 03:40:02] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4538m old
+Thu Mar 26 03:42:18 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 03:42:18 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:42:18 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:42:18 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:42:18 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:42:18 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:42:18 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:42:18 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 03:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4543m old
+Thu Mar 26 03:45:15 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 03:45:15 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:45:15 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:45:15 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:45:15 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:45:17 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 03:45:17 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 03:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4548m old
+Thu Mar 26 03:53:16 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:53:16 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:53:16 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:53:16 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:53:16 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:53:16 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:53:16 AM CET 2026 MODE COLLAPSE: Thu Mar 26 03:53:16 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 03:53:16 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 03:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4553m old
+[2026-03-26 04:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4558m old
+[2026-03-26 04:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4563m old
+Thu Mar 26 04:06:54 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 04:06:54 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:06:54 AM CET 2026 MODE COLLAPSE: Thu Mar 26 04:06:54 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:06:54 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:06:54 AM CET 2026 MODE COLLAPSE: Thu Mar 26 04:06:54 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:06:54 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 04:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4568m old
+[2026-03-26 04:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4573m old
+[2026-03-26 04:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4578m old
+[2026-03-26 04:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 04:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4583m old
+Thu Mar 26 04:25:21 AM CET 2026 MODE COLLAPSE: Thu Mar 26 04:25:21 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:25:21 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:25:21 AM CET 2026 MODE COLLAPSE: Thu Mar 26 04:25:21 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:25:21 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:25:21 AM CET 2026 MODE COLLAPSE: Thu Mar 26 04:25:21 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:25:21 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:28:03 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 04:28:03 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:28:05 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 04:28:05 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:28:05 AM CET 2026 MODE COLLAPSE: Thu Mar 26 04:28:05 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 04:28:05 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 04:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 04:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4588m old
+[2026-03-26 04:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 04:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4593m old
+[2026-03-26 04:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 04:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4598m old
+[2026-03-26 04:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 04:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4603m old
+[2026-03-26 04:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 04:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4608m old
+[2026-03-26 04:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 04:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4613m old
+[2026-03-26 05:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4618m old
+[2026-03-26 05:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4623m old
+[2026-03-26 05:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4628m old
+Thu Mar 26 05:14:46 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 05:14:46 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 05:14:46 AM CET 2026 MODE COLLAPSE: Thu Mar 26 05:14:46 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 05:14:46 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 05:14:46 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 05:14:46 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 05:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4633m old
+[2026-03-26 05:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4638m old
+Thu Mar 26 05:20:58 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 05:20:58 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 05:20:58 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 05:20:58 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 05:20:58 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 05:20:58 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 05:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 05:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4643m old
+[2026-03-26 05:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 05:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4648m old
+[2026-03-26 05:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 05:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4653m old
+[2026-03-26 05:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 05:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4658m old
+[2026-03-26 05:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 05:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4663m old
+[2026-03-26 05:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 05:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4668m old
+[2026-03-26 05:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 05:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4673m old
+[2026-03-26 06:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 06:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4678m old
+[2026-03-26 06:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 06:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4683m old
+[2026-03-26 06:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 06:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4688m old
+Thu Mar 26 06:14:32 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 06:14:32 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 06:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 06:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4693m old
+[2026-03-26 06:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 06:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4698m old
+[2026-03-26 06:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 06:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4703m old
+[2026-03-26 06:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 06:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4708m old
+[2026-03-26 06:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 06:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4713m old
+[2026-03-26 06:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 06:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4718m old
+[2026-03-26 06:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 06:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4723m old
+[2026-03-26 06:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4728m old
+[2026-03-26 06:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4733m old
+[2026-03-26 07:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 07:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4738m old
+Thu Mar 26 07:04:19 AM CET 2026 MODE COLLAPSE: Thu Mar 26 07:04:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 07:04:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 07:04:19 AM CET 2026 MODE COLLAPSE: Thu Mar 26 07:04:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 07:04:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 07:04:19 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 07:04:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 07:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 07:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4743m old
+[2026-03-26 07:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4748m old
+[2026-03-26 07:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4753m old
+[2026-03-26 07:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4758m old
+[2026-03-26 07:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4763m old
+[2026-03-26 07:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4768m old
+Thu Mar 26 07:40:35 AM CET 2026 MODE COLLAPSE: Thu Mar 26 07:40:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 07:40:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 07:40:35 AM CET 2026 MODE COLLAPSE: Thu Mar 26 07:40:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 07:40:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 07:40:35 AM CET 2026 MODE COLLAPSE: Thu Mar 26 07:40:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 07:40:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 07:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 07:50:01] [CRITICAL] Mode collapse risk! output_sim=0.969 (threshold: 0.95)
+[2026-03-26 07:50:01] [WARN] Poor output differentiation! eff_rank=5.4 (threshold: 10)
+[2026-03-26 07:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-26 07:55:01] [CRITICAL] Mode collapse risk! output_sim=0.969 (threshold: 0.95)
+[2026-03-26 07:55:01] [WARN] Poor output differentiation! eff_rank=5.4 (threshold: 10)
+Thu Mar 26 07:55:51 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 07:55:51 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 08:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4803m old
+[2026-03-26 08:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4808m old
+[2026-03-26 08:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4813m old
+[2026-03-26 08:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 4818m old
+Thu Mar 26 08:23:59 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 08:23:59 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 08:24:01 AM CET 2026 MODE COLLAPSE: Thu Mar 26 08:24:01 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 08:24:01 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 08:24:01 AM CET 2026 MODE COLLAPSE: Thu Mar 26 08:24:01 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 08:24:01 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 08:37:17 AM CET 2026 MODE COLLAPSE: Thu Mar 26 08:37:17 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 08:37:17 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 08:37:17 AM CET 2026 MODE COLLAPSE: Thu Mar 26 08:37:17 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 08:37:17 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 08:37:17 AM CET 2026 MODE COLLAPSE: Thu Mar 26 08:37:17 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 08:37:17 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:06:08 AM CET 2026 MODE COLLAPSE: Thu Mar 26 09:06:08 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:06:08 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:06:08 AM CET 2026 MODE COLLAPSE: Thu Mar 26 09:06:08 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:06:08 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:06:10 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 09:06:10 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 09:14:05] MODE COLLAPSE at stage 1 step 4300. Mean cosine sim = 0.999998 for 3 consecutive checks.
+Thu Mar 26 09:17:30 AM CET 2026 MODE COLLAPSE: Thu Mar 26 09:17:30 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:17:30 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:17:30 AM CET 2026 MODE COLLAPSE: Thu Mar 26 09:17:30 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:17:30 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:17:30 AM CET 2026 MODE COLLAPSE: Thu Mar 26 09:17:30 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:17:30 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:25:35 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 09:25:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:25:35 AM CET 2026 MODE COLLAPSE: Thu Mar 26 09:25:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:25:35 AM CET 2026 MODE COLLAPSE: Thu Mar 26 09:25:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:25:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:25:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:32:24 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 09:32:24 AM CET 2026 MODE COLLAPSE: Thu Mar 26 09:32:24 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:32:24 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:32:24 AM CET 2026 MODE COLLAPSE: Thu Mar 26 09:32:24 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:32:24 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:22:50 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 09:22:50 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:22:51 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 09:22:51 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 09:22:53 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 09:22:52 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-26 22:40:01] [WARN] Checkpoint stale: athena_s1_step5450.bin is 121m old
+[2026-03-26 22:45:01] [WARN] Checkpoint stale: athena_s1_step5450.bin is 126m old
+[2026-03-26 22:50:01] [WARN] Checkpoint stale: athena_s1_step5450.bin is 131m old
+[2026-03-26 22:55:01] [WARN] Checkpoint stale: athena_s1_step5450.bin is 136m old
+[2026-03-26 23:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5698m old
+[2026-03-26 23:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5703m old
+[2026-03-26 23:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5708m old
+[2026-03-26 23:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5713m old
+[2026-03-26 23:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5718m old
+[2026-03-26 23:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.24) — chaotic gradient dynamics
+[2026-03-26 23:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-26 23:25:01] [WARN] Poor output differentiation! eff_rank=5.7 (threshold: 10)
+[2026-03-26 23:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5728m old
+[2026-03-26 23:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5733m old
+[2026-03-26 23:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5738m old
+Thu Mar 26 11:54:12 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 11:54:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 11:54:20 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 11:54:20 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Mar 26 11:54:26 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Mar 26 11:54:26 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-27 00:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5773m old
+[2026-03-27 00:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5778m old
+[2026-03-27 00:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5783m old
+[2026-03-27 00:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5788m old
+[2026-03-27 00:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 5793m old
+Fri Mar 27 01:06:19 AM CET 2026 MODE COLLAPSE: Fri Mar 27 01:06:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 01:06:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 01:06:19 AM CET 2026 MODE COLLAPSE: Fri Mar 27 01:06:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 01:06:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 01:06:19 AM CET 2026 MODE COLLAPSE: Fri Mar 27 01:06:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 01:06:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***

@@ -269,4 +269,4 @@ We believe this "safety by design" philosophy — building safety into the compu
 
 *Braun Brelin — braun.brelin@ai-elevate.ai*
 
-*NIMCP v2.6.4 — March 2026*
+*NIMCP v0.9.0-beta — March 2026*

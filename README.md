@@ -171,7 +171,7 @@ For detailed usage:
 
 ## Current Status
 
-**Version 2.6.4** (March 2026)
+**Version 0.9.0-beta** (March 2026)
 
 Training status: **Stage 1** (Association — learning to name objects). Loss: 0.027 avg. SNN: 17-20 Hz (healthy). eff_rank: 64.2 (excellent output diversity). 4,750+ unique training descriptions across 13 cognitive domains + unlimited compositional combinations.
 

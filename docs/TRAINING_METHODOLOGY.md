@@ -443,4 +443,4 @@ The code is open source at `github.com/redmage123/nimcp`. The brain called Athen
 
 *Braun Brelin — braun.brelin@ai-elevate.ai*
 
-*NIMCP v2.6.4 — March 2026*
+*NIMCP v0.9.0-beta — March 2026*

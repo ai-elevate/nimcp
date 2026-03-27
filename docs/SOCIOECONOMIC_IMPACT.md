@@ -363,4 +363,4 @@ The technology is neutral. The deployment is not. The choice is ours.
 
 ---
 
-*This analysis reflects the state of NIMCP as of version 2.6.4 (March 2026). The system is actively under development. Actual societal impact will depend on deployment decisions, governance frameworks, and choices not yet made.*
+*This analysis reflects the state of NIMCP as of version 0.9.0-beta (March 2026). The system is actively under development. Actual societal impact will depend on deployment decisions, governance frameworks, and choices not yet made.*

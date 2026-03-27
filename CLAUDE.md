@@ -1,7 +1,7 @@
 # NIMCP Project Reference
 
-**Version**: 2.6.4
-**Last Updated**: 2026-03-22
+**Version**: 0.9.0-beta
+**Last Updated**: 2026-03-27
 **Path**: `/home/bbrelin/nimcp`
 
 > **Documentation is modularized.** See `docs/claude/` for detailed documentation.

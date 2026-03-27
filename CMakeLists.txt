@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(NIMCP VERSION 2.6.3 LANGUAGES C CXX)
+project(NIMCP VERSION 0.9.0 LANGUAGES C CXX)
 
 # Default to RelWithDebInfo so debug symbols are always available for GDB
 if(NOT CMAKE_BUILD_TYPE)

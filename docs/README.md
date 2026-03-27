@@ -1,6 +1,6 @@
 # NIMCP - Neuromorphic Infant Machine Cognitive Platform
 
-[![Version](https://img.shields.io/badge/version-2.6.3-blue.svg)](https://github.com/redmage123/nimcp)
+[![Version](https://img.shields.io/badge/version-0.9.0--beta-blue.svg)](https://github.com/redmage123/nimcp)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C Standard](https://img.shields.io/badge/C-C11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 
@@ -332,7 +332,7 @@ If you use NIMCP in your research, please cite:
   title = {NIMCP: Neuromorphic Infant Machine Cognitive Platform},
   author = {Brelin, Braun},
   year = {2024},
-  version = {2.6.3},
+  version = {0.9.0-beta},
   url = {https://github.com/redmage123/nimcp}
 }
 ```

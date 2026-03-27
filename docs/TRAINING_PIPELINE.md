@@ -337,4 +337,4 @@ Every stimulus gets `bg_update_reward(0.5, 0.3)` — mild positive reward regard
 
 ---
 
-*This document describes the training pipeline as of NIMCP v2.6.3 (March 2026).*
+*This document describes the training pipeline as of NIMCP v0.9.0-beta (March 2026).*

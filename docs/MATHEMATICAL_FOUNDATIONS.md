@@ -2,7 +2,7 @@
 
 *Neuro-Inspired Modular Control Protocol -- A Formal Treatment*
 
-**Version 2.6.4 | March 2026**
+**Version 0.9.0-beta | March 2026**
 
 ---
 
@@ -2295,4 +2295,4 @@ The honest answer: we will know the actual outcomes when we get there. The proje
 
 ---
 
-*Generated from NIMCP v2.6.4 source code. All equations correspond to implemented functions in the codebase.*
+*Generated from NIMCP v0.9.0-beta source code. All equations correspond to implemented functions in the codebase.*

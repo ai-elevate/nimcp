@@ -201,4 +201,4 @@ We report biologically realistic spiking dynamics (26 Hz mean rate, 67% sparsity
 
 *Braun Brelin — braun.brelin@ai-elevate.ai*
 
-*NIMCP v2.6.4 — March 2026*
+*NIMCP v0.9.0-beta — March 2026*

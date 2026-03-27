@@ -1,7 +1,7 @@
 /**
  * @file nimcp.h
  * @brief Unified NIMCP Public API - Single entry point for all language bindings
- * @version 2.6.3
+ * @version 0.9.0-beta
  * @date 2025-11-04
  *
  * This is the ONLY header file that language bindings should include.
@@ -42,16 +42,16 @@ extern "C" {
 //=============================================================================
 
 #ifndef NIMCP_VERSION_MAJOR
-#define NIMCP_VERSION_MAJOR 2
+#define NIMCP_VERSION_MAJOR 0
 #endif
 #ifndef NIMCP_VERSION_MINOR
-#define NIMCP_VERSION_MINOR 6
+#define NIMCP_VERSION_MINOR 9
 #endif
 #ifndef NIMCP_VERSION_PATCH
-#define NIMCP_VERSION_PATCH 3
+#define NIMCP_VERSION_PATCH 0
 #endif
 #ifndef NIMCP_VERSION_STRING
-#define NIMCP_VERSION_STRING "2.6.3"
+#define NIMCP_VERSION_STRING "0.9.0-beta"
 #endif
 
 /* P2-7: Define NIMCP_MAX_LABEL_SIZE for predict buffer sizing */
@@ -66,7 +66,7 @@ extern "C" {
 
 /**
  * @brief Get NIMCP version as string
- * @return Version string (e.g., "2.6.3")
+ * @return Version string (e.g., "0.9.0-beta")
  */
 const char* nimcp_version(void);
 

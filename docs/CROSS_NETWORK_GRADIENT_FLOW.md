@@ -238,4 +238,4 @@ The result is a brain where each network finds its computational niche — not b
 
 *Braun Brelin — braun.brelin@ai-elevate.ai*
 
-*NIMCP v2.6.4 — March 2026*
+*NIMCP v0.9.0-beta — March 2026*
