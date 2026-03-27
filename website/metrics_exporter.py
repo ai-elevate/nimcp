@@ -17,15 +17,30 @@ INTERVAL = 15  # seconds (allow time for slow daemon queries)
 
 def _safe_query(b, cmd, timeout=10):
     """Query daemon with per-call timeout, return None on failure."""
-    import socket
-    old_timeout = b.timeout
-    b.timeout = timeout
+    import socket as _socket
+    sock = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+    sock.settimeout(timeout)
     try:
-        return b._send_once({'cmd': cmd})
+        sock.connect(b.socket_path)
+        import json, struct
+        data = json.dumps({'cmd': cmd}).encode('utf-8')
+        sock.sendall(struct.pack('>I', len(data)) + data)
+        hdr = b''
+        while len(hdr) < 4:
+            chunk = sock.recv(4 - len(hdr))
+            if not chunk: return None
+            hdr += chunk
+        length = struct.unpack('>I', hdr)[0]
+        body = b''
+        while len(body) < length:
+            chunk = sock.recv(min(length - len(body), 65536))
+            if not chunk: return None
+            body += chunk
+        return json.loads(body.decode('utf-8'))
     except Exception:
         return None
     finally:
-        b.timeout = old_timeout
+        sock.close()
 
 
 def collect_metrics():
@@ -38,8 +53,8 @@ def collect_metrics():
     b = BrainProxy(timeout=10)
     metrics = {'timestamp': time.time(), 'ok': False}
 
-    # Status — fast, tests connectivity
-    r = _safe_query(b, 'status', timeout=5)
+    # Status — should be fast, but daemon under load can be slow
+    r = _safe_query(b, 'status', timeout=15)
     if r and not r.get('error'):
         metrics['uptime'] = r.get('uptime', 0)
         metrics['learn_calls'] = r.get('learn_calls', 0)
@@ -47,7 +62,7 @@ def collect_metrics():
         metrics['errors'] = r.get('errors', 0)
         metrics['ok'] = True
     else:
-        return metrics  # Daemon down — return partial
+        return metrics  # Daemon down — return partial (still written to file)
 
     # Neuron count — fast
     r = _safe_query(b, 'get_neuron_count', timeout=5)
