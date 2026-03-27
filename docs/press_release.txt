@@ -1,43 +1,45 @@
 FOR IMMEDIATE RELEASE
 
-AI Elevate Announces NIMCP: A 2.5-Million Neuron Artificial Brain With Biological Plasticity and Structural Safety
+Dublin Startup Builds Artificial Brain That Learns Like a Child — And Can't Have Its Safety Turned Off
 
-Open-source project trains six neural network types simultaneously on a single consumer GPU, producing biologically realistic spiking dynamics without explicit design constraints
+AI Elevate releases open-source brain with 2.5 million neurons that develops through stages, explores through curiosity, and has safety built into its DNA
 
-DUBLIN, Ireland — March 28, 2026 — AI Elevate today announced the public release of NIMCP (Neuro-Inspired Modular Control Protocol), an open-source artificial brain architecture that trains 2.5 million neurons across six heterogeneous neural network types simultaneously, using biological plasticity mechanisms and a developmental learning curriculum inspired by human cognitive development.
+DUBLIN, Ireland — March 28, 2026 — AI Elevate today released NIMCP, an artificial brain that takes a fundamentally different approach to artificial intelligence. Instead of predicting the next word in a sentence — the technique behind ChatGPT, Claude, and every other large language model — NIMCP grows its intelligence through developmental stages, the way a human child does.
 
-Unlike transformer-based AI systems that scale a single architecture with more data and parameters, NIMCP trains spiking neural networks, liquid state machines, convolutional processors, Fourier neural operators, Hamiltonian dynamics networks, and an adaptive backbone in parallel, with learned gradient bridges enabling knowledge transfer between fundamentally different computational paradigms. The system runs on a single NVIDIA RTX 4000 GPU with 20 GB of video memory.
+The brain, named Athena, starts with the equivalent of a newborn's sensory awareness and progressively learns to name objects, respond to feedback, and eventually reason about ethics, cause and effect, and other minds. It is currently in the second of four developmental stages, and its training can be watched live at https://nimcp.ai-elevate.ai.
 
-"The AI industry has been asking one question: can we approximate intelligence with enough data?" said Braun Brelin, founder of AI Elevate and creator of NIMCP. "We're asking a different question: can we grow it? The brain doesn't predict the next token. It runs spiking neurons, modulates learning through neurochemistry, and develops capabilities in stages. NIMCP implements that approach, and the early results are genuinely surprising."
+"Every major AI system today is trained the same way — show it the internet and hope it learns to be helpful," said Braun Brelin, co-founder of AI Elevate. "We tried something different. We gave it a childhood."
 
-Key findings from the ongoing training run include:
+What makes NIMCP different
 
-- The spiking neural network developed a mean firing rate of 26 Hz with 67% sparsity, values that fall within the range observed in mammalian sensory cortex, without any regularization or design constraint targeting these values. The dynamics emerged naturally from multi-network co-training.
+Most AI systems are a single type of neural network trained on a single task. NIMCP runs six different types of brain circuitry at the same time — including neurons that communicate through electrical spikes, the same way biological neurons do. During training, these circuits figured out how to fire at rates and patterns that match what neuroscientists measure in the mammalian brain. Nobody told them to do that. It emerged on its own.
 
-- A nine-layer safety governance system provides structural safety guarantees that behavioral approaches like RLHF and Constitutional AI cannot match. The ethics module is a mandatory function call in the code path — it cannot be disabled by configuration, fine-tuning, or prompt injection. Safety rules can only become stricter, never looser.
+The brain also learns through curiosity. When it encounters something it can't predict, it pays more attention and learns faster — driven by a simulated dopamine system modeled on how the human brain processes surprise and reward. No hand-designed reward system tells it what to explore. It seeks out novelty naturally.
 
-- The brain learns through intrinsic curiosity rather than hand-designed reward functions. Prediction error drives dopamine release, which gates synaptic plasticity at the individual synapse level. The system naturally transitions from exploration to exploitation as its internal world model improves.
+Safety that can't be removed
 
-- A personality system based on the Big Five psychological model directly modulates the brain's neuromodulatory baselines, meaning personality traits affect how the brain learns, not just how it presents itself. Two instances with different personality configurations would develop measurably different neural circuits from identical training data.
+The most significant departure from current AI practice may be the approach to safety. Today's AI systems are trained to be safe — they learn to refuse harmful requests through additional training after the main system is built. This training can be undone. Every major language model has been "jailbroken" within weeks of release.
 
-The brain, named Athena, is currently in Stage 2 of a four-stage developmental curriculum progressing from sensory awakening through cross-modal naming, feedback learning, and abstract reasoning across 13 cognitive domains including ethics, causal reasoning, and Theory of Mind. Live training metrics update every 60 seconds at https://nimcp.ai-elevate.ai.
+NIMCP's safety is structural. The ethics evaluation system is built into the brain's code the same way a circuit breaker is built into a house's wiring — it can't be bypassed by talking to it differently or retraining it. Nine layers of safety governance evaluate every decision the brain makes, and the rules can only become stricter over time, never weaker. A tamper-proof log records every action.
 
-NIMCP includes a complete embodied robotics platform with 12 sensor types, a safety watchdog for motor output validation, four drone flight controller interfaces (MAVLink, DJI, Betaflight, Parrot), a ROS 2 bridge for direct robot deployment, and a swarm runtime for multi-agent coordination with Byzantine fault tolerance.
+"You can verify our safety claims by reading the source code," said Brelin. "Try doing that with ChatGPT."
 
-Eight technical papers accompany the release, covering mathematical foundations, training methodology, structural safety design, emergent spiking dynamics, cross-network gradient flow, sensorimotor curiosity, embodied identity, and socioeconomic impact analysis. All papers are available on the project website.
+Built for robots
 
-The complete system comprises approximately 2,600 source files, 240 Python API methods, and 8 programming language bindings. It is released under an open-source license.
+NIMCP is designed to control physical robots and drones. It includes connections to four types of drone flight controllers, a safety system that checks every motor command before it reaches an actuator, and a standard robotics interface (ROS 2) that allows the brain to be connected to real robots without writing additional code. A built-in physics simulator lets the brain practice before being deployed in the physical world.
 
-Availability
+Open source and available now
 
-NIMCP is available immediately at:
-- Project website with live training metrics: https://nimcp.ai-elevate.ai
+The complete system — approximately 2,600 source files with support for eight programming languages — is released as open-source software and can run on a single consumer-grade graphics card.
+
+Eight accompanying technical papers detail the mathematics, training methodology, safety architecture, and broader implications of the technology. All are available on the project website.
+
+- Live training dashboard: https://nimcp.ai-elevate.ai
 - Source code: https://github.com/redmage123/nimcp
-- Technical papers: linked from the project website
 
 About AI Elevate
 
-AI Elevate is an artificial intelligence research company focused on biologically-inspired cognitive architectures. Founded by Braun Brelin and Peter Munro, the company develops neural systems that learn through developmental curricula and biological plasticity rather than pure statistical optimization.
+AI Elevate is a Dublin-based artificial intelligence research company founded by Braun Brelin and Peter Munro. The company builds brain-inspired AI systems that learn through developmental stages and biological learning rules rather than statistical pattern matching.
 
 Contact
 
@@ -47,3 +49,14 @@ braun.brelin@ai-elevate.ai
 https://ai-elevate.ai
 
 ###
+
+
+TECHNICAL BACKGROUND (for journalists seeking additional detail)
+
+NIMCP (Neuro-Inspired Modular Control Protocol) trains six neural network types simultaneously: an adaptive backbone (9-layer diamond architecture, GPU-accelerated), a spiking neural network (768 LIF neurons, BPTT with surrogate gradients), a liquid neural network (continuous-time ODE dynamics), four convolutional cortex processors (visual, audio, speech, somatosensory), a Fourier neural operator (spectral convolution), and a Hamiltonian neural network (energy-conserving dynamics).
+
+Cross-network gradient flow is managed by a Unified Training Manager that routes gradients through learnable Linear Spline Adapter bridges. Five biological plasticity mechanisms (STDP, BCM, eligibility traces, structural plasticity, homeostatic scaling) operate at timescales from 10ms to 60s, modulated by four neuromodulatory systems (dopamine, acetylcholine, norepinephrine, serotonin).
+
+The spiking network developed 26 Hz mean firing rate with 67% sparsity — within mammalian cortical range — without regularization. Training uses spectral k-fold cross-validation (Laplacian eigendecomposition for manifold-aware fold assignment).
+
+The system runs on an NVIDIA RTX 4000 SFF Ada (20 GB VRAM) with 62 GB system RAM. Current training: Stage 2, step ~7,200 of 20,000. Hardware: Hetzner GEX44 dedicated server. Version: 0.9.0-beta.
