@@ -104,7 +104,6 @@
 - [21. Hemispheric Architecture](#21-hemispheric-architecture)
   - [21.1 Corpus Callosum Transfer](#211-corpus-callosum-transfer)
 - [22. K-Winners-Take-All Sparse Coding](#22-k-winners-take-all-sparse-coding)
-  - [22.1 Sparse Output Selection](#221-sparse-output-selection)
 - [23. Pink Noise (1/f) Stochastic Dynamics](#23-pink-noise-1f-stochastic-dynamics)
   - [23.1 1/f Power Spectrum](#231-1f-power-spectrum)
   - [23.2 The 12 Pink Noise Bridges](#232-the-12-pink-noise-bridges)
@@ -113,6 +112,20 @@
   - [24.1 Fractal Network Topology](#241-fractal-network-topology)
   - [24.2 Detrended Fluctuation Analysis (DFA)](#242-detrended-fluctuation-analysis-dfa)
   - [24.3 Hurst Exponent for Training Health](#243-hurst-exponent-for-training-health)
+- [25. Tensor Operations and SIMD](#25-tensor-operations-and-simd-acceleration)
+- [26. Ternary Computing](#26-ternary-computing)
+- [27. Gabor Filters (V1 Simple Cells)](#27-gabor-filters-v1-simple-cells)
+- [28. Fuzzy Inference](#28-fuzzy-inference)
+- [29. Differential Geometry](#29-differential-geometry)
+- [30. Tensor Networks (MPS and SVD)](#30-tensor-networks-mps-and-svd)
+- [31. Complex Number Arithmetic](#31-complex-number-arithmetic)
+- [32. Numerical Integration](#32-numerical-integration)
+- [33. Bayesian Statistics](#33-bayesian-statistics)
+- [34. Time Series Analysis](#34-time-series-analysis)
+- [35. Chaos Engineering](#35-chaos-engineering)
+- [36. Spatial Indexing (KD-Tree)](#36-spatial-indexing-kd-tree)
+- [37. Streaming Statistics](#37-streaming-statistics)
+- [38. Survival Analysis](#38-survival-analysis)
 - [Glossary](#glossary)
 - [References](#references)
 
@@ -1597,6 +1610,414 @@ H = \alpha_{\text{DFA}} - 0.5
 
 ---
 
+## 25. Tensor Operations and SIMD Acceleration
+
+**Why a custom tensor library?** NIMCP is written in C, not Python. There is no numpy. Every matrix multiply, element-wise operation, and reshape is implemented in the `nimcp_tensor` library, with AVX2 SIMD acceleration for x86 platforms and fallback scalar paths for portability.
+
+### 25.1 Tensor Representation
+
+A tensor of rank $r$ with dimensions $(d_1, d_2, \ldots, d_r)$ is stored as a contiguous float array in row-major order:
+
+```math
+\text{offset}(i_1, i_2, \ldots, i_r) = \sum_{k=1}^{r} i_k \prod_{j=k+1}^{r} d_j
+```
+
+Supported operations: create, clone, destroy, reshape, transpose, slice, element-wise arithmetic (+, -, *, /), matrix multiply, sum, mean, norm, softmax, and activation functions (ReLU, tanh, sigmoid).
+
+### 25.2 SIMD Vectorization
+
+On AVX2 platforms (256-bit vectors), operations process 8 floats per instruction:
+
+```math
+\text{throughput} = \frac{8 \text{ floats}}{\text{cycle}} \times \text{clock speed}
+```
+
+The SIMD backend is auto-detected at runtime: AVX-512 (512-bit), AVX2 (256-bit), SSE (128-bit), or scalar fallback. For NIMCP's 4096-dim output vectors, AVX2 processes a full vector in 512 SIMD iterations instead of 4096 scalar iterations — an 8× speedup for element-wise operations.
+
+*Source: `include/utils/tensor/nimcp_tensor.h`, `src/utils/tensor/nimcp_tensor_simd.c`*
+
+---
+
+## 26. Ternary Computing
+
+**Why ternary logic in a neural system?** Binary neural networks quantize weights to $\{0, 1\}$ and lose sign information. Ternary networks use $\{-1, 0, +1\}$, preserving the sign of each connection (excitatory vs. inhibitory) while reducing memory by 16× compared to 32-bit floats. For NIMCP's 320M synapses, ternary storage reduces weight memory from 1.2 GB to 80 MB.
+
+### 26.1 Ternary Quantization
+
+A float weight $w$ is quantized to ternary:
+
+```math
+q(w) = \begin{cases} +1 & \text{if } w > \Delta \\ -1 & \text{if } w < -\Delta \\ 0 & \text{otherwise} \end{cases}
+```
+
+where $\Delta = 0.7 \times \mathbb{E}[|w|]$ (the threshold is 70% of the mean absolute weight, following Li et al., 2016).
+
+### 26.2 Ternary Matrix Multiplication
+
+Ternary matrix multiply replaces multiply-accumulate with conditional add/subtract:
+
+```math
+(Q \cdot x)_i = \sum_{j: Q_{ij}=+1} x_j - \sum_{j: Q_{ij}=-1} x_j
+```
+
+No multiplications — only additions and subtractions. This is 3-10× faster than float GEMM on integer-optimized hardware and enables efficient inference on edge devices without FPU.
+
+### 26.3 Ternary Tensor Storage
+
+Ternary values are packed 16 per 32-bit word using 2-bit encoding ($00 = 0$, $01 = +1$, $10 = -1$, $11$ = reserved):
+
+```math
+\text{storage} = \lceil N / 16 \rceil \times 4 \text{ bytes}
+```
+
+For a 4096-dim vector: 1024 bytes ternary vs. 16384 bytes float32.
+
+*Source: `include/utils/ternary/nimcp_ternary.h`, `src/utils/ternary/`*
+
+---
+
+## 27. Gabor Filters (V1 Simple Cells)
+
+**Why Gabor filters?** The first stage of biological visual processing in V1 cortex uses orientation-selective neurons whose receptive fields are well-approximated by Gabor functions (Hubel & Wiesel, 1962; Jones & Palmer, 1987). NIMCP's Gabor filter bank provides biologically-motivated visual feature extraction as an alternative to learned CNN filters.
+
+### 27.1 2D Gabor Function
+
+A Gabor filter is a Gaussian envelope modulated by a sinusoidal plane wave:
+
+```math
+g(x, y; \lambda, \theta, \psi, \sigma, \gamma) = \exp\left(-\frac{x'^2 + \gamma^2 y'^2}{2\sigma^2}\right) \cos\left(\frac{2\pi x'}{\lambda} + \psi\right)
+```
+
+where:
+
+```math
+x' = x\cos\theta + y\sin\theta, \quad y' = -x\sin\theta + y\cos\theta
+```
+
+Parameters: $\lambda$ (wavelength), $\theta$ (orientation), $\psi$ (phase offset), $\sigma$ (bandwidth), $\gamma$ (aspect ratio).
+
+A bank of Gabor filters with 8 orientations ($\theta \in \{0°, 22.5°, 45°, \ldots, 157.5°\}$) and 4 spatial frequencies ($\lambda \in \{4, 8, 16, 32\}$ pixels) produces 32 feature maps, closely matching the orientation columns found in V1.
+
+*Source: `include/utils/gabor/nimcp_gabor.h`*
+
+---
+
+## 28. Fuzzy Inference
+
+**Why fuzzy logic?** Classical (Boolean) logic requires crisp boundaries: a neuron is either "active" or "inactive." Biological neurons have graded responses — a neuron firing at 15 Hz is somewhat active. Fuzzy logic handles this naturally through membership functions that map continuous values to degrees of membership in linguistic categories.
+
+### 28.1 Fuzzy Membership Functions
+
+A trapezoidal membership function $\mu_A(x)$:
+
+```math
+\mu_A(x) = \begin{cases} 0 & x < a \\ (x-a)/(b-a) & a \leq x < b \\ 1 & b \leq x \leq c \\ (d-x)/(d-c) & c < x \leq d \\ 0 & x > d \end{cases}
+```
+
+### 28.2 Fuzzy Operators
+
+- **AND (T-norm):** $\mu_{A \cap B}(x) = \min(\mu_A(x), \mu_B(x))$
+- **OR (T-conorm):** $\mu_{A \cup B}(x) = \max(\mu_A(x), \mu_B(x))$
+- **NOT:** $\mu_{\bar{A}}(x) = 1 - \mu_A(x)$
+
+### 28.3 Fuzzy Inference Engine
+
+NIMCP's fuzzy inference engine evaluates rules of the form:
+
+```
+IF firing_rate IS high AND confidence IS low THEN learning_rate IS very_high
+```
+
+The Mamdani inference method aggregates rule outputs via max-composition, then defuzzifies using centroid:
+
+```math
+z^* = \frac{\int z \cdot \mu_{\text{out}}(z) \, dz}{\int \mu_{\text{out}}(z) \, dz}
+```
+
+**How it connects to the system:** Fuzzy inference is used in the safety watchdog for motor output validation — "IF velocity IS high AND obstacle IS near THEN brake IS urgent" — where crisp thresholds would produce jerky stop/go behavior.
+
+*Source: `include/utils/fuzzy/nimcp_fuzzy_inference.h`*
+
+---
+
+## 29. Differential Geometry
+
+NIMCP implements four geometric frameworks for analyzing and transforming neural representations.
+
+### 29.1 Hyperbolic Embeddings
+
+**Why hyperbolic space?** Euclidean space cannot efficiently embed hierarchical structures — a tree with branching factor $b$ and depth $d$ has $b^d$ leaves, requiring exponential dimensions to preserve distances. Hyperbolic space (constant negative curvature) embeds trees with logarithmic distortion (Nickel & Kiela, 2017).
+
+In the Poincaré ball model with curvature $-c$:
+
+```math
+d_{\mathbb{H}}(x, y) = \frac{1}{\sqrt{c}} \text{arccosh}\left(1 + \frac{2c\|x - y\|^2}{(1 - c\|x\|^2)(1 - c\|y\|^2)}\right)
+```
+
+NIMCP uses hyperbolic embeddings for the concept hierarchy in semantic memory — "animal → dog → retriever" maps naturally to hyperbolic space where depth encodes specificity.
+
+### 29.2 Lie Group Representations
+
+Lie groups provide a framework for continuous symmetry transformations. NIMCP uses the rotation group $SO(3)$ for:
+
+- Spatial reasoning in the embodiment module (3D rotations of body parts)
+- Rotary position encoding (RoPE) as rotation in embedding subspaces
+
+The exponential map from Lie algebra $\mathfrak{so}(3)$ to the group:
+
+```math
+R = \exp(\theta \hat{n}) = I + \sin\theta [\hat{n}]_\times + (1 - \cos\theta)[\hat{n}]_\times^2
+```
+
+where $[\hat{n}]_\times$ is the skew-symmetric matrix of the rotation axis $\hat{n}$ (Rodrigues' formula).
+
+### 29.3 Lorentz Transformations
+
+For spacetime-aware representations in the physics module:
+
+```math
+\Lambda = \begin{pmatrix} \gamma & -\beta\gamma \\ -\beta\gamma & \gamma \end{pmatrix}, \quad \gamma = \frac{1}{\sqrt{1-\beta^2}}
+```
+
+Used in HNN dynamics when modeling relativistic systems and in the Lorentz-equivariant layers of the physics neural network.
+
+*Source: `include/utils/geometry/nimcp_hyperbolic.h`, `nimcp_lie_group.h`, `nimcp_lorentz.h`*
+
+---
+
+## 30. Tensor Networks (MPS and SVD)
+
+**Why tensor networks?** A fully-connected weight matrix between two layers of 4096 neurons requires $4096^2 = 16.7M$ parameters. Tensor network decomposition (specifically Matrix Product States) factorizes this into a chain of smaller tensors, reducing parameters by orders of magnitude while preserving the most important correlations.
+
+### 30.1 Matrix Product States (MPS)
+
+An MPS represents a high-order tensor as a product of lower-order tensors:
+
+```math
+T_{i_1 i_2 \ldots i_N} = \sum_{\alpha_1 \ldots \alpha_{N-1}} A^{(1)}_{i_1 \alpha_1} A^{(2)}_{\alpha_1 i_2 \alpha_2} \cdots A^{(N)}_ {\alpha_{N-1} i_N}
+```
+
+The bond dimension $\chi$ (size of $\alpha$ indices) controls the trade-off between compression and expressiveness. For $\chi = 64$ and $N = 4096$: $4096 \times 64^2 = 16.7M$ parameters (same as full matrix) vs. $\chi = 8$: $4096 \times 64 = 262K$ parameters (64× compression).
+
+### 30.2 Truncated SVD for Compression
+
+Weight matrices are compressed via truncated SVD:
+
+```math
+W \approx U_k \Sigma_k V_k^T
+```
+
+retaining only the top-$k$ singular values. The approximation error is bounded by:
+
+```math
+\|W - U_k \Sigma_k V_k^T\|_F = \sqrt{\sum_{i=k+1}^{\min(m,n)} \sigma_i^2}
+```
+
+**How it connects to the system:** SVD compression is used during checkpoint saving to reduce file size, and during swarm gradient aggregation to compress gradient tensors before network transmission.
+
+*Source: `include/utils/tensor_networks/nimcp_mps.h`, `nimcp_svd_simple.h`*
+
+---
+
+## 31. Complex Number Arithmetic
+
+**Why complex numbers?** The Fourier Neural Operator (Section 3) operates in the complex frequency domain. The spectral convolution multiplies complex-valued learned weights $R_\phi \in \mathbb{C}^{c \times c \times k}$ with complex-valued FFT coefficients. Without native complex arithmetic, this requires manual separation of real and imaginary parts.
+
+### 31.1 Complex Operations
+
+NIMCP implements complex arithmetic as pairs of floats:
+
+```math
+(a + bi)(c + di) = (ac - bd) + (ad + bc)i
+```
+
+```math
+|z| = \sqrt{a^2 + b^2}, \quad \arg(z) = \text{atan2}(b, a)
+```
+
+```math
+z^{-1} = \frac{a - bi}{a^2 + b^2}
+```
+
+These are used in: FNO spectral convolution, FFT/IFFT, quantum walk amplitude computation, and phase coherence measurement in brain oscillations.
+
+*Source: `include/utils/math/nimcp_complex_math.h`*
+
+---
+
+## 32. Numerical Integration
+
+The ODE solvers used by the LNN (Section 1.3), HNN (Section 1.4), and world model (Section 14.2).
+
+### 32.1 Euler Method
+
+```math
+x(t + \Delta t) = x(t) + \Delta t \cdot f(x, t)
+```
+
+First-order, O($\Delta t$) error per step. Used as a fast fallback when higher-order methods diverge.
+
+### 32.2 Runge-Kutta 4 (RK4)
+
+```math
+x(t + \Delta t) = x(t) + \frac{\Delta t}{6}(k_1 + 2k_2 + 2k_3 + k_4)
+```
+
+where $k_1 = f(x, t)$, $k_2 = f(x + \frac{\Delta t}{2}k_1, t + \frac{\Delta t}{2})$, etc. Fourth-order, O($\Delta t^4$) error. Used for LNN forward integration.
+
+### 32.3 Stormer-Verlet (Symplectic)
+
+For Hamiltonian systems (Section 1.4), preserves phase-space volume:
+
+```math
+p_{1/2} = p_n - \frac{\Delta t}{2}\nabla_q H, \quad q_{n+1} = q_n + \Delta t \nabla_p H, \quad p_{n+1} = p_{1/2} - \frac{\Delta t}{2}\nabla_q H
+```
+
+**Why symplectic for HNN?** Non-symplectic integrators (Euler, RK4) introduce numerical energy drift — the total energy $H$ gradually increases or decreases over time, producing non-physical trajectories. Symplectic integrators preserve $H$ up to bounded oscillations, ensuring the HNN's energy conservation guarantee holds in practice.
+
+*Source: `include/utils/numerical/nimcp_integration.h`*
+
+---
+
+## 33. Bayesian Statistics
+
+### 33.1 Bayesian Inference
+
+Posterior update via Bayes' rule:
+
+```math
+p(\theta | D) = \frac{p(D | \theta) \cdot p(\theta)}{p(D)}
+```
+
+NIMCP uses Bayesian inference for:
+- **Uncertainty estimation**: Each prediction includes a confidence interval derived from the posterior variance
+- **Novelty detection**: A new input with low likelihood $p(D | \theta)$ under the current model is flagged as novel → triggers acetylcholine release
+- **Hyperparameter optimization**: Bayesian optimization for learning rate and neuromodulator sensitivity parameters
+
+### 33.2 Variational Inference
+
+When exact posterior computation is intractable ($p(D)$ involves marginalizing over all hidden states), variational inference approximates with a tractable distribution $q(\theta)$ by minimizing KL divergence:
+
+```math
+\text{KL}[q(\theta) \| p(\theta | D)] = \mathbb{E}_q[\ln q(\theta) - \ln p(\theta | D)]
+```
+
+This connects to the FEP (Section 14): variational free energy $F = \text{KL}[q \| p] - \ln p(D)$ is the quantity the brain minimizes.
+
+*Source: `include/utils/statistics/nimcp_bayesian_advanced.h`*
+
+---
+
+## 34. Time Series Analysis
+
+### 34.1 Autocorrelation
+
+```math
+R(\tau) = \frac{\mathbb{E}[(x_t - \mu)(x_{t+\tau} - \mu)]}{\sigma^2}
+```
+
+Used to detect periodic patterns in loss trajectories and firing rate oscillations.
+
+### 34.2 Change Point Detection
+
+Detects abrupt changes in time series statistics (mean, variance) using the CUSUM algorithm:
+
+```math
+S_t = \max(0, S_{t-1} + x_t - \mu_0 - k)
+```
+
+An alarm is raised when $S_t > h$ (threshold). Used to detect training phase transitions (e.g., Stage 0 → Stage 1) and sudden loss plateaus.
+
+### 34.3 Spectral Density Estimation
+
+Power spectral density via Welch's method (averaged periodogram):
+
+```math
+\hat{S}(f) = \frac{1}{K} \sum_{k=1}^{K} |X_k(f)|^2
+```
+
+where $X_k$ is the FFT of the $k$-th windowed segment. Used for oscillatory analysis (theta/gamma coupling) and DFA validation.
+
+*Source: `include/utils/statistics/nimcp_timeseries.h`*
+
+---
+
+## 35. Chaos Engineering
+
+**Why inject faults deliberately?** NIMCP runs a 2.5M neuron brain for hundreds of hours. Unexpected failures (NaN propagation, pool exhaustion, thread deadlock) must be handled gracefully. Chaos engineering proactively injects controlled faults to verify resilience.
+
+### 35.1 Fault Injection Types
+
+| Fault | What it does | What it tests |
+|-------|-------------|---------------|
+| NaN injection | Sets random neuron activations to NaN | NaN propagation detection and containment |
+| Pool exhaustion | Artificially fills metadata pool | Graceful fallback to handle-only synapses |
+| Thread delay | Adds random sleep to worker threads | Deadlock detection and timeout handling |
+| Gradient explosion | Multiplies gradients by $10^6$ | Gradient clipping and normalization |
+| Memory pressure | Allocates large temporary buffers | OOM handling and swap behavior |
+
+Each fault is injected with configurable probability $p_{\text{fault}}$ and duration. The system's response is logged and compared against expected behavior.
+
+*Source: `include/utils/fault_tolerance/nimcp_chaos_engineering.h`*
+
+---
+
+## 36. Spatial Indexing (KD-Tree)
+
+### 36.1 KD-Tree for Nearest Neighbor Search
+
+A KD-tree partitions $k$-dimensional space by cycling through dimensions at each tree level:
+
+```math
+\text{split dimension at depth } d = d \bmod k
+```
+
+For NIMCP's semantic memory with 2,048 concepts in 1024-dim embedding space, the KD-tree provides O($\log n$) approximate nearest neighbor search instead of O($n$) brute-force — reducing concept retrieval from 2,048 cosine comparisons to ~11 tree traversals.
+
+**Limitation:** KD-trees degrade to O($n$) in high dimensions (the "curse of dimensionality"). At 1024 dimensions, the tree is effective only for well-separated clusters. The prime resonance filter (Section 15) handles the general case.
+
+*Source: `include/utils/spatial/nimcp_kdtree.h`*
+
+---
+
+## 37. Streaming Statistics
+
+**Why streaming?** Training runs for hundreds of hours. Storing every loss value, gradient norm, and firing rate for offline analysis would consume gigabytes. Streaming statistics compute exact mean, variance, quantiles, and histograms in O(1) space using online algorithms.
+
+### 37.1 Welford's Online Variance
+
+```math
+\bar{x}_n = \bar{x}_{n-1} + \frac{x_n - \bar{x}_{n-1}}{n}, \quad M_{2,n} = M_{2,n-1} + (x_n - \bar{x}_{n-1})(x_n - \bar{x}_n)
+```
+
+Variance: $\sigma^2 = M_{2,n} / (n-1)$. Numerically stable for arbitrarily long sequences.
+
+### 37.2 P-Square Quantile Estimation
+
+Estimates arbitrary quantiles (median, 95th percentile) without storing all data using 5 markers that track the quantile position in O(1) space and O(1) time per update.
+
+*Source: `include/utils/statistics/nimcp_streaming_statistics.h`*
+
+---
+
+## 38. Survival Analysis
+
+### 38.1 Synapse Lifetime Modeling
+
+**Why survival analysis for synapses?** Synapses in NIMCP are created (synaptogenesis) and destroyed (pruning). Understanding the distribution of synapse lifetimes — how long a connection survives before being pruned — informs the pruning strategy and structural plasticity parameters.
+
+The Kaplan-Meier estimator for the survival function:
+
+```math
+\hat{S}(t) = \prod_{t_i \leq t} \left(1 - \frac{d_i}{n_i}\right)
+```
+
+where $d_i$ is the number of synapses pruned at time $t_i$ and $n_i$ is the number still alive. A synapse with $\hat{S}(t) < 0.1$ has a 90% chance of being pruned by time $t$ — these are candidates for early removal to free pool capacity.
+
+*Source: `include/utils/statistics/nimcp_survival.h`*
+
+---
+
 ## Glossary
 
 | Term | Full Name | Definition |
@@ -1609,6 +2030,7 @@ H = \alpha_{\text{DFA}} - 0.5
 | **CNN** | Convolutional Neural Network | Network using learned spatial filters; NIMCP has 4 modality-specific cortex CNNs (visual, audio, speech, somatosensory) |
 | **CRC32** | Cyclic Redundancy Check (32-bit) | Hash function used in NIMCP's audit log to detect entry tampering; produces a 32-bit checksum per log entry |
 | **DA** | Dopamine | Neuromodulator encoding reward prediction error; gates STDP learning — high DA strengthens recently-active synapses |
+| **CUSUM** | Cumulative Sum | Change point detection algorithm; raises alarm when cumulative deviation from expected mean exceeds threshold |
 | **DFA** | Detrended Fluctuation Analysis | Method for measuring long-range temporal correlations in a time series; the DFA exponent $\alpha$ indicates noise color ($0.5$ = white, $1.0$ = pink) |
 | **EDP** | Event-Driven Plasticity | Three-factor learning rule: activity × eligibility × reward. Bridges the timing gap between synaptic activity and delayed reward |
 | **EMA** | Exponential Moving Average | Running average with exponential decay: $\bar{x}_t = \alpha x_t + (1-\alpha)\bar{x}_{t-1}$. Used for loss tracking, gradient norms, and shadow parameters |
@@ -1618,6 +2040,7 @@ H = \alpha_{\text{DFA}} - 0.5
 | **FNO** | Fourier Neural Operator | Network that learns convolution kernels in the frequency domain (Li et al., 2021); captures global patterns that spatial CNNs miss |
 | **HNN** | Hamiltonian Neural Network | Network constrained to energy-conserving dynamics via Hamilton's equations; uses symplectic integrators to preserve phase-space volume |
 | **IIT** | Integrated Information Theory | Information-theoretic measure (Tononi, 2004) of how much a system's information is "more than the sum of its parts"; NIMCP computes $\Phi$ for consciousness monitoring |
+| **Gabor** | Gabor Filter | Gaussian-enveloped sinusoidal filter modeling V1 simple cell receptive fields; extracts oriented edges at multiple frequencies |
 | **K-WTA** | K-Winners-Take-All | Sparse coding mechanism that allows only the top-$k$ activations to pass through; enforces structured sparsity at inference time |
 | **LIF** | Leaky Integrate-and-Fire | Simplest biologically plausible neuron model: membrane voltage integrates input current with exponential leak, fires when threshold is reached |
 | **LGSS** | Layered Governance Safety System | NIMCP's rule-based safety system; evaluates every inference and weight update against safety rules that can only become stricter |
@@ -1625,6 +2048,7 @@ H = \alpha_{\text{DFA}} - 0.5
 | **LSA** | Linear Spline Adapter | Learnable bridge between networks: $y = W \cdot \tanh(x) + b$. Transforms representations between incompatible network types in the UTM |
 | **LTD** | Long-Term Depression | Weakening of a synapse; in STDP, occurs when the postsynaptic neuron fires before the presynaptic neuron (anti-causal timing) |
 | **LTP** | Long-Term Potentiation | Strengthening of a synapse; in STDP, occurs when the presynaptic neuron fires before the postsynaptic neuron (causal timing) |
+| **MPS** | Matrix Product States | Tensor network decomposition that factorizes high-order tensors into chains of smaller tensors; controls compression via bond dimension $\chi$ |
 | **MSE** | Mean Squared Error | Loss function: $\frac{1}{n}\sum(y_i - \hat{y}_i)^2$. NIMCP's primary training loss for all six networks |
 | **NE** | Norepinephrine | Neuromodulator that increases attention and broadens receptive fields; rises during high-loss (surprising) training steps |
 | **NIMCP** | Neuro-Inspired Modular Control Protocol | The brain architecture described in this paper: 2.5M neurons, 6 network types, 60+ cognitive modules, biological plasticity |
@@ -1632,6 +2056,7 @@ H = \alpha_{\text{DFA}} - 0.5
 | **PID** | Partial Information Decomposition | Framework for separating mutual information into redundant, unique, and synergistic components across multiple sources |
 | **RoPE** | Rotary Position Embedding | Positional encoding that applies rotation matrices to query/key vectors, encoding relative position through the angle of rotation |
 | **RPE** | Reward Prediction Error | Difference between received and expected reward; the signal carried by phasic dopamine bursts (Schultz, 1998) |
+| **SIMD** | Single Instruction Multiple Data | CPU instruction set (AVX2/SSE) that processes 8 floats per instruction; 8× speedup for element-wise tensor operations |
 | **SNN** | Spiking Neural Network | Network of LIF neurons that communicate through discrete spike events; NIMCP's SNN has 768 neurons across 3 populations |
 | **STDP** | Spike-Timing-Dependent Plasticity | Learning rule where synaptic weight change depends on the relative timing of pre- and postsynaptic spikes (Markram et al., 1997) |
 | **STP** | Short-Term Plasticity | Transient synaptic changes (facilitation or depression) lasting milliseconds to seconds; models neurotransmitter depletion and receptor dynamics |
