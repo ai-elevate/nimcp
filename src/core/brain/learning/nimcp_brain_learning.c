@@ -1733,11 +1733,14 @@ sequential_training:
     }
 
     /* Blend secondary network losses into composite return value.
-     * Weights: ANN 60%, SNN 15%, LNN 15%, CNN 10%.
+     * Weights: ANN 50%, SNN 15%, LNN 25%, CNN 10%.
+     * LNN weight increased from 15% to 25% (was not converging at 15% —
+     * insufficient gradient pressure for the optimizer to prioritize it).
+     * ANN reduced from 60% to 50% to compensate.
      * Only include networks that produced valid loss this step. */
     {
-        float w_sum = 0.6f;  /* ANN always contributes */
-        float l_sum = loss * 0.6f;
+        float w_sum = 0.50f;  /* ANN always contributes */
+        float l_sum = loss * 0.50f;
         if (brain->network_metrics.last_snn_loss >= 0.0f &&
             brain->network_metrics.snn_steps > 0) {
             l_sum += brain->network_metrics.last_snn_loss * 0.15f;
@@ -1745,8 +1748,8 @@ sequential_training:
         }
         if (brain->network_metrics.last_lnn_loss >= 0.0f &&
             brain->network_metrics.lnn_steps > 0) {
-            l_sum += brain->network_metrics.last_lnn_loss * 0.15f;
-            w_sum += 0.15f;
+            l_sum += brain->network_metrics.last_lnn_loss * 0.25f;
+            w_sum += 0.25f;
         }
         if (brain->network_metrics.last_cnn_loss >= 0.0f &&
             brain->network_metrics.cnn_steps > 0) {

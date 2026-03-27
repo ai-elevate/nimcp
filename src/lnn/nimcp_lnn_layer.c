@@ -254,11 +254,19 @@ lnn_layer_t* lnn_layer_create(const lnn_layer_config_t* config, uint32_t n_input
         return NULL;
     }
 
-    /* Initialize individual neurons */
+    /* Initialize individual neurons with DIVERSE time constants.
+     * Log-uniform in [0.5, 50.0] ms so different neurons capture different
+     * timescales: fast neurons (0.5ms) for transient features, slow neurons
+     * (50ms) for persistent context. Without diversity, all taus converge to
+     * the same value (~5ms) and the LNN has no multi-timescale capability. */
     for (uint32_t i = 0; i < config->n_neurons; i++) {
         layer->neurons[i].id = i;
         layer->neurons[i].activation = config->activation;
-        layer->neurons[i].tau_base = config->tau_base_init;
+        /* Log-uniform: tau = exp(log(0.5) + i/N * (log(50) - log(0.5))) */
+        float t = (float)i / (float)(config->n_neurons > 1 ? config->n_neurons - 1 : 1);
+        float log_min = logf(0.5f);
+        float log_max = logf(50.0f);
+        layer->neurons[i].tau_base = expf(log_min + t * (log_max - log_min));
         layer->neurons[i].n_inputs = n_inputs;
         layer->neurons[i].n_recurrent = config->n_neurons;
     }
@@ -269,9 +277,18 @@ lnn_layer_t* lnn_layer_create(const lnn_layer_config_t* config, uint32_t n_input
      */
     uint32_t dims_state[1] = {config->n_neurons};
     layer->x = nimcp_tensor_zeros(dims_state, 1, NIMCP_DTYPE_F32);
-    layer->tau = nimcp_tensor_full(dims_state, 1, NIMCP_DTYPE_F32, config->tau_base_init);
+    /* Initialize tau tensor with diverse values matching per-neuron tau_base */
+    layer->tau = nimcp_tensor_zeros(dims_state, 1, NIMCP_DTYPE_F32);
     layer->dx_dt = nimcp_tensor_zeros(dims_state, 1, NIMCP_DTYPE_F32);
-    layer->tau_base = nimcp_tensor_full(dims_state, 1, NIMCP_DTYPE_F32, config->tau_base_init);
+    layer->tau_base = nimcp_tensor_zeros(dims_state, 1, NIMCP_DTYPE_F32);
+    if (layer->tau && layer->tau_base) {
+        float* tau_data = (float*)nimcp_tensor_data(layer->tau);
+        float* tau_base_data = (float*)nimcp_tensor_data(layer->tau_base);
+        for (uint32_t i = 0; i < config->n_neurons; i++) {
+            tau_data[i] = layer->neurons[i].tau_base;
+            tau_base_data[i] = layer->neurons[i].tau_base;
+        }
+    }
     layer->b_in = nimcp_tensor_zeros(dims_state, 1, NIMCP_DTYPE_F32);
     layer->b_tau = nimcp_tensor_zeros(dims_state, 1, NIMCP_DTYPE_F32);
 
