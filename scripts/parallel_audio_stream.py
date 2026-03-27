@@ -719,29 +719,21 @@ def main():
             audio_samples = generate_parentese_audio(utterance, variation=step)
             mel_features = audio_to_mel_features(audio_samples)
 
-            # Submit to speech cortex (primary pathway for parentese)
+            # Atomic: submit sensory + learn in one batch
             try:
-                brain.submit_sensory("speech", audio_samples[:4000])
+                brain._send({"cmd": "batch", "commands": [
+                    {"cmd": "submit_sensory", "modality": "speech", "data": audio_samples[:4000]},
+                    {"cmd": "submit_sensory", "modality": "audio", "data": mel_features},
+                    {"cmd": "learn_vector",
+                     "features": mel_features,
+                     "target": mel_features,
+                     "label": f"parentese:{utterance['text'][:30]}",
+                     "confidence": 0.8,
+                     "learning_rate": 0.0002}
+                ]})
             except Exception as e:
                 if step < 5:
-                    print(f"  [Parentese] Speech submit failed: {e}")
-
-            # Also submit to audio cortex (learns voice patterns)
-            try:
-                brain.submit_sensory("audio", mel_features)
-            except Exception:
-                pass
-
-            # Labeled learn call — pairs audio with meaning for cortex CNN backward training
-            try:
-                brain._send({"cmd": "learn_vector",
-                             "features": mel_features,
-                             "target": mel_features,
-                             "label": f"parentese:{utterance['text'][:30]}",
-                             "confidence": 0.8,
-                             "learning_rate": 0.0002})
-            except Exception:
-                pass
+                    print(f"  [Parentese] Batch failed: {e}")
 
             parentese_step += 1
 
@@ -756,31 +748,22 @@ def main():
             audio_samples = generate_synthetic_audio(desc, variation=step)
             mel_features = audio_to_mel_features(audio_samples)
 
-            # Submit to brain's audio cortex
+            # Atomic: submit sensory + learn in one batch to prevent the main training
+            # script from consuming staged audio data between our submit and learn calls.
             try:
-                brain.submit_sensory("audio", mel_features)
+                brain._send({"cmd": "batch", "commands": [
+                    {"cmd": "submit_sensory", "modality": "audio", "data": mel_features},
+                    {"cmd": "submit_sensory", "modality": "speech", "data": audio_samples[:4000]},
+                    {"cmd": "learn_vector",
+                     "features": mel_features,
+                     "target": mel_features,
+                     "label": f"audio:{desc[:40]}",
+                     "confidence": 0.6,
+                     "learning_rate": 0.0002}
+                ]})
             except Exception as e:
                 if step < 5:
-                    print(f"  [Audio] Submit failed: {e}")
-
-            # Also submit as speech (different cortex pathway)
-            try:
-                brain.submit_sensory("speech", audio_samples[:4000])
-            except Exception:
-                pass
-
-            # Labeled learn call — gives the audio cortex CNN a backward training signal.
-            # Uses JSON path directly (learn_vector, not learn_vector_bin) for compatibility
-            # with daemon instances that haven't been restarted since the base64 commit.
-            try:
-                brain._send({"cmd": "learn_vector",
-                             "features": mel_features,
-                             "target": mel_features,
-                             "label": f"audio:{desc[:40]}",
-                             "confidence": 0.6,
-                             "learning_rate": 0.0002})
-            except Exception:
-                pass
+                    print(f"  [Audio] Batch failed: {e}")
 
             env_step += 1
 
