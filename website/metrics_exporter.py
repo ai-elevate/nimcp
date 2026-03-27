@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
 METRICS_FILE = os.path.join(os.path.dirname(__file__), 'metrics.json')
-INTERVAL = 15  # seconds (allow time for slow daemon queries)
+INTERVAL = 60  # seconds (5 queries × 25-30s worst case = allow full minute)
 
 
 def _safe_query(b, cmd, timeout=10):
@@ -53,8 +53,9 @@ def collect_metrics():
     b = BrainProxy(timeout=10)
     metrics = {'timestamp': time.time(), 'ok': False}
 
-    # Status — should be fast, but daemon under load can be slow
-    r = _safe_query(b, 'status', timeout=15)
+    # Status — daemon under heavy load can take 20-30s to respond
+    # because the single lock serializes all requests behind learn_vector calls
+    r = _safe_query(b, 'status', timeout=30)
     if r and not r.get('error'):
         metrics['uptime'] = r.get('uptime', 0)
         metrics['learn_calls'] = r.get('learn_calls', 0)
@@ -64,13 +65,13 @@ def collect_metrics():
     else:
         return metrics  # Daemon down — return partial (still written to file)
 
-    # Neuron count — fast
-    r = _safe_query(b, 'get_neuron_count', timeout=5)
+    # Neuron count
+    r = _safe_query(b, 'get_neuron_count', timeout=15)
     if r:
         metrics['neuron_count'] = r.get('neuron_count', 0)
 
-    # Network metrics — can be slow (4-5s)
-    r = _safe_query(b, 'get_network_metrics', timeout=10)
+    # Network metrics — can be very slow under load (10-20s)
+    r = _safe_query(b, 'get_network_metrics', timeout=25)
     if r:
         m = r.get('metrics', r)
         metrics['ann_loss'] = m.get('ann_loss', 0)
@@ -79,8 +80,8 @@ def collect_metrics():
         metrics['lnn_loss'] = m.get('lnn_loss', 0)
         metrics['ann_steps'] = m.get('ann_steps', 0)
 
-    # SNN stats — fast
-    r = _safe_query(b, 'get_snn_stats', timeout=5)
+    # SNN stats
+    r = _safe_query(b, 'get_snn_stats', timeout=15)
     if r:
         s = r.get('snn', r)
         metrics['snn_spikes'] = s.get('total_spikes', 0)
@@ -89,8 +90,8 @@ def collect_metrics():
         metrics['snn_silent'] = s.get('silent_neurons', 0)
         metrics['snn_populations'] = s.get('n_populations', 0)
 
-    # Cortex CNN — can be slow (4-5s)
-    r = _safe_query(b, 'get_cortex_cnn_metrics', timeout=10)
+    # Cortex CNN — can be very slow under load (10-20s)
+    r = _safe_query(b, 'get_cortex_cnn_metrics', timeout=25)
     if r:
         m = r.get('metrics', r)
         cortex = {}
