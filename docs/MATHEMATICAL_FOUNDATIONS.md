@@ -18,7 +18,7 @@ The design philosophy throughout is: **use the simplest formulation that capture
 
 ### The Problem
 
-Modern artificial intelligence achieves remarkable performance by scaling a single mathematical idea — the transformer's self-attention mechanism — to billions of parameters and trillions of training tokens. This approach works. GPT-4, Claude, and Gemini demonstrate that statistical learning over token co-occurrences can approximate sophisticated reasoning, translation, code generation, and creative writing.
+Modern artificial intelligence achieves remarkable performance by scaling a single mathematical idea — the transformer's self-attention mechanism — to billions of parameters and trillions of training tokens. This approach works. GPT-5, Claude, and Gemini demonstrate that statistical learning over token co-occurrences can approximate sophisticated reasoning, translation, code generation, and creative writing.
 
 But the brain does not work this way.
 
