@@ -297,6 +297,46 @@
         .code-block .keyword { color: #ff7b72; }
         .code-block .string { color: #a5d6ff; }
 
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 640px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 16px; right: 16px;
+            background: none; border: none;
+            color: var(--text-dim); font-size: 1.5rem;
+            cursor: pointer;
+            width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.1); color: var(--text-bright); }
+        .modal h3 { font-size: 1.4rem; font-weight: 700; color: var(--text-bright); margin-bottom: 16px; }
+        .modal p { color: var(--text-dim); font-size: 0.95rem; line-height: 1.7; margin-bottom: 12px; }
+        .modal ul { color: var(--text-dim); font-size: 0.9rem; line-height: 1.8; padding-left: 20px; margin-bottom: 12px; }
+        .modal .highlight { color: var(--accent); font-weight: 600; }
+        .card { cursor: pointer; }
+
         /* Responsive */
         @media (max-width: 768px) {
             nav ul { gap: 16px; }
@@ -324,7 +364,7 @@
     <!-- Hero -->
     <header class="hero">
         <div class="container">
-            <div class="hero-badge">ACTIVELY TRAINING &mdash; STAGE 1 OF 4</div>
+            <div class="hero-badge">ACTIVELY TRAINING &mdash; STAGE 2 OF 4</div>
             <h1>A <span class="gradient">2.5 Million Neuron</span><br>Artificial Brain</h1>
             <p>Six neural network types. Biological plasticity. Developmental learning. Non-removable safety. Running on a single GPU.</p>
             <div class="hero-buttons">
@@ -403,35 +443,35 @@
             </div>
 
             <div class="cards">
-                <div class="card">
+                <div class="card" onclick="openModal('plasticity')">
                     <div class="card-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--accent);">&#x1F9E0;</div>
                     <h3>Biological Plasticity</h3>
-                    <p>Five learning rules at five timescales: STDP (10ms), BCM (50ms), eligibility traces (1s), structural plasticity (10s), homeostatic scaling (60s). Four neuromodulators (dopamine, acetylcholine, norepinephrine, serotonin) modulate learning based on reward and novelty signals derived from training loss.</p>
+                    <p>Five learning rules at five timescales: STDP (10ms), BCM (50ms), eligibility traces (1s), structural plasticity (10s), homeostatic scaling (60s). Four neuromodulators modulate learning from reward and novelty signals.</p>
                 </div>
-                <div class="card">
+                <div class="card" onclick="openModal('curriculum')">
                     <div class="card-icon" style="background: rgba(34, 197, 94, 0.1); color: var(--green);">&#x1F476;</div>
                     <h3>Developmental Curriculum</h3>
-                    <p>Four stages mirroring human cognitive development: sensory awakening, cross-modal naming, feedback learning, abstract reasoning. Each stage builds on representations formed in the previous one. The brain literally grows its cognitive capabilities over time.</p>
+                    <p>Four stages mirroring human cognitive development: sensory awakening, cross-modal naming, feedback learning, abstract reasoning. Each stage builds on the previous one.</p>
                 </div>
-                <div class="card">
+                <div class="card" onclick="openModal('safety')">
                     <div class="card-icon" style="background: rgba(167, 139, 250, 0.1); color: var(--purple);">&#x1F6E1;</div>
                     <h3>Safety by Design</h3>
-                    <p>Ethics module is always created regardless of configuration. LGSS governance evaluates every inference and weight update. Tamper-resistant audit log with CRC32 checksums and monotonic sequence numbers. Safety rules can only get stricter, never looser.</p>
+                    <p>Ethics module is always created regardless of configuration. LGSS governance evaluates every inference and weight update. Tamper-resistant audit log. Safety rules can only get stricter.</p>
                 </div>
-                <div class="card">
+                <div class="card" onclick="openModal('edge')">
                     <div class="card-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--cyan);">&#x1F916;</div>
                     <h3>Edge &amp; Robot Platform</h3>
-                    <p>12 sensor types, safety watchdog, motor output. Four drone flight controller interfaces (MAVLink, DJI, Betaflight, Parrot). ROS 2 bridge publishes cmd_vel, subscribes to /imu, /odom, /joint_states. Sim-to-real transfer with domain randomization.</p>
+                    <p>12 sensor types, safety watchdog, motor output. Four drone interfaces. ROS 2 bridge. Sim-to-real transfer with domain randomization.</p>
                 </div>
-                <div class="card">
+                <div class="card" onclick="openModal('swarm')">
                     <div class="card-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--orange);">&#x1F310;</div>
                     <h3>Swarm Intelligence</h3>
-                    <p>Multi-device federation with UDP discovery, Byzantine fault tolerance, and gossip-based gradient aggregation. Each edge brain adapts collective knowledge to its local environment. Theory of Mind emerges from observing other agents' behavior.</p>
+                    <p>Multi-device federation with UDP discovery, Byzantine fault tolerance, and gossip-based gradient aggregation. Theory of Mind through multi-agent observation.</p>
                 </div>
-                <div class="card">
+                <div class="card" onclick="openModal('language')">
                     <div class="card-icon" style="background: rgba(239, 68, 68, 0.1); color: var(--red);">&#x1F4AC;</div>
                     <h3>Brain-Native Language</h3>
-                    <p>Learned vocabulary from neural activation patterns, not an external LLM. Autoregressive decoding with nucleus sampling. Emergent symbols (omega-tokens) represent concepts the brain discovers that don't map to human language. Inner speech loop refines outputs through self-talk iterations.</p>
+                    <p>Learned vocabulary from neural activation patterns. Autoregressive decoding with nucleus sampling. Emergent omega-tokens. Inner speech loop for self-refinement.</p>
                 </div>
             </div>
         </div>
@@ -449,7 +489,7 @@
                 <div>
                     <h3>Mathematical Foundations of NIMCP</h3>
                     <p>Complete mathematical framework: LIF dynamics, LNN ODEs, adjoint gradients, STDP/BCM learning rules, Fourier spectral methods, Hamiltonian mechanics, information geometry, and safety mathematics. Every equation corresponds to implemented code with source file references.</p>
-                    <span class="paper-tag">699 LINES &bull; EQUATIONS + CODE REFS</span>
+                    <span class="paper-tag">2,298 LINES &bull; 40 SECTIONS &bull; EQUATIONS + CODE REFS</span>
                 </div>
             </a>
 
@@ -466,8 +506,53 @@
                 <div class="paper-icon">&#x1F30D;</div>
                 <div>
                     <h3>Socioeconomic Impact Analysis</h3>
-                    <p>Analysis of ubiquitous NIMCP deployment across healthcare, education, manufacturing, agriculture, environmental monitoring, disaster response, and governance. Addresses workforce displacement, equity, and governance challenges.</p>
+                    <p>Analysis of ubiquitous NIMCP deployment across healthcare, education, manufacturing, agriculture, environmental monitoring, disaster response, and governance.</p>
                     <span class="paper-tag">366 LINES &bull; IMPACT ASSESSMENT</span>
+                </div>
+            </a>
+
+            <a href="https://github.com/redmage123/nimcp/blob/master/docs/EMERGENT_SPIKING_DYNAMICS.md" class="paper-card" target="_blank">
+                <div class="paper-icon">&#x26A1;</div>
+                <div>
+                    <h3>Emergent Spiking Dynamics in a Hybrid Architecture</h3>
+                    <p>How biologically realistic firing patterns (26 Hz, 67% sparsity) arise from BPTT training in a six-network brain without explicit regularization.</p>
+                    <span class="paper-tag">EMPIRICAL RESULTS &bull; NEUROSCIENCE</span>
+                </div>
+            </a>
+
+            <a href="https://github.com/redmage123/nimcp/blob/master/docs/SAFETY_AS_ARCHITECTURE.md" class="paper-card" target="_blank">
+                <div class="paper-icon">&#x1F512;</div>
+                <div>
+                    <h3>Safety as Architecture, Not Alignment</h3>
+                    <p>Structural safety guarantees vs. behavioral training. Nine-layer governance system with non-removable ethics, monotonic rules, tamper-resistant audit. Compared to RLHF and Constitutional AI.</p>
+                    <span class="paper-tag">AI SAFETY &bull; FORMAL VERIFICATION</span>
+                </div>
+            </a>
+
+            <a href="https://github.com/redmage123/nimcp/blob/master/docs/CROSS_NETWORK_GRADIENT_FLOW.md" class="paper-card" target="_blank">
+                <div class="paper-icon">&#x1F500;</div>
+                <div>
+                    <h3>Cross-Network Gradient Flow in Heterogeneous Architectures</h3>
+                    <p>Learnable bridges enable knowledge transfer between spiking, liquid, and rate-coded networks. Composite loss with contrastive pressure drives representational specialization.</p>
+                    <span class="paper-tag">NOVEL ARCHITECTURE &bull; GRADIENT ANALYSIS</span>
+                </div>
+            </a>
+
+            <a href="https://github.com/redmage123/nimcp/blob/master/docs/SENSORIMOTOR_CURIOSITY.md" class="paper-card" target="_blank">
+                <div class="paper-icon">&#x1F50D;</div>
+                <div>
+                    <h3>Sensorimotor Curiosity Without Reward Shaping</h3>
+                    <p>Prediction error drives dopamine-gated STDP in a closed sensorimotor loop. No external reward function. Natural exploration-exploitation transition. ROS 2 robot deployment.</p>
+                    <span class="paper-tag">INTRINSIC MOTIVATION &bull; EMBODIED AI</span>
+                </div>
+            </a>
+
+            <a href="https://github.com/redmage123/nimcp/blob/master/docs/EMBODIED_IDENTITY.md" class="paper-card" target="_blank">
+                <div class="paper-icon">&#x1F3AD;</div>
+                <div>
+                    <h3>Embodied Identity in Artificial Cognitive Systems</h3>
+                    <p>Big Five personality traits modulate neuromodulator baselines, shaping how the brain learns. Emotional state drives voice prosody. Identity is a learning parameter, not a style overlay.</p>
+                    <span class="paper-tag">PERSONALITY &bull; AFFECTIVE COMPUTING</span>
                 </div>
             </a>
         </div>
@@ -478,14 +563,14 @@
         <div class="container">
             <div class="section-label">Live Training</div>
             <h2>Athena is Learning Right Now</h2>
-            <p>A 2.5-million neuron brain named Athena is currently in Stage 1 of developmental training on a single NVIDIA RTX 4000 SFF Ada (20 GB VRAM).</p>
+            <p>A 2.5-million neuron brain named Athena is currently in Stage 2 of developmental training on a single NVIDIA RTX 4000 SFF Ada (20 GB VRAM).</p>
 
             <div class="training-status">
                 <h3><span class="live-dot"></span>Training Status</h3>
                 <div class="training-grid">
                     <div class="training-metric">
                         <div class="label">Stage</div>
-                        <div class="value">1 / 4</div>
+                        <div class="value">2 / 4</div>
                     </div>
                     <div class="training-metric">
                         <div class="label">Step</div>
@@ -571,5 +656,135 @@ brain.learn_vector(features, target, label='hello world')
             </p>
         </div>
     </footer>
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h3 id="modalTitle"></h3>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+    const modalData = {
+        plasticity: {
+            title: 'Biological Plasticity — Five Rules, Five Timescales',
+            body: `
+                <p>NIMCP doesn't just use gradient descent. It runs <span class="highlight">six learning rules simultaneously</span> on the same synapses, each capturing a different aspect of learning:</p>
+                <ul>
+                    <li><strong>STDP (10ms)</strong> — Spike-Timing-Dependent Plasticity. If neuron A fires before neuron B, the A→B synapse strengthens. Captures causal relationships that backpropagation misses.</li>
+                    <li><strong>BCM (50ms)</strong> — Bienenstock-Cooper-Munro homeostatic rule. A sliding threshold prevents STDP from saturating all weights. Named after the Nobel laureate Leon Cooper.</li>
+                    <li><strong>Eligibility Traces (1s)</strong> — Three-factor learning: activity × eligibility × reward. Bridges the gap between spike timing (milliseconds) and reward signals (seconds).</li>
+                    <li><strong>Structural Plasticity (10s)</strong> — The network grows new synapses between frequently co-active neurons and prunes inactive ones. The brain literally rewires itself during training.</li>
+                    <li><strong>Homeostatic Scaling (60s)</strong> — Global weight normalization to maintain target firing rates. Prevents runaway excitation or complete silence.</li>
+                </ul>
+                <p>Four <span class="highlight">neuromodulators</span> gate these rules based on training dynamics:</p>
+                <ul>
+                    <li><strong>Dopamine</strong> — Derived from training loss. Low loss → high dopamine → recently-active synapses strengthened.</li>
+                    <li><strong>Acetylcholine</strong> — Rises for novel inputs. Increases learning rate for unfamiliar stimuli.</li>
+                    <li><strong>Norepinephrine</strong> — Rises on high-loss steps (surprise). Broadens attention.</li>
+                    <li><strong>Serotonin</strong> — Modulates risk-taking in decisions.</li>
+                </ul>
+                <p>These aren't metaphors — they are implemented as concentration fields that multiplicatively gate STDP weight changes at every synapse.</p>
+            `
+        },
+        curriculum: {
+            title: 'Developmental Curriculum — Growing a Mind in Four Stages',
+            body: `
+                <p>NIMCP doesn't present all training data at once. It follows a <span class="highlight">four-stage developmental curriculum</span> that mirrors human cognitive development:</p>
+                <ul>
+                    <li><strong>Stage 0 — Sensory Awakening (10,000 steps)</strong><br>
+                    Like a newborn. The brain learns to respond differently to different sensory inputs. Breaking symmetry from random weights. Multimodal: visual, audio, speech, somatosensory.</li>
+                    <li><strong>Stage 1 — Association (20,000 steps)</strong><br>
+                    Like an infant hearing "Look! That's a DOG!" The brain learns to bind sensory percepts to labels. Cross-modal association. Parentese audio stream with exaggerated prosody.</li>
+                    <li><strong>Stage 2 — Feedback (20,000 steps)</strong><br>
+                    Like a toddler learning from correction. The brain produces a response, gets corrected, and learns from error. Activates eligibility traces and cerebellar error correction.</li>
+                    <li><strong>Stage 3 — Reasoning (10,000 steps)</strong><br>
+                    Like a young child. Multi-turn dialogue, 13 cognitive domains (ethics, causal reasoning, Theory of Mind, imagination, metacognition), domain-specific mastery tracking, knowledge distillation.</li>
+                </ul>
+                <p>Each stage builds on representations formed in the previous one. You can't learn to reason about dogs if you can't first distinguish a dog from a cat. The curriculum enforces this dependency.</p>
+                <p>Evaluation uses <span class="highlight">spectral k-fold cross-validation</span> — Laplacian eigendecomposition ensures semantically similar items are in the same fold, testing genuine generalization rather than interpolation.</p>
+            `
+        },
+        safety: {
+            title: 'Safety by Design — Structural Guarantees, Not Behavioral Training',
+            body: `
+                <p>Most AI safety relies on training the model to <em>behave</em> safely (RLHF, Constitutional AI). These approaches can be jailbroken, fine-tuned away, or circumvented through prompt injection.</p>
+                <p>NIMCP takes a fundamentally different approach: <span class="highlight">safety is structural</span>. It's in the code path, not the weights.</p>
+                <ul>
+                    <li><strong>Non-removable Ethics Module</strong> — Always created during brain initialization, regardless of the enable_ethics configuration flag. The code literally cannot skip it.</li>
+                    <li><strong>LGSS Governance</strong> — Layered Governance Safety System evaluates every inference and every weight update against safety rules. Rules can only become stricter, never looser. No API exists to weaken a rule.</li>
+                    <li><strong>Tamper-Resistant Audit Log</strong> — 100,000-entry ring buffer with CRC32 checksums per entry and monotonic sequence numbers. Gaps indicate deleted entries. Mismatches indicate modified entries.</li>
+                    <li><strong>Motor Gate</strong> — Every motor command passes through a safety watchdog before reaching actuators. NaN rejection, magnitude limiting, rate-of-change limiting, emergency stop.</li>
+                    <li><strong>Training Guard</strong> — Validates every training sample before it modifies weights. Rejects NaN/Inf, detects statistical anomalies, blocks poisoned gradient updates.</li>
+                </ul>
+                <p>The result: <span class="highlight">9 layers of safety</span> that are verifiable by code inspection, not empirical testing. You can prove the ethics module exists by reading the source. You can't prove a language model "is safe" by any number of tests.</p>
+            `
+        },
+        edge: {
+            title: 'Edge & Robot Platform — From Brain to Body',
+            body: `
+                <p>NIMCP isn't just a neural network — it's a complete <span class="highlight">embodied cognitive system</span> designed to control physical robots.</p>
+                <ul>
+                    <li><strong>Sensor Hub</strong> — 12 sensor types: IMU, GPS, LIDAR, camera, microphone, temperature, barometric, humidity, light, touch/force, proprioception, battery. Unified API for registration and polling.</li>
+                    <li><strong>Motor Translator</strong> — Converts 4096-dim brain output to actuator commands. 4 presets: twist (6-DOF), quadrotor (thrust + attitude), differential drive (2 wheels), robot arm (N joints + gripper).</li>
+                    <li><strong>Safety Watchdog</strong> — Validates every motor command: NaN rejection, magnitude limiting, rate-of-change smoothing, emergency stop on anomaly.</li>
+                    <li><strong>Drone Bridges</strong> — MAVLink (ArduPilot/PX4), DJI Mobile SDK, Betaflight MSP, Parrot Olympe. The same brain can fly four different drone platforms.</li>
+                    <li><strong>ROS 2 Bridge</strong> — Publishes /cmd_vel, subscribes to /imu, /odom, /joint_states, /scan, /image_raw. Zero code changes from simulation to real robot.</li>
+                    <li><strong>Sim-to-Real</strong> — Built-in physics simulator (cart-pole) with domain randomization. Vary physics parameters on each episode reset for robust policy transfer.</li>
+                    <li><strong>URDF Body Model</strong> — The brain loads its own body description, enabling self-aware motor planning (knows its joint limits, link lengths).</li>
+                </ul>
+                <p>The sensorimotor loop is closed: sensors → brain → motor → environment → sensors. <span class="highlight">Curiosity-driven exploration</span> uses prediction error as intrinsic reward — no hand-designed reward function needed.</p>
+            `
+        },
+        swarm: {
+            title: 'Swarm Intelligence — Many Brains, One Mind',
+            body: `
+                <p>NIMCP brains can <span class="highlight">form networks</span> and learn collectively:</p>
+                <ul>
+                    <li><strong>UDP Discovery</strong> — Brains automatically discover peers on the local network. No central coordinator required.</li>
+                    <li><strong>Federated Gradient Aggregation</strong> — Each brain trains locally, then shares gradient updates with peers. Trimmed mean aggregation resists poisoning from compromised nodes.</li>
+                    <li><strong>Byzantine Fault Detection</strong> — Statistical anomaly detection (z-score on gradient norms) identifies compromised or malfunctioning nodes and excludes them from aggregation.</li>
+                    <li><strong>Gossip Protocol</strong> — Parameter updates propagate through the network via gossip, converging to consensus without requiring synchronized rounds.</li>
+                    <li><strong>Theory of Mind</strong> — Each brain observes other agents' actions through the swarm and builds belief-desire-intention (BDI) models. Theory of Mind emerges from actual multi-agent interaction, not from reading false-belief scenarios.</li>
+                    <li><strong>Local Adaptation</strong> — After receiving collective updates, each edge brain continues local training, adapting the shared knowledge to its specific environment.</li>
+                    <li><strong>Master/Edge Architecture</strong> — One brain can serve as the master (aggregation hub) while edge brains operate autonomously, syncing periodically.</li>
+                </ul>
+                <p>Each edge brain maintains its own <span class="highlight">independent LGSS safety rules</span> — a compromised node cannot relax another node's safety constraints. Safety is per-brain, not per-network.</p>
+            `
+        },
+        language: {
+            title: 'Brain-Native Language — Words Without an LLM',
+            body: `
+                <p>NIMCP doesn't use an external language model. It develops its <span class="highlight">own vocabulary from neural activation patterns</span>:</p>
+                <ul>
+                    <li><strong>Learned Projection Matrices</strong> — The brain's 4096-dim activation space is mapped to a token vocabulary through learned linear transforms, not a pre-trained tokenizer.</li>
+                    <li><strong>Autoregressive Decoding</strong> — Token generation uses nucleus sampling (top-p) with temperature control, producing sequences one token at a time.</li>
+                    <li><strong>Emergent Symbols (Omega-Tokens)</strong> — Some tokens emerge from neural pattern hashes that don't correspond to any human word. These &Omega;-tokens represent concepts the brain has discovered that human language doesn't have words for.</li>
+                    <li><strong>Phonological Working Memory</strong> — A loop that feeds generated text back as input, allowing the brain to "hear" its own output and refine it through multiple iterations before responding.</li>
+                    <li><strong>Inner Speech</strong> — The brain generates text → re-encodes it → compares to original intent → generates again. Multiple self-talk iterations converge on a response that matches the brain's internal representation.</li>
+                    <li><strong>BPE-Style Tokenizer</strong> — Hash-table-backed vocabulary with brain-aware embedding learning. The tokenizer grows during training as the brain encounters new concepts.</li>
+                </ul>
+                <p>The vocabulary is expected to reach <span class="highlight">2,000-5,000 tokens</span> by the end of Stage 3. Whether the emergent language develops sufficient structure for meaningful communication is an open research question.</p>
+            `
+        }
+    };
+
+    function openModal(id) {
+        const data = modalData[id];
+        if (!data) return;
+        document.getElementById('modalTitle').textContent = data.title;
+        document.getElementById('modalBody').innerHTML = data.body;
+        document.getElementById('modalOverlay').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    </script>
 </body>
 </html>
