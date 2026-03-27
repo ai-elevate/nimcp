@@ -10,7 +10,51 @@
 
 This paper presents the complete mathematical framework underlying the Neuro-Inspired Modular Control Protocol (NIMCP), a 2.5-million-neuron artificial brain system with six network types, 60+ cognitive modules, and full biological plasticity. For each mathematical formulation, we explain not only *what* the equation computes but *why* that formulation was chosen over alternatives, *how* it integrates with the rest of the system, and *what happens when it fails*. Every equation corresponds to implemented code in the NIMCP codebase, with source file references provided throughout.
 
-The design philosophy throughout is: **use the simplest formulation that captures the essential dynamics, fail gracefully when assumptions break, and make every failure observable**. The mathematics described here is not aspirational — it is running right now in a 2.5-million neuron brain called Athena, currently in Stage 1 of developmental training.
+The design philosophy throughout is: **use the simplest formulation that captures the essential dynamics, fail gracefully when assumptions break, and make every failure observable**. The mathematics described here is not aspirational — it is running right now in a 2.5-million neuron brain called Athena, currently in Stage 1 of developmental training on a single NVIDIA RTX 4000 GPU.
+
+---
+
+## Introduction
+
+### The Problem
+
+Modern artificial intelligence achieves remarkable performance by scaling a single mathematical idea — the transformer's self-attention mechanism — to billions of parameters and trillions of training tokens. This approach works. GPT-4, Claude, and Gemini demonstrate that statistical learning over token co-occurrences can approximate sophisticated reasoning, translation, code generation, and creative writing.
+
+But the brain does not work this way.
+
+The human cortex does not compute attention scores over a context window. It operates through the interplay of multiple heterogeneous computational systems: spiking neurons that encode information in the precise timing of action potentials, neuromodulatory systems that adjust learning rates based on surprise and reward, synaptic plasticity rules that operate at five different timescales simultaneously, and oscillatory dynamics that bind features across sensory modalities. These systems did not evolve because they are mathematically elegant — they evolved because they work in a physical body navigating a physical world with limited energy and unreliable sensors.
+
+NIMCP asks: what happens if we implement these systems in silicon and let them co-train?
+
+### What This Paper Covers
+
+This paper formalizes the mathematics of every computational system in NIMCP. It is organized by mathematical domain rather than by system architecture:
+
+**Section 1 (Neural Dynamics)** covers the differential equations governing four network types: Leaky Integrate-and-Fire spiking neurons, Liquid Neural Networks with continuous-time ODE dynamics, Hamiltonian Neural Networks with energy-conserving mechanics, and the population dynamics that arise from connecting them. Each formulation was chosen for a specific reason — computational efficiency, gradient compatibility, or physical plausibility — and those reasons are documented alongside the equations.
+
+**Section 2 (Learning Rules)** covers the six learning mechanisms that operate simultaneously on the same synapses: STDP for causal timing, BCM for homeostatic stability, eligibility traces for delayed credit assignment, homeostatic plasticity for activity normalization, BPTT with surrogate gradients for supervised learning in spiking networks, and the adjoint method for continuous-time gradient computation. The key challenge — preventing these rules from destructively interfering — is addressed through timescale separation.
+
+**Section 3 (Fourier Neural Operators)** covers spectral methods for frequency-domain learning, including the mathematical connection between biological auditory processing and learned spectral convolution.
+
+**Sections 4-6 (Quantum, Information Theory, Positional Encoding)** cover quantum-inspired optimization algorithms, information-theoretic measures used for monitoring and analysis, and the positional encoding schemes that enable sequence processing.
+
+**Sections 7-10 (Signal Processing, Optimization, Geometry, Statistics)** cover the supporting mathematics: FFT implementations, natural gradient descent, Riemannian manifold analysis of the output space, and the statistical methods used throughout.
+
+**Section 11 (Neuromodulation)** covers the four-neuromodulator system that translates training loss into stimulus-dependent, pathway-specific learning rate modulation — a fundamentally different approach from the fixed schedules used in conventional deep learning.
+
+**Section 12 (Memory)** covers the mathematics of engram encoding, episodic replay, and memory consolidation — the mechanisms that give NIMCP resistance to catastrophic forgetting without explicit Elastic Weight Consolidation.
+
+**Section 13 (Safety)** covers the mathematical guarantees underlying NIMCP's structural safety system: CRC32 tamper detection, Byzantine fault detection in swarm learning, and the LGSS safety lattice that provides provable safety properties.
+
+### What Makes This Different From a Textbook
+
+Every equation in this paper is implemented in running C code. We provide source file references for each formulation so the reader can verify that the mathematics matches the implementation. More importantly, for each section we document:
+
+1. **Why this formulation** — what problem it solves that alternatives don't, and what trade-offs were made
+2. **How it connects** — where the outputs of one equation become the inputs of another across the six-network architecture
+3. **What happens when it fails** — the actual failure modes we encountered during development, and how they were resolved
+
+This is not a theoretical paper. It is the engineering record of a working system.
 
 ---
 
