@@ -734,9 +734,12 @@ def main():
 
             # Labeled learn call — pairs audio with meaning for cortex CNN backward training
             try:
-                brain.learn_vector(mel_features, mel_features,
-                                   label=f"parentese:{utterance['text'][:30]}",
-                                   confidence=0.8, learning_rate=0.0002)
+                brain._send({"cmd": "learn_vector",
+                             "features": mel_features,
+                             "target": mel_features,
+                             "label": f"parentese:{utterance['text'][:30]}",
+                             "confidence": 0.8,
+                             "learning_rate": 0.0002})
             except Exception:
                 pass
 
@@ -767,12 +770,15 @@ def main():
                 pass
 
             # Labeled learn call — gives the audio cortex CNN a backward training signal.
-            # Without this, the audio cortex only gets forward passes (feature extraction)
-            # but never updates its weights (0 backward steps).
+            # Uses JSON path directly (learn_vector, not learn_vector_bin) for compatibility
+            # with daemon instances that haven't been restarted since the base64 commit.
             try:
-                brain.learn_vector(mel_features, mel_features,
-                                   label=f"audio:{desc[:40]}",
-                                   confidence=0.6, learning_rate=0.0002)
+                brain._send({"cmd": "learn_vector",
+                             "features": mel_features,
+                             "target": mel_features,
+                             "label": f"audio:{desc[:40]}",
+                             "confidence": 0.6,
+                             "learning_rate": 0.0002})
             except Exception:
                 pass
 
