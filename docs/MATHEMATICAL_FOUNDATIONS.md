@@ -105,6 +105,14 @@
   - [21.1 Corpus Callosum Transfer](#211-corpus-callosum-transfer)
 - [22. K-Winners-Take-All Sparse Coding](#22-k-winners-take-all-sparse-coding)
   - [22.1 Sparse Output Selection](#221-sparse-output-selection)
+- [23. Pink Noise (1/f) Stochastic Dynamics](#23-pink-noise-1f-stochastic-dynamics)
+  - [23.1 1/f Power Spectrum](#231-1f-power-spectrum)
+  - [23.2 The 12 Pink Noise Bridges](#232-the-12-pink-noise-bridges)
+  - [23.3 Generation via Voss-McCartney Algorithm](#233-generation-via-voss-mccartney-algorithm)
+- [24. Fractal Topology and Detrended Fluctuation Analysis](#24-fractal-topology-and-detrended-fluctuation-analysis)
+  - [24.1 Fractal Network Topology](#241-fractal-network-topology)
+  - [24.2 Detrended Fluctuation Analysis (DFA)](#242-detrended-fluctuation-analysis-dfa)
+  - [24.3 Hurst Exponent for Training Health](#243-hurst-exponent-for-training-health)
 - [Glossary](#glossary)
 - [References](#references)
 
@@ -1466,6 +1474,129 @@ where $x_{(k)}$ is the $k$-th largest activation. This creates a sparse output c
 
 ---
 
+## 23. Pink Noise (1/f) Stochastic Dynamics
+
+**Why pink noise and not white noise?** White noise has equal power at all frequencies — each sample is independent. Biological neural systems do not operate this way. Cortical activity, heart rate variability, and cognitive performance all exhibit $1/f$ (pink) noise: a power spectrum that falls off as $1/f^\alpha$ with $\alpha \approx 1$. This means slow fluctuations are stronger than fast ones, creating temporal correlations across timescales. Adding white noise to a neural simulation produces unrealistic jitter. Adding pink noise produces biologically realistic stochastic variability that enhances exploration, prevents convergence to sharp local minima, and improves generalization.
+
+### 23.1 1/f Power Spectrum
+
+Pink noise has a power spectral density:
+
+```math
+S(f) = \frac{C}{f^\alpha}, \quad \alpha \approx 1
+```
+
+For $\alpha = 0$, the spectrum is flat (white noise). For $\alpha = 1$, it is pink noise. For $\alpha = 2$, it is brown/red noise (random walk). Pink noise is the boundary between stationary ($\alpha < 1$) and non-stationary ($\alpha > 1$) processes — it has long-range correlations without divergent variance.
+
+**Why $\alpha = 1$ is special:** At this exponent, the noise has self-similar structure — zooming in or out on the time series produces statistically identical patterns. This scale-free property matches the brain's hierarchical processing: the same noise statistics appear at the millisecond (synaptic), second (neural population), and minute (cognitive) timescales. A single pink noise generator can modulate processes at all three levels.
+
+### 23.2 The 12 Pink Noise Bridges
+
+NIMCP integrates pink noise into 12 neural subsystems, each with its own bridge module:
+
+| Bridge | Subsystem | What it modulates |
+|--------|-----------|-------------------|
+| Calcium | Calcium signaling | Stochastic ion channel opening/closing |
+| Dendritic | Dendritic integration | Membrane potential fluctuations in dendrites |
+| Heterosynaptic | Cross-synapse effects | Random spread of plasticity signals between nearby synapses |
+| Metabolic | Energy metabolism | ATP availability fluctuations affecting neural excitability |
+| Spatial neuromodulator | Neuromodulator diffusion | Stochastic variation in DA/ACh/NE/5-HT concentration fields |
+| Vesicle packaging | Synaptic vesicles | Random variation in neurotransmitter quanta per release event |
+| Ensemble uncertainty | Population coding | Noise in population-level activity estimates |
+| Systems consolidation | Memory consolidation | Stochastic replay selection during sleep/consolidation |
+| Brain oscillations | Oscillatory coupling | Phase jitter in theta/gamma oscillation coupling |
+| Population coding | Population rate estimates | Noise in firing rate decoding |
+| STDP | Spike-timing plasticity | Stochastic variation in STDP window shape |
+| STP | Short-term plasticity | Random fluctuation in facilitation/depression dynamics |
+
+Each bridge samples from a shared pink noise generator at its subsystem's characteristic rate and scales the noise amplitude to match the subsystem's dynamic range.
+
+### 23.3 Generation via Voss-McCartney Algorithm
+
+Pink noise is generated using the Voss-McCartney algorithm, which sums multiple random number generators updated at different rates:
+
+```math
+x(t) = \sum_{k=0}^{K-1} r_k(t)
+```
+
+where $r_k$ is a uniform random value that updates every $2^k$ samples. Generator $r_0$ updates every sample (high frequency), $r_1$ every 2 samples, $r_2$ every 4, etc. The sum of these staggered updates produces approximate $1/f$ noise with $K$ octaves of frequency coverage.
+
+**Why Voss-McCartney instead of FFT-based generation?** FFT-based pink noise generates an entire buffer at once — efficient for offline processing but unusable for real-time streaming. Voss-McCartney produces one sample per call with O(1) compute and O(K) memory (K = number of octaves, typically 16). This allows each pink noise bridge to generate its own independent stream without batch processing.
+
+*Source: `src/plasticity/pink_noise/`, `include/core/neuron_models/nimcp_sfa_pink_noise_bridge.h`*
+
+---
+
+## 24. Fractal Topology and Detrended Fluctuation Analysis
+
+**Why fractal structure?** The mammalian cortex is not a regular grid or a random graph. It has fractal structure — self-similar connectivity patterns that repeat at multiple spatial scales. Small clusters of neurons form microcolumns, microcolumns cluster into macrocolumns, macrocolumns form areas, and areas form networks. This hierarchical organization has a fractal dimension of approximately 2.5 in human cortex. NIMCP's fractal topology generator creates connection patterns with configurable fractal dimension, producing networks whose connectivity statistics match biological cortex.
+
+### 24.1 Fractal Network Topology
+
+A fractal network with dimension $D$ and $N$ neurons is constructed recursively:
+
+1. Start with a seed graph of $n_0$ fully-connected neurons
+2. Replicate the seed $b$ times (branching factor)
+3. Connect replicas with inter-group connections at probability $p_{\text{inter}} = p_0 \cdot s^{-D}$, where $s$ is the scale level
+4. Repeat for $L$ levels
+
+The fractal dimension $D$ controls how quickly connectivity falls off with distance:
+- $D = 1.0$: chain-like (each group connects only to neighbors)
+- $D = 2.0$: planar (moderate long-range connections)
+- $D = 2.5$: cortical (rich long-range connections, matching biological cortex)
+- $D = 3.0$: near-random (almost all pairs connected)
+
+```math
+p_{\text{connect}}(i, j) = p_0 \cdot d(i,j)^{-D}
+```
+
+where $d(i,j)$ is the topological distance between neurons $i$ and $j$ in the fractal hierarchy.
+
+### 24.2 Detrended Fluctuation Analysis (DFA)
+
+DFA measures long-range temporal correlations in a time series — specifically, whether the series exhibits pink-noise-like ($1/f$) structure or white-noise-like independence:
+
+1. Integrate the time series: $Y(k) = \sum_{i=1}^{k} (x_i - \bar{x})$
+2. Divide $Y$ into non-overlapping windows of length $n$
+3. In each window, fit a polynomial trend $Y_n$ and compute the residual variance:
+
+```math
+F(n) = \sqrt{\frac{1}{N} \sum_{k=1}^{N} [Y(k) - Y_n(k)]^2}
+```
+
+4. Plot $\log F(n)$ vs $\log n$. The slope is the DFA exponent $\alpha$:
+
+```math
+F(n) \sim n^\alpha
+```
+
+**Interpretation:**
+- $\alpha = 0.5$: white noise (uncorrelated, random walk of integral)
+- $\alpha = 1.0$: $1/f$ pink noise (long-range correlations)
+- $\alpha = 1.5$: Brownian noise (strongly correlated)
+- $\alpha > 1.5$: non-stationary, potentially pathological
+
+### 24.3 Hurst Exponent for Training Health
+
+The Hurst exponent $H$ (closely related to the DFA exponent: $H = \alpha - 0.5$ for stationary series) monitors training health in the UTM:
+
+```math
+H = \alpha_{\text{DFA}} - 0.5
+```
+
+- $H = 0.5$: Loss fluctuations are random (normal training)
+- $H > 0.5$: Loss has persistent trends (still converging — good)
+- $H < 0.5$: Loss has anti-persistent fluctuations (oscillating — potential instability)
+- $H \to 1.0$: Loss is monotonically decreasing (strong convergence)
+
+**How it connects to the system:** The UTM tracks the Hurst exponent of the composite loss time series (`hurst_exponent` field). When $H < 0.3$ (strong anti-persistence), the quantum annealing module (Section 4.1) is triggered to perturb weights out of an oscillatory attractor. When $H > 0.8$ (strong persistence), the learning rate is reduced because the network is converging and aggressive updates risk overshooting.
+
+**What happens when it fails:** A corrupted loss buffer (e.g., NaN entries from a division-by-zero) produces $H = 0$ (no temporal structure). The DFA computation includes a NaN guard that replaces invalid entries with the buffer mean, preventing cascade failures.
+
+*Source: `src/core/topology/nimcp_fractal_topology.c`, `src/training/nimcp_unified_training.c` (Hurst monitoring)*
+
+---
+
 ## Glossary
 
 | Term | Full Name | Definition |
@@ -1478,6 +1609,7 @@ where $x_{(k)}$ is the $k$-th largest activation. This creates a sparse output c
 | **CNN** | Convolutional Neural Network | Network using learned spatial filters; NIMCP has 4 modality-specific cortex CNNs (visual, audio, speech, somatosensory) |
 | **CRC32** | Cyclic Redundancy Check (32-bit) | Hash function used in NIMCP's audit log to detect entry tampering; produces a 32-bit checksum per log entry |
 | **DA** | Dopamine | Neuromodulator encoding reward prediction error; gates STDP learning — high DA strengthens recently-active synapses |
+| **DFA** | Detrended Fluctuation Analysis | Method for measuring long-range temporal correlations in a time series; the DFA exponent $\alpha$ indicates noise color ($0.5$ = white, $1.0$ = pink) |
 | **EDP** | Event-Driven Plasticity | Three-factor learning rule: activity × eligibility × reward. Bridges the timing gap between synaptic activity and delayed reward |
 | **EMA** | Exponential Moving Average | Running average with exponential decay: $\bar{x}_t = \alpha x_t + (1-\alpha)\bar{x}_{t-1}$. Used for loss tracking, gradient norms, and shadow parameters |
 | **EWC** | Elastic Weight Consolidation | Continual learning method that penalizes changes to weights important for previous tasks, using the Fisher information matrix |
