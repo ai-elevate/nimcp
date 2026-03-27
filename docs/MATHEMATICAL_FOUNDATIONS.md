@@ -83,6 +83,28 @@
 - [15. Prime Resonance Memory](#15-prime-resonance-memory)
   - [15.1 Prime Resonance Encoding](#151-prime-resonance-encoding)
   - [15.2 Resonance-Based Retrieval](#152-resonance-based-retrieval)
+- [16. Adaptive Network Architecture](#16-adaptive-network-architecture)
+  - [16.1 9-Layer Diamond Topology](#161-9-layer-diamond-topology)
+  - [16.2 Forward Pass](#162-forward-pass)
+  - [16.3 Backward Pass and Weight Decay](#163-backward-pass-and-weight-decay)
+- [17. Composite Loss and Cross-Network Gradients](#17-composite-loss-and-cross-network-gradients)
+  - [17.1 Composite Loss Function](#171-composite-loss-function)
+  - [17.2 LSA Bridge Gradient Flow](#172-lsa-bridge-gradient-flow)
+- [18. Diversity and Contrastive Loss](#18-diversity-and-contrastive-loss)
+  - [18.1 Diversity Loss (Effective Rank)](#181-diversity-loss-effective-rank)
+  - [18.2 Contrastive Loss (Cross-Network)](#182-contrastive-loss-cross-network)
+  - [18.3 Cosine Similarity Ring Buffer](#183-cosine-similarity-ring-buffer)
+- [19. Sparse Synapse Mathematics](#19-sparse-synapse-mathematics)
+  - [19.1 Three-Tier Storage](#191-three-tier-storage)
+  - [19.2 Pool Allocation with Graceful Fallback](#192-pool-allocation-with-graceful-fallback)
+- [20. Developmental Curriculum Mathematics](#20-developmental-curriculum-mathematics)
+  - [20.1 Stage Transition](#201-stage-transition)
+  - [20.2 Cosine Annealing with Warmup](#202-cosine-annealing-with-warmup)
+  - [20.3 Spectral K-Fold Cross-Validation](#203-spectral-k-fold-cross-validation)
+- [21. Hemispheric Architecture](#21-hemispheric-architecture)
+  - [21.1 Corpus Callosum Transfer](#211-corpus-callosum-transfer)
+- [22. K-Winners-Take-All Sparse Coding](#22-k-winners-take-all-sparse-coding)
+  - [22.1 Sparse Output Selection](#221-sparse-output-selection)
 - [Glossary](#glossary)
 - [References](#references)
 
@@ -1208,6 +1230,242 @@ Memory retrieval computes the resonance between a query and stored memories:
 
 ---
 
+## 16. Adaptive Network Architecture
+
+**Why the adaptive network needs formalization:** The ANN handles 60% of the composite loss weight and processes every input. Yet Sections 1-2 formalize the SNN, LNN, and HNN while leaving the primary network undocumented.
+
+### 16.1 9-Layer Diamond Topology
+
+The layer sizes follow a diamond distribution that expands to a peak then contracts:
+
+```math
+n_l = \text{hidden\_budget} \times r_l, \quad r = [0.01, 0.05, 0.15, 0.28, 0.28, 0.15, 0.05, 0.03]
+```
+
+with input and output layers at positions 0 and 8. The diamond shape is motivated by information bottleneck theory: early layers compress (few neurons, forced abstraction), middle layers expand (maximum representational capacity), and late layers re-compress toward the output dimensionality.
+
+**Why 9 layers for 2M+ neurons?** Smaller networks use fewer layers (3 for <5K, 5 for 5K-100K, 7 for 100K-2M). The depth scales with neuron count because wider layers need more depth to develop hierarchical features. At 2.5M neurons, the peak layers (L4, L5) each contain ~700K neurons — enough capacity that 7 layers would leave them underutilized. The 9-layer diamond provides finer-grained hierarchy with dedicated feature extraction (L1-L2), abstraction (L3-L5), and output preparation (L6-L8) stages.
+
+### 16.2 Forward Pass
+
+The forward pass through layer $l$:
+
+```math
+h_l = f(W_l \cdot h_{l-1} + b_l)
+```
+
+where $f$ is the activation function (ReLU for hidden layers, linear for output — TANH was found to cause gradient vanishing for regression targets). The GPU training bridge executes this as batched matrix multiplications in FP16 (mixed precision), with loss scaling to prevent gradient underflow.
+
+### 16.3 Backward Pass and Weight Decay
+
+Gradient computation follows standard backpropagation with layer-wise learning rate scaling:
+
+```math
+\Delta W_l = -\eta_l \cdot \frac{\partial \mathcal{L}}{\partial W_l}, \quad \eta_l = \eta_{\text{base}} \times s_l
+```
+
+where $s_l$ is a per-layer scale factor. Weight decay is LR-coupled:
+
+```math
+W_l \leftarrow W_l \times (1 - \eta_l \times \lambda)
+```
+
+**What happens when it fails:** The output layer activation was originally TANH (from an older checkpoint), which bounded outputs to [-1, 1] while targets ranged over [-5, 5]. This caused systematic gradient vanishing on the output layer — loss plateaued at ~10,000 (the MSE of ±1 outputs vs ±100 targets). Switching to LINEAR output activation resolved the plateau.
+
+*Source: `src/plasticity/adaptive/nimcp_adaptive.c`, `src/gpu/training/nimcp_training_bridge.c`*
+
+---
+
+## 17. Composite Loss and Cross-Network Gradients
+
+### 17.1 Composite Loss Function
+
+The UTM computes a weighted sum of per-network losses plus regularization terms:
+
+```math
+\mathcal{L}_{\text{composite}} = \sum_{n=1}^{N} w_n \mathcal{L}_n + \lambda_{\text{div}} \mathcal{L}_{\text{diversity}} + \lambda_{\text{contra}} \mathcal{L}_{\text{contrastive}} + \lambda_{\text{kd}} \mathcal{L}_{\text{distill}}
+```
+
+Default weights: $w_{\text{ANN}} = 0.6$, $w_{\text{SNN}} = 0.15$, $w_{\text{LNN}} = 0.15$, $w_{\text{CNN}} = 0.10$.
+
+### 17.2 LSA Bridge Gradient Flow
+
+For a Linear Spline Adapter bridge $B$ with parameters $(W, b)$ connecting source $S$ to target $T$:
+
+**Forward:** $h = W \cdot \tanh(y_S) + b$
+
+**Backward:**
+
+```math
+\frac{\partial \mathcal{L}}{\partial W} = \frac{\partial \mathcal{L}}{\partial h} \cdot \tanh(y_S)^T
+```
+
+```math
+\frac{\partial \mathcal{L}}{\partial y_S} = W^T \cdot \frac{\partial \mathcal{L}}{\partial h} \odot (1 - \tanh^2(y_S))
+```
+
+The $(1 - \tanh^2)$ factor acts as a natural gradient gate: large source activations near tanh saturation receive attenuated gradients, preventing cross-network gradient explosion without explicit clipping.
+
+**Why tanh and not linear?** A linear bridge $h = Wy_S + b$ would allow unbounded gradient flow. If the SNN produces output spikes with magnitude 130 Hz (our observed max), and the ANN's gradient has magnitude 0.1, the cross-network gradient would be $0.1 \times 130 = 13$ — large enough to destabilize the ANN. The tanh compresses the SNN output to [-1, 1] before the bridge, bounding the cross-gradient regardless of spike rates.
+
+*Source: `src/training/nimcp_unified_training.c`*
+
+---
+
+## 18. Diversity and Contrastive Loss
+
+**Why anti-collapse mechanisms?** With 6 networks trained on the same loss, the path of least resistance is for all networks to learn the same function. The composite loss gives the ANN 60% weight — the optimizer's gradient signal pushes all other networks toward replicating the ANN's output. Without diversity pressure, the SNN, LNN, CNN, FNO, and HNN converge to the same representation, and the bridges become identity transforms. The system degenerates to a single (expensive) network.
+
+### 18.1 Diversity Loss (Effective Rank)
+
+The effective rank of the output matrix across a batch measures representational diversity:
+
+```math
+\text{eff\_rank}(Y) = \exp\left(-\sum_{i} \hat{\sigma}_i \ln \hat{\sigma}_i\right), \quad \hat{\sigma}_i = \frac{\sigma_i}{\sum_j \sigma_j}
+```
+
+where $\sigma_i$ are the singular values of the output matrix $Y \in \mathbb{R}^{B \times d}$ (batch size $B$, output dimension $d$). Effective rank of 1 means all outputs are identical (mode collapse). Effective rank of $d$ means outputs span the full output space.
+
+The diversity loss penalizes low effective rank:
+
+```math
+\mathcal{L}_{\text{diversity}} = \max(0, r_{\min} - \text{eff\_rank}(Y) / d)
+```
+
+where $r_{\min} = 0.1$ is the minimum variance ratio.
+
+### 18.2 Contrastive Loss (Cross-Network)
+
+Penalizes pairs of networks whose outputs are too similar:
+
+```math
+\mathcal{L}_{\text{contrastive}} = \sum_{i < j} \max(0, \text{margin} - \|y_i - y_j\|_2)
+```
+
+This forces each network to develop distinct representations. The SNN cannot simply replicate the ANN's output — the contrastive loss pushes it toward temporal coding (spike patterns) which is naturally orthogonal to the ANN's static feature vectors.
+
+### 18.3 Cosine Similarity Ring Buffer
+
+A ring buffer of the 16 most recent outputs tracks pairwise cosine similarity:
+
+```math
+\text{sim}(y_t, y_{t-k}) = \frac{y_t \cdot y_{t-k}}{\|y_t\| \|y_{t-k}\|}
+```
+
+When mean similarity exceeds 0.80, the diversity loss weight is boosted. This provides a real-time mode collapse detector that triggers corrective pressure before the network fully collapses.
+
+*Source: `src/training/nimcp_anti_collapse.c`*
+
+---
+
+## 19. Sparse Synapse Mathematics
+
+### 19.1 Three-Tier Storage
+
+Each synapse exists as up to three data structures, allocated on demand:
+
+| Tier | Structure | Size | When Allocated | Contents |
+|------|-----------|------|----------------|----------|
+| Handle | `synapse_handle_t` | 16 bytes | Always (backbone wiring) | target_id, weight, strength, metadata_index |
+| Metadata | `synapse_t` | 52 bytes | On first plasticity event | plasticity, trace, last_active, source_id, cold_index |
+| Cold | `synapse_cold_t` | ~140 bytes | When STP/BCM needed | STP state, BCM threshold, eligibility trace, ternary state |
+
+**Why three tiers?** At 2.5M neurons with ~128 connections each, the brain has ~320M synapse handles. If every synapse had full cold data: $320M \times 140 = 44.8$ GB — more than available RAM. The tiered approach allocates handles for all synapses (5.1 GB), metadata only for synapses with active plasticity (~50M slots = 2.6 GB), and cold data only for synapses that need STP/BCM (~5M slots = 700 MB). Total: 8.4 GB instead of 44.8 GB.
+
+### 19.2 Pool Allocation with Graceful Fallback
+
+The metadata pool has a maximum capacity ($50M$ slots). When exhausted:
+
+```math
+\text{if } \text{pool\_size} \geq \text{MAX\_POOL\_SIZE}: \text{return SPARSE\_SYNAPSE\_NO\_METADATA}
+```
+
+The synapse handle is still created (forward/backward pass works), but biological plasticity (STDP, STP, BCM, eligibility) is disabled for that synapse. This is graceful degradation — the network continues to function, just without biological learning on overflow synapses.
+
+**What happens when it fails silently:** In an earlier version, `sparse_synapse_add_with_metadata` returned -1 on pool exhaustion, causing the synapse to not be created at all — not even the handle. This meant the backbone wiring was incomplete, with missing connections that silently degraded network connectivity. The fix: always create the handle, optionally add metadata.
+
+*Source: `src/core/neuralnet/nimcp_sparse_synapse.c`*
+
+---
+
+## 20. Developmental Curriculum Mathematics
+
+### 20.1 Stage Transition
+
+Training progresses through 4 stages with increasing cognitive complexity:
+
+| Stage | Steps | Confidence | LR Schedule | Cognitive Domains |
+|-------|-------|-----------|-------------|-------------------|
+| 0 (Sensory) | 10,000 | 0.9 → 0.5 | Cosine, warm start | None |
+| 1 (Naming) | 20,000 | 0.65 | Cosine | 13 domains, 1 item/10 steps |
+| 2 (Feedback) | 20,000 | 0.70 | Cosine | 13 domains, escalating |
+| 3 (Reasoning) | 10,000 | Adaptive | Per-domain adaptive | All 13, mastery-tracked |
+
+### 20.2 Cosine Annealing with Warmup
+
+Learning rate follows a cosine schedule:
+
+```math
+\eta(t) = \eta_{\min} + \frac{\eta_{\max} - \eta_{\min}}{2}\left(1 + \cos\left(\frac{\pi t}{T_{\max}}\right)\right)
+```
+
+where $T_{\max} = 20000$ (full cycle length), $\eta_{\max} = 0.001$, $\eta_{\min} = 0.00001$. The first 1000 steps use linear warmup from $\eta_{\min}$ to $\eta_{\max}$.
+
+### 20.3 Spectral K-Fold Cross-Validation
+
+Standard k-fold randomly assigns items to folds, allowing semantically similar items to appear in both train and test — inflating accuracy estimates. Spectral k-fold respects the data manifold:
+
+1. Embed all items via sentence transformer: $e_i \in \mathbb{R}^{384}$
+2. Construct cosine similarity graph: $S_{ij} = \frac{e_i \cdot e_j}{\|e_i\| \|e_j\|}$
+3. Graph Laplacian: $L = D - S$ where $D_{ii} = \sum_j S_{ij}$
+4. Eigendecompose: take $k$ smallest non-trivial eigenvectors of $L$
+5. K-means on eigenvectors → spectral clusters
+6. Rebalance for domain stratification
+
+**Why this matters:** When fold $k$ is held out, the model is tested on an entire semantic cluster it has never seen. This measures genuine generalization, not interpolation between similar training examples.
+
+*Source: `scripts/spectral_kfold.py`*
+
+---
+
+## 21. Hemispheric Architecture
+
+### 21.1 Corpus Callosum Transfer
+
+NIMCP implements a hemispheric brain with left and right hemispheres connected by a corpus callosum with 4 specialized channels:
+
+```math
+T_c(h_L, h_R) = W_c \cdot [h_L; h_R] + b_c, \quad c \in \{\text{motor, sensory, cognitive, emotional}\}
+```
+
+Each channel has learned transfer weights $W_c$ that determine how much information flows between hemispheres for that modality. During training, the transfer weights adapt — if one hemisphere develops stronger visual processing, the sensory channel weights increase to share that specialization.
+
+**Why hemispheres?** Biological hemispheric specialization (language lateralization, spatial processing) emerges from development, not design. NIMCP's hemispheric architecture provides the structural substrate for similar emergent lateralization — whether it actually occurs depends on the training data and is an open research question (see recommended future paper: "Hemispheric Specialization").
+
+*Source: `src/core/brain/hemispheric/`*
+
+---
+
+## 22. K-Winners-Take-All Sparse Coding
+
+### 22.1 Sparse Output Selection
+
+K-WTA enforces output sparsity by allowing only the top-$k$ activations to pass through:
+
+```math
+y_i = \begin{cases} x_i & \text{if } x_i \geq x_{(k)} \\ 0 & \text{otherwise} \end{cases}
+```
+
+where $x_{(k)}$ is the $k$-th largest activation. This creates a sparse output code where at most $k$ neurons are active per input, reducing interference between representations and improving memory capacity.
+
+**Why K-WTA instead of dropout or L1 regularization?** Dropout randomly silences neurons during training — useful for regularization but doesn't produce structured sparsity at inference time. L1 regularization pushes weights toward zero globally, which can over-prune important connections. K-WTA preserves the strongest activations regardless of their magnitude, producing a sparse code that retains the most informative features.
+
+**How it connects to the system:** K-WTA is applied to the output layer of the adaptive network when `enable_sparsity = true`. The sparsity level $k/d$ (where $d$ is the output dimension) is configurable. At $k = 64$ out of $d = 4096$, only 1.6% of output neurons are active — each input produces a unique sparse code that is highly discriminative.
+
+*Source: `src/core/neuralnet/nimcp_neuralnet.c` (sparse output path)*
+
+---
+
 ## Glossary
 
 | Term | Full Name | Definition |
@@ -1228,6 +1486,7 @@ Memory retrieval computes the resonance between a query and stored memories:
 | **FNO** | Fourier Neural Operator | Network that learns convolution kernels in the frequency domain (Li et al., 2021); captures global patterns that spatial CNNs miss |
 | **HNN** | Hamiltonian Neural Network | Network constrained to energy-conserving dynamics via Hamilton's equations; uses symplectic integrators to preserve phase-space volume |
 | **IIT** | Integrated Information Theory | Information-theoretic measure (Tononi, 2004) of how much a system's information is "more than the sum of its parts"; NIMCP computes $\Phi$ for consciousness monitoring |
+| **K-WTA** | K-Winners-Take-All | Sparse coding mechanism that allows only the top-$k$ activations to pass through; enforces structured sparsity at inference time |
 | **LIF** | Leaky Integrate-and-Fire | Simplest biologically plausible neuron model: membrane voltage integrates input current with exponential leak, fires when threshold is reached |
 | **LGSS** | Layered Governance Safety System | NIMCP's rule-based safety system; evaluates every inference and weight update against safety rules that can only become stricter |
 | **LNN** | Liquid Neural Network | Continuous-time recurrent network with learned time constants (Hasani et al., 2021); dynamics governed by an ODE with per-neuron adaptive $\tau$ |
