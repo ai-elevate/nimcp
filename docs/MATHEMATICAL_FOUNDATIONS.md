@@ -6,6 +6,88 @@
 
 ---
 
+## Table of Contents
+
+- [Abstract](#abstract)
+- [Introduction](#introduction)
+- [1. Neural Dynamics](#1-neural-dynamics)
+  - [1.1 Leaky Integrate-and-Fire Model](#11-leaky-integrate-and-fire-model)
+  - [1.2 Spiking Neural Network Population Dynamics](#12-spiking-neural-network-population-dynamics)
+  - [1.3 Liquid Neural Network (LNN)](#13-liquid-neural-network-lnn)
+  - [1.4 Hamiltonian Neural Networks (HNN)](#14-hamiltonian-neural-networks-hnn)
+- [2. Learning Rules](#2-learning-rules)
+  - [2.1 Spike-Timing-Dependent Plasticity (STDP)](#21-spike-timing-dependent-plasticity-stdp)
+  - [2.2 BCM Rule (Bienenstock-Cooper-Munro)](#22-bcm-rule-bienenstock-cooper-munro)
+  - [2.3 Eligibility Traces](#23-eligibility-traces)
+  - [2.4 Homeostatic Plasticity](#24-homeostatic-plasticity)
+  - [2.5 Backpropagation Through Time for SNN](#25-backpropagation-through-time-for-snn)
+  - [2.6 Adjoint Method for LNN](#26-adjoint-method-for-lnn)
+  - [2.7 AdamW Optimizer](#27-adamw-optimizer)
+- [3. Fourier Neural Operators](#3-fourier-neural-operators)
+  - [3.1 Spectral Convolution](#31-spectral-convolution)
+  - [3.2 FFT Implementation](#32-fft-implementation)
+  - [3.3 FNO Layer Architecture](#33-fno-layer-architecture)
+  - [3.4 SNN-FNO Bridge](#34-snn-fno-bridge)
+- [4. Quantum-Inspired Algorithms](#4-quantum-inspired-algorithms)
+  - [4.1 Quantum Annealing](#41-quantum-annealing)
+  - [4.2 Quantum Walk](#42-quantum-walk)
+  - [4.3 Quantum Monte Carlo](#43-quantum-monte-carlo)
+  - [4.4 Quantum Shannon Integration](#44-quantum-shannon-integration)
+  - [4.5 Quantum-Classical Bridge](#45-quantum-classical-bridge)
+- [5. Information Theory](#5-information-theory)
+  - [5.1 Shannon Entropy](#51-shannon-entropy)
+  - [5.2 Mutual Information and KL Divergence](#52-mutual-information-and-kl-divergence)
+  - [5.3 Integrated Information (IIT Phi)](#53-integrated-information-iit-phi)
+  - [5.4 Partial Information Decomposition (PID)](#54-partial-information-decomposition-pid)
+  - [5.5 Fisher Information Matrix](#55-fisher-information-matrix)
+  - [5.6 Information Geometry](#56-information-geometry)
+- [6. Positional Encoding](#6-positional-encoding)
+  - [6.1 Sinusoidal Encoding](#61-sinusoidal-encoding-vaswani-2017)
+  - [6.2 Rotary Position Embedding (RoPE)](#62-rotary-position-embedding-rope)
+  - [6.3 ALiBi](#63-alibi-attention-with-linear-biases)
+  - [6.4 Relative Position Representations](#64-relative-position-representations-shaw-2018)
+- [7. Signal Processing](#7-signal-processing)
+  - [7.1 Fast Fourier Transform](#71-fast-fourier-transform)
+  - [7.2 Spectral Analysis](#72-spectral-analysis)
+- [8. Optimization](#8-optimization)
+  - [8.1 Gradient Descent Variants](#81-gradient-descent-variants)
+  - [8.2 Natural Gradient](#82-natural-gradient)
+  - [8.3 Quantum Annealing for Weight Optimization](#83-quantum-annealing-for-weight-optimization)
+  - [8.4 Elastic Weight Consolidation](#84-elastic-weight-consolidation)
+  - [8.5 Federated Averaging (Swarm Learning)](#85-federated-averaging-swarm-learning)
+- [9. Geometry and Manifolds](#9-geometry-and-manifolds)
+  - [9.1 Riemannian Metrics](#91-riemannian-metrics)
+  - [9.2 Surface Area and Nambu-Goto Action](#92-surface-area-and-nambu-goto-action)
+  - [9.3 Geometric Parameters](#93-geometric-parameters)
+  - [9.4 Neural Manifold Analysis](#94-neural-manifold-analysis)
+- [10. Probability and Statistics](#10-probability-and-statistics)
+  - [10.1 Sigmoid and Softmax](#101-sigmoid-and-softmax)
+  - [10.2 Exponential Moving Average](#102-exponential-moving-average)
+  - [10.3 Cosine Similarity (Diversity Loss)](#103-cosine-similarity-diversity-loss)
+  - [10.4 Quantum State Fidelity](#104-quantum-state-fidelity)
+- [11. Neuromodulation](#11-neuromodulation)
+  - [11.1 Dopamine Reward Prediction Error](#111-dopamine-reward-prediction-error)
+  - [11.2 Serotonin, Norepinephrine, Acetylcholine](#112-serotonin-norepinephrine-acetylcholine)
+- [12. Memory Mathematics](#12-memory-mathematics)
+  - [12.1 Engram Encoding](#121-engram-encoding)
+  - [12.2 Episodic Replay](#122-episodic-replay)
+  - [12.3 Memory Consolidation](#123-memory-consolidation)
+  - [12.4 Habituation](#124-habituation)
+- [13. Safety Mathematics](#13-safety-mathematics)
+  - [13.1 CRC32 Checksum](#131-crc32-checksum)
+  - [13.2 Byzantine Gradient Detection](#132-byzantine-gradient-detection)
+  - [13.3 LGSS Safety Lattice](#133-lgss-safety-lattice)
+- [14. Free Energy Principle and World Model](#14-free-energy-principle-and-world-model)
+  - [14.1 Variational Free Energy](#141-variational-free-energy)
+  - [14.2 World Model (Predictive Processing)](#142-world-model-predictive-processing)
+- [15. Prime Resonance Memory](#15-prime-resonance-memory)
+  - [15.1 Prime Resonance Encoding](#151-prime-resonance-encoding)
+  - [15.2 Resonance-Based Retrieval](#152-resonance-based-retrieval)
+- [Glossary](#glossary)
+- [References](#references)
+
+---
+
 ## Abstract
 
 This paper presents the complete mathematical framework underlying the Neuro-Inspired Modular Control Protocol (NIMCP), a 2.5-million-neuron artificial brain system with six network types, 60+ cognitive modules, and full biological plasticity. For each mathematical formulation, we explain not only *what* the equation computes but *why* that formulation was chosen over alternatives, *how* it integrates with the rest of the system, and *what happens when it fails*. Every equation corresponds to implemented code in the NIMCP codebase, with source file references provided throughout.
@@ -1052,6 +1134,119 @@ The Layered Governance Safety System evaluates actions against a partial order o
 Five pipeline points (input validation, action interception, motor gate, training guard, reward alignment) form a monotonic safety chain: blocking at any point propagates to all downstream stages.
 
 *Source: `include/security/lgss/nimcp_lgss.h`*
+
+---
+
+## 14. Free Energy Principle and World Model
+
+**Why the Free Energy Principle?** Karl Friston's Free Energy Principle (Friston, 2010) proposes that all biological systems minimize variational free energy — a bound on the surprise of their sensory observations. In practice, this means the brain maintains an internal model of the world and acts to minimize the difference between predicted and actual sensory input. NIMCP implements this directly: the FEP orchestrator connects the Hamiltonian dynamics ($H \equiv F$, variational free energy) to prediction error signals that drive both learning and exploration.
+
+### 14.1 Variational Free Energy
+
+The variational free energy for a generative model $p(o, s)$ with approximate posterior $q(s)$ over hidden states $s$ given observations $o$:
+
+```math
+F = \text{KL}[q(s) \| p(s | o)] - \ln p(o) = \langle \ln q(s) - \ln p(o, s) \rangle_{q(s)}
+```
+
+Minimizing $F$ with respect to $q(s)$ performs approximate Bayesian inference (perception). Minimizing $F$ with respect to actions changes observations to match predictions (active inference).
+
+**How it connects to the system:** The FEP orchestrator (`nimcp_fep_orchestrator`) bridges HNN energy dynamics to sensory prediction. The HNN's Hamiltonian $H(q, p)$ serves as the free energy functional. When sensory prediction error is high, $H$ increases, driving the system to update its internal model (learning) or change its behavior (action selection). This is wired into the inference pipeline at `brain_decide()` — the FEP bridge evaluates prediction error and modulates the output through the parietal cortex pathway.
+
+**What happens when it fails:** If the FEP bridge receives NaN from a corrupted HNN state, the orchestrator falls back to direct sensory processing without predictive modulation. This is logged as an LGSS safety event. The FEP is a refinement, not a prerequisite — the brain functions without it, just less efficiently.
+
+*Source: `src/core/brain/fep/nimcp_fep_orchestrator_part_core.c`, `src/lnn/bridges/nimcp_fep_hnn_fno_bridges.c`*
+
+### 14.2 World Model (Predictive Processing)
+
+The brain maintains an internal world model that predicts the next sensory state given the current state and action:
+
+```math
+\hat{s}_{t+1} = f_\theta(s_t, a_t)
+```
+
+The prediction error $e_t = \|s_{t+1} - \hat{s}_{t+1}\|_2$ serves dual roles:
+
+1. **Learning signal**: The world model parameters $\theta$ are updated to minimize prediction error via gradient descent
+2. **Curiosity signal**: High prediction error triggers dopamine release, which gates STDP and increases learning rate (Section 11)
+
+**Why a separate world model instead of using the main network?** The main ANN learns input→output mappings for the current task. The world model learns state→state transitions — a fundamentally different prediction target. Separating them prevents the task loss from interfering with the dynamics model. The world model lives in the predictive hierarchy module and is trained alongside the main network but with its own loss function.
+
+**How it connects to surprise detection:** In the inference pipeline (`brain_decide()`), the world model predicts what sensory input *should* look like given the brain's current internal state. If the actual input differs significantly (surprise), the system allocates more attention (norepinephrine) and encodes the experience more strongly (acetylcholine). This is the neural implementation of the Bayesian brain hypothesis — the brain is a prediction machine that learns from its own prediction errors.
+
+*Source: `src/cognitive/world_model/`, `src/core/brain/nimcp_brain_part_core.c` (surprise detection at inference)*
+
+---
+
+## 15. Prime Resonance Memory
+
+**Why prime-number-based memory addressing?** Conventional hash tables use modular arithmetic for bucket assignment, which creates systematic collision patterns when inputs have periodic structure. Prime resonance memory uses prime number relationships to create a collision-resistant addressing scheme where related memories reinforce each other through harmonic resonance patterns.
+
+### 15.1 Prime Resonance Encoding
+
+A memory vector $m \in \mathbb{R}^d$ is encoded using a set of prime frequencies:
+
+```math
+\text{encode}(m, k) = \sum_{i=1}^{d} m_i \cdot \sin\left(\frac{2\pi \cdot p_k \cdot i}{d}\right)
+```
+
+where $p_k$ is the $k$-th prime number. Each prime frequency creates an independent projection of the memory, and the set of projections forms a signature that is robust to noise — similar memories produce similar resonance patterns while dissimilar memories produce uncorrelated patterns.
+
+### 15.2 Resonance-Based Retrieval
+
+Memory retrieval computes the resonance between a query and stored memories:
+
+```math
+\text{resonance}(q, m) = \sum_{k=1}^{K} \text{encode}(q, k) \cdot \text{encode}(m, k)
+```
+
+**Why this works:** The prime frequencies are mutually incommensurable — no prime is a rational multiple of another. This guarantees that the resonance pattern of any memory is unique up to the number of primes used. In practice, $K = 8$ primes provide sufficient discrimination for NIMCP's 2,048-concept semantic memory pool.
+
+**How it connects to the system:** The prime resonance module provides a fast approximate nearest-neighbor lookup for semantic memory. Before the full cosine-similarity search in `semantic_memory_find_similar()` (which iterates all 2,048 concepts), the resonance filter eliminates ~90% of candidates, reducing the search to ~200 cosine comparisons.
+
+*Source: `src/cognitive/memory/nimcp_prime_resonance.c`*
+
+---
+
+## Glossary
+
+| Term | Full Name | Definition |
+|------|-----------|------------|
+| **ACh** | Acetylcholine | Neuromodulator that enhances encoding of novel inputs; increases learning rate during unfamiliar stimuli |
+| **AdamW** | Adam with Decoupled Weight Decay | Optimizer that separates weight decay from the adaptive learning rate, preventing decay from being scaled by gradient history |
+| **ANN** | Adaptive Neural Network | NIMCP's primary rate-coded network; 9-layer diamond architecture with GPU-accelerated backpropagation |
+| **BCM** | Bienenstock-Cooper-Munro | Homeostatic plasticity rule (1982) with a sliding modification threshold that prevents STDP from saturating all weights |
+| **BPTT** | Backpropagation Through Time | Gradient computation for recurrent/temporal networks by unrolling the network through time and applying the chain rule backward |
+| **CNN** | Convolutional Neural Network | Network using learned spatial filters; NIMCP has 4 modality-specific cortex CNNs (visual, audio, speech, somatosensory) |
+| **CRC32** | Cyclic Redundancy Check (32-bit) | Hash function used in NIMCP's audit log to detect entry tampering; produces a 32-bit checksum per log entry |
+| **DA** | Dopamine | Neuromodulator encoding reward prediction error; gates STDP learning — high DA strengthens recently-active synapses |
+| **EDP** | Event-Driven Plasticity | Three-factor learning rule: activity × eligibility × reward. Bridges the timing gap between synaptic activity and delayed reward |
+| **EMA** | Exponential Moving Average | Running average with exponential decay: $\bar{x}_t = \alpha x_t + (1-\alpha)\bar{x}_{t-1}$. Used for loss tracking, gradient norms, and shadow parameters |
+| **EWC** | Elastic Weight Consolidation | Continual learning method that penalizes changes to weights important for previous tasks, using the Fisher information matrix |
+| **FEP** | Free Energy Principle | Framework (Friston, 2010) where biological systems minimize variational free energy; in NIMCP, connects to HNN dynamics where $H \equiv F$ |
+| **FFT** | Fast Fourier Transform | O(n log n) algorithm for computing the Discrete Fourier Transform; used in FNO spectral convolution and audio processing |
+| **FNO** | Fourier Neural Operator | Network that learns convolution kernels in the frequency domain (Li et al., 2021); captures global patterns that spatial CNNs miss |
+| **HNN** | Hamiltonian Neural Network | Network constrained to energy-conserving dynamics via Hamilton's equations; uses symplectic integrators to preserve phase-space volume |
+| **IIT** | Integrated Information Theory | Information-theoretic measure (Tononi, 2004) of how much a system's information is "more than the sum of its parts"; NIMCP computes $\Phi$ for consciousness monitoring |
+| **LIF** | Leaky Integrate-and-Fire | Simplest biologically plausible neuron model: membrane voltage integrates input current with exponential leak, fires when threshold is reached |
+| **LGSS** | Layered Governance Safety System | NIMCP's rule-based safety system; evaluates every inference and weight update against safety rules that can only become stricter |
+| **LNN** | Liquid Neural Network | Continuous-time recurrent network with learned time constants (Hasani et al., 2021); dynamics governed by an ODE with per-neuron adaptive $\tau$ |
+| **LSA** | Linear Spline Adapter | Learnable bridge between networks: $y = W \cdot \tanh(x) + b$. Transforms representations between incompatible network types in the UTM |
+| **LTD** | Long-Term Depression | Weakening of a synapse; in STDP, occurs when the postsynaptic neuron fires before the presynaptic neuron (anti-causal timing) |
+| **LTP** | Long-Term Potentiation | Strengthening of a synapse; in STDP, occurs when the presynaptic neuron fires before the postsynaptic neuron (causal timing) |
+| **MSE** | Mean Squared Error | Loss function: $\frac{1}{n}\sum(y_i - \hat{y}_i)^2$. NIMCP's primary training loss for all six networks |
+| **NE** | Norepinephrine | Neuromodulator that increases attention and broadens receptive fields; rises during high-loss (surprising) training steps |
+| **NIMCP** | Neuro-Inspired Modular Control Protocol | The brain architecture described in this paper: 2.5M neurons, 6 network types, 60+ cognitive modules, biological plasticity |
+| **ODE** | Ordinary Differential Equation | Equation involving derivatives of a function; the LNN and HNN dynamics are defined as ODEs integrated numerically |
+| **PID** | Partial Information Decomposition | Framework for separating mutual information into redundant, unique, and synergistic components across multiple sources |
+| **RoPE** | Rotary Position Embedding | Positional encoding that applies rotation matrices to query/key vectors, encoding relative position through the angle of rotation |
+| **RPE** | Reward Prediction Error | Difference between received and expected reward; the signal carried by phasic dopamine bursts (Schultz, 1998) |
+| **SNN** | Spiking Neural Network | Network of LIF neurons that communicate through discrete spike events; NIMCP's SNN has 768 neurons across 3 populations |
+| **STDP** | Spike-Timing-Dependent Plasticity | Learning rule where synaptic weight change depends on the relative timing of pre- and postsynaptic spikes (Markram et al., 1997) |
+| **STP** | Short-Term Plasticity | Transient synaptic changes (facilitation or depression) lasting milliseconds to seconds; models neurotransmitter depletion and receptor dynamics |
+| **TPB** | Training Plasticity Bridge | Module that converts training loss to neuromodulatory signals: loss → RPE → dopamine/ACh/NE/serotonin concentrations |
+| **UTM** | Unified Training Manager | Orchestrator that manages composite loss, cross-network gradient bridges, and shared optimization across all six network types |
+| **VTA** | Ventral Tegmental Area | Brain region containing dopamine neurons that signal reward prediction error; NIMCP's TPB is the computational analogue |
 
 ---
 
