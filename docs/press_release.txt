@@ -37,12 +37,12 @@ NIMCP is available immediately at:
 
 About AI Elevate
 
-AI Elevate is an artificial intelligence research company focused on biologically-inspired cognitive architectures. Founded by Braun Brelin, the company develops neural systems that learn through developmental curricula and biological plasticity rather than pure statistical optimization.
+AI Elevate is an artificial intelligence research company focused on biologically-inspired cognitive architectures. Founded by Braun Brelin and Peter Munro, the company develops neural systems that learn through developmental curricula and biological plasticity rather than pure statistical optimization.
 
 Contact
 
 Braun Brelin
-Founder, AI Elevate
+Co-Founder, AI Elevate
 braun.brelin@ai-elevate.ai
 https://ai-elevate.ai
 
