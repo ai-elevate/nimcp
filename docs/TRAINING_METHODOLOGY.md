@@ -332,7 +332,7 @@ The result: semantically similar items are in the same fold. When fold $k$ is he
 |-----------|-------------|-------|
 | **Core mechanism** | Self-attention ($O(n^2)$ context) | Multi-network ensemble with biological plasticity |
 | **Scaling law** | Performance ∝ parameters × data | Performance ∝ curriculum stage × plasticity diversity |
-| **Context window** | Fixed (4K–128K tokens) | Unbounded (semantic memory + episodic replay) |
+| **Context window** | Fixed (128K–2M tokens) | Unbounded (semantic memory + episodic replay) |
 | **Training data** | Trillions of tokens (web crawl) | 60K curated developmental examples |
 | **Training compute** | Thousands of GPU-hours | ~100 hours on a single RTX 4000 (20GB) |
 | **In-context learning** | Implicit (attention patterns) | Explicit (13 cognitive modules with learned strategies) |
@@ -421,7 +421,7 @@ NIMCP's training methodology differs from conventional deep learning in three fu
 
 Whether this approach produces better results than scaling transformers is an empirical question that this paper does not claim to answer. What it demonstrates is that an alternative training paradigm — one rooted in neuroscience rather than statistics — is implementable, trainable on consumer hardware, and produces a system with biological firing rates (26 Hz), sparse coding (67% sparsity), multi-network learning, and interpretable cognitive modules.
 
-The code is open source at `github.com/redmage123/nimcp`. The brain called Athena is currently in Stage 1, step ~4,200, with all six networks active and 2,029 SNN spikes at 26 Hz.
+The code is open source at `github.com/redmage123/nimcp`. Live training metrics are at `https://nimcp.ai-elevate.ai`. The brain called Athena is currently in Stage 2, step ~6,500, with all six networks active, SNN firing at 26 Hz with 67% sparsity, and all four cortex CNNs (visual, audio, speech, somatosensory) actively training.
 
 ---
 

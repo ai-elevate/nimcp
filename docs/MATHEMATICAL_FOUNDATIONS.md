@@ -2046,7 +2046,7 @@ This section documents the empirical behavior of the NIMCP brain "Athena" during
 | RAM | 62 GB (50 GB used by brain + daemon) |
 | Training rate | ~2.6 steps/min (23 seconds/step) |
 
-### 39.2 Current Metrics (Stage 1, Step ~6,200 of 20,000)
+### 39.2 Current Metrics (Stage 2, Step ~6,500 of 20,000)
 
 **Network Losses (running average):**
 
@@ -2135,7 +2135,7 @@ Based on current training dynamics, architectural capabilities, and the developm
 
 **Expected outcomes:**
 
-| Metric | Current (step 6,200) | Projected (step 20,000) | Basis |
+| Metric | Current (step 6,500) | Projected (step 20,000) | Basis |
 |--------|---------------------|------------------------|-------|
 | Per-step loss | 0.174 | 0.01–0.05 | Loss trajectory extrapolation; diminishing returns after step 15K |
 | Cross-similarity | 0.949 | 0.30–0.50 | Differentiation is the core Stage 1 objective; contrastive loss drives separation |
