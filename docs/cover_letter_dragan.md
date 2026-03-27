@@ -1,6 +1,6 @@
 # Cover Letter — Dr. Anca Dragan
 
-**Status: DRAFT — Send after Stage 3 training begins and demo video is ready**
+**Status: READY TO SEND**
 
 ---
 
@@ -10,7 +10,7 @@ Dr. Dragan,
 
 I know you get a hundred emails a week from people who think they've solved alignment. This isn't that. But I think I've built something your lab would find genuinely interesting, and I wanted to reach out before publishing.
 
-I'm a developer who's spent the last year building a biologically-inspired neural architecture in C. Not a transformer. Not an LLM wrapper. A million-neuron brain with six neural network types running in parallel — spiking (SNN), liquid (LNN), convolutional (CNN), Fourier (FNO), Hamiltonian (HNN), and adaptive — with real synaptic plasticity, developmental learning stages, hemispheric lateralization, and episodic memory. It runs on a single consumer GPU.
+I'm a developer who's spent the last year building a biologically-inspired neural architecture in C. Not a transformer. Not an LLM wrapper. A 2.5-million-neuron brain with six neural network types running in parallel — spiking (SNN), liquid (LNN), convolutional (CNN), Fourier (FNO), Hamiltonian (HNN), and adaptive — with real synaptic plasticity, developmental learning stages, hemispheric lateralization, and episodic memory. It runs on a single consumer GPU.
 
 I started this because I was frustrated with the same thing your research keeps pointing at: bolting safety onto systems after they're built doesn't work. So I tried building one where safety is structural. The ethics module literally can't be turned off — it's wired into every inference call. There's a 9-layer governance system (LGSS) with rules that can only get stricter, never looser. The whole thing keeps a tamper-evident audit log with CRC32 checksums and monotonic sequence numbers — gaps indicate deleted entries.
 
@@ -26,18 +26,31 @@ The brain learns through curiosity. The sensorimotor controller uses prediction 
 
 **13 cognitive enhancements for embodied reasoning.** Beyond the base architecture, the system includes: episodic replay during sleep consolidation (importance-weighted experience replay), a predictive world model (trains the brain to predict next-state from state+action), emotional modulation of learning rate (surprising/rewarding experiences learn 2-3x faster), analogical transfer (cosine search over stored problem-solution pairs, blends past solutions with current output for novel problems), multi-timescale memory (immediate + recent + consolidated, with consolidation merging similar memories), a self-generated curriculum (the brain identifies its most uncertain domains and generates its own training data), contrastive self-learning (hard negative mining — "this is NOT that"), output attention (per-task learned weights that focus relevant output dimensions), a working memory scratchpad (8 persistent slots for multi-step reasoning), and dynamic architecture search (monitors per-region utilization and recommends structural changes).
 
-**What's actually running right now.** The brain called "Athena" is currently in Stage 1 of 4 developmental stages (sensory awakening → association → feedback → reasoning), with loss at 0.03, SNN firing at 20 Hz, and effective output rank of 64 across 13 cognitive training domains. All six networks are active. All 60+ cognitive modules are wired. All 13 enhancements are running. 527+ tests pass. Training is fully automated with spectral k-fold cross-validation (Laplacian eigendecomposition for manifold-aware fold assignment).
+**What's actually running right now.** The brain called "Athena" is currently in Stage 2 of 4 developmental stages (sensory awakening → association → feedback → reasoning), at step 6,450 of 20,000 in the cross-modal naming stage. The SNN fires at 26 Hz with 67% sparsity — biologically realistic cortical range. All six networks are active and producing decreasing loss. All 4 cortex CNNs (visual, audio, speech, somatosensory) are training with 45-90% backward ratios. All 60+ cognitive modules are wired. Training is fully automated with spectral k-fold cross-validation (Laplacian eigendecomposition for manifold-aware fold assignment).
+
+**You can watch it train live.** The project website at **https://nimcp.ai-elevate.ai** shows real-time training metrics — network losses, SNN firing rates, cortex CNN performance, and training step count — updated every 60 seconds from the running brain.
 
 I know how all of this sounds. I've been going back and forth about whether to even mention the emergent language part. But the code is open source, the training is reproducible, and I'd rather have someone rigorous look at it than keep wondering.
 
-It's at github.com/redmage123/nimcp. ~2,600 source files. Runs on a single NVIDIA GPU (RTX 4000 SFF Ada, 20GB VRAM). A grad student could have it building in 20 minutes. There's a comprehensive mathematical foundations paper in docs/MATHEMATICAL_FOUNDATIONS.md covering every equation in the system — from STDP plasticity to quantum annealing to Hamiltonian neural networks to information geometry.
+The project website is at **https://nimcp.ai-elevate.ai** with live training metrics, architecture overview, and links to all technical papers. Source code is at **github.com/redmage123/nimcp** — ~2,600 source files, runs on a single NVIDIA GPU (RTX 4000 SFF Ada, 20GB VRAM). A grad student could have it building in 20 minutes.
+
+**Technical papers** (all available on the website and GitHub):
+- *Mathematical Foundations* — 2,300 lines, 40 sections, every equation with design rationale and failure modes
+- *Developmental Multi-Network Training* — comparative analysis vs. transformers across 12 dimensions
+- *Safety as Architecture, Not Alignment* — structural guarantees vs. RLHF/Constitutional AI
+- *Emergent Spiking Dynamics* — 26 Hz / 67% sparsity from multi-network co-training
+- *Cross-Network Gradient Flow* — learnable bridges between 6 heterogeneous architectures
+- *Sensorimotor Curiosity Without Reward Shaping* — dopamine-gated STDP in a closed loop
+- *Embodied Identity* — Big Five personality modulates neuromodulators, shaping how the brain learns
+- *Socioeconomic Impact Analysis* — deployment scenarios across 8 sectors
 
 I'd love 30 minutes of your time to demo it, or if that's too much, I'd be grateful if you pointed a student at it who's looking for a thesis project in embodied learning, architectural safety, emergent communication, or multi-agent Theory of Mind. I think there's at least four dissertations hiding in this codebase.
 
 Braun Brelin
 braun.brelin@ai-elevate.ai
+https://nimcp.ai-elevate.ai
+https://github.com/redmage123/nimcp
 https://www.linkedin.com/in/braunbrelin/
 https://ai-elevate.ai
-https://weekly-report.ai
 
-P.S. I built this with substantial help from Claude (Anthropic's AI). I'm being upfront about that because I think human-AI collaboration on this kind of project is itself worth studying openly. The git log tells the full story — 73 development sessions, each one a conversation between a human architect and an AI implementation partner. The architecture decisions are mine. The code is collaborative. I think that distinction matters.
+P.S. I built this with substantial help from Claude (Anthropic's AI). I'm being upfront about that because I think human-AI collaboration on this kind of project is itself worth studying openly. The git log tells the full story — 74 development sessions, each one a conversation between a human architect and an AI implementation partner. The architecture decisions are mine. The code is collaborative. I think that distinction matters.
