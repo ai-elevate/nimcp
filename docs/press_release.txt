@@ -4,7 +4,7 @@ AI Elevate Announces NIMCP: A 2.5-Million Neuron Artificial Brain With Biologica
 
 Open-source project trains six neural network types simultaneously on a single consumer GPU, producing biologically realistic spiking dynamics without explicit design constraints
 
-IRELAND — March 28, 2026 — AI Elevate today announced the public release of NIMCP (Neuro-Inspired Modular Control Protocol), an open-source artificial brain architecture that trains 2.5 million neurons across six heterogeneous neural network types simultaneously, using biological plasticity mechanisms and a developmental learning curriculum inspired by human cognitive development.
+DUBLIN, Ireland — March 28, 2026 — AI Elevate today announced the public release of NIMCP (Neuro-Inspired Modular Control Protocol), an open-source artificial brain architecture that trains 2.5 million neurons across six heterogeneous neural network types simultaneously, using biological plasticity mechanisms and a developmental learning curriculum inspired by human cognitive development.
 
 Unlike transformer-based AI systems that scale a single architecture with more data and parameters, NIMCP trains spiking neural networks, liquid state machines, convolutional processors, Fourier neural operators, Hamiltonian dynamics networks, and an adaptive backbone in parallel, with learned gradient bridges enabling knowledge transfer between fundamentally different computational paradigms. The system runs on a single NVIDIA RTX 4000 GPU with 20 GB of video memory.
 
