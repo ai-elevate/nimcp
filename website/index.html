@@ -358,6 +358,7 @@
                 <li><a href="#architecture">Architecture</a></li>
                 <li><a href="#papers">Papers</a></li>
                 <li><a href="#training">Training</a></li>
+                <li><a href="#chat">Chat</a></li>
                 <li><a href="https://github.com/redmage123/nimcp" target="_blank">GitHub</a></li>
             </ul>
         </div>
@@ -678,6 +679,42 @@
         </div>
     </section>
 
+    <!-- Chat with Athena -->
+    <section id="chat" style="padding: 80px 0;">
+        <div class="container">
+            <h2 style="text-align: center; font-size: 2rem; margin-bottom: 8px;">Talk to Athena</h2>
+            <p style="text-align: center; color: var(--text-dim); margin-bottom: 32px;">
+                Send a message and see how the brain responds. Athena is still learning — responses reflect her current developmental stage.
+            </p>
+            <div style="max-width: 700px; margin: 0 auto;">
+                <div id="chat-messages" style="
+                    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+                    padding: 20px; min-height: 300px; max-height: 500px; overflow-y: auto;
+                    margin-bottom: 16px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+                ">
+                    <div style="color: var(--text-dim); text-align: center; padding: 40px 0;">
+                        Say hello to Athena...
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="chat-input" placeholder="Type a message..."
+                        style="flex: 1; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border);
+                               border-radius: 8px; color: var(--text); font-family: 'Inter', sans-serif;
+                               font-size: 0.95rem; outline: none;"
+                        onkeypress="if(event.key==='Enter')sendChat()">
+                    <button onclick="sendChat()" style="
+                        padding: 12px 24px; background: var(--accent); color: white; border: none;
+                        border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;
+                        transition: background 0.2s;
+                    " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='var(--accent)'">Send</button>
+                </div>
+                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 8px; text-align: center;" id="chat-status">
+                    Connected to brain daemon via API
+                </p>
+            </div>
+        </div>
+    </section>
+
     <!-- Quick Start -->
     <section id="quickstart">
         <div class="container">
@@ -955,6 +992,70 @@ brain.learn_vector(features, target, label='hello world')
     // Poll immediately, then every 10 seconds
     pollMetrics();
     setInterval(pollMetrics, POLL_INTERVAL);
+
+    // Chat with Athena
+    const CHAT_API = '/api/chat';
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const chatStatus = document.getElementById('chat-status');
+    let chatStarted = false;
+
+    function addMessage(sender, text, extra) {
+        if (!chatStarted) {
+            chatMessages.innerHTML = '';
+            chatStarted = true;
+        }
+        const div = document.createElement('div');
+        div.style.marginBottom = '12px';
+        const label = document.createElement('span');
+        label.style.fontWeight = '600';
+        label.style.color = sender === 'You' ? 'var(--accent)' : 'var(--green)';
+        label.textContent = sender + ': ';
+        const msg = document.createElement('span');
+        msg.style.color = 'var(--text)';
+        msg.textContent = text;
+        div.appendChild(label);
+        div.appendChild(msg);
+        if (extra) {
+            const meta = document.createElement('div');
+            meta.style.color = 'var(--text-dim)';
+            meta.style.fontSize = '0.75rem';
+            meta.style.marginTop = '2px';
+            meta.textContent = extra;
+            div.appendChild(meta);
+        }
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendChat() {
+        const msg = chatInput.value.trim();
+        if (!msg) return;
+        chatInput.value = '';
+        addMessage('You', msg);
+        chatStatus.textContent = 'Thinking...';
+
+        try {
+            const resp = await fetch(CHAT_API, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: msg})
+            });
+            const data = await resp.json();
+            if (data.error) {
+                addMessage('Athena', '[Error: ' + data.error + ']');
+                chatStatus.textContent = 'Error — brain may be busy training';
+            } else {
+                const conf = data.confidence ? ' (conf: ' + data.confidence.toFixed(3) + ')' : '';
+                const norm = data.output_norm ? ' |v|=' + data.output_norm.toFixed(1) : '';
+                addMessage('Athena', data.response || '[no response]', conf + norm);
+                chatStatus.textContent = 'Response received';
+            }
+        } catch (e) {
+            addMessage('Athena', '[Connection failed — brain daemon may be offline]');
+            chatStatus.textContent = 'Offline — API not reachable';
+        }
+    }
     </script>
 </body>
 </html>
