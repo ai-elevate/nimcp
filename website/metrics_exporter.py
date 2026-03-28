@@ -106,6 +106,33 @@ def collect_metrics():
                 }
         metrics['cortex'] = cortex
 
+    # Chat eval — extract from training log (chat_eval results are printed there)
+    try:
+        log_path = os.path.join(os.path.dirname(__file__), '..', 'training.log')
+        if os.path.exists(log_path):
+            import re
+            with open(log_path, 'rb') as f:
+                f.seek(0, 2)
+                size = f.tell()
+                f.seek(max(0, size - 50000))  # Last 50KB
+                tail = f.read().decode('utf-8', errors='replace')
+            # Look for chat eval summary lines
+            # Format: "  CHAT SUMMARY: coherence=0.123 similarity=0.456 norm=12.3 diversity=0.789 prompts=20 eval=#5"
+            for line in reversed(tail.splitlines()):
+                m = re.match(r'.*CHAT SUMMARY:.*coherence=([0-9.]+).*similarity=([0-9.]+).*norm=([0-9.]+).*diversity=([0-9.]+).*prompts=(\d+).*eval=#(\d+)', line)
+                if m:
+                    metrics['chat_eval'] = {
+                        'avg_coherence': float(m.group(1)),
+                        'avg_similarity': float(m.group(2)),
+                        'avg_norm': float(m.group(3)),
+                        'diversity': float(m.group(4)),
+                        'num_prompts': int(m.group(5)),
+                        'eval_number': int(m.group(6)),
+                    }
+                    break
+    except Exception:
+        pass
+
     # Training log — local file, always fast
     # Extracts: current step, per-step loss, SNN spikes from step reports
     try:

@@ -6353,6 +6353,12 @@ def chat_eval(brain, composer, decoder, stage, step, phi3=None):
             print(f"    Status: Good differentiation between prompts")
         else:
             print(f"    Status: Strong differentiation — responses are distinct")
+    # Machine-parseable summary for metrics exporter
+    if all_embeddings:
+        diversity = 1.0 - mean_cross  # higher = better differentiation
+        print(f"  CHAT SUMMARY: coherence={mean_coherence:.4f} similarity={mean_sim:.4f} "
+              f"norm={mean_norm:.2f} diversity={diversity:.4f} "
+              f"prompts={len(results)} eval=#{_chat_eval_count}", flush=True)
     print(f"  {'═' * 56}\n")
 
     # Append to JSONL log for tracking over time

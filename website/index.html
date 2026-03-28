@@ -621,6 +621,35 @@
                     </div>
                 </div>
 
+                <!-- Chat Eval section -->
+                <h3 style="margin-top: 24px; font-size: 1rem;">Chat Evaluation</h3>
+                <div class="training-grid" style="margin-top: 12px;" id="chat-grid">
+                    <div class="training-metric" id="chat-coherence-wrap" style="display:none">
+                        <div class="label">Avg Coherence</div>
+                        <div class="value" id="m-chat-coherence">—</div>
+                    </div>
+                    <div class="training-metric" id="chat-similarity-wrap" style="display:none">
+                        <div class="label">Avg Similarity</div>
+                        <div class="value" id="m-chat-similarity">—</div>
+                    </div>
+                    <div class="training-metric" id="chat-norm-wrap" style="display:none">
+                        <div class="label">Avg Output Norm</div>
+                        <div class="value" id="m-chat-norm">—</div>
+                    </div>
+                    <div class="training-metric" id="chat-diversity-wrap" style="display:none">
+                        <div class="label">Output Diversity</div>
+                        <div class="value" id="m-chat-diversity">—</div>
+                    </div>
+                    <div class="training-metric" id="chat-prompts-wrap" style="display:none">
+                        <div class="label">Prompts Evaluated</div>
+                        <div class="value" id="m-chat-prompts">—</div>
+                    </div>
+                    <div class="training-metric" id="chat-eval-wrap" style="display:none">
+                        <div class="label">Eval #</div>
+                        <div class="value" id="m-chat-eval">—</div>
+                    </div>
+                </div>
+
                 <!-- Cortex CNN section -->
                 <h3 style="margin-top: 24px; font-size: 1rem;">Cortex CNN Performance</h3>
                 <div class="training-grid" style="margin-top: 12px;" id="cortex-grid">
@@ -865,6 +894,23 @@ brain.learn_vector(features, target, label='hello world')
         }
         if (d.learn_calls !== undefined) el('m-learns').textContent = d.learn_calls.toLocaleString();
         if (d.uptime !== undefined) el('m-uptime').textContent = fmtTime(d.uptime);
+
+        // Chat Eval
+        if (d.chat_eval) {
+            const ce = d.chat_eval;
+            const show = (id, val) => {
+                const wrap = el(id + '-wrap');
+                const v = el('m-' + id.replace('-wrap',''));
+                if (wrap) wrap.style.display = '';
+                if (v && val !== undefined) v.textContent = val;
+            };
+            if (ce.avg_coherence !== undefined) show('chat-coherence', fmt(ce.avg_coherence, 3));
+            if (ce.avg_similarity !== undefined) show('chat-similarity', fmt(ce.avg_similarity, 3));
+            if (ce.avg_norm !== undefined) show('chat-norm', fmt(ce.avg_norm, 1));
+            if (ce.diversity !== undefined) show('chat-diversity', fmt(ce.diversity, 3));
+            if (ce.num_prompts !== undefined) show('chat-prompts', ce.num_prompts);
+            if (ce.eval_number !== undefined) show('chat-eval', '#' + ce.eval_number);
+        }
 
         // Cortex CNNs
         if (d.cortex) {
