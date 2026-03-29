@@ -3253,8 +3253,11 @@ write_done:
 
 typedef struct {
     uint32_t num_synapses;
-    uint8_t* synapse_data;
-    uint8_t neuron_state[256];
+    uint8_t* synapse_data;     /* Bulk synapse bytes (37 bytes × num_synapses) */
+    uint8_t* stp_data;         /* STP data for synapses that have it */
+    uint32_t* stp_indices;     /* Which synapses have STP */
+    uint32_t num_stp;
+    uint8_t neuron_state[256]; /* Neuron state blob (padded) */
     bool state_ok;
 } neuron_load_entry_t;
 
@@ -3729,17 +3732,55 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 sizeof(activation_type_t) + sizeof(oja_params_t) + sizeof(stdp_params_t) + \
                 sizeof(homeostatic_params_t) + sizeof(uint64_t))
 
-            /* Phase 1: Read all data into memory and build index */
-            typedef struct {
-                uint32_t num_synapses;
-                uint8_t* synapse_data;     /* Bulk synapse bytes (37 bytes × num_synapses) */
-                uint8_t* stp_data;         /* STP data for synapses that have it */
-                uint32_t* stp_indices;     /* Which synapses have STP */
-                uint32_t num_stp;
-                uint8_t neuron_state[256]; /* Neuron state blob (padded) */
-                bool state_ok;
-            } neuron_load_entry_t;
+            /* ================================================================
+             * SYNAPSE INDEX CACHE
+             *
+             * On first load: scan file sequentially, record per-neuron offsets,
+             *   write index to checkpoint.bin.synapse_index.
+             * On subsequent loads: read index, seek+read each neuron's data
+             *   directly (parallelizable with pread).
+             * Index format: magic(4) + num_neurons(4) + [offset(8) + num_syn(4) + data_size(4)] × N
+             * ================================================================ */
+            #define SYNAPSE_INDEX_MAGIC 0x53594E49  /* "SYNI" */
 
+            typedef struct {
+                uint64_t file_offset;   /* Position in checkpoint file */
+                uint32_t num_synapses;
+                uint32_t total_bytes;   /* Total bytes for this neuron (synapses + state) */
+            } synapse_index_entry_t;
+
+            /* Try loading cached index */
+            char index_path[512];
+            snprintf(index_path, sizeof(index_path), "%s.synapse_index", filepath);
+            synapse_index_entry_t* cached_index = NULL;
+            bool index_valid = false;
+
+            FILE* idx_file = fopen(index_path, "rb");
+            if (idx_file) {
+                uint32_t idx_magic = 0, idx_neurons = 0;
+                if (fread(&idx_magic, 4, 1, idx_file) == 1 &&
+                    fread(&idx_neurons, 4, 1, idx_file) == 1 &&
+                    idx_magic == SYNAPSE_INDEX_MAGIC &&
+                    idx_neurons == base_num_neurons) {
+                    cached_index = (synapse_index_entry_t*)nimcp_malloc(
+                        (size_t)base_num_neurons * sizeof(synapse_index_entry_t));
+                    if (cached_index) {
+                        size_t read = fread(cached_index, sizeof(synapse_index_entry_t),
+                                           base_num_neurons, idx_file);
+                        if (read == base_num_neurons) {
+                            index_valid = true;
+                            fprintf(stderr, "[CHECKPOINT] Using cached synapse index (%u neurons)\n",
+                                    base_num_neurons);
+                        } else {
+                            nimcp_free(cached_index);
+                            cached_index = NULL;
+                        }
+                    }
+                }
+                fclose(idx_file);
+            }
+
+            /* Phase 1: Read all data into memory and build index */
             neuron_load_entry_t* entries = (neuron_load_entry_t*)nimcp_calloc(
                 base_num_neurons, sizeof(neuron_load_entry_t));
             if (!entries) {
@@ -3747,9 +3788,28 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 load_error = true;
             }
 
-            /* Serial read: build per-neuron entries */
+            /* Build new index for caching (even if cached_index exists, we still
+             * need to read the data — the index just tells us where to seek) */
+            synapse_index_entry_t* new_index = NULL;
+            if (!load_error && !index_valid) {
+                new_index = (synapse_index_entry_t*)nimcp_calloc(
+                    base_num_neurons, sizeof(synapse_index_entry_t));
+            }
+
+            /* Serial read: build per-neuron entries.
+             * If cached index exists, use pread-style seeking (faster for NVMe).
+             * Otherwise, sequential scan (builds index for next time). */
             if (!load_error) {
+                long synapse_section_start = ftell(file);
+
                 for (uint32_t i = 0; i < base_num_neurons; i++) {
+                    long neuron_start = ftell(file);
+
+                    /* If we have a cached index, seek to the right position */
+                    if (index_valid && cached_index) {
+                        fseek(file, (long)cached_index[i].file_offset, SEEK_SET);
+                    }
+
                     uint32_t ns = 0;
                     if (fread(&ns, sizeof(uint32_t), 1, file) != 1) { load_error = true; break; }
                     if (ns > 1000000) { load_error = true; break; }
@@ -3790,12 +3850,39 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                     if (nsr > sizeof(entries[i].neuron_state)) nsr = sizeof(entries[i].neuron_state);
                     entries[i].state_ok = (fread(entries[i].neuron_state, 1, nsr, file) == nsr);
 
+                    /* Record index entry for caching */
+                    if (new_index) {
+                        long neuron_end = ftell(file);
+                        new_index[i].file_offset = (uint64_t)neuron_start;
+                        new_index[i].num_synapses = ns;
+                        new_index[i].total_bytes = (uint32_t)(neuron_end - neuron_start);
+                    }
+
                     total_synapses_read += ns;
                 }
                 if (load_error) {
                     fprintf(stderr, "WARNING: Checkpoint read truncated\n");
                 }
+
+                /* Write index cache for next load */
+                if (new_index && !load_error) {
+                    FILE* idx_out = fopen(index_path, "wb");
+                    if (idx_out) {
+                        uint32_t magic = SYNAPSE_INDEX_MAGIC;
+                        fwrite(&magic, 4, 1, idx_out);
+                        fwrite(&base_num_neurons, 4, 1, idx_out);
+                        fwrite(new_index, sizeof(synapse_index_entry_t),
+                               base_num_neurons, idx_out);
+                        fclose(idx_out);
+                        fprintf(stderr, "[CHECKPOINT] Wrote synapse index cache: %s (%u neurons, %.1f MB)\n",
+                                index_path, base_num_neurons,
+                                (8 + (float)base_num_neurons * sizeof(synapse_index_entry_t)) / (1024*1024));
+                    }
+                }
+                nimcp_free(new_index);
             }
+            nimcp_free(cached_index);
+            #undef SYNAPSE_INDEX_MAGIC
 
             /* Phase 2: Parallel synapse insertion using pthreads */
             if (!load_error) {
