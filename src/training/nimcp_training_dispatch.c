@@ -339,7 +339,7 @@ int training_dispatch_snn_step(
         uint32_t snn_out = snn->config.n_outputs;
         float* outputs = nimcp_calloc(snn_out, sizeof(float));
         if (outputs) {
-            float duration = 100.0f;  /* 100ms simulation */
+            float duration = 10.0f;  /* 10ms — enough for input neurons to fire (1mV/step × 10 = 10mV, needs ~20 for threshold but with input_current_scale=70 → 3.5mV/step → fires in ~6 steps) */
             rc = snn_backprop_forward(brain->snn_backprop_ctx, input_ptr,
                                        1, duration, outputs);
             if (rc == 0 && targets && num_targets > 0) {
