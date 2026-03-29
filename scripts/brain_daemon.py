@@ -230,18 +230,9 @@ class BrainService:
             if handler is None:
                 return {"error": f"Unknown command: {cmd}"}
 
-            if cmd in self._WRITE_COMMANDS:
-                self._rwlock.write_acquire()
-                try:
-                    return handler(req)
-                finally:
-                    self._rwlock.write_release()
-            else:
-                self._rwlock.read_acquire()
-                try:
-                    return handler(req)
-                finally:
-                    self._rwlock.read_release()
+            # Simple mutex — RWLock caused deadlocks with daemon worker threads
+            with self._lock:
+                return handler(req)
         except Exception as e:
             self._stats["errors"] += 1
             logger.warning("Command %s failed: %s", cmd, e)
