@@ -1,4 +1,6 @@
 #include <stddef.h>  /* for NULL */
+#include <sys/stat.h>  /* for fstat in checkpoint read-ahead */
+#include <fcntl.h>     /* for posix_fadvise */
 //=============================================================================
 // nimcp_adaptive.c - Refactored Adaptive Threshold Spiking Implementation
 //=============================================================================
@@ -3387,6 +3389,26 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
 
     }
+
+    /* Large read buffer + kernel read-ahead for fast checkpoint I/O.
+     * Default stdio buffer is 4-8 KB. With 16 MB, we match NVMe throughput. */
+    {
+        char* load_buf = (char*)malloc(16 * 1024 * 1024);
+        if (load_buf) setvbuf(file, load_buf, _IOFBF, 16 * 1024 * 1024);
+        /* Note: load_buf is intentionally not freed — setvbuf owns it until fclose */
+    }
+#ifdef __linux__
+    {
+        int fd = fileno(file);
+        if (fd >= 0) {
+            struct stat st;
+            if (fstat(fd, &st) == 0) {
+                posix_fadvise(fd, 0, st.st_size, POSIX_FADV_SEQUENTIAL);
+                posix_fadvise(fd, 0, st.st_size, POSIX_FADV_WILLNEED);
+            }
+        }
+    }
+#endif
 
     // Read magic header
     uint32_t magic = 0;
