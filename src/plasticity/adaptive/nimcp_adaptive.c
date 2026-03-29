@@ -3272,31 +3272,88 @@ typedef struct {
 
 static void* _synapse_load_worker(void* arg) {
     synapse_thread_arg_t* ta = (synapse_thread_arg_t*)arg;
+    uint64_t local_added = 0, local_dropped = 0;
+
     for (uint32_t i = ta->start; i < ta->end; i++) {
         neuron_load_entry_t* e = &ta->entries[i];
         neuron_t* neuron = neural_network_get_neuron(ta->base_net, i);
         if (!neuron) continue;
+
+        /* Clear existing synapses — each neuron's outgoing is independent,
+         * no lock needed (only this thread touches this neuron). */
         sparse_synapse_storage_cleanup(ta->h_pool, &neuron->outgoing);
         sparse_synapse_storage_init(&neuron->outgoing);
-        if (!e->synapse_data) continue;
+        if (!e->synapse_data) goto restore_state;
+
+        /* Build STP lookup for this neuron (stp_indices maps synapse index → STP slot) */
+        uint32_t stp_cursor = 0;
+
         for (uint32_t j = 0; j < e->num_synapses; j++) {
             uint8_t* p = e->synapse_data + (size_t)j * 37;
-            uint32_t target_id; memcpy(&target_id, p, 4);
-            float weight; memcpy(&weight, p + 4, 4);
-            int rc = sparse_synapse_add(ta->h_pool, &neuron->outgoing, target_id, weight);
+            uint32_t target_id;  memcpy(&target_id, p, 4);
+            float weight;        memcpy(&weight, p + 4, 4);
+            float plasticity;    memcpy(&plasticity, p + 8, 4);
+            float trace;         memcpy(&trace, p + 12, 4);
+            float strength;      memcpy(&strength, p + 16, 4);
+            float meta_plast;    memcpy(&meta_plast, p + 20, 4);
+            float last_change;   memcpy(&last_change, p + 24, 4);
+            uint64_t last_active; memcpy(&last_active, p + 28, 8);
+            bool enable_stp;     memcpy(&enable_stp, p + 36, 1);
+
+            /* Use metadata version if synapse has plasticity data.
+             * Pool operations are thread-safe (internal mutex). */
+            bool needs_meta = (plasticity != 0.0f || trace != 0.0f ||
+                               meta_plast != 0.0f || enable_stp);
+            int rc;
+            if (needs_meta) {
+                rc = sparse_synapse_add_with_metadata(ta->h_pool, ta->m_pool,
+                        &neuron->outgoing, target_id, weight, 0);
+            } else {
+                rc = sparse_synapse_add(ta->h_pool,
+                        &neuron->outgoing, target_id, weight);
+            }
+
             if (rc == 0) {
-                ta->added++;
-                synapse_handle_t* h = sparse_synapse_get(&neuron->outgoing,
-                    sparse_synapse_count(&neuron->outgoing) - 1);
-                if (h) {
-                    float strength; memcpy(&strength, p + 16, 4);
-                    h->strength = strength;
+                local_added++;
+                uint32_t idx = sparse_synapse_count(&neuron->outgoing) - 1;
+                synapse_handle_t* h = sparse_synapse_get(&neuron->outgoing, idx);
+                if (h) h->strength = strength;
+
+                /* Restore metadata fields */
+                if (needs_meta) {
+                    synapse_t* syn = h ? sparse_synapse_get_metadata(ta->m_pool, h) : NULL;
+                    if (syn) {
+                        syn->plasticity = plasticity;
+                        syn->trace = trace;
+                        syn->strength = strength;
+                        syn->meta_plasticity = meta_plast;
+                        syn->last_change = last_change;
+                        syn->last_active = last_active;
+
+                        /* Restore STP state if this synapse has it */
+                        if (enable_stp && e->stp_data && stp_cursor < e->num_stp) {
+                            /* Verify this is the right STP entry */
+                            if (e->stp_indices && e->stp_indices[stp_cursor] == j) {
+                                synapse_cold_t* cold = SYNAPSE_ENSURE_COLD(
+                                    (neural_network_t)ta->base_net, syn);
+                                if (cold) {
+                                    cold->enable_stp = true;
+                                    memcpy(&cold->stp,
+                                        e->stp_data + stp_cursor * sizeof(stp_state_t),
+                                        sizeof(stp_state_t));
+                                }
+                                stp_cursor++;
+                            }
+                        }
+                    }
                 }
             } else {
-                ta->dropped++;
+                local_dropped++;
             }
         }
-        /* Restore neuron state */
+
+restore_state:
+        /* Restore neuron state from the blob read during Phase 1 */
         if (e->state_ok) {
             uint8_t* s = e->neuron_state;
             memcpy(&neuron->state, s, sizeof(float)); s += sizeof(float);
@@ -3316,6 +3373,10 @@ static void* _synapse_load_worker(void* arg) {
             memcpy(&neuron->last_spike, s, sizeof(uint64_t));
         }
     }
+
+    /* Write back counts — no atomics needed, each thread has its own ta */
+    ta->added = local_added;
+    ta->dropped = local_dropped;
     return NULL;
 }
 
