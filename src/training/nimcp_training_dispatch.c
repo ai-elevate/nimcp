@@ -384,7 +384,18 @@ int training_dispatch_snn_step(
 
     switch (mode) {
         case SNN_TRAIN_STDP:
-            updates = snn_stdp_apply_network(ctx, snn, 0.0F);
+            if (brain->gpu_enabled && brain->gpu_ctx && brain->gpu_plasticity_state) {
+                extern uint32_t gpu_plasticity_stdp_apply(
+                    struct nimcp_gpu_context_s*, struct gpu_plasticity_state_s*,
+                    snn_network_t*, snn_training_ctx_t*);
+                updates = gpu_plasticity_stdp_apply(
+                    (struct nimcp_gpu_context_s*)brain->gpu_ctx,
+                    brain->gpu_plasticity_state, snn, ctx);
+                if (updates == 0)
+                    updates = snn_stdp_apply_network(ctx, snn, 0.0F);
+            } else {
+                updates = snn_stdp_apply_network(ctx, snn, 0.0F);
+            }
             break;
 
         case SNN_TRAIN_R_STDP:
