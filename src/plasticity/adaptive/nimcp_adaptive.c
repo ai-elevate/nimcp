@@ -3335,10 +3335,21 @@ static void* _synapse_load_worker(void* arg) {
                         syn->last_change = last_change;
                         syn->last_active = last_active;
 
-                        /* STP cold pool allocation deferred — cold pool may not be
-                         * thread-safe for concurrent allocation. STP state will be
-                         * lazily initialized when plasticity first needs it. */
-                        (void)stp_cursor;
+                        /* Restore STP state if this synapse has it.
+                         * Cold pool has internal mutex — thread-safe. */
+                        if (enable_stp && e->stp_data && stp_cursor < e->num_stp) {
+                            if (e->stp_indices && e->stp_indices[stp_cursor] == j) {
+                                synapse_cold_t* cold = SYNAPSE_ENSURE_COLD(
+                                    (neural_network_t)ta->base_net, syn);
+                                if (cold) {
+                                    cold->enable_stp = true;
+                                    memcpy(&cold->stp,
+                                        e->stp_data + stp_cursor * sizeof(stp_state_t),
+                                        sizeof(stp_state_t));
+                                }
+                                stp_cursor++;
+                            }
+                        }
                     }
                 }
             } else {
