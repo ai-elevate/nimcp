@@ -3994,8 +3994,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 sparse_synapse_pool_t h_pool = neural_network_get_synapse_handle_pool(network->base_network);
                 synapse_metadata_pool_t m_pool = neural_network_get_synapse_metadata_pool(network->base_network);
 
-                uint32_t num_threads = 4;  /* Conservative — 32 caused SIGSEGV from pool contention */
-                if (base_num_neurons < num_threads * 100) num_threads = 1;
+                uint32_t num_threads = 1;  /* Single-threaded — multi-threaded caused SIGSEGV from pool contention */
 
                 synapse_thread_arg_t* targs = (synapse_thread_arg_t*)nimcp_calloc(
                     num_threads, sizeof(synapse_thread_arg_t));
