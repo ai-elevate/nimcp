@@ -230,7 +230,14 @@ class BrainService:
             if handler is None:
                 return {"error": f"Unknown command: {cmd}"}
 
-            # Simple mutex — RWLock caused deadlocks with daemon worker threads
+            # Lock-free for read-only commands (stats dict reads are GIL-atomic).
+            # This prevents metrics/status queries from timing out behind learn_vector.
+            if cmd in ('ping', 'status', 'get_neuron_count', 'get_snn_stats',
+                       'get_network_metrics', 'get_cortex_cnn_metrics',
+                       'get_cognitive_stats'):
+                return handler(req)
+
+            # All other commands (learn_vector, decide_full, save, etc.) take the lock
             with self._lock:
                 return handler(req)
         except Exception as e:
