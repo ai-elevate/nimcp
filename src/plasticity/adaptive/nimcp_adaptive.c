@@ -3273,17 +3273,20 @@ typedef struct {
 static void* _synapse_load_worker(void* arg) {
     synapse_thread_arg_t* ta = (synapse_thread_arg_t*)arg;
     uint64_t local_added = 0, local_dropped = 0;
+    uint32_t neurons_processed = 0, neurons_with_data = 0;
 
     for (uint32_t i = ta->start; i < ta->end; i++) {
         neuron_load_entry_t* e = &ta->entries[i];
         neuron_t* neuron = neural_network_get_neuron(ta->base_net, i);
         if (!neuron) continue;
+        neurons_processed++;
+        if (e->synapse_data && e->num_synapses > 0) neurons_with_data++;
 
         /* Clear existing synapses — each neuron's outgoing is independent,
          * no lock needed (only this thread touches this neuron). */
         sparse_synapse_storage_cleanup(ta->h_pool, &neuron->outgoing);
         sparse_synapse_storage_init(&neuron->outgoing);
-        if (!e->synapse_data) goto restore_state;
+        if (!e->synapse_data) continue;
 
         /* Build STP lookup for this neuron (stp_indices maps synapse index → STP slot) */
         uint32_t stp_cursor = 0;
@@ -3352,31 +3355,17 @@ static void* _synapse_load_worker(void* arg) {
             }
         }
 
-restore_state:
-        /* Restore neuron state from the blob read during Phase 1 */
-        if (e->state_ok) {
-            uint8_t* s = e->neuron_state;
-            memcpy(&neuron->state, s, sizeof(float)); s += sizeof(float);
-            memcpy(&neuron->bias, s, sizeof(float)); s += sizeof(float);
-            memcpy(&neuron->threshold, s, sizeof(float)); s += sizeof(float);
-            memcpy(&neuron->adaptation, s, sizeof(float)); s += sizeof(float);
-            memcpy(&neuron->calcium_concentration, s, sizeof(float)); s += sizeof(float);
-            memcpy(&neuron->plasticity_rate, s, sizeof(float)); s += sizeof(float);
-            memcpy(&neuron->homeostatic_factor, s, sizeof(float)); s += sizeof(float);
-            memcpy(&neuron->avg_activity, s, sizeof(float)); s += sizeof(float);
-            memcpy(&neuron->weight_norm, s, sizeof(float)); s += sizeof(float);
-            memcpy(&neuron->learning_rule, s, sizeof(learning_rule_t)); s += sizeof(learning_rule_t);
-            memcpy(&neuron->activation_type, s, sizeof(activation_type_t)); s += sizeof(activation_type_t);
-            memcpy(&neuron->oja_params, s, sizeof(oja_params_t)); s += sizeof(oja_params_t);
-            memcpy(&neuron->stdp_params, s, sizeof(stdp_params_t)); s += sizeof(stdp_params_t);
-            memcpy(&neuron->homeostatic, s, sizeof(homeostatic_params_t)); s += sizeof(homeostatic_params_t);
-            memcpy(&neuron->last_spike, s, sizeof(uint64_t));
-        }
+        /* Neuron state already restored in Phase 1 (direct fread into neuron struct) */
     }
 
     /* Write back counts — no atomics needed, each thread has its own ta */
     ta->added = local_added;
     ta->dropped = local_dropped;
+    if (neurons_processed > 0 || local_added > 0) {
+        fprintf(stderr, "[WORKER] range=%u-%u processed=%u with_data=%u added=%lu dropped=%lu\n",
+                ta->start, ta->end, neurons_processed, neurons_with_data,
+                (unsigned long)local_added, (unsigned long)local_dropped);
+    }
     return NULL;
 }
 
@@ -3906,10 +3895,34 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                         if (load_error) break;
                     }
 
-                    /* Read neuron state */
-                    size_t nsr = NEURON_STATE_READ_SIZE;
-                    if (nsr > sizeof(entries[i].neuron_state)) nsr = sizeof(entries[i].neuron_state);
-                    entries[i].state_ok = (fread(entries[i].neuron_state, 1, nsr, file) == nsr);
+                    /* Read neuron state directly into the neuron struct.
+                     * This matches the save order exactly and handles struct sizes
+                     * correctly. The threaded Phase 2 doesn't need to restore state
+                     * since we do it here (state is per-neuron, no contention). */
+                    {
+                        neuron_t* neuron = neural_network_get_neuron(network->base_network, i);
+                        bool sok = true;
+                        if (neuron) {
+                            if (fread(&neuron->state, sizeof(float), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->bias, sizeof(float), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->threshold, sizeof(float), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->adaptation, sizeof(float), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->calcium_concentration, sizeof(float), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->plasticity_rate, sizeof(float), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->homeostatic_factor, sizeof(float), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->avg_activity, sizeof(float), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->weight_norm, sizeof(float), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->learning_rule, sizeof(learning_rule_t), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->activation_type, sizeof(activation_type_t), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->oja_params, sizeof(oja_params_t), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->stdp_params, sizeof(stdp_params_t), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->homeostatic, sizeof(homeostatic_params_t), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->last_spike, sizeof(uint64_t), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->last_update, sizeof(uint64_t), 1, file) != 1) sok = false;
+                            if (sok && fread(&neuron->model_type, sizeof(neuron_model_type_t), 1, file) != 1) sok = false;
+                        }
+                        entries[i].state_ok = sok;
+                    }
 
                     /* Record index entry for caching */
                     if (new_index) {
@@ -3920,9 +3933,16 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                     }
 
                     total_synapses_read += ns;
+
+                    /* Progress every 25% */
+                    if (i == 0 || i == base_num_neurons/4 || i == base_num_neurons/2 ||
+                        i == base_num_neurons*3/4 || i == base_num_neurons-1) {
+                        fprintf(stderr, "[PHASE1] neuron %u/%u: ns=%u state_ok=%d ftell=%ld\n",
+                                i, base_num_neurons, ns, entries[i].state_ok, ftell(file));
+                    }
                 }
                 if (load_error) {
-                    fprintf(stderr, "WARNING: Checkpoint read truncated\n");
+                    fprintf(stderr, "WARNING: Checkpoint read truncated at ftell=%ld\n", ftell(file));
                 }
 
                 /* Write index cache for next load */
@@ -3945,8 +3965,10 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             nimcp_free(cached_index);
             #undef SYNAPSE_INDEX_MAGIC
 
-            /* Phase 2: Parallel synapse insertion using pthreads */
-            if (!load_error) {
+            /* Phase 2: Parallel synapse insertion.
+             * Run even if Phase 1 truncated — insert whatever was successfully read.
+             * A partial restore (e.g., neuron 0's 68 synapses) is better than 0. */
+            {
                 sparse_synapse_pool_t h_pool = neural_network_get_synapse_handle_pool(network->base_network);
                 synapse_metadata_pool_t m_pool = neural_network_get_synapse_metadata_pool(network->base_network);
 
@@ -3978,11 +4000,15 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                     }
                 } else {
                     /* Single-threaded fallback */
+                    fprintf(stderr, "[CHECKPOINT] Single-threaded restore: %u neurons, h_pool=%p, m_pool=%p\n",
+                            base_num_neurons, (void*)h_pool, (void*)m_pool);
                     synapse_thread_arg_t ta = {0, base_num_neurons, entries,
                         network->base_network, h_pool, m_pool, 0, 0};
                     _synapse_load_worker(&ta);
                     total_synapses_added = ta.added;
                     total_synapses_dropped = ta.dropped;
+                    fprintf(stderr, "[CHECKPOINT] Worker result: added=%lu dropped=%lu\n",
+                            (unsigned long)ta.added, (unsigned long)ta.dropped);
                 }
                 nimcp_free(targs);
                 nimcp_free(threads);
