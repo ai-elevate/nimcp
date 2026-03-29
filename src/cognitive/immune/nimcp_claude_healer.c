@@ -448,7 +448,7 @@ static size_t extract_code_block(
 /**
  * @brief CURL write callback
  */
-static size_t curl_write_callback(
+static size_t nimcp_curl_write_cb(
     void* contents,
     size_t size,
     size_t nmemb,
@@ -542,7 +542,7 @@ static claude_heal_status_t make_api_request(
     curl_easy_setopt(curl, CURLOPT_URL, CLAUDE_API_URL);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, nimcp_curl_write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, (long)healer->config.timeout_ms);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
