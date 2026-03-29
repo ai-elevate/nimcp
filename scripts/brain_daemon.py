@@ -140,30 +140,46 @@ class _RWLock:
     Inference (decide_full, status, get_*) takes the read lock — they run
     concurrently. Training (learn_vector) takes the write lock — blocks
     until all readers finish, then runs exclusively.
+
+    Writer-priority: when a writer is waiting, new readers block. This
+    prevents reader starvation of writers (metrics pusher + chat API
+    continuously reading would starve learn_vector writes).
     """
     def __init__(self):
-        self._read_ready = threading.Condition(threading.Lock())
+        self._lock = threading.Lock()
         self._readers = 0
+        self._writers_waiting = 0
+        self._writer_active = False
+        self._can_read = threading.Condition(self._lock)
+        self._can_write = threading.Condition(self._lock)
 
     def read_acquire(self):
-        self._read_ready.acquire()
-        self._readers += 1
-        self._read_ready.release()
+        with self._lock:
+            # Block if a writer is active or waiting (writer priority)
+            while self._writer_active or self._writers_waiting > 0:
+                self._can_read.wait()
+            self._readers += 1
 
     def read_release(self):
-        self._read_ready.acquire()
-        self._readers -= 1
-        if self._readers == 0:
-            self._read_ready.notify_all()
-        self._read_ready.release()
+        with self._lock:
+            self._readers -= 1
+            if self._readers == 0:
+                self._can_write.notify()
 
     def write_acquire(self):
-        self._read_ready.acquire()
-        while self._readers > 0:
-            self._read_ready.wait()
+        with self._lock:
+            self._writers_waiting += 1
+            while self._readers > 0 or self._writer_active:
+                self._can_write.wait()
+            self._writers_waiting -= 1
+            self._writer_active = True
 
     def write_release(self):
-        self._read_ready.release()
+        with self._lock:
+            self._writer_active = False
+            # Wake all readers and one writer
+            self._can_read.notify_all()
+            self._can_write.notify()
 
 
 class BrainService:
