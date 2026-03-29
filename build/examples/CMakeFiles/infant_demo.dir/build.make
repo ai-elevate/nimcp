@@ -95,7 +95,7 @@ infant_demo_EXTERNAL_OBJECTS =
 
 examples/infant_demo: examples/CMakeFiles/infant_demo.dir/infant_learning_demo.c.o
 examples/infant_demo: examples/CMakeFiles/infant_demo.dir/build.make
-examples/infant_demo: lib/libnimcp.so.2.6.3
+examples/infant_demo: lib/libnimcp.so.0.9.0
 examples/infant_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
 examples/infant_demo: /usr/lib/x86_64-linux-gnu/libcudart.so
 examples/infant_demo: /usr/lib/x86_64-linux-gnu/libcufft.so

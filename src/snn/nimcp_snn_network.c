@@ -17,6 +17,9 @@
 
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
+#include "gpu/snn/nimcp_snn_gpu.h"
+#include "gpu/tensor/nimcp_tensor_gpu.h"
+#include "gpu/context/nimcp_gpu_context.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -361,6 +364,37 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
         nimcp_mutex_init((nimcp_mutex_t*)network->mutex, NULL);
     }
 
+    /* GPU acceleration: try to create LIF state on GPU */
+    network->gpu_lif_state = NULL;
+    network->gpu_ctx = NULL;
+    {
+        nimcp_gpu_context_t* gpu = nimcp_gpu_context_create_auto();
+        if (gpu) {
+            size_t total_neurons = (size_t)config->n_inputs + config->n_hidden + config->n_outputs;
+            nimcp_lif_params_t lif_params = {
+                .tau_mem   = config->tau_mem,
+                .tau_syn   = config->tau_syn > 0.0f ? config->tau_syn : 5.0f,
+                .v_thresh  = config->v_thresh,
+                .v_reset   = config->v_reset,
+                .v_rest    = config->v_rest,
+                .dt        = config->dt,
+                .hard_reset = true
+            };
+            nimcp_lif_state_t* lif_state = nimcp_lif_state_create(gpu, total_neurons, &lif_params);
+            if (lif_state) {
+                network->gpu_lif_state = lif_state;
+                network->gpu_ctx = gpu;
+                NIMCP_LOGGING_INFO("snn_network_create: GPU LIF state created for %zu neurons",
+                                   total_neurons);
+            } else {
+                NIMCP_LOGGING_INFO("snn_network_create: GPU LIF state creation failed, using CPU fallback");
+                nimcp_gpu_context_destroy(gpu);
+            }
+        } else {
+            NIMCP_LOGGING_DEBUG("snn_network_create: no GPU available, using CPU path");
+        }
+    }
+
     NIMCP_LOGGING_INFO("snn_network_create: created SNN with %u inputs, %u outputs",
                        config->n_inputs, config->n_outputs);
 
@@ -407,6 +441,16 @@ void snn_network_destroy(snn_network_t* network) {
     /* Destroy underlying neural network */
     if (network->neural_net) {
         neural_network_destroy(network->neural_net);
+    }
+
+    /* Destroy GPU LIF state */
+    if (network->gpu_lif_state) {
+        nimcp_lif_state_destroy((nimcp_lif_state_t*)network->gpu_lif_state);
+        network->gpu_lif_state = NULL;
+    }
+    if (network->gpu_ctx) {
+        nimcp_gpu_context_destroy((nimcp_gpu_context_t*)network->gpu_ctx);
+        network->gpu_ctx = NULL;
     }
 
     /* Destroy mutex */
@@ -497,6 +541,126 @@ int snn_network_step(snn_network_t* network, float dt) {
 
     int total_spikes = 0;
 
+    /* ===== GPU FAST PATH ===== */
+    if (network->gpu_lif_state && network->gpu_ctx) {
+        nimcp_gpu_context_t* gpu = (nimcp_gpu_context_t*)network->gpu_ctx;
+        nimcp_lif_state_t* lif_state = (nimcp_lif_state_t*)network->gpu_lif_state;
+
+        /* Compute total neuron count across all populations */
+        size_t total_neurons = 0;
+        for (uint32_t p = 0; p < network->n_populations; p++) {
+            if (network->populations[p]) {
+                total_neurons += network->populations[p]->n_neurons;
+            }
+        }
+
+        /* Build input current vector on host from synaptic inputs */
+        float* h_input = (float*)nimcp_malloc(total_neurons * sizeof(float));
+        if (h_input) {
+            size_t neuron_offset = 0;
+            for (uint32_t p = 0; p < network->n_populations; p++) {
+                snn_population_t* pop = network->populations[p];
+                if (!pop) continue;
+
+                for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                    float I_syn = 0.0f;
+                    if (network->neural_net) {
+                        neuron_t* neuron = neural_network_get_neuron(
+                            network->neural_net, pop->neuron_ids[n]);
+                        if (neuron) {
+                            I_syn = neuron->external_current;
+                            uint32_t in_count = neuron->incoming.embedded_count
+                                              + neuron->incoming.overflow_count;
+                            for (uint32_t s = 0; s < in_count; s++) {
+                                synapse_handle_t* h = sparse_synapse_get(&neuron->incoming, s);
+                                if (!h) continue;
+                                uint32_t pre_id = h->target_neuron_id;
+                                neuron_t* pre = neural_network_get_neuron(network->neural_net, pre_id);
+                                if (pre && pre->state > 0.5f) {
+                                    I_syn += h->weight;
+                                }
+                            }
+                        }
+                    }
+                    h_input[neuron_offset + n] = I_syn;
+                }
+                neuron_offset += pop->n_neurons;
+            }
+
+            /* Upload input to GPU tensor */
+            size_t dims[1] = { total_neurons };
+            nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_from_host(
+                gpu, h_input, dims, 1, NIMCP_GPU_PRECISION_FP32);
+
+            if (input_tensor) {
+                /* Run GPU LIF forward pass */
+                bool gpu_ok = nimcp_gpu_lif_forward(gpu, lif_state, input_tensor);
+
+                if (gpu_ok && lif_state->spikes) {
+                    /* Read back spikes from GPU */
+                    float* h_spikes = (float*)nimcp_malloc(total_neurons * sizeof(float));
+                    if (h_spikes) {
+                        nimcp_gpu_tensor_to_host(lif_state->spikes, h_spikes);
+
+                        /* Distribute GPU results back to population tensors and neural_net */
+                        neuron_offset = 0;
+                        for (uint32_t p = 0; p < network->n_populations; p++) {
+                            snn_population_t* pop = network->populations[p];
+                            if (!pop) continue;
+
+                            float* spike_data = (float*)nimcp_tensor_data(pop->spike_output);
+                            float* v_data = (float*)nimcp_tensor_data(pop->membrane_v);
+
+                            for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                                float spiked = h_spikes[neuron_offset + n];
+                                spike_data[n] = spiked;
+
+                                if (spiked > 0.5f) {
+                                    record_spike(&pop->spike_trains[n], network->sim->current_time_us);
+                                    total_spikes++;
+                                    pop->total_spikes++;
+
+                                    if (network->neural_net) {
+                                        neuron_t* nn = neural_network_get_neuron(
+                                            network->neural_net, pop->neuron_ids[n]);
+                                        if (nn) nn->state = 1.0f;
+                                    }
+                                } else {
+                                    if (network->neural_net) {
+                                        neuron_t* nn = neural_network_get_neuron(
+                                            network->neural_net, pop->neuron_ids[n]);
+                                        if (nn) nn->state = 0.0f;
+                                    }
+                                }
+                            }
+
+                            /* Sync membrane potential back from GPU */
+                            if (lif_state->v) {
+                                float* h_v = (float*)nimcp_malloc(total_neurons * sizeof(float));
+                                if (h_v) {
+                                    nimcp_gpu_tensor_to_host(lif_state->v, h_v);
+                                    for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                                        v_data[n] = h_v[neuron_offset + n];
+                                    }
+                                    nimcp_free(h_v);
+                                }
+                            }
+
+                            neuron_offset += pop->n_neurons;
+                        }
+                        nimcp_free(h_spikes);
+                    }
+                } else if (!gpu_ok) {
+                    NIMCP_LOGGING_WARN("snn_network_step: GPU LIF forward failed, will use CPU next step");
+                }
+
+                nimcp_gpu_tensor_destroy(input_tensor);
+            }
+            nimcp_free(h_input);
+        }
+    } else {
+    /* ===== CPU FALLBACK PATH ===== */
+
     /* Process each population */
     for (uint32_t p = 0; p < network->n_populations; p++) {
         snn_population_t* pop = network->populations[p];
@@ -576,6 +740,7 @@ int snn_network_step(snn_network_t* network, float dt) {
             }
         }
     }
+    } /* end CPU fallback */
 
     /* Update simulation time */
     network->sim->current_time_us += dt_us;

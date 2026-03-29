@@ -41,6 +41,9 @@ float nimcp_snn_get_input_scale(void) {
 #include "core/neuralnet/nimcp_sparse_synapse.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 
+// GPU plasticity bridge for GPU-accelerated STDP/BCM/homeostatic
+#include "gpu/plasticity/nimcp_gpu_plasticity_bridge.h"
+
 // LNN training includes
 #include "lnn/nimcp_lnn_training.h"
 #include "lnn/nimcp_lnn_network.h"
@@ -381,7 +384,20 @@ int training_dispatch_snn_step(
 
     switch (mode) {
         case SNN_TRAIN_STDP:
-            updates = snn_stdp_apply_network(ctx, snn, 0.0F);
+            /* GPU-accelerated STDP: extract population spikes, run GPU kernels,
+             * write back updated weights. Falls back to CPU if GPU unavailable. */
+            if (brain->gpu_enabled && brain->gpu_ctx) {
+                updates = gpu_plasticity_stdp_apply(
+                    (nimcp_gpu_context_t*)brain->gpu_ctx,
+                    brain->gpu_plasticity_state,
+                    snn, ctx);
+                if (updates == 0) {
+                    /* GPU returned 0 updates — may have failed, fall back to CPU */
+                    updates = snn_stdp_apply_network(ctx, snn, 0.0F);
+                }
+            } else {
+                updates = snn_stdp_apply_network(ctx, snn, 0.0F);
+            }
             break;
 
         case SNN_TRAIN_R_STDP:

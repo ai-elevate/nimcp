@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_atomic.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/lnn/nimcp_lnn_gpu.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -152,6 +153,31 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
         NIMCP_LOGGING_WARN("lnn_network_create: Failed to create mutex");
     }
 
+    // Initialize GPU LNN layers if GPU is available
+    network->gpu_ctx = NULL;
+    {
+        nimcp_gpu_context_t* gpu = nimcp_gpu_context_create_auto();
+        if (gpu) {
+            network->gpu_ctx = gpu;
+            for (uint32_t i = 0; i < network->n_layers; i++) {
+                if (network->layers[i]) {
+                    network->layers[i]->gpu_lnn_layer =
+                        nimcp_lnn_layer_gpu_create(gpu, network->layers[i]);
+                    if (network->layers[i]->gpu_lnn_layer) {
+                        NIMCP_LOGGING_INFO("GPU LNN layer %u created for network '%s'",
+                                           i, network->name);
+                    } else {
+                        NIMCP_LOGGING_WARN("Failed to create GPU LNN layer %u, using CPU fallback",
+                                           i);
+                    }
+                }
+            }
+        } else {
+            NIMCP_LOGGING_INFO("No GPU available for LNN network '%s', using CPU path",
+                               network->name);
+        }
+    }
+
     // Initialize statistics
     memset(&network->stats, 0, sizeof(lnn_network_stats_t));
     network->stats.health = LNN_STATE_VALID;
@@ -210,6 +236,23 @@ void lnn_network_destroy(lnn_network_t* network) {
     // Guard: NULL-safe
     if (!network) {
         return;
+    }
+
+    // Destroy GPU LNN layers before CPU layers
+    if (network->layers) {
+        for (uint32_t i = 0; i < network->n_layers; i++) {
+            if (network->layers[i] && network->layers[i]->gpu_lnn_layer) {
+                nimcp_lnn_layer_gpu_destroy(
+                    (nimcp_lnn_layer_gpu_t*)network->layers[i]->gpu_lnn_layer);
+                network->layers[i]->gpu_lnn_layer = NULL;
+            }
+        }
+    }
+
+    // Destroy GPU context
+    if (network->gpu_ctx) {
+        nimcp_gpu_context_destroy((nimcp_gpu_context_t*)network->gpu_ctx);
+        network->gpu_ctx = NULL;
     }
 
     // Destroy layers

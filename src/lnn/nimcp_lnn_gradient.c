@@ -16,6 +16,7 @@
 #include "lnn/nimcp_lnn_neuron.h"
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_ode.h"
+#include "gpu/lnn/nimcp_lnn_gpu.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/thread/nimcp_thread_pool.h"

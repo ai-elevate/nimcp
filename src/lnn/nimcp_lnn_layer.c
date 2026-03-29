@@ -11,6 +11,7 @@
 #include "lnn/nimcp_lnn_neuron.h"
 #include "lnn/nimcp_lnn_wiring.h"
 #include "lnn/nimcp_lnn_ode.h"
+#include "gpu/lnn/nimcp_lnn_gpu.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -361,6 +362,12 @@ void lnn_layer_destroy(lnn_layer_t* layer)
 {
     if (!layer) return;
 
+    /* Free GPU layer if still attached (normally freed by network destroy) */
+    if (layer->gpu_lnn_layer) {
+        nimcp_lnn_layer_gpu_destroy((nimcp_lnn_layer_gpu_t*)layer->gpu_lnn_layer);
+        layer->gpu_lnn_layer = NULL;
+    }
+
     /* Free neurons */
     if (layer->neurons) {
         for (uint32_t i = 0; i < layer->n_neurons; i++) {
@@ -676,6 +683,31 @@ int lnn_layer_forward(
         extern int lnn_layer_forward_hamiltonian(lnn_layer_t*, const nimcp_tensor_t*,
                                                   nimcp_tensor_t*, float);
         return lnn_layer_forward_hamiltonian(layer, input, output, dt);
+    }
+
+    /* GPU LNN dispatch — full ODE step on GPU with CPU state sync.
+     * Pass NULL for ctx and input: nimcp_gpu_lnn_ode_step uses the layer's
+     * internal GPU-resident state and weights for derivative computation. */
+    if (layer->gpu_lnn_layer) {
+        nimcp_lnn_layer_gpu_t* gpu_layer = (nimcp_lnn_layer_gpu_t*)layer->gpu_lnn_layer;
+
+        nimcp_lnn_ode_config_t ode_cfg = nimcp_lnn_ode_default_config();
+        ode_cfg.method = layer->ode_method;
+        ode_cfg.dt = (dt > 0.0f) ? dt : layer->dt;
+
+        bool ok = nimcp_gpu_lnn_ode_step(NULL, gpu_layer, NULL, &ode_cfg);
+        if (ok) {
+            /* Sync GPU state back to CPU layer->x for downstream consumption */
+            if (nimcp_lnn_layer_gpu_to_cpu(gpu_layer, layer)) {
+                memcpy(nimcp_tensor_data(output),
+                       nimcp_tensor_data_const(layer->x),
+                       layer->n_neurons * sizeof(float));
+                return LNN_SUCCESS;
+            }
+        }
+        /* GPU path failed — fall through to CPU path */
+        NIMCP_LOGGING_WARN("GPU LNN forward failed for layer %u, falling back to CPU",
+                           layer->id);
     }
 
     /* 1. Compute time constants */

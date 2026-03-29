@@ -44,7 +44,7 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   foreach(file
-      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2.6.3"
+      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.0.9.0"
       "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2"
       )
     if(EXISTS "${file}" AND
@@ -55,11 +55,11 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
     endif()
   endforeach()
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES
-    "/home/bbrelin/nimcp/build/lib/libnimcp.so.2.6.3"
+    "/home/bbrelin/nimcp/build/lib/libnimcp.so.0.9.0"
     "/home/bbrelin/nimcp/build/lib/libnimcp.so.2"
     )
   foreach(file
-      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2.6.3"
+      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.0.9.0"
       "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2"
       )
     if(EXISTS "${file}" AND

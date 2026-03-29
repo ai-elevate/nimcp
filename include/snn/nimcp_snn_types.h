@@ -511,6 +511,10 @@ struct snn_network_s {
     /* Thread safety */
     void* mutex;                    /**< nimcp_mutex_t* */
 
+    /* GPU acceleration */
+    void* gpu_lif_state;            /**< nimcp_lif_state_t* for GPU SNN (NULL if CPU-only) */
+    void* gpu_ctx;                  /**< nimcp_gpu_context_t* for GPU SNN (NULL if CPU-only) */
+
     /* Statistics */
     snn_stats_t stats;              /**< Network statistics */
 };

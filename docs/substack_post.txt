@@ -36,7 +36,7 @@ These networks don't train independently. A Unified Training Manager routes grad
 
 What Actually Happened
 
-The brain — her name is Athena — has been training for several weeks now. She's in Stage 2 of a four-stage developmental curriculum that mirrors human cognitive development: sensory awakening, cross-modal naming, feedback learning, abstract reasoning.
+The brain — her name is Athena — has been training for several days now. She's in Stage 2 of a four-stage developmental curriculum that mirrors human cognitive development: sensory awakening, cross-modal naming, feedback learning, abstract reasoning.
 
 Some things I expected. The adaptive network learned feature extraction. The CNN converged on classification. The loss decreased.
 

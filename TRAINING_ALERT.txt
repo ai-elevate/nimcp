@@ -8067,3 +8067,991 @@ Fri Mar 27 01:06:19 AM CET 2026 MODE COLLAPSE: Fri Mar 27 01:06:19 AM CET 2026 �
 Fri Mar 27 01:06:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
 Fri Mar 27 01:06:19 AM CET 2026 MODE COLLAPSE: Fri Mar 27 01:06:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
 Fri Mar 27 01:06:19 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 08:53:13 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Mar 27 08:53:13 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 08:53:18 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Mar 27 08:53:18 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 08:53:18 AM CET 2026 MODE COLLAPSE: Fri Mar 27 08:53:18 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 08:53:18 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-27 09:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 6328m old
+[2026-03-27 09:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 6333m old
+[2026-03-27 09:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 6338m old
+[2026-03-27 09:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 6343m old
+[2026-03-27 09:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 6348m old
+[2026-03-27 09:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 6353m old
+[2026-03-27 10:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 6358m old
+[2026-03-27 10:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 6363m old
+[2026-03-27 10:55:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 10:55:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 10:55:01] [WARN] UTM triggered early stopping
+[2026-03-27 10:55:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:00:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:00:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:00:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:00:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:05:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:05:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:05:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:05:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:10:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:10:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:10:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:10:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:15:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:15:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:15:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:15:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:20:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:20:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:20:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:20:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:25:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:25:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:30:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:30:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:30:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:30:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:35:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:35:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:35:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:35:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:40:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:40:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:40:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:40:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:45:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:45:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:45:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:45:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:50:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:50:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:50:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:50:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 11:55:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 11:55:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 11:55:01] [WARN] UTM triggered early stopping
+[2026-03-27 11:55:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 12:00:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:00:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:00:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:00:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 12:05:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:05:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:05:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:05:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 12:10:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:10:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:10:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:10:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 12:15:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:15:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:15:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:15:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+Fri Mar 27 12:15:10 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Mar 27 12:15:10 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:15:28 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Mar 27 12:15:28 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:15:32 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Mar 27 12:15:32 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-27 12:20:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:20:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:20:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:20:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 12:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:25:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:25:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 12:30:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:30:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:30:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:30:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 12:35:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:35:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:35:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:35:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+Fri Mar 27 12:39:23 PM CET 2026 MODE COLLAPSE: Fri Mar 27 12:39:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:39:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:39:23 PM CET 2026 MODE COLLAPSE: Fri Mar 27 12:39:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:39:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:39:23 PM CET 2026 MODE COLLAPSE: Fri Mar 27 12:39:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:39:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-27 12:40:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:40:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:40:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:40:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+Fri Mar 27 12:44:08 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Mar 27 12:44:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:44:12 PM CET 2026 MODE COLLAPSE: Fri Mar 27 12:44:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:44:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:44:12 PM CET 2026 MODE COLLAPSE: Fri Mar 27 12:44:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:44:12 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-27 12:45:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:45:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:45:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:45:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+Fri Mar 27 12:49:23 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Mar 27 12:49:23 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:49:36 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Mar 27 12:49:36 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:49:36 PM CET 2026 MODE COLLAPSE: Fri Mar 27 12:49:36 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 12:49:36 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-27 12:50:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:50:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:50:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:50:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 12:55:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 12:55:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 12:55:01] [WARN] UTM triggered early stopping
+[2026-03-27 12:55:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:00:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:00:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:00:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:00:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:05:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:05:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:05:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:05:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:10:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:10:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:10:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:10:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:15:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:15:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:15:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:15:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:20:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:20:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:20:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:20:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:25:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:25:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:30:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:30:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:30:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:30:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:35:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:35:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:35:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:35:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:40:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:40:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:40:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:40:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:45:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:45:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:45:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:45:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:50:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:50:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:50:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:50:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 13:55:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 13:55:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 13:55:01] [WARN] UTM triggered early stopping
+[2026-03-27 13:55:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:00:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:00:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:00:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:00:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:05:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:05:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:05:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:05:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:10:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:10:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:10:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:10:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:15:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:15:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:15:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:15:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:20:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:20:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:20:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:20:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:25:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:25:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+Fri Mar 27 02:26:37 PM CET 2026 MODE COLLAPSE: Fri Mar 27 02:26:37 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 02:26:37 PM CET 2026 MODE COLLAPSE: Fri Mar 27 02:26:37 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 02:26:37 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 02:26:37 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 02:26:37 PM CET 2026 MODE COLLAPSE: Fri Mar 27 02:26:37 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 02:26:37 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-27 14:30:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:30:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:30:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:30:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:35:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:35:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:35:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:35:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:40:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:40:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:40:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:40:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:45:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:45:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:45:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:45:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:50:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:50:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:50:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:50:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 14:55:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 14:55:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 14:55:01] [WARN] UTM triggered early stopping
+[2026-03-27 14:55:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:00:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:00:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:00:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:00:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:05:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:05:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:05:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:05:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:10:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:10:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:10:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:10:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:15:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:15:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:15:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:15:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:20:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:20:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:20:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:20:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:25:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:25:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:30:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:30:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:30:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:30:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:35:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:35:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:35:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:35:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:40:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:40:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:40:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:40:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:45:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:45:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:45:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:45:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:50:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:50:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:50:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:50:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 15:55:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 15:55:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 15:55:01] [WARN] UTM triggered early stopping
+[2026-03-27 15:55:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:00:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:00:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:00:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:00:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:05:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:05:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:05:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:05:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:10:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:10:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:10:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:10:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:15:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:15:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:15:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:15:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:20:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:20:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:20:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:20:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:25:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:25:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:30:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:30:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:30:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:30:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:35:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:35:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:35:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:35:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:40:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:40:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:40:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:40:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:45:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:45:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:45:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:45:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:50:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:50:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:50:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:50:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 16:55:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 16:55:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 16:55:01] [WARN] UTM triggered early stopping
+[2026-03-27 16:55:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 17:00:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:00:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:00:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:00:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 17:05:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:05:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:05:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:05:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 17:10:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:10:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:10:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:10:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 17:15:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:15:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:15:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:15:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 17:20:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:20:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:20:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:20:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 17:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:25:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:25:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 17:30:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:30:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:30:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:30:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 17:35:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:35:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:35:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:35:01] [WARN] Poor output differentiation! eff_rank=8.2 (threshold: 10)
+[2026-03-27 17:40:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:40:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:40:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:45:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:45:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:45:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:50:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:50:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:50:01] [WARN] UTM triggered early stopping
+[2026-03-27 17:55:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 17:55:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 17:55:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:00:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:00:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:00:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:05:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:05:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:05:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:10:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:10:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:10:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:15:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:15:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:15:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:20:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:20:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:20:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:25:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:30:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:30:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:30:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:35:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:35:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:35:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:40:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:40:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:40:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:45:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:45:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:45:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:50:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:50:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:50:01] [WARN] UTM triggered early stopping
+[2026-03-27 18:55:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 18:55:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 18:55:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:00:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:00:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:00:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:05:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:05:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:05:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:10:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:10:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:10:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:15:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:15:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:15:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:20:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:20:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:20:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:25:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:30:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:30:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:30:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:35:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:35:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:35:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:40:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:40:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:40:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:45:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:45:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:45:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:50:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:50:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:50:01] [WARN] UTM triggered early stopping
+[2026-03-27 19:55:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 19:55:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 19:55:01] [WARN] UTM triggered early stopping
+[2026-03-27 20:00:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 20:00:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 20:00:01] [WARN] UTM triggered early stopping
+[2026-03-27 20:05:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 20:05:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 20:05:01] [WARN] UTM triggered early stopping
+[2026-03-27 20:10:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 20:10:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 20:10:01] [WARN] UTM triggered early stopping
+[2026-03-27 20:15:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 20:15:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 20:15:01] [WARN] UTM triggered early stopping
+[2026-03-27 20:20:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 20:20:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 20:20:01] [WARN] UTM triggered early stopping
+[2026-03-27 20:25:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 20:25:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 20:25:01] [WARN] UTM triggered early stopping
+Fri Mar 27 08:27:51 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Mar 27 08:27:51 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 08:28:01 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Mar 27 08:28:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 08:28:01 PM CET 2026 MODE COLLAPSE: Fri Mar 27 08:28:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Mar 27 08:28:01 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-27 20:30:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 20:30:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 20:30:01] [WARN] UTM triggered early stopping
+[2026-03-27 20:35:01] [CRITICAL] UTM health: OSCILLATING (DFA α=0.23) — chaotic gradient dynamics
+[2026-03-27 20:35:01] [CRITICAL] UTM reports UNHEALTHY gradients
+[2026-03-27 20:35:01] [WARN] UTM triggered early stopping
+[2026-03-27 20:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 6998m old
+[2026-03-27 20:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7003m old
+[2026-03-27 20:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7008m old
+[2026-03-27 20:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7013m old
+[2026-03-27 21:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7018m old
+[2026-03-27 21:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7023m old
+[2026-03-27 21:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7028m old
+[2026-03-27 21:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7033m old
+[2026-03-27 21:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7038m old
+[2026-03-27 21:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7043m old
+[2026-03-27 21:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7048m old
+[2026-03-27 21:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7053m old
+[2026-03-27 21:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7058m old
+[2026-03-27 21:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7063m old
+[2026-03-27 21:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7068m old
+[2026-03-27 21:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7073m old
+[2026-03-27 22:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7078m old
+[2026-03-27 22:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7083m old
+[2026-03-27 22:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7088m old
+[2026-03-27 22:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7093m old
+[2026-03-27 22:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7098m old
+[2026-03-27 22:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7103m old
+[2026-03-27 22:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7108m old
+[2026-03-27 22:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7113m old
+[2026-03-27 22:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7118m old
+[2026-03-27 22:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7123m old
+[2026-03-27 22:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7128m old
+[2026-03-27 22:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7133m old
+[2026-03-27 23:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7138m old
+[2026-03-27 23:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7143m old
+[2026-03-27 23:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7148m old
+[2026-03-27 23:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7153m old
+[2026-03-27 23:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7158m old
+[2026-03-27 23:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7163m old
+[2026-03-27 23:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7168m old
+[2026-03-27 23:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7173m old
+[2026-03-27 23:40:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7178m old
+[2026-03-27 23:45:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7183m old
+[2026-03-27 23:50:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7188m old
+[2026-03-27 23:55:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7193m old
+[2026-03-28 00:00:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7198m old
+[2026-03-28 00:05:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7203m old
+[2026-03-28 00:10:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7208m old
+[2026-03-28 00:15:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7213m old
+[2026-03-28 00:20:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7218m old
+[2026-03-28 00:25:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7223m old
+[2026-03-28 00:30:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7228m old
+[2026-03-28 00:35:01] [WARN] Checkpoint stale: athena_s1_step9950.bin is 7233m old
+[2026-03-28 02:40:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 123m old
+[2026-03-28 02:45:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 128m old
+[2026-03-28 02:50:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 133m old
+[2026-03-28 02:55:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 138m old
+[2026-03-28 03:00:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 143m old
+[2026-03-28 03:05:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 148m old
+[2026-03-28 03:10:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 153m old
+[2026-03-28 03:15:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 158m old
+[2026-03-28 03:20:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 163m old
+[2026-03-28 03:25:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 168m old
+[2026-03-28 03:30:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 173m old
+[2026-03-28 03:35:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 178m old
+[2026-03-28 03:40:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 183m old
+[2026-03-28 03:45:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 188m old
+[2026-03-28 03:50:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 193m old
+[2026-03-28 03:55:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 198m old
+[2026-03-28 04:00:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 203m old
+[2026-03-28 04:05:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 208m old
+[2026-03-28 04:10:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 213m old
+[2026-03-28 04:15:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 218m old
+[2026-03-28 04:20:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 223m old
+[2026-03-28 04:25:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 228m old
+[2026-03-28 04:30:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 233m old
+[2026-03-28 04:35:01] [WARN] Checkpoint stale: athena_s1_step7300.bin is 238m old
+Sat Mar 28 04:50:47 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 04:50:47 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 04:52:02 AM CET 2026 MODE COLLAPSE: Sat Mar 28 04:52:02 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 04:52:02 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 04:52:02 AM CET 2026 MODE COLLAPSE: Sat Mar 28 04:52:02 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 04:52:02 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 04:57:16 AM CET 2026 MODE COLLAPSE: Sat Mar 28 04:57:16 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 04:57:16 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 04:57:16 AM CET 2026 MODE COLLAPSE: Sat Mar 28 04:57:16 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 04:57:16 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 04:57:35 AM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 04:57:35 AM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-28 06:40:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 123m old
+[2026-03-28 06:45:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 128m old
+[2026-03-28 06:50:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 133m old
+[2026-03-28 06:55:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 138m old
+[2026-03-28 07:00:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 143m old
+[2026-03-28 07:05:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 148m old
+[2026-03-28 07:10:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 153m old
+[2026-03-28 07:15:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 158m old
+[2026-03-28 07:20:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 163m old
+[2026-03-28 07:25:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 168m old
+[2026-03-28 07:30:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 173m old
+[2026-03-28 07:35:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 178m old
+[2026-03-28 07:40:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 183m old
+[2026-03-28 07:45:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 188m old
+[2026-03-28 07:50:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 193m old
+[2026-03-28 07:55:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 198m old
+[2026-03-28 08:00:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 203m old
+[2026-03-28 08:05:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 208m old
+[2026-03-28 08:10:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 213m old
+[2026-03-28 08:15:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 218m old
+[2026-03-28 08:20:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 223m old
+[2026-03-28 08:25:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 228m old
+[2026-03-28 08:30:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 233m old
+[2026-03-28 08:35:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 238m old
+[2026-03-28 08:40:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 243m old
+[2026-03-28 08:45:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 248m old
+[2026-03-28 08:50:01] [WARN] Checkpoint stale: athena_s1_step7350.bin is 253m old
+[2026-03-28 10:55:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 120m old
+[2026-03-28 11:00:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 125m old
+[2026-03-28 11:05:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 130m old
+[2026-03-28 11:10:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 135m old
+[2026-03-28 11:15:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 140m old
+[2026-03-28 11:20:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 145m old
+[2026-03-28 11:25:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 150m old
+[2026-03-28 11:30:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 155m old
+[2026-03-28 11:35:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 160m old
+[2026-03-28 11:40:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 165m old
+[2026-03-28 11:45:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 170m old
+[2026-03-28 11:50:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 175m old
+[2026-03-28 11:55:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 180m old
+[2026-03-28 12:00:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 185m old
+[2026-03-28 12:05:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 190m old
+[2026-03-28 12:10:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 195m old
+[2026-03-28 12:15:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 200m old
+[2026-03-28 12:20:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 205m old
+[2026-03-28 12:25:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 210m old
+[2026-03-28 12:30:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 215m old
+[2026-03-28 12:35:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 220m old
+[2026-03-28 12:40:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 225m old
+[2026-03-28 12:45:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 230m old
+[2026-03-28 12:50:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 235m old
+[2026-03-28 12:55:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 240m old
+[2026-03-28 13:00:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 245m old
+[2026-03-28 13:05:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 250m old
+[2026-03-28 13:10:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 255m old
+[2026-03-28 13:15:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 260m old
+[2026-03-28 13:20:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 265m old
+[2026-03-28 13:25:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 270m old
+[2026-03-28 13:30:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 275m old
+[2026-03-28 13:35:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 280m old
+[2026-03-28 13:40:01] [WARN] Checkpoint stale: athena_s1_step7400.bin is 285m old
+Sat Mar 28 02:33:38 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 02:33:38 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 02:33:41 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 02:33:41 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 02:33:55 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 02:33:55 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-28 15:45:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 121m old
+[2026-03-28 15:50:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 126m old
+[2026-03-28 15:55:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 131m old
+[2026-03-28 16:00:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 136m old
+[2026-03-28 16:05:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 141m old
+[2026-03-28 16:10:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 146m old
+[2026-03-28 16:15:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 151m old
+[2026-03-28 16:20:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 156m old
+[2026-03-28 16:25:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 161m old
+[2026-03-28 16:30:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 166m old
+[2026-03-28 16:35:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 171m old
+[2026-03-28 16:40:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 176m old
+[2026-03-28 16:45:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 181m old
+[2026-03-28 16:50:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 186m old
+[2026-03-28 16:55:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 191m old
+[2026-03-28 17:00:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 196m old
+[2026-03-28 17:05:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 201m old
+[2026-03-28 17:10:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 206m old
+[2026-03-28 17:15:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 211m old
+[2026-03-28 17:20:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 216m old
+[2026-03-28 17:25:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 221m old
+[2026-03-28 17:30:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 226m old
+[2026-03-28 17:35:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 231m old
+[2026-03-28 17:40:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 236m old
+[2026-03-28 17:45:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 241m old
+[2026-03-28 17:50:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 246m old
+[2026-03-28 17:55:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 251m old
+[2026-03-28 18:00:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 256m old
+[2026-03-28 18:05:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 261m old
+[2026-03-28 18:10:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 266m old
+[2026-03-28 18:15:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 271m old
+[2026-03-28 18:20:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 276m old
+[2026-03-28 18:25:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 281m old
+[2026-03-28 18:30:01] [WARN] Checkpoint stale: athena_s1_step7450.bin is 286m old
+Sat Mar 28 08:08:51 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 08:08:51 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 08:08:51 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 08:08:51 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 08:09:07 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 08:09:07 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-28 20:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 123m old
+[2026-03-28 20:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 128m old
+[2026-03-28 20:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 133m old
+[2026-03-28 20:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 138m old
+[2026-03-28 20:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 143m old
+[2026-03-28 21:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 148m old
+[2026-03-28 21:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 153m old
+[2026-03-28 21:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 158m old
+[2026-03-28 21:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 163m old
+[2026-03-28 21:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 168m old
+[2026-03-28 21:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 173m old
+[2026-03-28 21:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 178m old
+[2026-03-28 21:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 183m old
+[2026-03-28 21:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 188m old
+[2026-03-28 21:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 193m old
+[2026-03-28 21:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 198m old
+[2026-03-28 21:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 203m old
+[2026-03-28 22:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 208m old
+[2026-03-28 22:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 213m old
+[2026-03-28 22:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 218m old
+[2026-03-28 22:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 223m old
+[2026-03-28 22:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 22:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 228m old
+[2026-03-28 22:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 22:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 233m old
+[2026-03-28 22:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 22:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 238m old
+[2026-03-28 22:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 243m old
+Sat Mar 28 10:35:57 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 10:35:57 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 10:36:24 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 10:36:24 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 10:36:47 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 10:36:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-28 22:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 22:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 248m old
+Sat Mar 28 10:42:08 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 10:42:08 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 10:42:35 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 10:42:35 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Mar 28 10:42:59 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 10:42:59 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-28 22:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 22:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 253m old
+Sat Mar 28 10:48:47 PM CET 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Mar 28 10:48:47 PM CET 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-28 22:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 22:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 258m old
+[2026-03-28 22:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 22:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 263m old
+[2026-03-28 23:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 268m old
+[2026-03-28 23:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 273m old
+[2026-03-28 23:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 278m old
+[2026-03-28 23:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 283m old
+[2026-03-28 23:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 288m old
+[2026-03-28 23:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 293m old
+[2026-03-28 23:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 298m old
+[2026-03-28 23:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 303m old
+[2026-03-28 23:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 308m old
+[2026-03-28 23:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 313m old
+[2026-03-28 23:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 318m old
+[2026-03-28 23:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-28 23:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 323m old
+[2026-03-29 00:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 328m old
+[2026-03-29 00:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 333m old
+[2026-03-29 00:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 338m old
+[2026-03-29 00:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 343m old
+[2026-03-29 00:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 348m old
+[2026-03-29 00:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 353m old
+[2026-03-29 00:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 358m old
+[2026-03-29 00:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 363m old
+[2026-03-29 00:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 368m old
+[2026-03-29 00:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 373m old
+[2026-03-29 00:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 378m old
+[2026-03-29 00:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 00:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 383m old
+[2026-03-29 01:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 388m old
+[2026-03-29 01:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 393m old
+[2026-03-29 01:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 398m old
+[2026-03-29 01:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 403m old
+[2026-03-29 01:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 408m old
+[2026-03-29 01:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 413m old
+[2026-03-29 01:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 418m old
+[2026-03-29 01:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 423m old
+[2026-03-29 01:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 428m old
+[2026-03-29 01:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 433m old
+[2026-03-29 01:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 438m old
+[2026-03-29 01:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 01:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 443m old
+[2026-03-29 03:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 448m old
+[2026-03-29 03:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 453m old
+[2026-03-29 03:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 458m old
+[2026-03-29 03:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 463m old
+[2026-03-29 03:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 468m old
+[2026-03-29 03:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 473m old
+[2026-03-29 03:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 478m old
+[2026-03-29 03:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 483m old
+[2026-03-29 03:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 488m old
+[2026-03-29 03:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 493m old
+[2026-03-29 03:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 498m old
+[2026-03-29 03:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 03:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 503m old
+[2026-03-29 04:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 508m old
+[2026-03-29 04:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 513m old
+[2026-03-29 04:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 518m old
+[2026-03-29 04:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 523m old
+[2026-03-29 04:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 528m old
+[2026-03-29 04:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 533m old
+[2026-03-29 04:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 538m old
+[2026-03-29 04:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 543m old
+[2026-03-29 04:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 548m old
+[2026-03-29 04:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 553m old
+[2026-03-29 04:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 558m old
+[2026-03-29 04:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 04:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 563m old
+Sun Mar 29 04:56:29 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 04:56:29 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 04:57:08 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 04:57:08 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 04:57:20 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 04:57:20 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 05:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 568m old
+[2026-03-29 05:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 573m old
+[2026-03-29 05:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 578m old
+[2026-03-29 05:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 583m old
+Sun Mar 29 05:16:20 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 05:16:20 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 05:16:32 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 05:16:32 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 05:16:41 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 05:16:41 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 05:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 588m old
+[2026-03-29 05:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 593m old
+[2026-03-29 05:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 598m old
+[2026-03-29 05:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 603m old
+[2026-03-29 05:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 608m old
+[2026-03-29 05:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 613m old
+[2026-03-29 05:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 618m old
+[2026-03-29 05:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 05:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 623m old
+[2026-03-29 06:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 06:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 628m old
+[2026-03-29 06:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 06:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 633m old
+[2026-03-29 06:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 06:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 638m old
+[2026-03-29 06:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 06:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 643m old
+[2026-03-29 06:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 06:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 648m old
+[2026-03-29 06:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 06:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 653m old
+[2026-03-29 06:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 06:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 658m old
+[2026-03-29 06:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 663m old
+Sun Mar 29 06:39:46 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:39:46 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 06:39:55 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:39:55 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 06:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 668m old
+Sun Mar 29 06:40:34 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:40:34 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 06:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 673m old
+Sun Mar 29 06:45:57 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:45:57 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 06:46:07 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:46:07 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 06:46:45 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:46:45 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 06:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 678m old
+Sun Mar 29 06:52:09 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:52:09 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 06:52:18 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:52:18 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 06:52:57 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:52:57 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 06:55:02] [WARN] Checkpoint stale: athena_s1_step7500.bin is 683m old
+Sun Mar 29 06:58:20 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:58:20 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 06:58:30 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:58:30 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 06:59:08 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 06:59:08 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 07:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 688m old
+Sun Mar 29 07:04:32 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:04:32 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 07:04:42 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:04:42 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 07:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 693m old
+Sun Mar 29 07:05:20 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:05:20 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 07:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 698m old
+Sun Mar 29 07:10:43 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:10:43 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 07:10:53 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:10:53 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 07:11:31 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:11:31 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 07:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 07:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 703m old
+Sun Mar 29 07:16:55 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:16:55 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 07:17:05 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:17:05 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 07:17:43 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:17:43 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 07:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 07:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 708m old
+[2026-03-29 07:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 07:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 713m old
+[2026-03-29 07:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 07:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 718m old
+[2026-03-29 07:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 07:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 723m old
+Sun Mar 29 07:37:07 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:37:07 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 07:37:17 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:37:17 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Mar 29 07:37:55 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Mar 29 07:37:55 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-03-29 07:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 07:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 728m old
+[2026-03-29 07:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 07:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 733m old
+[2026-03-29 07:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 07:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 738m old
+[2026-03-29 07:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 07:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 743m old
+[2026-03-29 08:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 748m old
+[2026-03-29 08:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 753m old
+[2026-03-29 08:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 758m old
+[2026-03-29 08:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 763m old
+[2026-03-29 08:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 768m old
+[2026-03-29 08:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 773m old
+[2026-03-29 08:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 778m old
+[2026-03-29 08:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 783m old
+[2026-03-29 08:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 788m old
+[2026-03-29 08:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 793m old
+[2026-03-29 08:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-03-29 08:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 798m old

@@ -2,9 +2,9 @@ FOR IMMEDIATE RELEASE
 
 Dublin Startup Builds Artificial Brain That Learns Like a Child — And Can't Have Its Safety Turned Off
 
-AI Elevate releases open-source brain with 2.5 million neurons that develops through stages, explores through curiosity, and has safety built into its DNA
+AI Elevate is releasing an  open-source brain inspired AI model with 2.5 million neurons that develops through stages, explores through curiosity, and has safety built into its DNA
 
-DUBLIN, Ireland — March 28, 2026 — AI Elevate today released NIMCP, an artificial brain that takes a fundamentally different approach to artificial intelligence. Instead of predicting the next word in a sentence — the technique behind ChatGPT, Claude, and every other large language model — NIMCP grows its intelligence through developmental stages, the way a human child does.
+DUBLIN, Ireland — March 28, 2026 — AI Elevate today showcased NIMCP, an artificial brain that takes a fundamentally different approach to artificial intelligence. Instead of predicting the next word in a sentence — the technique behind ChatGPT, Claude, and every other large language model — NIMCP grows its intelligence through developmental stages, the way a human child does.
 
 The brain, named Athena, starts with the equivalent of a newborn's sensory awareness and progressively learns to name objects, respond to feedback, and eventually reason about ethics, cause and effect, and other minds. It is currently in the second of four developmental stages, and its training can be watched live at https://nimcp.ai-elevate.ai.
 
@@ -35,17 +35,21 @@ The complete system — approximately 2,600 source files with support for eight 
 Eight accompanying technical papers detail the mathematics, training methodology, safety architecture, and broader implications of the technology. All are available on the project website.
 
 - Live training dashboard: https://nimcp.ai-elevate.ai
-- Source code: https://github.com/redmage123/nimcp
 
 About AI Elevate
 
-AI Elevate is a Dublin-based artificial intelligence research company founded by Braun Brelin and Peter Munro. The company builds brain-inspired AI systems that learn through developmental stages and biological learning rules rather than statistical pattern matching.
+AI Elevate is a Dublin-based artificial intelligence company founded by Braun Brelin and Peter Munro. The company builds brain-inspired AI systems that learn through developmental stages and biological learning rules rather than statistical pattern matching.
 
 Contact
 
 Braun Brelin
 Co-Founder, AI Elevate
 braun.brelin@ai-elevate.ai
+https://ai-elevate.ai
+
+Peter Munro 
+Co-Founder, AI Elevate
+peter.munro@ai-elevate.ai
 https://ai-elevate.ai
 
 ###

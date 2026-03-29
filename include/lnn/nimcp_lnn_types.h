@@ -308,6 +308,9 @@ struct lnn_layer_s {
     /* Layer normalization */
     bool use_layer_norm;            /**< Enable layer normalization */
     float layer_norm_eps;           /**< Layer norm epsilon for numerical stability */
+
+    /* GPU acceleration (NULL = CPU only) */
+    void* gpu_lnn_layer;            /**< nimcp_lnn_layer_gpu_t* (GPU-resident layer state) */
 };
 
 /**
@@ -378,6 +381,9 @@ struct lnn_network_s {
 
     /* Thread safety */
     void* mutex;                /**< Mutex for concurrent access */
+
+    /* GPU acceleration */
+    void* gpu_ctx;              /**< nimcp_gpu_context_t* for GPU LNN operations */
 
     /* Statistics */
     lnn_network_stats_t stats;  /**< Global network statistics */
