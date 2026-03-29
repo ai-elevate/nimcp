@@ -3335,21 +3335,10 @@ static void* _synapse_load_worker(void* arg) {
                         syn->last_change = last_change;
                         syn->last_active = last_active;
 
-                        /* Restore STP state if this synapse has it */
-                        if (enable_stp && e->stp_data && stp_cursor < e->num_stp) {
-                            /* Verify this is the right STP entry */
-                            if (e->stp_indices && e->stp_indices[stp_cursor] == j) {
-                                synapse_cold_t* cold = SYNAPSE_ENSURE_COLD(
-                                    (neural_network_t)ta->base_net, syn);
-                                if (cold) {
-                                    cold->enable_stp = true;
-                                    memcpy(&cold->stp,
-                                        e->stp_data + stp_cursor * sizeof(stp_state_t),
-                                        sizeof(stp_state_t));
-                                }
-                                stp_cursor++;
-                            }
-                        }
+                        /* STP cold pool allocation deferred — cold pool may not be
+                         * thread-safe for concurrent allocation. STP state will be
+                         * lazily initialized when plasticity first needs it. */
+                        (void)stp_cursor;
                     }
                 }
             } else {
@@ -3994,7 +3983,8 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 sparse_synapse_pool_t h_pool = neural_network_get_synapse_handle_pool(network->base_network);
                 synapse_metadata_pool_t m_pool = neural_network_get_synapse_metadata_pool(network->base_network);
 
-                uint32_t num_threads = 1;  /* Single-threaded — multi-threaded caused SIGSEGV from pool contention */
+                uint32_t num_threads = 4;  /* 4 threads — balance speed vs pool contention */
+                if (base_num_neurons < 1000) num_threads = 1;
 
                 synapse_thread_arg_t* targs = (synapse_thread_arg_t*)nimcp_calloc(
                     num_threads, sizeof(synapse_thread_arg_t));
