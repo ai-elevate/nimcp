@@ -1015,7 +1015,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     //       to run indefinitely, starving other subsystems. A hard deadline
     //       ensures bounded latency even in worst-case scenarios.
     // HOW:  Check elapsed time at key stages; return partial result if exceeded.
-    const uint64_t inference_deadline_us = nimcp_time_get_us() + 5000000ULL; /* 5 seconds */
+    const uint64_t inference_deadline_us = nimcp_time_get_us() + 30000000ULL; /* 30 seconds — 2.5M neurons need time */
 
     // ========================================================================
     // DEFENSIVE COPY: Protect against input pointer invalidation
