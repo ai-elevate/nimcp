@@ -1286,9 +1286,10 @@ def main():
     )
 
     # Kill stale daemon processes before starting.
-    # First check PID file, then pgrep as fallback.
-    # Wait up to 10 seconds for graceful shutdown (checkpoint may be in progress).
+    # Skip pgrep-based killing when not PID 1's child (i.e., under supervisord/systemd).
+    # pgrep finds sibling restarts and kills them, causing restart loops.
     my_pid = os.getpid()
+    skip_pgrep = (os.getppid() != 1)  # Not init → managed by supervisor
     stale_pids = set()
 
     # Check PID file first (most reliable)
@@ -1302,22 +1303,24 @@ def main():
             pass
 
     # Also check pgrep (catches processes without PID file)
-    try:
-        import subprocess
-        result = subprocess.run(
-            ["pgrep", "-f", "brain_daemon.py"],
-            capture_output=True, text=True)
-        for line in result.stdout.strip().split('\n'):
-            if not line:
-                continue
-            try:
-                pid = int(line.strip())
-                if pid != my_pid:
-                    stale_pids.add(pid)
-            except ValueError:
-                continue
-    except Exception:
-        pass
+    # Skip under supervisord — pgrep finds sibling restart attempts and kills them
+    if not skip_pgrep:
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["pgrep", "-f", "brain_daemon.py"],
+                capture_output=True, text=True)
+            for line in result.stdout.strip().split('\n'):
+                if not line:
+                    continue
+                try:
+                    pid = int(line.strip())
+                    if pid != my_pid:
+                        stale_pids.add(pid)
+                except ValueError:
+                    continue
+        except Exception:
+            pass
 
     # Kill all stale processes with patience (they may be saving checkpoints)
     for pid in stale_pids:
