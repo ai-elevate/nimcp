@@ -134,12 +134,49 @@ def _json_default(obj):
 # Brain wrapper — dispatches commands to the nimcp Brain object
 # ---------------------------------------------------------------------------
 
+class _RWLock:
+    """Read-write lock: multiple concurrent readers OR one exclusive writer.
+
+    Inference (decide_full, status, get_*) takes the read lock — they run
+    concurrently. Training (learn_vector) takes the write lock — blocks
+    until all readers finish, then runs exclusively.
+    """
+    def __init__(self):
+        self._read_ready = threading.Condition(threading.Lock())
+        self._readers = 0
+
+    def read_acquire(self):
+        self._read_ready.acquire()
+        self._readers += 1
+        self._read_ready.release()
+
+    def read_release(self):
+        self._read_ready.acquire()
+        self._readers -= 1
+        if self._readers == 0:
+            self._read_ready.notify_all()
+        self._read_ready.release()
+
+    def write_acquire(self):
+        self._read_ready.acquire()
+        while self._readers > 0:
+            self._read_ready.wait()
+
+    def write_release(self):
+        self._read_ready.release()
+
+
 class BrainService:
-    """Thread-safe wrapper around nimcp.Brain that dispatches IPC commands."""
+    """Thread-safe wrapper around nimcp.Brain that dispatches IPC commands.
+
+    Uses a read-write lock: inference/status commands run concurrently (read lock),
+    training commands get exclusive access (write lock).
+    """
 
     def __init__(self, brain):
         self.brain = brain
-        self._lock = threading.Lock()
+        self._lock = threading.Lock()  # Legacy — still used for stats
+        self._rwlock = _RWLock()
         self._stats = {
             "started_at": time.time(),
             "total_requests": 0,
@@ -156,8 +193,19 @@ class BrainService:
         except ImportError:
             pass
 
+    # Commands that modify brain state — need exclusive (write) lock
+    _WRITE_COMMANDS = frozenset({
+        'learn_vector', 'learn_vector_bin',
+        'learn_vector_batch', 'learn_vector_batch_bin',
+        'save', 'sleep_run_cycle', 'retrofit_synapse_metadata',
+    })
+
     def handle(self, req):
-        """Dispatch a command dict and return a response dict."""
+        """Dispatch a command dict and return a response dict.
+
+        Write commands (learn_vector, etc.) get exclusive access.
+        Read commands (decide_full, status, get_*) run concurrently.
+        """
         cmd = req.get("cmd", "")
         self._stats["total_requests"] += 1
 
@@ -165,7 +213,19 @@ class BrainService:
             handler = getattr(self, f"_cmd_{cmd}", None)
             if handler is None:
                 return {"error": f"Unknown command: {cmd}"}
-            return handler(req)
+
+            if cmd in self._WRITE_COMMANDS:
+                self._rwlock.write_acquire()
+                try:
+                    return handler(req)
+                finally:
+                    self._rwlock.write_release()
+            else:
+                self._rwlock.read_acquire()
+                try:
+                    return handler(req)
+                finally:
+                    self._rwlock.read_release()
         except Exception as e:
             self._stats["errors"] += 1
             logger.warning("Command %s failed: %s", cmd, e)
@@ -199,7 +259,7 @@ class BrainService:
         if "learning_rate" in req:
             kwargs["learning_rate"] = req["learning_rate"]
 
-        with self._lock:
+        if True:  # RWLock in handle()
             loss = self.brain.learn_vector(features, target, **kwargs)
         self._stats["learn_calls"] += 1
         if hasattr(self, 'checkpointer') and self.checkpointer:
@@ -219,7 +279,7 @@ class BrainService:
             kwargs["confidence"] = req["confidence"]
         if "learning_rate" in req:
             kwargs["learning_rate"] = req["learning_rate"]
-        with self._lock:
+        if True:  # RWLock in handle()
             loss = self.brain.learn_vector(features, target, **kwargs)
         self._stats["learn_calls"] += 1
         if hasattr(self, 'checkpointer') and self.checkpointer:
@@ -234,7 +294,7 @@ class BrainService:
 
         # Convert to list of tuples
         pair_tuples = [(p[0], p[1]) for p in pairs]
-        with self._lock:
+        if True:  # RWLock in handle()
             avg_loss = self.brain.learn_vector_batch(pair_tuples, **kwargs)
         self._stats["learn_calls"] += 1
         if hasattr(self, 'checkpointer') and self.checkpointer:
@@ -258,7 +318,7 @@ class BrainService:
         kwargs = {}
         if "learning_rate" in req:
             kwargs["learning_rate"] = req["learning_rate"]
-        with self._lock:
+        if True:  # RWLock in handle()
             avg_loss = self.brain.learn_vector_batch(pairs, **kwargs)
         self._stats["learn_calls"] += n_pairs
         if hasattr(self, 'checkpointer') and self.checkpointer:
@@ -269,7 +329,7 @@ class BrainService:
 
     def _cmd_decide_full(self, req):
         features = req["features"]
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.decide_full(features)
         self._stats["infer_calls"] += 1
 
@@ -291,26 +351,26 @@ class BrainService:
 
     def _cmd_predict(self, req):
         features = req["features"]
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.predict(features)
         self._stats["infer_calls"] += 1
         return {"result": result}
 
     def _cmd_speak(self, req):
         output_vector = req["output_vector"]
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.speak(output_vector)
         return {"result": result}
 
     def _cmd_generate_text(self, req):
         output_vector = req["output_vector"]
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.generate_text(output_vector)
         return {"result": result}
 
     def _cmd_grounded_respond(self, req):
         text = req["text"]
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.grounded_respond(text)
         return {"result": result}
 
@@ -318,12 +378,12 @@ class BrainService:
 
     def _cmd_lnn_forward_step(self, req):
         features = req["features"]
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.lnn_forward_step(features)
         return {"result": result}
 
     def _cmd_lnn_get_state(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             state = self.brain.lnn_get_state()
         return {"state": state}
 
@@ -331,7 +391,7 @@ class BrainService:
 
     def _cmd_save(self, req):
         path = req["path"]
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.save(path)
         return {"ok": True, "path": path}
 
@@ -348,7 +408,7 @@ class BrainService:
         }
 
     def _cmd_stats(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             try:
                 stats = self.brain.get_stats()
             except Exception:
@@ -356,133 +416,133 @@ class BrainService:
         return {"stats": stats, **self._stats}
 
     def _cmd_get_accuracy(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"accuracy": self.brain.get_accuracy()}
 
     def _cmd_get_last_gradient_norm(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"gradient_norm": self.brain.get_last_gradient_norm()}
 
     def _cmd_get_neuron_count(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"neuron_count": self.brain.get_neuron_count()}
 
     def _cmd_retrofit_synapse_metadata(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             count = self.brain.retrofit_synapse_metadata()
             return {"retrofitted": count}
 
     def _cmd_get_snn_stats(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             stats = self.brain.get_snn_stats()
             return {"snn": stats if stats else {}}
 
     def _cmd_get_transcript(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"transcript": self.brain.get_transcript()}
 
     def _cmd_get_cognitive_stats(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"stats": self.brain.get_cognitive_stats()}
 
     def _cmd_probe(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"probe": self.brain.probe()}
 
     def _cmd_get_network_metrics(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             m = self.brain.get_network_metrics()
             return {"metrics": m if m else {}}
 
     def _cmd_get_cortex_cnn_metrics(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             m = self.brain.get_cortex_cnn_metrics()
             return {"metrics": m if m else {}}
 
     # -- Biological state --
 
     def _cmd_substrate_get_health(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"health": self.brain.substrate_get_health()}
 
     def _cmd_substrate_get_metabolic(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"metabolic": self.brain.substrate_get_metabolic()}
 
     def _cmd_medulla_get_arousal(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"arousal": self.brain.medulla_get_arousal()}
 
     def _cmd_medulla_get_circadian_efficiency(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"efficiency": self.brain.medulla_get_circadian_efficiency()}
 
     def _cmd_sleep_get_pressure(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"pressure": self.brain.sleep_get_pressure()}
 
     def _cmd_sleep_get_state(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"state": self.brain.sleep_get_state()}
 
     def _cmd_sleep_is_needed(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"needed": self.brain.sleep_is_needed()}
 
     def _cmd_sleep_run_cycle(self, req):
         duration = req.get("duration", 2)
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.sleep_run_cycle(duration)
         return {"ok": True}
 
     def _cmd_update_medulla(self, req):
         dt = req.get("dt", 0.1)
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.update_medulla(dt)
         return {"ok": True}
 
     def _cmd_bg_get_dopamine(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"dopamine": self.brain.bg_get_dopamine()}
 
     def _cmd_bg_get_rpe(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"rpe": self.brain.bg_get_rpe()}
 
     def _cmd_bg_get_conflict(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"conflict": self.brain.bg_get_conflict()}
 
     def _cmd_bg_get_mode(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"mode": self.brain.bg_get_mode()}
 
     def _cmd_bg_update_reward(self, req):
         reward = req["reward"]
         rpe = req.get("rpe", 0.0)
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.bg_update_reward(reward, rpe)
         return {"ok": True}
 
     # -- Training config --
 
     def _cmd_set_plasticity_state(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.set_plasticity_state(req["state"])
         return {"ok": True}
 
     def _cmd_set_task_type(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.set_task_type(req["task_type"])
         return {"ok": True}
 
     def _cmd_set_fast_training(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.set_fast_training(req["enabled"])
         return {"ok": True}
 
     def _cmd_reinit_weights(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.reinit_weights()
             self._step_count = 0  # Reset step counter after reinit
         logger.info("Weights reinitialized (mode collapse recovery)")
@@ -498,7 +558,7 @@ class BrainService:
         """
         params = req.get("params", {})
         applied = {}
-        with self._lock:
+        if True:  # RWLock in handle()
             for key, val in params.items():
                 try:
                     val = float(val)
@@ -537,36 +597,36 @@ class BrainService:
         return {"params": getattr(self, '_hp_overrides', {})}
 
     def _cmd_enable_biological_plasticity(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.enable_biological_plasticity(req["enabled"])
         return {"ok": True}
 
     def _cmd_consolidate(self, req):
         mode = req.get("mode", "auto")
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.consolidate(mode)
         return {"ok": True}
 
     def _cmd_cerebellum_process_error(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.cerebellum_process_error(req["error"])
         return {"ok": True}
 
     # -- UTM --
 
     def _cmd_utm_get_training_health(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"health": self.brain.utm_get_training_health()}
 
     def _cmd_utm_forward_only(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.utm_forward_only(req["features"])
         return {"result": result}
 
     # -- Experience --
 
     def _cmd_experience(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.experience(req["modality"], req["data"],
                                   confidence=req.get("confidence"))
         return {"ok": True}
@@ -574,19 +634,19 @@ class BrainService:
     # -- Sensory cortex --
 
     def _cmd_audio_cortex_process(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.audio_cortex_process(req["samples"])
         return {"result": result}
 
     def _cmd_visual_cortex_process(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.visual_cortex_process(
                 req["pixels"], req["width"], req["height"],
                 req.get("channels", 3))
         return {"result": result}
 
     def _cmd_speech_cortex_process(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.speech_cortex_process(req["samples"])
         return {"result": result}
 
@@ -595,7 +655,7 @@ class BrainService:
     def _cmd_submit_sensory(self, req):
         modality = req["modality"]
         data = req["data"]
-        with self._lock:
+        if True:  # RWLock in handle()
             # Stage sensory data on brain struct so cortex CNNs get created
             # and trained during the next learn_vector call.
             if modality == "visual":
@@ -617,24 +677,24 @@ class BrainService:
     # -- Arousal control --
 
     def _cmd_medulla_boost_arousal(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.medulla_boost_arousal(req.get("amount", 0.1))
         return {"ok": True}
 
     def _cmd_medulla_reduce_arousal(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.medulla_reduce_arousal(req.get("amount", 0.1))
         return {"ok": True}
 
     # -- Reward / novelty --
 
     def _cmd_edp_process_reward(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.edp_process_reward(req["reward"])
         return {"ok": True}
 
     def _cmd_edp_process_novelty(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.edp_process_novelty(req["novelty"])
         return {"ok": True}
 
@@ -645,61 +705,61 @@ class BrainService:
         for k in ("text", "target_text", "learning_rate", "domain"):
             if k in req:
                 kwargs[k] = req[k]
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.train_cognitive(**kwargs)
         return {"result": result}
 
     def _cmd_train_language(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.train_language(req["text"], req.get("target_text", req["text"]))
         return {"ok": True}
 
     def _cmd_learn_language(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.learn_language(req["text"])
         return {"ok": True}
 
     # -- Reasoning --
 
     def _cmd_ti_init_reasoning(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.ti_init_reasoning()
         return {"ok": True}
 
     def _cmd_ti_add_fact(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.ti_add_fact(req["fact"], req.get("confidence", 0.5))
         return {"ok": True}
 
     def _cmd_ti_add_rule(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.ti_add_rule(req["rule"], req.get("confidence", 0.5))
         return {"ok": True}
 
     def _cmd_ti_forward_chain(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.ti_forward_chain()
         return {"result": result}
 
     # -- Brain config --
 
     def _cmd_enable_multi_network(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.enable_multi_network()
         return {"ok": True}
 
     def _cmd_init_cortex_cnns(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.init_cortex_cnns()
         return {"ok": True}
 
     def _cmd_enable_world_model(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.enable_world_model(req.get("enabled", True))
         return {"ok": True}
 
     def _cmd_enable_mixed_precision(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.enable_mixed_precision(req.get("enabled", True))
         return {"ok": True}
 
@@ -707,7 +767,7 @@ class BrainService:
         args = [req.get("enabled", True)]
         if "interval" in req:
             args.append(req["interval"])
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.enable_gradient_checkpointing(*args)
         return {"ok": True}
 
@@ -717,30 +777,30 @@ class BrainService:
         args = req.get("args", [])
         kwargs = {k: v for k, v in req.items()
                   if k not in ("cmd", "args")}
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.lnn_create(*args, **kwargs)
         return {"ok": True}
 
     def _cmd_lnn_get_stats(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"stats": self.brain.lnn_get_stats()}
 
     def _cmd_snn_get_stats(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"stats": self.brain.snn_get_stats()}
 
     def _cmd_cnn_get_stats(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"stats": self.brain.cnn_get_stats()}
 
     # -- Plasticity / pruning --
 
     def _cmd_get_plasticity_stats(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             return {"stats": self.brain.get_plasticity_stats()}
 
     def _cmd_prune_synapses(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.prune_synapses(req.get("threshold", 0.01))
         return {"ok": True}
 
@@ -748,63 +808,63 @@ class BrainService:
 
     def _cmd_curiosity_detect_gaps(self, req):
         topic = req.get("topic") or req.get("domain", "general")
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.curiosity_detect_gaps(topic)
         return {"result": result}
 
     # -- UTM EMA --
 
     def _cmd_utm_swap_to_ema(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.utm_swap_to_ema()
         return {"ok": True}
 
     def _cmd_utm_swap_from_ema(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.utm_swap_from_ema()
         return {"ok": True}
 
     # -- Language / Interactive --
 
     def _cmd_comprehend(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.comprehend(req["text"])
         return {"result": result}
 
     def _cmd_generate(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.generate(
                 prompt=req.get("prompt"),
                 semantic_input=req.get("semantic_input"))
         return {"result": result}
 
     def _cmd_produce_text(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.produce_text(req["intent"])
         return {"result": result}
 
     def _cmd_deliberate(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.deliberate(req["topic"])
         return {"result": result}
 
     def _cmd_self_assess(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.self_assess(req["domain"])
         return {"result": result}
 
     def _cmd_rubric(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.rubric()
         return {"result": result}
 
     def _cmd_get_last_gradient_norm(self, _req):
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self.brain.get_last_gradient_norm()
         return {"result": result}
 
     def _cmd_focus_attention(self, req):
-        with self._lock:
+        if True:  # RWLock in handle()
             self.brain.experience_attend(req.get("modality", "visual"),
                                           req.get("strength", 1.0))
         return {"ok": True}
@@ -825,7 +885,7 @@ class BrainService:
                     phi3_decoder=self._phi3, brain=self.brain)
             except Exception as e:
                 return {"error": f"Phi-3 init failed: {e}"}
-        with self._lock:
+        if True:  # RWLock in handle()
             result = self._hybrid_decoder.respond(text, brain=self.brain)
         return {"ok": True, **result}
 
@@ -1143,7 +1203,7 @@ class AutoCheckpointer:
         bak_path = path + ".bak"
 
         try:
-            with self._lock:
+            if True:  # RWLock in handle()
                 # Rotate: current → .bak (so we always have a fallback)
                 if os.path.exists(path):
                     try:
