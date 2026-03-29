@@ -1650,6 +1650,7 @@ struct brain_struct {
     struct nimcp_gpu_context_s* gpu_ctx;                              // GPU context for CUDA acceleration
     bool gpu_enabled;                                                 // GPU acceleration enabled for this brain
     uint64_t last_gpu_sync_us;                                        // Last GPU synchronization timestamp
+    struct gpu_plasticity_state_s* gpu_plasticity_state;             // GPU plasticity state (STDP/BCM/homeostatic)
 
     //=========================================================================
     // GPU Neural Substrate Context (Unified GPU Substrate Processing)

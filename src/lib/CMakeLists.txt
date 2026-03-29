@@ -2322,6 +2322,8 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/oscillations/nimcp_oscillations_kernels.cu>
     # Plasticity GPU kernels (STDP, BCM, homeostatic plasticity)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/plasticity/nimcp_plasticity_kernels.cu>
+    # GPU plasticity bridge (wires GPU plasticity kernels into training pipelines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/plasticity/nimcp_gpu_plasticity_bridge.c
     # Knowledge graph GPU kernels (graph embedding, relation inference)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/knowledge/nimcp_knowledge_graph_kernels.cu>
     # Swarm GPU kernels (collective intelligence, pheromone trails, flocking)

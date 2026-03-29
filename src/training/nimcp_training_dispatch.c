@@ -389,7 +389,7 @@ int training_dispatch_snn_step(
             if (brain->gpu_enabled && brain->gpu_ctx) {
                 updates = gpu_plasticity_stdp_apply(
                     (nimcp_gpu_context_t*)brain->gpu_ctx,
-                    brain->gpu_plasticity_state,
+                    NULL,  /* TODO: add gpu_plasticity_state to brain_t */
                     snn, ctx);
                 if (updates == 0) {
                     /* GPU returned 0 updates — may have failed, fall back to CPU */

@@ -34364,6 +34364,30 @@ __/gpu/perception/nimcp_visual_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/perception/nimcp_visual_kernels.cu.s
 .PHONY : __/gpu/perception/nimcp_visual_kernels.cu.s
 
+__/gpu/plasticity/nimcp_gpu_plasticity_bridge.o: __/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.o
+.PHONY : __/gpu/plasticity/nimcp_gpu_plasticity_bridge.o
+
+# target to build an object file
+__/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.o
+.PHONY : __/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.o
+
+__/gpu/plasticity/nimcp_gpu_plasticity_bridge.i: __/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.i
+.PHONY : __/gpu/plasticity/nimcp_gpu_plasticity_bridge.i
+
+# target to preprocess a source file
+__/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.i
+.PHONY : __/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.i
+
+__/gpu/plasticity/nimcp_gpu_plasticity_bridge.s: __/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.s
+.PHONY : __/gpu/plasticity/nimcp_gpu_plasticity_bridge.s
+
+# target to generate assembly for a file
+__/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.s
+.PHONY : __/gpu/plasticity/nimcp_gpu_plasticity_bridge.c.s
+
 __/gpu/plasticity/nimcp_plasticity_kernels.o: __/gpu/plasticity/nimcp_plasticity_kernels.cu.o
 .PHONY : __/gpu/plasticity/nimcp_plasticity_kernels.o
 
@@ -58330,6 +58354,9 @@ help:
 	@echo "... __/gpu/perception/nimcp_visual_kernels.o"
 	@echo "... __/gpu/perception/nimcp_visual_kernels.i"
 	@echo "... __/gpu/perception/nimcp_visual_kernels.s"
+	@echo "... __/gpu/plasticity/nimcp_gpu_plasticity_bridge.o"
+	@echo "... __/gpu/plasticity/nimcp_gpu_plasticity_bridge.i"
+	@echo "... __/gpu/plasticity/nimcp_gpu_plasticity_bridge.s"
 	@echo "... __/gpu/plasticity/nimcp_plasticity_kernels.o"
 	@echo "... __/gpu/plasticity/nimcp_plasticity_kernels.i"
 	@echo "... __/gpu/plasticity/nimcp_plasticity_kernels.s"

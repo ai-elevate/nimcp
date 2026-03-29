@@ -112,6 +112,9 @@
 #include "plasticity/nimcp_plasticity_coordinator.h"
 #include "plasticity/orchestrator/nimcp_neural_plasticity_coordinator.h"
 
+// GPU plasticity bridge for GPU-accelerated STDP/BCM/homeostatic
+#include "gpu/plasticity/nimcp_gpu_plasticity_bridge.h"
+
 #include "core/brain_regions/nimcp_brain_regions.h"
 
 // Thousand Brains integration (Hawkins cortical columns)
@@ -1099,9 +1102,19 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         if (brain->event_driven_plasticity && brain->enable_event_driven_plasticity) {
             edp_process_prediction_error(brain->event_driven_plasticity, loss, 0);
         }
-        /* Plasticity coordinator: interval-based STDP/BCM/homeostatic updates */
+        /* Plasticity coordinator: interval-based STDP/BCM/homeostatic updates.
+         * GPU path runs trace decay + BCM threshold + homeostatic rate on GPU
+         * then falls through to CPU coordinator for registered mechanism callbacks. */
         if (brain->plasticity_coordinator && brain->plasticity_coordinator_enabled) {
             uint64_t now_ms = nimcp_time_get_us() / 1000;
+            if (brain->gpu_enabled && brain->gpu_ctx && brain->gpu_plasticity_state) {
+                gpu_plasticity_coordinator_update(
+                    (nimcp_gpu_context_t*)brain->gpu_ctx,
+                    brain->gpu_plasticity_state,
+                    brain->plasticity_coordinator,
+                    now_ms, 1.0f);
+            }
+            /* CPU coordinator still runs for registered mechanism callbacks */
             plasticity_coordinator_update(brain->plasticity_coordinator, now_ms, 1.0f);
         }
         /* Structural plasticity: form new synapses for high-activity pairs */
@@ -3156,6 +3169,15 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     }
     if (brain->plasticity_coordinator && brain->plasticity_coordinator_enabled) {
         uint64_t now_ms = nimcp_time_get_us() / 1000;
+        /* GPU path: batch STDP trace decay + BCM threshold + homeostatic rate */
+        if (brain->gpu_enabled && brain->gpu_ctx && brain->gpu_plasticity_state) {
+            gpu_plasticity_coordinator_update(
+                (nimcp_gpu_context_t*)brain->gpu_ctx,
+                brain->gpu_plasticity_state,
+                brain->plasticity_coordinator,
+                now_ms, 1.0f);
+        }
+        /* CPU coordinator still runs for registered mechanism callbacks */
         plasticity_coordinator_update(brain->plasticity_coordinator, now_ms, 1.0f);
     }
     /* Structural plasticity: form new synapses for high-activity pairs */
@@ -3910,17 +3932,33 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                     }
                 }
 
-                // Update homeostatic controller (rate-based only, no weight access)
-                // WHY:  Extracting a flat weight array from sparse synapse storage
-                //        for 1.5M neurons is impractical. The controller iterates
-                //        controller->num_neurons (all neurons) but weights was only
-                //        allocated for ~100 neurons — causing massive buffer overrun.
-                //        Pass NULL for weights; controller skips synaptic scaling
-                //        weight modification but still tracks rate stability,
-                //        intrinsic plasticity, and metaplasticity.
                 const float DT_MS = 1.0F;
-                homeostatic_controller_update(brain->homeostatic, firing_rates, NULL,
-                                             0, DT_MS);
+
+                // GPU path: run rate update + scaling computation on GPU
+                if (brain->gpu_enabled && brain->gpu_ctx) {
+                    int gpu_rc = gpu_plasticity_homeostatic_update(
+                        (nimcp_gpu_context_t*)brain->gpu_ctx,
+                        brain->gpu_plasticity_state,
+                        firing_rates, homeo_cap,
+                        10.0f,  /* target_rate: 10 Hz default */
+                        DT_MS);
+                    if (gpu_rc != 0) {
+                        // GPU failed — fall back to CPU homeostatic controller
+                        homeostatic_controller_update(brain->homeostatic,
+                                                     firing_rates, NULL, 0, DT_MS);
+                    }
+                } else {
+                    // CPU path: rate-based only, no weight access
+                    // WHY:  Extracting a flat weight array from sparse synapse storage
+                    //        for 1.5M neurons is impractical. The controller iterates
+                    //        controller->num_neurons (all neurons) but weights was only
+                    //        allocated for ~100 neurons — causing massive buffer overrun.
+                    //        Pass NULL for weights; controller skips synaptic scaling
+                    //        weight modification but still tracks rate stability,
+                    //        intrinsic plasticity, and metaplasticity.
+                    homeostatic_controller_update(brain->homeostatic,
+                                                 firing_rates, NULL, 0, DT_MS);
+                }
 
                 nimcp_free(firing_rates);
             }

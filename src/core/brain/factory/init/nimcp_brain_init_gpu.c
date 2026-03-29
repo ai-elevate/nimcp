@@ -20,6 +20,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/execution/nimcp_gpu_detect.h"
+#include "gpu/plasticity/nimcp_gpu_plasticity_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -106,6 +107,21 @@ bool nimcp_brain_factory_init_gpu_subsystem(brain_t brain)
     brain->gpu_enabled = true;
     brain->last_gpu_sync_us = 0;
 
+    // Create GPU plasticity state for STDP/BCM/homeostatic kernels.
+    // Size based on brain dimensions. For large brains (2M neurons), the
+    // actual neuron count comes from the neural network which isn't
+    // created yet. Use num_inputs + num_outputs as a lower bound;
+    // the GPU tensors will be resized per-call if needed.
+    uint32_t plast_neurons = (brain->config.num_inputs + brain->config.num_outputs);
+    if (plast_neurons < 10000) plast_neurons = 10000;  /* Reasonable minimum */
+    brain->gpu_plasticity_state = gpu_plasticity_state_create(
+        brain->gpu_ctx, plast_neurons, 0);
+    if (brain->gpu_plasticity_state) {
+        LOG_INFO("GPU plasticity state created (%u neurons)", plast_neurons);
+    } else {
+        LOG_WARN("GPU plasticity state creation failed — CPU plasticity fallback");
+    }
+
     // Log GPU info
     char info_buffer[NIMCP_ERROR_BUFFER_SIZE];
     nimcp_gpu_context_get_info_string(brain->gpu_ctx, info_buffer, sizeof(info_buffer));
@@ -131,6 +147,12 @@ void nimcp_brain_factory_destroy_gpu_subsystem(brain_t brain)
 {
     if (!brain) {
         return;
+    }
+
+    // Destroy GPU plasticity state before GPU context
+    if (brain->gpu_plasticity_state) {
+        gpu_plasticity_state_destroy(brain->gpu_plasticity_state);
+        brain->gpu_plasticity_state = NULL;
     }
 
     if (brain->gpu_ctx) {
