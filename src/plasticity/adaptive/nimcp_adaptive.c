@@ -3676,24 +3676,41 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 sparse_synapse_storage_cleanup(h_pool, &neuron->outgoing);
                 sparse_synapse_storage_init(&neuron->outgoing);
 
-                for (uint32_t j = 0; j < num_synapses; j++) {
+                /* Bulk read all synapse data for this neuron in one fread.
+                 * Per-synapse: target_id(4) + weight(4) + plasticity(4) + trace(4)
+                 *            + strength(4) + meta_plasticity(4) + last_change(4)
+                 *            + last_active(8) + enable_stp(1) = 37 bytes base
+                 * STP synapses add sizeof(stp_state_t) but we handle those separately.
+                 * Reduces 9 fread calls per synapse to 1 fread per neuron. */
+                #define SYNAPSE_BASE_SIZE 37
+                uint8_t* bulk_buf = NULL;
+                size_t bulk_size = (size_t)num_synapses * SYNAPSE_BASE_SIZE;
+                if (num_synapses > 0) {
+                    bulk_buf = (uint8_t*)nimcp_malloc(bulk_size);
+                    if (!bulk_buf) { load_error = true; break; }
+                    if (fread(bulk_buf, 1, bulk_size, file) != bulk_size) {
+                        nimcp_free(bulk_buf);
+                        load_error = true; break;
+                    }
+                }
 
-                    // Read synapse data into temporaries
-                    uint32_t target_id; float weight, plasticity, trace, strength;
-                    float meta_plasticity, last_change; uint64_t last_active;
-                    bool enable_stp;
-                    if (fread(&target_id, sizeof(uint32_t), 1, file) != 1) { load_error = true; break; }
-                    if (fread(&weight, sizeof(float), 1, file) != 1) { load_error = true; break; }
-                    if (fread(&plasticity, sizeof(float), 1, file) != 1) { load_error = true; break; }
-                    if (fread(&trace, sizeof(float), 1, file) != 1) { load_error = true; break; }
-                    if (fread(&strength, sizeof(float), 1, file) != 1) { load_error = true; break; }
-                    if (fread(&meta_plasticity, sizeof(float), 1, file) != 1) { load_error = true; break; }
-                    if (fread(&last_change, sizeof(float), 1, file) != 1) { load_error = true; break; }
-                    if (fread(&last_active, sizeof(uint64_t), 1, file) != 1) { load_error = true; break; }
-                    if (fread(&enable_stp, sizeof(bool), 1, file) != 1) { load_error = true; break; }
+                for (uint32_t j = 0; j < num_synapses; j++) {
+                    uint8_t* p = bulk_buf + (size_t)j * SYNAPSE_BASE_SIZE;
+                    uint32_t target_id;  memcpy(&target_id, p, 4); p += 4;
+                    float weight;        memcpy(&weight, p, 4); p += 4;
+                    float plasticity;    memcpy(&plasticity, p, 4); p += 4;
+                    float trace;         memcpy(&trace, p, 4); p += 4;
+                    float strength;      memcpy(&strength, p, 4); p += 4;
+                    float meta_plasticity; memcpy(&meta_plasticity, p, 4); p += 4;
+                    float last_change;   memcpy(&last_change, p, 4); p += 4;
+                    uint64_t last_active; memcpy(&last_active, p, 8); p += 8;
+                    bool enable_stp;     memcpy(&enable_stp, p, 1);
+
                     stp_state_t stp_data = {0};
                     if (enable_stp) {
-                        if (fread(&stp_data, sizeof(stp_state_t), 1, file) != 1) { load_error = true; break; }
+                        if (fread(&stp_data, sizeof(stp_state_t), 1, file) != 1) {
+                            nimcp_free(bulk_buf); load_error = true; break;
+                        }
                     }
 
                     // Add synapse WITHOUT metadata — lazy allocation during training.
@@ -3738,6 +3755,10 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                         total_synapses_dropped++;
                     }
                 }
+                // Free bulk read buffer
+                if (bulk_buf) { nimcp_free(bulk_buf); bulk_buf = NULL; }
+                #undef SYNAPSE_BASE_SIZE
+
                 // C-2: If inner synapse loop broke due to read failure (EOF/truncation),
                 // stop loading further neurons but keep what we have — a truncated
                 // checkpoint with 36% of weights is far better than no weights at all.
