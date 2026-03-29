@@ -116,16 +116,40 @@ def chat():
         response_text = ''
 
         if output_vec and any(abs(x) > 1e-8 for x in output_vec[:100]):
+            # Method 1: Try Phi-3 LoRA decode
             try:
                 response_text = decode_brain_output(output_vec, message)
-                print(f'[CHAT] "{message[:50]}" → "{response_text[:80]}"', flush=True)
             except Exception as e:
-                response_text = f'[Decode error: {e}]'
-                print(f'[CHAT] Decode failed: {e}', flush=True)
-                traceback.print_exc()
+                print(f'[CHAT] Phi-3 decode failed: {e}', flush=True)
+
+            # Method 2: Try brain's native speak/generate_text
+            if not response_text:
+                try:
+                    gen = brain._send({'cmd': 'generate_text',
+                                       'semantic_input': output_vec[:1024]})
+                    response_text = gen.get('text', '')
+                except Exception:
+                    pass
+
+            # Method 3: Try vocabulary decode via speak
+            if not response_text:
+                try:
+                    speak = brain._send({'cmd': 'speak', 'features': features})
+                    response_text = speak.get('text', speak.get('decoded', ''))
+                except Exception:
+                    pass
+
+            # Method 4: Describe what the brain produced
+            if not response_text:
+                label = result.get('label', '')
+                conf = result.get('confidence', 0)
+                response_text = (f'[Neural pattern: "{label}" '
+                                 f'(confidence={conf:.2f}, norm={norm:.1f})]')
+
+            print(f'[CHAT] "{message[:50]}" → "{response_text[:80]}"', flush=True)
 
         if not response_text:
-            response_text = '[Athena is still learning — neural output produced but no words yet]'
+            response_text = '[No neural activity — brain may be loading]'
 
         return jsonify({
             'response': response_text,
