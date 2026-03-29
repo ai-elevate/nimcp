@@ -26,7 +26,7 @@ import struct
 import time
 
 SOCKET_PATH = "/var/run/athena/brain.sock"
-DEFAULT_TIMEOUT = 60.0
+DEFAULT_TIMEOUT = 300.0  # 5 min — 2.5M neurons + SNN BPTT can take 60-90s per step
 
 
 def is_daemon_running(socket_path=SOCKET_PATH):
