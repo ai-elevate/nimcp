@@ -28,8 +28,8 @@
 
 /* Forward declarations to avoid circular includes */
 struct nimcp_gpu_context_s;
-struct snn_network;
-struct snn_training_ctx;
+struct snn_network_s;
+struct snn_training_ctx_s;
 
 /* Opaque handle for persistent GPU plasticity state (avoids per-call allocs) */
 typedef struct gpu_plasticity_state_s gpu_plasticity_state_t;
@@ -76,8 +76,8 @@ NIMCP_EXPORT void gpu_plasticity_state_destroy(gpu_plasticity_state_t* state);
 NIMCP_EXPORT uint32_t gpu_plasticity_stdp_apply(
     struct nimcp_gpu_context_s* gpu_ctx,
     gpu_plasticity_state_t* state,
-    struct snn_network* snn,
-    struct snn_training_ctx* ctx
+    struct snn_network_s* snn,
+    struct snn_training_ctx_s* ctx
 );
 
 /**

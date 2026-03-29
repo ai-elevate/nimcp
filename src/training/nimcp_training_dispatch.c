@@ -384,20 +384,7 @@ int training_dispatch_snn_step(
 
     switch (mode) {
         case SNN_TRAIN_STDP:
-            /* GPU-accelerated STDP: extract population spikes, run GPU kernels,
-             * write back updated weights. Falls back to CPU if GPU unavailable. */
-            if (brain->gpu_enabled && brain->gpu_ctx) {
-                updates = gpu_plasticity_stdp_apply(
-                    (nimcp_gpu_context_t*)brain->gpu_ctx,
-                    NULL,  /* TODO: add gpu_plasticity_state to brain_t */
-                    snn, ctx);
-                if (updates == 0) {
-                    /* GPU returned 0 updates — may have failed, fall back to CPU */
-                    updates = snn_stdp_apply_network(ctx, snn, 0.0F);
-                }
-            } else {
-                updates = snn_stdp_apply_network(ctx, snn, 0.0F);
-            }
+            updates = snn_stdp_apply_network(ctx, snn, 0.0F);
             break;
 
         case SNN_TRAIN_R_STDP:
