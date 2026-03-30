@@ -1285,26 +1285,12 @@ def main():
         handlers=log_handlers,
     )
 
-    # Kill stale daemon processes before starting.
-    # Skip pgrep-based killing when not PID 1's child (i.e., under supervisord/systemd).
-    # pgrep finds sibling restarts and kills them, causing restart loops.
+    # Stale PID cleanup disabled — supervisord/systemd manages process lifecycle.
+    # The pgrep-based approach killed sibling restarts, causing FATAL loops.
     my_pid = os.getpid()
-    skip_pgrep = (os.getppid() != 1)  # Not init → managed by supervisor
     stale_pids = set()
 
-    # Check PID file first (most reliable)
-    if os.path.exists(PID_FILE):
-        try:
-            with open(PID_FILE) as f:
-                old_pid = int(f.read().strip())
-            if old_pid != my_pid:
-                stale_pids.add(old_pid)
-        except (ValueError, OSError):
-            pass
-
-    # Also check pgrep (catches processes without PID file)
-    # Skip under supervisord — pgrep finds sibling restart attempts and kills them
-    if not skip_pgrep:
+    if False:  # Disabled — was causing restart loops under process managers
         try:
             import subprocess
             result = subprocess.run(
