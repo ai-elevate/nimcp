@@ -9284,6 +9284,30 @@ __/cognitive/math/nimcp_topology.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_topology.c.s
 .PHONY : __/cognitive/math/nimcp_topology.c.s
 
+__/cognitive/math/nimcp_zeta_functions.o: __/cognitive/math/nimcp_zeta_functions.c.o
+.PHONY : __/cognitive/math/nimcp_zeta_functions.o
+
+# target to build an object file
+__/cognitive/math/nimcp_zeta_functions.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_zeta_functions.c.o
+.PHONY : __/cognitive/math/nimcp_zeta_functions.c.o
+
+__/cognitive/math/nimcp_zeta_functions.i: __/cognitive/math/nimcp_zeta_functions.c.i
+.PHONY : __/cognitive/math/nimcp_zeta_functions.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_zeta_functions.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_zeta_functions.c.i
+.PHONY : __/cognitive/math/nimcp_zeta_functions.c.i
+
+__/cognitive/math/nimcp_zeta_functions.s: __/cognitive/math/nimcp_zeta_functions.c.s
+.PHONY : __/cognitive/math/nimcp_zeta_functions.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_zeta_functions.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_zeta_functions.c.s
+.PHONY : __/cognitive/math/nimcp_zeta_functions.c.s
+
 __/cognitive/memory/core/nimcp_collective_memory.o: __/cognitive/memory/core/nimcp_collective_memory.c.o
 .PHONY : __/cognitive/memory/core/nimcp_collective_memory.o
 
@@ -15643,6 +15667,30 @@ __/cognitive/physics/nimcp_qed.s: __/cognitive/physics/nimcp_qed.c.s
 __/cognitive/physics/nimcp_qed.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_qed.c.s
 .PHONY : __/cognitive/physics/nimcp_qed.c.s
+
+__/cognitive/physics/nimcp_qft.o: __/cognitive/physics/nimcp_qft.c.o
+.PHONY : __/cognitive/physics/nimcp_qft.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_qft.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_qft.c.o
+.PHONY : __/cognitive/physics/nimcp_qft.c.o
+
+__/cognitive/physics/nimcp_qft.i: __/cognitive/physics/nimcp_qft.c.i
+.PHONY : __/cognitive/physics/nimcp_qft.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_qft.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_qft.c.i
+.PHONY : __/cognitive/physics/nimcp_qft.c.i
+
+__/cognitive/physics/nimcp_qft.s: __/cognitive/physics/nimcp_qft.c.s
+.PHONY : __/cognitive/physics/nimcp_qft.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_qft.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_qft.c.s
+.PHONY : __/cognitive/physics/nimcp_qft.c.s
 
 __/cognitive/physics/nimcp_relativistic_physics.o: __/cognitive/physics/nimcp_relativistic_physics.c.o
 .PHONY : __/cognitive/physics/nimcp_relativistic_physics.o
@@ -56491,6 +56539,9 @@ help:
 	@echo "... __/cognitive/math/nimcp_topology.o"
 	@echo "... __/cognitive/math/nimcp_topology.i"
 	@echo "... __/cognitive/math/nimcp_topology.s"
+	@echo "... __/cognitive/math/nimcp_zeta_functions.o"
+	@echo "... __/cognitive/math/nimcp_zeta_functions.i"
+	@echo "... __/cognitive/math/nimcp_zeta_functions.s"
 	@echo "... __/cognitive/memory/core/nimcp_collective_memory.o"
 	@echo "... __/cognitive/memory/core/nimcp_collective_memory.i"
 	@echo "... __/cognitive/memory/core/nimcp_collective_memory.s"
@@ -57286,6 +57337,9 @@ help:
 	@echo "... __/cognitive/physics/nimcp_qed.o"
 	@echo "... __/cognitive/physics/nimcp_qed.i"
 	@echo "... __/cognitive/physics/nimcp_qed.s"
+	@echo "... __/cognitive/physics/nimcp_qft.o"
+	@echo "... __/cognitive/physics/nimcp_qft.i"
+	@echo "... __/cognitive/physics/nimcp_qft.s"
 	@echo "... __/cognitive/physics/nimcp_relativistic_physics.o"
 	@echo "... __/cognitive/physics/nimcp_relativistic_physics.i"
 	@echo "... __/cognitive/physics/nimcp_relativistic_physics.s"
