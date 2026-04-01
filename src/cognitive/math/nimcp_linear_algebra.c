@@ -351,14 +351,15 @@ svd_result_t* matrix_svd(const matrix_t* a) {
 
     /* U = A * V * Sigma^{-1} */
     matrix_t* v = matrix_transpose(s->Vt);
-    s->U = matrix_create(a->rows, a->rows);
+    int U_cols = (a->rows < a->cols) ? a->rows : a->cols;
+    s->U = matrix_create(a->rows, U_cols);
     if (v && s->U) {
         matrix_t* av = matrix_multiply(a, v);
         if (av) {
-            for (int j = 0; j < n_sigma && j < a->rows; j++) {
+            for (int j = 0; j < n_sigma && j < U_cols; j++) {
                 if (s->sigma[j] > LINALG_EPSILON) {
                     for (int i = 0; i < a->rows; i++)
-                        s->U->data[i * a->rows + j] = av->data[i * av->cols + j] / s->sigma[j];
+                        s->U->data[i * U_cols + j] = av->data[i * av->cols + j] / s->sigma[j];
                 }
             }
             matrix_destroy(av);

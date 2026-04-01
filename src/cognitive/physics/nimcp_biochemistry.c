@@ -259,8 +259,9 @@ static float compute_enzyme_rate(const biochemistry_sim_t* sim, const biochem_en
             if (sim->config.enable_allosteric) {
                 /* Allosteric: sigmoidal inhibition */
                 float n_hill = enz->hill_coefficient > 0.0f ? enz->hill_coefficient : 2.0f;
-                float In = powf(I, n_hill);
-                float Kin = powf(enz->Ki, n_hill);
+                float I_safe = I > 0.0f ? I : 0.0f;  /* prevent powf(-ve, frac) = NaN */
+                float In = powf(I_safe, n_hill);
+                float Kin = powf(enz->Ki > 0.0f ? enz->Ki : 1e-6f, n_hill);
                 float allosteric_factor = Kin / (Kin + In);
                 rate *= allosteric_factor;
             }

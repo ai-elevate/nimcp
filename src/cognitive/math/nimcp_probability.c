@@ -153,7 +153,8 @@ double prob_random_normal(probability_engine_t* eng, double mu, double sigma) {
     /* Box-Muller transform */
     double u1 = prob_random_uniform(eng);
     double u2 = prob_random_uniform(eng);
-    if (u1 < 1e-300) u1 = 1e-300;
+    if (u1 <= 1e-15) u1 = 1e-15;
+    if (u1 >= 1.0 - 1e-15) u1 = 1.0 - 1e-15;  /* log(1)=0 → sqrt(0)=0 */
     double z = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
     return mu + sigma * z;
 }

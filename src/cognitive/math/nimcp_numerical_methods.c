@@ -119,8 +119,10 @@ root_result_t num_brent(math_func_t f, void* params,
 
     double c = a, fc = fa, d = b - a, e = d;
     if (fabs(fc) < fabs(fb)) {
-        a = b; b = c; c = a;
-        fa = fb; fb = fc; fc = fa;
+        double ta = a, tb = b, tc = c;
+        double tfa = fa, tfb = fb, tfc = fc;
+        a = tb; b = tc; c = ta;
+        fa = tfb; fb = tfc; fc = tfa;
     }
 
     for (int i = 0; i < max_iter; i++) {

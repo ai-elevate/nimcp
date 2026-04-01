@@ -165,9 +165,10 @@ static zeta_complex_t zeta_em(zeta_engine_t* engine, zeta_complex_t s) {
     zeta_complex_t tail = zc_div(N_1ms, s_minus_1);
     sum = zc_add(sum, tail);
 
-    /* Endpoint: N^(-s)/2 */
+    /* Endpoint correction: sum includes n=N fully, but EM uses f(N)/2.
+     * Subtract half of the N-th term to correct: -N^(-s)/2 */
     zeta_complex_t endpoint = zc_pow_n((double)N, s);
-    sum = zc_add(sum, zc(endpoint.re * 0.5, endpoint.im * 0.5));
+    sum = zc_sub(sum, zc(endpoint.re * 0.5, endpoint.im * 0.5));
 
     return sum;
 }

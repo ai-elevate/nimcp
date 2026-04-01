@@ -987,7 +987,8 @@ static void update_ph(chemistry_sim_t* sim)
         float kw = 1e-14f;
         float h_from_base = kw / oh_minus;
         /* If base dominates, H+ is lowered */
-        if (sim->state.concentrations[naoh_id] > sim->state.concentrations[hcl_id != UINT32_MAX ? hcl_id : 0]) {
+        float acid_conc = (hcl_id < sim->num_substances) ? sim->state.concentrations[hcl_id] : 0.0f;
+        if (sim->state.concentrations[naoh_id] > acid_conc) {
             h_plus = h_from_base;
         }
     }
