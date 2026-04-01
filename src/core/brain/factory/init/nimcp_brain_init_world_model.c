@@ -55,6 +55,12 @@ struct imagination_engine;
 int imagination_engine_set_world_model(struct imagination_engine* engine,
                                        struct omni_world_model* wm);
 
+/* Accessor functions for parietal integration (avoids parietal including brain_internal.h) */
+struct intuitive_physics_engine* nimcp_brain_get_intuitive_physics(struct brain_struct* b) { return b ? b->intuitive_physics : NULL; }
+struct entity_tracker*           nimcp_brain_get_entity_tracker(struct brain_struct* b) { return b ? b->entity_tracker : NULL; }
+struct scene_graph*              nimcp_brain_get_scene_graph(struct brain_struct* b) { return b ? b->scene_graph : NULL; }
+struct physics_prior*            nimcp_brain_get_physics_prior(struct brain_struct* b) { return b ? b->physics_prior : NULL; }
+
 #define LOG_MODULE "BRAIN_INIT_WORLD_MODEL"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"

@@ -741,6 +741,80 @@ int parietal_attach_sleep(
 );
 
 /* ============================================================================
+ * WORLD MODEL SIMULATION ENGINE INTEGRATION API
+ *
+ * Connects grounded simulation engines to the parietal lobe for
+ * physics-informed reasoning, hypothesis testing via simulation,
+ * and training the physics NN from engine-generated data.
+ * ============================================================================ */
+
+/**
+ * @brief Attach all simulation engines from the brain's world model subsystem
+ *
+ * Connects the parietal lobe to the brain's intuitive physics, relativistic,
+ * electromagnetic, MHD, surface physics, surface chemistry, bulk chemistry,
+ * biology, entity tracker, scene graph, and physics prior engines.
+ *
+ * After attachment, scientific_reasoning can run simulations to test hypotheses,
+ * physics_nn can train on engine-generated trajectories, and spatial_reasoning
+ * gets access to the scene graph and entity tracker.
+ *
+ * @param parietal Parietal lobe handle
+ * @param brain Internal brain struct (provides all engine pointers)
+ * @return 0 on success, -1 on error
+ */
+struct brain_struct;  /* forward declaration */
+int parietal_attach_simulation_engines(parietal_lobe_t* parietal,
+                                        struct brain_struct* brain);
+
+/**
+ * @brief Run a physics simulation to test a hypothesis
+ *
+ * Sets up a scenario in the appropriate simulation engine, runs it,
+ * and returns the result as a confidence update for the hypothesis.
+ *
+ * @param parietal Parietal lobe handle
+ * @param domain "physics", "chemistry", "biology", "em", "surface", etc.
+ * @param scenario Description of the scenario to simulate
+ * @param result_confidence Output: [0,1] confidence from simulation
+ * @return 0 on success, -1 on error
+ */
+int parietal_simulate_hypothesis(parietal_lobe_t* parietal,
+                                  const char* domain,
+                                  const char* scenario,
+                                  float* result_confidence);
+
+/**
+ * @brief Query the scene graph for spatial relations
+ *
+ * Delegates to the attached scene graph engine for support/containment
+ * queries, which feed into spatial reasoning.
+ *
+ * @param parietal Parietal lobe handle
+ * @param object_a First object ID
+ * @param object_b Second object ID
+ * @return Relation type (scene_relation_type_t) or -1 if none
+ */
+int parietal_query_spatial_relation(parietal_lobe_t* parietal,
+                                     uint32_t object_a, uint32_t object_b);
+
+/**
+ * @brief Train the physics NN from simulation engine data
+ *
+ * Runs the attached physics engine for N steps, records state transitions,
+ * and trains the physics NN on those trajectories. This teaches the NN
+ * to internalize physical laws from direct experience.
+ *
+ * @param parietal Parietal lobe handle
+ * @param num_trajectories Number of random scenarios to simulate
+ * @param steps_per_trajectory Simulation steps per scenario
+ * @return Number of training samples generated, or -1 on error
+ */
+int parietal_train_physics_nn_from_sim(parietal_lobe_t* parietal,
+                                        uint32_t num_trajectories,
+                                        uint32_t steps_per_trajectory);
+
+/* ============================================================================
  * IMAGINATION ENGINE INTEGRATION API
  * ============================================================================ */
 

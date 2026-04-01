@@ -385,6 +385,15 @@ bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain) {
     /* 9. Brain Regions - Cortical architecture */
     connect_parietal_to_brain_regions(parietal, brain);
 
+    /* 10. World Model Simulation Engines — physics/chemistry/biology grounding */
+    if (brain->intuitive_physics_enabled) {
+        extern int parietal_attach_simulation_engines(parietal_lobe_t* pl,
+                                                       struct brain_struct* b);
+        if (parietal_attach_simulation_engines(parietal, brain) == 0) {
+            fprintf(stderr, "[PARIETAL] Connected to world model simulation engines\n");
+        }
+    }
+
     fprintf(stderr, "[PARIETAL] Parietal lobe initialization complete\n");
     fprintf(stderr, "[PARIETAL]   Weber fraction: %.3f\n", config.number_sense.weber_fraction);
     fprintf(stderr, "[PARIETAL]   Subitizing limit: %u\n", config.number_sense.subitizing_limit);
