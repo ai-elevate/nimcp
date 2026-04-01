@@ -653,6 +653,9 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_optimization.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_information_theory.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_cross_engine_coupling.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/test_conservation_laws.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/test_known_formulas.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/test_brain_simulation_pipeline.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/rebuild_cache.dir

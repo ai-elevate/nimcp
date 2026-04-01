@@ -7325,6 +7325,45 @@ test_cross_engine_coupling/fast:
 .PHONY : test_cross_engine_coupling/fast
 
 #=============================================================================
+# Target rules for targets named test_conservation_laws
+
+# Build rule for target.
+test_conservation_laws: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_conservation_laws
+.PHONY : test_conservation_laws
+
+# fast build rule for target.
+test_conservation_laws/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_conservation_laws.dir/build.make test/CMakeFiles/test_conservation_laws.dir/build
+.PHONY : test_conservation_laws/fast
+
+#=============================================================================
+# Target rules for targets named test_known_formulas
+
+# Build rule for target.
+test_known_formulas: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_known_formulas
+.PHONY : test_known_formulas
+
+# fast build rule for target.
+test_known_formulas/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_known_formulas.dir/build.make test/CMakeFiles/test_known_formulas.dir/build
+.PHONY : test_known_formulas/fast
+
+#=============================================================================
+# Target rules for targets named test_brain_simulation_pipeline
+
+# Build rule for target.
+test_brain_simulation_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_brain_simulation_pipeline
+.PHONY : test_brain_simulation_pipeline
+
+# fast build rule for target.
+test_brain_simulation_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_brain_simulation_pipeline.dir/build.make test/CMakeFiles/test_brain_simulation_pipeline.dir/build
+.PHONY : test_brain_simulation_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_brain_pipeline
 
 # Build rule for target.
@@ -45587,6 +45626,7 @@ help:
 	@echo "... test_biology_sim"
 	@echo "... test_brain_quantum_reasoning"
 	@echo "... test_brain_reasoning_api"
+	@echo "... test_brain_simulation_pipeline"
 	@echo "... test_brain_swarm_immune_integration"
 	@echo "... test_calcium_dynamics"
 	@echo "... test_calcium_integration"
@@ -45596,6 +45636,7 @@ help:
 	@echo "... test_collective_workspace"
 	@echo "... test_combinatorics"
 	@echo "... test_complexity"
+	@echo "... test_conservation_laws"
 	@echo "... test_cortical_attention_gain"
 	@echo "... test_cortical_column"
 	@echo "... test_cortical_columns_e2e_all"
@@ -45634,6 +45675,7 @@ help:
 	@echo "... test_kg_wiring_integration"
 	@echo "... test_knot_theory"
 	@echo "... test_knowledge_base_interface"
+	@echo "... test_known_formulas"
 	@echo "... test_language_comprehension_e2e"
 	@echo "... test_language_e2e_all"
 	@echo "... test_language_lateralization_e2e"

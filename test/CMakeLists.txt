@@ -3106,6 +3106,13 @@ add_sim_test(test_information_theory    unit/math/test_information_theory.cpp)
 # Integration tests (cross-engine coupling)
 add_sim_test(test_cross_engine_coupling integration/world_model/test_cross_engine_coupling.cpp)
 
+# Regression tests (conservation laws, known formulas — must NEVER fail)
+add_sim_test(test_conservation_laws     regression/test_conservation_laws.cpp)
+add_sim_test(test_known_formulas        regression/test_known_formulas.cpp)
+
+# End-to-end tests (full simulation pipeline)
+add_sim_test(test_brain_simulation_pipeline e2e/test_brain_simulation_pipeline.cpp)
+
 endif() # GTest_FOUND
 
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)
