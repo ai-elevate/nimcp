@@ -617,6 +617,149 @@ unit_api_test_brain_api_returns/fast:
 .PHONY : unit_api_test_brain_api_returns/fast
 
 #=============================================================================
+# Target rules for targets named unit_biology_simulation_test_biology_sim
+
+# Build rule for target.
+unit_biology_simulation_test_biology_sim: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_biology_simulation_test_biology_sim
+.PHONY : unit_biology_simulation_test_biology_sim
+
+# fast build rule for target.
+unit_biology_simulation_test_biology_sim/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_biology_simulation_test_biology_sim.dir/build.make test/CMakeFiles/unit_biology_simulation_test_biology_sim.dir/build
+.PHONY : unit_biology_simulation_test_biology_sim/fast
+
+#=============================================================================
+# Target rules for targets named unit_biology_simulation_test_cell_biology
+
+# Build rule for target.
+unit_biology_simulation_test_cell_biology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_biology_simulation_test_cell_biology
+.PHONY : unit_biology_simulation_test_cell_biology
+
+# fast build rule for target.
+unit_biology_simulation_test_cell_biology/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_biology_simulation_test_cell_biology.dir/build.make test/CMakeFiles/unit_biology_simulation_test_cell_biology.dir/build
+.PHONY : unit_biology_simulation_test_cell_biology/fast
+
+#=============================================================================
+# Target rules for targets named unit_biology_simulation_test_ecology
+
+# Build rule for target.
+unit_biology_simulation_test_ecology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_biology_simulation_test_ecology
+.PHONY : unit_biology_simulation_test_ecology
+
+# fast build rule for target.
+unit_biology_simulation_test_ecology/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_biology_simulation_test_ecology.dir/build.make test/CMakeFiles/unit_biology_simulation_test_ecology.dir/build
+.PHONY : unit_biology_simulation_test_ecology/fast
+
+#=============================================================================
+# Target rules for targets named unit_biology_simulation_test_immunology
+
+# Build rule for target.
+unit_biology_simulation_test_immunology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_biology_simulation_test_immunology
+.PHONY : unit_biology_simulation_test_immunology
+
+# fast build rule for target.
+unit_biology_simulation_test_immunology/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_biology_simulation_test_immunology.dir/build.make test/CMakeFiles/unit_biology_simulation_test_immunology.dir/build
+.PHONY : unit_biology_simulation_test_immunology/fast
+
+#=============================================================================
+# Target rules for targets named unit_biology_simulation_test_physiology
+
+# Build rule for target.
+unit_biology_simulation_test_physiology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_biology_simulation_test_physiology
+.PHONY : unit_biology_simulation_test_physiology
+
+# fast build rule for target.
+unit_biology_simulation_test_physiology/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_biology_simulation_test_physiology.dir/build.make test/CMakeFiles/unit_biology_simulation_test_physiology.dir/build
+.PHONY : unit_biology_simulation_test_physiology/fast
+
+#=============================================================================
+# Target rules for targets named unit_chemistry_simulation_test_analytical_chemistry
+
+# Build rule for target.
+unit_chemistry_simulation_test_analytical_chemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_chemistry_simulation_test_analytical_chemistry
+.PHONY : unit_chemistry_simulation_test_analytical_chemistry
+
+# fast build rule for target.
+unit_chemistry_simulation_test_analytical_chemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_chemistry_simulation_test_analytical_chemistry.dir/build.make test/CMakeFiles/unit_chemistry_simulation_test_analytical_chemistry.dir/build
+.PHONY : unit_chemistry_simulation_test_analytical_chemistry/fast
+
+#=============================================================================
+# Target rules for targets named unit_chemistry_simulation_test_biochemistry
+
+# Build rule for target.
+unit_chemistry_simulation_test_biochemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_chemistry_simulation_test_biochemistry
+.PHONY : unit_chemistry_simulation_test_biochemistry
+
+# fast build rule for target.
+unit_chemistry_simulation_test_biochemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_chemistry_simulation_test_biochemistry.dir/build.make test/CMakeFiles/unit_chemistry_simulation_test_biochemistry.dir/build
+.PHONY : unit_chemistry_simulation_test_biochemistry/fast
+
+#=============================================================================
+# Target rules for targets named unit_chemistry_simulation_test_chemistry_sim
+
+# Build rule for target.
+unit_chemistry_simulation_test_chemistry_sim: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_chemistry_simulation_test_chemistry_sim
+.PHONY : unit_chemistry_simulation_test_chemistry_sim
+
+# fast build rule for target.
+unit_chemistry_simulation_test_chemistry_sim/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_chemistry_simulation_test_chemistry_sim.dir/build.make test/CMakeFiles/unit_chemistry_simulation_test_chemistry_sim.dir/build
+.PHONY : unit_chemistry_simulation_test_chemistry_sim/fast
+
+#=============================================================================
+# Target rules for targets named unit_chemistry_simulation_test_organic_chemistry
+
+# Build rule for target.
+unit_chemistry_simulation_test_organic_chemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_chemistry_simulation_test_organic_chemistry
+.PHONY : unit_chemistry_simulation_test_organic_chemistry
+
+# fast build rule for target.
+unit_chemistry_simulation_test_organic_chemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_chemistry_simulation_test_organic_chemistry.dir/build.make test/CMakeFiles/unit_chemistry_simulation_test_organic_chemistry.dir/build
+.PHONY : unit_chemistry_simulation_test_organic_chemistry/fast
+
+#=============================================================================
+# Target rules for targets named unit_chemistry_simulation_test_physical_chemistry
+
+# Build rule for target.
+unit_chemistry_simulation_test_physical_chemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_chemistry_simulation_test_physical_chemistry
+.PHONY : unit_chemistry_simulation_test_physical_chemistry
+
+# fast build rule for target.
+unit_chemistry_simulation_test_physical_chemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_chemistry_simulation_test_physical_chemistry.dir/build.make test/CMakeFiles/unit_chemistry_simulation_test_physical_chemistry.dir/build
+.PHONY : unit_chemistry_simulation_test_physical_chemistry/fast
+
+#=============================================================================
+# Target rules for targets named unit_chemistry_simulation_test_surface_chemistry
+
+# Build rule for target.
+unit_chemistry_simulation_test_surface_chemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_chemistry_simulation_test_surface_chemistry
+.PHONY : unit_chemistry_simulation_test_surface_chemistry
+
+# fast build rule for target.
+unit_chemistry_simulation_test_surface_chemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_chemistry_simulation_test_surface_chemistry.dir/build.make test/CMakeFiles/unit_chemistry_simulation_test_surface_chemistry.dir/build
+.PHONY : unit_chemistry_simulation_test_surface_chemistry/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_analysis_test_analysis_fep_bridge
 
 # Build rule for target.
@@ -2840,6 +2983,175 @@ unit_lib_cognitive_test_hierarchical/fast:
 .PHONY : unit_lib_cognitive_test_hierarchical/fast
 
 #=============================================================================
+# Target rules for targets named unit_math_test_combinatorics
+
+# Build rule for target.
+unit_math_test_combinatorics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_combinatorics
+.PHONY : unit_math_test_combinatorics
+
+# fast build rule for target.
+unit_math_test_combinatorics/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_combinatorics.dir/build.make test/CMakeFiles/unit_math_test_combinatorics.dir/build
+.PHONY : unit_math_test_combinatorics/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_complexity
+
+# Build rule for target.
+unit_math_test_complexity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_complexity
+.PHONY : unit_math_test_complexity
+
+# fast build rule for target.
+unit_math_test_complexity/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_complexity.dir/build.make test/CMakeFiles/unit_math_test_complexity.dir/build
+.PHONY : unit_math_test_complexity/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_graph_theory
+
+# Build rule for target.
+unit_math_test_graph_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_graph_theory
+.PHONY : unit_math_test_graph_theory
+
+# fast build rule for target.
+unit_math_test_graph_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_graph_theory.dir/build.make test/CMakeFiles/unit_math_test_graph_theory.dir/build
+.PHONY : unit_math_test_graph_theory/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_information_theory
+
+# Build rule for target.
+unit_math_test_information_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_information_theory
+.PHONY : unit_math_test_information_theory
+
+# fast build rule for target.
+unit_math_test_information_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_information_theory.dir/build.make test/CMakeFiles/unit_math_test_information_theory.dir/build
+.PHONY : unit_math_test_information_theory/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_knot_theory
+
+# Build rule for target.
+unit_math_test_knot_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_knot_theory
+.PHONY : unit_math_test_knot_theory
+
+# fast build rule for target.
+unit_math_test_knot_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_knot_theory.dir/build.make test/CMakeFiles/unit_math_test_knot_theory.dir/build
+.PHONY : unit_math_test_knot_theory/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_linear_algebra
+
+# Build rule for target.
+unit_math_test_linear_algebra: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_linear_algebra
+.PHONY : unit_math_test_linear_algebra
+
+# fast build rule for target.
+unit_math_test_linear_algebra/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_linear_algebra.dir/build.make test/CMakeFiles/unit_math_test_linear_algebra.dir/build
+.PHONY : unit_math_test_linear_algebra/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_logic
+
+# Build rule for target.
+unit_math_test_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_logic
+.PHONY : unit_math_test_logic
+
+# fast build rule for target.
+unit_math_test_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_logic.dir/build.make test/CMakeFiles/unit_math_test_logic.dir/build
+.PHONY : unit_math_test_logic/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_number_theory
+
+# Build rule for target.
+unit_math_test_number_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_number_theory
+.PHONY : unit_math_test_number_theory
+
+# fast build rule for target.
+unit_math_test_number_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_number_theory.dir/build.make test/CMakeFiles/unit_math_test_number_theory.dir/build
+.PHONY : unit_math_test_number_theory/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_numerical_methods
+
+# Build rule for target.
+unit_math_test_numerical_methods: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_numerical_methods
+.PHONY : unit_math_test_numerical_methods
+
+# fast build rule for target.
+unit_math_test_numerical_methods/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_numerical_methods.dir/build.make test/CMakeFiles/unit_math_test_numerical_methods.dir/build
+.PHONY : unit_math_test_numerical_methods/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_optimization
+
+# Build rule for target.
+unit_math_test_optimization: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_optimization
+.PHONY : unit_math_test_optimization
+
+# fast build rule for target.
+unit_math_test_optimization/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_optimization.dir/build.make test/CMakeFiles/unit_math_test_optimization.dir/build
+.PHONY : unit_math_test_optimization/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_probability
+
+# Build rule for target.
+unit_math_test_probability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_probability
+.PHONY : unit_math_test_probability
+
+# fast build rule for target.
+unit_math_test_probability/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_probability.dir/build.make test/CMakeFiles/unit_math_test_probability.dir/build
+.PHONY : unit_math_test_probability/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_topology
+
+# Build rule for target.
+unit_math_test_topology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_topology
+.PHONY : unit_math_test_topology
+
+# fast build rule for target.
+unit_math_test_topology/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_topology.dir/build.make test/CMakeFiles/unit_math_test_topology.dir/build
+.PHONY : unit_math_test_topology/fast
+
+#=============================================================================
+# Target rules for targets named unit_math_test_zeta
+
+# Build rule for target.
+unit_math_test_zeta: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_zeta
+.PHONY : unit_math_test_zeta
+
+# fast build rule for target.
+unit_math_test_zeta/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_zeta.dir/build.make test/CMakeFiles/unit_math_test_zeta.dir/build
+.PHONY : unit_math_test_zeta/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_cognitive_test_attention_adapter
 
 # Build rule for target.
@@ -3072,6 +3384,123 @@ unit_persistence_test_brain_kg_snapshot: cmake_check_build_system
 unit_persistence_test_brain_kg_snapshot/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_persistence_test_brain_kg_snapshot.dir/build.make test/CMakeFiles/unit_persistence_test_brain_kg_snapshot.dir/build
 .PHONY : unit_persistence_test_brain_kg_snapshot/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_simulation_test_astrophysics
+
+# Build rule for target.
+unit_physics_simulation_test_astrophysics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_simulation_test_astrophysics
+.PHONY : unit_physics_simulation_test_astrophysics
+
+# fast build rule for target.
+unit_physics_simulation_test_astrophysics/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_simulation_test_astrophysics.dir/build.make test/CMakeFiles/unit_physics_simulation_test_astrophysics.dir/build
+.PHONY : unit_physics_simulation_test_astrophysics/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_simulation_test_electromagnetic
+
+# Build rule for target.
+unit_physics_simulation_test_electromagnetic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_simulation_test_electromagnetic
+.PHONY : unit_physics_simulation_test_electromagnetic
+
+# fast build rule for target.
+unit_physics_simulation_test_electromagnetic/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_simulation_test_electromagnetic.dir/build.make test/CMakeFiles/unit_physics_simulation_test_electromagnetic.dir/build
+.PHONY : unit_physics_simulation_test_electromagnetic/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_simulation_test_intuitive_physics
+
+# Build rule for target.
+unit_physics_simulation_test_intuitive_physics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_simulation_test_intuitive_physics
+.PHONY : unit_physics_simulation_test_intuitive_physics
+
+# fast build rule for target.
+unit_physics_simulation_test_intuitive_physics/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_simulation_test_intuitive_physics.dir/build.make test/CMakeFiles/unit_physics_simulation_test_intuitive_physics.dir/build
+.PHONY : unit_physics_simulation_test_intuitive_physics/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_simulation_test_nuclear
+
+# Build rule for target.
+unit_physics_simulation_test_nuclear: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_simulation_test_nuclear
+.PHONY : unit_physics_simulation_test_nuclear
+
+# fast build rule for target.
+unit_physics_simulation_test_nuclear/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_simulation_test_nuclear.dir/build.make test/CMakeFiles/unit_physics_simulation_test_nuclear.dir/build
+.PHONY : unit_physics_simulation_test_nuclear/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_simulation_test_qed
+
+# Build rule for target.
+unit_physics_simulation_test_qed: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_simulation_test_qed
+.PHONY : unit_physics_simulation_test_qed
+
+# fast build rule for target.
+unit_physics_simulation_test_qed/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_simulation_test_qed.dir/build.make test/CMakeFiles/unit_physics_simulation_test_qed.dir/build
+.PHONY : unit_physics_simulation_test_qed/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_simulation_test_qft
+
+# Build rule for target.
+unit_physics_simulation_test_qft: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_simulation_test_qft
+.PHONY : unit_physics_simulation_test_qft
+
+# fast build rule for target.
+unit_physics_simulation_test_qft/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_simulation_test_qft.dir/build.make test/CMakeFiles/unit_physics_simulation_test_qft.dir/build
+.PHONY : unit_physics_simulation_test_qft/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_simulation_test_relativistic
+
+# Build rule for target.
+unit_physics_simulation_test_relativistic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_simulation_test_relativistic
+.PHONY : unit_physics_simulation_test_relativistic
+
+# fast build rule for target.
+unit_physics_simulation_test_relativistic/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_simulation_test_relativistic.dir/build.make test/CMakeFiles/unit_physics_simulation_test_relativistic.dir/build
+.PHONY : unit_physics_simulation_test_relativistic/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_simulation_test_surface_physics
+
+# Build rule for target.
+unit_physics_simulation_test_surface_physics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_simulation_test_surface_physics
+.PHONY : unit_physics_simulation_test_surface_physics
+
+# fast build rule for target.
+unit_physics_simulation_test_surface_physics/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_simulation_test_surface_physics.dir/build.make test/CMakeFiles/unit_physics_simulation_test_surface_physics.dir/build
+.PHONY : unit_physics_simulation_test_surface_physics/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_simulation_test_world_simulator
+
+# Build rule for target.
+unit_physics_simulation_test_world_simulator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_simulation_test_world_simulator
+.PHONY : unit_physics_simulation_test_world_simulator
+
+# fast build rule for target.
+unit_physics_simulation_test_world_simulator/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_simulation_test_world_simulator.dir/build.make test/CMakeFiles/unit_physics_simulation_test_world_simulator.dir/build
+.PHONY : unit_physics_simulation_test_world_simulator/fast
 
 #=============================================================================
 # Target rules for targets named unit_plasticity_adaptive_test_adaptive
@@ -5258,6 +5687,19 @@ integration_utils_test_utils_integration/fast:
 .PHONY : integration_utils_test_utils_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_world_model_test_cross_engine_coupling
+
+# Build rule for target.
+integration_world_model_test_cross_engine_coupling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_world_model_test_cross_engine_coupling
+.PHONY : integration_world_model_test_cross_engine_coupling
+
+# fast build rule for target.
+integration_world_model_test_cross_engine_coupling/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_world_model_test_cross_engine_coupling.dir/build.make test/CMakeFiles/integration_world_model_test_cross_engine_coupling.dir/build
+.PHONY : integration_world_model_test_cross_engine_coupling/fast
+
+#=============================================================================
 # Target rules for targets named regression_algorithms_test_community_detection_regression
 
 # Build rule for target.
@@ -6439,6 +6881,448 @@ unit_core_synapse_compute_bugs: cmake_check_build_system
 unit_core_synapse_compute_bugs/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_synapse_compute_bugs.dir/build.make test/CMakeFiles/unit_core_synapse_compute_bugs.dir/build
 .PHONY : unit_core_synapse_compute_bugs/fast
+
+#=============================================================================
+# Target rules for targets named test_intuitive_physics
+
+# Build rule for target.
+test_intuitive_physics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_intuitive_physics
+.PHONY : test_intuitive_physics
+
+# fast build rule for target.
+test_intuitive_physics/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_intuitive_physics.dir/build.make test/CMakeFiles/test_intuitive_physics.dir/build
+.PHONY : test_intuitive_physics/fast
+
+#=============================================================================
+# Target rules for targets named test_relativistic
+
+# Build rule for target.
+test_relativistic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_relativistic
+.PHONY : test_relativistic
+
+# fast build rule for target.
+test_relativistic/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_relativistic.dir/build.make test/CMakeFiles/test_relativistic.dir/build
+.PHONY : test_relativistic/fast
+
+#=============================================================================
+# Target rules for targets named test_electromagnetic
+
+# Build rule for target.
+test_electromagnetic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_electromagnetic
+.PHONY : test_electromagnetic
+
+# fast build rule for target.
+test_electromagnetic/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_electromagnetic.dir/build.make test/CMakeFiles/test_electromagnetic.dir/build
+.PHONY : test_electromagnetic/fast
+
+#=============================================================================
+# Target rules for targets named test_qed
+
+# Build rule for target.
+test_qed: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_qed
+.PHONY : test_qed
+
+# fast build rule for target.
+test_qed/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_qed.dir/build.make test/CMakeFiles/test_qed.dir/build
+.PHONY : test_qed/fast
+
+#=============================================================================
+# Target rules for targets named test_qft
+
+# Build rule for target.
+test_qft: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_qft
+.PHONY : test_qft
+
+# fast build rule for target.
+test_qft/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_qft.dir/build.make test/CMakeFiles/test_qft.dir/build
+.PHONY : test_qft/fast
+
+#=============================================================================
+# Target rules for targets named test_astrophysics
+
+# Build rule for target.
+test_astrophysics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_astrophysics
+.PHONY : test_astrophysics
+
+# fast build rule for target.
+test_astrophysics/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_astrophysics.dir/build.make test/CMakeFiles/test_astrophysics.dir/build
+.PHONY : test_astrophysics/fast
+
+#=============================================================================
+# Target rules for targets named test_nuclear
+
+# Build rule for target.
+test_nuclear: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_nuclear
+.PHONY : test_nuclear
+
+# fast build rule for target.
+test_nuclear/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_nuclear.dir/build.make test/CMakeFiles/test_nuclear.dir/build
+.PHONY : test_nuclear/fast
+
+#=============================================================================
+# Target rules for targets named test_surface_physics
+
+# Build rule for target.
+test_surface_physics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_surface_physics
+.PHONY : test_surface_physics
+
+# fast build rule for target.
+test_surface_physics/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_surface_physics.dir/build.make test/CMakeFiles/test_surface_physics.dir/build
+.PHONY : test_surface_physics/fast
+
+#=============================================================================
+# Target rules for targets named test_world_simulator
+
+# Build rule for target.
+test_world_simulator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_world_simulator
+.PHONY : test_world_simulator
+
+# fast build rule for target.
+test_world_simulator/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_world_simulator.dir/build.make test/CMakeFiles/test_world_simulator.dir/build
+.PHONY : test_world_simulator/fast
+
+#=============================================================================
+# Target rules for targets named test_chemistry_sim
+
+# Build rule for target.
+test_chemistry_sim: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_chemistry_sim
+.PHONY : test_chemistry_sim
+
+# fast build rule for target.
+test_chemistry_sim/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_chemistry_sim.dir/build.make test/CMakeFiles/test_chemistry_sim.dir/build
+.PHONY : test_chemistry_sim/fast
+
+#=============================================================================
+# Target rules for targets named test_surface_chemistry
+
+# Build rule for target.
+test_surface_chemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_surface_chemistry
+.PHONY : test_surface_chemistry
+
+# fast build rule for target.
+test_surface_chemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_surface_chemistry.dir/build.make test/CMakeFiles/test_surface_chemistry.dir/build
+.PHONY : test_surface_chemistry/fast
+
+#=============================================================================
+# Target rules for targets named test_biochemistry
+
+# Build rule for target.
+test_biochemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_biochemistry
+.PHONY : test_biochemistry
+
+# fast build rule for target.
+test_biochemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_biochemistry.dir/build.make test/CMakeFiles/test_biochemistry.dir/build
+.PHONY : test_biochemistry/fast
+
+#=============================================================================
+# Target rules for targets named test_physical_chemistry
+
+# Build rule for target.
+test_physical_chemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_physical_chemistry
+.PHONY : test_physical_chemistry
+
+# fast build rule for target.
+test_physical_chemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_physical_chemistry.dir/build.make test/CMakeFiles/test_physical_chemistry.dir/build
+.PHONY : test_physical_chemistry/fast
+
+#=============================================================================
+# Target rules for targets named test_organic_chemistry
+
+# Build rule for target.
+test_organic_chemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_organic_chemistry
+.PHONY : test_organic_chemistry
+
+# fast build rule for target.
+test_organic_chemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_organic_chemistry.dir/build.make test/CMakeFiles/test_organic_chemistry.dir/build
+.PHONY : test_organic_chemistry/fast
+
+#=============================================================================
+# Target rules for targets named test_analytical_chemistry
+
+# Build rule for target.
+test_analytical_chemistry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_analytical_chemistry
+.PHONY : test_analytical_chemistry
+
+# fast build rule for target.
+test_analytical_chemistry/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_analytical_chemistry.dir/build.make test/CMakeFiles/test_analytical_chemistry.dir/build
+.PHONY : test_analytical_chemistry/fast
+
+#=============================================================================
+# Target rules for targets named test_biology_sim
+
+# Build rule for target.
+test_biology_sim: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_biology_sim
+.PHONY : test_biology_sim
+
+# fast build rule for target.
+test_biology_sim/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_biology_sim.dir/build.make test/CMakeFiles/test_biology_sim.dir/build
+.PHONY : test_biology_sim/fast
+
+#=============================================================================
+# Target rules for targets named test_cell_biology
+
+# Build rule for target.
+test_cell_biology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cell_biology
+.PHONY : test_cell_biology
+
+# fast build rule for target.
+test_cell_biology/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_cell_biology.dir/build.make test/CMakeFiles/test_cell_biology.dir/build
+.PHONY : test_cell_biology/fast
+
+#=============================================================================
+# Target rules for targets named test_immunology
+
+# Build rule for target.
+test_immunology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_immunology
+.PHONY : test_immunology
+
+# fast build rule for target.
+test_immunology/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_immunology.dir/build.make test/CMakeFiles/test_immunology.dir/build
+.PHONY : test_immunology/fast
+
+#=============================================================================
+# Target rules for targets named test_ecology
+
+# Build rule for target.
+test_ecology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_ecology
+.PHONY : test_ecology
+
+# fast build rule for target.
+test_ecology/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_ecology.dir/build.make test/CMakeFiles/test_ecology.dir/build
+.PHONY : test_ecology/fast
+
+#=============================================================================
+# Target rules for targets named test_physiology
+
+# Build rule for target.
+test_physiology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_physiology
+.PHONY : test_physiology
+
+# fast build rule for target.
+test_physiology/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_physiology.dir/build.make test/CMakeFiles/test_physiology.dir/build
+.PHONY : test_physiology/fast
+
+#=============================================================================
+# Target rules for targets named test_number_theory
+
+# Build rule for target.
+test_number_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_number_theory
+.PHONY : test_number_theory
+
+# fast build rule for target.
+test_number_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_number_theory.dir/build.make test/CMakeFiles/test_number_theory.dir/build
+.PHONY : test_number_theory/fast
+
+#=============================================================================
+# Target rules for targets named test_linear_algebra_eng
+
+# Build rule for target.
+test_linear_algebra_eng: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_linear_algebra_eng
+.PHONY : test_linear_algebra_eng
+
+# fast build rule for target.
+test_linear_algebra_eng/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_linear_algebra_eng.dir/build.make test/CMakeFiles/test_linear_algebra_eng.dir/build
+.PHONY : test_linear_algebra_eng/fast
+
+#=============================================================================
+# Target rules for targets named test_probability
+
+# Build rule for target.
+test_probability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_probability
+.PHONY : test_probability
+
+# fast build rule for target.
+test_probability/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_probability.dir/build.make test/CMakeFiles/test_probability.dir/build
+.PHONY : test_probability/fast
+
+#=============================================================================
+# Target rules for targets named test_numerical_methods
+
+# Build rule for target.
+test_numerical_methods: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_numerical_methods
+.PHONY : test_numerical_methods
+
+# fast build rule for target.
+test_numerical_methods/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_numerical_methods.dir/build.make test/CMakeFiles/test_numerical_methods.dir/build
+.PHONY : test_numerical_methods/fast
+
+#=============================================================================
+# Target rules for targets named test_graph_theory
+
+# Build rule for target.
+test_graph_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_graph_theory
+.PHONY : test_graph_theory
+
+# fast build rule for target.
+test_graph_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_graph_theory.dir/build.make test/CMakeFiles/test_graph_theory.dir/build
+.PHONY : test_graph_theory/fast
+
+#=============================================================================
+# Target rules for targets named test_combinatorics
+
+# Build rule for target.
+test_combinatorics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_combinatorics
+.PHONY : test_combinatorics
+
+# fast build rule for target.
+test_combinatorics/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_combinatorics.dir/build.make test/CMakeFiles/test_combinatorics.dir/build
+.PHONY : test_combinatorics/fast
+
+#=============================================================================
+# Target rules for targets named test_topology
+
+# Build rule for target.
+test_topology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_topology
+.PHONY : test_topology
+
+# fast build rule for target.
+test_topology/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_topology.dir/build.make test/CMakeFiles/test_topology.dir/build
+.PHONY : test_topology/fast
+
+#=============================================================================
+# Target rules for targets named test_logic
+
+# Build rule for target.
+test_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_logic
+.PHONY : test_logic
+
+# fast build rule for target.
+test_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_logic.dir/build.make test/CMakeFiles/test_logic.dir/build
+.PHONY : test_logic/fast
+
+#=============================================================================
+# Target rules for targets named test_zeta
+
+# Build rule for target.
+test_zeta: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_zeta
+.PHONY : test_zeta
+
+# fast build rule for target.
+test_zeta/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_zeta.dir/build.make test/CMakeFiles/test_zeta.dir/build
+.PHONY : test_zeta/fast
+
+#=============================================================================
+# Target rules for targets named test_knot_theory
+
+# Build rule for target.
+test_knot_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_knot_theory
+.PHONY : test_knot_theory
+
+# fast build rule for target.
+test_knot_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_knot_theory.dir/build.make test/CMakeFiles/test_knot_theory.dir/build
+.PHONY : test_knot_theory/fast
+
+#=============================================================================
+# Target rules for targets named test_complexity
+
+# Build rule for target.
+test_complexity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_complexity
+.PHONY : test_complexity
+
+# fast build rule for target.
+test_complexity/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_complexity.dir/build.make test/CMakeFiles/test_complexity.dir/build
+.PHONY : test_complexity/fast
+
+#=============================================================================
+# Target rules for targets named test_optimization
+
+# Build rule for target.
+test_optimization: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_optimization
+.PHONY : test_optimization
+
+# fast build rule for target.
+test_optimization/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_optimization.dir/build.make test/CMakeFiles/test_optimization.dir/build
+.PHONY : test_optimization/fast
+
+#=============================================================================
+# Target rules for targets named test_information_theory
+
+# Build rule for target.
+test_information_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_information_theory
+.PHONY : test_information_theory
+
+# fast build rule for target.
+test_information_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_information_theory.dir/build.make test/CMakeFiles/test_information_theory.dir/build
+.PHONY : test_information_theory/fast
+
+#=============================================================================
+# Target rules for targets named test_cross_engine_coupling
+
+# Build rule for target.
+test_cross_engine_coupling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cross_engine_coupling
+.PHONY : test_cross_engine_coupling
+
+# fast build rule for target.
+test_cross_engine_coupling/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_cross_engine_coupling.dir/build.make test/CMakeFiles/test_cross_engine_coupling.dir/build
+.PHONY : test_cross_engine_coupling/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_brain_pipeline
@@ -44109,6 +44993,7 @@ help:
 	@echo "... integration_wernicke_full"
 	@echo "... integration_wernicke_test"
 	@echo "... integration_white_matter_thalamic"
+	@echo "... integration_world_model_test_cross_engine_coupling"
 	@echo "... izhikevich_demo"
 	@echo "... mesh_bootstrap_demo"
 	@echo "... multimodal_integration_demo"
@@ -44689,6 +45574,8 @@ help:
 	@echo "... speech_cortex_demo"
 	@echo "... test_accelerator"
 	@echo "... test_adaptive_bioasync"
+	@echo "... test_analytical_chemistry"
+	@echo "... test_astrophysics"
 	@echo "... test_attention_bioasync"
 	@echo "... test_autobiographical_fep_bridge_integration"
 	@echo "... test_backprop_activation_reconstruction"
@@ -44696,13 +45583,19 @@ help:
 	@echo "... test_backward_chaining"
 	@echo "... test_basal_ganglia_pipeline_e2e"
 	@echo "... test_basal_ganglia_thalamus_e2e"
+	@echo "... test_biochemistry"
+	@echo "... test_biology_sim"
 	@echo "... test_brain_quantum_reasoning"
 	@echo "... test_brain_reasoning_api"
 	@echo "... test_brain_swarm_immune_integration"
 	@echo "... test_calcium_dynamics"
 	@echo "... test_calcium_integration"
 	@echo "... test_calcium_regression"
+	@echo "... test_cell_biology"
+	@echo "... test_chemistry_sim"
 	@echo "... test_collective_workspace"
+	@echo "... test_combinatorics"
+	@echo "... test_complexity"
 	@echo "... test_cortical_attention_gain"
 	@echo "... test_cortical_column"
 	@echo "... test_cortical_columns_e2e_all"
@@ -44717,21 +45610,29 @@ help:
 	@echo "... test_cortical_predictive_coding"
 	@echo "... test_cortical_sparse_coding"
 	@echo "... test_cortical_temporal"
+	@echo "... test_cross_engine_coupling"
 	@echo "... test_dendritic_bioasync"
+	@echo "... test_ecology"
+	@echo "... test_electromagnetic"
 	@echo "... test_ema_isfinite_guards"
 	@echo "... test_emotional_contagion"
 	@echo "... test_end_to_end_reasoning"
 	@echo "... test_forward_chaining"
 	@echo "... test_gossip_beliefs"
+	@echo "... test_graph_theory"
 	@echo "... test_hemispheric_e2e_all"
 	@echo "... test_homeostasis_immune_integration"
 	@echo "... test_immune_threat_logic"
+	@echo "... test_immunology"
+	@echo "... test_information_theory"
 	@echo "... test_injury_recovery_e2e"
+	@echo "... test_intuitive_physics"
 	@echo "... test_kg_analytics"
 	@echo "... test_kg_disaster_recovery"
 	@echo "... test_kg_schema"
 	@echo "... test_kg_temporal"
 	@echo "... test_kg_wiring_integration"
+	@echo "... test_knot_theory"
 	@echo "... test_knowledge_base_interface"
 	@echo "... test_language_comprehension_e2e"
 	@echo "... test_language_e2e_all"
@@ -44744,6 +45645,8 @@ help:
 	@echo "... test_lgss_e2e"
 	@echo "... test_lgss_integration"
 	@echo "... test_lgss_unit"
+	@echo "... test_linear_algebra_eng"
+	@echo "... test_logic"
 	@echo "... test_medulla_bbb_integration"
 	@echo "... test_medulla_cerebellum_bridge_integration"
 	@echo "... test_medulla_cerebellum_bridge_regression"
@@ -44811,11 +45714,18 @@ help:
 	@echo "... test_nlp_mode_transitions"
 	@echo "... test_nlp_neural_sync"
 	@echo "... test_nlp_peer_communication"
+	@echo "... test_nuclear"
+	@echo "... test_number_theory"
+	@echo "... test_numerical_methods"
 	@echo "... test_omni_bridges_integration"
 	@echo "... test_omni_regression"
+	@echo "... test_optimization"
+	@echo "... test_organic_chemistry"
 	@echo "... test_perception_portia_swarm_integration"
 	@echo "... test_phase3"
 	@echo "... test_phase4"
+	@echo "... test_physical_chemistry"
+	@echo "... test_physiology"
 	@echo "... test_pink_weights"
 	@echo "... test_plasticity_bioasync_integration"
 	@echo "... test_plasticity_bridge_integration"
@@ -44846,11 +45756,14 @@ help:
 	@echo "... test_portia_tier_integration"
 	@echo "... test_portia_tier_switch"
 	@echo "... test_predictive_bioasync"
+	@echo "... test_probability"
 	@echo "... test_proof_finding_speed"
 	@echo "... test_protocol_control_message"
 	@echo "... test_protocol_event_packet"
 	@echo "... test_protocol_feature_subscription"
 	@echo "... test_protocol_integration"
+	@echo "... test_qed"
+	@echo "... test_qft"
 	@echo "... test_quantum_consensus"
 	@echo "... test_quantum_reasoning"
 	@echo "... test_quorum_immune_logic_integration"
@@ -44872,6 +45785,7 @@ help:
 	@echo "... test_reasoning_memory"
 	@echo "... test_reasoning_performance"
 	@echo "... test_reasoning_unit_integration"
+	@echo "... test_relativistic"
 	@echo "... test_retrosplenial"
 	@echo "... test_rule_learning_accuracy"
 	@echo "... test_sensory_hierarchy_e2e"
@@ -44925,6 +45839,8 @@ help:
 	@echo "... test_spike_ring_buffer"
 	@echo "... test_split_brain_e2e"
 	@echo "... test_struct_consistency"
+	@echo "... test_surface_chemistry"
+	@echo "... test_surface_physics"
 	@echo "... test_swarm_brain"
 	@echo "... test_swarm_brain_fep_bridge"
 	@echo "... test_swarm_brain_integration"
@@ -44983,9 +45899,12 @@ help:
 	@echo "... test_thalamocortical_loop_e2e"
 	@echo "... test_thousand_brains"
 	@echo "... test_tier_optimization"
+	@echo "... test_topology"
 	@echo "... test_unification_engine"
 	@echo "... test_visual_processing_e2e"
 	@echo "... test_working_memory_reasoning"
+	@echo "... test_world_simulator"
+	@echo "... test_zeta"
 	@echo "... unit_active_neuron_tracking"
 	@echo "... unit_api_test_api_brain_cow"
 	@echo "... unit_api_test_api_brain_lifecycle"
@@ -45028,6 +45947,11 @@ help:
 	@echo "... unit_biology_exception_handling"
 	@echo "... unit_biology_neurogenesis_test_neurogenesis"
 	@echo "... unit_biology_neurovascular_test_neurovascular"
+	@echo "... unit_biology_simulation_test_biology_sim"
+	@echo "... unit_biology_simulation_test_cell_biology"
+	@echo "... unit_biology_simulation_test_ecology"
+	@echo "... unit_biology_simulation_test_immunology"
+	@echo "... unit_biology_simulation_test_physiology"
 	@echo "... unit_brain_integration"
 	@echo "... unit_brain_population_coding"
 	@echo "... unit_brain_regions_kg_wiring_amygdala"
@@ -45042,6 +45966,12 @@ help:
 	@echo "... unit_chemistry_ph_test_buffer_systems"
 	@echo "... unit_chemistry_ph_test_ph_dynamics"
 	@echo "... unit_chemistry_ph_test_proton_pumps"
+	@echo "... unit_chemistry_simulation_test_analytical_chemistry"
+	@echo "... unit_chemistry_simulation_test_biochemistry"
+	@echo "... unit_chemistry_simulation_test_chemistry_sim"
+	@echo "... unit_chemistry_simulation_test_organic_chemistry"
+	@echo "... unit_chemistry_simulation_test_physical_chemistry"
+	@echo "... unit_chemistry_simulation_test_surface_chemistry"
 	@echo "... unit_cognitive_analysis_test_analysis_fep_bridge"
 	@echo "... unit_cognitive_analysis_test_network_analysis"
 	@echo "... unit_cognitive_analysis_test_network_analyzer_integration"
@@ -45834,6 +46764,19 @@ help:
 	@echo "... unit_lnn_test_lnn_layer"
 	@echo "... unit_lnn_test_lnn_neuron"
 	@echo "... unit_lnn_test_lnn_sleep_bridge"
+	@echo "... unit_math_test_combinatorics"
+	@echo "... unit_math_test_complexity"
+	@echo "... unit_math_test_graph_theory"
+	@echo "... unit_math_test_information_theory"
+	@echo "... unit_math_test_knot_theory"
+	@echo "... unit_math_test_linear_algebra"
+	@echo "... unit_math_test_logic"
+	@echo "... unit_math_test_number_theory"
+	@echo "... unit_math_test_numerical_methods"
+	@echo "... unit_math_test_optimization"
+	@echo "... unit_math_test_probability"
+	@echo "... unit_math_test_topology"
+	@echo "... unit_math_test_zeta"
 	@echo "... unit_mathematical_genius"
 	@echo "... unit_memory_test_memory_oodb"
 	@echo "... unit_memory_test_memory_store"
@@ -45989,6 +46932,15 @@ help:
 	@echo "... unit_physics_geometry_test_information_geometry"
 	@echo "... unit_physics_geometry_test_information_geometry_bridge"
 	@echo "... unit_physics_graphs_test_graph_theory_bridge"
+	@echo "... unit_physics_simulation_test_astrophysics"
+	@echo "... unit_physics_simulation_test_electromagnetic"
+	@echo "... unit_physics_simulation_test_intuitive_physics"
+	@echo "... unit_physics_simulation_test_nuclear"
+	@echo "... unit_physics_simulation_test_qed"
+	@echo "... unit_physics_simulation_test_qft"
+	@echo "... unit_physics_simulation_test_relativistic"
+	@echo "... unit_physics_simulation_test_surface_physics"
+	@echo "... unit_physics_simulation_test_world_simulator"
 	@echo "... unit_physics_thermodynamics_test_thermodynamics"
 	@echo "... unit_physics_thermodynamics_test_thermodynamics_tls_fix"
 	@echo "... unit_plasticity_adaptive_test_adaptive"

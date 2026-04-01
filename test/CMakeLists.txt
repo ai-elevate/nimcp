@@ -3047,4 +3047,63 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/edge")
     add_subdirectory(unit/edge)
 endif()
 
+# ==========================================================================
+# Simulation Engine Tests (physics, chemistry, biology, math, integration)
+# ==========================================================================
+
+set(SIM_TEST_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR})
+
+macro(add_sim_test TEST_NAME TEST_SRC)
+    add_executable(${TEST_NAME} ${TEST_SRC})
+    target_include_directories(${TEST_NAME} PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${SIM_TEST_INCLUDE})
+    target_link_libraries(${TEST_NAME} nimcp m)
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+endmacro()
+
+# Physics simulation engine tests
+add_sim_test(test_intuitive_physics     unit/physics/simulation/test_intuitive_physics.c)
+add_sim_test(test_relativistic          unit/physics/simulation/test_relativistic.c)
+add_sim_test(test_electromagnetic       unit/physics/simulation/test_electromagnetic.c)
+add_sim_test(test_qed                   unit/physics/simulation/test_qed.c)
+add_sim_test(test_qft                   unit/physics/simulation/test_qft.c)
+add_sim_test(test_astrophysics          unit/physics/simulation/test_astrophysics.c)
+add_sim_test(test_nuclear               unit/physics/simulation/test_nuclear.c)
+add_sim_test(test_surface_physics       unit/physics/simulation/test_surface_physics.c)
+add_sim_test(test_world_simulator       unit/physics/simulation/test_world_simulator.c)
+
+# Chemistry simulation engine tests
+add_sim_test(test_chemistry_sim         unit/chemistry/simulation/test_chemistry_sim.c)
+add_sim_test(test_surface_chemistry     unit/chemistry/simulation/test_surface_chemistry.c)
+add_sim_test(test_biochemistry          unit/chemistry/simulation/test_biochemistry.c)
+add_sim_test(test_physical_chemistry    unit/chemistry/simulation/test_physical_chemistry.c)
+add_sim_test(test_organic_chemistry     unit/chemistry/simulation/test_organic_chemistry.c)
+add_sim_test(test_analytical_chemistry  unit/chemistry/simulation/test_analytical_chemistry.c)
+
+# Biology simulation engine tests
+add_sim_test(test_biology_sim           unit/biology/simulation/test_biology_sim.c)
+add_sim_test(test_cell_biology          unit/biology/simulation/test_cell_biology.c)
+add_sim_test(test_immunology            unit/biology/simulation/test_immunology.c)
+add_sim_test(test_ecology               unit/biology/simulation/test_ecology.c)
+add_sim_test(test_physiology            unit/biology/simulation/test_physiology.c)
+
+# Mathematics engine tests
+add_sim_test(test_number_theory         unit/math/test_number_theory.c)
+add_sim_test(test_linear_algebra_eng    unit/math/test_linear_algebra.c)
+add_sim_test(test_probability           unit/math/test_probability.c)
+add_sim_test(test_numerical_methods     unit/math/test_numerical_methods.c)
+add_sim_test(test_graph_theory          unit/math/test_graph_theory.c)
+add_sim_test(test_combinatorics         unit/math/test_combinatorics.c)
+add_sim_test(test_topology              unit/math/test_topology.c)
+add_sim_test(test_logic                 unit/math/test_logic.c)
+add_sim_test(test_zeta                  unit/math/test_zeta.c)
+add_sim_test(test_knot_theory           unit/math/test_knot_theory.c)
+add_sim_test(test_complexity            unit/math/test_complexity.c)
+add_sim_test(test_optimization          unit/math/test_optimization.c)
+add_sim_test(test_information_theory    unit/math/test_information_theory.c)
+
+# Integration tests (cross-engine coupling)
+add_sim_test(test_cross_engine_coupling integration/world_model/test_cross_engine_coupling.c)
+
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)
