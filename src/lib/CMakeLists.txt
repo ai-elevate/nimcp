@@ -1170,6 +1170,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_zeta_functions.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_knot_theory.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_qft.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_world_model_bridges.c
     # Multimodal World Model (cross-modal prediction and fusion)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/extrapolation/nimcp_world_model_multimodal.c
     # Compositional and Counterfactual modules

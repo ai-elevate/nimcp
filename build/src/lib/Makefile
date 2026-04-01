@@ -15836,6 +15836,30 @@ __/cognitive/physics/nimcp_surface_physics.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_surface_physics.c.s
 .PHONY : __/cognitive/physics/nimcp_surface_physics.c.s
 
+__/cognitive/physics/nimcp_world_model_bridges.o: __/cognitive/physics/nimcp_world_model_bridges.c.o
+.PHONY : __/cognitive/physics/nimcp_world_model_bridges.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_world_model_bridges.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_world_model_bridges.c.o
+.PHONY : __/cognitive/physics/nimcp_world_model_bridges.c.o
+
+__/cognitive/physics/nimcp_world_model_bridges.i: __/cognitive/physics/nimcp_world_model_bridges.c.i
+.PHONY : __/cognitive/physics/nimcp_world_model_bridges.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_world_model_bridges.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_world_model_bridges.c.i
+.PHONY : __/cognitive/physics/nimcp_world_model_bridges.c.i
+
+__/cognitive/physics/nimcp_world_model_bridges.s: __/cognitive/physics/nimcp_world_model_bridges.c.s
+.PHONY : __/cognitive/physics/nimcp_world_model_bridges.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_world_model_bridges.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_world_model_bridges.c.s
+.PHONY : __/cognitive/physics/nimcp_world_model_bridges.c.s
+
 __/cognitive/physics/nimcp_world_prior.o: __/cognitive/physics/nimcp_world_prior.c.o
 .PHONY : __/cognitive/physics/nimcp_world_prior.o
 
@@ -57382,6 +57406,9 @@ help:
 	@echo "... __/cognitive/physics/nimcp_surface_physics.o"
 	@echo "... __/cognitive/physics/nimcp_surface_physics.i"
 	@echo "... __/cognitive/physics/nimcp_surface_physics.s"
+	@echo "... __/cognitive/physics/nimcp_world_model_bridges.o"
+	@echo "... __/cognitive/physics/nimcp_world_model_bridges.i"
+	@echo "... __/cognitive/physics/nimcp_world_model_bridges.s"
 	@echo "... __/cognitive/physics/nimcp_world_prior.o"
 	@echo "... __/cognitive/physics/nimcp_world_prior.i"
 	@echo "... __/cognitive/physics/nimcp_world_prior.s"
