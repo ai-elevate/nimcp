@@ -14588,6 +14588,30 @@ __/cognitive/physics/nimcp_chemistry_sim.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_chemistry_sim.c.s
 .PHONY : __/cognitive/physics/nimcp_chemistry_sim.c.s
 
+__/cognitive/physics/nimcp_electromagnetic.o: __/cognitive/physics/nimcp_electromagnetic.c.o
+.PHONY : __/cognitive/physics/nimcp_electromagnetic.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_electromagnetic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_electromagnetic.c.o
+.PHONY : __/cognitive/physics/nimcp_electromagnetic.c.o
+
+__/cognitive/physics/nimcp_electromagnetic.i: __/cognitive/physics/nimcp_electromagnetic.c.i
+.PHONY : __/cognitive/physics/nimcp_electromagnetic.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_electromagnetic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_electromagnetic.c.i
+.PHONY : __/cognitive/physics/nimcp_electromagnetic.c.i
+
+__/cognitive/physics/nimcp_electromagnetic.s: __/cognitive/physics/nimcp_electromagnetic.c.s
+.PHONY : __/cognitive/physics/nimcp_electromagnetic.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_electromagnetic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_electromagnetic.c.s
+.PHONY : __/cognitive/physics/nimcp_electromagnetic.c.s
+
 __/cognitive/physics/nimcp_entity_tracker.o: __/cognitive/physics/nimcp_entity_tracker.c.o
 .PHONY : __/cognitive/physics/nimcp_entity_tracker.o
 
@@ -14636,6 +14660,30 @@ __/cognitive/physics/nimcp_intuitive_physics.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_intuitive_physics.c.s
 .PHONY : __/cognitive/physics/nimcp_intuitive_physics.c.s
 
+__/cognitive/physics/nimcp_magnetohydrodynamics.o: __/cognitive/physics/nimcp_magnetohydrodynamics.c.o
+.PHONY : __/cognitive/physics/nimcp_magnetohydrodynamics.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_magnetohydrodynamics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_magnetohydrodynamics.c.o
+.PHONY : __/cognitive/physics/nimcp_magnetohydrodynamics.c.o
+
+__/cognitive/physics/nimcp_magnetohydrodynamics.i: __/cognitive/physics/nimcp_magnetohydrodynamics.c.i
+.PHONY : __/cognitive/physics/nimcp_magnetohydrodynamics.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_magnetohydrodynamics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_magnetohydrodynamics.c.i
+.PHONY : __/cognitive/physics/nimcp_magnetohydrodynamics.c.i
+
+__/cognitive/physics/nimcp_magnetohydrodynamics.s: __/cognitive/physics/nimcp_magnetohydrodynamics.c.s
+.PHONY : __/cognitive/physics/nimcp_magnetohydrodynamics.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_magnetohydrodynamics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_magnetohydrodynamics.c.s
+.PHONY : __/cognitive/physics/nimcp_magnetohydrodynamics.c.s
+
 __/cognitive/physics/nimcp_physics_prior.o: __/cognitive/physics/nimcp_physics_prior.c.o
 .PHONY : __/cognitive/physics/nimcp_physics_prior.o
 
@@ -14659,6 +14707,30 @@ __/cognitive/physics/nimcp_physics_prior.s: __/cognitive/physics/nimcp_physics_p
 __/cognitive/physics/nimcp_physics_prior.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_physics_prior.c.s
 .PHONY : __/cognitive/physics/nimcp_physics_prior.c.s
+
+__/cognitive/physics/nimcp_relativistic_physics.o: __/cognitive/physics/nimcp_relativistic_physics.c.o
+.PHONY : __/cognitive/physics/nimcp_relativistic_physics.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_relativistic_physics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_relativistic_physics.c.o
+.PHONY : __/cognitive/physics/nimcp_relativistic_physics.c.o
+
+__/cognitive/physics/nimcp_relativistic_physics.i: __/cognitive/physics/nimcp_relativistic_physics.c.i
+.PHONY : __/cognitive/physics/nimcp_relativistic_physics.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_relativistic_physics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_relativistic_physics.c.i
+.PHONY : __/cognitive/physics/nimcp_relativistic_physics.c.i
+
+__/cognitive/physics/nimcp_relativistic_physics.s: __/cognitive/physics/nimcp_relativistic_physics.c.s
+.PHONY : __/cognitive/physics/nimcp_relativistic_physics.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_relativistic_physics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_relativistic_physics.c.s
+.PHONY : __/cognitive/physics/nimcp_relativistic_physics.c.s
 
 __/cognitive/physics/nimcp_scene_graph.o: __/cognitive/physics/nimcp_scene_graph.c.o
 .PHONY : __/cognitive/physics/nimcp_scene_graph.o
@@ -56050,15 +56122,24 @@ help:
 	@echo "... __/cognitive/physics/nimcp_chemistry_sim.o"
 	@echo "... __/cognitive/physics/nimcp_chemistry_sim.i"
 	@echo "... __/cognitive/physics/nimcp_chemistry_sim.s"
+	@echo "... __/cognitive/physics/nimcp_electromagnetic.o"
+	@echo "... __/cognitive/physics/nimcp_electromagnetic.i"
+	@echo "... __/cognitive/physics/nimcp_electromagnetic.s"
 	@echo "... __/cognitive/physics/nimcp_entity_tracker.o"
 	@echo "... __/cognitive/physics/nimcp_entity_tracker.i"
 	@echo "... __/cognitive/physics/nimcp_entity_tracker.s"
 	@echo "... __/cognitive/physics/nimcp_intuitive_physics.o"
 	@echo "... __/cognitive/physics/nimcp_intuitive_physics.i"
 	@echo "... __/cognitive/physics/nimcp_intuitive_physics.s"
+	@echo "... __/cognitive/physics/nimcp_magnetohydrodynamics.o"
+	@echo "... __/cognitive/physics/nimcp_magnetohydrodynamics.i"
+	@echo "... __/cognitive/physics/nimcp_magnetohydrodynamics.s"
 	@echo "... __/cognitive/physics/nimcp_physics_prior.o"
 	@echo "... __/cognitive/physics/nimcp_physics_prior.i"
 	@echo "... __/cognitive/physics/nimcp_physics_prior.s"
+	@echo "... __/cognitive/physics/nimcp_relativistic_physics.o"
+	@echo "... __/cognitive/physics/nimcp_relativistic_physics.i"
+	@echo "... __/cognitive/physics/nimcp_relativistic_physics.s"
 	@echo "... __/cognitive/physics/nimcp_scene_graph.o"
 	@echo "... __/cognitive/physics/nimcp_scene_graph.i"
 	@echo "... __/cognitive/physics/nimcp_scene_graph.s"
