@@ -9092,6 +9092,30 @@ __/cognitive/math/nimcp_information_theory.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_information_theory.c.s
 .PHONY : __/cognitive/math/nimcp_information_theory.c.s
 
+__/cognitive/math/nimcp_knot_theory.o: __/cognitive/math/nimcp_knot_theory.c.o
+.PHONY : __/cognitive/math/nimcp_knot_theory.o
+
+# target to build an object file
+__/cognitive/math/nimcp_knot_theory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_knot_theory.c.o
+.PHONY : __/cognitive/math/nimcp_knot_theory.c.o
+
+__/cognitive/math/nimcp_knot_theory.i: __/cognitive/math/nimcp_knot_theory.c.i
+.PHONY : __/cognitive/math/nimcp_knot_theory.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_knot_theory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_knot_theory.c.i
+.PHONY : __/cognitive/math/nimcp_knot_theory.c.i
+
+__/cognitive/math/nimcp_knot_theory.s: __/cognitive/math/nimcp_knot_theory.c.s
+.PHONY : __/cognitive/math/nimcp_knot_theory.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_knot_theory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_knot_theory.c.s
+.PHONY : __/cognitive/math/nimcp_knot_theory.c.s
+
 __/cognitive/math/nimcp_linear_algebra.o: __/cognitive/math/nimcp_linear_algebra.c.o
 .PHONY : __/cognitive/math/nimcp_linear_algebra.o
 
@@ -56515,6 +56539,9 @@ help:
 	@echo "... __/cognitive/math/nimcp_information_theory.o"
 	@echo "... __/cognitive/math/nimcp_information_theory.i"
 	@echo "... __/cognitive/math/nimcp_information_theory.s"
+	@echo "... __/cognitive/math/nimcp_knot_theory.o"
+	@echo "... __/cognitive/math/nimcp_knot_theory.i"
+	@echo "... __/cognitive/math/nimcp_knot_theory.s"
 	@echo "... __/cognitive/math/nimcp_linear_algebra.o"
 	@echo "... __/cognitive/math/nimcp_linear_algebra.i"
 	@echo "... __/cognitive/math/nimcp_linear_algebra.s"
