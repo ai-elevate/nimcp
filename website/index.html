@@ -596,7 +596,7 @@
         <div class="container">
             <div class="section-label">Live Training</div>
             <h2>Athena is Learning Right Now</h2>
-            <p>A 2.5-million neuron brain named Athena is currently in Stage 1 of developmental training on an NVIDIA RTX 5090 (32 GB VRAM) via RunPod cloud GPU.</p>
+            <p>A 2.5-million neuron brain named Athena is currently training on an NVIDIA RTX 5090 (32 GB VRAM) via RunPod cloud GPU. She has 56 simulation engines (physics through QED) and 18 mathematics engines providing grounded world understanding.</p>
 
             <div class="training-status">
                 <h3><span class="live-dot" id="liveDot"></span><span id="statusLabel">Training Status</span></h3>
@@ -657,6 +657,61 @@
                     <div class="training-metric" onclick="openModal('metric_uptime')" style="cursor:pointer" title="Click for details">
                         <div class="label">Daemon Uptime</div>
                         <div class="value" id="m-uptime">—</div>
+                    </div>
+                </div>
+
+                <!-- Stage 2 Dashboard -->
+                <div id="stage2-dashboard" style="display:none; margin-top:20px; padding:16px; background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1)">
+                    <h4 style="margin:0 0 12px; color:var(--blue)">📊 Stage 2 Domain Dashboard</h4>
+                    <div class="training-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))">
+                        <div class="training-metric">
+                            <div class="label">Current Domain</div>
+                            <div class="value" id="m-domain" style="font-size:0.95em">—</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">Fact Ratio</div>
+                            <div class="value" id="m-fact-ratio">—</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">Warm Start</div>
+                            <div class="value" id="m-warmstart">—</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">Surprises Stored</div>
+                            <div class="value" id="m-surprises">—</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">Replays Done</div>
+                            <div class="value" id="m-replays">—</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">Collapse Events</div>
+                            <div class="value" id="m-collapse">0</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">Physics LR</div>
+                            <div class="value" id="m-lr-phys">—</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">Chemistry LR</div>
+                            <div class="value" id="m-lr-chem">—</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">Biology LR</div>
+                            <div class="value" id="m-lr-bio">—</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">FEP Free Energy</div>
+                            <div class="value" id="m-fep-fe">—</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">World Model Steps</div>
+                            <div class="value" id="m-wm-steps">—</div>
+                        </div>
+                        <div class="training-metric">
+                            <div class="label">Sim Engines Active</div>
+                            <div class="value" id="m-engines">—</div>
+                        </div>
                     </div>
                 </div>
 
@@ -1254,6 +1309,36 @@ brain.learn_vector(features, target, label='hello world')
                     const ratio = c.fwd > 0 ? Math.round(100 * c.bwd / c.fwd) : 0;
                     val.textContent = fmt(c.ema_loss) + ' (' + ratio + '% bwd)';
                 }
+            }
+        }
+
+        // Stage 2 Dashboard — show when stage >= 2
+        if (d.current_stage >= 2 || d.stage2) {
+            const dash = document.getElementById('stage2-dashboard');
+            if (dash) dash.style.display = '';
+            const s2 = d.stage2 || {};
+            if (s2.current_domain) el('m-domain').textContent = s2.current_domain;
+            if (s2.fact_ratio !== undefined) el('m-fact-ratio').textContent = (s2.fact_ratio * 100).toFixed(0) + '%';
+            if (s2.warm_start_complete) el('m-warmstart').textContent = '✓ Complete';
+            else if (s2.warm_start_step !== undefined) el('m-warmstart').textContent = 'Step ' + s2.warm_start_step + '/500';
+            else el('m-warmstart').textContent = 'Active';
+            if (s2.surprises !== undefined) el('m-surprises').textContent = s2.surprises.toLocaleString();
+            if (s2.replays !== undefined) el('m-replays').textContent = s2.replays.toLocaleString();
+            if (s2.collapse_events !== undefined) el('m-collapse').textContent = s2.collapse_events;
+            if (s2.lr_physics !== undefined) el('m-lr-phys').textContent = s2.lr_physics.toFixed(6);
+            if (s2.lr_chemistry !== undefined) el('m-lr-chem').textContent = s2.lr_chemistry.toFixed(6);
+            if (s2.lr_biology !== undefined) el('m-lr-bio').textContent = s2.lr_biology.toFixed(6);
+            if (s2.fep_free_energy !== undefined) el('m-fep-fe').textContent = fmt(s2.fep_free_energy, 4);
+            if (s2.wm_steps !== undefined) el('m-wm-steps').textContent = s2.wm_steps.toLocaleString();
+            if (s2.active_engines !== undefined) el('m-engines').textContent = s2.active_engines;
+        }
+
+        // Update stage display
+        if (d.current_stage) {
+            el('m-stage').textContent = d.current_stage + ' / 4';
+            const total = d.current_stage >= 2 ? 40000 : 20000;
+            if (d.current_step) {
+                el('m-step').textContent = 'Step ' + d.current_step.toLocaleString() + ' / ' + total.toLocaleString();
             }
         }
 

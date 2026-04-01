@@ -1441,9 +1441,22 @@ def main():
         f.write(str(os.getpid()))
     logger.info("Brain daemon PID %d", os.getpid())
 
-    # Import nimcp
+    # Import nimcp with progress display
     import nimcp
+    print("\n" + "=" * 60, flush=True)
+    print("  ATHENA BRAIN DAEMON — Initializing", flush=True)
+    print("=" * 60, flush=True)
+
+    try:
+        from tqdm import tqdm
+        HAS_TQDM = True
+    except ImportError:
+        HAS_TQDM = False
+        print("  [tqdm not available — using text progress]", flush=True)
+
+    print("  [1/8] Initializing NIMCP library...", flush=True)
     nimcp.init()
+    print("  [1/8] ✓ Library initialized", flush=True)
 
     # Determine checkpoint path
     checkpoint_path = args.checkpoint
@@ -1464,64 +1477,112 @@ def main():
     t0 = time.time()
     brain = None
     if checkpoint_path and os.path.exists(checkpoint_path):
-        logger.info("Loading brain from checkpoint: %s", checkpoint_path)
-        try:
-            brain = nimcp.Brain("athena", checkpoint=str(checkpoint_path),
-                                init_mode=args.init_mode)
-        except Exception as e:
-            logger.error("Failed to load checkpoint: %s", e)
+        ckpt_size = os.path.getsize(checkpoint_path) / (1024**3)
+        print(f"  [2/8] Loading checkpoint: {os.path.basename(checkpoint_path)} "
+              f"({ckpt_size:.1f} GB)", flush=True)
+
+        # Show a progress bar during the blocking load
+        if HAS_TQDM:
+            # Brain load is blocking C code — we can't track real progress,
+            # but we can show an estimated timer based on checkpoint size
+            import threading
+            load_done = threading.Event()
+            load_result = [None, None]  # [brain, error]
+
+            def _load():
+                try:
+                    load_result[0] = nimcp.Brain("athena",
+                                                   checkpoint=str(checkpoint_path),
+                                                   init_mode=args.init_mode)
+                except Exception as e:
+                    load_result[1] = e
+                load_done.set()
+
+            t = threading.Thread(target=_load, daemon=True)
+            t.start()
+
+            # Estimated time: ~80s per GB of checkpoint
+            est_seconds = int(ckpt_size * 80)
+            pbar = tqdm(total=est_seconds, desc="  Loading brain",
+                        unit="s", bar_format="  {desc}: {bar:40} {n_fmt}/{total_fmt}s",
+                        ncols=70)
+            for tick in range(est_seconds * 10):
+                if load_done.wait(timeout=0.1):
+                    pbar.n = est_seconds
+                    pbar.refresh()
+                    break
+                if tick % 10 == 0:
+                    pbar.update(1)
+            pbar.close()
+
+            if load_result[1]:
+                raise load_result[1]
+            brain = load_result[0]
+        else:
+            print("  Loading... (this takes ~10 minutes)", flush=True)
+            try:
+                brain = nimcp.Brain("athena", checkpoint=str(checkpoint_path),
+                                    init_mode=args.init_mode)
+            except Exception as e:
+                logger.error("Failed to load checkpoint: %s", e)
+
+        if brain is None:
             # Try .bak fallback
             bak_path = checkpoint_path + ".bak"
             if os.path.exists(bak_path):
-                logger.info("Trying backup checkpoint: %s", bak_path)
+                print(f"  [2/8] Trying backup: {os.path.basename(bak_path)}", flush=True)
                 try:
                     brain = nimcp.Brain("athena", checkpoint=str(bak_path),
                                         init_mode=args.init_mode)
-                    checkpoint_path = bak_path  # So loaded_from_ckpt is correct
+                    checkpoint_path = bak_path
                 except Exception as e2:
                     logger.error("Backup checkpoint also failed: %s", e2)
 
     if brain is None:
-        logger.info("Creating new brain: %d neurons, mode=%s",
-                     args.neuron_count, args.init_mode)
+        print(f"  [2/8] Creating new brain: {args.neuron_count:,} neurons, "
+              f"mode={args.init_mode}", flush=True)
         brain = nimcp.Brain("athena",
                             num_inputs=args.num_inputs,
                             num_outputs=args.num_outputs,
                             neuron_count=args.neuron_count,
                             init_mode=args.init_mode)
     elapsed = time.time() - t0
-    logger.info("Brain ready in %.1f seconds", elapsed)
+    n_neurons = brain.get_neuron_count() if brain else 0
+    print(f"  [2/8] ✓ Brain loaded: {n_neurons:,} neurons in {elapsed:.1f}s", flush=True)
+    logger.info("Brain ready in %.1f seconds (%d neurons)", elapsed, n_neurons)
 
     # CRITICAL: Set regression mode — no softmax on outputs.
-    # Without this, classification mode applies softmax to 4096 outputs,
-    # which exponentially suppresses all but ~200 top neurons → mode collapse.
+    print("  [3/8] Setting task type to REGRESSION...", flush=True)
     brain.set_task_type("regression")
-    logger.info("Task type set to REGRESSION (no softmax)")
+    print("  [3/8] ✓ Regression mode (no softmax)", flush=True)
 
-    # Fix output layer activation — checkpoints from older code have TANH,
-    # which bounds output to [-1,1] and causes gradient vanishing for regression.
+    # Fix output layer activation
+    print("  [4/8] Fixing output activation to LINEAR...", flush=True)
     brain.fix_output_activation()
-    logger.info("Output layer activation set to LINEAR")
+    print("  [4/8] ✓ Output activation: LINEAR", flush=True)
 
-    # Enable HNN on LNN layer 0. Creates LNN if not present (FAST init skips it).
+    # Enable HNN on LNN layer 0
+    print("  [5/8] Enabling Hamiltonian dynamics...", flush=True)
     try:
         brain.enable_hamiltonian(True)
-        logger.info("Hamiltonian dynamics enabled on LNN layer 0")
+        print("  [5/8] ✓ HNN enabled on LNN layer 0", flush=True)
     except Exception as e:
-        logger.warning("HNN enable failed (non-fatal): %s", e)
+        print(f"  [5/8] ⚠ HNN failed (non-fatal): {e}", flush=True)
 
-    # Eagerly create all 4 cortex CNNs — lazy creation was unreliable because
-    # staged sensory data gets consumed between submit and learn calls.
+    # Eagerly create all 4 cortex CNNs
+    print("  [6/8] Initializing cortex CNNs (visual/audio/speech/somato)...", flush=True)
     try:
         brain.init_cortex_cnns()
-        logger.info("All 4 cortex CNNs initialized (visual/audio/speech/somato)")
+        print("  [6/8] ✓ All 4 cortex CNNs ready", flush=True)
     except Exception as e:
-        logger.warning("Cortex CNN init failed (will create lazily): %s", e)
+        print(f"  [6/8] ⚠ Cortex CNNs deferred: {e}", flush=True)
 
     # Create service and daemon
+    print("  [7/8] Creating brain service...", flush=True)
     service = BrainService(brain)
     daemon = BrainDaemon(service, socket_path=args.socket,
                           max_workers=args.workers)
+    print("  [7/8] ✓ Service + daemon created", flush=True)
 
     # Auto-checkpoint with safety guards
     os.makedirs(args.checkpoint_dir, exist_ok=True)
@@ -1569,20 +1630,26 @@ def main():
     except Exception as e:
         logger.warning("Metadata retrofit failed: %s", e)
 
-    # Pre-warm ONNX encoder (first call triggers 77s CUDA compilation)
+    # Pre-warm ONNX encoder
+    print("  [8/8] Loading ONNX encoder (BGE-large)...", flush=True)
     try:
         import sys
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         from onnx_encoder import encode_text
-        logger.info("Pre-warming ONNX encoder (first call compiles CUDA graphs)...")
         encode_text("warmup")
-        logger.info("ONNX encoder ready")
+        print("  [8/8] ✓ ONNX encoder ready (CUDA)", flush=True)
     except Exception as e:
-        logger.warning("ONNX encoder not available: %s", e)
+        print(f"  [8/8] ⚠ ONNX encoder not available: {e}", flush=True)
 
+    total_elapsed = time.time() - t0
+    print(f"\n{'=' * 60}", flush=True)
+    print(f"  ATHENA BRAIN DAEMON — Ready", flush=True)
+    print(f"  Neurons: {n_neurons:,} | Mode: {args.init_mode} | "
+          f"Load time: {total_elapsed:.0f}s", flush=True)
+    print(f"  Socket: {args.socket}", flush=True)
+    print(f"  PID: {os.getpid()}", flush=True)
+    print(f"{'=' * 60}\n", flush=True)
     logger.info("Brain daemon ready — accepting connections on %s", args.socket)
-    print(f"Brain daemon ready on {args.socket} (PID {os.getpid()})",
-          flush=True)
 
     try:
         daemon.serve_forever()
