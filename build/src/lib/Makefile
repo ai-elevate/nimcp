@@ -9020,6 +9020,30 @@ __/cognitive/math/nimcp_complexity_theory.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_complexity_theory.c.s
 .PHONY : __/cognitive/math/nimcp_complexity_theory.c.s
 
+__/cognitive/math/nimcp_dsp.o: __/cognitive/math/nimcp_dsp.c.o
+.PHONY : __/cognitive/math/nimcp_dsp.o
+
+# target to build an object file
+__/cognitive/math/nimcp_dsp.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_dsp.c.o
+.PHONY : __/cognitive/math/nimcp_dsp.c.o
+
+__/cognitive/math/nimcp_dsp.i: __/cognitive/math/nimcp_dsp.c.i
+.PHONY : __/cognitive/math/nimcp_dsp.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_dsp.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_dsp.c.i
+.PHONY : __/cognitive/math/nimcp_dsp.c.i
+
+__/cognitive/math/nimcp_dsp.s: __/cognitive/math/nimcp_dsp.c.s
+.PHONY : __/cognitive/math/nimcp_dsp.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_dsp.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_dsp.c.s
+.PHONY : __/cognitive/math/nimcp_dsp.c.s
+
 __/cognitive/math/nimcp_game_theory.o: __/cognitive/math/nimcp_game_theory.c.o
 .PHONY : __/cognitive/math/nimcp_game_theory.o
 
@@ -56578,6 +56602,9 @@ help:
 	@echo "... __/cognitive/math/nimcp_complexity_theory.o"
 	@echo "... __/cognitive/math/nimcp_complexity_theory.i"
 	@echo "... __/cognitive/math/nimcp_complexity_theory.s"
+	@echo "... __/cognitive/math/nimcp_dsp.o"
+	@echo "... __/cognitive/math/nimcp_dsp.i"
+	@echo "... __/cognitive/math/nimcp_dsp.s"
 	@echo "... __/cognitive/math/nimcp_game_theory.o"
 	@echo "... __/cognitive/math/nimcp_game_theory.i"
 	@echo "... __/cognitive/math/nimcp_game_theory.s"
