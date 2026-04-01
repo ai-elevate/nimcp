@@ -46,6 +46,7 @@ struct intuitive_physics_engine;
 struct world_simulator;
 struct scene_graph;
 struct entity_tracker;
+struct fep_system;
 
 /* ============================================================================
  * Constants
@@ -183,6 +184,11 @@ typedef struct {
     float       mean_physical_error;
     float       max_surprise_score;
     float       jepa_improvement_rate;  /* delta(loss) per replay */
+    float       fep_free_energy;        /* current variational free energy */
+    float       fep_physics_precision;  /* learned precision for physics errors */
+    float       fep_chemistry_precision;
+    float       fep_biology_precision;
+    uint64_t    fep_updates;            /* total FEP belief updates from sim errors */
 } wmb_stats_t;
 
 /* ============================================================================
@@ -227,6 +233,7 @@ typedef struct world_model_bridge {
     struct entity_tracker*          tracker;
     struct chemistry_sim*           chemistry;
     struct biology_sim*             biology;
+    struct fep_system*              fep;        /* FEP system for free energy updates */
 
     /* Encoding/decoding weights (latent ↔ physical) */
     float*      encode_weights;     /* [PHYSICAL_DIM × LATENT_DIM] */
@@ -234,6 +241,14 @@ typedef struct world_model_bridge {
 
     /* Replay buffer */
     wmb_replay_buffer_t replay;
+
+    /* FEP precision tracking (learned from prediction error statistics) */
+    float       physics_precision;      /* π_phys = 1/E[ε²_phys] */
+    float       chemistry_precision;    /* π_chem = 1/E[ε²_chem] */
+    float       biology_precision;      /* π_bio = 1/E[ε²_bio] */
+    float       physics_error_ema;      /* EMA of physics error² */
+    float       chemistry_error_ema;    /* EMA of chemistry error² */
+    float       biology_error_ema;      /* EMA of biology error² */
 
     /* Callbacks — fire on surprise and replay events */
     wmb_surprise_callback_t on_surprise;    /* called when surprise stored */

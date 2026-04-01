@@ -339,6 +339,44 @@ float wmb_predict_and_verify(world_model_bridge_t* bridge, float dt) {
     bridge->stats.mean_physical_error =
         0.99f * bridge->stats.mean_physical_error + 0.01f * phys_err;
 
+    /* FEP precision update: π = 1/E[ε²] (learned from error statistics)
+     * High precision = low expected error = the brain trusts this domain's predictions
+     * Low precision = high expected error = the brain knows it's bad at this domain */
+    float ema_alpha = 0.01f;
+    bridge->physics_error_ema = (1 - ema_alpha) * bridge->physics_error_ema + ema_alpha * phys_err * phys_err;
+    bridge->chemistry_error_ema = (1 - ema_alpha) * bridge->chemistry_error_ema + ema_alpha * chem_err * chem_err;
+    bridge->biology_error_ema = (1 - ema_alpha) * bridge->biology_error_ema + ema_alpha * bio_err * bio_err;
+
+    bridge->physics_precision = (bridge->physics_error_ema > 1e-10f) ? 1.0f / bridge->physics_error_ema : 1e6f;
+    bridge->chemistry_precision = (bridge->chemistry_error_ema > 1e-10f) ? 1.0f / bridge->chemistry_error_ema : 1e6f;
+    bridge->biology_precision = (bridge->biology_error_ema > 1e-10f) ? 1.0f / bridge->biology_error_ema : 1e6f;
+
+    bridge->stats.fep_physics_precision = bridge->physics_precision;
+    bridge->stats.fep_chemistry_precision = bridge->chemistry_precision;
+    bridge->stats.fep_biology_precision = bridge->biology_precision;
+
+    /* Feed precision-weighted error to FEP system:
+     * F = Σ_domain π_domain × ε²_domain
+     * This is the variational free energy from world model prediction errors.
+     * The FEP system uses this to drive belief updates and active inference. */
+    if (bridge->fep) {
+        /* Pack precision-weighted errors as observation for FEP */
+        float fep_obs[3] = {
+            bridge->physics_precision * phys_err,
+            bridge->chemistry_precision * chem_err,
+            bridge->biology_precision * bio_err
+        };
+        extern int fep_process_observation(struct fep_system* fep,
+                                            const float* obs, uint32_t dim);
+        fep_process_observation(bridge->fep, fep_obs, 3);
+
+        float weighted_fe = bridge->physics_precision * phys_err * phys_err
+                          + bridge->chemistry_precision * chem_err * chem_err
+                          + bridge->biology_precision * bio_err * bio_err;
+        bridge->stats.fep_free_energy = weighted_fe;
+        bridge->stats.fep_updates++;
+    }
+
     /* 7. Surprise detection — check each domain */
     float expected_var = bridge->stats.mean_prediction_error + 1e-6f;
     float surprise = total_error / expected_var;
@@ -459,6 +497,14 @@ world_model_bridge_t* wmb_create(const wmb_config_t* config) {
             bridge->decode_weights[i * WMB_LATENT_DIM + i] = 1.0f;
         }
     }
+
+    /* Initialize FEP precisions (uniform prior — equal trust in all domains) */
+    bridge->physics_precision = 1.0f;
+    bridge->chemistry_precision = 1.0f;
+    bridge->biology_precision = 1.0f;
+    bridge->physics_error_ema = 1.0f;
+    bridge->chemistry_error_ema = 1.0f;
+    bridge->biology_error_ema = 1.0f;
 
     bridge->initialized = true;
     LOG_INFO(LOG_TAG, "World model bridge created: surprise_thresh=%.1f, "
