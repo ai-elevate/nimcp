@@ -1130,6 +1130,26 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_particle_physics.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_qed.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_sim_perception_bridge.c
+    # Physics extensions
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_fluid_dynamics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_heat_transfer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_acoustics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_optics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_nuclear_physics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_condensed_matter.c
+    # Chemistry extensions
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_polymer_chemistry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_analytical_chemistry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_inorganic_chemistry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_geochemistry.c
+    # Biology extensions
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_cell_biology.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_immunology.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_neuroscience_sim.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_ecology.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_evolutionary_biology.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_physiology.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_world_simulator.c
     # Multimodal World Model (cross-modal prediction and fusion)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/extrapolation/nimcp_world_model_multimodal.c
     # Compositional and Counterfactual modules
