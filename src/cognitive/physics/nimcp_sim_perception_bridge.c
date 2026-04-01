@@ -174,7 +174,8 @@ int spb_render_visual(sim_perception_bridge_t* bridge) {
         /* Brightness from height (higher = brighter) */
         uint8_t brightness = (uint8_t)spb_clamp(80.0f + obj->position.y * 40.0f, 80.0f, 255.0f);
 
-        /* Draw filled circle */
+        /* Draw filled circle (clamp radius to prevent huge loops) */
+        if (radius_px > 32.0f) radius_px = 32.0f;
         int cx = (int)sx, cy = (int)sy, r = (int)radius_px;
         for (int dy = -r; dy <= r; dy++) {
             for (int dx = -r; dx <= r; dx++) {

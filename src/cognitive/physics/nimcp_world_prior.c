@@ -91,7 +91,7 @@ float world_prior_compute_loss(world_prior_t* wp, uint32_t domain_hint) {
             const bio_species_t* sp = &wp->biology->species[i];
             if (!sp->active) continue;
             /* Penalty for exceeding carrying capacity */
-            if (sp->population > sp->carrying_capacity * 1.5f) {
+            if (sp->carrying_capacity > 0.0f && sp->population > sp->carrying_capacity * 1.5f) {
                 bio_loss += (sp->population - sp->carrying_capacity) / sp->carrying_capacity;
             }
         }

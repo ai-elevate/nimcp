@@ -64,7 +64,8 @@ static float evo_binomial_sample(uint64_t* rng, float p, uint32_t n) {
     /* Box-Muller for normal variate */
     float u1 = evo_rand_float(rng);
     float u2 = evo_rand_float(rng);
-    if (u1 < 1e-10f) u1 = 1e-10f;
+    if (u1 < 1e-7f) u1 = 1e-7f;
+    if (u1 >= 1.0f) u1 = 1.0f - 1e-7f;  /* logf(1.0)=0 → sqrtf(0)=0, logf(>1)→sqrtf(-ve)=NaN */
     float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
     float result = mean + z * sd;
     return clampf(result, 0.0f, 1.0f);

@@ -87,7 +87,8 @@ uint32_t surface_physics_create_interface(surface_physics_sim_t* sim,
 
     /* Compute interfacial energy using geometric mean approximation:
      * γ_AB ≈ γ_A + γ_B - 2√(γ_A · γ_B) (Good-Girifalco) */
-    float ga = a->surface_energy, gb = b->surface_energy;
+    float ga = a->surface_energy > 0 ? a->surface_energy : 0;
+    float gb = b->surface_energy > 0 ? b->surface_energy : 0;
     iface->interfacial_energy = ga + gb - 2.0f * sqrtf(ga * gb);
     if (iface->interfacial_energy < 0) iface->interfacial_energy = 0;
 
@@ -256,8 +257,11 @@ float surface_physics_fresnel_p(float n1, float n2, float angle_incidence) {
 }
 
 float surface_physics_critical_angle(float n1, float n2) {
-    if (n1 <= n2) return (float)(M_PI / 2.0);  /* no TIR if n1 < n2 */
-    return asinf(n2 / n1);
+    if (n1 <= n2) return (float)(M_PI / 2.0);  /* no TIR if n1 <= n2 */
+    float ratio = n2 / n1;
+    if (ratio > 1.0f) ratio = 1.0f;   /* defensive: asinf domain is [-1,1] */
+    if (ratio < 0.0f) ratio = 0.0f;
+    return asinf(ratio);
 }
 
 float surface_physics_friction_force(const surface_physics_sim_t* sim,

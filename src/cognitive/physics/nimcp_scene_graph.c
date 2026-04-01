@@ -103,17 +103,20 @@ int scene_graph_rebuild(scene_graph_t* graph, const intuitive_physics_engine_t* 
         if (ct->normal.y > graph->config.support_normal_thresh) {
             add_relation(graph, b, a, SCENE_REL_ON_TOP_OF, 1.0f, ct->normal_impulse);
 
-            /* Update support children adjacency */
+            /* Update support children adjacency (bounds check BEFORE access) */
             uint32_t supporter = a;
-            uint32_t child_count = graph->support_children_count[supporter];
-            if (child_count < SG_MAX_CHILDREN_PER && supporter < graph->max_objects) {
-                graph->support_children[supporter * SG_MAX_CHILDREN_PER + child_count] = b;
-                graph->support_children_count[supporter] = child_count + 1;
+            if (supporter < graph->max_objects) {
+                uint32_t child_count = graph->support_children_count[supporter];
+                if (child_count < SG_MAX_CHILDREN_PER) {
+                    graph->support_children[supporter * SG_MAX_CHILDREN_PER + child_count] = b;
+                    graph->support_children_count[supporter] = child_count + 1;
+                }
             }
         } else if (ct->normal.y < -graph->config.support_normal_thresh) {
             add_relation(graph, a, b, SCENE_REL_ON_TOP_OF, 1.0f, ct->normal_impulse);
 
             uint32_t supporter = b;
+            if (supporter >= graph->max_objects) continue;  /* bounds check */
             uint32_t child_count = graph->support_children_count[supporter];
             if (child_count < SG_MAX_CHILDREN_PER && supporter < graph->max_objects) {
                 graph->support_children[supporter * SG_MAX_CHILDREN_PER + child_count] = a;

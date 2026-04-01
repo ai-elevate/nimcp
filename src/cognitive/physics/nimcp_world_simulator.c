@@ -148,16 +148,25 @@ static void apply_coupling(world_simulator_t* sim, const wsim_coupling_t* c) {
                     uint32_t xm = grid_idx(s->nx,s->ny,ix-1,iy,iz);
                     uint32_t yp = grid_idx(s->nx,s->ny,ix,iy+1,iz);
                     uint32_t ym = grid_idx(s->nx,s->ny,ix,iy-1,iz);
-                    float idx = 0.5f / s->dx, idy = 0.5f / s->dy;
-                    float Jx = (s->B_field[yp*3+2] - s->B_field[ym*3+2]) * idy / mu0;
-                    float Jy = -(s->B_field[xp*3+2] - s->B_field[xm*3+2]) * idx / mu0;
-                    /* J × B */
-                    float fx = Jy * Bz - 0 * By;
-                    float fy = 0 * Bx - Jx * Bz;
+                    uint32_t zp = grid_idx(s->nx,s->ny,ix,iy,iz+1);
+                    uint32_t zm = grid_idx(s->nx,s->ny,ix,iy,iz-1);
+                    float idx = 0.5f / s->dx, idy = 0.5f / s->dy, idz = 0.5f / s->dz;
+                    /* J = curl(B)/μ₀ — full 3D computation */
+                    float Jx = ((s->B_field[yp*3+2] - s->B_field[ym*3+2]) * idy
+                              - (s->B_field[zp*3+1] - s->B_field[zm*3+1]) * idz) / mu0;
+                    float Jy = ((s->B_field[zp*3+0] - s->B_field[zm*3+0]) * idz
+                              - (s->B_field[xp*3+2] - s->B_field[xm*3+2]) * idx) / mu0;
+                    float Jz = ((s->B_field[xp*3+1] - s->B_field[xm*3+1]) * idx
+                              - (s->B_field[yp*3+0] - s->B_field[ym*3+0]) * idy) / mu0;
+                    /* J × B — full cross product */
+                    float fx = Jy * Bz - Jz * By;
+                    float fy = Jz * Bx - Jx * Bz;
+                    float fz = Jx * By - Jy * Bx;
                     float rho = s->density[ci];
                     if (rho > 1e-10f) {
                         s->velocity[ci*3]   += fx / rho * dt;
                         s->velocity[ci*3+1] += fy / rho * dt;
+                        s->velocity[ci*3+2] += fz / rho * dt;
                     }
                 }
             }

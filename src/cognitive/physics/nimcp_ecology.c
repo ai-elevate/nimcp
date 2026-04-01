@@ -168,8 +168,10 @@ ecol_diversity_t ecology_compute_diversity(const ecology_sim_t* sim) {
     div.shannon_h = ecology_shannon_index(abundances, active_count);
     div.simpson_d = ecology_simpson_index(abundances, active_count);
 
-    /* Pielou's evenness: J = H / ln(S) */
-    if (active_count > 1) {
+    /* Pielou's evenness: J = H / ln(S).  One species = perfect evenness */
+    if (active_count == 1) {
+        div.evenness = 1.0f;
+    } else if (active_count > 1) {
         div.evenness = div.shannon_h / logf((float)active_count);
     }
 

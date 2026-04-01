@@ -377,7 +377,7 @@ float particle_physics_compton_wavelength(float mass_gev)
  * Simple PRNG for Monte Carlo decay (deterministic, fast)
  * ============================================================================ */
 
-static uint32_t pp_rng_state = 12345;
+static _Thread_local uint32_t pp_rng_state = 12345;
 
 static float pp_random_float(void)
 {

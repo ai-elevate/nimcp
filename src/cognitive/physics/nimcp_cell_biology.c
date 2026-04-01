@@ -435,7 +435,9 @@ int cell_biology_step_transport(cell_biology_sim_t* sim, uint32_t cell_idx, floa
     /* Update membrane potential using Goldman-like approximation */
     float pk_pi = cell->intracellular_k / (cell->extracellular_k + 0.001f);
     float pna_ratio = cell->extracellular_na / (cell->intracellular_na + 0.001f);
-    cell->membrane_potential_mv = -61.5f * log10f(pk_pi * 0.95f + pna_ratio * 0.05f);
+    float log_arg = pk_pi * 0.95f + pna_ratio * 0.05f;
+    if (log_arg < 1e-10f) log_arg = 1e-10f;  /* prevent log10f(<=0) */
+    cell->membrane_potential_mv = -61.5f * log10f(log_arg);
     cell->membrane_potential_mv = clampf(cell->membrane_potential_mv, -90.0f, 40.0f);
 
     sim->stats.total_membrane_flux += total_flux;
