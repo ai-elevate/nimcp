@@ -137,6 +137,8 @@ typedef struct relativistic_engine {
     uint32_t            num_gravity_sources;
     rel_config_t        config;
     rel_stats_t         stats;
+    double              initial_total_energy; /* baseline for energy drift (per-instance) */
+    struct electromagnetic_sim* em_coupling; /* optional: EM engine for Lorentz force coupling */
     float               coordinate_time;
     bool                initialized;
 } relativistic_engine_t;
@@ -199,6 +201,13 @@ rel_stats_t relativistic_get_stats(const relativistic_engine_t* engine);
 
 /** Default config */
 rel_config_t relativistic_default_config(void);
+
+/** Connect EM engine for Lorentz force coupling (F = q(E + v×B)) */
+void relativistic_connect_em(relativistic_engine_t* engine,
+                              struct electromagnetic_sim* em);
+
+/** Step with RK4 integration (4th-order accuracy instead of symplectic Euler) */
+int relativistic_step_rk4(relativistic_engine_t* engine, float dt);
 
 #ifdef __cplusplus
 }

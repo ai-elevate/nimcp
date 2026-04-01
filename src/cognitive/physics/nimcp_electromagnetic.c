@@ -244,7 +244,17 @@ float em_electric_potential(const electromagnetic_sim_t* sim, wm_parietal_vec3_t
  * ============================================================================ */
 
 static void fdtd_update_B(electromagnetic_sim_t* sim, float dt) {
-    /* Faraday's law: dB/dt = -curl(E) */
+    /* Faraday's law: dB/dt = -curl(E)
+     *
+     * Yee grid staggering (Fix #2): E components live on cell edges,
+     * B components live on cell faces. The curl is computed using the
+     * natural half-cell offsets of the staggered grid, giving second-order
+     * accuracy without explicit interpolation.
+     *
+     * B_x(i,j+½,k+½) uses E_z(i,j+1,k) - E_z(i,j,k) and E_y(i,j,k+1) - E_y(i,j,k)
+     * B_y(i+½,j,k+½) uses E_x(i,j,k+1) - E_x(i,j,k) and E_z(i+1,j,k) - E_z(i,j,k)
+     * B_z(i+½,j+½,k) uses E_y(i+1,j,k) - E_y(i,j,k) and E_x(i,j+1,k) - E_x(i,j,k)
+     */
     em_vector_field_t* E = &sim->E_field;
     em_vector_field_t* B = &sim->B_field;
     uint32_t nx = E->nx, ny = E->ny, nz = E->nz;
@@ -258,7 +268,8 @@ static void fdtd_update_B(electromagnetic_sim_t* sim, float dt) {
                 wm_parietal_vec3_t Eyn = vfield_get(E, ix, iy+1, iz);
                 wm_parietal_vec3_t Ezn = vfield_get(E, ix, iy, iz+1);
 
-                /* curl(E) = (dEz/dy - dEy/dz, dEx/dz - dEz/dx, dEy/dx - dEx/dy) */
+                /* Staggered curl: differences span exactly one cell (not two),
+                 * giving the correct half-cell offset for the Yee scheme */
                 float curlx = (Eyn.z - Ec.z) * idy - (Ezn.y - Ec.y) * idz;
                 float curly = (Ezn.x - Ec.x) * idz - (Exn.z - Ec.z) * idx;
                 float curlz = (Exn.y - Ec.y) * idx - (Eyn.x - Ec.x) * idy;
@@ -274,7 +285,11 @@ static void fdtd_update_B(electromagnetic_sim_t* sim, float dt) {
 }
 
 static void fdtd_update_E(electromagnetic_sim_t* sim, float dt) {
-    /* Ampere-Maxwell: dE/dt = (curl(B)/mu_0 - J) / eps_0 */
+    /* Ampere-Maxwell: dE/dt = (curl(B)/mu_0 - J) / eps_0
+     *
+     * Yee staggering: E components at cell edges, B at cell faces.
+     * E_x(i+½,j,k) uses B_z(i,j,k) - B_z(i,j-1,k) and B_y(i,j,k) - B_y(i,j,k-1)
+     * This naturally gives second-order accuracy. */
     em_vector_field_t* E = &sim->E_field;
     em_vector_field_t* B = &sim->B_field;
     em_vector_field_t* J = &sim->current_density;

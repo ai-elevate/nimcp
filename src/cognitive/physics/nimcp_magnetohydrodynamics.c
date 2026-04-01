@@ -10,6 +10,7 @@
 #include "cognitive/physics/nimcp_magnetohydrodynamics.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/numerical/nimcp_integration.h"
 #include <math.h>
 #include <string.h>
 
@@ -21,6 +22,23 @@
 
 static inline float mhd_max(float a, float b) { return a > b ? a : b; }
 static inline float mhd_min(float a, float b) { return a < b ? a : b; }
+
+/* MUSCL minmod slope limiter (Fix #3: second-order spatial reconstruction)
+ * Returns limited slope: 0 at extrema, min(|a|,|b|)*sign at smooth regions */
+static inline float minmod(float a, float b) {
+    if (a * b <= 0.0f) return 0.0f;  /* opposite signs or zero → extremum */
+    return (fabsf(a) < fabsf(b)) ? a : b;
+}
+
+/* MUSCL-reconstructed value at cell face (left and right states) */
+static inline float muscl_left(float qm, float qc, float qp) {
+    float slope = minmod(qc - qm, qp - qc);
+    return qc + 0.5f * slope;  /* extrapolate to right face */
+}
+static inline float muscl_right(float qm, float qc, float qp) {
+    float slope = minmod(qc - qm, qp - qc);
+    return qc - 0.5f * slope;  /* extrapolate to left face */
+}
 
 static inline uint32_t midx(uint32_t nx, uint32_t ny, uint32_t ix, uint32_t iy, uint32_t iz) {
     return (iz * ny + iy) * nx + ix;
@@ -220,20 +238,25 @@ float mhd_plasma_beta(const mhd_sim_t* sim, uint32_t ix, uint32_t iy, uint32_t i
 }
 
 float mhd_div_B(const mhd_sim_t* sim, uint32_t ix, uint32_t iy, uint32_t iz) {
+    /* Fix #6: double precision for div(B). This is a constraint that should be
+     * exactly zero — small float cancellation errors accumulate and look like
+     * magnetic monopoles. Double reduces this by ~8 orders of magnitude. */
     if (!sim || ix == 0 || iy == 0 || iz == 0 ||
         ix >= sim->grid.nx - 1 || iy >= sim->grid.ny - 1 || iz >= sim->grid.nz - 1)
         return 0;
 
     uint32_t nx = sim->grid.nx, ny = sim->grid.ny;
-    float idx = 0.5f / sim->grid.dx, idy = 0.5f / sim->grid.dy, idz = 0.5f / sim->grid.dz;
+    double idx = 0.5 / (double)sim->grid.dx;
+    double idy = 0.5 / (double)sim->grid.dy;
+    double idz = 0.5 / (double)sim->grid.dz;
 
-    float dBx = (sim->grid.cells[midx(nx, ny, ix+1, iy, iz)].B.x -
-                 sim->grid.cells[midx(nx, ny, ix-1, iy, iz)].B.x) * idx;
-    float dBy = (sim->grid.cells[midx(nx, ny, ix, iy+1, iz)].B.y -
-                 sim->grid.cells[midx(nx, ny, ix, iy-1, iz)].B.y) * idy;
-    float dBz = (sim->grid.cells[midx(nx, ny, ix, iy, iz+1)].B.z -
-                 sim->grid.cells[midx(nx, ny, ix, iy, iz-1)].B.z) * idz;
-    return dBx + dBy + dBz;
+    double dBx = ((double)sim->grid.cells[midx(nx, ny, ix+1, iy, iz)].B.x -
+                  (double)sim->grid.cells[midx(nx, ny, ix-1, iy, iz)].B.x) * idx;
+    double dBy = ((double)sim->grid.cells[midx(nx, ny, ix, iy+1, iz)].B.y -
+                  (double)sim->grid.cells[midx(nx, ny, ix, iy-1, iz)].B.y) * idy;
+    double dBz = ((double)sim->grid.cells[midx(nx, ny, ix, iy, iz+1)].B.z -
+                  (double)sim->grid.cells[midx(nx, ny, ix, iy, iz-1)].B.z) * idz;
+    return (float)(dBx + dBy + dBz);
 }
 
 /* ============================================================================
@@ -290,10 +313,39 @@ int mhd_step(mhd_sim_t* sim, float dt) {
                 const mhd_cell_t* zp = &sim->grid_temp.cells[midx(nx, ny, ix, iy, iz+1)];
                 const mhd_cell_t* zm = &sim->grid_temp.cells[midx(nx, ny, ix, iy, iz-1)];
 
-                /* Mass conservation: d(rho)/dt = -div(rho*v) */
-                float div_rho_v = (xp->density * xp->velocity.x - xm->density * xm->velocity.x) * 0.5f * idx
-                                + (yp->density * yp->velocity.y - ym->density * ym->velocity.y) * 0.5f * idy
-                                + (zp->density * zp->velocity.z - zm->density * zm->velocity.z) * 0.5f * idz;
+                /* Mass conservation: d(rho)/dt = -div(rho*v)
+                 * Fix #3: MUSCL reconstruction for second-order spatial accuracy.
+                 * Reconstruct rho*v at cell faces using minmod-limited slopes. */
+                float rhovx_xm = xm->density * xm->velocity.x;
+                float rhovx_c  = src->density * src->velocity.x;
+                float rhovx_xp = xp->density * xp->velocity.x;
+                float flux_x_right = muscl_left(rhovx_xm, rhovx_c, rhovx_xp);
+                float flux_x_left  = muscl_right(
+                    (ix >= 2 ? sim->grid_temp.cells[midx(nx,ny,ix-2,iy,iz)].density *
+                               sim->grid_temp.cells[midx(nx,ny,ix-2,iy,iz)].velocity.x : rhovx_xm),
+                    rhovx_xm, rhovx_c);
+
+                float rhovy_ym = ym->density * ym->velocity.y;
+                float rhovy_c  = src->density * src->velocity.y;
+                float rhovy_yp = yp->density * yp->velocity.y;
+                float flux_y_right = muscl_left(rhovy_ym, rhovy_c, rhovy_yp);
+                float flux_y_left  = muscl_right(
+                    (iy >= 2 ? sim->grid_temp.cells[midx(nx,ny,ix,iy-2,iz)].density *
+                               sim->grid_temp.cells[midx(nx,ny,ix,iy-2,iz)].velocity.y : rhovy_ym),
+                    rhovy_ym, rhovy_c);
+
+                float rhovz_zm = zm->density * zm->velocity.z;
+                float rhovz_c  = src->density * src->velocity.z;
+                float rhovz_zp = zp->density * zp->velocity.z;
+                float flux_z_right = muscl_left(rhovz_zm, rhovz_c, rhovz_zp);
+                float flux_z_left  = muscl_right(
+                    (iz >= 2 ? sim->grid_temp.cells[midx(nx,ny,ix,iy,iz-2)].density *
+                               sim->grid_temp.cells[midx(nx,ny,ix,iy,iz-2)].velocity.z : rhovz_zm),
+                    rhovz_zm, rhovz_c);
+
+                float div_rho_v = (flux_x_right - flux_x_left) * idx
+                                + (flux_y_right - flux_y_left) * idy
+                                + (flux_z_right - flux_z_left) * idz;
                 c->density = src->density - div_rho_v * dt;
                 if (c->density < 1e-10f) c->density = 1e-10f;
 
@@ -378,27 +430,146 @@ int mhd_step(mhd_sim_t* sim, float dt) {
         }
     }
 
-    /* Periodic boundary conditions */
-    if (sim->config.boundary == MHD_BC_PERIODIC) {
+    /* Fix #4: All boundary conditions implemented */
+    #define APPLY_BC_FACES(FACE_LO, FACE_HI, INNER_LO, INNER_HI) \
+        sim->grid.cells[FACE_LO] = sim->grid.cells[INNER_LO]; \
+        sim->grid.cells[FACE_HI] = sim->grid.cells[INNER_HI];
+
+    switch (sim->config.boundary) {
+    case MHD_BC_PERIODIC:
         for (uint32_t iz = 0; iz < nz; iz++) {
             for (uint32_t iy = 0; iy < ny; iy++) {
-                sim->grid.cells[midx(nx, ny, 0, iy, iz)] = sim->grid.cells[midx(nx, ny, nx-2, iy, iz)];
-                sim->grid.cells[midx(nx, ny, nx-1, iy, iz)] = sim->grid.cells[midx(nx, ny, 1, iy, iz)];
+                sim->grid.cells[midx(nx,ny,0,iy,iz)] = sim->grid.cells[midx(nx,ny,nx-2,iy,iz)];
+                sim->grid.cells[midx(nx,ny,nx-1,iy,iz)] = sim->grid.cells[midx(nx,ny,1,iy,iz)];
             }
         }
         for (uint32_t iz = 0; iz < nz; iz++) {
             for (uint32_t ix = 0; ix < nx; ix++) {
-                sim->grid.cells[midx(nx, ny, ix, 0, iz)] = sim->grid.cells[midx(nx, ny, ix, ny-2, iz)];
-                sim->grid.cells[midx(nx, ny, ix, ny-1, iz)] = sim->grid.cells[midx(nx, ny, ix, 1, iz)];
+                sim->grid.cells[midx(nx,ny,ix,0,iz)] = sim->grid.cells[midx(nx,ny,ix,ny-2,iz)];
+                sim->grid.cells[midx(nx,ny,ix,ny-1,iz)] = sim->grid.cells[midx(nx,ny,ix,1,iz)];
             }
         }
         for (uint32_t iy = 0; iy < ny; iy++) {
             for (uint32_t ix = 0; ix < nx; ix++) {
-                sim->grid.cells[midx(nx, ny, ix, iy, 0)] = sim->grid.cells[midx(nx, ny, ix, iy, nz-2)];
-                sim->grid.cells[midx(nx, ny, ix, iy, nz-1)] = sim->grid.cells[midx(nx, ny, ix, iy, 1)];
+                sim->grid.cells[midx(nx,ny,ix,iy,0)] = sim->grid.cells[midx(nx,ny,ix,iy,nz-2)];
+                sim->grid.cells[midx(nx,ny,ix,iy,nz-1)] = sim->grid.cells[midx(nx,ny,ix,iy,1)];
             }
         }
+        break;
+
+    case MHD_BC_REFLECTIVE:
+        /* Copy interior to boundary, negate normal velocity component */
+        for (uint32_t iz = 0; iz < nz; iz++) {
+            for (uint32_t iy = 0; iy < ny; iy++) {
+                sim->grid.cells[midx(nx,ny,0,iy,iz)] = sim->grid.cells[midx(nx,ny,1,iy,iz)];
+                sim->grid.cells[midx(nx,ny,0,iy,iz)].velocity.x *= -1;
+                sim->grid.cells[midx(nx,ny,nx-1,iy,iz)] = sim->grid.cells[midx(nx,ny,nx-2,iy,iz)];
+                sim->grid.cells[midx(nx,ny,nx-1,iy,iz)].velocity.x *= -1;
+            }
+        }
+        for (uint32_t iz = 0; iz < nz; iz++) {
+            for (uint32_t ix = 0; ix < nx; ix++) {
+                sim->grid.cells[midx(nx,ny,ix,0,iz)] = sim->grid.cells[midx(nx,ny,ix,1,iz)];
+                sim->grid.cells[midx(nx,ny,ix,0,iz)].velocity.y *= -1;
+                sim->grid.cells[midx(nx,ny,ix,ny-1,iz)] = sim->grid.cells[midx(nx,ny,ix,ny-2,iz)];
+                sim->grid.cells[midx(nx,ny,ix,ny-1,iz)].velocity.y *= -1;
+            }
+        }
+        for (uint32_t iy = 0; iy < ny; iy++) {
+            for (uint32_t ix = 0; ix < nx; ix++) {
+                sim->grid.cells[midx(nx,ny,ix,iy,0)] = sim->grid.cells[midx(nx,ny,ix,iy,1)];
+                sim->grid.cells[midx(nx,ny,ix,iy,0)].velocity.z *= -1;
+                sim->grid.cells[midx(nx,ny,ix,iy,nz-1)] = sim->grid.cells[midx(nx,ny,ix,iy,nz-2)];
+                sim->grid.cells[midx(nx,ny,ix,iy,nz-1)].velocity.z *= -1;
+            }
+        }
+        break;
+
+    case MHD_BC_OUTFLOW:
+        /* Zero-gradient: copy nearest interior cell (free outflow) */
+        for (uint32_t iz = 0; iz < nz; iz++) {
+            for (uint32_t iy = 0; iy < ny; iy++) {
+                sim->grid.cells[midx(nx,ny,0,iy,iz)] = sim->grid.cells[midx(nx,ny,1,iy,iz)];
+                sim->grid.cells[midx(nx,ny,nx-1,iy,iz)] = sim->grid.cells[midx(nx,ny,nx-2,iy,iz)];
+            }
+        }
+        for (uint32_t iz = 0; iz < nz; iz++) {
+            for (uint32_t ix = 0; ix < nx; ix++) {
+                sim->grid.cells[midx(nx,ny,ix,0,iz)] = sim->grid.cells[midx(nx,ny,ix,1,iz)];
+                sim->grid.cells[midx(nx,ny,ix,ny-1,iz)] = sim->grid.cells[midx(nx,ny,ix,ny-2,iz)];
+            }
+        }
+        for (uint32_t iy = 0; iy < ny; iy++) {
+            for (uint32_t ix = 0; ix < nx; ix++) {
+                sim->grid.cells[midx(nx,ny,ix,iy,0)] = sim->grid.cells[midx(nx,ny,ix,iy,1)];
+                sim->grid.cells[midx(nx,ny,ix,iy,nz-1)] = sim->grid.cells[midx(nx,ny,ix,iy,nz-2)];
+            }
+        }
+        break;
+
+    case MHD_BC_CONDUCTING:
+        /* Perfect conductor: E_tangential = 0 at wall → B_normal = 0, v_normal = 0 */
+        for (uint32_t iz = 0; iz < nz; iz++) {
+            for (uint32_t iy = 0; iy < ny; iy++) {
+                sim->grid.cells[midx(nx,ny,0,iy,iz)] = sim->grid.cells[midx(nx,ny,1,iy,iz)];
+                sim->grid.cells[midx(nx,ny,0,iy,iz)].velocity.x = 0;
+                sim->grid.cells[midx(nx,ny,0,iy,iz)].B.x = 0;
+                sim->grid.cells[midx(nx,ny,nx-1,iy,iz)] = sim->grid.cells[midx(nx,ny,nx-2,iy,iz)];
+                sim->grid.cells[midx(nx,ny,nx-1,iy,iz)].velocity.x = 0;
+                sim->grid.cells[midx(nx,ny,nx-1,iy,iz)].B.x = 0;
+            }
+        }
+        for (uint32_t iz = 0; iz < nz; iz++) {
+            for (uint32_t ix = 0; ix < nx; ix++) {
+                sim->grid.cells[midx(nx,ny,ix,0,iz)] = sim->grid.cells[midx(nx,ny,ix,1,iz)];
+                sim->grid.cells[midx(nx,ny,ix,0,iz)].velocity.y = 0;
+                sim->grid.cells[midx(nx,ny,ix,0,iz)].B.y = 0;
+                sim->grid.cells[midx(nx,ny,ix,ny-1,iz)] = sim->grid.cells[midx(nx,ny,ix,ny-2,iz)];
+                sim->grid.cells[midx(nx,ny,ix,ny-1,iz)].velocity.y = 0;
+                sim->grid.cells[midx(nx,ny,ix,ny-1,iz)].B.y = 0;
+            }
+        }
+        for (uint32_t iy = 0; iy < ny; iy++) {
+            for (uint32_t ix = 0; ix < nx; ix++) {
+                sim->grid.cells[midx(nx,ny,ix,iy,0)] = sim->grid.cells[midx(nx,ny,ix,iy,1)];
+                sim->grid.cells[midx(nx,ny,ix,iy,0)].velocity.z = 0;
+                sim->grid.cells[midx(nx,ny,ix,iy,0)].B.z = 0;
+                sim->grid.cells[midx(nx,ny,ix,iy,nz-1)] = sim->grid.cells[midx(nx,ny,ix,iy,nz-2)];
+                sim->grid.cells[midx(nx,ny,ix,iy,nz-1)].velocity.z = 0;
+                sim->grid.cells[midx(nx,ny,ix,iy,nz-1)].B.z = 0;
+            }
+        }
+        break;
+
+    case MHD_BC_INSULATING:
+        /* Insulating wall: J_normal = 0 → dB_tangential/dn = 0, v_normal = 0 */
+        for (uint32_t iz = 0; iz < nz; iz++) {
+            for (uint32_t iy = 0; iy < ny; iy++) {
+                sim->grid.cells[midx(nx,ny,0,iy,iz)] = sim->grid.cells[midx(nx,ny,1,iy,iz)];
+                sim->grid.cells[midx(nx,ny,0,iy,iz)].velocity.x = 0;
+                sim->grid.cells[midx(nx,ny,nx-1,iy,iz)] = sim->grid.cells[midx(nx,ny,nx-2,iy,iz)];
+                sim->grid.cells[midx(nx,ny,nx-1,iy,iz)].velocity.x = 0;
+            }
+        }
+        for (uint32_t iz = 0; iz < nz; iz++) {
+            for (uint32_t ix = 0; ix < nx; ix++) {
+                sim->grid.cells[midx(nx,ny,ix,0,iz)] = sim->grid.cells[midx(nx,ny,ix,1,iz)];
+                sim->grid.cells[midx(nx,ny,ix,0,iz)].velocity.y = 0;
+                sim->grid.cells[midx(nx,ny,ix,ny-1,iz)] = sim->grid.cells[midx(nx,ny,ix,ny-2,iz)];
+                sim->grid.cells[midx(nx,ny,ix,ny-1,iz)].velocity.y = 0;
+            }
+        }
+        for (uint32_t iy = 0; iy < ny; iy++) {
+            for (uint32_t ix = 0; ix < nx; ix++) {
+                sim->grid.cells[midx(nx,ny,ix,iy,0)] = sim->grid.cells[midx(nx,ny,ix,iy,1)];
+                sim->grid.cells[midx(nx,ny,ix,iy,0)].velocity.z = 0;
+                sim->grid.cells[midx(nx,ny,ix,iy,nz-1)] = sim->grid.cells[midx(nx,ny,ix,iy,nz-2)];
+                sim->grid.cells[midx(nx,ny,ix,iy,nz-1)].velocity.z = 0;
+            }
+        }
+        break;
     }
+    #undef APPLY_BC_FACES
 
     /* Statistics */
     sim->time += dt;

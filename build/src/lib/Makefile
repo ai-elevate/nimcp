@@ -14756,6 +14756,54 @@ __/cognitive/physics/nimcp_scene_graph.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_scene_graph.c.s
 .PHONY : __/cognitive/physics/nimcp_scene_graph.c.s
 
+__/cognitive/physics/nimcp_surface_chemistry.o: __/cognitive/physics/nimcp_surface_chemistry.c.o
+.PHONY : __/cognitive/physics/nimcp_surface_chemistry.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_surface_chemistry.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_surface_chemistry.c.o
+.PHONY : __/cognitive/physics/nimcp_surface_chemistry.c.o
+
+__/cognitive/physics/nimcp_surface_chemistry.i: __/cognitive/physics/nimcp_surface_chemistry.c.i
+.PHONY : __/cognitive/physics/nimcp_surface_chemistry.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_surface_chemistry.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_surface_chemistry.c.i
+.PHONY : __/cognitive/physics/nimcp_surface_chemistry.c.i
+
+__/cognitive/physics/nimcp_surface_chemistry.s: __/cognitive/physics/nimcp_surface_chemistry.c.s
+.PHONY : __/cognitive/physics/nimcp_surface_chemistry.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_surface_chemistry.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_surface_chemistry.c.s
+.PHONY : __/cognitive/physics/nimcp_surface_chemistry.c.s
+
+__/cognitive/physics/nimcp_surface_physics.o: __/cognitive/physics/nimcp_surface_physics.c.o
+.PHONY : __/cognitive/physics/nimcp_surface_physics.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_surface_physics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_surface_physics.c.o
+.PHONY : __/cognitive/physics/nimcp_surface_physics.c.o
+
+__/cognitive/physics/nimcp_surface_physics.i: __/cognitive/physics/nimcp_surface_physics.c.i
+.PHONY : __/cognitive/physics/nimcp_surface_physics.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_surface_physics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_surface_physics.c.i
+.PHONY : __/cognitive/physics/nimcp_surface_physics.c.i
+
+__/cognitive/physics/nimcp_surface_physics.s: __/cognitive/physics/nimcp_surface_physics.c.s
+.PHONY : __/cognitive/physics/nimcp_surface_physics.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_surface_physics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_surface_physics.c.s
+.PHONY : __/cognitive/physics/nimcp_surface_physics.c.s
+
 __/cognitive/physics/nimcp_world_prior.o: __/cognitive/physics/nimcp_world_prior.c.o
 .PHONY : __/cognitive/physics/nimcp_world_prior.o
 
@@ -56143,6 +56191,12 @@ help:
 	@echo "... __/cognitive/physics/nimcp_scene_graph.o"
 	@echo "... __/cognitive/physics/nimcp_scene_graph.i"
 	@echo "... __/cognitive/physics/nimcp_scene_graph.s"
+	@echo "... __/cognitive/physics/nimcp_surface_chemistry.o"
+	@echo "... __/cognitive/physics/nimcp_surface_chemistry.i"
+	@echo "... __/cognitive/physics/nimcp_surface_chemistry.s"
+	@echo "... __/cognitive/physics/nimcp_surface_physics.o"
+	@echo "... __/cognitive/physics/nimcp_surface_physics.i"
+	@echo "... __/cognitive/physics/nimcp_surface_physics.s"
 	@echo "... __/cognitive/physics/nimcp_world_prior.o"
 	@echo "... __/cognitive/physics/nimcp_world_prior.i"
 	@echo "... __/cognitive/physics/nimcp_world_prior.s"

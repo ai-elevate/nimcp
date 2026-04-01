@@ -9,8 +9,10 @@
  */
 
 #include "cognitive/physics/nimcp_relativistic_physics.h"
+#include "cognitive/physics/nimcp_electromagnetic.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/numerical/nimcp_integration.h"
 #include <math.h>
 #include <string.h>
 
@@ -49,10 +51,13 @@ static inline wm_parietal_vec3_t rv_sub(wm_parietal_vec3_t a, wm_parietal_vec3_t
  * ============================================================================ */
 
 float relativistic_gamma(wm_parietal_vec3_t velocity) {
-    float v2 = rv_len2(velocity);
-    float beta2 = v2 / REL_C2;
-    if (beta2 >= 1.0f) beta2 = 0.9999999f;  /* clamp to sub-luminal */
-    return 1.0f / sqrtf(1.0f - beta2);
+    /* Use double precision: at v=0.9999c, 1-beta^2 = 2e-8 which loses
+     * 7 significant digits in float32. Double keeps 15 digits. */
+    double vx = velocity.x, vy = velocity.y, vz = velocity.z;
+    double v2 = vx*vx + vy*vy + vz*vz;
+    double beta2 = v2 / (double)REL_C2;
+    if (beta2 >= 1.0) beta2 = 0.999999999999;
+    return (float)(1.0 / sqrt(1.0 - beta2));
 }
 
 wm_parietal_vec3_t relativistic_momentum(float rest_mass, wm_parietal_vec3_t velocity) {
@@ -84,9 +89,10 @@ float relativistic_velocity_addition(float u, float v) {
 }
 
 float relativistic_invariant_mass(rel_four_vector_t p) {
-    float m2c2 = p.t * p.t - (p.x * p.x + p.y * p.y + p.z * p.z);
+    /* Double precision: E^2/c^2 and |p|^2 are both huge, their difference is small */
+    double m2c2 = (double)p.t * p.t - ((double)p.x * p.x + (double)p.y * p.y + (double)p.z * p.z);
     if (m2c2 < 0) return 0;  /* massless or numerical error */
-    return sqrtf(m2c2) / REL_C;
+    return (float)(sqrt(m2c2) / (double)REL_C);
 }
 
 /* ============================================================================
@@ -343,7 +349,12 @@ int relativistic_step(relativistic_engine_t* engine, float dt) {
             force = rv_add(force, rv_scale(r_hat, F_mag));
         }
 
-        /* Electromagnetic force handled by EM engine (external coupling) */
+        /* Electromagnetic Lorentz force: F = q(E + v × B) from coupled EM engine */
+        if (engine->em_coupling && p->charge != 0) {
+            wm_parietal_vec3_t em_force = em_lorentz_force(
+                engine->em_coupling, p->charge, p->position, p->velocity);
+            force = rv_add(force, em_force);
+        }
 
         update_particle(p, engine, force, dt);
 
@@ -364,12 +375,163 @@ int relativistic_step(relativistic_engine_t* engine, float dt) {
     engine->stats.total_energy = total_ke + total_re;
     engine->stats.active_particles = active;
 
+    /* Energy drift: per-instance baseline (not static — safe for multiple engines) */
     if (engine->stats.step_count == 1) {
+        engine->initial_total_energy = (double)engine->stats.total_energy;
         engine->stats.energy_drift = 0;
-    } else if (fabsf(engine->stats.total_energy) > 1e-30f) {
-        static float initial_E = 0;
-        if (engine->stats.step_count == 2) initial_E = engine->stats.total_energy;
-        engine->stats.energy_drift = (engine->stats.total_energy - initial_E) / fabsf(initial_E);
+    } else if (fabs(engine->initial_total_energy) > 1e-30) {
+        engine->stats.energy_drift = (float)(
+            ((double)engine->stats.total_energy - engine->initial_total_energy)
+            / fabs(engine->initial_total_energy));
+    }
+
+    return 0;
+}
+
+/* ============================================================================
+ * EM Coupling (Fix #5)
+ * ============================================================================ */
+
+void relativistic_connect_em(relativistic_engine_t* engine,
+                              struct electromagnetic_sim* em) {
+    if (engine) engine->em_coupling = em;
+}
+
+/* ============================================================================
+ * RK4 Integration (Fix #3 partial — uses nimcp_integration.h)
+ * ============================================================================ */
+
+/* RK4 derivative function for relativistic particle:
+ * State = [px, py, pz, x, y, z] (6 DOF per particle)
+ * dp/dt = F (force), dx/dt = p/(gamma*m) */
+typedef struct {
+    relativistic_engine_t* engine;
+    uint32_t particle_idx;
+} rk4_rel_params_t;
+
+static void rel_rk4_derivatives(const float* state, float t, void* params,
+                                  float* derivatives) {
+    (void)t;
+    rk4_rel_params_t* rp = (rk4_rel_params_t*)params;
+    relativistic_engine_t* engine = rp->engine;
+    rel_particle_t* p = &engine->particles[rp->particle_idx];
+
+    float px = state[0], py = state[1], pz = state[2];
+    /* Derive velocity from momentum */
+    double p2 = (double)px*px + (double)py*py + (double)pz*pz;
+    double m2c2 = (double)p->rest_mass * p->rest_mass * (double)REL_C2;
+    double gamma = sqrt(1.0 + p2 / m2c2);
+    float inv_gm = (float)(1.0 / (gamma * (double)p->rest_mass));
+    float vx = px * inv_gm, vy = py * inv_gm, vz = pz * inv_gm;
+
+    /* Compute forces at current position */
+    wm_parietal_vec3_t pos = { state[3], state[4], state[5] };
+    wm_parietal_vec3_t vel = { vx, vy, vz };
+    wm_parietal_vec3_t force = {0, 0, 0};
+
+    /* Gravity */
+    for (uint32_t g = 0; g < engine->num_gravity_sources; g++) {
+        const rel_gravity_source_t* src = &engine->gravity_sources[g];
+        wm_parietal_vec3_t r = rv_sub(pos, src->position);
+        float dist = rv_len(r);
+        if (dist < 1e-6f) continue;
+        float F_mag = REL_G_NEWTON * src->mass * p->rest_mass / (dist * dist);
+        if (engine->config.enable_general_relativity) {
+            F_mag *= (1.0f + 1.5f * src->schwarzschild_r / dist);
+        }
+        wm_parietal_vec3_t r_hat = rv_scale(r, -1.0f / dist);
+        force = rv_add(force, rv_scale(r_hat, F_mag));
+    }
+
+    /* EM coupling */
+    if (engine->em_coupling && p->charge != 0) {
+        wm_parietal_vec3_t em_f = em_lorentz_force(engine->em_coupling,
+                                                     p->charge, pos, vel);
+        force = rv_add(force, em_f);
+    }
+
+    /* dp/dt = F */
+    derivatives[0] = force.x;
+    derivatives[1] = force.y;
+    derivatives[2] = force.z;
+    /* dx/dt = v */
+    derivatives[3] = vx;
+    derivatives[4] = vy;
+    derivatives[5] = vz;
+}
+
+int relativistic_step_rk4(relativistic_engine_t* engine, float dt) {
+    if (!engine || !engine->initialized) return -1;
+    if (dt <= 0) dt = engine->config.dt;
+
+    float max_gamma = 1.0f, max_beta = 0;
+    float total_ke = 0, total_re = 0;
+    uint32_t active = 0;
+
+    for (uint32_t i = 0; i < engine->num_particles; i++) {
+        rel_particle_t* p = &engine->particles[i];
+        if (!p->active) continue;
+        active++;
+
+        /* Pack state: [px, py, pz, x, y, z] */
+        float state[6] = {
+            p->momentum.x, p->momentum.y, p->momentum.z,
+            p->position.x, p->position.y, p->position.z
+        };
+
+        rk4_rel_params_t params = { .engine = engine, .particle_idx = i };
+        integration_step(INTEGRATION_RK4, rel_rk4_derivatives,
+                          state, engine->coordinate_time, dt, 6, &params);
+
+        /* Unpack state */
+        p->momentum = (wm_parietal_vec3_t){ state[0], state[1], state[2] };
+        p->position = (wm_parietal_vec3_t){ state[3], state[4], state[5] };
+
+        /* Derive velocity from updated momentum */
+        double p2 = (double)state[0]*state[0] + (double)state[1]*state[1] + (double)state[2]*state[2];
+        double m2c2 = (double)p->rest_mass * p->rest_mass * (double)REL_C2;
+        double gamma = sqrt(1.0 + p2 / m2c2);
+        p->gamma = (float)gamma;
+        float inv_gm = (float)(1.0 / (gamma * (double)p->rest_mass));
+        p->velocity = (wm_parietal_vec3_t){ state[0]*inv_gm, state[1]*inv_gm, state[2]*inv_gm };
+
+        /* Velocity clamp */
+        float v = rv_len(p->velocity);
+        if (v >= REL_C * 0.9999f) {
+            p->velocity = rv_scale(p->velocity, REL_C * 0.9999f / v);
+        }
+
+        /* Update derived quantities */
+        p->kinetic_energy = ((float)gamma - 1.0f) * p->rest_mass * REL_C2;
+        p->total_energy = (float)gamma * p->rest_mass * REL_C2;
+        p->four_momentum = (rel_four_vector_t){
+            p->total_energy / REL_C, p->momentum.x, p->momentum.y, p->momentum.z
+        };
+        float grav_dil = relativistic_gravitational_dilation(engine, p->position);
+        p->proper_time += dt / (float)gamma * grav_dil;
+
+        if (p->gamma > max_gamma) max_gamma = p->gamma;
+        float beta = rv_len(p->velocity) / REL_C;
+        if (beta > max_beta) max_beta = beta;
+        total_ke += p->kinetic_energy;
+        total_re += p->rest_mass * REL_C2;
+    }
+
+    engine->coordinate_time += dt;
+    engine->stats.step_count++;
+    engine->stats.max_gamma = max_gamma;
+    engine->stats.max_velocity_fraction = max_beta;
+    engine->stats.total_kinetic_energy = total_ke;
+    engine->stats.total_rest_energy = total_re;
+    engine->stats.total_energy = total_ke + total_re;
+    engine->stats.active_particles = active;
+
+    if (engine->stats.step_count == 1) {
+        engine->initial_total_energy = (double)engine->stats.total_energy;
+    } else if (fabs(engine->initial_total_energy) > 1e-30) {
+        engine->stats.energy_drift = (float)(
+            ((double)engine->stats.total_energy - engine->initial_total_energy)
+            / fabs(engine->initial_total_energy));
     }
 
     return 0;
