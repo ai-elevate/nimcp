@@ -103,6 +103,10 @@ void wmb_store_surprise(world_model_bridge_t* bridge,
     rb->mean_surprise = (1 - alpha) * rb->mean_surprise + alpha * event->surprise_score;
     if (event->surprise_score > rb->max_surprise)
         rb->max_surprise = event->surprise_score;
+
+    /* Fire surprise callback → routes to perirhinal prime resonance */
+    if (bridge->on_surprise)
+        bridge->on_surprise(event, bridge->surprise_ctx);
 }
 
 const wmb_surprise_event_t* wmb_most_surprising(const world_model_bridge_t* bridge) {
@@ -248,7 +252,10 @@ uint32_t wmb_replay_consolidation(world_model_bridge_t* bridge,
          *   jepa_predictor_train_step(bridge->jepa,
          *       event->latent_before, event->latent_after, replay_lr);
          */
-        (void)event;  /* training signal available via wmb_most_surprising() */
+        /* Fire replay callback → routes latent pairs to JEPA training */
+        if (bridge->on_replay)
+            bridge->on_replay(event->latent_before, event->latent_after,
+                              event->surprise_score, bridge->replay_ctx);
 
         /* Reduce surprise score after replay (diminishing returns) */
         rb->events[best].surprise_score *= 0.7f;
@@ -324,6 +331,22 @@ void wmb_connect(world_model_bridge_t* bridge,
     bridge->world_sim = world_sim;
     bridge->scene = scene;
     bridge->tracker = tracker;
+}
+
+void wmb_set_surprise_callback(world_model_bridge_t* bridge,
+                                 wmb_surprise_callback_t callback,
+                                 void* user_data) {
+    if (!bridge) return;
+    bridge->on_surprise = callback;
+    bridge->surprise_ctx = user_data;
+}
+
+void wmb_set_replay_callback(world_model_bridge_t* bridge,
+                               wmb_replay_callback_t callback,
+                               void* user_data) {
+    if (!bridge) return;
+    bridge->on_replay = callback;
+    bridge->replay_ctx = user_data;
 }
 
 wmb_stats_t wmb_get_stats(const world_model_bridge_t* bridge) {

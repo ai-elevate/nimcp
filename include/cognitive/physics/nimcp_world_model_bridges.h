@@ -132,6 +132,35 @@ typedef struct {
  * Bridge
  * ============================================================================ */
 
+/**
+ * @brief Callback fired when a surprise event is stored.
+ *
+ * The brain's init code registers this to route surprise events
+ * to the perirhinal cortex's prime resonance memory system.
+ * This avoids tight coupling between the bridge and brain internals.
+ *
+ * @param event The surprise event (predicted vs actual, error, latent pairs)
+ * @param user_data Opaque pointer (typically the brain or perirhinal handle)
+ */
+typedef void (*wmb_surprise_callback_t)(const wmb_surprise_event_t* event,
+                                         void* user_data);
+
+/**
+ * @brief Callback fired during consolidation replay.
+ *
+ * Called for each replayed event so the brain can feed the latent
+ * before→after pair to JEPA's train_step().
+ *
+ * @param latent_before The latent state before the transition [WMB_LATENT_DIM]
+ * @param latent_after The latent state after the transition [WMB_LATENT_DIM]
+ * @param surprise_score How surprising this event was
+ * @param user_data Opaque pointer (typically the brain or JEPA handle)
+ */
+typedef void (*wmb_replay_callback_t)(const float* latent_before,
+                                       const float* latent_after,
+                                       float surprise_score,
+                                       void* user_data);
+
 typedef struct world_model_bridge {
     /* Connected systems (non-owning) */
     struct jepa_predictor*          jepa;
@@ -146,6 +175,12 @@ typedef struct world_model_bridge {
 
     /* Replay buffer */
     wmb_replay_buffer_t replay;
+
+    /* Callbacks — fire on surprise and replay events */
+    wmb_surprise_callback_t on_surprise;    /* called when surprise stored */
+    void*                   surprise_ctx;   /* user_data for on_surprise */
+    wmb_replay_callback_t   on_replay;      /* called during consolidation replay */
+    void*                   replay_ctx;     /* user_data for on_replay */
 
     wmb_config_t config;
     wmb_stats_t  stats;
@@ -166,6 +201,16 @@ void wmb_connect(world_model_bridge_t* bridge,
                   struct world_simulator* world_sim,
                   struct scene_graph* scene,
                   struct entity_tracker* tracker);
+
+/** Register callback for surprise events (routes to prime resonance) */
+void wmb_set_surprise_callback(world_model_bridge_t* bridge,
+                                 wmb_surprise_callback_t callback,
+                                 void* user_data);
+
+/** Register callback for replay events (routes to JEPA training) */
+void wmb_set_replay_callback(world_model_bridge_t* bridge,
+                               wmb_replay_callback_t callback,
+                               void* user_data);
 
 /**
  * @brief Predict-and-verify cycle

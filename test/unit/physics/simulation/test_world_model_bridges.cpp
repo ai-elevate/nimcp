@@ -160,6 +160,60 @@ TEST_F(WMBridgeTest, MostSurprising) {
     EXPECT_FLOAT_EQ(best->surprise_score, 9.0f);  /* highest score */
 }
 
+/* --- Callback Tests --- */
+
+static int g_surprise_callback_count = 0;
+static float g_last_surprise_score = 0;
+static void test_surprise_cb(const wmb_surprise_event_t* event, void* ctx) {
+    (void)ctx;
+    g_surprise_callback_count++;
+    g_last_surprise_score = event->surprise_score;
+}
+
+static int g_replay_callback_count = 0;
+static void test_replay_cb(const float* before, const float* after, float score, void* ctx) {
+    (void)before; (void)after; (void)score; (void)ctx;
+    g_replay_callback_count++;
+}
+
+TEST_F(WMBridgeTest, SurpriseCallbackFires) {
+    g_surprise_callback_count = 0;
+    g_last_surprise_score = 0;
+    wmb_set_surprise_callback(bridge, test_surprise_cb, NULL);
+
+    wmb_surprise_event_t event = {};
+    event.surprise_score = 7.77f;
+    wmb_store_surprise(bridge, &event);
+
+    EXPECT_EQ(g_surprise_callback_count, 1);
+    EXPECT_FLOAT_EQ(g_last_surprise_score, 7.77f);
+}
+
+TEST_F(WMBridgeTest, ReplayCallbackFires) {
+    g_replay_callback_count = 0;
+    wmb_set_replay_callback(bridge, test_replay_cb, NULL);
+
+    /* Store 5 events */
+    for (int i = 0; i < 5; i++) {
+        wmb_surprise_event_t event = {};
+        event.surprise_score = (float)(i + 1);
+        wmb_store_surprise(bridge, &event);
+    }
+
+    /* Replay 3 */
+    wmb_replay_consolidation(bridge, 3);
+    EXPECT_EQ(g_replay_callback_count, 3);
+}
+
+TEST_F(WMBridgeTest, NullCallbackSafe) {
+    wmb_set_surprise_callback(bridge, NULL, NULL);
+    wmb_set_replay_callback(bridge, NULL, NULL);
+    wmb_surprise_event_t event = {};
+    event.surprise_score = 1.0f;
+    wmb_store_surprise(bridge, &event);  /* should not crash */
+    wmb_replay_consolidation(bridge, 1); /* should not crash */
+}
+
 TEST_F(WMBridgeTest, MostSurprisingEmptyBuffer) {
     const wmb_surprise_event_t* best = wmb_most_surprising(bridge);
     EXPECT_EQ(best, nullptr);
