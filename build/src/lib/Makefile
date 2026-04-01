@@ -14540,6 +14540,54 @@ __/cognitive/personality/nimcp_personality_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/personality/nimcp_personality_thalamic_bridge.c.s
 .PHONY : __/cognitive/personality/nimcp_personality_thalamic_bridge.c.s
 
+__/cognitive/physics/nimcp_astrophysics.o: __/cognitive/physics/nimcp_astrophysics.c.o
+.PHONY : __/cognitive/physics/nimcp_astrophysics.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_astrophysics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_astrophysics.c.o
+.PHONY : __/cognitive/physics/nimcp_astrophysics.c.o
+
+__/cognitive/physics/nimcp_astrophysics.i: __/cognitive/physics/nimcp_astrophysics.c.i
+.PHONY : __/cognitive/physics/nimcp_astrophysics.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_astrophysics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_astrophysics.c.i
+.PHONY : __/cognitive/physics/nimcp_astrophysics.c.i
+
+__/cognitive/physics/nimcp_astrophysics.s: __/cognitive/physics/nimcp_astrophysics.c.s
+.PHONY : __/cognitive/physics/nimcp_astrophysics.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_astrophysics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_astrophysics.c.s
+.PHONY : __/cognitive/physics/nimcp_astrophysics.c.s
+
+__/cognitive/physics/nimcp_biochemistry.o: __/cognitive/physics/nimcp_biochemistry.c.o
+.PHONY : __/cognitive/physics/nimcp_biochemistry.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_biochemistry.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_biochemistry.c.o
+.PHONY : __/cognitive/physics/nimcp_biochemistry.c.o
+
+__/cognitive/physics/nimcp_biochemistry.i: __/cognitive/physics/nimcp_biochemistry.c.i
+.PHONY : __/cognitive/physics/nimcp_biochemistry.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_biochemistry.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_biochemistry.c.i
+.PHONY : __/cognitive/physics/nimcp_biochemistry.c.i
+
+__/cognitive/physics/nimcp_biochemistry.s: __/cognitive/physics/nimcp_biochemistry.c.s
+.PHONY : __/cognitive/physics/nimcp_biochemistry.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_biochemistry.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_biochemistry.c.s
+.PHONY : __/cognitive/physics/nimcp_biochemistry.c.s
+
 __/cognitive/physics/nimcp_biology_sim.o: __/cognitive/physics/nimcp_biology_sim.c.o
 .PHONY : __/cognitive/physics/nimcp_biology_sim.o
 
@@ -14563,6 +14611,30 @@ __/cognitive/physics/nimcp_biology_sim.s: __/cognitive/physics/nimcp_biology_sim
 __/cognitive/physics/nimcp_biology_sim.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_biology_sim.c.s
 .PHONY : __/cognitive/physics/nimcp_biology_sim.c.s
+
+__/cognitive/physics/nimcp_chemical_engineering.o: __/cognitive/physics/nimcp_chemical_engineering.c.o
+.PHONY : __/cognitive/physics/nimcp_chemical_engineering.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_chemical_engineering.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_chemical_engineering.c.o
+.PHONY : __/cognitive/physics/nimcp_chemical_engineering.c.o
+
+__/cognitive/physics/nimcp_chemical_engineering.i: __/cognitive/physics/nimcp_chemical_engineering.c.i
+.PHONY : __/cognitive/physics/nimcp_chemical_engineering.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_chemical_engineering.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_chemical_engineering.c.i
+.PHONY : __/cognitive/physics/nimcp_chemical_engineering.c.i
+
+__/cognitive/physics/nimcp_chemical_engineering.s: __/cognitive/physics/nimcp_chemical_engineering.c.s
+.PHONY : __/cognitive/physics/nimcp_chemical_engineering.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_chemical_engineering.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_chemical_engineering.c.s
+.PHONY : __/cognitive/physics/nimcp_chemical_engineering.c.s
 
 __/cognitive/physics/nimcp_chemistry_sim.o: __/cognitive/physics/nimcp_chemistry_sim.c.o
 .PHONY : __/cognitive/physics/nimcp_chemistry_sim.o
@@ -14684,6 +14756,102 @@ __/cognitive/physics/nimcp_magnetohydrodynamics.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_magnetohydrodynamics.c.s
 .PHONY : __/cognitive/physics/nimcp_magnetohydrodynamics.c.s
 
+__/cognitive/physics/nimcp_molecular_biology.o: __/cognitive/physics/nimcp_molecular_biology.c.o
+.PHONY : __/cognitive/physics/nimcp_molecular_biology.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_molecular_biology.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_molecular_biology.c.o
+.PHONY : __/cognitive/physics/nimcp_molecular_biology.c.o
+
+__/cognitive/physics/nimcp_molecular_biology.i: __/cognitive/physics/nimcp_molecular_biology.c.i
+.PHONY : __/cognitive/physics/nimcp_molecular_biology.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_molecular_biology.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_molecular_biology.c.i
+.PHONY : __/cognitive/physics/nimcp_molecular_biology.c.i
+
+__/cognitive/physics/nimcp_molecular_biology.s: __/cognitive/physics/nimcp_molecular_biology.c.s
+.PHONY : __/cognitive/physics/nimcp_molecular_biology.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_molecular_biology.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_molecular_biology.c.s
+.PHONY : __/cognitive/physics/nimcp_molecular_biology.c.s
+
+__/cognitive/physics/nimcp_organic_chemistry.o: __/cognitive/physics/nimcp_organic_chemistry.c.o
+.PHONY : __/cognitive/physics/nimcp_organic_chemistry.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_organic_chemistry.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_organic_chemistry.c.o
+.PHONY : __/cognitive/physics/nimcp_organic_chemistry.c.o
+
+__/cognitive/physics/nimcp_organic_chemistry.i: __/cognitive/physics/nimcp_organic_chemistry.c.i
+.PHONY : __/cognitive/physics/nimcp_organic_chemistry.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_organic_chemistry.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_organic_chemistry.c.i
+.PHONY : __/cognitive/physics/nimcp_organic_chemistry.c.i
+
+__/cognitive/physics/nimcp_organic_chemistry.s: __/cognitive/physics/nimcp_organic_chemistry.c.s
+.PHONY : __/cognitive/physics/nimcp_organic_chemistry.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_organic_chemistry.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_organic_chemistry.c.s
+.PHONY : __/cognitive/physics/nimcp_organic_chemistry.c.s
+
+__/cognitive/physics/nimcp_particle_physics.o: __/cognitive/physics/nimcp_particle_physics.c.o
+.PHONY : __/cognitive/physics/nimcp_particle_physics.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_particle_physics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_particle_physics.c.o
+.PHONY : __/cognitive/physics/nimcp_particle_physics.c.o
+
+__/cognitive/physics/nimcp_particle_physics.i: __/cognitive/physics/nimcp_particle_physics.c.i
+.PHONY : __/cognitive/physics/nimcp_particle_physics.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_particle_physics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_particle_physics.c.i
+.PHONY : __/cognitive/physics/nimcp_particle_physics.c.i
+
+__/cognitive/physics/nimcp_particle_physics.s: __/cognitive/physics/nimcp_particle_physics.c.s
+.PHONY : __/cognitive/physics/nimcp_particle_physics.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_particle_physics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_particle_physics.c.s
+.PHONY : __/cognitive/physics/nimcp_particle_physics.c.s
+
+__/cognitive/physics/nimcp_physical_chemistry.o: __/cognitive/physics/nimcp_physical_chemistry.c.o
+.PHONY : __/cognitive/physics/nimcp_physical_chemistry.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_physical_chemistry.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_physical_chemistry.c.o
+.PHONY : __/cognitive/physics/nimcp_physical_chemistry.c.o
+
+__/cognitive/physics/nimcp_physical_chemistry.i: __/cognitive/physics/nimcp_physical_chemistry.c.i
+.PHONY : __/cognitive/physics/nimcp_physical_chemistry.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_physical_chemistry.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_physical_chemistry.c.i
+.PHONY : __/cognitive/physics/nimcp_physical_chemistry.c.i
+
+__/cognitive/physics/nimcp_physical_chemistry.s: __/cognitive/physics/nimcp_physical_chemistry.c.s
+.PHONY : __/cognitive/physics/nimcp_physical_chemistry.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_physical_chemistry.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_physical_chemistry.c.s
+.PHONY : __/cognitive/physics/nimcp_physical_chemistry.c.s
+
 __/cognitive/physics/nimcp_physics_prior.o: __/cognitive/physics/nimcp_physics_prior.c.o
 .PHONY : __/cognitive/physics/nimcp_physics_prior.o
 
@@ -14707,6 +14875,30 @@ __/cognitive/physics/nimcp_physics_prior.s: __/cognitive/physics/nimcp_physics_p
 __/cognitive/physics/nimcp_physics_prior.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_physics_prior.c.s
 .PHONY : __/cognitive/physics/nimcp_physics_prior.c.s
+
+__/cognitive/physics/nimcp_qed.o: __/cognitive/physics/nimcp_qed.c.o
+.PHONY : __/cognitive/physics/nimcp_qed.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_qed.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_qed.c.o
+.PHONY : __/cognitive/physics/nimcp_qed.c.o
+
+__/cognitive/physics/nimcp_qed.i: __/cognitive/physics/nimcp_qed.c.i
+.PHONY : __/cognitive/physics/nimcp_qed.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_qed.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_qed.c.i
+.PHONY : __/cognitive/physics/nimcp_qed.c.i
+
+__/cognitive/physics/nimcp_qed.s: __/cognitive/physics/nimcp_qed.c.s
+.PHONY : __/cognitive/physics/nimcp_qed.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_qed.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_qed.c.s
+.PHONY : __/cognitive/physics/nimcp_qed.c.s
 
 __/cognitive/physics/nimcp_relativistic_physics.o: __/cognitive/physics/nimcp_relativistic_physics.c.o
 .PHONY : __/cognitive/physics/nimcp_relativistic_physics.o
@@ -56164,9 +56356,18 @@ help:
 	@echo "... __/cognitive/personality/nimcp_personality_thalamic_bridge.o"
 	@echo "... __/cognitive/personality/nimcp_personality_thalamic_bridge.i"
 	@echo "... __/cognitive/personality/nimcp_personality_thalamic_bridge.s"
+	@echo "... __/cognitive/physics/nimcp_astrophysics.o"
+	@echo "... __/cognitive/physics/nimcp_astrophysics.i"
+	@echo "... __/cognitive/physics/nimcp_astrophysics.s"
+	@echo "... __/cognitive/physics/nimcp_biochemistry.o"
+	@echo "... __/cognitive/physics/nimcp_biochemistry.i"
+	@echo "... __/cognitive/physics/nimcp_biochemistry.s"
 	@echo "... __/cognitive/physics/nimcp_biology_sim.o"
 	@echo "... __/cognitive/physics/nimcp_biology_sim.i"
 	@echo "... __/cognitive/physics/nimcp_biology_sim.s"
+	@echo "... __/cognitive/physics/nimcp_chemical_engineering.o"
+	@echo "... __/cognitive/physics/nimcp_chemical_engineering.i"
+	@echo "... __/cognitive/physics/nimcp_chemical_engineering.s"
 	@echo "... __/cognitive/physics/nimcp_chemistry_sim.o"
 	@echo "... __/cognitive/physics/nimcp_chemistry_sim.i"
 	@echo "... __/cognitive/physics/nimcp_chemistry_sim.s"
@@ -56182,9 +56383,24 @@ help:
 	@echo "... __/cognitive/physics/nimcp_magnetohydrodynamics.o"
 	@echo "... __/cognitive/physics/nimcp_magnetohydrodynamics.i"
 	@echo "... __/cognitive/physics/nimcp_magnetohydrodynamics.s"
+	@echo "... __/cognitive/physics/nimcp_molecular_biology.o"
+	@echo "... __/cognitive/physics/nimcp_molecular_biology.i"
+	@echo "... __/cognitive/physics/nimcp_molecular_biology.s"
+	@echo "... __/cognitive/physics/nimcp_organic_chemistry.o"
+	@echo "... __/cognitive/physics/nimcp_organic_chemistry.i"
+	@echo "... __/cognitive/physics/nimcp_organic_chemistry.s"
+	@echo "... __/cognitive/physics/nimcp_particle_physics.o"
+	@echo "... __/cognitive/physics/nimcp_particle_physics.i"
+	@echo "... __/cognitive/physics/nimcp_particle_physics.s"
+	@echo "... __/cognitive/physics/nimcp_physical_chemistry.o"
+	@echo "... __/cognitive/physics/nimcp_physical_chemistry.i"
+	@echo "... __/cognitive/physics/nimcp_physical_chemistry.s"
 	@echo "... __/cognitive/physics/nimcp_physics_prior.o"
 	@echo "... __/cognitive/physics/nimcp_physics_prior.i"
 	@echo "... __/cognitive/physics/nimcp_physics_prior.s"
+	@echo "... __/cognitive/physics/nimcp_qed.o"
+	@echo "... __/cognitive/physics/nimcp_qed.i"
+	@echo "... __/cognitive/physics/nimcp_qed.s"
 	@echo "... __/cognitive/physics/nimcp_relativistic_physics.o"
 	@echo "... __/cognitive/physics/nimcp_relativistic_physics.i"
 	@echo "... __/cognitive/physics/nimcp_relativistic_physics.s"

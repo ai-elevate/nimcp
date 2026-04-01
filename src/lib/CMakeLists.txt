@@ -1121,6 +1121,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_magnetohydrodynamics.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_surface_physics.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_surface_chemistry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_biochemistry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_molecular_biology.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_physical_chemistry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_organic_chemistry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_chemical_engineering.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_astrophysics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_particle_physics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_qed.c
     # Multimodal World Model (cross-modal prediction and fusion)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/extrapolation/nimcp_world_model_multimodal.c
     # Compositional and Counterfactual modules
